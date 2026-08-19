@@ -40,6 +40,7 @@
  * USAGE: node --env-file=.env.test scripts/verify/webhook-ordering-drill.mjs \
  *          [--url http://localhost:3000] [--secret <whsec>]
  */
+import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 import { assertNotProduction } from '../lib/production-write-preflight.mjs'
@@ -305,6 +306,66 @@ try {
   assert(after3.tier.sold_count === after1.tier.sold_count,
     `sold_count STILL unchanged with a new event id (${after1.tier.sold_count})`, after3.tier.sold_count)
   scanned.push('a THIRD delivery with a DIFFERENT event id, isolating confirm_order from the dedupe ledger')
+
+  // ================================================================ TEST 3
+  //
+  // NEGATIVE CONTROL, because TESTS 1 AND 2 BOTH MEASURE AN ABSENCE.
+  //
+  // "no extra ticket appeared" and "sold_count did not move" are the same
+  // sentence whether the platform prevented a duplicate or the drill was
+  // incapable of seeing one. A frozen counter, a query filtered to the wrong
+  // order, or a ticket table this harness cannot read would print the identical
+  // PASS. So both instruments are made to move on demand before their stillness
+  // is believed.
+  hr('TEST 3  NEGATIVE CONTROL: can this drill see a duplicate at all?')
+
+  // C1  THE COUNTER IS LIVE. A different pending order on the SAME tier,
+  //     confirmed through the SAME signed HTTP delivery. If sold_count moves
+  //     here, its stillness in [2] and [3] is a property of the platform. If it
+  //     does not move here, every "unchanged" above was vacuous.
+  const C = await buildPendingOrder(1)
+  cleanupOrders.push(C.order.id)
+  const beforeC = await tierState()
+  const rc = await deliver('payment_intent.succeeded',
+    { ...C.intent, metadata: { ...C.intent.metadata, order_id: C.order.id } },
+    `evt_local_ord3_pi_${STAMP}`)
+  console.log(`\n  [C1] a DIFFERENT order delivered -> HTTP ${rc.status} ${rc.text}`)
+  await sleep(5000)
+  const afterC = { tier: await tierState(), tickets: await ticketCount(C.order.id) }
+  console.log(`       sold ${beforeC.sold_count} -> ${afterC.tier.sold_count}, tickets on the new order=${afterC.tickets}`)
+  assert(afterC.tier.sold_count === beforeC.sold_count + 1,
+    'CONTROL: sold_count DOES move when a genuine new sale lands, so its stillness above was real',
+    `${beforeC.sold_count} -> ${afterC.tier.sold_count}`)
+  assert(afterC.tickets === 1,
+    'CONTROL: the delivery route DOES mint tickets, so the zero in TEST 1 was a refusal and not a broken route',
+    afterC.tickets)
+
+  // C2  THE TICKET COUNT IS LIVE. Write one extra ticket onto order B by hand
+  //     and confirm the very query that reported "STILL exactly 2" now reports
+  //     3. This is the duplicate TEST 2 says cannot happen, manufactured
+  //     directly, so the assertion is proven able to fail. Removed immediately.
+  const { data: anItem } = await db.from('order_items').select('id').eq('order_id', B.order.id).limit(1).single()
+  const { data: planted, error: plantErr } = await db.from('tickets').insert({
+    order_id: B.order.id, order_item_id: anItem.id, event_id: event.id, ticket_tier_id: tier.id,
+    holder_email: `control-${STAMP}@resend.dev`, holder_name: 'Negative Control',
+    idx_in_item: 99, status: 'valid',
+    ticket_code: `CTRL-${STAMP.toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+    // tickets.secret is a uuid column, not free text. A readable label here fails
+    // with 22P02 and the control never runs, which would have left TEST 2's
+    // absence unproven while the run still looked busy.
+    secret: randomUUID(),
+  }).select('id').single()
+  if (plantErr) throw new Error(`negative control could not plant a ticket: ${plantErr.message}`)
+  const withPlant = await ticketCount(B.order.id)
+  console.log(`\n  [C2] planted one extra ticket on ${B.order.order_number}: count reads ${withPlant}`)
+  assert(withPlant === 3,
+    'CONTROL: the ticket count DOES rise to 3 when a duplicate exists, so "STILL exactly 2" was a real check',
+    withPlant)
+  await db.from('tickets').delete().eq('id', planted.id)
+  const afterPlant = await ticketCount(B.order.id)
+  console.log(`       control ticket removed: count back to ${afterPlant}`)
+  assert(afterPlant === 2, 'CONTROL: the planted ticket was removed and the order is back to 2', afterPlant)
+  scanned.push('a NEGATIVE CONTROL: a live sale to prove the counter moves, and a planted duplicate to prove the ticket assertion can fail')
 } catch (err) {
   console.error('\nDRILL FAILED TO RUN:', err)
   fails.push(`drill threw: ${err?.message ?? err}`)
