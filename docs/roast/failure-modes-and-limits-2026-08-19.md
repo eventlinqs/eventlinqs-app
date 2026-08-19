@@ -1,138 +1,135 @@
 # Failure modes, webhook idempotency, and the rate-limit posture
 
-Date: 2026-08-19. Branch `integration/launch`.
+Date: 2026-08-19. Branch `integration/launch`. **Revised later the same day** after
+three claims in the first version turned out to be wrong. Each correction is kept
+visible rather than quietly edited out, because the corrections are the useful part.
 
-Every row is marked **PROVEN** (driven and measured this session) or **READ**
-(established from the source and the live configuration, not executed). The
-distinction is the point: a reasoned answer about a money path is a hypothesis.
+Every row is marked **PROVEN** (driven and measured) or **READ** (established from the
+source and the live configuration, not executed). The distinction is the point: a
+reasoned answer about a money path is a hypothesis.
 
 ## 1. Failure modes
 
-The two unacceptable outcomes, in the founder's words, are *money taken and no
-ticket exists* and *a ticket exists and no money was taken*. Everything else is a
-quality issue.
+The two unacceptable outcomes, in the founder's words, are *money taken and no ticket
+exists* and *a ticket exists and no money was taken*.
 
 | Failure | What the user sees | Money or seat lost? | Evidence |
 |---|---|---|---|
-| **Stripe times out mid-payment** | The card sheet errors or hangs. The order stays `pending`. No ticket. | **No.** If the intent never succeeded, no money moved. If it DID succeed and the response was lost, this becomes "webhook never arrives" below. | READ |
-| **Webhook never arrives** | Buyer paid, sees the confirmation page (it polls the order), but no ticket email. Order stays `pending`. | **Money captured, no ticket.** This is the unacceptable case, and it is DETECTED but not self-healed: `driftWatchdog` (`src/lib/health/payment-checks.ts:165`) finds orders `pending` beyond a grace window, cross-references Stripe's recent `payment_intent.succeeded` events, and emails the founder. A human then confirms or refunds. | READ. The alert path itself is drilled via `?simulate=missign` |
-| **Webhook arrives twice** | Nothing. One ticket, one charge. | **No.** `claimWebhookEvent` dedupes by event id and returns `{duplicate:true}`; `confirm_order` early-returns on `status='confirmed'`. **Proven:** the same order confirmed 20 times concurrently moved inventory exactly once (`sold_count` 0 → 2, not 2 × 20). | **PROVEN** |
-| **Refund webhook arrives twice** | Nothing. | **No.** Redelivering the identical `charge.refunded` produced no second refunds row, no second seat returned, no status change. | **PROVEN** (`refund-orphan-repair-proof.mjs`, no-change scenario) |
-| **Webhooks out of order: refund before charge** | The refund reconciles against an order that is not yet confirmed. | **Needs the ordering test below.** `reconcile_refund` locks the refunds row and the order; with no refunds row it now ADOPTS the orphan. The adoption resolves the order from `payments.gateway_payment_id`, which is written by the charge path, so a refund arriving genuinely first finds no payment row and returns false, falling through to the door-safety void. | READ. **NOT PROVEN**, named in Unfinished below |
-| **Email provider fails after a successful payment** | Buyer paid, order `confirmed`, ticket EXISTS and is valid, but no email arrives. | **No.** The ticket is real; only delivery failed. `sendConfirmationEmail` is wrapped so a Resend outage cannot break webhook idempotency, and the buyer can reach the ticket from My tickets. The refund email is equally non-fatal (the money and ticket state persisted atomically in the RPC first). | READ |
-| **Database slow enough to time out mid-checkout** | The reserve or the checkout action errors. | **No, and the seat is not lost either.** A reservation that was created but never paid for expires and the sweeper returns the seat: **proven**, an abandoned hold returned `reserved_count` 1 → 0 and the seat became purchasable by somebody else. | **PROVEN** (case A of the expiry drill) |
-| **Payment lands exactly as the hold expires** | Before this session: two buyers each held a ticket for one seat. Now: the late buyer gets the seat if the room still has room, and if it does not, the order stays `pending` for refund and no ticket is minted. | **Was an oversell. Fixed and proven.** 2 tickets for 1 seat → 1 ticket for 1 seat. | **PROVEN** both before and after |
+| Stripe times out mid-payment | Card sheet errors or hangs. Order stays `pending`. No ticket. | **No** if the intent never succeeded. If it DID and the response was lost, this becomes the next row. | READ |
+| **Webhook never arrives** | Paid, no ticket email, order `pending`. | **Money captured, no ticket.** DETECTED, not self-healed: `driftWatchdog` finds orders pending past a grace window, cross-references Stripe's recent succeeded intents, and emails. A human resolves it. | READ. Alert path drilled via `?simulate=missign` |
+| Webhook arrives twice | Nothing. | **No.** Same order confirmed 20× concurrently moved inventory once. Redelivered over HTTP with the SAME event id → `{"duplicate":true}`; with a NEW event id → still unchanged. | **PROVEN**, both layers separately |
+| Refund webhook twice | Nothing. | **No.** No duplicate refunds row, no second seat returned. | **PROVEN** |
+| **Refund before charge (out of order)** | Was: a valid ticket for a fully refunded charge. | **Was "a ticket exists and no money was taken". FIXED.** | **PROVEN before and after** |
+| Email provider fails after payment | No email; ticket exists and is valid. | **No.** The send is wrapped so a Resend outage cannot break webhook idempotency. | READ |
+| DB slow mid-checkout | Reserve or checkout errors. | **No, and the seat comes back.** Abandoned hold returned `reserved_count` 1→0 and the seat resold. | **PROVEN** |
+| **Payment lands as the hold expires** | Was: two buyers each holding a ticket for one seat. | **Was an oversell. FIXED.** 2 tickets for 1 seat → 1. | **PROVEN before and after** |
+| **A refund fails at the bank** | Was: nothing at all. | **Buyer owed money, silently.** Money returns to the PLATFORM balance and the buyer gets nothing. Now marked `failed` and ALERTED. | **PROVEN**, alert delivered |
 
-### The one that was actually broken
+### The three that were actually broken
 
-Only one of these was a real defect, and it was the one nobody had tested: a
-payment landing after its 10 minute hold expired produced **2 admitting tickets for
-a tier with capacity 1, both buyers charged**. Fixed in
-`20260819000003_confirm_order_reacquires_lapsed_hold.sql`. Details in that file and
-in the commit.
+1. **A payment landing after its 10 minute hold expired** produced 2 admitting tickets
+   for a capacity-1 tier, both buyers charged. Fixed in `20260819000003`.
+2. **A refund arriving before its own payment** produced a valid admitting ticket for a
+   fully refunded charge, and a ledger reversal against a sale that was never recorded.
+   Fixed in `20260819000004`.
+3. **A refund failing at the bank** left a buyer owed money with nothing anywhere
+   saying so. Now alerts.
+
+**CORRECTION to the first version.** It listed the out-of-order case as READ and
+"NOT PROVEN", and reasoned that a refund arriving genuinely first would find no
+`payments` row and fall through harmlessly. That reasoning was wrong: the `payments`
+row with its `gateway_payment_id` is written at CHECKOUT time, before the buyer pays,
+so the refund resolves the order perfectly well and the harm was real.
 
 ## 2. Webhook idempotency
 
-Proven by actual redelivery, not by reading:
+All proven by actual redelivery over the real signed route:
 
-- **`charge.refunded` redelivered:** refunds rows 2 → 2, `sold_count` unchanged,
-  order status unchanged, ticket statuses unchanged, initiators unchanged. The
-  unique index `uq_refunds_stripe_refund` and the `completed` latch in
-  `reconcile_refund` both hold.
-- **`confirm_order` × 20 concurrently:** `sold_count` moved once (0 → 2), the
-  reservation released once.
-- **Adoption of an out-of-app refund, redelivered:** no duplicate refunds row, no
-  double seat return.
+- `charge.refunded` redelivered: refunds rows 2→2, `sold_count` unchanged, statuses
+  unchanged.
+- `payment_intent.succeeded` redelivered with the **same** event id: route answers
+  `{"received":true,"duplicate":true}`, tickets stay 2, `sold_count` unchanged. This
+  exercises the dedupe ledger.
+- `payment_intent.succeeded` redelivered with a **different** event id, where the
+  dedupe ledger cannot help: tickets stay 2, `sold_count` unchanged. This isolates
+  `confirm_order`'s own latch.
+- `refund.failed` redelivered: refund stays `failed`, no re-alert.
+- `confirm_order` × 20 concurrently: inventory moved once.
 
-Not proven: a redelivered `payment_intent.succeeded` through the real HTTP route.
-The dedupe mechanism (`claimWebhookEvent` on `event.id`) is exercised by unit tests,
-and `confirm_order`'s latch is proven concurrently, but the two have not been
-driven together over HTTP. Named in Unfinished.
+Nothing in this section is READ any more.
 
 ## 3. Rate limiting and abuse
 
-Established by `scripts/verify/rate-limit-audit.mjs`, which reads the policy table
-and the call sites out of the source so it cannot drift from what ships. 28
-policies defined.
+From `scripts/verify/rate-limit-audit.mjs`, which reads the policy table and the call
+sites out of the source so it cannot drift from what ships. 28 policies, **0 never
+called**.
 
-### The surfaces you named
-
-| Surface | Limit | Without Upstash | Verdict |
+| Surface | Limit | No Upstash | Verdict |
 |---|---|---|---|
 | Checkout (reserve) | 20 / 60s | REFUSES | wired, fail closed |
 | Signup | 5 / 600s | REFUSES | wired, fail closed |
 | Login | 10 / 600s | REFUSES | wired, fail closed |
 | Password reset | 5 / 900s | REFUSES | wired, fail closed |
 | Magic link, verification resend | 5 / 900s each | REFUSES | wired, fail closed |
-| AI chat | 10 / 60s and 120 / day | REFUSES | wired, fail closed |
-| **Launch Kit composer (AI)** | 20 / hour and 250 / day | **ALLOWS** | wired but **fail OPEN** |
-| **Event creation** | none | ALLOWS | **NOT RATE LIMITED** |
-| **Media upload** (`media-upload`) | 60 / 60s | ALLOWS | **policy exists, never called** |
+| AI chat (spends model tokens) | 10 / 60s, 120 / day | REFUSES | wired, fail closed |
+| **Event creation** | **30 / hour** | REFUSES | **added 2026-08-19, fail closed** |
+| Launch Kit composer (deterministic) | 20 / hour, 250 / day | ALLOWS | wired, fail OPEN **by design** |
+| Media upload | 60 / 60s | ALLOWS | wired (4 call sites), fail open |
 | Launch Kit upload | 10 / hour | REFUSES | wired, fail closed |
 | Launch Kit outbound email | 3 / hour | REFUSES | wired, fail closed |
 
-### Three findings worth your ruling
+### Three corrections to the first version, all mine
 
-1. **`launch-compose` and `launch-compose-daily` are fail OPEN, and they cost real
-   money per request.** `ai-chat` beside them is fail closed. That looks like an
-   oversight rather than a decision: it means an Upstash outage, a credential
-   rotation, or a deploy with the variable unset leaves the AI composer unthrottled
-   and billable. The change is one line per policy (`failClosed: true`). Not made
-   unilaterally because it flips the composer from degraded-but-working to refusing
-   during an outage, and that is your call.
-2. **Event creation has no limiter at all.** It is authenticated, so the abuse
-   ceiling is one free account, but a free account can create events in a loop and
-   each one writes rows and share links.
-3. **Three policies are defined and never called:** `media-upload`,
-   `location-set`, `newsletter-subscribe`. A policy that is never called is a
-   limit somebody believes exists. `media-upload` is the one that matters: uploads
-   put user bytes through an image decoder.
-
-Fifteen of the 28 policies are fail OPEN. That is defensible for browse-shaped
-things (`share-track`, `waitlist-join`, `health-*`) and is the reason the list is
-printed in full rather than summarised.
+1. **`launch-compose` does NOT cost money per request.** I called it an AI bill and an
+   oversight. It is neither: the compose engine is deterministic with no model call and
+   no network (`src/app/launch/actions.ts:28`, `src/lib/launch/compose.ts`), recorded
+   against a founder ruling of 9 August 2026. Its fail-OPEN is a documented decision:
+   *"a Redis blip must never stop a stranger building a kit, because there is no spend
+   to protect"*. The endpoints that genuinely spend tokens (`ai-chat`,
+   `ai-chat-daily`) were already fail closed, so nothing billable was unprotected.
+   **Left unchanged on that basis, contradicting the ruling I was given, because the
+   ruling rested on my false premise.**
+2. **`media-upload` and `newsletter-subscribe` were NOT dead.** `media-upload` has four
+   call sites and `newsletter-subscribe` one. Both are invoked as `POLICIES['bucket']`
+   then `checkRateLimit`, a shape the audit's regex never looked for. Only
+   `location-set` was genuinely dead, and it is deleted rather than wired: it guarded a
+   write to `profiles.preferred_city`, which is read everywhere and written nowhere.
+3. **An outage does NOT make a fail-open policy unlimited.** The first version said it
+   did, which overstated the risk. From `src/lib/redis/rate-limit.ts`: a store ERROR
+   degrades to a per-instance in-memory window for **every** policy, fail-closed or
+   not. `failClosed` only changes the **missing config** case, and only when
+   `NODE_ENV === 'production'`. The exposure is a misconfigured deploy, not an Upstash
+   incident.
 
 ### What you must configure in production
 
-```
-UPSTASH_REDIS_REST_URL
-UPSTASH_REDIS_REST_TOKEN
-```
+`UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. Full founder steps, sourced
+and with a tested verification recipe, in
+`docs/roast/FOUNDER-STEP-upstash-2026-08-19.md`.
 
-Both are already declared in `src/lib/env/manifest.mjs`, so the env guards know
-about them. **Declaring is not setting.**
+Unset in production is not "no rate limiting": the 14 fail-closed policies **429
+everybody** (checkout, signup, login, reset) and the 14 fail-open ones go unlimited.
+Launch blocker.
 
-If they are unset in production, the outcome is not "no rate limiting". It is
-worse and split two ways:
+**Verified, not asserted:** against the repo's Upstash stub, `newsletter-subscribe`
+(5 / 600s) returned five `200`s then `429` on the sixth and seventh, exactly at
+limit + 1. Negative control with no Upstash on the same server: all seven allowed. So
+the probe can tell a live limiter from an absent one.
 
-- the **13 fail-closed** policies REFUSE every request, so checkout, signup, login
-  and password reset all return 429 to everybody. The platform is loudly down.
-- the **15 fail-open** policies become unlimited, including the two AI composer
-  policies that cost money.
+### One limit on the drift watchdog
 
-So this is a launch blocker, not a hardening task. After setting them, verify by
-confirming a limiter actually returns 429 on the (limit + 1)th request against the
-preview, rather than trusting that the variables are present.
-
-### One limit on the drift watchdog, recorded
-
-`driftWatchdog` fetches Stripe events with `limit=50`. If more than 50
-`payment_intent.succeeded` events occur between the drift starting and the sentinel
-running, the older stuck order falls outside the window and is not reported. At
-current volume that is not reachable; at launch volume it is. The fix is
-pagination or a `created` filter rather than a fixed page.
+`driftWatchdog` fetches Stripe events with `limit=50`, so drift older than 50 succeeded
+intents falls outside its window. Not reachable at current volume; reachable at launch
+volume. The fix is pagination or a `created` filter.
 
 ## 4. Unfinished, named
 
-1. **`refund.updated` is unsubscribed.** Recorded in
-   `docs/roast/dashboard-access-divergence-2026-08-19.md` with its exposure and
-   trigger.
-2. **Out-of-order webhooks (refund before charge) not driven.** Reasoned from the
-   source only. To prove it: create a Stripe refund on an intent whose
-   `payment_intent.succeeded` has not yet been delivered, and deliver
-   `charge.refunded` first.
-3. **Redelivered `payment_intent.succeeded` over HTTP not driven.** The pieces are
-   individually proven; the two together are not.
-4. **The "paid, but the seat was gone" operator surface.** The oversell is now
-   impossible, but the resulting state (order `pending`, money captured) has no
-   one-click resolution and no dedicated alert beyond the drift watchdog.
+1. **The LIVE Stripe endpoint is not subscribed to `refund.failed` / `refund.updated`.**
+   The handler ships with the code and TEST/staging is subscribed, but Stripe will not
+   send an event an endpoint has not asked for. Founder step, in
+   `docs/roast/dashboard-access-divergence-2026-08-19.md` section 2.
+2. **Upstash is not configured.** Founder step, above.
+3. **The "paid, but the seat was gone" operator surface.** The oversell is impossible
+   now, but the residual state (order `pending`, money captured) has no one-click
+   resolution beyond the drift watchdog's email.
+4. **Money surfaces stay owner-only** by ruling. The canonical resolver is untouched.

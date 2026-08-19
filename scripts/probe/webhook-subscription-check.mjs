@@ -41,6 +41,15 @@ const stripe = new Stripe(key, { apiVersion: STRIPE_API_VERSION })
 const REQUIRED = {
   'charge.refunded': 'reconcile_refund: voids tickets, returns inventory, reverses the ledger',
   'payment_intent.succeeded': 'order confirmation and ticket issue',
+  // Added 2026-08-19 (founder ruling). Stripe's own words: "In the rare instance
+  // that a refund fails, we notify you using the refund.failed event"
+  // (https://docs.stripe.com/refunds, fetched 19 August 2026). Without it a refund
+  // that bounces off a closed card leaves the money back on the PLATFORM balance,
+  // the buyer with nothing, and no surface anywhere saying so.
+  'refund.failed': 'marks the refund failed and ALERTS: the buyer is owed money',
+  // A CANCELLED refund arrives as a status change rather than as refund.failed, and
+  // Stripe records that "cancellations are a type of refund failure".
+  'refund.updated': 'catches a refund cancelled after creation (status canceled)',
 }
 
 console.log(`STRIPE MODE: ${mode}\n`)

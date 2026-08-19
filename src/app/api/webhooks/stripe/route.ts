@@ -9,6 +9,8 @@ import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 // replaces two hardcoded address literals so every sender in the codebase
 // derives from src/lib/email/sender.ts (founder ruling 2026-08-03).
 import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
+import { sendEmail } from '@/lib/email/send'
+import { alertDestination } from '@/lib/env/destinations'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
@@ -138,6 +140,23 @@ export async function POST(request: NextRequest) {
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge
         await handleChargeRefunded(charge)
+        break
+      }
+      /*
+       * A REFUND THAT FAILED AT THE BANK. Founder ruling 2026-08-19: subscribe and
+       * handle it.
+       *
+       * `refund.failed` is the event Stripe sends for this
+       * (https://docs.stripe.com/refunds, fetched 19 August 2026: "In the rare
+       * instance that a refund fails, we notify you using the refund.failed event").
+       * `refund.updated` is handled alongside it because a CANCELLED refund arrives
+       * as a status change rather than as refund.failed, and Stripe's own words are
+       * "cancellations are a type of refund failure".
+       */
+      case 'refund.failed':
+      case 'refund.updated': {
+        const refund = event.data.object as Stripe.Refund
+        await handleRefundNotCompleted(refund)
         break
       }
       // M6 Stripe Connect: webhook scaffold (Phase 1).
@@ -1211,6 +1230,137 @@ async function adoptOrphanRefund(
     amount_cents: amountCents,
   })
   return true
+}
+
+/**
+ * A REFUND THAT DID NOT COMPLETE: the buyer is owed money and nobody knows.
+ *
+ * WHAT STRIPE SAYS HAPPENS, quoted rather than assumed
+ * (https://docs.stripe.com/refunds, fetched 19 August 2026):
+ *
+ *   "A refund can fail if the customer's bank or card issuer can't process it. For
+ *    example, a closed bank account or a problem with the card can cause a refund to
+ *    fail. When this happens, the bank returns the refunded amount to us and we add
+ *    it back to your Stripe account balance."
+ *
+ *   "In the rare instance that a refund fails ... you need to arrange an alternative
+ *    way to provide your customer with a refund."
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO, because the obvious reading is wrong.
+ *
+ * It does NOT restore the ticket and it does NOT re-take the seat. The first
+ * write-up of this exposure said the harm was that "the seat has already been given
+ * away", and that emphasis was wrong. The refund was REQUESTED: the buyer is not
+ * attending, so releasing their seat was correct and it may legitimately have been
+ * resold by now. Restoring a ticket would hand a seat to somebody who asked for their
+ * money back, and re-taking inventory could oversell the room, which is the one
+ * failure that cannot be undone at the door.
+ *
+ * The real harm is narrower and entirely invisible: the money came back to the
+ * PLATFORM balance, the buyer never received it, and no surface anywhere says so. A
+ * person has to arrange another way to pay them. So this marks the refund `failed`
+ * with Stripe's own reason and ALERTS, because an alert is the fix for a debt nobody
+ * can see.
+ *
+ * IT IS IDEMPOTENT and quiet on the common case. `refund.updated` fires for ordinary
+ * changes too, including metadata edits and the ARN arriving, so the status is checked
+ * first and anything still on its way to succeeding returns without a write.
+ */
+async function handleRefundNotCompleted(refund: Stripe.Refund) {
+  // Only a terminal non-success is actionable. Per Stripe's own status table,
+  // `pending` and `requires_action` are still in flight and `succeeded` is the happy
+  // path.
+  if (refund.status !== 'failed' && refund.status !== 'canceled') return
+
+  const adminClient = createAdminClient()
+
+  const { data: row } = await adminClient
+    .from('refunds')
+    .select('id, order_id, amount_cents, currency, status')
+    .eq('stripe_refund_id', refund.id)
+    .maybeSingle()
+
+  if (!row) {
+    // A refund this platform has no record of. Worth saying out loud rather than
+    // returning silently: it means somebody refunded outside the app AND that refund
+    // then failed, so a buyer is owed money against an order we cannot name here.
+    console.error('[webhook] a refund failed but has no in-app refunds row', {
+      stripe_refund_id: refund.id,
+      status: refund.status,
+      failure_reason: refund.failure_reason ?? null,
+    })
+    captureException(new Error('refund failed with no in-app refunds row'), {
+      scope: 'stripe-webhook',
+      handler: 'refund-not-completed',
+      stripe_refund_id: refund.id,
+    })
+    return
+  }
+
+  // Idempotency: a redelivery must not re-alert. `failed` is terminal here.
+  if (row.status === 'failed') return
+
+  await adminClient
+    .from('refunds')
+    .update({
+      status: 'failed',
+      failure_reason: `stripe_${refund.status}: ${refund.failure_reason ?? 'unknown'}`,
+    })
+    .eq('id', row.id)
+
+  const { data: order } = await adminClient
+    .from('orders')
+    .select('order_number, guest_email, user_id')
+    .eq('id', row.order_id)
+    .maybeSingle()
+
+  const amount = `${((refund.amount ?? 0) / 100).toFixed(2)} ${String(refund.currency ?? 'aud').toUpperCase()}`
+  const buyer = order?.guest_email ?? (order?.user_id ? `user ${order.user_id}` : 'unknown')
+  const detail = [
+    `Order        : ${order?.order_number ?? row.order_id}`,
+    `Buyer        : ${buyer}`,
+    `Amount owed  : ${amount}`,
+    `Stripe refund: ${refund.id}`,
+    `Status       : ${refund.status}`,
+    `Reason       : ${refund.failure_reason ?? 'unknown'}`,
+  ].join('\n')
+
+  console.error('[webhook] a refund did not complete; the buyer is owed money', {
+    stripe_refund_id: refund.id,
+    order_id: row.order_id,
+    status: refund.status,
+    failure_reason: refund.failure_reason ?? null,
+  })
+
+  // The alert IS the fix. Non-fatal: a Resend outage must not make the webhook retry,
+  // because the refunds row is already marked and a retry would only re-send email.
+  try {
+    await sendEmail({
+      to: alertDestination(),
+      subject: `Refund did not complete: ${order?.order_number ?? row.order_id} owes ${amount}`,
+      text:
+        'A refund failed at the bank. The money came back to the EventLinqs Stripe balance '
+        + `and the buyer did NOT receive it.\n\n${detail}\n\n`
+        + 'Stripe cannot retry this to the same card. Arrange another way to pay the buyer.\n\n'
+        + 'The ticket has NOT been restored and the seat has NOT been re-taken: the buyer asked '
+        + 'for a refund, so they are not attending and the seat may already be resold.\n\n'
+        + 'Reference: https://docs.stripe.com/refunds (failed refunds)\n',
+      html:
+        '<p><strong>A refund failed at the bank.</strong> The money came back to the EventLinqs '
+        + `Stripe balance and the buyer did NOT receive it.</p><pre>${detail}</pre>`
+        + '<p>Stripe cannot retry this to the same card. Arrange another way to pay the buyer.</p>'
+        + '<p>The ticket has NOT been restored and the seat has NOT been re-taken: the buyer asked '
+        + 'for a refund, so they are not attending and the seat may already be resold.</p>',
+    })
+  } catch (err) {
+    captureException(err, {
+      scope: 'stripe-webhook',
+      handler: 'refund-not-completed-alert',
+      stripe_refund_id: refund.id,
+      order_id: row.order_id,
+    })
+    console.error('[webhook] refund-failure alert email failed:', err)
+  }
 }
 
 /**

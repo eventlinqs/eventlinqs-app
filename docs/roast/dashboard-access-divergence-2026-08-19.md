@@ -68,86 +68,98 @@ Other owner-only sites found in the same sweep, for completeness:
 you rule, but each one edits event configuration rather than reading it, so they
 are a deliberately separate decision from "can see the orders and refund".
 
-## 2. RECORD, DO NOT FIX: `refund.updated` is unsubscribed
+## 2. FIXED 19 August 2026: a failed refund is no longer silent
 
-**The exposure.** The refund reconcile runs only from `charge.refunded`. Verified
-against the live Stripe test-mode configuration
-(`scripts/probe/webhook-subscription-check.mjs`): the enabled platform endpoint
-`we_1Tx1ZdGqHIQtgS8tngtwQU7m` subscribes to `charge.refunded` and
-`payment_intent.succeeded`, and to no refund lifecycle event.
+Was recorded here as an open exposure. Founder ruling: subscribe and handle it. Done,
+with one correction to how I had framed it.
 
-A Stripe refund is not always terminal at creation. A refund to a card can be
-created `pending`, and can later transition to `failed` or `canceled` (for example
-the issuing bank rejects it). Stripe reports that transition on `refund.updated`
-and `refund.failed`. Nothing on this platform listens.
+**The event is `refund.failed`, not `refund.updated`.** Stripe: *"In the rare instance
+that a refund fails, we notify you using the `refund.failed` event"*
+(<https://docs.stripe.com/refunds>, fetched 19 August 2026). `refund.updated` carries
+ordinary changes such as metadata and the ARN arriving. Both are now subscribed and
+handled, because a CANCELLED refund arrives as a status change rather than as
+`refund.failed`, and Stripe records that *"cancellations are a type of refund
+failure"*.
 
-**What that means concretely.** `charge.refunded` fires, `reconcile_refund` runs,
-and the platform does everything a completed refund implies: the ticket is voided,
-`sold_count` is decremented so **the seat goes back on sale**, the ledger is
-reversed and the order is marked refunded. If the refund later fails at the bank,
-the buyer keeps the money owed to them unpaid AND the seat has already been given
-away. The platform believes the refund happened.
+**My earlier framing of the harm was wrong in emphasis.** I wrote that the danger was
+"the seat has already been given away". It is not. The refund was REQUESTED, so the
+buyer is not attending, releasing their seat was correct, and it may legitimately have
+been resold. Restoring a ticket would hand a seat to somebody who asked for their
+money back, and re-taking inventory could oversell the room, which is the one failure
+that cannot be undone at the door.
 
-**Blast radius today: small.** Every refund observed in this session settled
-`succeeded` immediately (`re_3U5mGQ...`, `re_3U5mL8...`), which is the normal case
-for the card refunds this platform makes. Production has zero refunds so far.
+The real harm is narrower and completely invisible: Stripe *"add[s] it back to your
+Stripe account balance"*, so the money sits with the PLATFORM, the buyer has nothing,
+and nothing anywhere says so. Stripe's instruction is *"you need to arrange an
+alternative way to provide your customer with a refund"*, which needs a person.
 
-**The trigger for fixing it.** Any one of:
+**So the handler marks the refund `failed` with Stripe's own `failure_reason` and
+ALERTS**, and deliberately does not touch tickets or inventory. Proven end to end by
+`scripts/verify/refund-failed-drill.mjs` through the real signed route: the refund row
+moves to `failed`, the ticket stays refunded, `sold_count` is untouched, a redelivery
+changes nothing, an ordinary `refund.updated` on a succeeding refund is a silent
+no-op, and the alert email was **delivered** (`[STAGING] Refund did not complete:
+EL-RFMSZKS1 owes 27.49 AUD`).
 
-1. the first refund seen with `status = 'pending'` rather than `succeeded`;
-2. the first non-card payment method (BECS direct debit, bank transfer), where a
-   delayed and reversible refund is normal rather than exceptional;
-3. any refund dispute where a buyer says the money never arrived.
+The TEST/staging endpoint `we_1Tx1ZdGqHIQtgS8tngtwQU7m` has been subscribed (10 events
+to 12).
 
-**The fix, when triggered.** Subscribe the platform endpoint to `refund.updated`,
-handle `failed`/`canceled` by re-selling nothing: reverse the reconcile (re-issue
-the ticket or mark the refund failed and re-increment `sold_count`), and notify the
-organiser that the refund did not complete. It needs a designed decision about what
-happens when the seat has already been resold in the interim, which is why it is
-not a five-minute change and is recorded rather than rushed.
+### FOUNDER STEP: subscribe the LIVE endpoint
 
-## 3. RECORD, DO NOT FIX: `publish-gate` diverges from the sale gate, unsafely
+The handler ships with the code, but Stripe will not send an event an endpoint has not
+subscribed to. In the **live** Stripe dashboard, Developers then Webhooks, open the
+platform endpoint for `https://www.eventlinqs.com/api/webhooks/stripe` and add:
 
-Surfaced by an existing guard's own output (`one-sellability-source`), which lists
-it as a KNOWN DIVERGENCE rather than hiding it.
+```
+refund.failed
+refund.updated
+```
 
-`src/lib/events/publish-gate.ts:162` admits `payout_status <> 'restricted'`, where
-the sale gate (`isOrganiserSellable`) requires `payout_status = 'active'`, and the
-publish gate ignores `stripe_payouts_enabled` and the supported-country map
-entirely.
+Verify with `node scripts/probe/webhook-subscription-check.mjs --env <live env file>`,
+which now checks all four required events and prints a verdict per endpoint. Until
+that is done, a failed refund on production is still silent.
 
-**The consequence, in the unsafe direction.** An organiser whose payout status is
-anything other than the single value `restricted` (for example `unset`, or a
-pending state) can PUBLISH a paid event. That event then renders to buyers with no
-working purchase path, because the sale gate refuses it. The organiser has
-announced and promoted an event that cannot take money, and the refusal they see is
-the designed "this organiser is still finishing their payment setup" state, which
-reads as a platform fault rather than an incomplete setup.
+## 3. FIXED 19 August 2026: publish-gate now agrees with the sale gate
 
-The correct end state is one predicate: publishing a PAID event should require
-exactly what selling a ticket requires, no more and no less. That is a founder
-decision because tightening it will stop some currently publishable events from
-publishing, and it is your call whether that lands before or after launch.
+Founder ruling: align it. Done.
 
-## 4. RECORD: four of thirty-three guard drills do not fire
+It used to admit `stripe_charges_enabled && payout_status !== 'restricted'`, two loose
+checks where `isOrganiserSellable` makes five strict ones. It also requires
+`stripe_account_id`, `stripe_payouts_enabled === true`, `payout_status === 'active'`
+exactly rather than merely not-restricted, and a country whose currency is supported.
+So an organiser on hold, or with payouts not yet enabled, or in an unsupported country,
+could publish a paid event the sale gate then refused to sell.
 
-`node scripts/verify/guard-failure-drills.mjs` reports **29 of 33 firing**. The
-four that do not are all pre-existing and none is mine:
+The gate now selects `ORG_SALE_FIELDS_SELECT` and calls `isOrganiserSellable` through
+`verifyOrgSaleFields`, so it DELEGATES rather than keeping a second copy. The old
+select read three columns, which is how the divergence arose: it could not test what it
+had not read.
 
-| Drill | Problem |
-|---|---|
-| `globSync` imported from `node:fs` (the 2026-08-05 CI failure) | guard PASSED on a violating tree |
-| a global static added after Node 20 (`Promise.withResolvers`) | guard PASSED on a violating tree |
-| a prototype method added after Node 20 (`Set.isSubsetOf`) | guard PASSED on a violating tree |
-| a workflow pinned BELOW the `.nvmrc` contract | anchor text not found in `.github/workflows/lighthouse.yml`; the drill is stale |
+It is not a silent tightening. Failing the fast path does not refuse; it falls through
+to the slow path, which asks Stripe what is actually true and only refuses if Stripe
+agrees, so an organisation whose columns have drifted still publishes.
 
-The first three all belong to `scripts/guards/node-version-contract.mjs`. A guard
-that passes on a tree that violates it is not guarding: the Node-version contract
-is currently unenforced in those three respects, which is exactly the class Law 9
-exists to catch. The fourth is a stale anchor and is a five-minute fix, but fixing
-the anchor without fixing the three real ones would leave the worse problem behind
-a greener number.
+Pinned by `tests/unit/events/publish-gate-matches-sale-gate.test.ts`, a PROPERTY test
+over all 96 combinations of the five columns asserting `publish.ok ===
+isOrganiserSellable`, plus a free event publishing on the worst possible posture and a
+paid event with no cover still refused first. The `one-sellability-source` guard
+baseline now records the resolution instead of the divergence.
 
-Not touched this session because they are unrelated to the refund, oversell and
-privilege work, and because changing a guard is its own change with its own proof.
-Recorded so the 29/33 is not mistaken for noise.
+## 4. FIXED 19 August 2026: 36 of 36 guard drills fire
+
+Founder ruling: fix them. Done, and none was a guard defect.
+
+Three were built on FUTURE Node APIs and the future arrived: `globSync`,
+`Promise.withResolvers` and `Set.isSubsetOf` are Node 22 additions, chosen as
+violations when `.nvmrc` pinned 20. The contract moved to 24, Node 24 ships all three,
+the guard correctly stopped objecting, and the drills quietly stopped testing anything.
+Replaced with drills built on REMOVALS (`fs.F_OK`, `util.isDate`), which cannot rot
+because a deleted export does not come back.
+
+The prototype-method drill is deleted rather than fixed:
+`POST_CONTRACT_PROTOTYPE_METHODS` is deliberately empty on Node 24, so no drill can
+make it fire without first adding a fake entry to the guard and failing the build for
+everyone. That check is genuinely unexercised until Node 26 adds a prototype method.
+
+The fourth was a stale anchor in the lighthouse workflow drill (`node-version: 20` when
+every pin moved to 24). Retargeted.
