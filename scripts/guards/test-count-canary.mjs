@@ -263,8 +263,20 @@ const ROOT = join(HERE, '..', '..')
  * columns rather than a list of cases, so a future edit to either predicate fails here
  * without anybody having to think of the case.
  */
-const MIN_FILES = 210
-const MIN_TESTS = 2521
+/*
+ * 2026-08-19 (later again): raised 210/2521 -> 211/2528. One file, 7 tests.
+ *
+ * tests/unit/rate-limit/event-create-wiring.test.ts. Event creation had no limiter at
+ * all until this morning, and the one it was given was keyed by address while its
+ * rationale said "per organiser". These tests drive the real limiter with the real
+ * policy numbers against a real counting store and require a refusal on the
+ * thirty-first call, then prove with the store removed that the same run does NOT
+ * refuse, so the refusal was the limiter and not the harness. They also pin the call
+ * order, limiter after the auth check and before the first write, and prove that
+ * ordering check can fail.
+ */
+const MIN_FILES = 211
+const MIN_TESTS = 2528
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
