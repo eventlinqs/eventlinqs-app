@@ -11,7 +11,6 @@
 export type PolicyName =
   | 'health-redis'
   | 'health-sentry-error'
-  | 'location-set'
   | 'cron-job'
   | 'payouts-read'
   | 'payouts-stripe-link'
@@ -20,6 +19,7 @@ export type PolicyName =
   | 'auth-recover'
   | 'auth-magic-link'
   | 'auth-resend-verification'
+  | 'event-create'
   | 'checkout-reserve'
   | 'media-upload'
   | 'share-link-mint'
@@ -69,13 +69,6 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Synthetic error endpoint. Each successful call generates a Sentry event; cap aggressively to avoid quota burn even if HEALTH_CHECK_TOKEN leaks.',
-  },
-  'location-set': {
-    keyPrefix: 'loc-set',
-    limit: 10,
-    windowSec: 60,
-    rationale:
-      'User-driven location preference write. 10/min is generous for a UI; abuse vectors are scraping for geolocation inference.',
   },
   'cron-job': {
     keyPrefix: 'cron',
@@ -137,6 +130,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'Verification resends per IP per 15 min. The button already enforces a 60-second client-side cooldown; this is the server-side floor that a scripted caller cannot skip, sized to match the other two mail-sending auth endpoints.',
+  },
+  'event-create': {
+    keyPrefix: 'ev-new',
+    limit: 30,
+    windowSec: 3600,
+    failClosed: true,
+    rationale:
+      'Event creation per organiser per hour. It had NO limiter at all until 2026-08-19, found by scripts/verify/rate-limit-audit.mjs. The ceiling was one free account creating events in a loop, and each one writes an events row, its ticket_tiers, and the share_links the acquisition loop mints, so the cost is database rows and storage rather than an API bill. Thirty an hour is far above any real organiser (a busy promoter announcing a season does a handful) and still bounds a script. Fail-closed because it is a WRITE on the organiser side and a deploy missing UPSTASH_* should not leave an unbounded write open; an organiser blocked for a minute can retry, and unlike the anonymous composer there is no first-time visitor to protect.',
   },
   'checkout-reserve': {
     keyPrefix: 'co-res',

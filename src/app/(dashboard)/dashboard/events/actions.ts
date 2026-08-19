@@ -19,6 +19,7 @@ import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
 import { getSiteUrl } from '@/lib/site-url'
 import { trackEventPublishedServer } from '@/lib/analytics/plausible'
 import type { EventStatus, EventVisibility, EventType, TicketTierType, FeePassType, Json } from '@/types/database'
+import { actionRateLimit } from '@/lib/rate-limit/action'
 
 // Resolve the organiser media fields from a create/update input into the columns
 // the events table stores. Validates the video URL against the provider allowlist
@@ -140,6 +141,21 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  /*
+   * RATE LIMIT. Event creation had none at all until 2026-08-19, found by
+   * scripts/verify/rate-limit-audit.mjs. It is authenticated, so the ceiling was one
+   * free account, but a free account could create events in a loop and each one
+   * writes an events row, its ticket_tiers and the share_links the acquisition loop
+   * mints. The limit sits AFTER the auth check so an anonymous caller is refused as
+   * unauthenticated rather than consuming somebody's bucket, and BEFORE any write.
+   */
+  const rl = await actionRateLimit('event-create')
+  if (!rl.ok) {
+    return {
+      error: `You have created a lot of events in a short time. Wait ${Math.max(1, Math.ceil(rl.retryAfterSeconds / 60))} minute(s) and try again.`,
+    }
+  }
 
   // Verify org ownership
   const { data: org } = await supabase

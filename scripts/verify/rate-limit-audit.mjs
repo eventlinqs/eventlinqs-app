@@ -60,19 +60,38 @@ function walk(dir, out = []) {
 const files = existsSync(SRC) ? walk(SRC) : []
 const callSites = new Map()
 for (const f of files) {
+  // The policies module DEFINES the buckets; it is not a caller.
+  const norm = f.split(String.fromCharCode(92)).join('/')
+  if (norm.endsWith('src/lib/rate-limit/policies.ts')) continue
   const text = readFileSync(f, 'utf8')
-  // EVERY invoker. The first version listed three names and missed
-// `actionRateLimit`, which is the one the server ACTIONS use, so it reported
-// checkout-reserve and auth-login as 'never called'. That would have told the
-// founder the money path and the login path were unprotected when both are
-// wired and failClosed. The list is derived from the exports of
-// src/lib/rate-limit/{action,middleware}.ts.
-  const cr = /(?:applyRateLimit|actionRateLimit|rateLimitAction|checkRateLimit|rateLimit)\s*\(\s*'([a-z0-9-]+)'/g
-  let c
-  while ((c = cr.exec(text)) !== null) {
-    const rel = relative(ROOT, f).split('\\').join('/')
-    if (!callSites.has(c[1])) callSites.set(c[1], new Set())
-    callSites.get(c[1]).add(rel)
+  /*
+   * TWO CALL SHAPES, and missing either one produces a false "never called".
+   *
+   *   applyRateLimit('bucket') / actionRateLimit('bucket')   the helpers
+   *   POLICIES['bucket']                                     a direct lookup, then
+   *                                                          checkRateLimit(...)
+   *
+   * This audit was wrong twice for exactly this reason, and both errors would have
+   * been reported to the founder as findings. Version one knew three helper names
+   * and missed `actionRateLimit`, so it called checkout-reserve and auth-login
+   * unprotected when both are wired and fail closed. Version two still missed the
+   * POLICIES[...] shape, so it called media-upload (4 real call sites) and
+   * newsletter-subscribe (1) dead. A live limiter reported dead is the most
+   * expensive kind of wrong here, because the response is to "wire" something that
+   * is already wired.
+   */
+  const shapes = [
+    /(?:applyRateLimit|actionRateLimit|rateLimitAction|rateLimitWithHeaders)\s*\(\s*'([a-z0-9-]+)'/g,
+    /POLICIES\s*\[\s*'([a-z0-9-]+)'\s*\]/g,
+  ]
+  for (const cr of shapes) {
+    cr.lastIndex = 0
+    let c
+    while ((c = cr.exec(text)) !== null) {
+      const rel = relative(ROOT, f).split(String.fromCharCode(92)).join('/')
+      if (!callSites.has(c[1])) callSites.set(c[1], new Set())
+      callSites.get(c[1]).add(rel)
+    }
   }
 }
 scanned.push(`${files.length} TypeScript files scanned for limiter call sites`)
@@ -85,8 +104,14 @@ const NAMED = [
   { surface: 'Password reset', buckets: ['auth-recover'], why: 'sends email to an address the attacker chooses' },
   { surface: 'Magic link / verification resend', buckets: ['auth-magic-link', 'auth-resend-verification'], why: 'email amplification' },
   { surface: 'AI endpoints', buckets: ['ai-chat', 'ai-chat-daily'], why: 'COSTS REAL MONEY per request' },
-  { surface: 'Launch Kit composer (AI)', buckets: ['launch-compose', 'launch-compose-daily'], why: 'costs real money per request' },
-  { surface: 'Event creation', buckets: [], why: 'organiser-authenticated write' },
+  // NOT an AI spend path, despite the name and its position beside ai-chat. The
+  // compose engine is DETERMINISTIC and spends no model tokens (founder ruling
+  // 9 Aug 2026; src/app/launch/actions.ts:28 and src/lib/launch/compose.ts). Its
+  // fail-OPEN is a documented decision, not an oversight: "a Redis blip must never
+  // stop a stranger building a kit, because there is no spend to protect". An
+  // earlier version of this audit labelled it an AI bill and it was wrong.
+  { surface: 'Launch Kit composer (deterministic, no model tokens)', buckets: ['launch-compose', 'launch-compose-daily'], why: 'database writes and render CPU, NOT an API bill' },
+  { surface: 'Event creation', buckets: ['event-create'], why: 'organiser-authenticated write' },
   { surface: 'Media upload', buckets: ['media-upload', 'launch-upload'], why: 'storage cost, user bytes to a decoder' },
   { surface: 'Outbound email (Launch Kit)', buckets: ['launch-email'], why: 'sends real email' },
 ]
@@ -135,11 +160,21 @@ console.log(`  policies defined            ${policies.size}`)
 console.log(`  policies never called       ${dead.length}${dead.length ? `: ${dead.join(', ')}` : ''}`)
 console.log(`  fail OPEN without Upstash   ${openBuckets.length}: ${openBuckets.join(', ')}`)
 console.log('')
-console.log('  A failOPEN policy is unlimited whenever Upstash is unreachable, which')
-console.log('  includes a credential rotation, an outage, and a deploy where the variable')
-console.log('  was not set. A failClosed policy REFUSES instead, which is correct for')
-console.log('  anything that costs money or sends email, and wrong for anything a')
-console.log('  first-time visitor needs in order to browse.')
+console.log('  READ THE TWO CASES SEPARATELY. They are not the same and an earlier version of')
+console.log('  this audit conflated them, which overstated the risk of an outage.')
+console.log('')
+console.log('  MISSING CONFIG (no UPSTASH_* set), from src/lib/redis/rate-limit.ts:114:')
+console.log('    failClosed AND NODE_ENV === production  -> BLOCK (429)')
+console.log('    anything else                           -> ALLOW (unlimited)')
+console.log('  So failClosed only ever matters for a deploy with the variables absent, and')
+console.log('  only in production. Locally and in tests everything allows, by design.')
+console.log('')
+console.log('  STORE ERROR (configured but Upstash failing), same file:')
+console.log('    -> degrades to a per-instance in-memory window for EVERY policy,')
+console.log('       failClosed or not. It is bounded, not unlimited.')
+console.log('  An outage therefore does NOT remove the limit from a failOpen policy. That')
+console.log('  matters for sizing the risk: the exposure is a MISCONFIGURED DEPLOY, not an')
+console.log('  Upstash incident.')
 
 hr('4. WHAT MUST BE CONFIGURED IN PRODUCTION')
 console.log('  Two variables, and without BOTH every limiter takes its unconfigured branch:')
@@ -151,7 +186,8 @@ console.log('  Both are declared in src/lib/env/manifest.mjs, so the env guards 
 console.log('  know about them; declaring is not the same as setting.')
 console.log('')
 console.log('  CONSEQUENCE OF LEAVING THEM UNSET IN PRODUCTION, stated concretely:')
-console.log(`    - the ${policies.size - openBuckets.length} failClosed policies REFUSE every request. That means checkout,`)
+console.log(`    - IN PRODUCTION (NODE_ENV === 'production') the ${policies.size - openBuckets.length} failClosed policies REFUSE`)
+console.log('      every request. That means checkout,')
 console.log('      signup, login and password reset all return 429 to everybody. The')
 console.log('      platform is effectively down, loudly, which is the safe direction but')
 console.log('      is NOT a state to launch in.')
