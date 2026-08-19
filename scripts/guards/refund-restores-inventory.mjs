@@ -127,6 +127,25 @@ if (!existsSync(MIGRATIONS)) {
         re: /partially_refunded/,
         why: 'without this the order stays confirmed and revenue reporting counts refunded money',
       },
+      {
+        label: 'RELEASES THE SEAT (returns public.seats to available)',
+        re: /UPDATE\s+public\.seats[\s\S]{0,400}?status\s*=\s*'available'/i,
+        why:
+          'REPRODUCED 20 August 2026 by scripts/verify/refund-seat-drill.mjs against TEST: a '
+          + 'seated ticket was refunded, the ticket voided, the tier inventory returned, the '
+          + 'order marked refunded, and the SEAT stayed sold. Nobody can sit in it, because the '
+          + 'ticket will not scan, and nobody can buy it, because the map says taken. That seat '
+          + 'is dead for the event and the first person to find out is a steward at the door',
+      },
+      {
+        label: 'UNHOOKS the dead ticket from the seat (clears tickets.seat_id)',
+        re: /SET\s+released_seat_id\s*=\s*t\.seat_id[\s\S]{0,200}?seat_id\s*=\s*NULL/i,
+        why:
+          'this is not tidiness. assign_order_seats treats a seat as occupied while ANY ticket '
+          + 'row points at it, so a refunded ticket that kept its seat_id would let the seat be '
+          + 'resold and then refuse to pair it to the new buyer, leaving them charged with no '
+          + 'seat. Releasing the seat WITHOUT this is worse than not releasing it at all',
+      },
     ]
     for (const r of required) {
       if (!r.re.test(body)) {

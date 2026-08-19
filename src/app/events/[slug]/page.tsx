@@ -43,6 +43,7 @@ import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 // initial chunk set.
 import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { describeRefundPolicy, refundPolicyBadge, policyFromEvent } from '@/lib/refunds/policy'
 import { EventSoldOut } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
 import {
@@ -996,6 +997,25 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 </Reveal>
                 )}
+
+                {/* REFUND POLICY, BEFORE PURCHASE.
+                 *  A policy a buyer cannot read before paying is not a policy, it is a
+                 *  surprise. Eventbrite, Humanitix and Ticketmaster all publish the
+                 *  event policy on the event page, and the Australian Consumer Law
+                 *  posture on unavoidable terms points the same way. The sentence
+                 *  comes from the one policy module, so what is promised here is what
+                 *  the refund path will actually do. */}
+                <Reveal as="div" className="mt-10">
+                  <SectionHeader eyebrow="Before you book" title="Refund policy" size="sm" />
+                  <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
+                    <span className="inline-flex items-center rounded-full bg-ink-900 px-3 py-1 text-xs font-semibold text-gold-400">
+                      {refundPolicyBadge(policyFromEvent(event), event.is_free ?? false)}
+                    </span>
+                    <p className="mt-3 text-sm leading-relaxed text-ink-600">
+                      {describeRefundPolicy(policyFromEvent(event), event.is_free ?? false)}
+                    </p>
+                  </div>
+                </Reveal>
 
                 {event.organisation && (
                 <Reveal as="div" className="mt-10">

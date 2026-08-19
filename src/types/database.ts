@@ -971,6 +971,10 @@ export type Database = {
           organiser_assigns_seats: boolean
           parent_event_id: string | null
           published_at: string | null
+          refund_policy_absorb_fee: boolean
+          refund_policy_days: number
+          refund_policy_self_service: boolean
+          refund_policy_type: string
           queue_admission_window_minutes: number
           recurrence_rule: string | null
           scheduled_publish_at: string | null
@@ -1038,6 +1042,10 @@ export type Database = {
           organiser_assigns_seats?: boolean
           parent_event_id?: string | null
           published_at?: string | null
+          refund_policy_absorb_fee?: boolean
+          refund_policy_days?: number
+          refund_policy_self_service?: boolean
+          refund_policy_type?: string
           queue_admission_window_minutes?: number
           recurrence_rule?: string | null
           scheduled_publish_at?: string | null
@@ -1105,6 +1113,10 @@ export type Database = {
           organiser_assigns_seats?: boolean
           parent_event_id?: string | null
           published_at?: string | null
+          refund_policy_absorb_fee?: boolean
+          refund_policy_days?: number
+          refund_policy_self_service?: boolean
+          refund_policy_type?: string
           queue_admission_window_minutes?: number
           recurrence_rule?: string | null
           scheduled_publish_at?: string | null

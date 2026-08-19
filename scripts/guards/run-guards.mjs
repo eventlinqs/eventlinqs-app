@@ -39,6 +39,8 @@
  *   mutation-revalidates       a publicly visible mutation invalidates what it affected
  *   gate-fields-complete       a query feeding a gate selects every field that gate reads
  *   refund-restores-inventory  a refund can never take the money and keep the seat sold
+ *   one-refund-path            every refund trigger funnels through one path, so there is one
+ *                              answer to how much money goes back
  *   inventory-lock-integrity   two buyers can never be sold the same seat
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
@@ -415,6 +417,7 @@ const GUARDS = [
   // inventory path, an adopted orphan, a refusal that stops a double-restore, and
   // exactly one sanctioned void.
   'scripts/guards/refund-restores-inventory.mjs',
+  'scripts/guards/one-refund-path.mjs',
   // Measured 2026-08-19 against the real TEST database: 50 simultaneous buyers
   // against ONE seat, live create_reservation -> 1 won. Same body with FOR UPDATE
   // removed -> 16 won, 16 claimed against a capacity of 1. Fifteen people turned

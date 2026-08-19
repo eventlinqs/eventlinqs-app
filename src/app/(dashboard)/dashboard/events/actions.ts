@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { isLooserOrEqual, explainTightening, policyFromEvent, type RefundPolicy } from '@/lib/refunds/policy'
 import { checkSellable } from '@/lib/events/sellable-guard'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
@@ -121,6 +122,14 @@ export type CreateEventInput = {
   scheduled_publish_at: string | null
   // Who carries the booking fees: pass_to_buyer (default) or absorb.
   fee_pass_type: FeePassType
+  /* THE PER-EVENT REFUND POLICY. Set at creation, editable afterwards, but only
+   * ever in the direction of MORE generous once the event is published: buyers
+   * paid under the terms shown at the time. Enforced by a database trigger and
+   * pre-checked below so the organiser gets a sentence rather than an exception. */
+  refund_policy_type: RefundPolicy['type']
+  refund_policy_days: number
+  refund_policy_absorb_fee: boolean
+  refund_policy_self_service: boolean
   ticket_tiers: TicketTierInput[]
   // M4: Reserved seating
   has_reserved_seating: boolean
@@ -278,6 +287,10 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       is_high_demand: input.is_high_demand,
       queue_admission_window_minutes: input.queue_admission_window_minutes,
       fee_pass_type: input.fee_pass_type,
+      refund_policy_type: input.refund_policy_type,
+      refund_policy_days: input.refund_policy_days,
+      refund_policy_absorb_fee: input.refund_policy_absorb_fee,
+      refund_policy_self_service: input.refund_policy_self_service,
     })
 
   if (eventError) {
@@ -360,6 +373,38 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
     .single()
 
   if (!event) return { error: 'Event not found' }
+
+  /*
+   * THE ONE-WAY RULE, CHECKED HERE SO THE ORGANISER GETS WORDS.
+   *
+   * The authority is the database trigger (migration 20260820000002), which
+   * cannot be bypassed by any writer. But a trigger can only raise AFTER the
+   * organiser has filled in a form, and a raw Postgres exception is not an
+   * explanation. This reads the current policy and refuses first, saying which
+   * way the policy is allowed to move. If the two ever disagree the trigger
+   * wins and the disagreement is the bug.
+   */
+  {
+    const { data: current } = await supabase
+      .from('events')
+      .select('status, published_at, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
+      .eq('id', input.eventId)
+      .single()
+
+    const everPublished = Boolean(current?.published_at) || current?.status !== 'draft'
+    if (current && everPublished) {
+      const oldPolicy = policyFromEvent(current)
+      const newPolicy: RefundPolicy = {
+        type: input.refund_policy_type,
+        days: input.refund_policy_days,
+        absorbFee: input.refund_policy_absorb_fee,
+        selfService: input.refund_policy_self_service,
+      }
+      if (!isLooserOrEqual(oldPolicy, newPolicy)) {
+        return { error: explainTightening(oldPolicy, newPolicy) }
+      }
+    }
+  }
 
   // Verify the caller owns (or co-manages) the event's organisation before any
   // privileged write. Without this an authenticated organiser could pass another
@@ -480,6 +525,10 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       is_high_demand: input.is_high_demand,
       queue_admission_window_minutes: input.queue_admission_window_minutes,
       fee_pass_type: input.fee_pass_type,
+      refund_policy_type: input.refund_policy_type,
+      refund_policy_days: input.refund_policy_days,
+      refund_policy_absorb_fee: input.refund_policy_absorb_fee,
+      refund_policy_self_service: input.refund_policy_self_service,
     })
     .eq('id', input.eventId)
 

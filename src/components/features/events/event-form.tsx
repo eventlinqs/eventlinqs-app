@@ -94,6 +94,10 @@ type FormData = {
   // Who carries the fees: pass-on (buyer pays, organiser keeps face value -
   // default) or absorb (deducted from the organiser payout).
   fee_pass_type: FeePassType
+  refund_policy_type: 'days_before' | 'no_refunds'
+  refund_policy_days: number
+  refund_policy_absorb_fee: boolean
+  refund_policy_self_service: boolean
   // Step 6
   visibility: EventVisibility
   is_age_restricted: boolean
@@ -229,6 +233,13 @@ function getDefaultFormData(): FormData {
     is_high_demand: false,
     queue_admission_window_minutes: '10',
     fee_pass_type: 'pass_to_buyer',
+    // The DEFAULT IS THE GENEROUS ONE, matching Eventbrite's "Allow refunds"
+    // default. It also matters for the one-way rule: an organiser can always
+    // loosen later, so starting strict would trap them.
+    refund_policy_type: 'days_before',
+    refund_policy_days: 7,
+    refund_policy_absorb_fee: false,
+    refund_policy_self_service: false,
   }
 }
 
@@ -299,6 +310,10 @@ function fromExistingEvent(
     is_high_demand?: boolean | null
     queue_admission_window_minutes?: number | null
     fee_pass_type?: FeePassType | null
+    refund_policy_type?: string | null
+    refund_policy_days?: number | null
+    refund_policy_absorb_fee?: boolean | null
+    refund_policy_self_service?: boolean | null
   },
   tiers: TicketTier[]
 ): FormData {
@@ -360,6 +375,10 @@ function fromExistingEvent(
     is_high_demand: event.is_high_demand ?? false,
     queue_admission_window_minutes: (event.queue_admission_window_minutes ?? 10).toString(),
     fee_pass_type: event.fee_pass_type ?? 'pass_to_buyer',
+    refund_policy_type: event.refund_policy_type === 'no_refunds' ? 'no_refunds' : 'days_before',
+    refund_policy_days: event.refund_policy_days ?? 7,
+    refund_policy_absorb_fee: event.refund_policy_absorb_fee ?? false,
+    refund_policy_self_service: event.refund_policy_self_service ?? false,
   }
 }
 
@@ -525,6 +544,10 @@ export function EventForm({
     is_high_demand: formData.is_high_demand,
     queue_admission_window_minutes: Math.min(60, Math.max(5, parseInt(formData.queue_admission_window_minutes) || 10)),
     fee_pass_type: formData.fee_pass_type,
+    refund_policy_type: formData.refund_policy_type,
+    refund_policy_days: formData.refund_policy_days,
+    refund_policy_absorb_fee: formData.refund_policy_absorb_fee,
+    refund_policy_self_service: formData.refund_policy_self_service,
     ticket_tiers: formData.ticket_tiers.map((t, i) => ({
       name: t.name,
       description: t.description,
@@ -1395,6 +1418,109 @@ export function EventForm({
               </div>
             </label>
           ))}
+        </div>
+
+        {/* THE PER-EVENT REFUND POLICY.
+          *  Sits with the fee setting because both are money terms the buyer sees
+          *  before paying. Two modes, matching Eventbrite: allow refunds up to N
+          *  days before, or no refunds. The self-service switch is the Humanitix
+          *  model, where a qualifying request refunds itself.
+          *
+          *  THE ONE-WAY WARNING IS SHOWN HERE, not discovered on save. Once the
+          *  event is published the policy may only become MORE generous, because
+          *  buyers paid under the terms shown at the time. */}
+        <div className="mt-8">
+          <h3 className="text-sm font-semibold text-ink-900">Refund policy</h3>
+          <p className="mt-1 text-xs text-ink-400">
+            Shown on your event page before anyone buys, and in every confirmation email.
+            Once this event is published you can only make it more generous.
+          </p>
+
+          <div className="mt-4 space-y-3">
+            {([
+              {
+                value: 'days_before' as const,
+                label: 'Allow refund requests (recommended)',
+                desc: 'Buyers can ask for a refund up until a cut-off you choose.',
+              },
+              {
+                value: 'no_refunds' as const,
+                label: 'No refunds',
+                desc: 'Buyers cannot request a refund. If you cancel the event they are still refunded in full, which no policy can override.',
+              },
+            ]).map(opt => (
+              <label
+                key={opt.value}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-ink-200 p-4 hover:bg-ink-100"
+              >
+                <input
+                  type="radio"
+                  name="refund_policy_type"
+                  value={opt.value}
+                  checked={formData.refund_policy_type === opt.value}
+                  onChange={() => set('refund_policy_type', opt.value)}
+                  className="mt-0.5 h-4 w-4 border-ink-200 text-gold-500 focus:ring-gold-500"
+                />
+                <div>
+                  <p className="text-sm font-medium text-ink-900">{opt.label}</p>
+                  <p className="text-xs text-ink-400">{opt.desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          {formData.refund_policy_type === 'days_before' && (
+            <div className="mt-4 rounded-lg border border-ink-200 p-4">
+              <label htmlFor="refund_policy_days" className="block text-sm font-medium text-ink-900">
+                Cut-off, in days before the event starts
+              </label>
+              <input
+                id="refund_policy_days"
+                type="number"
+                min={0}
+                max={365}
+                value={formData.refund_policy_days}
+                onChange={e => set('refund_policy_days', Math.max(0, Math.min(365, Number(e.target.value) || 0)))}
+                className="mt-2 w-32 rounded-lg border border-ink-200 p-2.5 text-sm text-ink-900"
+              />
+              <p className="mt-2 text-xs text-ink-400">
+                {formData.refund_policy_days === 0
+                  ? 'Buyers can ask right up until the event starts. This is the most generous setting.'
+                  : `Buyers can ask until ${formData.refund_policy_days} day${formData.refund_policy_days === 1 ? '' : 's'} before the event. A SMALLER number is more generous, because it lets people ask later.`}
+              </p>
+
+              <label className="mt-4 flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={formData.refund_policy_self_service}
+                  onChange={e => set('refund_policy_self_service', e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-ink-200 text-gold-500 focus:ring-gold-500"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-ink-900">Refund qualifying requests automatically</span>
+                  <span className="block text-xs text-ink-400">
+                    A request inside your cut-off is refunded straight away without waiting on you.
+                    Anything outside it still comes to you to decide.
+                  </span>
+                </span>
+              </label>
+
+              <label className="mt-4 flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={formData.refund_policy_absorb_fee}
+                  onChange={e => set('refund_policy_absorb_fee', e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-ink-200 text-gold-500 focus:ring-gold-500"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-ink-900">Cover the booking fee on refunds</span>
+                  <span className="block text-xs text-ink-400">
+                    The buyer gets the full ticket price back and you carry the fee. Leave this off and the fee is retained.
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
         </div>
       </div>
     </div>

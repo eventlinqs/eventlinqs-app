@@ -10,6 +10,9 @@ import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { encodeRefCode } from '@/lib/growth/referrals'
 import { recordShareConversionForOrder } from '@/lib/broadcast/conversion'
 import type { Order, OrderItem } from '@/types/database'
+import { BuyerRefundPanel } from './refund-panel'
+import { getRefundPanelState } from '@/lib/refunds/panel-state'
+import { describeRefundPolicy, policyFromEvent } from '@/lib/refunds/policy'
 
 export const runtime = 'nodejs'
 
@@ -100,7 +103,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
 
   const { data: event } = await adminClient
     .from('events')
-    .select('title, start_date, end_date, timezone, venue_name, venue_city, venue_country, slug, has_reserved_seating, organiser_assigns_seats')
+    .select('title, start_date, end_date, timezone, venue_name, venue_city, venue_country, slug, has_reserved_seating, organiser_assigns_seats, status, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
     .eq('id', fullOrder.event_id)
     .single()
 
@@ -189,6 +192,17 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   )
 
   const ticketNoun = issuedTickets.length === 1 ? 'ticket' : 'tickets'
+
+  /*
+   * The refund panel state, read through the same service the server action uses,
+   * so the sentence rendered here is the sentence the server would produce. Only
+   * loaded for an order that actually completed: a cancelled or failed order has
+   * no refund conversation to have.
+   */
+  const refundState =
+    isConfirmed || fullOrder.status === 'partially_refunded' || fullOrder.status === 'refunded'
+      ? await getRefundPanelState(fullOrder.id)
+      : null
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -419,6 +433,21 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
               />
             </div>
           </section>
+        )}
+
+        {/* REFUNDS. Placed above the actions because it is the thing a buyer comes
+         *  back to this page for. It renders whether or not a refund can be
+         *  requested: a blank space is what makes somebody email support. */}
+        {refundState && (
+          <BuyerRefundPanel
+            orderId={fullOrder.id}
+            canRequest={refundState.eligibility.canRequest}
+            reason={refundState.eligibility.reason}
+            policyMessage={refundState.eligibility.message}
+            policyDescription={describeRefundPolicy(policyFromEvent(event), fullOrder.total_cents <= 0)}
+            liveTicketIds={refundState.liveTicketIds}
+            latestRequest={refundState.latestRequest}
+          />
         )}
 
         {/* Actions */}

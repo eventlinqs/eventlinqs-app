@@ -275,8 +275,46 @@ const ROOT = join(HERE, '..', '..')
  * order, limiter after the auth check and before the first write, and prove that
  * ordering check can fail.
  */
-const MIN_FILES = 211
-const MIN_TESTS = 2528
+/*
+ * 2026-08-19 (last of the day): raised 211/2528 -> 212/2547. One file, 19 tests.
+ *
+ * tests/unit/rate-limit/payouts-read-wiring.test.ts, plus two extra cases in
+ * tests/unit/payouts/api-routes.test.ts. `payouts-read` was keyed by the forwarded
+ * address on all three payouts routes while its rationale said "per user", the same
+ * defect event-create carried the same morning. The founder ruling re-keyed it to the
+ * organisation, which meant moving the limiter BELOW resolveOrganiserScope, because a
+ * bucket cannot be named until the scope names it.
+ *
+ * The new file drives the real limiter with the real policy numbers against a real
+ * counting store, requires a refusal on the sixty-first call, then proves with the
+ * store removed that the same run does NOT refuse, so the refusal was the limiter and
+ * not the harness. It pins the identifier at all three call sites, pins the ordering,
+ * and proves BOTH of those checks can fail on a deliberately broken sample.
+ *
+ * The two added cases in api-routes.test.ts replace one that asserted the OPPOSITE
+ * ordering (`expect(resolveScopeMock).not.toHaveBeenCalled()`). It was inverted rather
+ * than deleted: the ordering is the contract, and a deleted test lets it drift back.
+ */
+/*
+ * 2026-08-20: raised 212/2547 -> 213/2579. One file, 32 tests.
+ *
+ * tests/unit/refunds/policy.test.ts, for the per-event refund policy that the buyer
+ * request path and automatic approval are both decided by. It covers the request
+ * window from both sides of the cut-off, the cancelled-event override that beats a
+ * no_refunds policy (Eventbrite states the same rule in the same breath as the
+ * option), the ordering of that override BEFORE the window check, and the ten-case
+ * one-way table.
+ *
+ * THE ONE-WAY TABLE IS DRIVEN TWICE. The same ten cases run through the TypeScript
+ * copy here and through public.refund_policy_is_looser_or_equal in
+ * scripts/verify/refund-policy-drill.mjs, because the rule exists in two places by
+ * design and two copies of a rule drift. The drill then does what a pure function
+ * cannot: it drives a real UPDATE against a real published event and requires the
+ * trigger to refuse it, with controls proving the trigger does not simply refuse
+ * everything.
+ */
+const MIN_FILES = 213
+const MIN_TESTS = 2579
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

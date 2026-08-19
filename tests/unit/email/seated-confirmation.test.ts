@@ -9,7 +9,7 @@ import {
 // live mailer runs (tickets -> seat -> section). These pin "the seat is on the
 // email" so a design change to the seat surfaces can never silently drop it.
 
-const order = { order_number: 'EL-SEATPROOF', total_cents: 0, currency: 'AUD' }
+const order = { id: '00000000-0000-4000-8000-000000000001', order_number: 'EL-SEATPROOF', total_cents: 0, currency: 'AUD' }
 const event = {
   title: 'Cellar Comedy Night',
   start_date: '2026-08-28T09:30:00Z',
