@@ -44,6 +44,12 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
           Find an order to view its tickets and issue a refund. Search by order number or buyer email.
           Every refund is recorded in the audit log.
         </p>
+        <p className="mt-3 text-sm">
+          <Link href="/admin/orders/unfulfilled" className="text-[var(--brand-accent)] hover:underline">
+            Money taken, no ticket
+          </Link>
+          <span className="text-white/50"> - buyers charged who hold no ticket, checked against Stripe.</span>
+        </p>
       </header>
 
       <form method="GET" className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-white/[0.08] bg-[#131A2A] p-4">

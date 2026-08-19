@@ -69,9 +69,27 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
 
   const fullOrder = order as FullOrder
 
+  /*
+   * A CLOSED ORDER IS NOT A PENDING ONE, AND SAYING SO IS NOT COSMETIC.
+   *
+   * This page had two states, confirmed and everything-else, and everything-else
+   * read "Your spot is locked in. Your ticket is being issued now and lands in
+   * your email within a few minutes." A `cancelled` or `refunded` order fell into
+   * it, so the buyer whose money had just been handed back by an operator on
+   * /admin/orders/unfulfilled was told a ticket was on its way. It never was.
+   * They wait, then they ring up, and the refund they were already given is not
+   * what they are ringing about.
+   *
+   * Checked BEFORE `isConfirmed`, and deliberately so: `redirect_status` comes
+   * off the query string on the way back from Stripe, so a stale or shared
+   * confirmation URL carrying `redirect_status=succeeded` would otherwise paint a
+   * cancelled order as a celebration.
+   */
+  const isClosed = fullOrder.status === 'cancelled' || fullOrder.status === 'refunded'
+
   // If Stripe just redirected back with succeeded status, the webhook may still be processing
   // Show confirmation page anyway - the webhook will confirm the order
-  const isConfirmed = fullOrder.status === 'confirmed' || redirect_status === 'succeeded'
+  const isConfirmed = !isClosed && (fullOrder.status === 'confirmed' || redirect_status === 'succeeded')
 
   // Broadcast Layer share attribution (SPEC 2.3): a confirmed order arriving
   // with a tracked share cookie credits that link's channel. Read-only
@@ -192,27 +210,59 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             className="pointer-events-none absolute left-1/2 top-[-1.5rem] h-56 w-56 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(232,183,56,0.20),transparent_70%)] blur-2xl"
           />
           <div className="relative mx-auto mb-5 inline-flex h-20 w-20 items-center justify-center">
-            <span aria-hidden className="confirm-ring absolute inset-0 rounded-full border-2 border-gold-400 opacity-0" />
-            <span className="confirm-badge inline-flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-navy-950)] shadow-[0_12px_30px_rgba(10,22,40,0.28)] ring-4 ring-gold-400/25">
-              <svg className="h-9 w-9 text-gold-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </span>
+            {isClosed ? (
+              <span className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-ink-100 ring-4 ring-ink-200">
+                <svg className="h-9 w-9 text-ink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3.75h.008M4.5 12a7.5 7.5 0 1 0 15 0 7.5 7.5 0 0 0-15 0Z" />
+                </svg>
+              </span>
+            ) : (
+              <>
+                <span aria-hidden className="confirm-ring absolute inset-0 rounded-full border-2 border-gold-400 opacity-0" />
+                <span className="confirm-badge inline-flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-navy-950)] shadow-[0_12px_30px_rgba(10,22,40,0.28)] ring-4 ring-gold-400/25">
+                  <svg className="h-9 w-9 text-gold-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+              </>
+            )}
           </div>
           <div className="confirm-enter relative">
             <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-gold-800">
-              {isConfirmed ? 'Payment confirmed' : 'Order received'}
+              {isClosed ? 'Order closed' : isConfirmed ? 'Payment confirmed' : 'Order received'}
             </p>
             <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink-900 sm:text-4xl">
-              {isConfirmed ? "You're going" : 'Order received'}
+              {isClosed
+                ? fullOrder.status === 'refunded' ? 'This order was refunded' : 'This order did not complete'
+                : isConfirmed ? "You're going" : 'Order received'}
             </h1>
-            <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-ink-600">
-              Your spot for <span className="font-semibold text-ink-900">{event.title}</span> is locked in.
-              {' '}
-              {issuedTickets.length > 0
-                ? `Your ${ticketNoun} ${issuedTickets.length === 1 ? 'is' : 'are'} ready below, and we have emailed a copy to you.`
-                : 'Your ticket is being issued now and lands in your email within a few minutes.'}
-            </p>
+            {isClosed ? (
+              /*
+               * TWO DIFFERENT TRUTHS, and one sentence cannot carry both. An order
+               * REFUNDED after tickets were issued had tickets, and telling that
+               * buyer "no ticket was issued" is a second wrong statement replacing
+               * the first. An order CANCELLED before confirmation genuinely never
+               * had one. `allTickets` is every ticket row on the order, voided
+               * included, which is what separates the two cases.
+               */
+              <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-ink-600">
+                {allTickets.length > 0
+                  ? <>Your {allTickets.length === 1 ? 'ticket' : 'tickets'} for <span className="font-semibold text-ink-900">{event.title}</span> {allTickets.length === 1 ? 'has' : 'have'} been cancelled and will not admit you.</>
+                  : <>No ticket was issued for <span className="font-semibold text-ink-900">{event.title}</span> on this order.</>}
+                {' '}
+                Anything you were charged has been refunded to your original payment method. Refunds usually
+                appear within 5 to 10 business days, depending on your bank. If you still want to go, the event
+                page below has the current availability.
+              </p>
+            ) : (
+              <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-ink-600">
+                Your spot for <span className="font-semibold text-ink-900">{event.title}</span> is locked in.
+                {' '}
+                {issuedTickets.length > 0
+                  ? `Your ${ticketNoun} ${issuedTickets.length === 1 ? 'is' : 'are'} ready below, and we have emailed a copy to you.`
+                  : 'Your ticket is being issued now and lands in your email within a few minutes.'}
+              </p>
+            )}
             <p className="mt-3 text-sm text-ink-500">
               Order <span className="font-mono font-semibold text-ink-700">{fullOrder.order_number}</span>
             </p>
@@ -284,11 +334,15 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
               ))}
             </div>
           </section>
-        ) : allTickets.length === 0 ? (
+        ) : allTickets.length === 0 && !isClosed ? (
           // Genuine pending state: payment confirmed, tickets not generated yet
           // (the webhook is still processing). Confident, reassuring - never a
           // doubtful "being prepared". Once issued they render above and are
           // emailed to the buyer.
+          //
+          // GUARDED ON !isClosed, because a cancelled or refunded order has no
+          // ticket coming and telling the buyer one is on its way is the defect
+          // documented at the top of this file.
           <div className="mb-6 rounded-2xl border border-gold-500/30 bg-gold-100/70 p-5 text-center">
             <p className="text-sm font-semibold text-ink-900">Payment confirmed. Your ticket is on its way.</p>
             <p className="mt-1 text-sm text-ink-600">Your digital ticket and QR code will appear here and land in your email within a few minutes.</p>
