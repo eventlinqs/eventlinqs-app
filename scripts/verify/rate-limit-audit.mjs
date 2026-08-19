@@ -44,6 +44,7 @@ while ((m = re.exec(src)) !== null) {
     limit: /limit:\s*(\d+)/.exec(body)?.[1] ?? '?',
     window: /windowSec(?:onds)?:\s*(\d+)/.exec(body)?.[1] ?? '?',
     failClosed: /failClosed:\s*true/.test(body),
+    rationale: (/rationale:\s*\n?\s*'([\s\S]*?)',\s*$/m.exec(body)?.[1] ?? body).replace(/\s+/g, ' '),
   })
 }
 scanned.push(`${policies.size} policies parsed from src/lib/rate-limit/policies.ts`)
@@ -154,6 +155,358 @@ for (const [name, p] of [...policies].sort()) {
   if (!p.failClosed) openBuckets.push(name)
   console.log(`  ${name.padEnd(28)} ${`${p.limit}/${p.window}s`.padStart(11)}  ${p.failClosed ? 'failClosed' : 'failOPEN  '}  ${sites ? `${sites.size} call site(s)` : 'NEVER CALLED'}`)
 }
+
+/* ---- 3b. WHAT EACH FAIL-OPEN POLICY ACTUALLY SPENDS ----------------------
+ *
+ * FOUNDER INSTRUCTION, 19 August 2026: "re-check EVERY fail-open policy against
+ * what it actually costs, and report any that genuinely bill per request."
+ *
+ * The reason this is machine-read and not a paragraph: the last ruling on a
+ * fail-open policy was made on a premise about cost that turned out to be false,
+ * and the premise came from a rationale STRING in the policy table. A rationale is
+ * an author's belief about the code at the moment they typed it. This section
+ * ignores the rationale entirely and looks at what the call sites import and call.
+ *
+ * SCOPE IS THE ENCLOSING FUNCTION, NOT THE FILE, and that distinction is the whole
+ * value of this section. The first version scanned the call-site FILE and its
+ * imports, and it reported launch-compose as an email spend path because
+ * src/app/launch/actions.ts also contains the SEND action and therefore imports
+ * kit-email at the top. That is the identical mistake in the identical place: an
+ * audit producing the false premise that a deterministic composer costs money per
+ * request, which is what the last fail-closed ruling was made on. A file-level
+ * grep cannot tell "this module can send email" from "this handler sends email".
+ *
+ * So: the slice between the rate-limit call's enclosing exported function and the
+ * next top-level export, plus ONE hop into the modules whose identifiers that
+ * slice actually calls. A spend reached deeper is NOT seen here, which is why the
+ * output says "traced", never "proven absent".
+ */
+const SPEND_MARKERS = [
+  { label: 'SENDS EMAIL (Resend, billed per message, and it is our sending domain)',
+    re: /\bsendEmail\s*\(|from '@\/lib\/email\/send'|new Resend\(/ },
+  { label: 'WRITES STORED BYTES (Supabase Storage, billed by stored GB and egress)',
+    re: /\.storage\s*\.from\s*\([^)]*\)\s*\.\s*(?:upload|uploadToSignedUrl)\b/ },
+  { label: 'SPENDS MODEL TOKENS (Anthropic, billed per token)',
+    re: /@anthropic-ai\/sdk|anthropic\.messages\.|\bmessages\.create\s*\(/ },
+  { label: 'DISPATCHES A SENTRY EVENT (billed against the event quota)',
+    re: /Sentry\.captureException|Sentry\.captureMessage|captureException\s*\(\s*new\s+Error/ },
+  { label: 'CALLS STRIPE (no per-call fee, but it is a metered API quota and it mints tokens)',
+    re: /stripe\.[a-zA-Z]+\.(?:create|update|del)\b|createDashboardLoginLink|createLoginLink/ },
+]
+
+function resolveProjectModule(spec) {
+  if (!spec.startsWith('@/')) return null
+  const p = join(SRC, spec.slice(2))
+  for (const cand of [`${p}.ts`, `${p}.tsx`, join(p, 'index.ts')]) {
+    if (existsSync(cand)) return cand
+  }
+  return null
+}
+
+/** identifier -> the project file that exports it, from this file's imports. */
+function importMap(text) {
+  const map = new Map()
+  for (const im of text.matchAll(/import\s+(?:type\s+)?(\{[^}]*\}|[A-Za-z_$][\w$]*)\s+from\s+'([^']+)'/g)) {
+    const file = resolveProjectModule(im[2])
+    if (!file) continue
+    const clause = im[1]
+    const names = clause.startsWith('{')
+      ? clause.slice(1, -1).split(',').map(s => s.trim().split(/\s+as\s+/).pop().trim()).filter(Boolean)
+      : [clause.trim()]
+    for (const n of names) map.set(n, file)
+  }
+  return map
+}
+
+/**
+ * The body of the exported function that contains `index`, taken as the slice from
+ * the nearest preceding top-level export to the next one. Crude but stable, and it
+ * is the difference between "this file can send email" and "this handler does".
+ */
+const TOP_LEVEL_EXPORT = /^export\s+(?:async\s+)?(?:function|const)\s+([A-Za-z_$][\w$]*)/gm
+function enclosingExport(text, index) {
+  const marks = []
+  TOP_LEVEL_EXPORT.lastIndex = 0
+  let e
+  while ((e = TOP_LEVEL_EXPORT.exec(text)) !== null) marks.push({ at: e.index, name: e[1] })
+  if (marks.length === 0) return { name: '(module scope)', body: text }
+  let i = -1
+  for (let k = 0; k < marks.length; k += 1) if (marks[k].at <= index) i = k
+  if (i === -1) return { name: '(module scope)', body: text.slice(0, marks[0].at) }
+  const end = i + 1 < marks.length ? marks[i + 1].at : text.length
+  return { name: marks[i].name, body: text.slice(marks[i].at, end) }
+}
+
+const CALL_SHAPES = [
+  /(?:applyRateLimit|actionRateLimit|rateLimitAction|rateLimitWithHeaders)\s*\(\s*'BUCKET'/,
+  /POLICIES\s*\[\s*'BUCKET'\s*\]/,
+]
+
+hr('3b. WHAT EACH FAIL-OPEN POLICY ACTUALLY SPENDS')
+console.log('  Traced from the ENCLOSING FUNCTION of each rate-limit call and one hop into')
+console.log('  the modules it calls, NOT from the rationale strings and NOT from file-level')
+console.log('  imports. A spend reached deeper than one hop is not visible here.')
+console.log('')
+const billsPerRequest = []
+let unitsTraced = 0
+
+function traceSpend(name) {
+  const sites = [...(callSites.get(name) ?? [])]
+  const hits = new Map()
+  const handlers = []
+  for (const rel of sites) {
+    const abs = join(ROOT, rel)
+    if (!existsSync(abs)) continue
+    let text
+    try { text = readFileSync(abs, 'utf8') } catch { continue }
+
+    // Every position in this file where THIS bucket is limited.
+    const positions = []
+    for (const shape of CALL_SHAPES) {
+      const re = new RegExp(shape.source.replace('BUCKET', name), 'g')
+      let mm
+      while ((mm = re.exec(text)) !== null) positions.push(mm.index)
+    }
+    if (positions.length === 0) continue
+
+    const imports = importMap(text)
+    for (const pos of positions) {
+      const fn = enclosingExport(text, pos)
+      unitsTraced += 1
+      handlers.push(`${rel}:${fn.name}`)
+
+      const units = [{ where: `${rel} -> ${fn.name}()`, body: fn.body }]
+      // ONE HOP: only the identifiers this function actually calls.
+      const called = new Set([...fn.body.matchAll(/\b([A-Za-z_$][\w$]*)\s*\(/g)].map(c => c[1]))
+      for (const id of called) {
+        const target = imports.get(id)
+        if (!target) continue
+        try {
+          units.push({
+            where: `${rel} -> ${fn.name}() -> ${id}() in ${relative(ROOT, target).split(String.fromCharCode(92)).join('/')}`,
+            body: readFileSync(target, 'utf8'),
+          })
+        } catch { /* unreadable module: not a spend claim either way */ }
+      }
+      for (const u of units) {
+        for (const mk of SPEND_MARKERS) {
+          if (!mk.re.test(u.body)) continue
+          if (!hits.has(mk.label)) hits.set(mk.label, new Set())
+          hits.get(mk.label).add(u.where)
+        }
+      }
+    }
+  }
+  return { hits, handlers }
+}
+
+for (const name of openBuckets) {
+  const { hits, handlers } = traceSpend(name)
+  if (hits.size === 0) {
+    console.log(`  ${name.padEnd(24)} no metered external spend traced`)
+    console.log(`  ${' '.repeat(24)} handlers: ${handlers.join(', ') || '(none resolved)'}`)
+    continue
+  }
+  console.log(`  ${name.padEnd(24)} ${hits.size} metered spend path(s):`)
+  for (const [label, where] of hits) {
+    console.log(`    ${label}`)
+    for (const w of where) console.log(`      ${w}`)
+    billsPerRequest.push(`${name} (failOPEN) -> ${label}`)
+  }
+}
+scanned.push(`${unitsTraced} rate-limited handler(s) traced to what they spend, function scope plus one hop`)
+
+/*
+ * THE CONTROL FOR THE TRACER ITSELF.
+ *
+ * "launch-compose spends nothing" is a claim of ABSENCE, and an absence reported by
+ * a broken tracer looks exactly like an absence reported by a working one. It is
+ * also the specific claim a founder ruling now rests on, so it does not get to be
+ * taken on trust.
+ *
+ * launch-compose and launch-email live in the SAME FILE, src/app/launch/actions.ts.
+ * One sends mail and one does not. A file-level scan, which is what this section
+ * did first, calls both of them senders. So the tracer is required to separate two
+ * handlers in one file, in both directions, before its silence about compose means
+ * anything.
+ */
+const EMAIL_LABEL = SPEND_MARKERS[0].label
+const composeTrace = traceSpend('launch-compose')
+const emailTrace = traceSpend('launch-email')
+const composeSends = composeTrace.hits.has(EMAIL_LABEL)
+const emailSends = emailTrace.hits.has(EMAIL_LABEL)
+console.log('')
+console.log('  CONTROL: can this tracer tell two handlers in one file apart?')
+console.log(`    launch-email   (same file) sends email: ${emailSends ? 'DETECTED' : 'NOT DETECTED'}   handlers: ${emailTrace.handlers.join(', ')}`)
+console.log(`    launch-compose (same file) sends email: ${composeSends ? 'DETECTED' : 'NOT DETECTED'}   handlers: ${composeTrace.handlers.join(', ')}`)
+if (emailSends && !composeSends) {
+  console.log('    CONTROL PASSES: it detects the sender and clears the composer, in the same file,')
+  console.log('    so "launch-compose spends nothing" is a measurement and not a blind spot.')
+} else {
+  console.log('    CONTROL FAILS: this tracer cannot separate the two, so treat every')
+  console.log('    "no metered external spend traced" line above as UNKNOWN, not as clean.')
+  problems.push('rate-limit spend tracer failed its own control: it cannot separate launch-email from launch-compose in one file')
+}
+
+if (billsPerRequest.length === 0) {
+  console.log('\n  NONE of the fail-open policies sits in front of a metered external spend.')
+} else {
+  console.log(`\n  ${billsPerRequest.length} FAIL-OPEN POLICY/SPEND PAIR(S) FOR A FOUNDER RULING:`)
+  for (const b of billsPerRequest) console.log(`    - ${b}`)
+  console.log('')
+  console.log('  These are REPORTED, not changed. A fail-open posture is a founder decision')
+  console.log('  and the last one was reversed on a wrong premise about cost; the point of')
+  console.log('  this section is to put the real premise in front of the next one.')
+}
+
+/* ---- 3c. WHAT EACH POLICY IS ACTUALLY KEYED BY --------------------------
+ *
+ * A limit is a number AND a bucket, and the bucket is where this table has been
+ * wrong. `event-create` shipped on 19 August 2026 with a rationale reading "per
+ * organiser per hour" and a call site of `actionRateLimit('event-create')` with no
+ * identifier, which defaults to the forwarded IP. So the sentence in the table and
+ * the behaviour of the code disagreed, and nothing could notice, because a
+ * rationale is prose.
+ *
+ * Both halves matter and they fail in opposite directions. Keyed by address, the
+ * named threat (one free account looping) walks away by changing address, while a
+ * shared office or a carrier NAT range puts every legitimate organiser behind it
+ * into one bucket. This platform has already been bitten by the CGNAT half twice,
+ * on launch-artefact and launch-compose-daily.
+ *
+ * So the key is READ FROM THE CALL SITE and printed beside what the prose claims.
+ */
+/*
+ * THE ARGUMENT LIST IS PARSED, NOT PATTERN-MATCHED, AND THAT IS NOT FUSSINESS.
+ *
+ * The first version of this check used `applyRateLimit\(\s*'BUCKET'` and reported
+ * the key as the IP default whenever it matched. It therefore reported ai-chat,
+ * ai-chat-daily and payouts-read as prose/code MISMATCHES. All three were fine:
+ * applyRateLimit takes a THIRD argument, `identifierOverride`
+ * (src/lib/rate-limit/middleware.ts:53), and the AI routes pass
+ * `user?.id ?? clientIp(request)`, which is exactly what their rationale claims.
+ *
+ * That is this project's most expensive recurring bug shape and this audit has now
+ * produced it three times: a live thing reported dead or wrong, because the check
+ * knew one call shape out of two. So the arity is read by balancing parentheses
+ * rather than guessed by a regex.
+ */
+const HELPERS_WITH_REQUEST = ['applyRateLimit', 'rateLimitWithHeaders', 'rateLimitAction']
+
+function splitTopLevelArgs(text, openIdx) {
+  let depth = 0
+  const args = []
+  let current = ''
+  for (let i = openIdx; i < text.length; i += 1) {
+    const ch = text[i]
+    if (ch === '(' || ch === '[' || ch === '{') { depth += 1; if (depth === 1) continue }
+    if (ch === ')' || ch === ']' || ch === '}') {
+      depth -= 1
+      if (depth === 0) { args.push(current.trim()); return args }
+    }
+    if (ch === ',' && depth === 1) { args.push(current.trim()); current = ''; continue }
+    if (depth >= 1) current += ch
+  }
+  return null
+}
+
+function actualKeys(name) {
+  const found = new Set()
+  for (const rel of callSites.get(name) ?? []) {
+    const abs = join(ROOT, rel)
+    if (!existsSync(abs)) continue
+    let text
+    try { text = readFileSync(abs, 'utf8') } catch { continue }
+
+    for (const helper of ['actionRateLimit', ...HELPERS_WITH_REQUEST]) {
+      const takesRequest = HELPERS_WITH_REQUEST.includes(helper)
+      // The identifier is argument 2 for actionRateLimit, argument 3 for the
+      // request-taking helpers.
+      const identIndex = takesRequest ? 2 : 1
+      const re = new RegExp(`${helper}\\s*\\(`, 'g')
+      let mm
+      while ((mm = re.exec(text)) !== null) {
+        const open = mm.index + mm[0].length - 1
+        const args = splitTopLevelArgs(text, open)
+        if (!args || args[0] !== `'${name}'`) continue
+        let ident = args[identIndex]
+        // Resolve ONE level of local const, so `applyRateLimit('ai-chat', request,
+        // identity)` reports what identity IS rather than the useless word
+        // "identity". Without this the most expensive policy on the platform reads
+        // as OTHER, which is a blind spot dressed as an answer.
+        if (ident && /^[A-Za-z_$][\w$]*$/.test(ident)) {
+          const decl = new RegExp(`const\\s+${ident}\\s*=\\s*([^\\n]+)`).exec(text)
+          if (decl) ident = `${ident} = ${decl[1].trim().replace(/;$/, '')}`
+        }
+        found.add(ident ? ident : `IP (${helper} default)`)
+      }
+    }
+
+    const direct = new RegExp(`POLICIES\\s*\\[\\s*'${name}'\\s*\\][\\s\\S]{0,400}?key:\\s*\`([^\`]+)\``, 'g')
+    let dm
+    while ((dm = direct.exec(text)) !== null) found.add(dm[1])
+  }
+  return [...found]
+}
+function keyKind(expr) {
+  // Order matters: `user?.id ?? clientIp(request)` is BOTH, and calling it plain IP
+  // is how the AI spend path came to be reported as a mismatch when it is correct.
+  const hasUser = /user\??\.id|userId|session\.userId/.test(expr)
+  const hasIp = /clientIp|x-forwarded-for|x-real-ip|^IP \(/i.test(expr)
+  if (hasUser && hasIp) return 'USER_OR_IP'
+  if (hasUser) return 'USER'
+  if (hasIp) return 'IP'
+  return 'OTHER'
+}
+
+hr('3c. WHAT EACH POLICY IS KEYED BY, PROSE VERSUS CODE')
+console.log(`  ${'policy'.padEnd(24)} ${'code says'.padEnd(12)} ${'prose says'.padEnd(12)} key expression`)
+console.log(`  ${'-'.repeat(24)} ${'-'.repeat(12)} ${'-'.repeat(12)} ${'-'.repeat(28)}`)
+let keysChecked = 0
+for (const [name, p] of [...policies].sort()) {
+  const keys = actualKeys(name)
+  if (keys.length === 0) { console.log(`  ${name.padEnd(24)} ${'UNREADABLE'.padEnd(12)} ${''.padEnd(12)} (no key expression matched)`); continue }
+  keysChecked += 1
+  const kinds = new Set(keys.map(keyKind))
+  /*
+   * REDUCE ACROSS CALL SITES BEFORE JUDGING. ai-chat has two: /api/ai/chat keys by
+   * `user?.id ?? clientIp(request)` (guests fall back to address) and
+   * /api/ai/magic-start keys by `user.id` (it refuses guests outright). Printing
+   * that as MIXED and calling it a mismatch was this check's fourth false positive
+   * in one session: both sites do exactly what the rationale says, and the
+   * difference between them is that one surface allows guests.
+   */
+  let codeSays
+  const only = k => [...kinds].every(x => k.includes(x))
+  if (only(['USER'])) codeSays = 'USER'
+  else if (only(['USER', 'USER_OR_IP'])) codeSays = 'USER_OR_IP'
+  else if (only(['IP'])) codeSays = 'IP'
+  else if (only(['OTHER'])) codeSays = 'OTHER'
+  else codeSays = `INCONSISTENT(${[...kinds].join('/')})`
+  const r = p.rationale ?? ''
+  const claimsUser = /per (?:user|organiser|performer|sender|admin)\b|keyed by user|per user id/i.test(r)
+  const claimsIp = /per IP|per address|per browser/i.test(r)
+  const proseSays = claimsUser && claimsIp ? 'USER_OR_IP' : claimsUser ? 'USER' : claimsIp ? 'IP' : 'unstated'
+  /*
+   * A MISMATCH IS ONLY THE ONE THAT CHANGES THE BUCKET, stated as an allowlist of
+   * agreements rather than an inequality, because the inequality kept flagging
+   * correct code. "per user" implemented as user-or-IP is agreement: guests have no
+   * user id and the fallback is what the prose means by "(or IP for guests)".
+   */
+  const AGREES = new Set([
+    'USER|USER', 'IP|IP', 'USER_OR_IP|USER_OR_IP',
+    'USER_OR_IP|USER',   // prose says per user, code falls back to IP for guests
+  ])
+  const mismatch =
+    proseSays !== 'unstated'
+    && codeSays !== 'OTHER'
+    && !AGREES.has(`${codeSays}|${proseSays}`)
+  console.log(`  ${name.padEnd(24)} ${codeSays.padEnd(12)} ${proseSays.padEnd(12)} ${keys.join(' | ').slice(0, 48)}${mismatch ? '   <<< MISMATCH' : ''}`)
+  if (mismatch) {
+    problems.push(`${name}: the rationale claims ${proseSays}-keyed, the call site is ${codeSays}-keyed`)
+  }
+}
+scanned.push(`${keysChecked} policy key expression(s) read from the call sites and compared with the rationale`)
 
 hr('3. WHAT THIS MEANS')
 console.log(`  policies defined            ${policies.size}`)

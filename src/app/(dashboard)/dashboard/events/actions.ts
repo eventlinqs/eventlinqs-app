@@ -149,8 +149,20 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
    * writes an events row, its ticket_tiers and the share_links the acquisition loop
    * mints. The limit sits AFTER the auth check so an anonymous caller is refused as
    * unauthenticated rather than consuming somebody's bucket, and BEFORE any write.
+   *
+   * KEYED BY user.id, PASSED EXPLICITLY. actionRateLimit defaults to the forwarded
+   * IP when no identifier is given, and the first version of this call gave none, so
+   * a policy whose rationale said "per organiser per hour" was in fact per ADDRESS
+   * per hour. That is wrong in both directions at once: the named threat is one free
+   * account looping, which an address does not bound once the account moves, while a
+   * shared office or an Australian carrier NAT puts every legitimate organiser behind
+   * it into a single bucket of thirty. This platform has already been bitten by the
+   * second half twice, on launch-artefact and on launch-compose-daily.
+   *
+   * The account-minting side is bounded upstream by auth-signup (5 per IP per 10 min,
+   * fail-closed), which is the right place for it.
    */
-  const rl = await actionRateLimit('event-create')
+  const rl = await actionRateLimit('event-create', user.id)
   if (!rl.ok) {
     return {
       error: `You have created a lot of events in a short time. Wait ${Math.max(1, Math.ceil(rl.retryAfterSeconds / 60))} minute(s) and try again.`,

@@ -82,7 +82,7 @@ export const POLICIES: Record<PolicyName, Policy> = {
     limit: 60,
     windowSec: 60,
     rationale:
-      'Organiser dashboard list/summary reads. 60/min per user covers tab switching, polling refreshes, and chart redraws while bouncing scrapers.',
+      'Organiser dashboard list/summary reads. 60/min covers tab switching, polling refreshes and chart redraws while bouncing scrapers. KEYED BY IP, NOT BY USER, and this line used to say "per user" while the code said otherwise: all three routes call applyRateLimit with no identifier override, so the default forwarded IP is the bucket. Corrected 2026-08-19 rather than quietly re-keyed, because moving the limit to the organiser means moving it AFTER resolveOrganiserScope on three routes, which is a behaviour change on a surface that was not under review. The consequence of the IP bucket is the CGNAT one this platform has met twice before (launch-artefact, launch-compose-daily): a shared office or a carrier NAT range puts every organiser behind it into one bucket of sixty a minute. It is a READ path with no metered spend, so the cost of getting it wrong is a dashboard that stops refreshing, not a bill. Open for a founder ruling; recorded in docs/RATE-LIMIT-DOCTRINE.md.',
   },
   'payouts-stripe-link': {
     keyPrefix: 'pay-l',
@@ -137,7 +137,7 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 3600,
     failClosed: true,
     rationale:
-      'Event creation per organiser per hour. It had NO limiter at all until 2026-08-19, found by scripts/verify/rate-limit-audit.mjs. The ceiling was one free account creating events in a loop, and each one writes an events row, its ticket_tiers, and the share_links the acquisition loop mints, so the cost is database rows and storage rather than an API bill. Thirty an hour is far above any real organiser (a busy promoter announcing a season does a handful) and still bounds a script. Fail-closed because it is a WRITE on the organiser side and a deploy missing UPSTASH_* should not leave an unbounded write open; an organiser blocked for a minute can retry, and unlike the anonymous composer there is no first-time visitor to protect.',
+      'Event creation per organiser per hour, KEYED BY user id (passed explicitly at the call site; actionRateLimit defaults to IP and the first version of this policy shipped with that default, so the sentence "per organiser" was untrue for a day). It had NO limiter at all until 2026-08-19, found by scripts/verify/rate-limit-audit.mjs. The ceiling was one free account creating events in a loop, and each one writes an events row, its ticket_tiers, and the share_links the acquisition loop mints, so the cost is database rows and storage rather than an API bill. Thirty an hour is far above any real organiser (a busy promoter announcing a season does a handful) and still bounds a script. Fail-closed because it is a WRITE on the organiser side and a deploy missing UPSTASH_* should not leave an unbounded write open; an organiser blocked for a minute can retry, and unlike the anonymous composer there is no first-time visitor to protect.',
   },
   'checkout-reserve': {
     keyPrefix: 'co-res',
