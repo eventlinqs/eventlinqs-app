@@ -4657,7 +4657,7 @@ export type Database = {
         | "companion"
         | "restricted_view"
         | "obstructed"
-      squad_member_status: "invited" | "paid" | "declined" | "timed_out"
+      squad_member_status: "invited" | "paid" | "declined" | "timed_out" | "refunded"
       squad_status: "forming" | "completed" | "expired" | "cancelled"
       ticket_tier_type:
         | "general_admission"

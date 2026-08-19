@@ -146,6 +146,16 @@ if (!existsSync(MIGRATIONS)) {
           + 'resold and then refuse to pair it to the new buyer, leaving them charged with no '
           + 'seat. Releasing the seat WITHOUT this is worse than not releasing it at all',
       },
+      {
+        label: 'RELEASES THE SQUAD SLOT (a refunded member stops counting as paid)',
+        re: /UPDATE\s+public\.squad_members[\s\S]{0,200}?status\s*=\s*'refunded'/i,
+        why:
+          'squad completion counts members at \'paid\' (the squad-completion block in the Stripe '
+          + 'webhook), and nothing on the refund path used to move them. A refunded member kept '
+          + 'filling a slot, so a squad could complete one ticket short of what its own count '
+          + 'claimed and the group would find out at the door. Reproduced 20 August 2026 by '
+          + 'refund-seat-drill.mjs: SQUAD member paid, expected refunded, FAIL',
+      },
     ]
     for (const r of required) {
       if (!r.re.test(body)) {

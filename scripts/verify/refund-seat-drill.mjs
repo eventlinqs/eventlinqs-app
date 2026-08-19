@@ -62,6 +62,9 @@ if (TEARDOWN) {
     await db.from('tickets').delete().eq('order_id', oid)
     await db.from('order_items').delete().eq('order_id', oid)
   }
+  for (const oid of orderIds) await db.from('squad_members').delete().eq('order_id', oid)
+  const { data: dsq } = await db.from('squads').select('id').like('share_token', 'seatdrill-%')
+  for (const sq of dsq ?? []) { await db.from('squad_members').delete().eq('squad_id', sq.id); await db.from('squads').delete().eq('id', sq.id) }
   if (seatIds.length) await db.from('seats').delete().in('id', seatIds)
   for (const oid of orderIds) {
     const { data: o } = await db.from('orders').select('reservation_id').eq('id', oid).maybeSingle()
@@ -186,6 +189,26 @@ if (!(tickets ?? [])[0].seat_id) die('the ticket carries no seat, the drill woul
 if (seatAfterBuy?.status !== 'sold') die(`seat did not reach sold (it is ${seatAfterBuy?.status})`)
 
 const ticketId = tickets[0].id
+
+/*
+ * A SQUAD SLOT ON THE SAME ORDER. Squad completion counts squad_members at
+ * 'paid', and nothing on the refund path used to move them, so a refunded
+ * member kept filling a slot and a squad could complete one ticket short of
+ * what its own count claimed. Migration 20260820000003 moves them to
+ * 'refunded' inside reconcile_refund, so every trigger gets it.
+ */
+const { data: squad, error: sqErr } = await db.from('squads').insert({
+  event_id: event.id, leader_user_id: buyerId, ticket_tier_id: tier.id,
+  total_spots: 2, status: 'forming', share_token: `seatdrill-${stamp}`,
+  expires_at: new Date(Date.now() + 3600_000).toISOString(),
+}).select('id').single()
+if (sqErr) die('squad', sqErr)
+const { error: smErr } = await db.from('squad_members').insert({
+  squad_id: squad.id, user_id: buyerId, status: 'paid', order_id: order.id,
+  position: 1, paid_at: new Date().toISOString(),
+})
+if (smErr) die('squad member', smErr)
+console.log(`  squad        ${squad.id} with 1 member at 'paid' on this order`)
 const soldBefore = tierAfterBuy?.sold_count ?? 0
 
 // ------------------------------------------------------------------ refund
@@ -245,6 +268,7 @@ const { data: tierAfter } = await db.from('ticket_tiers').select('sold_count').e
 const { data: oAfter } = await db.from('orders').select('status').eq('id', order.id).maybeSingle()
 const { data: ledger } = await db.from('organiser_balance_ledger').select('delta_cents, reason').eq('reference_id', order.id)
 const { data: rAfter } = await db.from('refunds').select('status').eq('id', req.refund_id).maybeSingle()
+const { data: smAfter } = await db.from('squad_members').select('status').eq('order_id', order.id).maybeSingle()
 
 const rows = [
   ['ticket status', tAfter?.status, 'refunded', tAfter?.status === 'refunded'],
@@ -252,6 +276,7 @@ const rows = [
   ['order status', oAfter?.status, 'refunded', oAfter?.status === 'refunded'],
   ['refund status', rAfter?.status, 'completed', rAfter?.status === 'completed'],
   ['SEAT status', sAfter?.status, 'available', sAfter?.status === 'available'],
+  ['SQUAD member', smAfter?.status, 'refunded', smAfter?.status === 'refunded'],
 ]
 console.log(`  ${'artefact'.padEnd(18)} ${'observed'.padEnd(16)} ${'expected'.padEnd(22)} verdict`)
 console.log('  ' + '-'.repeat(80))
@@ -261,13 +286,30 @@ for (const [k, got, want, ok] of rows) {
 console.log(`  ledger rows: ${(ledger ?? []).length}, net ${(ledger ?? []).reduce((a, l) => a + Number(l.delta_cents), 0)}c`)
 
 hr('4. VERDICT')
-const seatOk = sAfter?.status === 'available'
-if (!seatOk) {
-  console.log(`  SEAT LEAK REPRODUCED. Seat ${seat.row_label}${seat.seat_number} is '${sAfter?.status}' after a completed refund.`)
-  console.log('  The ticket is void, so nobody can sit in it, and the seat is not available,')
-  console.log('  so nobody can buy it. That seat is dead for the event.')
-  console.log('\n  Drill rows are left in place for inspection. Remove them with --teardown.')
+/*
+ * NAME THE ARTEFACT THAT ACTUALLY FAILED. The first version printed the seat
+ * sentence whenever anything failed, so the squad negative control reported
+ * "SEAT LEAK REPRODUCED" under a seat row reading OK. A verdict that blames the
+ * wrong thing sends the next reader to the wrong code.
+ */
+const seatFreed = sAfter?.status === 'available'
+const squadFreed = smAfter?.status === 'refunded'
+if (!seatFreed || !squadFreed) {
+  if (!seatFreed) {
+    console.log(`  SEAT LEAK REPRODUCED. Seat ${seat.row_label}${seat.seat_number} is '${sAfter?.status}' after a completed refund.`)
+    console.log('  The ticket is void, so nobody can sit in it, and the seat is not available,')
+    console.log('  so nobody can buy it. That seat is dead for the event.')
+  }
+  if (!squadFreed) {
+    console.log(`  SQUAD SLOT LEAK REPRODUCED. The member is '${smAfter?.status}' after a completed refund.`)
+    console.log('  Squad completion counts members at "paid", so this refunded member still')
+    console.log('  fills a slot and the squad can complete one ticket short of its own count.')
+  }
+  console.log('')
+  console.log('  Drill rows are left in place for inspection. Remove them with --teardown.')
   process.exit(1)
 }
-console.log('  SEAT RELEASED. The refund returned the seat to the map and it can be resold.')
-console.log('\n  Remove the drill rows with --teardown.')
+console.log('  SEAT RELEASED and SQUAD SLOT RELEASED. The refund returned the seat to the map')
+console.log('  so it can be resold, and the squad no longer counts a refunded member as paid.')
+console.log('')
+console.log('  Remove the drill rows with --teardown.')
