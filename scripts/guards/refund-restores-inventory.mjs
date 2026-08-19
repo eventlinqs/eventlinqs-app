@@ -115,6 +115,14 @@ if (!existsSync(MIGRATIONS)) {
         why: 'migration 20260621000002 dropped this cast and the whole function raised, so no refund reconciled at all',
       },
       {
+        label: 'does NOT reverse a sale that was never recorded',
+        re: /order_confirmed'?\s*\)\s*INTO\s+v_sale_recorded|INTO\s+v_sale_recorded/i,
+        why:
+          'proven 2026-08-19: when a refund arrived BEFORE its confirmation the ledger had never '
+          + 'credited the sale, and the reversal debited the organiser 2500c for income they had '
+          + 'never received. The reversal must be conditional on there being something to reverse',
+      },
+      {
         label: 'sets the order to refunded or partially_refunded',
         re: /partially_refunded/,
         why: 'without this the order stays confirmed and revenue reporting counts refunded money',

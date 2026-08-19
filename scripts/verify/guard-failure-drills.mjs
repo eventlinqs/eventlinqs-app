@@ -29,6 +29,18 @@ import { join } from 'node:path'
 const ROOT = process.cwd()
 const GUARDS = 'scripts/guards'
 
+/*
+ * THE EFFECTIVE MIGRATION, named once. A guard reads the LAST migration that
+ * defines a function, so a drill has to mutate that same file. When 20260819000004
+ * redefined confirm_order and reconcile_refund, four drills pinned to the older
+ * files stopped firing and this harness reported "guard PASSED on a violating
+ * tree" for each. That is the harness doing its job: a drill pinned to a
+ * superseded definition verifies nothing while still looking green. Naming the
+ * file once means the next redefinition updates four drills in one edit.
+ */
+const NEW_EFFECTIVE_CONFIRM = 'supabase/migrations/20260819000004_confirm_only_pending_orders.sql'
+const NEW_EFFECTIVE_RECONCILE = 'supabase/migrations/20260819000004_confirm_only_pending_orders.sql'
+
 const DRILLS = [
   {
     name: 'ungated provider button (the 2026-08-02 production defect)',
@@ -274,7 +286,7 @@ const DRILLS = [
   {
     name: 'reconcile_refund stops returning inventory (the leak itself)',
     guard: `${GUARDS}/refund-restores-inventory.mjs`,
-    file: 'supabase/migrations/20260621000005_reconcile_refund_cast_and_event_scope.sql',
+    file: NEW_EFFECTIVE_RECONCILE,
     find: 'GREATEST(0, tt.sold_count - sub.cnt)',
     replace: 'tt.sold_count',
     expect: 'no longer returns inventory',
@@ -282,7 +294,7 @@ const DRILLS = [
   {
     name: 'the ::public.order_status cast dropped again (the 20260621000002 defect)',
     guard: `${GUARDS}/refund-restores-inventory.mjs`,
-    file: 'supabase/migrations/20260621000005_reconcile_refund_cast_and_event_scope.sql',
+    file: NEW_EFFECTIVE_RECONCILE,
     find: "END)::public.order_status",
     replace: 'END)',
     expect: 'casts the order status',
@@ -344,7 +356,7 @@ const DRILLS = [
   {
     name: 'the lapsed-hold re-acquire removed (2 tickets for 1 seat, both buyers charged)',
     guard: `${GUARDS}/inventory-lock-integrity.mjs`,
-    file: 'supabase/migrations/20260819000003_confirm_order_reacquires_lapsed_hold.sql',
+    file: NEW_EFFECTIVE_CONFIRM,
     find: '              AND total_capacity - sold_count - reserved_count >= v_quantity;',
     replace: '              ;',
     expect: 're-acquires the seat when the hold has LAPSED',
@@ -352,10 +364,26 @@ const DRILLS = [
   {
     name: 'the sold-out refusal removed (would confirm a ticket for somebody else\'s seat)',
     guard: `${GUARDS}/inventory-lock-integrity.mjs`,
-    file: 'supabase/migrations/20260819000003_confirm_order_reacquires_lapsed_hold.sql',
+    file: NEW_EFFECTIVE_CONFIRM,
     find: '            GET DIAGNOSTICS v_taken = ROW_COUNT;',
     replace: '            v_taken := 1;',
     expect: 'REFUSES when the lapsed seat is gone',
+  },
+  {
+    name: 'the confirm whitelist removed (a refunded order confirms into a ticket)',
+    guard: `${GUARDS}/inventory-lock-integrity.mjs`,
+    file: 'supabase/migrations/20260819000004_confirm_only_pending_orders.sql',
+    find: "  IF v_order.status <> 'pending' THEN",
+    replace: "  IF FALSE THEN",
+    expect: 'WHITELISTS the statuses it will confirm',
+  },
+  {
+    name: 'the phantom ledger reversal guard removed (debits an organiser for a sale never made)',
+    guard: `${GUARDS}/refund-restores-inventory.mjs`,
+    file: 'supabase/migrations/20260819000004_confirm_only_pending_orders.sql',
+    find: '  ) INTO v_sale_recorded;',
+    replace: '  ) INTO v_unused_flag;',
+    expect: 'does NOT reverse a sale that was never recorded',
   },
   {
     name: 'an application-level write to sold_count (a second owner of the counter)',

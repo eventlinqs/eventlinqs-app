@@ -135,6 +135,17 @@ const CHECKS = [
           + 'a refund; an oversell cannot be undone at the door',
       },
       {
+        label: 'WHITELISTS the statuses it will confirm (only pending)',
+        re: /IF\s+v_order\.status\s*<>\s*'pending'\s+THEN[\s\S]{0,300}?RETURN\s+TRUE/i,
+        why:
+          'proven 2026-08-19 by scripts/verify/webhook-ordering-drill.mjs: a charge.refunded '
+          + 'that overtook its own payment_intent.succeeded left the order at `refunded`, which is '
+          + 'not `confirmed`, so the old single-value check fell through, confirmed it, and the '
+          + 'ticket trigger minted a valid ticket for a FULLY REFUNDED charge. A whitelist is '
+          + 'required rather than a blacklist: every status added since (partially_refunded, '
+          + 'refunded, cancelled, expired) silently became confirmable under the old shape',
+      },
+      {
         label: 'decides inventory BEFORE confirming the order',
         // The ticket trigger fires on the confirmation, so the seat must already be
         // taken by then. If the orders UPDATE moves back above the tier UPDATE, the
