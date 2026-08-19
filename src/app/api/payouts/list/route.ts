@@ -16,9 +16,6 @@ const VALID_STATUSES: ReadonlyArray<PayoutRecordStatus | 'all'> = [
 ]
 
 export async function GET(request: Request): Promise<NextResponse> {
-  const blocked = await applyRateLimit('payouts-read', request)
-  if (blocked) return blocked
-
   // ?org=<id> names WHICH of the caller's businesses this is about. Without it the
   // caller's first organisation is used. resolveOrganiserScope verifies ownership
   // and returns 403 for an id belonging to somebody else, so this parameter cannot
@@ -32,6 +29,22 @@ export async function GET(request: Request): Promise<NextResponse> {
       { status: scope.status }
     )
   }
+
+  // THE LIMIT IS KEYED TO THE ORGANISATION AND THEREFORE RUNS AFTER THE SCOPE
+  // RESOLVES, which is why this sits below the auth check rather than above it
+  // (founder ruling, 19 August 2026). It used to run first with no identifier, so
+  // the bucket was the forwarded IP while the rationale said "per user": a shared
+  // office or a carrier NAT put every organiser behind it into one bucket of sixty
+  // a minute. See docs/RATE-LIMIT-DOCTRINE.md section 5.
+  //
+  // The trade this makes, stated rather than left to be discovered: an
+  // unauthenticated caller is now refused as unauthenticated instead of consuming
+  // somebody's window, and is no longer throttled by THIS policy. That costs
+  // nothing to serve, because resolveOrganisationScope returns 401 from the cookie
+  // with no database read, and it is the same ordering every other authenticated
+  // write on the platform already uses.
+  const blocked = await applyRateLimit('payouts-read', request, scope.org.organisationId)
+  if (blocked) return blocked
 
   const url = new URL(request.url)
   const statusParam = url.searchParams.get('status')

@@ -6,9 +6,6 @@ import { getRefundImpact } from '@/lib/payouts/queries'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request): Promise<NextResponse> {
-  const blocked = await applyRateLimit('payouts-read', request)
-  if (blocked) return blocked
-
   // ?org=<id> names which business. See the note in ../list/route.ts.
   const scope = await resolveOrganiserScope(
     new URL(request.url).searchParams.get('org') ?? undefined,
@@ -19,6 +16,10 @@ export async function GET(request: Request): Promise<NextResponse> {
       { status: scope.status }
     )
   }
+
+  // Keyed to the organisation, so it runs after the scope. See ../list/route.ts.
+  const blocked = await applyRateLimit('payouts-read', request, scope.org.organisationId)
+  if (blocked) return blocked
 
   const url = new URL(request.url)
   const limit = parseIntParam(url.searchParams.get('limit'), 20)

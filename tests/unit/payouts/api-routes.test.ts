@@ -102,11 +102,39 @@ describe('GET /api/payouts/list', () => {
     expect(res.status).toBe(404)
   })
 
-  test('returns rate-limit response when blocked', async () => {
+  // THE LIMITER MOVED BELOW THE SCOPE on 19 August 2026 (founder ruling), because
+  // it is now keyed to the organisation and the bucket cannot be named until the
+  // scope names it. This test previously asserted the OPPOSITE ordering, with
+  // `expect(resolveScopeMock).not.toHaveBeenCalled()`. It is inverted here
+  // deliberately rather than deleted, because the ordering IS the contract and a
+  // deleted test would let the ordering drift back silently.
+  test('returns the rate-limit response when blocked, and the bucket is the organisation', async () => {
+    resolveScopeMock.mockResolvedValue(okScope)
     rateLimitMock.mockResolvedValue(new Response('blocked', { status: 429 }))
     const res = await listGET(new Request('https://test/api/payouts/list'))
     expect(res.status).toBe(429)
-    expect(resolveScopeMock).not.toHaveBeenCalled()
+    // The scope runs FIRST now, because it is what supplies the key.
+    expect(resolveScopeMock).toHaveBeenCalled()
+    // The third argument is the whole point of the move: the bucket is the
+    // organisation, not the forwarded address.
+    expect(rateLimitMock).toHaveBeenCalledWith('payouts-read', expect.anything(), 'org-1')
+  })
+
+  test('a blocked read never reaches the queries layer', async () => {
+    resolveScopeMock.mockResolvedValue(okScope)
+    rateLimitMock.mockResolvedValue(new Response('blocked', { status: 429 }))
+    await listGET(new Request('https://test/api/payouts/list'))
+    expect(getOrganiserPayoutsMock).not.toHaveBeenCalled()
+  })
+
+  test('an unauthenticated caller is refused as unauthenticated and consumes no window', async () => {
+    // The recorded consequence of the move, pinned so it stays a decision rather
+    // than a surprise: the 401 is decided from the cookie with no database read,
+    // so refusing it before the limiter costs nothing to serve.
+    resolveScopeMock.mockResolvedValue({ ok: false, status: 401, reason: 'unauthenticated' })
+    const res = await listGET(new Request('https://test/api/payouts/list'))
+    expect(res.status).toBe(401)
+    expect(rateLimitMock).not.toHaveBeenCalled()
   })
 
   test('passes status filter through to queries layer', async () => {

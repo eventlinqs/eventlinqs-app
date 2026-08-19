@@ -84,35 +84,38 @@ Traced 19 August 2026 by `scripts/verify/rate-limit-audit.mjs` section 3b, from 
 enclosing function of each rate-limit call plus one hop into the modules it calls.
 Re-run it rather than trusting this table; it is a snapshot and the code moves.
 
-These four are **REPORTED FOR A FOUNDER RULING, not changed.** A fail-open posture
-is a founder decision, and the last one was reversed on a wrong premise, so the
-correction is to supply the right premise rather than to swing the other way.
+Four were found. **All four have now been ruled on (founder, 19 August 2026):
+`waitlist-join` is fail-CLOSED, the other three stay fail-OPEN.**
 
-| policy | fail-open, and it spends | where | what bounds it today |
+| policy | spends | ruling | why |
 |---|---|---|---|
-| `waitlist-join` | **Resend email, billed per message, from our sending domain** | `src/app/waitlist/actions.ts` -> `joinCityWaitlist()` -> `sendEmail()` | 5 per IP per 10 min. PUBLIC and unauthenticated. |
-| `cron-job` | **Resend email, billed per message** | `src/app/api/cron/connect-divergence/route.ts` -> `GET()` -> `sendEmail()` | 12/min, and `CRON_SECRET` gates the route. The mail is a founder divergence alert and only sends when divergence is found. |
-| `media-upload` | **Supabase Storage bytes, billed by stored GB and egress** | `src/lib/upload.ts`, `src/lib/organisation/logo.ts`, `src/app/actions/section-view-photo.ts` | 60/min, and every call site requires a signed-in user. |
-| `payouts-stripe-link` | Stripe API call (no per-call fee, but a metered quota, and it mints a login-link token) | `src/app/api/payouts/stripe-dashboard-link/route.ts` -> `createDashboardLoginLink()` | 6/min, organiser-scoped. |
+| `waitlist-join` | **Resend email, from our sending domain** | **FAIL-CLOSED** | PUBLIC and unauthenticated. The limiter is the only thing in front of the send. |
+| `cron-job` | Resend email (divergence alert) | fail-open | `CRON_SECRET` gates the route, and it only sends when divergence is found. |
+| `media-upload` | Supabase Storage bytes | fail-open | Every call site requires a signed-in user. |
+| `payouts-stripe-link` | Stripe API, mints a login-link token | fail-open | Organiser-scoped. |
 
-**The sharpest of the four is `waitlist-join`**, and the reason is written in the
-policy table itself, one entry away. `launch-email` is the only fail-closed policy
-on the launch surface, and its rationale says why:
+**THE RULE THE `waitlist-join` DECISION ESTABLISHES: two policies sending from one
+domain cannot hold opposite postures.**
+
+`launch-email` was already the only fail-closed policy on the launch surface, and
+its rationale says why:
 
 > every other launch action is local computation with no marginal cost, while this
 > one sends real mail from our verified domain. The cost of getting it wrong is not
 > a bill, it is deliverability, and a sending domain burned by an open relay cannot
 > be un-burned by a rate limit added later.
 
-`waitlist-join` sends real mail from the same domain and is fail-open. Its rationale
-says "the confirmation email is best-effort, so abuse cost is bounded", which prices
-the email as a message and not as the sending domain. That is the same reasoning
-`launch-email` rejects. The two policies are inconsistent with each other and one of
-them is wrong; which one is a founder call.
+`waitlist-join` sent real mail from the same domain and was fail-open, on a rationale
+reading "the confirmation email is best-effort, so abuse cost is bounded". That
+prices the email as a MESSAGE. `launch-email` prices the same send as the DOMAIN.
+Both cannot be right, and the one that treats a burned sending domain as
+unrecoverable is the one to keep. Aligned.
 
-`cron-job` and `media-upload` are materially weaker cases: both are gated by
-something other than the limiter (a secret, a session), so a missing Upstash config
-does not open them to an anonymous caller.
+**Why the other three are genuinely different, and this is not inconsistency.** Each
+is bounded by something that is not the limiter: a secret, a session, an ownership
+scope. A missing Upstash config does not open any of them to an anonymous caller,
+which is the only case a fail-closed posture protects against. `waitlist-join` had
+nothing else in front of it.
 
 ### Fail-open policies with no metered spend traced
 
@@ -178,14 +181,29 @@ and prints it beside what the prose claims. Two things it found:
   account moves, while a shared office put every legitimate organiser behind it
   into one bucket of thirty an hour. Account minting is bounded upstream by
   `auth-signup`, which is where it belongs.
-- **`payouts-read` (OPEN, for a founder ruling).** The rationale said "60/min per
-  user"; all three routes key by IP. The prose was corrected rather than the code,
-  and deliberately: moving the bucket to the organiser means moving the limiter
-  after `resolveOrganiserScope` on three routes, which is a behaviour change on a
-  surface that was not under review. It is a read path with no metered spend, so
-  the cost of the IP bucket is a shared office losing dashboard refreshes, not a
-  bill. **The ruling to make: re-key to the organiser, or accept the address
-  bucket.**
+- **`payouts-read` (RE-KEYED 19 August 2026, founder ruling).** The rationale said
+  "60/min per user"; all three routes keyed by IP. Now keyed to
+  `scope.org.organisationId`, which means the limiter had to move BELOW
+  `resolveOrganiserScope` on `/api/payouts/list`, `/summary` and `/refunds`: the
+  bucket cannot be named until the scope names it.
+
+  **Two consequences of the move, recorded because a moved gate is never free.**
+  First, an unauthenticated caller is now refused as unauthenticated rather than
+  consuming a window, and is no longer throttled by this policy. That costs nothing
+  to serve: `resolveOrganisationScope` decides the 401 from the cookie and returns
+  before any database read, and it is the ordering every other authenticated route
+  on the platform already uses. Second, an owner of N businesses now has N windows
+  instead of one. That is correct for the legitimate case, three businesses in
+  three tabs genuinely make three times the reads, and it is bounded by the fact
+  that every window still only ever serves that owner their own data.
+
+  **Proven, not asserted.** `scripts/verify/payouts-read-parity.mjs` captures all
+  fifteen responses (three routes x unauthenticated / default org / explicit org /
+  foreign org / no organisation, producing 200, 401, 403 and 404) before the change
+  and after it, and compares status and body byte for byte. A pass means the move
+  changed nothing a caller can see. It does NOT prove the bucket, which is not
+  visible in a response; that is proven by
+  `tests/unit/rate-limit/payouts-read-wiring.test.ts` and by section 3c below.
 
 The check's own history is the reason it parses rather than greps. Earlier versions
 of it reported `ai-chat`, `ai-chat-daily` and `payouts-read` as mismatches when the

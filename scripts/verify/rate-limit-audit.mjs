@@ -453,6 +453,16 @@ function keyKind(expr) {
   // is how the AI spend path came to be reported as a mismatch when it is correct.
   const hasUser = /user\??\.id|userId|session\.userId/.test(expr)
   const hasIp = /clientIp|x-forwarded-for|x-real-ip|^IP \(/i.test(expr)
+  // ORG IS ITS OWN BUCKET AND HAD TO BECOME ONE. payouts-read was re-keyed to
+  // `scope.org.organisationId` on 19 August 2026 and this function had no category
+  // for it, so it read as OTHER, and OTHER is suppressed from the mismatch rule
+  // below. The platform's newest bucket was therefore the one bucket this audit
+  // could not judge: it printed a row and drew no conclusion. Checked BEFORE user,
+  // because a resolver that carries a userId alongside the organisation must not
+  // read as a per-user bucket: an owner of three businesses has three windows, not
+  // one, and that distinction is the entire reason the re-key needed recording.
+  const hasOrg = /organisationId|organizationId|\borgId\b|scope\.org\./.test(expr)
+  if (hasOrg && !hasIp) return 'ORG'
   if (hasUser && hasIp) return 'USER_OR_IP'
   if (hasUser) return 'USER'
   if (hasIp) return 'IP'
@@ -478,15 +488,27 @@ for (const [name, p] of [...policies].sort()) {
    */
   let codeSays
   const only = k => [...kinds].every(x => k.includes(x))
-  if (only(['USER'])) codeSays = 'USER'
+  if (only(['ORG'])) codeSays = 'ORG'
+  else if (only(['USER'])) codeSays = 'USER'
   else if (only(['USER', 'USER_OR_IP'])) codeSays = 'USER_OR_IP'
   else if (only(['IP'])) codeSays = 'IP'
   else if (only(['OTHER'])) codeSays = 'OTHER'
   else codeSays = `INCONSISTENT(${[...kinds].join('/')})`
   const r = p.rationale ?? ''
+  const claimsOrg = /per organisation\b|keyed by organisationId/i.test(r)
   const claimsUser = /per (?:user|organiser|performer|sender|admin)\b|keyed by user|per user id/i.test(r)
   const claimsIp = /per IP|per address|per browser/i.test(r)
-  const proseSays = claimsUser && claimsIp ? 'USER_OR_IP' : claimsUser ? 'USER' : claimsIp ? 'IP' : 'unstated'
+  /*
+   * THE ORGANISATION CLAIM WINS, AND THIS IS NOT A CONVENIENCE. A rationale that
+   * records its own correction QUOTES the sentence it replaced, and payouts-read's
+   * does exactly that: it contains the words "per user" inside a quotation of the
+   * line that was wrong. Read naively, a policy is punished for documenting its own
+   * history, and the fix everybody reaches for is to delete the history. So a stated
+   * organisation bucket is taken as the claim and the historical quote is left alone.
+   */
+  const proseSays = claimsOrg
+    ? 'ORG'
+    : claimsUser && claimsIp ? 'USER_OR_IP' : claimsUser ? 'USER' : claimsIp ? 'IP' : 'unstated'
   /*
    * A MISMATCH IS ONLY THE ONE THAT CHANGES THE BUCKET, stated as an allowlist of
    * agreements rather than an inequality, because the inequality kept flagging
@@ -496,6 +518,7 @@ for (const [name, p] of [...policies].sort()) {
   const AGREES = new Set([
     'USER|USER', 'IP|IP', 'USER_OR_IP|USER_OR_IP',
     'USER_OR_IP|USER',   // prose says per user, code falls back to IP for guests
+    'ORG|ORG',           // prose says per organisation, code keys by the organisation id
   ])
   const mismatch =
     proseSays !== 'unstated'
