@@ -152,11 +152,32 @@ describe('the refusal message names what is actually outstanding', () => {
 })
 
 /** Minimal thenable Supabase stub, matching the shape the gate uses. */
+/**
+ * The publish gate now reads the SAME five columns as the sale gate
+ * (ORG_SALE_FIELDS_SELECT) and runs the same predicate, so a fixture row must carry
+ * all five. It used to supply three, which made every test here implicitly assert the
+ * old two-check fast path; once the gate started verifying field PRESENCE those rows
+ * became "incomplete" and eight tests failed. That is the incomplete-row class the
+ * gate-fields-complete guard exists to catch, met in a fixture rather than in
+ * production.
+ *
+ * Defaults are the fully sellable baseline so each test overrides only the column it
+ * is actually about, which keeps the intent of each case readable.
+ */
+const SELLABLE_DEFAULTS = {
+  stripe_account_id: 'acct_default',
+  stripe_charges_enabled: true,
+  stripe_payouts_enabled: true,
+  stripe_account_country: 'AU',
+  payout_status: 'active',
+}
+
 function orgClient(row: Record<string, unknown> | null) {
+  const full = row === null ? null : { ...SELLABLE_DEFAULTS, ...row }
   return {
     from: () => ({
       select: () => ({
-        eq: () => ({ maybeSingle: async () => ({ data: row, error: null }) }),
+        eq: () => ({ maybeSingle: async () => ({ data: full, error: null }) }),
       }),
     }),
   } as never

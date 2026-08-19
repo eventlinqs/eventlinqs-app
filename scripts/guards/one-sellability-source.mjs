@@ -202,7 +202,7 @@ const REVIEWED = new Map([
   ],
   [
     'src/lib/events/publish-gate.ts',
-    'KNOWN DIVERGENCE, recorded 18 August 2026, NOT waved through: it admits payout_status <> restricted where the sale gate requires = active, and it ignores payouts_enabled and the country map, so an organiser on hold can publish a paid event that can never sell. Narrower than the sale gate in the unsafe direction. Reported to the founder as an open finding.',
+    'RESOLVED 19 August 2026 (founder ruling). It now reads ORG_SALE_FIELDS_SELECT and runs isOrganiserSellable, the predicate the sale gate itself uses, so it names these fields because it DELEGATES to that gate rather than re-deriving it. The former divergence admitted payout_status <> restricted where the sale gate requires = active, and ignored payouts_enabled and the country map, so an organiser on hold could publish a paid event that could never sell. tests/unit/events/publish-gate-matches-sale-gate.test.ts now enumerates all 96 column combinations and fails if the two verdicts ever disagree again.',
   ],
 ])
 

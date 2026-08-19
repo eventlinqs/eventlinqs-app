@@ -252,8 +252,19 @@ const ROOT = join(HERE, '..', '..')
  * nothing compared, so these tests compare them: the shared gate against
  * ORG_MEMBER_ROLES, and both against the role list inside create_refund_request.
  */
-const MIN_FILES = 209
-const MIN_TESTS = 2517
+/*
+ * 2026-08-19 (later still): raised 209/2517 -> 210/2521. One file, 4 tests.
+ *
+ * tests/unit/events/publish-gate-matches-sale-gate.test.ts. Publishing a paid event
+ * and selling a ticket used to disagree: the publish gate allowed
+ * charges_enabled && payout_status <> restricted, two loose checks where the sale gate
+ * makes five strict ones, so an organiser on hold could publish an event that could
+ * never take a cent. It is a PROPERTY test over all 96 combinations of the five gate
+ * columns rather than a list of cases, so a future edit to either predicate fails here
+ * without anybody having to think of the case.
+ */
+const MIN_FILES = 210
+const MIN_TESTS = 2521
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

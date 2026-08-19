@@ -1,5 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { OutstandingRequirement, ReconcileOutcome } from '@/lib/stripe/reconcile-connect'
+import {
+  ORG_SALE_FIELDS_SELECT,
+  verifyOrgSaleFields,
+  isOrganiserSellable,
+} from '@/lib/payments/sale-status'
 
 /**
  * Result of the publish-gate check.
@@ -161,7 +166,10 @@ export async function checkPublishGate(
 
   const { data: org, error } = await client
     .from('organisations')
-    .select('stripe_charges_enabled, payout_status, stripe_account_id')
+    // The canonical five, from ONE source (ORG_SALE_FIELDS_SELECT). This used to
+    // select three, which is how the fast path below came to disagree with the sale
+    // gate: it could not test what it had not read.
+    .select(ORG_SALE_FIELDS_SELECT)
     .eq('id', input.organisationId)
     .maybeSingle()
 
@@ -173,11 +181,32 @@ export async function checkPublishGate(
     }
   }
 
-  // FAST PATH. The stored state already permits selling, so nothing is refused and
-  // no Stripe call is made. 'on_hold' is intentionally not treated as blocking
-  // here, because it did not block publishing before this change and silently
-  // tightening it would regress a working surface.
-  if (org.stripe_charges_enabled && org.payout_status !== 'restricted') {
+  /*
+   * FAST PATH, now the SAME predicate the sale gate uses. Founder ruling
+   * 2026-08-19: align this with the sale gate.
+   *
+   * THE DIVERGENCE THIS ENDS, and it ran in the unsafe direction. This condition
+   * used to be `stripe_charges_enabled && payout_status !== 'restricted'`, which is
+   * two loose checks where the sale gate makes five strict ones. isOrganiserSellable
+   * additionally requires stripe_account_id, stripe_payouts_enabled === true,
+   * payout_status === 'active' exactly (not merely "not restricted"), and a country
+   * whose currency is supported. So an organiser on hold, or with payouts not yet
+   * enabled, or in an unsupported country, could PUBLISH a paid event that the sale
+   * gate would then refuse to sell. The organiser announces and promotes a night
+   * that cannot take a cent, and the buyer meets a designed "still finishing their
+   * payment setup" message that reads as a platform fault.
+   *
+   * It is not a silent tightening either, which was the stated reason the old
+   * condition stayed loose. Failing this check does not refuse: it falls through to
+   * the SLOW PATH below, which asks Stripe what is actually true and only refuses if
+   * Stripe agrees. So an organisation whose columns have drifted still publishes.
+   *
+   * ONE PREDICATE, not a second copy. verifyOrgSaleFields asserts every one of the
+   * five columns is PRESENT before the predicate runs, so a narrowed select becomes
+   * a loud programming error rather than a verdict about the organiser.
+   */
+  const saleFields = verifyOrgSaleFields(org)
+  if (saleFields.complete && isOrganiserSellable(saleFields.org)) {
     return { ok: true }
   }
 

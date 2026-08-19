@@ -126,7 +126,10 @@ describe('the gate is re-run at publish time, not trusted from scheduling time',
   it('refuses a paid event whose organisation can no longer take payment', async () => {
     const { client, calls } = stub({
       due: [dueEvent({ ticket_tiers: [{ price: 2500 }] })],
-      org: { stripe_charges_enabled: false, payout_status: 'active' },
+      // Five columns, because the publish gate now runs the sale gate's own
+      // predicate and verifies field PRESENCE first. Three columns made this an
+      // incomplete row rather than an unsellable organiser.
+      org: { stripe_account_id: 'acct_x', stripe_charges_enabled: false, stripe_payouts_enabled: false, stripe_account_country: 'AU', payout_status: 'active' },
     })
     const summary = await publishScheduledEvents(client, NOW)
     expect(summary.published).toBe(0)
@@ -142,7 +145,7 @@ describe('the gate is re-run at publish time, not trusted from scheduling time',
   it('refuses a paid event whose payouts became restricted after scheduling', async () => {
     const { client } = stub({
       due: [dueEvent({ ticket_tiers: [{ price: 2500 }] })],
-      org: { stripe_charges_enabled: true, payout_status: 'restricted' },
+      org: { stripe_account_id: 'acct_x', stripe_charges_enabled: true, stripe_payouts_enabled: true, stripe_account_country: 'AU', payout_status: 'restricted' },
     })
     const summary = await publishScheduledEvents(client, NOW)
     expect(summary.outcomes[0]).toMatchObject({
@@ -163,7 +166,7 @@ describe('the gate is re-run at publish time, not trusted from scheduling time',
   it('publishes a paid event when the organisation is still in good standing', async () => {
     const { client } = stub({
       due: [dueEvent({ ticket_tiers: [{ price: 2500 }] })],
-      org: { stripe_charges_enabled: true, payout_status: 'active' },
+      org: { stripe_account_id: 'acct_x', stripe_charges_enabled: true, stripe_payouts_enabled: true, stripe_account_country: 'AU', payout_status: 'active' },
     })
     const summary = await publishScheduledEvents(client, NOW)
     expect(summary.published).toBe(1)
