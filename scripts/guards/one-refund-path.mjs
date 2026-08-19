@@ -98,20 +98,15 @@ const REVIEWED_STRIPE_CALLERS = [
       + 'an explicit idempotencyKey (`unfulfilled-settle:{orderId}`), so a retry cannot double '
       + 'refund, and the Stripe refund carries metadata identifying the order.',
   },
-  {
-    file: 'src/app/api/cron/squad-expire/route.ts',
-    why:
-      'Refunds paid members of a squad that timed out before filling. It is rescued rather than '
-      + 'correct: it creates no refunds row, so reconcile_refund cannot run for it, and the tickets '
-      + 'are only voided because the webhook adopts the orphan refund (adoptOrphanRefund) and '
-      + 'reconciles it afterwards. '
-      + 'REPORTED, NOT FIXED, 20 August 2026: this call passes NO idempotencyKey, and the cron runs '
-      + 'every five minutes against members selected on payments.status = completed, which it sets '
-      + 'to refunded only AFTER the Stripe call returns. A failure between those two steps leaves '
-      + 'the member selectable again on the next run and refundable a second time. Routing it '
-      + 'through requestTicketRefund would fix both at once, and is a change beyond the scope this '
-      + 'guard was written under.',
-  },
+  /*
+   * src/app/api/cron/squad-expire/route.ts WAS HERE AND IS NOT ANY MORE.
+   *
+   * It called stripe.refunds.create directly, with no idempotency key. It now
+   * goes through requestTicketRefund like every other trigger, so it needs no
+   * exemption. The entry was removed on 20 August 2026 because this guard's own
+   * anti-rot check refused to let it stay: a reviewed bypass that no longer
+   * bypasses anything is exactly how an allowlist becomes a list nobody reads.
+   */
 ]
 const reviewedFiles = new Set(REVIEWED_STRIPE_CALLERS.map((r) => r.file))
 

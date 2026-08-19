@@ -176,7 +176,7 @@ export async function sendConfirmationEmail(
 
   const { data: ticketRows } = await db
     .from('tickets')
-    .select('ticket_code, secret, holder_name, status, seat:seats(row_label, seat_number, note, section:seat_map_sections(name))')
+    .select('ticket_code, secret, holder_name, status, seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))')
     .eq('order_id', order_id)
     .order('created_at', { ascending: true })
 

@@ -157,7 +157,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   // have been generated yet (a genuine pending state while the webhook runs).
   const { data: ticketRows } = await adminClient
     .from('tickets')
-    .select('ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name), seat:seats(row_label, seat_number, note, section:seat_map_sections(name))')
+    .select('ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name), seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))')
     .eq('order_id', fullOrder.id)
     .order('created_at', { ascending: true })
 
