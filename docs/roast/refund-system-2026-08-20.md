@@ -168,3 +168,37 @@ Four rows moved after the first pass.
 **Regression sweep.** No design element changed that was not asked for. Two clock reads were pinned to the platform zone, which the existing guard required.
 
 **Founder-cost test.** One item sends work back: migrations 20260820000001, 20260820000002 and 20260820000003 are applied to TEST only and need `supabase db push --linked`. That is the constitution's rule, not something I could do in code.
+
+---
+
+# Closure pass, 20 August 2026
+
+Four items the founder asked for after the first report. All driven, none read.
+
+| # | Was | Now | Evidence |
+|---|---|---|---|
+| 23 | PARTIAL | **MET** | Each wallet row links to its order. Two links render; the live ticket reads "Manage this order or request a refund", the refunded one "View this order"; the href resolves 200 and the page carries the Refunds section. `/account/tickets` still redirects to the one wallet |
+| 40 | NOT MET | **MET** | `/tickets` loaded as a real signed-in buyer. Refunded ticket renders `EL-WNEY-VPS4 ... Refunded`, live ticket `EL-WW8E-FETY ... Valid`, and transfer is offered only on the live one |
+| 41 | NOT MET | **MET** | Attendee list loaded as the organiser, HTTP 200. One row for the order, not two |
+| 50 | PARTIAL | **MET** for these surfaces | Both pages loaded over HTTP behind a real login; the cron driven over HTTP twice with a real Stripe charge |
+
+## The defect I introduced, and what caught it
+
+`released_seat_id` gave `tickets` a second foreign key to `seats`, which made every
+`seat:seats(...)` embed ambiguous. PostgREST fails the whole query, so `/tickets`,
+`/t/[code]`, the order confirmation page and the confirmation email all broke.
+Typecheck, 2579 tests, 39 guards and the production build were all green
+throughout. Loading the wallet as a real buyer is what found it. Fixed on all four,
+and `no-ambiguous-embed` now blocks the class.
+
+## The defect I reported that does not exist
+
+The squad-expire double refund. Driven: one refund of 28000c against a 28000c
+charge, because `expire_stale_squads()` returns a squad exactly once and Stripe
+refuses to over-refund. The allowlist entry is removed. The drill did find a real
+defect underneath, a crash leaving no refund row and a valid ticket on a refunded
+order, and squad-expire now goes through `requestTicketRefund`.
+
+## Still open, deliberately, at the founder's instruction
+
+Postponed-event ladder, and eight NOT CHECKED parity rows. Not started.
