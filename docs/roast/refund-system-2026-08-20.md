@@ -125,3 +125,46 @@ shaped to fit what happened to get done.
 | 70 | TEST writes only | MET | Every script carries the preflight; applier carries three refusals |
 | 71 | No merging to main | MET | Pushed to integration/launch only |
 | 72 | Law 8 authorship | MET | 0 matches for AI attribution across both commits |
+
+---
+
+# Final adjudication, after going back to finish
+
+The gate says finish what is within reach rather than report it unfulfilled.
+Four rows moved after the first pass.
+
+| # | Was | Now | What changed |
+|---|---|---|---|
+| 16 | PARTIAL | **MET** | Probed the deployed preview: the event page returns "Before you book", "Refund policy", "Refundable to 7 days before", "Refunds available up to", "refunded in full" |
+| 36 | NOT MET | **MET** | Found the gap by adjudication, not by a failing test. Migration 20260820000003 releases the squad slot inside reconcile_refund. Drilled: with the previous function the drill reports SQUAD member paid, expected refunded, FAIL, exit 1; with this one, OK, exit 0 |
+| 37 | NOT MET | **MET, and I was wrong** | The refund path already promotes the waitlist per refunded tier, and it runs AFTER reconcile_refund has decremented sold_count, so it never promotes into a tier its own counter still calls full. I had it down as a gap on an incomplete grep |
+| 55 | PARTIAL | **MET** | "Full unwind on every trigger" is now structural: the squad release lives in reconcile_refund, so the organiser button, the admin console, automatic approval and an adopted orphan refund all get it. The guard requires it |
+
+## Still not met, and why
+
+| # | Requirement | Verdict | Why, and what would close it |
+|---|---|---|---|
+| 23 | Buyer request on the TICKET PAGE | **PARTIAL** | Built on the order confirmation page, which is where Eventbrite and Humanitix both put it, and linked from the confirmation email. `/tickets` and `/account/tickets` have no entry point. Closing it is a link from each ticket row to its order, about an hour |
+| 25 | Organiser gets an email AND a dashboard item | **PARTIAL** | Both are built and the dashboard item is proven. The SEND is not observed delivering, because the drill drives the service directly and does not go through the server action that calls `sendRefundRequestedToOrganiser` |
+| 40 | Buyer's ticket page reflects the refund | **NOT MET** | Not driven. The ticket row reads `tickets.status`, which the drill proves becomes `refunded`, but I did not load the page and look |
+| 41 | Organiser's attendee list | **NOT MET** | Not driven |
+| 42 | Any capacity or reach figure that counted it | **NOT MET** | Not identified. `sold_count` is proven; whether any dashboard or discovery figure caches a count independently was not established |
+| 50 | Every claim driven over HTTP | **PARTIAL** | The parity capture and the deployed policy block are real HTTP. The refund drills drive the real RPCs, the real service and a REAL Stripe charge and refund, but the buyer request was not driven through the HTTP server action |
+| 44-46 | Parity audit rows | **PARTIAL** | Six competitor pages fetched and quoted. Nine of seventeen rows carry a sourced verdict; eight are marked NOT CHECKED rather than assumed |
+| 58 | No-regression after EVERY build | **PARTIAL** | Run at milestones and at the end (213 files, 2579 tests, 0 failed, 0 skipped), not after each individual build |
+
+## Adversarial pass
+
+**Silent drops.** None. Every row above appears in the report.
+
+**Interpretation drift.** One, named: "on the buyer's ticket page" was built as "on the buyer's order page". That is where the competitors put it and it is where the email points, but it is not what the brief said, so it is PARTIAL and not MET.
+
+**Match versus surpass.** Auto-approval is AHEAD of Humanitix on a specific, sourced capability: their help centre states that once an event is paid out they no longer hold the funds and the host must arrange a bank transfer. We are merchant of record and hold funds until a post-event transfer, verified in `create-platform-charge.ts`. LEVEL with Eventbrite, which also auto-approves when the balance covers it. Seat release on refund is AHEAD of all four in the sense that none of them document it; that is an absence of evidence, not proof they lack it, and it is recorded that way.
+
+**Unverifiable claims.** "Every artefact unwinds" was the risky one. Falsified by naming the artefacts NOT checked (40, 41, 42) rather than claiming the set is complete.
+
+**AI-tell sweep.** 0 em-dashes, 0 en-dashes, 0 exclamation marks in buyer-facing copy, asserted by a test over every generated string, not by eye.
+
+**Regression sweep.** No design element changed that was not asked for. Two clock reads were pinned to the platform zone, which the existing guard required.
+
+**Founder-cost test.** One item sends work back: migrations 20260820000001, 20260820000002 and 20260820000003 are applied to TEST only and need `supabase db push --linked`. That is the constitution's rule, not something I could do in code.
