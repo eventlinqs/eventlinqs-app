@@ -171,12 +171,26 @@ const DRILLS = [
   // are what caught that, and they are why each check now has one.
   // -------------------------------------------------------------------------
   {
-    name: 'globSync imported from node:fs (the 2026-08-05 CI failure)',
+    /*
+     * REMOVED, not future. This drill used to import `globSync` from node:fs,
+     * chosen when .nvmrc pinned Node 20 because globSync landed in 22. The
+     * contract moved to 24 on 2026-08-13, Node 24 exports globSync, the guard
+     * correctly stopped objecting, and the drill quietly stopped testing
+     * anything: it reported "guard PASSED on a violating tree" because the tree
+     * was no longer violating.
+     *
+     * The lesson is in the choice of API, not the wiring. A drill built on a
+     * FUTURE addition rots the moment the contract catches up. A drill built on
+     * a REMOVED export can never rot, because a removal is permanent. fs.F_OK
+     * was removed in Node 24 (it lives on fs.constants now) and is absent from
+     * the generated surface record, verified rather than assumed.
+     */
+    name: 'a named import Node 24 REMOVED (fs.F_OK, gone since 24)',
     guard: `${GUARDS}/node-version-contract.mjs`,
     file: 'scripts/guards/no-supabase-smtp.mjs',
     find: "import { join } from 'node:path'",
-    replace: "import { globSync } from 'node:fs'\nimport { join } from 'node:path'",
-    expect: "imports { globSync } from 'node:fs'",
+    replace: "import { F_OK } from 'node:fs'\nimport { join } from 'node:path'",
+    expect: "imports { F_OK } from 'node:fs'",
   },
   {
     name: 'a built-in module that does not exist in Node 20 (node:sqlite)',
@@ -187,27 +201,46 @@ const DRILLS = [
     expect: "imports 'node:sqlite', which does not exist",
   },
   {
-    name: 'a global static added after Node 20 (Promise.withResolvers)',
+    // Same reasoning as the F_OK drill: a REMOVED export cannot come back, so this
+    // cannot go stale when the contract moves again. util.isDate went with the
+    // whole util.is* family in Node 24. Note util.isArray is STILL exported, so the
+    // family was not removed wholesale and picking the wrong member would have
+    // produced another silently-passing drill.
+    name: 'a named import from the util.is* family Node 24 removed (util.isDate)',
     guard: `${GUARDS}/node-version-contract.mjs`,
     file: 'scripts/guards/no-supabase-smtp.mjs',
-    find: 'const failures = []',
-    replace: 'const failures = []\nconst deferred = Promise.withResolvers()',
-    expect: 'uses Promise.withResolvers',
+    find: "import { join } from 'node:path'",
+    replace: "import { isDate } from 'node:util'\nimport { join } from 'node:path'",
+    expect: "imports { isDate } from 'node:util'",
   },
+  // NO PROTOTYPE-METHOD DRILL, deliberately, and this comment is the record of why.
+  // node-version-contract's POST_CONTRACT_PROTOTYPE_METHODS list is EMPTY on the
+  // Node 24 contract (founder ruling 2026-08-13): every entry it used to hold was a
+  // Node 22 addition that Node 24 actually ships, so keeping them would have failed
+  // builds over APIs the runtime has. An empty list is a working check with nothing
+  // to report, so no drill can make it fire without first adding a fake entry to the
+  // guard, which would fail the build for everyone. The check is therefore
+  // UNEXERCISED until Node 26 adds a prototype method and an entry goes in; the drill
+  // belongs here on that day. Removing this drill rather than leaving it red is the
+  // honest option: it was reporting a guard defect that does not exist.
   {
-    name: 'a prototype method added after Node 20 (Set.isSubsetOf)',
-    guard: `${GUARDS}/node-version-contract.mjs`,
-    file: 'scripts/guards/no-supabase-smtp.mjs',
-    find: 'const failures = []',
-    replace: 'const failures = []\nconst nested = new Set().isSubsetOf(new Set())',
-    expect: 'uses .isSubsetOf(',
-  },
-  {
+    /*
+     * The anchor was `node-version: 20`, written when .nvmrc pinned 20. The contract
+     * moved to 24 on 2026-08-13 and every workflow pin moved with it, so the anchor
+     * matched nothing and the harness reported "anchor text not found. The drill is
+     * stale" rather than a guard defect. That is the harness distinguishing a broken
+     * DRILL from a broken GUARD, which is worth more than either report alone.
+     *
+     * Anchored on 24 now. If the contract moves again this drill goes stale in the
+     * same visible way, which is acceptable: unlike the API drills above there is no
+     * version-independent way to express "one lower than the contract" in a static
+     * find/replace, and a loudly stale drill is not a silently passing one.
+     */
     name: 'a workflow pinned BELOW the .nvmrc contract',
     guard: `${GUARDS}/node-version-contract.mjs`,
     file: '.github/workflows/lighthouse.yml',
-    find: 'node-version: 20',
-    replace: 'node-version: 18',
+    find: 'node-version: 24',
+    replace: 'node-version: 22',
     expect: 'below the .nvmrc contract',
   },
 
