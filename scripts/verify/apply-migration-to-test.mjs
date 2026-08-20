@@ -97,13 +97,73 @@ function parseConn(s) {
   }
 }
 
+/*
+ * RECORD THE VERSION IN THE LEDGER, ADDED 2026-08-20.
+ *
+ * WHY: this script applied a migration and told nobody. `supabase db push` decides
+ * what to run by diffing the tree against supabase_migrations.schema_migrations, so
+ * a migration applied here was PRESENT IN THE SCHEMA and ABSENT FROM THE LEDGER at
+ * the same time. Two failures follow, and this project has already lost a night to
+ * the second one:
+ *
+ *   1. A later `db push` re-applies it. Most migrations here are not idempotent
+ *      (CREATE POLICY, REVOKE/GRANT, ALTER TABLE ADD COLUMN), so it fails, and the
+ *      failure reads like a new defect rather than a re-application.
+ *   2. Any "what is pending on TEST" answer over-reports. A session asking that
+ *      question gets a wrong answer from an authoritative-looking source.
+ *
+ * On 20 August 2026 eleven migrations were applied this way and none was recorded,
+ * so TEST reported 11 pending against a schema that already had all 11.
+ *
+ * `statements` is left NULL, which the ledger already permits and already contains
+ * (20260815000001 carries a NULL). The version and name are what `db push` reads.
+ * ON CONFLICT DO NOTHING so re-running this script is safe.
+ */
+const VERSION = FILE.replace(/^.*[\\/]/, '').match(/^(\d+)/)?.[1]
+const NAME = FILE.replace(/^.*[\\/]/, '').replace(/^\d+_/, '').replace(/\.sql$/, '')
+if (!VERSION) {
+  console.error(`  REFUSING: cannot read a version prefix from ${FILE}.`)
+  console.error('  The ledger row is what stops db push re-applying this later, so a file')
+  console.error('  that cannot be recorded must not be applied by this script.')
+  process.exit(2)
+}
+
+const RECORD_ONLY = argv.includes('--record-only')
+
 const cfg = parseConn(conn.trim())
 console.log(`  host ${cfg.host}:${cfg.port} db ${cfg.database} user ${cfg.user}`)
+console.log(`  version ${VERSION}  name ${NAME}${RECORD_ONLY ? '  [RECORD-ONLY: ledger row only, SQL not run]' : ''}`)
 const client = new pg.Client({ ...cfg, ssl: { rejectUnauthorized: false } })
 await client.connect()
 try {
-  await client.query(sql)
-  console.log('\n  APPLIED to TEST.')
+  if (!RECORD_ONLY) {
+    await client.query(sql)
+    console.log('\n  APPLIED to TEST.')
+  }
+  const before = await client.query(
+    'select count(*)::int n from supabase_migrations.schema_migrations where version = $1',
+    [VERSION],
+  )
+  await client.query(
+    `insert into supabase_migrations.schema_migrations (version, name, statements)
+     values ($1, $2, NULL) on conflict (version) do nothing`,
+    [VERSION, NAME],
+  )
+  const after = await client.query(
+    'select count(*)::int n from supabase_migrations.schema_migrations where version = $1',
+    [VERSION],
+  )
+  if (after.rows[0].n !== 1) {
+    console.error(`\n  LEDGER WRITE FAILED: version ${VERSION} is present ${after.rows[0].n} time(s), expected 1.`)
+    console.error('  Without the ledger row, `supabase db push` will try to re-apply this migration.')
+    process.exitCode = 1
+  } else {
+    console.log(
+      before.rows[0].n === 1
+        ? `  LEDGER: ${VERSION} was already recorded, left as is.`
+        : `  LEDGER: recorded ${VERSION} (${NAME}), so db push will not re-apply it.`,
+    )
+  }
 } catch (e) {
   console.error(`\n  FAILED: ${e.message}`)
   if (e.position) console.error(`  at character ${e.position}`)
