@@ -59,6 +59,37 @@ const committedText = committedRaw.slice(0, committedRaw.indexOf(MARKER))
 
 /* -------------------------------------------------------------------- live */
 
+/*
+ * SAY WHICH GENERATOR PRODUCED THE LIVE SIDE.
+ *
+ * This guard is a diff, so both sides have to come from the same generator or it
+ * compares the schema AND the generator's output style at once. `npx --yes
+ * supabase` resolves to whatever is latest on npm at run time, which is right by
+ * Law 9 but is not pinned, so CI's version drifts away from whatever the
+ * committed types were generated with, silently.
+ *
+ * That is not hypothetical. On 21 August 2026 CI failed with five unexplained
+ * differences, all of them `graphql_public.Functions.graphql.Args.*`. The cause
+ * was not schema: the committed types had been regenerated with CLI 2.102.0,
+ * which does not emit the graphql_public block at all, while CI ran a newer CLI
+ * that does. Worse, the local reproduction PASSED, because both of its sides came
+ * from 2.102.0 and the missing block cancelled out. A version that is invisible
+ * in the log cannot be suspected.
+ *
+ * Printing it costs one subprocess and turns that from an invisible mismatch into
+ * the first thing a reader sees. Regenerate the committed types with the version
+ * named here, not with whatever happens to be installed locally.
+ */
+let genVersion = 'unknown'
+try {
+  genVersion = execFileSync('npx', ['--yes', 'supabase', '--version'], {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], shell: process.platform === 'win32',
+  }).trim()
+} catch {
+  // Non-fatal: the generation call below reports its own failure in full.
+}
+say(`generating live types with supabase CLI ${genVersion} (the committed types must come from the same version)`)
+
 let liveText
 try {
   liveText = execFileSync(
