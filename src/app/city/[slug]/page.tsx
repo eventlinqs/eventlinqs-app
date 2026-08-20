@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
-import { formatEventDateShort } from '@/lib/dates/event-time'
+import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getCity,
@@ -20,6 +20,11 @@ import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
 import { getSiteUrl } from '@/lib/site-url'
+import {
+  listingWindowOrPredicate,
+  startOfLocalDayUtcOffset,
+  weekendWindowUtc,
+} from '@/lib/events/listing-window'
 
 export const revalidate = 300
 
@@ -47,22 +52,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/**
+ * The rail windows for this page, every boundary in the PLATFORM zone.
+ *
+ * `setHours` was the server's zone, which on Vercel is UTC, so an Australian
+ * Saturday evening could fall outside the window called This weekend. That is
+ * exclusion audit item 3, and it survived here after being fixed in the
+ * /events presets. `todayStartIso` is the other half: a rail that includes
+ * today starts at the start of today, never at `now`, or an event that began
+ * this morning drops out of This week while it is still on (audit item 1).
+ */
 function dayWindow(now: Date) {
-  const sevenDays = new Date(now); sevenDays.setDate(now.getDate() + 7)
-  const thirtyDays = new Date(now); thirtyDays.setDate(now.getDate() + 30)
-  // weekend: Sat 00:00 -> Sun 23:59 of the upcoming weekend
-  const day = now.getDay()
-  const weekendStart = new Date(now)
-  if (day === 6) weekendStart.setHours(0, 0, 0, 0)
-  else if (day === 0) { weekendStart.setDate(now.getDate() - 1); weekendStart.setHours(0, 0, 0, 0) }
-  else { weekendStart.setDate(now.getDate() + (6 - day)); weekendStart.setHours(0, 0, 0, 0) }
-  const weekendEnd = new Date(weekendStart); weekendEnd.setDate(weekendStart.getDate() + 1); weekendEnd.setHours(23, 59, 59, 999)
+  const zone = PLATFORM_TIME_ZONE
+  const dayStart = (n: number) => startOfLocalDayUtcOffset(now, zone, n)
+  const dayEnd = (n: number) => new Date(dayStart(n + 1).getTime() - 1)
+  const weekend = weekendWindowUtc(now, zone)
   return {
     nowIso: now.toISOString(),
-    sevenDaysIso: sevenDays.toISOString(),
-    thirtyDaysIso: thirtyDays.toISOString(),
-    weekendStartIso: weekendStart.toISOString(),
-    weekendEndIso: weekendEnd.toISOString(),
+    todayStartIso: dayStart(0).toISOString(),
+    sevenDaysIso: dayEnd(7).toISOString(),
+    thirtyDaysIso: dayEnd(30).toISOString(),
+    weekendStartIso: weekend.from.toISOString(),
+    weekendEndIso: weekend.to.toISOString(),
   }
 }
 
@@ -87,7 +98,7 @@ export default async function CityPage({ params }: Props) {
         .select(baseSelect)
         .eq('status', 'published')
         .eq('visibility', 'public')
-        .gte('start_date', w.nowIso)
+        .or(listingWindowOrPredicate(new Date(w.nowIso)))
         .ilike('venue_city', `%${city.name}%`)
         .order('start_date', { ascending: true })
         .limit(120),
@@ -111,7 +122,9 @@ export default async function CityPage({ params }: Props) {
     category: r.category, ticket_tiers: r.ticket_tiers ?? [],
   }))
 
-  const thisWeekEvents = allEvents.filter(e => e.start_date >= w.nowIso && e.start_date <= w.sevenDaysIso)
+  // From the START OF TODAY, not from `now`: an event that started this
+  // morning is still on and still belongs in This week (exclusion audit item 1).
+  const thisWeekEvents = allEvents.filter(e => e.start_date >= w.todayStartIso && e.start_date <= w.sevenDaysIso)
   const thisWeekendEvents = allEvents.filter(e => e.start_date >= w.weekendStartIso && e.start_date <= w.weekendEndIso)
   const popularEvents = allEvents.slice(0, 12)
 

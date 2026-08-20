@@ -6,10 +6,11 @@ import { actionRateLimit } from '@/lib/rate-limit/action'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
 import {
-  TICKETS_NOT_ON_SALE_RESERVATION_ERROR,
-  TICKETS_SOLD_ELSEWHERE_RESERVATION_ERROR,
+  ORG_SALE_FIELDS_SELECT,
   isExternallyTicketed,
-  ticketsOnSale,
+  saleRefusalMessage,
+  ticketsOnSaleDetailed,
+  type SaleRefusalReason,
 } from '@/lib/payments/sale-status'
 import {
   CreateReservationSchema,
@@ -27,6 +28,17 @@ export interface CreateReservationResult {
   reservation_id?: string
   expires_at?: string
   error?: string
+  /**
+   * WHY the sale was refused, when it was refused for a sellability reason.
+   *
+   * The client latches its UI on THIS, never on the prose in `error`. A refusal
+   * that arrives with a reason means the checkout control must be taken away,
+   * not merely accompanied by a sentence: an enabled button beside a refusal is
+   * the dead-end this field exists to make impossible. Absent for ordinary
+   * transient failures (rate limit, validation, inventory), which are retryable
+   * and correctly leave the button live.
+   */
+  reason?: SaleRefusalReason
 }
 
 export async function createReservation(
@@ -95,36 +107,81 @@ export async function createReservation(
      * The event row is read once here and reused by the paid branch, so this
      * costs no extra query.
      */
-    const { data: ev } = await admin
+    /*
+     * THE ERROR IS READ, NOT DISCARDED, AND THAT IS THE WHOLE FIX.
+     *
+     * THE OUTAGE THIS CLOSES, 18 August 2026. This read used to destructure only
+     * `{ data: ev }`. `external_ticket_url` is named here by design, but the
+     * column did not exist on production because 20260815000001 had not been
+     * applied, so PostgREST failed the ENTIRE request. The error went into a
+     * variable nobody declared, `ev` arrived null, `ev?.organisation_id` was
+     * undefined, the organisation was therefore never read at all, and a null
+     * organisation was correctly refused by the gate.
+     *
+     * The result was that EVERY PAID EVENT ON THE PLATFORM was refused, with a
+     * message about a sale window, on a platform that has no sale-window column
+     * on an event. The organiser's Stripe posture was perfect on all five fields
+     * and never once consulted.
+     *
+     * A FAILED READ AND A REFUSED SALE ARE DIFFERENT THINGS. Both stop the sale,
+     * and both must: fail closed. But only one of them is the organiser's to fix,
+     * so they are now reported as different causes rather than one sentence that
+     * guesses. Never collapse these two again.
+     */
+    const { data: ev, error: evError } = await admin
       .from('events')
       .select('organisation_id, external_ticket_url')
       .eq('id', event_id)
       .single()
 
+    if (evError || !ev) {
+      console.error(
+        '[reservations] sale-gate event read FAILED, refusing without a cause the organiser can act on:',
+        evError?.message ?? 'no row returned',
+      )
+      return { error: saleRefusalMessage('sale_lookup_failed'), reason: 'sale_lookup_failed' }
+    }
+
     if (isExternallyTicketed(ev)) {
-      return { error: TICKETS_SOLD_ELSEWHERE_RESERVATION_ERROR }
+      return {
+        error: saleRefusalMessage('externally_ticketed'),
+        reason: 'externally_ticketed',
+      }
     }
 
     if (isPaid) {
-      const { data: org } = ev?.organisation_id
-        ? await admin
-            .from('organisations')
-            // ALL FIVE fields the sale gate reads. It was two, and the gate then
-            // silently disagreed with the charge precondition, which also
-            // requires payouts_enabled, an active payout_status and a country in
-            // the Connect currency map. Selecting fewer fields than the gate
-            // reads makes the missing ones undefined, which now refuses the sale
-            // rather than passing it: fail closed, but only if the columns are
-            // actually here. See isOrganiserSellable.
-            .select(
-              'stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_account_country, payout_status',
-            )
-            .eq('id', ev.organisation_id)
-            .single()
-        : { data: null }
+      // ALL FIVE fields the sale gate reads. It was two, and the gate then
+      // silently disagreed with the charge precondition, which also requires
+      // payouts_enabled, an active payout_status and a country in the Connect
+      // currency map. Selecting fewer fields than the gate reads makes the
+      // missing ones undefined, which refuses the sale rather than passing it:
+      // fail closed, but only if the columns are actually here.
+      // ORG_SALE_FIELDS_SELECT, not a hand-typed list. Two hand-typed lists is
+      // how one of them ends up short, and a short list still returns a row, so
+      // the failure is silent. See verifyOrgSaleFields.
+      const { data: org, error: orgError } = await admin
+        .from('organisations')
+        .select(ORG_SALE_FIELDS_SELECT)
+        .eq('id', ev.organisation_id)
+        .single()
 
-      if (!ticketsOnSale({ isPaidEvent: true, org })) {
-        return { error: TICKETS_NOT_ON_SALE_RESERVATION_ERROR }
+      // Same distinction, one level down. A permissions change or a renamed
+      // column here must not be reported to an organiser as a payment-setup
+      // problem they cannot find.
+      const decision = ticketsOnSaleDetailed({
+        isPaidEvent: true,
+        org,
+        lookupFailed: Boolean(orgError),
+      })
+
+      if (!decision.onSale) {
+        if (orgError) {
+          console.error(
+            '[reservations] sale-gate organisation read FAILED:',
+            orgError.message,
+          )
+        }
+        return { error: saleRefusalMessage(decision.reason), reason: decision.reason }
       }
     }
   }

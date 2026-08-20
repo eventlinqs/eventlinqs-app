@@ -6,6 +6,12 @@ import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import type { CommunitySlug } from '@/lib/communities/data'
 import { buildSearchOrGroups, tokenise, sanitiseToken } from './search-query'
+import {
+  listingWindowOrPredicate,
+  startOfLocalDayUtcOffset,
+  weekendWindowUtc,
+} from './listing-window'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { EVENT_TYPE_FILTER, buildEventTypeTagOr } from './event-type-filter'
 import { resolveSearchTab } from './search-tab'
 import {
@@ -453,6 +459,54 @@ function sortsInMemory(sort: string | undefined): boolean {
   return Boolean(sort && IN_MEMORY_SORTS.has(sort))
 }
 
+/**
+ * Is a price filter in play? Tier prices live in a joined table, so the filter
+ * cannot be expressed as a PostgREST op on `events` and runs in JavaScript
+ * after the rows come back.
+ */
+function hasPriceFilter(filters: { price_min?: number; price_max?: number }): boolean {
+  return typeof filters.price_min === 'number' || typeof filters.price_max === 'number'
+}
+
+/**
+ * THE DEFECT THIS CLOSES (exclusion audit item 10, traced to a conclusion
+ * 16 August 2026).
+ *
+ * The price filter ran in JavaScript on rows the database had ALREADY
+ * PAGINATED. With the default sort that meant one page of 24 rows was fetched,
+ * the filter stripped whatever did not match, and:
+ *
+ *   - every matching event from row 25 onwards was never pulled forward, so a
+ *     legitimate published event simply did not exist for that search;
+ *   - `total` was then set to the surviving length of THAT PAGE, so the count
+ *     said 5 where the true answer might be 60, and `totalPages` said 1, which
+ *     removed the only control that could have reached the rest;
+ *   - a hand-typed `?page=2` offset into the UNFILTERED order, so the pages
+ *     neither tiled nor covered the match set.
+ *
+ * It is the same shape as the start_date bug: a filter applied after the
+ * database has chosen the page. The in-memory SORTS already solved it, by
+ * fetching a bounded superset and slicing the page out afterwards. A price
+ * filter now takes the same path, so the two cases share one rule instead of
+ * one of them being right by accident.
+ *
+ * The bound is MAX_SORT_ROWS, and it is the same contract the sorts carry:
+ * beyond it the answer is correct for the rows considered.
+ */
+export function paginatesInMemory(filters: {
+  sort?: string
+  price_min?: number
+  price_max?: number
+}): boolean {
+  return sortsInMemory(filters.sort) || hasPriceFilter(filters)
+}
+
+/** Slice the requested page out of a whole, already-ordered result set. */
+export function slicePage<T>(rows: T[], page: number, pageSize: number): T[] {
+  const start = (page - 1) * pageSize
+  return rows.slice(start, start + pageSize)
+}
+
 /** Total tickets sold across an event's tiers. */
 function soldTotal(e: PublicEventRow): number {
   return e.ticket_tiers.reduce((sum, t) => sum + (t.sold_count ?? 0), 0)
@@ -537,6 +591,33 @@ export function hasRealCover(url: string | null | undefined): url is string {
   return true
 }
 
+/**
+ * RANKING, NOT FILTERING. Founder ruling, 16 August 2026: published means
+ * visible, and no published event is ever hidden from a discovery surface.
+ *
+ * This comparator replaced `.filter(e => hasRealCover(e.cover_image_url))` at
+ * seven call sites in this file. That filter removed rows AFTER the database had
+ * already chosen the page, so a paginated surface lost events silently and the
+ * page came back short.
+ *
+ * It was also, on production, incapable of doing anything: the DB constraint
+ * `events_published_real_cover` (validated by 20260509000010) already guarantees
+ * that a `published` + `public` row carries a real cover, and every query here
+ * filters on exactly those two columns first. So the filter could only ever be a
+ * no-op on rows the query returned, while looking load-bearing. It was blamed
+ * for hiding the founder's 16 August event; the real cause was the date window.
+ *
+ * A real organiser-supplied cover now RANKS ABOVE one without. Nothing is
+ * removed. `Array.prototype.sort` is a stable sort by specification (ES2019), so
+ * the relative order the query chose survives within each group.
+ */
+export function realCoverFirst(
+  a: { cover_image_url: string | null },
+  b: { cover_image_url: string | null },
+): number {
+  return Number(hasRealCover(b.cover_image_url)) - Number(hasRealCover(a.cover_image_url))
+}
+
 function toPublicEventRow(raw: RawRow): PublicEventRow {
   const row = {
     id: raw.id,
@@ -563,54 +644,75 @@ function toPublicEventRow(raw: RawRow): PublicEventRow {
   return withBadge(row)
 }
 
-function presetWindow(preset: string | undefined, now: Date): { from: string; to?: string } | null {
+/**
+ * The date presets, as [from, to] windows.
+ *
+ * EXPORTED FOR TEST. Every branch below was a copy of exclusion audit item 1 or
+ * item 3 wearing a different name, and none of them was reachable from a unit
+ * test while this was module-private. tests/unit/events/preset-window.test.ts
+ * now pins each one.
+ *
+ * TWO RULES, applied to every branch:
+ *
+ *   1. A window that includes today STARTS AT THE START OF TODAY, never at
+ *      `now`. Starting at `now` is exclusion audit item 1: it hides an event
+ *      that began this morning and is on right now, which is the one day it
+ *      matters most. That defect was fixed for `today` on 16 August 2026 and
+ *      left in place on `7d` and `month`, where it did exactly the same thing.
+ *   2. Every boundary is computed in the PLATFORM zone, never with setHours,
+ *      which reads the server zone (UTC on Vercel). That is exclusion audit
+ *      item 3, and it was likewise fixed for `today` alone: `tomorrow` and
+ *      `weekend` still ran on UTC days, so an Australian Saturday evening event
+ *      could fall outside the window called Weekend.
+ */
+export function presetWindow(
+  preset: string | undefined,
+  now: Date,
+): { from: string; to?: string } | null {
   if (!preset || preset === 'all' || preset === 'free') return null
 
-  const nowIso = now.toISOString()
+  const zone = PLATFORM_TIME_ZONE
+  /** Local midnight `n` days from today, in the platform zone. */
+  const dayStart = (n: number) => startOfLocalDayUtcOffset(now, zone, n)
+  /** The last instant of the local day `n` days from today. `to` is inclusive. */
+  const dayEnd = (n: number) => new Date(dayStart(n + 1).getTime() - 1)
 
   if (preset === 'today') {
-    const end = new Date(now)
-    end.setHours(23, 59, 59, 999)
-    return { from: nowIso, to: end.toISOString() }
+    // TWO DEFECTS FIXED HERE, both instances of the class this audit closed.
+    //
+    // 1. `from` was `nowIso`, so the filter literally called "Today" hid an
+    //    event that started this morning and is on RIGHT NOW. It now runs from
+    //    the start of the day, so an in-progress event is included, which is the
+    //    founder ruling of 16 August 2026.
+    // 2. The bounds were built with `setHours`, which is the SERVER's zone. On
+    //    Vercel that is UTC, so "today" was a UTC day and an evening event in
+    //    Australia fell into the wrong one. Bounds are now the platform zone,
+    //    the same rule src/lib/dates/event-time.ts states for formatting.
+    return { from: dayStart(0).toISOString(), to: dayEnd(0).toISOString() }
   }
 
   if (preset === 'tomorrow') {
-    const start = new Date(now)
-    start.setDate(start.getDate() + 1)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(start)
-    end.setHours(23, 59, 59, 999)
-    return { from: start.toISOString(), to: end.toISOString() }
+    return { from: dayStart(1).toISOString(), to: dayEnd(1).toISOString() }
   }
 
   if (preset === 'weekend') {
-    const day = now.getDay() // 0 Sun .. 6 Sat
-    const start = new Date(now)
-    if (day === 6) {
-      start.setHours(0, 0, 0, 0)
-    } else if (day === 0) {
-      start.setDate(start.getDate() - 1)
-      start.setHours(0, 0, 0, 0)
-    } else {
-      start.setDate(start.getDate() + (6 - day))
-      start.setHours(0, 0, 0, 0)
-    }
-    const end = new Date(start)
-    end.setDate(start.getDate() + 1)
-    end.setHours(23, 59, 59, 999)
-    return { from: start.toISOString(), to: end.toISOString() }
+    const weekend = weekendWindowUtc(now, zone)
+    return { from: weekend.from.toISOString(), to: weekend.to.toISOString() }
   }
 
   if (preset === '7d') {
-    const end = new Date(now)
-    end.setDate(end.getDate() + 7)
-    return { from: nowIso, to: end.toISOString() }
+    // From the START OF TODAY, so an event on this morning is inside "next 7
+    // days". `nowIso` here was exclusion audit item 1, unfixed.
+    return { from: dayStart(0).toISOString(), to: dayEnd(7).toISOString() }
   }
 
   if (preset === 'month') {
     const end = new Date(now)
     end.setMonth(end.getMonth() + 1)
-    return { from: nowIso, to: end.toISOString() }
+    return {
+      from: dayStart(0).toISOString(),
+      to: new Date(startOfLocalDayUtcOffset(end, zone, 1).getTime() - 1).toISOString(),
+    }
   }
 
   return null
@@ -672,14 +774,20 @@ export async function fetchPublicEvents(
    * So there is deliberately NO `external_ticket_url` filter on this query. The
    * four ranking queries in this file each carry one, individually marked.
    */
+  // PAGINATE-IN-MEMORY DECISION, made BEFORE the range is set, because the
+  // range is the thing it changes. See paginatesInMemory for what goes wrong
+  // when a post-query filter runs on a database-paginated page.
+  const priceFiltered = hasPriceFilter(filters)
+  const inMemoryPagination = paginatesInMemory(filters)
+
   let query = supabase
     .from('events')
     .select(BASE_SELECT, { count: 'exact' })
     .eq('status', 'published')
     .eq('visibility', 'public')
     .range(
-      sortsInMemory(filters.sort) ? 0 : offset,
-      sortsInMemory(filters.sort) ? MAX_SORT_ROWS - 1 : offset + pageSize - 1,
+      inMemoryPagination ? 0 : offset,
+      inMemoryPagination ? MAX_SORT_ROWS - 1 : offset + pageSize - 1,
     )
 
   if (distanceIds) query = query.in('id', distanceIds)
@@ -735,7 +843,11 @@ export async function fetchPublicEvents(
     query = query.gte('start_date', window.from)
     if (window.to) query = query.lte('start_date', window.to)
   } else {
-    query = query.gte('start_date', now.toISOString())
+    // LISTED UNTIL IT HAS ENDED, not until it has started. This replaced
+    // `start_date >= now`, which removed an event from discovery the moment it
+    // began: a 09:00 gig was invisible at 09:01, on the day it was on. The rule
+    // and the reason live in src/lib/events/listing-window.ts.
+    query = query.or(listingWindowOrPredicate(now))
   }
 
   if (filters.from) query = query.gte('start_date', filters.from)
@@ -756,13 +868,16 @@ export async function fetchPublicEvents(
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
-  let events = raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
+  let events = raw.map(toPublicEventRow).sort(realCoverFirst)
 
   // price_min / price_max arrive in AUD (dollar units) from the URL; tier
   // prices are stored as integer minor units (cents) per the monetary
   // conventions in CLAUDE.md. Convert before comparison.
-  const priceFiltered =
-    typeof filters.price_min === 'number' || typeof filters.price_max === 'number'
+  //
+  // SAFE HERE ONLY BECAUSE the range above fetched the whole bounded set when
+  // priceFiltered is true. Removing rows from a database-paginated page is the
+  // defect described on paginatesInMemory; the two lines are one mechanism and
+  // scripts/guards/no-display-time-exclusion.mjs fails the build if they part.
   if (priceFiltered) {
     const minCents = (filters.price_min ?? 0) * 100
     const maxCents =
@@ -774,26 +889,19 @@ export async function fetchPublicEvents(
     })
   }
 
-  const sortedWhole = sortsInMemory(filters.sort)
-  // Captured BEFORE the sort slices a page out, so pagination still reflects
-  // how many events actually matched rather than how many are on this page.
+  // Captured BEFORE the page is sliced out, so pagination reflects how many
+  // events actually matched rather than how many are on this page.
   const matchedBeforeSlice = events.length
-  if (sortedWhole) events = applyInMemorySort(events, filters.sort, page, pageSize)
+  if (inMemoryPagination) {
+    events = sortsInMemory(filters.sort)
+      ? applyInMemorySort(events, filters.sort, page, pageSize)
+      : slicePage(events, page, pageSize)
+  }
 
-  // When price filtering strips rows post-query, the Supabase `count`
-  // reflects the pre-filter total and disagrees with the rendered grid.
-  // Use the filtered length as the source of truth so the hero strip
-  // and pagination match what the user sees.
-  // TODO(lawal 2026-10-01): move the price filter into SQL to avoid over-fetching
-  //   when query pages are large. DELIBERATELY NOT BEFORE LAUNCH: the behaviour
-  //   above is CORRECT today, the cost is extra rows fetched rather than a wrong
-  //   result, and it only becomes measurable at a catalogue size this platform
-  //   does not have yet. Revisit when a query page routinely over-fetches.
-  const total = sortedWhole
-    ? (priceFiltered ? matchedBeforeSlice : count ?? matchedBeforeSlice)
-    : priceFiltered
-      ? events.length
-      : count ?? events.length
+  // When price filtering strips rows post-query, the Supabase `count` reflects
+  // the pre-filter total and disagrees with the rendered grid, so the matched
+  // length is the source of truth for the hero strip and the pager.
+  const total = priceFiltered ? matchedBeforeSlice : count ?? matchedBeforeSlice
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return { events, total, page, pageSize, totalPages }
@@ -883,14 +991,18 @@ async function runFetchPublicEventsAdmin(
 
   const supabase = createAdminClient()
 
+  // Same decision, same reason, as fetchPublicEvents above.
+  const priceFiltered = hasPriceFilter(filters)
+  const inMemoryPagination = paginatesInMemory(filters)
+
   let query = supabase
     .from('events')
     .select(BASE_SELECT, { count: 'exact' })
     .eq('status', 'published')
     .eq('visibility', 'public')
     .range(
-      sortsInMemory(filters.sort) ? 0 : offset,
-      sortsInMemory(filters.sort) ? MAX_SORT_ROWS - 1 : offset + pageSize - 1,
+      inMemoryPagination ? 0 : offset,
+      inMemoryPagination ? MAX_SORT_ROWS - 1 : offset + pageSize - 1,
     )
 
   if (filters.sort === 'date_asc' || !filters.sort || filters.sort === 'relevance') {
@@ -935,7 +1047,11 @@ async function runFetchPublicEventsAdmin(
     query = query.gte('start_date', window.from)
     if (window.to) query = query.lte('start_date', window.to)
   } else {
-    query = query.gte('start_date', now.toISOString())
+    // LISTED UNTIL IT HAS ENDED, not until it has started. This replaced
+    // `start_date >= now`, which removed an event from discovery the moment it
+    // began: a 09:00 gig was invisible at 09:01, on the day it was on. The rule
+    // and the reason live in src/lib/events/listing-window.ts.
+    query = query.or(listingWindowOrPredicate(now))
   }
 
   if (filters.from) query = query.gte('start_date', filters.from)
@@ -948,10 +1064,10 @@ async function runFetchPublicEventsAdmin(
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
-  let events = raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
+  let events = raw.map(toPublicEventRow).sort(realCoverFirst)
 
-  const priceFiltered =
-    typeof filters.price_min === 'number' || typeof filters.price_max === 'number'
+  // SAFE HERE ONLY BECAUSE the range above fetched the whole bounded set when
+  // priceFiltered is true. See paginatesInMemory.
   if (priceFiltered) {
     const minCents = (filters.price_min ?? 0) * 100
     const maxCents =
@@ -963,17 +1079,16 @@ async function runFetchPublicEventsAdmin(
     })
   }
 
-  const sortedWhole = sortsInMemory(filters.sort)
-  // Captured BEFORE the sort slices a page out, so pagination still reflects
-  // how many events actually matched rather than how many are on this page.
+  // Captured BEFORE the page is sliced out, so pagination reflects how many
+  // events actually matched rather than how many are on this page.
   const matchedBeforeSlice = events.length
-  if (sortedWhole) events = applyInMemorySort(events, filters.sort, page, pageSize)
+  if (inMemoryPagination) {
+    events = sortsInMemory(filters.sort)
+      ? applyInMemorySort(events, filters.sort, page, pageSize)
+      : slicePage(events, page, pageSize)
+  }
 
-  const total = sortedWhole
-    ? (priceFiltered ? matchedBeforeSlice : count ?? matchedBeforeSlice)
-    : priceFiltered
-      ? events.length
-      : count ?? events.length
+  const total = priceFiltered ? matchedBeforeSlice : count ?? matchedBeforeSlice
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   return { events, total, page, pageSize, totalPages }
 }
@@ -1027,7 +1142,7 @@ export async function fetchPopularThisWeek(
     .select(BASE_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', now)
+    .or(listingWindowOrPredicate(new Date(now)))
     // Not promoted: see EXTERNAL_TICKETING_NOTE below.
     .is('external_ticket_url', null)
     .in('id', sortedIds)
@@ -1046,7 +1161,7 @@ export async function fetchPopularThisWeek(
     .map(id => byId.get(id))
     .filter((r): r is RawRow => Boolean(r))
     .map(toPublicEventRow)
-    .filter(e => hasRealCover(e.cover_image_url))
+    .sort(realCoverFirst)
 }
 
 /**
@@ -1096,7 +1211,7 @@ export async function fetchPopularThisWeekPublic(
         .select(BASE_SELECT)
         .eq('status', 'published')
         .eq('visibility', 'public')
-        .gte('start_date', now)
+        .or(listingWindowOrPredicate(new Date(now)))
         // Not promoted: see EXTERNAL_TICKETING_NOTE below.
         .is('external_ticket_url', null)
         .order('start_date', { ascending: true })
@@ -1117,9 +1232,9 @@ export async function fetchPopularThisWeekPublic(
           .map(id => byId.get(id))
           .filter((r): r is RawRow => Boolean(r))
           .map(toPublicEventRow)
-          .filter(e => hasRealCover(e.cover_image_url))
+          .sort(realCoverFirst)
       }
-      return raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
+      return raw.map(toPublicEventRow).sort(realCoverFirst)
     },
     keyParts,
     { revalidate: 60 * 30, tags: ['events:popular-public'] },
@@ -1169,7 +1284,7 @@ export async function fetchRecommendedEvents(
     .select(BASE_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', now)
+    .or(listingWindowOrPredicate(new Date(now)))
     // Not promoted: see EXTERNAL_TICKETING_NOTE below.
     .is('external_ticket_url', null)
     .order('start_date', { ascending: true })
@@ -1190,7 +1305,7 @@ export async function fetchRecommendedEvents(
   const raw = (data ?? []) as unknown as RawRow[]
   const events = raw
     .map(toPublicEventRow)
-    .filter(e => hasRealCover(e.cover_image_url))
+    .sort(realCoverFirst)
   if (events.length === 0) return fetchPopularThisWeek(limit, city)
   return events
 }
@@ -1335,7 +1450,7 @@ export async function fetchForYouFeed(
     .select(BASE_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', nowIso)
+    .or(listingWindowOrPredicate(new Date(nowIso)))
     // Not promoted: see EXTERNAL_TICKETING_NOTE below.
     .is('external_ticket_url', null)
     .or(orFilters.join(','))
@@ -1350,7 +1465,7 @@ export async function fetchForYouFeed(
   const raw = (data ?? []) as unknown as RawRow[]
   const candidates = raw
     .map(toPublicEventRow)
-    .filter(e => hasRealCover(e.cover_image_url))
+    .sort(realCoverFirst)
 
   const ranked = rankEventsByAffinity(candidates, signals, now)
   return { events: ranked.slice(0, limit).map(r => r.event), hasGraph: true }

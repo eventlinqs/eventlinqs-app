@@ -146,8 +146,175 @@ const ROOT = join(HERE, '..', '..')
  * is weaker than a category floor the moment a line goes missing from it, so
  * these bind lighthouserc.json to the reviewed baseline.
  */
-const MIN_FILES = 197
-const MIN_TESTS = 2377
+/*
+ * 2026-08-16: raised 197/2377 -> 198/2396. The listing window.
+ * tests/unit/events/listing-window.test.ts is new and adds 19. Every discovery
+ * query filtered `start_date >= now`, so an event left the platform the moment
+ * it began; the founder's 16 August event vanished that way and the missing
+ * cover was blamed for it. These pin the rule (listed until it has ENDED), the
+ * DST transition where a single-guess offset is wrong by an hour, and the
+ * agreement between the SQL predicate and the JavaScript one, which are two
+ * expressions of a single rule and would otherwise drift apart silently.
+ *
+ * The live proof against TEST in the same file is registered ONLY under
+ * LISTING_PROOF=1 rather than skipped, because this canary allows zero skipped
+ * tests by design and a conditional `describe.skip` would have cost that.
+ */
+/*
+ * 2026-08-16: raised 198/2396 -> 200/2415. Two new files, 19 tests, both from
+ * the exclusion-audit night. tests/unit/events/preset-window.test.ts pins the
+ * date presets (a window that includes today starts at the START of today, and
+ * every boundary is computed in the platform zone) and the price filter's
+ * paginate-in-memory decision, all three of which had surviving copies of the
+ * defect the previous pass claimed to have closed.
+ * tests/unit/broadcast/cover-format.test.ts pins the fourth card format out of
+ * the organiser download set and out of the public route guard.
+ *
+ * 2026-08-16 (later, same day): raised 200/2415 -> 201/2420.
+ * tests/component/thin-categories-note.test.ts, 5 tests. It exists because the
+ * VISIBLE branch of that component cannot be photographed on a dense preview:
+ * at real density it renders nothing at all, by design. So the branch that only
+ * appears on a thin catalogue is proven in the DOM rather than asserted from
+ * the source.
+ */
+/*
+ * 2026-08-17: raised 201/2420 -> 202/2424.
+ * tests/unit/events/generated-cover-labels.test.ts, 4 tests, from wiring the
+ * designed cover into the organiser form. They pin that the cover prints the
+ * organiser CURRENT wall clock with no zone conversion, because converting it
+ * and back is what puts a 9pm Perth event on the wrong day.
+ */
+/*
+ * 2026-08-17 (later): raised 202/2424 -> 202/2425. One assertion added to
+ * tests/unit/broadcast/cover-format.test.ts, stating the cover frame property
+ * as arithmetic rather than as a number: the authored ratio must be no wider
+ * than any frame the platform crops a cover to. The first version of that
+ * format was 4:3 and clipped the event name in the 4:5 card crop.
+ */
+/*
+ * 2026-08-18: raised 202/2425 -> 206/2481, the launch-blocker night. Four new
+ * files, 56 tests, one per defect closed.
+ *
+ * tests/unit/payments/sale-refusal-truthfulness.test.ts, 12. Every paid event on
+ * production refused to sell, behind a message naming a sale window on a
+ * platform that has no sale-start column on an event. The reservation guard
+ * named events.external_ticket_url in a select, the column did not exist because
+ * 20260815000001 was unapplied, PostgREST failed the whole request, and the call
+ * site discarded the error. These pin that a failed read is reported as its own
+ * cause, that each cause has a distinct message, and that a refusal takes the
+ * checkout away rather than sitting above a live one.
+ *
+ * tests/unit/dates/zoned-input-round-trip.test.ts, 15, and
+ * venue-timezone.test.ts, 18. An organiser typed noon and the page said 2am. A
+ * zoneless datetime-local value read through new Date() takes the offset of
+ * whatever runtime evaluates it, so every edit moved the event one offset
+ * earlier. Both sides of the 4 October DST transition are pinned, in seven
+ * zones, because a fixed-offset implementation passes one half and fails the
+ * other. The Sydney cases pass even on the broken code when the machine runs on
+ * Sydney time, which is exactly how it survived review.
+ *
+ * tests/unit/events/revalidate-event.test.ts, 10. Five of the seven event
+ * mutations invalidated nothing, so an organiser saved and the public page did
+ * not change.
+ */
+/*
+ * 2026-08-18 (later): raised 206/2481 -> 206/2483. Two tests, no new file, from
+ * closing the incomplete-row class in sale-status.test.ts. They pin the two
+ * halves that were collapsed twice in one week: the verifier NAMES which fields
+ * are absent, and presence is decided by the KEY rather than the value, so a
+ * null country still refuses the sale while a missing country column is a
+ * programming error instead of a verdict about the organiser.
+ */
+/*
+ * 2026-08-19: raised 206/2483 -> 208/2511. Two files, 28 tests, from the refund
+ * session.
+ *
+ * tests/unit/payments/refund-post-disbursement.test.ts, 7. The clawback that runs
+ * when a refund lands AFTER the organiser has already been paid had no test at
+ * all. The load-bearing one asserts it can never reverse more than was actually
+ * transferred, because over-reversing is not a rounding error, it is inventing
+ * money against a connected account.
+ *
+ * tests/unit/payments/refund-failure-plain-words.test.ts, 21. Both refund actions
+ * returned the caught error's own message, so an organiser could read a Stripe
+ * charge id or a database status enum in the refund dialog. The leak test fails
+ * for any future failure mode somebody forgets to translate, which is the half
+ * that keeps working after this session is forgotten.
+ */
+/*
+ * 2026-08-19 (later): raised 208/2511 -> 209/2517. One file, 6 tests.
+ *
+ * tests/unit/payments/event-access-matches-refund-scope.test.ts. The dashboard order
+ * route gated on organisations.owner_id alone while resolveRefundScope and
+ * create_refund_request both admitted owner, admin and manager, so a manager passed
+ * every authorisation check the refund path performs and still never saw the button.
+ * The divergence was never a logic bug, it was two lists of roles in two files that
+ * nothing compared, so these tests compare them: the shared gate against
+ * ORG_MEMBER_ROLES, and both against the role list inside create_refund_request.
+ */
+/*
+ * 2026-08-19 (later still): raised 209/2517 -> 210/2521. One file, 4 tests.
+ *
+ * tests/unit/events/publish-gate-matches-sale-gate.test.ts. Publishing a paid event
+ * and selling a ticket used to disagree: the publish gate allowed
+ * charges_enabled && payout_status <> restricted, two loose checks where the sale gate
+ * makes five strict ones, so an organiser on hold could publish an event that could
+ * never take a cent. It is a PROPERTY test over all 96 combinations of the five gate
+ * columns rather than a list of cases, so a future edit to either predicate fails here
+ * without anybody having to think of the case.
+ */
+/*
+ * 2026-08-19 (later again): raised 210/2521 -> 211/2528. One file, 7 tests.
+ *
+ * tests/unit/rate-limit/event-create-wiring.test.ts. Event creation had no limiter at
+ * all until this morning, and the one it was given was keyed by address while its
+ * rationale said "per organiser". These tests drive the real limiter with the real
+ * policy numbers against a real counting store and require a refusal on the
+ * thirty-first call, then prove with the store removed that the same run does NOT
+ * refuse, so the refusal was the limiter and not the harness. They also pin the call
+ * order, limiter after the auth check and before the first write, and prove that
+ * ordering check can fail.
+ */
+/*
+ * 2026-08-19 (last of the day): raised 211/2528 -> 212/2547. One file, 19 tests.
+ *
+ * tests/unit/rate-limit/payouts-read-wiring.test.ts, plus two extra cases in
+ * tests/unit/payouts/api-routes.test.ts. `payouts-read` was keyed by the forwarded
+ * address on all three payouts routes while its rationale said "per user", the same
+ * defect event-create carried the same morning. The founder ruling re-keyed it to the
+ * organisation, which meant moving the limiter BELOW resolveOrganiserScope, because a
+ * bucket cannot be named until the scope names it.
+ *
+ * The new file drives the real limiter with the real policy numbers against a real
+ * counting store, requires a refusal on the sixty-first call, then proves with the
+ * store removed that the same run does NOT refuse, so the refusal was the limiter and
+ * not the harness. It pins the identifier at all three call sites, pins the ordering,
+ * and proves BOTH of those checks can fail on a deliberately broken sample.
+ *
+ * The two added cases in api-routes.test.ts replace one that asserted the OPPOSITE
+ * ordering (`expect(resolveScopeMock).not.toHaveBeenCalled()`). It was inverted rather
+ * than deleted: the ordering is the contract, and a deleted test lets it drift back.
+ */
+/*
+ * 2026-08-20: raised 212/2547 -> 213/2579. One file, 32 tests.
+ *
+ * tests/unit/refunds/policy.test.ts, for the per-event refund policy that the buyer
+ * request path and automatic approval are both decided by. It covers the request
+ * window from both sides of the cut-off, the cancelled-event override that beats a
+ * no_refunds policy (Eventbrite states the same rule in the same breath as the
+ * option), the ordering of that override BEFORE the window check, and the ten-case
+ * one-way table.
+ *
+ * THE ONE-WAY TABLE IS DRIVEN TWICE. The same ten cases run through the TypeScript
+ * copy here and through public.refund_policy_is_looser_or_equal in
+ * scripts/verify/refund-policy-drill.mjs, because the rule exists in two places by
+ * design and two copies of a rule drift. The drill then does what a pure function
+ * cannot: it drives a real UPDATE against a real published event and requires the
+ * trigger to refuse it, with controls proving the trigger does not simply refuse
+ * everything.
+ */
+const MIN_FILES = 215
+const MIN_TESTS = 2605
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

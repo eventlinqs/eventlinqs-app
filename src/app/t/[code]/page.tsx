@@ -87,7 +87,7 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
   const { data } = await admin
     .from('tickets')
     .select(
-      'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, timezone, venue_name, venue_city), order_item:order_items(item_name), seat:seats(row_label, seat_number, section:seat_map_sections(name))',
+      'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, timezone, venue_name, venue_city), order_item:order_items(item_name), seat:seats!tickets_seat_id_fkey(row_label, seat_number, section:seat_map_sections(name))',
     )
     .eq('ticket_code', code)
     .maybeSingle()

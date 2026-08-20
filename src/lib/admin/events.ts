@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recordAuditEvent } from '@/lib/admin/audit'
+import { hasRealCover } from '@/lib/events/publish-gate'
 import type { AdminSession } from '@/lib/admin/types'
 import type { Database } from '@/types/database'
 
@@ -278,12 +279,26 @@ export async function applyEventAction(
 
   const { data: current, error: readErr } = await admin
     .from('events')
-    .select('id, title, status')
+    .select('id, title, status, cover_image_url')
     .eq('id', input.eventId)
     .maybeSingle()
   if (readErr) return { ok: false, error: readErr.message }
   if (!current) return { ok: false, error: 'Event not found' }
   if (!spec.from.includes(current.status)) return { ok: false, invalidTransition: true }
+
+  // COVER REQUIRED TO PUBLISH, on every path that reaches 'published', not only
+  // the organiser one. Resume is such a path and had no cover check: the
+  // validated DB constraint events_published_real_cover would still have
+  // refused the write, so nothing could ever go live without a cover, but the
+  // admin saw a raw Postgres constraint message instead of a sentence. This
+  // says what is wrong and refuses for the same reason the constraint does.
+  if (spec.to === 'published' && !hasRealCover(current.cover_image_url)) {
+    return {
+      ok: false,
+      error:
+        'This event has no cover photo, so it cannot go live. The organiser needs to upload one, or generate a designed cover, before it can be resumed.',
+    }
+  }
 
   const reason = input.reason?.trim() || null
   if (spec.requiresReason && !reason) return { ok: false, error: 'reason_required' }

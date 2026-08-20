@@ -22,6 +22,7 @@ import { getCityPhoto } from '@/lib/images/city-photo'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { getSiteUrl } from '@/lib/site-url'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 export const revalidate = 300
 
@@ -78,7 +79,7 @@ async function fetchOrganiserEvents(orgId: string) {
       .eq('organisation_id', orgId)
       .eq('status', 'published')
       .eq('visibility', 'public')
-      .gte('start_date', nowIso)
+      .or(listingWindowOrPredicate(new Date(nowIso)))
       .order('start_date', { ascending: true })
       .limit(24),
     supabase

@@ -1,0 +1,13 @@
+{
+  "stamp": "mt03oiql",
+  "ownerEmail": "payouts-parity-mt03oiql@eventlinqs.test",
+  "orphanEmail": "payouts-orphan-mt03oiql@eventlinqs.test",
+  "password": "43ec9645-43af-42e5-be41-1aea4bfaf13fAa1",
+  "ownerId": "5a6155bf-c4f0-4200-95b3-7af6935539d6",
+  "orphanId": "709be3c3-43ef-4df2-90cb-143d3b2565e2",
+  "orgIds": [
+    "6be69932-10a1-44e9-b1a7-4184fd972090",
+    "49a2481a-79df-4460-9098-a5dfeb6300b5"
+  ],
+  "foreignOrgId": "a2000000-0000-4000-8000-000000000001"
+}

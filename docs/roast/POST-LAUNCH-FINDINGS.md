@@ -37,6 +37,64 @@ blocking. The sections below are the running record and are kept in date order.
 | N-6 | Mobile performance on the homepage is 0.63 and LCP runs 5.2 to 6.3 seconds on the preview. | Warn-level by a dated waiver (Issue #42, expires 2026-11-01), not a blocker. Detail and the proposed fix are in the section below. |
 | N-7 | `/pricing`, `/help` and `/legal/terms` render zero `<img>` elements. | Not a gate failure, but `/pricing` is a marketing surface and Law 4 says a text-only marketing surface is a design defect by definition. Detail below. |
 
+### Recorded 17 August 2026: a founder-briefing error, corrected by primary source
+
+**The claim.** The brief commissioning the app-store research stated that "iOS
+evicts home-screen PWAs after roughly seven days of disuse, taking cached data
+with them, which is exactly wrong for a scanner used once a month."
+
+**The source says otherwise.** WebKit's own announcement of the storage policy,
+https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/
+(fetched 2026-08-16), verbatim:
+
+> "Web applications added to the home screen are not part of Safari and thus have
+> their own counter of days of use. Their days of use will match actual use of
+> the web application which resets the timer."
+
+and
+
+> "We do not expect the first-party in such a web application to have its website
+> data deleted"
+
+The seven-day cap is scoped to "seven days of Safari use without user interaction
+on the site". An installed web app is not Safari and keeps its own counter.
+
+**What it changes.** It removes the strongest argument for building a native
+scanner. An offline scanner can be a home-screen PWA holding its guest list in
+IndexedDB, and the remaining reasons to prefer native are camera performance and
+`BarcodeDetector` support on current iOS, the second of which is still
+**UNSOURCED** and is the cheapest next check on the whole subject.
+
+**Why it is recorded rather than quietly edited**, which is the point. This is
+the same family as everything else this project keeps catching: a plausible,
+widely repeated platform behaviour, stated from memory, reversed by a single
+first-party page. The difference here is only that the memory was the founder's
+rather than an agent's, and the correction cost one fetch. Accepted 17 August
+2026. The research document carries the correction at the top and in section 5b.
+
+### Recorded 16 August 2026, overnight pass: what the two new guards found, and the four things left open
+
+**The headline.** Two build-failing guards were added
+(`no-display-time-exclusion`, `publish-requires-cover`) and the first one found
+**seven more live copies** of the defect the previous pass had claimed to close
+"across every public surface". Nineteen passing tests saw none of them. Every one
+is fixed and the audit table in `exclusion-audit-2026-08-16.md` carries the list.
+
+**Open, and named rather than left to be rediscovered.**
+
+| # | Item | Severity | What it would take |
+|---|---|---|---|
+| O-1 | **The generated cover has no organiser-facing surface.** The renderer, the storage path and the backfill all work and are proven on TEST, but the only caller is an admin script. An organiser with no artwork still cannot publish, because the publish gate correctly refuses them | MAJOR. It is the actual product problem the cover work exists to solve | A server action beside `publishEvent`, and one control in the event form beside the cover upload. The reason it was NOT done tonight is that the event form is a named launch-blocker surface and adding a control to it is a design change needing Law 2 evidence and a ruling, not a quiet edit |
+| O-2 | **On desktop the event page's gold "Get tickets" points at a panel already on screen.** Measured on production, three events, 1440x900: the ticket panel's top sits 693px down a 900px viewport, so it is already visible before the CTA is pressed. At 390px it is 2612 to 2768px away and the CTA is doing real work | MINOR, and it is the founder's own find, quantified | A ruling. The options are to hide the hero CTA at `lg` and above, to make it focus the panel rather than scroll to it, or to leave it. All three are design decisions on a working surface |
+| O-3 | **`community-picks-section.tsx` is unreferenced and every tile in it links to `/categories/<slug>` for slugs that do not exist.** `/categories/[slug]` serves seven legacy slugs only (afrobeats, amapiano, gospel, owambe, caribbean, heritage-and-independence, networking); asian, african and south-asian are not among them | LOW while it renders nowhere. It would be 18 dead links the day anybody wires it up | Either delete the component or point its tiles at `/community/<slug>`. Not done tonight because deleting a component is a decision and repairing dead code is churn |
+| O-4 | **The Supabase Postgres version is still unknown.** `SUPABASE_DB_URL` in `.env.test` is a redacted placeholder, PostgREST does not expose the version, and the Management API needs a token this worktree does not have | LOW, but it is the one item in the forward-compatibility inventory that could need downtime | `supabase projects list`, or `select version();` in either SQL editor. One line, from a machine with the credential |
+
+Detail for the two research tasks lives in
+`docs/roast/APP-STORES-RESEARCH-2026-08-16.md` and
+`docs/roast/FORWARD-COMPATIBILITY-2026-08-16.md`. The single most actionable line
+in either: **every GitHub Action pinned in this repository runs on node20, which
+reached end of life on 30 April 2026**, read from each tag's own `action.yml`.
+
 ### Recorded 16 August 2026: Lighthouse performance, and a Law 4 gap found beside it
 
 Both came out of diagnosing the SEO gate on PR #118. Neither blocks the merge and

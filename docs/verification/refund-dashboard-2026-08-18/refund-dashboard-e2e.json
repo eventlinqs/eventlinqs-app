@@ -1,0 +1,141 @@
+{
+  "base": "https://eventlinqs-staging.vercel.app",
+  "startedAt": "2026-08-18T12:36:59.735Z",
+  "buyerEmail": "delivered+refund-proof-msyndcrb@resend.dev",
+  "steps": {
+    "soldBefore": 0,
+    "order": {
+      "id": "e2210c3e-d1e8-40cf-b6d7-dcbf6fa2643b",
+      "order_number": "EL-5JDTASCX",
+      "status": "confirmed",
+      "total_cents": 5498,
+      "currency": "AUD",
+      "platform_fee_cents": 373,
+      "processing_fee_cents": 125
+    },
+    "soldAfterBuy": 2,
+    "partial": {
+      "tier": {
+        "sold_count": 1,
+        "reserved_count": 0,
+        "total_capacity": 10
+      },
+      "tickets": [
+        {
+          "id": "b1b2b339-607b-4ef0-b0ec-ae03c08fa08a",
+          "ticket_code": "EL-D6K9-4ZWN",
+          "secret": "5cccbbd5-029c-465e-bdbb-8c93f88c94d6",
+          "status": "valid",
+          "refunded_at": null,
+          "ticket_tier_id": "60f937ff-5ef5-4278-82e9-d8f36a59a789"
+        },
+        {
+          "id": "09c7c952-6b71-42b6-a4ad-9c7ee9a9c7d1",
+          "ticket_code": "EL-NM9Z-KHZF",
+          "secret": "cd37d649-a98e-43c4-b9b1-f71279af066e",
+          "status": "refunded",
+          "refunded_at": "2026-08-18T12:37:24.109833+00:00",
+          "ticket_tier_id": "60f937ff-5ef5-4278-82e9-d8f36a59a789"
+        }
+      ],
+      "order": {
+        "id": "e2210c3e-d1e8-40cf-b6d7-dcbf6fa2643b",
+        "order_number": "EL-5JDTASCX",
+        "status": "partially_refunded",
+        "total_cents": 5498,
+        "currency": "AUD",
+        "platform_fee_cents": 373,
+        "processing_fee_cents": 125
+      },
+      "refund": {
+        "id": "37fbe48c-cd56-4b9b-a407-583addeb50c7",
+        "status": "completed",
+        "amount_cents": 2749,
+        "currency": "AUD",
+        "reason": "requested_by_buyer",
+        "initiator": "organiser",
+        "stripe_refund_id": "re_3U5mGQGqHIQtgS8t0ZCcLm79",
+        "processed_at": "2026-08-18T12:37:24.109833+00:00",
+        "failure_reason": null
+      }
+    },
+    "full": {
+      "tier": {
+        "sold_count": 0,
+        "reserved_count": 0,
+        "total_capacity": 10
+      },
+      "tickets": [
+        {
+          "id": "b1b2b339-607b-4ef0-b0ec-ae03c08fa08a",
+          "ticket_code": "EL-D6K9-4ZWN",
+          "secret": "5cccbbd5-029c-465e-bdbb-8c93f88c94d6",
+          "status": "refunded",
+          "refunded_at": "2026-08-18T12:37:33.809154+00:00",
+          "ticket_tier_id": "60f937ff-5ef5-4278-82e9-d8f36a59a789"
+        },
+        {
+          "id": "09c7c952-6b71-42b6-a4ad-9c7ee9a9c7d1",
+          "ticket_code": "EL-NM9Z-KHZF",
+          "secret": "cd37d649-a98e-43c4-b9b1-f71279af066e",
+          "status": "refunded",
+          "refunded_at": "2026-08-18T12:37:24.109833+00:00",
+          "ticket_tier_id": "60f937ff-5ef5-4278-82e9-d8f36a59a789"
+        }
+      ],
+      "order": {
+        "id": "e2210c3e-d1e8-40cf-b6d7-dcbf6fa2643b",
+        "order_number": "EL-5JDTASCX",
+        "status": "refunded",
+        "total_cents": 5498,
+        "currency": "AUD",
+        "platform_fee_cents": 373,
+        "processing_fee_cents": 125
+      },
+      "refunds": [
+        {
+          "id": "37fbe48c-cd56-4b9b-a407-583addeb50c7",
+          "status": "completed",
+          "amount_cents": 2749,
+          "currency": "AUD",
+          "reason": "requested_by_buyer",
+          "initiator": "organiser",
+          "stripe_refund_id": "re_3U5mGQGqHIQtgS8t0ZCcLm79",
+          "processed_at": "2026-08-18T12:37:24.109833+00:00",
+          "failure_reason": null
+        },
+        {
+          "id": "6acd7b34-6d24-44e0-965a-b6b51b899ffc",
+          "status": "completed",
+          "amount_cents": 2749,
+          "currency": "AUD",
+          "reason": "requested_by_buyer",
+          "initiator": "organiser",
+          "stripe_refund_id": "re_3U5mGQGqHIQtgS8t0hzGGkOl",
+          "processed_at": "2026-08-18T12:37:33.809154+00:00",
+          "failure_reason": null
+        }
+      ]
+    },
+    "buyerTicketPage": {
+      "code": "EL-D6K9-4ZWN",
+      "status": 200,
+      "saysRefunded": true,
+      "notValidForEntry": true,
+      "qrPresent": false,
+      "excerpt": "Skip to main content\n\nEVENTLINQS TICKET\n\nRefund Proof Night msyndcrb\n\nTue 8 September 2026 at 10:37 pm AEST\n\nProof Hall, Geelong\n\nRefunded\n\nThis ticket has been refunded and is not valid for entry.\n\nTicket type\nGeneral Admission\nTicket code\nEL-D6K9-4ZWN\nHolder\nProof Proof\nStatus\nRefunded\n\nLost this link? Sign in to EventLinqs and open My tickets, or reply to your confirmation email and we will resend it."
+    },
+    "publicAfter": "Skip to main content\nEVENTLINQS\n.\nAbout Us\nBrowse Events\nCities\nEvent Organisers\nWhat are you in the mood for?\n/\nMelbourne\nSign in\nGet Started\n\nRefund Proof Night msyndcrb\n\nTue, 8 Sept · Proof Hall · Geelong\n\nFrom AUD $25\nGet tickets\nMUSIC\nRefund Proof Night msyndcrb\nTuesday 8 September 2026 at 10:37 pm AEST\nProof Hall · Geelong\nOnly 10 left\nGet tickets\nFrom AUD $25\nSecure checkout\nCommunity organiser\nRefund policy\n\nTHE DETAILS\n\nAbout this event\n\nRefund proof fixture\n\nFixture event for the organiser dashboard refund proof.\n\nWHEN\n\nTuesday 8 September 2026 at 10:37 pm AEST\n\nEnds Wednesday 9 September 2026 at 1:37 am AEST\n\nTimezone: Australia/Sydney\n\nWHERE\n\nProof Hall\n\nProof Hall, 1 Proof St, Geelong, VIC, Australia\n\nTHE PRACTICAL BITS\n\nKnow before you go\nWHEN\nTuesday 8 September 2026 at 10:3"
+  },
+  "fixture": {
+    "ownerEmail": "refund-proof-owner-msyndcrb@eventlinqs.test",
+    "ownerId": "8bdc9c3c-b08f-402c-b5b8-ae30e7c12e09",
+    "orgId": "217a5360-aeef-46a5-a569-c7da832e542b",
+    "eventId": "841b9862-ee43-4e8a-a1a2-0b7eeffea395",
+    "slug": "refund-proof-night-msyndcrb",
+    "tierId": "60f937ff-5ef5-4278-82e9-d8f36a59a789"
+  },
+  "finishedAt": "2026-08-18T12:37:40.553Z",
+  "orderId": "e2210c3e-d1e8-40cf-b6d7-dcbf6fa2643b",
+  "fails": []
+}

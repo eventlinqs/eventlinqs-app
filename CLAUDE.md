@@ -63,6 +63,7 @@ silently follow the stale doc.
 | Links, routes, navigation | Law 5 (zero dead links) |
 | A migration or the database | Verification and gates (Migrations) |
 | An environment variable, a secret, a store scope, a sender or alert address | `docs/ENV-DOCTRINE.md`, `src/lib/env/manifest.mjs` (declare it there and the guards pick it up), Verification and gates |
+| A rate limit: adding one, changing a cap, or flipping fail-open to fail-closed | `docs/RATE-LIMIT-DOCTRINE.md` (AUTHORITY on the fail-open decision and on the `launch-compose` ruling), `src/lib/rate-limit/policies.ts` (the table), `scripts/verify/rate-limit-audit.mjs` (run it BEFORE claiming what a policy costs or what it is keyed by) |
 | A fee, pricing, checkout charge, or payout | Fee system (one source), `docs/FEE-SYSTEM.md` |
 | Venues, venue enrolment, venue revenue share, venue payout | Venue Revenue Sharing Program (REMOVED 2026-07-05; the section below records the decision), Fee system (one source) |
 | CI, gates, delivery | Verification and gates |
@@ -1188,6 +1189,14 @@ Revenue Sharing Program section above. Standard ticketing economics apply.
   GENERATED snapshot and is never hand-edited. Where a document and the manifest
   disagree, the manifest wins. Rotation steps live in
   `docs/security/CREDENTIAL-ROTATION.md` section 7.
+- `docs/RATE-LIMIT-DOCTRINE.md`: AUTHORITY on rate limiting. What fail-open and
+  fail-closed each actually do, the standing ruling that `launch-compose` stays
+  fail-OPEN (and the false cost premise that reversed it once already), the
+  fail-open policies that DO sit in front of a metered spend, and the rule that a
+  limit is a number AND a bucket. `src/lib/rate-limit/policies.ts` is the
+  executable authority and wins any disagreement;
+  `scripts/verify/rate-limit-audit.mjs` reads both out of source and is the thing
+  to run before stating what a policy costs.
 - `docs/EventLinqs_Scope_v5.md`: scope. Build nothing that contradicts it.
 - `docs/design/competitor-page-specs.md`: the per-page bar for the benchmark
   gate.

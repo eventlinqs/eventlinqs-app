@@ -94,7 +94,7 @@
  * below any figure in circulation.
  */
 
-export type SocialCardFormat = 'story' | 'square' | 'feed'
+export type SocialCardFormat = 'story' | 'square' | 'feed' | 'cover'
 
 export type SocialCardSpec = {
   /** Rendered pixel width. */
@@ -193,10 +193,67 @@ export const SOCIAL_CARD_FORMATS: Record<SocialCardFormat, SocialCardSpec> = {
     justification:
       '4:5 is the tightest bound Instagram publishes across both the app and the publishing API, so this one asset is correct wherever it is posted. Instagram will show it at 1080 x 1350; Facebook uses the full 1440 x 1800.',
   },
+
+  /*
+   * NOT A THIRD-PARTY SPECIFICATION. Every other entry in this file answers a
+   * published platform rule and carries its citation. This one answers OUR OWN
+   * frame, and the source is this repository rather than anybody's help centre,
+   * so it is stated that way instead of being dressed up as an external rule.
+   *
+   * THE PRINCIPLE. A cover is authored once and cropped by every surface that
+   * shows it. On a TYPE composition the two directions of loss are not
+   * equivalent: losing HEIGHT clips the eyebrow chip and the EventLinqs lockup,
+   * which is chrome, while losing WIDTH clips the first and last characters of
+   * the event's NAME, which reads as broken. So the cover is authored at the
+   * TALLEST frame the platform crops to, and every crop from there removes
+   * height and never width.
+   *
+   * THE INVENTORY, read out of the components rather than assumed, which is the
+   * step the first version of this entry skipped:
+   *
+   *   16:9   event-card.tsx:133 (mobile), cards.tsx:127
+   *   16:10  cards.tsx:85, cards.tsx:244
+   *   3:2    cards.tsx:193, cards.tsx:226
+   *   4:3    event-card.tsx:133 (desktop), trending-events-bento.tsx:177
+   *   5:4    trending-events-bento.tsx:187, :198
+   *   1:1    cards.tsx:107, trending-events-bento.tsx:177
+   *   4:5    cards.tsx:171, trending-events-bento.tsx:187, :198
+   *
+   * The tallest is 4:5, so that is the frame.
+   *
+   * THE FIRST VERSION OF THIS ENTRY WAS 4:3 AND IT WAS WRONG. It was derived
+   * from event-card.tsx alone, which crops to 16:9 and 4:3, and it missed the
+   * 4:5 frames entirely. The defect was visible the moment the organiser form
+   * rendered its own "Card crop (4:5)" preview beside the hero crop: the event
+   * name was clipped to "ver proo / ght 44547" on both sides, which is exactly
+   * the failure the principle above exists to prevent. Recorded rather than
+   * quietly corrected, because the lesson is that an inventory has to be
+   * counted, not sampled.
+   *
+   * 1440 x 1800 is the same geometry as the tall post above, so one font load
+   * and one measurer serve both.
+   */
+  cover: {
+    width: 1440,
+    height: 1800,
+    ratio: '4:5',
+    label: 'Event cover',
+    postedTo: 'The event page and every EventLinqs card. Not a social post.',
+    safeTop: 0,
+    safeBottom: 0,
+    photoHeight: 0,
+    justification:
+      'The EventLinqs event cover frame, taken from the card components in this repository rather than from any platform rule. 4:5 because it is the TALLEST frame this platform crops a cover to, so every other crop removes height rather than width, and a clipped eyebrow is survivable where a clipped event name is not.',
+  },
 }
 
 export const SOCIAL_CARD_ORDER: readonly SocialCardFormat[] = ['story', 'square', 'feed']
 
+/**
+ * The three formats an organiser can DOWNLOAD. `cover` is deliberately absent:
+ * it is not a social post, it is the event's own artwork, and it is minted by
+ * the platform rather than requested by a channel.
+ */
 export function isSocialCardFormat(value: string): value is SocialCardFormat {
   return value === 'story' || value === 'square' || value === 'feed'
 }

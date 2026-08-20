@@ -35,6 +35,113 @@ export const PLATFORM_TIME_ZONE = 'Australia/Sydney'
 
 export type EventTimeZone = string | null | undefined
 
+/* ===========================================================================
+ * THE WRITE PATH. Reading a time correctly is only half of it.
+ * ===========================================================================
+ *
+ * THE DEFECT THIS CLOSES, 18 August 2026. An organiser typed 12:00 pm on
+ * 1 September and the page showed 2:00 am. Exactly one Australian eastern offset,
+ * in the wrong direction.
+ *
+ * `<input type="datetime-local">` has no zone. It yields "2026-09-01T12:00", and
+ * `new Date("2026-09-01T12:00")` is specified to read a zoneless date-time as the
+ * RUNTIME's local time. So the organiser form did two things wrong at once, and
+ * they compounded:
+ *
+ *   READ  the stored UTC instant was sliced straight into the input
+ *         (`new Date(iso).toISOString().slice(0,16)`), so the organiser was shown
+ *         the UTC wall clock and told it was their local time.
+ *   WRITE that same string was passed back through `new Date(...).toISOString()`,
+ *         which subtracted the BROWSER's offset from a value that had already had
+ *         an offset applied.
+ *
+ * So a CREATE was accidentally right whenever the browser's zone happened to
+ * equal the event's, and every EDIT shifted the event one offset earlier, every
+ * time it was saved. That is precisely the reported shape: the 15 October event,
+ * created and never edited, read 7:00 pm correctly; the 1 September event, which
+ * was edited, had slid to 2:00 am.
+ *
+ * The dropdown the organiser chooses their zone in was never consulted by either
+ * conversion. It is now the only thing that decides.
+ *
+ * WHY NOT A FIXED OFFSET. The two reported events straddle 4 October 2026, when
+ * Australian eastern time moves from UTC+10 to UTC+11. Any implementation
+ * carrying a constant offset is right on one side of that date and wrong on the
+ * other. The offset is therefore asked of the zone AT THE INSTANT IN QUESTION,
+ * which is the only way that stays correct through a transition, and both sides
+ * of the boundary are tested.
+ */
+
+/**
+ * How far `zone` is ahead of UTC at a given instant, in milliseconds.
+ *
+ * Derived by formatting the instant in the zone and reading the wall clock back,
+ * which is the only mechanism the platform ships with that knows the transition
+ * dates. `en-CA` is not used for cleverness: `formatToParts` is read by part
+ * name, so the locale only has to be one that produces numeric parts.
+ */
+function zoneOffsetMs(instant: Date, zone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: zone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(instant)
+
+  const at: Record<string, number> = {}
+  for (const p of parts) if (p.type !== 'literal') at[p.type] = Number(p.value)
+
+  // hour comes back as 24 at midnight under hour12:false in some engines.
+  const wallClockAsUtc = Date.UTC(
+    at.year,
+    at.month - 1,
+    at.day,
+    at.hour % 24,
+    at.minute,
+    at.second,
+  )
+  return wallClockAsUtc - instant.getTime()
+}
+
+/**
+ * The stored instant, as the "YYYY-MM-DDTHH:mm" an organiser should SEE in a
+ * datetime-local input, expressed in the EVENT's zone.
+ */
+export function toZonedInputValue(iso: string, timezone: EventTimeZone): string {
+  const zone = resolveZone(timezone)
+  const instant = new Date(iso)
+  if (Number.isNaN(instant.getTime())) return ''
+  const shifted = new Date(instant.getTime() + zoneOffsetMs(instant, zone))
+  // The shifted value's UTC fields now read as the zone's wall clock.
+  return shifted.toISOString().slice(0, 16)
+}
+
+/**
+ * The "YYYY-MM-DDTHH:mm" an organiser TYPED, read as a wall clock in the EVENT's
+ * zone, converted to the UTC instant to store.
+ *
+ * TWO PASSES, and the second one is not belt and braces. The offset depends on
+ * the instant, and the instant is what is being solved for, so the first pass
+ * uses the offset at the guessed instant and the second corrects it if that
+ * guess landed on the other side of a transition. Without it, a time entered in
+ * the hours around a DST change is stored one hour out.
+ */
+export function fromZonedInputValue(local: string, timezone: EventTimeZone): string {
+  const zone = resolveZone(timezone)
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local)
+  if (!m) return ''
+  const [, y, mo, d, h, mi] = m
+  const asIfUtc = Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi))
+
+  let instant = asIfUtc - zoneOffsetMs(new Date(asIfUtc), zone)
+  instant = asIfUtc - zoneOffsetMs(new Date(instant), zone)
+  return new Date(instant).toISOString()
+}
+
 /**
  * Resolve the zone to format in. An event without a stored zone falls back to
  * the platform zone rather than the runtime's, because the runtime's is the

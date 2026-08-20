@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   graphql_public: {
     Tables: {
@@ -973,6 +973,10 @@ export type Database = {
           published_at: string | null
           queue_admission_window_minutes: number
           recurrence_rule: string | null
+          refund_policy_absorb_fee: boolean
+          refund_policy_days: number
+          refund_policy_self_service: boolean
+          refund_policy_type: string
           scheduled_publish_at: string | null
           seat_map_id: string | null
           slug: string
@@ -1040,6 +1044,10 @@ export type Database = {
           published_at?: string | null
           queue_admission_window_minutes?: number
           recurrence_rule?: string | null
+          refund_policy_absorb_fee?: boolean
+          refund_policy_days?: number
+          refund_policy_self_service?: boolean
+          refund_policy_type?: string
           scheduled_publish_at?: string | null
           seat_map_id?: string | null
           slug: string
@@ -1107,6 +1115,10 @@ export type Database = {
           published_at?: string | null
           queue_admission_window_minutes?: number
           recurrence_rule?: string | null
+          refund_policy_absorb_fee?: boolean
+          refund_policy_days?: number
+          refund_policy_self_service?: boolean
+          refund_policy_type?: string
           scheduled_publish_at?: string | null
           seat_map_id?: string | null
           slug?: string
@@ -2614,6 +2626,125 @@ export type Database = {
         }
         Relationships: []
       }
+      refund_request_tickets: {
+        Row: {
+          request_id: string
+          ticket_id: string
+        }
+        Insert: {
+          request_id: string
+          ticket_id: string
+        }
+        Update: {
+          request_id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_request_tickets_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "refund_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_request_tickets_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refund_requests: {
+        Row: {
+          auto_approved: boolean
+          auto_decision_reason: string | null
+          buyer_message: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          decline_reason: string | null
+          event_id: string
+          id: string
+          order_id: string
+          organisation_id: string
+          refund_id: string | null
+          requester_email: string
+          requester_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          auto_approved?: boolean
+          auto_decision_reason?: string | null
+          buyer_message?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          decline_reason?: string | null
+          event_id: string
+          id?: string
+          order_id: string
+          organisation_id: string
+          refund_id?: string | null
+          requester_email: string
+          requester_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_approved?: boolean
+          auto_decision_reason?: string | null
+          buyer_message?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          decline_reason?: string | null
+          event_id?: string
+          id?: string
+          order_id?: string
+          organisation_id?: string
+          refund_id?: string | null
+          requester_email?: string
+          requester_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_requests_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_requests_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       refund_tickets: {
         Row: {
           created_at: string
@@ -3190,6 +3321,7 @@ export type Database = {
           draft_code: string | null
           event_id: string | null
           id: string
+          retired_at: string | null
         }
         Insert: {
           artist_id?: string | null
@@ -3201,6 +3333,7 @@ export type Database = {
           draft_code?: string | null
           event_id?: string | null
           id?: string
+          retired_at?: string | null
         }
         Update: {
           artist_id?: string | null
@@ -3212,6 +3345,7 @@ export type Database = {
           draft_code?: string | null
           event_id?: string | null
           id?: string
+          retired_at?: string | null
         }
         Relationships: [
           {
@@ -3692,6 +3826,7 @@ export type Database = {
           order_id: string
           order_item_id: string
           refunded_at: string | null
+          released_seat_id: string | null
           scan_count: number
           scanned_by: string | null
           seat_id: string | null
@@ -3714,6 +3849,7 @@ export type Database = {
           order_id: string
           order_item_id: string
           refunded_at?: string | null
+          released_seat_id?: string | null
           scan_count?: number
           scanned_by?: string | null
           seat_id?: string | null
@@ -3736,6 +3872,7 @@ export type Database = {
           order_id?: string
           order_item_id?: string
           refunded_at?: string | null
+          released_seat_id?: string | null
           scan_count?: number
           scanned_by?: string | null
           seat_id?: string | null
@@ -3766,6 +3903,13 @@ export type Database = {
             columns: ["order_item_id"]
             isOneToOne: false
             referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_released_seat_id_fkey"
+            columns: ["released_seat_id"]
+            isOneToOne: false
+            referencedRelation: "seats"
             referencedColumns: ["id"]
           },
           {
@@ -4375,6 +4519,9 @@ export type Database = {
         }
         Returns: Json
       }
+      el_any_member_organisation_ids: { Args: never; Returns: string[] }
+      el_member_organisation_ids: { Args: never; Returns: string[] }
+      el_owned_organisation_ids: { Args: never; Returns: string[] }
       enter_queue: {
         Args: {
           p_event_id: string
@@ -4401,6 +4548,7 @@ export type Database = {
           description: string | null
           end_date: string
           event_type: Database["public"]["Enums"]["event_type"]
+          external_ticket_url: string | null
           fee_pass_type: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls: Json | null
           genre_slug: string | null
@@ -4421,6 +4569,10 @@ export type Database = {
           published_at: string | null
           queue_admission_window_minutes: number
           recurrence_rule: string | null
+          refund_policy_absorb_fee: boolean
+          refund_policy_days: number
+          refund_policy_self_service: boolean
+          refund_policy_type: string
           scheduled_publish_at: string | null
           seat_map_id: string | null
           slug: string
@@ -4531,6 +4683,19 @@ export type Database = {
           p_stripe_refund_id: string
         }
         Returns: string
+      }
+      refund_policy_is_looser_or_equal: {
+        Args: {
+          p_new_absorb: boolean
+          p_new_days: number
+          p_new_self: boolean
+          p_new_type: string
+          p_old_absorb: boolean
+          p_old_days: number
+          p_old_self: boolean
+          p_old_type: string
+        }
+        Returns: boolean
       }
       release_expired_seat_reservations: { Args: never; Returns: number }
       release_holds: { Args: never; Returns: number }
@@ -4645,7 +4810,12 @@ export type Database = {
         | "companion"
         | "restricted_view"
         | "obstructed"
-      squad_member_status: "invited" | "paid" | "declined" | "timed_out"
+      squad_member_status:
+        | "invited"
+        | "paid"
+        | "declined"
+        | "timed_out"
+        | "refunded"
       squad_status: "forming" | "completed" | "expired" | "cancelled"
       ticket_tier_type:
         | "general_admission"
@@ -4865,7 +5035,13 @@ export const Constants = {
         "restricted_view",
         "obstructed",
       ],
-      squad_member_status: ["invited", "paid", "declined", "timed_out"],
+      squad_member_status: [
+        "invited",
+        "paid",
+        "declined",
+        "timed_out",
+        "refunded",
+      ],
       squad_status: ["forming", "completed", "expired", "cancelled"],
       ticket_tier_type: [
         "general_admission",

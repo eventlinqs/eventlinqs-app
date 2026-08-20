@@ -1440,3 +1440,425 @@ as a **repeat** of section 4 on the purged platform, so the thing you finally
 test is the thing you launch. Two purchases, not one, and the first is the gate.
 
 Skip the repeat only if 4a made no changes at all.
+
+---
+
+## 8. THE 20 AUGUST DEPLOY, AS A RUN SHEET
+
+Written 20 August 2026 from `integration/launch`. **Self-contained on purpose:**
+every command, every URL, the rollback and the diagnostic are inline, so you
+never have to leave this section or search for anything mid-deploy.
+
+**Scope.** This section covers ONE deploy: merging `integration/launch` to `main`
+and applying the NINE migrations pending on production. It supersedes section 3
+for this particular run, because the pending set is different now (nine, not
+eleven) and because two of them can refuse an organiser publish if applied
+against the old code.
+
+**The count changed from eight to nine on 21 August.** The ninth,
+20260821000001, records two columns found on production that no migration ever
+created. It is idempotent, so it is a no-op against a production that already
+has them. See 8.5a.
+
+**The ordering rule that governs everything below.** The CODE must be live before
+the MIGRATIONS are applied. `20260819000002` revokes `SELECT` on
+`public.organisations` from `anon` and `authenticated`, and the old code read
+five revoked columns on the session client. Apply the migrations first and every
+create, update and publish of a paid event is refused with "Organisation not
+found." Deploy first and nothing breaks, because the new code reads those columns
+with the service role behind an ownership check. Steps 8.1 to 8.5 exist to make
+that order impossible to get wrong.
+
+### 8.0 Before you start: what must be true
+
+| # | Check | Command | PASS | FAIL |
+|---|---|---|---|---|
+| 8.0.1 | You are on the right branch | `git -C C:/Users/61416/OneDrive/Desktop/EventLinqs/el-moat rev-parse --abbrev-ref HEAD` | prints `integration/launch` | anything else: stop, you are in the wrong worktree |
+| 8.0.2 | Nothing uncommitted | `git -C C:/Users/61416/OneDrive/Desktop/EventLinqs/el-moat status --porcelain` | prints NOTHING | any line: commit or set it aside first |
+| 8.0.3 | Local and remote agree | `git -C C:/Users/61416/OneDrive/Desktop/EventLinqs/el-moat rev-parse HEAD && git -C C:/Users/61416/OneDrive/Desktop/EventLinqs/el-moat ls-remote origin integration/launch` | the two SHAs match | they differ: push first |
+
+### 8.1 Squash merge on GitHub
+
+1. Open <https://github.com/eventlinqs/eventlinqs-app/pulls> and open the PR for
+   `integration/launch` into `main`. If none exists, create it:
+   base `main`, compare `integration/launch`.
+2. Wait for checks. **PASS:** the CI check is green. **FAIL:** anything red, stop
+   and read it; do not use admin merge, do not tick "merge without waiting".
+3. The green button has a dropdown. It **must read "Squash and merge"**. If it
+   reads "Merge pull request" or "Rebase and merge", open the dropdown and change
+   it to "Squash and merge" before pressing.
+   - **Why it matters:** this repository is squash-only. A merge commit here
+     produces a history `main` has not seen before and makes the next merge back
+     into `integration/launch` conflict on every file, exactly as it did on
+     20 August.
+4. Press it, then press "Confirm squash and merge".
+
+**Expected side effect, do NOT try to fix it.** GitHub composes a squash message
+by concatenating the squashed commits' messages, so the new commit on `main` will
+carry `Co-Authored-By` trailers. That is the known Law 8 debt. It is recorded in
+`docs/roast/LAW8-DEBT.md` and the guard defers `86bb285b` and `36179dc1` by name.
+The NEW squash commit is not yet in that list, so if you later merge `main` back
+into `integration/launch`, the Law 8 guard will fail on it. The fix then is to add
+that SHA to `INHERITED_DEFERRED` in `scripts/guards/no-ai-authorship.mjs`, exactly
+as the two before it. Do not rewrite history; that is still not authorised.
+
+### 8.2 Capture the new SHA on main
+
+```
+git -C C:/Users/61416/OneDrive/Desktop/EventLinqs/el-moat fetch origin main
+git -C C:/Users/61416/OneDrive/Desktop/EventLinqs/el-moat log -1 --format="%H %s" origin/main
+```
+
+Write the full 40-character SHA down. Every step below refers to it as **NEW_SHA**.
+
+- **PASS:** the subject line is your PR title and the SHA differs from `36179dc1`.
+- **FAIL:** it still says `Integration/launch (#118)` or the SHA is `36179dc1` --
+  the merge did not land. Go back to 8.1.
+
+### 8.3 Confirm production deployed that exact SHA
+
+1. Open <https://vercel.com/eventlinqs/eventlinqs-app/deployments>.
+2. Find the newest deployment whose Environment is **Production**.
+3. Check three things on it:
+   - Status is **Ready** (not Building, not Error, not Queued).
+   - The commit SHA shown matches **NEW_SHA** (first 7 characters is enough).
+   - Its domain includes `www.eventlinqs.com.au`.
+
+- **PASS:** all three true.
+- **FAIL, status Error:** open Building logs, read the first error. Do not apply
+  any migration; production is still running the old code.
+- **FAIL, SHA does not match:** a later commit or a different branch deployed.
+  Do not proceed. Promote the correct deployment, or push again, then re-check.
+- **FAIL, still Building:** wait. Do not start 8.5 during a build.
+
+### 8.4 BEFORE the migration: prove the new code is actually serving
+
+This is the step that makes the ordering rule real rather than a hope.
+
+**URL to open:**
+<https://www.eventlinqs.com.au/events/payment-verification-test-3c1p9f>
+
+This is a real paid event on production: "Payment Verification Test", organiser
+Party Pty Ltd, starts 31 August 2026, 10 tickets in stock. It is one of only two
+paid events on production whose organiser passes all five sale-gate fields, which
+is why it is the page named here rather than a demo event that legitimately
+cannot sell.
+
+**What you must see:** the page loads, and the ticket area shows **"Get tickets"**.
+
+- **PASS:** "Get tickets" is visible.
+- **FAIL:** you see "still finishing their payment setup", or the page 404s or
+  500s. STOP. Do not apply the migrations. The deploy is not healthy and the
+  migrations will make diagnosis harder.
+
+Command-line equivalent, if you prefer it:
+
+```
+curl -s -L https://www.eventlinqs.com.au/events/payment-verification-test-3c1p9f | Select-String -Pattern "Get tickets"
+```
+
+- **PASS:** one match printed. **FAIL:** no output.
+
+### 8.5 Confirm the pending list is exactly the eight you expect
+
+**RUN IT FROM `el-moat`, AND FROM NOWHERE ELSE.** `db push` applies the migration
+files it finds in the working directory, and decides what is pending by diffing
+them against the remote ledger. Both halves are per-checkout, so the wrong
+directory fails in the two worst ways available:
+
+| Checkout | Linked project | Has the 8 files | What `db push` would do |
+|---|---|---|---|
+| `el-moat` | `gndnldyfudbytbboxesk` PRODUCTION | 8 of 8 | **correct** |
+| `eventlinqs-app-hardening` | `gndnldyfudbytbboxesk` PRODUCTION | **0 of 8** | finds nothing to push and reports success. A SILENT NO-OP that reads as a completed migration |
+| `eventlinqs-app` | `vkapkibzokmfaxqogypq` **TEST** | 8 of 8 | pushes to TEST, where all eight are already applied and recorded, so it also reports success having done nothing to production |
+
+Measured 20 August 2026. Earlier sections of this runbook send you to
+`eventlinqs-app-hardening`; for THIS deploy that is wrong, because that checkout
+sits on `feat/hardening-phase2-5-vercel-sydney-preview-supabase` and predates
+every one of these eight files.
+
+Confirm the directory before you trust it:
+
+```
+cd C:/Users/61416/OneDrive/Desktop/EventLinqs/el-moat
+cat supabase/.temp/project-ref
+git rev-parse --abbrev-ref HEAD
+```
+
+- **PASS:** prints `gndnldyfudbytbboxesk` and `integration/launch`.
+- **FAIL:** prints `vkapkibzokmfaxqogypq` -- that is TEST. Stop; you are about to
+  migrate the wrong database.
+
+Then the dry run, from that same directory:
+
+```
+supabase db push --linked --dry-run
+```
+
+**PASS:** it prints `DRY RUN: migrations will *not* be pushed to the database.`,
+then `Would push these migrations:` followed by exactly **9** bulleted names, then
+`Finished supabase db push.` The eight are exactly these (verified by running this
+dry run against production on 20 August 2026, which returned this list and nothing
+else):
+
+```
+20260818000001_column_lockdown_stage1_no_policy_dependency.sql
+20260819000001_policy_refactor_no_org_privilege.sql
+20260819000002_organisations_column_lockdown.sql
+20260819000003_confirm_order_reacquires_lapsed_hold.sql
+20260819000004_confirm_only_pending_orders.sql
+20260820000001_refund_releases_seat.sql
+20260820000002_refund_policy_and_requests.sql
+20260820000003_refund_releases_squad_seat.sql
+20260821000001_record_out_of_band_refund_columns.sql
+```
+
+**FAIL, any other count or any name not on this list: STOP.** Measured read-only
+against production on 21 August 2026: ledger 88 rows, tree 97 files, 9 pending,
+0 applied-without-a-file. A TENTH entry means something reached the tree that this
+run sheet has not accounted for. An EIGHTH means something was applied out of
+band. Either way, find out what before pushing.
+
+### 8.5a Why there is a ninth, and why it is safe
+
+`20260821000001_record_out_of_band_refund_columns.sql` is not a feature. It
+records two columns that were found on production during the PR #119 types-drift
+investigation and that NO migration in this repository ever created:
+
+```
+refunds.stripe_refund_status    text, nullable, no default
+refunds.stripe_pending_reason   text, nullable, no default
+```
+
+They appear in no .sql file, in no commit on any branch, and in no application
+code. TEST, which has every migration applied, does not have them. They were
+applied by hand at some point, outside the migration files.
+
+The migration ADDS them with `ADD COLUMN IF NOT EXISTS`, so against production,
+which already has them, **it changes nothing**. Its purpose is to make the
+repository describe the database, so they stop being invisible and so a future
+migration cannot collide with them.
+
+Nothing is at stake in the data: measured on production on 21 August, `refunds`
+held 0 rows and both columns were non-null in 0 of them, with no constraint, no
+index and no default on either.
+
+**If you would rather they did not exist**, that is your call and not mine.
+Delete the file before pushing and run this instead:
+
+```sql
+ALTER TABLE public.refunds
+  DROP COLUMN IF EXISTS stripe_refund_status,
+  DROP COLUMN IF EXISTS stripe_pending_reason;
+```
+
+Either way the types-drift guard passes afterwards, because the repository and
+the database genuinely agree.
+
+**Order matters and is already correct.** `db push` applies in version order, so
+stage 1 (`20260818000001`, the tables no policy depends on) runs first, then the
+44 policies move onto `SECURITY DEFINER` helpers (`20260819000001`), and only then
+is `organisations` revoked (`20260819000002`). This is the ordering that was wrong
+on Monday. It is right now, and it was proven on TEST: all eleven applied in one
+pass and `anon` still read events, organisations, venues, seats, event_artists,
+ticket_tiers, event_categories and profiles afterwards.
+
+### 8.6 Apply the migrations
+
+From `C:/Users/61416/OneDrive/Desktop/EventLinqs/el-moat`, the same directory you
+just confirmed in 8.5:
+
+```
+supabase db push --linked
+```
+
+It will ask for the database password. Answer, or pass `-p`.
+
+**SUCCESS looks like:** each of the eight printed in version order, then
+`Finished supabase db push.` and a shell exit with no error. Confirm the ledger
+moved:
+
+```
+supabase migration list --linked
+```
+
+- **PASS:** all eight now show a Remote timestamp, and nothing is left in the
+  Local-only column.
+
+**FAILURE looks like:** the push stops on a named file with a Postgres error. The
+message names the file and usually the object. Two shapes to expect:
+
+- `ERROR: policy "..." for table "..." already exists` -- that migration was
+  partly applied out of band. Do not force it. Go to 8.8, then investigate.
+- `ERROR: permission denied for table organisations` -- this should not happen
+  during the push itself, but if it does, go to 8.8 immediately.
+
+The push is not atomic across files. If it fails on file 5, files 1 to 4 are
+applied and recorded. That is why 8.8 exists and why you should not simply re-run.
+
+### 8.7 AFTER the migration: prove nothing went dark
+
+Do these three in order. Each has an explicit failure action.
+
+**8.7.1 The public event page still sells.**
+Open <https://www.eventlinqs.com.au/events/payment-verification-test-3c1p9f>
+
+- **PASS:** loads, and shows **"Get tickets"** exactly as in 8.4.
+- **FAIL:** 404, 500, or "still finishing their payment setup". Go to 8.8 NOW.
+
+**8.7.2 A second public surface, so one cached page cannot fool you.**
+Open <https://www.eventlinqs.com.au/events> and
+<https://www.eventlinqs.com.au/communities>
+
+- **PASS:** both load with event cards and images visible.
+- **FAIL:** either is blank, 404 or 500. Go to 8.8 NOW.
+
+**8.7.3 An organiser can still publish.** This is the path the lockdown would
+have broken, so it is the one that must be driven rather than assumed.
+Sign in, go to <https://www.eventlinqs.com.au/dashboard/events>, open any DRAFT
+event with a paid ticket tier, and press Publish.
+
+- **PASS:** it publishes, and the event's status becomes Published.
+- **FAIL, and this is the specific message to watch for:** `Organisation not
+  found.` That is the exact symptom of the column revoke meeting old code. It
+  means production is NOT running the merged code. Go to 8.8, then re-check 8.3.
+
+### 8.8 ROLLBACK: one statement, and one query that names the problem
+
+**The rollback.** Open the Supabase SQL editor for the PRODUCTION project
+(`gndnldyfudbytbboxesk`) and paste this single statement. It restores table-level
+`SELECT` on the four tables the lockdown narrows, which immediately undoes the
+privilege change without touching any data:
+
+```sql
+GRANT SELECT ON public.organisations, public.venues, public.seats, public.event_artists TO anon, authenticated;
+```
+
+- **PASS:** `GRANT` printed, and the failing page from 8.7 loads on refresh
+  (hard-refresh, or add `?x=1`, to defeat the CDN cache).
+- It is safe to run even if the lockdown was not the cause: it only widens read
+  access back to what production had all through 19 August.
+- It does NOT roll back the refund or confirm_order migrations, and it does not
+  need to; those add behaviour rather than remove access.
+
+**The diagnostic: which table and column is actually denied.** Paste this into the
+same SQL editor. It answers "what can `anon` and `authenticated` no longer read",
+which is the question you had to guess at three times on Monday:
+
+```sql
+SELECT c.table_name,
+       c.column_name,
+       has_column_privilege('anon',          (quote_ident(c.table_schema)||'.'||quote_ident(c.table_name))::regclass, c.column_name, 'SELECT') AS anon_ok,
+       has_column_privilege('authenticated', (quote_ident(c.table_schema)||'.'||quote_ident(c.table_name))::regclass, c.column_name, 'SELECT') AS auth_ok
+FROM information_schema.columns c
+JOIN pg_class cl ON cl.oid = (quote_ident(c.table_schema)||'.'||quote_ident(c.table_name))::regclass
+WHERE c.table_schema = 'public' AND cl.relkind = 'r'
+  AND NOT (has_column_privilege('anon',          (quote_ident(c.table_schema)||'.'||quote_ident(c.table_name))::regclass, c.column_name, 'SELECT')
+       AND has_column_privilege('authenticated', (quote_ident(c.table_schema)||'.'||quote_ident(c.table_name))::regclass, c.column_name, 'SELECT'))
+ORDER BY 1, 2;
+```
+
+**How to read it:**
+
+- **Zero rows** means no column is denied to either role. The lockdown is not your
+  problem; look at the deploy (8.3) instead. This query was validated on
+  production on 20 August: it ran in 164ms and returned zero rows, and a control
+  asking the same question about an unprivileged role returned 889 rows, so a zero
+  here is a real answer and not a broken query.
+- **Rows listed** name the exact table and column. Expected AFTER a successful
+  push: the `organisations` columns outside
+  `(id, name, slug, description, logo_url, website)`, plus the narrowed columns on
+  `venues`, `seats` and `event_artists`. That is the lockdown working as designed.
+- **A column you did not expect**, especially on a table a public page reads, is
+  the cause of a 404 or 500. Run the GRANT above.
+
+### 8.9 The refund, and what confirms the seat came back
+
+The seat release and the squad unwind are NOT live on production until 8.6
+succeeds. Measured read-only on 20 August: production's live `reconcile_refund`
+(4716 characters) does not touch `seats` or `squad_members`, and
+`squad_member_status` has only `invited, paid, declined, timed_out`. After the
+push it gains `refunded`.
+
+1. Pick a **seated** event with a real paid order. Note the event id and the
+   seat's row and number from the order.
+2. Sign in, open
+   `https://www.eventlinqs.com.au/dashboard/events/<EVENT_ID>/orders`, open the
+   order, and press Refund. Confirm the full amount.
+3. **Wait for the Stripe webhook.** The refund is applied by
+   `charge.refunded`, not by the button, so the seat does not come back the
+   instant the dialog closes. Give it up to a minute.
+
+**What confirms the seat returned, in the dashboard:**
+
+| Where | What you must see |
+|---|---|
+| `/dashboard/events/<EVENT_ID>/seats` | the seat is **available** again and selectable, not sold |
+| `/dashboard/events/<EVENT_ID>` | the tier's sold count is **one lower**, remaining capacity one higher |
+| `/dashboard/events/<EVENT_ID>/orders` | the order reads **refunded** (or `partially_refunded` on a partial) |
+
+**What confirms it in the database**, if the UI is ambiguous. Run in the
+production SQL editor, replacing the order id:
+
+```sql
+SELECT t.ticket_code,
+       t.status              AS ticket_status,
+       t.seat_id             AS seat_now,          -- must be NULL
+       t.released_seat_id    AS seat_before,       -- must be the seat it held
+       s.status              AS seat_status        -- must be 'available'
+FROM public.tickets t
+LEFT JOIN public.seats s ON s.id = t.released_seat_id
+WHERE t.order_id = '<ORDER_ID>';
+```
+
+- **PASS:** `ticket_status` is `refunded`, `seat_now` is NULL, `seat_before` holds
+  the original seat id, and `seat_status` is `available`.
+- **FAIL, `seat_now` still set and `seat_status` still `sold`:** the refund did not
+  reconcile. Check the Stripe webhook delivered: Stripe Dashboard, Developers,
+  Webhooks, the `charge.refunded` event, and look for a non-2xx response.
+- **FAIL, `seat_before` is NULL but `seat_now` is NULL too:** the ticket never had
+  a seat. You refunded a general-admission order; pick a seated one.
+
+**For a squad booking**, add this. `refunded` only exists after 8.6:
+
+```sql
+SELECT sm.id, sm.status
+FROM public.squad_members sm
+WHERE sm.order_id = '<ORDER_ID>';
+```
+
+- **PASS:** status is `refunded`, so squad completion stops counting that member
+  and the slot is genuinely open again.
+- **FAIL:** status is still `paid`. The squad would complete a slot short. That is
+  the defect `20260820000003` fixes, so confirm that migration is in the ledger.
+
+### 8.9a Confirm nothing reached production without a migration
+
+Run after the push, from `el-moat`:
+
+```
+node scripts/verify/schema-provenance.mjs
+```
+
+It compares production against TEST, which is built from the migrations and from
+nothing else, so anything present on production and absent from TEST was not
+produced by a migration. It writes nothing: both sessions are opened read-only
+and rolled back.
+
+- **PASS:** `every object on production is produced by a migration`, and the line
+  above it reads `objects on PRODUCTION that no migration produced: 0`.
+- **FAIL:** it lists the objects. Each one reached production by hand. Write an
+  idempotent migration recording it, or rule on removing it. Do not leave it.
+- **CANNOT CONCLUDE:** it refuses when TEST is behind the tree, because every
+  unapplied migration's columns would otherwise be reported as out-of-band. Apply
+  the missing ones to TEST first, with
+  `node scripts/verify/apply-migration-to-test.mjs --file supabase/migrations/<file>.sql`.
+
+This is the check that did not exist on 21 August, which is why two hand-applied
+columns on `refunds` sat unnoticed until a types-drift failure surfaced them.
+
+### 8.10 Stop here
+
+Do not merge `main` into `integration/launch` in the same sitting. If you do, the
+Law 8 guard will fail on the new squash commit for the reason recorded in 8.1, and
+you will be debugging authorship trailers while holding a fresh production deploy.

@@ -1,0 +1,96 @@
+{
+  "label": "before",
+  "base": "http://localhost:3100",
+  "results": [
+    {
+      "route": "/api/payouts/list",
+      "scenario": "unauthenticated",
+      "status": 401,
+      "body": "{\"ok\":false,\"error\":\"unauthenticated\"}"
+    },
+    {
+      "route": "/api/payouts/summary",
+      "scenario": "unauthenticated",
+      "status": 401,
+      "body": "{\"ok\":false,\"error\":\"unauthenticated\"}"
+    },
+    {
+      "route": "/api/payouts/refunds",
+      "scenario": "unauthenticated",
+      "status": 401,
+      "body": "{\"ok\":false,\"error\":\"unauthenticated\"}"
+    },
+    {
+      "route": "/api/payouts/list",
+      "scenario": "owner-default-org",
+      "status": 200,
+      "body": "{\"ok\":true,\"rows\":[],\"total\":0,\"limit\":20,\"offset\":0}"
+    },
+    {
+      "route": "/api/payouts/summary",
+      "scenario": "owner-default-org",
+      "status": 200,
+      "body": "{\"ok\":true,\"summary\":{\"currency\":\"AUD\",\"availableCents\":0,\"pendingCents\":0,\"paidThisMonthCents\":0,\"onHoldCents\":0,\"lifetimeCents\":0,\"nextArrivalDate\":null},\"terms\":{\"tier\":\"tier_1\",\"tierLabel\":\"Standard\",\"schedule\":\"post_event_only\",\"scheduleLabel\":\"Released after each event completes\",\"onDemandEligible\":false,\"cadenceDays\":3,\"reservePercent\":20},\"reserve_release_schedule\":[]}"
+    },
+    {
+      "route": "/api/payouts/refunds",
+      "scenario": "owner-default-org",
+      "status": 200,
+      "body": "{\"ok\":true,\"rows\":[],\"total\":0,\"limit\":20,\"offset\":0}"
+    },
+    {
+      "route": "/api/payouts/list",
+      "scenario": "owner-explicit-org",
+      "status": 200,
+      "body": "{\"ok\":true,\"rows\":[],\"total\":0,\"limit\":20,\"offset\":0}"
+    },
+    {
+      "route": "/api/payouts/summary",
+      "scenario": "owner-explicit-org",
+      "status": 200,
+      "body": "{\"ok\":true,\"summary\":{\"currency\":\"AUD\",\"availableCents\":0,\"pendingCents\":0,\"paidThisMonthCents\":0,\"onHoldCents\":0,\"lifetimeCents\":0,\"nextArrivalDate\":null},\"terms\":{\"tier\":\"tier_1\",\"tierLabel\":\"Standard\",\"schedule\":\"post_event_only\",\"scheduleLabel\":\"Released after each event completes\",\"onDemandEligible\":false,\"cadenceDays\":3,\"reservePercent\":20},\"reserve_release_schedule\":[]}"
+    },
+    {
+      "route": "/api/payouts/refunds",
+      "scenario": "owner-explicit-org",
+      "status": 200,
+      "body": "{\"ok\":true,\"rows\":[],\"total\":0,\"limit\":20,\"offset\":0}"
+    },
+    {
+      "route": "/api/payouts/list",
+      "scenario": "owner-foreign-org",
+      "status": 403,
+      "body": "{\"ok\":false,\"error\":\"not_your_organisation\"}"
+    },
+    {
+      "route": "/api/payouts/summary",
+      "scenario": "owner-foreign-org",
+      "status": 403,
+      "body": "{\"ok\":false,\"error\":\"not_your_organisation\"}"
+    },
+    {
+      "route": "/api/payouts/refunds",
+      "scenario": "owner-foreign-org",
+      "status": 403,
+      "body": "{\"ok\":false,\"error\":\"not_your_organisation\"}"
+    },
+    {
+      "route": "/api/payouts/list",
+      "scenario": "authed-no-organisation",
+      "status": 404,
+      "body": "{\"ok\":false,\"error\":\"no_organisation\"}"
+    },
+    {
+      "route": "/api/payouts/summary",
+      "scenario": "authed-no-organisation",
+      "status": 404,
+      "body": "{\"ok\":false,\"error\":\"no_organisation\"}"
+    },
+    {
+      "route": "/api/payouts/refunds",
+      "scenario": "authed-no-organisation",
+      "status": 404,
+      "body": "{\"ok\":false,\"error\":\"no_organisation\"}"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import type { TicketTier, EventAddon } from '@/types/database'
 import type { TierInventory } from '@/lib/redis/inventory-cache'
 import type { FeeRates, FeePassType } from '@/lib/payments/fee-math'
+import type { SaleRefusalReason } from '@/lib/payments/sale-status'
 
 // Why a client wrapper: the page used to call `getUnlockedTierIds()` on the
 // server (cookie read), which disqualified `/events/[slug]` from static
@@ -38,6 +39,9 @@ interface Props {
   // Paid event whose organiser has not finished Stripe setup: render the
   // not-on-sale state through the selector and show no buy controls.
   saleBlocked?: boolean
+  // WHY it was blocked, threaded straight through so the buyer reads the true
+  // cause rather than the most common one. See ticketsOnSaleDetailed.
+  saleRefusalReason?: SaleRefusalReason | null
   // ACCC all-in display: the event's live fee VALUES and who carries them, so
   // the selector shows the true total (incl. fees) before checkout.
   feeRates?: FeeRates
@@ -88,6 +92,7 @@ export function TicketPanelClient(props: Props) {
         isTicketingSuspended={props.isTicketingSuspended}
         currency={props.defaultCurrency}
         saleBlocked
+        saleRefusalReason={props.saleRefusalReason ?? null}
       />
     )
   }

@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { getAllCommunities, type CommunityContent, type CommunitySlug } from './data'
 import { buildCommunityTagOrFilter } from './tag-bridge'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 export interface CommunityIndexEntry {
   slug: CommunitySlug
@@ -51,7 +52,7 @@ async function getCommunityIndexEntriesRaw(): Promise<CommunityIndexEntry[]> {
         .select('id', { count: 'exact', head: true })
         .eq('status', 'published')
         .eq('visibility', 'public')
-        .gte('start_date', nowIso)
+        .or(listingWindowOrPredicate(new Date(nowIso)))
         .or(tagOr)
       counts[c.slug] = error || count === null ? 0 : count
     }),

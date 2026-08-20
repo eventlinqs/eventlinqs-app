@@ -7,6 +7,7 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchOrganisationGigs, PERFORMANCE_TYPE_LABELS } from '@/lib/marketplace/gigs'
 import { PostGigForm } from '@/components/marketplace/post-gig-form'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,7 +71,7 @@ export default async function OrganiserGigsPage() {
       .select('id, title')
       .eq('organisation_id', org.id)
       .eq('status', 'published')
-      .gte('start_date', new Date().toISOString())
+      .or(listingWindowOrPredicate(new Date()))
       .order('start_date', { ascending: true })
       .limit(50),
   ])

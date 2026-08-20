@@ -17,6 +17,7 @@ import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { getSiteUrl } from '@/lib/site-url'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 // ISR: 5-minute revalidate matches /events/[slug] and /categories/[slug].
 export const revalidate = 300
@@ -78,7 +79,7 @@ export default async function CommunityPage({ params }: Props) {
           )
           .eq('status', 'published')
           .eq('visibility', 'public')
-          .gte('start_date', new Date().toISOString())
+          .or(listingWindowOrPredicate(new Date()))
           .or(tagOr)
           .order('start_date', { ascending: true })
           .limit(12),

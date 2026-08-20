@@ -214,13 +214,42 @@ function parseTableBody(body) {
  *
  *   USING (auth.role() = 'service_role')  -- anon's role is 'anon', never matches
  *   USING (user_id = auth.uid())          -- auth.uid() is NULL for anon
+ *
+ * A THIRD CLASS ARRIVED WITH 20260819000001, and missing it made this scanner
+ * useless rather than merely wrong. That migration moved the ownership lookups out
+ * of the policy expressions and into SECURITY DEFINER helpers, because evaluating a
+ * subquery over `organisations` required the CALLER to hold SELECT on it, which is
+ * what took every event page to 404. The helpers still scope to `auth.uid()` -- that
+ * is their entire body -- but the POLICY text no longer contains the string
+ * `auth.uid()`, so the test above stopped recognising 32 identity-scoped policies
+ * and reported them as publishing to anon.
+ *
+ * Over-reporting is the safe direction, but 32 false findings is a guard somebody
+ * switches off, and it would bury a real exposure in noise. So a call to one of the
+ * identity helpers counts as an identity predicate, which is exactly what it is: the
+ * helper returns rows only for the calling user, and returns NOTHING for anon
+ * because auth.uid() is null there.
+ *
+ * They are named EXPLICITLY rather than matched by a pattern. A wildcard like
+ * /el_.*\(\)/ would let any future function be mistaken for an identity check by
+ * naming itself well, which is the kind of hole that gets added by accident.
  */
+const IDENTITY_HELPERS = [
+  'el_owned_organisation_ids',
+  'el_member_organisation_ids',
+  'el_any_member_organisation_ids',
+]
+
 function admitsRole(p, role) {
   if (!p.permissive) return false
   if (p.cmd !== 'SELECT' && p.cmd !== 'ALL') return false
   const reaches = p.roles.includes('public') || p.roles.includes(role)
   if (!reaches) return false
+  const usesIdentityHelper = IDENTITY_HELPERS.some(fn =>
+    new RegExp(`\\b${fn}\\s*\\(`, 'i').test(p.using),
+  )
   const identityPredicate =
+    usesIdentityHelper ||
     /auth\.uid\(\)|auth\.jwt\(\)|auth\.role\(\)|current_setting\s*\(\s*'request\.jwt/i.test(p.using)
   if (identityPredicate) return /'anon'/i.test(p.using)
   return true

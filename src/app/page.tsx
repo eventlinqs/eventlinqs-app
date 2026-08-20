@@ -19,6 +19,7 @@ import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { EventRailSection } from '@/components/features/home/event-rail-section'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
+import { ThinCategoriesNote } from '@/components/features/home/thin-categories-note'
 import {
   ThisWeekSkeleton,
   CityRailSkeleton,
@@ -111,6 +112,14 @@ export default async function HomePage() {
   // reads as emptiness, not curation. A category rail renders only from three
   // events; thinner categories stay reachable through Browse by Category and
   // the events browse, where a short list reads as a list, not a defect.
+  //
+  // FOUNDER RULING, 16 August 2026, recorded in
+  // docs/roast/RAIL-MIN-RULING-2026-08-16.md: RAIL_MIN STANDS, and the homepage
+  // now SAYS SO. The apparent conflict with "published means visible" is not a
+  // conflict: nothing is unreachable, only unrailed. What was missing was the
+  // sentence. ThinCategoriesNote below names every category with one or two
+  // events on, with its real count and a working link, so "no rail" can never
+  // again look identical to "no events".
   const RAIL_MIN = 3
 
   // Live counts per category for the category nav tiles under the hero.
@@ -128,6 +137,27 @@ export default async function HomePage() {
   const comedyEvents = byCategory('comedy')
   const sportsEvents = byCategory('sports')
   const familyEvents = byCategory('family')
+
+  // Every category that HAS events on but not enough for a rail. Built from the
+  // same slices the rails render, so the two can never disagree about what is on.
+  const thinCategories = (
+    [
+      { slug: 'music', label: 'Music', events: musicEvents },
+      { slug: 'food-drink', label: 'Food and drink', events: foodEvents },
+      { slug: 'festival', label: 'Festivals', events: festivalEvents },
+      { slug: 'arts-community', label: 'Arts and theatre', events: artsEvents },
+      { slug: 'nightlife', label: 'Nightlife', events: nightlifeEvents },
+      { slug: 'comedy', label: 'Comedy', events: comedyEvents },
+      { slug: 'sports', label: 'Sport', events: sportsEvents },
+      { slug: 'family', label: 'Family', events: familyEvents },
+    ] as const
+  )
+    .filter(c => c.events.length > 0 && c.events.length < RAIL_MIN)
+    .map(c => ({
+      label: c.label,
+      count: c.events.length,
+      href: `/events?category=${c.slug}`,
+    }))
 
   const thisWeek = upcoming
     .filter(e => new Date(e.start_date) <= new Date(nowMs + 7 * 24 * 60 * 60 * 1000))
@@ -386,6 +416,10 @@ export default async function HomePage() {
         {/* Business and networking rail removed from the homepage (founder
          *  ruling): lowest consumer-discovery intent of the category rails. It
          *  stays a Browse-by-Category tile and keeps its category page. */}
+
+        {/* The suppressed rails, named. Renders nothing once every category is
+         *  either full or empty. See the RAIL_MIN ruling above. */}
+        <ThinCategoriesNote categories={thinCategories} />
 
         {/* Browse by City */}
         <Suspense fallback={<CityRailSkeleton />}>

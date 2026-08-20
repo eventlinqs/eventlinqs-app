@@ -1,5 +1,15 @@
 # Rate-limit handoff to Session 1 (Backend)
 
+> **HISTORICAL, 2 May 2026. Not current.** The authority on rate limiting is now
+> `docs/RATE-LIMIT-DOCTRINE.md`, with `src/lib/rate-limit/policies.ts` as the
+> executable authority. Two things below are specifically out of date: the
+> `POST /api/location/set` route and its `location-set` policy were DELETED on
+> 19 August 2026 (the policy guarded a write to a preference nothing writes), and
+> the proposed `checkout-confirm` policy was never created: the checkout path is
+> covered by `checkout-reserve`. Do not wire anything from this document without
+> checking the policy table first.
+
+
 Status: HANDOFF READY - hardening session has landed the policy layer; Session 1 owns the wiring on payment-territory routes
 Owner: Hardening session (this session) for the policy layer; Session 1 (Backend) for the call-site wiring
 Date: 2026-05-02

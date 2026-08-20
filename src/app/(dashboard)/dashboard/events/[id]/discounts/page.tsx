@@ -17,7 +17,10 @@ export default async function DiscountsPage({ params }: Props) {
 
   const { data: event } = await supabase
     .from('events')
-    .select('id, title, organisation_id')
+    // timezone comes along so the discount window is read in the EVENT's zone.
+    // Without it the form's "YYYY-MM-DDTHH:mm" was stored raw and Postgres read
+    // it as UTC, so a code valid from 12:00 opened at 11pm the night before.
+    .select('id, title, organisation_id, timezone')
     .eq('id', eventId)
     .single()
 
@@ -57,6 +60,7 @@ export default async function DiscountsPage({ params }: Props) {
 
       <DiscountCodesClient
         eventId={eventId}
+        eventTimezone={event.timezone ?? null}
         currency={tiers?.[0]?.currency ?? 'AUD'}
         initialCodes={(discountCodes ?? []) as DiscountCode[]}
         tiers={(tiers ?? []) as Pick<TicketTier, 'id' | 'name'>[]}

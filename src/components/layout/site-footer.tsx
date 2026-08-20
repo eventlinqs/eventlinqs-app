@@ -188,7 +188,36 @@ export function SiteFooter() {
   }).format(new Date())
 
   return (
-    <footer className="bg-[var(--color-ink-900)] text-white" aria-label="Site footer">
+    /*
+     * THE FOOTER PAINTS THE STRIP THE MOBILE NAV RESERVES.
+     *
+     * THE DEFECT, measured on every page at 390: 64px of page background sat
+     * BELOW the dark footer, so the platform ended on a pale band under a
+     * full-bleed dark block. It read as a mistake because it was one.
+     *
+     * THE CAUSE was correct intent in the wrong place. MobileBottomNav is
+     * `fixed bottom-0 h-16 md:hidden`, and src/app/layout.tsx reserves its
+     * height with `pb-16 md:pb-0` on the wrapper that contains EVERYTHING,
+     * the footer included. Padding sits outside its child, so the reserved
+     * strip could only ever show the page background.
+     *
+     * THE FIX, and why it is shaped like this rather than moving the padding.
+     * `-mb-16 pb-16` pulls the footer down over the reserved strip by exactly
+     * the nav height and gives that height back as its own padding. The
+     * document height is UNCHANGED, so nothing below or after it moves, and no
+     * other surface is touched. Moving the clearance out of the root wrapper
+     * instead would have meant adding it to seven separate shells and betting
+     * that no surface with neither a footer nor one of those shells lost its
+     * clearance in the process. This cannot lose it anywhere.
+     *
+     * The last footer row keeps its 64px of air above the nav, so the ABN line
+     * is never sitting under the tab bar. Above `md` both classes are zero and
+     * the footer is exactly what it was.
+     */
+    <footer
+      className="-mb-16 bg-[var(--color-ink-900)] pb-16 text-white md:mb-0 md:pb-0"
+      aria-label="Site footer"
+    >
       <div className="mx-auto max-w-7xl px-4 pt-10 pb-6 sm:px-6 sm:pt-12 lg:px-8">
 
         {/* Desktop: brand strip + 4-col link grid */}

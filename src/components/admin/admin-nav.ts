@@ -21,6 +21,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { label: 'Users',            href: '/admin/users',      capability: 'admin.users.manage' },
   { label: 'Events',           href: '/admin/events',     capability: 'admin.events.manage' },
   { label: 'Orders',           href: '/admin/orders',     capability: 'admin.refunds.process' },
+  { label: 'Money taken, no ticket', href: '/admin/orders/unfulfilled', capability: 'admin.refunds.process' },
   { label: 'Refunds',          href: '/admin/refunds',    capability: 'admin.refunds.process' },
   { label: 'Disputes',         href: '/admin/disputes',   capability: 'admin.disputes.manage' },
   { label: 'Payouts',          href: '/admin/payouts',    capability: 'admin.payouts.disburse' },

@@ -9,8 +9,8 @@ import { JoinWaitlistButton } from '@/components/waitlist/join-waitlist-button'
 import { StartSquadButton } from '@/components/squads/start-squad-button'
 import { trackTicketCheckoutStart } from '@/lib/analytics/plausible'
 import {
-  TICKETS_NOT_ON_SALE_BODY,
-  TICKETS_NOT_ON_SALE_HEADING,
+  describeSaleRefusal,
+  type SaleRefusalReason,
 } from '@/lib/payments/sale-status'
 import {
   computeFeeLineCents,
@@ -33,6 +33,12 @@ interface TicketSelectorProps {
   // Paid event whose organiser has not finished Stripe setup: render the
   // not-on-sale state and allow no selection so no inventory is consumed.
   saleBlocked?: boolean
+  /**
+   * WHY the server blocked the sale, when it did. Optional because a caller that
+   * only knows the boolean still renders correctly; supplying it means the buyer
+   * reads the true cause rather than the most common guess.
+   */
+  saleRefusalReason?: SaleRefusalReason | null
   // ACCC all-in display (drip-pricing compliance): the live fee VALUES for this
   // event's scope and who carries them. When fees are passed to the buyer the
   // selector shows the true all-in total BEFORE checkout, never only at the
@@ -63,10 +69,35 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, saleRefusalReason = null, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+
+  /**
+   * THE SERVER'S REFUSAL IS AUTHORITATIVE, AND IT LATCHES.
+   *
+   * THE DEFECT THIS CLOSES, 18 August 2026. A refusal from createReservation used
+   * to be rendered as a line of text ABOVE a checkout button that stayed fully
+   * enabled, priced and clickable. The founder saw "Tickets for this event are
+   * not on sale yet" sitting directly above an enabled gold "Checkout AUD 2.03"
+   * and, reasonably, believed the button. That is the dead-end class from Law 5
+   * arriving on the money path, which is the worst place for it.
+   *
+   * Server-rendered state can be stale by the time a human clicks. When the
+   * server says the sale is refused, the client stops offering it, rather than
+   * discussing it. The latch is deliberately one-way for the life of the page:
+   * re-enabling on the next render would put the same lie back on screen.
+   */
+  const [latchedRefusal, setLatchedRefusal] = useState<SaleRefusalReason | null>(null)
+
+  // One value decides whether a checkout exists on this screen. Server-rendered
+  // cause first, the caller's older boolean as a fallback, and anything the
+  // server said at click time overriding both.
+  const refusalReason: SaleRefusalReason | null =
+    latchedRefusal ??
+    saleRefusalReason ??
+    (saleBlocked ? 'organiser_payment_setup_incomplete' : null)
 
   const [tierQuantities, setTierQuantities] = useState<Record<string, number>>(() =>
     Object.fromEntries(tiers.map(t => [t.id, 0]))
@@ -179,6 +210,14 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
       const result = await createReservation({ event_id: eventId, ticket_items, addon_items })
 
       if (result.error) {
+        // A refusal that carries a REASON is a sellability verdict, not a
+        // retryable hiccup, so the checkout stops being offered. A plain error
+        // (rate limit, inventory, validation) is retryable and correctly leaves
+        // the controls in place.
+        if (result.reason) {
+          setLatchedRefusal(result.reason)
+          return
+        }
         setError(result.error)
         return
       }
@@ -207,16 +246,20 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
     return { tier, qty }
   })()
 
-  // Paid event whose organiser has not finished Stripe setup: render the
-  // not-on-sale state and no selection controls, so no inventory is consumed.
-  // Mirrors the server-side guard in createReservation.
-  if (saleBlocked) {
+  // The sale is refused, so there is NO selection control and NO checkout button
+  // on this screen at all. Not a disabled one: an absent one. The copy names the
+  // cause the server actually gave rather than the most common guess, and the
+  // buyer audience never sees a payment-provider internal.
+  if (refusalReason) {
+    const refusal = describeSaleRefusal(refusalReason, 'buyer')
     return (
-      <div className="rounded-xl border border-ink-200 bg-ink-100/40 px-4 py-5 text-center">
-        <p className="font-display text-base font-bold text-ink-900">
-          {TICKETS_NOT_ON_SALE_HEADING}
-        </p>
-        <p className="mt-2 text-sm text-ink-600">{TICKETS_NOT_ON_SALE_BODY}</p>
+      <div
+        className="rounded-xl border border-ink-200 bg-ink-100/40 px-4 py-5 text-center"
+        data-sale-refused={refusalReason}
+        role="status"
+      >
+        <p className="font-display text-base font-bold text-ink-900">{refusal.heading}</p>
+        <p className="mt-2 text-sm text-ink-600">{refusal.body}</p>
       </div>
     )
   }
@@ -446,7 +489,11 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
         <button
           type="button"
           onClick={handleCheckout}
-          disabled={totalTickets === 0 || isPending}
+          // `refusalReason` already returns early above, so this cannot currently
+          // be reached. It is stated anyway, and the guard requires it: the early
+          // return is one edit away from being moved, and the failure mode of
+          // losing it is a live checkout button beside a refusal.
+          disabled={totalTickets === 0 || isPending || refusalReason !== null}
           className="w-full rounded-xl bg-gold-500 hover:bg-gold-600 px-4 py-3.5 text-sm font-semibold text-ink-900 disabled:bg-ink-200 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
         >
           {isPending

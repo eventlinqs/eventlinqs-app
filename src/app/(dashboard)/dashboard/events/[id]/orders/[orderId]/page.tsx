@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { Order, OrderItem, Payment } from '@/types/database'
 import { getOrderForAdmin } from '@/lib/admin/orders'
 import { OrganiserRefundPanel } from './refund-panel'
+import { resolveEventAccess } from '@/lib/organisations/event-access'
 
 const REFUNDABLE_ORDER_STATUSES = new Set(['confirmed', 'partially_refunded'])
 
@@ -45,14 +46,15 @@ export default async function OrderDetailPage({ params }: Props) {
 
   if (!event) notFound()
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', event.organisation_id)
-    .eq('owner_id', user.id)
-    .single()
-
-  if (!org) notFound()
+  /*
+   * ACCESS GATE, one shared definition. This was `.eq('owner_id', user.id)`, which
+   * locked out an organisation_members manager even though resolveRefundScope and
+   * create_refund_request both admit them. The refund control lives on this page, so
+   * an owner-only route made the founder's "any organiser can refund" ruling
+   * unreachable for a venue with staff. See src/lib/organisations/event-access.ts.
+   */
+  const access = await resolveEventAccess(eventId)
+  if (!access.allowed) notFound()
 
   // Admin client - organiser is not the buyer, RLS blocks session-client reads on orders/payments
   const { data: order } = await adminClient

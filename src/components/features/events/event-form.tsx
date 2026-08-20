@@ -16,7 +16,20 @@ import {
   stripCanonicalCommunityTokens,
   canonicalTokensForCommunities,
 } from '@/lib/communities/tag-bridge'
-import { formatPlatformDateTime } from '@/lib/dates/event-time'
+import {
+  formatPlatformDateTime,
+  fromZonedInputValue,
+  toZonedInputValue,
+} from '@/lib/dates/event-time'
+import { timezoneForVenue } from '@/lib/dates/venue-timezone'
+
+/**
+ * The zone a brand new form starts in, before the organiser has typed an address
+ * that determines one. Melbourne rather than Sydney because that is where the
+ * recruitment effort is pointed, and it is replaced the moment a venue names a
+ * state or a known city. See timezoneForVenue.
+ */
+const DEFAULT_TIMEZONE = 'Australia/Melbourne'
 import type {
   EventCategory,
   EventType,
@@ -81,6 +94,10 @@ type FormData = {
   // Who carries the fees: pass-on (buyer pays, organiser keeps face value -
   // default) or absorb (deducted from the organiser payout).
   fee_pass_type: FeePassType
+  refund_policy_type: 'days_before' | 'no_refunds'
+  refund_policy_days: number
+  refund_policy_absorb_fee: boolean
+  refund_policy_self_service: boolean
   // Step 6
   visibility: EventVisibility
   is_age_restricted: boolean
@@ -174,7 +191,9 @@ function getDefaultFormData(): FormData {
   const now = new Date()
   const start = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
   const end = new Date(start.getTime() + 2 * 60 * 60 * 1000)
-  const fmt = (d: Date) => d.toISOString().slice(0, 16)
+  // The seeded default is shown in the SAME zone the form is about to save in,
+  // so the organiser is never handed a UTC wall clock labelled as their own.
+  const fmt = (d: Date) => toZonedInputValue(d.toISOString(), DEFAULT_TIMEZONE)
 
   return {
     title: '',
@@ -185,7 +204,7 @@ function getDefaultFormData(): FormData {
     community_slugs: [],
     start_date: fmt(start),
     end_date: fmt(end),
-    timezone: 'Australia/Melbourne',
+    timezone: DEFAULT_TIMEZONE,
     is_multi_day: false,
     is_recurring: false,
     recurrence_rule: 'FREQ=WEEKLY',
@@ -214,6 +233,13 @@ function getDefaultFormData(): FormData {
     is_high_demand: false,
     queue_admission_window_minutes: '10',
     fee_pass_type: 'pass_to_buyer',
+    // The DEFAULT IS THE GENEROUS ONE, matching Eventbrite's "Allow refunds"
+    // default. It also matters for the one-way rule: an organiser can always
+    // loosen later, so starting strict would trap them.
+    refund_policy_type: 'days_before',
+    refund_policy_days: 7,
+    refund_policy_absorb_fee: false,
+    refund_policy_self_service: false,
   }
 }
 
@@ -284,10 +310,20 @@ function fromExistingEvent(
     is_high_demand?: boolean | null
     queue_admission_window_minutes?: number | null
     fee_pass_type?: FeePassType | null
+    refund_policy_type?: string | null
+    refund_policy_days?: number | null
+    refund_policy_absorb_fee?: boolean | null
+    refund_policy_self_service?: boolean | null
   },
   tiers: TicketTier[]
 ): FormData {
-  const fmt = (d: string) => new Date(d).toISOString().slice(0, 16)
+  // THE EDIT ROUND TRIP, which is where the shift accumulated. The stored value
+  // is a UTC instant; the input must show it as a wall clock in the EVENT's own
+  // zone. Slicing the ISO string handed the organiser UTC and called it local,
+  // and saving then subtracted the browser's offset from it a second time, so
+  // every save moved the event one offset earlier. See fromZonedInputValue.
+  const zone = event.timezone
+  const fmt = (d: string) => toZonedInputValue(d, zone)
   return {
     title: event.title,
     summary: event.summary ?? '',
@@ -319,8 +355,8 @@ function fromExistingEvent(
       price: (t.price / 100).toString(),
       currency: t.currency,
       total_capacity: t.total_capacity.toString(),
-      sale_start: t.sale_start ? new Date(t.sale_start).toISOString().slice(0, 16) : '',
-      sale_end: t.sale_end ? new Date(t.sale_end).toISOString().slice(0, 16) : '',
+      sale_start: t.sale_start ? toZonedInputValue(t.sale_start, zone) : '',
+      sale_end: t.sale_end ? toZonedInputValue(t.sale_end, zone) : '',
       min_per_order: t.min_per_order.toString(),
       max_per_order: t.max_per_order.toString(),
       sort_order: t.sort_order ?? i,
@@ -339,6 +375,10 @@ function fromExistingEvent(
     is_high_demand: event.is_high_demand ?? false,
     queue_admission_window_minutes: (event.queue_admission_window_minutes ?? 10).toString(),
     fee_pass_type: event.fee_pass_type ?? 'pass_to_buyer',
+    refund_policy_type: event.refund_policy_type === 'no_refunds' ? 'no_refunds' : 'days_before',
+    refund_policy_days: event.refund_policy_days ?? 7,
+    refund_policy_absorb_fee: event.refund_policy_absorb_fee ?? false,
+    refund_policy_self_service: event.refund_policy_self_service ?? false,
   }
 }
 
@@ -407,6 +447,9 @@ export function EventForm({
   // Activation metric: kit_started fires once per create-mode session, on the
   // first meaningful input (typing a title, or applying a Magic Start draft).
   const kitStartedRef = useRef(false)
+  // Set once the organiser picks a zone by hand, so venue-derived resolution
+  // never overwrites a deliberate choice.
+  const timezoneTouchedRef = useRef(false)
   const markKitStarted = useCallback(
     (mode: 'wizard' | 'magic_start') => {
       if (editMode || kitStartedRef.current) return
@@ -416,20 +459,33 @@ export function EventForm({
     [editMode],
   )
 
-  // Auto-detect the browser timezone on mount (new events only). This must run
-  // in an effect, not the state initializer: reading the browser timezone
-  // during render would differ between the server (UTC) and the client, causing
-  // a hydration mismatch. The one extra render is intentional and one-time.
+  /*
+   * THE EVENT'S ZONE FOLLOWS THE VENUE, not the browser.
+   *
+   * This used to read `Intl.DateTimeFormat().resolvedOptions().timeZone` and use
+   * it as the event's zone. That is the ORGANISER's zone, and the two are only
+   * the same when the organiser is at the venue. It is also coarser than it
+   * looks: Windows carries one setting for the whole eastern seaboard, and it
+   * resolves to Australia/Sydney, so a Geelong event created on a Melbourne
+   * laptop was stored as Sydney. Harmless while the offsets agree, wrong on the
+   * label a buyer reads, and wrong outright the day a Perth or Brisbane
+   * organiser signs up.
+   *
+   * The venue decides. It re-resolves as the organiser types the address, so
+   * changing the city changes the zone, and it stops the moment the organiser
+   * sets the dropdown by hand: `timezoneTouchedRef` records that they overrode
+   * it, and their choice is never taken back off them. An address that does not
+   * determine a zone leaves whatever is already selected alone.
+   */
   useEffect(() => {
-    if (editMode) return
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time, client-only timezone seed; must be an effect for SSR-safe hydration
-      if (tz) set('timezone', tz)
-    } catch {
-      // keep the default timezone
-    }
-  }, [editMode, set])
+    if (editMode || timezoneTouchedRef.current) return
+    const resolved = timezoneForVenue({
+      state: formData.venue_state,
+      city: formData.venue_city,
+    })
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- derived from the venue fields; must be an effect so SSR and the client agree
+    if (resolved && resolved !== formData.timezone) set('timezone', resolved)
+  }, [editMode, formData.venue_state, formData.venue_city, formData.timezone, set])
 
   const buildPayload = (status: EventStatus) => ({
     eventId: eventId,
@@ -442,8 +498,12 @@ export function EventForm({
       ...stripCanonicalCommunityTokens(formData.tags.split(',').map(t => t.trim()).filter(Boolean)),
       ...canonicalTokensForCommunities(formData.community_slugs),
     ])),
-    start_date: new Date(formData.start_date).toISOString(),
-    end_date: new Date(formData.end_date).toISOString(),
+    // What the organiser typed, read in the zone THEY chose in this form, not in
+    // whatever zone the browser happens to be set to. `new Date("2026-09-01T12:00")`
+    // is specified to read a zoneless date-time as the runtime's local time, so
+    // the dropdown above was decorative and the browser decided. It decides now.
+    start_date: fromZonedInputValue(formData.start_date, formData.timezone),
+    end_date: fromZonedInputValue(formData.end_date, formData.timezone),
     timezone: formData.timezone,
     is_multi_day: formData.is_multi_day,
     is_recurring: formData.is_recurring,
@@ -484,6 +544,10 @@ export function EventForm({
     is_high_demand: formData.is_high_demand,
     queue_admission_window_minutes: Math.min(60, Math.max(5, parseInt(formData.queue_admission_window_minutes) || 10)),
     fee_pass_type: formData.fee_pass_type,
+    refund_policy_type: formData.refund_policy_type,
+    refund_policy_days: formData.refund_policy_days,
+    refund_policy_absorb_fee: formData.refund_policy_absorb_fee,
+    refund_policy_self_service: formData.refund_policy_self_service,
     ticket_tiers: formData.ticket_tiers.map((t, i) => ({
       name: t.name,
       description: t.description,
@@ -491,8 +555,12 @@ export function EventForm({
       price: parseFloat(t.price) || 0,
       currency: t.currency,
       total_capacity: parseInt(t.total_capacity) || 0,
-      sale_start: t.sale_start ? new Date(t.sale_start).toISOString() : null,
-      sale_end: t.sale_end ? new Date(t.sale_end).toISOString() : null,
+      // A BLANK sale window stays NULL, and NULL means on sale now. That is the
+      // rule create_reservation already enforces (migration 20260704000005) and
+      // the rule tierSaleWindowState mirrors. It is stated here because a founder
+      // spent a night believing a blank field had put his event on hold.
+      sale_start: t.sale_start ? fromZonedInputValue(t.sale_start, formData.timezone) : null,
+      sale_end: t.sale_end ? fromZonedInputValue(t.sale_end, formData.timezone) : null,
       min_per_order: parseInt(t.min_per_order) || 1,
       max_per_order: parseInt(t.max_per_order) || 10,
       sort_order: i,
@@ -828,7 +896,12 @@ export function EventForm({
         <label className="block text-sm font-medium text-ink-600 mb-1">Timezone</label>
         <select
           value={formData.timezone}
-          onChange={e => set('timezone', e.target.value)}
+          onChange={e => {
+            // The organiser has overridden the venue-derived zone. Record it, so
+            // a later address edit never silently takes their choice back.
+            timezoneTouchedRef.current = true
+            set('timezone', e.target.value)
+          }}
           className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         >
           {formData.timezone && !TIMEZONES.includes(formData.timezone) && (
@@ -989,6 +1062,13 @@ export function EventForm({
       onImagesChange={imgs => set('media', imgs)}
       video={formData.video_url}
       onVideoChange={v => set('video_url', v)}
+      // The LIVE form values, so a designed cover carries the details the
+      // organiser has typed rather than the ones last written to the row.
+      title={formData.title}
+      startLocal={formData.start_date}
+      venueName={formData.venue_name}
+      venueCity={formData.venue_city}
+      organisationId={organisationId}
     />
   )
 
@@ -1338,6 +1418,109 @@ export function EventForm({
               </div>
             </label>
           ))}
+        </div>
+
+        {/* THE PER-EVENT REFUND POLICY.
+          *  Sits with the fee setting because both are money terms the buyer sees
+          *  before paying. Two modes, matching Eventbrite: allow refunds up to N
+          *  days before, or no refunds. The self-service switch is the Humanitix
+          *  model, where a qualifying request refunds itself.
+          *
+          *  THE ONE-WAY WARNING IS SHOWN HERE, not discovered on save. Once the
+          *  event is published the policy may only become MORE generous, because
+          *  buyers paid under the terms shown at the time. */}
+        <div className="mt-8">
+          <h3 className="text-sm font-semibold text-ink-900">Refund policy</h3>
+          <p className="mt-1 text-xs text-ink-400">
+            Shown on your event page before anyone buys, and in every confirmation email.
+            Once this event is published you can only make it more generous.
+          </p>
+
+          <div className="mt-4 space-y-3">
+            {([
+              {
+                value: 'days_before' as const,
+                label: 'Allow refund requests (recommended)',
+                desc: 'Buyers can ask for a refund up until a cut-off you choose.',
+              },
+              {
+                value: 'no_refunds' as const,
+                label: 'No refunds',
+                desc: 'Buyers cannot request a refund. If you cancel the event they are still refunded in full, which no policy can override.',
+              },
+            ]).map(opt => (
+              <label
+                key={opt.value}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-ink-200 p-4 hover:bg-ink-100"
+              >
+                <input
+                  type="radio"
+                  name="refund_policy_type"
+                  value={opt.value}
+                  checked={formData.refund_policy_type === opt.value}
+                  onChange={() => set('refund_policy_type', opt.value)}
+                  className="mt-0.5 h-4 w-4 border-ink-200 text-gold-500 focus:ring-gold-500"
+                />
+                <div>
+                  <p className="text-sm font-medium text-ink-900">{opt.label}</p>
+                  <p className="text-xs text-ink-400">{opt.desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          {formData.refund_policy_type === 'days_before' && (
+            <div className="mt-4 rounded-lg border border-ink-200 p-4">
+              <label htmlFor="refund_policy_days" className="block text-sm font-medium text-ink-900">
+                Cut-off, in days before the event starts
+              </label>
+              <input
+                id="refund_policy_days"
+                type="number"
+                min={0}
+                max={365}
+                value={formData.refund_policy_days}
+                onChange={e => set('refund_policy_days', Math.max(0, Math.min(365, Number(e.target.value) || 0)))}
+                className="mt-2 w-32 rounded-lg border border-ink-200 p-2.5 text-sm text-ink-900"
+              />
+              <p className="mt-2 text-xs text-ink-400">
+                {formData.refund_policy_days === 0
+                  ? 'Buyers can ask right up until the event starts. This is the most generous setting.'
+                  : `Buyers can ask until ${formData.refund_policy_days} day${formData.refund_policy_days === 1 ? '' : 's'} before the event. A SMALLER number is more generous, because it lets people ask later.`}
+              </p>
+
+              <label className="mt-4 flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={formData.refund_policy_self_service}
+                  onChange={e => set('refund_policy_self_service', e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-ink-200 text-gold-500 focus:ring-gold-500"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-ink-900">Refund qualifying requests automatically</span>
+                  <span className="block text-xs text-ink-400">
+                    A request inside your cut-off is refunded straight away without waiting on you.
+                    Anything outside it still comes to you to decide.
+                  </span>
+                </span>
+              </label>
+
+              <label className="mt-4 flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={formData.refund_policy_absorb_fee}
+                  onChange={e => set('refund_policy_absorb_fee', e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-ink-200 text-gold-500 focus:ring-gold-500"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-ink-900">Cover the booking fee on refunds</span>
+                  <span className="block text-xs text-ink-400">
+                    The buyer gets the full ticket price back and you carry the fee. Leave this off and the fee is retained.
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
         </div>
       </div>
     </div>

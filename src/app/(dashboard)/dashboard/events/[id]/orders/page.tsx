@@ -6,6 +6,7 @@ import { OrderTable } from '@/components/orders/order-table'
 import { RevenueSummary } from '@/components/orders/revenue-summary'
 import { aggregateGmv } from '@/lib/admin/analytics'
 import type { Order } from '@/types/database'
+import { resolveEventAccess } from '@/lib/organisations/event-access'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -27,14 +28,15 @@ export default async function EventOrdersPage({ params }: Props) {
 
   if (!event) notFound()
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', event.organisation_id)
-    .eq('owner_id', user.id)
-    .single()
-
-  if (!org) notFound()
+  /*
+   * ACCESS GATE, one shared definition. This was `.eq('owner_id', user.id)`, which
+   * locked out an organisation_members manager even though resolveRefundScope and
+   * create_refund_request both admit them. The refund control lives on this page, so
+   * an owner-only route made the founder's "any organiser can refund" ruling
+   * unreachable for a venue with staff. See src/lib/organisations/event-access.ts.
+   */
+  const access = await resolveEventAccess(eventId)
+  if (!access.allowed) notFound()
 
   // Fetch all orders for this event - admin client bypasses RLS (organiser is not the buyer)
   //

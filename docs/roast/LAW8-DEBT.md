@@ -137,3 +137,44 @@ Older debt is not enumerated here because it predates the previous boundary
 and is already measured in the rewrite runbook: 705 of 1351 reachable commits
 carry a trailer, the earliest dated 2026-04-11. Both sets clear together when
 the founder authorises the rewrite, and not before.
+
+## Inherited from main, deferred individually
+
+These are NOT pre-boundary. They sit after the boundary and would fail the
+guard, and each is deferred by name in `INHERITED_DEFERRED` in
+`scripts/guards/no-ai-authorship.mjs`, which prints every one of them on every
+run. They are recorded separately because the reason is different: none of them
+is work done on this branch. Each is a GitHub squash-merge commit belonging to
+`main`'s history, whose trailers GitHub composed by concatenating the messages
+of the commits it squashed.
+
+| SHA | Subject | Entered this branch | Reason |
+|---|---|---|---|
+| `86bb285b660a` | Production defect sweep before launch (#112) | merging main, 12 Aug 2026 | Squash of 27 trailer-carrying commits. Founder ruling 2026-08-12 (R-LAW8-DEBT). |
+| `36179dc1a7dc` | Integration/launch (#118) | merging main, 20 Aug 2026 | GitHub's squash of THIS branch on 16 Aug; the trailers are inherited from commits already deferred above or pre-boundary. Founder ruling 2026-08-20. |
+
+Why deferral rather than a boundary move, recorded so the choice is not
+relitigated: advancing `EFFECTIVE_FROM` past `36179dc` would forgive anything
+else before that point in one edit and leave no trace. Naming the commit keeps
+the guard blocking for every new commit while the debt stays visible and
+countable. The 43 commits this branch made between the 16 August squash and the
+20 August merge are all clean, verified by scanning each message.
+
+Rewriting either commit means rewriting `main`, which invalidates every SHA
+quoted in the handover documents and forces every worktree to reset. That
+rewrite is still NOT authorised. Both entries clear with it.
+
+## What the guard now refuses
+
+Added 20 August 2026, founder ruling: the guard FAILS rather than passes when it
+cannot see enough history to judge (a shallow repository, or fewer than two
+commits visible in scope). Printing the scanned count told a reader of the log
+the difference between a real pass and a vacuous one, but the exit code said
+PASS either way, and a check that passes without doing its work is the failure
+class this project has paid the most for.
+
+`.github/workflows/ci.yml` sets `fetch-depth: 0` on the build job, which is the
+only job that runs `npm run build` and therefore the only one that runs the
+guard registry. CI was therefore NOT passing this guard vacuously. The refusal
+exists so that it cannot start doing so silently, and it is proven against a
+real `--depth 1` clone rather than asserted.

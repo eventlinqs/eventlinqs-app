@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { getAllCities, type CityContent, type CitySlug } from './data'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 export interface CityIndexEntry {
   slug: CitySlug
@@ -37,7 +38,7 @@ async function getCityIndexEntriesRaw(): Promise<CityIndexEntry[]> {
         .select('id', { count: 'exact', head: true })
         .eq('status', 'published')
         .eq('visibility', 'public')
-        .gte('start_date', new Date().toISOString())
+        .or(listingWindowOrPredicate(new Date()))
         .ilike('venue_city', `%${c.name}%`)
       counts[c.slug] = error || count === null ? 0 : count
     }),

@@ -11,7 +11,6 @@
 export type PolicyName =
   | 'health-redis'
   | 'health-sentry-error'
-  | 'location-set'
   | 'cron-job'
   | 'payouts-read'
   | 'payouts-stripe-link'
@@ -20,7 +19,9 @@ export type PolicyName =
   | 'auth-recover'
   | 'auth-magic-link'
   | 'auth-resend-verification'
+  | 'event-create'
   | 'checkout-reserve'
+  | 'refund-request'
   | 'media-upload'
   | 'share-link-mint'
   | 'share-track'
@@ -70,33 +71,26 @@ export const POLICIES: Record<PolicyName, Policy> = {
     rationale:
       'Synthetic error endpoint. Each successful call generates a Sentry event; cap aggressively to avoid quota burn even if HEALTH_CHECK_TOKEN leaks.',
   },
-  'location-set': {
-    keyPrefix: 'loc-set',
-    limit: 10,
-    windowSec: 60,
-    rationale:
-      'User-driven location preference write. 10/min is generous for a UI; abuse vectors are scraping for geolocation inference.',
-  },
   'cron-job': {
     keyPrefix: 'cron',
     limit: 12,
     windowSec: 60,
     rationale:
-      'Vercel Cron tickles each cron route every 5 min at most. 12/min lets manual founder triggers through while bouncing replay attacks if CRON_SECRET ever leaks.',
+      'Vercel Cron tickles each cron route every 5 min at most. 12/min lets manual founder triggers through while bouncing replay attacks if CRON_SECRET ever leaks. STAYS FAIL-OPEN, ruled 2026-08-19 alongside the waitlist-join reversal. It does send real mail (the connect-divergence founder alert, src/app/api/cron/connect-divergence/route.ts), which is why it was reviewed at all, but two things that are not the limiter bound it: CRON_SECRET gates the route, and the alert only sends when divergence is actually found. Fail-closed here would mean a missing Upstash config silently stops the cron fleet, which is a worse failure than the one it would prevent.',
   },
   'payouts-read': {
     keyPrefix: 'pay-r',
     limit: 60,
     windowSec: 60,
     rationale:
-      'Organiser dashboard list/summary reads. 60/min per user covers tab switching, polling refreshes, and chart redraws while bouncing scrapers.',
+      'Organiser dashboard list/summary reads, 60/min PER ORGANISATION. 60 covers tab switching, polling refreshes and chart redraws while bouncing scrapers. KEYED BY organisationId, passed explicitly, which is why the limiter sits AFTER resolveOrganiserScope on all three routes rather than at the top: the bucket cannot be named until the scope names it. It was keyed by the forwarded IP until 2026-08-19 while this line said "per user", the CGNAT bucket this platform has met twice before (launch-artefact, launch-compose-daily), where a shared office or carrier NAT put every organiser behind it into one window of sixty. Founder ruling 2026-08-19 re-keyed it to the organiser. TWO CONSEQUENCES OF THE MOVE, recorded rather than left to be found: an unauthenticated caller is refused as unauthenticated and is no longer throttled by this policy, which costs nothing because the 401 is decided from the cookie with no database read; and an owner of N businesses now has N windows rather than one, which is correct for the legitimate case (three businesses in three tabs genuinely make three times the reads) and is bounded by the fact that every window still only serves that owner their own data. Fail-open: a read path with no metered spend, verified by scripts/verify/rate-limit-audit.mjs section 3b. Parity proven by scripts/verify/payouts-read-parity.mjs.',
   },
   'payouts-stripe-link': {
     keyPrefix: 'pay-l',
     limit: 6,
     windowSec: 60,
     rationale:
-      'Stripe Express dashboard login-link mint. Short-lived single-use links, low legitimate cadence (one click per minute is generous), tight cap to avoid burning Stripe quota or leaking link tokens at scale.',
+      'Stripe Express dashboard login-link mint. Short-lived single-use links, low legitimate cadence (one click per minute is generous), tight cap to avoid burning Stripe quota or leaking link tokens at scale. STAYS FAIL-OPEN, ruled 2026-08-19 alongside the waitlist-join reversal. It mints a real Stripe login-link token against a metered API, but the route resolves the organiser scope first, so an anonymous caller is refused as unauthenticated before the mint and never reaches the spend: the ownership scope is the bound, not this limit. Fail-closed would lock a legitimate organiser out of their own Stripe dashboard on a Redis blip.',
   },
   'auth-signup': {
     keyPrefix: 'auth-signup',
@@ -138,6 +132,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     rationale:
       'Verification resends per IP per 15 min. The button already enforces a 60-second client-side cooldown; this is the server-side floor that a scripted caller cannot skip, sized to match the other two mail-sending auth endpoints.',
   },
+  'event-create': {
+    keyPrefix: 'ev-new',
+    limit: 30,
+    windowSec: 3600,
+    failClosed: true,
+    rationale:
+      'Event creation per organiser per hour, KEYED BY user id (passed explicitly at the call site; actionRateLimit defaults to IP and the first version of this policy shipped with that default, so the sentence "per organiser" was untrue for a day). It had NO limiter at all until 2026-08-19, found by scripts/verify/rate-limit-audit.mjs. The ceiling was one free account creating events in a loop, and each one writes an events row, its ticket_tiers, and the share_links the acquisition loop mints, so the cost is database rows and storage rather than an API bill. Thirty an hour is far above any real organiser (a busy promoter announcing a season does a handful) and still bounds a script. Fail-closed because it is a WRITE on the organiser side and a deploy missing UPSTASH_* should not leave an unbounded write open; an organiser blocked for a minute can retry, and unlike the anonymous composer there is no first-time visitor to protect.',
+  },
   'checkout-reserve': {
     keyPrefix: 'co-res',
     limit: 20,
@@ -151,7 +153,7 @@ export const POLICIES: Record<PolicyName, Policy> = {
     limit: 60,
     windowSec: 60,
     rationale:
-      'Organiser event-image uploads, keyed per user. 60/min covers filling the full 10-image gallery plus retries and re-crops in one sitting, while bouncing a scripted storage-flooding run. Fail-open (no money path); a Redis blip never blocks a legitimate organiser mid-upload.',
+      'Organiser event-image uploads, keyed per user. 60/min covers filling the full 10-image gallery plus retries and re-crops in one sitting, while bouncing a scripted storage-flooding run. STAYS FAIL-OPEN, ruled 2026-08-19 alongside the waitlist-join reversal, and the reason is the thing that is NOT the limiter: every call site requires a signed-in user (src/lib/upload.ts, src/lib/organisation/logo.ts, src/app/actions/section-view-photo.ts), so a missing Upstash config cannot open this to an anonymous caller, which is the only case a fail-closed posture defends against. It does spend metered Supabase Storage bytes, so the spend is real, but it is bounded by the session rather than by this limit. A Redis blip never blocks a legitimate organiser mid-upload.',
   },
   'share-link-mint': {
     keyPrefix: 'share-mint',
@@ -178,8 +180,16 @@ export const POLICIES: Record<PolicyName, Policy> = {
     keyPrefix: 'wl-join',
     limit: 5,
     windowSec: 600,
+    failClosed: true,
     rationale:
-      'City waitlist join per IP per 10 min. A household joining two or three city lists fits comfortably; scripted signup floods (fake demand signal, email harvesting probes) are bounced. Fail-open: the confirmation email is best-effort, so abuse cost is bounded.',
+      'City waitlist join per IP per 10 min. A household joining two or three city lists fits comfortably; scripted signup floods (fake demand signal, email harvesting probes) are bounced. FAIL-CLOSED as of 2026-08-19 (founder ruling), taking the posture of launch-email rather than of its neighbours, because it does the same thing launch-email does: it sends real mail from our verified sending domain, through sendEmail at src/app/waitlist/actions.ts. It was fail-open, and its old rationale said "the confirmation email is best-effort, so abuse cost is bounded", which prices the email as a MESSAGE. That is the wrong unit. launch-email prices the same send as the DOMAIN and refuses to be fail-open for it: "the cost of getting it wrong is not a bill, it is deliverability, and a sending domain burned by an open relay cannot be un-burned by a rate limit added later." Two policies sending from one domain cannot hold opposite postures; one of them was wrong and it was this one. This surface is PUBLIC and unauthenticated, so the limiter is the only thing in front of the send, unlike media-upload (needs a session), cron-job (needs CRON_SECRET) or payouts-stripe-link (organiser-scoped), all three of which stay fail-open because something other than the limiter bounds them.',
+  },
+  'refund-request': {
+    keyPrefix: 'ref-req',
+    limit: 5,
+    windowSec: 3600,
+    rationale:
+      'Buyer refund requests, 5 per hour, KEYED BY user id where there is one and by the forwarded address only for a guest checkout (passed explicitly at the call site; actionRateLimit defaults to the address and that default is the wrong bucket here). A real buyer submits ONE request per order and the surface refuses a second while one is open, so five an hour is already far above the honest ceiling; what it bounces is a script hammering the endpoint to enumerate order ids or to spam an organiser inbox, because every submitted request sends the organiser an email. Keyed by the user rather than the address because a household or a share house behind one address must not share a refund budget: that is the CGNAT bucket this platform has met twice (launch-artefact, launch-compose-daily), and being unable to ask for your money back is a far worse failure than being unable to compose a launch kit. Fail-OPEN: the limiter is not the only thing in front of this. The action refuses anyone who does not own the order, the unique partial index refuses a second open request per order, and the refund itself is bounded by the event policy and the funds check. A missing Upstash config therefore cannot open a spend path here, and refusing a legitimate refund request during a Redis blip would be the worse outcome.',
   },
   'ai-chat': {
     keyPrefix: 'ai-c',

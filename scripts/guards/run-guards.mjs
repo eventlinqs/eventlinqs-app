@@ -34,6 +34,20 @@
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
  *   no-external-checkout       an externally ticketed event cannot reach a checkout
+ *   one-sellability-source     one sellability rule, and no live button beside a refusal
+ *   zoned-event-times          an event time is converted in the event zone, not the runtime one
+ *   mutation-revalidates       a publicly visible mutation invalidates what it affected
+ *   gate-fields-complete       a query feeding a gate selects every field that gate reads
+ *   refund-restores-inventory  a refund can never take the money and keep the seat sold
+ *   no-ambiguous-embed         a PostgREST embed that cannot name its foreign key fails the
+ *                              whole query at runtime while compiling and testing clean
+ *   one-refund-path            every refund trigger funnels through one path, so there is one
+ *                              answer to how much money goes back
+ *   inventory-lock-integrity   two buyers can never be sold the same seat
+ *   no-unowned-organisation-read  a service-role read of an organisation's sale posture, or a
+ *                              service-role call to the publish gate, must prove the caller
+ *                              may act for that organisation first (the service role bypasses
+ *                              RLS, so an unchecked read is a cross-tenant read)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -183,6 +197,28 @@
  * this file printed the day before. That is the property worth having. A banner
  * with the number written into it would have gone on confidently reporting the
  * old answer, which is the failure it exists to prevent.
+ *
+ * no-display-time-exclusion: founder ruling 16 August 2026, PUBLISHED MEANS
+ * VISIBLE. Refuses the four shapes in which a published, public row has
+ * actually been removed from a discovery surface on this platform: a SQL lower
+ * bound at now, the same bound written in JavaScript, a cover test used to
+ * exclude rather than to rank, and a post-query filter running on a page the
+ * database had already chosen. Nineteen tests pinned the listing window and all
+ * of them passed while seven more copies of the defect were live; a test proves
+ * the code it calls, and only a scanner proves the absence of a shape. Its scope
+ * is derived rather than listed, and it prints how many files, predicates,
+ * filters and range calls it inspected, so a scope that collapses says so
+ * instead of printing the same PASS.
+ *
+ * publish-requires-cover: the photo-required rule, in four parts, because
+ * removing any one of them leaves the other three looking healthy: the
+ * predicate still rejects null, empty and picsum; the cover field is REQUIRED by
+ * the type (it was once optional, and a caller that omitted it skipped the check
+ * in silence); the refusal runs before any path that can return ok; and every
+ * publish site in a derived scan is either gated or carries a written
+ * allowance. It also asserts the database backstop, both the migration that adds
+ * the events_published_real_cover constraint and the one that VALIDATES it,
+ * since a constraint left NOT VALID binds new rows only.
  */
 import { spawnSync } from 'node:child_process'
 
@@ -337,6 +373,67 @@ const GUARDS = [
   // POSITION of four refusals, not just their presence: each one is still
   // present and still passes every unit test when moved, and wrong.
   'scripts/guards/no-external-checkout.mjs',
+  // Founder ruling 2026-08-16, PUBLISHED MEANS VISIBLE. The exclusion audit
+  // found eleven ways a legitimate row could vanish; these two guards close the
+  // class rather than the instance. The first refuses a display-time exclusion,
+  // the second refuses a publish with no cover. Both print how much they
+  // scanned, so a gate that has quietly stopped working says so in its own
+  // output instead of printing the PASS it always printed.
+  'scripts/guards/no-display-time-exclusion.mjs',
+  'scripts/guards/publish-requires-cover.mjs',
+  // Founder ruling 2026-08-18, after every paid event on production refused to
+  // sell behind a message that named a field this codebase does not have, with
+  // an enabled gold checkout button sitting directly underneath it. Pins three
+  // things: a sale-gate read may not discard its error, a checkout control must
+  // be disarmed by the refusal rather than accompanied by it, and sellability is
+  // decided in one place. Prints its scan counts and its reviewed baseline on
+  // every run, and fails if a baseline entry stops matching, so it cannot pass
+  // vacuously or rot into an unexamined allowlist.
+  'scripts/guards/one-sellability-source.mjs',
+  // Founder ruling 2026-08-18, after an organiser typed 12:00 pm and the page
+  // showed 2:00 am. A zoneless datetime-local value read through new Date() takes
+  // the offset of whatever runtime evaluates it, so every edit moved the event
+  // one offset earlier, and a create was only accidentally right when the browser
+  // zone happened to match the event zone. This guard binds to the actual inputs
+  // rather than guessing at field names, which is how it found two further
+  // instances of the same defect in surfaces nobody had reported.
+  'scripts/guards/zoned-event-times.mjs',
+  // Founder ruling 2026-08-18, after an organiser saved an edit and the public
+  // page did not change. Five of the seven event mutations invalidated nothing
+  // at all, and a sixth invalidated only the organiser own pricing screen, so a
+  // price change was visible to the person who made it and to no buyer. A
+  // dashboard-only revalidation therefore does NOT satisfy this guard.
+  'scripts/guards/mutation-revalidates.mjs',
+  // Founder ruling 2026-08-18: every gate that reads a set of fields must be
+  // unable to run on an incomplete set. Twice in one week a query narrowed while
+  // the gate went on reading, the missing field arrived undefined, and undefined
+  // refuses at a boolean test exactly as false does. It reads each gate required
+  // list out of its own signature rather than duplicating it, follows the entry
+  // points a caller actually uses rather than only direct calls, and refuses a
+  // bare cast at the boundary.
+  'scripts/guards/gate-fields-complete.mjs',
+  // Founder task 2026-08-18: "a refund that succeeds at Stripe but fails to
+  // restore inventory must be impossible to ship." It was possible, and it
+  // shipped. A refund created outside the app (the Stripe dashboard shape) had no
+  // refunds row, so reconcile_refund had nothing to attach to and the handler fell
+  // through to a door-safety void that returned no seats and left the order on
+  // `confirmed`. Reproduced with a real test-mode refund: money back, ticket dead,
+  // sold_count still 1. Every party saw a correct outcome, which is why it could
+  // have run for months. This pins the structure that makes it impossible: one
+  // inventory path, an adopted orphan, a refusal that stops a double-restore, and
+  // exactly one sanctioned void.
+  'scripts/guards/refund-restores-inventory.mjs',
+  'scripts/guards/one-refund-path.mjs',
+  'scripts/guards/no-ambiguous-embed.mjs',
+  // Measured 2026-08-19 against the real TEST database: 50 simultaneous buyers
+  // against ONE seat, live create_reservation -> 1 won. Same body with FOR UPDATE
+  // removed -> 16 won, 16 claimed against a capacity of 1. Fifteen people turned
+  // away at the door. The row lock IS the protection, so a refactor that drops it
+  // ships a platform that passes every existing test and oversells under load.
+  // This pins the lock, the availability arithmetic, the already-confirmed latch,
+  // and the rule that the counters have exactly one owner.
+  'scripts/guards/inventory-lock-integrity.mjs',
+  'scripts/guards/no-unowned-organisation-read.mjs',
 ]
 
 /**

@@ -23,7 +23,12 @@ import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
 import { getSiteUrl } from '@/lib/site-url'
-import { formatEventDateShort } from '@/lib/dates/event-time'
+import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import {
+  listingWindowOrPredicate,
+  startOfLocalDayUtc,
+  weekendWindowUtc,
+} from '@/lib/events/listing-window'
 
 export const revalidate = 300
 
@@ -93,14 +98,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/**
+ * One shared definition, in the PLATFORM zone. The local copy this replaced was
+ * built on `setHours`, which is the server's zone (UTC on Vercel), so an
+ * Australian Saturday evening could fall outside the window called This weekend.
+ */
 function weekendWindow(now: Date) {
-  const day = now.getDay()
-  const start = new Date(now)
-  if (day === 6) start.setHours(0, 0, 0, 0)
-  else if (day === 0) { start.setDate(now.getDate() - 1); start.setHours(0, 0, 0, 0) }
-  else { start.setDate(now.getDate() + (6 - day)); start.setHours(0, 0, 0, 0) }
-  const end = new Date(start); end.setDate(start.getDate() + 1); end.setHours(23, 59, 59, 999)
-  return { weekendStartIso: start.toISOString(), weekendEndIso: end.toISOString() }
+  const weekend = weekendWindowUtc(now, PLATFORM_TIME_ZONE)
+  return {
+    weekendStartIso: weekend.from.toISOString(),
+    weekendEndIso: weekend.to.toISOString(),
+  }
 }
 
 export default async function CommunityByCityPage({ params }: Props) {
@@ -128,6 +136,7 @@ export default async function CommunityByCityPage({ params }: Props) {
   const tagOr = buildCommunityTagOrFilter(community.slug)
   const now = new Date()
   const w = weekendWindow(now)
+  const todayStartIso = startOfLocalDayUtc(now, PLATFORM_TIME_ZONE).toISOString()
   const sevenDays = new Date(now); sevenDays.setDate(now.getDate() + 7)
 
   // Events in this city whose `tags` jsonb array contains any
@@ -145,7 +154,7 @@ export default async function CommunityByCityPage({ params }: Props) {
       .select(baseSelect)
       .eq('status', 'published')
       .eq('visibility', 'public')
-      .gte('start_date', now.toISOString())
+      .or(listingWindowOrPredicate(now))
       .ilike('venue_city', `%${cityName}%`)
       .or(tagOr)
       .order('start_date', { ascending: true })
@@ -184,8 +193,10 @@ export default async function CommunityByCityPage({ params }: Props) {
   const thisWeekendEvents = allEvents.filter(
     e => e.start_date >= w.weekendStartIso && e.start_date <= w.weekendEndIso,
   )
+  // From the START OF TODAY, not from `now`: an event that started this morning
+  // is still on and still belongs in This week (exclusion audit item 1).
   const thisWeekEvents = allEvents.filter(
-    e => e.start_date >= now.toISOString() && e.start_date <= sevenDays.toISOString(),
+    e => e.start_date >= todayStartIso && e.start_date <= sevenDays.toISOString(),
   )
   const popularEvents = allEvents.slice(0, 12)
 

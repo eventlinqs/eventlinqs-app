@@ -70,25 +70,45 @@ function functionBody(src, declaration) {
   return end === -1 ? src.slice(openBrace) : src.slice(openBrace, end)
 }
 
-/* 1. ticketsOnSale refuses external FIRST, before the paid/free split. */
+/*
+ * 1. The sale decision refuses external FIRST, before the paid/free split.
+ *
+ * RE-POINTED 18 August 2026, and NOT weakened. The decision moved out of
+ * `ticketsOnSale` and into `ticketsOnSaleDetailed`, which now carries the cause
+ * as well as the verdict; `ticketsOnSale` is a one-line wrapper over it. The
+ * ordering property this guard exists for is unchanged and is still pinned, at
+ * the function that now decides it, and a second check below pins that the
+ * wrapper really does delegate rather than deciding anything of its own. If the
+ * wrapper ever grows a body again, that check fails and this one is re-pointed
+ * back, deliberately, rather than silently passing on a function that no longer
+ * governs anything.
+ */
 {
   const rel = 'src/lib/payments/sale-status.ts'
   const src = read(rel)
   if (src) {
-    const body = functionBody(src, 'export function ticketsOnSale(')
+    const wrapper = functionBody(src, 'export function ticketsOnSale(')
+    if (!/return ticketsOnSaleDetailed\(/.test(wrapper)) {
+      failures.push(
+        `${rel}: ticketsOnSale no longer delegates to ticketsOnSaleDetailed, so the ordering pinned below is not the ordering it uses`,
+      )
+    } else {
+      passes.push('ticketsOnSale delegates to the one decision rather than re-deriving it')
+    }
+    const body = functionBody(src, 'export function ticketsOnSaleDetailed(')
     const externalAt = body.indexOf('isExternallyTicketed')
     const paidAt = body.indexOf('isPaidEvent')
     const sellableAt = body.indexOf('isOrganiserSellable')
     if (externalAt === -1) {
-      failures.push(`${rel}: ticketsOnSale does not consult isExternallyTicketed at all`)
+      failures.push(`${rel}: ticketsOnSaleDetailed does not consult isExternallyTicketed at all`)
     } else if (paidAt !== -1 && externalAt > paidAt) {
       failures.push(
-        `${rel}: ticketsOnSale checks isPaidEvent BEFORE isExternallyTicketed. A FREE external event would be sellable.`,
+        `${rel}: ticketsOnSaleDetailed checks isPaidEvent BEFORE isExternallyTicketed. A FREE external event would be sellable.`,
       )
     } else if (sellableAt !== -1 && externalAt > sellableAt) {
-      failures.push(`${rel}: ticketsOnSale checks the organiser before the external refusal`)
+      failures.push(`${rel}: ticketsOnSaleDetailed checks the organiser before the external refusal`)
     } else {
-      passes.push('ticketsOnSale refuses an externally ticketed event first')
+      passes.push('ticketsOnSaleDetailed refuses an externally ticketed event first')
     }
   }
 }
@@ -142,11 +162,32 @@ function functionBody(src, declaration) {
   const rel = 'src/app/events/[slug]/page.tsx'
   const src = read(rel)
   if (src) {
+    /*
+     * RE-POINTED 18 August 2026, and NOT weakened.
+     *
+     * `saleBlocked` used to be spelled `externallyTicketed || (paid && ...)` on
+     * this page, which meant the page carried its own copy of the ordering rule.
+     * It now comes from the ONE shared decision, and the page hands that decision
+     * the event. What must be true is unchanged: the external refusal reaches the
+     * page. What is checked is the property rather than the old spelling, because
+     * pinning a spelling is how a page ends up re-deriving a rule to satisfy a
+     * regex.
+     *
+     * This is STRICTER than the line it replaces in one way that matters: the old
+     * check could not tell whether the event was passed to anything, so a page
+     * that computed `externallyTicketed` and then never used it still passed.
+     * This one fails unless `event` actually reaches the decision.
+     */
+    const decisionCall = src.match(/const saleDecision = ticketsOnSaleDetailed\(\{[\s\S]*?\}\)/)?.[0] ?? ''
     if (!/const externallyTicketed = isExternallyTicketed\(event\)/.test(src)) {
       failures.push(`${rel}: the event page does not derive externallyTicketed from the event`)
-    } else if (!/const saleBlocked =\s*\n?\s*externallyTicketed \|\|/.test(src)) {
+    } else if (!decisionCall) {
       failures.push(
-        `${rel}: saleBlocked does not start with externallyTicketed, so a ticket selector could render for an external event`,
+        `${rel}: saleBlocked is not derived from the shared ticketsOnSaleDetailed decision`,
+      )
+    } else if (!/\bevent,/.test(decisionCall) && !/event:\s*event\b/.test(decisionCall)) {
+      failures.push(
+        `${rel}: the event is not passed to ticketsOnSaleDetailed, so its external refusal never runs and a ticket selector could render for an external event`,
       )
     } else {
       passes.push('the event page blocks the sale surface for an external event')

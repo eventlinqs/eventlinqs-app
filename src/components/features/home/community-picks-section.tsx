@@ -8,6 +8,7 @@ import {
   toBentoEvent,
   type RawRow,
 } from '@/lib/events/home-queries'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 interface Props {
   cityFilter: string
@@ -59,12 +60,13 @@ async function fetchEventsForCommunity(
   nowIso: string,
 ): Promise<RawRow[]> {
   // First pass: city-filtered. Try every alias tag for this community.
+  // LISTED UNTIL IT HAS ENDED, not until it has started (listing-window.ts).
   const cityScoped = await supabase
     .from('events')
     .select(EVENT_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', nowIso)
+    .or(listingWindowOrPredicate(new Date(nowIso)))
     .overlaps('tags', tags)
     .ilike('venue_city', `%${cityFilter}%`)
     .order('start_date', { ascending: true })
@@ -79,7 +81,7 @@ async function fetchEventsForCommunity(
     .select(EVENT_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', nowIso)
+    .or(listingWindowOrPredicate(new Date(nowIso)))
     .overlaps('tags', tags)
     .order('start_date', { ascending: true })
     .limit(8)

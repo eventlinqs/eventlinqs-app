@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { promoteWaitlist } from '@/lib/waitlist/promote'
+import { requestTicketRefund } from '@/lib/payments/refund-service'
+import { captureException } from '@/lib/observability/sentry'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,8 +13,38 @@ export const dynamic = 'force-dynamic'
  * 1. Calls expire_stale_squads() RPC - atomically finds forming squads past
  *    expires_at, marks them 'expired', marks uninvited members 'timed_out',
  *    cancels their reservation, and RETURNS the expired squad rows.
- * 2. For each expired squad: queries paid members, issues Stripe refunds via
- *    stripe.refunds.create, then promotes the waitlist for freed inventory.
+ * 2. For each expired squad: queries paid members and refunds each one through
+ *    requestTicketRefund, the SAME path the organiser button and automatic
+ *    approval use, then promotes the waitlist for freed inventory.
+ *
+ * WHY THIS STOPPED CALLING STRIPE DIRECTLY (20 August 2026).
+ *
+ * It used to call stripe.refunds.create itself, with no idempotency key, and
+ * then write orders.status and payments.status afterwards. I reported that as a
+ * double-refund risk and DRIVING IT PROVED ME WRONG:
+ * scripts/verify/squad-expire-double-refund-drill.mjs forces the exact crash,
+ * a Stripe refund that lands with the status writes never happening, then runs
+ * this cron twice. Stripe reports ONE refund of 28000c against a 28000c charge.
+ * Two things prevent the double: expire_stale_squads() is an atomic CTE that
+ * returns a squad exactly once, and Stripe refuses to over-refund a charge that
+ * is already fully refunded (run 1 reported refund_failures: 1).
+ *
+ * THE DRILL FOUND A REAL DEFECT INSTEAD, which is what this change fixes. After
+ * that crash the state was permanently wrong and nothing repaired it: zero
+ * refunds rows, orders.status still 'confirmed', payments.status still
+ * 'completed', squad_members.status still 'paid'. The buyer had their money back
+ * and still held a valid, scannable ticket, and the squad was already 'expired'
+ * so this cron would never look at it again. The whole unwind depended on the
+ * webhook adopting the orphan refund; if that was delayed or failed, nothing
+ * else would ever put it right.
+ *
+ * requestTicketRefund fixes the ordering by construction. It writes the refund
+ * row FIRST, through create_refund_request, which locks the order and claims the
+ * tickets, and only then calls Stripe under idempotencyKey `refund:{refundId}`.
+ * So a crash after the money moves leaves a refund row the webhook reconciles,
+ * rather than a refund nothing knows about, and reconcile_refund then does the
+ * whole unwind: ticket void, tier inventory, seat release, squad slot, ledger
+ * and order status.
  *
  * Protected by CRON_SECRET to prevent public triggering.
  */
@@ -68,51 +100,68 @@ export async function GET(request: NextRequest) {
         continue
       }
 
-      // Step 2b: Issue Stripe refunds for each paid member
-      if (paidMembers && paidMembers.length > 0) {
-        const stripeKey = process.env.STRIPE_SECRET_KEY
-        if (stripeKey) {
-          const { default: Stripe } = await import('stripe')
-          const stripe = new Stripe(stripeKey, { apiVersion: '2026-03-25.dahlia' })
+      // Step 2b: Refund each paid member THROUGH THE ONE REFUND PATH.
+      //
+      // requestTicketRefund writes the refund row before it calls Stripe and
+      // passes idempotencyKey `refund:{refundId}`, so a retry of the same row
+      // cannot mint a second Stripe refund and a crash after the money moves
+      // leaves a row the webhook reconciles. See the header for the drill.
+      for (const member of paidMembers ?? []) {
+        if (!member.order_id) continue
 
-          for (const member of paidMembers) {
-            if (!member.order_id) continue
+        // Only tickets that are still live can be refunded. An order with none
+        // has nothing to return and create_refund_request would refuse it.
+        const { data: liveTickets } = await adminClient
+          .from('tickets')
+          .select('id')
+          .eq('order_id', member.order_id)
+          .in('status', ['valid', 'scanned'])
+        const ticketIds = (liveTickets ?? []).map(t => t.id as string)
+        if (ticketIds.length === 0) {
+          console.log(`[squad-expire] member ${member.id} order ${member.order_id} has no live tickets, nothing to refund`)
+          continue
+        }
 
-            const { data: payment } = await adminClient
-              .from('payments')
-              .select('gateway_payment_id, status, amount_cents')
-              .eq('order_id', member.order_id)
-              .eq('status', 'completed')
-              .maybeSingle()
+        // The organisation owner stands in as the actor, exactly as it does for
+        // an automatically approved buyer request: the platform is acting on the
+        // organiser's behalf under a rule they already agreed to.
+        const { data: ownerRow } = await adminClient
+          .from('orders')
+          .select('organisation_id, organisations(owner_id)')
+          .eq('id', member.order_id)
+          .maybeSingle()
+        const actorId = (ownerRow as { organisations?: { owner_id?: string } } | null)?.organisations?.owner_id
+        if (!actorId) {
+          refundFailures++
+          console.error(`[squad-expire] order ${member.order_id} has no organisation owner to attribute the refund to`)
+          continue
+        }
 
-            if (!payment?.gateway_payment_id) continue
+        try {
+          const res = await requestTicketRefund(adminClient, {
+            orderId: member.order_id,
+            ticketIds,
+            reason: 'other',
+            initiator: 'system',
+            actorId,
+            buyerMessage: 'Your squad did not fill before it expired, so your ticket has been refunded.',
+          })
 
-            try {
-              await stripe.refunds.create({
-                payment_intent: payment.gateway_payment_id,
-                reason: 'requested_by_customer',
-              })
-
-              // Mark order and payment as refunded
-              await adminClient
-                .from('orders')
-                .update({ status: 'refunded' })
-                .eq('id', member.order_id)
-
-              await adminClient
-                .from('payments')
-                .update({ status: 'refunded' })
-                .eq('order_id', member.order_id)
-
-              totalRefunded++
-              console.log(`[squad-expire] refunded member ${member.id} order ${member.order_id}`)
-            } catch (refundErr) {
-              refundFailures++
-              console.error(`[squad-expire] Stripe refund failed for order ${member.order_id}:`, refundErr)
-            }
-          }
-        } else {
-          console.warn('[squad-expire] STRIPE_SECRET_KEY not set - skipping refunds')
+          // NOTHING IS WRITTEN HERE. reconcile_refund owns every status the old
+          // code used to set by hand (orders, payments, tickets, seats, the
+          // squad slot and the ledger), and the webhook drives it. Writing them
+          // here as well is what made the two able to disagree.
+          totalRefunded++
+          console.log(`[squad-expire] refunded member ${member.id} order ${member.order_id} refund ${res.refundId}`)
+        } catch (refundErr) {
+          refundFailures++
+          console.error(`[squad-expire] refund failed for order ${member.order_id}:`, refundErr)
+          captureException(refundErr, {
+            scope: 'squad-expire',
+            order_id: member.order_id,
+            squad_id: squad.squad_id,
+            member_id: member.id,
+          })
         }
       }
 

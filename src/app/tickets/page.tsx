@@ -20,6 +20,8 @@ interface MyTicketRow {
   ticket_code: string
   secret: string
   status: string
+  /** So the wallet can reach the order, which is where refunds live. */
+  order_id: string
   event: {
     title: string
     start_date: string
@@ -66,7 +68,7 @@ export default async function MyTicketsPage() {
   const { data } = await supabase
     .from('tickets')
     .select(
-      'id, ticket_code, secret, status, created_at, event:events(title, start_date, timezone, venue_name, venue_city, allow_seat_self_service, organiser_assigns_seats), order_item:order_items(item_name), seat:seats(row_label, seat_number, note, section:seat_map_sections(name))',
+      'id, ticket_code, secret, status, created_at, order_id, event:events(title, start_date, timezone, venue_name, venue_city, allow_seat_self_service, organiser_assigns_seats), order_item:order_items(item_name), seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))',
     )
     .order('created_at', { ascending: false })
 
@@ -174,6 +176,20 @@ export default async function MyTicketsPage() {
                 {t.status === 'valid' && (
                   <TransferTicketForm ticketId={t.id} eventTitle={t.event?.title ?? 'this event'} />
                 )}
+                {/* THE WAY BACK TO THE ORDER, which is where the refund request
+                    lives. The wallet is where a buyer looks first when plans
+                    change, and until this link existed the only route to it was
+                    the confirmation email, which is the one thing people delete.
+                    Outside the card anchor, like the controls above: a link
+                    nested in a link is invalid and fails accessibility. */}
+                <div className="px-5 pt-2">
+                  <Link
+                    href={`/orders/${encodeURIComponent(t.order_id)}/confirmation`}
+                    className="inline-flex min-h-[44px] items-center text-sm font-medium text-gold-800 underline hover:text-gold-700"
+                  >
+                    {t.status === 'valid' ? 'Manage this order or request a refund' : 'View this order'}
+                  </Link>
+                </div>
               </li>
             )
           })}

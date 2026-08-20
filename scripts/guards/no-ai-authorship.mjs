@@ -96,6 +96,19 @@ const INHERITED_DEFERRED = new Map([
       '      that rewrite is still not authorised. Clears with the rewrite in\n' +
       '      docs/roast/AUTHORSHIP-HISTORY-REWRITE.md.',
   ],
+  [
+    '36179dc1a7dc497a029d2542e8c3c22f770c5921',
+    'origin/main tip: "Integration/launch (#118)", the GitHub squash-merge of THIS\n' +
+      '      branch on 16 August. GitHub composes a squash message by concatenating the\n' +
+      '      squashed commits\' messages, so it inherited their trailers wholesale; every\n' +
+      '      one of those underlying commits is already deferred here or pre-boundary.\n' +
+      '      It became reachable only by merging main back into integration/launch on\n' +
+      '      20 August, and the 43 commits this branch has made since the squash are\n' +
+      '      all clean. Same class and same founder ruling as 86bb285b: deferring it\n' +
+      "      keeps the guard blocking for new work rather than turning it off. Rewriting\n" +
+      '      it would rewrite main. Clears with the rewrite in\n' +
+      '      docs/roast/AUTHORSHIP-HISTORY-REWRITE.md.',
+  ],
 ])
 
 const PATTERNS = [
@@ -233,6 +246,41 @@ for (const c of scanned) {
 // happening, reported as enforcement that is. A reader of the CI log can now see
 // the difference without knowing the checkout configuration.
 console.log(`[no-ai-authorship] scanned ${scanned.length} commit(s), scope: ${scope}.`)
+
+/*
+ * REFUSE TO JUDGE WHAT IT CANNOT SEE. Printing the count told a reader of the log
+ * the difference between a real pass and a vacuous one, but only if a reader
+ * looked; the exit code said PASS either way. Founder ruling 2026-08-20: a guard
+ * that cannot see enough history must FAIL LOUDLY rather than pass, because "a
+ * check that passed without doing its work" is the failure class that has cost
+ * this project the most.
+ *
+ * Two independent signals, because either alone can be fooled. `--is-shallow-
+ * repository` catches actions/checkout's default fetch-depth 1. The floor catches
+ * a clone that is technically complete but truncated below the point where this
+ * guard could see the boundary at all.
+ *
+ * .github/workflows/ci.yml sets fetch-depth: 0 on the job that runs the guards
+ * (the only job that runs `npm run build`), so CI is not currently vacuous. This
+ * exists so that it cannot become vacuous silently.
+ */
+const isShallow = git(['rev-parse', '--is-shallow-repository']).trim() === 'true'
+const MIN_VISIBLE = 2
+if (isShallow || scanned.length < MIN_VISIBLE) {
+  console.error(
+    `\n[no-ai-authorship] FAIL - this guard cannot see enough history to judge.\n` +
+      `  shallow repository: ${isShallow}\n` +
+      `  commits visible in scope: ${scanned.length} (floor ${MIN_VISIBLE})\n\n` +
+      `  A shallow checkout makes this guard inspect one message and report PASS, which is\n` +
+      `  enforcement that is not happening reported as enforcement that is. Refusing instead.\n` +
+      `  In GitHub Actions set:\n` +
+      `      - uses: actions/checkout@v4\n` +
+      `        with:\n` +
+      `          fetch-depth: 0\n` +
+      `  Locally, unshallow with: git fetch --unshallow`,
+  )
+  process.exit(1)
+}
 
 // The ledgers, printed every run so the debt stays visible rather than forgotten.
 if (deferredHits.length) {

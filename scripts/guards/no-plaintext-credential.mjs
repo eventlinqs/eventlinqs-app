@@ -92,6 +92,22 @@ export const REVIEWED = {
   'tests/unit/tickets/transfer.test.ts':
     'UUID-shaped fixtures (rotated-secret-N-0000-...) proving the transfer RPC rotates ' +
     'a ticket secret so the old QR dies. Obviously synthetic by construction.',
+  // A PREFIX COLLISION, not a credential. `re_` is the Resend API key prefix,
+  // which is what this guard is looking for, and it is ALSO the prefix of a Stripe
+  // REFUND id (re_3U5mGQ...). These two files are the recorded evidence of the
+  // 2026-08-18 refund proofs, and the refund id is the whole point of the record:
+  // it is the identifier that ties the in-app refunds row to the Stripe object, it
+  // is not secret, and it authenticates nothing. Kept in the baseline rather than
+  // stripped from the artefact, because deleting the identifier to satisfy a
+  // prefix match would make the evidence unverifiable.
+  'docs/verification/refund-dashboard-2026-08-18/refund-dashboard-e2e.json':
+    'Stripe REFUND ids (re_...), not Resend API keys. Same prefix, different system. ' +
+    'A refund id is a public object identifier and is the link between the in-app ' +
+    'refunds row and the Stripe refund; it grants nothing.',
+  'docs/verification/refund-dashboard-2026-08-18/refund-orphan-drill.json':
+    'Stripe REFUND id (re_...) from the orphan-refund drill, for the same reason. ' +
+    'Also note this file deliberately records NO ticket bearer secret: /t/[code] is ' +
+    'bearer-authenticated, so the secret is the credential and is never written out.',
   'tests/unit/payments/webhook-multi-secret.test.ts':
     'Synthetic whsec_ and sk_test_ fixtures proving the Stripe webhook tries every ' +
     'configured signing secret. Testing signature verification requires strings of ' +

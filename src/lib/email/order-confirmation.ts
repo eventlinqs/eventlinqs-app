@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 import QRCode from 'qrcode'
 import { getSiteUrl } from '@/lib/site-url'
+import { describeRefundPolicy, policyFromEvent } from '@/lib/refunds/policy'
 import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
 import { formatMoney } from '@/lib/money/format'
 import { formatSeatLabel } from '@/lib/seating/format'
@@ -47,6 +48,8 @@ function seatLine(ticket: EmailTicket): string | null {
 }
 
 type EmailOrder = {
+  /* Needed for the manage-this-order link in the receipt. */
+  id: string
   order_number: string
   total_cents: number
   currency: string
@@ -59,6 +62,14 @@ type EmailEvent = {
   venue_name?: string | null
   venue_city?: string | null
   venue_country?: string | null
+  /* THE EVENT'S OWN REFUND POLICY, carried into the receipt. A policy a buyer
+   * cannot read before paying is not a policy, and a buyer reads this email far
+   * more often than they go back to the event page. */
+  is_free?: boolean | null
+  refund_policy_type?: string | null
+  refund_policy_days?: number | null
+  refund_policy_absorb_fee?: boolean | null
+  refund_policy_self_service?: boolean | null
 }
 
 // Statuses that still admit entry and therefore carry a QR.
@@ -143,7 +154,7 @@ export async function sendConfirmationEmail(
 
   const { data: event } = await db
     .from('events')
-    .select('title, start_date, end_date, timezone, venue_name, venue_city, venue_country')
+    .select('title, start_date, end_date, timezone, venue_name, venue_city, venue_country, is_free, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
     .eq('id', order.event_id)
     .single()
 
@@ -165,7 +176,7 @@ export async function sendConfirmationEmail(
 
   const { data: ticketRows } = await db
     .from('tickets')
-    .select('ticket_code, secret, holder_name, status, seat:seats(row_label, seat_number, note, section:seat_map_sections(name))')
+    .select('ticket_code, secret, holder_name, status, seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))')
     .eq('order_id', order_id)
     .order('created_at', { ascending: true })
 
@@ -334,7 +345,8 @@ export function buildConfirmationEmailHtml(
   <p style="margin:0 0 12px;color:#6B7280;font-size:13px;">This email is your receipt.</p>
 
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">The EventLinqs team. The ticketing platform built for every community.</p>
-  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Refunds are handled under our refund policy: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">${canonicalHost()}/legal/refunds</a></p>
+  <p style="margin:0 0 4px;color:#6B7280;font-size:13px;"><strong style="color:#0A1628;">Refunds:</strong> ${escapeHtml(describeRefundPolicy(policyFromEvent(event), event.is_free ?? false))}</p>
+  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Manage this order, including asking for a refund: <a href="${siteUrl}/orders/${order.id}/confirmation" style="color:#9CA3AF;">your order page</a>. Platform terms: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">${canonicalHost()}/legal/refunds</a></p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.</p>
   <p style="margin:0;color:#9CA3AF;font-size:12px;">You received this because you bought tickets on EventLinqs.</p>
 
@@ -410,7 +422,9 @@ export function buildConfirmationEmailText(
   lines.push('This email is your receipt.')
   lines.push('')
   lines.push('The EventLinqs team. The ticketing platform built for every community.')
-  lines.push(`Refund policy: ${siteUrl}/legal/refunds`)
+  lines.push(`Refunds: ${describeRefundPolicy(policyFromEvent(event), event.is_free ?? false)}`)
+  lines.push(`Manage this order, including asking for a refund: ${siteUrl}/orders/${order.id}/confirmation`)
+  lines.push(`Platform terms: ${siteUrl}/legal/refunds`)
   lines.push('EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.')
   lines.push('You received this because you bought tickets on EventLinqs.')
 

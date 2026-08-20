@@ -1,10 +1,15 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { isLooserOrEqual, explainTightening, policyFromEvent, type RefundPolicy } from '@/lib/refunds/policy'
 import { checkSellable } from '@/lib/events/sellable-guard'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertCallerMayActForOrganisation } from '@/lib/organisations/act-for'
 import { redirect } from 'next/navigation'
-import { revalidatePath, updateTag } from 'next/cache'
+import {
+  revalidateEventSurfaces,
+  revalidateEventSurfacesById,
+} from '@/lib/events/revalidate-event'
 import { canTransition } from '@/lib/event-lifecycle'
 import { checkPublishGate, hasPaidTier } from '@/lib/events/publish-gate'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
@@ -16,6 +21,7 @@ import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
 import { getSiteUrl } from '@/lib/site-url'
 import { trackEventPublishedServer } from '@/lib/analytics/plausible'
 import type { EventStatus, EventVisibility, EventType, TicketTierType, FeePassType, Json } from '@/types/database'
+import { actionRateLimit } from '@/lib/rate-limit/action'
 
 // Resolve the organiser media fields from a create/update input into the columns
 // the events table stores. Validates the video URL against the provider allowlist
@@ -117,6 +123,14 @@ export type CreateEventInput = {
   scheduled_publish_at: string | null
   // Who carries the booking fees: pass_to_buyer (default) or absorb.
   fee_pass_type: FeePassType
+  /* THE PER-EVENT REFUND POLICY. Set at creation, editable afterwards, but only
+   * ever in the direction of MORE generous once the event is published: buyers
+   * paid under the terms shown at the time. Enforced by a database trigger and
+   * pre-checked below so the organiser gets a sentence rather than an exception. */
+  refund_policy_type: RefundPolicy['type']
+  refund_policy_days: number
+  refund_policy_absorb_fee: boolean
+  refund_policy_self_service: boolean
   ticket_tiers: TicketTierInput[]
   // M4: Reserved seating
   has_reserved_seating: boolean
@@ -138,22 +152,54 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // Verify org ownership
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', input.organisationId)
-    .or(`owner_id.eq.${user.id}`)
-    .single()
+  /*
+   * RATE LIMIT. Event creation had none at all until 2026-08-19, found by
+   * scripts/verify/rate-limit-audit.mjs. It is authenticated, so the ceiling was one
+   * free account, but a free account could create events in a loop and each one
+   * writes an events row, its ticket_tiers and the share_links the acquisition loop
+   * mints. The limit sits AFTER the auth check so an anonymous caller is refused as
+   * unauthenticated rather than consuming somebody's bucket, and BEFORE any write.
+   *
+   * KEYED BY user.id, PASSED EXPLICITLY. actionRateLimit defaults to the forwarded
+   * IP when no identifier is given, and the first version of this call gave none, so
+   * a policy whose rationale said "per organiser per hour" was in fact per ADDRESS
+   * per hour. That is wrong in both directions at once: the named threat is one free
+   * account looping, which an address does not bound once the account moves, while a
+   * shared office or an Australian carrier NAT puts every legitimate organiser behind
+   * it into a single bucket of thirty. This platform has already been bitten by the
+   * second half twice, on launch-artefact and on launch-compose-daily.
+   *
+   * The account-minting side is bounded upstream by auth-signup (5 per IP per 10 min,
+   * fail-closed), which is the right place for it.
+   */
+  const rl = await actionRateLimit('event-create', user.id)
+  if (!rl.ok) {
+    return {
+      error: `You have created a lot of events in a short time. Wait ${Math.max(1, Math.ceil(rl.retryAfterSeconds / 60))} minute(s) and try again.`,
+    }
+  }
 
-  if (!org) return { error: 'Organisation not found or access denied' }
+  /*
+   * OWNERSHIP, PROVED BEFORE ANY PRIVILEGED READ. Owner only, which is what this
+   * action has always required; createEvent has never admitted a manager.
+   *
+   * This used to run on the session client and filter `.or('owner_id.eq.' + id)`.
+   * Migration 20260819000002 revokes SELECT on organisations from authenticated,
+   * and a WHERE clause needs SELECT privilege on the columns it names just as a
+   * projection does, so that filter would have been denied (42501) and every
+   * create would have failed with "Organisation not found or access denied".
+   * The check now runs under the service role, which is also what makes it a
+   * real gate for the publish-gate read below rather than a formality.
+   */
+  const authority = await assertCallerMayActForOrganisation(user.id, input.organisationId, 'owner')
+  if (!authority.ok) return { error: 'Organisation not found or access denied' }
 
   // Resolve + validate the media columns (video allowlist; gallery cap).
   const media = resolveMediaColumns(input)
   if (!media.ok) return { error: media.error }
 
   if (input.status === 'published' || input.status === 'scheduled') {
-    const gate = await checkPublishGate(supabase, {
+    const gate = await checkPublishGate(createAdminClient(), {
       organisationId: input.organisationId,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
       coverImageUrl: input.cover_image_url,
@@ -247,6 +293,10 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       is_high_demand: input.is_high_demand,
       queue_admission_window_minutes: input.queue_admission_window_minutes,
       fee_pass_type: input.fee_pass_type,
+      refund_policy_type: input.refund_policy_type,
+      refund_policy_days: input.refund_policy_days,
+      refund_policy_absorb_fee: input.refund_policy_absorb_fee,
+      refund_policy_self_service: input.refund_policy_self_service,
     })
 
   if (eventError) {
@@ -289,13 +339,14 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
     }
   }
 
-  revalidatePath('/dashboard/events')
-  revalidatePath('/dashboard')
-  if (input.has_reserved_seating) {
-    revalidatePath(`/events/${slug}`)
-  }
-  // New city may have appeared in the picker merge source.
-  updateTag('picker-cities')
+  // Every surface this event appears on, not just the dashboard. It reads the
+  // row rather than trusting fields assembled here, so a field added to the event
+  // later cannot be forgotten at this call site. See revalidateEventSurfaces.
+  // The user-scoped client, not the admin one: this is a cache hint about an
+  // event the caller just created and owns, so it needs no service role, and the
+  // generated Database generic on the admin client makes this call site
+  // instantiate deeply enough that TypeScript gives up (TS2589).
+  await revalidateEventSurfacesById(supabase, input.eventId)
 
   // Activation metric: event_published (fire-and-forget, never blocks the
   // organiser's publish). A create with status published is always a first
@@ -329,6 +380,38 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
 
   if (!event) return { error: 'Event not found' }
 
+  /*
+   * THE ONE-WAY RULE, CHECKED HERE SO THE ORGANISER GETS WORDS.
+   *
+   * The authority is the database trigger (migration 20260820000002), which
+   * cannot be bypassed by any writer. But a trigger can only raise AFTER the
+   * organiser has filled in a form, and a raw Postgres exception is not an
+   * explanation. This reads the current policy and refuses first, saying which
+   * way the policy is allowed to move. If the two ever disagree the trigger
+   * wins and the disagreement is the bug.
+   */
+  {
+    const { data: current } = await supabase
+      .from('events')
+      .select('status, published_at, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
+      .eq('id', input.eventId)
+      .single()
+
+    const everPublished = Boolean(current?.published_at) || current?.status !== 'draft'
+    if (current && everPublished) {
+      const oldPolicy = policyFromEvent(current)
+      const newPolicy: RefundPolicy = {
+        type: input.refund_policy_type,
+        days: input.refund_policy_days,
+        absorbFee: input.refund_policy_absorb_fee,
+        selfService: input.refund_policy_self_service,
+      }
+      if (!isLooserOrEqual(oldPolicy, newPolicy)) {
+        return { error: explainTightening(oldPolicy, newPolicy) }
+      }
+    }
+  }
+
   // Verify the caller owns (or co-manages) the event's organisation before any
   // privileged write. Without this an authenticated organiser could pass another
   // org's eventId and overwrite that event or wipe its ticket tiers, because the
@@ -336,28 +419,23 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
   // existence SELECT above is not a gate: events RLS lets anyone read any
   // published event. These ownership reads run under the session client, so they
   // only succeed for an org the caller actually owns or manages.
-  const [{ data: ownedOrg }, { data: managingMembership }] = await Promise.all([
-    supabase
-      .from('organisations')
-      .select('id')
-      .eq('id', event.organisation_id)
-      .eq('owner_id', user.id)
-      .maybeSingle(),
-    supabase
-      .from('organisation_members')
-      .select('role')
-      .eq('organisation_id', event.organisation_id)
-      .eq('user_id', user.id)
-      .in('role', ['owner', 'admin', 'manager'])
-      .maybeSingle(),
-  ])
-  if (!ownedOrg && !managingMembership) return { error: 'Event not found' }
+  // Owner OR a member holding owner/admin/manager, unchanged from the pair of
+  // session-client reads this replaces. It moves to the service role for the
+  // reason recorded in act-for.ts: the `owner_id` filter these reads depend on is
+  // denied to `authenticated` once 20260819000002 lands, so the ownership check
+  // would have failed before the write it protects ever got the chance to.
+  const authority = await assertCallerMayActForOrganisation(
+    user.id,
+    event.organisation_id,
+    'owner_or_manager',
+  )
+  if (!authority.ok) return { error: 'Event not found' }
 
   const media = resolveMediaColumns(input)
   if (!media.ok) return { error: media.error }
 
   if (input.status === 'published' || input.status === 'scheduled') {
-    const gate = await checkPublishGate(supabase, {
+    const gate = await checkPublishGate(createAdminClient(), {
       organisationId: event.organisation_id,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
       coverImageUrl: input.cover_image_url,
@@ -448,6 +526,10 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       is_high_demand: input.is_high_demand,
       queue_admission_window_minutes: input.queue_admission_window_minutes,
       fee_pass_type: input.fee_pass_type,
+      refund_policy_type: input.refund_policy_type,
+      refund_policy_days: input.refund_policy_days,
+      refund_policy_absorb_fee: input.refund_policy_absorb_fee,
+      refund_policy_self_service: input.refund_policy_self_service,
     })
     .eq('id', input.eventId)
 
@@ -501,13 +583,10 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
     }
   }
 
-  revalidatePath('/dashboard/events')
-  revalidatePath('/dashboard')
-  if (input.has_reserved_seating && event.slug) {
-    revalidatePath(`/events/${event.slug}`)
-  }
-  // venue_city may have changed - refresh the picker merge source.
-  updateTag('picker-cities')
+  // THE DEFECT: this used to invalidate the public page only when the event had
+  // reserved seating, so an ordinary event's edit was invisible until its 300
+  // second ISR window expired, and then only on the request AFTER that.
+  await revalidateEventSurfacesById(admin, input.eventId)
 
   // Activation metric: a draft transitioning to published through the edit
   // path is that event's first publish.
@@ -534,6 +613,27 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
     .single()
 
   if (!event) return { error: 'Event not found' }
+
+  /*
+   * OWNERSHIP, ADDED 20 August 2026. There was no explicit check here: the SELECT
+   * above is not one, because the events RLS SELECT policy admits any published
+   * event, and the protection was the RLS UPDATE policy on the write at the end.
+   * That was adequate while the publish gate also ran on the session client. It
+   * stops being adequate the moment the gate reads under the service role, because
+   * a caller who does not own the organisation would then learn from the refusal
+   * message whether somebody else's organisation can take money.
+   *
+   * Owner or manager, matching updateEvent: publishing is the sibling of updating,
+   * and the write below remains RLS-protected regardless, so this narrows what the
+   * gate will answer without widening what anyone may actually change.
+   */
+  const authority = await assertCallerMayActForOrganisation(
+    user.id,
+    event.organisation_id,
+    'owner_or_manager',
+  )
+  if (!authority.ok) return { error: 'Event not found' }
+
   if (!canTransition(event.status as EventStatus, 'published')) {
     return { error: `Cannot publish event in '${event.status}' state` }
   }
@@ -543,7 +643,7 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
     .select('price, name, total_capacity, is_active')
     .eq('event_id', eventId)
 
-  const gate = await checkPublishGate(supabase, {
+  const gate = await checkPublishGate(createAdminClient(), {
     organisationId: event.organisation_id,
     tiersHavePaid: hasPaidTier(tiers ?? []),
     coverImageUrl: event.cover_image_url,
@@ -561,8 +661,10 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
     .eq('id', eventId)
 
   if (error) return { error: 'Failed to publish event' }
-  // A newly published event may bring a previously absent city into the picker.
-  updateTag('picker-cities')
+  // THE DEFECT: publishing used to invalidate NOTHING but the city picker, so a
+  // freshly published event did not appear on the listing, the homepage or any
+  // discovery surface until each one expired on its own timer.
+  await revalidateEventSurfacesById(supabase, eventId)
 
   // Activation metric: publishing from the events table. A draft going live
   // is a first publish; resuming a paused event is not.
@@ -596,7 +698,11 @@ export async function pauseEvent(eventId: string): Promise<{ error?: string }> {
     .update({ status: 'paused' })
     .eq('id', eventId)
 
-  return error ? { error: 'Failed to pause event' } : {}
+  if (error) return { error: 'Failed to pause event' }
+  // A paused event that keeps selling from a cached page is the worst version of
+  // this defect: it takes money for something the organiser has stopped.
+  await revalidateEventSurfacesById(supabase, eventId)
+  return {}
 }
 
 export async function cancelEvent(eventId: string): Promise<{ error?: string }> {
@@ -620,7 +726,11 @@ export async function cancelEvent(eventId: string): Promise<{ error?: string }> 
     .update({ status: 'cancelled' })
     .eq('id', eventId)
 
-  return error ? { error: 'Failed to cancel event' } : {}
+  if (error) return { error: 'Failed to cancel event' }
+  // Same reasoning as pause, and more urgent: a cancelled event must stop being
+  // offered everywhere it is listed, immediately.
+  await revalidateEventSurfacesById(supabase, eventId)
+  return {}
 }
 
 export async function duplicateEvent(eventId: string): Promise<{ error?: string; newEventId?: string }> {
@@ -674,6 +784,9 @@ export async function duplicateEvent(eventId: string): Promise<{ error?: string;
     await supabase.from('ticket_tiers').insert(newTiers)
   }
 
+  // A duplicate lands as a DRAFT, so no public surface changes, but the
+  // organiser's own lists must show it at once.
+  await revalidateEventSurfacesById(supabase, newEvent.id)
   return { newEventId: newEvent.id }
 }
 
@@ -684,7 +797,10 @@ export async function deleteEvent(eventId: string): Promise<{ error?: string }> 
 
   const { data: event } = await supabase
     .from('events')
-    .select('status, created_by, cover_image_url, gallery_urls')
+    // slug, venue_city and tags are read HERE because after the delete there is
+    // no row left to compose the invalidation from, and a deleted event that
+    // lingers on a cached listing is a link straight into a 404.
+    .select('status, created_by, cover_image_url, gallery_urls, slug, venue_city, tags')
     .eq('id', eventId)
     .single()
 
@@ -693,6 +809,12 @@ export async function deleteEvent(eventId: string): Promise<{ error?: string }> 
 
   const { error } = await supabase.from('events').delete().eq('id', eventId)
   if (error) return { error: 'Failed to delete event' }
+
+  revalidateEventSurfaces({
+    slug: event.slug,
+    venue_city: event.venue_city,
+    tags: Array.isArray(event.tags) ? (event.tags as string[]) : [],
+  })
 
   // Orphan cleanup: remove the event's stored images so deleting an event never
   // leaks storage. Best-effort (the row is already gone); failures are logged.

@@ -9,6 +9,7 @@ import {
 } from '@/lib/hero-categories'
 import { CategoryLandingPage } from '@/components/templates/CategoryLandingPage'
 import type { EventCardData } from '@/components/features/events/event-card'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 // ISR: every hero category is the same for all anonymous visitors. The
 // 5-minute revalidate window matches /events/[slug] and keeps the live
@@ -84,7 +85,7 @@ export default async function CategoryPage({ params }: Props) {
         )
         .eq('status', 'published')
         .eq('visibility', 'public')
-        .gte('start_date', new Date().toISOString())
+        .or(listingWindowOrPredicate(new Date()))
         .in('category.slug', categorySlugs)
         .order('start_date', { ascending: true })
         .limit(6),

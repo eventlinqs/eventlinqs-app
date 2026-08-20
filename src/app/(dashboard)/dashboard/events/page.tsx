@@ -12,6 +12,7 @@ import {
   withOrganisation,
 } from '@/lib/organisations/scope'
 import type { Event } from '@/types/database'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 type FilterTab = 'all' | 'draft' | 'published' | 'past' | 'cancelled'
 
@@ -71,7 +72,7 @@ export default async function MyEventsPage({ searchParams }: Props) {
   if (activeTab === 'draft') {
     query = query.eq('status', 'draft')
   } else if (activeTab === 'published') {
-    query = query.eq('status', 'published').gte('start_date', now)
+    query = query.eq('status', 'published').or(listingWindowOrPredicate(new Date(now)))
   } else if (activeTab === 'past') {
     query = query.lt('start_date', now).in('status', ['published', 'completed'])
   } else if (activeTab === 'cancelled') {

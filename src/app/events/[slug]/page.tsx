@@ -20,6 +20,7 @@ import { isFlagEnabled } from '@/lib/flags'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { GoingProof } from '@/components/inventory/going-proof'
 import { TicketPanelClient } from '@/components/features/events/ticket-panel-client'
+import { GetTicketsCta } from '@/components/features/events/get-tickets-cta'
 import { getEventInventoryStatic, getTierInventoryStatic } from '@/lib/redis/inventory-cache'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { SiteHeader } from '@/components/layout/site-header'
@@ -42,12 +43,16 @@ import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 // initial chunk set.
 import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
 import { SectionHeader } from '@/components/ui/SectionHeader'
+import { describeRefundPolicy, refundPolicyBadge, policyFromEvent } from '@/lib/refunds/policy'
 import { EventSoldOut } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
 import {
+  ORG_SALE_FIELDS_SELECT,
   eventIsPaid,
   isExternallyTicketed,
   isOrganiserSellable,
+  ticketsOnSaleDetailed,
+  verifyOrgSaleFields,
 } from '@/lib/payments/sale-status'
 import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel'
 // Service role, used for exactly one thing on this page: reading the two
@@ -172,27 +177,42 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
  * crosses the client boundary. The column privilege stays exactly as the audit
  * left it.
  */
-async function organiserCanSell(organisationId: string | null | undefined): Promise<boolean> {
-  if (!organisationId) return false
+async function organiserCanSell(
+  organisationId: string | null | undefined,
+): Promise<{ sellable: boolean; lookupFailed: boolean }> {
+  if (!organisationId) return { sellable: false, lookupFailed: false }
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('organisations')
-    // All five fields the sale gate reads, so it agrees with the charge
-    // precondition rather than passing an organiser who will be refused at the
-    // payment step. See isOrganiserSellable.
-    .select(
-      'stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_account_country, payout_status',
-    )
+    // ORG_SALE_FIELDS_SELECT: the one list, owned by the gate that reads it, so
+    // this query cannot drift short of the rule. A narrowed select here took
+    // every paid event off sale on 15 August.
+    .select(ORG_SALE_FIELDS_SELECT)
     .eq('id', organisationId)
     .maybeSingle()
   if (error) {
     // Fail CLOSED. Refusing to sell when we cannot establish the organiser can
     // settle is the safe direction: the alternative is taking money the platform
     // may not be able to pay out.
+    //
+    // It is reported as a LOOKUP FAILURE rather than as an unfinished payment
+    // setup, because those are different things and telling a founder the wrong
+    // one cost a night. See ticketsOnSaleDetailed.
     console.error('[event-detail] organiserCanSell failed:', error)
-    return false
+    return { sellable: false, lookupFailed: true }
   }
-  return isOrganiserSellable(data)
+  // No row is a legitimate state (organiser not found) and refuses the sale.
+  if (!data) return { sellable: false, lookupFailed: false }
+
+  // A row PRESENT but short of gate columns is a programming error, reported as a
+  // lookup failure rather than as the organiser's payment setup. This is the
+  // branch that would have told the truth on 15 August.
+  const verdict = verifyOrgSaleFields(data)
+  if (!verdict.complete) {
+    console.error('[event-detail] organisation row missing gate fields:', verdict.missing)
+    return { sellable: false, lookupFailed: true }
+  }
+  return { sellable: isOrganiserSellable(verdict.org), lookupFailed: false }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -636,9 +656,27 @@ export default async function EventDetailPage({ params }: Props) {
     }
   }
 
-  const saleBlocked =
-    externallyTicketed ||
-    (eventIsPaid(allTiers) && !(await organiserCanSell(event.organisation_id)))
+  /*
+   * ONE DECISION, CARRYING ITS CAUSE, shared with the client.
+   *
+   * The boolean is kept because several call sites below branch on it, but the
+   * REASON travels with it now and is handed to the selector, so the sentence a
+   * buyer reads on a server render and the sentence they read after a click
+   * refusal come from the same place and cannot tell different stories.
+   */
+  const isPaidEvent = eventIsPaid(allTiers)
+  const organiserSale = isPaidEvent
+    ? await organiserCanSell(event.organisation_id)
+    : { sellable: true, lookupFailed: false }
+
+  const saleDecision = ticketsOnSaleDetailed({
+    isPaidEvent,
+    organiserSellable: organiserSale.sellable,
+    event,
+    lookupFailed: organiserSale.lookupFailed,
+  })
+  const saleBlocked = !saleDecision.onSale
+  const saleRefusalReason = saleDecision.reason
 
   const baseUrl = getSiteUrl()
   const eventStateForSchema =
@@ -782,12 +820,9 @@ export default async function EventDetailPage({ params }: Props) {
                     Browse upcoming events
                   </Link>
                 ) : (
-                  <Link
-                    href="#tickets"
-                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600"
-                  >
+                  <GetTicketsCta className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600">
                     Get tickets
-                  </Link>
+                  </GetTicketsCta>
                 )}
                 {!eventBannerState ? (
                   <span className="inline-flex items-center gap-2 text-sm text-white/80">
@@ -963,6 +998,25 @@ export default async function EventDetailPage({ params }: Props) {
                 </Reveal>
                 )}
 
+                {/* REFUND POLICY, BEFORE PURCHASE.
+                 *  A policy a buyer cannot read before paying is not a policy, it is a
+                 *  surprise. Eventbrite, Humanitix and Ticketmaster all publish the
+                 *  event policy on the event page, and the Australian Consumer Law
+                 *  posture on unavoidable terms points the same way. The sentence
+                 *  comes from the one policy module, so what is promised here is what
+                 *  the refund path will actually do. */}
+                <Reveal as="div" className="mt-10">
+                  <SectionHeader eyebrow="Before you book" title="Refund policy" size="sm" />
+                  <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
+                    <span className="inline-flex items-center rounded-full bg-ink-900 px-3 py-1 text-xs font-semibold text-gold-400">
+                      {refundPolicyBadge(policyFromEvent(event), event.is_free ?? false)}
+                    </span>
+                    <p className="mt-3 text-sm leading-relaxed text-ink-600">
+                      {describeRefundPolicy(policyFromEvent(event), event.is_free ?? false)}
+                    </p>
+                  </div>
+                </Reveal>
+
                 {event.organisation && (
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
@@ -1098,6 +1152,7 @@ export default async function EventDetailPage({ params }: Props) {
                           squadBookingEnabled={event.squad_booking_enabled ?? false}
                           tierInventory={tierInventory}
                           saleBlocked={saleBlocked}
+                          saleRefusalReason={saleRefusalReason}
                           feeRates={feeRates}
                           feePassType={eventFeePassType}
                         />
@@ -1136,6 +1191,7 @@ export default async function EventDetailPage({ params }: Props) {
                         squadBookingEnabled={event.squad_booking_enabled ?? false}
                         tierInventory={tierInventory}
                         saleBlocked={saleBlocked}
+                        saleRefusalReason={saleRefusalReason}
                         feeRates={feeRates}
                         feePassType={eventFeePassType}
                       />
