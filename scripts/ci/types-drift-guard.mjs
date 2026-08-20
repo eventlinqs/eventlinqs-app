@@ -137,7 +137,11 @@ say(`${repoMigrations.length} migration(s) in the repository, ${appliedVersions.
 
 /* ------------------------------------------------------------------ verdict */
 
-const result = analyse({ committedText, liveText, pending })
+// The SETOF map needs EVERY migration, not just the pending ones: a function's
+// `RETURNS SETOF <table>` declaration is usually in a long-applied migration
+// while only the ADD COLUMN that reshapes it is pending.
+const corpus = repoMigrations.map((f) => readFileSync(join(MIGRATIONS_DIR, f), 'utf8'))
+const result = analyse({ committedText, liveText, pending, corpus })
 
 const { lines, exitCode } = renderVerdict(result, {
   committedPath: COMMITTED,

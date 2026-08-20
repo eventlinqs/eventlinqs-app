@@ -1450,10 +1450,15 @@ every command, every URL, the rollback and the diagnostic are inline, so you
 never have to leave this section or search for anything mid-deploy.
 
 **Scope.** This section covers ONE deploy: merging `integration/launch` to `main`
-and applying the eight migrations pending on production. It supersedes section 3
-for this particular run, because the pending set is different now (eight, not
+and applying the NINE migrations pending on production. It supersedes section 3
+for this particular run, because the pending set is different now (nine, not
 eleven) and because two of them can refuse an organiser publish if applied
 against the old code.
+
+**The count changed from eight to nine on 21 August.** The ninth,
+20260821000001, records two columns found on production that no migration ever
+created. It is idempotent, so it is a no-op against a production that already
+has them. See 8.5a.
 
 **The ordering rule that governs everything below.** The CODE must be live before
 the MIGRATIONS are applied. `20260819000002` revokes `SELECT` on
@@ -1591,7 +1596,7 @@ supabase db push --linked --dry-run
 ```
 
 **PASS:** it prints `DRY RUN: migrations will *not* be pushed to the database.`,
-then `Would push these migrations:` followed by exactly **8** bulleted names, then
+then `Would push these migrations:` followed by exactly **9** bulleted names, then
 `Finished supabase db push.` The eight are exactly these (verified by running this
 dry run against production on 20 August 2026, which returned this list and nothing
 else):
@@ -1605,13 +1610,50 @@ else):
 20260820000001_refund_releases_seat.sql
 20260820000002_refund_policy_and_requests.sql
 20260820000003_refund_releases_squad_seat.sql
+20260821000001_record_out_of_band_refund_columns.sql
 ```
 
 **FAIL, any other count or any name not on this list: STOP.** Measured read-only
-against production on 20 August 2026: ledger 88 rows, tree 96 files, 8 pending,
-0 applied-without-a-file. A ninth entry means something reached the tree that this
-run sheet has not accounted for. A seventh means something was applied out of
+against production on 21 August 2026: ledger 88 rows, tree 97 files, 9 pending,
+0 applied-without-a-file. A TENTH entry means something reached the tree that this
+run sheet has not accounted for. An EIGHTH means something was applied out of
 band. Either way, find out what before pushing.
+
+### 8.5a Why there is a ninth, and why it is safe
+
+`20260821000001_record_out_of_band_refund_columns.sql` is not a feature. It
+records two columns that were found on production during the PR #119 types-drift
+investigation and that NO migration in this repository ever created:
+
+```
+refunds.stripe_refund_status    text, nullable, no default
+refunds.stripe_pending_reason   text, nullable, no default
+```
+
+They appear in no .sql file, in no commit on any branch, and in no application
+code. TEST, which has every migration applied, does not have them. They were
+applied by hand at some point, outside the migration files.
+
+The migration ADDS them with `ADD COLUMN IF NOT EXISTS`, so against production,
+which already has them, **it changes nothing**. Its purpose is to make the
+repository describe the database, so they stop being invisible and so a future
+migration cannot collide with them.
+
+Nothing is at stake in the data: measured on production on 21 August, `refunds`
+held 0 rows and both columns were non-null in 0 of them, with no constraint, no
+index and no default on either.
+
+**If you would rather they did not exist**, that is your call and not mine.
+Delete the file before pushing and run this instead:
+
+```sql
+ALTER TABLE public.refunds
+  DROP COLUMN IF EXISTS stripe_refund_status,
+  DROP COLUMN IF EXISTS stripe_pending_reason;
+```
+
+Either way the types-drift guard passes afterwards, because the repository and
+the database genuinely agree.
 
 **Order matters and is already correct.** `db push` applies in version order, so
 stage 1 (`20260818000001`, the tables no policy depends on) runs first, then the
@@ -1789,6 +1831,31 @@ WHERE sm.order_id = '<ORDER_ID>';
   and the slot is genuinely open again.
 - **FAIL:** status is still `paid`. The squad would complete a slot short. That is
   the defect `20260820000003` fixes, so confirm that migration is in the ledger.
+
+### 8.9a Confirm nothing reached production without a migration
+
+Run after the push, from `el-moat`:
+
+```
+node scripts/verify/schema-provenance.mjs
+```
+
+It compares production against TEST, which is built from the migrations and from
+nothing else, so anything present on production and absent from TEST was not
+produced by a migration. It writes nothing: both sessions are opened read-only
+and rolled back.
+
+- **PASS:** `every object on production is produced by a migration`, and the line
+  above it reads `objects on PRODUCTION that no migration produced: 0`.
+- **FAIL:** it lists the objects. Each one reached production by hand. Write an
+  idempotent migration recording it, or rule on removing it. Do not leave it.
+- **CANNOT CONCLUDE:** it refuses when TEST is behind the tree, because every
+  unapplied migration's columns would otherwise be reported as out-of-band. Apply
+  the missing ones to TEST first, with
+  `node scripts/verify/apply-migration-to-test.mjs --file supabase/migrations/<file>.sql`.
+
+This is the check that did not exist on 21 August, which is why two hand-applied
+columns on `refunds` sat unnoticed until a types-drift failure surfaced them.
 
 ### 8.10 Stop here
 

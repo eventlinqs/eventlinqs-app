@@ -245,9 +245,100 @@ const bare = (name) => String(name).replace(/^"?public"?\./i, '').replace(/"/g, 
  * statement that is not recognised simply explains nothing - it can never
  * accidentally justify a delta.
  */
-export function parseMigrationDdl(sql) {
+/**
+ * Pull the BODIES of `DO $$ ... $$` blocks out of a migration.
+ *
+ * WHY THIS IS NEEDED, and why it is not the same as un-stripping dollar quotes.
+ * `splitSqlStatements` erases every dollar-quoted body, which is right for a
+ * FUNCTION body: that text is stored, not executed, so an `ALTER TABLE` inside
+ * one changes nothing and must never be allowed to explain a delta. A `DO`
+ * block is the opposite: its body EXECUTES immediately, so the DDL inside it is
+ * as real as DDL at the top level.
+ *
+ * Erasing both is what let 20260820000003 go unexplained. It adds an enum value
+ * the correct, idempotent way:
+ *
+ *     DO $$ BEGIN
+ *       IF NOT EXISTS (SELECT 1 FROM pg_enum ...) THEN
+ *         ALTER TYPE public.squad_member_status ADD VALUE 'refunded';
+ *       END IF;
+ *     END $$;
+ *
+ * The parser recognised `alter-type-add-value` perfectly well as a bare
+ * statement, but this file's only statement, after stripping, began with `DO`.
+ * So the guard saw the committed types carrying `refunded`, found no pending
+ * migration that added it, and called a legitimate pending migration drift.
+ * Writing the idempotency guard - the careful thing to do - is precisely what
+ * hid it.
+ *
+ * The `\bdo\b` anchor is what separates the two cases: a function body is
+ * introduced by `AS $$`, never by `DO $$`.
+ */
+export function extractDoBlockBodies(sql) {
+  const bodies = []
+  const re = /\bdo\s+(?:language\s+[\w"]+\s+)?\$([A-Za-z_]*)\$([\s\S]*?)\$\1\$/gi
+  let m
+  while ((m = re.exec(String(sql))) !== null) bodies.push(m[2])
+  return bodies
+}
+
+/**
+ * Strip the plpgsql control flow that wraps a statement inside a `DO` body.
+ *
+ * Extracting the body is not enough on its own. Splitting
+ *   BEGIN IF NOT EXISTS (...) THEN ALTER TYPE ... ADD VALUE 'refunded'; END IF; END
+ * on `;` yields a fragment that STARTS with `BEGIN IF ... THEN`, and every
+ * matcher below is anchored with `^`, so it matches nothing. The anchors are
+ * deliberate and worth keeping: they are what stops a column name mentioned in
+ * a WHERE clause from being read as DDL. So the wrapper is removed instead of
+ * the anchors being loosened.
+ *
+ * Applied ONLY to DO bodies. Top-level statement matching is unchanged, so this
+ * cannot widen what a normal migration is able to explain.
+ */
+function stripPlpgsqlPrefix(stmt) {
+  let s = stmt
+  for (let i = 0; i < 12; i++) {
+    const before = s
+    s = s
+      .replace(/^begin\b\s*/i, '')
+      .replace(/^declare\b[\s\S]*?(?=\bbegin\b)/i, '')
+      .replace(/^(?:els)?if\b[\s\S]*?\bthen\b\s*/i, '')
+      .replace(/^else\b\s*/i, '')
+      .replace(/^loop\b\s*/i, '')
+      .replace(/^end\s+(?:if|loop)\b\s*/i, '')
+      .replace(/^end\b\s*/i, '')
+      .trim()
+    if (s === before) break
+  }
+  return s
+}
+
+/**
+ * The @returns annotation is REQUIRED, not decorative: this function recurses
+ * into DO block bodies, and a recursive function with no declared return type
+ * defeats TypeScript's inference. The array degrades to an implicit any, and
+ * every caller's `.some(d => d.kind === ...)` then fails TS7006 in a test file
+ * that has not changed. Declaring it keeps the inference local to this function.
+ *
+ * @param {string} sql
+ * @param {{plpgsql?: boolean}} [opts]
+ * @returns {Array<{kind: string, table?: string, column?: string, name?: string}>}
+ */
+export function parseMigrationDdl(sql, { plpgsql = false } = {}) {
+  /** @type {Array<{kind: string, table?: string, column?: string, name?: string}>} */
   const out = []
-  for (const stmt of splitSqlStatements(sql)) {
+  // A DO block's body EXECUTES, so its DDL counts. Parsed recursively, so a DO
+  // block nested inside a DO block is still seen. Only reached at the top level,
+  // because a function body is never treated as a DO body.
+  if (!plpgsql) {
+    for (const body of extractDoBlockBodies(sql)) {
+      for (const d of parseMigrationDdl(body, { plpgsql: true })) out.push(d)
+    }
+  }
+  for (const raw of splitSqlStatements(sql)) {
+    const stmt = plpgsql ? stripPlpgsqlPrefix(raw) : raw
+    if (!stmt) continue
     const alter = stmt.match(/^alter\s+table\s+(?:if\s+exists\s+)?([\w".]+)\s+(.*)$/i)
     if (alter) {
       const table = bare(alter[1])
@@ -295,6 +386,21 @@ export function parseMigrationDdl(sql) {
       out.push({ kind: 'alter-type-add-value', name: bare(m[1]) })
     } else if ((m = stmt.match(/^create\s+(?:or\s+replace\s+)?function\s+([\w".]+)/i))) {
       out.push({ kind: 'create-function', name: bare(m[1]) })
+      /*
+       * A function declared `RETURNS SETOF <table>` has the SHAPE OF THAT TABLE,
+       * and the generated types follow it. So adding a column to the table
+       * silently changes the function's Returns block, with no migration ever
+       * naming the function.
+       *
+       * That is not hypothetical: events_within_distance is declared
+       * `RETURNS SETOF events` in 20260418000001 and has never been touched
+       * since, yet its Returns gained external_ticket_url when 20260815000001
+       * added that column to `events`, and gained four refund_policy_* fields
+       * from 20260820000002. Without this link the guard reports each of them as
+       * unexplained drift against a migration that plainly explains them.
+       */
+      const setof = stmt.match(/\breturns\s+setof\s+([\w".]+)/i)
+      if (setof) out.push({ kind: 'function-returns-setof', name: bare(m[1]), table: bare(setof[1]) })
     } else if ((m = stmt.match(/^drop\s+function\s+(?:if\s+exists\s+)?([\w".]+)/i))) {
       out.push({ kind: 'drop-function', name: bare(m[1]) })
     }
@@ -325,6 +431,12 @@ export function describePath(path) {
   if (parts.length === 3 && parts[1] === 'Enums') {
     return { type: 'enum', name: parts[2].toLowerCase() }
   }
+  // <schema>.Functions.<name>.Returns.<column>
+  // Split out from the general function case so a SETOF-backed return can be
+  // attributed to the TABLE it mirrors. See 'function-returns-setof'.
+  if (parts.length === 5 && parts[1] === 'Functions' && parts[3] === 'Returns') {
+    return { type: 'function-return-column', name: parts[2].toLowerCase(), column: parts[4].toLowerCase() }
+  }
   // <schema>.Functions.<name>....
   if (parts.length >= 3 && parts[1] === 'Functions') {
     return { type: 'function', name: parts[2].toLowerCase() }
@@ -345,11 +457,37 @@ export function describePath(path) {
  * name would let an unrelated migration launder a genuine staleness, which is
  * the failure this guard exists to catch.
  */
-export function ddlExplainsDelta(delta, ddl) {
+/**
+ * Recursive as well (a SETOF return is re-asked as a table column), so it
+ * carries a declared return type for the same reason parseMigrationDdl does.
+ *
+ * @param {{path: string, kind: string}} delta
+ * @param {Array<{kind: string, table?: string, column?: string, name?: string}>} ddl
+ * @param {Map<string,string>} [setofMap]
+ * @returns {boolean}
+ */
+export function ddlExplainsDelta(delta, ddl, setofMap = new Map()) {
   const at = describePath(delta.path)
   if (!at) return false
 
   const has = (pred) => ddl.some(pred)
+
+  /*
+   * A Returns block backed by `SETOF <table>` is the table's shape. Rewrite the
+   * delta onto that table and let the ordinary column rules decide, so the same
+   * direction checks apply and nothing is waved through. A function whose SETOF
+   * table is unknown falls through to the general function case below, which
+   * still requires a migration that names the function.
+   */
+  if (at.type === 'function-return-column') {
+    const table = setofMap.get(at.name) || ddl.find((d) => d.kind === 'function-returns-setof' && d.name === at.name)?.table
+    if (!table) return has((d) => (d.kind === 'create-function' || d.kind === 'drop-function') && d.name === at.name)
+    return ddlExplainsDelta(
+      { ...delta, path: `public.Tables.${table}.Row.${at.column}` },
+      ddl,
+      setofMap,
+    )
+  }
 
   if (at.type === 'column') {
     const t = at.table
@@ -428,13 +566,46 @@ export function ddlExplainsDelta(delta, ddl) {
  *        migrations present in the repository and NOT applied to the target
  * @returns {{status:'in-sync'|'pending-migrations'|'drift', deltas:Array, explained:Array, unexplained:Array, migrations:Array<string>}}
  */
-export function analyse({ committedText, liveText, pending }) {
+/*
+ * NOT SCHEMA, AND THEREFORE NOT DRIFT.
+ *
+ * `__InternalSupabase.PostgrestVersion` records the PostgREST version of the
+ * project the types were generated from. It moves when Supabase upgrades their
+ * infrastructure, with no change to this repository and nothing a migration
+ * could ever explain, and it differs between two projects simply because they
+ * were upgraded on different days: on 21 August 2026 TEST reported 14.15 and
+ * production 14.5.
+ *
+ * This is an EXCLUSION OF A NON-SCHEMA FIELD, not a loosened check. It names one
+ * exact path; every table, column, enum, function and relationship is still
+ * compared. Ignoring it is what stops an infrastructure upgrade presenting as a
+ * schema disagreement that no migration can resolve, which is the shape that
+ * teaches people to ignore the guard.
+ */
+const IGNORED_PATHS = new Set(['__InternalSupabase.PostgrestVersion'])
+
+export function analyse({ committedText, liveText, pending, corpus = [] }) {
   const committed = parseGeneratedTypes(committedText)
   const live = parseGeneratedTypes(liveText)
-  const deltas = diffSchemas(committed, live)
+  const deltas = diffSchemas(committed, live).filter((d) => !IGNORED_PATHS.has(d.path))
 
   if (deltas.length === 0) {
     return { status: 'in-sync', deltas, explained: [], unexplained: [], migrations: [] }
+  }
+
+  /*
+   * WHICH FUNCTIONS MIRROR A TABLE, built from EVERY migration rather than only
+   * the pending ones. The `RETURNS SETOF events` declaration that gives
+   * events_within_distance its shape lives in 20260418000001, which was applied
+   * in April; only the ADD COLUMN that changes the shape is pending. Reading the
+   * map from the pending set alone would therefore find nothing, which is
+   * precisely the case this is here to handle.
+   */
+  const setofMap = new Map()
+  for (const sql of [...corpus, ...pending.map((p) => p.sql)]) {
+    for (const d of parseMigrationDdl(sql)) {
+      if (d.kind === 'function-returns-setof') setofMap.set(d.name, d.table)
+    }
   }
 
   const parsed = pending.map((p) => ({ ...p, ddl: parseMigrationDdl(p.sql) }))
@@ -444,7 +615,7 @@ export function analyse({ committedText, liveText, pending }) {
   const migrations = new Set()
 
   for (const delta of deltas) {
-    const by = parsed.find((p) => ddlExplainsDelta(delta, p.ddl))
+    const by = parsed.find((p) => ddlExplainsDelta(delta, p.ddl, setofMap))
     if (by) {
       explained.push({ delta, by: by.file })
       migrations.add(by.file)

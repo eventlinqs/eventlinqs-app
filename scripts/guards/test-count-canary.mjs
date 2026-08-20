@@ -313,8 +313,8 @@ const ROOT = join(HERE, '..', '..')
  * trigger to refuse it, with controls proving the trigger does not simply refuse
  * everything.
  */
-const MIN_FILES = 214
-const MIN_TESTS = 2589
+const MIN_FILES = 215
+const MIN_TESTS = 2605
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
