@@ -44,6 +44,10 @@
  *   one-refund-path            every refund trigger funnels through one path, so there is one
  *                              answer to how much money goes back
  *   inventory-lock-integrity   two buyers can never be sold the same seat
+ *   no-unowned-organisation-read  a service-role read of an organisation's sale posture, or a
+ *                              service-role call to the publish gate, must prove the caller
+ *                              may act for that organisation first (the service role bypasses
+ *                              RLS, so an unchecked read is a cross-tenant read)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -429,6 +433,7 @@ const GUARDS = [
   // This pins the lock, the availability arithmetic, the already-confirmed latch,
   // and the rule that the counters have exactly one owner.
   'scripts/guards/inventory-lock-integrity.mjs',
+  'scripts/guards/no-unowned-organisation-read.mjs',
 ]
 
 /**

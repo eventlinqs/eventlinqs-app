@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isLooserOrEqual, explainTightening, policyFromEvent, type RefundPolicy } from '@/lib/refunds/policy'
 import { checkSellable } from '@/lib/events/sellable-guard'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertCallerMayActForOrganisation } from '@/lib/organisations/act-for'
 import { redirect } from 'next/navigation'
 import {
   revalidateEventSurfaces,
@@ -178,22 +179,27 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
     }
   }
 
-  // Verify org ownership
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', input.organisationId)
-    .or(`owner_id.eq.${user.id}`)
-    .single()
-
-  if (!org) return { error: 'Organisation not found or access denied' }
+  /*
+   * OWNERSHIP, PROVED BEFORE ANY PRIVILEGED READ. Owner only, which is what this
+   * action has always required; createEvent has never admitted a manager.
+   *
+   * This used to run on the session client and filter `.or('owner_id.eq.' + id)`.
+   * Migration 20260819000002 revokes SELECT on organisations from authenticated,
+   * and a WHERE clause needs SELECT privilege on the columns it names just as a
+   * projection does, so that filter would have been denied (42501) and every
+   * create would have failed with "Organisation not found or access denied".
+   * The check now runs under the service role, which is also what makes it a
+   * real gate for the publish-gate read below rather than a formality.
+   */
+  const authority = await assertCallerMayActForOrganisation(user.id, input.organisationId, 'owner')
+  if (!authority.ok) return { error: 'Organisation not found or access denied' }
 
   // Resolve + validate the media columns (video allowlist; gallery cap).
   const media = resolveMediaColumns(input)
   if (!media.ok) return { error: media.error }
 
   if (input.status === 'published' || input.status === 'scheduled') {
-    const gate = await checkPublishGate(supabase, {
+    const gate = await checkPublishGate(createAdminClient(), {
       organisationId: input.organisationId,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
       coverImageUrl: input.cover_image_url,
@@ -413,28 +419,23 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
   // existence SELECT above is not a gate: events RLS lets anyone read any
   // published event. These ownership reads run under the session client, so they
   // only succeed for an org the caller actually owns or manages.
-  const [{ data: ownedOrg }, { data: managingMembership }] = await Promise.all([
-    supabase
-      .from('organisations')
-      .select('id')
-      .eq('id', event.organisation_id)
-      .eq('owner_id', user.id)
-      .maybeSingle(),
-    supabase
-      .from('organisation_members')
-      .select('role')
-      .eq('organisation_id', event.organisation_id)
-      .eq('user_id', user.id)
-      .in('role', ['owner', 'admin', 'manager'])
-      .maybeSingle(),
-  ])
-  if (!ownedOrg && !managingMembership) return { error: 'Event not found' }
+  // Owner OR a member holding owner/admin/manager, unchanged from the pair of
+  // session-client reads this replaces. It moves to the service role for the
+  // reason recorded in act-for.ts: the `owner_id` filter these reads depend on is
+  // denied to `authenticated` once 20260819000002 lands, so the ownership check
+  // would have failed before the write it protects ever got the chance to.
+  const authority = await assertCallerMayActForOrganisation(
+    user.id,
+    event.organisation_id,
+    'owner_or_manager',
+  )
+  if (!authority.ok) return { error: 'Event not found' }
 
   const media = resolveMediaColumns(input)
   if (!media.ok) return { error: media.error }
 
   if (input.status === 'published' || input.status === 'scheduled') {
-    const gate = await checkPublishGate(supabase, {
+    const gate = await checkPublishGate(createAdminClient(), {
       organisationId: event.organisation_id,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
       coverImageUrl: input.cover_image_url,
@@ -612,6 +613,27 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
     .single()
 
   if (!event) return { error: 'Event not found' }
+
+  /*
+   * OWNERSHIP, ADDED 20 August 2026. There was no explicit check here: the SELECT
+   * above is not one, because the events RLS SELECT policy admits any published
+   * event, and the protection was the RLS UPDATE policy on the write at the end.
+   * That was adequate while the publish gate also ran on the session client. It
+   * stops being adequate the moment the gate reads under the service role, because
+   * a caller who does not own the organisation would then learn from the refusal
+   * message whether somebody else's organisation can take money.
+   *
+   * Owner or manager, matching updateEvent: publishing is the sibling of updating,
+   * and the write below remains RLS-protected regardless, so this narrows what the
+   * gate will answer without widening what anyone may actually change.
+   */
+  const authority = await assertCallerMayActForOrganisation(
+    user.id,
+    event.organisation_id,
+    'owner_or_manager',
+  )
+  if (!authority.ok) return { error: 'Event not found' }
+
   if (!canTransition(event.status as EventStatus, 'published')) {
     return { error: `Cannot publish event in '${event.status}' state` }
   }
@@ -621,7 +643,7 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
     .select('price, name, total_capacity, is_active')
     .eq('event_id', eventId)
 
-  const gate = await checkPublishGate(supabase, {
+  const gate = await checkPublishGate(createAdminClient(), {
     organisationId: event.organisation_id,
     tiersHavePaid: hasPaidTier(tiers ?? []),
     coverImageUrl: event.cover_image_url,

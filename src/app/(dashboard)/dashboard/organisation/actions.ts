@@ -69,7 +69,16 @@ export async function createOrganisation(formData: FormData) {
       owner_id: user.id,
       status: 'active',
     })
-    .select()
+    /*
+     * NARROWED FROM A BARE .select(), which returns every column. An INSERT ...
+     * RETURNING needs SELECT privilege on each column it returns, so once
+     * 20260819000002 revokes SELECT on organisations from `authenticated` and
+     * re-grants only (id, name, slug, description, logo_url, website), a bare
+     * select here is a permission-denied and creating an organisation fails at
+     * the first step of organiser onboarding. Only org.id is read below; name and
+     * slug are kept because they are inside the grant and cost nothing.
+     */
+    .select('id, name, slug')
     .single()
 
   if (orgError || !org) {

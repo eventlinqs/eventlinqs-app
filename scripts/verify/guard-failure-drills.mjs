@@ -22,7 +22,7 @@
  *
  * Usage: node scripts/verify/guard-failure-drills.mjs
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 
@@ -30,18 +30,73 @@ const ROOT = process.cwd()
 const GUARDS = 'scripts/guards'
 
 /*
- * THE EFFECTIVE MIGRATION, named once. A guard reads the LAST migration that
- * defines a function, so a drill has to mutate that same file. When 20260819000004
- * redefined confirm_order and reconcile_refund, four drills pinned to the older
- * files stopped firing and this harness reported "guard PASSED on a violating
- * tree" for each. That is the harness doing its job: a drill pinned to a
- * superseded definition verifies nothing while still looking green. Naming the
- * file once means the next redefinition updates four drills in one edit.
+ * THE EFFECTIVE MIGRATION. A guard reads the LAST migration that defines a
+ * function, so a drill has to mutate that same file. A drill pinned to a
+ * superseded definition verifies nothing while still looking green, which is why
+ * this is computed rather than written down.
+ *
+ * DERIVED, NOT PINNED, since 2026-08-20. Naming the file once was an improvement
+ * on naming it four times, but it still had to be edited by hand every time a
+ * function was redefined, and on 20 August it was not: 20260820000001 and
+ * 20260820000003 redefined reconcile_refund and these constants still pointed at
+ * 20260819000004. Three drills went on reporting green while mutating a
+ * superseded definition, which is the precise failure this harness exists to
+ * catch, occurring inside the harness itself.
+ *
+ * The effective definition is now computed the same way the guards compute it -
+ * the LAST migration in version order that defines the function - so a new
+ * migration cannot leave a drill pointing at a dead target.
  */
-const NEW_EFFECTIVE_CONFIRM = 'supabase/migrations/20260819000004_confirm_only_pending_orders.sql'
-const NEW_EFFECTIVE_RECONCILE = 'supabase/migrations/20260819000004_confirm_only_pending_orders.sql'
+function effectiveDefinitionOf(fnName) {
+  const dir = 'supabase/migrations'
+  const re = new RegExp(`CREATE\\s+(OR\\s+REPLACE\\s+)?FUNCTION\\s+(public\\.)?${fnName}\\s*\\(`, 'i')
+  const hits = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .filter((f) => re.test(readFileSync(join(dir, f), 'utf8')))
+  if (hits.length === 0) throw new Error(`no migration defines ${fnName}; the drill harness cannot aim`)
+  return `${dir}/${hits[hits.length - 1]}`
+}
+
+const NEW_EFFECTIVE_CONFIRM = effectiveDefinitionOf('confirm_order')
+const NEW_EFFECTIVE_RECONCILE = effectiveDefinitionOf('reconcile_refund')
+console.log(`[drills] effective confirm_order:   ${NEW_EFFECTIVE_CONFIRM}`)
+console.log(`[drills] effective reconcile_refund: ${NEW_EFFECTIVE_RECONCILE}`)
 
 const DRILLS = [
+  {
+    /*
+     * RULE 2 of no-unowned-organisation-read. The check that matters most and the
+     * one a lexical guard most easily misses: the publish gate's organisations read
+     * lives in publish-gate.ts, so a call site that hands it the service-role client
+     * contains no `.from('organisations')` of its own. Deleting the ownership check
+     * here must still fail the build, because the service role bypasses RLS and an
+     * unchecked call turns an exposure into a cross-tenant read.
+     */
+    name: 'publish gate handed the service role with no ownership check (createEvent)',
+    guard: `${GUARDS}/no-unowned-organisation-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/actions.ts',
+    find: "  const authority = await assertCallerMayActForOrganisation(user.id, input.organisationId, 'owner')\n  if (!authority.ok) return { error: 'Organisation not found or access denied' }",
+    replace: '  // ownership check removed by the drill',
+    expect: 'with no ownership check',
+  },
+  {
+    /*
+     * RULE 1: a direct service-role read of the five sale-posture columns in a file
+     * that is not a reviewed admission. fetchers.ts is a public discovery module, so
+     * a Stripe-posture read appearing there is exactly the shape this guard exists
+     * to refuse.
+     */
+    name: 'service-role read of organisation sale posture in an unadmitted file',
+    guard: `${GUARDS}/no-unowned-organisation-read.mjs`,
+    file: 'src/lib/events/fetchers.ts',
+    find: 'export',
+    replace:
+      "export async function rogueSalePostureRead(admin, orgId) {\n" +
+      "  return admin.from('organisations').select('stripe_account_id, payout_status').eq('id', orgId)\n" +
+      '}\nexport',
+    expect: 'no ownership check in the same function',
+  },
   {
     name: 'ungated provider button (the 2026-08-02 production defect)',
     guard: `${GUARDS}/auth-provider-guard.mjs`,
@@ -413,7 +468,7 @@ const DRILLS = [
   {
     name: 'the phantom ledger reversal guard removed (debits an organiser for a sale never made)',
     guard: `${GUARDS}/refund-restores-inventory.mjs`,
-    file: 'supabase/migrations/20260819000004_confirm_only_pending_orders.sql',
+    file: NEW_EFFECTIVE_RECONCILE,
     find: '  ) INTO v_sale_recorded;',
     replace: '  ) INTO v_unused_flag;',
     expect: 'does NOT reverse a sale that was never recorded',
