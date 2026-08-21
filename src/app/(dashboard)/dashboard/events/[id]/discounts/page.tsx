@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { DiscountCodesClient } from './discounts-client'
 import type { DiscountCode, TicketTier } from '@/types/database'
+import { resolveEventAccess } from '@/lib/organisations/event-access'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -26,14 +27,21 @@ export default async function DiscountsPage({ params }: Props) {
 
   if (!event) notFound()
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', event.organisation_id)
-    .eq('owner_id', user.id)
-    .single()
-
-  if (!org) notFound()
+  /*
+   * ACCESS, VIA THE SHARED GATE. Two defects in one line.
+   *
+   * PRIVILEGE: this filtered `.eq('owner_id', user.id)` on the SESSION client, and
+   * the column lockdown does not grant `authenticated` owner_id. PostgreSQL needs
+   * SELECT privilege on WHERE-clause columns, so the query was refused 42501, the
+   * row came back null, and the page 404'd. That is the failure that forced the
+   * emergency GRANT still on production.
+   *
+   * AUTHORISATION: it admitted the OWNER only. resolveEventAccess admits owner or
+   * a member holding owner/admin/manager, matching updateEvent and
+   * resolveRefundScope, so a venue's manager can reach the discount codes for an event they run.
+   */
+  const access = await resolveEventAccess(eventId)
+  if (!access.allowed) notFound()
 
   const { data: discountCodes } = await supabase
     .from('discount_codes')

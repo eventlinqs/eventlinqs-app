@@ -14,6 +14,7 @@ import {
 } from '@/lib/ai/sanitise'
 import { INPUT_LIMITS } from '@/lib/ai/config'
 import { getLivePublicFee } from '@/lib/pricing/live-fee'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * POST /api/ai/chat - the single entry point for every platform assistant.
@@ -129,7 +130,21 @@ export async function POST(request: Request) {
     // `data: null` when they own more than one. So the onboarding assistant told an
     // owner of several businesses that they had none, and walked them through
     // creating their first.
-    const { data: orgs } = await supabase
+    /*
+     * READ UNDER THE SERVICE ROLE, keyed to the authenticated user's own id.
+     *
+     * NOT an authorisation gate: it answers "does this person run a business
+     * yet" so the onboarding assistant knows which conversation to have. It is
+     * still a privilege problem, because it FILTERS on owner_id and the column
+     * lockdown does not grant that to `authenticated`. Refused, the list comes
+     * back empty and the assistant tells an owner of several businesses that
+     * they have none, and walks them through creating their first, which is
+     * exactly the defect the note above records arriving by a different route.
+     *
+     * The filter is user.id from getUser(), never a client-supplied value, so
+     * the service role can only ever return this caller's own organisations.
+     */
+    const { data: orgs } = await createAdminClient()
       .from('organisations')
       .select('id')
       .eq('owner_id', user.id)

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import type { DiscountCode } from '@/types/database'
+import { resolveEventAccess } from '@/lib/organisations/event-access'
 
 // ─── Validate a discount code at checkout ────────────────────────────────────
 
@@ -120,14 +121,20 @@ export async function createDiscountCode(
 
   if (!event) return { error: 'Event not found' }
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', event.organisation_id)
-    .eq('owner_id', user.id)
-    .maybeSingle()
-
-  if (!org) return { error: 'Access denied' }
+  /*
+   * ACCESS, VIA THE SHARED GATE.
+   *
+   * PRIVILEGE: this filtered `.eq('owner_id', user.id)` on the SESSION client, and
+   * the column lockdown does not grant `authenticated` owner_id. PostgreSQL needs
+   * SELECT privilege on WHERE-clause columns, so the query was refused 42501 and
+   * this returned "Access denied" to a legitimate organiser.
+   *
+   * AUTHORISATION: it admitted the OWNER only. resolveEventAccess admits owner or
+   * a member holding owner/admin/manager, the same set updateEvent and
+   * resolveRefundScope use, so a venue's manager can create a discount code for an event they run.
+   */
+  const access = await resolveEventAccess(parsed.data.event_id)
+  if (!access.allowed) return { error: 'Access denied' }
 
   // Validate percentage range
   if (parsed.data.discount_type === 'percentage' && (parsed.data.discount_value < 1 || parsed.data.discount_value > 100)) {
@@ -181,14 +188,20 @@ export async function updateDiscountCode(
 
   if (!dc) return { error: 'Discount code not found' }
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', dc.organisation_id)
-    .eq('owner_id', user.id)
-    .maybeSingle()
-
-  if (!org) return { error: 'Access denied' }
+  /*
+   * ACCESS, VIA THE SHARED GATE.
+   *
+   * PRIVILEGE: this filtered `.eq('owner_id', user.id)` on the SESSION client, and
+   * the column lockdown does not grant `authenticated` owner_id. PostgreSQL needs
+   * SELECT privilege on WHERE-clause columns, so the query was refused 42501 and
+   * this returned "Access denied" to a legitimate organiser.
+   *
+   * AUTHORISATION: it admitted the OWNER only. resolveEventAccess admits owner or
+   * a member holding owner/admin/manager, the same set updateEvent and
+   * resolveRefundScope use, so a venue's manager can update a discount code on an event they run.
+   */
+  const access = await resolveEventAccess(dc.event_id)
+  if (!access.allowed) return { error: 'Access denied' }
 
   const { error } = await supabase
     .from('discount_codes')
@@ -214,14 +227,20 @@ export async function deleteDiscountCode(id: string): Promise<{ error?: string }
   if (!dc) return { error: 'Discount code not found' }
   if (dc.current_uses > 0) return { error: 'Cannot delete a code that has been used. Deactivate it instead.' }
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', dc.organisation_id)
-    .eq('owner_id', user.id)
-    .maybeSingle()
-
-  if (!org) return { error: 'Access denied' }
+  /*
+   * ACCESS, VIA THE SHARED GATE.
+   *
+   * PRIVILEGE: this filtered `.eq('owner_id', user.id)` on the SESSION client, and
+   * the column lockdown does not grant `authenticated` owner_id. PostgreSQL needs
+   * SELECT privilege on WHERE-clause columns, so the query was refused 42501 and
+   * this returned "Access denied" to a legitimate organiser.
+   *
+   * AUTHORISATION: it admitted the OWNER only. resolveEventAccess admits owner or
+   * a member holding owner/admin/manager, the same set updateEvent and
+   * resolveRefundScope use, so a venue's manager can delete an unused discount code on an event they run.
+   */
+  const access = await resolveEventAccess(dc.event_id)
+  if (!access.allowed) return { error: 'Access denied' }
 
   const { error } = await supabase.from('discount_codes').delete().eq('id', id)
   if (error) return { error: 'Failed to delete discount code' }

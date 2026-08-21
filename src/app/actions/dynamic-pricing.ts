@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { revalidateEventSurfacesById } from '@/lib/events/revalidate-event'
+import { resolveEventAccess } from '@/lib/organisations/event-access'
 
 const StepSchema = z.object({
   id: z.string().uuid().optional(),
@@ -64,14 +65,20 @@ export async function saveDynamicPricing(
     return { success: false, error: 'Event not found' }
   }
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', event.organisation_id)
-    .eq('owner_id', user.id)
-    .single()
-
-  if (!org) return { success: false, error: 'Access denied' }
+  /*
+   * ACCESS, VIA THE SHARED GATE.
+   *
+   * PRIVILEGE: this filtered `.eq('owner_id', user.id)` on the SESSION client, and
+   * the column lockdown does not grant `authenticated` owner_id. PostgreSQL needs
+   * SELECT privilege on WHERE-clause columns, so the query was refused 42501 and
+   * this returned "Access denied" to a legitimate organiser.
+   *
+   * AUTHORISATION: it admitted the OWNER only. resolveEventAccess admits owner or
+   * a member holding owner/admin/manager, the same set updateEvent and
+   * resolveRefundScope use, so a venue's manager can save dynamic pricing for an event they run.
+   */
+  const access = await resolveEventAccess(event.id)
+  if (!access.allowed) return { success: false, error: 'Access denied' }
 
   // All writes use adminClient (Principle 1)
   const adminClient = createAdminClient()

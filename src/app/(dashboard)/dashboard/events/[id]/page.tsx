@@ -23,6 +23,7 @@ import { getLineupPanelData, type LineupPanelData } from '@/lib/broadcast/lineup
 import { getRequestOrigin } from '@/lib/site-origin'
 
 import { getSiteUrl } from '@/lib/site-url'
+import { resolveEventAccess } from '@/lib/organisations/event-access'
 type Props = {
   params: Promise<{ id: string }>
 }
@@ -83,11 +84,32 @@ export default async function EventViewPage({ params }: Props) {
     lineupPanel = await getLineupPanelData(id, await getRequestOrigin(), user.id)
   }
 
-  const { data: org } = await supabase
+  /*
+   * ACCESS, VIA THE SHARED GATE. Two defects in one line, both fixed here.
+   *
+   * 1. PRIVILEGE. This filtered `.eq('owner_id', user.id)` on the SESSION client.
+   *    The column lockdown grants `authenticated` six columns on organisations and
+   *    owner_id is not among them, and PostgreSQL requires SELECT privilege on
+   *    every column named in a WHERE clause, not only on the ones returned. So the
+   *    query was refused with 42501, `org` came back null, and this page called
+   *    notFound(). That is the 404 that took the dashboard down on 18 August and
+   *    forced the emergency GRANT that is still on production.
+   *
+   * 2. AUTHORISATION. It admitted the OWNER only. resolveEventAccess admits the
+   *    owner or a member holding owner/admin/manager, which is the same set
+   *    resolveRefundScope and updateEvent already use. A venue with staff could
+   *    not open the overview of an event its manager is running.
+   *
+   * The gate reads through the service role after authenticating the caller, so
+   * it survives the lockdown by design rather than by luck.
+   */
+  const access = await resolveEventAccess(id)
+  if (!access.allowed) notFound()
+
+  const { data: org } = await admin
     .from('organisations')
     .select('id, name, slug')
     .eq('id', event.organisation_id)
-    .eq('owner_id', user.id)
     .single()
 
   if (!org) notFound()

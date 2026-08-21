@@ -46,6 +46,19 @@ async function callerCanWriteEvent(
   userId: string,
   eventId: string,
 ): Promise<boolean> {
+  /*
+   * THE OWNERSHIP READ RUNS UNDER THE SERVICE ROLE.
+   *
+   * It used to run on the injected session client and filter on `owner_id`, which
+   * the column lockdown does not grant to `authenticated`. PostgreSQL requires
+   * SELECT privilege on WHERE-clause columns, so the filter itself was refused
+   * 42501 and this helper returned false for a legitimate owner, and for a member of the organisation running the event.
+   *
+   * The ROLES admitted here are unchanged. This is a privilege fix, not an
+   * authorisation change: the caller has already established WHO the user is, and
+   * this decides what they may do.
+   */
+  const authz = createAdminClient()
   const { data: ev } = await supabase
     .from('events')
     .select('organisation_id, created_by')
@@ -54,8 +67,8 @@ async function callerCanWriteEvent(
   if (!ev) return true
   if (ev.created_by === userId) return true
   const [{ data: owned }, { data: member }] = await Promise.all([
-    supabase.from('organisations').select('id').eq('id', ev.organisation_id).eq('owner_id', userId).maybeSingle(),
-    supabase
+    authz.from('organisations').select('id').eq('id', ev.organisation_id).eq('owner_id', userId).maybeSingle(),
+    authz
       .from('organisation_members')
       .select('role')
       .eq('organisation_id', ev.organisation_id)
@@ -188,6 +201,12 @@ export async function generateEventCoverPreview(input: {
   // security is the membership check: an organisation they do not belong to
   // simply does not come back, and a name they do not own cannot be printed
   // onto artwork by passing an id.
+  //
+  // DELIBERATELY NOT MOVED TO THE SERVICE ROLE with the ownership checks above.
+  // RLS is the whole protection here, and the service role bypasses it, so the
+  // swap would let anyone print another organisation's trading name onto their
+  // artwork by passing its id. It needs no privilege fix either: it selects
+  // `name` and filters on `id`, both of which the column lockdown still grants.
   let organiserName: string | null = null
   if (input.organisationId) {
     const { data: org } = await supabase
