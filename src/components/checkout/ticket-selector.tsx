@@ -288,11 +288,24 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
             const isSelected = qty > 0
 
             return (
+              /* NO `opacity-*` ON THIS CARD. A container opacity composites
+               * every descendant toward the page behind it, including text and
+               * interactive controls, so it silently lowers contrast that the
+               * tokens themselves pass. The muted look is carried by the
+               * surface tokens (a faded border and an ink-100 wash), which
+               * change the CARD without touching what is written on it.
+               *
+               * Measured: with `opacity-80` here, the Join Waitlist control
+               * inside rendered as #ab6333 on #fffcef, a contrast of 4.47:1
+               * against the 4.5:1 WCAG floor, and that single node held the
+               * whole event-detail accessibility category at 0.97 against the
+               * gate's 1.00. The tokens on the button itself (amber-800 on
+               * amber-50) are 6.84:1 - it was only ever the wrapper. */
               <div
                 key={tier.id}
                 className={`rounded-xl border p-4 transition-colors ${
                   soldOut || salePending
-                    ? 'border-ink-200/50 bg-ink-100/50 opacity-80'
+                    ? 'border-ink-200/50 bg-ink-100/50'
                     : isSelected
                     ? 'border-gold-500 bg-gold-100/30 shadow-sm'
                     : 'border-ink-200 bg-white hover:border-ink-400'
