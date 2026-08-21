@@ -8,6 +8,38 @@ import { aggregateGmv } from '@/lib/admin/analytics'
 import type { Order } from '@/types/database'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
 
+/*
+ * ONE LIST, READ BY BOTH THE QUERY AND THE TYPE.
+ *
+ * The columns named here are the columns the page may read. Because
+ * OrderSummaryRow is derived from the same tuple, adding a field to the summary
+ * arithmetic without adding it here does not compile, and a column fetched but
+ * never used is visible in one place instead of being hunted across the file.
+ *
+ * platform_fee_cents and processing_fee_cents are in this list because the
+ * revenue card sums them. They were missing on 21 August and the card rendered
+ * "AUD NaN" for all three derived figures.
+ */
+const ORDER_SUMMARY_COLUMNS = [
+  'id',
+  'order_number',
+  'status',
+  'currency',
+  'total_cents',
+  'platform_fee_cents',
+  'processing_fee_cents',
+  'created_at',
+  'user_id',
+  'guest_email',
+  'guest_name',
+] as const
+
+const ORDER_SUMMARY_SELECT = `${ORDER_SUMMARY_COLUMNS.join(', ')}, order_items(id, item_type, quantity)`
+
+type OrderSummaryRow = Pick<Order, (typeof ORDER_SUMMARY_COLUMNS)[number]> & {
+  order_items: { id: string; item_type: string; quantity: number }[]
+}
+
 type Props = {
   params: Promise<{ id: string }>
 }
@@ -54,13 +86,26 @@ export default async function EventOrdersPage({ params }: Props) {
   // profiles. It is used and then dropped, never rendered.
   const { data: orders } = await adminClient
     .from('orders')
-    .select(
-      'id, order_number, status, currency, total_cents, created_at, user_id, guest_email, guest_name, order_items(id, item_type, quantity)',
-    )
+    .select(ORDER_SUMMARY_SELECT)
     .eq('event_id', eventId)
     .order('created_at', { ascending: false })
 
-  const ordersData = (orders ?? []) as (Order & { order_items: { id: string; item_type: string; quantity: number }[] })[]
+  /*
+   * TYPED TO WHAT WAS SELECTED, NOT TO THE WHOLE ROW.
+   *
+   * This used to read `as (Order & { order_items: ... })[]`, and `Order` is the
+   * FULL orders row. The select asked for nine columns, so the cast asserted the
+   * presence of every column it did not fetch. That is why reading
+   * `o.platform_fee_cents` compiled cleanly and arrived `undefined`, and why the
+   * revenue card rendered "AUD NaN" for platform fees, processing fees and net
+   * revenue while gross sales, which reads the selected `total_cents`, was right.
+   * Found on production on 21 August by an organiser refunding a real order.
+   *
+   * Narrowing the type to exactly the selected columns is what stops the next one:
+   * consuming a field this query does not fetch is now a COMPILE ERROR rather than
+   * a number that silently becomes NaN three components later.
+   */
+  const ordersData = (orders ?? []) as unknown as OrderSummaryRow[]
 
   // Build display orders (join buyer name/email from profile or guest fields)
   const userIds = ordersData.filter(o => o.user_id).map(o => o.user_id!)
@@ -77,13 +122,32 @@ export default async function EventOrdersPage({ params }: Props) {
     }
   }
 
+  /*
+   * BUILT FIELD BY FIELD, NOT BY SPREADING THE ROW.
+   *
+   * This used to be `{ ...o, buyer_name, buyer_email, ticket_count }`. A spread
+   * ships whatever the query happened to select into the RSC payload, so the
+   * moment platform_fee_cents and processing_fee_cents were added to fix the NaN
+   * on the revenue card, the spread would have serialised the fee breakdown into
+   * the browser: exactly the width the note above this query exists to prevent,
+   * re-introduced as a side effect of an unrelated fix.
+   *
+   * The fee columns are read on the SERVER for the revenue totals and stop here.
+   * Naming the fields keeps the two concerns independent: what the page computes
+   * and what the client component is given.
+   */
   const displayOrders = ordersData.map(o => {
     const profile = o.user_id ? profileMap.get(o.user_id) : undefined
     const ticket_count = o.order_items
       .filter(i => i.item_type === 'ticket')
       .reduce((s, i) => s + i.quantity, 0)
     return {
-      ...o,
+      id: o.id,
+      order_number: o.order_number,
+      status: o.status,
+      currency: o.currency,
+      total_cents: o.total_cents,
+      created_at: o.created_at,
       buyer_name: profile?.full_name ?? o.guest_name ?? '',
       buyer_email: profile?.email ?? o.guest_email ?? '',
       ticket_count,

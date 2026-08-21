@@ -5,8 +5,25 @@ import Link from 'next/link'
 import type { Order } from '@/types/database'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
+/*
+ * ASKS FOR WHAT IT READS, NOT FOR THE WHOLE ROW.
+ *
+ * This used to demand the full `Order`, which forced every caller either to
+ * select all 25 columns or to lie with a cast. The orders page took the second
+ * option, and the cast is what let `platform_fee_cents` be read from a query that
+ * never fetched it, producing "AUD NaN" on the revenue card.
+ *
+ * Listing the nine fields this component actually reads means a caller can fetch
+ * a narrow row honestly, and adding a field here without adding it to the query
+ * is a compile error at the call site.
+ */
+type OrderTableRow = Pick<
+  Order,
+  'id' | 'order_number' | 'status' | 'currency' | 'total_cents' | 'created_at'
+> & { buyer_name: string; buyer_email: string; ticket_count: number }
+
 interface OrderTableProps {
-  orders: (Order & { buyer_name: string; buyer_email: string; ticket_count: number })[]
+  orders: OrderTableRow[]
   eventId: string
 }
 
