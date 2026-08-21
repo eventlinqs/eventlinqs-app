@@ -1862,3 +1862,39 @@ columns on `refunds` sat unnoticed until a types-drift failure surfaced them.
 Do not merge `main` into `integration/launch` in the same sitting. If you do, the
 Law 8 guard will fail on the new squash commit for the reason recorded in 8.1, and
 you will be debugging authorship trailers while holding a fresh production deploy.
+
+### 8.11 After the merge: RETIRE `integration/launch` and cut a fresh branch
+
+**Founder ruling, 21 August 2026. Do this instead of merging `main` back in.**
+
+```
+git checkout main && git pull
+git branch -D integration/launch
+git push origin --delete integration/launch
+git checkout -b <new-branch> main
+```
+
+WHY, because it is worth stating once so it is not relitigated. Both of the
+recurring costs on this branch are properties of a branch that has been
+squash-merged, and neither survives a fresh cut from `main`:
+
+1. **The squash conflict.** A squash creates a commit the branch has never seen,
+   so every file touched since the last squash conflicts against a squashed copy
+   of its own earlier state. This has happened three times: 24 files after #112,
+   27 after #118, and 6 after #119. Each time the resolution was the same, "take
+   ours", proven by the merge tree being byte-identical to an ancestor. A branch
+   cut from `main` shares `main`'s history and has nothing to conflict with.
+
+2. **The Law 8 debt.** Every squash merge produces a commit carrying inherited
+   `Co-Authored-By` trailers, and merging `main` back brings it into reach of the
+   guard. Three are now deferred by name (`86bb285b`, `36179dc1`, `5913cd83`) in
+   `docs/roast/LAW8-DEBT.md`. A branch cut from `main` starts after all of them
+   and adds no fourth.
+
+Neither is a defect being avoided. Both are the ordinary consequence of a
+squash-only repository, and the ordinary answer is a short-lived branch. Keeping
+one long-lived integration branch across three squashes is what turned a
+convention into recurring work.
+
+The deferred entries stay in the ledger either way. They clear only with the
+authorised history rewrite in `docs/roast/AUTHORSHIP-HISTORY-REWRITE.md`.
