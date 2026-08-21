@@ -312,9 +312,18 @@ const ROOT = join(HERE, '..', '..')
  * cannot: it drives a real UPDATE against a real published event and requires the
  * trigger to refuse it, with controls proving the trigger does not simply refuse
  * everything.
+ *
+ * tests/unit/ci/event-detail-gate-causes.test.ts, for the three deterministic
+ * failures the mobile Lighthouse gate reported on the event-detail route on
+ * 2026-08-21 - a container opacity dragging an interactive control's contrast
+ * to 4.48:1, a first-run coach resizing the bottom-anchored container it sits
+ * in, and 54,778 bytes of Supabase client pulled on mount for a closed modal.
+ * All three lived in SHARED components, so all three were live well beyond the
+ * one URL the gate measures. The assertions are absences, so each detector is
+ * first shown failing on a sample that does contain what it looks for.
  */
-const MIN_FILES = 216
-const MIN_TESTS = 2617
+const MIN_FILES = 217
+const MIN_TESTS = 2630
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
