@@ -410,8 +410,29 @@ const ROOT = join(HERE, '..', '..')
  *     called main() at the top level, so importing it ran a live HTTP audit.
  *     Every test still PASSED and vitest exited 1 on the rejection alone.
  */
-const MIN_FILES = 220
-const MIN_TESTS = 2718
+/*
+ * RAISED AGAIN 2026-08-23 (fifth time that day), 220/2718 to 221/2747, for
+ * tests/unit/events/jurisdictional-completeness.test.ts, 29 tests, from the
+ * founder's standing rule that this platform operates in ALL of Australia and
+ * a partial list is a defect rather than an abbreviation.
+ *
+ * The defect it was written for: the event-creation form carried a
+ * hand-written list of five Australian timezones and omitted Australia/Hobart
+ * and Australia/Darwin, so an organiser in Tasmania or the Northern Territory
+ * could not select their own zone and had to pick somebody else's.
+ *
+ * For Darwin that was an hour of real error, not a cosmetic gap, and the test
+ * asserts the arithmetic rather than describing it: the NT does not observe
+ * daylight saving so Australia/Darwin is +09:30 all year, while
+ * Australia/Adelaide, the nearest zone the form did offer, is +10:30 for the
+ * whole daylight-saving season. Every event a Darwin organiser created between
+ * October and April carried a start time an hour out.
+ *
+ * The negative control runs the five-zone list that shipped and asserts it
+ * misses exactly TAS and NT.
+ */
+const MIN_FILES = 221
+const MIN_TESTS = 2747
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
