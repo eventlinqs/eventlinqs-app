@@ -13,21 +13,41 @@ import {
  *
  * The growth doctrine's supply-side loop made real. The 50 founding spots are
  * a REAL count (organisations.is_founding), never fabricated scarcity. Invites
- * are single-use codes issuable only for the open cities (Geelong, Melbourne),
- * either by a founding organiser (their personal links) or by the founder from
- * the waitlist bridge. A conversion grants the new organisation a spot (if any
- * remain) and credits the inviter 3 fee-free months.
+ * are single-use codes, either from a founding organiser (their personal
+ * links) or from the founder. A conversion grants the new organisation a spot
+ * (if any remain) and credits the inviter 3 fee-free months.
+ *
+ * NATIONWIDE FROM DAY ONE (founder ruling 2026-08-23). This module used to
+ * carry `FOUNDING_CITIES = ['geelong','melbourne']` and gate every invite on
+ * it, so an organiser in Perth could not be invited and could not invite
+ * anyone. The cap and the referral mechanic are the scarcity; the two-city
+ * list was a separate, geographic restriction and it is gone. A city slug is
+ * still VALIDATED, because the column is not free text and the invite landing
+ * renders the city name, but it is validated against the canonical city
+ * registry (src/lib/cities/data.ts) rather than against a launch order.
  */
+import { isCitySlug, getCity, type CitySlug } from '@/lib/cities/data'
 
 export const FOUNDING_SPOT_CAP = 50
-export const FOUNDING_CITIES = ['geelong', 'melbourne'] as const
-export type FoundingCity = (typeof FOUNDING_CITIES)[number]
 /** How many personal invites a single founding organiser may generate. */
 export const INVITES_PER_FOUNDING_ORGANISER = 5
 export const REFERRAL_BONUS_MONTHS = 3
 
-export function isFoundingCity(v: unknown): v is FoundingCity {
-  return typeof v === 'string' && (FOUNDING_CITIES as readonly string[]).includes(v)
+/**
+ * Any city in the canonical Australian registry may carry a founding invite.
+ *
+ * Kept as a named function rather than inlining `isCitySlug` at the call sites
+ * so there is one place to read the answer to "which cities can be invited",
+ * and so the answer is visibly `all of them` instead of being implied by the
+ * absence of a check.
+ */
+export function isFoundingCity(v: unknown): v is CitySlug {
+  return typeof v === 'string' && isCitySlug(v)
+}
+
+/** The display name for an invite's city, from the canonical registry. */
+export function foundingCityName(slug: string): string {
+  return getCity(slug)?.name ?? slug
 }
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no ambiguous 0/O/1/I
@@ -74,7 +94,7 @@ export async function createFoundingInvite(input: {
   inviterKind: 'organiser' | 'founder'
   inviterOrgId: string | null
   inviterName: string
-  citySlug: FoundingCity
+  citySlug: CitySlug
   inviteeEmail: string | null
 }): Promise<{ code: string } | { error: string }> {
   const admin = createAdminClient()
@@ -90,6 +110,19 @@ export async function createFoundingInvite(input: {
       status: 'pending',
     })
     if (!error) return { code }
+    // 23514 check_violation on city_slug: the database still carries the
+    // two-city CHECK from 20260710000002_founding_network.sql. The app no
+    // longer restricts by city (nationwide from day one), so this can only
+    // mean migration 20260823000001 has not been applied to this database
+    // yet. Say that, rather than returning a generic failure that reads as a
+    // bug in the invite code, because the fix is an operator action.
+    if (error.code === '23514') {
+      console.error('[founding] invite insert refused by a check constraint:', error)
+      return {
+        error:
+          'This database still limits founding invites to Geelong and Melbourne. Apply migration 20260823000001_founding_invites_nationwide.sql to open them nationwide.',
+      }
+    }
     // 23505 unique_violation on the code: retry with a fresh one.
     if (error.code !== '23505') {
       console.error('[founding] invite insert failed:', error)
@@ -102,7 +135,7 @@ export async function createFoundingInvite(input: {
 export type PublicInvite = {
   code: string
   inviterName: string
-  citySlug: FoundingCity
+  citySlug: CitySlug
   status: string
 }
 

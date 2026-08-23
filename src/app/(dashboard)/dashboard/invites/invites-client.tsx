@@ -6,6 +6,8 @@ import { generateMyFoundingInvite } from './actions'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 type InviteRow = { code: string; url: string; cityName: string; status: string; acceptedAt: string | null }
+/** One selectable city, resolved server-side from the canonical registry. */
+export type InviteCity = { slug: string; name: string; state: string }
 
 export function InvitesClient({
   initialInvites,
@@ -13,17 +15,26 @@ export function InvitesClient({
   acceptedCount,
   feeFreeUntil,
   waiverActive,
+  cities,
 }: {
   initialInvites: InviteRow[]
   allowance: number
   acceptedCount: number
+  /**
+   * Every Australian city, passed in rather than imported here. The picker
+   * used to be two hardcoded <option> elements, Geelong and Melbourne, which
+   * was the geographic gate made visible: a founding organiser in Perth had
+   * nothing to select. The list comes from the server so the whole city
+   * registry never crosses into the client bundle.
+   */
+  cities: InviteCity[]
   /** organisations.founding_fee_free_until: the field the CHARGE reads. */
   feeFreeUntil: string | null
   /** Computed server-side with isWaiverActive(), the charge authority helper. */
   waiverActive: boolean
 }) {
   const [invites, setInvites] = useState<InviteRow[]>(initialInvites)
-  const [city, setCity] = useState<'geelong' | 'melbourne'>('geelong')
+  const [city, setCity] = useState<string>(cities[0]?.slug ?? '')
   const [copied, setCopied] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -57,7 +68,13 @@ export function InvitesClient({
       if (result.code) {
         const url = `${window.location.origin}/join/${result.code}`
         setInvites(prev => [
-          { code: result.code!, url, cityName: city === 'geelong' ? 'Geelong' : 'Melbourne', status: 'pending', acceptedAt: null },
+          {
+            code: result.code!,
+            url,
+            cityName: cities.find(c => c.slug === city)?.name ?? city,
+            status: 'pending',
+            acceptedAt: null,
+          },
           ...prev,
         ])
       }
@@ -91,11 +108,14 @@ export function InvitesClient({
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <select
             value={city}
-            onChange={e => setCity(e.target.value as 'geelong' | 'melbourne')}
+            onChange={e => setCity(e.target.value)}
             className="h-11 rounded-lg border border-ink-200 bg-white px-3 text-sm text-ink-900 focus:border-gold-400 focus:outline-none"
           >
-            <option value="geelong">Geelong</option>
-            <option value="melbourne">Melbourne</option>
+            {cities.map(c => (
+              <option key={c.slug} value={c.slug}>
+                {c.name}, {c.state}
+              </option>
+            ))}
           </select>
           <button
             type="button"

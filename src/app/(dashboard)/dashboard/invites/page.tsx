@@ -9,6 +9,7 @@ import { INVITES_PER_FOUNDING_ORGANISER, REFERRAL_BONUS_MONTHS } from '@/lib/fou
 import { getCity } from '@/lib/cities/data'
 import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
+import { getAllCities } from '@/lib/cities/data'
 import { InvitesClient } from './invites-client'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +21,9 @@ export const metadata = {
 
 /**
  * A Founding Organiser's invite surface: generate personal links for fellow
- * organisers in an open city, and watch conversions turn into fee-free months.
+ * organisers anywhere in Australia, and watch conversions turn into fee-free
+ * months. There are no "open cities": the platform is open nationwide from day
+ * one (founder ruling 2026-08-23), so the picker offers every city.
  * Non-founding organisers see the page but are told the programme is
  * invite-only, never a broken control.
  */
@@ -112,14 +115,15 @@ export default async function InvitesPage({
           feeFreeUntil={org.founding_fee_free_until ?? null}
           waiverActive={isWaiverActive(org.founding_fee_free_until)}
           acceptedCount={acceptedCount}
+          cities={getAllCities().map(c => ({ slug: c.slug, name: c.name, state: c.state }))}
         />
       ) : (
         <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
           <p className="text-sm font-semibold text-ink-900">The founding programme is invite-only.</p>
           <p className="mt-2 text-sm leading-relaxed text-ink-600">
-            Founding Organisers are the first 50 across Geelong and Melbourne, invited personally. If you were
-            invited, sign up through your invitation link and your founding spot is applied automatically. You can
-            still build events and get your launch kit today.
+            Founding Organisers are the first 50 nationally, invited personally. If you were invited, sign up
+            through your invitation link and your founding spot is applied automatically. You can still build
+            events and get your launch kit today.
           </p>
           <Link href="/dashboard/events/create" className="mt-4 inline-block rounded-full bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900">
             Build an event

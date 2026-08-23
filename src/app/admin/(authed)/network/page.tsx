@@ -4,7 +4,8 @@ import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getDemandSignal } from '@/lib/admin/demand-signal'
-import { FOUNDING_SPOT_CAP } from '@/lib/founding/invites'
+import { FOUNDING_SPOT_CAP, foundingCityName } from '@/lib/founding/invites'
+import { getWaitlistCities } from '@/lib/waitlist/city-waitlist'
 import { WaitlistBridge } from './waitlist-bridge'
 
 export const dynamic = 'force-dynamic'
@@ -19,7 +20,8 @@ export const metadata = {
  * The founder's tipping-point dashboard. Read-only aggregates over TEST data:
  * per-city waitlist demand and its recent momentum, founding spots taken vs
  * remaining, invites issued and converted, and Launch Kit usage. Below it, the
- * waitlist-to-invite bridge for the open cities.
+ * waitlist-to-invite bridge, covering every Australian city rather than a
+ * launch subset (nationwide from day one, founder ruling 2026-08-23).
  */
 export default async function AdminNetworkPage() {
   const session = await requireAdminSession()
@@ -28,13 +30,28 @@ export default async function AdminNetworkPage() {
 
   const signal = await getDemandSignal()
 
-  // The open-city waitlist entries the founder can invite (not yet invited,
+  // The waitlist entries the founder can invite (not yet invited,
   // not unsubscribed). Small list; real rows only.
+  //
+  // NATIONWIDE (founder ruling 2026-08-23). This filter named 'geelong' and
+  // 'melbourne' until that ruling, which made it the last place the two-city
+  // gate survived: the copy, the error message and the display name were all
+  // opened up, but this query still decided which rows existed at all. The
+  // effect was that a waitlist organiser in Perth or Darwin never appeared in
+  // the bridge, so the founder could not invite them and the reworded refusal
+  // in inviteWaitlistEntry() could never be reached for that case.
+  //
+  // It filters against the canonical city registry rather than dropping the
+  // clause entirely, matching getDemandSignal(), so a row carrying a junk
+  // city_slug cannot render a bridge row whose city renders as the raw slug.
   const admin = createAdminClient()
   const { data: openEntries } = await admin
     .from('city_waitlist_signups')
     .select('id, city_slug, full_name, email, role, created_at')
-    .in('city_slug', ['geelong', 'melbourne'])
+    .in(
+      'city_slug',
+      getWaitlistCities().map(c => c.slug),
+    )
     .is('unsubscribed_at', null)
     .order('created_at', { ascending: true })
   const { data: invited } = await admin
@@ -44,7 +61,7 @@ export default async function AdminNetworkPage() {
   const invitedEmails = new Set((invited ?? []).map(i => (i.invitee_email ?? '').toLowerCase()))
   const bridgeRows = (openEntries ?? [])
     .filter(e => e.role === 'organiser' && !invitedEmails.has(e.email.toLowerCase()))
-    .map(e => ({ id: e.id, name: e.full_name, email: e.email, city: e.city_slug === 'geelong' ? 'Geelong' : 'Melbourne' }))
+    .map(e => ({ id: e.id, name: e.full_name, email: e.email, city: foundingCityName(e.city_slug) }))
 
   return (
     <div>
@@ -98,11 +115,6 @@ export default async function AdminNetworkPage() {
                   <tr key={c.slug} className="border-b border-white/5 last:border-0">
                     <td className="px-4 py-3 font-semibold text-white">
                       {c.name}
-                      {c.openingFirst && (
-                        <span className="ml-2 rounded-full bg-[var(--brand-accent)]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--brand-accent)]">
-                          Opening first
-                        </span>
-                      )}
                     </td>
                     <td className="px-4 py-3 text-white">{c.total}</td>
                     <td className="px-4 py-3 text-white/80">{c.organisers}</td>
