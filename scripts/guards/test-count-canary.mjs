@@ -363,8 +363,27 @@ const ROOT = join(HERE, '..', '..')
  * side. Their negative control runs the exact two-angle expression that
  * shipped and asserts that it DOES repeat.
  */
-const MIN_FILES = 218
-const MIN_TESTS = 2675
+/*
+ * RAISED AGAIN 2026-08-23 (third time that day), 218/2675 to 219/2691, for
+ * tests/unit/seo/event-structured-data.test.ts, 16 tests, from the
+ * discoverability pass.
+ *
+ * They exist because a production audit that day found every one of the 36 live
+ * event pages VALID on Google's required set and yet missing `performer` on all
+ * 36, and `offers.validFrom` on 26 of them, while the event page was already
+ * loading the lineup in order to render it visibly. A source grep for the schema
+ * component would have passed the whole time: the component was rendered, it was
+ * simply handed less than it had.
+ *
+ * So these tests run the REAL payload builder (buildEventSchemaPayload, exported
+ * for exactly this) through the SAME validator the deployed-site audit uses,
+ * scripts/verify/event-structured-data-audit.mjs, so the test and the audit
+ * cannot drift into disagreeing about what valid means. The absence assertions
+ * (no empty-string venue field, no performer key when there is no lineup, no
+ * previousStartDate without EventRescheduled) each carry a negative control.
+ */
+const MIN_FILES = 219
+const MIN_TESTS = 2691
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

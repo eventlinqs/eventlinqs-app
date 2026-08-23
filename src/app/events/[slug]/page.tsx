@@ -698,6 +698,10 @@ export default async function EventDetailPage({ params }: Props) {
           ticketTiers={allTiers}
           state={eventStateForSchema}
           baseUrl={baseUrl}
+          // The same lineup the page renders visibly below. It was already
+          // loaded here and never reached the markup, so `performer` was
+          // missing on 36 of 36 production event pages.
+          performers={lineup}
         />
       )}
       <BreadcrumbJsonLd

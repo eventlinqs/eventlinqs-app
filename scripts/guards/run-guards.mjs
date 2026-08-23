@@ -28,6 +28,7 @@
  *   entrypoint-authz-audit     every request entry point declares an auth posture
  *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
+ *   event-structured-data      an event page cannot ship without its Event JSON-LD
  *   no-unguarded-production-write  no script writes to a database without checking which one
  *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
  *   one-fee-copy               no customer-facing surface names a second fee
@@ -323,6 +324,15 @@ const GUARDS = [
   'scripts/security/entrypoint-authz-audit.mjs',
   'scripts/guards/sourced-specifications.mjs',
   'scripts/guards/no-ai-authorship.mjs',
+
+  // Founder brief 2026-08-23: an event page can never ship without its
+  // structured data. A production audit that day found every event page valid
+  // on the REQUIRED set but missing `performer` on 36 of 36, because the page
+  // loaded the lineup to render it and never passed it to the markup. This
+  // guard holds the WIRING; tests/unit/seo/event-structured-data.test.ts holds
+  // the CONTENT; scripts/verify/event-structured-data-audit.mjs holds the
+  // DEPLOYED truth.
+  'scripts/guards/event-structured-data.mjs',
   // Founder ruling 2026-08-13. `.env.local` in this repo points at the
   // PRODUCTION project, deliberately, because the app is run against production
   // from here. An audit that day found ten write-capable scripts with a

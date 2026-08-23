@@ -8,6 +8,9 @@ import {
   isHeroCategorySlug,
 } from '@/lib/hero-categories'
 import { CategoryLandingPage } from '@/components/templates/CategoryLandingPage'
+import { EventCollectionJsonLd } from '@/components/seo/event-collection-jsonld'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
+import { getSiteUrl } from '@/lib/site-url'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
@@ -94,5 +97,31 @@ export default async function CategoryPage({ params }: Props) {
 
   const liveEvents = (eventsRaw ?? []) as unknown as EventCardData[]
 
-  return <CategoryLandingPage category={category} liveEvents={liveEvents} />
+  // STRUCTURED DATA (added 2026-08-23). This page type emitted none at all, and
+  // was absent from the sitemap as well, while being the surface that answers
+  // the head category queries. The ItemList points at the leaf event pages that
+  // carry the real Event markup; it deliberately does not repeat Event nodes
+  // here (see EventCollectionJsonLd for Google's rule on that).
+  const baseUrl = getSiteUrl()
+  const collectionUrl = `${baseUrl}/categories/${category.slug}`
+
+  return (
+    <>
+      <EventCollectionJsonLd
+        url={collectionUrl}
+        name={`${category.displayName} events in Australia`}
+        description={category.heroBody.slice(0, 155)}
+        events={liveEvents.map(e => ({ slug: e.slug, title: e.title }))}
+        baseUrl={baseUrl}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: `${baseUrl}/` },
+          { name: 'Events', url: `${baseUrl}/events` },
+          { name: category.displayName, url: collectionUrl },
+        ]}
+      />
+      <CategoryLandingPage category={category} liveEvents={liveEvents} />
+    </>
+  )
 }

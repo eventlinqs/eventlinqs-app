@@ -6,6 +6,8 @@ import { getAllFaiths } from '@/lib/faiths/data'
 import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
 import { getSiteUrl } from '@/lib/site-url'
 import { GUIDES } from '@/lib/guides'
+import { getAllHeroCategories } from '@/lib/hero-categories'
+import { helpTopics } from '@/lib/help-content'
 
 /**
  * Dynamic sitemap for EventLinqs.
@@ -16,46 +18,72 @@ import { GUIDES } from '@/lib/guides'
  *    Zero-event launch cities stay in the sitemap so Google accumulates
  *    authority for when events arrive.
  *  - every published, public event under /events/{slug}.
+ *  - every category, help topic, guide and marketing surface worth indexing.
+ *
+ * LASTMOD IS OMITTED WHERE IT CANNOT BE VERIFIED (2026-08-23).
+ *
+ * Google publishes exactly one condition for honouring the value:
+ *
+ *   "Google uses the <lastmod> value if it's consistently and verifiably (for
+ *    example by comparing to the last modification of the page) accurate."
+ *   https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap
+ *   (page last updated 2026-07-08 UTC, fetched 2026-08-23)
+ *
+ * This file used to stamp `new Date()` on every entry it could not date from
+ * real data. Measured on production on 23 August 2026: 524 of 586 URLs, 89.4
+ * percent of the sitemap, carried the byte-identical timestamp
+ * 2026-08-20T15:11:52.624Z, which was the deploy time. Every city, community,
+ * suburb, intersection and legal page was therefore telling Google it had
+ * changed at the same millisecond, and would say so again on the next deploy
+ * without a word of their content changing.
+ *
+ * That is the textbook case of a lastmod that is not verifiably accurate, and
+ * the risk is not confined to those URLs: a sitemap Google decides it cannot
+ * trust on lastmod loses the benefit for the ~54 URLs where the date IS real
+ * (events and organisers from `updated_at`, guides from their reviewed date).
+ *
+ * So the rule here is: a URL carries <lastmod> when, and only when, we hold a
+ * real modification date for it. Otherwise the element is omitted. Omission is
+ * not a gap, it is the honest encoding of "we do not know", and it costs
+ * nothing: Google crawls on its own schedule regardless.
+ *
+ * NOTE on <changefreq> and <priority>: the same page states "Google ignores
+ * <priority> and <changefreq> values." They are kept because other crawlers may
+ * still read them and they cost nothing, but no decision here should depend on
+ * them, and no future pass should tune them expecting Google to care.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getSiteUrl()
-  const now = new Date()
 
   const entries: MetadataRoute.Sitemap = [
     {
       url: `${baseUrl}/`,
-      lastModified: now,
       changeFrequency: 'daily',
       priority: 1.0,
     },
     {
       url: `${baseUrl}/events`,
-      lastModified: now,
       changeFrequency: 'daily',
       priority: 0.9,
     },
     // Index pages added in Batch 9.1.1 + Batch 10.
     {
       url: `${baseUrl}/communities`,
-      lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
       url: `${baseUrl}/cities`,
-      lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
       url: `${baseUrl}/organisers`,
-      lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.7,
     },
     {
       url: `${baseUrl}/pricing`,
-      lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.5,
     },
@@ -64,7 +92,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // reviewed date so a crawler sees real freshness, not a build timestamp.
     {
       url: `${baseUrl}/guides`,
-      lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.8,
     },
@@ -76,41 +103,87 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     {
       url: `${baseUrl}/legal/terms`,
-      lastModified: now,
       changeFrequency: 'yearly',
       priority: 0.3,
     },
     {
       url: `${baseUrl}/legal/privacy`,
-      lastModified: now,
       changeFrequency: 'yearly',
       priority: 0.3,
     },
     {
       url: `${baseUrl}/legal/cookies`,
-      lastModified: now,
       changeFrequency: 'yearly',
       priority: 0.3,
     },
     {
       url: `${baseUrl}/legal/refunds`,
-      lastModified: now,
       changeFrequency: 'yearly',
       priority: 0.3,
     },
     {
       url: `${baseUrl}/legal/organiser-terms`,
-      lastModified: now,
       changeFrequency: 'yearly',
       priority: 0.3,
     },
     {
       url: `${baseUrl}/legal/accessibility`,
-      lastModified: now,
       changeFrequency: 'yearly',
       priority: 0.3,
     },
+    // MARKETING AND TRUST SURFACES. Every one of these is a public, indexable
+    // page that was reachable from the footer but absent from the sitemap, so
+    // Google could only find them by following links. They are cheap to list
+    // and they carry the brand and trust queries.
+    {
+      url: `${baseUrl}/about`,
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/press`,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/careers`,
+      changeFrequency: 'monthly',
+      priority: 0.4,
+    },
+    {
+      url: `${baseUrl}/contact`,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    // THE HELP CENTRE. Long-tail organic entry points ("do I get a refund if an
+    // event is cancelled"), and the single cheapest compounding SEO surface we
+    // own after the guides. The hub was not listed and neither was any topic.
+    {
+      url: `${baseUrl}/help`,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    ...helpTopics.map(topic => ({
+      url: `${baseUrl}/help/${topic.slug}`,
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    })),
   ]
+
+  // CATEGORY LANDING PAGES. These were missing from the sitemap entirely, which
+  // is the largest single omission found in the 23 August 2026 audit: they are
+  // the surface that answers "comedy tickets", "festivals near me" and every
+  // other head category query, and they are the exact shape Eventbrite ranked
+  // on for years. Sourced from getAllHeroCategories(), the same list the route
+  // itself uses in generateStaticParams, so the sitemap cannot drift from what
+  // actually renders.
+  for (const category of getAllHeroCategories()) {
+    entries.push({
+      url: `${baseUrl}/categories/${category.slug}`,
+      changeFrequency: 'daily',
+      priority: 0.8,
+    })
+  }
 
   const groups = await getPickerCities()
   const allCities = [
@@ -121,7 +194,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const c of allCities) {
     entries.push({
       url: `${baseUrl}/events/browse/${c.slug}`,
-      lastModified: now,
       changeFrequency: 'daily',
       priority: c.isLaunchCity ? 0.8 : 0.6,
     })
@@ -131,7 +203,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const community of getAllCommunities()) {
     entries.push({
       url: `${baseUrl}/community/${community.slug}`,
-      lastModified: now,
       changeFrequency: 'daily',
       priority: community.tier === 1 ? 0.85 : 0.75,
     })
@@ -141,7 +212,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const faith of getAllFaiths()) {
     entries.push({
       url: `${baseUrl}/faith/${faith.slug}`,
-      lastModified: now,
       changeFrequency: 'daily',
       priority: 0.8,
     })
@@ -151,7 +221,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const city of getAllCities()) {
     entries.push({
       url: `${baseUrl}/city/${city.slug}`,
-      lastModified: now,
       changeFrequency: 'daily',
       priority: city.tier === 1 ? 0.9 : 0.75,
     })
@@ -159,7 +228,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const facing = s.slug.startsWith(`${city.slug}-`) ? s.slug.slice(city.slug.length + 1) : s.slug
       entries.push({
         url: `${baseUrl}/city/${city.slug}/${facing}`,
-        lastModified: now,
         changeFrequency: 'daily',
         priority: 0.65,
       })
@@ -176,7 +244,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const city of getAllCities()) {
       entries.push({
         url: `${baseUrl}/community/${community.slug}/${city.slug}`,
-        lastModified: now,
         changeFrequency: 'weekly',
         priority: community.tier === 1 && city.tier === 1 ? 0.7 : 0.55,
       })
@@ -197,7 +264,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!e.slug) continue
       entries.push({
         url: `${baseUrl}/events/${e.slug}`,
-        lastModified: e.updated_at ? new Date(e.updated_at) : now,
+        ...(e.updated_at ? { lastModified: new Date(e.updated_at) } : {}),
         changeFrequency: 'weekly',
         priority: 0.7,
       })
@@ -224,7 +291,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!o.slug) continue
       entries.push({
         url: `${baseUrl}/organisers/${o.slug}`,
-        lastModified: o.updated_at ? new Date(o.updated_at) : now,
+        ...(o.updated_at ? { lastModified: new Date(o.updated_at) } : {}),
         changeFrequency: 'weekly',
         priority: 0.6,
       })
@@ -245,7 +312,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!v.slug) continue
       entries.push({
         url: `${baseUrl}/venues/${v.slug}`,
-        lastModified: v.updated_at ? new Date(v.updated_at) : now,
+        ...(v.updated_at ? { lastModified: new Date(v.updated_at) } : {}),
         changeFrequency: 'weekly',
         priority: 0.55,
       })
