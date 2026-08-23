@@ -1,7 +1,7 @@
 import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { CityTile } from '@/components/features/home/cards'
-import { InvitationCard, invitationFillCount } from '@/components/features/events/invitation-card'
+import { InvitationCard, invitationFillCount, INVITATION_ANGLE_ORDER } from '@/components/features/events/invitation-card'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
@@ -96,7 +96,7 @@ export async function FeaturedVenuesSection({ upcoming }: Props) {
               <InvitationCard
                 fitParent
                 variant="landscape"
-                angle={i === 1 ? 'performer' : 'organiser'}
+                angle={INVITATION_ANGLE_ORDER[i % INVITATION_ANGLE_ORDER.length]}
                 subject="live"
               />
             </div>

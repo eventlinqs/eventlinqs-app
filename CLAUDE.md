@@ -237,11 +237,32 @@ links), and the benchmark and gate rules in Verification and gates.
 look and feel complete and voluminous everywhere a real Australian user looks,
 standing next to Ticketmaster, Eventbrite and Humanitix from day one.
 
-- **Every rail full and balanced.** A rail with 1 to 2 items next to a rail with
-  7 is a defect. No empty sections, no near-empty discovery surfaces, no blank
-  image slots. A route that resolves 200 to a designed empty state is correct
-  engineering but is NOT market-ready content: an empty city, scene, community,
-  or category a user can browse to is a completeness gap, not a finished surface.
+- **Every rail full and balanced, but NEVER by hiding a real event.** No empty
+  sections, no near-empty discovery surfaces, no blank image slots. A route that
+  resolves 200 to a designed empty state is correct engineering but is NOT
+  market-ready content: an empty city, scene, community, or category a user can
+  browse to is a completeness gap, not a finished surface.
+  - **ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026).** This clause
+    used to read "a rail with 1 to 2 items next to a rail with 7 is a defect",
+    and that sentence was enforced as `RAIL_MIN = 3` on the homepage, `>= 4` on
+    every city, community-by-city and suburb page, and `MIN_RAIL_COUNT = 3` on
+    the browse rails. It is REVERSED, and the reversal is a law rather than a
+    preference because it was argued both ways once already (the superseded
+    ruling is `docs/roast/RAIL-MIN-RULING-2026-08-16.md`).
+  - The rule was written for a platform with volume. We do not have volume yet,
+    so in practice it hid a real organiser's real event for being the only one
+    in its category. The organiser we can least afford to lose is the first one
+    in a category, and theirs was precisely the event the page refused to show.
+  - **Thinness is answered by filling the rail, never by deleting it.** A rail
+    with one event tops up with `InvitationCard`s (`invitationFillCount`), so it
+    renders four cards: the real event, then three invitations to be next on it.
+    The fill tapers and vanishes by itself at five real events. A sparse rail
+    therefore reads as recruitment, which is growth lever 1 rendered on the page.
+  - The only legitimate reason not to render a rail is that it has NOTHING to
+    show. That decision lives in `EventRailSection` (`events.length === 0`) and
+    is never re-derived by a caller. `tests/unit/growth/one-event-shows-the-rail.test.ts`
+    sweeps every rail-bearing surface and fails the build if a count threshold
+    comes back.
 - **All of Australia from day one.** Build for every Australian city and state,
   not four cities. Every city the platform lists must be represented with real
   events and real imagery (or a branded fallback, never a blank tile). The

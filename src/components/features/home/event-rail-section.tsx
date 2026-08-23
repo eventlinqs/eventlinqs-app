@@ -1,7 +1,11 @@
 import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
-import { InvitationCard, invitationFillCount } from '@/components/features/events/invitation-card'
+import {
+  InvitationCard,
+  invitationFillCount,
+  INVITATION_ANGLE_ORDER,
+} from '@/components/features/events/invitation-card'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
@@ -77,7 +81,7 @@ export async function EventRailSection({
                 <InvitationCard
                   key={`invite-${i}`}
                   variant={cardVariant === 'feature' ? 'landscape' : cardVariant}
-                  angle={i === 1 ? 'performer' : 'organiser'}
+                  angle={INVITATION_ANGLE_ORDER[i % INVITATION_ANGLE_ORDER.length]}
                   subject={invitationSubject ?? (railLabel.toLowerCase().replace(/\s*events?\s*$/i, '') || 'community')}
                 />
               ))}

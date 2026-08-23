@@ -1,3 +1,27 @@
+> **SUPERSEDED 23 AUGUST 2026. DO NOT ACT ON THIS DOCUMENT.**
+>
+> The founder REVERSED this ruling seven days after making it. The binding
+> rule is now **ONE EVENT SHOWS THE RAIL**: there is no minimum count on any
+> surface, and a rail renders whenever it has at least one event. The law lives
+> in `CLAUDE.md` under the market-ready completeness bar, and the build-failing
+> proof is `tests/unit/growth/one-event-shows-the-rail.test.ts`.
+>
+> WHY THE REVERSAL. The reasoning below is sound for a platform that has
+> volume, and wrong for one that does not. `RAIL_MIN = 3` hid a real
+> organiser's real event for being the only one in its category, and the first
+> organiser in a category is the one we can least afford to lose. The argument
+> below that "nothing is unreachable, only unrailed" is true and is no longer
+> the point: the homepage is where an organiser looks to see whether listing
+> with us did anything, and it showed them nothing.
+>
+> WHAT REPLACED THE COMPROMISE. `ThinCategoriesNote`, the note this ruling
+> built to name the suppressed categories, is DELETED along with its test. It
+> existed only to describe what the threshold was hiding, so with the threshold
+> gone it had nothing left to name. Thinness is now answered by FILLING the
+> rail: `invitationFillCount` tops a one-event rail up to four cards with
+> invitations to be next on it, so a sparse rail reads as recruitment.
+
+---
 # RAIL_MIN: the ruling, and why the conflict was only apparent
 
 Founder ruling, 16 August 2026. Exclusion audit item 6. Written so the next

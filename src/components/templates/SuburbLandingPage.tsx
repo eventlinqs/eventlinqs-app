@@ -76,7 +76,13 @@ export function SuburbLandingPage({
         paragraphs={[suburb.editorial]}
       />
 
-      {weekendEvents.length >= 4 ? (
+      {/* ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026). These curated
+        rails were gated at `>= 4`, so a city or community with one, two or three
+        events on showed none of them here and fell through to the full grid below.
+        On a platform still building volume that hid the only event a place had. The
+        gate is gone; an empty rail still does not render, because there is nothing
+        to show. */}
+      {weekendEvents.length > 0 ? (
         <ContentSection surface="alt" width="wide" topBorder>
           <SnapRailScroller
             railLabel={`On in ${suburb.name} now`}

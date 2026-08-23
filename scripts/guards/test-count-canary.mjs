@@ -339,8 +339,32 @@ const ROOT = join(HERE, '..', '..')
  * the founder's invite list silently held nobody outside those two cities.
  * The sweep walks all of src/ for that shape rather than checking one file.
  */
+/*
+ * RAISED AGAIN 2026-08-23 (later, same day), 218/2660 to 218/2675, for the
+ * founder ruling that ONE EVENT SHOWS THE RAIL, reversing the RAIL_MIN ruling
+ * of 16 August recorded in docs/roast/RAIL-MIN-RULING-2026-08-16.md.
+ *
+ * The file count did not move because this is a SWAP, and the swap is the
+ * point. tests/component/thin-categories-note.test.tsx and its component were
+ * DELETED, minus 5 tests: that note existed only to name the categories the
+ * threshold suppressed, so when the threshold went there was nothing left for
+ * it to name and it would have rendered nothing for ever.
+ * tests/unit/growth/one-event-shows-the-rail.test.ts replaces it, plus 20,
+ * sweeping all five rail-bearing surfaces for any count threshold that would
+ * hide a rail carrying a single event, and pinning invitationFillCount so a
+ * rail of one still renders four cards rather than looking like a broken
+ * shelf. Every absence assertion carries a negative control fed the exact
+ * thresholds that shipped (>= RAIL_MIN, >= 4, < 3, < 5).
+ *
+ * The last eight of those pin the INVITATION ANGLES, and they exist because
+ * removing the threshold exposed a second defect the threshold had been
+ * hiding: a rail of one asks for three invitation cards, only two angles
+ * existed, so the first and third rendered word for word identical side by
+ * side. Their negative control runs the exact two-angle expression that
+ * shipped and asserts that it DOES repeat.
+ */
 const MIN_FILES = 218
-const MIN_TESTS = 2660
+const MIN_TESTS = 2675
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
