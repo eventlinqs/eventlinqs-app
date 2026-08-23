@@ -1,3 +1,4 @@
+import { evaluatePostponement } from './postponement'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 /**
@@ -48,10 +49,24 @@ export interface RefundEligibilityInput {
   /** An open request already exists, so a second one is not a new question. */
   hasOpenRequest: boolean
   now: Date
+  /**
+   * When the event was announced as postponed. Null if it never was.
+   *
+   * Optional so existing callers keep compiling, but a caller that does not
+   * pass it gets the OLD behaviour, which is the defect: a postponed event
+   * falling through to the organiser's ordinary policy. request-service.ts
+   * passes both, and tests/unit/refunds/postponed-event-ladder.test.ts pins
+   * that it does.
+   */
+  postponedAt?: Date | null
+  /** When a new date was set and communicated. Null while still postponed. */
+  rescheduledAt?: Date | null
 }
 
 export type RefundRefusalReason =
   | 'event_cancelled_always_refundable'   // not a refusal: an override, see below
+  | 'event_postponed_always_refundable'   // not a refusal: an override, see below
+  | 'reschedule_decline_window_open'      // not a refusal: an override, see below
   | 'free_order'
   | 'order_not_refundable'
   | 'no_live_tickets'
@@ -133,6 +148,43 @@ export function evaluateRefundEligibility(input: RefundEligibilityInput): Refund
       canRequest: true, qualifiesForAuto: true, reason: 'event_cancelled_always_refundable',
       message: 'This event was cancelled, so your ticket is refundable regardless of the event refund policy.',
       deadline: null,
+    }
+  }
+
+  /*
+   * THE POSTPONED-EVENT OVERRIDE, in the same position and for the same reason
+   * as the cancelled one above it.
+   *
+   * Until 23 August 2026 there was no branch here at all, so a postponed event
+   * fell through to the ordinary policy below. The consequences were not
+   * theoretical: an organiser on `no_refunds` refused the refund outright, and
+   * an organiser on `days_before` refused it too, because that window is
+   * measured from a start date the postponement had already made meaningless.
+   * The buyer had paid for a date that was not going to happen and was told the
+   * window had closed.
+   *
+   * The ladder itself lives in ./postponement.ts with its sources. It is called
+   * rather than reimplemented because the payout hold reads the same module, and
+   * two copies of this decision is how the refund path and the money path drift.
+   */
+  const postponement = evaluatePostponement({
+    eventStatus,
+    postponedAt: input.postponedAt ?? null,
+    rescheduledAt: input.rescheduledAt ?? null,
+    now,
+  })
+
+  if (postponement.refundMandatory) {
+    return {
+      canRequest: true,
+      qualifiesForAuto: true,
+      reason:
+        postponement.stage === 'rescheduled_window_open'
+          ? 'reschedule_decline_window_open'
+          : 'event_postponed_always_refundable',
+      message: postponement.message,
+      // A postponement has no deadline; a reschedule has the decline window.
+      deadline: postponement.declineDeadline,
     }
   }
 

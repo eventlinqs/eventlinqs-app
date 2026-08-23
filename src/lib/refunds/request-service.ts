@@ -67,6 +67,14 @@ interface OrderContext {
     refund_policy_days: number | null
     refund_policy_absorb_fee: boolean | null
     refund_policy_self_service: boolean | null
+    /**
+     * The postponed-event ladder needs both of these. Selected here, and named
+     * in this type, so a future edit that drops them from the query fails the
+     * typecheck rather than silently reverting every postponed event to the
+     * organiser's ordinary refund policy.
+     */
+    postponed_at?: string | null
+    rescheduled_at?: string | null
   }
   liveTicketIds: string[]
   hasOpenRequest: boolean
@@ -88,12 +96,54 @@ export async function loadOrderContext(
     .maybeSingle()
   if (!order) return null
 
-  const { data: event } = await admin
+  /*
+   * ORDERING SAFETY: THIS CODE MUST NOT BREAK IF IT SHIPS BEFORE ITS MIGRATION.
+   *
+   * `postponed_at` and `rescheduled_at` arrive in migration
+   * 20260823000002_postponed_event_ladder.sql. If this code reaches an
+   * environment where that migration has not been applied, PostgREST answers
+   * the select with 42703 (undefined_column) and `event` comes back null, which
+   * would make loadOrderContext return null and take EVERY REFUND REQUEST on
+   * the platform down, not merely the postponed ones.
+   *
+   * That is not a hypothetical ordering: migrations on this project are applied
+   * by the founder, by hand, and deliberately not by the deploy. So the query
+   * degrades instead of failing. Without the columns the ladder still works for
+   * a currently-postponed event, because evaluatePostponement keys rung 1 off
+   * `eventStatus === 'postponed'` and needs the timestamps only to tell a
+   * 90-day-old postponement from a fresh one and to spot a reschedule.
+   *
+   * The fallback logs loudly rather than silently, because a platform running
+   * on the degraded path should be visible, and it disappears by itself the
+   * moment the migration lands.
+   */
+  const EVENT_COLUMNS_BASE =
+    'id, title, status, start_date, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service'
+  const EVENT_COLUMNS_WITH_LADDER = `${EVENT_COLUMNS_BASE}, postponed_at, rescheduled_at`
+
+  let { data: event, error: eventError } = await admin
     .from('events')
-    .select('id, title, status, start_date, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
+    .select(EVENT_COLUMNS_WITH_LADDER)
     .eq('id', order.event_id)
     .maybeSingle()
-  if (!event) return null
+
+  if (eventError && eventError.code === '42703') {
+    console.error(
+      '[refunds] events.postponed_at / rescheduled_at are missing. Apply migration ' +
+        '20260823000002_postponed_event_ladder.sql. Refunds are running on the degraded ' +
+        'path: a postponed event is still always refundable, but a reschedule cannot be ' +
+        'detected and the 90-day escalation cannot be measured.',
+    )
+    const retry = await admin
+      .from('events')
+      .select(EVENT_COLUMNS_BASE)
+      .eq('id', order.event_id)
+      .maybeSingle()
+    event = retry.data as typeof event
+    eventError = retry.error
+  }
+
+  if (eventError || !event) return null
 
   const { data: tickets } = await admin
     .from('tickets')
@@ -126,6 +176,10 @@ export function eligibilityFor(ctx: OrderContext, now = new Date()): RefundEligi
     liveTicketCount: ctx.liveTicketIds.length,
     hasOpenRequest: ctx.hasOpenRequest,
     now,
+    // `?? null` rather than a bare read: on the degraded path (migration not yet
+    // applied) these keys are absent from the row entirely, not merely null.
+    postponedAt: ctx.event.postponed_at ? new Date(ctx.event.postponed_at) : null,
+    rescheduledAt: ctx.event.rescheduled_at ? new Date(ctx.event.rescheduled_at) : null,
   })
 }
 

@@ -111,6 +111,21 @@ export function buildEventSchemaPayload({
   performers = [],
 }: EventSchemaProps & { event: Event & { category?: { slug: string | null; name: string } | null } }) {
   const eventUrl = `${baseUrl}/events/${event.slug}`
+
+  /**
+   * The date this event was originally scheduled for, when it has since been
+   * moved to a new one. Read defensively because `previous_start_date` is added
+   * by migration 20260823000002 and the generated database types trail it.
+   *
+   * A STILL-POSTPONED event is excluded on purpose: it has been moved off its
+   * old date but has no new one, so `startDate` is not yet "the newly scheduled
+   * start date" that Google requires alongside previousStartDate.
+   */
+  const rescheduledFromDate =
+    state !== 'postponed' && state !== 'cancelled'
+      ? (event as { previous_start_date?: string | null }).previous_start_date ?? null
+      : null
+
   const sortedTiers = [...ticketTiers].sort((a, b) => a.price - b.price)
   const lowestPrice = sortedTiers.length > 0 ? sortedTiers[0].price / 100 : 0
   const currency = sortedTiers[0]?.currency ?? 'AUD'
@@ -149,7 +164,30 @@ export function buildEventSchemaPayload({
     name: event.title,
     startDate: event.start_date,
     endDate: event.end_date,
-    eventStatus: schemaEventStatus(state),
+    /*
+     * RESCHEDULED, WITH ITS REQUIRED PARTNER PROPERTY.
+     *
+     * Google states the pairing as a hard requirement, not a suggestion: "If you
+     * add previousStartDate, you must also add the eventStatus property and set
+     * the eventStatus to EventRescheduled. Don't use other event statuses. For
+     * rescheduled events, the startDate property must only be used for the newly
+     * scheduled start date."
+     * (developers.google.com/search/docs/appearance/structured-data/event,
+     * fetched 2026-08-23)
+     *
+     * So the two are emitted from ONE expression rather than two independent
+     * ones. Emitting either alone is a documented violation, and two separate
+     * conditions are how they end up disagreeing.
+     *
+     * A still-postponed event is NOT rescheduled and correctly keeps
+     * EventPostponed: it has no new date to point at yet.
+     */
+    ...(rescheduledFromDate
+      ? {
+          eventStatus: 'https://schema.org/EventRescheduled',
+          previousStartDate: rescheduledFromDate,
+        }
+      : { eventStatus: schemaEventStatus(state) }),
     eventAttendanceMode: event.event_type === 'virtual'
       ? 'https://schema.org/OnlineEventAttendanceMode'
       : event.event_type === 'hybrid'

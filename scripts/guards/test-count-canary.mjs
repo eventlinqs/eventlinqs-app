@@ -382,8 +382,36 @@ const ROOT = join(HERE, '..', '..')
  * (no empty-string venue field, no performer key when there is no lineup, no
  * previousStartDate without EventRescheduled) each carry a negative control.
  */
-const MIN_FILES = 219
-const MIN_TESTS = 2691
+/*
+ * RAISED AGAIN 2026-08-23 (fourth time that day), 219/2691 to 220/2718, for
+ * tests/unit/refunds/postponed-event-ladder.test.ts, 27 tests, from the
+ * postponed-event ladder.
+ *
+ * The competitor-parity audit called this the only launch-blocking gap, and the
+ * measurement before the build confirmed both halves: policy.ts overrode the
+ * organiser's refund policy for a CANCELLED event and had no branch at all for
+ * a POSTPONED one, and findDisbursableEvents() selected on end_date alone and
+ * did not even SELECT events.status, so a postponed event was paid out once its
+ * ORIGINAL end date passed.
+ *
+ * Each of the three overrides carries a negative control that runs the SAME
+ * order against a LIVE event and asserts it IS refused, by policy_no_refunds or
+ * window_closed. Without those, "the refund was allowed" would also pass on a
+ * policy module that allowed everything, which is exactly what a permissive
+ * default looks like from the outside.
+ *
+ * TWO DEFECTS IN THIS PASS WERE CAUGHT BY EXISTING GATES RATHER THAN BY ME, and
+ * both are recorded here because they are the argument for keeping those gates:
+ *   - no-clock-during-render caught a toLocaleDateString with no timeZone in
+ *     the new module. Server renders in UTC, the browser in the visitor's zone,
+ *     so an evening Sydney deadline printed as the previous day.
+ *   - this canary's own sibling signal caught an unhandled ECONNREFUSED: the
+ *     seo test imports the audit script for its validator, and that script
+ *     called main() at the top level, so importing it ran a live HTTP audit.
+ *     Every test still PASSED and vitest exited 1 on the rejection alone.
+ */
+const MIN_FILES = 220
+const MIN_TESTS = 2718
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

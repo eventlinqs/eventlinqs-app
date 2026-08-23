@@ -53,6 +53,7 @@
  *     eligibility on them.
  */
 import { setTimeout as delay } from 'node:timers/promises'
+import { pathToFileURL } from 'node:url'
 
 const args = process.argv.slice(2)
 const BASE = (args.find(a => a.startsWith('http')) ?? 'http://127.0.0.1:3311').replace(/\/$/, '')
@@ -343,4 +344,24 @@ async function main() {
   process.exit(res.failed + res.missing > 0 ? 1 : 0)
 }
 
-main()
+/*
+ * RUN ONLY WHEN THIS FILE IS THE ENTRY POINT.
+ *
+ * This module exports `validateEventNode` so the unit test and the deployed-site
+ * audit share ONE definition of "valid". That sharing is the point, and it is
+ * also how this bit me: main() used to be called at the top level, so merely
+ * IMPORTING the validator ran the whole audit, which tried to fetch
+ * http://127.0.0.1:3311/sitemap.xml from inside the unit suite and raised an
+ * unhandled ECONNREFUSED rejection.
+ *
+ * The failure mode was nasty because every test still PASSED. Vitest printed
+ * "220 passed / 2718 passed" and exited 1 on the unhandled rejection alone, so
+ * the summary said green while the process said red. Reading only the counts
+ * would have missed it and CI would have failed on a branch that looked clean.
+ */
+const invokedDirectly =
+  Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href
+
+if (invokedDirectly) {
+  main()
+}

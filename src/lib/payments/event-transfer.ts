@@ -4,6 +4,7 @@ import { captureException } from '@/lib/observability/sentry'
 import { getCurrencyForCountry } from './application-fee'
 import { getPayoutScheduleDays } from './pricing-rules'
 import type { TransferGateway } from './gateway'
+import { NON_DISBURSABLE_EVENT_STATUSES } from '@/lib/refunds/postponement'
 
 /**
  * Funds-holding disbursement (docs/PAYMENTS-FUNDS-HOLDING.md Stage 4).
@@ -355,6 +356,8 @@ interface EligibleEventRow {
   id: string
   organisation_id: string
   end_date: string | null
+  /** Selected so the payout hold can be asserted on the row, not just filtered in SQL. */
+  status: string
   organisations:
     | { stripe_account_id: string | null; stripe_account_country: string | null; payout_status: string }
     | { stripe_account_id: string | null; stripe_account_country: string | null; payout_status: string }[]
@@ -384,10 +387,39 @@ export async function runEventDisbursements(
   }
   const cutoffIso = new Date(Date.now() - bufferDays * 24 * 60 * 60 * 1000).toISOString()
 
+  /*
+   * THE PAYOUT HOLD (founder brief, 23 August 2026).
+   *
+   * This query used to select on `end_date` alone and did not even SELECT
+   * `events.status`, so it could not have filtered on it. The consequence was a
+   * real money-path defect: an event POSTPONED to an unknown future date was
+   * paid out to the organiser as soon as its ORIGINAL end date plus the buffer
+   * passed, while every buyer still held a ticket to a date that was not going
+   * to happen and a refund right that was unresolved. A CANCELLED event whose
+   * end date had passed was a disbursement candidate on the same terms.
+   *
+   * Eventbrite holds the payout for exactly this reason and says so plainly:
+   * "When an event is postponed, Eventbrite holds the event payout to allow any
+   * applicable refunds to be processed."
+   * https://www.eventbrite.com/help/en-us/articles/169121/eventbrites-postponed-event-policy/
+   * (fetched 2026-08-23)
+   *
+   * We need no release mechanism to match them. EventLinqs already holds funds
+   * until after the event, so a RESCHEDULED event simply carries a new end_date
+   * and falls back into this query naturally once that date passes. All this
+   * filter has to do is refuse to pay out while the event is in limbo.
+   *
+   * The status list is imported, not retyped here, because the refund path
+   * reads the same module and two copies of "which events are in limbo" is
+   * precisely how the money path and the refund path drift apart.
+   */
+  const heldStatuses = NON_DISBURSABLE_EVENT_STATUSES.map(s => `"${s}"`).join(',')
+
   let query = adminClient
     .from('events')
-    .select('id, organisation_id, end_date, organisations!inner(stripe_account_id, stripe_account_country, payout_status)')
+    .select('id, organisation_id, end_date, status, organisations!inner(stripe_account_id, stripe_account_country, payout_status)')
     .lte('end_date', cutoffIso)
+    .not('status', 'in', `(${heldStatuses})`)
     .eq('organisations.payout_status', 'active')
     .not('organisations.stripe_account_id', 'is', null)
     .limit(500)
@@ -404,6 +436,23 @@ export async function runEventDisbursements(
 
   for (const ev of (events ?? []) as EligibleEventRow[]) {
     summary.considered++
+
+    // DEFENCE IN DEPTH ON THE MONEY PATH. The SQL filter above is the control;
+    // this is the assertion that the control worked. It costs one string
+    // comparison and it means a future edit that drops, mistypes or reorders the
+    // `.not('status', 'in', ...)` clause cannot quietly resume paying out
+    // postponed and cancelled events. A filter is a claim; this checks it.
+    if ((NON_DISBURSABLE_EVENT_STATUSES as readonly string[]).includes(ev.status)) {
+      summary.skipped++
+      summary.results.push({
+        eventId: ev.id,
+        organisationId: ev.organisation_id,
+        status: 'skipped',
+        error: `event status is ${ev.status}: payout held`,
+      })
+      continue
+    }
+
     const orgEmbed = Array.isArray(ev.organisations) ? ev.organisations[0] : ev.organisations
     const destinationAccountId = orgEmbed?.stripe_account_id ?? null
     const currency = getCurrencyForCountry(orgEmbed?.stripe_account_country ?? null) ?? 'AUD'
