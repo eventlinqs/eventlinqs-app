@@ -431,8 +431,31 @@ const ROOT = join(HERE, '..', '..')
  * The negative control runs the five-zone list that shipped and asserts it
  * misses exactly TAS and NT.
  */
-const MIN_FILES = 221
-const MIN_TESTS = 2747
+/*
+ * RAISED 2026-08-24, 221/2747 to 222/2754, for
+ * tests/unit/refunds/arrival-timeframe.test.ts, 7 tests.
+ *
+ * The platform stated how long a refund takes on EIGHT buyer-facing surfaces
+ * and disagreed with itself on two: the confirmation email said "3 to 5
+ * business days" and the cancelled-event banner said "within 5 business days",
+ * against Stripe's documented "approximately 5-10 business days"
+ * (https://docs.stripe.com/refunds). A buyer refused, then approved, then
+ * emailed was told 5-10, then 5-10, then 3-5, and the shortest number was in
+ * the email they keep.
+ *
+ * WORTH RECORDING: an EXISTING test asserted the wrong sentence verbatim, so
+ * the defect was PROTECTED by the suite. Correcting the copy failed CI until
+ * that assertion was rewritten to compare against REFUND_ARRIVAL_WINDOW rather
+ * than a literal. A test that pins a literal pins whatever the literal says,
+ * including a mistake.
+ *
+ * The sweep carries negative controls fed BOTH shipped wordings, and two more
+ * proving it does NOT flag the payout figure (3 to 5 business days after an
+ * event) or the response SLA (2 business days), which are different promises
+ * about different parties.
+ */
+const MIN_FILES = 222
+const MIN_TESTS = 2754
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -1,3 +1,4 @@
+import { refundArrivalSentence } from './arrival-timeframe'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site-url'
@@ -135,7 +136,7 @@ export async function sendRefundDecisionToBuyer(admin: SupabaseClient, requestId
     title = req.auto_approved ? 'Your refund is on its way' : 'Your refund was approved'
     lines = [
       `Your refund for ${event?.title ?? 'the event'} (order ${order?.order_number ?? ''}) has been approved.`,
-      'The money goes back to the card you paid with. Most banks show it within 5 to 10 business days.',
+      refundArrivalSentence(),
       req.auto_approved
         ? 'It was approved automatically under this event refund policy, so nobody had to review it.'
         : 'The organiser approved it.',

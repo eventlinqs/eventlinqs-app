@@ -1,3 +1,4 @@
+import { REFUND_ARRIVAL_WINDOW } from '@/lib/refunds/arrival-timeframe'
 /**
  * WHAT THE ORGANISER SEES AFTER A REFUND HAS BEEN ISSUED.
  *
@@ -105,7 +106,7 @@ export function RefundOutcome({
             </li>
             <li className="flex justify-between gap-4">
               <span>Reaches their statement</span>
-              <span className="font-medium text-ink-900">in about 5 to 10 business days</span>
+              <span className="font-medium text-ink-900">in about {REFUND_ARRIVAL_WINDOW}</span>
             </li>
           </ul>
 

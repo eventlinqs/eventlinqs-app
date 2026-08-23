@@ -1,3 +1,4 @@
+import { REFUND_ARRIVAL_WINDOW } from '@/lib/refunds/arrival-timeframe'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import QRCode from 'qrcode'
@@ -265,7 +266,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
                   : <>No ticket was issued for <span className="font-semibold text-ink-900">{event.title}</span> on this order.</>}
                 {' '}
                 Anything you were charged has been refunded to your original payment method. Refunds usually
-                appear within 5 to 10 business days, depending on your bank. If you still want to go, the event
+                appear within {REFUND_ARRIVAL_WINDOW}, depending on your bank. If you still want to go, the event
                 page below has the current availability.
               </p>
             ) : (

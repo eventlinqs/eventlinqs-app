@@ -1,3 +1,4 @@
+import { REFUND_ARRIVAL_WINDOW } from './arrival-timeframe'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { requestTicketRefund } from '@/lib/payments/refund-service'
 import {
@@ -448,7 +449,7 @@ export async function approveRefundRequest(
       status: 'approved',
       autoApproved: Boolean(input.auto),
       message: input.auto
-        ? 'Your refund has been approved and is on its way back to your card. It usually lands within 5 to 10 business days.'
+        ? `Your refund has been approved and is on its way back to your card. It usually lands within ${REFUND_ARRIVAL_WINDOW}.`
         : 'Refund approved. The buyer has been emailed.',
     }
   } catch (err) {
