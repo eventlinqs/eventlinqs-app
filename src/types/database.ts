@@ -970,6 +970,8 @@ export type Database = {
           organisation_id: string
           organiser_assigns_seats: boolean
           parent_event_id: string | null
+          postponed_at: string | null
+          previous_start_date: string | null
           published_at: string | null
           queue_admission_window_minutes: number
           recurrence_rule: string | null
@@ -977,6 +979,7 @@ export type Database = {
           refund_policy_days: number
           refund_policy_self_service: boolean
           refund_policy_type: string
+          rescheduled_at: string | null
           scheduled_publish_at: string | null
           seat_map_id: string | null
           slug: string
@@ -1041,6 +1044,8 @@ export type Database = {
           organisation_id: string
           organiser_assigns_seats?: boolean
           parent_event_id?: string | null
+          postponed_at?: string | null
+          previous_start_date?: string | null
           published_at?: string | null
           queue_admission_window_minutes?: number
           recurrence_rule?: string | null
@@ -1048,6 +1053,7 @@ export type Database = {
           refund_policy_days?: number
           refund_policy_self_service?: boolean
           refund_policy_type?: string
+          rescheduled_at?: string | null
           scheduled_publish_at?: string | null
           seat_map_id?: string | null
           slug: string
@@ -1112,6 +1118,8 @@ export type Database = {
           organisation_id?: string
           organiser_assigns_seats?: boolean
           parent_event_id?: string | null
+          postponed_at?: string | null
+          previous_start_date?: string | null
           published_at?: string | null
           queue_admission_window_minutes?: number
           recurrence_rule?: string | null
@@ -1119,6 +1127,7 @@ export type Database = {
           refund_policy_days?: number
           refund_policy_self_service?: boolean
           refund_policy_type?: string
+          rescheduled_at?: string | null
           scheduled_publish_at?: string | null
           seat_map_id?: string | null
           slug?: string
@@ -4566,6 +4575,8 @@ export type Database = {
           organisation_id: string
           organiser_assigns_seats: boolean
           parent_event_id: string | null
+          postponed_at: string | null
+          previous_start_date: string | null
           published_at: string | null
           queue_admission_window_minutes: number
           recurrence_rule: string | null
@@ -4573,6 +4584,7 @@ export type Database = {
           refund_policy_days: number
           refund_policy_self_service: boolean
           refund_policy_type: string
+          rescheduled_at: string | null
           scheduled_publish_at: string | null
           seat_map_id: string | null
           slug: string
