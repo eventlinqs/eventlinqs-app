@@ -328,6 +328,30 @@ export default async function EventDetailPage({ params }: Props) {
   // in the shared cache entry; only Sentry's per-request trace id varies, which
   // is not user data).
   const { slug } = await params
+
+  /*
+   * THE FLAG READ STARTS HERE, NOT AFTER THE EVENT.
+   *
+   * `isFeatureEnabled('broadcast_artists')` does not depend on the event: it
+   * reads a Redis-cached flag, falling back to a `feature_flags` row. It was
+   * awaited AFTER `fetchEvent`, so this page paid two round trips end to end
+   * where one would do, on the page a buyer is standing on when they decide
+   * to pay.
+   *
+   * Measured on this branch BEFORE the change: TTFB median 732ms over 8 warmed
+   * samples, and Lighthouse attributed 624ms to `server-response-time`, its
+   * single largest opportunity on this route. LCP landed within 10ms of
+   * Time-to-Interactive, which is the signature of a document that arrives
+   * late rather than of a heavy image: the hero is a 17KB AVIF.
+   *
+   * The promise is started and NOT awaited yet. `.catch` is attached
+   * immediately because the very next statement can `notFound()`, and an
+   * unawaited rejection on an early return is exactly how a fixed page starts
+   * emitting unhandled rejections instead. isFeatureEnabled already swallows
+   * its own errors and returns the seeded default, so this is belt and braces.
+   */
+  const artistsOnPromise = isFeatureEnabled('broadcast_artists')
+  artistsOnPromise.catch(() => {})
   const event = await fetchEvent(slug)
 
   // notFound() BEFORE any request-data access, so a missing event returns a
@@ -350,7 +374,7 @@ export default async function EventDetailPage({ params }: Props) {
 
   // Broadcast Layer Stage 3 (SPEC 4.2): confirmed lineup tags appear on the
   // event page, gated on broadcast_artists. Public-read RLS on both tables.
-  const artistsOn = await isFeatureEnabled('broadcast_artists')
+  const artistsOn = await artistsOnPromise
   let lineup: { id: string; slug: string; name: string }[] = []
   if (artistsOn) {
     const publicDb = createPublicClient()

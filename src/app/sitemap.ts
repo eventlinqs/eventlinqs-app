@@ -258,6 +258,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .eq('status', 'published')
       .eq('visibility', 'public')
       .not('slug', 'is', null)
+      // DETERMINISTIC ORDER. Without an explicit ORDER BY, PostgREST returns
+      // rows in Postgres' physical order, which changes as rows are updated.
+      // That is not merely untidy: scripts/ci/resolve-gate-urls.mjs picks event
+      // pages out of this sitemap, so an unordered query made the Lighthouse
+      // gate audit a different page on different runs of the same branch and
+      // blocked two merges on 2026-08-23. A sitemap is a published artefact and
+      // its order should be a property of the data, not of the storage engine.
+      .order('slug', { ascending: true })
       .limit(5000)
 
     for (const e of events ?? []) {
@@ -286,6 +294,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select('slug, updated_at')
       .not('slug', 'is', null)
       .eq('status', 'active')
+      // Same reason as the events query above: a published artefact should not
+      // change order because the storage engine did.
+      .order('slug', { ascending: true })
       .limit(5000)
     for (const o of organisers ?? []) {
       if (!o.slug) continue
@@ -307,6 +318,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from('venues')
       .select('slug, updated_at')
       .not('slug', 'is', null)
+      // Same reason as the events query above: a published artefact should not
+      // change order because the storage engine did.
+      .order('slug', { ascending: true })
       .limit(5000)
     for (const v of venues ?? []) {
       if (!v.slug) continue

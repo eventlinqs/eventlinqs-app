@@ -454,8 +454,32 @@ const ROOT = join(HERE, '..', '..')
  * event) or the response SLA (2 business days), which are different promises
  * about different parties.
  */
-const MIN_FILES = 222
-const MIN_TESTS = 2754
+/*
+ * RAISED 2026-08-24, 222/2754 to 223/2764, for
+ * tests/unit/ci/gate-url-determinism.test.ts, 10 tests.
+ *
+ * The Lighthouse gate was a coin toss. scripts/ci/resolve-gate-urls.mjs picked
+ * the FIRST /events/<slug> the preview sitemap listed, and the sitemap query
+ * had no ORDER BY, so "first" was whatever Postgres returned that day. Two
+ * consecutive runs on the same branch audited DIFFERENT pages:
+ *
+ *   135be599  /events/seat-proof-fifty-nwltxi   0.83, 0.75, 0.73  PASS
+ *   8044480b  /events/cat-indie-sounds-...      0.74, 0.73, 0.73  FAIL
+ *
+ * Nothing about event-page performance changed between them; the floor
+ * aggregates optimistic (best of three), so 0.83 cleared 0.80 and 0.74 did not.
+ * It blocked two merges.
+ *
+ * The selection is now a pure function of the SORTED slug list, and the gate
+ * audits THREE event pages instead of one. The test pins that widening as a
+ * FLOOR, because the cheap way to make this gate green is to audit one fast
+ * page, and a future pass must not be able to do that quietly.
+ *
+ * Its negative control runs the OLD head-of-list behaviour over the same two
+ * slugs in two orders and asserts that it does disagree with itself.
+ */
+const MIN_FILES = 223
+const MIN_TESTS = 2764
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
