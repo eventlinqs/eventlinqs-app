@@ -321,9 +321,26 @@ const ROOT = join(HERE, '..', '..')
  * All three lived in SHARED components, so all three were live well beyond the
  * one URL the gate measures. The assertions are absences, so each detector is
  * first shown failing on a sample that does contain what it looks for.
+ *
+ * RAISED AGAIN 2026-08-23, 217/2630 to 218/2660, for
+ * tests/unit/growth/nationwide-from-day-one.test.ts plus four wording
+ * assertions added to tests/unit/broadcast/digest-audience.test.ts, covering
+ * the founder ruling that opened the platform in every Australian city and
+ * state from day one: the founding-invite city gate (application AND the
+ * database CHECK behind it), the launch-queue consent wording, and the offer
+ * copy that tied a founding spot to Geelong or Melbourne. Every absence
+ * assertion in that file carries a negative control that feeds it the exact
+ * superseded wording, so none of them can pass vacuously.
+ *
+ * The last four of those tests are the ones that matter most, and they exist
+ * because the first pass at this ruling MISSED a gate. Every other assertion
+ * measures a constant or a string, and all of them were green while the admin
+ * waitlist bridge still ran `.in('city_slug', ['geelong', 'melbourne'])`, so
+ * the founder's invite list silently held nobody outside those two cities.
+ * The sweep walks all of src/ for that shape rather than checking one file.
  */
-const MIN_FILES = 217
-const MIN_TESTS = 2630
+const MIN_FILES = 218
+const MIN_TESTS = 2660
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
