@@ -43,7 +43,7 @@ export function InvitationCard({ variant = 'landscape', angle = 'organiser', sub
   const body =
     angle === 'performer'
       ? 'Get seen everywhere. Get booked and paid here.'
-      : 'More is landing in Geelong and Melbourne. Be the first: post your event free.'
+      : 'EventLinqs is open right across Australia. Be the first here: post your event free.'
   const cta = angle === 'performer' ? 'Meet the artist tools' : 'Post your event'
 
   return (

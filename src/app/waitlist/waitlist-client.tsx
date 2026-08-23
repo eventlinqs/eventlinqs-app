@@ -16,7 +16,7 @@ export interface WaitlistCityWithImage extends WaitlistCity {
 }
 
 /**
- * The waitlist chooser + join form. City tiles are real controls (buttons):
+ * The local-alerts city chooser + signup form. City tiles are real controls (buttons):
  * tapping one selects that city and moves focus to the form, so every tile a
  * finger lands on does something (interactive-affordance law). Consent is
  * Spam Act clean: the submit button is the express consent to the one
@@ -125,11 +125,6 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
                       </span>
                     )}
                   </div>
-                  {city.openingFirst && (
-                    <span className="absolute left-3 top-3 rounded-full bg-[#0A1628] px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--brand-accent)]">
-                      Opening first
-                    </span>
-                  )}
                 </div>
               </button>
             </li>
@@ -147,26 +142,26 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
                 You are on the list
               </p>
               <h2 className="mt-2 font-display text-2xl font-bold text-ink-900">
-                {joined.cityName} will hear from us first.
+                You are set up for {joined.cityName}.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-ink-600">
                 {joined.foundingCandidate && joined.role === 'organiser'
-                  ? 'You are registered as a founding candidate. Founding Organiser invitations are limited to the first 50 organisers across Geelong and Melbourne: 6 months fee-free, and 3 more months for every organiser you refer. Invitations go out personally.'
+                  ? 'You are registered as a founding candidate. Founding Organiser invitations are limited to the first 50 organisers in Australia: 6 months fee-free, and 3 more months for every organiser you refer. Invitations go out personally.'
                   : joined.role === 'organiser'
-                    ? `We will email you the moment ${joined.cityName} opens, with organiser onboarding first in line. Until then the platform already works Australia-wide: you can build your event and get your launch kit today.`
-                    : `We will email you the moment ${joined.cityName} opens. One email, no noise, and one click unsubscribes you.`}
+                    ? `We will email you when there is something on near you in ${joined.cityName}. EventLinqs is open there today: you can build your event, get your launch kit and start selling right now.`
+                    : `We will email you when there is something on near you in ${joined.cityName}. No noise, and one click unsubscribes you.`}
               </p>
               <p className="mt-2 text-xs text-ink-500">
                 {joined.confirmationEmailed
-                  ? 'A confirmation is on its way to your inbox, with a one-click leave link.'
-                  : 'Your spot is recorded. The confirmation email could not be sent right now; the one-click leave link will be in every email we send you.'}
+                  ? 'A confirmation is on its way to your inbox, with a one-click unsubscribe link.'
+                  : 'You are recorded. The confirmation email could not be sent right now; the one-click unsubscribe link will be in every email we send you.'}
               </p>
               <button
                 type="button"
                 onClick={() => setJoined(null)}
                 className="mt-5 inline-flex min-h-[44px] items-center rounded-full border border-ink-200 bg-white px-5 py-2 text-sm font-semibold text-ink-900 transition-colors hover:border-[var(--brand-accent-strong)]"
               >
-                Join another city
+                Add another city
               </button>
             </div>
           ) : (
@@ -176,16 +171,14 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
                 {selected.name}, {selected.state}
               </p>
               <h2 className="mt-2 font-display text-2xl font-bold text-ink-900">
-                Join the {selected.name} waitlist
+                Get {selected.name} event alerts
               </h2>
-              {selected.openingFirst && (
-                <p className="mt-2 rounded-lg border border-gold-500/40 bg-gold-500/10 px-3 py-2 text-xs leading-relaxed text-ink-900">
-                  <span className="font-semibold">{selected.name} opens first.</span> Organisers
-                  who join here are candidates for the invite-only Founding Organiser programme:
-                  first 50 across Geelong and Melbourne, 6 months fee-free, plus 3 more months
-                  for every organiser you refer.
-                </p>
-              )}
+              <p className="mt-2 rounded-lg border border-gold-500/40 bg-gold-500/10 px-3 py-2 text-xs leading-relaxed text-ink-900">
+                <span className="font-semibold">EventLinqs is open in {selected.name} today.</span>{' '}
+                Organisers who sign up here are candidates for the invite-only Founding Organiser
+                programme: first 50 in Australia, 6 months fee-free, plus 3 more months for every
+                organiser you refer.
+              </p>
 
               <div className="mt-5 space-y-4">
                 <div>
@@ -273,7 +266,7 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
                   disabled={isPending}
                   className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isPending ? 'Joining…' : `Join the ${selected.name} waitlist`}
+                  {isPending ? 'Signing up…' : `Get ${selected.name} alerts`}
                 </button>
 
                 {/* The consent wording, shown at the moment of consent and

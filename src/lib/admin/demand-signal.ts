@@ -13,7 +13,6 @@ import { getWaitlistCities } from '@/lib/waitlist/city-waitlist'
 export type CityDemand = {
   slug: string
   name: string
-  openingFirst: boolean
   total: number
   organisers: number
   attendees: number
@@ -53,7 +52,6 @@ export async function getDemandSignal(): Promise<DemandSignal> {
     return {
       slug: def.slug,
       name: def.name,
-      openingFirst: def.openingFirst,
       total: mine.length,
       organisers: mine.filter(r => r.role === 'organiser').length,
       attendees: mine.filter(r => r.role === 'attendee').length,

@@ -214,13 +214,20 @@ function EmptyCityState({ city }: { city: PickerCity }) {
         No events in {city.city} yet
       </h2>
       <p className="mt-2 text-sm text-ink-600">
-        We&rsquo;re launching in {city.city} soon. In the meantime, browse events
-        across {city.country} or further afield.
+        EventLinqs is open in {city.city} today, so the first one here could be
+        yours. Put your event on free, or browse what is on across{' '}
+        {city.country}.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <Link
-          href="/events"
+          href="/organisers"
           className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
+        >
+          Put on an event
+        </Link>
+        <Link
+          href="/events"
+          className="rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-semibold text-ink-900 transition-colors hover:border-ink-300"
         >
           Browse all events
         </Link>

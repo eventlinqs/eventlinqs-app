@@ -12,20 +12,32 @@ import { getWaitlistCities } from '@/lib/waitlist/city-waitlist'
 import { WaitlistClient, type WaitlistCityWithImage } from './waitlist-client'
 
 export const metadata: Metadata = {
-  title: 'City Waitlist | EventLinqs',
+  title: 'Local event alerts | EventLinqs',
   description:
-    'EventLinqs opens city by city across Australia. Join your city waitlist and be there on day one: Geelong and Melbourne open first.',
+    'EventLinqs is open in every Australian city and state today. Pick your city and we will email you when there is something on near you.',
   alternates: { canonical: '/waitlist' },
 }
 
 export const revalidate = 3600
 
 /**
- * The national city waitlist - nationally available, locally dense.
+ * Local event alerts, nationwide.
  *
- * The platform already works Australia-wide; this surface concentrates the
- * launch city by city, reads demand per city for the founder, and feeds the
- * invite-only Founding Organiser programme from Geelong and Melbourne signups.
+ * This route used to be the CITY WAITLIST: a launch queue whose hero read
+ * "Your city is on the way" and whose promise was one email "when your city
+ * opens". The founder ruling of 2026-08-23 opened every city and state from
+ * day one, which made that promise both false and unfulfillable.
+ *
+ * The URL is deliberately KEPT rather than removed or redirected: it may
+ * already be printed on posters and shared in DMs, and a dead link is worse
+ * than a repurposed page. What it captures now is a person's city so we can
+ * tell them when something is on near them, which is the demand engine's job
+ * and feeds the same audience as the digest opt-in at checkout.
+ *
+ * NO CADENCE IS PROMISED ANYWHERE ON THIS PAGE. A weekly rhythm is not one the
+ * platform can honour yet and a thin digest burns the subscriber, so the
+ * promise is "when there is something on", and it tightens to a rhythm on its
+ * own once there is enough to send.
  */
 export default async function WaitlistPage() {
   if (!(await isFlagEnabled('launch_kit'))) {
@@ -72,12 +84,11 @@ export default async function WaitlistPage() {
                 id="waitlist-hero-heading"
                 className="mt-2 font-headline text-3xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl"
               >
-                Your city is on the way.
+                What&rsquo;s on near you.
               </h1>
               <p className="mt-2 max-w-xl text-sm text-white/85 sm:text-base">
-                We open city by city, so every launch lands with real local events and a real
-                local audience. Geelong and Melbourne open first. Join your city&rsquo;s list
-                and be there on day one.
+                EventLinqs is open in every Australian city and state today. Pick your city and
+                we&rsquo;ll email you when there&rsquo;s something on near you.
               </p>
               <div className="mt-5">
                 <Button variant="primary" size="lg" href="#choose-your-city">
@@ -93,14 +104,15 @@ export default async function WaitlistPage() {
       <ContentSection surface="base" width="wide" reveal>
         <div id="choose-your-city" className="max-w-2xl scroll-mt-24">
           <p className="mb-3 font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
-            The waitlist
+            Local alerts
           </p>
           <h2 className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">
-            Nine cities. Yours is one of them.
+            Every city in Australia. Pick yours.
           </h2>
           <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">
-            One email when your city opens, nothing else. Organisers who join from Geelong or
-            Melbourne are candidates for the invite-only Founding Organiser programme.
+            We email you when there is something on near you, nothing else, and one click stops
+            it. Organisers who sign up are candidates for the invite-only Founding Organiser
+            programme.
           </p>
         </div>
         <div className="mt-10">
@@ -126,12 +138,12 @@ export default async function WaitlistPage() {
               Run events?
             </p>
             <h2 className="font-display text-3xl font-extrabold leading-[1.08] tracking-tight text-[var(--text-primary)] sm:text-4xl">
-              You do not have to wait.
+              You can sell today, anywhere in Australia.
             </h2>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">
-              The platform already works everywhere in Australia. Build your event, map your
-              room, and get your complete promo kit, in minutes, free. The waitlist decides
-              where we concentrate the launch, not where the tools work.
+              Every city, every state, from day one. Build your event, map your room, and get
+              your complete promo kit, in minutes, free. There is no queue and no city to wait
+              for.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button variant="primary" size="lg" href="/organisers/signup">
