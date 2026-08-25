@@ -5,6 +5,7 @@ import {
   toCitySlug,
   type LaunchCity,
 } from './launch-cities'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 /**
  * Merged picker city list: 32 curated launch targets ∪ every distinct
@@ -74,8 +75,7 @@ async function buildPickerCitiesRaw(): Promise<PickerCityGroups> {
       supabase
         .from('events')
         .select('venue_city, venue_country')
-        .eq('status', 'published')
-        .eq('visibility', 'public')
+        .match(PUBLIC_EVENT_MATCH)
         .eq('venue_country', 'Australia')
         .not('venue_city', 'is', null),
       supabase

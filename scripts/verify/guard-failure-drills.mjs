@@ -64,6 +64,73 @@ console.log(`[drills] effective confirm_order:   ${NEW_EFFECTIVE_CONFIRM}`)
 console.log(`[drills] effective reconcile_refund: ${NEW_EFFECTIVE_RECONCILE}`)
 
 const DRILLS = [
+  /*
+   * one-db-connection-source, four drills, one per banned shape.
+   *
+   * These exist because the guard they exercise was written after two hours were
+   * lost to a 28P01 that nine private copies of the connection parser made
+   * impossible to locate. A guard that cannot be shown to FAIL is a guard nobody
+   * can trust to be doing anything, and this one's whole value is that it refuses
+   * the tenth copy. Each drill reintroduces exactly one of the shapes that were
+   * removed, into a file that currently passes.
+   */
+  /*
+   * one-visibility-source, two drills, one per rule.
+   *
+   * Rule 1 reintroduces the hand-written publication predicate into a discovery
+   * surface, which is the shape that let /events print a correct count of 2
+   * beside a rail of 8 deleted events. Rule 2 declares a cached read carrying a
+   * tag nothing invalidates, which is how those 8 survived the delete.
+   */
+  {
+    name: 'a discovery surface spells out the publication predicate again',
+    guard: `${GUARDS}/one-visibility-source.mjs`,
+    file: 'src/lib/events/home-queries.ts',
+    find: '.match(PUBLIC_EVENT_MATCH)',
+    replace: ".eq('status', 'published')\n    .eq('visibility', 'public')",
+    expect: 'spells out the publication',
+  },
+  {
+    name: 'a cached read declares a tag nothing invalidates',
+    guard: `${GUARDS}/one-visibility-source.mjs`,
+    file: 'src/lib/events/fetchers.ts',
+    find: 'tags: [EVENT_DATA_CACHE_TAGS[1]]',
+    replace: "revalidate: 1800, tags: ['events:orphan-cache']",
+    expect: 'nothing invalidates',
+  },
+  {
+    name: 'a script hands pg a connectionString again',
+    guard: `${GUARDS}/one-db-connection-source.mjs`,
+    file: 'scripts/verify/seeded-order-forensics.mjs',
+    find: 'const db = await target.connect()',
+    replace: 'const db = new pg.Client({ connectionString: "postgresql://x" })',
+    expect: 'connectionString',
+  },
+  {
+    name: 'a script reads SUPABASE_DB_URL out of the environment again',
+    guard: `${GUARDS}/one-db-connection-source.mjs`,
+    file: 'scripts/verify/seeded-order-forensics.mjs',
+    find: 'const db = await target.connect()',
+    replace: 'const raw = process.env.SUPABASE_DB_URL\nconst db = await target.connect()',
+    expect: 'direct env read',
+  },
+  {
+    name: 'a script parses the database URL with new URL() again',
+    guard: `${GUARDS}/one-db-connection-source.mjs`,
+    file: 'scripts/verify/seeded-order-forensics.mjs',
+    find: 'const db = await target.connect()',
+    replace: 'const u = new URL(SUPABASE_DB_URL)\nconst db = await target.connect()',
+    expect: 'new URL on a database url',
+  },
+  {
+    name: 'a script hardcodes the pooler host again',
+    guard: `${GUARDS}/one-db-connection-source.mjs`,
+    file: 'scripts/verify/seeded-order-forensics.mjs',
+    find: 'const db = await target.connect()',
+    replace:
+      'const db = new pg.Client({ host: "aws-1-ap-southeast-2.pooler.supabase.com", port: 5432 })',
+    expect: 'hardcoded supabase host',
+  },
   {
     /*
      * RULE 2 of no-unowned-organisation-read. The check that matters most and the

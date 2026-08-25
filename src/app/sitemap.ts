@@ -8,6 +8,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { GUIDES } from '@/lib/guides'
 import { getAllHeroCategories } from '@/lib/hero-categories'
 import { helpTopics } from '@/lib/help-content'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 /**
  * Dynamic sitemap for EventLinqs.
@@ -255,8 +256,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { data: events } = await admin
       .from('events')
       .select('slug, updated_at')
-      .eq('status', 'published')
-      .eq('visibility', 'public')
+      .match(PUBLIC_EVENT_MATCH)
       .not('slug', 'is', null)
       // DETERMINISTIC ORDER. Without an explicit ORDER BY, PostgREST returns
       // rows in Postgres' physical order, which changes as rows are updated.

@@ -15,6 +15,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate, weekendWindowUtc } from '@/lib/events/listing-window'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 export const revalidate = 300
 
@@ -101,8 +102,7 @@ export default async function SuburbPage({ params }: Props) {
   const { data: rows } = await supabase
     .from('events')
     .select(`${baseSelect}, suburb_primary, venue_latitude, venue_longitude`)
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     .or(listingWindowOrPredicate(new Date()))
     .ilike('venue_city', `%${city.name}%`)
     .order('start_date', { ascending: true })

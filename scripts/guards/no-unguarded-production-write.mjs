@@ -108,17 +108,29 @@ const ROOT = join(HERE, '..', '..')
 const TEST_SUPABASE_REF = 'vkapkibzokmfaxqogypq'
 
 /**
- * Two files name every pattern this guard looks for, so both would flag
- * themselves. Excluded by exact path rather than by a cleverer pattern, because
- * the honest version of "the scanner cannot scan itself" is a short list.
+ * Four files name every pattern this guard looks for, so each would flag itself.
+ * Excluded by exact path rather than by a cleverer pattern, because the honest
+ * version of "the scanner cannot scan itself" is a short list.
  *
  *   the guard itself   its regexes ARE the banned shapes
  *   the preflight      it is the guard implementation, not a script. It parses
  *                      connection strings and names both refs by design.
+ *   db-credentials     added 2026-08-25. The preflight's credential half, split
+ *                      out of it. It is the ONE place a connection is assembled,
+ *                      so of course it contains every shape; excluding the
+ *                      preflight but not the module it delegates to would just
+ *                      relocate the false positive.
+ *   the drills         scripts/verify/guard-failure-drills.mjs holds the banned
+ *                      shapes as DATA: each is a string it splices into another
+ *                      file to prove a guard fires. It opens no connection of its
+ *                      own, and a guard that fails on its own test fixtures
+ *                      teaches people to delete the fixtures.
  */
 const EXCLUDED = new Set([
   'scripts/guards/no-unguarded-production-write.mjs',
   'scripts/lib/production-write-preflight.mjs',
+  'scripts/lib/db-credentials.mjs',
+  'scripts/verify/guard-failure-drills.mjs',
 ])
 
 const CREDENTIAL = /SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SERVICE_ROLE_KEY_PREVIEW|SUPABASE_SECRET_KEY|service_role/
@@ -142,8 +154,15 @@ const DIRECT_POSTGRES = new RegExp(
   ].join('|'),
 )
 const REFUSAL = /throw\s+new\s+Error|process\.exit\s*\(\s*1\s*\)|\bdie\s*\(/
-/** Both entry points: the Supabase-client one and the Postgres one. */
-const PREFLIGHT = /assertNotProduction(Database)?\s*\(/
+/**
+ * All three entry points: the Supabase-client one, the Postgres one, and
+ * openProject(), added 2026-08-25 for the scripts that legitimately preflight
+ * TWO projects in one run (schema-provenance compares production against TEST).
+ * openProject calls assertNotProductionDatabase internally, so a script using it
+ * IS guarded; without this it reads as unguarded and the fix a reader would
+ * reach for is to stop using the shared helper.
+ */
+const PREFLIGHT = /assertNotProduction(Database)?\s*\(|openProject\s*\(/
 /** Either ref written out, or the constant names the existing 27 guards use. */
 const REF_TOKEN = new RegExp(`${PRODUCTION_SUPABASE_REF}|${TEST_SUPABASE_REF}|\\bPROD_REF\\b|\\bTEST_REF\\b|\\bPRODUCTION_SUPABASE_REF\\b`)
 

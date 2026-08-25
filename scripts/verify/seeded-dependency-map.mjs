@@ -26,8 +26,7 @@ import { assertNotProductionDatabase } from '../lib/production-write-preflight.m
  * lives once rather than four times.
  */
 const target = assertNotProductionDatabase()
-const db = new pg.Client(target.clientConfig)
-await db.connect()
+const db = await target.connect()
 
 // ---------------------------------------------------------------- 1. Stripe
 console.log('===== ANY STRIPE IDENTIFIER ON A SEEDED ORDER? =====')

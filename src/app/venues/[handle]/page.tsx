@@ -20,6 +20,7 @@ import { VenueAmenitiesGrid } from '@/components/features/venues/venue-amenities
 import { VenueMobileStickyBar } from '@/components/features/venues/venue-mobile-sticky-bar'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 export const revalidate = 300
 
@@ -48,8 +49,7 @@ async function fetchVenueEventsByName(venueName: string) {
     supabase
       .from('events')
       .select(baseSelect)
-      .eq('status', 'published')
-      .eq('visibility', 'public')
+      .match(PUBLIC_EVENT_MATCH)
       .ilike('venue_name', venueName)
       .or(listingWindowOrPredicate(new Date(nowIso)))
       .order('start_date', { ascending: true })

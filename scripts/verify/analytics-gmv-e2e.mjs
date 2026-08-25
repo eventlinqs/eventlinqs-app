@@ -22,7 +22,7 @@ const target = assertNotProductionDatabase()
 // string form makes pg throw ERR_INVALID_URL while printing the input as
 // `*****REDACTED*****`, which reads like an unset placeholder rather than a
 // parse failure. The hand parser lives once, in production-write-preflight.mjs.
-const client = new pg.Client(target.clientConfig)
+const client = await target.connect()
 
 const fails = []
 function assert(cond, msg, detail) {
@@ -35,7 +35,6 @@ const one = async (t, p) => (await q(t, p)).rows[0]
 const owner = randomUUID(), orgId = randomUUID(), eventId = randomUUID()
 const sfx = Date.now().toString(36)
 
-await client.connect()
 try {
   await q('BEGIN')
   await q('INSERT INTO auth.users (id, email) VALUES ($1,$2)', [owner, `o_${sfx}@test.invalid`])

@@ -23,6 +23,7 @@ import { citySlugify } from '@/components/features/community/cities-rail'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 export const revalidate = 300
 
@@ -77,8 +78,7 @@ async function fetchOrganiserEvents(orgId: string) {
       .from('events')
       .select(baseSelect)
       .eq('organisation_id', orgId)
-      .eq('status', 'published')
-      .eq('visibility', 'public')
+      .match(PUBLIC_EVENT_MATCH)
       .or(listingWindowOrPredicate(new Date(nowIso)))
       .order('start_date', { ascending: true })
       .limit(24),

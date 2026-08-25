@@ -17,6 +17,7 @@ import { PhotographicCommunityHero } from '@/components/templates/PhotographicCo
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
@@ -65,8 +66,7 @@ export default async function FaithPage({ params }: Props) {
         supabase
           .from('events')
           .select(EVENT_SELECT)
-          .eq('status', 'published')
-          .eq('visibility', 'public')
+          .match(PUBLIC_EVENT_MATCH)
           .or(listingWindowOrPredicate(new Date()))
           .or(tagOr)
           .order('start_date', { ascending: true })

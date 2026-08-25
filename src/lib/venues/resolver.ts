@@ -15,6 +15,7 @@
  */
 
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 export function venueSlugify(name: string): string {
   return name
@@ -91,8 +92,7 @@ async function fetchVenueEvents(venueName: string): Promise<EventRowForVenue[]> 
     .select(
       'category:event_categories(name, slug), venue_name, venue_city, venue_state, venue_country, venue_address, venue_latitude, venue_longitude, start_date',
     )
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     .ilike('venue_name', venueName)
     .order('start_date', { ascending: false })
     .limit(60)
@@ -148,8 +148,7 @@ export async function resolveVenueProfile(handle: string): Promise<VenueProfile 
     const { data } = await supabase
       .from('events')
       .select('venue_name')
-      .eq('status', 'published')
-      .eq('visibility', 'public')
+      .match(PUBLIC_EVENT_MATCH)
       .ilike('venue_name', `%${candidate}%`)
       .limit(50)
     const counts = new Map<string, number>()

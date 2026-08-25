@@ -35,8 +35,7 @@ import { assertNotProductionDatabase } from '../lib/production-write-preflight.m
 import pg from 'pg'
 
 const target = assertNotProductionDatabase()
-const client = new pg.Client(target.clientConfig)
-
+const client = await target.connect()
 const STAGE1 = 'supabase/migrations/20260818000001_column_lockdown_stage1_no_policy_dependency.sql'
 const STAGE2 = 'supabase/migrations/20260819000001_policy_refactor_no_org_privilege.sql'
 
@@ -93,8 +92,6 @@ async function asRole(role, sql, uid = null) {
     return { ok: false, code: err.code, message: err.message.split('\n')[0] }
   }
 }
-
-await client.connect()
 try {
   await client.query('BEGIN')
   hr(`STAGE 2 PROOF  |  target ${target.ref} (TEST)  |  ONE transaction, ROLLED BACK`)

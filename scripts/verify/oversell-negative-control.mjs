@@ -46,8 +46,7 @@ function assert(cond, msg, detail) {
   else { console.log(`  FAIL: ${msg}${detail !== undefined ? ` (${detail})` : ''}`); fails.push(msg) }
 }
 
-const admin = new pg.Client(target.clientConfig)
-await admin.connect()
+const admin = await target.connect()
 
 const stamp = Date.now().toString(36)
 const orgId = randomUUID(), eventId = randomUUID(), tierId = randomUUID()

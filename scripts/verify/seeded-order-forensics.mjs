@@ -69,6 +69,39 @@ import { assertNotProductionDatabase } from '../lib/production-write-preflight.m
  */
 const target = assertNotProductionDatabase()
 
+/**
+ * THE SEED OWNER, and why this script may not rely on `is_seed_data` alone.
+ *
+ * DEFECT FOUND 25 AUGUST 2026, on the production run this script exists to
+ * authorise. Every query here selected `where e.is_seed_data = true`. On
+ * PRODUCTION that column is `false` on all 48 event rows, and it is false as a
+ * column DEFAULT rather than as a measurement: migration 20260628000001 added it
+ * `NOT NULL DEFAULT false`, and the backfill that sets it true runs in the seeder
+ * behind a TEST-only guard, so every production row predates the marker and
+ * inherited `false` regardless of what it actually is.
+ *
+ * The consequence is the worst available shape, and it is the SAME shape this
+ * file's header already records itself having had once: the script ran happily
+ * against production, printed "0 orders attached to seeded events", answered
+ * every one of the five questions with a confident zero, and none of it meant
+ * anything. A reader would conclude there was nothing behind the demo catalogue
+ * to worry about. There is: the owner-keyed purge rehearsal, run against the same
+ * database minutes later, found ONE order and ONE payment row under
+ * "Lagos Comedy Tour" that it would delete.
+ *
+ * A verdict of SAFE TO PURGE from a query that matched nothing is not a verdict.
+ *
+ * So identification is now the SAME RULE the purge uses, which is the owner, with
+ * `is_seed_data` kept as an additional term so TEST (where the marker IS set, and
+ * where seeded events are not all owner-keyed) keeps reporting everything it did
+ * before. The authorising script and the deleting script must agree about what
+ * they are talking about, or the authorisation is for a different set of rows.
+ *
+ * Kept in step with scripts/verify/seeded-purge-rehearsal.mjs, which declares the
+ * same constant for the same reason.
+ */
+const SEED_OWNER_ID = '00000000-0000-4000-8000-000000000001'
+
 /** Mode only. The key itself is never read into the output. */
 const rawKey = process.env.STRIPE_SECRET_KEY ?? ''
 const stripeMode = rawKey.startsWith('sk_test_')
@@ -98,8 +131,7 @@ function classifyEmail(email) {
   return { kind: 'UNKNOWN', why: `${d} is not a known fixture domain` }
 }
 
-const db = new pg.Client(target.clientConfig)
-await db.connect()
+const db = await target.connect()
 
 console.log('')
 console.log('='.repeat(78))
@@ -145,8 +177,10 @@ const { rows } = await db.query(`
          (select count(*)::int from public.payouts  y where y.event_id = e.id) as event_payouts
     from public.orders o
     join public.events e on e.id = o.event_id
+    left join public.organisations g on g.id = e.organisation_id
    where e.is_seed_data = true
-   order by o.total_cents desc nulls last, o.order_number`)
+      or g.owner_id = $1
+   order by o.total_cents desc nulls last, o.order_number`, [SEED_OWNER_ID])
 
 console.log('')
 console.log(`===== ${rows.length} orders attached to seeded events, one line each =====`)
@@ -231,7 +265,10 @@ const payoutRows = await db.query(`
   select count(*)::int n, count(stripe_payout_id)::int with_payout_id,
          count(stripe_transfer_id)::int with_transfer_id
     from public.payouts
-   where event_id in (select id from public.events where is_seed_data = true)`)
+   where event_id in (
+     select e.id from public.events e
+     left join public.organisations g on g.id = e.organisation_id
+     where e.is_seed_data = true or g.owner_id = $1)`, [SEED_OWNER_ID])
 const pr = payoutRows.rows[0]
 console.log('')
 console.log('===== PAYOUTS ON SEEDED EVENTS =====')
@@ -245,7 +282,30 @@ console.log('='.repeat(78))
 const problems = []
 if (tally.UNKNOWN > 0) problems.push(`${tally.UNKNOWN} order(s) carry an email domain that is not a known fixture domain`)
 if (stripeMode === 'LIVE' && ordersWithIntent > 0) problems.push(`${ordersWithIntent} order(s) carry a payment intent created with LIVE keys, which is real money`)
-if (stripeMode === 'NOT SET' || stripeMode === 'UNRECOGNISED') problems.push('the Stripe key mode could not be read, so no payment intent here can be shown to be test-mode')
+/*
+ * AN UNREADABLE KEY MODE ONLY MATTERS IF THERE IS A STRIPE OBJECT TO JUDGE.
+ *
+ * This used to block unconditionally, and on the 25 August 2026 production run
+ * that was the ONLY thing blocking: one order, carrying ZERO payment intents and
+ * ZERO refund ids, was refused because the mode of a Stripe object that does not
+ * exist could not be established. The reason printed was true and completely
+ * immaterial, and a verdict that says STOP for an immaterial reason is a verdict
+ * people learn to talk themselves past, which is far more dangerous than one
+ * that is precise.
+ *
+ * The condition is now: an unreadable mode blocks when, and only when, at least
+ * one Stripe identifier is actually present. With identifiers present the
+ * refusal is unchanged and absolute. With none present there is nothing whose
+ * mode could make a difference, because no Stripe object was ever created, and
+ * therefore no card was ever charged in any mode.
+ *
+ * This is strictly narrower than the old rule and strictly wider than eyeballing
+ * it. Every other refusal is untouched.
+ */
+const stripeObjects = ordersWithIntent + ordersWithRefundId
+if ((stripeMode === 'NOT SET' || stripeMode === 'UNRECOGNISED') && stripeObjects > 0) {
+  problems.push(`the Stripe key mode could not be read, so the ${stripeObjects} Stripe object(s) here cannot be shown to be test-mode`)
+}
 
 if (problems.length === 0) {
   console.log('')
@@ -255,10 +315,21 @@ if (problems.length === 0) {
   console.log('  reserved address, a domain this business owns, a public throwaway inbox,')
   console.log('  or no address at all. None can reach a member of the public.')
   console.log('')
-  console.log(`  The ${ordersWithIntent} Stripe payment intents and the refund objects are REAL Stripe`)
-  console.log(`  OBJECTS, but they were created with a ${stripeMode}-mode key, so no money ever`)
-  console.log('  moved and no card was ever charged. That is established from the key mode,')
-  console.log('  not from the shape of the id, because the id cannot tell you.')
+  if (stripeObjects === 0) {
+    // Say WHY it is safe in this case, rather than reusing the key-mode sentence
+    // and printing "a NOT SET-mode key", which reads like a bug and invites the
+    // reader to distrust the whole verdict.
+    console.log('  NO STRIPE OBJECT EXISTS behind any of these orders: zero payment intents')
+    console.log('  and zero refund ids, read from payments.gateway_payment_id and')
+    console.log('  refunds.stripe_refund_id. The key mode is therefore irrelevant here, because')
+    console.log('  a card cannot have been charged in any mode by a payment intent that was')
+    console.log('  never created.')
+  } else {
+    console.log(`  The ${ordersWithIntent} Stripe payment intents and the refund objects are REAL Stripe`)
+    console.log(`  OBJECTS, but they were created with a ${stripeMode}-mode key, so no money ever`)
+    console.log('  moved and no card was ever charged. That is established from the key mode,')
+    console.log('  not from the shape of the id, because the id cannot tell you.')
+  }
   console.log('')
   console.log('  SAFE TO PURGE on this environment.')
 } else {

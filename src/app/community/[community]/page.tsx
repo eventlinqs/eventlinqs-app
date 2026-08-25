@@ -18,6 +18,7 @@ import { citySlugify } from '@/components/features/community/cities-rail'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 // ISR: 5-minute revalidate matches /events/[slug] and /categories/[slug].
 export const revalidate = 300
@@ -77,8 +78,7 @@ export default async function CommunityPage({ params }: Props) {
           .select(
             'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
           )
-          .eq('status', 'published')
-          .eq('visibility', 'public')
+          .match(PUBLIC_EVENT_MATCH)
           .or(listingWindowOrPredicate(new Date()))
           .or(tagOr)
           .order('start_date', { ascending: true })

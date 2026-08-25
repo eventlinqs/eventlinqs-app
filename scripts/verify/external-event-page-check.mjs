@@ -37,8 +37,7 @@ if (!BASE) {
 const DESTINATION = 'https://tickets.melbournefringe.com.au/event/probe-only'
 
 const target = assertNotProductionDatabase()
-const db = new pg.Client(target.clientConfig)
-await db.connect()
+const db = await target.connect()
 
 let failures = 0
 const ok = (m) => console.log(`   ok    ${m}`)

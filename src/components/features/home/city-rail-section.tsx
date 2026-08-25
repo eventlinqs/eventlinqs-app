@@ -8,6 +8,7 @@ import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
 import { CITY_TILES, LOCAL_CITY_SVG } from '@/lib/events/home-queries'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 interface Props {
   nowIso: string
@@ -32,7 +33,7 @@ export async function CityRailSection({ nowIso }: Props) {
         // rail entirely. Survivor of the 16 August 2026 date-window pass, which
         // corrected the query files and missed this component.
         supabase.from('events').select('id', { count: 'exact', head: true })
-          .eq('status', 'published').eq('visibility', 'public')
+          .match(PUBLIC_EVENT_MATCH)
           .or(listingWindowOrPredicate(new Date(nowIso)))
           .ilike('venue_city', `%${t.city}%`),
         spine ? Promise.resolve(null) : getCityPhoto(t.slug),

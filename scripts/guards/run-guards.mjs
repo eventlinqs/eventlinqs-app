@@ -30,6 +30,8 @@
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
  *   no-unguarded-production-write  no script writes to a database without checking which one
+ *   one-db-connection-source   no script assembles its own database connection
+ *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
  *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
  *   one-fee-copy               no customer-facing surface names a second fee
  *   pricing-derive             the worked fee figures match the lock block they derive from
@@ -342,6 +344,33 @@ const GUARDS = [
   // what stops the eleventh. Without it the fix is a written procedure, and a
   // written procedure is not a control.
   'scripts/guards/no-unguarded-production-write.mjs',
+
+  // Founder instruction 2026-08-25, after two hours were lost to a
+  // 28P01 password authentication failure whose cause was a hand
+  // percent-encoded password, and whose three decoys were the REDACTED masking
+  // that pg applies to a string it could not parse, a username that always reads
+  // postgres on the pooler, and nine divergent private copies of the connection
+  // parser. The sibling guard above asks whether a script checks WHICH database
+  // it is about to write to; this one asks whether it built the connection
+  // itself. Fixing the shared helper fixed nothing for the eight scripts that
+  // were not using it, so the rule is now structural.
+  //
+  // NO APOSTROPHES IN THIS BLOCK. tests/unit/guards/guard-registry.test.ts reads
+  // the entries below by extracting single-quoted strings from this file, so an
+  // apostrophe in a comment opens a string literal and the registry parse breaks
+  // for every guard after it. Sixteen guards read as unregistered when this
+  // comment first said "pg" followed by an apostrophe and the word s.
+  'scripts/guards/one-db-connection-source.mjs',
+
+  // Founder instruction 2026-08-25, the second half of the same day. After the
+  // demo purge, /events printed a correct header count of 2 beside a
+  // "Popular this week" rail listing EIGHT deleted events, and a visitor
+  // clicking any of them got a 404 on a live platform. Two causes: the
+  // publication predicate was spelled out by hand in seventeen discovery
+  // surfaces rather than shared, and a data cache held ROWS, which outlive the
+  // rows they copy. Of every cache tag declared in the codebase, exactly one was
+  // ever invalidated anywhere. This guard holds both halves.
+  'scripts/guards/one-visibility-source.mjs',
 
   // Founder ruling 2026-08-15, a PRODUCTION SAFETY ordering rule expressed as a
   // gate. Migration 20260808000010 revokes stripe_account_id and

@@ -11,55 +11,27 @@
  * Read-only is enforced server-side (default_transaction_read_only=on) exactly as
  * in refund-and-privilege-probe.mjs. Prints no key material.
  *
- * USAGE: node scripts/probe/fn-body-diff.mjs --a .env.test --b <prod env> --fn reconcile_refund
+ * USAGE: node scripts/probe/fn-body-diff.mjs --a test --b prod --fn reconcile_refund
  */
-import { readFileSync, existsSync, writeFileSync } from 'node:fs'
-import pg from 'pg'
+import { writeFileSync } from 'node:fs'
+import { openProject } from '../lib/production-write-preflight.mjs'
 
 const argv = process.argv.slice(2)
 const arg = (n, d = null) => { const i = argv.indexOf(n); return i === -1 ? d : argv[i + 1] }
 
 const A = arg('--a'), B = arg('--b'), FN = arg('--fn', 'reconcile_refund')
 const OUT = arg('--out', null)
-if (!A || !B) { console.error('usage: --a <env> --b <env> [--fn name] [--out dir]'); process.exit(2) }
+if (!A || !B) { console.error('usage: --a <project> --b <project> [--fn name] [--out dir]'); process.exit(2) }
 
-function readEnv(file) {
-  if (!existsSync(file)) { console.error(`env file not found: ${file}`); process.exit(2) }
-  const env = {}
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const t = line.trim()
-    if (!t || t.startsWith('#') || !t.includes('=')) continue
-    const i = t.indexOf('=')
-    const v = t.slice(i + 1).trim().replace(/^["']|["']$/g, '')
-    env[t.slice(0, i).trim()] = v.startsWith('#') ? '' : v
-  }
-  return env
-}
-
-function target(env) {
-  const ref = (env.NEXT_PUBLIC_SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] || ''
-  if (env.SUPABASE_DB_URL) {
-    const s = env.SUPABASE_DB_URL.trim()
-    const at = s.lastIndexOf('@'), schemeEnd = s.indexOf('://')
-    const creds = s.slice(schemeEnd + 3, at), sep = creds.indexOf(':')
-    const tail = s.slice(at + 1), cut = tail.search(/[/?]/)
-    const hp = cut === -1 ? tail : tail.slice(0, cut), colon = hp.indexOf(':')
-    const user = sep === -1 ? creds : creds.slice(0, sep)
-    return {
-      cfg: { user, password: creds.slice(sep + 1), host: colon === -1 ? hp : hp.slice(0, colon), port: Number(colon === -1 ? 5432 : hp.slice(colon + 1)), database: 'postgres', ssl: { rejectUnauthorized: false }, options: '-c default_transaction_read_only=on', connectionTimeoutMillis: 15000 },
-      ref: user.match(/^postgres\.([a-z0-9]+)$/i)?.[1] || ref,
-    }
-  }
-  return {
-    cfg: { user: `postgres.${ref}`, password: env.SUPABASE_DB_PASSWORD_SYDNEY, host: 'aws-1-ap-southeast-2.pooler.supabase.com', port: 5432, database: 'postgres', ssl: { rejectUnauthorized: false }, options: '-c default_transaction_read_only=on', connectionTimeoutMillis: 15000 },
-    ref,
-  }
-}
-
-async function pull(envFile) {
-  const t = target(readEnv(envFile))
-  const c = new pg.Client(t.cfg)
-  await c.connect()
+/*
+ * CONNECTIONS come from the shared helper (scripts/lib/db-credentials.mjs).
+ * This file used to carry its own env-file reader, its own connection parser
+ * and a hardcoded pooler host. --a and --b now name PROJECTS ("prod", "test",
+ * or a bare project ref), not env files, so no connection string is assembled
+ * anywhere and a percent-encoded password can no longer fail as a bare 28P01.
+ */
+async function pull(project) {
+  const { client: c, ref } = await openProject(project, { readOnly: true })
   try {
     await c.query('BEGIN READ ONLY')
     const def = (await c.query(
@@ -69,7 +41,7 @@ async function pull(envFile) {
     const migs = (await c.query(
       `select version from supabase_migrations.schema_migrations order by version`)).rows.map(r => r.version)
     await c.query('ROLLBACK')
-    return { ref: t.ref, def, migs }
+    return { ref, def, migs }
   } finally { await c.end() }
 }
 

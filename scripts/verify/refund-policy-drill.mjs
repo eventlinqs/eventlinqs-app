@@ -17,49 +17,32 @@
  *
  * TEST ONLY, guarded.
  *
- * USAGE: node scripts/verify/refund-policy-drill.mjs
+ * USAGE: node scripts/verify/refund-policy-drill.mjs --project test
+ *
+ * CONNECTION: through the shared helper (scripts/lib/db-credentials.mjs). The
+ * private env reader and connection parser that used to live here are gone.
+ *
+ * THIS DRILL IS TEST-ONLY, and stays TEST-only. The generic preflight refuses
+ * production unless it is approved; this script refuses it even when it IS
+ * approved, because the drill writes policy fixtures and there is no version of
+ * that which belongs on the live database. The TEST ref is resolved through
+ * refForAlias rather than retyped, so there is no second literal to drift.
  */
-import { readFileSync, existsSync } from 'node:fs'
-import pg from 'pg'
-import { assertNotProduction } from '../lib/production-write-preflight.mjs'
+import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
+import { refForAlias } from '../lib/db-credentials.mjs'
 
-const TEST_PROJECT_REF = 'vkapkibzokmfaxqogypq'
-
-function readEnvFile(file) {
-  if (!existsSync(file)) { console.error(`env file not found: ${file}`); process.exit(2) }
-  const env = {}
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const t = line.trim()
-    if (!t || t.startsWith('#') || !t.includes('=')) continue
-    const i = t.indexOf('=')
-    env[t.slice(0, i).trim()] = t.slice(i + 1).trim().replace(/^["']|["']$/g, '')
-  }
-  return env
+const target = assertNotProductionDatabase()
+const TEST_PROJECT_REF = refForAlias('test')
+if (!TEST_PROJECT_REF) {
+  console.error('REFUSED: the TEST project ref could not be read from .env.test.')
+  process.exit(1)
 }
-
-const env = readEnvFile('.env.test')
-assertNotProduction({ envFile: '.env.test', url: env.NEXT_PUBLIC_SUPABASE_URL })
-const ref = (env.NEXT_PUBLIC_SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1]
-if (ref !== TEST_PROJECT_REF) { console.error(`REFUSED: project ${ref} is not TEST`); process.exit(1) }
-
-function parseConn(s) {
-  const schemeEnd = s.indexOf('://'), at = s.lastIndexOf('@')
-  const creds = s.slice(schemeEnd + 3, at), sep = creds.indexOf(':')
-  const tail = s.slice(at + 1), cut = tail.search(/[/?]/)
-  const hostPort = cut === -1 ? tail : tail.slice(0, cut)
-  const rest = cut === -1 ? '' : tail.slice(cut)
-  const [host, port] = hostPort.split(':')
-  return {
-    user: decodeURIComponent(creds.slice(0, sep)),
-    password: creds.slice(sep + 1),
-    host,
-    port: Number(port || 5432),
-    database: (rest.split('?')[0] || '/postgres').replace(/^\//, '') || 'postgres',
-  }
+if (target.ref !== TEST_PROJECT_REF) {
+  console.error(`REFUSED: project ${target.ref} is not TEST (${TEST_PROJECT_REF}).`)
+  console.error('This drill writes policy fixtures and runs on TEST only.')
+  process.exit(1)
 }
-
-const client = new pg.Client({ ...parseConn(env.SUPABASE_DB_URL.trim()), ssl: { rejectUnauthorized: false } })
-await client.connect()
+const client = await target.connect()
 
 const hr = t => { console.log('\n' + '='.repeat(90)); console.log('  ' + t); console.log('='.repeat(90)) }
 let failures = 0

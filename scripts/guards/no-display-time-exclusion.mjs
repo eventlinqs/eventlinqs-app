@@ -97,7 +97,18 @@ const rel = (p) => relative(ROOT, p).split(sep).join('/')
  * and nobody has to remember to register it.
  */
 const inScope = (src) =>
-  /\.from\(\s*'events'\s*\)/.test(src) && /eq\(\s*'status'\s*,\s*'published'\s*\)/.test(src)
+  /\.from\(\s*'events'\s*\)/.test(src) &&
+  (/eq\(\s*'status'\s*,\s*'published'\s*\)/.test(src) ||
+    // ADDED 25 August 2026, and this guard's scope-collapse canary is why it was
+    // noticed rather than silently lost. On that day the publication predicate
+    // was moved out of seventeen hand-written copies into the shared
+    // PUBLIC_EVENT_MATCH / applyPublicEventVisibility in
+    // src/lib/events/public-visibility.ts. This detector still looked for the
+    // literal `.eq('status', 'published')`, so the derived scope fell from 15
+    // files to 12 and the guard refused to report a PASS it could no longer
+    // stand behind. Exactly the behaviour the floor exists for: a guard that
+    // scans less than it used to must say so instead of getting quieter.
+    /PUBLIC_EVENT_MATCH|applyPublicEventVisibility/.test(src))
 
 /** Does this expression mean "now"? */
 const MEANS_NOW = /\bnow\b|nowIso|new Date\(\s*\)|Date\.now/i

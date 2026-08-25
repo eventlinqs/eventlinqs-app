@@ -23,45 +23,19 @@
  * exposure statement, and it does that by NAME so the report is specific.
  *
  * Read-only, enforced server-side with default_transaction_read_only=on.
- * USAGE: node scripts/probe/grant-shape-probe.mjs --env <env file>
+ * USAGE: node scripts/probe/grant-shape-probe.mjs --project test
+ *
+ * CONNECTION: through the shared helper, never assembled here. See
+ * scripts/lib/db-credentials.mjs.
  */
-import { readFileSync, existsSync } from 'node:fs'
-import pg from 'pg'
+import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
-const argv = process.argv.slice(2)
-const arg = (n, d = null) => { const i = argv.indexOf(n); return i === -1 ? d : argv[i + 1] }
-const ENV_FILE = arg('--env')
-if (!ENV_FILE || !existsSync(ENV_FILE)) { console.error('usage: --env <env file>'); process.exit(2) }
-
-const env = {}
-for (const line of readFileSync(ENV_FILE, 'utf8').split(/\r?\n/)) {
-  const t = line.trim()
-  if (!t || t.startsWith('#') || !t.includes('=')) continue
-  const i = t.indexOf('=')
-  const v = t.slice(i + 1).trim().replace(/^["']|["']$/g, '')
-  env[t.slice(0, i).trim()] = v.startsWith('#') ? '' : v
-}
-const ref = (env.NEXT_PUBLIC_SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] || ''
-let cfg
-if (env.SUPABASE_DB_URL) {
-  const s = env.SUPABASE_DB_URL.trim()
-  const at = s.lastIndexOf('@'), se = s.indexOf('://')
-  const creds = s.slice(se + 3, at), sep = creds.indexOf(':')
-  const tail = s.slice(at + 1), cut = tail.search(/[/?]/)
-  const hp = cut === -1 ? tail : tail.slice(0, cut), colon = hp.indexOf(':')
-  cfg = { user: creds.slice(0, sep), password: creds.slice(sep + 1), host: colon === -1 ? hp : hp.slice(0, colon), port: Number(colon === -1 ? 5432 : hp.slice(colon + 1)) }
-} else {
-  cfg = { user: `postgres.${ref}`, password: env.SUPABASE_DB_PASSWORD_SYDNEY, host: 'aws-1-ap-southeast-2.pooler.supabase.com', port: 5432 }
-}
-const client = new pg.Client({
-  ...cfg, database: 'postgres', ssl: { rejectUnauthorized: false },
-  options: '-c default_transaction_read_only=on', connectionTimeoutMillis: 15000,
-})
+const target = assertNotProductionDatabase()
+const ref = target.ref
+const client = await target.connect({ readOnly: true })
 
 const hr = t => console.log(`\n${'='.repeat(74)}\n${t}\n${'='.repeat(74)}`)
 const scanned = []
-
-await client.connect()
 try {
   await client.query('BEGIN READ ONLY')
   hr(`PRIVILEGE SHAPE  |  project ${ref}`)

@@ -48,19 +48,41 @@ describe('PROOF 1 of 4: discovery never selects a non-public event', () => {
 
     // Pair each `.from('events')` with the `.select(...)` that follows it and
     // the ~15 lines of chained filters after that.
-    const blocks = src.split(/\.from\(\s*['"]events['"]\s*\)/).slice(1)
-    expect(blocks.length).toBeGreaterThan(0)
+    // THE WINDOW LOOKS BACKWARDS AS WELL AS FORWARDS, since 25 August 2026.
+    // `applyPublicEventVisibility(supabase.from('events').select(COLS))` WRAPS
+    // the query, so the guard token sits BEFORE the `.from('events')` it
+    // protects. A forward-only window could not see it and reported the
+    // best-guarded query in the file as unguarded.
+    const marks: number[] = []
+    const finder = /\.from\(\s*['"]events['"]\s*\)/g
+    let hit: RegExpExecArray | null
+    while ((hit = finder.exec(src)) !== null) marks.push(hit.index)
+    expect(marks.length).toBeGreaterThan(0)
 
     const unguarded: string[] = []
-    for (const block of blocks) {
-      const window = block.slice(0, 700)
-      const selectMatch = window.match(/\.select\(\s*([^)]*)\)/)
+    for (const at of marks) {
+      const window = src.slice(Math.max(0, at - 200), at + 700)
+      // The SELECT is read forward-only. Reading it from the back-extended
+      // window could pick up the previous query's select list and exempt this
+      // one by mistake.
+      const forward = src.slice(at, at + 700)
+      const selectMatch = forward.match(/\.select\(\s*([^)]*)\)/)
       const selectList = selectMatch?.[1]?.trim() ?? ''
 
       // Exempt: pure identifier reads used for joins and taste signals.
       if (ID_ONLY_SELECT.test(selectList)) continue
 
-      const guarded = /\.eq\(\s*['"]visibility['"]\s*,\s*['"]public['"]\s*\)/.test(window)
+      // TWO ACCEPTED SHAPES since 25 August 2026. The publication predicate moved
+      // out of seventeen hand-written copies into ONE definition in
+      // src/lib/events/public-visibility.ts, after /events rendered a correct
+      // header count of 2 beside a rail of 8 deleted events. Both the literal
+      // form and the shared form mean the same thing, and the shared form is the
+      // one new code must use; scripts/guards/one-visibility-source.mjs is what
+      // forbids going back to the literal.
+      const guarded =
+        /\.eq\(\s*['"]visibility['"]\s*,\s*['"]public['"]\s*\)/.test(window) ||
+        /\.match\(\s*PUBLIC_EVENT_MATCH\s*\)/.test(window) ||
+        /applyPublicEventVisibility/.test(window)
       if (!guarded) unguarded.push(selectList.slice(0, 80))
     }
 
@@ -71,7 +93,12 @@ describe('PROOF 1 of 4: discovery never selects a non-public event', () => {
 describe('PROOF 3 of 4: the sitemap', () => {
   it('only ever lists public events', () => {
     const src = code(read('src/app/sitemap.ts'))
-    expect(src).toMatch(/\.eq\(\s*['"]visibility['"]\s*,\s*['"]public['"]\s*\)/)
+    // Either the literal pair or the shared rule. See the note in PROOF 1.
+    expect(
+      /\.eq\(\s*['"]visibility['"]\s*,\s*['"]public['"]\s*\)/.test(src) ||
+        /\.match\(\s*PUBLIC_EVENT_MATCH\s*\)/.test(src) ||
+        /applyPublicEventVisibility/.test(src),
+    ).toBe(true)
   })
 
   it('does not use a deny-list that would leak a future enum value', () => {

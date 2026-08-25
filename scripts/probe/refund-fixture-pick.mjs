@@ -14,38 +14,21 @@
  *     stock left
  *
  * Read-only, enforced server-side with default_transaction_read_only=on.
- * USAGE: node scripts/probe/refund-fixture-pick.mjs --env .env.test [--email <organiser email>]
+ * USAGE: node scripts/probe/refund-fixture-pick.mjs --project test [--email <organiser email>]
+ *
+ * CONNECTION: through the shared helper, never assembled here. This script used
+ * to read an --env file and hand-split SUPABASE_DB_URL itself, which is one of
+ * the copies of that parser that made a percent-encoded password fail as 28P01
+ * with no explanation. See scripts/lib/db-credentials.mjs.
  */
-import { readFileSync, existsSync } from 'node:fs'
-import pg from 'pg'
+import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
 const argv = process.argv.slice(2)
 const arg = (n, d = null) => { const i = argv.indexOf(n); return i === -1 ? d : argv[i + 1] }
-const ENV_FILE = arg('--env', '.env.test')
 const EMAIL = arg('--email', null)
 
-if (!existsSync(ENV_FILE)) { console.error(`env file not found: ${ENV_FILE}`); process.exit(2) }
-const env = {}
-for (const line of readFileSync(ENV_FILE, 'utf8').split(/\r?\n/)) {
-  const t = line.trim()
-  if (!t || t.startsWith('#') || !t.includes('=')) continue
-  const i = t.indexOf('=')
-  const v = t.slice(i + 1).trim().replace(/^["']|["']$/g, '')
-  env[t.slice(0, i).trim()] = v.startsWith('#') ? '' : v
-}
-const s = env.SUPABASE_DB_URL.trim()
-const at = s.lastIndexOf('@'), se = s.indexOf('://')
-const creds = s.slice(se + 3, at), sep = creds.indexOf(':')
-const tail = s.slice(at + 1), cut = tail.search(/[/?]/)
-const hp = cut === -1 ? tail : tail.slice(0, cut), colon = hp.indexOf(':')
-const client = new pg.Client({
-  user: creds.slice(0, sep), password: creds.slice(sep + 1),
-  host: colon === -1 ? hp : hp.slice(0, colon), port: Number(colon === -1 ? 5432 : hp.slice(colon + 1)),
-  database: 'postgres', ssl: { rejectUnauthorized: false },
-  options: '-c default_transaction_read_only=on', connectionTimeoutMillis: 15000,
-})
-
-await client.connect()
+const target = assertNotProductionDatabase()
+const client = await target.connect({ readOnly: true })
 try {
   await client.query('BEGIN READ ONLY')
 

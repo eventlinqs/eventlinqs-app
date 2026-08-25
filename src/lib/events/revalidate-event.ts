@@ -1,5 +1,6 @@
 import 'server-only'
 import { revalidatePath, updateTag } from 'next/cache'
+import { EVENT_DATA_CACHE_TAGS } from './cache-tags'
 import { getAllCities } from '@/lib/cities/data'
 import { communitiesFromTags } from '@/lib/communities/tag-bridge'
 
@@ -170,6 +171,67 @@ export function revalidateEventSurfaces(event: RevalidatableEvent): string[] {
   const mark = (path: string) => {
     revalidatePath(path)
     invalidated.push(path)
+  }
+
+  /*
+   * TWO CACHE LAYERS, AND THIS USED TO CLEAR ONLY ONE. Added 25 August 2026.
+   *
+   * `revalidatePath` invalidates the ROUTE cache. It does NOT invalidate an
+   * `unstable_cache` entry that carries an explicit tag: those are a separate,
+   * server-side DATA cache and they need `revalidateTag`. Every mutation on this
+   * platform therefore cleared the pages and left the data underneath them
+   * untouched, and the data is what the rails read.
+   *
+   * The visible consequence, on production, on 25 August 2026: after the demo
+   * catalogue was purged, /events rendered a correct header count of 2 beside a
+   * "Popular this week" rail listing EIGHT deleted events, because the rail read
+   * through a tagged data cache with a thirty minute window that nothing had ever
+   * invalidated. A visitor clicking any of them got a 404.
+   *
+   * Measured, on TEST, with a production build, before this change: an event set
+   * to draft was still served by /events for 63 seconds and by /sitemap.xml for
+   * longer than the 150 second measuring window.
+   *
+   * EVERY TAG IS LISTED, not a curated subset. Deciding which tags an edit could
+   * have affected is the same reasoning that produced `if (has_reserved_seating)`
+   * and it is wrong in the direction that leaves stale rows on a public page. The
+   * cost of over-invalidating is one cold read; the cost of under-invalidating is
+   * selling a ticket to an event that does not exist.
+   */
+  /*
+   * `updateTag`, NOT `revalidateTag`, and the difference is the whole point.
+   *
+   * From the guide shipped with next@16.3.0
+   * (node_modules/next/dist/docs/.../09-revalidating.md):
+   *
+   *   revalidateTag  "invalidates cache entries by tag using
+   *                   stale-while-revalidate semantics - stale content is served
+   *                   immediately while fresh content loads in the background"
+   *   updateTag      "immediately expires cached data for read-your-own-writes
+   *                   scenarios - the user sees their change right away instead
+   *                   of stale content"
+   *
+   * Stale-while-revalidate is exactly the failure being fixed: the next visitor
+   * after a delete would still be served the deleted event, which is how eight
+   * purged events survived on production. For a row that must no longer be
+   * visible, serving it once more is not an acceptable trade.
+   *
+   * `updateTag` is Server-Action only. Every caller of this function is a server
+   * action (dashboard/events/actions.ts, actions/dynamic-pricing.ts), and this
+   * file already calls updateTag('picker-cities') a few lines below, so the
+   * constraint is already met and already proven in this exact context.
+   */
+  /*
+   * TAGS ARE NOT PATHS, and the returned list is only paths.
+   *
+   * tests/unit/events/revalidate-event.test.ts asserts "the returned list is
+   * evidence, not decoration: every entry was a real call" to revalidatePath.
+   * Pushing `tag:...` entries into the same array broke that invariant
+   * immediately (13 reported, 8 actually called) and the test caught it, which is
+   * the test doing exactly its job.
+   */
+  for (const tag of EVENT_DATA_CACHE_TAGS) {
+    updateTag(tag)
   }
 
   // The event's own page, and the two surfaces every event is on.

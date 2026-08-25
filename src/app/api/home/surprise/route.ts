@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 /**
  * GET /api/home/surprise - server-side curated event picks for the
@@ -73,8 +74,7 @@ export async function GET(request: Request) {
       // in another state.
       'id, slug, title, cover_image_url, start_date, timezone, venue_city, category:event_categories(name, slug)',
     )
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     .or(listingWindowOrPredicate(new Date(nowIso)))
     .order('start_date', { ascending: true })
     .limit(30)

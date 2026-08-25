@@ -39,7 +39,7 @@ import pg from 'pg'
 import { randomUUID } from 'node:crypto'
 
 const target = assertNotProductionDatabase()
-const client = new pg.Client(target.clientConfig)
+const client = await target.connect()
 
 const fails = []
 function assert(cond, msg, detail) {
@@ -86,7 +86,6 @@ function distanceKm(aLat, aLon, bLat, bLon) {
   return 2 * R * Math.asin(Math.sqrt(h))
 }
 
-await client.connect()
 console.log(`\n[target] ${target.host} / ${target.database}`)
 
 try {

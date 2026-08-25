@@ -13,6 +13,7 @@ import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { getSiteUrl } from '@/lib/site-url'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 // ISR: every hero category is the same for all anonymous visitors. The
 // 5-minute revalidate window matches /events/[slug] and keeps the live
@@ -86,8 +87,7 @@ export default async function CategoryPage({ params }: Props) {
         .select(
           'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories!inner(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
         )
-        .eq('status', 'published')
-        .eq('visibility', 'public')
+        .match(PUBLIC_EVENT_MATCH)
         .or(listingWindowOrPredicate(new Date()))
         .in('category.slug', categorySlugs)
         .order('start_date', { ascending: true })

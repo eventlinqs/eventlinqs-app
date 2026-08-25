@@ -16,9 +16,9 @@
  *
  * THREE REFUSALS, because a script that can write to production is a script that
  * eventually will:
- *   1. assertNotProduction on the Supabase URL (the shared preflight).
+ *   1. assertNotProductionDatabase on the connection actually opened.
  *   2. An explicit allowlist check on the project ref: TEST only, by name.
- *   3. The connection string is read from .env.test and nowhere else.
+ *   3. The credential is resolved by the shared helper, never assembled here.
  *
  * The migration file remains the source of truth. After this, the same file still
  * has to go through `supabase db push --linked` for staging and production, and
@@ -28,8 +28,7 @@
  *   node scripts/verify/apply-migration-to-test.mjs --file supabase/migrations/<name>.sql
  */
 import { readFileSync, existsSync } from 'node:fs'
-import pg from 'pg'
-import { assertNotProduction } from '../lib/production-write-preflight.mjs'
+import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
 const TEST_PROJECT_REF = 'vkapkibzokmfaxqogypq'
 
@@ -39,63 +38,30 @@ const FILE = arg('--file')
 if (!FILE) { console.error('usage: --file supabase/migrations/<name>.sql'); process.exit(2) }
 if (!existsSync(FILE)) { console.error(`migration not found: ${FILE}`); process.exit(2) }
 
-function readEnvFile(file) {
-  const env = {}
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const t = line.trim()
-    if (!t || t.startsWith('#') || !t.includes('=')) continue
-    const i = t.indexOf('=')
-    env[t.slice(0, i).trim()] = t.slice(i + 1).trim().replace(/^["']|["']$/g, '')
-  }
-  return env
-}
-
-const env = readEnvFile('.env.test')
-// Refusal 1: the shared preflight, on the same URL every other script checks.
-assertNotProduction({ envFile: '.env.test', url: env.NEXT_PUBLIC_SUPABASE_URL })
-
-// Refusal 2: the project ref must be the TEST one, by name, not merely "not production".
-const ref = (env.NEXT_PUBLIC_SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1]
-if (ref !== TEST_PROJECT_REF) {
-  console.error(`  REFUSED: .env.test points at project '${ref}', and this script only ever writes to '${TEST_PROJECT_REF}'.`)
+/*
+ * THE TARGET AND THE CREDENTIAL both come from the shared helper
+ * (scripts/lib/db-credentials.mjs), which resolves the project, finds the
+ * password, builds the endpoint and refuses production. This file used to read
+ * .env.test itself and carry its own connection parser.
+ *
+ * The TEST-ONLY refusal is KEPT and is deliberately stricter than the shared
+ * preflight: that one refuses production unless approved, this one refuses
+ * anything that is not TEST even when production IS approved, because a script
+ * whose whole name is "apply migration to test" must never be talked into
+ * applying one somewhere else.
+ */
+const target = assertNotProductionDatabase('test')
+if (target.ref !== TEST_PROJECT_REF) {
+  console.error(`  REFUSED: resolved project '${target.ref}', and this script only ever writes to '${TEST_PROJECT_REF}'.`)
   process.exit(1)
 }
-
-// Refusal 3: the connection string comes from .env.test only.
-const conn = env.SUPABASE_DB_URL
-if (!conn) { console.error('  REFUSED: no SUPABASE_DB_URL in .env.test'); process.exit(1) }
+const ref = target.ref
 
 const sql = readFileSync(FILE, 'utf8')
 console.log(`  applying ${FILE}`)
 console.log(`  to project ${ref} (TEST)`)
 console.log(`  ${sql.length} characters, ${sql.split('\n').length} lines`)
 
-/*
- * PARSED BY HAND, NOT HANDED TO new URL(). The TEST password contains '?' and '$',
- * which are legal in a Postgres password and illegal unencoded in a URL, so
- * pg-connection-string threw ERR_INVALID_URL on a connection string that is
- * perfectly valid. Splitting on the LAST '@' is what makes this safe: a password
- * may contain '@', a hostname may not.
- */
-function parseConn(s) {
-  const schemeEnd = s.indexOf('://')
-  const at = s.lastIndexOf('@')
-  const creds = s.slice(schemeEnd + 3, at)
-  const sep = creds.indexOf(':')
-  const tail = s.slice(at + 1)
-  const cut = tail.search(/[/?]/)
-  const hostPort = cut === -1 ? tail : tail.slice(0, cut)
-  const rest = cut === -1 ? '' : tail.slice(cut)
-  const [host, port] = hostPort.split(':')
-  const database = (rest.split('?')[0] || '/postgres').replace(/^\//, '') || 'postgres'
-  return {
-    user: decodeURIComponent(creds.slice(0, sep)),
-    password: creds.slice(sep + 1),
-    host,
-    port: Number(port || 5432),
-    database,
-  }
-}
 
 /*
  * RECORD THE VERSION IN THE LEDGER, ADDED 2026-08-20.
@@ -130,11 +96,8 @@ if (!VERSION) {
 
 const RECORD_ONLY = argv.includes('--record-only')
 
-const cfg = parseConn(conn.trim())
-console.log(`  host ${cfg.host}:${cfg.port} db ${cfg.database} user ${cfg.user}`)
 console.log(`  version ${VERSION}  name ${NAME}${RECORD_ONLY ? '  [RECORD-ONLY: ledger row only, SQL not run]' : ''}`)
-const client = new pg.Client({ ...cfg, ssl: { rejectUnauthorized: false } })
-await client.connect()
+const client = await target.connect()
 try {
   if (!RECORD_ONLY) {
     await client.query(sql)

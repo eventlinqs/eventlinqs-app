@@ -55,8 +55,7 @@ const STAGE = arg('--stage', 'stage1')
 if (!['stage1', 'full'].includes(STAGE)) { console.error('--stage must be stage1 or full'); process.exit(2) }
 
 const target = assertNotProductionDatabase()
-const client = new pg.Client(target.clientConfig)
-
+const client = await target.connect()
 const fails = []
 const scanned = []
 const hr = t => console.log(`\n${'='.repeat(74)}\n${t}\n${'='.repeat(74)}`)
@@ -137,8 +136,6 @@ async function asAnon(sql) {
     return { ok: false, code: err.code, message: err.message.split('\n')[0] }
   }
 }
-
-await client.connect()
 try {
   await client.query('BEGIN')
   hr(`TARGET ${target.ref} (TEST)  |  STAGE: ${STAGE}  |  one transaction, ROLLED BACK at the end`)

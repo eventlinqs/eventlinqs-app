@@ -13,38 +13,18 @@
  * is itself part of what this proves: if anything DID change, the counts move
  * and TEST is still left alone.
  *
- * Usage: node --env-file=.env.test scripts/verify/taxonomy-rerun-rehearsal.mjs
+ * Usage: node scripts/verify/taxonomy-rerun-rehearsal.mjs --project test
+ *
+ * CONNECTION: through the shared helper. The private connection parser and the
+ * hardcoded production-ref string that used to live here are gone; both now live
+ * once, in scripts/lib/db-credentials.mjs. The old preflight judged
+ * NEXT_PUBLIC_SUPABASE_URL rather than the connection actually opened.
  */
 import { readFileSync } from 'node:fs'
-import pg from 'pg'
-import { assertNotProduction } from '../lib/production-write-preflight.mjs'
+import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
-assertNotProduction()
-
-const conn = process.env.SUPABASE_DB_URL
-if (!conn || /gndnldyfudbytbboxesk/.test(conn)) {
-  console.error('REFUSING: missing or production connection string.')
-  process.exit(1)
-}
-
-function parseConn(raw) {
-  const [, rest] = raw.trim().replace(/^"|"$/g, '').split('://')
-  const at = rest.lastIndexOf('@')
-  const creds = rest.slice(0, at)
-  const sep = creds.indexOf(':')
-  const [hostPort, database] = rest.slice(at + 1).split('/')
-  const [host, port] = hostPort.split(':')
-  return {
-    user: creds.slice(0, sep),
-    password: creds.slice(sep + 1),
-    host,
-    port: Number(port ?? 5432),
-    database: (database ?? 'postgres').split('?')[0],
-  }
-}
-
-const client = new pg.Client({ ...parseConn(conn), ssl: { rejectUnauthorized: false } })
-await client.connect()
+const target = assertNotProductionDatabase()
+const client = await target.connect()
 
 const FILES = [
   'supabase/migrations/20260808000004_category_taxonomy_r1.sql',
