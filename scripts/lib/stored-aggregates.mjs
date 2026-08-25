@@ -108,6 +108,7 @@ export const STORED_AGGREGATES = [
   /* ------------------------------------------------------------------ *
    * ACCEPTED AS THEY ARE, BY FOUNDER RULING, 25 AUGUST 2026.
    * Reconciled anyway, so a drift is visible while it is unfixed.
+   * The ruling and the evidence: docs/perf/ACCEPTED-STORED-DRIFTS-2026-08-25.md
    * ------------------------------------------------------------------ */
   {
     column: 'ticket_tiers.sold_count',
