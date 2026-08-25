@@ -14,6 +14,7 @@ import { LogoUploader } from '@/components/organisation/logo-uploader'
 import { TaxDetailsForm } from '@/components/organisation/tax-details-form'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 import { resolveLogoPlacement } from '@/lib/media/logo-pipeline'
+import { captureException } from '@/lib/observability/sentry'
 
 export default async function OrganisationPage({
   searchParams,
@@ -79,7 +80,8 @@ export default async function OrganisationPage({
     if (fetched) {
       try {
         logoPlacement = (await resolveLogoPlacement(Buffer.from(fetched.bytes))).placement
-      } catch {
+      } catch (error) {
+        captureException(error, { where: 'app/(dashboard)/dashboard/organisation/page:84' })
         logoPlacement = 'on-tile'
       }
     }

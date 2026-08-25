@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 /**
  * Read the live query string at call time. We deliberately avoid
@@ -234,7 +235,8 @@ export function LocationPicker({
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('el_city_updated'))
       }
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/ui/location-picker:239' })
       // Network error swallowed; router.refresh() will no-op gracefully.
     }
     closeDialog()

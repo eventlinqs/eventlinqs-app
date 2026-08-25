@@ -89,7 +89,8 @@ for (const file of walk(ROOT)) {
   let text
   try {
     text = readFileSync(file, 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-control-characters:93]', error instanceof Error ? error.message : error)
     continue
   }
   scanned++
@@ -147,7 +148,8 @@ for (const file of walk(path.join(ROOT, 'scripts'))) {
   let head
   try {
     head = readFileSync(file, 'utf8').slice(0, 2)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-control-characters:152]', error instanceof Error ? error.message : error)
     continue
   }
   if (head === '#!') shebangs.push(path.relative(ROOT, file).replace(/\\/g, '/'))

@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { getSpineSceneForCommunity } from './spine'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Community-aware photo pipeline backed by Pexels.
@@ -86,7 +87,8 @@ async function fetchCommunityHeroPhotoRaw(query: string): Promise<string | null>
     const photo = pool[simpleHash(query + ':community-hero') % pool.length]
 
     return photo.src.landscape ?? photo.src.large
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/images/community-photo:91' })
     return null
   }
 }

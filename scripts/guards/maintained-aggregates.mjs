@@ -129,7 +129,8 @@ function walk(dir, test, out = []) {
   let names
   try {
     names = readdirSync(dir)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/maintained-aggregates:133]', error instanceof Error ? error.message : error)
     return out
   }
   for (const name of names) {

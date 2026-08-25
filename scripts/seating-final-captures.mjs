@@ -520,7 +520,9 @@ let merged = proofs
 try {
   const prior = JSON.parse(fs.readFileSync(`${OUT}/capture-proofs.json`, 'utf8'))
   merged = { ...prior, ...proofs, notes: { ...prior.notes, ...proofs.notes } }
-} catch {}
+} catch (error) {
+  console.warn('[scripts/seating-final-captures:524]', error instanceof Error ? error.message : error)
+    }
 fs.writeFileSync(`${OUT}/capture-proofs.json`, JSON.stringify(merged, null, 2))
 console.log('[cap] COMPLETE')
 

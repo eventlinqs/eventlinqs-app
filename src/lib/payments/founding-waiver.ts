@@ -36,6 +36,7 @@
  * both call it.
  */
 import type { FeeRates } from './fee-math'
+import { captureException } from '@/lib/observability/sentry'
 
 /** The founder's cap on how many organisations may hold the waiver at once. */
 export const FOUNDING_WAIVER_CAP = 50
@@ -180,7 +181,8 @@ export async function getFoundingWaiver(
     if (error || !data) return { feeFreeUntil: null, active: false }
     const feeFreeUntil = data.founding_fee_free_until ?? null
     return { feeFreeUntil, active: isWaiverActive(feeFreeUntil, now) }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/payments/founding-waiver:185' })
     return { feeFreeUntil: null, active: false }
   }
 }

@@ -86,7 +86,9 @@ function loadEnv() {
       const i = line.indexOf('=')
       env[line.slice(0, i).trim()] = line.slice(i + 1).trim().replace(/^["']|["']$/g, '')
     }
-  } catch { /* fixture mode does not require env */ }
+  } catch (error) {
+    console.warn('[scripts/seed-events-catalogue:90]', error instanceof Error ? error.message : error)
+    /* fixture mode does not require env */ }
   return env
 }
 

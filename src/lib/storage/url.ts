@@ -21,6 +21,7 @@
  */
 
 import { getSupabaseUrl } from '@/lib/supabase/env'
+import { captureException } from '@/lib/observability/sentry'
 
 function readSupabaseUrl(): string | undefined {
   // Resolver, not the raw base var: on a TEST-backed preview the raw var still
@@ -97,7 +98,8 @@ export function getActiveStorageDomain(): string {
   if (!supabaseUrl) return ''
   try {
     return new URL(supabaseUrl).hostname
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/storage/url:102' })
     return ''
   }
 }

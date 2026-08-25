@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Category-aware photo pipeline backed by Pexels.
@@ -129,7 +130,8 @@ async function fetchPexelsPoolRaw(query: string): Promise<PexelsPhoto[]> {
       alt: photo.alt ?? query,
       photographer: photo.photographer,
     }))
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/images/category-photo:134' })
     return [FALLBACK]
   }
 }

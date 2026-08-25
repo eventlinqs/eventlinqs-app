@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { encodeRefCode } from '@/lib/growth/referrals'
+import { captureException } from '@/lib/observability/sentry'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,8 @@ export async function GET() {
       { refCode },
       { headers: { 'Cache-Control': 'private, no-store' } },
     )
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/api/me/ref/route:27' })
     return NextResponse.json({ refCode: null }, { headers: { 'Cache-Control': 'no-store' } })
   }
 }

@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
+import { captureException } from '@/lib/observability/sentry'
 // Named type imports, not the `sharp.Metadata` namespace form: sharp 0.35 replaced
 // the 0.34 `export =` shape with real ESM named exports, so the qualified form is
 // a compile error. See the same note in image-pipeline.ts.
@@ -120,7 +121,8 @@ export async function POST(
   let meta: Metadata
   try {
     meta = await sharp(input, { failOn: 'error' }).metadata()
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/api/launch/[code]/cover/route:125' })
     return NextResponse.json({ ok: false, error: REFUSED }, { status: 415 })
   }
   const width = meta.width ?? 0
@@ -154,7 +156,8 @@ export async function POST(
       })
       .webp({ quality: 82 })
       .toBuffer({ resolveWithObject: true })
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/api/launch/[code]/cover/route:160' })
     return NextResponse.json({ ok: false, error: REFUSED }, { status: 415 })
   }
 

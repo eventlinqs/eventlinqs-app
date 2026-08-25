@@ -170,7 +170,9 @@ const INIT = () => {
           ch: this.canvas?.height ?? 0,
         })
         if (runs.length > 20000) runs.splice(0, runs.length - 20000)
-      } catch {}
+      } catch (error) {
+        console.warn('[scripts/seating-final-proofs:174]', error instanceof Error ? error.message : error)
+    }
       return orig.call(this, text, x, y, ...rest)
     }
   }

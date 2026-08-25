@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { stripComments } from '../../../scripts/lib/js-source.mjs'
 
 /**
  * THE REGISTRY CANNOT QUIETLY LOSE A GUARD.
@@ -26,8 +27,21 @@ import { join } from 'node:path'
 const ROOT = join(__dirname, '..', '..', '..')
 const RUNNER = join(ROOT, 'scripts', 'guards', 'run-guards.mjs')
 
+/*
+ * COMMENTS ARE STRIPPED BEFORE THE ARRAY IS READ, and that is not tidiness.
+ *
+ * Each registration in run-guards.mjs is preceded by a paragraph explaining the
+ * incident it came from. On 25 August 2026 one of those paragraphs contained the
+ * word "guard's". That single apostrophe flipped the quote parity for every
+ * entry after it, so `'([^']+)'` began pairing the tail of one comment with the
+ * head of the next, and THREE of the five tests in this file went red naming
+ * fragments of English prose as registered guards.
+ *
+ * The guard runner was correct the whole time. The reader was wrong, and it was
+ * wrong in the way that wastes the most time: loudly, and about the wrong file.
+ */
 function registeredGuards(): string[] {
-  const src = readFileSync(RUNNER, 'utf8')
+  const src = stripComments(readFileSync(RUNNER, 'utf8'))
   const block = /const GUARDS = \[([\s\S]*?)\n\]/.exec(src)
   if (!block) throw new Error('could not find the GUARDS array in run-guards.mjs')
   return [...block[1].matchAll(/'([^']+)'/g)].map((m) => m[1])

@@ -83,7 +83,8 @@ async function body(path) {
   try {
     const r = await fetch(BASE + path, { headers: { 'user-agent': 'visibility-drill' } })
     return await r.text()
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/verify/discovery-visibility-drill:87]', error instanceof Error ? error.message : error)
     return ''
   }
 }

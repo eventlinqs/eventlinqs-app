@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight, BookOpen, Send, Sparkles } from 'lucide-react'
 import type { GuidanceSurface } from '@/lib/guidance/registry'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 /**
  * Ask in context: the question is asked on the surface and answered on the
@@ -84,7 +85,8 @@ export function AskInContext({ surface }: { surface: GuidanceSurface }) {
           return
         }
         setAnswer(data.reply)
-      } catch {
+      } catch (error) {
+        reportClientError(error, { where: 'components/guidance/ask-in-context:89' })
         setError('No answer just now. The written guide below covers this.')
       } finally {
         setBusy(false)

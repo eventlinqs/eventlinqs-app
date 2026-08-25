@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * The dev-only signing secret. This constant is public (it lives in the repo),
@@ -104,7 +105,8 @@ export function validateAdmissionToken(
     }
 
     return { valid: true, queueId, eventId }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/queue/tokens:109' })
     return { valid: false }
   }
 }

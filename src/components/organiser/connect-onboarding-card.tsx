@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, Check, ExternalLink, Loader2, ShieldCheck } from 'lucide-react'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 /**
  * Country labels for the onboarding country selector.
@@ -152,7 +153,8 @@ export function ConnectOnboardingCard({
         return
       }
       window.location.assign(json.url)
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/organiser/connect-onboarding-card:157' })
       setErrorMessage('Network error. Check your connection and try again.')
     } finally {
       setSubmitting(false)

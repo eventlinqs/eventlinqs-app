@@ -9,6 +9,7 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { aggregateGmv, ANALYTICS_CURRENCY, type GmvOrderRow } from '@/lib/admin/analytics'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { checkStripeHealth, checkSupabaseHealth, checkRedisHealth, type HealthResult } from '@/lib/admin/health'
+import { captureException } from '@/lib/observability/sentry'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -197,7 +198,8 @@ async function GmvTile({ label, sinceMsAgo }: { label: string; sinceMsAgo: numbe
     // Exact-cents display (item 9 fix): never round revenue to whole dollars.
     const formatted = formatMoneyDisplay(netGmvCents, 'AUD')
     return <AdminStatTile label={label} value={formatted} hint="AUD, net of refunds; multi-currency view in A4" />
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/admin/(authed)/page:202' })
     return <AdminStatTile label={label} value="-" hint="orders table query failed" status="warn" />
   }
 }
@@ -213,7 +215,8 @@ async function NewOrganisersTile() {
       .gte('created_at', todayStart.toISOString())
     if (error) throw error
     return <AdminStatTile label="New organisers today" value={count ?? 0} />
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/admin/(authed)/page:219' })
     return <AdminStatTile label="New organisers today" value="-" hint="organisations table query failed" status="warn" />
   }
 }
@@ -227,7 +230,8 @@ async function KycQueueTile() {
       .in('payout_status', ['on_hold', 'restricted'])
     if (error) throw error
     return <AdminStatTile label="KYC queue depth" value={count ?? 0} hint="organisations on_hold or restricted" status={count && count > 0 ? 'warn' : 'ok'} />
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/admin/(authed)/page:234' })
     return <AdminStatTile label="KYC queue depth" value="-" hint="organisations table query failed" status="warn" />
   }
 }

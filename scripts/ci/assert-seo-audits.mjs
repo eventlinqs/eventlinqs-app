@@ -112,7 +112,8 @@ for (const file of files) {
   try {
     const lhr = JSON.parse(readFileSync(join(dir, file), 'utf8'))
     if (lhr?.categories?.seo) reports.push(lhr)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/ci/assert-seo-audits:116]', error instanceof Error ? error.message : error)
     failures.push(`could not parse ${join(dir, file)}`)
   }
 }

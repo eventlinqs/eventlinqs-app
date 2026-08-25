@@ -179,7 +179,8 @@ export function mainWorktreeRoot() {
     const i = gitdir.indexOf(marker)
     if (i === -1) return ''
     return gitdir.slice(0, i)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/lib/db-credentials:183]', error instanceof Error ? error.message : error)
     return ''
   }
 }

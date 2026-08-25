@@ -1,4 +1,5 @@
 import 'server-only'
+import { captureException } from '@/lib/observability/sentry'
 // Named type import, not the `sharp.Metadata` namespace form: sharp 0.35 replaced
 // the 0.34 `export =` shape with real ESM named exports, so the qualified form is
 // a compile error. See the same note in image-pipeline.ts.
@@ -152,7 +153,8 @@ export async function processOrganisationLogo(
   let meta: Metadata
   try {
     meta = await sharp(inputBuffer, { failOn: 'error' }).metadata()
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/media/logo-pipeline:157' })
     return { ok: false, error: REJECT_NOT_IMAGE }
   }
 

@@ -145,6 +145,76 @@ const DRILLS = [
     expect: "is no longer declared anywhere",
   },
   /*
+   * no-silent-catch, two drills.
+   *
+   * The class: an error from outside the process, discarded, with the code
+   * carrying on as though the call had succeeded and returned nothing. The
+   * instance was a 42703 on venues.slug inside a bare catch {} in
+   * src/app/sitemap.ts, which published zero venue URLs from the day it was
+   * written. Nothing failed. The sitemap was simply shorter than it should
+   * have been, and no gate in this repository could see it.
+   */
+  {
+    /*
+     * The incident itself, put back. This is the exact file and the exact
+     * shape: a Supabase query in a try, and a catch that says nothing.
+     */
+    name: 'the sitemap event query is wrapped in a catch that says nothing',
+    guard: `${GUARDS}/no-silent-catch.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: [
+      '  } catch (err) {',
+      '    // Sitemap must never 500. Fall through to the static entries already built,',
+      '    // but SAY SO: a silent catch on this exact shape hid a 42703 in the venue',
+      '    // block for the whole life of that block.',
+      "    console.error('[sitemap] event block failed:', err)",
+    ].join('\n'),
+    // The FIRST version of this drill removed only the binding and left the
+    // console.error, and the guard passed, correctly: a catch that logs is not
+    // silent whatever its binding says. The drill has to remove the voice, not
+    // the name.
+    replace: ['  } catch {', '    // drill: the voice removed'].join('\n'),
+    expect: 'silent around I/O',
+  },
+  {
+    /*
+     * The same shape on a compliance path. recordOrganiserMarketingConsent
+     * returns false either way, so a swallowed write failure is indistinguishable
+     * from a consent that was recorded and then declined.
+     */
+    name: 'a consent write failure is swallowed and reported to nobody',
+    guard: `${GUARDS}/no-silent-catch.mjs`,
+    file: 'src/lib/consent/record.ts',
+    find: [
+      '  } catch (error) {',
+      "    captureException(error, { where: 'lib/consent/record:56' })",
+      '    return false',
+    ].join('\n'),
+    replace: ['  } catch {', '    return false'].join('\n'),
+    expect: 'silent around I/O',
+  },
+  /*
+   * no-client-sentry-import, one drill.
+   *
+   * The class: a client component reaching @sentry/nextjs through a value
+   * import, which puts the whole SDK in the browser bundle. It has happened
+   * once already, through the four error boundaries, and client-error-report.ts
+   * was built to break the edge. The silent-catch sweep then very nearly
+   * rebuilt it in src/lib/launch/bill-ref.ts, which THE BILL imports.
+   */
+  {
+    name: 'a module a client component imports starts importing the Sentry SDK',
+    guard: `${GUARDS}/no-client-sentry-import.mjs`,
+    file: 'src/lib/launch/bill-ref.ts',
+    find: "import { KIT_CODE_LENGTH, isKitCode } from './kit-code'",
+    replace: [
+      "import { KIT_CODE_LENGTH, isKitCode } from './kit-code'",
+      "import { captureException } from '@/lib/observability/sentry'",
+      'void captureException',
+    ].join('\n'),
+    expect: 'reach the Sentry SDK',
+  },
+  /*
    * sitemap-resolves, four drills, one per check, because all four of these
    * failures were live in src/app/sitemap.ts at the same time on 25 August 2026
    * and every gate in the repository was green.

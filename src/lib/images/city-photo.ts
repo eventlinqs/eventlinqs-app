@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { getSpineCity } from './spine'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * City-aware photo pipeline backed by Pexels.
@@ -99,7 +100,8 @@ async function fetchCityPhotoRaw(query: string): Promise<string | null> {
     const photo = pool[simpleHash(query) % pool.length]
 
     return photo.src.portrait ?? photo.src.large
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/images/city-photo:104' })
     return null
   }
 }
@@ -149,7 +151,8 @@ async function fetchCityHeroPhotoRaw(query: string): Promise<string | null> {
     const photo = pool[simpleHash(query + ':landscape') % pool.length]
 
     return photo.src.large
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/images/city-photo:155' })
     return null
   }
 }

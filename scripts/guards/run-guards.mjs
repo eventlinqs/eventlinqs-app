@@ -33,6 +33,8 @@
  *                              names a column that does not exist
  *   maintained-aggregates      no cache tag without an invalidation, no stored counter
  *                              without a declared maintainer
+ *   no-silent-catch            no catch around I/O discards its error in silence
+ *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
  *   no-unguarded-production-write  no script writes to a database without checking which one
  *   one-db-connection-source   no script assembles its own database connection
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
@@ -354,6 +356,20 @@ const GUARDS = [
   // between the write and the copy unskippable; the drift drive measures whether
   // the maintainers are actually correct.
   'scripts/guards/maintained-aggregates.mjs',
+  // AN ERROR FROM OUTSIDE THE PROCESS MUST NOT BE DISCARDED IN SILENCE. A bare
+  // catch {} in src/app/sitemap.ts ate a 42703 on venues.slug, a column that has
+  // never existed, and published zero venue URLs from the day the block was
+  // written. The gate is drawn at I/O rather than at every catch, on purpose:
+  // the reasoning, the 197 catches it deliberately does not fail, and the
+  // PostgREST { data, error } shape it cannot see are all in the guard's header.
+  'scripts/guards/no-silent-catch.mjs',
+  // NO CLIENT COMPONENT MAY REACH THE SENTRY SDK THROUGH A VALUE IMPORT. That
+  // edge existed once through the four error boundaries and put @sentry/nextjs
+  // in the bundle of every route; client-error-report.ts was built to break it,
+  // and a comment was all that kept it broken. The silent-catch sweep of
+  // 2026-08-25 rebuilt it in one line, in bill-ref.ts, and nothing but a bigger
+  // bundle would have said so.
+  'scripts/guards/no-client-sentry-import.mjs',
   // Founder ruling 2026-08-13. `.env.local` in this repo points at the
   // PRODUCTION project, deliberately, because the app is run against production
   // from here. An audit that day found ten write-capable scripts with a

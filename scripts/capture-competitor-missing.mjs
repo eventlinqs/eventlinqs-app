@@ -102,7 +102,9 @@ for (const [vn, w, h] of VPS) {
 await b.close()
 // Merge into measurements.json so the evidence record is single-source.
 let meas = {}
-try { meas = JSON.parse(readFileSync(`${DIR}/measurements.json`, 'utf8')) } catch {}
+try { meas = JSON.parse(readFileSync(`${DIR}/measurements.json`, 'utf8')) } catch (error) {
+  console.warn('[scripts/capture-competitor-missing:106]', error instanceof Error ? error.message : error)
+    }
 meas['ticketmaster/signin'] = out['ticketmaster/signin']
 meas['eventbrite/organizer'] = out['eventbrite/organizer']
 writeFileSync(`${DIR}/measurements.json`, JSON.stringify(meas, null, 2))

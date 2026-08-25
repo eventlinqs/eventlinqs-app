@@ -1,6 +1,7 @@
 import { unstable_cache, revalidateTag } from 'next/cache'
 import { getRedisClient } from './client'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { captureException } from '@/lib/observability/sentry'
 
 const TTL_SECONDS = 30
 const STATIC_REVALIDATE_SECONDS = 30
@@ -287,7 +288,8 @@ async function fetchTierInventoryFromDb(tierId: string): Promise<TierInventory |
       available,
       percent_sold,
     }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/redis/inventory-cache:292' })
     return null
   }
 }
@@ -309,7 +311,8 @@ async function fetchEventInventoryFromDb(eventId: string): Promise<EventInventor
       ? Math.round((total_sold / total_capacity) * 100)
       : 0
     return { total_sold, total_reserved, total_capacity, available, percent_sold }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/redis/inventory-cache:315' })
     return null
   }
 }

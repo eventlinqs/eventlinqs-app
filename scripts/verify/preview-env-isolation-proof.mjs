@@ -48,7 +48,8 @@ for (const src of srcs) {
   let body = ''
   try {
     body = await (await fetch(src)).text()
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/verify/preview-env-isolation-proof:52]', error instanceof Error ? error.message : error)
     continue
   }
   const p = countOf(body, PROD_REF)

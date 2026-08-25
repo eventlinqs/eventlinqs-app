@@ -13,6 +13,7 @@ import {
 } from '@/lib/consent/record'
 import { assertSquadAccess, type SquadAccessRow } from '@/lib/squads/access'
 import type { FeePassType } from '@/types/database'
+import { captureException } from '@/lib/observability/sentry'
 
 // THE GATE LIVES IN src/lib/squads/access.ts, NOT HERE, and that is a build
 // requirement rather than a preference. Every export of a `'use server'` module is
@@ -368,7 +369,8 @@ export async function recordSquadMemberMarketingConsent(
       await recordPlatformUpdateConsent(adminClient, { email, source: 'squad-checkout' })
     }
     return { ok: true }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/actions/squad-checkout:373' })
     return { ok: false }
   }
 }

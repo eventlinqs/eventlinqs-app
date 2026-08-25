@@ -134,7 +134,8 @@ function readDecidedFlags() {
   let src
   try {
     src = readFileSync(path.join(ROOT, DECISION_REGISTRY), 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-partial-builds:138]', error instanceof Error ? error.message : error)
     return decided
   }
   for (const m of src.matchAll(DECISION_ENTRY)) decided.add(m[1])
@@ -174,7 +175,8 @@ function walk(dir, out = []) {
   let entries
   try {
     entries = readdirSync(dir)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-partial-builds:179]', error instanceof Error ? error.message : error)
     return out
   }
   for (const entry of entries) {
@@ -204,7 +206,8 @@ for (const file of files) {
   let src
   try {
     src = readFileSync(file, 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-partial-builds:210]', error instanceof Error ? error.message : error)
     continue
   }
   const lines = src.split(/\r?\n/)
@@ -228,7 +231,8 @@ for (const file of files) {
   let src
   try {
     src = readFileSync(file, 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-partial-builds:235]', error instanceof Error ? error.message : error)
     continue
   }
   for (const m of src.matchAll(FLAG_DECL)) {

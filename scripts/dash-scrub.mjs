@@ -118,7 +118,8 @@ for (const path of walk(ROOT)) {
   let content
   try {
     content = readFileSync(path, 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/dash-scrub:122]', error instanceof Error ? error.message : error)
     continue
   }
 

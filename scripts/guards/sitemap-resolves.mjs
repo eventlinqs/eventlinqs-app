@@ -154,7 +154,8 @@ function collectRoutes(dir, segments = []) {
   let names
   try {
     names = readdirSync(dir)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/sitemap-resolves:158]', error instanceof Error ? error.message : error)
     return out
   }
   if (names.includes('page.tsx') || names.includes('page.ts')) {

@@ -23,7 +23,9 @@ console.log('=== Warm-up: curl every route once ===')
 for (const [, path] of routes) {
   try {
     execSync(`curl -s -o /dev/null "${BASE}${path}"`, { stdio: 'ignore', timeout: 60_000 })
-  } catch {}
+  } catch (error) {
+    console.warn('[scripts/lh-batch-5-5-cultures:27]', error instanceof Error ? error.message : error)
+    }
 }
 
 for (let pass = 1; pass <= 3; pass++) {

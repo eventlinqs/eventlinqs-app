@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Reveal } from '@/components/ui/reveal'
 import { IMAGE_ACCEPT_ATTR, MAX_IMAGE_BYTES } from '@/lib/media/limits'
 import type { Caption } from '@/lib/broadcast/captions'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 /**
  * The rendered artefacts and the six captions.
@@ -154,7 +155,8 @@ function KitCoverUpload({ code, onUploaded }: { code: string; onUploaded: () => 
       }
       setState('done')
       onUploaded()
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/launch/kit-artefacts:159' })
       setError('That did not upload. Check your connection and try again.')
       setState('idle')
     }

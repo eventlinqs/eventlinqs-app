@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 type Status =
   | 'checking'
@@ -80,7 +81,8 @@ export function EnableAlerts() {
         body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }),
       })
       setStatus(res.ok ? 'subscribed' : 'idle')
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/notifications/enable-alerts:85' })
       setStatus('idle')
     }
   }
@@ -99,7 +101,8 @@ export function EnableAlerts() {
         await sub.unsubscribe()
       }
       setStatus('idle')
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/notifications/enable-alerts:105' })
       setStatus('subscribed')
     }
   }

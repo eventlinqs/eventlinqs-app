@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedisClient } from '@/lib/redis/client'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Broadcast Layer feature flags - the ONE resolver for every stage switch.
@@ -162,7 +163,8 @@ export async function isFeatureEnabled(
     const enabled = (data as FlagRow | null)?.enabled ?? BROADCAST_FLAG_DEFAULTS[flag]
     await writeCache(key, enabled)
     return enabled
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/flags/broadcast:167' })
     return BROADCAST_FLAG_DEFAULTS[flag]
   }
 }

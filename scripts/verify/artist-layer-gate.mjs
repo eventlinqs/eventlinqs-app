@@ -365,7 +365,9 @@ let merged = proofs
 try {
   const prior = JSON.parse(fs.readFileSync(`${OUT}/gate.json`, 'utf8'))
   merged = { ...prior, ...proofs }
-} catch {}
+} catch (error) {
+  console.warn('[scripts/verify/artist-layer-gate:369]', error instanceof Error ? error.message : error)
+    }
 fs.writeFileSync(`${OUT}/gate.json`, JSON.stringify(merged, null, 2))
 
 const pass =

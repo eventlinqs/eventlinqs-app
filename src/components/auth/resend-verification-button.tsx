@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { authMessage, RESEND_VERIFICATION_GENERIC_RESPONSE } from '@/lib/auth/auth-errors'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 const COOLDOWN_SECONDS = 60
 const STORAGE_KEY = 'el_verify_resend_ts'
@@ -59,7 +60,8 @@ export function ResendVerificationButton({ email }: Props) {
       sessionStorage.setItem(STORAGE_KEY, Date.now().toString())
       setRemaining(COOLDOWN_SECONDS)
       setStatus('sent')
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/auth/resend-verification-button:64' })
       setStatus('error')
       setErrorMsg(authMessage('network'))
     }

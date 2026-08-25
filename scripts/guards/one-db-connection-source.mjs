@@ -67,7 +67,9 @@ const SCAN_DIRS = ['scripts', 'supabase']
 
 function walk(dir, out = []) {
   let entries
-  try { entries = readdirSync(dir, { withFileTypes: true }) } catch { return out }
+  try { entries = readdirSync(dir, { withFileTypes: true }) } catch (error) {
+    console.warn('[scripts/guards/one-db-connection-source:71]', error instanceof Error ? error.message : error)
+    return out }
   for (const e of entries) {
     const p = join(dir, e.name)
     if (e.isDirectory()) {

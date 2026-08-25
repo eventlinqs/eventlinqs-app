@@ -1,4 +1,5 @@
 import 'server-only'
+import { captureException } from '@/lib/observability/sentry'
 // sharp 0.35 ships real ESM types (dist/index.d.mts) with NAMED type exports,
 // replacing the 0.34 `export = sharp` form where types were reached as
 // `sharp.Metadata`. That namespace no longer exists, so the qualified form is a
@@ -110,7 +111,8 @@ export async function processEventImage(
   let meta: Metadata
   try {
     meta = await sharp(inputBuffer, { failOn: 'error' }).metadata()
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/media/image-pipeline:115' })
     // sharp could not decode it as a raster image at all (covers SVG, which sharp
     // treats as vector and which we forbid, plus corrupt/active content).
     return { ok: false, error: REJECT_NOT_IMAGE }
@@ -237,7 +239,8 @@ async function makeBlurDataURL(input: Buffer): Promise<string> {
       .webp({ quality: 30 })
       .toBuffer()
     return `data:image/webp;base64,${tiny.toString('base64')}`
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/media/image-pipeline:243' })
     // A blur placeholder is a nicety, never a reason to fail an upload.
     return ''
   }

@@ -1,6 +1,7 @@
 import type Stripe from 'stripe'
 import { getStripeClient } from '@/lib/payments/payout'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Admin dispute (chargeback) data access.
@@ -197,7 +198,8 @@ async function resolveRelatedOrder(paymentIntentId: string | null): Promise<{ id
       .maybeSingle()
     if (!order) return null
     return { id: order.id, orderNumber: order.order_number }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/admin/disputes:202' })
     return null
   }
 }

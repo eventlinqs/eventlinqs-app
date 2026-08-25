@@ -15,6 +15,7 @@ import {
   MAGIC_LINK_GENERIC_RESPONSE,
   OAUTH_ACCOUNT_HINT,
 } from '@/lib/auth/auth-errors'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 type Props = {
   /**
@@ -142,7 +143,8 @@ export function LoginForm({ googleEnabled }: Props) {
 
       setMagicSent(true)
       setLoading(false)
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/auth/login-form:147' })
       setError(authMessage('network'))
       setLoading(false)
     }

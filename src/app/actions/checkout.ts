@@ -21,6 +21,7 @@ import {
 } from '@/lib/consent/record'
 import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 import type { FeePassType } from '@/types/database'
+import { captureException } from '@/lib/observability/sentry'
 
 const AttendeeSchema = z.object({
   ticket_tier_id: z.string().uuid(),
@@ -129,7 +130,8 @@ async function resolveDigestCity(
       .eq('id', eventId)
       .maybeSingle()
     return event?.city_primary ?? null
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/actions/checkout:134' })
     return null
   }
 }

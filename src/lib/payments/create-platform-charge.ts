@@ -10,6 +10,7 @@ import { statementDescriptorSuffix } from '@/lib/stripe/business-profile'
 import { verifyRowFields } from './required-fields'
 import type { FeeBreakdown } from './payment-calculator'
 import type { CreatePaymentIntentParams, PaymentGateway, PaymentIntentResult } from './gateway'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Funds-holding model (docs/PAYMENTS-FUNDS-HOLDING.md): the buyer is charged on
@@ -143,7 +144,8 @@ async function loadEventTitle(eventId: string | null): Promise<string | null> {
       .maybeSingle()
     if (error || !data) return null
     return data.title ?? null
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/payments/create-platform-charge:148' })
     return null
   }
 }

@@ -5,6 +5,7 @@ import { formatEventDateShort } from '@/lib/dates/event-time'
 import Link from 'next/link'
 import { Sparkles, X, RefreshCw } from 'lucide-react'
 import { trackEvent } from '@/lib/analytics/plausible'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 interface Suggestion {
   id: string
@@ -82,7 +83,8 @@ export function SurpriseMeModal({ open, onClose, initial = [] }: Props) {
         const data = await res.json() as { suggestions: Suggestion[] }
         setSuggestions(data.suggestions ?? [])
       }
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/features/home/surprise-me-modal:87' })
       // ignore - the user can re-tap
     }
     setLoading(false)

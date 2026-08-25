@@ -1,5 +1,6 @@
 import 'server-only'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Feature flags, read from public.feature_flags (one row per flag, column
@@ -33,7 +34,8 @@ export async function isFlagEnabled(key: keyof typeof FLAG_DEFAULTS & string): P
       .maybeSingle()
     if (error || !data) return fallback
     return Boolean(data.enabled)
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/flags:38' })
     return fallback
   }
 }

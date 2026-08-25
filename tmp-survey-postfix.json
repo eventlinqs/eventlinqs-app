@@ -1,0 +1,26 @@
+{
+  "base": "https://eventlinqs-fmypalqph-lawals-projects-c20c0be8.vercel.app",
+  "label": "postfix",
+  "rows": [
+    {
+      "path": "/events/seat-proof-fifty-nwltxi",
+      "a11y": 1,
+      "perf": 0.75,
+      "cls": 0,
+      "lcp": 4562.8945,
+      "scriptBytes": 481248,
+      "scriptReqs": 23,
+      "failing": []
+    },
+    {
+      "path": "/events/lineup-loop-proof-night-3z7osn",
+      "a11y": 1,
+      "perf": 0.74,
+      "cls": 0,
+      "lcp": 4521.5918,
+      "scriptBytes": 448167,
+      "scriptReqs": 20,
+      "failing": []
+    }
+  ]
+}

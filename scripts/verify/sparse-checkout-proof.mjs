@@ -45,7 +45,8 @@ function sizeGb(dir) {
     let entries
     try {
       entries = readdirSync(d, { withFileTypes: true })
-    } catch {
+    } catch (error) {
+      console.warn('[scripts/verify/sparse-checkout-proof:49]', error instanceof Error ? error.message : error)
       return
     }
     for (const e of entries) {

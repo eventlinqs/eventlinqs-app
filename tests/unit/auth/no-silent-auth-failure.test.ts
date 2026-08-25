@@ -81,11 +81,19 @@ describe('auth forms never fail silently', () => {
     /*
      * A catch that only logs is the silent shape. Matching is deliberately
      * narrow: a catch whose body contains neither setError nor a rethrow.
+     *
+     * `failLocally(` earns its place here rather than widening the rule: it is
+     * signup-form.tsx's own one-line helper and its whole body is
+     * `setError({...}); setLoading(false)`. Before the silent-catch sweep of
+     * 25 August 2026 that catch was `catch {`, with no binding, so this pattern
+     * did not match it AT ALL and the form passed vacuously. Adding a binding
+     * made it visible for the first time, which is the test working, not
+     * breaking.
      */
     const catches = [...src.matchAll(/catch\s*\([^)]*\)\s*\{([\s\S]{0,400}?)\n\s{4}\}/g)]
     const swallowed = catches
       .map(m => m[1] ?? '')
-      .filter(body => !/setError\(|throw\b|setStatus\(|setMessage\(/.test(body))
+      .filter(body => !/setError\(|throw\b|setStatus\(|setMessage\(|failLocally\(/.test(body))
     expect(
       swallowed,
       `${form} has a catch block that neither reports to the user nor rethrows`,

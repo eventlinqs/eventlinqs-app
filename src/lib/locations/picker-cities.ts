@@ -6,6 +6,7 @@ import {
   type LaunchCity,
 } from './launch-cities'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Merged picker city list: 32 curated launch targets ∪ every distinct
@@ -86,7 +87,8 @@ async function buildPickerCitiesRaw(): Promise<PickerCityGroups> {
     ])
     eventRows = eventsResult.data ?? []
     citiesRows = citiesResult.data ?? []
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/locations/picker-cities:91' })
     eventRows = []
     citiesRows = []
   }

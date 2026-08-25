@@ -123,7 +123,8 @@ function checkoutRoots() {
         }
         if (existsSync(join(candidate, 'package.json'))) add(candidate)
       }
-    } catch {
+    } catch (error) {
+      console.warn('[scripts/verify/db-password-rotation:127]', error instanceof Error ? error.message : error)
       /* the parent may not be readable; the explicit roots still stand */
     }
   }
@@ -141,7 +142,8 @@ function inventory() {
       let text
       try {
         text = readFileSync(file, 'utf8')
-      } catch {
+      } catch (error) {
+        console.warn('[scripts/verify/db-password-rotation:146]', error instanceof Error ? error.message : error)
         continue
       }
       for (const line of text.split(/\r?\n/)) {

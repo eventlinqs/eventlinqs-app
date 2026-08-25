@@ -8,6 +8,7 @@ import {
   organiserMarketingConsentWording,
   normaliseConsentEmail,
 } from './wording'
+import { captureException } from '@/lib/observability/sentry'
 
 type Admin = SupabaseClient<Database>
 
@@ -51,7 +52,8 @@ export async function recordOrganiserMarketingConsent(
       { onConflict: 'organisation_id,email' },
     )
     return !error
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/record:56' })
     return false
   }
 }
@@ -78,7 +80,8 @@ export async function recordPlatformUpdateConsent(
       { onConflict: 'email' },
     )
     return !error
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/record:84' })
     return false
   }
 }
@@ -123,7 +126,8 @@ export async function recordPlatformDigestConsent(
       { onConflict: 'email' },
     )
     return !error
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/record:130' })
     return false
   }
 }
@@ -285,7 +289,8 @@ export async function withdrawDigestConsentByEmail(
       .update({ status: 'withdrawn', revoked_at: at, updated_at: at })
       .eq('email', normalised)
     return !error
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/record:293' })
     return false
   }
 }

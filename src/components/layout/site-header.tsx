@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { SiteHeaderClient } from './site-header-client'
 import { deriveAccountUser, type AccountUser } from './site-header-account-button'
 import { isAdminUserId } from '@/lib/admin/auth'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * SiteHeader - public site top navigation.
@@ -57,7 +58,8 @@ export async function SiteHeader({ staticSafe = false }: { staticSafe?: boolean 
         // Role-gated Admin menu entry. Membership only; the console enforces 2FA.
         isAdmin = await isAdminUserId(data.user.id)
       }
-    } catch {
+    } catch (error) {
+      captureException(error, { where: 'components/layout/site-header:62' })
       // Auth resolution failures (e.g. malformed cookie, network blip on the
       // Supabase auth server) must NOT block the public surface from
       // rendering. Fall back to anonymous.

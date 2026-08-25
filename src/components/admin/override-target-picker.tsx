@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 type Kind = 'organisation' | 'event'
 interface Result {
@@ -42,7 +43,8 @@ export function OverrideTargetPicker() {
           setResults(Array.isArray(json.results) ? json.results : [])
           setOpen(true)
         }
-      } catch {
+      } catch (error) {
+        reportClientError(error, { where: 'components/admin/override-target-picker:47' })
         if (!cancelled) setResults([])
       } finally {
         if (!cancelled) setLoading(false)

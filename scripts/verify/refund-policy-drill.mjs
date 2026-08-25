@@ -178,7 +178,9 @@ if (!drafts.length) {
     try {
       // Tighten hard. A draft has sold nothing, so this must be allowed.
       await client.query(`UPDATE public.events SET refund_policy_type='no_refunds' WHERE id=$1`, [drafts[0].id])
-    } catch { ok = false }
+    } catch (error) {
+      console.warn('[scripts/verify/refund-policy-drill:182]', error instanceof Error ? error.message : error)
+    ok = false }
     console.log(`  draft ${drafts[0].id}: tightening ${ok ? 'ALLOWED  (correct, nothing was sold under those terms)' : 'REFUSED  <<< drafts must be editable'}`)
     if (!ok) failures += 1
   } finally {

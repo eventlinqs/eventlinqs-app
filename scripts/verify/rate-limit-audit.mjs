@@ -258,7 +258,9 @@ function traceSpend(name) {
     const abs = join(ROOT, rel)
     if (!existsSync(abs)) continue
     let text
-    try { text = readFileSync(abs, 'utf8') } catch { continue }
+    try { text = readFileSync(abs, 'utf8') } catch (error) {
+      console.warn('[scripts/verify/rate-limit-audit:262]', error instanceof Error ? error.message : error)
+    continue }
 
     // Every position in this file where THIS bucket is limited.
     const positions = []
@@ -286,7 +288,9 @@ function traceSpend(name) {
             where: `${rel} -> ${fn.name}() -> ${id}() in ${relative(ROOT, target).split(String.fromCharCode(92)).join('/')}`,
             body: readFileSync(target, 'utf8'),
           })
-        } catch { /* unreadable module: not a spend claim either way */ }
+        } catch (error) {
+          console.warn('[scripts/verify/rate-limit-audit:292]', error instanceof Error ? error.message : error)
+    /* unreadable module: not a spend claim either way */ }
       }
       for (const u of units) {
         for (const mk of SPEND_MARKERS) {
@@ -416,7 +420,9 @@ function actualKeys(name) {
     const abs = join(ROOT, rel)
     if (!existsSync(abs)) continue
     let text
-    try { text = readFileSync(abs, 'utf8') } catch { continue }
+    try { text = readFileSync(abs, 'utf8') } catch (error) {
+      console.warn('[scripts/verify/rate-limit-audit:424]', error instanceof Error ? error.message : error)
+    continue }
 
     for (const helper of ['actionRateLimit', ...HELPERS_WITH_REQUEST]) {
       const takesRequest = HELPERS_WITH_REQUEST.includes(helper)

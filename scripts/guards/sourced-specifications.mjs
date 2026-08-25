@@ -116,7 +116,8 @@ function walk(dir, out = []) {
   let entries
   try {
     entries = readdirSync(dir)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/sourced-specifications:120]', error instanceof Error ? error.message : error)
     return out
   }
   for (const e of entries) {
@@ -148,7 +149,8 @@ for (const dir of SCAN_DIRS) {
     let lines
     try {
       lines = readFileSync(file, 'utf8').split('\n')
-    } catch {
+    } catch (error) {
+      console.warn('[scripts/guards/sourced-specifications:153]', error instanceof Error ? error.message : error)
       continue
     }
     scanned++

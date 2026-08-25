@@ -775,7 +775,9 @@ for (const vp of ONLY === 'deep' ? [] : VIEWPORTS) {
           .filter((h) => h && /^\/city\/[^/]+\/[^/?#]+$/.test(h)))
       if (subs.length) list.push(['suburb page', subs[0]])
       else finding(SEV.EMPTY, 'city page', 'no suburb links', `${sampleCity} rendered no /city/x/y links, so the suburb route could not be audited from it`)
-    } catch { /* the city page itself is already recorded above */ }
+    } catch (error) {
+      console.warn('[scripts/verify/full-platform-audit:779]', error instanceof Error ? error.message : error)
+    /* the city page itself is already recorded above */ }
     await sp.close()
   }
 

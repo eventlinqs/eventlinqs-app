@@ -39,7 +39,8 @@ export function refFromJwt(value) {
   try {
     const payload = JSON.parse(Buffer.from(t.split('.')[1], 'base64').toString('utf8'))
     return typeof payload.ref === 'string' ? payload.ref.toLowerCase() : ''
-  } catch {
+  } catch (error) {
+    console.warn('[lib/env/refs:43]', error instanceof Error ? error.message : error)
     return ''
   }
 }

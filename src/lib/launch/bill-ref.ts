@@ -1,5 +1,4 @@
 import { KIT_CODE_LENGTH, isKitCode } from './kit-code'
-
 /**
  * The reference an act's link carries: which kit, and which name on it.
  *
@@ -62,6 +61,11 @@ export function decodeBillRef(value: string | null | undefined): BillRef | null 
 
     return { kitCode, name }
   } catch {
+    // A malformed ref is the expected negative answer to "is this a ref",
+    // not an incident: it is decoded from a URL a stranger can type. Reporting
+    // it would ALSO put the Sentry SDK in the client bundle, because THE BILL
+    // imports encodeBillRef from here, and client-error-report.ts exists to
+    // prevent exactly that.
     return null
   }
 }

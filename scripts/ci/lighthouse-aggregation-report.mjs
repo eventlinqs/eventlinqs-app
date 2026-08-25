@@ -45,7 +45,8 @@ let categoryMethod = 'optimistic'
 try {
   const rc = JSON.parse(readFileSync('lighthouserc.json', 'utf8'))
   categoryMethod = rc?.ci?.assert?._aggregationContract?.categoryFloors ?? categoryMethod
-} catch {
+} catch (error) {
+  console.warn('[scripts/ci/lighthouse-aggregation-report:49]', error instanceof Error ? error.message : error)
   // Fall back to the LHCI default rather than guessing something friendlier.
 }
 
@@ -56,7 +57,8 @@ for (const file of files) {
   let lhr
   try {
     lhr = JSON.parse(readFileSync(join(dir, file), 'utf8'))
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/ci/lighthouse-aggregation-report:61]', error instanceof Error ? error.message : error)
     continue
   }
   const url = lhr.finalDisplayedUrl || lhr.finalUrl || lhr.requestedUrl || '(unknown)'

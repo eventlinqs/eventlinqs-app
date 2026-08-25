@@ -173,7 +173,8 @@ for (const file of walk(ROOT)) {
   let src
   try {
     src = readFileSync(file, 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-plaintext-credential:177]', error instanceof Error ? error.message : error)
     continue
   }
 

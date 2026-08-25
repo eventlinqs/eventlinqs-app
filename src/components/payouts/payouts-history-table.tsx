@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import type { PayoutListPage, PayoutListRow } from '@/lib/payouts/queries'
 import type { PayoutRecordStatus } from '@/types/database'
 import { formatCents, formatDate } from './format'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 interface PayoutsHistoryTableProps {
   initialPage: PayoutListPage
@@ -67,7 +68,8 @@ export function PayoutsHistoryTable({ initialPage, organisationId }: PayoutsHist
           return
         }
         setPage(json)
-      } catch {
+      } catch (error) {
+        reportClientError(error, { where: 'components/payouts/payouts-history-table:72' })
         setError('Network error. Please try again.')
       }
     })

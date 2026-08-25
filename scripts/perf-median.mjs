@@ -71,7 +71,8 @@ function reapChrome() {
   for (const proc of ['chrome.exe', 'chromium.exe']) {
     try {
       execSync(`taskkill /F /IM ${proc} /T`, { stdio: 'ignore' })
-    } catch {
+    } catch (error) {
+      console.warn('[scripts/perf-median:75]', error instanceof Error ? error.message : error)
       // exit code 128 / 1 means no matching process - that is the desired state
     }
   }
@@ -83,7 +84,8 @@ function chromeRunning() {
       encoding: 'utf8',
     })
     return /chrome\.exe/i.test(out)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/perf-median:88]', error instanceof Error ? error.message : error)
     return false
   }
 }
@@ -105,7 +107,8 @@ async function prewarm(target) {
   for (let i = 0; i < 2; i++) {
     try {
       await fetch(target)
-    } catch {
+    } catch (error) {
+      console.warn('[scripts/perf-median:111]', error instanceof Error ? error.message : error)
       // ignore
     }
   }

@@ -97,7 +97,8 @@ async function statusFor(url) {
   try {
     const r = await fetch(url, { redirect: 'manual' })
     return r.status
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/batch-11.1-au-launch-readiness:101]', error instanceof Error ? error.message : error)
     return 0
   }
 }

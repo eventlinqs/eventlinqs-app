@@ -1,5 +1,6 @@
 import 'server-only'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Honest, live platform social proof. Counts are read from the connected
@@ -65,7 +66,8 @@ export async function getPlatformStats(opts?: { client?: StatsReadClient }): Pro
       cities,
       source: 'live',
     }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/stats/platform-stats:70' })
     // A marketing page must never 500 or show an invented number.
     return { eventsListed: null, organisers: null, cities: null, source: 'unavailable' }
   }
