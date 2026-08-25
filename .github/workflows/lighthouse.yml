@@ -14,8 +14,16 @@
 #   actually receive. It now:
 #     1. Resolves the warmed Vercel preview URL for the PR commit (from the
 #        GitHub deployments API Vercel posts), then audits that.
-#     2. Discovers a real, resolvable /events/<slug> from the preview's own
-#        sitemap (scripts/ci/resolve-gate-urls.mjs) instead of a stale slug.
+#     2. Audits a FIXED, REVIEWED URL SET from lighthouse-gate-urls.json,
+#        verified to answer 200 on the preview before LHCI sees it
+#        (scripts/ci/resolve-gate-urls.mjs). Amended 25 August 2026: the set
+#        used to be DISCOVERED from the preview sitemap (first/middle/last of
+#        the sorted slugs). That is a pure function of a MOVING input, so the
+#        audited page changed as the catalogue changed, and on 25 August the
+#        gate landed on a 1,200 seat arena chart and blocked a merge for
+#        0.75/0.74/0.77 against the same 0.80 floor a lighter page had cleared
+#        days earlier. A missing pinned path now FAILS the resolver by name
+#        rather than being silently substituted.
 #     3. Warms ISR + the next/image optimiser with an unrecorded curl pass
 #        before measuring, so the score reflects warm-cache reality (the
 #        cold-start race is Issue #42, not a per-run flake).

@@ -162,6 +162,8 @@ const PUBLIC_BY_DESIGN = {
   'api/broadcast/track/POST': 'anonymous view beacon, deduped server-side',
   'api/tickets/[code]/qr/GET': 'BEARER auth: (ticket_code, secret) pair is the credential',
   'api/og/event/[slug]/GET': 'public Open Graph image for a published event',
+  'api/events/[id]/seats/GET':
+    'the seat chart a buyer picks from, which must be readable without an account. It is NOT open: the event is resolved through PUBLIC_EVENT_MATCH, the one shared visibility rule, so a draft, private or cancelled event answers 404 exactly as its page does, and the read goes through the ANON client so RLS enforces the same rule a second time. It exists because passing the seats as a prop serialised 1,200 rows into the document of every seated event, 571KB of HTML with 85 percent of it inline script',
   'auth/callback/GET': 'OAuth/PKCE callback; the code is the credential',
   'auth/confirm/GET': 'email confirmation; the token_hash is the credential',
   's/[code]/GET': 'public short link redirect',

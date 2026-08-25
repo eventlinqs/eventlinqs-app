@@ -13,7 +13,7 @@ import { priceLabel } from '@/lib/events/price-label'
 // into this route's bundle. The component itself arrives via the client
 // boundary below.
 import type {
-  SeatData, SectionData, SeatAreaData, SeatDecorData,
+  SectionData, SeatAreaData, SeatDecorData,
 } from '@/components/checkout/seat-selector'
 import { SeatSelectorLazy } from '@/components/checkout/seat-selector-lazy'
 import { isFlagEnabled } from '@/lib/flags'
@@ -451,16 +451,34 @@ export default async function EventDetailPage({ params }: Props) {
         // Bound outside the closures: TS null-narrowing on `event` does not
         // flow into deferred functions.
         const seatsEventId = event.id
+        /*
+         * TWO COLUMNS, NOT TEN, SINCE 25 AUGUST 2026.
+         *
+         * This query used to select every column SeatData declares, because the
+         * whole array was handed to the seat selector as a prop. It is not any
+         * more: the selector fetches its own chart from /api/events/[id]/seats
+         * after mount, so 1,200 seats stopped being serialised into the document
+         * (571KB of HTML on the arena event, 85 percent of it inline script).
+         *
+         * What the SERVER still needs from the seats is three small facts, and
+         * they need exactly two columns between them:
+         *
+         *   seatedActive        seats exist at all              (any row)
+         *   seatBoundTierIds    which tiers are sold by seat    (ticket_tier_id)
+         *   hasAccessibleSeats  accessible or companion seating (seat_type)
+         *
+         * Selecting ten columns to compute three booleans is the server paying
+         * five times over for data it discards, on a route whose own response
+         * Lighthouse measures at 1,300ms.
+         */
         const fetchAllSeats = async () => {
           const PAGE = 1000
           const all: NonNullable<Awaited<ReturnType<typeof firstPage>>['data']> = []
           function firstPage(from: number) {
             return seatSupabase
               .from('seats')
-              .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
+              .select('seat_type, ticket_tier_id')
               .eq('event_id', seatsEventId)
-              .order('row_label')
-              .order('seat_number')
               .order('id')
               .range(from, from + PAGE - 1)
           }
@@ -557,7 +575,12 @@ export default async function EventDetailPage({ params }: Props) {
     display_price_cents: resolvePrice(t),
   }))
 
-  let eventSeats: SeatData[] = []
+  /**
+   * NOT THE SEAT CHART. The three facts the SERVER derives from the seats, and
+   * nothing else: whether any seat exists, which tiers are seat-bound, and
+   * whether any seat is accessible. The chart itself is fetched by the client.
+   */
+  let eventSeatFacts: { seat_type: string; ticket_tier_id: string | null }[] = []
   let eventSections: SectionData[] = []
   let eventAreas: SeatAreaData[] = []
   let eventDecor: SeatDecorData = {}
@@ -567,10 +590,12 @@ export default async function EventDetailPage({ params }: Props) {
     if (seatsResult.error) {
       console.error('[event-detail] failed to load seats:', seatsResult.error)
     }
-    eventSeats = (seatsResult.data ?? []).map(s => ({
-      ...s,
-      x: typeof s.x === 'number' ? s.x : parseFloat(s.x as unknown as string) || 0,
-      y: typeof s.y === 'number' ? s.y : parseFloat(s.y as unknown as string) || 0,
+    // Only the two fields the three server-side facts are derived from. The
+    // coordinate normalisation that used to live here moved with the rest of the
+    // chart: /api/events/[id]/seats returns x and y and the selector parses
+    // them, which is where the numbers are actually used.
+    eventSeatFacts = (seatsResult.data ?? []).map(s => ({
+      seat_type: s.seat_type,
       ticket_tier_id: s.ticket_tier_id ?? null,
     }))
     eventSections = (sectionsResult.data ?? []) as SectionData[]
@@ -608,13 +633,13 @@ export default async function EventDetailPage({ params }: Props) {
   // but buyers purchase GA-style and the organiser allocates seats post-sale.
   const organiserAssigns = Boolean(event.organiser_assigns_seats)
   const seatedActive =
-    event.has_reserved_seating && seatedFlagEnabled && eventSeats.length > 0 && !organiserAssigns
+    event.has_reserved_seating && seatedFlagEnabled && eventSeatFacts.length > 0 && !organiserAssigns
 
   // Mixed events: tiers not bound to any seat sell as general admission
   // alongside the chart (a standing-zone tier, a GA balcony). Seat-bound
   // tiers stay out of the GA panel so a buyer cannot bypass seat selection.
   const seatBoundTierIds = new Set(
-    eventSeats.map(s => s.ticket_tier_id).filter(Boolean) as string[]
+    eventSeatFacts.map(s => s.ticket_tier_id).filter(Boolean) as string[]
   )
   const gaTiersAlongsideSeats = seatedActive
     ? enrichedAllTiers.filter(t => !seatBoundTierIds.has(t.id) && !t.seat_map_section_id)
@@ -978,7 +1003,7 @@ export default async function EventDetailPage({ params }: Props) {
                       fullAddress={fullAddress || null}
                       isVirtual={event.event_type === 'virtual'}
                       ageMin={event.is_age_restricted ? (event.age_restriction_min ?? 18) : null}
-                      hasAccessibleSeats={eventSeats.some(
+                      hasAccessibleSeats={eventSeatFacts.some(
                         s => s.seat_type === 'accessible' || s.seat_type === 'companion'
                       )}
                       isFree={event.is_free ?? false}
@@ -1141,7 +1166,6 @@ export default async function EventDetailPage({ params }: Props) {
                       ) : (
                         <SeatSelectorLazy
                           eventId={event.id}
-                          seats={eventSeats}
                           sections={eventSections}
                           areas={eventAreas}
                           decor={eventDecor}

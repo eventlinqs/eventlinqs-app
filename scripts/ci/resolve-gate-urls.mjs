@@ -4,144 +4,127 @@
 // The original gate hardcoded a seed event slug in lighthouserc.json. When the
 // local seed stopped producing that slug the URL 404'd, and LHCI treats any 404
 // in the URL set as a hard `collect` failure (ERRORED_DOCUMENT_REQUEST), which
-// fails the whole gate regardless of scores. So the detail slug is discovered
-// from the preview's own sitemap rather than hand-picked.
+// fails the whole gate regardless of scores.
 //
-// ── THE DEFECT THIS REWRITE FIXES (founder ruling, 24 August 2026) ─────────
+// ── THE FIRST FIX, AND WHY IT WAS NOT ENOUGH ───────────────────────────────
 // Discovery took the FIRST /events/<slug> the sitemap happened to list, and the
 // sitemap query carried no ORDER BY, so "first" was whatever Postgres returned
-// that day. The audited page therefore changed between runs of the same branch.
-// Measured on 2026-08-23, two consecutive gate runs on the same branch:
+// that day. A 24 August pass sorted the slugs and picked first/middle/last of
+// the sorted list, which made the choice a pure function of the sitemap.
 //
-//   135be599  audited /events/seat-proof-fifty-nwltxi   0.83, 0.75, 0.73  PASS
-//   8044480b  audited /events/cat-indie-sounds-...      0.74, 0.73, 0.73  FAIL
+// A pure function of a MOVING INPUT is still a moving output. The sitemap is the
+// live catalogue: publish one event and "middle" is a different page. On
+// 25 August 2026 the gate landed on
 //
-// Nothing about event-page performance changed between those two runs. The gate
-// picked a different page, and the category floor aggregates 'optimistic'
-// (best of three), so 0.83 cleared the 0.80 floor by 0.03 and 0.74 did not.
-// That is not a gate, it is a coin toss, and it blocked two merges.
+//     /events/arena-sessions-large-room-performance-test    0.75, 0.74, 0.77
+//
+// a 1,200 seat arena chart, against a 0.80 floor, and blocked the merge. A
+// lighter event on the same branch had cleared the same floor days earlier.
+// Nothing about the code changed between them. A gate whose subject moves is
+// measuring the catalogue, not the branch.
 //
 // ── WHAT IS DETERMINISTIC NOW ──────────────────────────────────────────────
-// 1. The candidate slugs are SORTED before anything is chosen, so the order no
-//    longer depends on Postgres' physical row order. (The sitemap query itself
-//    was also given an explicit ORDER BY in the same pass, so the input is
-//    stable too; this sort is the belt to that braces, because a gate must not
-//    depend on another file continuing to behave.)
-// 2. The selection is a REPRESENTATIVE SPREAD, not a single lucky page: the
-//    first, middle and last slug of the sorted list. Three different events,
-//    spanning the catalogue, chosen by a pure function of the sitemap.
+// The audited set is a FIXED, REVIEWED LIST in lighthouse-gate-urls.json, in
+// version control, each entry carrying the reason it is there. The contract:
 //
-// ── WHY WIDER RATHER THAN NARROWER ─────────────────────────────────────────
+//   1. Every path is verified to answer 200 on the preview BEFORE it is
+//      audited, so a 404 can never reach LHCI and hard-fail the collect.
+//   2. A path that no longer resolves FAILS THIS RESOLVER LOUDLY, naming the
+//      missing path. It is NOT silently replaced. A silent substitution is how
+//      this gate became a coin toss; a loud failure is a five second edit to
+//      the JSON.
+//   3. The sitemap is still read, but only to REPORT what else exists, so a
+//      human reading a red build can see the catalogue without opening it.
+//
+// ── WHY PINNED RATHER THAN NARROWED ────────────────────────────────────────
 // The obvious way to make this gate green is to audit one fast page. That is
 // the move this comment exists to forbid. The founder's instruction was
 // explicit: "Do not narrow it to the fastest page to pass; if anything widen
-// it. If that means it fails on more pages today, I want to know that." So the
-// event-detail surface goes from ONE audited page to THREE. If that surfaces
-// more failures, the gate is doing its job and the failures were always real.
+// it. If that means it fails on more pages today, I want to know that." The
+// pinned set keeps THREE event-detail pages and the FIRST of them is the
+// heaviest page on the platform, the one that failed on 25 August.
 //
-// Every chosen URL is printed to stderr so a human reading a red build can see
-// exactly which pages were measured without opening an artefact.
-//
-import { pathToFileURL } from 'node:url'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
-// Usage: PREVIEW_URL=https://<preview>.vercel.app node scripts/ci/resolve-gate-urls.mjs
-// Prints one absolute URL per line on stdout.
+const HERE = dirname(fileURLToPath(import.meta.url))
+const ROOT = join(HERE, '..', '..')
+const SET_FILE = 'lighthouse-gate-urls.json'
 
-// The public, no-auth URL set this gate has always measured. Auth-gated
-// surfaces stay excluded: they need a recorded-session gate.
-const STATIC_PATHS = [
-  '/',
-  '/events',
-  '/events/browse/melbourne',
-  '/community/african',
-  '/organisers',
-  '/pricing',
-  '/help',
-  '/legal/terms',
-  '/login',
-  '/signup',
-]
-
-/** How many event-detail pages to audit. Was 1; widened deliberately. */
-const EVENT_DETAIL_SAMPLES = 3
-
-// Used only if sitemap discovery fails outright, so the gate reports honestly
-// rather than silently dropping the detail surface.
-const FALLBACK_DETAIL_PATH = '/events/afrobeats-melbourne-summer-sessions'
-
-/**
- * A deterministic, representative spread across a sorted list.
- *
- * first, middle, last for n=3. Pure: same input, same output, every time. It
- * deliberately does NOT sample randomly and does NOT take the head, because
- * both of those are how a gate ends up measuring a different thing each run.
- */
-export function representativeSpread(sorted, count) {
-  if (sorted.length === 0) return []
-  if (sorted.length <= count) return [...sorted]
-  const picks = []
-  for (let i = 0; i < count; i++) {
-    // i / (count - 1) walks 0 .. 1 inclusive, so the ends are always included.
-    const ratio = count === 1 ? 0 : i / (count - 1)
-    const idx = Math.round(ratio * (sorted.length - 1))
-    if (!picks.includes(sorted[idx])) picks.push(sorted[idx])
+/** Read the pinned set. Exported so a unit test can assert its shape. */
+export function readPinnedSet(root = ROOT) {
+  const raw = readFileSync(join(root, SET_FILE), 'utf8')
+  const parsed = JSON.parse(raw)
+  const paths = [
+    ...(parsed.static ?? []).map(e => e.path),
+    ...(parsed.eventDetail ?? []).map(e => e.path),
+  ]
+  if (paths.length === 0) throw new Error(`${SET_FILE} lists no paths`)
+  for (const p of paths) {
+    if (typeof p !== 'string' || !p.startsWith('/')) {
+      throw new Error(`${SET_FILE} contains a path that is not a leading-slash string: ${JSON.stringify(p)}`)
+    }
   }
-  return picks
+  return { parsed, paths }
 }
 
-async function discoverEventDetailPaths(base) {
+/**
+ * Order the audited URLs so the event-detail pages sit where the single
+ * discovered one used to, preserving the gate's historical ordering.
+ */
+export function orderedPaths(parsed) {
+  const statics = (parsed.static ?? []).map(e => e.path)
+  const details = (parsed.eventDetail ?? []).map(e => e.path)
+  const out = [...statics]
+  out.splice(4, 0, ...details)
+  return out
+}
+
+/** HEAD/GET each path and report which do not answer 200. */
+async function verify(base, paths) {
+  const bad = []
+  for (const p of paths) {
+    const url = `${base}${p}`
+    try {
+      const res = await fetch(url, {
+        redirect: 'manual',
+        headers: { Cookie: 'el-audit=1', 'user-agent': 'EventLinqs-gate-resolver/1.0' },
+      })
+      if (res.status !== 200) bad.push({ path: p, status: res.status, location: res.headers.get('location') })
+    } catch (err) {
+      bad.push({ path: p, status: 'ERR', location: String(err?.message ?? err) })
+    }
+  }
+  return bad
+}
+
+/** Read the preview's sitemap purely to report what else is there. */
+async function reportCatalogue(base) {
   try {
     const res = await fetch(`${base}/sitemap.xml`, { headers: { Cookie: 'el-audit=1' } })
     if (!res.ok) {
-      console.error(`[gate-urls] sitemap.xml returned ${res.status}; falling back to the seed slug`)
-      return []
+      console.error(`[gate-urls] sitemap.xml returned ${res.status}; catalogue report skipped`)
+      return
     }
     const xml = await res.text()
-    const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1])
-
-    const slugs = []
-    for (const loc of locs) {
-      let path
-      try {
-        path = new URL(loc).pathname
-      } catch {
-        path = loc
-      }
-      // /events/<slug> exactly (two segments), excluding /events/browse/*
-      const m = path.replace(/\/$/, '').match(/^\/events\/([^/]+)$/)
-      if (m && m[1] !== 'browse') slugs.push(m[1])
-    }
-
-    if (slugs.length === 0) {
-      console.error('[gate-urls] no /events/<slug> in sitemap; falling back to the seed slug')
-      return []
-    }
-
-    // SORT FIRST. This is the line that makes the gate repeatable.
-    slugs.sort()
-    const chosen = representativeSpread(slugs, EVENT_DETAIL_SAMPLES)
-    console.error(
-      `[gate-urls] ${slugs.length} event page(s) in sitemap; auditing ${chosen.length} ` +
-        `chosen deterministically (first/middle/last of the sorted list):`,
-    )
-    for (const s of chosen) console.error(`[gate-urls]   /events/${s}`)
-    return chosen.map(s => `/events/${s}`)
+    const slugs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]
+      .map(m => {
+        try {
+          return new URL(m[1]).pathname
+        } catch {
+          return m[1]
+        }
+      })
+      .filter(p => /^\/events\/[^/]+$/.test(p.replace(/\/$/, '')) && !p.includes('/browse'))
+    console.error(`[gate-urls] the preview sitemap publishes ${slugs.length} event page(s); ${((parsedCache?.eventDetail ?? []).length)} are pinned for audit.`)
   } catch (err) {
-    console.error(`[gate-urls] sitemap fetch failed (${err?.message}); falling back to the seed slug`)
-    return []
+    console.error(`[gate-urls] catalogue report skipped (${err?.message})`)
   }
 }
 
-/**
- * Builds and prints the URL list. Kept OUT of module scope on purpose.
- *
- * The first version of this rewrite resolved PREVIEW_URL and called
- * process.exit(1) at the top level, so merely IMPORTING the module to unit-test
- * `representativeSpread` killed the test runner. That is the same defect that
- * bit scripts/verify/event-structured-data-audit.mjs on 23 August: a module
- * that does its work on import cannot be tested, and the failure surfaces as an
- * unrelated crash somewhere else entirely.
- */
+let parsedCache = null
+
 async function main() {
   const base = (process.env.PREVIEW_URL || '').replace(/\/+$/, '')
   if (!base) {
@@ -149,16 +132,35 @@ async function main() {
     process.exit(1)
   }
 
-  const discovered = await discoverEventDetailPaths(base)
-  const detailPaths = discovered.length > 0 ? discovered : [FALLBACK_DETAIL_PATH]
+  const { parsed, paths } = readPinnedSet()
+  parsedCache = parsed
+  const ordered = orderedPaths(parsed)
 
-  // Insert the detail pages where the single one used to sit, preserving the
-  // original gate ordering (detail came after /community/african).
-  const paths = [...STATIC_PATHS]
-  paths.splice(4, 0, ...detailPaths)
+  console.error(`[gate-urls] pinned set: ${SET_FILE}, ${ordered.length} URL(s)`)
+  for (const e of [...(parsed.static ?? []), ...(parsed.eventDetail ?? [])]) {
+    console.error(`[gate-urls]   ${e.path}`)
+    console.error(`[gate-urls]       ${e.why}`)
+  }
 
-  console.error(`[gate-urls] ${paths.length} URL(s) will be audited.`)
-  for (const p of paths) {
+  await reportCatalogue(base)
+
+  console.error('[gate-urls] verifying every pinned path answers 200 before auditing...')
+  const bad = await verify(base, ordered)
+  if (bad.length > 0) {
+    console.error('')
+    console.error(`[gate-urls] FAIL - ${bad.length} pinned path(s) do not answer 200 on ${base}:`)
+    for (const b of bad) {
+      console.error(`[gate-urls]   ${String(b.status).padEnd(4)} ${b.path}${b.location ? ` -> ${b.location}` : ''}`)
+    }
+    console.error('')
+    console.error(`[gate-urls] The audited set is PINNED on purpose, so this is not silently substituted.`)
+    console.error(`[gate-urls] Either the page moved or the fixture changed: update ${SET_FILE} to a path`)
+    console.error(`[gate-urls] that represents the same thing, and say in its "why" what that is.`)
+    process.exit(1)
+  }
+  console.error(`[gate-urls] all ${ordered.length} pinned path(s) answer 200. Auditing them.`)
+
+  for (const p of ordered) {
     process.stdout.write(`${base}${p}\n`)
   }
 }

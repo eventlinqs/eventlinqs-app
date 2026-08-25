@@ -1,117 +1,124 @@
 /**
  * THE LIGHTHOUSE GATE MUST AUDIT THE SAME PAGES EVERY RUN.
  *
- * THE DEFECT THIS FILE WAS WRITTEN FOR (founder ruling, 24 August 2026).
- * scripts/ci/resolve-gate-urls.mjs discovered the event-detail page by taking
- * the FIRST /events/<slug> in the preview sitemap, and the sitemap query
- * carried no ORDER BY, so "first" was whatever Postgres returned that day.
- * Two consecutive gate runs on the same branch audited different pages:
+ * THE FIRST DEFECT (founder ruling, 24 August 2026). The resolver took the
+ * FIRST /events/<slug> in the preview sitemap, and the sitemap query carried no
+ * ORDER BY, so "first" was whatever Postgres returned that day. Two consecutive
+ * runs on the same branch audited different pages:
  *
  *   135be599  /events/seat-proof-fifty-nwltxi   0.83, 0.75, 0.73  PASS
  *   8044480b  /events/cat-indie-sounds-...      0.74, 0.73, 0.73  FAIL
  *
- * Nothing about event-page performance changed between them. The category
- * floor aggregates 'optimistic' (best of three), so 0.83 cleared the 0.80
- * floor and 0.74 did not. A gate whose verdict depends on which page it
- * happened to pick is a coin toss, and it blocked two merges.
+ * That pass sorted the slugs and took first/middle/last, which made the choice
+ * a pure function of the sitemap.
  *
- * WHAT IS ASSERTED HERE: the selection is a PURE FUNCTION of the sorted slug
- * list, so the same sitemap always yields the same URL set; the ends of the
- * catalogue are always included, so the sample cannot silently collapse onto
- * one lucky page; and the gate audits MORE event pages than before, never
- * fewer. That last one is a floor, not a detail: the cheap way to make this
- * gate green is to audit one fast page, and this test exists to forbid it.
+ * THE SECOND DEFECT, AND WHY THIS FILE CHANGED (25 August 2026). A pure
+ * function of a MOVING INPUT is still a moving output. The sitemap is the live
+ * catalogue: publish one event and "middle" is a different page. On 25 August
+ * the gate landed on /events/arena-sessions-large-room-performance-test, a
+ * 1,200 seat arena chart, scored 0.75/0.74/0.77 against a 0.80 floor, and
+ * blocked the merge. Nothing about the code had changed.
+ *
+ * The audited set is now a FIXED, REVIEWED LIST in lighthouse-gate-urls.json,
+ * in version control, each entry carrying the reason it is there, verified to
+ * answer 200 before it is audited and failing LOUDLY when one does not.
+ *
+ * WHAT IS ASSERTED HERE: the set is pinned and readable; it is not narrowed
+ * (three event pages, the heaviest first); the full public surface is still
+ * audited; a missing page fails rather than being substituted; and the sitemap
+ * the resolver reports from is itself ordered.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { representativeSpread } from '../../../scripts/ci/resolve-gate-urls.mjs'
+import { readPinnedSet, orderedPaths } from '../../../scripts/ci/resolve-gate-urls.mjs'
 
 const REPO_ROOT = process.cwd()
 const RESOLVER = join(REPO_ROOT, 'scripts/ci/resolve-gate-urls.mjs')
 
-describe('the audited page set is a pure function of the sitemap', () => {
-  const slugs = ['delta', 'alpha', 'charlie', 'echo', 'bravo', 'foxtrot']
+describe('the audited page set is pinned, not discovered', () => {
+  const { parsed, paths } = readPinnedSet(REPO_ROOT)
 
-  it('is stable across repeated calls on identical input', () => {
-    const sorted = [...slugs].sort()
-    const a = representativeSpread(sorted, 3)
-    const b = representativeSpread(sorted, 3)
-    const c = representativeSpread([...sorted], 3)
+  it('is identical on every read, because it is a file rather than a query', () => {
+    const a = orderedPaths(readPinnedSet(REPO_ROOT).parsed)
+    const b = orderedPaths(readPinnedSet(REPO_ROOT).parsed)
     expect(a).toEqual(b)
-    expect(a).toEqual(c)
   })
 
-  it('does NOT depend on the order the sitemap happened to list them in', () => {
-    // This is the whole defect in one assertion: the same set of events,
-    // delivered in a different order, must produce the same audited pages.
-    const asShipped = [...slugs].sort()
-    const shuffled = ['foxtrot', 'bravo', 'delta', 'alpha', 'echo', 'charlie'].sort()
-    expect(representativeSpread(shuffled, 3)).toEqual(representativeSpread(asShipped, 3))
+  it('every entry says why it is in the set', () => {
+    for (const e of [...(parsed.static ?? []), ...(parsed.eventDetail ?? [])]) {
+      expect(typeof e.why, `${e.path} carries no reason`).toBe('string')
+      expect(e.why.length, `${e.path} carries an empty reason`).toBeGreaterThan(20)
+    }
   })
 
-  it('always includes the first and last of the sorted catalogue', () => {
-    const sorted = [...slugs].sort()
-    const picked = representativeSpread(sorted, 3)
-    expect(picked[0]).toBe(sorted[0])
-    expect(picked[picked.length - 1]).toBe(sorted[sorted.length - 1])
+  it('every path is a leading-slash path, never an absolute URL', () => {
+    // An absolute URL here would pin the gate to one host and quietly stop
+    // measuring the preview for the commit under test.
+    for (const p of paths) {
+      expect(p.startsWith('/'), `${p} is not a path`).toBe(true)
+      expect(p.startsWith('//'), `${p} looks like a protocol-relative URL`).toBe(false)
+    }
   })
 
-  it('returns everything when the catalogue is smaller than the sample', () => {
-    expect(representativeSpread(['only-one'], 3)).toEqual(['only-one'])
-    expect(representativeSpread([], 3)).toEqual([])
-  })
-
-  it('never returns a duplicate', () => {
-    const picked = representativeSpread(['a', 'b'], 3)
-    expect(new Set(picked).size).toBe(picked.length)
-  })
-
-  it('negative control: taking the head is NOT stable, which is what shipped', () => {
-    // Proves the assertions above measure something real. `head` is the old
-    // behaviour: same events, different order, different audited page.
-    const head = (list: string[]) => list.slice(0, 1)
-    const orderA = ['cat-indie-sounds', 'seat-proof-fifty']
-    const orderB = ['seat-proof-fifty', 'cat-indie-sounds']
-    expect(head(orderA)).not.toEqual(head(orderB))
-    // ...whereas the real selector is indifferent to that ordering.
-    expect(representativeSpread([...orderA].sort(), 1)).toEqual(
-      representativeSpread([...orderB].sort(), 1),
-    )
+  it('negative control: a set that named the same path twice would be caught', () => {
+    // Proves the shape assertions above measure something. Duplicates would
+    // triple the runtime of one page and misreport the coverage.
+    expect(new Set(paths).size).toBe(paths.length)
   })
 })
 
 describe('the gate is not quietly narrowed to make it pass', () => {
+  const { parsed } = readPinnedSet(REPO_ROOT)
   const source = readFileSync(RESOLVER, 'utf8')
+  const raw = readFileSync(join(REPO_ROOT, 'lighthouse-gate-urls.json'), 'utf8')
 
-  it('audits more than one event-detail page', () => {
-    const m = source.match(/EVENT_DETAIL_SAMPLES\s*=\s*(\d+)/)
-    expect(m, 'EVENT_DETAIL_SAMPLES is gone').not.toBeNull()
-    expect(Number(m![1])).toBeGreaterThanOrEqual(3)
+  it('audits at least three event-detail pages', () => {
+    expect((parsed.eventDetail ?? []).length).toBeGreaterThanOrEqual(3)
   })
 
-  it('sorts before selecting, which is the line that makes it repeatable', () => {
-    expect(source).toMatch(/slugs\.sort\(\)/)
+  it('keeps the heaviest page on the platform in the set', () => {
+    // The 1,200 seat arena chart is the page that failed on 25 August 2026.
+    // Dropping it is the cheapest way to make this gate green and it is the
+    // exact move the founder forbade: "Do not narrow it to the fastest page to
+    // pass; if anything widen it."
+    const paths = (parsed.eventDetail ?? []).map((e: { path: string }) => e.path)
+    expect(paths).toContain('/events/arena-sessions-large-room-performance-test')
   })
 
   it('still audits the full public surface, not a fast subset', () => {
-    // The static set is the parity floor. If a future pass wants to drop a
-    // slow page from the gate, it has to delete a line here and explain why.
+    const statics = (parsed.static ?? []).map((e: { path: string }) => e.path)
     for (const path of [
-      "'/'",
-      "'/events'",
-      "'/events/browse/melbourne'",
-      "'/community/african'",
-      "'/organisers'",
-      "'/pricing'",
-      "'/help'",
-      "'/legal/terms'",
-      "'/login'",
-      "'/signup'",
+      '/',
+      '/events',
+      '/events/browse/melbourne',
+      '/community/african',
+      '/organisers',
+      '/pricing',
+      '/help',
+      '/legal/terms',
+      '/login',
+      '/signup',
     ]) {
-      expect(source, `${path} was dropped from the gate`).toContain(path)
+      expect(statics, `${path} was dropped from the gate`).toContain(path)
     }
+  })
+
+  it('fails rather than substituting when a pinned page stops resolving', () => {
+    // A silent substitution is how this gate became a coin toss. The resolver
+    // must exit non-zero and name the path.
+    expect(source).toMatch(/pinned path\(s\) do not answer 200/)
+    expect(source).toMatch(/process\.exit\(1\)/)
+  })
+
+  it('verifies before auditing, so a 404 can never hard-fail the LHCI collect', () => {
+    expect(source).toMatch(/verifying every pinned path answers 200/)
+  })
+
+  it('the pinned file records why the set is pinned at all', () => {
+    expect(raw).toMatch(/arena-sessions-large-room-performance-test/)
+    expect(raw).toMatch(/_notNarrowed/)
   })
 })
 
