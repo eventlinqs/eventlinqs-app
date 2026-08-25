@@ -1,3 +1,24 @@
+# ADVISORY SINCE 25 AUGUST 2026, BY FOUNDER RULING. READ BEFORE RE-REQUIRING IT.
+#
+# This workflow was removed from main's required status checks. It still runs on
+# every pull request, still asserts every threshold, and still fails loudly so the
+# failure email arrives. It deliberately does NOT carry continue-on-error: a
+# green-but-meaningless job would stop that email, and the email is the point.
+#
+# WHY. On the same commit and the same preview URLs, mobile, simulated throttling,
+# after the image optimiser had been warmed:
+#
+#   /events                      CI 0.78, 0.76, 0.76   warmed real client 0.88
+#   /events/cat-indie-sounds-... CI 0.71, 0.72, 0.79   warmed real client 0.86
+#
+# Same bytes, same build. The gap is the runner. No threshold was touched to reach
+# that ruling and the audited set was not narrowed.
+#
+# The full evidence, what was fixed BEFORE the ruling (the 1,200-seat document, an
+# accessibility regression, and this workflow's own warm pass which warmed no
+# images at all), what remains, and the one-command way to re-require it, are in
+# docs/perf/LIGHTHOUSE-GATE-ADVISORY-RULING-2026-08-25.md.
+#
 # Lighthouse CI gate - enforces docs/MEDIA-ARCHITECTURE.md §12.2.
 #
 # Hard gate covering every public page type, measured against the DEPLOYED
