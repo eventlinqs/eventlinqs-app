@@ -120,10 +120,22 @@ describe('the sitemap the gate reads is itself ordered', () => {
     // The resolver sorts defensively, but the sitemap is a PUBLISHED artefact
     // and its order should be a property of the data rather than of Postgres'
     // physical row order. Both halves are held so neither can quietly rot.
+    //
+    // WHY THIS COUNTS CHAINS RATHER THAN THE LITERAL `.order('slug', ...)`. It
+    // used to, and it went red the moment a query legitimately ordered by
+    // something else: the venue block orders by `venue_name`, because venues have
+    // no slug column and the handle is derived from the name. Pinning the column
+    // name asserted a coincidence rather than the rule, and the rule is "a paged
+    // query is ordered", not "a paged query is ordered by slug".
     const sitemap = readFileSync(join(REPO_ROOT, 'src/app/sitemap.ts'), 'utf8')
-    const limits = (sitemap.match(/\.limit\(5000\)/g) ?? []).length
-    const orders = (sitemap.match(/\.order\('slug', \{ ascending: true \}\)/g) ?? []).length
-    expect(limits).toBeGreaterThan(0)
-    expect(orders).toBe(limits)
+    const chains = [...sitemap.matchAll(/\.from\('(\w+)'\)([\s\S]{0,900}?)(?=\n\s*(?:if|for|\}|const)\s)/g)]
+    const paged = chains.filter(c => /\.limit\(\d+\)/.test(c[2]))
+    expect(paged.length).toBeGreaterThan(0)
+    for (const c of paged) {
+      expect(
+        /\.order\(\s*'[a-z_]+'\s*,\s*\{\s*ascending:/.test(c[2]),
+        `the sitemap's paged query on '${c[1]}' has a .limit() and no explicit .order()`,
+      ).toBe(true)
+    }
   })
 })

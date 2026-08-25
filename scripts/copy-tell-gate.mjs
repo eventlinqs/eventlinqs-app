@@ -103,6 +103,12 @@ const ALLOWLIST = [
       'CATEGORY_SLUG_ALIASES has to spell the RETIRED slug arts-culture, because that is the string arriving in a URL somebody already shared. The alias is what stops migration 20260812000002 turning those links into a 200 with zero events. The banned word is being retired here, not used: it appears once, as a map key, and its value is the community-first slug that replaces it',
   },
   {
+    file: 'src/lib/seo/permanent-redirects.ts',
+    patterns: ['banned-word-community-law'],
+    reason:
+      'the redirect table has to spell the RETIRED path, because that path is the thing being redirected: /cultures and /culture/:slug are the sources of the permanent 301s that keep every already-shared link working. The same admission and the same reasoning already cover src/lib/broadcast/short-links.ts, which reserves those two paths so a share code cannot shadow them. The strings are route names being retired, not copy: every destination in the table is a /community route',
+  },
+  {
     file: 'src/lib/broadcast/short-links.ts',
     patterns: ['banned-word-community-law'],
     reason:

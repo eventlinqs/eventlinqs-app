@@ -242,7 +242,20 @@ export function revalidateEventSurfaces(event: RevalidatableEvent): string[] {
   const citySlug = citySlugForVenueCity(event.venue_city)
   if (citySlug) mark(`/city/${citySlug}`)
 
-  if (event.category_slug) mark(`/categories/${event.category_slug}`)
+  /*
+   * THE CATEGORY MARK IS GONE, AND IT WAS ALWAYS MARKING A 404.
+   *
+   * `event.category_slug` comes from `event_categories`, so it is one of the
+   * twenty-two real category slugs. `/categories/[slug]` is bound to the seven
+   * hero-category editorial slugs, which have no overlap with those twenty-two.
+   * Driven against production on 25 August 2026: all twenty-two answered 404.
+   * This line has therefore been invalidating a path that does not exist on
+   * every event save since it was written, at no cost and to no effect.
+   *
+   * `/categories/<real slug>` now 308s to `/events?category=<slug>`, and
+   * `/events` is already marked two lines above, which is the route that
+   * actually renders those results.
+   */
 
   for (const community of communitiesFromTags(event.tags ?? [])) {
     mark(`/community/${community}`)

@@ -29,6 +29,8 @@
  *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
+ *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
+ *                              names a column that does not exist
  *   no-unguarded-production-write  no script writes to a database without checking which one
  *   one-db-connection-source   no script assembles its own database connection
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
@@ -335,6 +337,13 @@ const GUARDS = [
   // the CONTENT; scripts/verify/event-structured-data-audit.mjs holds the
   // DEPLOYED truth.
   'scripts/guards/event-structured-data.mjs',
+  // NOTHING ENTERS THE SITEMAP THAT DOES NOT RESOLVE. Three ways of breaking
+  // that promise were live in one file at once on 25 August 2026: a query on
+  // venues.slug, a column that does not exist, silently caught; six
+  // /categories/* URLs this repository 308s away; and no tie at all between the
+  // shapes published and the routes that exist. A sweep of the 586 URLs the
+  // production sitemap published returned 48 hard 404s.
+  'scripts/guards/sitemap-resolves.mjs',
   // Founder ruling 2026-08-13. `.env.local` in this repo points at the
   // PRODUCTION project, deliberately, because the app is run against production
   // from here. An audit that day found ten write-capable scripts with a

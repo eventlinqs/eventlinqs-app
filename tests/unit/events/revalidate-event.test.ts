@@ -52,9 +52,16 @@ describe('every surface an event appears on', () => {
     expect(paths).toContain('/city/melbourne')
   })
 
-  it('invalidates the category landing', () => {
+  it('does NOT invalidate /categories/<real slug>, because that path does not exist', () => {
+    // `/categories/[slug]` serves the seven hero-category editorial slugs. A
+    // real category slug (one of the twenty-two in event_categories) has never
+    // resolved there: driven against production on 25 August 2026, all
+    // twenty-two answered 404, and this function was invalidating them anyway.
+    // Since that pass a real slug 308s to /events?category=<slug>, and /events
+    // is the route that renders it and is already invalidated below.
     const paths = revalidateEventSurfaces({ slug: 'e', category_slug: 'music' })
-    expect(paths).toContain('/categories/music')
+    expect(paths).not.toContain('/categories/music')
+    expect(paths).toContain('/events')
   })
 
   it('invalidates the organiser profile', () => {
@@ -100,7 +107,7 @@ describe('it does not depend on the caller assembling fields', () => {
       'evt-1',
     )
     expect(paths).toContain('/events/read-from-db')
-    expect(paths).toContain('/categories/comedy')
+    expect(paths).not.toContain('/categories/comedy')
     expect(paths).toContain('/organisers/a-promoter')
     expect(paths).toContain('/city/geelong')
   })

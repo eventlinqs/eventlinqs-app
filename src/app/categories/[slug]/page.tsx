@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
@@ -14,6 +14,8 @@ import { getSiteUrl } from '@/lib/site-url'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { resolveCategorySlug } from '@/lib/events/search-params'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // ISR: every hero category is the same for all anonymous visitors. The
 // 5-minute revalidate window matches /events/[slug] and keeps the live
@@ -53,11 +55,65 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/**
+ * TWO TAXONOMIES SHARED ONE URL SPACE, AND ONLY ONE OF THEM RESOLVED.
+ *
+ * `/categories/[slug]` is bound to `hero-categories.ts`, seven legacy editorial
+ * slugs of which six are permanently redirected to `/community/*` by
+ * next.config. The platform's REAL category taxonomy is `public.event_categories`
+ * and it has twenty-two slugs, none of which is a hero slug.
+ *
+ * Driven against production on 25 August 2026, one request per slug:
+ *
+ *     404  /categories/music        404  /categories/comedy
+ *     404  /categories/sports       404  /categories/festival
+ *     404  /categories/nightlife    404  /categories/family
+ *     404  /categories/food-drink   404  /categories/arts-community
+ *     ... and the other fourteen, all 404.
+ *
+ * So the most obvious URL on a ticketing platform, the one a person types and
+ * the one `revalidateEventSurfaces` has been invalidating on every save since it
+ * was written, answered 404 for every real category the catalogue uses.
+ *
+ * THE FIX IS A FORWARD, NOT A NEW PAGE. There is already exactly one canonical
+ * category browse surface and the homepage category rail already links to it:
+ * `/events?category=<slug>`. Inventing twenty-two landing pages of editorial
+ * nobody wrote would be the generic template Law 1 exists to refuse. A 308 to
+ * the surface that already exists is the honest answer, and it makes the URL
+ * space total: every real category slug now lands somewhere that renders that
+ * category's events.
+ *
+ * The alias map is applied first so `/categories/arts-culture`, the pre-rename
+ * spelling that is still in the wild, forwards to the live slug rather than
+ * 404ing.
+ */
+async function forwardRealCategoryOrNotFound(slug: string): Promise<never> {
+  const resolved = resolveCategorySlug(slug)
+  if (resolved) {
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from('event_categories')
+      .select('slug')
+      .eq('slug', resolved)
+      .maybeSingle()
+    // A read failure must not be mistaken for "no such category". Saying so out
+    // loud is the difference between this and the organiser 404, where a
+    // discarded 42501 was read as an absent row for weeks.
+    if (error) {
+      console.error('[categories] could not resolve %s against event_categories:', resolved, error)
+    }
+    if (data?.slug) {
+      permanentRedirect(`/events?category=${encodeURIComponent(data.slug)}`)
+    }
+  }
+  notFound()
+}
+
 export default async function CategoryPage({ params }: Props) {
   const { slug } = await params
 
   if (!isHeroCategorySlug(slug)) {
-    notFound()
+    await forwardRealCategoryOrNotFound(slug)
   }
 
   const category = getHeroCategory(slug)!

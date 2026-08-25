@@ -9,6 +9,9 @@ import { GUIDES } from '@/lib/guides'
 import { getAllHeroCategories } from '@/lib/hero-categories'
 import { helpTopics } from '@/lib/help-content'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { isRedirected } from '@/lib/seo/permanent-redirects'
+import { venueSlugify } from '@/lib/venues/resolver'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 /**
  * Dynamic sitemap for EventLinqs.
@@ -53,6 +56,37 @@ import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
  * still read them and they cost nothing, but no decision here should depend on
  * them, and no future pass should tune them expecting Google to care.
  */
+/**
+ * THE SITEMAP MUST NOT OUTLIVE THE DATABASE IT DESCRIBES.
+ *
+ * `sitemap.ts` is "a special Route Handler that is cached by default unless it
+ * uses a Request-time API or dynamic config option"
+ * (node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/01-metadata/sitemap.md,
+ * shipped with next@16.3.0, read 25 August 2026). Cached by default, with no
+ * dynamic config, means BAKED AT BUILD.
+ *
+ * Measured on production on 25 August 2026, four requests over several minutes:
+ *
+ *     HTTP/1.1 200 OK
+ *     Age: 149833            <- 41.6 hours
+ *     X-Vercel-Cache: HIT    <- never STALE, so never revalidating
+ *     586 <loc> entries
+ *
+ * The demo purge had removed 46 events and 16 organisations in that window. The
+ * sitemap knew nothing about it, so a sweep of all 586 published URLs returned
+ * 48 hard 404s: 32 deleted events and 16 deleted organisations, every one of
+ * them advertised to Googlebot in writing.
+ *
+ * `revalidateEventSurfaces` already marks '/sitemap.xml' on every event
+ * mutation, which covers everything an organiser does in the product. It cannot
+ * cover a change made to the database directly, and the purge was exactly that.
+ * So the window is bounded here as well, at the same 300 seconds the event page
+ * and the category pages already use, and the two mechanisms cover each other:
+ * a product mutation clears it at once, and anything else is five minutes stale
+ * at the very worst instead of indefinitely stale.
+ */
+export const revalidate = 300
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getSiteUrl()
 
@@ -178,9 +212,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // on for years. Sourced from getAllHeroCategories(), the same list the route
   // itself uses in generateStaticParams, so the sitemap cannot drift from what
   // actually renders.
+  /*
+   * SIX OF THESE SEVEN ARE PERMANENTLY REDIRECTED BY THIS SAME REPOSITORY.
+   *
+   * next.config.ts 308s /categories/afrobeats, amapiano, owambe,
+   * heritage-and-independence, caribbean and gospel to /community/*. Publishing
+   * them here advertised six redirects to Google, against its own instruction on
+   * the page that defines a sitemap: "Don't include URLs that redirect or that
+   * aren't canonical."
+   * https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap
+   * (fetched 25 August 2026)
+   *
+   * The destinations are not lost: every /community/<slug> page is published by
+   * the community block below. The redirect table is read from the one module
+   * that also feeds next.config, so a slug added to or removed from the redirects
+   * changes what is published here in the same edit.
+   */
   for (const category of getAllHeroCategories()) {
+    const path = `/categories/${category.slug}`
+    if (isRedirected(path)) continue
     entries.push({
-      url: `${baseUrl}/categories/${category.slug}`,
+      url: `${baseUrl}${path}`,
       changeFrequency: 'daily',
       priority: 0.8,
     })
@@ -253,7 +305,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const admin = createAdminClient()
-    const { data: events } = await admin
+    const { data: events, error: eventError } = await admin
       .from('events')
       .select('slug, updated_at')
       .match(PUBLIC_EVENT_MATCH)
@@ -268,6 +320,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .order('slug', { ascending: true })
       .limit(5000)
 
+    if (eventError) {
+      console.error('[sitemap] events could not be read:', eventError)
+    }
     for (const e of events ?? []) {
       if (!e.slug) continue
       entries.push({
@@ -277,8 +332,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.7,
       })
     }
-  } catch {
-    // Sitemap must never 500. Fall through to the static entries already built.
+  } catch (err) {
+    // Sitemap must never 500. Fall through to the static entries already built,
+    // but SAY SO: a silent catch on this exact shape hid a 42703 in the venue
+    // block for the whole life of that block.
+    console.error('[sitemap] event block failed:', err)
   }
 
   // Batch 8.2 organiser profile pages.
@@ -289,7 +347,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // advertises pages that 404. Measured on TEST: 8 of 42 organiser URLs
     // (every 'pending' organisation) were listed for Google and returned 404.
     // The two queries must agree; this is the one that was wrong.
-    const { data: organisers } = await admin
+    const { data: organisers, error: organiserError } = await admin
       .from('organisations')
       .select('slug, updated_at')
       .not('slug', 'is', null)
@@ -298,6 +356,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // change order because the storage engine did.
       .order('slug', { ascending: true })
       .limit(5000)
+    if (organiserError) {
+      console.error('[sitemap] organisers could not be read:', organiserError)
+    }
     for (const o of organisers ?? []) {
       if (!o.slug) continue
       entries.push({
@@ -307,32 +368,122 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       })
     }
-  } catch {
+  } catch (err) {
     // Sitemap must never 500.
+    console.error('[sitemap] organiser block failed:', err)
   }
 
-  // Batch 8.3 venue profile pages.
+  /*
+   * VENUE PROFILE PAGES. THIS BLOCK HAD NEVER EMITTED A SINGLE URL.
+   *
+   * It used to read `.from('venues').select('slug, updated_at')`. There is no
+   * `slug` column on `public.venues` and there never has been. Postgres answers
+   *
+   *     42703  column venues.slug does not exist
+   *
+   * and the `catch {}` below threw the error away, so the block reported nothing,
+   * published nothing, and looked exactly like a platform with no venues.
+   * Reproduced against TEST on 25 August 2026, which holds 18 venue rows:
+   *
+   *     GET /rest/v1/venues?select=slug,name
+   *     {"code":"42703", ... "message":"column venues.slug does not exist"}
+   *
+   * The route does not key on a column at all. `/venues/[handle]` resolves
+   * through `resolveVenueProfile`, whose handle is `venueSlugify(venue.name)`
+   * (src/lib/venues/resolver.ts), and it resolves from EITHER an active venues
+   * row OR a published event naming that venue.
+   *
+   * WHAT IS PUBLISHED, AND WHY IT IS THE EVENT SIDE. Handles are derived from
+   * `events.venue_name` on publicly visible events, not from the venues table.
+   * Two reasons, and both are about only publishing what resolves:
+   *
+   *   1. `findVenueRowBySlug` reads the first 50 active venues and matches the
+   *      slugified name in JavaScript. A 51st venue row would be published here
+   *      and 404 on the page. Deriving from events cannot drift from the
+   *      resolver, because the events path is the one with no cap.
+   *   2. A venue page with no events is an empty page. The market-ready bar in
+   *      CLAUDE.md is explicit that a route resolving 200 to a designed empty
+   *      state is correct engineering and is still not something to advertise.
+   */
   try {
     const admin = createAdminClient()
-    const { data: venues } = await admin
-      .from('venues')
-      .select('slug, updated_at')
-      .not('slug', 'is', null)
-      // Same reason as the events query above: a published artefact should not
-      // change order because the storage engine did.
-      .order('slug', { ascending: true })
+    const { data: venueEvents, error: venueError } = await admin
+      .from('events')
+      .select('venue_name, updated_at')
+      .match(PUBLIC_EVENT_MATCH)
+      .not('venue_name', 'is', null)
+      .order('venue_name', { ascending: true })
       .limit(5000)
-    for (const v of venues ?? []) {
-      if (!v.slug) continue
+    if (venueError) {
+      // NOT SWALLOWED. A silent catch is what hid the 42703 above for the whole
+      // life of this block. The sitemap still must not 500, so this logs and
+      // carries on with the entries already built.
+      console.error('[sitemap] venue handles could not be read:', venueError)
+    }
+    /** handle -> most recent updated_at among the events at that venue. */
+    const venueHandles = new Map<string, string | null>()
+    for (const e of venueEvents ?? []) {
+      const name = typeof e.venue_name === 'string' ? e.venue_name.trim() : ''
+      if (!name) continue
+      const handle = venueSlugify(name)
+      if (!handle) continue
+      const seen = venueHandles.get(handle) ?? null
+      const next = typeof e.updated_at === 'string' ? e.updated_at : null
+      if (!venueHandles.has(handle) || (next && (!seen || next > seen))) {
+        venueHandles.set(handle, next)
+      }
+    }
+    for (const handle of [...venueHandles.keys()].sort()) {
+      const updated = venueHandles.get(handle) ?? null
       entries.push({
-        url: `${baseUrl}/venues/${v.slug}`,
-        ...(v.updated_at ? { lastModified: new Date(v.updated_at) } : {}),
+        url: `${baseUrl}/venues/${handle}`,
+        ...(updated ? { lastModified: new Date(updated) } : {}),
         changeFrequency: 'weekly',
         priority: 0.55,
       })
     }
-  } catch {
-    // Sitemap must never 500.
+  } catch (err) {
+    console.error('[sitemap] venue block failed:', err)
+  }
+
+  /*
+   * ARTIST PROFILE PAGES. THERE WAS NO BLOCK AT ALL.
+   *
+   * `/artists/[slug]` has existed since the artist layer shipped, is public and
+   * indexable, and no version of this file has ever listed one. On TEST that is
+   * four live, reachable profiles Google is never told about.
+   *
+   * IT IS GATED ON THE FLAG, AND THAT IS THE WHOLE POINT. The route's first act
+   * is `if (!(await isFeatureEnabled('broadcast_artists'))) notFound()`. The flag
+   * is TRUE on TEST and FALSE on production (read from `feature_flags` on both,
+   * 25 August 2026), so a block that listed artists unconditionally would publish
+   * a 404 for every artist the moment production has any. Asking the same
+   * question the page asks is the only way the two can agree.
+   */
+  try {
+    if (await isFeatureEnabled('broadcast_artists')) {
+      const admin = createAdminClient()
+      const { data: artists, error: artistError } = await admin
+        .from('artists')
+        .select('slug, updated_at')
+        .not('slug', 'is', null)
+        .order('slug', { ascending: true })
+        .limit(5000)
+      if (artistError) {
+        console.error('[sitemap] artists could not be read:', artistError)
+      }
+      for (const a of artists ?? []) {
+        if (!a.slug) continue
+        entries.push({
+          url: `${baseUrl}/artists/${a.slug}`,
+          ...(a.updated_at ? { lastModified: new Date(a.updated_at) } : {}),
+          changeFrequency: 'weekly',
+          priority: 0.5,
+        })
+      }
+    }
+  } catch (err) {
+    console.error('[sitemap] artist block failed:', err)
   }
 
   return entries

@@ -65,6 +65,56 @@ console.log(`[drills] effective reconcile_refund: ${NEW_EFFECTIVE_RECONCILE}`)
 
 const DRILLS = [
   /*
+   * sitemap-resolves, four drills, one per check, because all four of these
+   * failures were live in src/app/sitemap.ts at the same time on 25 August 2026
+   * and every gate in the repository was green.
+   *
+   * The measurement that produced them: a sweep of all 586 URLs the PRODUCTION
+   * sitemap published returned 48 hard 404s, and a per-slug drive of the
+   * /categories namespace returned six 308s beside one 200. Both are in the
+   * guard's header.
+   */
+  {
+    name: 'the sitemap queries a column that does not exist (the 42703 class)',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: "      .select('venue_name, updated_at')",
+    replace: "      .select('venue_name, updated_at, nonexistent_column')",
+    expect: 'does not exist in src/types/database.ts',
+  },
+  {
+    name: 'the sitemap publishes a URL this repository permanently redirects',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '      url: `${baseUrl}/pricing`,',
+    replace: '      url: `${baseUrl}/cultures`,',
+    expect: 'which permanent-redirects.ts redirects away',
+  },
+  {
+    name: 'the sitemap templates over a redirected namespace without consulting the table',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '    if (isRedirected(path)) continue',
+    replace: '    if (false) continue',
+    expect: 'never calls isRedirected()',
+  },
+  {
+    name: 'the sitemap publishes a URL shape with no route behind it',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '      url: `${baseUrl}/pricing`,',
+    replace: '      url: `${baseUrl}/pricing-plans`,',
+    expect: 'no App Router page matches it',
+  },
+  {
+    name: 'a sitemap catch block swallows its error without reporting it',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: "    console.error('[sitemap] organiser block failed:', err)",
+    replace: '    void err',
+    expect: 'catch block that reports nothing',
+  },
+  /*
    * one-db-connection-source, four drills, one per banned shape.
    *
    * These exist because the guard they exercise was written after two hours were
