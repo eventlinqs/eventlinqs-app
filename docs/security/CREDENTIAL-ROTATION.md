@@ -295,6 +295,7 @@ Actions, **L** local `.env.local`. The Development scope holds no secrets at all
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | same page, same account | P, V, L | Must come from the SAME account as the secret key. Write, then REBUILD (it is baked at build time). | `STRIPE_ACCOUNT_PAIR` cross rule; the payment element renders |
 | `STRIPE_WEBHOOK_SECRETS` | Stripe, Developers, Webhooks, per endpoint | P, V | Append the new `whsec_` to the comma list, deploy, confirm deliveries verify, THEN remove the old entry. Never replace in one step. | `docs/payments/WEBHOOK-CANON.md`; sentinel `payment` check |
 | `STRIPE_WEBHOOK_SECRET` | as above (legacy single value) | P, V | As above. Kept only as the appended fallback. | as above |
+| **`SUPABASE_DB_PASSWORD_SYDNEY`** (the PRODUCTION Postgres password) | Supabase, Project Settings, **Database**, Reset database password | **L only, and L means EVERY CHECKOUT** | Reset it in the dashboard, then write it into the `.env.local` of every checkout on the machine, then verify each one. Nothing in Vercel holds it and nothing in the running application uses it: `src/` never opens a Postgres connection, so no deploy is needed and no page breaks. **That is what makes it dangerous.** A missed copy produces no red anywhere; it produces `28P01 password authentication failed for user "postgres"` from a script somebody runs days later. | `node scripts/verify/db-password-rotation.mjs` for the inventory, then `--connect --project prod` FROM EACH CHECKOUT |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase, Project Settings, API | P, V (TEST project), L | Supabase rotation invalidates the old key immediately, so write every store, then redeploy at once. Expect a brief window. | `refFromJwt` matches the intended project; sentinel `database` check |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | same page | P, V, L | Write, then REBUILD (baked at build time). | homepage renders data |
 | `NEXT_PUBLIC_SUPABASE_URL` | same page | P, V, L | Configuration, not a secret. REBUILD after change. | `SUPABASE_PRODUCTION_REF_ISOLATION` cross rule |
@@ -326,6 +327,51 @@ run concluded `failure`, and the post-deploy smoke gate's
 smoke gate for two weeks because an unrelated schema-introspection job could not
 authenticate.** The coupling is now removed (the smoke gate keys off the deploy),
 but the token still needs to be alive for the drift guard to mean anything.
+
+### 7.3 The database password is not one file, and the search order is not alphabetical
+
+Added 25 August 2026, after the production database password passed through a
+chat window and had to be rotated.
+
+**Measured on that day**, the same production password sat in FOUR `.env.local`
+files, one per checkout:
+
+```
+eventlinqs-app/.env.local              (the main checkout)
+eventlinqs-app-backend/.env.local
+eventlinqs-app-hardening/.env.local
+eventlinqs-app-tab-a/.env.local
+```
+
+`credentialSources()` in `scripts/lib/db-credentials.mjs` searches, in order:
+the shell, any `--env-file` on the command line, the CURRENT worktree's
+`.env.<alias>.local`, `.env.<alias>`, `.env.local` and `.env.test`, and only
+THEN the main checkout. So a script run from a worktree whose own `.env.local`
+still holds the old password uses the old password, while the same script run
+from the main checkout works perfectly. Updating "the" copy fixes the one you
+tested and leaves the trap set in the other three.
+
+`scripts/verify/db-password-rotation.mjs` inventories every copy across every
+checkout, groups them by a SHA-256 fingerprint (never the value), and reports how
+many DISTINCT secrets exist. There should be exactly two, production and TEST. A
+third means a rotation reached some copies and not others.
+
+**What does NOT break when this password is rotated**, stated because the
+temptation is to schedule a maintenance window for it and there is nothing to
+schedule:
+
+- the website, checkout and every API route: they use PostgREST and the
+  service-role key, which is a different credential entirely;
+- Vercel: the password is on no scope there, and it should stay that way;
+- GitHub Actions: same;
+- the Stripe webhook, the crons, the health sentinel: all PostgREST.
+
+**What DOES break, immediately and silently:**
+
+- `supabase db push --linked`, which is how migrations reach production;
+- the 29 scripts that open a direct Postgres connection through the shared
+  helper, including every `scripts/verify/*` end-to-end drive;
+- any saved connection in a database GUI, and any shell history alias.
 
 ### 7.2 After ANY rotation
 
