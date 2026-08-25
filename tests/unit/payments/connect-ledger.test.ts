@@ -264,8 +264,9 @@ describe('recordOrderConfirmedLedger', () => {
     expect(state.orgUpdates[0]).toMatchObject({
       hold_amount_cents: 2_000,
       total_volume_cents: 10_500,
-      total_event_count: 1,
     })
+    // total_event_count is NOT written here any more. See the test below.
+    expect(state.orgUpdates[0]).not.toHaveProperty('total_event_count')
   })
 
   test('skips when an order_confirmed ledger row already exists', async () => {
@@ -321,7 +322,21 @@ describe('recordOrderConfirmedLedger', () => {
     expect(state.ledgerInserts).toHaveLength(0)
   })
 
-  test('does not increment total_event_count when the event already has confirmed orders', async () => {
+  test('never writes total_event_count, whatever the confirmed-order count says', async () => {
+    /*
+     * THIS TEST USED TO ASSERT THE INCREMENT, and the increment was the defect.
+     *
+     * connect-ledger counted the confirmed orders for the event and incremented
+     * organisations.total_event_count when this was the first. Nothing anywhere
+     * decremented it. Driven against TEST on 25 August 2026: deleting the event
+     * left the counter at 1 against a truth of 0, which is what the production
+     * purge did to it 46 times.
+     *
+     * Since migration 20260825000003 the column is RECOMPUTED from public.events
+     * by trg_recompute_org_event_count, so a write here would DOUBLE COUNT. The
+     * assertion is inverted rather than deleted, because "this function must not
+     * touch that column" is the thing worth holding.
+     */
     const state = buildAdminMock({
       orderRow: { data: { ...baseOrder }, error: null },
       confirmedCountResult: { count: 3, error: null },
@@ -337,8 +352,25 @@ describe('recordOrderConfirmedLedger', () => {
     expect(state.orgUpdates[0]).toMatchObject({
       hold_amount_cents: 2_000,
       total_volume_cents: 10_500,
-      total_event_count: 0,
     })
+    expect(state.orgUpdates[0]).not.toHaveProperty('total_event_count')
+  })
+
+  test('does not even READ total_event_count, so the extra count query is gone', async () => {
+    // The old path ran a COUNT over orders on every confirmed order purely to
+    // decide whether to increment. Removing the write removes that query too.
+    const state = buildAdminMock({
+      orderRow: { data: { ...baseOrder }, error: null },
+    })
+    const adminClient = buildAdminClient(state)
+
+    await recordOrderConfirmedLedger(adminClient, {
+      orderId: 'order_1',
+      stripePaymentIntentId: 'pi_test_1',
+      stripeChargeId: null,
+    })
+
+    expect(Object.keys(state.orgUpdates[0])).not.toContain('total_event_count')
   })
 
   test('honours per-org override (e.g. enterprise reserve at 10%)', async () => {

@@ -49,6 +49,20 @@
  * because a registry that can point at nothing is worse than none.
  *
  * ============================================================================
+ * CHECK 3: EVERY AGGREGATE-SHAPED COLUMN THAT EXISTS IS ADJUDICATED
+ * ============================================================================
+ *
+ * Checks 1 and 2 catch a figure once somebody WRITES to it, which is one edit
+ * too late. event_addons.sold_count and tier_access_codes.current_uses both
+ * existed for months with NOTHING writing them, so neither appeared as an
+ * in-place increment, and a checkout enforced a cap against each of them.
+ *
+ * So check 3 looks at what EXISTS: every column in the generated types whose
+ * name ends in _count, or is exactly current_uses, must carry a verdict in
+ * scripts/lib/stored-aggregates.mjs. Adding one without an entry fails the
+ * build, whether or not anything has been written to touch it yet.
+ *
+ * ============================================================================
  * WHAT THIS GUARD CANNOT SEE
  * ============================================================================
  *
@@ -64,6 +78,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { STORED_AGGREGATES } from '../lib/stored-aggregates.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -95,75 +110,16 @@ const TAG_EXEMPTIONS = [
 ]
 
 /**
- * Every column this repository increments in place, and what maintains it.
+ * THE REGISTRY MOVED, and this guard reads it rather than carrying a copy.
  *
- * `drives` records the verdict from scripts/verify/aggregate-drift-drive.mjs on
- * 25 August 2026, so the registry carries the measurement rather than an opinion.
+ * It used to be a literal in this file. That made it invisible to the recurring
+ * reconciliation and to anyone reading the codebase for what maintains a figure,
+ * and it put the guard one careless edit away from disagreeing with the report.
+ * scripts/lib/stored-aggregates.mjs is now the single source for the verdict per
+ * column; the recount SQL is the view public.stored_aggregate_drift; this file
+ * is only the thing that fails the build.
  */
-const AGGREGATE_REGISTRY = [
-  {
-    column: 'ticket_tiers.reserved_count',
-    increment: 'create_reservation (row-locked)',
-    decrement: 'on_reservation_released, AFTER UPDATE OR DELETE (migration 20260825000001), and the expire sweeper',
-    drive: 'FOLLOWS on create, cancel and delete since 20260825000001. DRIFTED on delete before it.',
-  },
-  {
-    column: 'ticket_tiers.sold_count',
-    increment: 'confirm_order (row-locked)',
-    decrement: 'reconcile_refund',
-    drive:
-      'FOLLOWS on refund. DRIFTS when a ticket row is DELETED, which nothing in the product does. KNOWINGLY LEFT: it is the oversell figure under a row lock, and for a reserved-seating event the truth lives in seats, not tickets. Rewriting it is its own pass.',
-  },
-  {
-    column: 'organisations.total_volume_cents',
-    increment: 'recordOrderConfirmedLedger in src/lib/payments/connect-ledger.ts',
-    decrement: 'reconcile_refund',
-    drive:
-      'FOLLOWS on refund. DRIFTS when a confirmed order is DELETED. KNOWINGLY LEFT in the column: since 25 August 2026 nothing renders it, because src/lib/admin/organisers.ts counts the rows instead.',
-  },
-  {
-    column: 'organisations.total_event_count',
-    increment: 'recordOrderConfirmedLedger in src/lib/payments/connect-ledger.ts',
-    decrement: 'NONE ANYWHERE',
-    drive:
-      'DRIFTS on event delete, which is exactly what the production purge did 46 times. KNOWINGLY LEFT in the column: nothing renders it since src/lib/admin/organisers.ts started counting the rows.',
-  },
-  {
-    column: 'organisations.hold_amount_cents',
-    increment: 'recordOrderConfirmedLedger in src/lib/payments/connect-ledger.ts',
-    decrement: 'reconcile_refund and the disbursement cron',
-    drive:
-      'FOLLOWS on refund. DRIFTS when a payout_hold row is DELETED. Not rendered on any organiser-facing or admin surface.',
-  },
-  {
-    column: 'tickets.scan_count',
-    increment: 'scan_ticket',
-    decrement: 'not applicable',
-    drive:
-      'NOT THE SHAPE. ticket_scans is an audit log of every attempt including failures; scan_count counts successful admits only. They answer different questions and are written in one transaction, so neither is a copy of the other.',
-  },
-  {
-    column: 'discount_codes.current_uses',
-    increment: 'confirm_order',
-    decrement: 'NONE ANYWHERE',
-    drive:
-      'DRIFTS when the order that consumed the code is DELETED: current_uses stayed 1 against a truth of 0, so a code capped at max_uses 3 read 2 uses left when 3 were left. discount_code_usages holds the countable truth and cascades with the order. KNOWINGLY LEFT: changing when a discount is consumed is a change to the checkout money path and belongs in its own pass, not in an audit.',
-  },
-  {
-    column: 'organisations.founding_bonus_months',
-    increment: 'src/lib/founding/invites.ts, on a referral being accepted',
-    decrement: 'not applicable',
-    drive:
-      'NOT THE SHAPE. This is an AWARD, not a summary: months granted to an organiser for a referral. There is no set of rows it claims to total, so there is nothing it can disagree with. It is registered so the guard can say that out loud rather than fall silent on it.',
-  },
-  {
-    column: 'payout_holds.amount_cents',
-    increment: 'reconcile_refund reduces the hold proportionally on a partial refund',
-    decrement: 'the same statement',
-    drive:
-      'NOT THE SHAPE. This is the hold row\'s OWN balance, not a total over other rows. organisations.hold_amount_cents is the figure that totals these, and that one IS registered above and does drift.',
-  },
-]
+const AGGREGATE_REGISTRY = STORED_AGGREGATES
 
 /* ------------------------------------------------------------------ *
  * File walking
@@ -384,6 +340,113 @@ for (const [column, sites] of [...increments].sort()) {
 }
 
 /* ------------------------------------------------------------------ *
+ * CHECK 3: EVERY AGGREGATE-SHAPED COLUMN THAT EXISTS IS ADJUDICATED
+ * ------------------------------------------------------------------ */
+
+/**
+ * FOUNDER RULING, 25 August 2026: "make the class impossible rather than the
+ * instances fixed."
+ *
+ * Checks 1 and 2 catch a figure once somebody WRITES to it. That is one edit too
+ * late: `event_addons.sold_count` and `tier_access_codes.current_uses` both
+ * existed for months with NOTHING writing them, so neither showed up as an
+ * in-place increment and both were enforced against by a checkout. A column that
+ * exists and is maintained by nothing is the worst case in the class, and it is
+ * invisible to a detector that looks for writes.
+ *
+ * So this looks at what EXISTS. Every column in the generated types whose name
+ * ends in `_count`, or is exactly `current_uses`, must carry a verdict in
+ * scripts/lib/stored-aggregates.mjs. Adding one without an entry fails the
+ * build, whether or not a line of code has been written to touch it yet.
+ *
+ * THE PATTERN IS DELIBERATELY TIGHT. Widening it to every `_cents` or `_total`
+ * would sweep in per-row transaction amounts (orders.total_cents,
+ * payments.amount_cents), which are the primary record rather than a copy of
+ * one, and a gate that fires on a hundred false positives is a gate somebody
+ * switches off. Columns outside the pattern that ARE in the class
+ * (organisations.total_volume_cents, hold_amount_cents) are caught by check 2
+ * when they are written, and are registered here anyway.
+ */
+const AGGREGATE_NAME = /(_count$|^current_uses$)/
+
+/**
+ * The generated types, reduced to table -> Set(column).
+ *
+ * The types are read rather than the migrations, because the migrations are the
+ * HISTORY of the schema and a column added in one and dropped in another would
+ * be found twice and adjudicated wrongly. src/types/database.ts is what the
+ * schema IS, and the `types-drift guard` in CI is what keeps it honest.
+ */
+const TYPES = 'src/types/database.ts'
+
+function tableColumns() {
+  const file = join(ROOT, TYPES)
+  if (!existsSync(file)) {
+    fail(`${TYPES} does not exist; check 3 cannot see which columns exist and is not running`)
+    return new Map()
+  }
+  const src = readFileSync(file, 'utf8')
+  const tables = new Map()
+  const tableRe = /^ {6}(\w+): \{\n {8}Row: \{\n([\s\S]*?)\n {8}\}/gm
+  let m
+  while ((m = tableRe.exec(src)) !== null) {
+    const cols = new Set([...m[2].matchAll(/^ {10}(\w+)(\??):/gm)].map(c => c[1]))
+    if (cols.size > 0) tables.set(m[1], cols)
+  }
+  if (tables.size === 0) {
+    fail(`${TYPES} yielded no tables; check 3's reader is broken and the check is not running`)
+  }
+  return tables
+}
+
+const TABLES = tableColumns()
+
+const shapedColumns = new Map()
+for (const [table, cols] of TABLES) {
+  for (const col of cols) {
+    if (AGGREGATE_NAME.test(col)) shapedColumns.set(`${table}.${col}`, table)
+  }
+}
+
+const shapedVerdicts = []
+for (const [column] of [...shapedColumns].sort()) {
+  const entry = AGGREGATE_REGISTRY.find(a => a.column === column)
+  shapedVerdicts.push({ column, maintenance: entry?.maintenance ?? null })
+  if (!entry) {
+    fail(
+      `${column} exists and carries no verdict in scripts/lib/stored-aggregates.mjs. ` +
+        `A column that stores a count and is maintained by nothing is the shape that left ` +
+        `event_addons.sold_count at 0 while the checkout capped an addon against it. ` +
+        `Add an entry saying whether it is trigger-maintained, application-maintained, ` +
+        `unmaintained or not-in-class, and why.`,
+    )
+    continue
+  }
+  const allowed = ['trigger', 'application', 'unmaintained', 'not-in-class']
+  if (!allowed.includes(entry.maintenance)) {
+    fail(`${column} has a registry entry whose maintenance is "${entry.maintenance}", not one of ${allowed.join(', ')}.`)
+  }
+  if (!entry.maintainedBy || entry.maintainedBy.length < 10) {
+    fail(`${column} has a registry entry that does not say what maintains it.`)
+  }
+}
+
+/**
+ * A registry entry naming a column that no longer exists.
+ *
+ * The reverse rot: a list that can point at nothing is worse than no list,
+ * because it reads as coverage. Only checked for the shaped names, since the
+ * registry deliberately also carries columns outside the pattern.
+ */
+for (const entry of AGGREGATE_REGISTRY) {
+  const [table, col] = entry.column.split('.')
+  if (!AGGREGATE_NAME.test(col ?? '')) continue
+  if (!TABLES.has(table) || !TABLES.get(table).has(col)) {
+    fail(`scripts/lib/stored-aggregates.mjs registers ${entry.column}, which does not exist in ${TYPES}. Remove the entry.`)
+  }
+}
+
+/* ------------------------------------------------------------------ *
  * Report
  * ------------------------------------------------------------------ */
 
@@ -399,6 +462,11 @@ console.log('[maintained-aggregates] reviewed tag exemptions, printed so they ca
 for (const e of TAG_EXEMPTIONS) {
   console.log(`[maintained-aggregates]   ${e.tag}`)
   console.log(`[maintained-aggregates]       ${e.reason}`)
+}
+console.log('')
+console.log('[maintained-aggregates] AGGREGATE-SHAPED COLUMNS THAT EXIST, verdict per column:')
+for (const v of shapedVerdicts) {
+  console.log(`[maintained-aggregates]   ${(v.maintenance ?? 'NO VERDICT').toUpperCase().padEnd(14)} ${v.column}`)
 }
 console.log('')
 console.log('[maintained-aggregates] IN-PLACE INCREMENTS found:')

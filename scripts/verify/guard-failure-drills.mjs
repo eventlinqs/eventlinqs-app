@@ -90,6 +90,53 @@ const DRILLS = [
     expect: 'is not in AGGREGATE_REGISTRY',
   },
   {
+    /*
+     * FOUNDER RULING 25 August 2026: "a guard that FAILS THE BUILD when a new
+     * stored aggregate is added without a maintainer. Drill it by adding one."
+     *
+     * This is that drill, and it adds one the way it actually happens: a column
+     * appears in the schema, and nothing has been written to touch it yet. Both
+     * of the real instances arrived exactly like this. event_addons.sold_count
+     * and tier_access_codes.current_uses each existed for months with no writer
+     * at all, so a detector that looks for WRITES saw nothing while a checkout
+     * enforced a cap against each of them.
+     */
+    name: 'a new stored aggregate column is added and nothing maintains it',
+    guard: `${GUARDS}/maintained-aggregates.mjs`,
+    file: 'src/types/database.ts',
+    find: '          sold_count: number\n          sort_order: number',
+    replace: '          refunded_count: number\n          sold_count: number\n          sort_order: number',
+    expect: 'carries no verdict in scripts/lib/stored-aggregates.mjs',
+  },
+  {
+    /*
+     * The reverse rot. A registry that can point at nothing is worse than no
+     * registry, because it reads as coverage.
+     *
+     * It ADDS a bogus entry rather than renaming a real one, and that is not
+     * fussiness: renaming `tickets.scan_count` leaves the real column with no
+     * verdict, so check 3's "carries no verdict" fires FIRST and the drill would
+     * pass while proving the wrong thing. Caught on the first run of this drill.
+     */
+    name: 'the registry points at a column that does not exist',
+    guard: `${GUARDS}/maintained-aggregates.mjs`,
+    file: 'scripts/lib/stored-aggregates.mjs',
+    find: "    column: 'tickets.scan_count',",
+    replace: [
+      "    column: 'ticket_tiers.ghost_count',",
+      '    summarises: null,',
+      "    maintenance: 'not-in-class',",
+      "    maintainedBy: 'nothing at all, this entry is a drill',",
+      '    reconciled: false,',
+      '    caveat: null,',
+      "    decision: 'drill',",
+      '  },',
+      '  {',
+      "    column: 'tickets.scan_count',",
+    ].join('\n'),
+    expect: 'which does not exist in src/types/database.ts',
+  },
+  {
     name: 'a tag exemption is left behind after its cache is deleted',
     guard: `${GUARDS}/maintained-aggregates.mjs`,
     file: 'src/lib/images/suburb-photo.ts',

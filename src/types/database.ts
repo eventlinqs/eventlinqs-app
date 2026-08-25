@@ -4705,6 +4705,12 @@ export type Database = {
         }
         Returns: string
       }
+      redeem_tier_access_codes: {
+        Args: { p_code: string; p_tier_ids: string[] }
+        Returns: {
+          ticket_tier_id: string
+        }[]
+      }
       refund_policy_is_looser_or_equal: {
         Args: {
           p_new_absorb: boolean

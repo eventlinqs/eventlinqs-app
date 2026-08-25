@@ -236,11 +236,14 @@ try {
   // exact arithmetic of recordOrderConfirmedLedger, applied here because that
   // function is server-only TypeScript and cannot be called from a script. The
   // DRIVE below is the change to the underlying rows, not this setup.
+  // total_event_count is NOT staged here any more. connect-ledger stopped
+  // incrementing it on 25 August 2026 and a recompute trigger on public.events
+  // owns it (migration 20260825000003), so staging a write the application no
+  // longer makes would be testing a path that does not exist.
   await q(
     `UPDATE public.organisations
        SET hold_amount_cents = hold_amount_cents + $2,
-           total_volume_cents = total_volume_cents + $3,
-           total_event_count = total_event_count + 1
+           total_volume_cents = total_volume_cents + $3
      WHERE id = $1`,
     [orgId, reserve, total],
   )
@@ -502,6 +505,57 @@ try {
   )
   console.log(`           max_uses is 3, so the code now reads ${3 - usesAfter} use(s) left when the truth is ${3 - trueUses}`)
   await q('DELETE FROM public.discount_codes WHERE id=$1', [codeId])
+
+  /* ==================================================================== *
+   * FIGURE 9: tier_access_codes.current_uses
+   *
+   * FOUND BY THE ENUMERATION OF 25 AUGUST 2026, not by anyone hitting it.
+   * NOTHING wrote this column: not a trigger, not a function, not a line of
+   * TypeScript. validateAccessCode refused a code when current_uses >= max_uses,
+   * so a code capped at 1 use was redeemable without limit.
+   * ==================================================================== */
+  console.log('\n=== FIGURE 9: tier_access_codes.current_uses ===')
+
+  const accessCodeId = randomUUID()
+  const accessCode = `DRILL${sfx.toUpperCase()}`
+  await q(
+    `INSERT INTO public.tier_access_codes (id, ticket_tier_id, code, max_uses, current_uses, is_active)
+     VALUES ($1,$2,$3,1,0,true)`,
+    [accessCodeId, tierId, accessCode],
+  )
+
+  const usesOf = async () =>
+    num((await one('SELECT current_uses u FROM public.tier_access_codes WHERE id=$1', [accessCodeId])).u)
+
+  const firstRedeem = await q('SELECT * FROM public.redeem_tier_access_codes($1, $2::uuid[])', [
+    accessCode,
+    [tierId],
+  ])
+  record(
+    'tier_access_codes.current_uses',
+    'POSITIVE CONTROL: the first redemption of a max_uses 1 code is admitted and counted',
+    firstRedeem.rowCount === 1 && (await usesOf()) === 1 ? 'FOLLOWS' : 'DRIFTS',
+    0,
+    await usesOf(),
+    1,
+  )
+
+  const secondRedeem = await q('SELECT * FROM public.redeem_tier_access_codes($1, $2::uuid[])', [
+    accessCode,
+    [tierId],
+  ])
+  record(
+    'tier_access_codes.current_uses',
+    'DRIVE: the SECOND redemption of a max_uses 1 code must be refused',
+    secondRedeem.rowCount === 0 && (await usesOf()) === 1 ? 'FOLLOWS' : 'DRIFTS',
+    1,
+    await usesOf(),
+    1,
+  )
+  console.log(
+    `           the second call unlocked ${secondRedeem.rowCount} tier(s); before 25 August 2026 it unlocked 1 and every call after it did too`,
+  )
+  await q('DELETE FROM public.tier_access_codes WHERE id=$1', [accessCodeId])
 
   /* ==================================================================== *
    * FIGURE 4: organisations.total_event_count
