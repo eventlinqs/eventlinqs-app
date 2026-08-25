@@ -51,8 +51,15 @@ import { readFileSync } from 'node:fs'
 const LIST = process.argv[2] ?? 'gate-urls.txt'
 /** The audit cookie the gate itself sends: motion and hover wash off. */
 const HEADERS = { Cookie: 'el-audit=1', 'user-agent': 'EventLinqs-gate-warmer/1.0' }
-/** A page can carry a lot of images; this bounds the pass without hiding it. */
-const MAX_IMAGES_PER_PAGE = 40
+/**
+ * A page can carry a lot of images; this bounds the pass.
+ *
+ * Raised from 40 to 80 after the first CI run showed four pages sitting exactly
+ * on 40, which is the signature of truncation rather than of a page with forty
+ * images. Every truncation is now REPORTED, so the number can be argued about
+ * from evidence instead of being discovered by someone reading a red gate.
+ */
+const MAX_IMAGES_PER_PAGE = 80
 
 function decodeAttr(s) {
   return s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;/g, "'")
@@ -112,6 +119,7 @@ async function main() {
 
   let pages = 0
   let images = 0
+  let truncatedPages = 0
   const failures = []
 
   for (const url of urls) {
@@ -127,7 +135,17 @@ async function main() {
       failures.push(`page body unreadable ${url} (${err?.message ?? err})`)
     }
 
-    const imageUrls = html ? optimisedImageUrls(html, url).slice(0, MAX_IMAGES_PER_PAGE) : []
+    /*
+     * A CAP THAT SAYS SO. The first CI run of this warmer reported exactly 40
+     * variants on four pages, which is the cap, which means those four were
+     * TRUNCATED and the report read identically to a page that happened to have
+     * forty. A silent cap is how "we warmed everything" becomes untrue without
+     * anybody noticing, and this pass exists precisely because the previous warm
+     * step claimed something it did not do.
+     */
+    const allImages = html ? optimisedImageUrls(html, url) : []
+    const imageUrls = allImages.slice(0, MAX_IMAGES_PER_PAGE)
+    const truncated = allImages.length - imageUrls.length
     // Sequential on purpose. Firing forty optimiser requests at once is how a
     // warm pass becomes the thing that makes the first measured run slow.
     for (const img of imageUrls) {
@@ -141,11 +159,19 @@ async function main() {
     if (!second.ok) failures.push(`page ${second.status} (second pass) ${url}`)
 
     console.log(`[warm] ${url}`)
-    console.log(`[warm]   page x2, ${imageUrls.length} optimised image variant(s)`)
+    console.log(
+      `[warm]   page x2, ${imageUrls.length} optimised image variant(s)` +
+        (truncated > 0 ? `  TRUNCATED: ${truncated} more not warmed (cap ${MAX_IMAGES_PER_PAGE})` : ''),
+    )
+    if (truncated > 0) truncatedPages += 1
   }
 
   console.log('')
   console.log(`[warm] ${pages} page(s) warmed twice each, ${images} optimised image variant(s) requested.`)
+  if (truncatedPages > 0) {
+    console.log(`[warm] ${truncatedPages} page(s) hit the ${MAX_IMAGES_PER_PAGE}-variant cap and were NOT fully warmed.`)
+    console.log('[warm] Read a red Lighthouse run on those pages against that, and raise the cap if it matters.')
+  }
   if (failures.length > 0) {
     console.log(`[warm] ${failures.length} warm request(s) did not return 200. Warming never fails the build,`)
     console.log('[warm] but a red Lighthouse run should be read against this list:')
