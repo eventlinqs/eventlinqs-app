@@ -16,7 +16,9 @@ import { EventsHeroStrip } from '@/components/features/events/m5-events-hero-str
 import { EventsFilterBar } from '@/components/features/events/m5-events-filter-bar'
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
 import { EventsPopularSection } from '@/components/features/events/m5-events-popular-section'
-import { EventsCount, EventsResults } from '@/components/features/events/events-results'
+import { EventsCollectionMarkup, EventsCount, EventsResults } from '@/components/features/events/events-results'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
+import { getSiteUrl } from '@/lib/site-url'
 import { BrowseNotice } from '@/components/features/events/browse-notice'
 import { SearchScopeResults } from '@/components/features/events/search-scope-results'
 import { resolveScopeResults } from '@/lib/events/search-scopes'
@@ -95,8 +97,35 @@ export default async function EventsPage({ searchParams }: Props) {
     : fetchPublicEvents({ filters: effectiveFilters, page, pageSize: 24, origin })
   const categories = await fetchActiveCategoriesCached()
 
+  /*
+   * STRUCTURED DATA ON THE CANONICAL VIEW ONLY.
+   *
+   * A filtered or paged view of the same list is not a distinct collection and
+   * should not claim to be one, which is why /events/browse/[city] gates its
+   * markup the same way. `page === 1 && !filterActive` is that view.
+   *
+   * The collection itself streams behind the page's Suspense, because it needs
+   * the events and awaiting them here would block the hero and the LCP. The
+   * breadcrumb needs nothing and is emitted immediately.
+   */
+  const siteUrl = getSiteUrl()
+  const isCanonicalView = !filterActive && page === 1 && view !== 'map' && !searchQuery
+
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
+      {isCanonicalView && (
+        <>
+          <Suspense fallback={null}>
+            <EventsCollectionMarkup resultPromise={resultPromise} baseUrl={siteUrl} />
+          </Suspense>
+          <BreadcrumbJsonLd
+            items={[
+              { name: 'Home', url: `${siteUrl}/` },
+              { name: 'Events', url: `${siteUrl}/events` },
+            ]}
+          />
+        </>
+      )}
       <SiteHeader />
       <main className="flex-1">
         {/* Checkout bounced this buyer here. Tell them why, before anything
