@@ -40,6 +40,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { declareWork } from '../lib/work-report.mjs'
 
 const ROOT = process.cwd()
 const failures = []
@@ -289,6 +290,14 @@ if (failures.length) {
   process.exit(1)
 }
 
+declareWork('critical-path', {
+  did: {
+    'source file read': srcFiles.length + rootTsFiles.length,
+    'hot-route rule applied': HOT_ROUTE_RULES.length,
+    'boot specifier checked': BOOT_SPECIFIERS.length,
+  },
+  found: { violation: failures.length },
+})
 console.log('critical-path guard: OK')
 console.log('  rule 1  no next/dynamic call from a Server Component')
 console.log('  rule 2  no heavy subsystem statically imported by a hot route')

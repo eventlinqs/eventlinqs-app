@@ -24,6 +24,7 @@
 
 import { evaluateProcessEnv, evaluateStores } from '../../src/lib/env/manifest-checks.mjs'
 import { ENV_MANIFEST, storePolicyFor } from '../../src/lib/env/manifest.mjs'
+import { declareWork } from '../lib/work-report.mjs'
 // ONE known-good production environment, shared with the CI-blocking half in
 // tests/unit/security/env-manifest.test.ts. It used to be a second copy living
 // in this file, and a variable added to the manifest reached only one of the
@@ -209,6 +210,10 @@ const failed = results.filter(r => !r.ok)
 console.log(`\n${'='.repeat(72)}`)
 if (failed.length === 0) {
   console.log(`ALL ${results.length} CASES BEHAVED AS DECLARED. Every lock has been observed to fire.\n`)
+  declareWork('env-locks', {
+    did: { 'break-and-restore case driven': results.length },
+    found: { 'case that did not behave as declared': 0 },
+  })
   process.exit(0)
 }
 console.log(`${failed.length} of ${results.length} CASES DID NOT BEHAVE AS DECLARED:`)

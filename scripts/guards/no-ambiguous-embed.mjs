@@ -36,6 +36,7 @@
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { declareWork } from '../lib/work-report.mjs'
 
 const ROOT = process.cwd()
 const SRC = join(ROOT, 'src')
@@ -215,4 +216,8 @@ if (failures.length) {
   process.exit(1)
 }
 
+declareWork('no-ambiguous-embed', {
+  did: { 'source file read': files.length },
+  found: { 'ambiguous embed': 0 },
+})
 console.log('[no-ambiguous-embed] OK: every embed of an ambiguous relationship names its foreign key.')

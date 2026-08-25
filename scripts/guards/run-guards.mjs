@@ -35,6 +35,7 @@
  *                              without a declared maintainer
  *   no-silent-catch            no catch around I/O discards its error in silence
  *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
+ *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   no-unguarded-production-write  no script writes to a database without checking which one
  *   one-db-connection-source   no script assembles its own database connection
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
@@ -370,6 +371,14 @@ const GUARDS = [
   // 2026-08-25 rebuilt it in one line, in bill-ref.ts, and nothing but a bigger
   // bundle would have said so.
   'scripts/guards/no-client-sentry-import.mjs',
+  // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
+  // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
+  // printing a tidy list of 200s the whole time; its replacement then reported
+  // 40 variants across four pages, which was the CAP printed as a finding. The
+  // list of scripts under this contract is DERIVED from the workflows on every
+  // run, because a hand-written list would have to be remembered and being
+  // remembered is the thing that failed.
+  'scripts/guards/steps-declare-work.mjs',
   // Founder ruling 2026-08-13. `.env.local` in this repo points at the
   // PRODUCTION project, deliberately, because the app is run against production
   // from here. An audit that day found ten write-capable scripts with a

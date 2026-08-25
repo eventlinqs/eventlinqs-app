@@ -18,6 +18,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { measureCoverage } from './lib/copy-coverage.mjs'
+import { declareWork } from './lib/work-report.mjs'
 
 const ROOT = process.cwd()
 
@@ -275,7 +276,9 @@ function label(file) {
 }
 
 const violations = []
+let scannedFiles = 0
 for (const file of walkAll(scanRoots())) {
+  scannedFiles += 1
   const rel = label(file)
   const allowed = ALLOWLIST.find(a => a.file === rel)?.patterns ?? []
   const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/)
@@ -357,6 +360,13 @@ if (coverage.ratio < COVERAGE_FLOOR) {
   process.exit(1)
 }
 
+declareWork('copy-tell-gate', {
+  did: {
+    'file scanned': scannedFiles,
+    'non-comment line read': coverage.numerator,
+  },
+  found: { 'copy-law violation': 0 },
+})
 console.log(
   `copy-tell-gate: clean (dashes, banned word, phrase tells, competitor names) ` +
     `| coverage ${pct}% of ${coverage.denominator} lines`,

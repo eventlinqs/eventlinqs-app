@@ -26,6 +26,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { declareWork } from '../lib/work-report.mjs'
 
 const CONFIG = path.join(process.cwd(), 'lighthouserc.json')
 const config = JSON.parse(fs.readFileSync(CONFIG, 'utf8'))
@@ -111,6 +112,10 @@ if (failures.length) {
   process.exit(1)
 }
 
+declareWork('lh-exemption-expiry', {
+  did: { 'assertMatrix entry read': matrix.length },
+  found: { 'expired exemption': failures.length, 'dated exemption in force': active.length },
+})
 console.log(`lighthouse exemption expiry: OK (today ${todayStr})`)
 if (permanent.length) {
   console.log('PERMANENT exemptions (design decisions, reviewed not expiring):')

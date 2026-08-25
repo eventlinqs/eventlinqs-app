@@ -50,6 +50,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import os from 'node:os'
+import { declareWork } from './lib/work-report.mjs'
 import { ENV_MANIFEST, CROSS_RULES } from '../src/lib/env/manifest.mjs'
 import { evaluateStores } from '../src/lib/env/manifest-checks.mjs'
 
@@ -139,6 +140,10 @@ const REDACTED = new Set(['', '[SENSITIVE]', '[REDACTED]'])
  * "unknown" and unknown never failed anything. Twenty-two records sat that way,
  * STRIPE_SECRET_KEY, CRON_SECRET, QUEUE_SECRET and HEALTH_CHECK_TOKEN among
  * them, while this script printed ALL CHECKS PASSED. Passing `--git-branch`
+  declareWork('env-stores', {
+    did: { 'store check run': results.length },
+    found: { 'failing check': 0 },
+  })
  * resolves exactly the environment that branch's deployments receive, so there
  * is now no record this cannot reach.
  *

@@ -215,6 +215,51 @@ const DRILLS = [
     expect: 'reach the Sentry SDK',
   },
   /*
+   * steps-declare-work, two drills.
+   *
+   * The class: a step that claims work and never says how much. A CI step named
+   * "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
+   * printing a tidy list of 200s the whole time. Its replacement reported 40
+   * variants across four pages, which was the cap printed as though it were the
+   * finding.
+   */
+  {
+    name: 'a CI step stops declaring how much work it did',
+    guard: `${GUARDS}/steps-declare-work.mjs`,
+    file: 'scripts/ci/warm-preview.mjs',
+    find: "  declareWork('warm', {",
+    replace: "  const declaredNothing = () => {} // drill\n  declaredNothing('warm', {",
+    expect: 'claim work without declaring how much',
+  },
+  {
+    /*
+     * The reverse rot, matching the shape used for the aggregate registry: an
+     * exemption outliving the step it excused. An allowlist nobody prunes is an
+     * allowlist nobody reads, and this one carries the reason each entry is
+     * there, so a stale entry is a reason for something that no longer happens.
+     */
+    /*
+     * Check 2, the other half. A guard is the same shape of claim as a CI step
+     * and fails the same way: `[x] PASS` on a run that scanned nothing reads
+     * exactly like `[x] PASS` on a run that scanned everything, which is how a
+     * guard keeps passing after its walk stops finding files.
+     */
+    name: 'a registered guard stops printing how much it scanned',
+    guard: `${GUARDS}/steps-declare-work.mjs`,
+    file: 'scripts/guards/no-ambiguous-embed.mjs',
+    find: "declareWork('no-ambiguous-embed', {",
+    replace: "const noTally = () => {} // drill\nnoTally('no-ambiguous-embed', {",
+    expect: 'without printing how much they scanned',
+  },
+  {
+    name: 'an exemption is left behind after CI stops running that script',
+    guard: `${GUARDS}/steps-declare-work.mjs`,
+    file: 'scripts/guards/steps-declare-work.mjs',
+    find: "    script: 'scripts/check-types-drift.sh',",
+    replace: "    script: 'scripts/no-such-step.mjs',",
+    expect: 'no CI step invokes any more',
+  },
+  /*
    * sitemap-resolves, four drills, one per check, because all four of these
    * failures were live in src/app/sitemap.ts at the same time on 25 August 2026
    * and every gate in the repository was green.

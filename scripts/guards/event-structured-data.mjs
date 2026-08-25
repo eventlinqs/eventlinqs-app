@@ -32,6 +32,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { declareWork } from '../lib/work-report.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -134,4 +135,8 @@ if (failures.length) {
   process.exit(1)
 }
 
+declareWork('event-structured-data', {
+  did: { 'wiring point checked': scanned.length },
+  found: { break: 0 },
+})
 console.log('[event-structured-data] PASS - the event structured-data path is wired end to end.')

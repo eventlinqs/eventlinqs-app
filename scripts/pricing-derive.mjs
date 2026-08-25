@@ -18,6 +18,7 @@ import {
   spliceDerived,
   currentDerived,
 } from './lib/pricing-derive.mjs'
+import { declareWork } from './lib/work-report.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DOC = 'docs/PRICING.md'
@@ -54,6 +55,10 @@ if (current.trim() !== rendered.trim()) {
   process.exit(1)
 }
 
+declareWork('pricing-derive', {
+  did: { 'derived line recomputed from the lock block': rendered.trim().split(String.fromCharCode(10)).length },
+  found: { 'line disagreeing with the lock block': 0 },
+})
 console.log(
   `[pricing-derive] PASS - the worked figures in ${DOC} match the lock block` +
     ` (${locked.platform_fee_percentage}% + ${locked.platform_fee_fixed}c, one fee).`,

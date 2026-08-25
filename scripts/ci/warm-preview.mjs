@@ -47,6 +47,7 @@
  *   node scripts/ci/warm-preview.mjs gate-urls.txt
  */
 import { readFileSync } from 'node:fs'
+import { declareWork } from '../lib/work-report.mjs'
 
 const LIST = process.argv[2] ?? 'gate-urls.txt'
 /** The audit cookie the gate itself sends: motion and hover wash off. */
@@ -167,9 +168,28 @@ async function main() {
   }
 
   console.log('')
-  console.log(`[warm] ${pages} page(s) warmed twice each, ${images} optimised image variant(s) requested.`)
+  /*
+   * THE CLAIM CONTRACT. This step's predecessor was named "Warm ISR + the
+   * next/image optimiser" and warmed no images at all, for weeks, printing a
+   * tidy list of 200s the whole time. Zero here is the incident, so zero exits
+   * 1 rather than passing.
+   *
+   * A non-200 on an individual warm request is NOT a failure: warming is
+   * best-effort and a page that 500s is the Lighthouse run's problem to report.
+   * Doing nothing at all is a different thing, and it is this one.
+   */
+  declareWork('warm', {
+    did: {
+      'page warmed twice': pages,
+      'optimised image variant requested': images,
+    },
+    found: { 'warm request that did not return 200': failures.length },
+    truncated:
+      truncatedPages > 0
+        ? [`${truncatedPages} page(s) hit the ${MAX_IMAGES_PER_PAGE}-variant cap and were NOT fully warmed`]
+        : [],
+  })
   if (truncatedPages > 0) {
-    console.log(`[warm] ${truncatedPages} page(s) hit the ${MAX_IMAGES_PER_PAGE}-variant cap and were NOT fully warmed.`)
     console.log('[warm] Read a red Lighthouse run on those pages against that, and raise the cap if it matters.')
   }
   if (failures.length > 0) {

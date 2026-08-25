@@ -47,6 +47,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { declareWork } from '../lib/work-report.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -158,7 +159,17 @@ async function main() {
     console.error(`[gate-urls] that represents the same thing, and say in its "why" what that is.`)
     process.exit(1)
   }
-  console.error(`[gate-urls] all ${ordered.length} pinned path(s) answer 200. Auditing them.`)
+  // The claim contract. This step's whole output IS the audited set, so an
+  // empty set would hand Lighthouse nothing to measure and every assertion
+  // would pass vacuously. declareWork writes to stdout, which this script
+  // reserves for the URL list, so the tally goes to stderr with everything else.
+  const out = console.log
+  console.log = console.error
+  declareWork('gate-urls', {
+    did: { 'pinned path resolved and answering 200': ordered.length },
+    found: { 'path that did not answer 200': bad.length },
+  })
+  console.log = out
 
   for (const p of ordered) {
     process.stdout.write(`${base}${p}\n`)

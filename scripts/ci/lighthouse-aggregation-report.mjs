@@ -24,6 +24,7 @@
 
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { declareWork } from '../lib/work-report.mjs'
 
 const dir = process.argv[2] || '.lighthouseci'
 
@@ -125,6 +126,9 @@ for (const [url, lhrs] of [...byUrl.entries()].sort()) {
   console.log('')
 }
 
+declareWork('lh-aggregation', {
+  did: { 'lhr file read': files.length, 'URL reported': byUrl.size },
+})
 console.log('='.repeat(78))
 console.log('This is a REPORT, not a gate. `lhci assert` decides pass or fail.')
 console.log('='.repeat(78))

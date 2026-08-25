@@ -51,6 +51,7 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { declareWork } from '../lib/work-report.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..', '..')
@@ -260,4 +261,8 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
+declareWork('refund-restores-inventory', {
+  did: { 'refund path scanned': scanned.length },
+  found: { 'refund path with no inventory restore': 0 },
+})
 console.log('[refund-restores-inventory] OK: every refund path returns inventory through reconcile_refund.')

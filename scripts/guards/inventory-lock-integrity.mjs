@@ -45,6 +45,7 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, dirname, resolve, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { declareWork } from '../lib/work-report.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..', '..')
@@ -264,4 +265,8 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
+declareWork('inventory-lock-integrity', {
+  did: { 'source file read': files.length, 'lock check applied': CHECKS.length },
+  found: { 'unlocked write to the counters': 0 },
+})
 console.log('[inventory-lock-integrity] OK: the seat count has one owner and it holds a row lock.')
