@@ -1,5 +1,7 @@
 import { REFUND_ARRIVAL_WINDOW } from '@/lib/refunds/arrival-timeframe'
 import { notFound } from 'next/navigation'
+import { TaxInvoicePanel } from '@/components/checkout/tax-invoice-panel'
+import { buildTaxInvoice, type InvoiceLine } from '@/lib/tax/tax-invoice'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import { createClient } from '@/lib/supabase/server'
@@ -43,10 +45,6 @@ type IssuedTicket = {
     note: string | null
     section: { name: string } | null
   } | null
-}
-
-function formatCents(cents: number, currency: string) {
-  return `${currency.toUpperCase()} ${(cents / 100).toFixed(2)}`
 }
 
 export default async function OrderConfirmationPage({ params, searchParams }: Props) {
@@ -144,13 +142,56 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   const location = [event.venue_name, event.venue_city, event.venue_country].filter(Boolean).join(', ')
 
   const ticketItems = fullOrder.order_items.filter(i => i.item_type === 'ticket')
-  const addonItems = fullOrder.order_items.filter(i => i.item_type === 'addon')
 
-  // Group tickets by tier name
-  const tierGroups = new Map<string, number>()
-  for (const item of ticketItems) {
-    tierGroups.set(item.item_name, (tierGroups.get(item.item_name) ?? 0) + item.quantity)
+  /*
+   * THE BUYER'S DOCUMENT. Until 25 August 2026 this page rendered a block
+   * headed "Tickets purchased" with a total, and that is a receipt, not a tax
+   * invoice: it named no seller, carried no ABN, stated no GST and did not say
+   * what it was. The ATO's list of what a tax invoice must contain is seven
+   * items long and this page satisfied one of them.
+   *
+   * The seller is the ORGANISER, not EventLinqs (CLAUDE.md: "EventLinqs is the
+   * organiser's limited payment collection agent: the ORGANISER is the seller
+   * and remits GST on the ticket price"), so their tax identity is read here,
+   * privileged, and collapsed into a finished document before anything is sent.
+   * Nothing about an organiser's tax position crosses the client boundary.
+   */
+  const { data: sellerOrg, error: sellerError } = await adminClient
+    .from('organisations')
+    .select('name, legal_name, abn, gst_registered')
+    .eq('id', fullOrder.organisation_id)
+    .maybeSingle()
+  if (sellerError) {
+    // Not swallowed: a discarded error read as "no such row" would silently
+    // demote a compliant tax invoice to a receipt and nobody would know.
+    console.error('[order-confirmation] seller tax details unavailable:', sellerError)
   }
+
+  const invoiceLines: InvoiceLine[] = fullOrder.order_items.map(item => ({
+    description: item.item_type === 'addon' ? `${item.item_name} (add-on)` : item.item_name,
+    quantity: item.quantity,
+    amountCents: Number(item.total_cents ?? item.unit_price_cents * item.quantity),
+    // Every line on an Australian ticket sale by a GST-registered seller is a
+    // taxable sale. A zero-priced line carries no GST because there is nothing
+    // to apply it to, and is marked as such rather than being hidden.
+    taxable: Number(item.total_cents ?? 0) > 0,
+  }))
+
+  const taxInvoice = buildTaxInvoice({
+    orderNumber: fullOrder.order_number,
+    issuedAt: new Date(fullOrder.confirmed_at ?? fullOrder.created_at),
+    currency: fullOrder.currency,
+    lines: invoiceLines,
+    totalCents: fullOrder.total_cents,
+    buyerName: fullOrder.guest_name,
+    buyerEmail: fullOrder.guest_email,
+    seller: {
+      name: sellerOrg?.name ?? 'The event organiser',
+      legalName: sellerOrg?.legal_name ?? null,
+      abn: sellerOrg?.abn ?? null,
+      gstRegistered: sellerOrg?.gst_registered ?? false,
+    },
+  })
 
   // Issued tickets: surface them inline with their QR and a View ticket link,
   // exactly like the confirmation email. Only valid/scanned tickets carry a
@@ -387,29 +428,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           </div>
         </div>
 
-        {/* Receipt */}
-        <div className="rounded-xl border border-ink-200 bg-white p-6 mb-4">
-          <h3 className="text-base font-semibold text-ink-900 mb-3">Tickets purchased</h3>
-          <div className="space-y-2">
-            {Array.from(tierGroups).map(([name, qty]) => (
-              <div key={name} className="flex justify-between text-sm">
-                <span className="text-ink-600">{name}</span>
-                <span className="text-ink-400">×{qty}</span>
-              </div>
-            ))}
-            {addonItems.map((item, i) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span className="text-ink-400">{item.item_name} (add-on)</span>
-                <span className="text-ink-400">×{item.quantity}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-ink-100 flex justify-between">
-            <span className="text-sm font-semibold text-ink-900">Total paid</span>
-            <span className="text-sm font-bold text-ink-900">{formatCents(fullOrder.total_cents, fullOrder.currency)}</span>
-          </div>
-        </div>
+        <TaxInvoicePanel invoice={taxInvoice} />
 
         {/* Share your seat (seated orders): the growth loop no competitor
          *  ties to seating. The buyer's exact seat goes into the invite so

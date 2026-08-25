@@ -11,6 +11,7 @@ import {
 } from '@/lib/organisations/scope'
 import type { Organisation } from '@/types/database'
 import { LogoUploader } from '@/components/organisation/logo-uploader'
+import { TaxDetailsForm } from '@/components/organisation/tax-details-form'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 import { resolveLogoPlacement } from '@/lib/media/logo-pipeline'
 
@@ -42,7 +43,7 @@ export default async function OrganisationPage({
   const { data: org } = scope.ok
     ? ((await createAdminClient()
         .from('organisations')
-        .select('id, name, slug, description, website, email, status, stripe_onboarding_complete')
+        .select('id, name, slug, description, website, email, status, stripe_onboarding_complete, legal_name, abn, gst_registered')
         .eq('id', scope.active.id)
         .maybeSingle()) as { data: Organisation | null })
     : { data: null }
@@ -169,7 +170,29 @@ export default async function OrganisationPage({
         />
       </div>
 
+      {/* The two facts a tax invoice needs from the SELLER, and on a ticket sale
+          the seller is this organiser: EventLinqs collects on their behalf. Until
+          25 August 2026 organisations carried no ABN, no legal name and no
+          GST-registration flag, so ATO tax-invoice requirements 2 and 3 were
+          unsatisfiable for every organiser on the platform and not one receipt
+          this platform issued could be a valid tax invoice. */}
+      <div className="mt-6">
+        <TaxDetailsForm
+          organisationId={org.id}
+          tradingName={org.name}
+          legalName={org.legal_name ?? null}
+          abn={org.abn ?? null}
+          gstRegistered={org.gst_registered ?? false}
+        />
+      </div>
+
       <div className="mt-6 flex flex-wrap gap-4">
+        <Link
+          href={withOrganisation('/dashboard/reports/gst', org.id, organisationCount)}
+          className="rounded-lg border border-ink-200 bg-white px-5 py-2.5 text-sm font-medium text-ink-600 hover:bg-ink-100 transition-colors"
+        >
+          GST report
+        </Link>
         <Link
           href={withOrganisation('/dashboard/events/create', org.id, organisationCount)}
           className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"

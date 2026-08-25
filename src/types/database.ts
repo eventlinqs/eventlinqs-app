@@ -1995,6 +1995,7 @@ export type Database = {
       }
       organisations: {
         Row: {
+          abn: string | null
           created_at: string
           description: string | null
           email: string | null
@@ -2002,9 +2003,11 @@ export type Database = {
           founding_city: string | null
           founding_fee_free_until: string | null
           founding_since: string | null
+          gst_registered: boolean
           hold_amount_cents: number
           id: string
           is_founding: boolean
+          legal_name: string | null
           logo_url: string | null
           metadata: Json | null
           name: string
@@ -2031,6 +2034,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          abn?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
@@ -2038,9 +2042,11 @@ export type Database = {
           founding_city?: string | null
           founding_fee_free_until?: string | null
           founding_since?: string | null
+          gst_registered?: boolean
           hold_amount_cents?: number
           id?: string
           is_founding?: boolean
+          legal_name?: string | null
           logo_url?: string | null
           metadata?: Json | null
           name: string
@@ -2067,6 +2073,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          abn?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
@@ -2074,9 +2081,11 @@ export type Database = {
           founding_city?: string | null
           founding_fee_free_until?: string | null
           founding_since?: string | null
+          gst_registered?: boolean
           hold_amount_cents?: number
           id?: string
           is_founding?: boolean
+          legal_name?: string | null
           logo_url?: string | null
           metadata?: Json | null
           name?: string
