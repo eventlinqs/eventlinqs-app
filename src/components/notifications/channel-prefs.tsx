@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 interface Prefs {
   push_enabled: boolean
@@ -77,7 +78,8 @@ export function ChannelPrefs() {
       if (!res.ok) throw new Error('save failed')
       setSaved(true)
       window.setTimeout(() => setSaved(false), 1800)
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/notifications/channel-prefs:82' })
       setError('Could not save. Try again.')
     } finally {
       setSaving(false)

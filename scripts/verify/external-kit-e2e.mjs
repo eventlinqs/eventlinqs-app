@@ -203,15 +203,16 @@ async function readPrintedLines(code, label) {
  * so the harness degrades to "skipped" rather than to a false pass.
  */
 async function countClicks(shortCode) {
-  if (!process.env.SUPABASE_DB_URL) return null
   try {
-    const [{ assertNotProductionDatabase }, pg] = await Promise.all([
-      import('../lib/production-write-preflight.mjs'),
-      import('pg'),
-    ])
+    // WHETHER A TARGET IS CONFIGURED IS THE HELPER'S QUESTION, NOT THIS FILE'S.
+    // This used to read process.env.SUPABASE_DB_URL directly to decide whether to
+    // skip, which meant it skipped whenever the credential was supplied any other
+    // way (a per-project password, an env file, --project) and reported "skipped"
+    // for a database it could have reached.
+    const { resolveDatabaseTarget, assertNotProductionDatabase } = await import('../lib/production-write-preflight.mjs')
+    if (!resolveDatabaseTarget().clientConfig) return null
     const target = assertNotProductionDatabase()
-    const db = new pg.default.Client(target.clientConfig)
-    await db.connect()
+    const db = await target.connect()
     const { rows } = await db.query(
       `select count(*)::int n
          from public.share_link_events e

@@ -18,6 +18,7 @@
  * strings; it does not load DB, environment, or Resend.
  */
 
+import { refundArrivalSentenceWithReversal } from '@/lib/refunds/arrival-timeframe'
 import { formatMoney } from '@/lib/money/format'
 
 export type RefundConfirmationProps = {
@@ -58,8 +59,10 @@ export function buildRefundTimeframeSentence(
   amountCents: number,
   currency: string,
 ): string {
-  const amount = formatMoney(amountCents, currency)
-  return `Your refund of ${amount} will appear on your statement within 3 to 5 business days. Some banks may take up to 10 days.`
+  // Was '3 to 5 business days ... up to 10 days' until 23 August 2026, which
+  // understated Stripe's documented 5-10 and was the SHORTEST of three numbers
+  // the platform gave the same buyer across one refund, in the email they keep.
+  return refundArrivalSentenceWithReversal(formatMoney(amountCents, currency))
 }
 
 /**

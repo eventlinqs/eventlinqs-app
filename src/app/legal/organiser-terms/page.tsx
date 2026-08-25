@@ -173,8 +173,8 @@ export default async function OrganiserAgreementPage() {
       <h2 id="founding">Founding Organiser Offer</h2>
       <p>
         The Founding Organiser offer is available to the{' '}
-        <strong>first 50 organisers across Geelong and Melbourne</strong>. If you
-        are accepted into it:
+        <strong>first 50 organisers in Australia</strong>. If you are accepted
+        into it:
       </p>
       <ul>
         <li>

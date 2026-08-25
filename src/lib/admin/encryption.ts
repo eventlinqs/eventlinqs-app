@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * AES-256-GCM helpers for encrypting at-rest secrets such as the TOTP
@@ -26,7 +27,8 @@ function loadKey(): Buffer {
   try {
     const decoded = Buffer.from(raw, 'base64')
     if (decoded.length === 32) return decoded
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/admin/encryption:31' })
     /* fall through to scrypt fallback */
   }
   return scryptSync(raw, 'eventlinqs-admin-totp-enc-key', 32)

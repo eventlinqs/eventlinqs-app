@@ -41,7 +41,8 @@ async function status(path) {
   try {
     const r = await fetch(BASE + path, { redirect: 'manual' })
     return r.status
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/batch-11.1-d3-4-to-9:45]', error instanceof Error ? error.message : error)
     return 0
   }
 }

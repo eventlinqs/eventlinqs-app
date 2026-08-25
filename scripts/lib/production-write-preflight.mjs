@@ -60,6 +60,17 @@ import { fileURLToPath } from 'node:url'
 
 import { CRITICAL_ENV_RULES, evalEnvRule } from '../../src/lib/health/critical-env.mjs'
 import { refFromJwt, refFromUrl } from '../../src/lib/env/refs.mjs'
+import {
+  connectWithDiagnosis,
+  credentialSources,
+  endpointsFor,
+  hydrateEnvForAlias,
+  isPlaceholder,
+  parseConnectionString as parseConnectionStringShared,
+  refForAlias,
+  resolveCredential,
+  targetFromArgv,
+} from './db-credentials.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(HERE, '..', '..')
@@ -522,11 +533,74 @@ function parseConnectionString(raw) {
  * restore the exact default this change exists to remove. No configuration
  * means no target, and no target means refuse.
  */
-export function resolveDatabaseTarget() {
-  const conn = process.env.SUPABASE_DB_URL
+export function resolveDatabaseTarget(aliasOverride = '') {
+  // ---------------------------------------------------------------------
+  // PATH 1: the caller named a project. `--project prod`, and nothing else.
+  //
+  // This is the path that exists so a connection string is never assembled by
+  // hand again. The caller supplies WHICH project; this module supplies the
+  // host, the port, the user, the database and the password, from credentials
+  // that are already on the machine. See scripts/lib/db-credentials.mjs for the
+  // two hours of evidence that produced it.
+  // ---------------------------------------------------------------------
+  const alias = aliasOverride || targetFromArgv()
+  if (alias) {
+    const ref = refForAlias(alias)
+    if (!ref) {
+      return {
+        clientConfig: null, host: '', user: '', source: `--project ${alias}`,
+        unresolvedAlias: alias,
+      }
+    }
+    // Naming the project loads the project: the DB password AND whatever else
+    // that environment needs (Stripe keys, service-role keys), without ever
+    // overriding a shell value. See hydrateEnvForAlias for why this is not left
+    // to --env-file.
+    const hydrated = hydrateEnvForAlias(alias, ref)
+    if (hydrated.loaded.length > 0) {
+      console.log(`[preflight] loaded ${hydrated.loaded.length} variable(s) from ${hydrated.file}: ${hydrated.loaded.join(', ')}`)
+    }
+    const cred = resolveCredential({ ref, alias })
+    const endpoints = endpointsFor(ref, { alias, password: cred.password })
+    const primary = endpoints[0]
+    return {
+      clientConfig: cred.password
+        ? { user: primary.user, password: primary.password, host: primary.host, port: primary.port, database: primary.database, ssl: primary.ssl }
+        : null,
+      endpoints,
+      credential: { from: cred.from, key: cred.key, tried: cred.tried, found: Boolean(cred.password) },
+      host: primary.host,
+      user: primary.user,
+      alias,
+      source: `--project ${alias}`,
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // PATH 2: the legacy SUPABASE_DB_URL / SUPABASE_DB_HOST configuration.
+  //
+  // Now read through the SHARED source list rather than process.env alone, so a
+  // value sitting in .env.test is found without --env-file, while a shell
+  // variable still beats every file. A placeholder is treated as ABSENT: pg
+  // prints `*****REDACTED*****` when it masks a string, and that text has been
+  // copied into a file and believed before now.
+  // ---------------------------------------------------------------------
+  const fromSources = name => {
+    for (const src of credentialSources()) {
+      const v = src.bag?.[name]
+      if (v === undefined) continue
+      if (isPlaceholder(v)) continue
+      return { value: v, where: src.label }
+    }
+    return { value: '', where: '' }
+  }
+
+  const found = fromSources('SUPABASE_DB_URL')
+  const conn = found.value
   if (nonEmpty(conn)) {
     const parts = parseConnectionString(conn) ?? { user: '', password: '', host: '', port: 5432, database: 'postgres' }
     return {
+      credential: { from: found.where, key: 'SUPABASE_DB_URL', tried: [], found: nonEmpty(parts.password) },
       // DISCRETE FIELDS, never `connectionString`. See parseConnectionString:
       // the password is not percent-encoded, so the string form makes pg throw
       // ERR_INVALID_URL and report the input as `*****REDACTED*****`. An
@@ -544,25 +618,28 @@ export function resolveDatabaseTarget() {
       // inside clientConfig so a caller that logs its target cannot leak it.
       user: parts.user,
       host: parts.host,
-      source: 'SUPABASE_DB_URL',
+      source: `SUPABASE_DB_URL (from ${found.where})`,
     }
   }
 
-  const host = process.env.SUPABASE_DB_HOST
+  const hostFound = fromSources('SUPABASE_DB_HOST')
+  const host = hostFound.value
   if (nonEmpty(host)) {
-    const user = (process.env.SUPABASE_DB_USER ?? '').trim()
+    const user = (fromSources('SUPABASE_DB_USER').value || '').trim()
+    const pw = fromSources('SUPABASE_DB_PASSWORD')
     return {
+      credential: { from: pw.where, key: 'SUPABASE_DB_PASSWORD', tried: [], found: nonEmpty(pw.value) },
       clientConfig: {
         host: host.trim(),
-        port: Number(process.env.SUPABASE_DB_PORT ?? 5432),
+        port: Number(fromSources('SUPABASE_DB_PORT').value || 5432),
         user,
-        password: process.env.SUPABASE_DB_PASSWORD,
-        database: process.env.SUPABASE_DB_NAME ?? 'postgres',
+        password: pw.value,
+        database: fromSources('SUPABASE_DB_NAME').value || 'postgres',
         ssl: { rejectUnauthorized: false },
       },
       host: host.trim(),
       user,
-      source: 'SUPABASE_DB_HOST',
+      source: `SUPABASE_DB_HOST (from ${hostFound.where})`,
     }
   }
 
@@ -581,7 +658,7 @@ export function resolveDatabaseTarget() {
  *
  * @returns {{ clientConfig: object, ref: string, host: string, user: string, source: string }}
  */
-export function assertNotProductionDatabase() {
+export function assertNotProductionDatabase(aliasOverride = '') {
   const script = scriptName()
   const rule = CRITICAL_ENV_RULES.find(r => r.name === 'SUPABASE_ENV_ISOLATION')
 
@@ -596,24 +673,78 @@ export function assertNotProductionDatabase() {
     ])
   }
 
-  const target = resolveDatabaseTarget()
+  const target = resolveDatabaseTarget(aliasOverride)
+
+  // FAIL CLOSED, part zero: `--project <alias>` named something unrecognisable.
+  if (target.unresolvedAlias) {
+    refuse([
+      `Script          : ${script}`,
+      `Resolved project: UNKNOWN  (--project ${target.unresolvedAlias})`,
+      '',
+      `"${target.unresolvedAlias}" is not a project this repository knows.`,
+      '',
+      'Accepted values:',
+      '  --project prod    the production project, from PRODUCTION_SUPABASE_REF',
+      '  --project test    the TEST project, read from .env.test',
+      '  --project <ref>   any 20-character Supabase project ref, spelled out',
+    ])
+  }
 
   // FAIL CLOSED, part one: nothing configured.
   if (!target.clientConfig) {
+    // A NAMED project with no password is a DIFFERENT failure from no project at
+    // all, and saying so is the entire point of this change. The person knows
+    // which database they want; what is missing is one credential, in one file.
+    if (target.alias) {
+      const ref = refForAlias(target.alias)
+      refuse([
+        `Script          : ${script}`,
+        `Resolved project: ${ref}  (--project ${target.alias})`,
+        'Password        : NOT FOUND',
+        '',
+        'The project resolved cleanly. What is missing is the password, and these',
+        'places were searched for it, in order:',
+        ...(target.credential?.tried ?? []).map(t => `  - ${t.key} in ${t.where}: ${t.verdict}`),
+        ...((target.credential?.tried ?? []).length === 0
+          ? ['  (none of the candidate variables were present anywhere)']
+          : []),
+        '',
+        'Put it in ONE file, once, and never type a connection string again:',
+        '',
+        `  .env.${target.alias}.local`,
+        `      SUPABASE_DB_PASSWORD_${target.alias.toUpperCase()}=<the password, RAW>`,
+        '',
+        'STORE IT RAW. Do NOT percent-encode it. This tooling hands DISCRETE fields',
+        'to pg, so + & # ! and every other character are passed through untouched.',
+        'Encoding them turns a correct password into a wrong one, and the server',
+        'then answers 28P01, which reads as "wrong password" rather than "wrongly',
+        'encoded password". That is exactly the two hours this change exists to',
+        'refund.',
+        '',
+        `Reset or copy the password at:`,
+        `  https://supabase.com/dashboard/project/${ref}/settings/database`,
+        '',
+        'A shell variable always wins over a file, so a one-off run can also do:',
+        `  PowerShell : $env:SUPABASE_DB_PASSWORD_${target.alias.toUpperCase()}="..."; node ${script} --project ${target.alias}`,
+      ])
+    }
     refuse([
       `Script          : ${script}`,
       'Resolved project: NONE CONFIGURED',
       '',
       'This script opens a DIRECT Postgres connection as the database owner, and',
-      'no target is configured for this process. Set SUPABASE_DB_URL (or',
-      'SUPABASE_DB_HOST) to the project you intend to work against.',
+      'no target is configured for this process.',
+      '',
+      'THE SHORT WAY, which requires no connection string at all:',
+      `  node ${script} --project test`,
+      `  node ${script} --project prod     (production also needs ${APPROVAL}=1)`,
+      '',
+      'The password is read from your env files. If none is stored yet the next',
+      'run will tell you exactly which file to put it in.',
       '',
       'There is no default. The production host used to be written into this',
       'script as a literal, so running it with no configuration at all connected',
       'to the live database as the schema owner. It now connects to nothing.',
-      '',
-      'To run against TEST:',
-      `  node --env-file=.env.test ${script}`,
     ])
   }
 
@@ -660,12 +791,12 @@ export function assertNotProductionDatabase() {
       'given for that run.',
       '',
       'To run this against TEST instead:',
-      `  node --env-file=.env.test ${script}`,
+      `  node ${script} --project test`,
       ...(PARKED_APPROVAL
         ? parkedApprovalLines()
-        : ['', 'If this run IS an approved production write, state that explicitly:']),
-      `  PowerShell : $env:${APPROVAL}="1"; node ${script}`,
-      `  bash       : ${APPROVAL}=1 node ${script}`,
+        : ['', 'If this run IS an approved production run, state that explicitly:']),
+      `  PowerShell : $env:${APPROVAL}="1"; node ${script} --project prod`,
+      `  bash       : ${APPROVAL}=1 node ${script} --project prod`,
     ])
   }
 
@@ -679,11 +810,81 @@ export function assertNotProductionDatabase() {
     console.warn('  This connects as the database OWNER. DROP, ALTER and TRUNCATE are in scope.')
     console.warn(bar)
     console.warn('')
-    return { ...target, ref }
+    return withConnect(target, ref)
   }
 
   console.log(`[preflight] ${script}: Postgres target ${ref} (not production), from ${target.source}. Proceeding.`)
-  return { ...target, ref }
+  return withConnect(target, ref)
+}
+
+/**
+ * Preflight a NAMED project and return a live connection to it.
+ *
+ * For the scripts that legitimately talk to TWO databases in one run, such as
+ * scripts/verify/schema-provenance.mjs, which compares production's schema with
+ * TEST's. Each project goes through the same refusal and the same credential
+ * resolution as a single-target run; the only difference is that the alias comes
+ * from the caller rather than from `--project` on the command line.
+ *
+ * @param {string} alias 'prod', 'test', or a bare project ref.
+ * @param {{ readOnly?: boolean }} [opts]
+ * @returns {Promise<{ client: object, ref: string, target: object }>}
+ */
+export async function openProject(alias, opts = {}) {
+  const target = assertNotProductionDatabase(alias)
+  const client = await target.connect(opts)
+  return { client, ref: target.ref, target }
+}
+
+/**
+ * Attach `connect()` to a resolved target.
+ *
+ * THE BLESSED WAY TO OPEN A CONNECTION. Callers do
+ *
+ *   const db = await target.connect()
+ *
+ * instead of `new pg.Client(target.clientConfig)` followed by `db.connect()`.
+ * The difference is entirely in what happens when it FAILS: this path turns a
+ * driver error into prose that names the credential source and the missing
+ * thing, retries a hand-encoded password once in decoded form, and never prints
+ * a password or a stack trace. `clientConfig` is still exported unchanged, so
+ * nothing that already works breaks; it is simply no longer the recommended
+ * path, and scripts/guards/one-db-connection-source.mjs holds the line.
+ *
+ * `pg` is imported lazily, inside the call, so that merely importing this
+ * preflight does not require the driver. Several guards import it purely to read
+ * its exports.
+ */
+function withConnect(target, ref) {
+  const resolved = { ...target, ref }
+  /**
+   * @param {{ readOnly?: boolean }} [opts] `readOnly` sets
+   *   `default_transaction_read_only=on` for the SESSION, which is enforced by
+   *   the SERVER rather than by the script remembering to only run selects. The
+   *   probe scripts relied on this and it is preserved here rather than lost in
+   *   the migration onto the shared helper.
+   */
+  resolved.connect = async (opts = {}) => {
+    const pgModule = (await import('pg')).default ?? (await import('pg'))
+    const extra = opts.readOnly ? { options: '-c default_transaction_read_only=on' } : {}
+    const base = target.endpoints ?? [{ ...target.clientConfig, label: `configured target (${target.source})` }]
+    const endpoints = base.map(e => ({ ...e, ...extra }))
+    const { client, endpoint, notes } = await connectWithDiagnosis(pgModule, endpoints, {
+      ref,
+      alias: target.alias ?? '',
+      credentialFrom: target.credential?.from ?? '',
+      credentialKey: target.credential?.key ?? '',
+      tried: target.credential?.tried ?? [],
+    })
+    console.log(`[db] connected: ${endpoint.user}@${endpoint.host}:${endpoint.port}/${endpoint.database}`)
+    console.log(`[db] endpoint : ${endpoint.label ?? 'configured'}`)
+    if (target.credential?.from) {
+      console.log(`[db] password : ${target.credential.key} from ${target.credential.from}`)
+    }
+    for (const n of notes) console.warn(`[db] ${n}`)
+    return client
+  }
+  return resolved
 }
 
 export default assertNotProduction

@@ -45,38 +45,49 @@ export async function validateAccessCode(
     return { success: false, unlockedTierIds: [], error: 'Invalid access code' }
   }
 
-  // Find all active access codes matching this code for tiers belonging to the event
-  const { data: matchingCodes, error } = await supabase
-    .from('tier_access_codes')
-    .select('id, ticket_tier_id, max_uses, current_uses, valid_from, valid_until')
-    .eq('code', trimmedCode)
-    .eq('is_active', true)
-    .in('ticket_tier_id', tierIds)
+  /*
+   * THE CHECK AND THE INCREMENT HAPPEN IN ONE LOCKED STATEMENT, in the database.
+   *
+   * THE DEFECT THIS CLOSES, found by the stored-figure enumeration of
+   * 25 August 2026 rather than by anyone hitting it. This code used to SELECT
+   * the matching codes and filter them in JavaScript:
+   *
+   *     if (c.max_uses !== null && c.current_uses >= c.max_uses) return false
+   *
+   * and then never write anything back. NOTHING in the entire repository
+   * incremented tier_access_codes.current_uses: not a trigger, not a function,
+   * not a line of TypeScript. It was created 0 and stayed 0, so that comparison
+   * has never once refused anybody, and an organiser who capped a code at 50
+   * uses had a code that could be redeemed without limit.
+   *
+   * It was also a read-then-decide race even if the column had been maintained:
+   * two people redeeming the last use of a code both passed the check.
+   *
+   * `redeem_tier_access_codes` (migration 20260825000003) evaluates the validity
+   * window and max_uses inside the UPDATE's own predicate, so the second caller's
+   * statement matches no row. It returns the tiers actually unlocked.
+   */
+  const { data: redeemed, error } = await supabase.rpc('redeem_tier_access_codes', {
+    p_code: trimmedCode,
+    p_tier_ids: tierIds,
+  })
 
   if (error) {
-    console.error('[access-codes] validateAccessCode DB error:', error)
+    console.error('[access-codes] redeem_tier_access_codes failed:', error)
     return { success: false, unlockedTierIds: [], error: 'Code validation failed. Try again.' }
   }
 
-  if (!matchingCodes || matchingCodes.length === 0) {
-    return { success: false, unlockedTierIds: [], error: 'Invalid access code' }
+  const newTierIds = ((redeemed ?? []) as { ticket_tier_id: string }[]).map(r => r.ticket_tier_id)
+
+  if (newTierIds.length === 0) {
+    // One message for "no such code" and for "that code is used up", on purpose:
+    // distinguishing them tells a stranger which codes exist.
+    return {
+      success: false,
+      unlockedTierIds: [],
+      error: 'That access code is not valid, or it has expired or reached its limit',
+    }
   }
-
-  const now = new Date()
-
-  // Filter to codes that are within their validity window and not exhausted
-  const validCodes = matchingCodes.filter(c => {
-    if (c.valid_from && new Date(c.valid_from) > now) return false
-    if (c.valid_until && new Date(c.valid_until) < now) return false
-    if (c.max_uses !== null && c.current_uses >= c.max_uses) return false
-    return true
-  })
-
-  if (validCodes.length === 0) {
-    return { success: false, unlockedTierIds: [], error: 'This access code has expired or reached its limit' }
-  }
-
-  const newTierIds = validCodes.map(c => c.ticket_tier_id)
 
   // Merge with any existing unlocked tier IDs from cookie
   const cookieStore = await cookies()

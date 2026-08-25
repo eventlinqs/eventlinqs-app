@@ -74,6 +74,7 @@ for (const [s, list] of [...groups].sort((a, b) => b[1].length - a[1].length)) {
       results.push({ u, status: r.status })
       if (!r.ok) failures++
     } catch (e) {
+      console.warn('[scripts/sweep/sitemap-check:77]', e instanceof Error ? e.message : e)
       results.push({ u, status: 0 })
       failures++
     }

@@ -11,6 +11,8 @@ import { acceptFoundingInvite } from '@/lib/founding/invites'
 import { FOUNDING_INVITE_COOKIE } from '@/app/join/[code]/cookie'
 
 import { getAppUrl } from '@/lib/site-url'
+import { abnValidationMessage, normaliseAbn } from '@/lib/tax/abn'
+import { assertCallerMayActForOrganisation } from '@/lib/organisations/act-for'
 const CreateOrgSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   slug: z
@@ -141,4 +143,95 @@ export async function createOrganisation(formData: FormData) {
   const returnTo = (formData.get('returnTo') as string | null) || '/dashboard/organisation'
   const safeReturnTo = returnTo.startsWith('/dashboard') ? returnTo : '/dashboard/organisation'
   redirect(safeReturnTo)
+}
+
+/**
+ * THE ORGANISER'S TAX IDENTITY, so their buyers' receipts can be tax invoices.
+ *
+ * Two facts and a name, and the reason each is asked for is written on the form
+ * rather than assumed. The Australian Taxation Office requires a tax invoice to
+ * carry the "Seller's identity" and the "Seller's Australian business number
+ * (ABN)"
+ * (https://www.ato.gov.au/businesses-and-organisations/gst-excise-and-indirect-taxes/gst/tax-invoices,
+ * page last updated 25 August 2025, fetched 25 August 2026), and under the
+ * platform's collection-agent posture the seller is the ORGANISER, not
+ * EventLinqs. Without these columns no receipt this platform issues can be a
+ * valid tax invoice for anyone.
+ *
+ * GST REGISTRATION IS ASKED SEPARATELY FROM THE ABN, on purpose. They are two
+ * different registrations and a great many sole traders under the $75,000
+ * turnover threshold hold the first without the second. Inferring one from the
+ * other would print "Tax invoice" over a sale carrying no GST and invite the
+ * buyer to claim a credit that does not exist.
+ */
+const TaxDetailsSchema = z.object({
+  organisationId: z.string().uuid(),
+  legalName: z.string().max(200).optional().or(z.literal('')),
+  abn: z.string().max(20).optional().or(z.literal('')),
+  gstRegistered: z.union([z.literal('on'), z.literal('')]).optional(),
+})
+
+export async function updateOrganisationTaxDetails(
+  _prev: { error?: string; ok?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; ok?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const parsed = TaxDetailsSchema.safeParse({
+    organisationId: formData.get('organisationId'),
+    legalName: formData.get('legalName') ?? '',
+    abn: formData.get('abn') ?? '',
+    gstRegistered: formData.get('gstRegistered') ?? '',
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Those details could not be read.' }
+  }
+
+  // OWNERSHIP FIRST. The organisation id arrives from a form field, so it is an
+  // id the caller chose. `assertCallerMayActForOrganisation` is the shared gate;
+  // writing tax details for somebody else's business would be a cross-tenant
+  // write of a legally significant field.
+  const allowed = await assertCallerMayActForOrganisation(
+    user.id,
+    parsed.data.organisationId,
+    'owner_or_manager',
+  )
+  if (!allowed.ok) return { error: 'You cannot edit that business.' }
+
+  const abnDigits = normaliseAbn(parsed.data.abn)
+  const abnProblem = abnValidationMessage(abnDigits)
+  if (abnProblem) return { error: abnProblem }
+
+  const gstRegistered = parsed.data.gstRegistered === 'on'
+  if (gstRegistered && abnDigits.length === 0) {
+    // A tax invoice needs BOTH. Accepting the declaration without the number
+    // would leave the organiser believing their buyers get tax invoices while
+    // every one of them is still a plain receipt.
+    return { error: 'A tax invoice needs your ABN as well. Add it, or leave GST registration off for now.' }
+  }
+
+  const { error } = await createAdminClient()
+    .from('organisations')
+    .update({
+      legal_name: parsed.data.legalName?.trim() || null,
+      abn: abnDigits.length === 11 ? abnDigits : null,
+      gst_registered: gstRegistered,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', parsed.data.organisationId)
+
+  if (error) {
+    console.error('[organisation] tax details update failed:', error)
+    return { error: 'Those details could not be saved. Please try again.' }
+  }
+
+  revalidatePath('/dashboard/organisation')
+  revalidatePath('/dashboard/reports/gst')
+  return {
+    ok: gstRegistered
+      ? 'Saved. Receipts for your paid tickets are now tax invoices.'
+      : 'Saved. Your buyers receive receipts; turn on GST registration to issue tax invoices.',
+  }
 }

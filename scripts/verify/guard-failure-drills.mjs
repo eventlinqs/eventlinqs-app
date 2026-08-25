@@ -64,6 +64,334 @@ console.log(`[drills] effective confirm_order:   ${NEW_EFFECTIVE_CONFIRM}`)
 console.log(`[drills] effective reconcile_refund: ${NEW_EFFECTIVE_RECONCILE}`)
 
 const DRILLS = [
+  /*
+   * maintained-aggregates, three drills.
+   *
+   * The class: a number written down in a second place with nothing keeping it
+   * in step. Four instances landed in one week, in four different mechanisms
+   * (a cached rail, a cached file, a held-seat count, an addon count), and none
+   * failed a test because in every case the code was correct.
+   */
+  {
+    name: 'a cache tag is declared and nothing anywhere invalidates it',
+    guard: `${GUARDS}/maintained-aggregates.mjs`,
+    file: 'src/lib/redis/inventory-cache.ts',
+    find: '  revalidateTag(INVENTORY_CACHE_TAG, { expire: 0 })',
+    replace: '  void INVENTORY_CACHE_TAG',
+    expect: 'nothing anywhere calls revalidateTag',
+  },
+  {
+    name: 'a new stored counter is incremented with no registry entry',
+    guard: `${GUARDS}/maintained-aggregates.mjs`,
+    file: 'src/lib/payments/connect-ledger.ts',
+    find: '    total_volume_cents: (orgRow.total_volume_cents as number) + params.grossRevenueCents,',
+    replace:
+      '    total_volume_cents: (orgRow.total_volume_cents as number) + params.grossRevenueCents,\n    lifetime_refund_cents: (orgRow.lifetime_refund_cents as number) + 1,',
+    expect: 'is not in AGGREGATE_REGISTRY',
+  },
+  {
+    /*
+     * FOUNDER RULING 25 August 2026: "a guard that FAILS THE BUILD when a new
+     * stored aggregate is added without a maintainer. Drill it by adding one."
+     *
+     * This is that drill, and it adds one the way it actually happens: a column
+     * appears in the schema, and nothing has been written to touch it yet. Both
+     * of the real instances arrived exactly like this. event_addons.sold_count
+     * and tier_access_codes.current_uses each existed for months with no writer
+     * at all, so a detector that looks for WRITES saw nothing while a checkout
+     * enforced a cap against each of them.
+     */
+    name: 'a new stored aggregate column is added and nothing maintains it',
+    guard: `${GUARDS}/maintained-aggregates.mjs`,
+    file: 'src/types/database.ts',
+    find: '          sold_count: number\n          sort_order: number',
+    replace: '          refunded_count: number\n          sold_count: number\n          sort_order: number',
+    expect: 'carries no verdict in scripts/lib/stored-aggregates.mjs',
+  },
+  {
+    /*
+     * The reverse rot. A registry that can point at nothing is worse than no
+     * registry, because it reads as coverage.
+     *
+     * It ADDS a bogus entry rather than renaming a real one, and that is not
+     * fussiness: renaming `tickets.scan_count` leaves the real column with no
+     * verdict, so check 3's "carries no verdict" fires FIRST and the drill would
+     * pass while proving the wrong thing. Caught on the first run of this drill.
+     */
+    name: 'the registry points at a column that does not exist',
+    guard: `${GUARDS}/maintained-aggregates.mjs`,
+    file: 'scripts/lib/stored-aggregates.mjs',
+    find: "    column: 'tickets.scan_count',",
+    replace: [
+      "    column: 'ticket_tiers.ghost_count',",
+      '    summarises: null,',
+      "    maintenance: 'not-in-class',",
+      "    maintainedBy: 'nothing at all, this entry is a drill',",
+      '    reconciled: false,',
+      '    caveat: null,',
+      "    decision: 'drill',",
+      '  },',
+      '  {',
+      "    column: 'tickets.scan_count',",
+    ].join('\n'),
+    expect: 'which does not exist in src/types/database.ts',
+  },
+  {
+    name: 'a tag exemption is left behind after its cache is deleted',
+    guard: `${GUARDS}/maintained-aggregates.mjs`,
+    file: 'src/lib/images/suburb-photo.ts',
+    find: "tags: ['pexels', 'pexels-suburb']",
+    replace: "tags: ['pexels']",
+    expect: "is no longer declared anywhere",
+  },
+  /*
+   * no-silent-catch, two drills.
+   *
+   * The class: an error from outside the process, discarded, with the code
+   * carrying on as though the call had succeeded and returned nothing. The
+   * instance was a 42703 on venues.slug inside a bare catch {} in
+   * src/app/sitemap.ts, which published zero venue URLs from the day it was
+   * written. Nothing failed. The sitemap was simply shorter than it should
+   * have been, and no gate in this repository could see it.
+   */
+  {
+    /*
+     * The incident itself, put back. This is the exact file and the exact
+     * shape: a Supabase query in a try, and a catch that says nothing.
+     */
+    name: 'the sitemap event query is wrapped in a catch that says nothing',
+    guard: `${GUARDS}/no-silent-catch.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: [
+      '  } catch (err) {',
+      '    // Sitemap must never 500. Fall through to the static entries already built,',
+      '    // but SAY SO: a silent catch on this exact shape hid a 42703 in the venue',
+      '    // block for the whole life of that block.',
+      "    console.error('[sitemap] event block failed:', err)",
+    ].join('\n'),
+    // The FIRST version of this drill removed only the binding and left the
+    // console.error, and the guard passed, correctly: a catch that logs is not
+    // silent whatever its binding says. The drill has to remove the voice, not
+    // the name.
+    replace: ['  } catch {', '    // drill: the voice removed'].join('\n'),
+    expect: 'silent around I/O',
+  },
+  {
+    /*
+     * The same shape on a compliance path. recordOrganiserMarketingConsent
+     * returns false either way, so a swallowed write failure is indistinguishable
+     * from a consent that was recorded and then declined.
+     */
+    name: 'a consent write failure is swallowed and reported to nobody',
+    guard: `${GUARDS}/no-silent-catch.mjs`,
+    file: 'src/lib/consent/record.ts',
+    find: [
+      '  } catch (error) {',
+      "    captureException(error, { where: 'lib/consent/record:56' })",
+      '    return false',
+    ].join('\n'),
+    replace: ['  } catch {', '    return false'].join('\n'),
+    expect: 'silent around I/O',
+  },
+  /*
+   * no-client-sentry-import, one drill.
+   *
+   * The class: a client component reaching @sentry/nextjs through a value
+   * import, which puts the whole SDK in the browser bundle. It has happened
+   * once already, through the four error boundaries, and client-error-report.ts
+   * was built to break the edge. The silent-catch sweep then very nearly
+   * rebuilt it in src/lib/launch/bill-ref.ts, which THE BILL imports.
+   */
+  {
+    name: 'a module a client component imports starts importing the Sentry SDK',
+    guard: `${GUARDS}/no-client-sentry-import.mjs`,
+    file: 'src/lib/launch/bill-ref.ts',
+    find: "import { KIT_CODE_LENGTH, isKitCode } from './kit-code'",
+    replace: [
+      "import { KIT_CODE_LENGTH, isKitCode } from './kit-code'",
+      "import { captureException } from '@/lib/observability/sentry'",
+      'void captureException',
+    ].join('\n'),
+    expect: 'reach the Sentry SDK',
+  },
+  /*
+   * steps-declare-work, two drills.
+   *
+   * The class: a step that claims work and never says how much. A CI step named
+   * "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
+   * printing a tidy list of 200s the whole time. Its replacement reported 40
+   * variants across four pages, which was the cap printed as though it were the
+   * finding.
+   */
+  {
+    name: 'a CI step stops declaring how much work it did',
+    guard: `${GUARDS}/steps-declare-work.mjs`,
+    file: 'scripts/ci/warm-preview.mjs',
+    find: "  declareWork('warm', {",
+    replace: "  const declaredNothing = () => {} // drill\n  declaredNothing('warm', {",
+    expect: 'claim work without declaring how much',
+  },
+  {
+    /*
+     * The reverse rot, matching the shape used for the aggregate registry: an
+     * exemption outliving the step it excused. An allowlist nobody prunes is an
+     * allowlist nobody reads, and this one carries the reason each entry is
+     * there, so a stale entry is a reason for something that no longer happens.
+     */
+    /*
+     * Check 2, the other half. A guard is the same shape of claim as a CI step
+     * and fails the same way: `[x] PASS` on a run that scanned nothing reads
+     * exactly like `[x] PASS` on a run that scanned everything, which is how a
+     * guard keeps passing after its walk stops finding files.
+     */
+    name: 'a registered guard stops printing how much it scanned',
+    guard: `${GUARDS}/steps-declare-work.mjs`,
+    file: 'scripts/guards/no-ambiguous-embed.mjs',
+    find: "declareWork('no-ambiguous-embed', {",
+    replace: "const noTally = () => {} // drill\nnoTally('no-ambiguous-embed', {",
+    expect: 'without printing how much they scanned',
+  },
+  {
+    name: 'an exemption is left behind after CI stops running that script',
+    guard: `${GUARDS}/steps-declare-work.mjs`,
+    file: 'scripts/guards/steps-declare-work.mjs',
+    find: "    script: 'scripts/check-types-drift.sh',",
+    replace: "    script: 'scripts/no-such-step.mjs',",
+    expect: 'no CI step invokes any more',
+  },
+  /*
+   * sitemap-resolves, four drills, one per check, because all four of these
+   * failures were live in src/app/sitemap.ts at the same time on 25 August 2026
+   * and every gate in the repository was green.
+   *
+   * The measurement that produced them: a sweep of all 586 URLs the PRODUCTION
+   * sitemap published returned 48 hard 404s, and a per-slug drive of the
+   * /categories namespace returned six 308s beside one 200. Both are in the
+   * guard's header.
+   */
+  {
+    name: 'the sitemap queries a column that does not exist (the 42703 class)',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: "      .select('venue_name, updated_at')",
+    replace: "      .select('venue_name, updated_at, nonexistent_column')",
+    expect: 'does not exist in src/types/database.ts',
+  },
+  {
+    name: 'the sitemap publishes a URL this repository permanently redirects',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '      url: `${baseUrl}/pricing`,',
+    replace: '      url: `${baseUrl}/cultures`,',
+    expect: 'which permanent-redirects.ts redirects away',
+  },
+  {
+    name: 'the sitemap templates over a redirected namespace without consulting the table',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '    if (isRedirected(path)) continue',
+    replace: '    if (false) continue',
+    expect: 'never calls isRedirected()',
+  },
+  {
+    name: 'the sitemap publishes a URL shape with no route behind it',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '      url: `${baseUrl}/pricing`,',
+    replace: '      url: `${baseUrl}/pricing-plans`,',
+    expect: 'no App Router page matches it',
+  },
+  {
+    name: 'a sitemap catch block swallows its error without reporting it',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: "    console.error('[sitemap] organiser block failed:', err)",
+    replace: '    void err',
+    expect: 'catch block that reports nothing',
+  },
+  /*
+   * one-db-connection-source, four drills, one per banned shape.
+   *
+   * These exist because the guard they exercise was written after two hours were
+   * lost to a 28P01 that nine private copies of the connection parser made
+   * impossible to locate. A guard that cannot be shown to FAIL is a guard nobody
+   * can trust to be doing anything, and this one's whole value is that it refuses
+   * the tenth copy. Each drill reintroduces exactly one of the shapes that were
+   * removed, into a file that currently passes.
+   */
+  /*
+   * one-visibility-source, two drills, one per rule.
+   *
+   * Rule 1 reintroduces the hand-written publication predicate into a discovery
+   * surface, which is the shape that let /events print a correct count of 2
+   * beside a rail of 8 deleted events. Rule 2 declares a cached read carrying a
+   * tag nothing invalidates, which is how those 8 survived the delete.
+   */
+  {
+    /*
+     * The defect that produced this rule: every organiser profile page returned
+     * 404 to anonymous visitors for weeks, while /sitemap.xml advertised 38 of
+     * those URLs to Google. The page selected only granted columns, which the
+     * guard checked and approved, and then FILTERED on `status`, which anon
+     * cannot select. Postgres refuses the whole query. Checking the select list
+     * alone was checking half the query.
+     */
+    name: 'an anon query filters on a column revoked from anon',
+    guard: 'scripts/security/revoked-column-reads.mjs',
+    file: 'src/app/organisers/[handle]/page.tsx',
+    find: "    .eq('id', row.id)",
+    replace: "    .eq('id', row.id)\n    .eq('status', 'active')",
+    expect: 'revoked',
+  },
+  {
+    name: 'a discovery surface spells out the publication predicate again',
+    guard: `${GUARDS}/one-visibility-source.mjs`,
+    file: 'src/lib/events/home-queries.ts',
+    find: '.match(PUBLIC_EVENT_MATCH)',
+    replace: ".eq('status', 'published')\n    .eq('visibility', 'public')",
+    expect: 'spells out the publication',
+  },
+  {
+    name: 'a cached read declares a tag nothing invalidates',
+    guard: `${GUARDS}/one-visibility-source.mjs`,
+    file: 'src/lib/events/fetchers.ts',
+    find: 'tags: [EVENT_DATA_CACHE_TAGS[1]]',
+    replace: "revalidate: 1800, tags: ['events:orphan-cache']",
+    expect: 'nothing invalidates',
+  },
+  {
+    name: 'a script hands pg a connectionString again',
+    guard: `${GUARDS}/one-db-connection-source.mjs`,
+    file: 'scripts/verify/seeded-order-forensics.mjs',
+    find: 'const db = await target.connect()',
+    replace: 'const db = new pg.Client({ connectionString: "postgresql://x" })',
+    expect: 'connectionString',
+  },
+  {
+    name: 'a script reads SUPABASE_DB_URL out of the environment again',
+    guard: `${GUARDS}/one-db-connection-source.mjs`,
+    file: 'scripts/verify/seeded-order-forensics.mjs',
+    find: 'const db = await target.connect()',
+    replace: 'const raw = process.env.SUPABASE_DB_URL\nconst db = await target.connect()',
+    expect: 'direct env read',
+  },
+  {
+    name: 'a script parses the database URL with new URL() again',
+    guard: `${GUARDS}/one-db-connection-source.mjs`,
+    file: 'scripts/verify/seeded-order-forensics.mjs',
+    find: 'const db = await target.connect()',
+    replace: 'const u = new URL(SUPABASE_DB_URL)\nconst db = await target.connect()',
+    expect: 'new URL on a database url',
+  },
+  {
+    name: 'a script hardcodes the pooler host again',
+    guard: `${GUARDS}/one-db-connection-source.mjs`,
+    file: 'scripts/verify/seeded-order-forensics.mjs',
+    find: 'const db = await target.connect()',
+    replace:
+      'const db = new pg.Client({ host: "aws-1-ap-southeast-2.pooler.supabase.com", port: 5432 })',
+    expect: 'hardcoded supabase host',
+  },
   {
     /*
      * RULE 2 of no-unowned-organisation-read. The check that matters most and the

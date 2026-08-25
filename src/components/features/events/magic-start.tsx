@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Mic, MicOff, Sparkles } from 'lucide-react'
 import type { MagicStartDraft } from '@/lib/ai/magic-start'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 /**
  * Magic Start: describe your event once, and it prefills the whole draft.
@@ -128,7 +129,8 @@ export function MagicStart({
       const data = (await res.json()) as { ok: boolean; draft?: MagicStartDraft }
       if (data.ok && data.draft) onDraft(data.draft)
       else setError('Magic Start could not read that. Try describing your event a little differently.')
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/features/events/magic-start:133' })
       setError('Something went wrong. You can fill the form in manually below.')
     } finally {
       setRunning(false)

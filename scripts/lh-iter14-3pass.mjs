@@ -25,7 +25,9 @@ console.log('=== Edge warm-up: hit every route once with curl ===')
 for (const [, path] of routes) {
   try {
     execSync(`curl -s -o /dev/null "${PREVIEW}${path}"`, { stdio: 'ignore', timeout: 30_000 })
-  } catch {}
+  } catch (error) {
+    console.warn('[scripts/lh-iter14-3pass:29]', error instanceof Error ? error.message : error)
+    }
 }
 
 for (let pass = 1; pass <= 3; pass++) {

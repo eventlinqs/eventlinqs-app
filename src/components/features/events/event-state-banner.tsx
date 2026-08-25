@@ -1,3 +1,4 @@
+import { REFUND_ARRIVAL_WINDOW } from '@/lib/refunds/arrival-timeframe'
 import Link from 'next/link'
 import { AlertTriangle, XCircle, CalendarClock, Clock } from 'lucide-react'
 
@@ -42,7 +43,8 @@ export function EventStateBanner({ state, newDate, originalDate, organiserHandle
           <div className="flex-1 text-sm">
             <p className="font-semibold text-[#991B1B]">This event has been cancelled.</p>
             <p className="mt-0.5 text-[#991B1B]/85">
-              Refunds are processed automatically to the original payment method within 5 business days.
+              Refunds are processed automatically to the original payment method within{' '}
+              {REFUND_ARRIVAL_WINDOW}.
               For questions, contact{' '}
               <a href="mailto:support@eventlinqs.com" className="underline hover:no-underline">
                 support@eventlinqs.com

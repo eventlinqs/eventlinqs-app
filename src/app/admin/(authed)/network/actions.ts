@@ -12,7 +12,7 @@ import { getCity } from '@/lib/cities/data'
 
 /**
  * The waitlist-to-invite bridge. From the demand-signal view the founder marks
- * a Geelong or Melbourne waitlist entry as invited: this mints a founder-issued
+ * a waitlist entry as invited: this mints a founder-issued
  * founding invite for that person and emails them the warm link.
  *
  * Spam Act posture: the recipient already consented on the waitlist to hear
@@ -32,7 +32,7 @@ export async function inviteWaitlistEntry(signupId: string): Promise<{ ok?: true
     .maybeSingle()
 
   if (!entry) return { error: 'Waitlist entry not found.' }
-  if (!isFoundingCity(entry.city_slug)) return { error: 'Invites are only open for Geelong and Melbourne.' }
+  if (!isFoundingCity(entry.city_slug)) return { error: 'That entry has no valid Australian city recorded.' }
   if (entry.unsubscribed_at) return { error: 'This person has left the waitlist and cannot be emailed.' }
 
   // One founder invite per waitlist email: reuse an existing pending invite.

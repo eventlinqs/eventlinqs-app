@@ -61,9 +61,9 @@ export default async function DigestUnsubscribePage({ params }: Props) {
               </p>
               {fromWaitlist && (
                 <p className="mt-3 text-sm text-ink-600">
-                  You are still on your city waitlist, so we will still email you the one time your
-                  city opens. To leave that as well, use the leave link in your waitlist
-                  confirmation email, or contact us at hello@eventlinqs.com.
+                  You joined through a city list, so we may still email you about that city. To
+                  leave that as well, use the leave link in your confirmation email, or contact us
+                  at hello@eventlinqs.com.
                 </p>
               )}
               <Link
@@ -83,8 +83,7 @@ export default async function DigestUnsubscribePage({ params }: Props) {
               </p>
               {fromWaitlist && (
                 <p className="mt-3 text-sm text-ink-600">
-                  Your city waitlist place is kept, so we will still email you the one time your
-                  city opens.
+                  You joined through a city list, so we may still email you about that city.
                 </p>
               )}
               <form action={unsubscribeFromDigestAction.bind(null, token)} className="mt-6">

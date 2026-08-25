@@ -172,7 +172,8 @@ for (const rel of files) {
   let text
   try {
     text = readFileSync(join(ROOT, rel), 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/one-fee-copy:176]', error instanceof Error ? error.message : error)
     continue
   }
   const lines = text.split(/\r?\n/)

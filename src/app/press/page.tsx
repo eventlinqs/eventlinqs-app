@@ -70,7 +70,7 @@ const STORYLINES = [
   {
     title: 'A solo Australian-Nigerian founder',
     body:
-      'Geelong-based, sole founder, building toward national launch in mid-2026 without venture funding. The product is the work, the platform is the proof.',
+      'Geelong-based, sole founder, open right across Australia without venture funding. The product is the work, the platform is the proof.',
   },
   {
     title: 'All-in pricing as a structural commitment',

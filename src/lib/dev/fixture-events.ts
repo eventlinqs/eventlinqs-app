@@ -2,6 +2,7 @@ import type { RawRow } from '@/lib/events/home-queries'
 import type {
   Event, TicketTier, Organisation, EventCategory, EventAddon,
 } from '@/types/database'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Shared single source of truth for the preview density fixture.
@@ -92,7 +93,8 @@ async function readFixture(): Promise<FixtureRow[]> {
   try {
     const raw = await readFile(resolve(process.cwd(), FIXTURE_PATH), 'utf8')
     cache = JSON.parse(raw) as FixtureRow[]
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/dev/fixture-events:97' })
     cache = []
   }
   return cache

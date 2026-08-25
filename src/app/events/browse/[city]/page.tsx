@@ -24,6 +24,9 @@ import { EventsGrid } from '@/components/features/events/m5-events-grid'
 import { EventsPagination } from '@/components/features/events/m5-events-pagination'
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
 import { RecommendedRail } from '@/components/features/events/m5-recommended-rail'
+import { EventCollectionJsonLd } from '@/components/seo/event-collection-jsonld'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
+import { getSiteUrl } from '@/lib/site-url'
 
 // Rendered dynamically on demand (see the headers() note in the component) -
 // same reason and approach as /events/[slug]. No generateStaticParams: an empty
@@ -135,8 +138,38 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 
   const basePath = `/events/browse/${city.slug}`
 
+  // STRUCTURED DATA (added 2026-08-23). A production audit found all 21 of
+  // these URLs in the sitemap emitting zero JSON-LD, on the surface that
+  // answers "what is on in Brisbane".
+  //
+  // Emitted ONLY on the unfiltered first page. Every filtered or paginated view
+  // already canonicalises to this same base path (see generateMetadata), so
+  // describing a filtered subset as if it were the whole collection would
+  // contradict our own canonical and misstate numberOfItems.
+  const siteUrl = getSiteUrl()
+  const collectionUrl = `${siteUrl}${basePath}`
+  const isCanonicalView = !filterActive && result.page === 1
+
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
+      {isCanonicalView && (
+        <>
+          <EventCollectionJsonLd
+            url={collectionUrl}
+            name={`Events in ${city.city}`}
+            description={`Upcoming events, concerts and experiences in ${city.city}, ${city.country}.`}
+            events={result.events.map(e => ({ slug: e.slug, title: e.title }))}
+            baseUrl={siteUrl}
+          />
+          <BreadcrumbJsonLd
+            items={[
+              { name: 'Home', url: `${siteUrl}/` },
+              { name: 'Events', url: `${siteUrl}/events` },
+              { name: city.city, url: collectionUrl },
+            ]}
+          />
+        </>
+      )}
       <SiteHeader staticSafe />
       <main className="flex-1">
         <PhotographicCityHero
@@ -214,13 +247,20 @@ function EmptyCityState({ city }: { city: PickerCity }) {
         No events in {city.city} yet
       </h2>
       <p className="mt-2 text-sm text-ink-600">
-        We&rsquo;re launching in {city.city} soon. In the meantime, browse events
-        across {city.country} or further afield.
+        EventLinqs is open in {city.city} today, so the first one here could be
+        yours. Put your event on free, or browse what is on across{' '}
+        {city.country}.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <Link
-          href="/events"
+          href="/organisers"
           className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
+        >
+          Put on an event
+        </Link>
+        <Link
+          href="/events"
+          className="rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-semibold text-ink-900 transition-colors hover:border-ink-300"
         >
           Browse all events
         </Link>

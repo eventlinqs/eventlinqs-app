@@ -27,6 +27,7 @@ import { execFileSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
 import { existsSync, readFileSync } from 'node:fs'
+import { declareWork } from '../lib/work-report.mjs'
 
 const token = process.env.VERCEL_TOKEN
 const PROJECT_JSON = '.vercel/project.json'
@@ -192,4 +193,8 @@ if (stateOf(settled) === 'CANCELED') {
   process.exit(0)
 }
 
+declareWork('preview-state', {
+  did: { 'deployment inspected for this ref': mine.length },
+  found: { 'settled deployment that is not READY': settled && stateOf(settled) === 'READY' ? 0 : 1 },
+})
 console.log(`[preview-state] PASS - newest settled deployment for ${ref} is ${stateOf(settled)} (${sha}).`)

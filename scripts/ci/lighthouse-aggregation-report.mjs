@@ -24,6 +24,7 @@
 
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { declareWork } from '../lib/work-report.mjs'
 
 const dir = process.argv[2] || '.lighthouseci'
 
@@ -45,7 +46,8 @@ let categoryMethod = 'optimistic'
 try {
   const rc = JSON.parse(readFileSync('lighthouserc.json', 'utf8'))
   categoryMethod = rc?.ci?.assert?._aggregationContract?.categoryFloors ?? categoryMethod
-} catch {
+} catch (error) {
+  console.warn('[scripts/ci/lighthouse-aggregation-report:49]', error instanceof Error ? error.message : error)
   // Fall back to the LHCI default rather than guessing something friendlier.
 }
 
@@ -56,7 +58,8 @@ for (const file of files) {
   let lhr
   try {
     lhr = JSON.parse(readFileSync(join(dir, file), 'utf8'))
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/ci/lighthouse-aggregation-report:61]', error instanceof Error ? error.message : error)
     continue
   }
   const url = lhr.finalDisplayedUrl || lhr.finalUrl || lhr.requestedUrl || '(unknown)'
@@ -123,6 +126,9 @@ for (const [url, lhrs] of [...byUrl.entries()].sort()) {
   console.log('')
 }
 
+declareWork('lh-aggregation', {
+  did: { 'lhr file read': files.length, 'URL reported': byUrl.size },
+})
 console.log('='.repeat(78))
 console.log('This is a REPORT, not a gate. `lhci assert` decides pass or fail.')
 console.log('='.repeat(78))

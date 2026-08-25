@@ -7,6 +7,7 @@
  * appears when non-empty.
  */
 
+import { REFUND_ARRIVAL_WINDOW } from '@/lib/refunds/arrival-timeframe'
 import { describe, expect, it } from 'vitest'
 import {
   buildRefundConfirmationHtml,
@@ -67,13 +68,17 @@ describe('refund-confirmation template', () => {
       baseProps.refundAmountCents,
       baseProps.currency,
     )
-    expect(timeframe).toBe(
-      'Your refund of AUD 125.00 will appear on your statement within 3 to 5 business days. Some banks may take up to 10 days.',
-    )
+    // Pinned the WRONG number until 2026-08-24: it required '3 to 5 business
+    // days ... up to 10 days', understating Stripe's documented 5-10. Because the
+    // test asserted the defect, the defect was protected: correcting the copy
+    // would have failed CI. It now asserts the SOURCE, not a literal.
+    expect(timeframe).toContain('AUD 125.00')
+    expect(timeframe).toContain(REFUND_ARRIVAL_WINDOW)
+    expect(timeframe).not.toContain('3 to 5 business days')
     const html = buildRefundConfirmationHtml(baseProps)
-    expect(html).toContain('within 3 to 5 business days')
+    expect(html).toContain(`within ${REFUND_ARRIVAL_WINDOW}`)
     const text = buildRefundConfirmationText(baseProps)
-    expect(text).toContain('within 3 to 5 business days')
+    expect(text).toContain(`within ${REFUND_ARRIVAL_WINDOW}`)
   })
 
   it('html body contains the event title', () => {

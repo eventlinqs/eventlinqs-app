@@ -55,6 +55,67 @@ export function actionsForStatus(status: OrgStatus): OrganiserAction[] {
   )
 }
 
+/**
+ * THE ADMIN COUNTERS ARE COMPUTED, NOT READ. Changed 25 August 2026.
+ *
+ * `organisations.total_event_count` and `organisations.total_volume_cents` are
+ * running totals maintained by a read-modify-write in `connect-ledger.ts` on
+ * every confirmed order. They are incremented there and, apart from
+ * `reconcile_refund` touching the volume, nothing ever decrements them and
+ * nothing ever recomputes them.
+ *
+ * DRIVEN AGAINST TEST, scripts/verify/aggregate-drift-drive.mjs, 25 August 2026:
+ *
+ *   total_volume_cents  confirmed order DELETED   15000 -> 15000, truth 0   DRIFTS
+ *   total_event_count   the event DELETED             1 -> 1,     truth 0   DRIFTS
+ *
+ * That second line is exactly what the production purge did 46 times. And the
+ * census over the live TEST data found 9 of 9 organisations carrying a non-zero
+ * counter disagreed with their own rows, including one reading
+ * total_event_count 5 against 76 real events and total_volume_cents 168687
+ * against 172654 confirmed, so the stored figure was UNDER the truth as well as
+ * over it.
+ *
+ * The fix is not a better increment. It is to stop keeping a second copy on the
+ * read path: the admin surface now COUNTS the rows. This is an admin-only page
+ * behind 2FA with a page size of 25, so the cost is two grouped queries and the
+ * figure cannot be wrong. The columns stay because the ledger writes them; what
+ * changes is that nobody is shown them any more.
+ */
+async function countEventsAndVolume(
+  admin: ReturnType<typeof createAdminClient>,
+  orgIds: string[],
+): Promise<Map<string, { events: number; volumeCents: number }>> {
+  const out = new Map<string, { events: number; volumeCents: number }>()
+  for (const id of orgIds) out.set(id, { events: 0, volumeCents: 0 })
+  if (orgIds.length === 0) return out
+
+  const [{ data: events, error: eventError }, { data: orders, error: orderError }] = await Promise.all([
+    admin.from('events').select('organisation_id').in('organisation_id', orgIds),
+    admin
+      .from('orders')
+      .select('organisation_id, total_cents')
+      .in('organisation_id', orgIds)
+      .eq('status', 'confirmed'),
+  ])
+
+  // A read failure must be LOUD. Returning zeroes silently would print "0
+  // events, $0 lifetime" beside a real organiser, which is a worse lie than the
+  // stale counter this replaces.
+  if (eventError) throw eventError
+  if (orderError) throw orderError
+
+  for (const e of events ?? []) {
+    const bucket = out.get(e.organisation_id as string)
+    if (bucket) bucket.events += 1
+  }
+  for (const o of orders ?? []) {
+    const bucket = out.get(o.organisation_id as string)
+    if (bucket) bucket.volumeCents += Number(o.total_cents ?? 0)
+  }
+  return out
+}
+
 export interface AdminOrganiserRow {
   id: string
   name: string
@@ -98,7 +159,7 @@ export async function listOrganisations(filters: OrganiserListFilters): Promise<
   let q = admin
     .from('organisations')
     .select(
-      'id, name, slug, status, email, payout_status, stripe_charges_enabled, total_event_count, created_at',
+      'id, name, slug, status, email, payout_status, stripe_charges_enabled, created_at',
     )
     .order('created_at', { ascending: false })
     .range(fromIdx, fromIdx + PAGE_SIZE) // fetch one extra to detect hasMore
@@ -115,6 +176,7 @@ export async function listOrganisations(filters: OrganiserListFilters): Promise<
   const raw = data ?? []
   const hasMore = raw.length > PAGE_SIZE
   const trimmed = hasMore ? raw.slice(0, PAGE_SIZE) : raw
+  const counted = await countEventsAndVolume(admin, trimmed.map((r) => r.id))
 
   return {
     rows: trimmed.map((r) => ({
@@ -125,7 +187,7 @@ export async function listOrganisations(filters: OrganiserListFilters): Promise<
       email: r.email,
       payoutStatus: r.payout_status,
       stripeChargesEnabled: r.stripe_charges_enabled,
-      totalEventCount: r.total_event_count,
+      totalEventCount: counted.get(r.id)?.events ?? 0,
       createdAt: r.created_at,
     })),
     page,
@@ -341,7 +403,7 @@ export async function getOrganiserDetail(orgId: string): Promise<AdminOrganiserD
   const admin = createAdminClient()
   const { data: org } = await admin
     .from('organisations')
-    .select('id, name, slug, status, email, payout_status, total_event_count, total_volume_cents, stripe_account_id, created_at')
+    .select('id, name, slug, status, email, payout_status, stripe_account_id, created_at')
     .eq('id', orgId)
     .maybeSingle()
   if (!org) return null
@@ -360,6 +422,8 @@ export async function getOrganiserDetail(orgId: string): Promise<AdminOrganiserD
     verification = summariseVerification(null)
   }
 
+  const counted = await countEventsAndVolume(admin, [org.id])
+
   return {
     id: org.id,
     name: org.name,
@@ -367,8 +431,8 @@ export async function getOrganiserDetail(orgId: string): Promise<AdminOrganiserD
     status: org.status,
     email: org.email,
     payoutStatus: org.payout_status,
-    totalEventCount: org.total_event_count ?? 0,
-    totalVolumeCents: org.total_volume_cents ?? 0,
+    totalEventCount: counted.get(org.id)?.events ?? 0,
+    totalVolumeCents: counted.get(org.id)?.volumeCents ?? 0,
     stripeAccountId: org.stripe_account_id ?? null,
     createdAt: org.created_at,
     availableActions: actionsForStatus(org.status),

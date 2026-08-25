@@ -25,6 +25,7 @@ import {
   startOfLocalDayUtcOffset,
   weekendWindowUtc,
 } from '@/lib/events/listing-window'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 export const revalidate = 300
 
@@ -96,8 +97,7 @@ export default async function CityPage({ params }: Props) {
       supabase
         .from('events')
         .select(baseSelect)
-        .eq('status', 'published')
-        .eq('visibility', 'public')
+        .match(PUBLIC_EVENT_MATCH)
         .or(listingWindowOrPredicate(new Date(w.nowIso)))
         .ilike('venue_city', `%${city.name}%`)
         .order('start_date', { ascending: true })

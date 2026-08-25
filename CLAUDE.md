@@ -237,11 +237,32 @@ links), and the benchmark and gate rules in Verification and gates.
 look and feel complete and voluminous everywhere a real Australian user looks,
 standing next to Ticketmaster, Eventbrite and Humanitix from day one.
 
-- **Every rail full and balanced.** A rail with 1 to 2 items next to a rail with
-  7 is a defect. No empty sections, no near-empty discovery surfaces, no blank
-  image slots. A route that resolves 200 to a designed empty state is correct
-  engineering but is NOT market-ready content: an empty city, scene, community,
-  or category a user can browse to is a completeness gap, not a finished surface.
+- **Every rail full and balanced, but NEVER by hiding a real event.** No empty
+  sections, no near-empty discovery surfaces, no blank image slots. A route that
+  resolves 200 to a designed empty state is correct engineering but is NOT
+  market-ready content: an empty city, scene, community, or category a user can
+  browse to is a completeness gap, not a finished surface.
+  - **ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026).** This clause
+    used to read "a rail with 1 to 2 items next to a rail with 7 is a defect",
+    and that sentence was enforced as `RAIL_MIN = 3` on the homepage, `>= 4` on
+    every city, community-by-city and suburb page, and `MIN_RAIL_COUNT = 3` on
+    the browse rails. It is REVERSED, and the reversal is a law rather than a
+    preference because it was argued both ways once already (the superseded
+    ruling is `docs/roast/RAIL-MIN-RULING-2026-08-16.md`).
+  - The rule was written for a platform with volume. We do not have volume yet,
+    so in practice it hid a real organiser's real event for being the only one
+    in its category. The organiser we can least afford to lose is the first one
+    in a category, and theirs was precisely the event the page refused to show.
+  - **Thinness is answered by filling the rail, never by deleting it.** A rail
+    with one event tops up with `InvitationCard`s (`invitationFillCount`), so it
+    renders four cards: the real event, then three invitations to be next on it.
+    The fill tapers and vanishes by itself at five real events. A sparse rail
+    therefore reads as recruitment, which is growth lever 1 rendered on the page.
+  - The only legitimate reason not to render a rail is that it has NOTHING to
+    show. That decision lives in `EventRailSection` (`events.length === 0`) and
+    is never re-derived by a caller. `tests/unit/growth/one-event-shows-the-rail.test.ts`
+    sweeps every rail-bearing surface and fails the build if a count threshold
+    comes back.
 - **All of Australia from day one.** Build for every Australian city and state,
   not four cities. Every city the platform lists must be represented with real
   events and real imagery (or a branded fallback, never a blank tile). The
@@ -1069,7 +1090,7 @@ named and routed, never hidden.
 | Gate | File | Enforces | State |
 |---|---|---|---|
 | CI: lint / typecheck / build / test | `.github/workflows/ci.yml` | code correctness, type safety, build integrity, unit tests (vitest) | Blocking on PRs to main. (`types-drift guard` is non-blocking until `SUPABASE_ACCESS_TOKEN` is set.) |
-| Lighthouse CI | `.github/workflows/lighthouse.yml` + `lighthouserc.json` | performance, accessibility (category), best-practices, SEO, CLS on the public URL set | Blocking, but BELOW the law - see gaps. |
+| Lighthouse CI | `.github/workflows/lighthouse.yml` + `lighthouserc.json` | performance, accessibility (category), best-practices, SEO, CLS on the public URL set | ADVISORY since 2026-08-25 (founder ruling). Runs on every PR, asserts every threshold, fails loudly, emails. It does NOT block a merge. `docs/perf/LIGHTHOUSE-GATE-ADVISORY-RULING-2026-08-25.md` |
 | axe-core | `scripts/axe-*.mjs` (incl `axe-marketing-scan.mjs`) | accessibility 0 violations (WCAG 2 A/AA) | NOT a CI job yet - run by hand per surface. |
 | Link-integrity crawler | `scripts/link-integrity-crawl.mjs` | Law 5, zero dead links | NOT a CI job yet - run by hand vs preview/local. |
 | Post-deploy smoke | `.github/workflows/post-deploy-smoke.yml` | production homepage 200 + no error-boundary HTML after deploy | Blocking on main after CI. |
@@ -1077,13 +1098,19 @@ named and routed, never hidden.
 Known gate gaps (routed to the engine-hardening branch; founder ruling needed on
 the first):
 
-1. **Lighthouse vs the law (workshop inspection MAJOR-1).** The gate runs against
-   `localhost:3000`, not the preview/warmed-prod the law requires; floors perf at
-   0.80 not 0.95; runs perf at warn-level on `/` and `/culture/*` (the hero
-   pages); is mobile-only (no desktop); leaves LCP/TBT/FCP/Speed-Index at warn.
-   Either the 95+ law is amended with founder sign-off to the operating reality,
-   or the gate is brought up to the law. Tied to Issue #42 (next/image optimiser
-   cold-start) driving the LCP/perf variance.
+1. **Lighthouse is ADVISORY, by founder ruling of 25 August 2026.** It runs on
+   every PR, asserts every threshold, fails loudly and emails; it does not block a
+   merge. THE RULING IS NOT A RELAXATION OF THE 95+ LAW, which still stands for
+   what the product should achieve. It is a statement about what the gate was
+   measuring: on the same commit and the same preview URLs, `/events` scored 0.76
+   on the CI runner and 0.88 from a warmed real client, and
+   `/events/cat-indie-sounds-...` scored 0.72 and 0.86. Same bytes. The gap is the
+   runner. A gate that measures its own environment rather than the product is not
+   a gate. No threshold was touched and the audited set was not narrowed; the full
+   evidence, what was fixed first, and how to reverse it are in
+   `docs/perf/LIGHTHOUSE-GATE-ADVISORY-RULING-2026-08-25.md`. Still tied to Issue
+   #42 (next/image optimiser cold-start) and to the ~209KB pre-load client shell,
+   which are the honest closes.
 2. **axe and the link crawler are not CI jobs.** Both exist and pass when run;
    wiring them as blocking CI gates makes the accessibility and zero-dead-links
    laws unskippable. Routed to engine hardening.

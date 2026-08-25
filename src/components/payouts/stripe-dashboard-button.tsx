@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { ExternalLink, Loader2 } from 'lucide-react'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 interface StripeDashboardButtonProps {
   enabled: boolean
@@ -35,7 +36,8 @@ export function StripeDashboardButton({ enabled, organisationId }: StripeDashboa
           return
         }
         window.open(json.url, '_blank', 'noopener,noreferrer')
-      } catch {
+      } catch (error) {
+        reportClientError(error, { where: 'components/payouts/stripe-dashboard-button:40' })
         setError('Network error. Please try again.')
       }
     })

@@ -36,10 +36,32 @@ function waitlist(email: string, over: Partial<WaitlistAudienceRow> = {}): Waitl
 }
 
 describe('the recorded wording binds', () => {
-  it('the current join wording names the weekly email, so the consent is real', () => {
-    const text = joinConsentText('Geelong')
-    expect(text).toContain('weekly email of what is on in Geelong')
+  it('the current join wording names local event emails, so the consent is real', () => {
+    const text = joinConsentText('Perth')
+    expect(text).toContain('email you when there is something on near you in Perth')
     expect(text).toContain('one click unsubscribes you')
+  })
+
+  it('the join wording promises no cadence it cannot honour', () => {
+    // Founder ruling 2026-08-23: a weekly promise the platform cannot yet keep
+    // burns the subscriber, so no frequency is stated. This is an ABSENCE, so
+    // the negative control below proves the assertion can actually fail.
+    const text = joinConsentText('Perth')
+    expect(text).not.toMatch(/weekly|every week|once a week|daily|monthly/i)
+  })
+
+  it('negative control: the cadence assertion fails on wording that states one', () => {
+    const withCadence =
+      'Get Perth alerts: EventLinqs will send you a weekly email of what is on in Perth.'
+    expect(() =>
+      expect(withCadence).not.toMatch(/weekly|every week|once a week|daily|monthly/i),
+    ).toThrow()
+  })
+
+  it('the join wording no longer promises an email when the city opens', () => {
+    // Every city is open, so that email would never be sent.
+    const text = joinConsentText('Perth')
+    expect(text).not.toMatch(/when Perth opens|city opens|opens first/i)
   })
 
   it('the shipped consent version is one the digest is allowed to draw from', () => {

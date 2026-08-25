@@ -59,8 +59,7 @@ const PREVIOUS = 'supabase/migrations/20260705000003_confirm_order_seat_reservat
 
 if (FIX || RESTORE) {
   const target = assertNotProductionDatabase()
-  const admin = new pg.Client(target.clientConfig)
-  await admin.connect()
+  const admin = await target.connect()
   const file = FIX ? MIGRATION : PREVIOUS
   const sql = readFileSync(file, 'utf8')
   // The previous migration file carries more than the function; take only the

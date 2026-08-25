@@ -20,6 +20,7 @@ import {
   type AuthFailureClass,
 } from '@/lib/auth/auth-errors'
 import { safeAuthOrigin } from '@/lib/auth/safe-origin'
+import { captureException } from '@/lib/observability/sentry'
 
 export const dynamic = 'force-dynamic'
 
@@ -301,7 +302,8 @@ export async function POST(request: NextRequest) {
           },
         })
         .eq('id', newUserId)
-    } catch {
+    } catch (error) {
+      captureException(error, { where: 'app/api/auth/signup/route:306' })
       // swallow - attribution is non-critical telemetry
     }
   }
@@ -327,7 +329,8 @@ export async function POST(request: NextRequest) {
         source: 'registration',
         at: new Date().toISOString(),
       })
-    } catch {
+    } catch (error) {
+      captureException(error, { where: 'app/api/auth/signup/route:333' })
       // swallow - consent capture must never fail the signup
     }
   }

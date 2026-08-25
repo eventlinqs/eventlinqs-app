@@ -129,7 +129,13 @@ export function CommunityCityLandingPage({
       />
 
       {/* S4 This weekend */}
-      {thisWeekendEvents.length >= 4 ? (
+      {/* ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026). These curated
+        rails were gated at `>= 4`, so a city or community with one, two or three
+        events on showed none of them here and fell through to the full grid below.
+        On a platform still building volume that hid the only event a place had. The
+        gate is gone; an empty rail still does not render, because there is nothing
+        to show. */}
+      {thisWeekendEvents.length > 0 ? (
         <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`${community.displayName} this weekend in ${cityName}`}
@@ -153,7 +159,7 @@ export function CommunityCityLandingPage({
       ) : null}
 
       {/* S4 This week */}
-      {thisWeekEvents.length >= 4 ? (
+      {thisWeekEvents.length > 0 ? (
         <ContentSection surface="base" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`${community.displayName} this week in ${cityName}`}
@@ -227,7 +233,7 @@ export function CommunityCityLandingPage({
       ) : null}
 
       {/* S6 Popular this month */}
-      {popularEvents.length >= 4 ? (
+      {popularEvents.length > 0 ? (
         <ContentSection surface="base" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`${community.displayName} highlights in ${cityName}`}

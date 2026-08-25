@@ -73,7 +73,8 @@ async function prewarm(target) {
   for (let i = 0; i < 2; i++) {
     try {
       await fetch(target)
-    } catch {
+    } catch (error) {
+      console.warn('[scripts/brand-sweep-audit:77]', error instanceof Error ? error.message : error)
       // ignore
     }
   }

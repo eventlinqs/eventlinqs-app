@@ -6,6 +6,7 @@ import { RevenueSummary } from '@/components/orders/revenue-summary'
 import type { Event, TicketTier, EventCategory } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { resolveEventAccess } from '@/lib/organisations/event-access'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -26,15 +27,21 @@ export default async function EditEventPage({ params }: Props) {
 
   if (!event) notFound()
 
-  // Verify the user owns this event's organisation
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', event.organisation_id)
-    .eq('owner_id', user.id)
-    .single()
-
-  if (!org) notFound()
+  /*
+   * ACCESS, VIA THE SHARED GATE. Two defects in one line.
+   *
+   * PRIVILEGE: this filtered `.eq('owner_id', user.id)` on the SESSION client, and
+   * the column lockdown does not grant `authenticated` owner_id. PostgreSQL needs
+   * SELECT privilege on WHERE-clause columns, so the query was refused 42501, the
+   * row came back null, and the page 404'd. That is the failure that forced the
+   * emergency GRANT still on production.
+   *
+   * AUTHORISATION: it admitted the OWNER only. resolveEventAccess admits owner or
+   * a member holding owner/admin/manager, matching updateEvent and
+   * resolveRefundScope, so a venue's manager can reach the edit form for an event they run. updateEvent already accepts them, so a manager could save an event they were not allowed to open.
+   */
+  const access = await resolveEventAccess(id)
+  if (!access.allowed) notFound()
 
   const { data: categories } = await supabase
     .from('event_categories')

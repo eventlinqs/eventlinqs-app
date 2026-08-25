@@ -19,7 +19,6 @@ import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { EventRailSection } from '@/components/features/home/event-rail-section'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
-import { ThinCategoriesNote } from '@/components/features/home/thin-categories-note'
 import {
   ThisWeekSkeleton,
   CityRailSkeleton,
@@ -108,19 +107,26 @@ export default async function HomePage() {
   const byCategory = (slug: string, max = 12) =>
     upcoming.filter(e => e.category?.slug === slug).slice(0, max)
 
-  // Market-ready volume law: a rail with one or two cards next to full rails
-  // reads as emptiness, not curation. A category rail renders only from three
-  // events; thinner categories stay reachable through Browse by Category and
-  // the events browse, where a short list reads as a list, not a defect.
+  // ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026, reversing the
+  // ruling of 16 August recorded in docs/roast/RAIL-MIN-RULING-2026-08-16.md).
   //
-  // FOUNDER RULING, 16 August 2026, recorded in
-  // docs/roast/RAIL-MIN-RULING-2026-08-16.md: RAIL_MIN STANDS, and the homepage
-  // now SAYS SO. The apparent conflict with "published means visible" is not a
-  // conflict: nothing is unreachable, only unrailed. What was missing was the
-  // sentence. ThinCategoriesNote below names every category with one or two
-  // events on, with its real count and a working link, so "no rail" can never
-  // again look identical to "no events".
-  const RAIL_MIN = 3
+  // `RAIL_MIN = 3` hid any category rail carrying one or two events. That rule
+  // was written for a platform with volume and we do not have volume yet, so in
+  // practice it hid a real organiser's real event for the crime of being the
+  // only one in its category. At this stage that is exactly backwards: the
+  // organiser we most need to keep is the first one in a category, and their
+  // event was the one the homepage refused to show.
+  //
+  // There is no threshold now. A rail renders whenever it has at least one
+  // event, and EventRailSection's own `events.length === 0` guard is the single
+  // place that decides a rail has nothing to show, so no caller re-derives it.
+  //
+  // A rail of one is NOT left looking broken: EventRailSection tops a thin rail
+  // up with InvitationCards (invitationFillCount), so one real event renders as
+  // four cards, the real one first and three invitations to be next on it. The
+  // fill vanishes by itself at five real events. The sparse rail therefore
+  // reads as recruitment rather than as a gap, which is the growth plan's
+  // first lever rendered on the page.
 
   // Live counts per category for the category nav tiles under the hero.
   const categoryCounts = upcoming.reduce<Record<string, number>>((acc, e) => {
@@ -138,26 +144,11 @@ export default async function HomePage() {
   const sportsEvents = byCategory('sports')
   const familyEvents = byCategory('family')
 
-  // Every category that HAS events on but not enough for a rail. Built from the
-  // same slices the rails render, so the two can never disagree about what is on.
-  const thinCategories = (
-    [
-      { slug: 'music', label: 'Music', events: musicEvents },
-      { slug: 'food-drink', label: 'Food and drink', events: foodEvents },
-      { slug: 'festival', label: 'Festivals', events: festivalEvents },
-      { slug: 'arts-community', label: 'Arts and theatre', events: artsEvents },
-      { slug: 'nightlife', label: 'Nightlife', events: nightlifeEvents },
-      { slug: 'comedy', label: 'Comedy', events: comedyEvents },
-      { slug: 'sports', label: 'Sport', events: sportsEvents },
-      { slug: 'family', label: 'Family', events: familyEvents },
-    ] as const
-  )
-    .filter(c => c.events.length > 0 && c.events.length < RAIL_MIN)
-    .map(c => ({
-      label: c.label,
-      count: c.events.length,
-      href: `/events?category=${c.slug}`,
-    }))
+  // The "thin categories" list and the note that rendered it are GONE with the
+  // threshold that created them (founder ruling, 23 August 2026). A category
+  // with one or two events on now gets the rail it always should have had, so
+  // there is no such thing as a category that is on but unrailed, and nothing
+  // left for a note to name.
 
   const thisWeek = upcoming
     .filter(e => new Date(e.start_date) <= new Date(nowMs + 7 * 24 * 60 * 60 * 1000))
@@ -276,110 +267,92 @@ export default async function HomePage() {
         <CommunityRail />
 
         {/* General category breadth leads. */}
-        {musicEvents.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="On the lineup"
-            title="Music"
-            ariaLabel="Music events"
-            railLabel="Music events"
-            events={musicEvents}
-            viewAllHref="/events?category=music"
-          />
-        )}
+        <EventRailSection
+          eyebrow="On the lineup"
+          title="Music"
+          ariaLabel="Music events"
+          railLabel="Music events"
+          events={musicEvents}
+          viewAllHref="/events?category=music"
+        />
 
-        {foodEvents.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="Taste the city"
-            title="Food and drink"
-            ariaLabel="Food and drink events"
-            railLabel="Food and drink events"
-            events={foodEvents}
-            viewAllHref="/events?category=food-drink"
-          />
-        )}
+        <EventRailSection
+          eyebrow="Taste the city"
+          title="Food and drink"
+          ariaLabel="Food and drink events"
+          railLabel="Food and drink events"
+          events={foodEvents}
+          viewAllHref="/events?category=food-drink"
+        />
 
         {/* Trending (general, demand-based) - Variant B: the one larger
             feature-card row. Uniform feature-sized cards within the rail. */}
-        {trending.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="Selling fast"
-            title="Trending now"
-            ariaLabel="Trending events"
-            railLabel="Trending events"
-            events={trending}
-            viewAllHref="/events?sort=popularity"
-            cardVariant="feature"
-          />
-        )}
+        <EventRailSection
+          eyebrow="Selling fast"
+          title="Trending now"
+          ariaLabel="Trending events"
+          railLabel="Trending events"
+          events={trending}
+          viewAllHref="/events?sort=popularity"
+          cardVariant="feature"
+        />
 
-        {festivalEvents.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="All day, all weekend"
-            title="Festivals"
-            ariaLabel="Festival events"
-            railLabel="Festival events"
-            events={festivalEvents}
-            viewAllHref="/events?category=festival"
-          />
-        )}
+        <EventRailSection
+          eyebrow="All day, all weekend"
+          title="Festivals"
+          ariaLabel="Festival events"
+          railLabel="Festival events"
+          events={festivalEvents}
+          viewAllHref="/events?category=festival"
+        />
 
-        {artsEvents.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="On stage and in the gallery"
-            title="Arts and theatre"
-            ariaLabel="Arts and theatre events"
-            railLabel="Arts and theatre events"
-            events={artsEvents}
-            viewAllHref="/events?category=arts-community"
-          />
-        )}
+        <EventRailSection
+          eyebrow="On stage and in the gallery"
+          title="Arts and theatre"
+          ariaLabel="Arts and theatre events"
+          railLabel="Arts and theatre events"
+          events={artsEvents}
+          viewAllHref="/events?category=arts-community"
+        />
 
         {/* This Weekend (general, time-based) */}
-        {thisWeekend.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="This weekend"
-            title="On this weekend"
-            ariaLabel="Events this weekend"
-            railLabel="Events this weekend"
-            invitationSubject="weekend"
-            events={thisWeekend}
-            viewAllHref="/events?preset=weekend"
-          />
-        )}
+        <EventRailSection
+          eyebrow="This weekend"
+          title="On this weekend"
+          ariaLabel="Events this weekend"
+          railLabel="Events this weekend"
+          invitationSubject="weekend"
+          events={thisWeekend}
+          viewAllHref="/events?preset=weekend"
+        />
 
-        {nightlifeEvents.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="After dark"
-            title="Nightlife"
-            ariaLabel="Nightlife events"
-            railLabel="Nightlife events"
-            events={nightlifeEvents}
-            viewAllHref="/events?category=nightlife"
-          />
-        )}
+        <EventRailSection
+          eyebrow="After dark"
+          title="Nightlife"
+          ariaLabel="Nightlife events"
+          railLabel="Nightlife events"
+          events={nightlifeEvents}
+          viewAllHref="/events?category=nightlife"
+        />
 
-        {comedyEvents.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="Have a laugh"
-            title="Comedy"
-            ariaLabel="Comedy events"
-            railLabel="Comedy events"
-            events={comedyEvents}
-            viewAllHref="/events?category=comedy"
-          />
-        )}
+        <EventRailSection
+          eyebrow="Have a laugh"
+          title="Comedy"
+          ariaLabel="Comedy events"
+          railLabel="Comedy events"
+          events={comedyEvents}
+          viewAllHref="/events?category=comedy"
+        />
 
         {/* Free (general, price-based) */}
-        {freeEvents.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="No ticket needed"
-            title="Free events"
-            ariaLabel="Free events"
-            railLabel="Free events"
-            events={freeEvents}
-            viewAllHref="/events?preset=free"
-          />
-        )}
+        <EventRailSection
+          eyebrow="No ticket needed"
+          title="Free events"
+          ariaLabel="Free events"
+          railLabel="Free events"
+          events={freeEvents}
+          viewAllHref="/events?preset=free"
+        />
 
         {/* Sounds (genres) - the genre half of the old combined scene rail.
          *  The community half is the higher-placed CommunityRail above. */}
@@ -391,35 +364,27 @@ export default async function HomePage() {
         <CommunityValueBand />
 
         {/* General breadth continues below the community thread. */}
-        {sportsEvents.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="Game on"
-            title="Sport"
-            ariaLabel="Sport events"
-            railLabel="Sport events"
-            events={sportsEvents}
-            viewAllHref="/events?category=sports"
-          />
-        )}
+        <EventRailSection
+          eyebrow="Game on"
+          title="Sport"
+          ariaLabel="Sport events"
+          railLabel="Sport events"
+          events={sportsEvents}
+          viewAllHref="/events?category=sports"
+        />
 
-        {familyEvents.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="Bring everyone"
-            title="Family"
-            ariaLabel="Family events"
-            railLabel="Family events"
-            events={familyEvents}
-            viewAllHref="/events?category=family"
-          />
-        )}
+        <EventRailSection
+          eyebrow="Bring everyone"
+          title="Family"
+          ariaLabel="Family events"
+          railLabel="Family events"
+          events={familyEvents}
+          viewAllHref="/events?category=family"
+        />
 
         {/* Business and networking rail removed from the homepage (founder
          *  ruling): lowest consumer-discovery intent of the category rails. It
          *  stays a Browse-by-Category tile and keeps its category page. */}
-
-        {/* The suppressed rails, named. Renders nothing once every category is
-         *  either full or empty. See the RAIL_MIN ruling above. */}
-        <ThinCategoriesNote categories={thinCategories} />
 
         {/* Browse by City */}
         <Suspense fallback={<CityRailSkeleton />}>
@@ -427,17 +392,15 @@ export default async function HomePage() {
         </Suspense>
 
         {/* Editorial tail */}
-        {justAdded.length >= RAIL_MIN && (
-          <EventRailSection
-            eyebrow="Just added"
-            title="Fresh on the platform"
-            ariaLabel="Recently added events"
-            railLabel="Recently added events"
-            invitationSubject="fresh"
-            events={justAdded}
-            viewAllHref="/events?sort=date_asc"
-          />
-        )}
+        <EventRailSection
+          eyebrow="Just added"
+          title="Fresh on the platform"
+          ariaLabel="Recently added events"
+          railLabel="Recently added events"
+          invitationSubject="fresh"
+          events={justAdded}
+          viewAllHref="/events?sort=date_asc"
+        />
 
         {/* "Editor's picks" rail removed in the community-moat pass: it was a
          *  dedup-one-per-category set (lowest editorial signal). Cutting it

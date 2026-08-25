@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Suburb-aware Pexels helper for /city/[slug]/[suburb] hero banners.
@@ -72,7 +73,8 @@ async function fetchSuburbHeroRaw(query: string): Promise<string | null> {
     const pool = (usable.length > 0 ? usable : data.photos).slice(0, TOP_N)
     const photo = pool[simpleHash(query + ':suburb-hero') % pool.length]
     return photo.src.large
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/images/suburb-photo:77' })
     return null
   }
 }

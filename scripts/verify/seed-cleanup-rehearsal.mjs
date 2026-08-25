@@ -16,62 +16,21 @@
  * back leaves TEST exactly as found while still executing every statement for
  * real against real rows.
  *
- * Usage: node --env-file=.env.test scripts/verify/seed-cleanup-rehearsal.mjs
- */
-import pg from 'pg'
-import { assertNotProduction } from '../lib/production-write-preflight.mjs'
-
-assertNotProduction()
-
-const conn = process.env.SUPABASE_DB_URL
-if (!conn) {
-  console.error('SUPABASE_DB_URL is required.')
-  process.exit(1)
-}
-if (/gndnldyfudbytbboxesk/.test(conn)) {
-  console.error('REFUSING: that connection string points at PRODUCTION.')
-  process.exit(1)
-}
-
-/*
- * PARSED BY HAND, NOT HANDED TO pg AS A connectionString.
+ * Usage: node scripts/verify/seed-cleanup-rehearsal.mjs --project test
  *
- * The TEST password contains characters that are reserved in a URL and are not
- * percent-encoded, so `new URL(...)` throws `ERR_INVALID_URL` and pg reports the
- * input as *****REDACTED*****, which reads like a placeholder rather than a
- * parse failure. Splitting on the LAST '@' and the FIRST ':' after the scheme
- * avoids the URL parser entirely and leaves the password untouched.
+ * CONNECTION: through the shared helper. This file used to carry its own copy of
+ * the connection parser, its own SUPABASE_DB_URL read and its own hardcoded
+ * production-ref refusal. All three are now one call. The preflight it used to
+ * use, `assertNotProduction()`, judged NEXT_PUBLIC_SUPABASE_URL, which is a
+ * DIFFERENT variable from the one this script connects with: it could name TEST
+ * while SUPABASE_DB_URL named production, and the run would pass its own check
+ * and then connect to the live database. `assertNotProductionDatabase()` judges
+ * the connection actually being opened.
  */
-function parseConn(raw) {
-  const [scheme, rest] = raw.trim().replace(/^"|"$/g, '').split('://')
-  if (!rest) throw new Error('connection string has no scheme')
-  const at = rest.lastIndexOf('@')
-  const creds = rest.slice(0, at)
-  const hostPart = rest.slice(at + 1)
-  const sep = creds.indexOf(':')
-  const [hostPort, database] = hostPart.split('/')
-  const [host, port] = hostPort.split(':')
-  return {
-    scheme,
-    user: creds.slice(0, sep),
-    password: creds.slice(sep + 1),
-    host,
-    port: Number(port ?? 5432),
-    database: (database ?? 'postgres').split('?')[0],
-  }
-}
+import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
-const cfg = parseConn(conn)
-console.log(`connecting to ${cfg.host}:${cfg.port}/${cfg.database} as ${cfg.user}`)
-const client = new pg.Client({
-  user: cfg.user,
-  password: cfg.password,
-  host: cfg.host,
-  port: cfg.port,
-  database: cfg.database,
-  ssl: { rejectUnauthorized: false },
-})
-await client.connect()
+const target = assertNotProductionDatabase()
+const client = await target.connect()
 
 const show = (label, rows) => {
   console.log(`\n--- ${label} ---`)

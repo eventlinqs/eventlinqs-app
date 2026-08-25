@@ -39,7 +39,7 @@ import { assertNotProductionDatabase } from '../lib/production-write-preflight.m
 import pg from 'pg'
 
 const target = assertNotProductionDatabase()
-const client = new pg.Client(target.clientConfig)
+const client = await target.connect()
 const hr = t => console.log(`\n${'='.repeat(74)}\n${t}\n${'='.repeat(74)}`)
 const scanned = []
 
@@ -57,8 +57,6 @@ async function asAnon(sql) {
     return { ok: false, code: err.code, message: err.message.split('\n')[0] }
   }
 }
-
-await client.connect()
 try {
   await client.query('BEGIN')
   hr(`TARGET ${target.ref} (TEST). One transaction, rolled back at the end.`)

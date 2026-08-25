@@ -114,7 +114,8 @@ function sizeGb(dir, budget = 200000) {
     let entries
     try {
       entries = readdirSync(d, { withFileTypes: true })
-    } catch {
+    } catch (error) {
+      console.warn('[scripts/reclaim-space:118]', error instanceof Error ? error.message : error)
       return
     }
     for (const e of entries) {
@@ -167,7 +168,8 @@ function activeSessions() {
           /* ignore */
         }
       }
-    } catch {
+    } catch (error) {
+      console.warn('[scripts/reclaim-space:172]', error instanceof Error ? error.message : error)
       continue
     }
     if (newest >= cutoff) {
@@ -303,7 +305,8 @@ if (!REPORT_ONLY && !process.argv.includes('--no-cache-clean')) {
   for (const cmd of ['npm cache clean --force', 'pnpm store prune', 'yarn cache clean']) {
     try {
       execSync(cmd, { stdio: 'ignore' })
-    } catch {
+    } catch (error) {
+      console.warn('[scripts/reclaim-space:309]', error instanceof Error ? error.message : error)
       /* manager may not be installed */
     }
   }

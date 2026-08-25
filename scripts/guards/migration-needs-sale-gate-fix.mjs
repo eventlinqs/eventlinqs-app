@@ -36,6 +36,7 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
+import { declareWork } from '../lib/work-report.mjs'
 
 const ROOT = process.cwd()
 const MIGRATIONS = path.join(ROOT, 'supabase', 'migrations')
@@ -130,6 +131,10 @@ if (problems.length > 0) {
   ])
 }
 
+declareWork('migration-sale-gate', {
+  did: { 'revoked column checked': REVOKED.length, 'code-level check applied to the event page': 2 },
+  found: { 'problem on the event page': problems.length },
+})
 console.log(
   `[migration-sale-gate] PASS - ${migrationFile} revokes the columns AND the event page reads them\n` +
     '                      with a privileged client, so the two are safe to ship together.',

@@ -77,7 +77,9 @@ const STAGES = new Set(
 const proofs = { base: BASE, startedAt: new Date().toISOString(), stages: [...STAGES] }
 try {
   Object.assign(proofs, JSON.parse(fs.readFileSync(`${OUT}/gate.json`, 'utf8')), { stages: [...STAGES] })
-} catch {}
+} catch (error) {
+  console.warn('[scripts/verify/marketplace-gate:81]', error instanceof Error ? error.message : error)
+    }
 
 async function q(path) {
   const res = await fetch(`${URL_}/rest/v1/${path}`, { headers: svcH })

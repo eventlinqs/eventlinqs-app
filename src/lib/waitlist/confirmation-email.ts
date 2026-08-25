@@ -2,7 +2,12 @@ import { getSiteUrl } from '@/lib/site-url'
 import type { WaitlistRole } from './city-waitlist'
 
 /**
- * The city waitlist confirmation email.
+ * The local-alerts confirmation email.
+ *
+ * NATIONWIDE (2026-08-23): every line that promised an email "when {city}
+ * opens" is gone, because every city is open. NO CADENCE IS STATED: a weekly
+ * rhythm is not one the platform can honour yet, so the promise is "when there
+ * is something on near you".
  *
  * Sent once on joining (Spam Act: this is the transactional confirmation of
  * the signup itself, carrying the promise wording and the one-click
@@ -31,29 +36,29 @@ export function buildWaitlistConfirmationEmail(input: {
     // keep the canonical default
   }
 
-  const subject = `You are on the ${cityName} waitlist`
+  const subject = `You are set up for ${cityName} alerts`
 
   const foundingLine =
     foundingCandidate && role === 'organiser'
-      ? `You are registered as a founding candidate. Founding Organiser invitations are limited to the first 50 organisers across Geelong and Melbourne: 6 months fee-free, plus 3 more months for every organiser you refer. Invitations go out personally.`
+      ? `You are registered as a founding candidate. Founding Organiser invitations are limited to the first 50 organisers in Australia: 6 months fee-free, plus 3 more months for every organiser you refer. Invitations go out personally.`
       : role === 'organiser'
-        ? `You registered as an organiser, so when ${cityName} opens you will be first in line for onboarding. Until then the platform already works Australia-wide: you can build your event, map your room, and get your complete promo kit today, free.`
-        : `We will email you the moment ${cityName} opens. One email, no noise.`
+        ? `You registered as an organiser, so you are first in line for onboarding. EventLinqs is open in ${cityName} today: you can build your event, map your room, get your complete promo kit and start selling right now, free.`
+        : `We will email you when there is something on near you in ${cityName}. No noise.`
 
   const optInLine = marketingOptIn
-    ? 'You also ticked the box for occasional EventLinqs updates: new cities, new tools, and organiser offers.'
-    : 'You will receive the city-opening notification and nothing else.'
+    ? 'You also ticked the box for occasional EventLinqs updates: new tools and organiser offers.'
+    : 'You will receive local event alerts and nothing else.'
 
   const text = [
     `Hi ${firstName},`,
     '',
-    `You are on the ${cityName} waitlist.`,
+    `You are set up for ${cityName} alerts.`,
     '',
     foundingLine,
     '',
     optInLine,
     '',
-    `Leave the waitlist any time with one click: ${unsubscribeUrl}`,
+    `Stop these emails any time with one click: ${unsubscribeUrl}`,
     '',
     'EventLinqs',
     'The ticketing platform built for every community.',
@@ -70,8 +75,8 @@ export function buildWaitlistConfirmationEmail(input: {
       </tr>
       <tr>
         <td style="padding:28px;">
-          <p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#8A6D1E;margin:0 0 10px;">The waitlist</p>
-          <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.2;color:#0A1628;margin:0 0 14px;">You are on the ${cityName} waitlist.</h1>
+          <p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:#8A6D1E;margin:0 0 10px;">Local alerts</p>
+          <h1 style="font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.2;color:#0A1628;margin:0 0 14px;">You are set up for ${cityName} alerts.</h1>
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#333333;margin:0 0 14px;">Hi ${firstName},</p>
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#333333;margin:0 0 14px;">${foundingLine}</p>
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#666666;margin:0 0 20px;">${optInLine}</p>
@@ -86,7 +91,7 @@ export function buildWaitlistConfirmationEmail(input: {
         <td style="padding:16px 28px 24px;border-top:1px solid #EFEFEA;">
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#888888;margin:0;">
             EventLinqs, the ticketing platform built for every community.<br/>
-            Change your mind? <a href="${unsubscribeUrl}" style="color:#8A6D1E;">Leave the waitlist</a> with one click.
+            Change your mind? <a href="${unsubscribeUrl}" style="color:#8A6D1E;">Stop these emails</a> with one click.
           </p>
         </td>
       </tr>

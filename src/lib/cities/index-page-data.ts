@@ -2,6 +2,8 @@ import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { getAllCities, type CityContent, type CitySlug } from './data'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { EVENT_DATA_CACHE_TAGS } from '@/lib/events/cache-tags'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 export interface CityIndexEntry {
   slug: CitySlug
@@ -36,8 +38,7 @@ async function getCityIndexEntriesRaw(): Promise<CityIndexEntry[]> {
       const { count, error } = await supabase
         .from('events')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'published')
-        .eq('visibility', 'public')
+        .match(PUBLIC_EVENT_MATCH)
         .or(listingWindowOrPredicate(new Date()))
         .ilike('venue_city', `%${c.name}%`)
       counts[c.slug] = error || count === null ? 0 : count
@@ -58,7 +59,7 @@ async function getCityIndexEntriesRaw(): Promise<CityIndexEntry[]> {
 const cached = unstable_cache(
   getCityIndexEntriesRaw,
   ['city-index-page-v1'],
-  { revalidate: 300, tags: ['cities-index'] },
+  { revalidate: 300, tags: [EVENT_DATA_CACHE_TAGS[3]] },
 )
 
 export async function getCityIndexEntries(): Promise<CityIndexEntry[]> {

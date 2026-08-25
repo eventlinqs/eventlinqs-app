@@ -13,14 +13,18 @@ import {
 
 /**
  * A founding organiser generates a personal invite for a fellow organiser in
- * an open city. Only a founding organisation may issue invites, and only up to
- * its allowance. The invite is not tied to a specific email here (the organiser
- * shares the link personally); the founder's waitlist bridge is the
- * email-targeted path.
+ * ANY Australian city. Only a founding organisation may issue invites, and
+ * only up to its allowance. The invite is not tied to a specific email here
+ * (the organiser shares the link personally); the founder's admin bridge is
+ * the email-targeted path.
+ *
+ * The city is validated, never restricted: the platform is open nationwide
+ * from day one, so the only wrong answer is a slug that is not an Australian
+ * city at all.
  */
 export async function generateMyFoundingInvite(citySlug: string): Promise<{ code?: string; error?: string }> {
   if (!(await isFlagEnabled('launch_kit'))) return { error: 'Invites are not open right now.' }
-  if (!isFoundingCity(citySlug)) return { error: 'Invites are only open for Geelong and Melbourne.' }
+  if (!isFoundingCity(citySlug)) return { error: 'Choose an Australian city for this invite.' }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

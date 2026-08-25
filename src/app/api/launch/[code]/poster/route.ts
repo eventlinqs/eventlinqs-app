@@ -7,6 +7,7 @@ import { readExternalCodesForDraft } from '@/lib/broadcast/share-links'
 import { buildEventPosterPdf, type PosterImage } from '@/lib/broadcast/poster'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
+import { captureException } from '@/lib/observability/sentry'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -41,7 +42,8 @@ async function embeddable(
     }
     const jpeg = await sharp(Buffer.from(bytes)).jpeg({ quality: 85 }).toBuffer()
     return { bytes: new Uint8Array(jpeg), format: 'jpg' }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/api/launch/[code]/poster/route:46' })
     // Unreadable: the poster draws its typographic composition instead, which
     // is Law 6's answer to "no artwork" and needs no apology.
     return null

@@ -27,7 +27,9 @@ console.log(`${communitySlugs.length} community slugs found:`, communitySlugs.jo
 const auTestCities = ['sydney', 'melbourne', 'brisbane', 'perth', 'adelaide']
 
 async function statusFor(url) {
-  try { const r = await fetch(url, { redirect: 'manual' }); return r.status } catch { return 0 }
+  try { const r = await fetch(url, { redirect: 'manual' }); return r.status } catch (error) {
+    console.warn('[scripts/batch-11.1-d3-2-culture-parity:31]', error instanceof Error ? error.message : error)
+    return 0 }
 }
 
 // Communities index page + sitemap

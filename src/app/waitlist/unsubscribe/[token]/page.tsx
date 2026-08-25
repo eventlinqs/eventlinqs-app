@@ -5,7 +5,7 @@ import { getCity, isCitySlug } from '@/lib/cities/data'
 import { leaveCityWaitlistAction } from '../../actions'
 
 export const metadata: Metadata = {
-  title: 'Leave the waitlist | EventLinqs',
+  title: 'Stop local alerts | EventLinqs',
   robots: { index: false, follow: false },
 }
 
@@ -14,9 +14,13 @@ export const dynamic = 'force-dynamic'
 type Props = { params: Promise<{ token: string }> }
 
 /**
- * Public, no-login unsubscribe for the city waitlist (Spam Act). Withdrawal is
+ * Public, no-login unsubscribe for local event alerts (Spam Act). Withdrawal is
  * a deliberate button press, never an on-load side effect, so an email-scanner
  * prefetch can never silently remove anyone from their city's list.
+ *
+ * The route and its tokens are UNCHANGED by the 2026-08-23 nationwide ruling
+ * on purpose: these links are already sitting in people's inboxes and every one
+ * of them has to keep working.
  */
 export default async function WaitlistUnsubscribePage({ params }: Props) {
   const { token } = await params
@@ -52,34 +56,33 @@ export default async function WaitlistUnsubscribePage({ params }: Props) {
             </>
           ) : left ? (
             <>
-              <h1 className="font-display text-2xl font-bold text-ink-900">You have left the waitlist</h1>
+              <h1 className="font-display text-2xl font-bold text-ink-900">You are unsubscribed</h1>
               <p className="mt-3 text-sm text-ink-600">
-                You are off the {cityName} waitlist and will receive no further waitlist emails.
-                You can rejoin any time.
+                You will receive no further {cityName} event alerts. You can sign up again any
+                time.
               </p>
               <Link
                 href="/waitlist"
                 className="mt-6 inline-block rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-800"
               >
-                Back to the waitlist
+                Back to local alerts
               </Link>
             </>
           ) : (
             <>
               <h1 className="font-display text-2xl font-bold text-ink-900">
-                Leave the {cityName} waitlist
+                Stop {cityName} event alerts
               </h1>
               <p className="mt-3 text-sm text-ink-600">
-                Stop all waitlist emails for {cityName}, including the city-opening
-                notification and any optional updates you ticked. Your EventLinqs account, if
-                you have one, is not affected.
+                Stop all {cityName} event alerts, including any optional updates you ticked.
+                Your EventLinqs account, if you have one, is not affected.
               </p>
               <form action={leaveCityWaitlistAction.bind(null, token)} className="mt-6">
                 <button
                   type="submit"
                   className="inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-500"
                 >
-                  Leave the waitlist
+                  Stop these emails
                 </button>
               </form>
             </>

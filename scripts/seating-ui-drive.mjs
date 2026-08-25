@@ -353,6 +353,8 @@ let merged = proofs
 try {
   const prior = JSON.parse(fs.readFileSync(`${OUT}/ui-proofs.json`, 'utf8'))
   merged = { ...prior, ...proofs, steps: { ...prior.steps, ...proofs.steps } }
-} catch {}
+} catch (error) {
+  console.warn('[scripts/seating-ui-drive:357]', error instanceof Error ? error.message : error)
+    }
 fs.writeFileSync(`${OUT}/ui-proofs.json`, JSON.stringify(merged, null, 2))
 console.log('[drive] COMPLETE')

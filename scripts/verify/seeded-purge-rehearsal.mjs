@@ -125,8 +125,7 @@ const COMMIT = process.argv.includes('--commit')
 const confirmArg = process.argv.find(a => a.startsWith('--confirm='))
 const CONFIRM = confirmArg ? Number.parseInt(confirmArg.split('=')[1], 10) : null
 
-const db = new pg.Client(target.clientConfig)
-await db.connect()
+const db = await target.connect()
 
 const q = async (sql, params) => (await db.query(sql, params)).rows
 const exists = async t =>

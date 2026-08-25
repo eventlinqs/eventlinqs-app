@@ -23,6 +23,7 @@ import {
   ticketBarText,
   type DisplayTitleFit,
 } from '@/lib/broadcast/social-card-layout'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * THE SOCIAL CARD SET.
@@ -1034,7 +1035,8 @@ export async function prepareCardCover(
       backdrop: `data:image/jpeg;base64,${backdrop.toString('base64')}`,
       panelHeight,
     }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/broadcast/social-cards:1039' })
     // An unreadable or corrupt upload falls back to the typographic
     // composition rather than failing the download.
     return null
@@ -1073,7 +1075,8 @@ export async function prepareLogo(bytes: Uint8Array): Promise<PreparedLogo | nul
       placement: measured.placement,
       aspect: width / height,
     }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/broadcast/social-cards:1079' })
     // An unreadable mark is simply not drawn: the organiser's name in type is
     // already on the card and carries the identity on its own.
     return null

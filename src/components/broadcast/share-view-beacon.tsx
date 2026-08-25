@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { SHARE_COOKIE } from '@/lib/broadcast/share-codes'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 /**
  * Share view beacon. Renders nothing. When the browser carries a share
@@ -41,7 +42,8 @@ export function ShareViewBeacon() {
           keepalive: true,
         }).catch(() => {})
       }
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/broadcast/share-view-beacon:46' })
       // Instrumentation only: never affects the page.
     }
   }, [])

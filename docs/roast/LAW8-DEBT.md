@@ -152,13 +152,21 @@ of the commits it squashed.
 |---|---|---|---|
 | `86bb285b660a` | Production defect sweep before launch (#112) | merging main, 12 Aug 2026 | Squash of 27 trailer-carrying commits. Founder ruling 2026-08-12 (R-LAW8-DEBT). |
 | `36179dc1a7dc` | Integration/launch (#118) | merging main, 20 Aug 2026 | GitHub's squash of THIS branch on 16 Aug; the trailers are inherited from commits already deferred above or pre-boundary. Founder ruling 2026-08-20. |
+| `5913cd83c958` | Integration/launch (#119) | merging main, 21 Aug 2026 | GitHub's squash of THIS branch on 20 Aug, 36 inherited trailers. Third of the same kind; runbook 8.1 predicted it and 8.10 warns against merging main back beside a deploy. Standing ruling applied. |
 
 Why deferral rather than a boundary move, recorded so the choice is not
-relitigated: advancing `EFFECTIVE_FROM` past `36179dc` would forgive anything
+relitigated: advancing `EFFECTIVE_FROM` past the newest of these would forgive anything
 else before that point in one edit and leave no trace. Naming the commit keeps
 the guard blocking for every new commit while the debt stays visible and
-countable. The 43 commits this branch made between the 16 August squash and the
-20 August merge are all clean, verified by scanning each message.
+countable. The commits this branch makes between squashes are all clean, verified
+by scanning each message: 43 between the 16 and 20 August squashes, and 2 between
+the 20 and 21 August ones.
+
+EXPECT A FOURTH. Every squash merge of this branch produces one of these, so the
+next merge of `main` will fail this guard on the next squash SHA. That is not a
+defect and it is not a surprise: runbook section 8.1 records it, and 8.10 advises
+against merging `main` back in the same sitting as a deploy for this reason. The
+fix each time is one entry here and one in `INHERITED_DEFERRED`.
 
 Rewriting either commit means rewriting `main`, which invalidates every SHA
 quoted in the handover documents and forces every worktree to reset. That

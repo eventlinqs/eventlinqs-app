@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 interface Props {
   cityName: string
@@ -50,7 +51,8 @@ export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
       })
       if (res.ok) setState('ok')
       else setState('error')
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/features/city/city-newsletter-capture:55' })
       setState('error')
     }
   }

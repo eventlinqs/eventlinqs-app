@@ -30,7 +30,9 @@ try {
     const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
     if (m) env[m[1]] = m[2].replace(/^['"]|['"]$/g, '')
   }
-} catch { /* enumeration falls back to homepage scrape if no env */ }
+} catch (error) {
+  console.warn('[scripts/verify/checkout-integrity:34]', error instanceof Error ? error.message : error)
+    /* enumeration falls back to homepage scrape if no env */ }
 
 async function enumerateEvents() {
   const url = (env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '')

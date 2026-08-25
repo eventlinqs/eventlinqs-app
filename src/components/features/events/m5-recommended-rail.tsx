@@ -1,7 +1,7 @@
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
 import { EventCard } from './event-card'
-import { InvitationCard, invitationFillCount } from './invitation-card'
+import { InvitationCard, invitationFillCount, INVITATION_ANGLE_ORDER } from './invitation-card'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 
 type Props = {
@@ -10,7 +10,6 @@ type Props = {
   seeAllHref?: string
 }
 
-const MIN_RAIL_COUNT = 3
 const MAX_RAIL_COUNT = 8
 
 /**
@@ -18,11 +17,17 @@ const MAX_RAIL_COUNT = 8
  * main grid. Uses the shared EventCard so social-proof badges and the
  * Pexels cascade match the main grid.
  *
- * Rendering is gated two ways:
- *   1. `headline === null` → caller decided not to show the rail (e.g.
- *      filters are active on the browsing surface).
- *   2. `events.length < MIN_RAIL_COUNT` → sparse data wouldn't read as a
- *      rail. Stay silent instead.
+ * Rendering is gated ONE way:
+ *   `headline === null` → caller decided not to show the rail (e.g.
+ *   filters are active on the browsing surface).
+ *
+ * ONE EVENT SHOWS THE RAIL (founder ruling, 23 August 2026). This used to
+ * carry a second gate, `events.length < MIN_RAIL_COUNT` with MIN_RAIL_COUNT
+ * of 3, on the reasoning that sparse data would not read as a rail. On a
+ * platform without volume that gate hid a real organiser's event on the city
+ * browse surfaces for being the only one recommended, which is the opposite
+ * of what a launch needs. An empty rail is still not rendered, because there
+ * is genuinely nothing to show.
  */
 export async function RecommendedRail({
   events,
@@ -30,7 +35,7 @@ export async function RecommendedRail({
   seeAllHref = '/events?sort=popular',
 }: Props) {
   if (headline === null) return null
-  if (events.length < MIN_RAIL_COUNT) return null
+  if (events.length === 0) return null
 
   const top = events.slice(0, MAX_RAIL_COUNT)
   const title = headline === 'recommended' ? 'Recommended for you' : 'Popular this week'
@@ -72,7 +77,7 @@ export async function RecommendedRail({
               <InvitationCard
                 fitParent
                 variant="landscape"
-                angle={i === 1 ? 'performer' : 'organiser'}
+                angle={INVITATION_ANGLE_ORDER[i % INVITATION_ANGLE_ORDER.length]}
                 subject="live"
               />
             </div>

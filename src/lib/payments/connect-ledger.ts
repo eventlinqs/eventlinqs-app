@@ -67,8 +67,10 @@ export function addThreeBusinessDays(date: Date): Date {
  * 1. `order_confirmed` ledger row (positive credit of organiser share).
  * 2. `payout_holds` reserve row pinned to the event.
  * 3. `reserve_hold` ledger row mirroring the reserve (negative debit).
- * 4. Increment `organisations.hold_amount_cents`, `total_volume_cents`, and
- *    (on first confirmed order for the event) `total_event_count`.
+ * 4. Increment `organisations.hold_amount_cents` and `total_volume_cents`.
+ *    `total_event_count` is NOT touched here since 25 August 2026: it is
+ *    recomputed from public.events by a trigger (migration 20260825000003),
+ *    because the increment that used to live here had no decrement anywhere.
  *
  * Idempotent: returns `skipped_already_recorded` if an `order_confirmed`
  * ledger row already exists for this order. Safe to call on every webhook
@@ -327,28 +329,24 @@ async function incrementOrgCounters(
   adminClient: AdminClient,
   params: IncrementCountersParams
 ): Promise<void> {
-  // Detect first confirmed order for this event.
-  let isFirstConfirmedForEvent = false
-  if (params.eventId) {
-    const { count, error: countError } = await adminClient
-      .from('orders')
-      .select('id', { count: 'exact', head: true })
-      .eq('event_id', params.eventId)
-      .eq('status', 'confirmed')
-      .neq('id', params.orderId)
-    if (countError) {
-      console.error('[connect-ledger] confirmed-order count failed', {
-        eventId: params.eventId,
-        error: countError,
-      })
-    } else {
-      isFirstConfirmedForEvent = (count ?? 0) === 0
-    }
-  }
-
+  /*
+   * total_event_count IS NO LONGER TOUCHED HERE, and removing it is the point.
+   *
+   * This function used to count the confirmed orders for the event, decide
+   * whether this was the first, and increment organisations.total_event_count
+   * when it was. Nothing anywhere decremented it. Driven against TEST on
+   * 25 August 2026: deleting the event left the counter at 1 against a truth of
+   * 0, which is what the production purge did to it 46 times.
+   *
+   * Since migration 20260825000003 the column is RECOMPUTED from public.events
+   * by trg_recompute_org_event_count. Leaving the increment here as well would
+   * double count, so it goes, and the extra COUNT query on every confirmed order
+   * goes with it. The contract and the verdict for every stored figure live in
+   * scripts/lib/stored-aggregates.mjs.
+   */
   const { data: orgRow, error: readError } = await adminClient
     .from('organisations')
-    .select('hold_amount_cents, total_volume_cents, total_event_count')
+    .select('hold_amount_cents, total_volume_cents')
     .eq('id', params.organisationId)
     .maybeSingle()
 
@@ -363,8 +361,6 @@ async function incrementOrgCounters(
   const next = {
     hold_amount_cents: (orgRow.hold_amount_cents as number) + params.reserveCents,
     total_volume_cents: (orgRow.total_volume_cents as number) + params.grossRevenueCents,
-    total_event_count:
-      (orgRow.total_event_count as number) + (isFirstConfirmedForEvent ? 1 : 0),
     updated_at: new Date().toISOString(),
   }
 

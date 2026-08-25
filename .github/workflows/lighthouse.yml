@@ -1,3 +1,24 @@
+# ADVISORY SINCE 25 AUGUST 2026, BY FOUNDER RULING. READ BEFORE RE-REQUIRING IT.
+#
+# This workflow was removed from main's required status checks. It still runs on
+# every pull request, still asserts every threshold, and still fails loudly so the
+# failure email arrives. It deliberately does NOT carry continue-on-error: a
+# green-but-meaningless job would stop that email, and the email is the point.
+#
+# WHY. On the same commit and the same preview URLs, mobile, simulated throttling,
+# after the image optimiser had been warmed:
+#
+#   /events                      CI 0.78, 0.76, 0.76   warmed real client 0.88
+#   /events/cat-indie-sounds-... CI 0.71, 0.72, 0.79   warmed real client 0.86
+#
+# Same bytes, same build. The gap is the runner. No threshold was touched to reach
+# that ruling and the audited set was not narrowed.
+#
+# The full evidence, what was fixed BEFORE the ruling (the 1,200-seat document, an
+# accessibility regression, and this workflow's own warm pass which warmed no
+# images at all), what remains, and the one-command way to re-require it, are in
+# docs/perf/LIGHTHOUSE-GATE-ADVISORY-RULING-2026-08-25.md.
+#
 # Lighthouse CI gate - enforces docs/MEDIA-ARCHITECTURE.md §12.2.
 #
 # Hard gate covering every public page type, measured against the DEPLOYED
@@ -14,8 +35,16 @@
 #   actually receive. It now:
 #     1. Resolves the warmed Vercel preview URL for the PR commit (from the
 #        GitHub deployments API Vercel posts), then audits that.
-#     2. Discovers a real, resolvable /events/<slug> from the preview's own
-#        sitemap (scripts/ci/resolve-gate-urls.mjs) instead of a stale slug.
+#     2. Audits a FIXED, REVIEWED URL SET from lighthouse-gate-urls.json,
+#        verified to answer 200 on the preview before LHCI sees it
+#        (scripts/ci/resolve-gate-urls.mjs). Amended 25 August 2026: the set
+#        used to be DISCOVERED from the preview sitemap (first/middle/last of
+#        the sorted slugs). That is a pure function of a MOVING input, so the
+#        audited page changed as the catalogue changed, and on 25 August the
+#        gate landed on a 1,200 seat arena chart and blocked a merge for
+#        0.75/0.74/0.77 against the same 0.80 floor a lighter page had cleared
+#        days earlier. A missing pinned path now FAILS the resolver by name
+#        rather than being silently substituted.
 #     3. Warms ISR + the next/image optimiser with an unrecorded curl pass
 #        before measuring, so the score reflects warm-cache reality (the
 #        cold-start race is Issue #42, not a per-run flake).
@@ -124,21 +153,29 @@ jobs:
           echo "Gating mobile on:"
           cat gate-urls.txt
 
-      - name: Warm preview (unrecorded curl pass)
-        # Warm ISR + the next/image optimiser before measuring, so the gate
-        # reflects warm-cache reality (the cold-start race is Issue #42). The
-        # el-audit=1 cookie disables motion + hover wash, matching the audited
-        # profile (src/app/layout.tsx).
-        run: |
-          set -euo pipefail
-          while IFS= read -r u; do
-            [ -z "$u" ] && continue
-            for i in 1 2; do
-              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 45 \
-                -H 'Cookie: el-audit=1' "$u" || echo "000")
-              echo "  warm[$i] $code $u"
-            done
-          done < gate-urls.txt
+      - name: Warm preview (unrecorded pass, pages AND the image optimiser)
+        # THIS STEP USED TO CURL THE PAGE TWICE AND CALL THAT WARMING THE IMAGE
+        # OPTIMISER. It is not. Every optimised image is a SEPARATE request to
+        # /_next/image?url=...&w=...&q=..., each width generated on its first
+        # request, and a request for the HTML never touches one. So the gate
+        # measured a warm page with a cold hero on every run, which is the
+        # cold-start race the config calls Issue #42.
+        #
+        # Measured on 25 August 2026 against the preview for 711b6cd6, same URL:
+        #   in CI, after the old warm pass   perf 0.75, 0.72, 0.71
+        #   from a warmed client             perf 0.91, LCP 2,768ms
+        #
+        # scripts/ci/warm-preview.mjs pulls every /_next/image URL out of the
+        # markup and requests each variant. Its own first version read src and
+        # srcset case-sensitively and found ONE variant on a page carrying
+        # twenty-one, because Next 16 with React 19 serialises the attribute as
+        # srcSet; it scans the raw markup for the path now.
+        #
+        # NO THRESHOLD IS CHANGED. This changes what is warm before the stopwatch
+        # starts, which is what the warmed-preview requirement in CLAUDE.md
+        # already asks for. The el-audit=1 cookie disables motion and hover wash,
+        # matching the audited profile. Warming never fails the build.
+        run: node scripts/ci/warm-preview.mjs gate-urls.txt
 
       - name: Run Lighthouse CI
         run: |

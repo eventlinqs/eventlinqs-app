@@ -55,6 +55,7 @@
 
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { declareWork } from '../lib/work-report.mjs'
 
 /**
  * The SEO category as Lighthouse 12.1.0 reports it (the version @lhci/cli
@@ -96,6 +97,7 @@ const notes = []
 
 /* ------------------------------------------------------- load the reports */
 
+
 if (!existsSync(dir)) {
   console.error(`[seo-audits] FAIL: no ${dir} directory. Nothing was collected, so nothing can be asserted.`)
   process.exit(1)
@@ -112,7 +114,8 @@ for (const file of files) {
   try {
     const lhr = JSON.parse(readFileSync(join(dir, file), 'utf8'))
     if (lhr?.categories?.seo) reports.push(lhr)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/ci/assert-seo-audits:116]', error instanceof Error ? error.message : error)
     failures.push(`could not parse ${join(dir, file)}`)
   }
 }
@@ -254,4 +257,12 @@ if (failures.length) {
   process.exit(1)
 }
 
+declareWork('seo-audits', {
+  did: {
+    'Lighthouse report read': reports.length,
+    'per-audit SEO floor checked': MUST_BE_ASSERTED.length,
+    'report checked for indexability': checked,
+  },
+  found: { failure: failures.length },
+})
 console.log('[seo-audits] PASS')

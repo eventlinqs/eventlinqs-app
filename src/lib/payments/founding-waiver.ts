@@ -6,7 +6,10 @@
  *   - Zero fee for six months from onboarding. There is one fee, so the waiver
  *     takes the whole charge to zero.
  *   - Plus three months for every organiser they bring on board.
- *   - Capped at the first fifty organisations across Geelong and Melbourne.
+ *   - Capped at the first fifty organisations nationally. The cap was the
+ *     only real scarcity; the "across Geelong and Melbourne" that used to end
+ *     this line was a geographic gate and was removed on 2026-08-23 when the
+ *     platform opened nationwide from day one. The number 50 is unchanged.
  *
  * ONE-FEE-ALLOW-BEGIN: quotes the wrong text it replaced, so the correction is
  * legible rather than a silent edit.
@@ -33,6 +36,7 @@
  * both call it.
  */
 import type { FeeRates } from './fee-math'
+import { captureException } from '@/lib/observability/sentry'
 
 /** The founder's cap on how many organisations may hold the waiver at once. */
 export const FOUNDING_WAIVER_CAP = 50
@@ -177,7 +181,8 @@ export async function getFoundingWaiver(
     if (error || !data) return { feeFreeUntil: null, active: false }
     const feeFreeUntil = data.founding_fee_free_until ?? null
     return { feeFreeUntil, active: isWaiverActive(feeFreeUntil, now) }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/payments/founding-waiver:185' })
     return { feeFreeUntil: null, active: false }
   }
 }

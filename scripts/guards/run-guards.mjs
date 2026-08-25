@@ -28,7 +28,17 @@
  *   entrypoint-authz-audit     every request entry point declares an auth posture
  *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
+ *   event-structured-data      an event page cannot ship without its Event JSON-LD
+ *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
+ *                              names a column that does not exist
+ *   maintained-aggregates      no cache tag without an invalidation, no stored counter
+ *                              without a declared maintainer
+ *   no-silent-catch            no catch around I/O discards its error in silence
+ *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
+ *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   no-unguarded-production-write  no script writes to a database without checking which one
+ *   one-db-connection-source   no script assembles its own database connection
+ *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
  *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
  *   one-fee-copy               no customer-facing surface names a second fee
  *   pricing-derive             the worked fee figures match the lock block they derive from
@@ -323,6 +333,52 @@ const GUARDS = [
   'scripts/security/entrypoint-authz-audit.mjs',
   'scripts/guards/sourced-specifications.mjs',
   'scripts/guards/no-ai-authorship.mjs',
+
+  // Founder brief 2026-08-23: an event page can never ship without its
+  // structured data. A production audit that day found every event page valid
+  // on the REQUIRED set but missing `performer` on 36 of 36, because the page
+  // loaded the lineup to render it and never passed it to the markup. This
+  // guard holds the WIRING; tests/unit/seo/event-structured-data.test.ts holds
+  // the CONTENT; scripts/verify/event-structured-data-audit.mjs holds the
+  // DEPLOYED truth.
+  'scripts/guards/event-structured-data.mjs',
+  // NOTHING ENTERS THE SITEMAP THAT DOES NOT RESOLVE. Three ways of breaking
+  // that promise were live in one file at once on 25 August 2026: a query on
+  // venues.slug, a column that does not exist, silently caught; six
+  // /categories/* URLs this repository 308s away; and no tie at all between the
+  // shapes published and the routes that exist. A sweep of the 586 URLs the
+  // production sitemap published returned 48 hard 404s.
+  'scripts/guards/sitemap-resolves.mjs',
+  // A SECOND COPY MUST HAVE SOMETHING KEEPING IT IN STEP. Four failures of this
+  // one class landed in a week, in four different mechanisms: a cached rail with
+  // eight deleted events, a sitemap with 48 dead URLs, reserved_count holding
+  // seats nobody held, and event_addons.sold_count stuck at 0 while the checkout
+  // capped an addon at total_capacity minus it. This guard makes the link
+  // between the write and the copy unskippable; the drift drive measures whether
+  // the maintainers are actually correct.
+  'scripts/guards/maintained-aggregates.mjs',
+  // AN ERROR FROM OUTSIDE THE PROCESS MUST NOT BE DISCARDED IN SILENCE. A bare
+  // catch {} in src/app/sitemap.ts ate a 42703 on venues.slug, a column that has
+  // never existed, and published zero venue URLs from the day the block was
+  // written. The gate is drawn at I/O rather than at every catch, on purpose:
+  // the reasoning, the 197 catches it deliberately does not fail, and the
+  // PostgREST { data, error } shape it cannot see are all in the guard's header.
+  'scripts/guards/no-silent-catch.mjs',
+  // NO CLIENT COMPONENT MAY REACH THE SENTRY SDK THROUGH A VALUE IMPORT. That
+  // edge existed once through the four error boundaries and put @sentry/nextjs
+  // in the bundle of every route; client-error-report.ts was built to break it,
+  // and a comment was all that kept it broken. The silent-catch sweep of
+  // 2026-08-25 rebuilt it in one line, in bill-ref.ts, and nothing but a bigger
+  // bundle would have said so.
+  'scripts/guards/no-client-sentry-import.mjs',
+  // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
+  // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
+  // printing a tidy list of 200s the whole time; its replacement then reported
+  // 40 variants across four pages, which was the CAP printed as a finding. The
+  // list of scripts under this contract is DERIVED from the workflows on every
+  // run, because a hand-written list would have to be remembered and being
+  // remembered is the thing that failed.
+  'scripts/guards/steps-declare-work.mjs',
   // Founder ruling 2026-08-13. `.env.local` in this repo points at the
   // PRODUCTION project, deliberately, because the app is run against production
   // from here. An audit that day found ten write-capable scripts with a
@@ -332,6 +388,33 @@ const GUARDS = [
   // what stops the eleventh. Without it the fix is a written procedure, and a
   // written procedure is not a control.
   'scripts/guards/no-unguarded-production-write.mjs',
+
+  // Founder instruction 2026-08-25, after two hours were lost to a
+  // 28P01 password authentication failure whose cause was a hand
+  // percent-encoded password, and whose three decoys were the REDACTED masking
+  // that pg applies to a string it could not parse, a username that always reads
+  // postgres on the pooler, and nine divergent private copies of the connection
+  // parser. The sibling guard above asks whether a script checks WHICH database
+  // it is about to write to; this one asks whether it built the connection
+  // itself. Fixing the shared helper fixed nothing for the eight scripts that
+  // were not using it, so the rule is now structural.
+  //
+  // NO APOSTROPHES IN THIS BLOCK. tests/unit/guards/guard-registry.test.ts reads
+  // the entries below by extracting single-quoted strings from this file, so an
+  // apostrophe in a comment opens a string literal and the registry parse breaks
+  // for every guard after it. Sixteen guards read as unregistered when this
+  // comment first said "pg" followed by an apostrophe and the word s.
+  'scripts/guards/one-db-connection-source.mjs',
+
+  // Founder instruction 2026-08-25, the second half of the same day. After the
+  // demo purge, /events printed a correct header count of 2 beside a
+  // "Popular this week" rail listing EIGHT deleted events, and a visitor
+  // clicking any of them got a 404 on a live platform. Two causes: the
+  // publication predicate was spelled out by hand in seventeen discovery
+  // surfaces rather than shared, and a data cache held ROWS, which outlive the
+  // rows they copy. Of every cache tag declared in the codebase, exactly one was
+  // ever invalidated anywhere. This guard holds both halves.
+  'scripts/guards/one-visibility-source.mjs',
 
   // Founder ruling 2026-08-15, a PRODUCTION SAFETY ordering rule expressed as a
   // gate. Migration 20260808000010 revokes stripe_account_id and

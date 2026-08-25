@@ -38,7 +38,7 @@
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
-import pg from 'pg'
+import { openProject } from '../lib/production-write-preflight.mjs'
 
 const JSON_OUT = process.argv.includes('--json')
 const MIGRATIONS_DIR = 'supabase/migrations'
@@ -68,40 +68,13 @@ export function compareInventories(live, built) {
 
 /* ------------------------------------------------------------------ plumbing */
 
-function envOf(file) {
-  const e = {}
-  for (const l of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const t = l.trim()
-    if (!t || t.startsWith('#') || !t.includes('=')) continue
-    const i = t.indexOf('=')
-    e[t.slice(0, i).trim()] = t.slice(i + 1).trim().replace(/^["']|["']$/g, '')
-  }
-  return e
-}
-
-function clientFor(e) {
-  const ref = (e.NEXT_PUBLIC_SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1]
-  if (!ref) throw new Error('no project ref resolvable from NEXT_PUBLIC_SUPABASE_URL')
-  const common = {
-    database: 'postgres',
-    ssl: { rejectUnauthorized: false },
-    options: '-c default_transaction_read_only=on',
-    connectionTimeoutMillis: 20000,
-  }
-  if (e.SUPABASE_DB_URL) {
-    const s = e.SUPABASE_DB_URL
-    const at = s.lastIndexOf('@')
-    const se = s.indexOf('://')
-    const cr = s.slice(se + 3, at)
-    const sp = cr.indexOf(':')
-    const tl = s.slice(at + 1)
-    const ct = tl.search(/[/?]/)
-    const hp = ct === -1 ? tl : tl.slice(0, ct)
-    const co = hp.indexOf(':')
-    return [ref, new pg.Client({ ...common, user: cr.slice(0, sp), password: cr.slice(sp + 1), host: co === -1 ? hp : hp.slice(0, co), port: Number(co === -1 ? 5432 : hp.slice(co + 1)) })]
-  }
-  return [ref, new pg.Client({ ...common, user: `postgres.${ref}`, password: e.SUPABASE_DB_PASSWORD_SYDNEY, host: 'aws-1-ap-southeast-2.pooler.supabase.com', port: 5432 })]
-}
+/*
+ * CONNECTIONS come from the shared helper, one per project, never assembled
+ * here. This file used to carry its own env-file reader AND its own connection
+ * parser AND a hardcoded pooler host, which is three copies of logic that lives
+ * once in scripts/lib/db-credentials.mjs. openProject() runs the same
+ * production preflight for each target and connects read-only.
+ */
 
 /** Every schema object that a migration could have created, as comparable keys. */
 async function inventory(client) {
@@ -151,22 +124,11 @@ if (RUN_DIRECTLY) await main()
 async function main() {
 if (!JSON_OUT) console.log('[schema-provenance] comparing PRODUCTION against the migrations-only reference (TEST)\n')
 
-const PROD_ENV = '../eventlinqs-app/.env.local'
-const TEST_ENV = '.env.test'
-for (const f of [PROD_ENV, TEST_ENV]) {
-  if (!existsSync(f)) {
-    console.error(`[schema-provenance] env file not found: ${f}`)
-    process.exit(2)
-  }
-}
-
-const [prodRef, prod] = clientFor(envOf(PROD_ENV))
-const [testRef, test] = clientFor(envOf(TEST_ENV))
+const { client: prod, ref: prodRef } = await openProject('prod', { readOnly: true })
+const { client: test, ref: testRef } = await openProject('test', { readOnly: true })
 
 let exitCode = 0
 try {
-  await prod.connect()
-  await test.connect()
   await prod.query('BEGIN READ ONLY')
   await test.query('BEGIN READ ONLY')
 

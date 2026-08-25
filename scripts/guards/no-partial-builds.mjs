@@ -134,7 +134,8 @@ function readDecidedFlags() {
   let src
   try {
     src = readFileSync(path.join(ROOT, DECISION_REGISTRY), 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-partial-builds:138]', error instanceof Error ? error.message : error)
     return decided
   }
   for (const m of src.matchAll(DECISION_ENTRY)) decided.add(m[1])
@@ -162,13 +163,20 @@ const DETECTOR_FILES = new Set([
   'scripts/guards/one-fee-copy.mjs',
   'scripts/copy-tell-gate.mjs',
   'scripts/sweep/walk.mjs',
+  // Added 2026-08-25, the same joke one more time: isPlaceholder() in
+  // db-credentials.mjs is the function that decides whether a stored credential
+  // is a real value or the word "placeholder", so its regex necessarily spells
+  // out changeme / placeholder / todo / fixme. It was reported for containing
+  // the words it exists to reject.
+  'scripts/lib/db-credentials.mjs',
 ])
 
 function walk(dir, out = []) {
   let entries
   try {
     entries = readdirSync(dir)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-partial-builds:179]', error instanceof Error ? error.message : error)
     return out
   }
   for (const entry of entries) {
@@ -198,7 +206,8 @@ for (const file of files) {
   let src
   try {
     src = readFileSync(file, 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-partial-builds:210]', error instanceof Error ? error.message : error)
     continue
   }
   const lines = src.split(/\r?\n/)
@@ -222,7 +231,8 @@ for (const file of files) {
   let src
   try {
     src = readFileSync(file, 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-partial-builds:235]', error instanceof Error ? error.message : error)
     continue
   }
   for (const m of src.matchAll(FLAG_DECL)) {

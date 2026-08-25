@@ -61,7 +61,8 @@ if (!UPSTREAM) {
 async function assertPortFree(port) {
   try {
     await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(1500) })
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/verify/auth-provider-gate-proof:65]', error instanceof Error ? error.message : error)
     return
   }
   console.error(

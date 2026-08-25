@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useHydrated } from '@/lib/hooks/use-hydrated'
 import { authMessage, RECOVERY_GENERIC_RESPONSE } from '@/lib/auth/auth-errors'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 export function ForgotPasswordForm() {
   const searchParams = useSearchParams()
@@ -48,7 +49,8 @@ export function ForgotPasswordForm() {
 
       setSent(true)
       setLoading(false)
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/auth/forgot-password-form:53' })
       setError(authMessage('network'))
       setLoading(false)
     }

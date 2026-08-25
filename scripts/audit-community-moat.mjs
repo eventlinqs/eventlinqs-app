@@ -39,7 +39,9 @@ for (const community of COMMUNITIES) {
         .filter(h => h && /^\/community\/[^/]+\/[^/]+$/.test(h)))
     for (const h of hrefs) seen.add(h)
     await page.close()
-  } catch {}
+  } catch (error) {
+    console.warn('[scripts/audit-community-moat:43]', error instanceof Error ? error.message : error)
+    }
 }
 // Sample: take up to 24, ensuring spread across communities and cities.
 const all = Array.from(seen)

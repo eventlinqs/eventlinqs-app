@@ -36,6 +36,7 @@
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { declareWork } from '../lib/work-report.mjs'
 
 const ROOT = process.cwd()
 const SRC = join(ROOT, 'src')
@@ -47,7 +48,9 @@ const note = (m) => notes.push(m)
 
 function walk(dir, out = []) {
   let entries
-  try { entries = readdirSync(dir, { withFileTypes: true }) } catch { return out }
+  try { entries = readdirSync(dir, { withFileTypes: true }) } catch (error) {
+    console.warn('[scripts/guards/no-ambiguous-embed:51]', error instanceof Error ? error.message : error)
+    return out }
   for (const e of entries) {
     const full = join(dir, e.name)
     if (e.isDirectory()) { walk(full, out); continue }
@@ -213,4 +216,8 @@ if (failures.length) {
   process.exit(1)
 }
 
+declareWork('no-ambiguous-embed', {
+  did: { 'source file read': files.length },
+  found: { 'ambiguous embed': 0 },
+})
 console.log('[no-ambiguous-embed] OK: every embed of an ambiguous relationship names its foreign key.')

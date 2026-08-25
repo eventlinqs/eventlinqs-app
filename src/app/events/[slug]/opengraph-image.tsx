@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 import { canonicalHost } from '@/lib/site-url'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Per-event social share card. Every shared event link renders as a designed,
@@ -42,7 +43,8 @@ async function fetchOgEvent(slug: string): Promise<OgEvent | null> {
       .eq('status', 'published')
       .maybeSingle()
     return (data as (OgEvent & { status: string }) | null) ?? null
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/events/[slug]/opengraph-image:47' })
     return null
   }
 }

@@ -92,7 +92,8 @@ async function statusFor(path) {
     const r = await fetch(BASE + path, { redirect: 'manual' })
     statusCache.set(path, r.status)
     return r.status
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/batch-11.1-d3-3-link-audit:96]', error instanceof Error ? error.message : error)
     statusCache.set(path, 0)
     return 0
   }

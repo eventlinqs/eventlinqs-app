@@ -16,6 +16,7 @@
  * Exit 1 if any required surface renders no map canvas.
  */
 import { chromium } from 'playwright'
+import { declareWork } from '../lib/work-report.mjs'
 
 const BASE = (process.argv[2] || '').replace(/\/$/, '')
 const DRILL = process.argv.includes('--drill')
@@ -84,5 +85,9 @@ if (dead.length > 0) {
   console.error('A map degraded to its static fallback. Check: event coordinates present, NEXT_PUBLIC_GOOGLE_MAPS_API_KEY baked in the build, and the Google key referer allow-list + enabled APIs (Maps JavaScript, Geocoding).')
   process.exit(1)
 }
+declareWork('map-guard', {
+  did: { 'surface loaded in a real browser': results.length },
+  found: { 'surface rendering no live map': dead.length },
+})
 console.log('\nMAP GUARD PASSED: every map surface renders a live Google canvas.')
 process.exit(0)

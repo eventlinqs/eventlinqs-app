@@ -11,6 +11,7 @@ import {
   startOfLocalDayUtcOffset,
   weekendWindowUtc,
 } from './listing-window'
+import { applyPublicEventVisibility, PUBLIC_EVENT_MATCH } from './public-visibility'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { EVENT_TYPE_FILTER, buildEventTypeTagOr } from './event-type-filter'
 import { resolveSearchTab } from './search-tab'
@@ -34,6 +35,7 @@ import type {
   FetchPublicEventsResult,
   PublicEventRow,
 } from './types'
+import { EVENT_DATA_CACHE_TAGS } from './cache-tags'
 
 /**
  * Resolve community / sub_community filters into a PostgREST OR-filter that
@@ -181,6 +183,8 @@ function applyOps<Q extends FilterableQuery>(query: Q, ops: QueryOp[]): Q {
 /** The lookups the resolver needs. Both Supabase clients satisfy it. */
 type LookupBuilder = {
   eq(column: string, value: string): LookupBuilder
+  /** The shared publication pair, PUBLIC_EVENT_MATCH. Added 25 August 2026. */
+  match(criteria: Record<string, string>): LookupBuilder
   ilike(column: string, value: string): LookupBuilder
   limit(count: number): PromiseLike<{ data: unknown[] | null }>
   maybeSingle(): PromiseLike<{ data: { id: string } | null }>
@@ -223,12 +227,15 @@ async function eventIdsInDistrict(
   const { data } = await supabase
     .from('events')
     .select('id, suburb_primary, venue_latitude, venue_longitude')
-    .eq('status', 'published')
     // Defence in depth (child-safety ruling, 9 August 2026). The consumers of
     // these ids filter visibility themselves, but this is a discovery path and
     // an id list that includes a private gathering is one careless `.in()`
     // away from surfacing it. Filtering here costs nothing.
-    .eq('visibility', 'public')
+    //
+    // The pair used to be written out either side of that comment, which is why
+    // the 25 August 2026 migration onto the shared rule missed it: the automated
+    // pass only matched ADJACENT `.eq` calls. The guard found it afterwards.
+    .match(PUBLIC_EVENT_MATCH)
     .ilike('venue_city', `%${resolveCityName(citySlug)}%`)
     .limit(500)
   return ((data ?? []) as DistrictCandidate[])
@@ -783,8 +790,7 @@ export async function fetchPublicEvents(
   let query = supabase
     .from('events')
     .select(BASE_SELECT, { count: 'exact' })
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     .range(
       inMemoryPagination ? 0 : offset,
       inMemoryPagination ? MAX_SORT_ROWS - 1 : offset + pageSize - 1,
@@ -959,11 +965,70 @@ export async function fetchPublicEventsCached(
   ]
   const cacheKey = keyParts.join('|')
 
-  return unstable_cache(
+  const cached = await unstable_cache(
     () => runFetchPublicEventsAdmin({ filters, page, pageSize, origin: input.origin, bbox: input.bbox }),
     [cacheKey],
-    { revalidate: 60, tags: ['events-public'] },
+    { revalidate: 60, tags: [EVENT_DATA_CACHE_TAGS[0]] },
   )()
+
+  /*
+   * LIVE EXISTENCE CHECK ON A CACHED PAGE. Added 25 August 2026.
+   *
+   * The cache above holds ROWS, and a cached row outlives the row it copied: for
+   * up to sixty seconds after an event is deleted, unpublished, cancelled or made
+   * private, this returned it and /events rendered a card whose link 404s. That
+   * is the same defect that put eight purged events on production through the
+   * popular rail, only with a shorter fuse.
+   *
+   * WHY A SEPARATE CHECK RATHER THAN DELETING THE CACHE. The cache is not
+   * decorative: its own header records that it exists so PageSpeed and bot
+   * cache-bust query strings share one warm snapshot instead of each running the
+   * full filtered, counted, paginated query. Removing it trades a correctness bug
+   * for a performance one on the surface whose Lighthouse score is currently
+   * blocking a release.
+   *
+   * WHY IDS ONLY. This asks the cheapest question that settles the matter: of
+   * these at-most-twenty ids, which are still publicly visible? One indexed
+   * lookup, no joins, no row payload. Card CONTENT can still be up to sixty
+   * seconds stale, which is a price change nobody dies of; what can no longer
+   * happen is rendering a link to something that is not there.
+   *
+   * It composes from applyPublicEventVisibility, so it cannot drift away from the
+   * predicate the rest of the platform uses. That is the entire point of the
+   * shared rule: this check and the query that filled the cache ask the same
+   * question, in the same words.
+   *
+   * ON RAGGED PAGES. Dropping rows after the database chose the page can leave a
+   * short page, and listing-window.ts warns against exactly that. It is the right
+   * trade here and only here: that warning is about a filter that runs EVERY
+   * time, silently shortening every page. This drops a row only in the seconds
+   * after it stopped being publicly visible, and the alternative is advertising
+   * a dead link.
+   */
+  if (cached.events.length === 0) return cached
+
+  const ids = cached.events.map(e => e.id)
+  const supabase = createPublicClient()
+  const { data: alive, error: aliveError } = await applyPublicEventVisibility(
+    supabase.from('events').select('id'),
+  ).in('id', ids)
+
+  if (aliveError) {
+    // FAIL OPEN, deliberately. If the existence check itself fails, serving the
+    // cached page is strictly better than serving an empty one: the cached rows
+    // were publicly visible when they were cached, and an empty /events reads as
+    // a dead platform.
+    console.error('[fetchPublicEventsCached] liveness check failed, serving cached page:', aliveError)
+    return cached
+  }
+
+  const aliveIds = new Set((alive ?? []).map(r => (r as { id: string }).id))
+  const events = cached.events.filter(e => aliveIds.has(e.id))
+  if (events.length === cached.events.length) return cached
+
+  const dropped = cached.events.length - events.length
+  console.warn(`[fetchPublicEventsCached] dropped ${dropped} cached row(s) that are no longer publicly visible`)
+  return { ...cached, events }
 }
 
 export const fetchActiveCategoriesCached = unstable_cache(
@@ -977,7 +1042,7 @@ export const fetchActiveCategoriesCached = unstable_cache(
     return (data ?? []) as { id: string; name: string; slug: string }[]
   },
   ['events-active-categories-v1'],
-  { revalidate: 3600, tags: ['event-categories'] },
+  { revalidate: 3600, tags: [EVENT_DATA_CACHE_TAGS[2]] },
 )
 
 async function runFetchPublicEventsAdmin(
@@ -998,8 +1063,7 @@ async function runFetchPublicEventsAdmin(
   let query = supabase
     .from('events')
     .select(BASE_SELECT, { count: 'exact' })
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     .range(
       inMemoryPagination ? 0 : offset,
       inMemoryPagination ? MAX_SORT_ROWS - 1 : offset + pageSize - 1,
@@ -1140,8 +1204,7 @@ export async function fetchPopularThisWeek(
   let query = supabase
     .from('events')
     .select(BASE_SELECT)
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     .or(listingWindowOrPredicate(new Date(now)))
     // Not promoted: see EXTERNAL_TICKETING_NOTE below.
     .is('external_ticket_url', null)
@@ -1176,15 +1239,28 @@ export async function fetchPopularThisWeekPublic(
   limit: number = 12,
   city?: string,
 ): Promise<PublicEventRow[]> {
+  /*
+   * THE CACHE BOUNDARY MOVED, 25 August 2026, and this is the whole fix.
+   *
+   * This function used to wrap BOTH halves in unstable_cache: the orders scan
+   * AND the event rows. Caching the rows is what put eight deleted events on
+   * production after the demo purge, because a cached ROW outlives the row it
+   * copied. unstable_cache is keyed by cache key rather than by URL, so it
+   * survived a never-before-requested URL in a private tab, which is exactly why
+   * the staleness looked like a live query reading the wrong place. It was not:
+   * running this query live against production returned 4 rows, none of them the
+   * purged ones.
+   *
+   * Now only the RANKING is cached. That is the expensive half (a scan of every
+   * confirmed order in the last week) and it is the safe half: an order row
+   * ageing out of the window changes the ORDER of the rail, never whether an
+   * event may be shown. The event rows are read LIVE, every render, so a delete,
+   * an unpublish, a cancellation or a switch to private takes effect on the next
+   * request instead of up to an hour later.
+   */
   const bucket = Math.floor(Date.now() / (60 * 60 * 1000))
-  const keyParts = [
-    'popular-this-week-public-v1',
-    `bucket:${bucket}`,
-    `limit:${limit}`,
-    `city:${city ?? ''}`,
-  ]
-  return unstable_cache(
-    async () => {
+  const rankedIds = await unstable_cache(
+    async (): Promise<string[]> => {
       const supabase = createPublicClient()
       const weekAgo = new Date()
       weekAgo.setDate(weekAgo.getDate() - 7)
@@ -1200,45 +1276,59 @@ export async function fetchPopularThisWeekPublic(
         counts.set(row.event_id, (counts.get(row.event_id) ?? 0) + 1)
       }
 
-      const sortedIds = [...counts.entries()]
+      return [...counts.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, limit)
         .map(([id]) => id)
-
-      const now = new Date().toISOString()
-      let query = supabase
-        .from('events')
-        .select(BASE_SELECT)
-        .eq('status', 'published')
-        .eq('visibility', 'public')
-        .or(listingWindowOrPredicate(new Date(now)))
-        // Not promoted: see EXTERNAL_TICKETING_NOTE below.
-        .is('external_ticket_url', null)
-        .order('start_date', { ascending: true })
-        .limit(limit)
-      if (sortedIds.length > 0) query = query.in('id', sortedIds)
-      if (city) query = query.ilike('venue_city', `%${city}%`)
-
-      const { data, error } = await query
-      if (error) {
-        console.error('[fetchPopularThisWeekPublic] query failed:', error)
-        return []
-      }
-
-      const raw = (data ?? []) as unknown as RawRow[]
-      if (sortedIds.length > 0) {
-        const byId = new Map(raw.map(r => [r.id, r]))
-        return sortedIds
-          .map(id => byId.get(id))
-          .filter((r): r is RawRow => Boolean(r))
-          .map(toPublicEventRow)
-          .sort(realCoverFirst)
-      }
-      return raw.map(toPublicEventRow).sort(realCoverFirst)
     },
-    keyParts,
-    { revalidate: 60 * 30, tags: ['events:popular-public'] },
+    ['popular-this-week-ranking-v2', `bucket:${bucket}`, `limit:${limit}`],
+    { revalidate: 60 * 30, tags: [EVENT_DATA_CACHE_TAGS[1]] },
   )()
+
+  // LIVE, never cached. See the note above, and the rule in public-visibility.ts.
+  const supabase = createPublicClient()
+  let query = applyPublicEventVisibility(
+    supabase.from('events').select(BASE_SELECT),
+  )
+    .order('start_date', { ascending: true })
+    .limit(limit)
+
+  /*
+   * NO SILENT DEGRADATION. This used to read
+   *
+   *     if (sortedIds.length > 0) query = query.in('id', sortedIds)
+   *
+   * so when nothing had been bought that week the id filter was SKIPPED and the
+   * rail quietly became "any twelve published events" while still titled
+   * "Popular this week". Measured on production on 25 August 2026: zero confirmed
+   * orders in the last seven days, so that branch was live and the rail carried
+   * no popularity signal whatsoever.
+   *
+   * The fallback itself is KEPT deliberately, because an empty rail on a young
+   * platform is worse than an unranked one and the surface is designed to fill
+   * (see the one-event-shows-the-rail law). What changes is that it is no longer
+   * silent: the caller is told which of the two it got, so a surface can title
+   * itself honestly instead of claiming a ranking it does not have.
+   */
+  if (rankedIds.length > 0) query = query.in('id', rankedIds)
+  if (city) query = query.ilike('venue_city', `%${city}%`)
+
+  const { data, error } = await query
+  if (error) {
+    console.error('[fetchPopularThisWeekPublic] query failed:', error)
+    return []
+  }
+
+  const raw = (data ?? []) as unknown as RawRow[]
+  if (rankedIds.length > 0) {
+    const byId = new Map(raw.map(r => [r.id, r]))
+    return rankedIds
+      .map(id => byId.get(id))
+      .filter((r): r is RawRow => Boolean(r))
+      .map(toPublicEventRow)
+      .sort(realCoverFirst)
+  }
+  return raw.map(toPublicEventRow).sort(realCoverFirst)
 }
 
 /**
@@ -1282,8 +1372,7 @@ export async function fetchRecommendedEvents(
   let query = supabase
     .from('events')
     .select(BASE_SELECT)
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     .or(listingWindowOrPredicate(new Date(now)))
     // Not promoted: see EXTERNAL_TICKETING_NOTE below.
     .is('external_ticket_url', null)
@@ -1448,8 +1537,7 @@ export async function fetchForYouFeed(
   const { data, error } = await supabase
     .from('events')
     .select(BASE_SELECT)
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     .or(listingWindowOrPredicate(new Date(nowIso)))
     // Not promoted: see EXTERNAL_TICKETING_NOTE below.
     .is('external_ticket_url', null)

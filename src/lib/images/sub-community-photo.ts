@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Sub-community photo pipeline backed by Pexels.
@@ -168,7 +169,8 @@ async function fetchSubCommunityPhotoRaw(query: string): Promise<string | null> 
     const photo = pool[simpleHash(query + ':sub-community') % pool.length]
 
     return photo.src.landscape ?? photo.src.large
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/images/sub-community-photo:173' })
     return null
   }
 }

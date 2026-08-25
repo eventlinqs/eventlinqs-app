@@ -1,0 +1,31 @@
+{
+  "_why": "THE AUDITED SET IS A FIXED, REVIEWED LIST, NOT WHATEVER THE SITEMAP LANDS ON. Until 25 August 2026 the event-detail pages were discovered from the preview's sitemap and chosen as first/middle/last of the sorted slug list. That is deterministic given a FIXED sitemap and it is not deterministic at all given a changing catalogue: publish one event and 'middle' becomes a different page. On 25 August the gate landed on /events/arena-sessions-large-room-performance-test, a 1,200 seat arena chart, and scored 0.75/0.74/0.77 against a 0.80 floor while a lighter event on the same branch had passed days earlier. Nothing about the code changed between them. A gate whose subject moves is measuring the catalogue, not the branch.",
+  "_contract": "Every path here is verified to answer 200 on the preview BEFORE it is audited. A path that no longer resolves FAILS THE RESOLVER LOUDLY, naming the missing path, rather than being silently replaced by another page. A silent substitution is how this gate became a coin toss; a loud failure is a five second edit to this file.",
+  "_notNarrowed": "The founder's standing instruction on this gate: 'Do not narrow it to the fastest page to pass; if anything widen it.' This set keeps THREE event-detail pages and each is named for what it represents, including the heaviest page on the platform. It is pinned, not shrunk.",
+  "static": [
+    { "path": "/", "why": "the homepage, the hero-carousel LCP case" },
+    { "path": "/events", "why": "the browse grid, the highest-traffic listing surface" },
+    { "path": "/events/browse/melbourne", "why": "a city listing, the photographic city hero" },
+    { "path": "/community/african", "why": "a community landing, the spine-imagery path" },
+    { "path": "/organisers", "why": "the image-rich marketing surface (Law 4)" },
+    { "path": "/pricing", "why": "a text-led marketing surface with tinted bands" },
+    { "path": "/help", "why": "the help hub, the long-tail SEO surface" },
+    { "path": "/legal/terms", "why": "a long prose page, the worst case for a11y contrast" },
+    { "path": "/login", "why": "a credential form, the auth-chrome case" },
+    { "path": "/signup", "why": "the other credential form" }
+  ],
+  "eventDetail": [
+    {
+      "path": "/events/arena-sessions-large-room-performance-test",
+      "why": "THE HEAVIEST EVENT PAGE ON THE PLATFORM: a 1,200 seat reserved chart. It is pinned first, deliberately, because it is the page that failed the gate on 25 August and the page most likely to regress. Removing it to go green is the move this file exists to forbid."
+    },
+    {
+      "path": "/events/cat-indie-sounds-live-at-the-enmore-sydney",
+      "why": "a multi-tier general admission event with a cover photo: the ordinary case a real organiser ships, and the AggregateOffer structured-data path."
+    },
+    {
+      "path": "/events/artist-layer-launch-night-geelong",
+      "why": "a single-tier event carrying a lineup, so the performer markup and the artist links are on the measured page."
+    }
+  ]
+}

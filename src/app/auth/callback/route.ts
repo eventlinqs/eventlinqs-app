@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { readAttributionCookies, toAttributionRecord } from '@/lib/growth/referrals'
+import { captureException } from '@/lib/observability/sentry'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -43,7 +44,8 @@ export async function GET(request: Request) {
                 .eq('id', user.id)
             }
           }
-        } catch {
+        } catch (error) {
+          captureException(error, { where: 'app/auth/callback/route:48' })
           // attribution is best-effort, never block sign-in
         }
       }

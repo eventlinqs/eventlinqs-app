@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
+import { PERMANENT_REDIRECTS } from "./src/lib/seo/permanent-redirects";
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
 
@@ -120,25 +121,13 @@ const nextConfig: NextConfig = {
     '/api/organiser/events/[id]/card/[format]': ['./src/assets/fonts/*.ttf'],
   },
   async redirects() {
-    // Legacy /categories/[slug] -> the community taxonomy (Batch 5). The legacy
-    // /categories/[slug] route still serves the hero categories but the taxonomy
-    // lives under /community/[slug], so we 301 the matching slugs forward.
-    //
-    // The word "culture" is banned (CLAUDE.md): the taxonomy routes were renamed
-    // /cultures -> /communities and /culture/[...] -> /community/[...], with the
-    // permanent 301s below so every existing link, share, and search-index entry
-    // forwards and no path breaks.
-    return [
-      { source: '/categories/afrobeats',                   destination: '/community/african',   permanent: true },
-      { source: '/categories/amapiano',                    destination: '/community/african',   permanent: true },
-      { source: '/categories/owambe',                      destination: '/community/african',   permanent: true },
-      { source: '/categories/heritage-and-independence',   destination: '/community/african',   permanent: true },
-      { source: '/categories/caribbean',                   destination: '/community/caribbean', permanent: true },
-      { source: '/categories/gospel',                      destination: '/community/gospel',    permanent: true },
-      { source: '/cultures',                               destination: '/communities',           permanent: true },
-      { source: '/culture/:slug',                          destination: '/community/:slug',       permanent: true },
-      { source: '/culture/:slug/:city',                    destination: '/community/:slug/:city', permanent: true },
-    ]
+    // THE TABLE ITSELF MOVED to src/lib/seo/permanent-redirects.ts, unchanged,
+    // and this reads it. It used to live here and only here, which meant
+    // src/app/sitemap.ts could not see it and published six /categories/* URLs
+    // that this very table 308s away. A sitemap entry that redirects is exactly
+    // what Google's build-a-sitemap page tells you not to publish. One copy of
+    // the fact, read by the config, the sitemap and the guard.
+    return PERMANENT_REDIRECTS
   },
   async headers() {
     return [

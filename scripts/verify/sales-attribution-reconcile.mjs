@@ -23,8 +23,7 @@ import pg from 'pg'
 import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
 const target = assertNotProductionDatabase()
-const db = new pg.Client(target.clientConfig)
-await db.connect()
+const db = await target.connect()
 
 /** Must match PLATFORM_OWNED_CHANNELS in src/lib/broadcast/sales-attribution.ts. */
 const PLATFORM_CHANNELS = ['digest']

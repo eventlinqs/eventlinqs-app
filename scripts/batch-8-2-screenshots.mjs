@@ -68,7 +68,9 @@ async function pickOrganiserSlugs() {
         const m = orgUrl.match(/^\/organisers\/([a-z0-9-]+)$/)
         if (m && !orgSlugs.includes(m[1])) orgSlugs.push(m[1])
       }
-    } catch { /* skip */ }
+    } catch (error) {
+      console.warn('[scripts/batch-8-2-screenshots:72]', error instanceof Error ? error.message : error)
+    /* skip */ }
     await p.close()
     if (orgSlugs.length >= 3) break
   }

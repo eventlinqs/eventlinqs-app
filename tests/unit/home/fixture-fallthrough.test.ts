@@ -45,7 +45,12 @@ function stubClient(rows: unknown[]) {
   // (src/lib/events/listing-window.ts). Same lesson as `is` above: the stub
   // failing with "or is not a function" reads as a broken query rather than an
   // out-of-date double.
-  for (const m of ['from', 'select', 'eq', 'gte', 'or', 'is', 'order', 'limit']) {
+  // `match` was added on 25 August 2026 when the publication predicate moved out
+  // of seventeen hand-written copies into the shared PUBLIC_EVENT_MATCH
+  // (src/lib/events/public-visibility.ts). Same lesson as `is` and `or` above,
+  // for the third time: the stub failing with "match is not a function" reads as
+  // a broken query rather than an out-of-date double.
+  for (const m of ['from', 'select', 'eq', 'match', 'gte', 'or', 'is', 'order', 'limit']) {
     chain[m] = () => chain
   }
   chain.then = (...args: unknown[]) => (result as unknown as { then: (...a: unknown[]) => unknown }).then(...args)

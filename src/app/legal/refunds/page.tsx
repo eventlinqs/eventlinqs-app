@@ -1,3 +1,4 @@
+import { REFUND_ARRIVAL_WINDOW } from '@/lib/refunds/arrival-timeframe'
 import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
@@ -254,7 +255,7 @@ export default async function RefundPolicyPage() {
         <li>
           <strong>Once a refund is submitted:</strong> the funds are released to
           your bank or card issuer immediately. Card issuers typically take a
-          further 5 to 10 business days to post it to your account, which is
+          further {REFUND_ARRIVAL_WINDOW} to post it to your account, which is
           outside our control.
         </li>
       </ul>

@@ -3,6 +3,8 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import { getAllCommunities, type CommunityContent, type CommunitySlug } from './data'
 import { buildCommunityTagOrFilter } from './tag-bridge'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { EVENT_DATA_CACHE_TAGS } from '@/lib/events/cache-tags'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 export interface CommunityIndexEntry {
   slug: CommunitySlug
@@ -50,8 +52,7 @@ async function getCommunityIndexEntriesRaw(): Promise<CommunityIndexEntry[]> {
       const { count, error } = await supabase
         .from('events')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'published')
-        .eq('visibility', 'public')
+        .match(PUBLIC_EVENT_MATCH)
         .or(listingWindowOrPredicate(new Date(nowIso)))
         .or(tagOr)
       counts[c.slug] = error || count === null ? 0 : count
@@ -70,7 +71,7 @@ async function getCommunityIndexEntriesRaw(): Promise<CommunityIndexEntry[]> {
 const cached = unstable_cache(
   getCommunityIndexEntriesRaw,
   ['community-index-page-v1'],
-  { revalidate: 300, tags: ['communities-index'] },
+  { revalidate: 300, tags: [EVENT_DATA_CACHE_TAGS[4]] },
 )
 
 export async function getCommunityIndexEntries(): Promise<CommunityIndexEntry[]> {

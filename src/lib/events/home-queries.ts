@@ -5,6 +5,7 @@ import type {
 } from '@/components/features/events/featured-event-hero'
 import { fixtureEnabled, loadFixtureRows } from '@/lib/dev/fixture-events'
 import { isStillListed, listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { PUBLIC_EVENT_MATCH } from './public-visibility'
 
 export const EVENT_SELECT =
   // `timezone` is selected because every card that prints a date must format it
@@ -122,8 +123,7 @@ export async function loadHomeUpcoming(
   const { data } = await supabase
     .from('events')
     .select(EVENT_SELECT)
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     // LISTED UNTIL IT HAS ENDED. This was `start_date >= now`, which took an
     // event off the homepage the moment it began. src/lib/events/listing-window.ts
     // carries the rule and the reason.

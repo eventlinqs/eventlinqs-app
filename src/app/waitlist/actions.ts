@@ -11,7 +11,6 @@ import { buildWaitlistConfirmationEmail } from '@/lib/waitlist/confirmation-emai
 import {
   CONSENT_VERSION,
   MARKETING_OPT_IN_LABEL,
-  OPENING_FIRST,
   WAITLIST_ROLES,
   getWaitlistCities,
   isWaitlistCitySlug,
@@ -34,11 +33,17 @@ export type JoinWaitlistResult =
 
 
 /**
- * Join a city waitlist. Spam Act posture: the submit button IS the express
- * consent to the city-opening notification (its exact wording is stored
- * verbatim), and the marketing opt-in is a separate unticked box stored as its
- * own boolean. Re-joining upserts the same (city, email) row and clears any
- * previous unsubscribe, because the person has re-consented.
+ * Sign up for local event alerts. Spam Act posture: the submit button IS the
+ * express consent to those alerts (its exact wording is stored verbatim), and
+ * the marketing opt-in is a separate unticked box stored as its own boolean.
+ * Re-joining upserts the same (city, email) row and clears any previous
+ * unsubscribe, because the person has re-consented.
+ *
+ * NATIONWIDE (2026-08-23): `foundingCandidate` used to be `OPENING_FIRST`
+ * membership, so it was true for Geelong and Melbourne and false everywhere
+ * else. The Founding Organiser programme is national now, and its real
+ * scarcity is the 50-spot cap, so the candidacy test is the one thing that
+ * ever actually mattered: did this person say they RUN events.
  */
 export async function joinCityWaitlist(input: {
   citySlug: string
@@ -81,7 +86,7 @@ export async function joinCityWaitlist(input: {
   const consentText =
     joinConsentText(city.name) +
     (marketingOptIn ? ` | Optional updates opt-in ticked: ${MARKETING_OPT_IN_LABEL}` : '')
-  const foundingCandidate = (OPENING_FIRST as readonly string[]).includes(citySlug)
+  const foundingCandidate = role === 'organiser'
 
   const admin = createAdminClient()
   const { data: row, error } = await admin

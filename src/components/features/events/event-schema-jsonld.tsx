@@ -24,6 +24,41 @@ interface EventSchemaProps {
   ticketTiers: Pick<TicketTier, 'id' | 'name' | 'price' | 'currency'>[]
   state: EventStatus
   baseUrl: string
+  /**
+   * The confirmed lineup, in billing order, for the `performer` property.
+   *
+   * Google documents `performer` as recommended: "The participants performing
+   * at the event, such as artists and comedians. Use a nested PerformingGroup
+   * or Person, one for each performer."
+   * (developers.google.com/search/docs/appearance/structured-data/event,
+   * fetched 2026-08-23.)
+   *
+   * A production audit on 23 August 2026 found this property missing on 36 of
+   * 36 event pages, while the event page was ALREADY loading the lineup to
+   * render it visibly. The data was on the page and simply never reached the
+   * markup, so every event we publish was leaving its richest recommended
+   * property empty on a platform whose lead category is music.
+   */
+  performers?: { id: string; slug: string; name: string }[]
+}
+
+/**
+ * Drops keys whose value is null, undefined, or an empty/whitespace string.
+ *
+ * WHY. The emitter used `?? ''` on every optional venue field, so an event with
+ * no street address published `"streetAddress": ""` rather than omitting it. An
+ * empty string is not "absent": it is a positive claim that the value is empty,
+ * and validators read it as a malformed value rather than a missing optional
+ * one. Omission is the honest encoding.
+ */
+function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === null || v === undefined) continue
+    if (typeof v === 'string' && v.trim() === '') continue
+    out[k] = v
+  }
+  return out as Partial<T>
 }
 
 /** Map our event_type to a Schema.org sub-type when there's a clean match. */
@@ -56,14 +91,41 @@ function schemaAvailability(state: EventStatus): string {
   return 'https://schema.org/InStock'
 }
 
-export function EventSchemaJsonLd({
+/**
+ * Builds the JSON-LD payload. Exported as a PURE FUNCTION, separately from the
+ * component, so the markup an event page will actually ship can be validated in
+ * a unit test against Google's published required set rather than eyeballed or
+ * grepped for in the source.
+ *
+ * tests/unit/seo/event-structured-data.test.ts runs the output of this function
+ * through the same validator the production audit script uses
+ * (scripts/verify/event-structured-data-audit.mjs), so the test and the audit
+ * cannot drift into disagreeing about what "valid" means.
+ */
+export function buildEventSchemaPayload({
   event,
   organisation,
   ticketTiers,
   state,
   baseUrl,
+  performers = [],
 }: EventSchemaProps & { event: Event & { category?: { slug: string | null; name: string } | null } }) {
   const eventUrl = `${baseUrl}/events/${event.slug}`
+
+  /**
+   * The date this event was originally scheduled for, when it has since been
+   * moved to a new one. Read defensively because `previous_start_date` is added
+   * by migration 20260823000002 and the generated database types trail it.
+   *
+   * A STILL-POSTPONED event is excluded on purpose: it has been moved off its
+   * old date but has no new one, so `startDate` is not yet "the newly scheduled
+   * start date" that Google requires alongside previousStartDate.
+   */
+  const rescheduledFromDate =
+    state !== 'postponed' && state !== 'cancelled'
+      ? (event as { previous_start_date?: string | null }).previous_start_date ?? null
+      : null
+
   const sortedTiers = [...ticketTiers].sort((a, b) => a.price - b.price)
   const lowestPrice = sortedTiers.length > 0 ? sortedTiers[0].price / 100 : 0
   const currency = sortedTiers[0]?.currency ?? 'AUD'
@@ -87,6 +149,12 @@ export function EventSchemaJsonLd({
         offerCount: sortedTiers.length,
         availability: schemaAvailability(state),
         url: eventUrl,
+        // validFrom was on the single-Offer branch only, so every event with
+        // two or more tiers dropped it. Measured on production, 23 August
+        // 2026: missing on 26 of 36 event pages, and every one of those 26 was
+        // a multi-tier event. The property is recommended by Google and is the
+        // same value either branch would use.
+        validFrom: event.created_at,
       }
     : null
 
@@ -96,7 +164,30 @@ export function EventSchemaJsonLd({
     name: event.title,
     startDate: event.start_date,
     endDate: event.end_date,
-    eventStatus: schemaEventStatus(state),
+    /*
+     * RESCHEDULED, WITH ITS REQUIRED PARTNER PROPERTY.
+     *
+     * Google states the pairing as a hard requirement, not a suggestion: "If you
+     * add previousStartDate, you must also add the eventStatus property and set
+     * the eventStatus to EventRescheduled. Don't use other event statuses. For
+     * rescheduled events, the startDate property must only be used for the newly
+     * scheduled start date."
+     * (developers.google.com/search/docs/appearance/structured-data/event,
+     * fetched 2026-08-23)
+     *
+     * So the two are emitted from ONE expression rather than two independent
+     * ones. Emitting either alone is a documented violation, and two separate
+     * conditions are how they end up disagreeing.
+     *
+     * A still-postponed event is NOT rescheduled and correctly keeps
+     * EventPostponed: it has no new date to point at yet.
+     */
+    ...(rescheduledFromDate
+      ? {
+          eventStatus: 'https://schema.org/EventRescheduled',
+          previousStartDate: rescheduledFromDate,
+        }
+      : { eventStatus: schemaEventStatus(state) }),
     eventAttendanceMode: event.event_type === 'virtual'
       ? 'https://schema.org/OnlineEventAttendanceMode'
       : event.event_type === 'hybrid'
@@ -109,14 +200,14 @@ export function EventSchemaJsonLd({
         }
       : {
           '@type': 'Place',
-          name: event.venue_name ?? '',
-          address: {
+          ...compact({ name: event.venue_name }),
+          address: compact({
             '@type': 'PostalAddress',
-            streetAddress: event.venue_address ?? '',
-            addressLocality: event.venue_city ?? '',
-            addressRegion: event.venue_state ?? '',
+            streetAddress: event.venue_address,
+            addressLocality: event.venue_city,
+            addressRegion: event.venue_state,
             addressCountry: event.venue_country ?? 'AU',
-          },
+          }),
           ...(typeof event.venue_latitude === 'number' && typeof event.venue_longitude === 'number'
             ? {
                 geo: {
@@ -135,16 +226,35 @@ export function EventSchemaJsonLd({
       name: organisation.name,
       url: `${baseUrl}/organisers/${organisation.slug}`,
     },
+    // One node per performer, in billing order, each linking to its own artist
+    // profile so the entity is resolvable rather than a bare string. Omitted
+    // entirely when the lineup is empty: an empty array is a claim that nobody
+    // is performing.
+    ...(performers.length > 0
+      ? {
+          performer: performers.map(a => ({
+            '@type': 'PerformingGroup',
+            name: a.name,
+            url: `${baseUrl}/artists/${a.slug}`,
+          })),
+        }
+      : {}),
     offers: aggregateOffer ?? (offers.length > 0 ? offers[0] : undefined),
     ...(lowestPrice === 0 ? { isAccessibleForFree: true } : {}),
     url: eventUrl,
   }
 
+  return payload
+}
+
+export function EventSchemaJsonLd(
+  props: EventSchemaProps & { event: Event & { category?: { slug: string | null; name: string } | null } },
+) {
   return (
     <script
       type="application/ld+json"
       suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(buildEventSchemaPayload(props)) }}
     />
   )
 }

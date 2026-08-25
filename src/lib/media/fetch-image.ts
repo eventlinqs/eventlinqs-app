@@ -1,4 +1,5 @@
 import 'server-only'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * Fetch a stored image with a hard deadline and a size ceiling.
@@ -44,7 +45,8 @@ export async function fetchImageBytes(
     // A missing or lying content-length is checked again on the real payload.
     if (bytes.byteLength < 12 || bytes.byteLength > MAX_FETCH_BYTES) return null
     return { bytes, contentType: response.headers.get('content-type') }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/media/fetch-image:49' })
     // Timed out, aborted, refused, or unreachable. The caller draws its
     // designed fallback; nothing here is worth failing an artefact over.
     return null

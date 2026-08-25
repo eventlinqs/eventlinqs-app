@@ -21,7 +21,7 @@ import {
   fromZonedInputValue,
   toZonedInputValue,
 } from '@/lib/dates/event-time'
-import { timezoneForVenue } from '@/lib/dates/venue-timezone'
+import { timezoneForVenue, AUSTRALIAN_ZONES } from '@/lib/dates/venue-timezone'
 
 /**
  * The zone a brand new form starts in, before the organiser has typed an address
@@ -118,12 +118,36 @@ type FormData = {
   queue_admission_window_minutes: string
 }
 
+/**
+ * JURISDICTIONAL COMPLETENESS (founder standing rule, 2026-08-23): this platform
+ * operates in ALL of Australia, and a partial list is a defect, not an
+ * abbreviation.
+ *
+ * This list used to name five Australian zones by hand: Melbourne, Sydney,
+ * Brisbane, Perth and Adelaide. Australia/Hobart and Australia/Darwin were
+ * missing, so an organiser in Tasmania or the Northern Territory could not
+ * select their own timezone when creating an event and had to pick somebody
+ * else's.
+ *
+ * FOR DARWIN THAT WAS NOT COSMETIC. Australia/Darwin is GMT+09:30 all year
+ * because the Northern Territory does not observe daylight saving.
+ * Australia/Adelaide, the nearest option that WAS offered, is GMT+10:30 for the
+ * whole daylight-saving season. Measured on 2026-01-15: Darwin GMT+09:30,
+ * Adelaide GMT+10:30. A Darwin organiser picking the closest available zone
+ * therefore had every event time wrong by a full hour from October to April,
+ * which is the entire summer festival season.
+ *
+ * Hobart happens to share Melbourne's offset today, so a Tasmanian organiser was
+ * less exposed. That is a coincidence of two independently governed zones, not a
+ * reason to omit one.
+ *
+ * The Australian zones now come from AUSTRALIAN_ZONES, derived from the same
+ * STATE_ZONE map that resolves an event's timezone from its venue. One source,
+ * so the picker cannot offer a zone the resolver does not know, and the resolver
+ * cannot produce a zone the picker will not show.
+ */
 const TIMEZONES = [
-  'Australia/Melbourne',
-  'Australia/Sydney',
-  'Australia/Brisbane',
-  'Australia/Perth',
-  'Australia/Adelaide',
+  ...AUSTRALIAN_ZONES,
   'Africa/Lagos',
   'Africa/Nairobi',
   'Africa/Accra',

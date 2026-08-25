@@ -42,7 +42,9 @@ const note = (m) => notes.push(m)
 
 function walk(dir, out = []) {
   let entries
-  try { entries = readdirSync(dir, { withFileTypes: true }) } catch { return out }
+  try { entries = readdirSync(dir, { withFileTypes: true }) } catch (error) {
+    console.warn('[scripts/guards/one-refund-path:46]', error instanceof Error ? error.message : error)
+    return out }
   for (const e of entries) {
     const full = join(dir, e.name)
     if (e.isDirectory()) { walk(full, out); continue }

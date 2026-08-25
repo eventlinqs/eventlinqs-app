@@ -109,6 +109,17 @@ const INHERITED_DEFERRED = new Map([
       '      it would rewrite main. Clears with the rewrite in\n' +
       '      docs/roast/AUTHORSHIP-HISTORY-REWRITE.md.',
   ],
+  [
+    '5913cd83c958bf336df01bedc46da259b0fbee8a',
+    'origin/main tip: "Integration/launch (#119)", GitHub\'s squash of this branch\n' +
+      '      on 20 August, carrying 36 inherited trailers. Third of the same kind, and\n' +
+      '      the runbook predicted it: section 8.1 records that every squash merge of\n' +
+      '      this branch produces one, and 8.10 warns not to merge main back in the\n' +
+      '      same sitting as a deploy for exactly this reason.\n' +
+      '      Deferred by name under the standing ruling, NOT by advancing the boundary,\n' +
+      '      which would forgive everything before it in a single edit. The two commits\n' +
+      '      this branch made after that squash are both clean.',
+  ],
 ])
 
 const PATTERNS = [

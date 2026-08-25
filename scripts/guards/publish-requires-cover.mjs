@@ -88,7 +88,8 @@ const rel = (p) => relative(ROOT, p).split(sep).join('/')
 let gateSrc = ''
 try {
   gateSrc = readFileSync(join(ROOT, GATE), 'utf8')
-} catch {
+} catch (error) {
+  console.warn('[scripts/guards/publish-requires-cover:92]', error instanceof Error ? error.message : error)
   failures.push(`${GATE} is missing. It is the publish gate; nothing else enforces the cover rule in code.`)
 }
 

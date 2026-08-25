@@ -10,6 +10,7 @@ import { AuthErrorFromUrl } from './auth-error-from-url'
 import { REF_COOKIE, REF_SOURCE_COOKIE, REF_EVENT_COOKIE } from '@/lib/growth/referrals'
 import { DIGEST_CONSENT_WORDING } from '@/lib/consent/wording'
 import { authMessage, signupFieldFor, type AuthFailureClass } from '@/lib/auth/auth-errors'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 function readCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined
@@ -141,7 +142,8 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
 
       const nextParam = isOrganiser ? '&next=/dashboard' : ''
       router.push(`/verify-email-sent?email=${encodeURIComponent(email)}${nextParam}`)
-    } catch {
+    } catch (error) {
+      reportClientError(error, { where: 'components/auth/signup-form:146' })
       failLocally('network')
     }
   }

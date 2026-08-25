@@ -24,7 +24,8 @@ function loadEnv(file) {
       const m = line.match(/^([A-Z_0-9]+)=(.*)$/)
       if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim()
     }
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/sweep/db:28]', error instanceof Error ? error.message : error)
     /* file absent is fine when the env is already exported */
   }
 }

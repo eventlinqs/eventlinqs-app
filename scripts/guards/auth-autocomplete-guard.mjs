@@ -102,7 +102,8 @@ for (const form of CONTRACT) {
   let src
   try {
     src = readFileSync(join(ROOT, form.file), 'utf8')
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/auth-autocomplete-guard:106]', error instanceof Error ? error.message : error)
     failures.push(`${form.file} is missing. The ${form.label} form is part of the auth contract.`)
     continue
   }

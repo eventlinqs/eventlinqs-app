@@ -40,14 +40,27 @@ async function callerOwnsOrganisation(
   userId: string,
   organisationId: string,
 ): Promise<boolean> {
-  const { data: owned } = await supabase
+  /*
+   * THE OWNERSHIP READ RUNS UNDER THE SERVICE ROLE.
+   *
+   * It used to run on the injected session client and filter on `owner_id`, which
+   * the column lockdown does not grant to `authenticated`. PostgreSQL requires
+   * SELECT privilege on WHERE-clause columns, so the filter itself was refused
+   * 42501 and this helper returned false for a legitimate owner or admin.
+   *
+   * The ROLES admitted here are unchanged. This is a privilege fix, not an
+   * authorisation change: the caller has already established WHO the user is, and
+   * this decides what they may do.
+   */
+  const authz = createAdminClient()
+  const { data: owned } = await authz
     .from('organisations')
     .select('id')
     .eq('id', organisationId)
     .eq('owner_id', userId)
     .maybeSingle()
   if (owned) return true
-  const { data: member } = await supabase
+  const { data: member } = await authz
     .from('organisation_members')
     .select('role')
     .eq('organisation_id', organisationId)

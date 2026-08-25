@@ -85,7 +85,8 @@ try {
   genVersion = execFileSync('npx', ['--yes', 'supabase', '--version'], {
     encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], shell: process.platform === 'win32',
   }).trim()
-} catch {
+} catch (error) {
+  console.warn('[scripts/ci/types-drift-guard:89]', error instanceof Error ? error.message : error)
   // Non-fatal: the generation call below reports its own failure in full.
 }
 say(`generating live types with supabase CLI ${genVersion} (the committed types must come from the same version)`)

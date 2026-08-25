@@ -19,7 +19,9 @@ function loadAll(label) {
   for (const r of runs) {
     const p = join(baseDir, r, `${label}.report.json`)
     if (!existsSync(p)) continue
-    try { out.push(JSON.parse(readFileSync(p, 'utf8'))) } catch {}
+    try { out.push(JSON.parse(readFileSync(p, 'utf8'))) } catch (error) {
+      console.warn('[scripts/lh-batch-5-5-median:23]', error instanceof Error ? error.message : error)
+    }
   }
   return out
 }

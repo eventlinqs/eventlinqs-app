@@ -9,6 +9,7 @@ import {
   type RawRow,
 } from '@/lib/events/home-queries'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 
 interface Props {
   cityFilter: string
@@ -64,8 +65,7 @@ async function fetchEventsForCommunity(
   const cityScoped = await supabase
     .from('events')
     .select(EVENT_SELECT)
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     .or(listingWindowOrPredicate(new Date(nowIso)))
     .overlaps('tags', tags)
     .ilike('venue_city', `%${cityFilter}%`)
@@ -79,8 +79,7 @@ async function fetchEventsForCommunity(
   const fallback = await supabase
     .from('events')
     .select(EVENT_SELECT)
-    .eq('status', 'published')
-    .eq('visibility', 'public')
+    .match(PUBLIC_EVENT_MATCH)
     .or(listingWindowOrPredicate(new Date(nowIso)))
     .overlaps('tags', tags)
     .order('start_date', { ascending: true })

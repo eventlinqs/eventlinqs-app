@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Send, Sparkles, LifeBuoy } from 'lucide-react'
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 /**
  * Shared assistant chat panel. One implementation for every assistant
@@ -113,7 +114,8 @@ export function AssistantPanel({
           { role: 'assistant', content: data.reply!, suggestions: data.suggestions ?? [] },
         ])
         if (data.handoff && data.handoffSent) setHandedOff(true)
-      } catch {
+      } catch (error) {
+        reportClientError(error, { where: 'components/ai/assistant-panel:118' })
         setError('The assistant could not respond just now. Please check your connection and try again.')
       } finally {
         setBusy(false)

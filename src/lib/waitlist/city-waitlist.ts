@@ -1,63 +1,49 @@
 /**
- * The national city waitlist - shared configuration.
+ * Local events alerts - shared configuration.
  *
- * Nationally available, locally dense (the growth plan's launch shape): the
- * platform works everywhere in Australia today, and the waitlist concentrates
- * the first organisers and audiences city by city. Geelong and Melbourne open
- * first; their signups are Founding Organiser invite candidates.
+ * NATIONWIDE FROM DAY ONE (founder ruling 2026-08-23). This module used to
+ * describe a LAUNCH QUEUE: nine cities, `OPENING_FIRST = ['geelong',
+ * 'melbourne']`, and consent wording promising "we will email you when your
+ * city opens". Every city and state is open today, so that email would never
+ * be sent and the premise was false. What survives is the useful half: a
+ * person tells us which city they are in, and we email them when there is
+ * something on near them.
+ *
+ * EVERY city in the canonical registry is offered, not a launch subset, so a
+ * person in Perth or Darwin picks their own city rather than the nearest one
+ * we had decided to open.
  *
  * City names and states come from the canonical city registry
- * (src/lib/cities/data.ts) so the waitlist can never drift from the platform's
- * city taxonomy.
+ * (src/lib/cities/data.ts) so this can never drift from the platform's city
+ * taxonomy.
  */
-import { getCity, type CitySlug } from '@/lib/cities/data'
+import { getAllCities, isCitySlug, type CitySlug } from '@/lib/cities/data'
 
-export const WAITLIST_CITY_SLUGS = [
-  'geelong',
-  'melbourne',
-  'sydney',
-  'brisbane',
-  'perth',
-  'adelaide',
-  'canberra',
-  'hobart',
-  'darwin',
-] as const satisfies readonly CitySlug[]
-
-export type WaitlistCitySlug = (typeof WAITLIST_CITY_SLUGS)[number]
-
-/** Geelong and Melbourne open first; their signups are founding candidates. */
-export const OPENING_FIRST: readonly WaitlistCitySlug[] = ['geelong', 'melbourne']
+export type WaitlistCitySlug = CitySlug
 
 export function isWaitlistCitySlug(value: unknown): value is WaitlistCitySlug {
-  return (
-    typeof value === 'string' && (WAITLIST_CITY_SLUGS as readonly string[]).includes(value)
-  )
+  return typeof value === 'string' && isCitySlug(value)
 }
 
 export interface WaitlistCity {
   slug: WaitlistCitySlug
   name: string
   state: string
-  openingFirst: boolean
 }
 
+/** Every Australian city, in the registry's own order. */
 export function getWaitlistCities(): WaitlistCity[] {
-  return WAITLIST_CITY_SLUGS.map(slug => {
-    const city = getCity(slug)
-    return {
-      slug,
-      name: city?.name ?? slug,
-      state: city?.state ?? '',
-      openingFirst: (OPENING_FIRST as readonly string[]).includes(slug),
-    }
-  })
+  return getAllCities().map(city => ({
+    slug: city.slug,
+    name: city.name,
+    state: city.state,
+  }))
 }
 
 export const WAITLIST_ROLES = ['organiser', 'attendee'] as const
 export type WaitlistRole = (typeof WAITLIST_ROLES)[number]
 
-export const CONSENT_VERSION = 'v2'
+export const CONSENT_VERSION = 'v3'
 
 /**
  * The consent versions whose recorded wording expressly covers the weekly
@@ -71,10 +57,20 @@ export const CONSENT_VERSION = 'v2'
  * intent. v2 names the weekly email in the sentence the person read before
  * pressing the button.
  *
+ * v3 IS LISTED HERE DELIBERATELY, AND OMITTING IT WOULD HAVE BEEN A SILENT
+ * REGRESSION. v3 is the nationwide wording: it drops the city-opening promise
+ * and states no cadence, because a weekly cadence is not one the platform can
+ * honour yet and a thin digest burns the subscriber. It still expressly names
+ * emails about what is on near the person, which is exactly what the digest
+ * is, so it covers the send. Had v3 been introduced without being added to
+ * this list, every new signup would have landed in a table nothing reads and
+ * been asked for permission we then ignored, which is the precise defect the
+ * audience bridge exists to have fixed.
+ *
  * The lawful route for a v1 signup is a fresh express opt-in, never an
  * assumption. See docs/roast/WAITLIST-BRIDGE.md.
  */
-export const DIGEST_COVERING_CONSENT_VERSIONS: readonly string[] = ['v2']
+export const DIGEST_COVERING_CONSENT_VERSIONS: readonly string[] = ['v2', 'v3']
 
 /** Whether a stored consent_version permits sending that person the digest. */
 export function consentVersionCoversDigest(version: string | null | undefined): boolean {
@@ -85,9 +81,9 @@ export function consentVersionCoversDigest(version: string | null | undefined): 
  * the consent evidence (Spam Act 2003). Every stream it authorises is named
  * here, because this sentence is the whole of the permission. */
 export function joinConsentText(cityName: string): string {
-  return `Join the ${cityName} waitlist: EventLinqs will email you when ${cityName} opens, send you a weekly email of what is on in ${cityName}, and, if you registered as an organiser, contact you about Founding Organiser invitations. Nothing else, and one click unsubscribes you.`
+  return `Get ${cityName} alerts: EventLinqs will email you when there is something on near you in ${cityName}, and, if you registered as an organiser, contact you about Founding Organiser invitations. Nothing else, and one click unsubscribes you.`
 }
 
 /** The OPTIONAL, unticked-by-default marketing opt-in wording. */
 export const MARKETING_OPT_IN_LABEL =
-  'Also send me occasional EventLinqs updates: new cities, new tools, and organiser offers.'
+  'Also send me occasional EventLinqs updates: new tools and organiser offers.'

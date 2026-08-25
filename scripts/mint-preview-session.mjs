@@ -67,8 +67,30 @@ const { data: orgs, error: orgErr } = await admin
   .limit(50)
 if (orgErr) throw new Error(`organisation lookup failed: ${orgErr.message}`)
 
+/*
+ * OPTIONAL --org-id, added 21 August 2026.
+ *
+ * "The first organisation that owns any event" is the right default for walking
+ * the dashboard, and useless when a specific defect only reproduces on specific
+ * DATA. Screenshotting the refund states needed an organiser who owns an order
+ * that has actually been refunded, and the default pick owned events with no
+ * paid orders at all, so every capture would have been of an empty state.
+ */
+const orgIdx = process.argv.indexOf('--org-id')
+const WANT_ORG = orgIdx === -1 ? null : process.argv[orgIdx + 1]
+
 let chosen = null
-for (const org of orgs ?? []) {
+if (WANT_ORG) {
+  const { data: one, error: oneErr } = await admin
+    .from('organisations')
+    .select('id, name, owner_id')
+    .eq('id', WANT_ORG)
+    .maybeSingle()
+  if (oneErr || !one) throw new Error(`--org-id ${WANT_ORG} not found on TEST`)
+  if (!one.owner_id) throw new Error(`--org-id ${WANT_ORG} has no owner to sign in as`)
+  chosen = { org: one, events: null }
+}
+for (const org of chosen ? [] : (orgs ?? [])) {
   const { count } = await admin
     .from('events')
     .select('id', { count: 'exact', head: true })
@@ -115,6 +137,6 @@ await context.storageState({ path: OUT })
 await browser.close()
 
 console.log(`[session] signed in as ${email}`)
-console.log(`[session] organisation "${chosen.org.name}" with ${chosen.events} event(s)`)
+console.log(`[session] organisation "${chosen.org.name}"${chosen.events === null ? " (selected by --org-id)" : ` with ${chosen.events} event(s)`}`)
 console.log(`[session] landed on ${landed}`)
 console.log(`[session] state saved to ${OUT}${existsSync(OUT) ? '' : ' (MISSING, that is a failure)'}`)

@@ -42,117 +42,25 @@
  *
  * USAGE:
  *   node scripts/probe/refund-and-privilege-probe.mjs --env .env.test
- *   node scripts/probe/refund-and-privilege-probe.mjs --env <production env file>
+ *   node scripts/probe/refund-and-privilege-probe.mjs --project test
+ *   node scripts/probe/refund-and-privilege-probe.mjs --project prod   (approved)
  *
- * It resolves the Postgres target in this order:
- *   SUPABASE_DB_URL                (the pooler shape .env.test uses)
- *   SUPABASE_DB_PASSWORD_SYDNEY    (+ the ref from NEXT_PUBLIC_SUPABASE_URL)
- * With neither, it refuses rather than guess a host.
+ * CONNECTION: through the shared helper, never assembled here. This file used to
+ * carry its own copy of the connection parser and its own target-resolution
+ * ladder; both now live once, in scripts/lib/db-credentials.mjs, which also
+ * handles a percent-encoded password instead of failing as 28P01.
  */
 
-import { readFileSync, existsSync } from 'node:fs'
-import pg from 'pg'
+import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
-const argv = process.argv.slice(2)
-const arg = (name, fallback = null) => {
-  const i = argv.indexOf(name)
-  return i === -1 ? fallback : argv[i + 1]
-}
+const target = assertNotProductionDatabase()
+const ref = target.ref
 
-const ENV_FILE = arg('--env')
-if (!ENV_FILE) {
-  console.error('usage: --env <env file>')
-  process.exit(2)
-}
-if (!existsSync(ENV_FILE)) {
-  console.error(`[probe] env file not found: ${ENV_FILE}`)
-  process.exit(2)
-}
-
-// Minimal env reader, matching the shape the repo's other scripts parse. dotenv
-// is not imported so this cannot mutate process.env for anything downstream.
-const env = {}
-for (const line of readFileSync(ENV_FILE, 'utf8').split(/\r?\n/)) {
-  const t = line.trim()
-  if (!t || t.startsWith('#') || !t.includes('=')) continue
-  const i = t.indexOf('=')
-  const v = t.slice(i + 1).trim().replace(/^["']|["']$/g, '')
-  env[t.slice(0, i).trim()] = v.startsWith('#') ? '' : v
-}
-
-/**
- * The password is not percent-encoded in this repo's stored values, so the
- * connection string is hand-split on the two positional rules that survive an
- * unescaped password: the LAST `@` separates credentials from host, and the
- * FIRST `:` inside the credentials separates user from password. Handing pg a
- * `connectionString` instead makes it throw ERR_INVALID_URL while printing the
- * input as `*****REDACTED*****`, which reads like an unset value rather than a
- * parse failure. Same reasoning as scripts/lib/production-write-preflight.mjs.
- */
-function fromConnectionString(raw) {
-  const s = String(raw).trim().replace(/^["']|["']$/g, '')
-  const schemeEnd = s.indexOf('://')
-  const at = s.lastIndexOf('@')
-  if (schemeEnd === -1 || at === -1 || at < schemeEnd) return null
-  const creds = s.slice(schemeEnd + 3, at)
-  const sep = creds.indexOf(':')
-  const tail = s.slice(at + 1)
-  const cut = tail.search(/[/?]/)
-  const hostPort = cut === -1 ? tail : tail.slice(0, cut)
-  const colon = hostPort.indexOf(':')
-  return {
-    user: sep === -1 ? creds : creds.slice(0, sep),
-    password: sep === -1 ? '' : creds.slice(sep + 1),
-    host: colon === -1 ? hostPort : hostPort.slice(0, colon),
-    port: Number(colon === -1 ? 5432 : hostPort.slice(colon + 1)),
-    database: 'postgres',
-  }
-}
-
-const refFromUrl = (env.NEXT_PUBLIC_SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] || ''
-
-let parts = null
-if (env.SUPABASE_DB_URL) {
-  parts = fromConnectionString(env.SUPABASE_DB_URL)
-} else if (env.SUPABASE_DB_PASSWORD_SYDNEY && refFromUrl) {
-  // The shared pooler shape. The host identifies no project; the USERNAME does.
-  parts = {
-    user: `postgres.${refFromUrl}`,
-    password: env.SUPABASE_DB_PASSWORD_SYDNEY,
-    host: 'aws-1-ap-southeast-2.pooler.supabase.com',
-    port: 5432,
-    database: 'postgres',
-  }
-}
-
-if (!parts || !parts.host || !parts.password) {
-  console.error('[probe] no Postgres target resolvable from this env file.')
-  console.error('[probe] set SUPABASE_DB_URL, or SUPABASE_DB_PASSWORD_SYDNEY plus NEXT_PUBLIC_SUPABASE_URL.')
-  process.exit(2)
-}
-
-// The ref lives in the host on a direct connection and in the username on the
-// pooler. Read both so the probe can always NAME what it connected to.
-const ref =
-  parts.host.match(/^db\.([a-z0-9]+)\.supabase\.co$/i)?.[1] ||
-  parts.user.match(/^postgres\.([a-z0-9]+)$/i)?.[1] ||
-  refFromUrl ||
-  'UNKNOWN'
-
-const client = new pg.Client({
-  user: parts.user,
-  password: parts.password,
-  host: parts.host,
-  port: parts.port,
-  database: parts.database,
-  ssl: { rejectUnauthorized: false },
-  // SERVER-SIDE read-only enforcement. Not advisory: Postgres raises 25006
-  // ("cannot execute ... in a read-only transaction") on any write attempted on
-  // this session, so the no-write claim above does not depend on this file's
-  // query list staying honest.
-  options: '-c default_transaction_read_only=on',
-  connectionTimeoutMillis: 15000,
-})
+// SERVER-SIDE read-only enforcement, preserved from the hand-built config this
+// replaced. Not advisory: Postgres raises 25006 ("cannot execute ... in a
+// read-only transaction") on any write attempted on this session, so the
+// no-write claim does not depend on the query list below staying honest.
+const client = await target.connect({ readOnly: true })
 
 const SCANNED = []
 const scan = (what) => SCANNED.push(what)

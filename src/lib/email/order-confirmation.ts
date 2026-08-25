@@ -346,7 +346,7 @@ export function buildConfirmationEmailHtml(
 
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">The EventLinqs team. The ticketing platform built for every community.</p>
   <p style="margin:0 0 4px;color:#6B7280;font-size:13px;"><strong style="color:#0A1628;">Refunds:</strong> ${escapeHtml(describeRefundPolicy(policyFromEvent(event), event.is_free ?? false))}</p>
-  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Manage this order, including asking for a refund: <a href="${siteUrl}/orders/${order.id}/confirmation" style="color:#9CA3AF;">your order page</a>. Platform terms: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">${canonicalHost()}/legal/refunds</a></p>
+  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Your tax invoice or receipt, and the refund controls, are on <a href="${siteUrl}/orders/${order.id}/confirmation" style="color:#9CA3AF;">your order page</a>. Platform terms: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">${canonicalHost()}/legal/refunds</a></p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.</p>
   <p style="margin:0;color:#9CA3AF;font-size:12px;">You received this because you bought tickets on EventLinqs.</p>
 
@@ -423,7 +423,18 @@ export function buildConfirmationEmailText(
   lines.push('')
   lines.push('The EventLinqs team. The ticketing platform built for every community.')
   lines.push(`Refunds: ${describeRefundPolicy(policyFromEvent(event), event.is_free ?? false)}`)
-  lines.push(`Manage this order, including asking for a refund: ${siteUrl}/orders/${order.id}/confirmation`)
+  /*
+   * THE EMAIL IS NOT THE TAX INVOICE, AND IT MUST NOT PRETEND TO BE.
+   *
+   * The ATO is explicit that any "digital record or document transmitted to the
+   * customer needs to contain all the required information to be a valid tax
+   * invoice". This email carries the ticket and the QR; it does not carry the
+   * seller's ABN, the GST amount or the extent to which each line is taxable,
+   * and it never called itself a tax invoice. So it POINTS at the document that
+   * does rather than growing a second, weaker copy of it, which is the exact
+   * shape this pass spent the day removing everywhere else.
+   */
+  lines.push(`Your tax invoice or receipt, and the refund controls: ${siteUrl}/orders/${order.id}/confirmation`)
   lines.push(`Platform terms: ${siteUrl}/legal/refunds`)
   lines.push('EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.')
   lines.push('You received this because you bought tickets on EventLinqs.')

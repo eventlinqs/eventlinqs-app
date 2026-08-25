@@ -24,7 +24,9 @@ for (let i = 0; i < 2; i++) {
   for (const [, path] of routes) {
     try {
       execSync(`curl -s -o /dev/null "${BASE}${path}"`, { stdio: 'ignore', timeout: 60_000 })
-    } catch {}
+    } catch (error) {
+      console.warn('[scripts/batch-11-lh-desktop:28]', error instanceof Error ? error.message : error)
+    }
   }
 }
 

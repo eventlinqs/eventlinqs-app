@@ -1,4 +1,5 @@
 import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * ENABLED-PROVIDER RESOLVER.
@@ -140,7 +141,8 @@ async function fetchEnabledProviders(): Promise<EnabledProviders> {
     })
     if (!res.ok) return { ...NONE_ENABLED }
     return parseSettingsBody(await res.json())
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'lib/auth/providers:145' })
     return { ...NONE_ENABLED }
   }
 }

@@ -112,7 +112,8 @@ function walk(dir, out = []) {
   let entries
   try {
     entries = readdirSync(dir)
-  } catch {
+  } catch (error) {
+    console.warn('[scripts/guards/no-inherited-git-env:116]', error instanceof Error ? error.message : error)
     return out
   }
   for (const entry of entries) {

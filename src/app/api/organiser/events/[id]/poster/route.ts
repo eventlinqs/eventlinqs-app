@@ -8,6 +8,7 @@ import { buildEventPosterPdf } from '@/lib/broadcast/poster'
 import { priceLabel } from '@/lib/events/price-label'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 import { resolveLogoPlacement } from '@/lib/media/logo-pipeline'
+import { captureException } from '@/lib/observability/sentry'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -41,7 +42,8 @@ async function embeddable(
     }
     const jpeg = await sharp(Buffer.from(bytes)).jpeg({ quality: 85 }).toBuffer()
     return { bytes: new Uint8Array(jpeg), format: 'jpg' }
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/api/organiser/events/[id]/poster/route:46' })
     // Unreadable: the poster draws its typographic composition instead.
     return null
   }
@@ -111,7 +113,8 @@ export async function GET(
   if (logoFetch) {
     try {
       logoPlacement = (await resolveLogoPlacement(Buffer.from(logoFetch.bytes))).placement
-    } catch {
+    } catch (error) {
+      captureException(error, { where: 'app/api/organiser/events/[id]/poster/route:117' })
       // A mark we cannot measure gets the tile, which is always readable.
       logoPlacement = 'on-tile'
     }
@@ -137,7 +140,8 @@ export async function GET(
       event_id: id,
       organisation_id: organiserEvent.organisationId,
     })
-  } catch {
+  } catch (error) {
+    captureException(error, { where: 'app/api/organiser/events/[id]/poster/route:144' })
     // signal only; a lost row never affects the poster
   }
 

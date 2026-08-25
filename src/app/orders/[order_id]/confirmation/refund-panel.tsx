@@ -1,5 +1,6 @@
 'use client'
 
+import { REFUND_ARRIVAL_WINDOW } from '@/lib/refunds/arrival-timeframe'
 import { useState, useTransition } from 'react'
 import { submitBuyerRefundRequest } from './refund-actions'
 
@@ -50,8 +51,8 @@ const STATE_COPY: Record<string, { title: string; tone: string; body: (r: NonNul
     title: 'Refund approved',
     tone: 'border-emerald-600/30 bg-white',
     body: r => (r.auto_approved
-      ? 'Approved automatically under this event refund policy. The money is on its way back to the card you paid with, usually within 5 to 10 business days.'
-      : 'The organiser approved your refund. The money is on its way back to the card you paid with, usually within 5 to 10 business days.'),
+      ? `Approved automatically under this event refund policy. The money is on its way back to the card you paid with, usually within ${REFUND_ARRIVAL_WINDOW}.`
+      : `The organiser approved your refund. The money is on its way back to the card you paid with, usually within ${REFUND_ARRIVAL_WINDOW}.`),
   },
   refunded: {
     title: 'Refunded',

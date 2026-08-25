@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { PricingClient } from './pricing-client'
+import { resolveEventAccess } from '@/lib/organisations/event-access'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -23,15 +24,21 @@ export default async function DynamicPricingPage({ params }: Props) {
 
   if (eventError || !event) notFound()
 
-  // Verify ownership
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', event.organisation_id)
-    .eq('owner_id', user.id)
-    .single()
-
-  if (!org) notFound()
+  /*
+   * ACCESS, VIA THE SHARED GATE. Two defects in one line.
+   *
+   * PRIVILEGE: this filtered `.eq('owner_id', user.id)` on the SESSION client, and
+   * the column lockdown does not grant `authenticated` owner_id. PostgreSQL needs
+   * SELECT privilege on WHERE-clause columns, so the query was refused 42501, the
+   * row came back null, and the page 404'd. That is the failure that forced the
+   * emergency GRANT still on production.
+   *
+   * AUTHORISATION: it admitted the OWNER only. resolveEventAccess admits owner or
+   * a member holding owner/admin/manager, matching updateEvent and
+   * resolveRefundScope, so a venue's manager can reach the dynamic pricing for an event they run.
+   */
+  const access = await resolveEventAccess(eventId)
+  if (!access.allowed) notFound()
 
   // Load tiers with dynamic pricing rules
   const { data: tiers, error: tiersError } = await supabase

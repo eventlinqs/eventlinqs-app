@@ -312,9 +312,174 @@ const ROOT = join(HERE, '..', '..')
  * cannot: it drives a real UPDATE against a real published event and requires the
  * trigger to refuse it, with controls proving the trigger does not simply refuse
  * everything.
+ *
+ * tests/unit/ci/event-detail-gate-causes.test.ts, for the three deterministic
+ * failures the mobile Lighthouse gate reported on the event-detail route on
+ * 2026-08-21 - a container opacity dragging an interactive control's contrast
+ * to 4.48:1, a first-run coach resizing the bottom-anchored container it sits
+ * in, and 54,778 bytes of Supabase client pulled on mount for a closed modal.
+ * All three lived in SHARED components, so all three were live well beyond the
+ * one URL the gate measures. The assertions are absences, so each detector is
+ * first shown failing on a sample that does contain what it looks for.
+ *
+ * RAISED AGAIN 2026-08-23, 217/2630 to 218/2660, for
+ * tests/unit/growth/nationwide-from-day-one.test.ts plus four wording
+ * assertions added to tests/unit/broadcast/digest-audience.test.ts, covering
+ * the founder ruling that opened the platform in every Australian city and
+ * state from day one: the founding-invite city gate (application AND the
+ * database CHECK behind it), the launch-queue consent wording, and the offer
+ * copy that tied a founding spot to Geelong or Melbourne. Every absence
+ * assertion in that file carries a negative control that feeds it the exact
+ * superseded wording, so none of them can pass vacuously.
+ *
+ * The last four of those tests are the ones that matter most, and they exist
+ * because the first pass at this ruling MISSED a gate. Every other assertion
+ * measures a constant or a string, and all of them were green while the admin
+ * waitlist bridge still ran `.in('city_slug', ['geelong', 'melbourne'])`, so
+ * the founder's invite list silently held nobody outside those two cities.
+ * The sweep walks all of src/ for that shape rather than checking one file.
  */
-const MIN_FILES = 215
-const MIN_TESTS = 2605
+/*
+ * RAISED AGAIN 2026-08-23 (later, same day), 218/2660 to 218/2675, for the
+ * founder ruling that ONE EVENT SHOWS THE RAIL, reversing the RAIL_MIN ruling
+ * of 16 August recorded in docs/roast/RAIL-MIN-RULING-2026-08-16.md.
+ *
+ * The file count did not move because this is a SWAP, and the swap is the
+ * point. tests/component/thin-categories-note.test.tsx and its component were
+ * DELETED, minus 5 tests: that note existed only to name the categories the
+ * threshold suppressed, so when the threshold went there was nothing left for
+ * it to name and it would have rendered nothing for ever.
+ * tests/unit/growth/one-event-shows-the-rail.test.ts replaces it, plus 20,
+ * sweeping all five rail-bearing surfaces for any count threshold that would
+ * hide a rail carrying a single event, and pinning invitationFillCount so a
+ * rail of one still renders four cards rather than looking like a broken
+ * shelf. Every absence assertion carries a negative control fed the exact
+ * thresholds that shipped (>= RAIL_MIN, >= 4, < 3, < 5).
+ *
+ * The last eight of those pin the INVITATION ANGLES, and they exist because
+ * removing the threshold exposed a second defect the threshold had been
+ * hiding: a rail of one asks for three invitation cards, only two angles
+ * existed, so the first and third rendered word for word identical side by
+ * side. Their negative control runs the exact two-angle expression that
+ * shipped and asserts that it DOES repeat.
+ */
+/*
+ * RAISED AGAIN 2026-08-23 (third time that day), 218/2675 to 219/2691, for
+ * tests/unit/seo/event-structured-data.test.ts, 16 tests, from the
+ * discoverability pass.
+ *
+ * They exist because a production audit that day found every one of the 36 live
+ * event pages VALID on Google's required set and yet missing `performer` on all
+ * 36, and `offers.validFrom` on 26 of them, while the event page was already
+ * loading the lineup in order to render it visibly. A source grep for the schema
+ * component would have passed the whole time: the component was rendered, it was
+ * simply handed less than it had.
+ *
+ * So these tests run the REAL payload builder (buildEventSchemaPayload, exported
+ * for exactly this) through the SAME validator the deployed-site audit uses,
+ * scripts/verify/event-structured-data-audit.mjs, so the test and the audit
+ * cannot drift into disagreeing about what valid means. The absence assertions
+ * (no empty-string venue field, no performer key when there is no lineup, no
+ * previousStartDate without EventRescheduled) each carry a negative control.
+ */
+/*
+ * RAISED AGAIN 2026-08-23 (fourth time that day), 219/2691 to 220/2718, for
+ * tests/unit/refunds/postponed-event-ladder.test.ts, 27 tests, from the
+ * postponed-event ladder.
+ *
+ * The competitor-parity audit called this the only launch-blocking gap, and the
+ * measurement before the build confirmed both halves: policy.ts overrode the
+ * organiser's refund policy for a CANCELLED event and had no branch at all for
+ * a POSTPONED one, and findDisbursableEvents() selected on end_date alone and
+ * did not even SELECT events.status, so a postponed event was paid out once its
+ * ORIGINAL end date passed.
+ *
+ * Each of the three overrides carries a negative control that runs the SAME
+ * order against a LIVE event and asserts it IS refused, by policy_no_refunds or
+ * window_closed. Without those, "the refund was allowed" would also pass on a
+ * policy module that allowed everything, which is exactly what a permissive
+ * default looks like from the outside.
+ *
+ * TWO DEFECTS IN THIS PASS WERE CAUGHT BY EXISTING GATES RATHER THAN BY ME, and
+ * both are recorded here because they are the argument for keeping those gates:
+ *   - no-clock-during-render caught a toLocaleDateString with no timeZone in
+ *     the new module. Server renders in UTC, the browser in the visitor's zone,
+ *     so an evening Sydney deadline printed as the previous day.
+ *   - this canary's own sibling signal caught an unhandled ECONNREFUSED: the
+ *     seo test imports the audit script for its validator, and that script
+ *     called main() at the top level, so importing it ran a live HTTP audit.
+ *     Every test still PASSED and vitest exited 1 on the rejection alone.
+ */
+/*
+ * RAISED AGAIN 2026-08-23 (fifth time that day), 220/2718 to 221/2747, for
+ * tests/unit/events/jurisdictional-completeness.test.ts, 29 tests, from the
+ * founder's standing rule that this platform operates in ALL of Australia and
+ * a partial list is a defect rather than an abbreviation.
+ *
+ * The defect it was written for: the event-creation form carried a
+ * hand-written list of five Australian timezones and omitted Australia/Hobart
+ * and Australia/Darwin, so an organiser in Tasmania or the Northern Territory
+ * could not select their own zone and had to pick somebody else's.
+ *
+ * For Darwin that was an hour of real error, not a cosmetic gap, and the test
+ * asserts the arithmetic rather than describing it: the NT does not observe
+ * daylight saving so Australia/Darwin is +09:30 all year, while
+ * Australia/Adelaide, the nearest zone the form did offer, is +10:30 for the
+ * whole daylight-saving season. Every event a Darwin organiser created between
+ * October and April carried a start time an hour out.
+ *
+ * The negative control runs the five-zone list that shipped and asserts it
+ * misses exactly TAS and NT.
+ */
+/*
+ * RAISED 2026-08-24, 221/2747 to 222/2754, for
+ * tests/unit/refunds/arrival-timeframe.test.ts, 7 tests.
+ *
+ * The platform stated how long a refund takes on EIGHT buyer-facing surfaces
+ * and disagreed with itself on two: the confirmation email said "3 to 5
+ * business days" and the cancelled-event banner said "within 5 business days",
+ * against Stripe's documented "approximately 5-10 business days"
+ * (https://docs.stripe.com/refunds). A buyer refused, then approved, then
+ * emailed was told 5-10, then 5-10, then 3-5, and the shortest number was in
+ * the email they keep.
+ *
+ * WORTH RECORDING: an EXISTING test asserted the wrong sentence verbatim, so
+ * the defect was PROTECTED by the suite. Correcting the copy failed CI until
+ * that assertion was rewritten to compare against REFUND_ARRIVAL_WINDOW rather
+ * than a literal. A test that pins a literal pins whatever the literal says,
+ * including a mistake.
+ *
+ * The sweep carries negative controls fed BOTH shipped wordings, and two more
+ * proving it does NOT flag the payout figure (3 to 5 business days after an
+ * event) or the response SLA (2 business days), which are different promises
+ * about different parties.
+ */
+/*
+ * RAISED 2026-08-24, 222/2754 to 223/2764, for
+ * tests/unit/ci/gate-url-determinism.test.ts, 10 tests.
+ *
+ * The Lighthouse gate was a coin toss. scripts/ci/resolve-gate-urls.mjs picked
+ * the FIRST /events/<slug> the preview sitemap listed, and the sitemap query
+ * had no ORDER BY, so "first" was whatever Postgres returned that day. Two
+ * consecutive runs on the same branch audited DIFFERENT pages:
+ *
+ *   135be599  /events/seat-proof-fifty-nwltxi   0.83, 0.75, 0.73  PASS
+ *   8044480b  /events/cat-indie-sounds-...      0.74, 0.73, 0.73  FAIL
+ *
+ * Nothing about event-page performance changed between them; the floor
+ * aggregates optimistic (best of three), so 0.83 cleared 0.80 and 0.74 did not.
+ * It blocked two merges.
+ *
+ * The selection is now a pure function of the SORTED slug list, and the gate
+ * audits THREE event pages instead of one. The test pins that widening as a
+ * FLOOR, because the cheap way to make this gate green is to audit one fast
+ * page, and a future pass must not be able to do that quietly.
+ *
+ * Its negative control runs the OLD head-of-list behaviour over the same two
+ * slugs in two orders and asserts that it does disagree with itself.
+ */
+const MIN_FILES = 223
+const MIN_TESTS = 2764
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
