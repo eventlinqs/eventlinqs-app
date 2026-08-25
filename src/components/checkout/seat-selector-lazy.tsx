@@ -188,13 +188,31 @@ export function SeatSelectorLazy(props: Props) {
   }
 
   if (seats === null) {
+    /*
+     * role="status", NOT a bare div with an aria-label.
+     *
+     * The first version of this skeleton was `<div aria-busy aria-label="...">`
+     * and it cost the Lighthouse accessibility floor on the very run that proved
+     * the performance fix: 0.97 against a floor of 1.00, identical on all three
+     * runs, failing `aria-prohibited-attr`. A plain div maps to role=generic,
+     * and a generic role is PROHIBITED from carrying an accessible name, so the
+     * label was both invalid and unannounced.
+     *
+     * `status` is a live region that permits a name and announces politely once,
+     * which is exactly the semantic: something is loading here, it is not urgent,
+     * and it will be replaced. The visible text is inside rather than only in the
+     * attribute, so the announcement does not depend on the label alone.
+     */
     return (
       <div
         ref={hostRef}
-        className={`${CHART_MIN_HEIGHT} animate-pulse rounded-2xl border border-ink-200 bg-ink-100/60`}
+        role="status"
         aria-busy="true"
-        aria-label="Loading the seating plan"
-      />
+        className={`flex ${CHART_MIN_HEIGHT} items-center justify-center rounded-2xl border border-ink-200 bg-ink-100/60`}
+      >
+        <span className="sr-only">Loading the seating plan</span>
+        <span aria-hidden="true" className="h-full w-full animate-pulse rounded-2xl bg-ink-100/60" />
+      </div>
     )
   }
 
