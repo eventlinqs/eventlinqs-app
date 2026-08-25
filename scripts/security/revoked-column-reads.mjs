@@ -127,8 +127,42 @@ function clientRole(src, varName, beforeIndex) {
 const findings = []
 const unresolved = []
 
+/**
+ * Inline `.select(SOME_CONSTANT)` before scanning.
+ *
+ * THE BLIND SPOT THIS CLOSES, found 25 August 2026 by drilling the new filter
+ * rule and watching it not fire. The matcher below requires the select argument
+ * to be a QUOTED STRING. A select written as
+ *
+ *     const PUBLIC_ORGANISATION_COLUMNS = 'id, name, slug, description, ...'
+ *     .select(PUBLIC_ORGANISATION_COLUMNS)
+ *
+ * matched nothing at all, so the entire query was invisible to this guard: not
+ * approved, not reported, simply never seen. That is worse than a false pass,
+ * because the count of scanned queries looked healthy the whole time.
+ *
+ * src/app/organisers/[handle]/page.tsx is exactly that shape, and it is the page
+ * whose every URL returned 404 to anonymous visitors while the sitemap
+ * advertised 38 of them.
+ *
+ * Substituting the constant's literal value into a COPY of the source is the
+ * smallest change that makes those queries visible, and it cannot alter what the
+ * matcher concludes about anything it could already see.
+ */
+function inlineSelectConstants(src) {
+  const consts = new Map()
+  for (const m of src.matchAll(/const\s+([A-Z][A-Z0-9_]*)\s*=\s*(['"`])([^'"`]*)\2/g)) {
+    consts.set(m[1], m[3])
+  }
+  if (consts.size === 0) return src
+  return src.replace(/\.select\(\s*([A-Z][A-Z0-9_]*)\s*([,)])/g, (whole, name, tail) =>
+    consts.has(name) ? `.select('${consts.get(name)}'${tail}` : whole,
+  )
+}
+
 for (const file of walk(SRC)) {
-  const src = readFileSync(file, 'utf8')
+  const raw = readFileSync(file, 'utf8')
+  const src = inlineSelectConstants(raw)
   const rel = path.relative(ROOT, file).replace(/\\/g, '/')
 
   for (const table of Object.keys(GRANTED)) {
@@ -156,6 +190,56 @@ for (const file of walk(SRC)) {
       const asked = columnsFor(table, selectText)
       const revoked = asked.filter((c) => c === '*' || !GRANTED[table].includes(c))
       if (revoked.length) findings.push({ rel, line, table, revoked, role })
+
+      /*
+       * A FILTER ON A REVOKED COLUMN IS DENIED EXACTLY LIKE A SELECT ON ONE.
+       * Added 25 August 2026, after this guard passed while every organiser
+       * profile page returned 404 to anonymous visitors.
+       *
+       * src/app/organisers/[handle]/page.tsx selected the six granted columns,
+       * which this guard checked and approved, and then filtered
+       * `.eq('status', 'active')`. `status` is one of the 28 columns revoked
+       * from anon. Postgres refuses a query that REFERENCES a column the role
+       * cannot select anywhere at all, WHERE clause included, and it refuses it
+       * as `42501 permission denied for table organisations` without naming the
+       * column. The page discarded the error, saw null and called notFound().
+       *
+       * The result was 38 organiser URLs advertised in the sitemap, every one a
+       * 404, for weeks. Checking only the select list was checking half the
+       * query.
+       */
+      /*
+       * THE CHAIN ENDS AT THE NEXT QUERY, not at a fixed character count.
+       *
+       * The first version of this rule read a flat 1200 characters and picked up
+       * filters belonging to the NEXT query in the file, reporting
+       * `venues -> event_id, start_date`. Those are events columns; venues has
+       * neither. Four findings, all false, which is how a new rule earns itself
+       * a quick switch-off.
+       */
+      // Start looking AFTER the current match, not after its first character:
+      // m[0] contains this query's own `.from(...)`, so searching from m.index+1
+      // finds that one and truncates the chain to about six characters. The
+      // filter list then comes back empty and the rule silently never fires,
+      // which is exactly what the drill caught it doing.
+      const afterMatch = m.index + m[0].length
+      const rest = src.slice(afterMatch)
+      const nextFrom = rest.search(/\.from\(\s*['"`]/)
+      const chain = src.slice(afterMatch, afterMatch + (nextFrom === -1 ? 1200 : Math.min(nextFrom, 1200)))
+      const filterCols = new Set()
+      for (const f of chain.matchAll(/\.(eq|neq|gt|gte|lt|lte|like|ilike|in|is|contains|order)\(\s*['"`]([a-z_]+)['"`]/gi)) {
+        filterCols.add(f[2])
+      }
+      for (const f of chain.matchAll(/\.match\(\s*\{([^}]*)\}/g)) {
+        for (const pair of f[1].split(',')) {
+          const key = pair.split(':')[0]?.trim().replace(/^['"`]|['"`]$/g, '')
+          if (key) filterCols.add(key)
+        }
+      }
+      const revokedFilters = [...filterCols].filter((c) => !GRANTED[table].includes(c))
+      if (revokedFilters.length) {
+        findings.push({ rel, line, table, revoked: revokedFilters, role, kind: 'filter' })
+      }
     }
 
     // Embedded reads: `organisation:organisations(name, email)` inside a select on

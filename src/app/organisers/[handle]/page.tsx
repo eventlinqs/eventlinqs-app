@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
@@ -56,14 +57,62 @@ export interface PublicOrganisation {
 
 const PUBLIC_ORGANISATION_COLUMNS = 'id, name, slug, description, logo_url, website'
 
+/**
+ * EVERY ORGANISER PROFILE 404ed FOR ANONYMOUS VISITORS. Fixed 25 August 2026.
+ *
+ * This function selected the six public columns, which is correct, and then
+ * filtered `.eq('status', 'active')`, which is not: `status` is one of the 28
+ * columns migration 20260808000010 REVOKED from anon. Postgres refuses a query
+ * that references a column the role cannot select ANYWHERE, including in a WHERE
+ * clause, and it refuses it with `42501 permission denied for table
+ * organisations` rather than naming the column.
+ *
+ * The `const { data } =` above discarded that error, so the page saw null, called
+ * notFound(), and returned 404. Measured on TEST: all seven organiser slugs
+ * tried returned 404, while /sitemap.xml advertised 38 of those URLs to Google.
+ * A crawler following them spends the budget on nothing and learns the section
+ * is unreliable, which is a direct tax on the SEO engine the growth plan runs on.
+ *
+ * THE FIX follows the precedent already set for the PUBLIC EVENT PAGE, recorded
+ * in the no-unowned-organisation-read guard's admissions: there is no caller to
+ * own anything, the reader is an anonymous visitor, so the privileged column is
+ * read server-side with the admin client and COLLAPSED before it can travel. The
+ * status never reaches the returned object and never crosses the client
+ * boundary; the only thing that leaves this function is the same six public
+ * fields it always returned.
+ *
+ * The public client is deliberately still used for the six-column read, so the
+ * column lockdown continues to be enforced by the database on the fields that
+ * actually get rendered.
+ */
 async function fetchOrganiser(slug: string): Promise<PublicOrganisation | null> {
+  const admin = createAdminClient()
+  const { data: gate, error: gateError } = await admin
+    .from('organisations')
+    .select('id, status')
+    .eq('slug', slug)
+    .maybeSingle()
+
+  if (gateError) {
+    console.error('[organiser-profile] status gate failed for %s:', slug, gateError)
+    return null
+  }
+  const row = gate as { id: string; status: string } | null
+  if (!row || row.status !== 'active') return null
+
   const supabase = createPublicClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('organisations')
     .select(PUBLIC_ORGANISATION_COLUMNS)
-    .eq('slug', slug)
-    .eq('status', 'active')
+    .eq('id', row.id)
     .maybeSingle()
+
+  if (error) {
+    // Never swallow this again. A discarded error here is what turned a
+    // permission problem into a silent 404 on every organiser profile.
+    console.error('[organiser-profile] public column read failed for %s:', slug, error)
+    return null
+  }
   return (data as PublicOrganisation | null) ?? null
 }
 

@@ -83,6 +83,22 @@ const DRILLS = [
    * tag nothing invalidates, which is how those 8 survived the delete.
    */
   {
+    /*
+     * The defect that produced this rule: every organiser profile page returned
+     * 404 to anonymous visitors for weeks, while /sitemap.xml advertised 38 of
+     * those URLs to Google. The page selected only granted columns, which the
+     * guard checked and approved, and then FILTERED on `status`, which anon
+     * cannot select. Postgres refuses the whole query. Checking the select list
+     * alone was checking half the query.
+     */
+    name: 'an anon query filters on a column revoked from anon',
+    guard: 'scripts/security/revoked-column-reads.mjs',
+    file: 'src/app/organisers/[handle]/page.tsx',
+    find: "    .eq('id', row.id)",
+    replace: "    .eq('id', row.id)\n    .eq('status', 'active')",
+    expect: 'revoked',
+  },
+  {
     name: 'a discovery surface spells out the publication predicate again',
     guard: `${GUARDS}/one-visibility-source.mjs`,
     file: 'src/lib/events/home-queries.ts',
