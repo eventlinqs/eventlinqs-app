@@ -92,6 +92,28 @@ tally two lines down, wrapped by the formatter. Left alone, this pass would have
 gone and rewritten five working guards on the word of a broken reader. The
 pattern now spans lines, and the count fell from 22 to 7.
 
+## The boundary, with its number, because a scope decision without one is a guess
+
+Swept over all of `scripts/`, on the tree as it now stands:
+
+```
+scripts that announce a pass                            227
+  printing no count at all                               66
+    of those, a CI step or a registered guard             0
+    of those, one-off session scripts                    66
+```
+
+**Nothing live is left mute.** The 66 are the accumulated one-off scripts of past
+sessions: `batch-*`, `capture-*`, `after-*`, screenshot runs, one-shot probes.
+None is invoked by a workflow, none is registered in the guard runner, and none
+can go green in front of anybody. Bringing them under the contract would be 66
+edits to code nothing runs, which is churn, and it would put 66 more entries in
+front of the reader of this report for no gain in safety.
+
+The line is drawn at what can PASS IN FRONT OF SOMEBODY: a CI step, or a guard on
+the build. If one of those 66 is ever wired into a workflow, check 1 picks it up
+on the next run without anybody remembering to.
+
 ## What the guard cannot see, stated rather than implied
 
 That a declared count is TRUE. `declareWork` prints whatever it is handed, and a
