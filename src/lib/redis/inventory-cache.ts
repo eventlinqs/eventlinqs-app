@@ -1,9 +1,28 @@
-import { unstable_cache } from 'next/cache'
+import { unstable_cache, revalidateTag } from 'next/cache'
 import { getRedisClient } from './client'
 import { createPublicClient } from '@/lib/supabase/public-client'
 
 const TTL_SECONDS = 30
 const STATIC_REVALIDATE_SECONDS = 30
+
+/**
+ * THE TAG ON THE SEAT COUNTS, AND THE ONE THING THAT CLEARS IT.
+ *
+ * `getTierInventoryStatic` and `getEventInventoryStatic` are what the public
+ * event page reads to decide whether to show "N left" or "Sold out". Both carry
+ * this tag. Until 25 August 2026 NOTHING in the repository ever passed it to
+ * revalidateTag, so the only thing that expired it was its own 30 second timer.
+ *
+ * That is the same shape that put eight deleted events on /events: a tag
+ * declared where a cache is built and never named where the data changes. It is
+ * smaller here only because the window is 30 seconds rather than thirty minutes,
+ * and 30 seconds of a stale seat count during an on-sale is still a buyer
+ * clicking a ticket that is already gone.
+ *
+ * Exported so scripts/guards/maintained-aggregates.mjs can see that the
+ * declaration and the invalidation name the same string.
+ */
+export const INVENTORY_CACHE_TAG = 'inventory'
 
 export interface TierInventory {
   sold: number
@@ -179,8 +198,53 @@ export async function invalidateEventInventory(eventId: string): Promise<void> {
 /**
  * Recompute and refresh BOTH the tier cache AND the event aggregate cache
  * from the database. Call this after any inventory change.
+ *
+ * THERE ARE THREE LAYERS HERE AND THIS USED TO CLEAR ONLY TWO. Redis holds the
+ * hot copy, Next's data cache holds the copy the STATIC render reads, and
+ * Postgres owns the truth. Both call sites (the reservation server action and
+ * the Stripe webhook) called this function faithfully, and it cleared Redis and
+ * left the Next layer alone, so the public event page went on serving the
+ * pre-sale seat count for up to its full 30 second window after a sale.
+ *
+ * `revalidateTag(tag, { expire: 0 })`, NOT `updateTag`, and the reason is
+ * mechanical rather than a preference. `updateTag` "is only available inside
+ * Server Functions"
+ * (node_modules/next/dist/docs/01-app/03-api-reference/04-functions/cacheTag.md)
+ * and one of the two callers is the Stripe webhook, a route handler, where it
+ * would throw. The same docs name this exact case:
+ *
+ *   "For webhooks or third-party services that need immediate expiration, you
+ *    can pass `{ expire: 0 }` as the second argument"
+ *   (.../04-functions/revalidateTag.md, shipped with next@16.3.0,
+ *    read 25 August 2026)
+ *
+ * The second argument is not optional cosmetics: omitting it is deprecated in
+ * next@16, and the default `"max"` profile is stale-while-revalidate, which
+ * would serve the pre-sale count one more time to the very next buyer. For a
+ * seat that has just been taken, serving it once more is the failure.
  */
 export async function refreshInventoryCache(tierId: string, eventId: string): Promise<void> {
+  /*
+   * FIRST, AND SYNCHRONOUSLY, WHICH IS NOT A STYLE CHOICE.
+   *
+   * Both callers invoke this fire-and-forget:
+   *
+   *     refreshInventoryCache(item.ticket_tier_id, eventId).catch(err => ...)
+   *
+   * with no await. Everything after the first `await` in here therefore runs
+   * once the caller has moved on, and `revalidateTag` needs the request store
+   * that Next binds to the surrounding request or action. Placed at the bottom
+   * it would be reached outside that store, throw, and be swallowed by the
+   * caller's `.catch` - a cache invalidation that logs an error and clears
+   * nothing, which is the same as not having it.
+   *
+   * The statement before the first await runs in the caller's context, so it is
+   * placed there. It is also correct in ordering terms: every caller runs this
+   * AFTER the database write, so the truth is already committed and expiring the
+   * copy first can only mean a fresh read.
+   */
+  revalidateTag(INVENTORY_CACHE_TAG, { expire: 0 })
+
   await invalidateTierInventory(tierId)
   await invalidateEventInventory(eventId)
   // Re-populate from DB immediately so next read is fast
@@ -253,11 +317,11 @@ async function fetchEventInventoryFromDb(eventId: string): Promise<EventInventor
 export const getTierInventoryStatic = unstable_cache(
   fetchTierInventoryFromDb,
   ['tier-inventory-static-v1'],
-  { revalidate: STATIC_REVALIDATE_SECONDS, tags: ['inventory'] },
+  { revalidate: STATIC_REVALIDATE_SECONDS, tags: [INVENTORY_CACHE_TAG] },
 )
 
 export const getEventInventoryStatic = unstable_cache(
   fetchEventInventoryFromDb,
   ['event-inventory-static-v1'],
-  { revalidate: STATIC_REVALIDATE_SECONDS, tags: ['inventory'] },
+  { revalidate: STATIC_REVALIDATE_SECONDS, tags: [INVENTORY_CACHE_TAG] },
 )

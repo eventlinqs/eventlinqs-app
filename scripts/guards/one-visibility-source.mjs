@@ -147,8 +147,29 @@ for (const f of files) {
       if (/EVENT_DATA_CACHE_TAGS/.test(t)) continue // reads the registry, fine
       const name = t.replace(/^['"`]|['"`]$/g, '')
       if (REGISTERED.has(name)) continue
-      // Image/other caches that hold no event rows are out of scope.
-      if (/^pexels/.test(name) || name === 'picker-cities' || name === 'inventory') continue
+      /*
+       * Caches that hold no event ROWS are out of scope HERE, and are covered
+       * elsewhere. This rule asks one narrow question: does a cache of event
+       * rows use the registry that revalidateEventSurfaces clears? The broader
+       * question, "is EVERY tag in the tree invalidated by something", belongs
+       * to scripts/guards/maintained-aggregates.mjs, which answers it for all
+       * twelve tags and prints a verdict per tag.
+       *
+       * THE CONSTANT IS MATCHED AS WELL AS THE LITERAL. `inventory` was spelt
+       * `'inventory'` at both declaration sites until 25 August 2026, when it
+       * became the exported INVENTORY_CACHE_TAG so the declaration and the new
+       * invalidation could not drift apart. This list compared strings, so the
+       * rename made a recognised out-of-scope tag look like an unregistered one
+       * and turned the guard red on a tree that had just been improved.
+       */
+      if (
+        /^pexels/.test(name) ||
+        name === 'picker-cities' ||
+        name === 'inventory' ||
+        name === 'INVENTORY_CACHE_TAG'
+      ) {
+        continue
+      }
       const line = raw.split(/\r?\n/).findIndex(l => l.includes(name)) + 1
       rule2.push({ file: r, line, tag: name })
     }

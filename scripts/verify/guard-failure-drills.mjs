@@ -65,6 +65,39 @@ console.log(`[drills] effective reconcile_refund: ${NEW_EFFECTIVE_RECONCILE}`)
 
 const DRILLS = [
   /*
+   * maintained-aggregates, three drills.
+   *
+   * The class: a number written down in a second place with nothing keeping it
+   * in step. Four instances landed in one week, in four different mechanisms
+   * (a cached rail, a cached file, a held-seat count, an addon count), and none
+   * failed a test because in every case the code was correct.
+   */
+  {
+    name: 'a cache tag is declared and nothing anywhere invalidates it',
+    guard: `${GUARDS}/maintained-aggregates.mjs`,
+    file: 'src/lib/redis/inventory-cache.ts',
+    find: '  revalidateTag(INVENTORY_CACHE_TAG, { expire: 0 })',
+    replace: '  void INVENTORY_CACHE_TAG',
+    expect: 'nothing anywhere calls revalidateTag',
+  },
+  {
+    name: 'a new stored counter is incremented with no registry entry',
+    guard: `${GUARDS}/maintained-aggregates.mjs`,
+    file: 'src/lib/payments/connect-ledger.ts',
+    find: '    total_volume_cents: (orgRow.total_volume_cents as number) + params.grossRevenueCents,',
+    replace:
+      '    total_volume_cents: (orgRow.total_volume_cents as number) + params.grossRevenueCents,\n    lifetime_refund_cents: (orgRow.lifetime_refund_cents as number) + 1,',
+    expect: 'is not in AGGREGATE_REGISTRY',
+  },
+  {
+    name: 'a tag exemption is left behind after its cache is deleted',
+    guard: `${GUARDS}/maintained-aggregates.mjs`,
+    file: 'src/lib/images/suburb-photo.ts',
+    find: "tags: ['pexels', 'pexels-suburb']",
+    replace: "tags: ['pexels']",
+    expect: "is no longer declared anywhere",
+  },
+  /*
    * sitemap-resolves, four drills, one per check, because all four of these
    * failures were live in src/app/sitemap.ts at the same time on 25 August 2026
    * and every gate in the repository was green.

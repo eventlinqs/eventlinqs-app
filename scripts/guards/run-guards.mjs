@@ -31,6 +31,8 @@
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
  *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
  *                              names a column that does not exist
+ *   maintained-aggregates      no cache tag without an invalidation, no stored counter
+ *                              without a declared maintainer
  *   no-unguarded-production-write  no script writes to a database without checking which one
  *   one-db-connection-source   no script assembles its own database connection
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
@@ -344,6 +346,14 @@ const GUARDS = [
   // shapes published and the routes that exist. A sweep of the 586 URLs the
   // production sitemap published returned 48 hard 404s.
   'scripts/guards/sitemap-resolves.mjs',
+  // A SECOND COPY MUST HAVE SOMETHING KEEPING IT IN STEP. Four failures of this
+  // one class landed in a week, in four different mechanisms: a cached rail with
+  // eight deleted events, a sitemap with 48 dead URLs, reserved_count holding
+  // seats nobody held, and event_addons.sold_count stuck at 0 while the checkout
+  // capped an addon at total_capacity minus it. This guard makes the link
+  // between the write and the copy unskippable; the drift drive measures whether
+  // the maintainers are actually correct.
+  'scripts/guards/maintained-aggregates.mjs',
   // Founder ruling 2026-08-13. `.env.local` in this repo points at the
   // PRODUCTION project, deliberately, because the app is run against production
   // from here. An audit that day found ten write-capable scripts with a
