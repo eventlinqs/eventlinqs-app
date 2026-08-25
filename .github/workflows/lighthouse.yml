@@ -132,21 +132,29 @@ jobs:
           echo "Gating mobile on:"
           cat gate-urls.txt
 
-      - name: Warm preview (unrecorded curl pass)
-        # Warm ISR + the next/image optimiser before measuring, so the gate
-        # reflects warm-cache reality (the cold-start race is Issue #42). The
-        # el-audit=1 cookie disables motion + hover wash, matching the audited
-        # profile (src/app/layout.tsx).
-        run: |
-          set -euo pipefail
-          while IFS= read -r u; do
-            [ -z "$u" ] && continue
-            for i in 1 2; do
-              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 45 \
-                -H 'Cookie: el-audit=1' "$u" || echo "000")
-              echo "  warm[$i] $code $u"
-            done
-          done < gate-urls.txt
+      - name: Warm preview (unrecorded pass, pages AND the image optimiser)
+        # THIS STEP USED TO CURL THE PAGE TWICE AND CALL THAT WARMING THE IMAGE
+        # OPTIMISER. It is not. Every optimised image is a SEPARATE request to
+        # /_next/image?url=...&w=...&q=..., each width generated on its first
+        # request, and a request for the HTML never touches one. So the gate
+        # measured a warm page with a cold hero on every run, which is the
+        # cold-start race the config calls Issue #42.
+        #
+        # Measured on 25 August 2026 against the preview for 711b6cd6, same URL:
+        #   in CI, after the old warm pass   perf 0.75, 0.72, 0.71
+        #   from a warmed client             perf 0.91, LCP 2,768ms
+        #
+        # scripts/ci/warm-preview.mjs pulls every /_next/image URL out of the
+        # markup and requests each variant. Its own first version read src and
+        # srcset case-sensitively and found ONE variant on a page carrying
+        # twenty-one, because Next 16 with React 19 serialises the attribute as
+        # srcSet; it scans the raw markup for the path now.
+        #
+        # NO THRESHOLD IS CHANGED. This changes what is warm before the stopwatch
+        # starts, which is what the warmed-preview requirement in CLAUDE.md
+        # already asks for. The el-audit=1 cookie disables motion and hover wash,
+        # matching the audited profile. Warming never fails the build.
+        run: node scripts/ci/warm-preview.mjs gate-urls.txt
 
       - name: Run Lighthouse CI
         run: |
