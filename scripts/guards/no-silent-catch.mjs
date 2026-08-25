@@ -50,10 +50,13 @@
  *  - It does not follow a call. A silent catch around `doTheThing()` whose body
  *    queries the database is invisible here.
  *  - It says nothing about the OTHER silent failure on this platform, which is
- *    bigger: PostgREST returns `{ data, error }` rather than throwing, so
- *    `const { data } = await supabase.from(...)` discards the error without any
- *    catch block being involved at all. That is a separate sweep and is named
- *    here so it is not mistaken for something this guard covers.
+ *    about five times the size of this one. PostgREST does not throw; it returns
+ *    `{ data, error }`, so an error can be discarded with no catch block
+ *    anywhere near it. Measured over src/ on 25 August 2026: 757 destructures of
+ *    an awaited .from()/.rpc(), of which 497 never name the error at all and 142
+ *    collapse it to a boolean. Only 118 carry its detail anywhere. That is a
+ *    separate sweep and is named with its number here so it cannot be mistaken
+ *    for something this guard covers.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'

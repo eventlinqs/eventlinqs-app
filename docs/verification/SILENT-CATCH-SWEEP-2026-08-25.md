@@ -149,13 +149,29 @@ not the name.
   exclusion is a list, and a list can be short by one.
 - It does not follow a call. A silent catch around `doTheThing()` whose body
   queries the database is invisible to it.
-- **It says nothing about the larger silent failure on this platform.** PostgREST
-  returns `{ data, error }` rather than throwing, so
-  `const { data } = await supabase.from(...)` discards the error with no catch
-  block involved at all. `src/lib/consent/record.ts` does exactly that four times
-  over, inside the very functions this sweep just gave a voice to. That is a
-  separate sweep, it is bigger than this one, and it is named here so it is not
-  mistaken for something already covered.
+- **It says nothing about the larger silent failure on this platform, which is
+  measured here rather than gestured at.** PostgREST does not throw. It returns
+  `{ data, error }`, so an error can be discarded with no catch block anywhere
+  near it, and this guard cannot see any of it.
+
+  Swept the same way, over `src/`:
+
+  ```
+  destructures of an awaited .from() / .rpc()   757
+    error carried somewhere with its detail     118
+    error named but collapsed to a boolean      142
+    error not named at all (data only)          497
+  ```
+
+  `src/lib/consent/record.ts` is the shape, four times over, inside the very
+  functions this pass just gave a voice to: `const { error } = await admin
+  .from(...).upsert(...)` then `return !error`. The caller learns that it failed
+  and never learns why, which is one better than the venue block and a long way
+  short of enough.
+
+  **That is a separate sweep, it is roughly five times the size of this one, and
+  it is named with its number here so it cannot be mistaken for something already
+  covered.**
 
 ## Gates at the time of writing
 
