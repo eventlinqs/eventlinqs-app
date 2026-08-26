@@ -54,46 +54,57 @@ const NOT_THE_WORD = /agricultur|apicultur|aquacultur|horticultur|africultures|p
 const EXEMPT = [
   {
     file: 'src/lib/seo/permanent-redirects.ts',
+    occurrences: 4,
     why: 'the redirect table has to SPELL the retired path, because that path is the thing being redirected. Every destination in the table is a /community route',
   },
   {
     file: 'src/lib/events/search-params.ts',
+    occurrences: 4,
     why: 'CATEGORY_SLUG_ALIASES maps the retired slug to the community-first one. It is the string arriving in a URL somebody already shared',
   },
   {
+    file: 'src/lib/images/spine.ts',
+    occurrences: 2,
+    why: 'TWO SCENE DESCRIPTORS, first-nations and pasifika-maori, name a storage OBJECT that exists under that name in the bucket. Found on 26 August 2026 by this guard the moment the file stopped being exempt as a whole, which is the widening working. Changing either string without copying the object first serves a 404 instead of a photo, so they are recorded in docs/POST-LAUNCH-FINDINGS.md and left. The category key that generated the retired path on every homepage WAS fixed the same day',
+  },
+  {
     file: 'src/lib/broadcast/short-links.ts',
+    occurrences: 1,
     why: 'the RESERVED list holds back the two legacy paths so a minted share code cannot shadow a live 301',
   },
   {
     file: 'src/lib/ai/magic-start.ts',
+    occurrences: 1,
     why: 'the system prompt has to name the banned word in order to prohibit it',
   },
   {
-    file: 'src/lib/images/spine.ts',
-    why: 'the licensed-photo library key. The OBJECTS in storage carry this path; see docs/verification/BANNED-WORD-SWEEP-2026-08-26.md for why renaming them is a separate, riskier job than renaming this string',
-  },
-  {
     file: 'scripts/guards/no-banned-word-anywhere.mjs',
+    occurrences: null,
     why: 'this guard: it has to spell the word it is looking for',
   },
   {
     file: 'supabase/seed/imagery-map.json',
+    occurrences: 30,
     why: 'the seed imagery map keys mirror the STORAGE PATHS exactly. It cannot change until the objects do, and the objects are the separate job in docs/verification/BANNED-WORD-SWEEP-2026-08-26.md',
   },
   {
     file: 'supabase/seed/seed-cover-pool.json',
+    occurrences: 1,
     why: 'same: a cover-pool key that names a storage folder. Changing it here without renaming the object serves a 404 instead of a photo',
   },
   {
     file: 'scripts/batch-11.1-d3-2-culture-parity.mjs',
+    occurrences: 1,
     why: 'a one-off audit script from the taxonomy migration. Its FILENAME records the retired taxonomy it was written to check; two documents cite it by name, so renaming it breaks those citations for no gain',
   },
   {
     file: 'scripts/lh-batch-5-5-cultures.mjs',
+    occurrences: 1,
     why: 'same: a one-off Lighthouse batch from the same migration, cited by name in two documents',
   },
   {
     file: 'scripts/copy-tell-gate.mjs',
+    occurrences: null,
     why: 'the copy gate carries the same word in its own detector and in the reasons on its allowlist',
   },
 ]
@@ -139,6 +150,7 @@ let scanned = 0
 let exemptedFiles = 0
 const hits = []
 const exemptionUsed = new Set()
+const overBudget = []
 
 for (const file of files) {
   const rel = file.replaceAll(SEP, '/')
@@ -162,6 +174,27 @@ for (const file of files) {
   if (fileExemption) {
     exemptedFiles += 1
     if (found.length > 0) exemptionUsed.add(rel)
+    /*
+     * AN EXEMPTION EXCUSES A COUNT, NOT A FILE.
+     *
+     * WHY THIS WAS ADDED, 26 August 2026: src/lib/images/spine.ts was exempted
+     * as a whole file for its one legitimate storage key. That exemption also
+     * hid the fact that the SAME key was generating the retired path into every
+     * homepage image URL, and it would have gone on hiding a second, third or
+     * tenth occurrence for ever. Asked whether this guard would have caught the
+     * defect it was written for, the honest answer was NO: the file was exempt,
+     * so nothing in it was ever read.
+     *
+     * A budget of `null` means "this file is about the word, do not count".
+     */
+    if (fileExemption.occurrences !== null && found.length > fileExemption.occurrences) {
+      overBudget.push({
+        file: rel,
+        allowed: fileExemption.occurrences,
+        actual: found.length,
+        extra: found.slice(fileExemption.occurrences),
+      })
+    }
     continue
   }
 
@@ -182,7 +215,7 @@ console.log(`  looking for: identifiers, string comparisons, slugs, URLs, storag
 console.log(`  directory exemptions (${EXEMPT_DIRS.length}):`)
 for (const d of EXEMPT_DIRS) console.log(`    ${d.prefix}${String.fromCharCode(10)}      ${d.why}`)
 console.log(`  file exemptions (${EXEMPT.length}):`)
-for (const e of EXEMPT) console.log(`    ${e.file}${String.fromCharCode(10)}      ${e.why}`)
+for (const e of EXEMPT) console.log(`    ${e.file}  (excuses ${e.occurrences === null ? 'any, it is about the word' : e.occurrences})${String.fromCharCode(10)}      ${e.why}`)
 
 /*
  * STALENESS. An exemption whose file no longer contains the word is excusing
@@ -201,6 +234,20 @@ if (stale.length > 0 || absent.length > 0) {
   console.error('An exemption whose reason has expired is the family this guard was')
   console.error('written for: copy-tell-gate.mjs excused captions.ts on the grounds that')
   console.error('the live database row still carried the slug, and it did not.')
+  process.exit(1)
+}
+
+if (overBudget.length > 0) {
+  console.error('')
+  console.error(`FAIL: ${overBudget.length} exemption(s) now excuse MORE than they were reviewed for:`)
+  for (const o of overBudget) {
+    console.error(`  ${o.file}  reviewed for ${o.allowed}, found ${o.actual}`)
+    for (const e of o.extra) console.error(`    line ${e.line}  ${e.text}`)
+  }
+  console.error('')
+  console.error('An exemption excuses a COUNT, not a file. A whole-file exemption is how')
+  console.error('spine.ts hid the retired storage key in every homepage image URL while')
+  console.error('this guard reported PASS.')
   process.exit(1)
 }
 

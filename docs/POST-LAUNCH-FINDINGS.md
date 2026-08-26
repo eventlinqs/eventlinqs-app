@@ -24,12 +24,26 @@ Nothing in this file is a blocker. Anything that was a blocker was fixed.
   report entries that no longer match anything and treat them as failures. See
   `docs/verification/BANNED-WORD-SWEEP-2026-08-26.md` section 4.
 
-- **`src/lib/images/spine.ts` still generates the retired storage path.** Line 180
-  carries `key: 'arts-cult` + `ure'`, so `buildUrl` emits
-  `stock/categories/<retired>/theatre-interior-evening-1440.avif`. One line. It is
-  exempted in `no-banned-word-anywhere.mjs` with that reason. The storage copy in
-  the founder runbook is the safe first half; this line is the second half and is
-  NOT done, so nothing switches on the next deploy.
+- **Six more production storage objects still carry the banned word in their
+  FILENAME**, under `stock/scenes/first-nations/cultural-ceremony-day-{480,960,1440}.avif`
+  and `stock/scenes/pasifika-maori/cultural-festival-day-{480,960,1440}.avif`.
+  Found on 26 August 2026 by `no-banned-word-anywhere` the moment `spine.ts`
+  stopped being exempt as a whole file, which is the widening working. Left
+  unchanged: renaming either descriptor without copying the objects first serves
+  a 404 instead of a photo on the First Nations and Pasifika scene surfaces. Two
+  scoped exemptions carry that reason.
+
+- **Whole-file exemptions were the blind spot, and are now count-scoped.** Every
+  entry in `no-banned-word-anywhere` declares how many occurrences it excuses; a
+  file that grows a new one fails the build. It caught two of its own budgets
+  being off by one on the first run. The other twelve exemption lists in the repo
+  are still whole-file.
+
+- **RESOLVED 26 August 2026, kept here for the sequence it imposes.**
+  `src/lib/images/spine.ts` generated the retired category storage path into every
+  homepage image URL. The key now reads `arts-community`, so **the storage copy
+  must land on production BEFORE this deploys** or the Arts tile serves a 404.
+  That ordering is the only thing about this entry that is still live.
 
 - **`/events` grid heading spacing vs the sticky filter bar.** `scroll-mt-40`
   clears it for anchors and restored scroll positions. Not measured against every

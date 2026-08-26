@@ -175,9 +175,11 @@ const COMMUNITY_TO_SCENE: Record<string, string> = {
 const CATEGORY_TILE_SLOTS: Record<string, SpineSlot> = {
   music:                { role: 'categories', key: 'music',                city: null, descriptor: 'live-band-day' },
   sports:               { role: 'categories', key: 'sports',               city: null, descriptor: 'fans-cheering-day' },
-  // lookup slug is community-first ('arts-community'); the storage path component
-  // ('key') is the original asset folder name in the bucket. See SCENE_SLOTS note.
-  'arts-community':       { role: 'categories', key: 'arts-culture',           city: null, descriptor: 'theatre-interior-evening', focal: '50% 45%' },
+  // Lookup slug and storage key are BOTH community-first since 26 August 2026.
+  // The key used to be the retired folder name, which is how the banned word
+  // survived in a URL browsers requested on every homepage. The object is copied
+  // to the new folder BEFORE this deploys; see docs/verification/BANNED-WORD-SWEEP-2026-08-26.md.
+  'arts-community':       { role: 'categories', key: 'arts-community',         city: null, descriptor: 'theatre-interior-evening', focal: '50% 45%' },
   'food-drink':         { role: 'categories', key: 'food-drink',           city: null, descriptor: 'street-food-night' },
   family:               { role: 'categories', key: 'family',               city: null, descriptor: 'outdoor-picnic-day' },
   festival:             { role: 'categories', key: 'festival',             city: null, descriptor: 'field-stage-day' },
