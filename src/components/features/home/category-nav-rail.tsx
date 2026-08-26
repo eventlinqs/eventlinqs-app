@@ -5,6 +5,9 @@ import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getSpineCategoryTile } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP } from '@/lib/ui/rhythm'
+import { createPublicClient } from '@/lib/supabase/public-client'
+import { CURATED_HOMEPAGE_CATEGORY_SLUGS } from '@/lib/categories/homepage-curation'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * CategoryNavRail - the homepage category entry, directly under the hero.
@@ -21,19 +24,42 @@ import { RHYTHM_GAP } from '@/lib/ui/rhythm'
  * plain "Explore" so the category is always reachable.
  */
 
-const CATEGORIES: { slug: string; name: string }[] = [
-  { slug: 'music', name: 'Music' },
-  { slug: 'comedy', name: 'Comedy' },
-  { slug: 'food-drink', name: 'Food and drink' },
-  { slug: 'festival', name: 'Festivals' },
-  { slug: 'arts-community', name: 'Arts and theatre' },
-  { slug: 'nightlife', name: 'Nightlife' },
-  { slug: 'sports', name: 'Sport' },
-  { slug: 'family', name: 'Family' },
-  { slug: 'business-networking', name: 'Business' },
-]
+/**
+ * WHICH nine and in WHAT order is the curation and lives in one place. The
+ * display NAME is read from `event_categories`, because a name typed here is a
+ * copy of a value that already exists, and this one had already drifted on five
+ * of the nine tiles before anybody looked.
+ *
+ * Founder ruling 26 August 2026, and the reasoning is in
+ * src/lib/categories/homepage-curation.ts.
+ */
+async function curatedCategories(): Promise<{ slug: string; name: string }[]> {
+  const supabase = createPublicClient()
+  const { data, error } = await supabase
+    .from('event_categories')
+    .select('slug, name')
+    .in('slug', [...CURATED_HOMEPAGE_CATEGORY_SLUGS])
+
+  if (error) {
+    // NOT SWALLOWED. A failed read here would otherwise render a rail of tiles
+    // with no names at all, which reads as a broken homepage rather than as a
+    // database problem. scripts/guards/no-silent-catch.mjs exists for this shape.
+    captureException(error, { where: 'features/home/category-nav-rail:curatedCategories' })
+  }
+
+  const bySlug = new Map((data ?? []).map(c => [c.slug, c.name]))
+  // The curated ORDER is authoritative; the database supplies the name only.
+  // A slug missing from the database is dropped rather than rendered nameless,
+  // and scripts/guards/curated-categories-exist.mjs fails the build before that
+  // can reach anybody.
+  return CURATED_HOMEPAGE_CATEGORY_SLUGS.flatMap(slug => {
+    const name = bySlug.get(slug)
+    return name ? [{ slug, name }] : []
+  })
+}
 
 export async function CategoryNavRail({ counts }: { counts: Record<string, number> }) {
+  const CATEGORIES = await curatedCategories()
   const [tiles, communityDoorImage] = await Promise.all([
     Promise.all(
       CATEGORIES.map(async (c, i) => {

@@ -36,6 +36,7 @@
  *   no-silent-catch            no catch around I/O discards its error in silence
  *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
+ *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-unguarded-production-write  no script writes to a database without checking which one
  *   one-db-connection-source   no script assembles its own database connection
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
@@ -379,6 +380,12 @@ const GUARDS = [
   // run, because a hand-written list would have to be remembered and being
   // remembered is the thing that failed.
   'scripts/guards/steps-declare-work.mjs',
+  // THE HOMEPAGE MAY NOT TYPE OUT WHAT THE DATABASE ALREADY KNOWS. Nine
+  // category tiles carried hand-typed names and five had drifted from
+  // event_categories with nothing comparing them. The names are derived now, so
+  // a curated slug that no longer matches a row renders NOTHING and the rail
+  // silently shows eight tiles where it showed nine. This fails the build first.
+  'scripts/guards/curated-categories-exist.mjs',
   // Founder ruling 2026-08-13. `.env.local` in this repo points at the
   // PRODUCTION project, deliberately, because the app is run against production
   // from here. An audit that day found ten write-capable scripts with a

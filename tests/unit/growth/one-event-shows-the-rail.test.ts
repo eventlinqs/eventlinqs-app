@@ -123,10 +123,27 @@ describe('a rail of one still reads as deliberate', () => {
     expect(invitationFillCount(12)).toBe(0)
   })
 
-  it('an empty rail is never padded into looking full', () => {
-    // A rail with no events must not render three invitations and pretend to
-    // be a rail. EventRailSection returns null first; this is the second lock.
-    expect(invitationFillCount(0)).toBe(0)
+  it('an empty rail fills with invitations, because it is a sales surface', () => {
+    /*
+     * REVERSED by founder ruling, 26 August 2026: "An empty rail is a sales
+     * surface, not a gap. My homepage already carries 'The next live night here
+     * is yours' and that should exist on every thin rail, not only some."
+     *
+     * This assertion previously locked 0, on the reasoning that a rail of pure
+     * invitations pretends to be a rail. What that produced in practice was the
+     * /events popular rail vanishing entirely, heading and all, the moment the
+     * catalogue emptied.
+     *
+     * Three is the formula's own answer for a count of zero, and it is also
+     * exactly the number of distinct angles in INVITATION_ANGLE_ORDER, so an
+     * empty rail fills without repeating a card.
+     *
+     * THE HOMEPAGE IS UNAFFECTED: EventRailSection still returns null at zero
+     * events, by the founder's instruction of the same day to leave the homepage
+     * alone. This governs the /events rails only.
+     */
+    expect(invitationFillCount(0)).toBe(3)
+    expect(INVITATION_ANGLE_ORDER.length).toBeGreaterThanOrEqual(invitationFillCount(0))
   })
 })
 

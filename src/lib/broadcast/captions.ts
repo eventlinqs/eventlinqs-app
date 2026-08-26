@@ -97,7 +97,11 @@ type EventFamily =
 export function eventFamily(categorySlug?: string | null): EventFamily {
   const slug = (categorySlug ?? '').toLowerCase()
   if (slug === 'music' || slug === 'nightlife' || slug === 'festival') return 'music'
-  if (slug === 'arts-culture' || slug === 'film' || slug === 'fashion' || slug === 'pride') {
+  // `arts-culture` was renamed to `arts-community` when the banned word left the
+  // data. This comparison was not renamed with it, so every arts event has been
+  // falling through to the default family since. Measured against TEST on
+  // 26 August 2026: event_categories holds 22 slugs and NONE contains "culture".
+  if (slug === 'arts-community' || slug === 'film' || slug === 'fashion' || slug === 'pride') {
     return 'arts'
   }
   if (slug === 'food-drink') return 'market'

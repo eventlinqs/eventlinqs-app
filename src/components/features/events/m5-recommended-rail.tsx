@@ -35,7 +35,12 @@ export async function RecommendedRail({
   seeAllHref = '/events?sort=popular',
 }: Props) {
   if (headline === null) return null
-  if (events.length === 0) return null
+  /*
+   * `if (events.length === 0) return null` used to sit here. Founder ruling
+   * 26 August 2026: "An empty rail is a sales surface, not a gap." The rail
+   * keeps its heading and its See all link and fills with invitation cards,
+   * exactly as a rail with one event does.
+   */
 
   const top = events.slice(0, MAX_RAIL_COUNT)
   const title = headline === 'recommended' ? 'Recommended for you' : 'Popular this week'
@@ -51,6 +56,35 @@ export async function RecommendedRail({
         <SnapRailScroller
           railLabel={title}
           header={{ title, headingId: 'm5-rec-heading', headerLink: { href: seeAllHref, label: 'See all' } }}
+          /*
+           * CONSTANT PEEK: BUILT, MEASURED, AND LEFT OFF PENDING A RULING.
+           *
+           * Enabling it is one line: peek={{ pitchBase: 272, pitchSm: 304 }}.
+           * Measured on this branch, 26 August 2026, with it ON:
+           *
+           *    390   1 whole card, peek 35%   (the one-card floor wins)
+           *    768   1 whole card, peek 51%
+           *   1024   2 whole cards, peek 53%
+           *   1440   3 whole cards, peek 54%
+           *   1920   3 whole cards, peek 54%
+           *
+           * Consistent across four of the five, which beats Eventbrite's
+           * desktop-only consistency. THE COST IS ALIGNMENT: at 1440 the track
+           * shrinks from 1336 to 1056, so the rail ends 280px short of the
+           * container while the filter bar above and the grid below still run
+           * full width, and the header arrows detach from the track's right
+           * edge. That is a layout change, and DESIGN-LOCK says stop and say so
+           * rather than ship it.
+           *
+           * The root arithmetic, so the next reader does not re-derive it: a
+           * constant peek needs the container to divide by the card pitch.
+           * Eventbrite gets 53% at both desktop widths because their 360px card
+           * divides their 1272px container exactly; they choose the card width
+           * to fit the container. Ours is fixed at 288 and the available widths
+           * are 358 / 720 / 960 / 1336, which no single card width divides
+           * cleanly. Half a card at all five breakpoints is not reachable
+           * without per-breakpoint card widths.
+           */
         >
           {cards.map((c, i) => (
             <div

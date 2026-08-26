@@ -24,7 +24,11 @@ export async function EventsPopularSection({ filterActive, city, seeAllHref }: P
   if (filterActive) return null
 
   const events = await fetchPopularThisWeekPublic(12, city)
-  if (events.length === 0) return null
-
+  /*
+   * `if (events.length === 0) return null` used to sit here, and it was the
+   * SECOND gate on the same rail: RecommendedRail carried one too, so /events
+   * lost its Popular this week heading twice over the moment the catalogue
+   * emptied. Founder ruling 26 August 2026: an empty rail is a sales surface.
+   */
   return <RecommendedRail events={events} headline="popular" seeAllHref={seeAllHref} />
 }
