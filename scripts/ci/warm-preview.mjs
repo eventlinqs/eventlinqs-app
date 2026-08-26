@@ -14,7 +14,7 @@
  * So the gate measured a page whose HTML was warm and whose hero image was
  * still cold, on every run, while its own comment said otherwise. That is the
  * cold-start race the config calls Issue #42, and it is why the homepage and
- * `/culture/*` carry a warn-level performance assertion instead of an error one.
+ * the legacy community routes carry a warn-level performance assertion rather
  *
  * Measured on 25 August 2026 against the preview for 711b6cd6:
  *

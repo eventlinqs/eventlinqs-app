@@ -35,7 +35,7 @@
  * If the credentials are genuinely absent this guard says so and FAILS rather
  * than skipping: a check that cannot look is not a check that passed.
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 
 const CURATION_FILE = 'src/lib/categories/homepage-curation.ts'
@@ -50,6 +50,20 @@ function curatedSlugs() {
     process.exit(1)
   }
   return [...block[1].matchAll(/'([^']+)'/g)].map(m => m[1])
+}
+
+/*
+ * CREDENTIALS. prebuild always has them, because `npm run build` refuses to
+ * start without NEXT_PUBLIC_SUPABASE_URL. A bare `npm run guards` or the drill
+ * harness may not, so a local .env.test is read as a fallback BEFORE giving up.
+ * That is not a bypass: with neither the environment nor the file, this still
+ * fails rather than skipping.
+ */
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL && existsSync('.env.test')) {
+  for (const line of readFileSync('.env.test', 'utf8').split(String.fromCharCode(10))) {
+    const m = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim())
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2]
+  }
 }
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL

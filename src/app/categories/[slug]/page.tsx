@@ -83,7 +83,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * space total: every real category slug now lands somewhere that renders that
  * category's events.
  *
- * The alias map is applied first so `/categories/arts-culture`, the pre-rename
+ * The alias map is applied first so the pre-rename arts slug (the retired one,
  * spelling that is still in the wild, forwards to the live slug rather than
  * 404ing.
  */

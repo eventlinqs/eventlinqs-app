@@ -260,6 +260,33 @@ const DRILLS = [
     expect: 'no CI step invokes any more',
   },
   /*
+   * no-banned-word-anywhere, two drills, one per blind spot the copy gate had.
+   */
+  {
+    name: 'the banned word is planted in a STORAGE PATH',
+    guard: `${GUARDS}/no-banned-word-anywhere.mjs`,
+    file: 'src/lib/images/city-photo.ts',
+    find: 'export',
+    replace: [
+      "const DRILL_PATH = 'stock/categories/arts-cult" + "ure/theatre.avif'",
+      'void DRILL_PATH',
+      'export',
+    ].join('\n'),
+    expect: 'with no reviewed exemption',
+  },
+  {
+    name: 'the banned word is planted in a STRING COMPARISON',
+    guard: `${GUARDS}/no-banned-word-anywhere.mjs`,
+    file: 'src/lib/images/community-photo.ts',
+    find: 'export',
+    replace: [
+      "const DRILL_SLUG = (s: string) => s === 'arts-cult" + "ure'",
+      'void DRILL_SLUG',
+      'export',
+    ].join('\n'),
+    expect: 'with no reviewed exemption',
+  },
+  /*
    * sitemap-resolves, four drills, one per check, because all four of these
    * failures were live in src/app/sitemap.ts at the same time on 25 August 2026
    * and every gate in the repository was green.
