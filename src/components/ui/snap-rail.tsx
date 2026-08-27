@@ -64,6 +64,7 @@ interface SnapRailProps {
   containerBg?: 'canvas' | 'ink-100'
   /** Tailwind gap utility for the scroll track. Default 'gap-3'. */
   cardGap?: CardGap
+  peek?: { pitchBase: number; pitchSm: number }
   children: ReactNode
 }
 
@@ -72,6 +73,7 @@ interface SnapRailScrollerProps {
   containerBg?: 'canvas' | 'ink-100'
   /** Tailwind gap utility for the scroll track. Default 'gap-3'. */
   cardGap?: CardGap
+  peek?: { pitchBase: number; pitchSm: number }
   /**
    * Optional structured header. When provided, the scroller renders
    * a full top row with the headline on the left and arrows + progress
@@ -312,12 +314,19 @@ function ScrollTrack({
   railLabel,
   onKeyDown,
   gapClass,
+  peek,
   children,
 }: {
   scrollRef: React.RefObject<HTMLDivElement | null>
   railLabel: string
   onKeyDown: (e: React.KeyboardEvent) => void
   gapClass: string
+  /**
+   * Card pitch (card width + gap) at each breakpoint, in px, for the constant
+   * peek. OPT IN: a rail that does not pass this keeps the old behaviour
+   * exactly, so no rail is trimmed on a pitch nobody measured.
+   */
+  peek?: { pitchBase: number; pitchSm: number }
   children: ReactNode
 }) {
   // CONTAINED look (founder law): NO edge-fade masks and NO negative-margin
@@ -343,7 +352,19 @@ function ScrollTrack({
             e.stopPropagation()
           }
         }}
-        className={`rail-stagger flex ${gapClass} overflow-x-auto scroll-smooth pb-3 pt-1 scrollbar-none focus-visible:outline-none`}
+        className={`rail-stagger flex ${gapClass} overflow-x-auto scroll-smooth pb-3 pt-1 scrollbar-none focus-visible:outline-none${peek ? ' rail-track-peek' : ''}`}
+        style={
+          peek
+            ? ({
+                // Half a card, held at every breakpoint. The arithmetic is in
+                // .rail-track-peek in globals.css; these are just the inputs.
+                '--rail-pitch-base': `${peek.pitchBase}px`,
+                '--rail-peek-base': `${Math.round((peek.pitchBase - 16) / 2)}px`,
+                '--rail-pitch-sm': `${peek.pitchSm}px`,
+                '--rail-peek-sm': `${Math.round((peek.pitchSm - 16) / 2)}px`,
+              } as React.CSSProperties)
+            : undefined
+        }
       >
         {children}
       </div>
@@ -355,6 +376,7 @@ export function SnapRailScroller({
   railLabel,
   containerBg = 'canvas',
   cardGap = 'gap-3',
+  peek,
   header,
   children,
 }: SnapRailScrollerProps) {
@@ -410,6 +432,7 @@ export function SnapRailScroller({
         railLabel={railLabel}
         onKeyDown={onKeyDown}
         gapClass={cardGap}
+        peek={peek}
       >
         {children}
       </ScrollTrack>
@@ -425,6 +448,7 @@ export function SnapRail({
   railLabel,
   containerBg = 'canvas',
   cardGap = 'gap-3',
+  peek,
   children,
 }: SnapRailProps) {
   const { scrollRef, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
@@ -474,6 +498,7 @@ export function SnapRail({
           railLabel={railLabel}
           onKeyDown={onKeyDown}
           gapClass={cardGap}
+        peek={peek}
         >
           {children}
         </ScrollTrack>

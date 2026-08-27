@@ -50,7 +50,7 @@ async function slowScroll(page) {
   });
 }
 
-function getRGBHex(color) {
+function _getRGBHex(color) {
   if (!color || color === 'rgba(0, 0, 0, 0)' || color === 'transparent') return null;
   const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
   if (!match) return color;
@@ -62,8 +62,8 @@ function getRGBHex(color) {
 
 async function collectMeasurements(page, slug, url, viewport) {
   return await page.evaluate(
-    ({ slug, url, viewport }) => {
-      function getStyle(selector, prop) {
+    ({ _slug, _url, _viewport }) => {
+      function _getStyle(selector, prop) {
         try {
           const el = document.querySelector(selector);
           if (!el) return null;
@@ -83,7 +83,7 @@ async function collectMeasurements(page, slug, url, viewport) {
         return `#${r}${g}${b}`;
       }
 
-      function measureTypo(selector) {
+      function _measureTypo(selector) {
         const el = document.querySelector(selector);
         if (!el) return { selectorUsed: selector, fontFamily: null, fontSizePx: null, fontWeight: null, lineHeight: null, letterSpacing: null };
         const cs = window.getComputedStyle(el);
@@ -101,7 +101,7 @@ async function collectMeasurements(page, slug, url, viewport) {
       const h1Selectors = ['h1', '.event-title', '[data-testid="event-title"]'];
       const h2Selectors = ['h2', 'section h2'];
       const h3Selectors = ['h3', 'section h3'];
-      const bodySelectors = ['body', 'p', 'main p'];
+      const _bodySelectors = ['body', 'p', 'main p'];
       const smallSelectors = ['small', '.caption', 'figcaption', 'time', '.text-sm'];
 
       let h1El = null;
@@ -346,7 +346,7 @@ async function collectMeasurements(page, slug, url, viewport) {
 }
 
 async function collectDensity(page, viewport) {
-  return await page.evaluate(({ vw, vh }) => {
+  return await page.evaluate(({ _vw, vh }) => {
     // Count event cards above fold
     const cardSelectors = [
       'a[href*="events.humanitix"]',

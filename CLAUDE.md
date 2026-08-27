@@ -44,6 +44,7 @@ silently follow the stale doc.
 | Setting up a new worktree or clone | Law 8. Run `git config core.hooksPath .githooks` before the first commit |
 | Pinning or changing ANY version: a runtime, a dependency, a platform setting, an API version, a framework target | Law 9 (current by default, never backwards). Fetch the vendor's support schedule FIRST and cite it; never resolve a mismatch by downgrading |
 | A version disagreement between two environments (`.nvmrc`, `engines.node`, a workflow pin, a dashboard setting) | Law 9. Bring the OLDER one forward, never the newer one back |
+| Handing the founder ANY manual step: a dashboard click, a file edited by hand, a command repeated | Law 10 (script the founder's step). Script it and offer it as one command, or name the law that reserves it, or say what a machine cannot do |
 | Reporting any feature or task done | Definition of Done (SHIP 100%, A to Z) |
 | Growth, sharing, invites, referral, attribution, the wedge, the levers | Growth plan, `event-demand-engine` skill |
 | Discovery, feed, follows, alerts, push, who's-going, recommendations | Growth plan (the demand engine), `docs/MOAT-DEMAND-ENGINE-PLAN.md`, `event-demand-engine` skill |
@@ -73,7 +74,8 @@ silently follow the stale doc.
 Law 2 (evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich)
 - Law 5 (zero dead links) - Law 6 (render, never generate) - Law 7 (research
 before recommending, no generic knowledge) - Law 8 (authorship, the founder is
-the sole author) - Law 9 (current by default, never backwards) - Scene layer -
+the sole author) - Law 9 (current by default, never backwards) - Law 10 (script the founder's
+step, and offer it first) - Scene layer -
 Design system - Motion - Copy and banned
 content - Fee system - Venue Revenue Sharing Program - Verification and gates -
 Tooling - Authority docs - Skills.
@@ -610,6 +612,51 @@ checked, so a reader can see how fresh the claim is instead of trusting it, and
 it says in its own header what it cannot see: the runtime only, never every
 dependency's support status. That remainder is enforced by clause 1 and by
 reading `npm install` output rather than scrolling past it.
+
+## Law 10: script the founder's step, and offer it first (founder ruling 2026-08-26)
+
+**Any step that would otherwise be done by hand by the founder MUST be scripted
+and offered as ONE command, at the moment it is identified, unless a standing law
+reserves it for him.** Offering it is the default, never an afterthought.
+
+The test is not "could he do this himself". It is "is a machine capable of doing
+this". If the answer is yes, the script is part of the deliverable, and a runbook
+step that reads "open the dashboard and repeat this three times" is an unfinished
+piece of work rather than an instruction.
+
+**WHY THIS EXISTS.** On 26 August 2026 a handover ended with a founder step:
+open the Supabase storage dashboard and copy three objects from one folder to
+another. The Supabase UI offers Get URL, Download, Rename, Move and Delete, and
+no Copy, so the real instruction was download-then-upload, three times, by hand.
+It cost twenty minutes. The whole operation was one call to `storage.copy()`,
+server-side, which the agent held the credential for the entire time and
+mentioned only after the fact, as an aside, once the founder complained.
+
+The same handover had already listed a second one: propagating a rotated database
+password into four `.env.local` files by hand, which is precisely the shape that
+leaves one stale and produces a `28P01` from a script somebody runs days later.
+
+**THE THREE RULES.**
+
+1. **Identify it at handover, not afterwards.** Every step assigned to the
+   founder is stated with a verdict: SCRIPTED (with the command), or RESERVED
+   (naming the law), or IMPOSSIBLE (naming what a machine cannot do, for example
+   a value that does not exist until a dashboard mints it). A step with no
+   verdict has not been thought about.
+2. **Split the step before assigning it.** Most manual steps are a small
+   irreducible act wrapped in scriptable work. Rotating a password is a click
+   that mints a new value, which is genuinely his, plus a four-file propagation
+   and a proof, which are not. Hand him the click and script the rest.
+3. **The script proves itself.** It refuses before it acts, it never prints a
+   secret, it is idempotent, and it verifies by observing the result rather than
+   by trusting its own API call. `scripts/ops/copy-spine-category-objects.mjs`
+   and `scripts/ops/rotate-db-password.mjs` are the reference shape.
+
+**WHAT IS RESERVED, and stays reserved.** Applying a migration to production is
+the founder's, by his ruling of 26 August 2026, restated: a production schema
+change is the one thing he wants to press himself. That is a decision about
+authority, not capability, and Law 10 does not touch it. See Verification and
+gates, Migrations.
 
 ## Scene layer (locked, national) - V2, research-backed
 

@@ -1,0 +1,63 @@
+01. Homepage as a stranger  
+      URL      /
+      heading  "Live events across Australia: music, scenes, festivals and community"
+      fields   LanguageEnglish (AU)
+      buttons  What are you in the mood for?/ | Melbourne
+02. Ways in that a stranger can see  
+      "Event Organisers" -> /organisers
+      "Get Started" -> /signup
+      "Open slotKnow someone who runs trending nights?Send them here. Listing is free, and they keep every attendee relationship they earn.Invite an organiser" -> /organisers
+      "Organiser guide" -> /organisers
+      "Organiser agreement" -> /legal/organiser-terms
+03. Signup page  
+      URL      /signup
+      heading  "Every community. Every event. One platform."
+      fields   Full name * | Email * | Password * | Keep me posted on events in my area: a weekly local digest and occasional EventLinqs updates by email. You can unsubscribe at any time.
+      buttons  Create account
+04. Filled the signup form  as stranger.125028@example.com
+05. Immediately after Create account  
+      URL      /signup
+      heading  "Every community. Every event. One platform."
+      fields   Full name * | Email * | Password * | Keep me posted on events in my area: a weekly local digest and occasional EventLinqs updates by email. You can unsubscribe at any time.
+      buttons  Create account
+      ERRORS   We could not complete that just now because a service we depend on is unavailable. This is our end, not yours. Please tr
+06. What a stranger must do next  visible actions: Create account | Skip to main content | EVENTLINQS. | Browse events | Terms | Privacy Policy | Sign in
+07. Trying the dashboard  
+      URL      /login?redirect=%2Fdashboard
+      heading  "Every community. Every event. One platform."
+      fields   Email * | Password *
+      buttons  Sign in | Send me a magic link instead
+08. Trying to create an event  
+      URL      /login?redirect=%2Fdashboard%2Fevents%2Fcreate
+      heading  "Every community. Every event. One platform."
+      fields   Email * | Password *
+      buttons  Sign in | Send me a magic link instead
+
+errors:
+01. Creating the account
+      stranger.134901@example.com
+02. Right after Create account
+      URL     /signup
+      heading "Every community. Every event. One platform."
+      fields  Full name* | Email* | Password* | Keep me posted on events in my
+      buttons Create account
+      ERRORS  We could not send that email just now. This is a problem on our side, not with your account. Please try again in a few minutes.Con
+      onscreen "Skip to main content EVENTLINQS . Every community. Every event. One platform. The ticketing platform built for every community. Discover events, sell "
+03. Visiting /dashboard
+      URL     /login?redirect=%2Fdashboard
+      heading "Every community. Every event. One platform."
+      fields  Email* | Password*
+      buttons Sign in | Send me a magic link instead
+      onscreen "Skip to main content EVENTLINQS . Every community. Every event. One platform. The ticketing platform built for every community. Discover events, sell "
+04. Visiting /dashboard/organisation
+      URL     /login?redirect=%2Fdashboard%2Forganisation
+      heading "Every community. Every event. One platform."
+      fields  Email* | Password*
+      buttons Sign in | Send me a magic link instead
+      onscreen "Skip to main content EVENTLINQS . Every community. Every event. One platform. The ticketing platform built for every community. Discover events, sell "
+05. Visiting /dashboard/events/create
+      URL     /login?redirect=%2Fdashboard%2Fevents%2Fcreate
+      heading "Every community. Every event. One platform."
+      fields  Email* | Password*
+      buttons Sign in | Send me a magic link instead
+      onscreen "Skip to main content EVENTLINQS . Every community. Every event. One platform. The ticketing platform built for every community. Discover events, sell "

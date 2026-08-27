@@ -133,7 +133,7 @@ async function main() {
     process.exit(1)
   }
 
-  const { parsed, paths } = readPinnedSet()
+  const { parsed, _paths } = readPinnedSet()
   parsedCache = parsed
   const ordered = orderedPaths(parsed)
 

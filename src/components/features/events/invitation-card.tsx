@@ -131,12 +131,20 @@ export function InvitationCard({ variant = 'landscape', angle = 'organiser', sub
 
 /**
  * How many invitation cards a rail needs so its track reads full. Real
- * events always come first; invitations only top up a SPARSE rail (1 to 4
- * real events) and vanish entirely once five or more real events exist.
- * A zero-event rail keeps its own designed empty state instead.
+ * events always come first; invitations top up a sparse rail and vanish
+ * entirely once five or more real events exist.
+ *
+ * ZERO IS INCLUDED, founder ruling 26 August 2026: "An empty rail is a sales
+ * surface, not a gap." The line `if (realCount === 0) return 0` used to sit
+ * here, and it is what turned ten homepage rails into nothing at all the day
+ * the demo events were deleted: the rail had no cards, so EventRailSection's
+ * zero check hid the whole section and took the heading with it.
+ *
+ * The formula already answers 3 for a count of zero. Nothing else changed.
+ * Three is also exactly the number of distinct angles in
+ * INVITATION_ANGLE_ORDER, so an empty rail fills without repeating a card.
  */
 export function invitationFillCount(realCount: number): number {
-  if (realCount === 0) return 0
   const MIN_FULL = 5
   return Math.max(0, Math.min(MIN_FULL - realCount, 3))
 }

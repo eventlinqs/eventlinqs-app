@@ -36,7 +36,7 @@
  *   node scripts/verify/schema-provenance.mjs
  *   node scripts/verify/schema-provenance.mjs --json
  */
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readdirSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { openProject } from '../lib/production-write-preflight.mjs'
 

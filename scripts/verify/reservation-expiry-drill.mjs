@@ -38,7 +38,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
-import pg from 'pg'
+import _pg from 'pg'
 import { assertNotProduction, assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
 assertNotProduction({ envFile: '.env.test' })
@@ -199,7 +199,7 @@ try {
   // ------------------------------------------------------------------ B
   hr('B. AN EXPIRED RESERVATION CANNOT BE PAID FOR AS THOUGH IT WERE LIVE')
   await reset()
-  const rB = await reserve(`expiry-B-${STAMP}`)
+  const _rB = await reserve(`expiry-B-${STAMP}`)
   const { data: resvB } = await db.from('reservations').select('id').eq('event_id', event.id)
     .eq('status', 'active').limit(1).maybeSingle()
   const orderB = await makeOrder(resvB.id)
@@ -237,7 +237,7 @@ try {
   // ------------------------------------------------------------------ C
   hr('C. THE PAYMENT THAT LANDS AFTER SOMEBODY ELSE BOUGHT THE SEAT')
   await reset()
-  const rC1 = await reserve(`expiry-C1-${STAMP}`)
+  const _rC1 = await reserve(`expiry-C1-${STAMP}`)
   const { data: resvC1 } = await db.from('reservations').select('id').eq('event_id', event.id)
     .eq('status', 'active').limit(1).maybeSingle()
   const orderC1 = await makeOrder(resvC1.id)

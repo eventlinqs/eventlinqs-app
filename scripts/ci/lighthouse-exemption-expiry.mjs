@@ -6,7 +6,7 @@
  *
  * A warn-level relaxation in lighthouserc.json is a promise to come back. In
  * practice nobody does, because a warn never fails anything and so never asks
- * to be revisited. Two such waivers (the homepage and /culture/*) had been
+ * to be revisited. Two such waivers (the homepage and the legacy community
  * sitting at warn-level for months with a "restore when Issue #42 closes" note
  * and no mechanism to make that happen.
  *

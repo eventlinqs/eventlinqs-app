@@ -49,13 +49,13 @@ async function slowScroll(page) {
 }
 
 async function collectMeasurements(page, pageName, url, viewport) {
-  return await page.evaluate(({ pageName, url, viewport }) => {
-    function getStyle(selector, prop) {
+  return await page.evaluate(({ _pageName, _url, _viewport }) => {
+    function _getStyle(selector, prop) {
       try {
         const el = document.querySelector(selector);
         if (!el) return null;
         return window.getComputedStyle(el)[prop] || null;
-      } catch (e) {
+      } catch (_e) {
         return null;
       }
     }
@@ -73,7 +73,7 @@ async function collectMeasurements(page, pageName, url, viewport) {
           lineHeight: cs.lineHeight,
           letterSpacing: cs.letterSpacing,
         };
-      } catch (e) {
+      } catch (_e) {
         return null;
       }
     }
@@ -143,7 +143,7 @@ async function collectMeasurements(page, pageName, url, viewport) {
           if (!c || c === 'rgba(0, 0, 0, 0)' || c === 'transparent' || c === bodyBg || c === bodyColor) continue;
           colorCounts[c] = (colorCounts[c] || 0) + 1;
         }
-      } catch (e) {}
+      } catch (_e) {}
     }
     const sortedColors = Object.entries(colorCounts)
       .sort((a, b) => b[1] - a[1])
@@ -303,7 +303,7 @@ async function run() {
             await acceptBtn.click();
             await page.waitForTimeout(800);
           }
-        } catch (e) {}
+        } catch (_e) {}
 
         await slowScroll(page);
         await page.waitForTimeout(1000);
@@ -362,7 +362,7 @@ async function run() {
     const m = r.measurements || {};
     const playwrightWorked = r.playwrightWorked !== false;
 
-    const mainContainerPaddingXMobilePx = r.measurements
+    const _mainContainerPaddingXMobilePx = r.measurements
       ? null // collected below separately - will note in measurements
       : null;
 

@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
@@ -30,7 +30,7 @@ async function slowScroll(page) {
 
 async function collectMeasurements(page, viewport) {
   return await page.evaluate((vp) => {
-    const getStyle = (selector, prop) => {
+    const _getStyle = (selector, prop) => {
       const el = document.querySelector(selector);
       if (!el) return null;
       return window.getComputedStyle(el)[prop] || null;
@@ -180,7 +180,7 @@ async function collectMeasurements(page, viewport) {
     }
 
     // Motion
-    let motionEl = null, transitionDuration = null, transitionTimingFunction = null, elementDescribed = null;
+    let _motionEl = null, transitionDuration = null, transitionTimingFunction = null, elementDescribed = null;
     const motionSelectors = ['button', 'a[class*="btn"]', '[class*="cta"]', '[class*="event-card"] a'];
     for (const sel of motionSelectors) {
       const el = document.querySelector(sel);
@@ -189,7 +189,7 @@ async function collectMeasurements(page, viewport) {
         transitionDuration = cs.transitionDuration;
         transitionTimingFunction = cs.transitionTimingFunction;
         elementDescribed = sel + ' (' + (el.textContent || '').trim().slice(0, 40) + ')';
-        motionEl = el;
+        _motionEl = el;
         break;
       }
     }
@@ -267,7 +267,7 @@ async function capturePage(browser, url, outputDir, label, viewport, isMobile) {
 
   // Check if blocked
   const title = await page.title();
-  const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 500));
+  const _bodyText = await page.evaluate(() => document.body.innerText.slice(0, 500));
   console.log(`  Page title: ${title}`);
   const isBlocked = title.toLowerCase().includes('captcha') || title.toLowerCase().includes('access denied') || title.toLowerCase().includes('blocked');
   if (isBlocked) {

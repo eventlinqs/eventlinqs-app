@@ -180,7 +180,42 @@ export default async function EventsPage({ searchParams }: Props) {
           />
         ) : (
           <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <h2 className="sr-only">All events</h2>
+            {/*
+             * THE HEADING THIS SECTION NEVER SHOWED.
+             *
+             * It carried `<h2 className="sr-only">All events</h2>`, added on
+             * 3 May 2026 by commit 99c60744 purely to repair axe heading-order
+             * (h1 -> h2 -> h3) when the popular rail did not render. That commit
+             * says in its own message that it "keeps the visual layout
+             * unchanged", and it did: the section has never had a visible title,
+             * so /events showed a titled rail, a divider, and then a wall of
+             * cards belonging to nothing.
+             *
+             * Founder ruling 26 August 2026: every rail on the homepage carries
+             * a kicker, a headline and the gold rule, and this one must too.
+             * The markup below is copied from SnapRail's own header so the two
+             * are the same object rather than two things that look alike: same
+             * gold rule (h-8 w-0.5), same eyebrow type ramp, same
+             * .type-rail-heading h2. The heading TEXT is unchanged.
+             */}
+            {/*
+             * scroll-mt clears the sticky filter bar. Without it, an anchor or a
+             * restored scroll position lands with this heading underneath the
+             * bar: present in the DOM, invisible on the screen, which is the
+             * same outcome the sr-only h2 had and would have read as the bug
+             * coming back.
+             */}
+            <div className="mb-6 flex min-w-0 scroll-mt-40 items-start gap-3">
+              <div className="mt-1 h-8 w-0.5 shrink-0 bg-[var(--brand-accent-strong)]" aria-hidden />
+              <div className="min-w-0">
+                <p className="font-display text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
+                  Everything on
+                </p>
+                <h2 className="type-rail-heading font-headline uppercase tracking-tight text-[var(--text-primary)]">
+                  All events
+                </h2>
+              </div>
+            </div>
             {/* Results grid streams behind the designed zero-CLS skeleton - it is
                 below the fold (and below the popular rail), so this never affects
                 the LCP. Hero + filter bar render immediately above. */}

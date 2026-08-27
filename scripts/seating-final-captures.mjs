@@ -415,7 +415,7 @@ if (STAGES.has('mobile')) {
   // Close the sheet, MOVE the block with a drag on the canvas.
   await page.getByRole('button', { name: 'Close the block editor' }).click()
   const svg = page.locator('svg[role="application"]')
-  const box = await svg.boundingBox()
+  const _box = await svg.boundingBox()
   const seat = page.locator('svg[role="application"] circle[r="9"]').first()
   const sb = await seat.boundingBox()
   await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2)

@@ -393,6 +393,19 @@ export function classifySignupError(input: {
  * to: the 429 carries Retry-After. Rounded up to the minute, because a person
  * reading "wait 437 seconds" has to do arithmetic to act on it.
  */
+/**
+ * The sentence for a refusal the user cannot fix by waiting.
+ *
+ * Driven on 27 August 2026: with no Upstash configured, a brand new person's
+ * FIRST signup attempt was refused and they were told to wait ten minutes. The
+ * refusal had nothing to do with their behaviour and waiting would never have
+ * cleared it. Telling somebody to wait for a thing that will not change is worse
+ * than telling them nothing, because they do it.
+ */
+export function limiterUnavailableMessage(): string {
+  return 'We could not complete that just now because a service we depend on is unavailable. This is our end, not yours. Please try again shortly.'
+}
+
 export function rateLimitedMessage(retryAfterSeconds?: number | null): string {
   if (typeof retryAfterSeconds !== 'number' || !Number.isFinite(retryAfterSeconds) || retryAfterSeconds <= 0) {
     return authMessage('rate_limited')

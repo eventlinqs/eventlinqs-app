@@ -940,3 +940,59 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
   from { transform: scaleX(0); transform-origin: left center; }
   to   { transform: scaleX(1); transform-origin: left center; }
 }
+
+/* ---------------------------------------------------------------------------
+   CONSTANT RAIL PEEK (founder ruling, 26 August 2026)
+
+   "Keep the peek, make it constant. Hold roughly half a card at EVERY
+   breakpoint including 390 and 1024. Trim the track's usable width only; do not
+   touch card size, gap or layout."
+
+   Measured before this existed, on /events: the peek was an accident of
+   arithmetic and swung 35% / 42% / 21% / 47% / 47% across 390, 768, 1024, 1440
+   and 1920. The 21% at 1024 is the one that reads as a broken card rather than
+   an invitation to scroll.
+
+   Measured on the competitors the same day (docs/benchmark/rail-peek-2026-08-26):
+   Eventbrite AU holds 53% at both 1440 and 1920; Humanitix 84% at 1440 and 53%
+   at 1920. Both slice deliberately and both slice harder than we do, so the peek
+   itself is the convention. Neither is consistent across breakpoints, which is
+   the gap this closes.
+
+   HOW. The track is capped at a whole number of card pitches plus one fixed
+   half-card. `round(down, ...)` does the arithmetic in CSS, so it re-solves at
+   every viewport width with no JavaScript and no resize listener. Card width and
+   gap are untouched: only the visible width of the scroller changes, which is
+   the "show fewer" lever rather than the "make them smaller" one.
+--------------------------------------------------------------------------- */
+.rail-track-peek {
+  --rail-pitch: var(--rail-pitch-base);
+  --rail-peek: var(--rail-peek-base);
+  /*
+   * The max() floor is ONE whole card plus the peek, and it is load-bearing.
+   * Without it, 390px measured a 128px track with ZERO whole cards: available
+   * 358, peek 128, pitch 272, so round(down, 0.845) is 0 and the rail showed
+   * half a card and nothing else. A rule that divides cleanly at 1440 and
+   * annihilates the rail at 390 is worse than the inconsistency it replaced.
+   *
+   * Where the floor wins, max-width exceeds the container and does nothing, so
+   * the rail keeps its natural width. That is the honest outcome at 390: one
+   * whole card plus half of 256 needs 400px and only 358 exists, so half a card
+   * at EVERY breakpoint is arithmetically impossible without shrinking the card,
+   * which is forbidden. 390 keeps its natural peek instead.
+   */
+  max-width: max(
+    calc(var(--rail-pitch) + var(--rail-peek)),
+    calc(
+      round(down, (100% - var(--rail-peek)) / var(--rail-pitch)) * var(--rail-pitch) +
+        var(--rail-peek)
+    )
+  );
+}
+
+@media (min-width: 640px) {
+  .rail-track-peek {
+    --rail-pitch: var(--rail-pitch-sm);
+    --rail-peek: var(--rail-peek-sm);
+  }
+}

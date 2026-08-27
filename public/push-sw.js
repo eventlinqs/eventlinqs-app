@@ -11,7 +11,7 @@ self.addEventListener('push', function (event) {
   var payload
   try {
     payload = event.data.json()
-  } catch (e) {
+  } catch (_e) {
     payload = { title: 'EventLinqs', body: event.data.text(), url: '/' }
   }
   var title = payload.title || 'EventLinqs'

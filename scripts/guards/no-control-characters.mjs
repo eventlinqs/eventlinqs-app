@@ -26,7 +26,7 @@
  *
  * Run by `npm run guards`, which `prebuild` invokes, so `npm run build` fails.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 
 const ROOT = process.cwd()

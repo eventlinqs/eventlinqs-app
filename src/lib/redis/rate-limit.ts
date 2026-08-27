@@ -5,6 +5,24 @@ export type RateLimitResult = {
   remaining: number
   limit: number
   resetMs: number
+  /**
+   * WHY A REFUSAL WAS ISSUED, so a caller can tell the user something TRUE.
+   *
+   * Found by driving the stranger signup journey on 27 August 2026. With no
+   * Upstash configured, a failClosed policy refused the FIRST attempt a brand
+   * new person ever made, and returned `resetMs = windowSec * 1000`. The signup
+   * form read that as a retry-after and told them to wait about ten minutes.
+   *
+   * They had made one attempt, and waiting would not have helped, because the
+   * cause was a missing deploy variable rather than their own behaviour. A
+   * person who does that twice concludes the platform is broken and leaves, and
+   * nothing anywhere records that it happened.
+   *
+   * 'over-limit'        the bucket is genuinely full. Waiting works.
+   * 'store-unavailable' the limiter has no store and the policy fails closed.
+   *                     Waiting does NOT work. This is an incident.
+   */
+  reason?: 'over-limit' | 'store-unavailable'
 }
 
 type RateLimitOpts = {
@@ -112,7 +130,15 @@ export async function checkRateLimit(opts: RateLimitOpts): Promise<RateLimitResu
     // is a misconfiguration rather than a transient fault, so it is not something
     // to degrade around: it should be loud and it should block.
     if (opts.failClosed && process.env.NODE_ENV === 'production') {
-      return { ok: false, remaining: 0, limit: opts.limit, resetMs: opts.windowSec * 1000 }
+      // resetMs stays 0: there is no window to wait out. Reporting a full window
+      // here is what produced "wait about 10 minutes" for a first attempt.
+      return {
+        ok: false,
+        remaining: 0,
+        limit: opts.limit,
+        resetMs: 0,
+        reason: 'store-unavailable',
+      }
     }
     // Local dev and unit tests have no Upstash and are not a threat surface.
     return { ok: true, remaining: opts.limit, limit: opts.limit, resetMs: 0 }
@@ -134,6 +160,7 @@ export async function checkRateLimit(opts: RateLimitOpts): Promise<RateLimitResu
       remaining,
       limit: opts.limit,
       resetMs,
+      reason: count <= opts.limit ? undefined : 'over-limit',
     }
   } catch (err) {
     // NOT fail-open. Degrade to the per-instance window rather than removing the

@@ -163,7 +163,12 @@ export function SquadPayForm({
     })
 
     return () => { cancelled = true }
-  }, [memberId])
+    // squadToken belongs here: the effect READS it to mint the payment intent.
+    // With only [memberId], a token that changed without the member changing
+    // would leave this holding a stale one and minting against the wrong squad.
+    // Both are route params and change together in practice, so adding it costs
+    // nothing and removes the stale-closure class entirely.
+  }, [memberId, squadToken])
 
   const stripePromise = loadStripe(publishableKey)
 

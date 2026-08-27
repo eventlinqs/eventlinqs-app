@@ -36,7 +36,7 @@
  * USAGE: node --env-file=.env.test scripts/verify/rls-policy-dependency-probe.mjs
  */
 import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
-import pg from 'pg'
+import _pg from 'pg'
 
 const target = assertNotProductionDatabase()
 const client = await target.connect()

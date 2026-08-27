@@ -138,10 +138,63 @@ export type SendEmailInput = {
  * Throws on transport failure. Caller is responsible for catching and
  * shaping the user-facing error.
  */
+/**
+ * A LOCAL TRANSPORT, SO THE SIGNUP PATH CAN BE DRIVEN AT ALL.
+ *
+ * WHY THIS EXISTS, 27 August 2026. Driving the stranger organiser journey found
+ * that a brand new person cannot create an account in ANY environment without a
+ * live Resend key: sendEmail throws, the signup route rolls the user back, and
+ * the person gets a 502. That is correct behaviour and the message is honest.
+ *
+ * But it also means NOBODY CAN EXERCISE THEIR OWN SIGNUP FLOW LOCALLY, which is
+ * the root cause of the founder's complaint that every test on this platform has
+ * been done on an account that already existed. The one path no one could drive
+ * was the one every new organiser has to walk.
+ *
+ * OPT-IN ONLY, and it cannot be pointed at production:
+ *
+ *  - it does nothing unless EMAIL_TRANSPORT is set to 'console'
+ *  - it REFUSES, loudly, if the deploy is production or the Supabase project is
+ *    the production one, so it can never mask a real mail failure or silently
+ *    swallow a customer's ticket
+ *
+ * It prints what would have been sent, including the links, which is what a
+ * person reads out of their inbox.
+ */
+const PRODUCTION_SUPABASE_REF = 'gndnldyfudbytbboxesk'
+
+function consoleTransportRefusalReason(): string | null {
+  if (process.env.VERCEL_ENV === 'production') return 'VERCEL_ENV is production'
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  if (url.includes(PRODUCTION_SUPABASE_REF)) return 'the Supabase project is PRODUCTION'
+  return null
+}
+
 export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> {
   // Single source: resolveFrom() delegates to sender.ts, so the health check
   // and the sender can never disagree about who this platform sends as.
   const from = resolveFrom()
+
+  if (process.env.EMAIL_TRANSPORT === 'console') {
+    const refusal = consoleTransportRefusalReason()
+    if (refusal) {
+      throw new Error(
+        `EMAIL_TRANSPORT=console refused: ${refusal}. This transport exists so the ` +
+          'signup and ticket paths can be driven locally against TEST. Enabling it ' +
+          'anywhere near production would swallow real mail.',
+      )
+    }
+    const links = [...String(input.html ?? '').matchAll(/https?:\/\/[^"'\s<>]+/g)]
+      .map((m) => m[0])
+      .filter((u) => /confirm|token|ticket|order|verify|reset/i.test(u))
+    console.log('[email:console] ---------------------------------------------')
+    console.log(`[email:console] to      ${input.to}`)
+    console.log(`[email:console] subject ${input.subject}`)
+    for (const l of links.slice(0, 5)) console.log(`[email:console] link    ${l}`)
+    console.log('[email:console] ---------------------------------------------')
+    return { id: `console-${Date.now()}` }
+  }
+
   const resend = getResend()
   const { data, error } = await resend.emails.send({
     from: stampSender(from),

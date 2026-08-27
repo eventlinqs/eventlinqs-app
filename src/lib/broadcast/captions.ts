@@ -97,7 +97,12 @@ type EventFamily =
 export function eventFamily(categorySlug?: string | null): EventFamily {
   const slug = (categorySlug ?? '').toLowerCase()
   if (slug === 'music' || slug === 'nightlife' || slug === 'festival') return 'music'
-  if (slug === 'arts-culture' || slug === 'film' || slug === 'fashion' || slug === 'pride') {
+  // The arts slug was renamed to `arts-community` when the banned word left the
+  // data. This comparison was not renamed with it, so it matched a slug that no
+  // longer exists and every arts event fell through to the default family.
+  // Measured against TEST, 26 August 2026: event_categories holds 22 slugs and
+  // not one of them carries the banned word.
+  if (slug === 'arts-community' || slug === 'film' || slug === 'fashion' || slug === 'pride') {
     return 'arts'
   }
   if (slug === 'food-drink') return 'market'
@@ -171,8 +176,9 @@ function slugToTag(value: string): string {
  * Hashtags, and only ones a person would actually type.
  *
  * The first version of this derived a tag from the category slug and produced
- * "#artsculture" for a comedy night: junk nobody follows, and a form of the
- * word the constitution bans outright. So tags now come from two places only:
+ * a concatenated arts-and-heritage hashtag for a comedy night: junk nobody
+ * follows, and it spelled the very word the constitution bans outright.
+ * So tags now come from two places only:
  * the organiser's city, which is real and useful, and a short hand-written
  * word per event family. There is no path from a raw slug to a tag, and the
  * banned word cannot be reached.

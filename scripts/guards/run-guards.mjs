@@ -36,6 +36,8 @@
  *   no-silent-catch            no catch around I/O discards its error in silence
  *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
+ *   curated-categories-exist  every curated homepage category slug exists in the database
+ *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
  *   no-unguarded-production-write  no script writes to a database without checking which one
  *   one-db-connection-source   no script assembles its own database connection
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
@@ -379,6 +381,20 @@ const GUARDS = [
   // run, because a hand-written list would have to be remembered and being
   // remembered is the thing that failed.
   'scripts/guards/steps-declare-work.mjs',
+  // THE HOMEPAGE MAY NOT TYPE OUT WHAT THE DATABASE ALREADY KNOWS. Nine
+  // category tiles carried hand-typed names and five had drifted from
+  // event_categories with nothing comparing them. The names are derived now, so
+  // a curated slug that no longer matches a row renders NOTHING and the rail
+  // silently shows eight tiles where it showed nine. This fails the build first.
+  'scripts/guards/curated-categories-exist.mjs',
+  // THE BANNED WORD, EVERYWHERE IT CAN LIVE. copy-tell-gate reads
+  // customer-facing TEXT, so a string comparison in TypeScript and a slug in a
+  // storage path both sat in its blind spot for months: captions.ts compared
+  // against a slug that no longer existed and mis-registered every arts event,
+  // and stock/categories/<retired>/ is still served to browsers. This one reads
+  // identifiers, comparisons, slugs, URLs, storage keys, filenames and config,
+  // and fails on an exemption whose file no longer contains the word.
+  'scripts/guards/no-banned-word-anywhere.mjs',
   // Founder ruling 2026-08-13. `.env.local` in this repo points at the
   // PRODUCTION project, deliberately, because the app is run against production
   // from here. An audit that day found ten write-capable scripts with a

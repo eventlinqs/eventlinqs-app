@@ -155,7 +155,7 @@ const { data: order, error: orderErr } = await db
   .single()
 if (orderErr) die('order failed', orderErr)
 
-const { data: orderItem, error: oiErr } = await db
+const { data: _orderItem, error: oiErr } = await db
   .from('order_items')
   .insert({
     order_id: order.id, ticket_tier_id: tier.id, item_type: 'ticket', item_name: tier.name,

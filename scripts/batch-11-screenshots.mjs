@@ -96,7 +96,7 @@ for (const vp of [{ name: '1440', w: 1440, h: 900 }, { name: '390', w: 390, h: 8
     await snap(`${OUT}/home-768-top.png`, () =>
       page.screenshot({ path: `${OUT}/home-768-top.png`, fullPage: false }),
     )
-  } catch (e) { fails++ }
+  } catch (_e) { fails++ }
   await page.close()
 }
 
@@ -117,7 +117,7 @@ for (const surf of SURFACES) {
       await page.waitForTimeout(700)
       const file = `${OUT}/${surf.id}-${vp.name}.png`
       await snap(file, () => page.screenshot({ path: file, fullPage: false }))
-    } catch (e) { fails++ }
+    } catch (_e) { fails++ }
     await page.close()
   }
 }

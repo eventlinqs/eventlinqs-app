@@ -1,0 +1,238 @@
+{
+  "eventbrite": {
+    "url": "https://www.eventbrite.com.au/",
+    "fetchedAt": "2026-08-26T03:14:34.108Z",
+    "widths": {
+      "1440": {
+        "status": 200,
+        "title": "Eventbrite - Discover the Best Local Events & Things to Do",
+        "railCount": 3,
+        "rails": [
+          {
+            "trackW": 1272,
+            "cardW": 360,
+            "pitch": 360,
+            "gap": 0,
+            "cardCount": 15,
+            "wholeVisible": 3,
+            "peekPx": 192,
+            "peekPctOfCard": 53
+          },
+          {
+            "trackW": 1272,
+            "cardW": 1272,
+            "pitch": 0,
+            "gap": -1272,
+            "cardCount": 4,
+            "wholeVisible": 4,
+            "peekPx": 0,
+            "peekPctOfCard": 0
+          },
+          {
+            "trackW": 1272,
+            "cardW": 1272,
+            "pitch": 0,
+            "gap": -1272,
+            "cardCount": 2,
+            "wholeVisible": 2,
+            "peekPx": 0,
+            "peekPctOfCard": 0
+          }
+        ]
+      },
+      "1920": {
+        "status": 200,
+        "title": "Eventbrite - Discover the Best Local Events & Things to Do",
+        "railCount": 3,
+        "rails": [
+          {
+            "trackW": 1272,
+            "cardW": 360,
+            "pitch": 360,
+            "gap": 0,
+            "cardCount": 15,
+            "wholeVisible": 3,
+            "peekPx": 192,
+            "peekPctOfCard": 53
+          },
+          {
+            "trackW": 1272,
+            "cardW": 1272,
+            "pitch": 0,
+            "gap": -1272,
+            "cardCount": 4,
+            "wholeVisible": 4,
+            "peekPx": 0,
+            "peekPctOfCard": 0
+          },
+          {
+            "trackW": 1272,
+            "cardW": 1272,
+            "pitch": 0,
+            "gap": -1272,
+            "cardCount": 2,
+            "wholeVisible": 2,
+            "peekPx": 0,
+            "peekPctOfCard": 0
+          }
+        ]
+      }
+    }
+  },
+  "humanitix": {
+    "url": "https://events.humanitix.com/",
+    "fetchedAt": "2026-08-26T03:14:51.123Z",
+    "widths": {
+      "1440": {
+        "status": 200,
+        "title": "Humanitix | Find the Best Events & Things to Do",
+        "railCount": 5,
+        "rails": [
+          {
+            "trackW": 1440,
+            "cardW": 1440,
+            "pitch": 1440,
+            "gap": 0,
+            "cardCount": 17,
+            "wholeVisible": 1,
+            "peekPx": 0,
+            "peekPctOfCard": 0
+          },
+          {
+            "trackW": 1440,
+            "cardW": 140,
+            "pitch": 152,
+            "gap": 12,
+            "cardCount": 32,
+            "wholeVisible": 9,
+            "peekPx": 48,
+            "peekPctOfCard": 34
+          },
+          {
+            "trackW": 1440,
+            "cardW": 350,
+            "pitch": 374,
+            "gap": 24,
+            "cardCount": 8,
+            "wholeVisible": 3,
+            "peekPx": 294,
+            "peekPctOfCard": 84
+          },
+          {
+            "trackW": 1440,
+            "cardW": 350,
+            "pitch": 374,
+            "gap": 24,
+            "cardCount": 8,
+            "wholeVisible": 3,
+            "peekPx": 294,
+            "peekPctOfCard": 84
+          },
+          {
+            "trackW": 1440,
+            "cardW": 350,
+            "pitch": 374,
+            "gap": 24,
+            "cardCount": 8,
+            "wholeVisible": 3,
+            "peekPx": 294,
+            "peekPctOfCard": 84
+          }
+        ]
+      },
+      "1920": {
+        "status": 200,
+        "title": "Humanitix | Find the Best Events & Things to Do",
+        "railCount": 5,
+        "rails": [
+          {
+            "trackW": 1920,
+            "cardW": 1920,
+            "pitch": 1920,
+            "gap": 0,
+            "cardCount": 17,
+            "wholeVisible": 1,
+            "peekPx": 0,
+            "peekPctOfCard": 0
+          },
+          {
+            "trackW": 1920,
+            "cardW": 140,
+            "pitch": 152,
+            "gap": 12,
+            "cardCount": 32,
+            "wholeVisible": 11,
+            "peekPx": 8,
+            "peekPctOfCard": 6
+          },
+          {
+            "trackW": 1920,
+            "cardW": 350,
+            "pitch": 374,
+            "gap": 24,
+            "cardCount": 8,
+            "wholeVisible": 4,
+            "peekPx": 184,
+            "peekPctOfCard": 53
+          },
+          {
+            "trackW": 1920,
+            "cardW": 350,
+            "pitch": 374,
+            "gap": 24,
+            "cardCount": 8,
+            "wholeVisible": 4,
+            "peekPx": 184,
+            "peekPctOfCard": 53
+          },
+          {
+            "trackW": 1920,
+            "cardW": 350,
+            "pitch": 374,
+            "gap": 24,
+            "cardCount": 8,
+            "wholeVisible": 4,
+            "peekPx": 184,
+            "peekPctOfCard": 53
+          }
+        ]
+      }
+    }
+  },
+  "trybooking": {
+    "url": "https://www.trybooking.com/au",
+    "fetchedAt": "2026-08-26T03:15:09.031Z",
+    "widths": {
+      "1440": {
+        "status": 200,
+        "title": "Event Ticketing & Booking Platform | TryBooking",
+        "railCount": 0,
+        "rails": []
+      },
+      "1920": {
+        "status": 200,
+        "title": "Event Ticketing & Booking Platform | TryBooking",
+        "railCount": 0,
+        "rails": []
+      }
+    }
+  },
+  "dice": {
+    "url": "https://dice.fm/browse",
+    "fetchedAt": "2026-08-26T03:15:25.758Z",
+    "widths": {
+      "1440": {
+        "status": 200,
+        "title": "Popular Events in San Francisco | DICE",
+        "railCount": 0,
+        "rails": []
+      },
+      "1920": {
+        "status": 200,
+        "title": "Popular Events in San Francisco | DICE",
+        "railCount": 0,
+        "rails": []
+      }
+    }
+  }
+}

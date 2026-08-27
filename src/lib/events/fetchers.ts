@@ -5,7 +5,7 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import type { CommunitySlug } from '@/lib/communities/data'
-import { buildSearchOrGroups, tokenise, sanitiseToken } from './search-query'
+import { tokenise, sanitiseToken } from './search-query'
 import {
   listingWindowOrPredicate,
   startOfLocalDayUtcOffset,
@@ -404,7 +404,7 @@ async function resolveOrganisationIdsByToken(
  * response type and the query is lost. Doing the async work here and applying
  * the string at the call site keeps the builder's own chained type intact.
  */
-async function buildEventTypeClause(
+async function _buildEventTypeClause(
   supabase: EventsQueryClient,
   slug: string,
 ): Promise<string | null> {
@@ -432,7 +432,7 @@ async function buildEventTypeClause(
  * with hyphens read as spaces, so "the-espy" and "The Espy" both find the
  * venue instead of landing on the national list.
  */
-function applyVenueFilter<T extends OrFilterable<T>>(query: T, venue: string): T {
+function _applyVenueFilter<T extends OrFilterable<T>>(query: T, venue: string): T {
   const clean = sanitiseToken(venue)
   if (!clean) return query
   const spaced = sanitiseToken(venue.replace(/-/g, ' '))

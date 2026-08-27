@@ -32,7 +32,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
-import pg from 'pg'
+import _pg from 'pg'
 
 const target = assertNotProductionDatabase()
 const client = await target.connect()

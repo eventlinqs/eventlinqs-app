@@ -96,8 +96,21 @@ for (const [script, whichWorkflows] of [...invoked.entries()].sort()) {
     absent.push({ script, whichWorkflows: [...whichWorkflows] })
     continue
   }
-  const src = readFileSync(script, 'utf8')
-  if (src.includes(CONTRACT) && /declareWork\s*\(/.test(src)) honouring.push(script)
+  /*
+   * COMMENTS STRIPPED BEFORE THE CHECK, and this is not tidiness.
+   *
+   * On 27 August 2026 scripts/check-env-stores.mjs carried a declareWork call
+   * that had been inserted INSIDE a block comment. It never ran. This guard read
+   * the raw source, found the text, and reported the script as declaring its
+   * work, so the claim contract passed on a script that claimed nothing.
+   *
+   * That is the same family as the detector that matched an image path instead
+   * of a link and the warmer that counted its own cap: a reader that cannot tell
+   * code from prose. eslint caught it, as an unused import, which is the only
+   * reason anybody found out.
+   */
+  const src = stripComments(readFileSync(script, 'utf8'))
+  if (src.includes('work-report.mjs') && /declareWork\s*\(/.test(src)) honouring.push(script)
   else missing.push({ script, whichWorkflows: [...whichWorkflows] })
 }
 

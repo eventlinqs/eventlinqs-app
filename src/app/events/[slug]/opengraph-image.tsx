@@ -89,7 +89,6 @@ export default async function OpengraphImage({ params }: { params: Promise<{ slu
         }}
       >
         {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={cover}
             alt=""

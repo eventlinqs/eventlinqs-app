@@ -75,7 +75,7 @@ async function openSeats(page, slug) {
   }
 }
 
-async function shotEl(page, selector, name) {
+async function _shotEl(page, selector, name) {
   await page.waitForTimeout(400)
   const el = page.locator(selector).first()
   await el.scrollIntoViewIfNeeded()

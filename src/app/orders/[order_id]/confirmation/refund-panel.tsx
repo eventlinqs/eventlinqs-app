@@ -79,7 +79,7 @@ const STATE_COPY: Record<string, { title: string; tone: string; body: (r: NonNul
 }
 
 export function BuyerRefundPanel({
-  orderId, canRequest, reason, policyMessage, policyDescription, liveTicketIds, latestRequest,
+  orderId, canRequest, reason: _reason, policyMessage, policyDescription, liveTicketIds, latestRequest,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')

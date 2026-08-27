@@ -140,10 +140,6 @@ const REDACTED = new Set(['', '[SENSITIVE]', '[REDACTED]'])
  * "unknown" and unknown never failed anything. Twenty-two records sat that way,
  * STRIPE_SECRET_KEY, CRON_SECRET, QUEUE_SECRET and HEALTH_CHECK_TOKEN among
  * them, while this script printed ALL CHECKS PASSED. Passing `--git-branch`
-  declareWork('env-stores', {
-    did: { 'store check run': results.length },
-    found: { 'failing check': 0 },
-  })
  * resolves exactly the environment that branch's deployments receive, so there
  * is now no record this cannot reach.
  *
@@ -309,6 +305,10 @@ const failed = results.filter(r => !r.ok)
 console.log(`\n${'='.repeat(74)}`)
 if (failed.length === 0) {
   console.log(`ALL ${results.length} CHECKS PASSED.\n`)
+  declareWork('env-stores', {
+    did: { 'store check run': results.length },
+    found: { 'failing check': 0 },
+  })
   process.exit(0)
 }
 console.log(`${failed.length} of ${results.length} CHECKS FAILED:`)

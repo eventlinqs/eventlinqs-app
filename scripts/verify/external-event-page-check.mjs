@@ -26,7 +26,7 @@
  * Usage:
  *   node --env-file=.env.test scripts/verify/external-event-page-check.mjs <base-url>
  */
-import pg from 'pg'
+import _pg from 'pg'
 import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
 const BASE = (process.argv[2] ?? '').replace(/\/$/, '')

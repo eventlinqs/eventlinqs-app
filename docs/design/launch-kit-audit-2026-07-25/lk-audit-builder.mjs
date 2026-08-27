@@ -4,7 +4,7 @@
  * draws a rows block and a standing area, captures 1440 + 390.
  */
 import { chromium } from 'playwright'
-import fs from 'node:fs'
+import _fs from 'node:fs'
 
 // CREDENTIALS COME FROM THE ENVIRONMENT, NEVER FROM THIS FILE.
 // GitGuardian flagged a plaintext account password committed to this
