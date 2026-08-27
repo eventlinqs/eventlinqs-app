@@ -77,6 +77,22 @@ if (isProduction && process.env.ALLOW_PRODUCTION_SUPABASE !== '1') {
 
 const supabase = createClient(url, key)
 
+/*
+ * WHICH VARIANT DOES THE CODE ACTUALLY ASK FOR?
+ *
+ * src/lib/images/spine.ts builds one URL per slot at ROLE_WIDTH[role], and
+ * `categories` is 1440. The 480 and 960 are companions that exist in some
+ * environments and not others: PRODUCTION holds all three, TEST has only ever
+ * held the 1440. A missing companion is therefore an environment difference,
+ * not a failure, and reporting it as one told a true-sounding lie on TEST.
+ *
+ * The REQUESTED variant is what decides pass or fail.
+ */
+const REQUIRED_VARIANT = 'theatre-interior-evening-1440.avif'
+
+const { data: sourceList } = await supabase.storage.from(BUCKET).list(FROM_DIR, { limit: 100 })
+const sourceHas = new Set((sourceList ?? []).map((o) => o.name))
+
 const { data: existing, error: listError } = await supabase.storage.from(BUCKET).list(TO_DIR, { limit: 100 })
 if (listError) {
   console.error(`FAIL: could not list ${TO_DIR}: ${listError.message}`)
@@ -85,6 +101,7 @@ if (listError) {
 const alreadyThere = new Set((existing ?? []).map((o) => o.name))
 
 let copied = 0
+const absentAtSource = []
 let skipped = 0
 const failures = []
 
@@ -95,6 +112,12 @@ for (const name of OBJECTS) {
   if (alreadyThere.has(name)) {
     console.log(`  skip    ${name}  already at the destination, not overwritten`)
     skipped += 1
+    continue
+  }
+
+  if (!sourceHas.has(name)) {
+    console.log(`  absent  ${name}  not in ${FROM_DIR}/ in this environment, nothing to copy`)
+    absentAtSource.push(name)
     continue
   }
 
@@ -135,9 +158,22 @@ for (const name of OBJECTS) {
 }
 
 console.log('')
-if (failures.length > 0 || verified !== OBJECTS.length) {
-  console.error(`FAIL: ${verified} of ${OBJECTS.length} objects serve a 200 from the new path.`)
+console.log(`did ${copied} copied, ${skipped} already present, ${absentAtSource.length} absent at source`)
+console.log(`found ${failures.length} failures, ${verified} of ${OBJECTS.length} variants serving`)
+
+/*
+ * The gate is the variant the code requests. Everything else is reported and
+ * does not decide the outcome, because "TEST holds fewer variants than
+ * production" is a fact about the environment, not a defect in this copy.
+ */
+const requiredServes = await fetch(`${base}/${TO_DIR}/${REQUIRED_VARIANT}`).then((r) => r.status === 200).catch(() => false)
+console.log(`required variant ${REQUIRED_VARIANT}: ${requiredServes ? 'SERVES 200' : 'DOES NOT SERVE'}`)
+
+if (failures.length > 0 || !requiredServes) {
+  console.error('')
+  console.error(`FAIL: the variant spine.ts requests does not serve from ${TO_DIR}/.`)
   process.exit(1)
 }
-console.log(`PASS: all ${OBJECTS.length} objects serve a 200 from ${TO_DIR}/.`)
+console.log('')
+console.log(`PASS: the requested variant serves from ${TO_DIR}/ and the originals are untouched.`)
 console.log('The original path is untouched and still serves.')

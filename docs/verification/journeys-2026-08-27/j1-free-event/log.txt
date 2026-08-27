@@ -1,0 +1,13 @@
+01. Arrives on the homepage
+      URL     /
+      heading "Live events across Australia: music, scenes, festivals and c"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne
+02. Fills the signup form
+      jo.free.144404@example.com
+03. After Create account
+      URL     /verify-email-sent?email=jo.free.144404%40example.com
+      heading "Every community. Every event. One platform."
+      fields  (none)
+      buttons Resend verification email
+04. Looking for the confirmation link the platform sent
