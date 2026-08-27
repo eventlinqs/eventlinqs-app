@@ -79,6 +79,15 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { STORED_AGGREGATES } from '../lib/stored-aggregates.mjs'
+import { normaliseEol } from './lib/source.mjs'
+
+/**
+ * Every read in this guard goes through here. Check 3's table reader carries a
+ * literal `\{\n`, which matches nothing on a CRLF working tree, so on Windows
+ * it saw zero tables and reported the whole registry as unbacked. See the note
+ * on normaliseEol in lib/source.mjs.
+ */
+const readText = (file) => normaliseEol(readFileSync(file, 'utf8'))
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -164,7 +173,7 @@ const constants = new Map()
 
 for (const file of srcFiles) {
   const rel = relative(ROOT, file).split('\\').join('/')
-  const text = readFileSync(file, 'utf8')
+  const text = readText(file)
   const lines = text.split('\n')
   for (const m of text.matchAll(/(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*'([^']+)'/g)) {
     constants.set(m[1], m[2])
@@ -202,7 +211,7 @@ for (const file of srcFiles) {
  */
 const eventTagsFile = join(SRC, 'lib', 'events', 'cache-tags.ts')
 const eventTags = existsSync(eventTagsFile)
-  ? [...readFileSync(eventTagsFile, 'utf8').matchAll(/^\s*'([a-z0-9:_-]+)',$/gm)].map(m => m[1])
+  ? [...readText(eventTagsFile).matchAll(/^\s*'([a-z0-9:_-]+)',$/gm)].map(m => m[1])
   : []
 if (eventTags.length === 0) fail('src/lib/events/cache-tags.ts yielded no tags; this guard cannot resolve the event registry')
 
@@ -218,7 +227,7 @@ function resolveTag(expr) {
 
 /** `for (const tag of EVENT_DATA_CACHE_TAGS) updateTag(tag)` clears them all. */
 const clearsWholeEventRegistry = srcFiles.some(f => {
-  const t = readFileSync(f, 'utf8')
+  const t = readText(f)
   return /for\s*\(\s*const\s+(\w+)\s+of\s+EVENT_DATA_CACHE_TAGS\s*\)[\s\S]{0,120}?updateTag\(\s*\1\s*\)/.test(t)
 })
 
@@ -288,7 +297,7 @@ const stripSqlComments = sql =>
 
 for (const file of migrationFiles) {
   const rel = relative(ROOT, file).split('\\').join('/')
-  const lines = stripSqlComments(readFileSync(file, 'utf8')).split('\n')
+  const lines = stripSqlComments(readText(file)).split('\n')
   let currentTable = ''
   lines.forEach((line, i) => {
     const upd = line.match(/UPDATE\s+(?:public\.)?(\w+)/i)
@@ -313,7 +322,7 @@ for (const file of migrationFiles) {
  */
 for (const file of srcFiles) {
   const rel = relative(ROOT, file).split('\\').join('/')
-  const text = readFileSync(file, 'utf8')
+  const text = readText(file)
   const lines = text.split('\n')
   lines.forEach((line, i) => {
     const m = line.match(/^\s*(\w+):\s*\(?\s*\w+\.(\1)\b[^)]*\)?\s*(?:as\s+number\s*\)?)?\s*[+-]/)
@@ -386,7 +395,7 @@ function tableColumns() {
     fail(`${TYPES} does not exist; check 3 cannot see which columns exist and is not running`)
     return new Map()
   }
-  const src = readFileSync(file, 'utf8')
+  const src = readText(file)
   const tables = new Map()
   const tableRe = /^ {6}(\w+): \{\n {8}Row: \{\n([\s\S]*?)\n {8}\}/gm
   let m

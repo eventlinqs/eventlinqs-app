@@ -177,9 +177,38 @@ export function stripNonCode(src) {
   return scan(src, { blankStrings: true })
 }
 
+/**
+ * Line endings, normalised to LF at the read boundary.
+ *
+ * WHY THIS EXISTS. The index of this repository stores LF, `core.autocrlf` is
+ * true and there is no `.gitattributes`, so every text file is materialised
+ * CRLF on Windows and LF on the Linux CI runner. `git ls-files --eol` says it
+ * plainly: `i/lf  w/crlf`.
+ *
+ * A structural pattern such as `\{\n {8}Row: \{` then matches on CI and matches
+ * NOTHING on the founder's machine, because the `\r` sits between the `{` and
+ * the `\n` with nothing to absorb it. A pattern whose `\n` follows a lazy
+ * wildcard is unaffected, which is why this failed in only some scanners and
+ * looked like an unrelated bug in each.
+ *
+ * It fails in the DANGEROUS direction, exactly as the regex-literal bug above
+ * did: a scanner that matches nothing finds no problems and reports PASS. Two
+ * guards happened to carry a "yielded no tables" sanity check and went red;
+ * anything without one would have gone quietly green.
+ *
+ * Normalising HERE rather than in each pattern is deliberate. There is no way
+ * to write a `\n` in a consumer that reintroduces the bug once the bytes
+ * arriving are already LF, so the fix cannot rot as new scanners are added.
+ * `sourceFiles` below already sorts "machine to machine"; this is the same
+ * commitment applied to the bytes rather than the order.
+ */
+export function normaliseEol(text) {
+  return text.replace(/\r\n/g, '\n')
+}
+
 /** Read a file once and return all three views. */
 export function readSource(path) {
-  const raw = readFileSync(path, 'utf8')
+  const raw = normaliseEol(readFileSync(path, 'utf8'))
   return { raw, withStrings: stripComments(raw), code: stripNonCode(raw) }
 }
 

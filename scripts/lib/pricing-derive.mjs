@@ -23,6 +23,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { parseLockedValues, PRICING_DOC } from '../../src/lib/health/pricing-lock.mjs'
+import { normaliseEol } from '../guards/lib/source.mjs'
 
 export const DERIVED_BEGIN = '<!-- PRICING-DERIVED:BEGIN -->'
 export const DERIVED_END = '<!-- PRICING-DERIVED:END -->'
@@ -201,8 +202,24 @@ export function renderDerived(locked) {
   return L.join('\n')
 }
 
+/**
+ * The fee document, always LF, whatever the checkout did to it.
+ *
+ * WHY. `--check` compares the block CURRENTLY in the document against a block
+ * this file RENDERS. The rendered text is built with \n. The document is
+ * materialised CRLF on Windows (`git ls-files --eol docs/PRICING.md` reports
+ * `i/lf  w/crlf`), so the two could never be equal there and `--check` failed
+ * on every run with "the worked figures do not match", on a document whose
+ * figures were correct.
+ *
+ * That failure is not merely noisy. Its own remedy is `--write`, so the guard
+ * protecting the single authority for every fee figure was instructing a
+ * rewrite of that document on the strength of a line ending. Normalising here,
+ * at the one read, means the comparison and the splice both see the same bytes
+ * the CI runner sees.
+ */
 export function readDoc(repoRoot) {
-  return fs.readFileSync(path.join(repoRoot, PRICING_DOC), 'utf8')
+  return normaliseEol(fs.readFileSync(path.join(repoRoot, PRICING_DOC), 'utf8'))
 }
 
 export function spliceDerived(text, rendered) {
