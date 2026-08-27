@@ -87,6 +87,19 @@ const WINDOW = 200
  */
 const INHERITED_DEFERRED = new Map([
   [
+    '8663a4ded01a83b7eff002884604a96ae00d2a0a',
+    'origin/main tip: "Refund result, the lockdown 404, and the types drift (#120)",\n' +
+      '      squash-merged by GitHub on 26 August 2026. THE COMMITTER IS GitHub, not a\n' +
+      '      person: the trailers were aggregated by the squash from the constituent\n' +
+      '      commits, none of which were written on this branch. It entered here by\n' +
+      "      merging main, so it is main's history rather than work done here.\n" +
+      '      Same shape and same ruling as 86bb285b below: founder ruling 2026-08-12\n' +
+      '      (R-LAW8-DEBT), defer it exactly as the pre-boundary trailers are deferred.\n' +
+      '      THIS IS THE THIRD SQUASH TO DO THIS, which is why the branch is being\n' +
+      '      recreated from main once this merges. Clears with the rewrite in\n' +
+      '      docs/roast/AUTHORSHIP-HISTORY-REWRITE.md.',
+  ],
+  [
     '86bb285b660a806c8fc03bbc4a9308cb7fe25410',
     'origin/main tip: "Production defect sweep before launch (#112)", squash-merged\n' +
       '      carrying 27 trailers. It entered this branch by merging main, so it is\n' +
