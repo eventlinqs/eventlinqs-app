@@ -477,8 +477,27 @@ const ROOT = join(HERE, '..', '..')
  * Its negative control runs the OLD head-of-list behaviour over the same two
  * slugs in two orders and asserts that it does disagree with itself.
  */
-const MIN_FILES = 223
-const MIN_TESTS = 2764
+/*
+ * RAISED 2026-08-28, 223/2764 to 230/2849, measured on integration/launch at
+ * b883d239. The canary reported the growth itself on the push before this one
+ * and asked for the floor to be moved; a floor left below the real count is a
+ * canary that would not notice seven files being deleted.
+ *
+ * The newest of those files is tests/unit/guards/source-scanner-eol.test.ts,
+ * 6 tests, and it is worth naming because it pins a failure this canary is a
+ * cousin of. This repository stores LF, sets core.autocrlf=true and carries no
+ * .gitattributes, so a scanner pattern containing a literal `\n` matched on the
+ * CI runner and matched nothing on Windows. Two guards went red there and green
+ * on CI from identical bytes; a third, pricing-derive, failed claiming the fee
+ * document disagreed with its own lock block and told the reader to rewrite
+ * that document. The figures were identical once the line endings were.
+ *
+ * The count is the whole point in both cases: a scanner that reads nothing
+ * reports no problems, exactly as a suite that runs nothing reports no
+ * failures.
+ */
+const MIN_FILES = 230
+const MIN_TESTS = 2849
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
