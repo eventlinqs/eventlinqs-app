@@ -340,7 +340,7 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
         //           only place a name AND price can both be drawn when the
         //           neighbouring rows leave no paper free.
         for (const place of ['hull', 'paper', 'tint'] as const) {
-          const mustFitInside = place === 'hull'
+          const _mustFitInside = place === 'hull'
           // A label placed OUTSIDE its polygon stays compact. A 13px label on
           // the paper beside a small table is wider than the table itself and
           // physically blocks the paper its neighbours need, which is what

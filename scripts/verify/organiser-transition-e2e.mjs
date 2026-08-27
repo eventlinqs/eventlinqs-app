@@ -17,7 +17,7 @@
  * Run: node --env-file=.env.test scripts/verify/organiser-transition-e2e.mjs
  */
 import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
-import pg from 'pg'
+import _pg from 'pg'
 import { randomUUID } from 'node:crypto'
 
 const target = assertNotProductionDatabase()

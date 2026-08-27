@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start",
     "reclaim": "node scripts/reclaim-space.mjs",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings=0",
     "pretest": "node scripts/seed-events-catalogue.mjs --fixture",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -205,12 +205,12 @@ if (process.env.LISTING_PROOF === '1') {
       const oldIds = new Set(oldRows.map((e) => e.id))
       const recovered = newRows.filter((e) => !oldIds.has(e.id))
 
-      // eslint-disable-next-line no-console
+       
       console.log(
         `[listing-proof] old rule ${oldRows.length}, new rule ${newRows.length}, recovered ${recovered.length}`,
       )
       for (const e of recovered.slice(0, 15)) {
-        // eslint-disable-next-line no-console
+         
         console.log(`[listing-proof] now on: ${e.start_date} tz=${e.timezone ?? 'null'} /events/${e.slug}`)
       }
 
@@ -268,7 +268,7 @@ if (process.env.LISTING_PROOF === '1') {
         expect(underNew.error?.message ?? null).toBeNull()
         const oldSeen = underOld.data?.length ?? 0
         const newSeen = underNew.data?.length ?? 0
-        // eslint-disable-next-line no-console
+         
         console.log(`[listing-proof] ${label} /events/${row!.slug}: old rule sees ${oldSeen}, new rule sees ${newSeen}`)
         return { oldSeen, newSeen }
       }
@@ -292,7 +292,7 @@ if (process.env.LISTING_PROOF === '1') {
           .eq('id', row.id)
 
         if (movedB.error) {
-          // eslint-disable-next-line no-console
+           
           console.log(`[listing-proof] CASE B skipped: end_date is not nullable here (${movedB.error.message})`)
         } else {
           const b = await visibility('CASE B in progress, end_date NULL:')

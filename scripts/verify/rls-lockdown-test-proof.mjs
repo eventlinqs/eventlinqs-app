@@ -47,7 +47,7 @@
  *   node --env-file=.env.test scripts/verify/rls-lockdown-test-proof.mjs --stage full
  */
 import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
-import pg from 'pg'
+import _pg from 'pg'
 
 const argv = process.argv.slice(2)
 const arg = (n, d = null) => { const i = argv.indexOf(n); return i === -1 ? d : argv[i + 1] }

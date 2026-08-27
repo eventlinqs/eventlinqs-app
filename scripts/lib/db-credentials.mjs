@@ -81,7 +81,7 @@
  * direct cannot resolve at all.
  */
 import { existsSync, readFileSync } from 'node:fs'
-import { resolve, relative, dirname } from 'node:path'
+import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PRODUCTION_SUPABASE_REF, refFromUrl } from '../../src/lib/env/refs.mjs'
 

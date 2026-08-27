@@ -19,7 +19,7 @@
  *
  * Usage: node --env-file=.env.test scripts/verify/sales-attribution-reconcile.mjs
  */
-import pg from 'pg'
+import _pg from 'pg'
 import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
 const target = assertNotProductionDatabase()

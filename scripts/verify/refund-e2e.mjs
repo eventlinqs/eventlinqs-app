@@ -22,7 +22,7 @@
  * Run: node --env-file=.env.test scripts/verify/refund-e2e.mjs
  */
 import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
-import pg from 'pg'
+import _pg from 'pg'
 import { randomUUID } from 'node:crypto'
 
 const target = assertNotProductionDatabase()
@@ -108,7 +108,7 @@ try {
   }
 
   console.log('\n[Fixture] building confirmed orders + sale ledger')
-  const o1 = await buildOrder({ orderId: order1, oiId: oi1, ticketIds: t1, unitPrice: 3000, num: 3, pi: `pi_full_${sfx}`, holdId: hold1, orderNo: `E2E1${sfx}` })
+  const _o1 = await buildOrder({ orderId: order1, oiId: oi1, ticketIds: t1, unitPrice: 3000, num: 3, pi: `pi_full_${sfx}`, holdId: hold1, orderNo: `E2E1${sfx}` })
   await buildOrder({ orderId: order2, oiId: oi2, ticketIds: t2, unitPrice: 2000, num: 5, pi: `pi_part_${sfx}`, holdId: hold2, orderNo: `E2E2${sfx}` })
 
   const ledgerSum = async () => Number((await one(`SELECT COALESCE(SUM(delta_cents),0) s FROM public.organiser_balance_ledger WHERE organisation_id=$1`, [orgId])).s)

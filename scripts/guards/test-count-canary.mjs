@@ -46,7 +46,6 @@ import { spawnSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
 import { existsSync, readFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 

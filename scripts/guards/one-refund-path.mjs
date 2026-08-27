@@ -27,7 +27,7 @@
  * PRINTS WHAT IT SCANNED, because a guard that says only "PASS" is a guard nobody
  * can tell apart from a guard that scanned nothing.
  */
-import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const ROOT = process.cwd()

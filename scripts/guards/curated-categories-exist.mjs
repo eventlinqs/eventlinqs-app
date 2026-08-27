@@ -69,8 +69,42 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL && existsSync('.env.test')) {
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+/**
+ * IS THERE A DATABASE TO CHECK AGAINST AT ALL?
+ *
+ * CI's `lint · typecheck · build` job builds with PLACEHOLDER Supabase values on
+ * purpose: it is a compile and type check, not a data check, and its own env
+ * guard reports the stub as "27 characters, below the 30-character minimum".
+ * There is no database behind it and there is not meant to be.
+ *
+ * This guard failed that job on 27 August 2026 with "could not read
+ * event_categories: TypeError: fetch failed", which is not drift. It is the
+ * guard reporting the absence of a database as though it were a finding.
+ *
+ * So the distinction is drawn explicitly, and it is narrow:
+ *
+ *   no real project URL   -> SKIP, loudly, naming why. There is nothing to
+ *                            compare against, and saying "drift" would be false.
+ *   real project URL      -> CHECK, and FAIL on an unreachable database, because
+ *                            that IS "could not look" on a build that has one.
+ *
+ * A deployable build always carries real values (the public-env guard refuses to
+ * start otherwise), so nothing that ships can reach the skip.
+ */
+const REAL_PROJECT = /^https:\/\/[a-z0-9]{20,}\.supabase\.co\/?$/
+const hasRealProject = typeof url === 'string' && REAL_PROJECT.test(url.trim())
+
 const curated = curatedSlugs()
 console.log(`curated-categories-exist: ${curated.length} curated slug(s) read from ${CURATION_FILE}`)
+
+if (url && !hasRealProject) {
+  console.log('')
+  console.log('SKIP: NEXT_PUBLIC_SUPABASE_URL is not a real Supabase project URL')
+  console.log(`      (${url.length} characters), so there is no taxonomy to compare against.`)
+  console.log('      This is the CI typecheck build, which uses placeholders by design.')
+  console.log('      A build that deploys carries real values and is checked.')
+  process.exit(0)
+}
 
 if (!url || !key) {
   console.error('')

@@ -141,7 +141,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
 
   const location = [event.venue_name, event.venue_city, event.venue_country].filter(Boolean).join(', ')
 
-  const ticketItems = fullOrder.order_items.filter(i => i.item_type === 'ticket')
+  const _ticketItems = fullOrder.order_items.filter(i => i.item_type === 'ticket')
 
   /*
    * THE BUYER'S DOCUMENT. Until 25 August 2026 this page rendered a block

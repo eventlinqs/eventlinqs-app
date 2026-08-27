@@ -1,8 +1,6 @@
 import {
   getPlatformFeePercentage,
   getPlatformFeeFixedCents,
-  getProcessingFeePercentage,
-  getProcessingFeeFixedCents,
   getProcessingFeePassThrough,
   type ProcessingFeePassThrough,
 } from './pricing-rules'

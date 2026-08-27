@@ -207,11 +207,11 @@ async function runCron(label) {
   return { status: res.status, body }
 }
 
-const first = await runCron('run 1')
+const _first = await runCron('run 1')
 const afterFirst = await refundCount()
 console.log(`  stripe refunds after run 1: ${afterFirst}`)
 
-const second = await runCron('run 2')
+const _second = await runCron('run 2')
 const afterSecond = await refundCount()
 console.log(`  stripe refunds after run 2: ${afterSecond}`)
 

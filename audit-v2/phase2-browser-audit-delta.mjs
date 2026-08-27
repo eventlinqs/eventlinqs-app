@@ -4,7 +4,7 @@
 // to login for anonymous viewers (HEAD returned 200, but the page may
 // render an auth gate client-side).
 import { chromium, devices } from 'playwright'
-import { mkdir, writeFile, readFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const BASE = 'https://www.eventlinqs.com'

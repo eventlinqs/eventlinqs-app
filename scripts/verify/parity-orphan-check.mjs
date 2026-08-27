@@ -27,7 +27,7 @@ console.log(`  fixture ${f.stamp}`)
 console.log(`  owner   ${f.ownerEmail}`)
 console.log(`  orphan  ${f.orphanEmail}`)
 
-for (const [label, id, email] of [['owner', f.ownerId, f.ownerEmail], ['orphan', f.orphanId, f.orphanEmail]]) {
+for (const [label, id, _email] of [['owner', f.ownerId, f.ownerEmail], ['orphan', f.orphanId, f.orphanEmail]]) {
   const { data, error } = await admin.auth.admin.getUserById(id)
   if (error || !data?.user) {
     console.log(`  ${label.padEnd(7)} MISSING from auth (${error?.message ?? 'no user'})`)

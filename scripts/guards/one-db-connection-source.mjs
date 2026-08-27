@@ -44,7 +44,7 @@
  * apart from a guard whose matcher silently stopped matching, so this one always
  * says how many files it read and how many opened a database connection.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 

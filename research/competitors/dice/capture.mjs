@@ -25,7 +25,7 @@ const PAGES = [
   },
 ];
 
-const VIEWPORTS = [
+const _VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900, mobile: false },
   { name: 'mobile', width: 375, height: 812, mobile: true },
 ];
@@ -55,7 +55,7 @@ async function slowScroll(page) {
   });
 }
 
-async function getComputedStyleValue(page, selector, prop) {
+async function _getComputedStyleValue(page, selector, prop) {
   return page.evaluate(
     ({ selector, prop }) => {
       const el = document.querySelector(selector);
@@ -299,7 +299,7 @@ async function measureDensity(page, viewport) {
   }, viewport.height);
 }
 
-async function capturePage(page, pageConfig, viewport, browser) {
+async function _capturePage(page, pageConfig, viewport, browser) {
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
     userAgent: viewport.mobile ? UA_MOBILE : UA_DESKTOP,

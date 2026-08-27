@@ -260,7 +260,7 @@ describe('the external URL validator', () => {
     for (const bad of [
       'javascript:alert(1)',
       'data:text/html;base64,PHNjcmlwdD4=',
-      // eslint-disable-next-line no-script-url
+       
       'JavaScript:alert(1)',
     ]) {
       const r = validateExternalTicketUrl(bad)

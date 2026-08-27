@@ -29,9 +29,9 @@ const PAID_EVENT_SLUG = 'lebanese-eid-festival-sydney-2027' // cheapest paid, $2
 const FREE_EVENT_SLUG = 'filipino-fiesta-brisbane-sariwa-sunday' // free RSVP
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
-const safe = s => s.replace(/^\//,'root').replace(/[\/]/g,'_').replace(/[^a-z0-9_-]/gi,'-') || 'root'
+const _safe = s => s.replace(/^\//,'root').replace(/[\/]/g,'_').replace(/[^a-z0-9_-]/gi,'-') || 'root'
 
-async function newSession(browser, name) {
+async function newSession(browser, _name) {
   const ctx = await browser.newContext({ ...devices['Desktop Chrome HiDPI'], viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true })
   const page = await ctx.newPage()
   const errors = { pageErrors: [], consoleErrors: [], badResponses: [] }

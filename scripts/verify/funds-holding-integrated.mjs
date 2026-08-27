@@ -133,7 +133,7 @@ async function main() {
   }
 
   log('\n========== BUYER PURCHASE (real PI + live webhook) ==========')
-  const { orderId, pi, total } = await purchase()
+  const { orderId, pi, _total } = await purchase()
   log(`  order ${orderId} PI ${pi.id} status=${pi.status}`)
   // PROOF: funds held in PLATFORM, organiser nothing.
   const charge = await stripe.charges.retrieve(pi.latest_charge)
@@ -144,12 +144,12 @@ async function main() {
     return data?.status === 'confirmed'
   }, 'order confirmed by webhook')
   surf('Webhook fired: order confirmed + tickets issued', confirmed)
-  const written = await waitFor(async () => (await ledger(orgId, eventId)).some((r) => r.reason === 'order_confirmed'), 'ledger order_confirmed')
+  const _written = await waitFor(async () => (await ledger(orgId, eventId)).some((r) => r.reason === 'order_confirmed'), 'ledger order_confirmed')
 
   log('\n========== SURFACE: held funds + reserve ==========')
   const led1 = await ledger(orgId, eventId)
   const share = led1.filter((r) => r.reason === 'order_confirmed').reduce((s, r) => s + r.delta_cents, 0)
-  const reserveDebit = led1.filter((r) => r.reason === 'reserve_hold').reduce((s, r) => s + r.delta_cents, 0)
+  const _reserveDebit = led1.filter((r) => r.reason === 'reserve_hold').reduce((s, r) => s + r.delta_cents, 0)
   const h1 = await holds(orgId)
   const reserveHold = h1.filter((x) => x.hold_type === 'reserve').reduce((s, x) => s + x.amount_cents, 0)
   const evAvail1 = await eventAvailable(orgId, eventId)
@@ -166,7 +166,7 @@ async function main() {
   await stripe.charges.create({ amount: 60000, currency: 'aud', source: 'tok_bypassPending', description: 'proof available top-up' })
   const disb1 = await cron('/api/cron/event-disbursement')
   log(`    cron/event-disbursement -> ${disb1.status} transferred=${disb1.body.transferred} considered=${disb1.body.considered}`)
-  const transferRow = await waitFor(async () => {
+  const _transferRow = await waitFor(async () => {
     const { data } = await db.from('payouts').select('kind, status, amount_cents, stripe_transfer_id').eq('organisation_id', orgId).eq('kind', 'transfer').limit(1).maybeSingle()
     return data?.stripe_transfer_id ? data : false
   }, 'transfer row')
@@ -177,7 +177,7 @@ async function main() {
 
   // Reserve release -> disburse the reserve too.
   await cron('/api/cron/payout-holds-release')
-  const reserveReleased = await waitFor(async () => (await eventAvailable(orgId, eventId)) === 2000, 'reserve release')
+  const _reserveReleased = await waitFor(async () => (await eventAvailable(orgId, eventId)) === 2000, 'reserve release')
   const disb2 = await cron('/api/cron/event-disbursement')
   log(`    after reserve release: cron transferred=${disb2.body.transferred}`)
   const { data: paidTransfers } = await db.from('payouts').select('amount_cents').eq('organisation_id', orgId).eq('kind', 'transfer')

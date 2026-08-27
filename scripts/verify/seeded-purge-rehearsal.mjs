@@ -96,7 +96,7 @@
  *   node --env-file=.env.test scripts/verify/seeded-purge-rehearsal.mjs
  *   node --env-file=.env.test scripts/verify/seeded-purge-rehearsal.mjs --commit --confirm=16
  */
-import pg from 'pg'
+import _pg from 'pg'
 import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 
 /** The one marker. Everything under this owner is demo content. */

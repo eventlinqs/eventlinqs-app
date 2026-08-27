@@ -69,7 +69,7 @@ import {
  * against whatever sits behind them. Putting them in the palette would invite
  * somebody to tint them and break a scan.
  */
-const PDF_NAVY = rgb(0.039, 0.086, 0.157) // ink-900 #0A1628
+const _PDF_NAVY = rgb(0.039, 0.086, 0.157) // ink-900 #0A1628
 const PDF_WHITE = rgb(1, 1, 1)
 
 const PAGE_W = 595.28
