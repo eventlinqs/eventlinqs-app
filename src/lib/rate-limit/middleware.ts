@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { checkRateLimit, clientIp } from '@/lib/redis/rate-limit'
 import { POLICIES, type PolicyName } from './policies'
+import { captureException } from '@/lib/observability/sentry'
 
 // Standard rate-limit response headers per
 // draft-ietf-httpapi-ratelimit-headers. Including limit/remaining/reset
@@ -61,7 +62,23 @@ export async function applyRateLimit(
     failClosed: policy.failClosed,
   })
   if (!result.ok) {
-    return build429(result.limit, result.remaining, result.resetMs)
+    const res = build429(result.limit, result.remaining, result.resetMs)
+    /*
+     * WHY, on the response, so the handler can say something true.
+     *
+     * A refusal because the limiter has no store is not the same event as a
+     * refusal because the bucket is full, and a person told to wait ten minutes
+     * for the first will wait, retry, be refused again, and leave. Driven on
+     * 27 August 2026 against a brand new signup.
+     */
+    if (result.reason) res.headers.set('X-RateLimit-Reason', result.reason)
+    if (result.reason === 'store-unavailable') {
+      captureException(new Error(`rate limiter has no store: ${policyName} failed closed`), {
+        where: 'lib/rate-limit/middleware:applyRateLimit',
+        policy: policyName,
+      })
+    }
+    return res
   }
   return null
 }

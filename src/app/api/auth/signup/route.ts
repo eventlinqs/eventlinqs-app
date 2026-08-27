@@ -16,6 +16,7 @@ import {
   authMessage,
   classifySignupError,
   rateLimitedMessage,
+  limiterUnavailableMessage,
   signupFieldFor,
   type AuthFailureClass,
 } from '@/lib/auth/auth-errors'
@@ -111,8 +112,9 @@ export async function POST(request: NextRequest) {
   if (limited) {
     const retryAfter = Number(limited.headers.get('Retry-After'))
     const seconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
+    const unavailable = limited.headers.get('X-RateLimit-Reason') === 'store-unavailable'
     return fail('rate_limited', 429, {
-      message: rateLimitedMessage(seconds),
+      message: unavailable ? limiterUnavailableMessage() : rateLimitedMessage(seconds),
       retryAfterSeconds: seconds,
       headers: limited.headers,
     })

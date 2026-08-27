@@ -3,7 +3,12 @@ import { headers } from 'next/headers'
 import { checkRateLimit } from '@/lib/redis/rate-limit'
 import { POLICIES, type PolicyName } from './policies'
 
-export type ActionRateLimit = { ok: boolean; retryAfterSeconds: number }
+export type ActionRateLimit = {
+  ok: boolean
+  retryAfterSeconds: number
+  /** Why it refused. 'store-unavailable' means waiting will not help. */
+  reason?: 'over-limit' | 'store-unavailable'
+}
 
 /**
  * Rate-limit a Server Action (which has no Request object) using the same named
@@ -38,5 +43,9 @@ export async function actionRateLimit(
     windowSec: policy.windowSec,
     failClosed: policy.failClosed,
   })
-  return { ok: result.ok, retryAfterSeconds: Math.max(1, Math.ceil(result.resetMs / 1000)) }
+  return {
+    ok: result.ok,
+    retryAfterSeconds: Math.max(1, Math.ceil(result.resetMs / 1000)),
+    reason: result.reason,
+  }
 }
