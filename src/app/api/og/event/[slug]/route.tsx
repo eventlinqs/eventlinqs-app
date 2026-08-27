@@ -150,7 +150,6 @@ export async function GET(
         }}
       >
         {event.cover_image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={event.cover_image_url}
             alt=""

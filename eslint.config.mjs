@@ -105,6 +105,35 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  /*
+   * SATORI ROUTES RENDER WITH RAW <img> AND THERE IS NO ALTERNATIVE.
+   *
+   * opengraph-image, twitter-image, icon and the /api/og routes are rendered by
+   * next/og (Satori), which draws a tiny JSX subset to a PNG. next/image does
+   * not exist in that renderer, so `@next/next/no-img-element` is advising
+   * something impossible here.
+   *
+   * WHY A CONFIG RULE RATHER THAN THE INLINE DIRECTIVE IT REPLACES. The
+   * directive was `// eslint-disable-next-line @next/next/no-img-element` in
+   * opengraph-image.tsx, and on 27 August 2026 it behaved DIFFERENTLY in two
+   * environments: locally the rule fired so the directive was used and eslint
+   * was silent, while in CI the rule did not fire so the directive was reported
+   * as unused and `--max-warnings=0` turned the build red. A lint result that
+   * depends on which machine ran it is not a lint result. Scoping the rule off
+   * for these files is the same intent, stated once, and it is deterministic.
+   */
+  {
+    files: [
+      "src/app/**/opengraph-image.tsx",
+      "src/app/**/twitter-image.tsx",
+      "src/app/**/icon*.tsx",
+      "src/app/**/apple-icon.tsx",
+      "src/app/api/og/**",
+    ],
+    rules: {
+      "@next/next/no-img-element": "off",
+    },
+  },
   globalIgnores([
     ".next/**",
     "out/**",
