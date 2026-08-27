@@ -140,6 +140,11 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "scratch/**",
+    // Session scratch probes at the repo root. Same reason as scratch/**: they
+    // are throwaway drivers, never shipped, and linting them makes
+    // `npm run lint` red for work that is about to be deleted.
+    "tmp-*.mjs",
+    "tmp-*.json",
     // Gitignored nested git worktrees (a full second checkout with its own
     // generated files). Never project source; linting them makes `npm run lint`
     // noisily red locally while CI - which has no nested worktree - is green.
