@@ -152,7 +152,34 @@ export async function signUpAndConfirm(j, page, { name, email, password }) {
   await fillIf(page, 'input[type="email"]', email)
   await fillIf(page, 'input[type="password"]', password)
   await page.click('button[type="submit"]')
-  await page.waitForTimeout(7000)
+  /*
+   * WAIT FOR AN ANSWER, NOT FOR A CLOCK.
+   *
+   * This was `waitForTimeout(7000)`, and on a cold `next start` the signup POST
+   * regularly takes longer than that: it calls GoTrue and then sends the
+   * confirmation email before it answers. The journey then read the page while
+   * the request was still in flight, found the URL unchanged and no message
+   * rendered yet, and reported "signup refused: NOTHING SHOWN".
+   *
+   * That is the worst possible failure mode for a journey script, because it
+   * indicts the product for the harness's impatience, and it did exactly that
+   * twice on 29 August before being caught by probing the same submit by hand
+   * and watching a perfectly good 502-with-a-message arrive at 15s.
+   *
+   * So: settle on the first REAL outcome, either the redirect or something the
+   * person can read, and only then fall through to a verdict.
+   */
+  await Promise.race([
+    page.waitForURL(/\/verify-email-sent/, { timeout: 45000 }).catch(() => {}),
+    page
+      .waitForFunction(
+        sel => [...document.querySelectorAll(sel)].some(e => e.getBoundingClientRect().width > 0 && e.textContent.trim()),
+        MESSAGE_SELECTOR,
+        { timeout: 45000 },
+      )
+      .catch(() => {}),
+  ])
+  await page.waitForTimeout(1500)
   const landed = new URL(page.url()).pathname
   if (!landed.startsWith('/verify-email-sent')) {
     const shown = await messagesOnScreen(page)

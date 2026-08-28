@@ -18,6 +18,43 @@ export NEXT_PUBLIC_APP_URL="http://localhost:${PORT}"
 # A LOCAL-ONLY value, never a production one.
 export ORDER_ACCESS_SECRET="${ORDER_ACCESS_SECRET:-local-journey-order-access-secret-32chars}"
 
+# THE MAIL TRANSPORT. Signup will not complete without one: /api/auth/signup
+# answers 502 when the confirmation email cannot be sent, which is correct (an
+# account nobody can confirm is worse than no account) and which stops every
+# journey at step one. The console transport prints the message and its links to
+# the server log, which is where linkFromInbox() in the journey harness reads
+# the confirmation link from. It refuses to run on a real deployment; see
+# src/lib/email/send.ts.
+export EMAIL_TRANSPORT="${EMAIL_TRANSPORT:-console}"
+
+# THE RATE-LIMIT STORE, for the same reason and with the same shape as the line
+# above. `next start` sets NODE_ENV=production, and checkRateLimit BLOCKS a
+# failClosed policy whenever the store is missing in production. auth-signup and
+# checkout-reserve are both failClosed, so with no store every journey dies at
+# its first step with "a service we depend on is unavailable" or "Too many
+# attempts", which is the limiter working correctly and is indistinguishable at
+# the UI from a real limit or from broken code. It read as broken code for three
+# sessions.
+#
+# The shim serves the two commands the limiter uses, in memory, on localhost, so
+# the local run takes the SAME code path production takes rather than a bypass.
+# It is started here rather than left to the operator because a step a human has
+# to remember is a step that gets forgotten, and the failure it causes points at
+# the wrong thing.
+UPSTASH_SHIM_PORT="${UPSTASH_SHIM_PORT:-8079}"
+if [ -z "${UPSTASH_REDIS_REST_URL:-}" ]; then
+  if ! curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${UPSTASH_SHIM_PORT}/get/_probe"; then
+    nohup node scripts/dev/upstash-shim.mjs "$UPSTASH_SHIM_PORT" > .tmp-upstash.log 2>&1 &
+    for _ in $(seq 1 20); do
+      curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${UPSTASH_SHIM_PORT}/get/_probe" && break
+      sleep 0.5
+    done
+  fi
+  export UPSTASH_REDIS_REST_URL="http://127.0.0.1:${UPSTASH_SHIM_PORT}"
+  export UPSTASH_REDIS_REST_TOKEN="local"
+  echo "rate-limit store: local shim on ${UPSTASH_SHIM_PORT}"
+fi
+
 if [ "${SKIP_BUILD:-0}" != "1" ]; then
   # A killed build leaves a half-written .next that the next build cannot
   # unlink (EPERM on a directory), which reads as a permissions problem and
