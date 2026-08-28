@@ -198,6 +198,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
                   <input
                     type="text"
                     inputMode="numeric"
+                    aria-label={`Up to percent sold, step ${i + 1}`}
                     value={step._percentDisplay ?? String(step.capacity_threshold_percent)}
                     onChange={e => handlePercentChange(i, e.target.value)}
                     onBlur={() => handlePercentBlur(i)}
@@ -212,6 +213,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
                   <input
                     type="text"
                     inputMode="decimal"
+                    aria-label={`Price at step ${i + 1}`}
                     value={step._priceDisplay ?? (step.price_cents / 100).toFixed(2)}
                     onChange={e => handlePriceChange(i, e.target.value)}
                     onBlur={() => handlePriceBlur(i)}

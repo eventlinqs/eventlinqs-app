@@ -28,6 +28,8 @@
  *   entrypoint-authz-audit     every request entry point declares an auth posture
  *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
+ *   labelled-form-controls     every raw input, select and textarea carries a
+ *                              programmatic label, so assistive technology can name it
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
  *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
  *                              names a column that does not exist
@@ -335,6 +337,19 @@ const GUARDS = [
   'scripts/security/entrypoint-authz-audit.mjs',
   'scripts/guards/sourced-specifications.mjs',
   'scripts/guards/no-ai-authorship.mjs',
+
+  // A raw input, select or textarea that assistive technology cannot name is
+  // unusable without sight, and it is invisible to review because the screen
+  // looks finished. Found on 28 August 2026: 34 such controls across 13
+  // surfaces, including the whole venue form and the whole discount form, where
+  // a visible label sat right beside the field and was associated with nothing.
+  // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  // The guard walks the TSX AST rather than grepping, because both greps tried
+  // that day were wrong: one called 20 controls labelled when 9 were, the other
+  // called 39 unlabelled when 0 were. It resolves aria-label, aria-labelledby,
+  // htmlFor pairing, an ancestor label element, and a component that wraps its
+  // children in a label. The DOM remains the authority; this is the fast gate.
+  'scripts/guards/labelled-form-controls.mjs',
 
   // Founder brief 2026-08-23: an event page can never ship without its
   // structured data. A production audit that day found every event page valid

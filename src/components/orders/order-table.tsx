@@ -55,12 +55,14 @@ export function OrderTable({ orders, eventId }: OrderTableProps) {
       <div className="mb-4 flex flex-col sm:flex-row gap-3">
         <input
           type="text"
+          aria-label="Search orders by name, email or order number"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search by name, email or order #…"
           className="flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
         <select
+          aria-label="Filter orders by status"
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
           className="rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none"

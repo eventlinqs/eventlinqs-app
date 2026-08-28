@@ -127,8 +127,8 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-ink-400 mb-1">Code *</label>
-              <input
+              <label htmlFor="discounts-code" className="block text-xs text-ink-400 mb-1">Code *</label>
+              <input id="discounts-code"
                 type="text"
                 value={form.code}
                 onChange={e => handleChange('code', e.target.value.toUpperCase())}
@@ -139,8 +139,8 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
             </div>
 
             <div>
-              <label className="block text-xs text-ink-400 mb-1">Type *</label>
-              <select
+              <label htmlFor="discounts-type" className="block text-xs text-ink-400 mb-1">Type *</label>
+              <select id="discounts-type"
                 value={form.discount_type}
                 onChange={e => handleChange('discount_type', e.target.value)}
                 className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none"
@@ -151,10 +151,10 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
             </div>
 
             <div>
-              <label className="block text-xs text-ink-400 mb-1">
+              <label htmlFor="discounts-value" className="block text-xs text-ink-400 mb-1">
                 Value * {form.discount_type === 'percentage' ? '(1-100)' : `(${currency.toUpperCase()})`}
               </label>
-              <input
+              <input id="discounts-value"
                 type="number"
                 value={form.discount_value}
                 onChange={e => handleChange('discount_value', e.target.value)}
@@ -167,8 +167,8 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
             </div>
 
             <div>
-              <label className="block text-xs text-ink-400 mb-1">Max Total Uses</label>
-              <input
+              <label htmlFor="discounts-max-total-uses" className="block text-xs text-ink-400 mb-1">Max Total Uses</label>
+              <input id="discounts-max-total-uses"
                 type="number"
                 value={form.max_uses}
                 onChange={e => handleChange('max_uses', e.target.value)}
@@ -179,8 +179,8 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
             </div>
 
             <div>
-              <label className="block text-xs text-ink-400 mb-1">Max Uses Per Person</label>
-              <input
+              <label htmlFor="discounts-max-uses-per-person" className="block text-xs text-ink-400 mb-1">Max Uses Per Person</label>
+              <input id="discounts-max-uses-per-person"
                 type="number"
                 value={form.max_uses_per_user}
                 onChange={e => handleChange('max_uses_per_user', e.target.value)}
@@ -190,8 +190,8 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
             </div>
 
             <div>
-              <label className="block text-xs text-ink-400 mb-1">Min Order Value ({currency.toUpperCase()})</label>
-              <input
+              <label htmlFor="discounts-min-order-value" className="block text-xs text-ink-400 mb-1">Min Order Value ({currency.toUpperCase()})</label>
+              <input id="discounts-min-order-value"
                 type="number"
                 value={form.min_order_amount}
                 onChange={e => handleChange('min_order_amount', e.target.value)}
@@ -203,8 +203,8 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
             </div>
 
             <div>
-              <label className="block text-xs text-ink-400 mb-1">Valid From</label>
-              <input
+              <label htmlFor="discounts-valid-from" className="block text-xs text-ink-400 mb-1">Valid From</label>
+              <input id="discounts-valid-from"
                 type="datetime-local"
                 value={form.valid_from}
                 onChange={e => handleChange('valid_from', e.target.value)}
@@ -213,8 +213,8 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
             </div>
 
             <div>
-              <label className="block text-xs text-ink-400 mb-1">Valid Until</label>
-              <input
+              <label htmlFor="discounts-valid-until" className="block text-xs text-ink-400 mb-1">Valid Until</label>
+              <input id="discounts-valid-until"
                 type="datetime-local"
                 value={form.valid_until}
                 onChange={e => handleChange('valid_until', e.target.value)}

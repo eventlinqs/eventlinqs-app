@@ -107,6 +107,7 @@ export function InvitesClient({
         <p className="text-sm font-semibold text-ink-900">Generate a personal invite</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <select
+            aria-label="City for this invite link"
             value={city}
             onChange={e => setCity(e.target.value)}
             className="h-11 rounded-lg border border-ink-200 bg-white px-3 text-sm text-ink-900 focus:border-gold-400 focus:outline-none"

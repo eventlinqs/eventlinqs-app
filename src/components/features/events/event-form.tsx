@@ -1171,6 +1171,7 @@ export function EventForm({
                   type="number"
                   min="0"
                   step="0.01"
+                  aria-label={`Ticket price for tier ${idx + 1}`}
                   value={tier.price}
                   onChange={e => {
                     const tiers = [...formData.ticket_tiers]

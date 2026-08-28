@@ -64,6 +64,7 @@ export function TransferTicketForm({ ticketId, eventTitle }: { ticketId: string;
           </p>
           <input
             type="text"
+            aria-label="New holder name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="New holder name"
@@ -72,6 +73,7 @@ export function TransferTicketForm({ ticketId, eventTitle }: { ticketId: string;
           />
           <input
             type="email"
+            aria-label="New holder email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="New holder email"

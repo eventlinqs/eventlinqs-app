@@ -75,10 +75,10 @@ function VenueForm({
     <div className="rounded-xl border border-ink-200 bg-white p-6 space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-ink-600 mb-1">
+          <label htmlFor="venues-venue-name" className="block text-sm font-medium text-ink-600 mb-1">
             Venue Name <span className="text-red-500">*</span>
           </label>
-          <input
+          <input id="venues-venue-name"
             type="text"
             value={form.name}
             onChange={e => set('name', e.target.value)}
@@ -88,8 +88,8 @@ function VenueForm({
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-ink-600 mb-1">Street Address</label>
-          <input
+          <label htmlFor="venues-street-address" className="block text-sm font-medium text-ink-600 mb-1">Street Address</label>
+          <input id="venues-street-address"
             type="text"
             value={form.address ?? ''}
             onChange={e => set('address', e.target.value || null)}
@@ -99,8 +99,8 @@ function VenueForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">City</label>
-          <input
+          <label htmlFor="venues-city" className="block text-sm font-medium text-ink-600 mb-1">City</label>
+          <input id="venues-city"
             type="text"
             value={form.city ?? ''}
             onChange={e => set('city', e.target.value || null)}
@@ -109,8 +109,8 @@ function VenueForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">State / Province</label>
-          <input
+          <label htmlFor="venues-state-province" className="block text-sm font-medium text-ink-600 mb-1">State / Province</label>
+          <input id="venues-state-province"
             type="text"
             value={form.state ?? ''}
             onChange={e => set('state', e.target.value || null)}
@@ -119,8 +119,8 @@ function VenueForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">Country</label>
-          <input
+          <label htmlFor="venues-country" className="block text-sm font-medium text-ink-600 mb-1">Country</label>
+          <input id="venues-country"
             type="text"
             value={form.country ?? ''}
             onChange={e => set('country', e.target.value || null)}
@@ -129,8 +129,8 @@ function VenueForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">Postal Code</label>
-          <input
+          <label htmlFor="venues-postal-code" className="block text-sm font-medium text-ink-600 mb-1">Postal Code</label>
+          <input id="venues-postal-code"
             type="text"
             value={form.postal_code ?? ''}
             onChange={e => set('postal_code', e.target.value || null)}
@@ -139,11 +139,11 @@ function VenueForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">
+          <label htmlFor="venues-total-capacity-optional" className="block text-sm font-medium text-ink-600 mb-1">
             Total Capacity
             <span className="ml-1 text-xs text-ink-400">Optional</span>
           </label>
-          <input
+          <input id="venues-total-capacity-optional"
             type="number"
             min="1"
             value={form.capacity ?? ''}
@@ -154,8 +154,8 @@ function VenueForm({
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-ink-600 mb-1">Description</label>
-          <textarea
+          <label htmlFor="venues-description" className="block text-sm font-medium text-ink-600 mb-1">Description</label>
+          <textarea id="venues-description"
             rows={3}
             value={form.description ?? ''}
             onChange={e => set('description', e.target.value || null)}

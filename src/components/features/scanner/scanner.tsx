@@ -189,6 +189,7 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
       <form onSubmit={onManualSubmit} className="mt-6 space-y-3">
         <p className="text-sm font-medium text-[var(--text-primary)]">Manual entry</p>
         <input
+          aria-label="Ticket code or ticket link"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="EL-XXXX-XXXX or paste the ticket link"
@@ -198,6 +199,7 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
           spellCheck={false}
         />
         <input
+          aria-label="Ticket key"
           value={secret}
           onChange={(e) => setSecret(e.target.value)}
           placeholder="Key (leave blank if you pasted the link)"

@@ -841,6 +841,81 @@ const DRILLS = [
       + 'void rogueInventoryWrite',
     expect: 'application-level write(s) to the inventory counters',
   },
+
+  /*
+   * LABELLED FORM CONTROLS. The founder ruling of 28 August 2026: a raw input,
+   * select, textarea or checkbox on a form surface fails the build unless it
+   * carries a programmatic label.
+   *
+   * The first drill is the obvious one. The four after it are the ones that
+   * matter, and they assert the guard STAYS SILENT, because this guard is far
+   * more likely to be switched off for crying wolf than for missing something.
+   *
+   * That is not hypothetical. On the day it was written, two separate static
+   * detectors were run over seat-map-builder.tsx. One reported 20 of 48 controls
+   * labelled; the true figure was 9, because it counted aria-labels belonging to
+   * BUTTONS. The other reported 39 UNLABELLED; the true figure was 0, because
+   * every one of them sits inside a <Field> wrapper that renders
+   * <label><span>{label}</span>{children}</label> and is therefore implicitly
+   * associated. axe over the running application confirmed zero violations in
+   * all eleven states the builder can be driven into.
+   *
+   * So each legitimate way to name a control gets a drill of its own, and the
+   * wrapper case uses the real <Field> that broke both detectors.
+   */
+  {
+    name: 'a raw input is added with nothing naming it',
+    guard: `${GUARDS}/labelled-form-controls.mjs`,
+    file: 'src/components/orders/order-table.tsx',
+    find: '        <select\n          aria-label="Filter orders by status"',
+    replace:
+      '        <input type="text" value="" onChange={() => {}} />\n'
+      + '        <select\n          aria-label="Filter orders by status"',
+    expect: 'nothing names it',
+  },
+  {
+    name: 'NO FALSE POSITIVE: an input named by aria-label',
+    guard: `${GUARDS}/labelled-form-controls.mjs`,
+    expectPass: 'aria-label',
+    file: 'src/components/orders/order-table.tsx',
+    find: '        <select\n          aria-label="Filter orders by status"',
+    replace:
+      '        <input type="text" aria-label="Drill field" value="" onChange={() => {}} />\n'
+      + '        <select\n          aria-label="Filter orders by status"',
+  },
+  {
+    name: 'NO FALSE POSITIVE: an input nested inside its own label',
+    guard: `${GUARDS}/labelled-form-controls.mjs`,
+    expectPass: 'ancestor <label>',
+    file: 'src/components/orders/order-table.tsx',
+    find: '        <select\n          aria-label="Filter orders by status"',
+    replace:
+      '        <label>Drill field<input type="text" value="" onChange={() => {}} /></label>\n'
+      + '        <select\n          aria-label="Filter orders by status"',
+  },
+  {
+    name: 'NO FALSE POSITIVE: an input paired by htmlFor',
+    guard: `${GUARDS}/labelled-form-controls.mjs`,
+    expectPass: 'htmlFor',
+    file: 'src/components/orders/order-table.tsx',
+    find: '        <select\n          aria-label="Filter orders by status"',
+    replace:
+      '        <label htmlFor="drill-field">Drill field</label>\n'
+      + '        <input id="drill-field" type="text" value="" onChange={() => {}} />\n'
+      + '        <select\n          aria-label="Filter orders by status"',
+  },
+  {
+    name: 'NO FALSE POSITIVE: an input inside the Field wrapper that fooled two greps',
+    guard: `${GUARDS}/labelled-form-controls.mjs`,
+    expectPass: 'wrapper <Field>',
+    file: 'src/app/(dashboard)/dashboard/venues/[id]/seat-maps/seat-map-builder.tsx',
+    find: '        <Field label="Rows">',
+    replace:
+      '        <Field label="Drill field">\n'
+      + '          <input type="number" value={1} onChange={() => {}} />\n'
+      + '        </Field>\n'
+      + '        <Field label="Rows">',
+  },
 ]
 
 function run(guard) {
@@ -880,6 +955,36 @@ for (const drill of DRILLS) {
   try {
     writeFileSync(path, original.replace(anchor, drill.replace))
     const { code, out } = run(drill.guard)
+
+    /*
+     * A drill that asserts the guard STAYS QUIET. Added 28 August 2026 with the
+     * labelled-form-controls guard, because for that guard the dangerous
+     * failure is the false positive: it fails the build over working markup,
+     * somebody switches it off, and the law loses its enforcement entirely.
+     * `expectPass` names the mechanism that must have recognised the addition,
+     * so a guard that passes for the WRONG reason still fails the drill.
+     */
+    if (drill.expectPass) {
+      if (code !== 0) {
+        failed.push(
+          `${drill.name}: guard FAILED on legitimate markup. It is crying wolf.\n` +
+            `      got: ${out.trim().split('\n').slice(-6).join(' / ')}`,
+        )
+        console.log(`  FALSE POSITIVE  ${drill.name}`)
+        continue
+      }
+      if (!out.includes(drill.expectPass)) {
+        failed.push(
+          `${drill.name}: guard passed, but never reported recognising it via ${drill.expectPass}.`,
+        )
+        console.log(`  PASSED FOR THE WRONG REASON  ${drill.name}`)
+        continue
+      }
+      passed += 1
+      console.log(`  STAYS QUIET AS EXPECTED  ${drill.name}`)
+      console.log(`      recognised via ${drill.expectPass}\n`)
+      continue
+    }
 
     if (code === 0) {
       failed.push(`${drill.name}: guard PASSED on a violating tree. It is not actually guarding.`)
