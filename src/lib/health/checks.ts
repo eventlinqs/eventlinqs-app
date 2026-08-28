@@ -9,6 +9,7 @@ import { senderDomainsInUse } from '@/lib/email/send'
 import { CRITICAL_ENV_RULES, evalEnvRule } from '@/lib/health/critical-env.mjs'
 import { evaluateProcessEnv, evaluateStores } from '@/lib/env/manifest-checks.mjs'
 import { githubActionsNames } from '@/lib/env/manifest.mjs'
+import { mintOrderAccessToken, verifyOrderAccessToken } from '@/lib/orders/order-access'
 
 /**
  * PLATFORM HEALTH SENTINEL - the check library.
@@ -349,6 +350,64 @@ async function checkSslDomain(origin: string): Promise<HealthResult> {
 // var that EXISTS but is EMPTY (or malformed), which passes naive presence
 // checks and errors nowhere - the empty NEXT_PUBLIC_GOOGLE_MAPS_API_KEY that
 // silently killed every map. Uses the same rules as the build-time guard.
+/**
+ * GUEST ORDER LINKS: can this deployment actually issue one?
+ *
+ * NOT a config read. Reading that ORDER_ACCESS_SECRET is "set" proves nothing
+ * about whether a link gets minted: an empty string, a stray quote or a value
+ * on the wrong scope all read as present and all mint nothing. So this does the
+ * real round trip through the real module - mint a token, verify it, and verify
+ * that a token minted for a DIFFERENT order is rejected - and reports the
+ * outcome. A guest who never receives a working link cannot reach their own
+ * tickets, their transfer, or their refund.
+ *
+ * IT DISCLOSES NOTHING. The two order ids are fixed, non-existent probe
+ * constants, so a token for them opens no order that exists, and the token
+ * itself is never put in the result.
+ */
+const ORDER_ACCESS_PROBE_A = '00000000-0000-4000-8000-00000000feed'
+const ORDER_ACCESS_PROBE_B = '00000000-0000-4000-8000-00000000beef'
+
+async function checkOrderAccess(): Promise<HealthResult> {
+  const base = {
+    id: 'order_access',
+    label: 'Guest order links',
+    severity: 'critical' as Severity,
+  }
+
+  const token = mintOrderAccessToken(ORDER_ACCESS_PROBE_A)
+  if (!token) {
+    return {
+      ...base,
+      ok: false,
+      detail: 'This deployment cannot issue a guest order link. A buyer who checks out without an account gets a confirmation email with no way back to their tickets, transfer, or refund.',
+      probableCause: 'ORDER_ACCESS_SECRET is missing or empty on this scope. It fails closed on purpose rather than falling back to the public dev constant, which would let anyone open any order by guessing an id.',
+      action: 'Set ORDER_ACCESS_SECRET on Production in Vercel (32+ chars, sensitive), then redeploy so the running functions pick it up.',
+    }
+  }
+
+  const honoursItsOwn = verifyOrderAccessToken(ORDER_ACCESS_PROBE_A, token)
+  const rejectsAnother = !verifyOrderAccessToken(ORDER_ACCESS_PROBE_B, token)
+
+  if (!honoursItsOwn || !rejectsAnother) {
+    return {
+      ...base,
+      ok: false,
+      detail: !honoursItsOwn
+        ? 'A link this deployment mints is not honoured by the same deployment, so every guest link would dead-end.'
+        : 'A link minted for one order opened a different order. Guest links are not scoped and must be treated as a live exposure.',
+      probableCause: 'The signing secret changed between minting and verifying, or the token scope binding is broken.',
+      action: 'Stop issuing guest links and page the founder: rotate ORDER_ACCESS_SECRET, which invalidates every outstanding link at once.',
+    }
+  }
+
+  return {
+    ...base,
+    ok: true,
+    detail: `Guest order links are issuable and honoured: a minted token verified against its own order and was refused for another (token length ${token.length}).`,
+  }
+}
+
 async function checkEnvVars(): Promise<HealthResult> {
   const results = CRITICAL_ENV_RULES.map(r => evalEnvRule(r, process.env as Record<string, string | undefined>))
   const bad = results.filter(r => !r.ok)
@@ -501,7 +560,7 @@ async function checkManifestAgainstStore(): Promise<{ mode: string; findings: st
   }
 }
 
-export const CHECK_IDS = ['payment', 'connect_profile', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest'] as const
+export const CHECK_IDS = ['payment', 'connect_profile', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest', 'order_access'] as const
 export type CheckId = (typeof CHECK_IDS)[number]
 
 /**
@@ -526,6 +585,7 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
     timed('ssl', () => checkSslDomain(origin)),
     timed('env', () => checkEnvVars()),
     timed('manifest', () => checkEnvManifest()),
+    timed('order_access', () => checkOrderAccess()),
   ])
 
   if (!drill) return results

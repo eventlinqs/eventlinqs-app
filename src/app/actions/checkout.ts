@@ -22,6 +22,7 @@ import {
 import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 import type { FeePassType } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
+import { recordDiscountUse } from '@/lib/payments/discount-usage'
 
 const AttendeeSchema = z.object({
   ticket_tier_id: z.string().uuid(),
@@ -464,16 +465,15 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       return { error: 'Order created but could not be confirmed. Please try again.' }
     }
 
-    // Record discount usage
-    if (discount_code_id && user?.id) {
-      await supabase.from('discount_code_usages').insert({
-        discount_code_id,
-        order_id,
-        user_id: user.id,
-        discount_amount_cents: fees.discount_cents,
-      })
-      await supabase.rpc('increment_discount_uses', { p_code_id: discount_code_id })
-    }
+    // Record discount usage. Never fatal to a confirmed order, always audible.
+    await recordDiscountUse({
+      adminClient,
+      discount_code_id,
+      order_id,
+      user_id: user?.id ?? null,
+      guest_email: user?.id ? null : buyer_email,
+      discount_cents: fees.discount_cents,
+    })
 
     // Send the confirmation email with the ticket QR, exactly as the paid path
     // does after payment. Best-effort: a mail fault must never fail the order.

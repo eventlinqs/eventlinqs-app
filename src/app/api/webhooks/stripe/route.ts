@@ -35,6 +35,7 @@ import {
 import { sendPayoutEmail, type PayoutEmailKind } from '@/lib/payouts/email'
 import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
+import { recordDiscountUse } from '@/lib/payments/discount-usage'
 
 export const dynamic = 'force-dynamic'
 
@@ -318,6 +319,46 @@ async function handlePaymentSucceeded(
   // Each is independently idempotent or fire-and-forget and MUST NOT throw
   // out of the handler: re-running the whole webhook to retry, say, a Redis
   // refresh would resend the confirmation email. Faults are captured.
+
+  /*
+   * DISCOUNT USAGE ON THE PAID PATH.
+   *
+   * This did not exist. Usage was recorded ONLY in the free-order branch of
+   * processCheckout, so a PAID order carrying a discount code never wrote a
+   * usage row and never advanced current_uses. max_uses and max_uses_per_user
+   * were therefore unenforced on exactly the orders that take money, and a code
+   * capped at N could be redeemed without limit. Found 29 August 2026.
+   *
+   * Idempotent on discount_usages_unique_order (discount_code_id, order_id), so
+   * a Stripe redelivery cannot burn a second use. Never throws: the buyer has
+   * paid and holds a valid ticket.
+   */
+  try {
+    const { data: discountedOrder } = await adminClient
+      .from('orders')
+      .select('discount_code_id, user_id, guest_email, discount_cents')
+      .eq('id', order_id)
+      .maybeSingle()
+
+    if (discountedOrder?.discount_code_id) {
+      await recordDiscountUse({
+        adminClient,
+        discount_code_id: discountedOrder.discount_code_id,
+        order_id,
+        user_id: discountedOrder.user_id ?? null,
+        guest_email: discountedOrder.guest_email ?? null,
+        discount_cents: discountedOrder.discount_cents ?? 0,
+      })
+    }
+  } catch (discountErr) {
+    captureException(discountErr, {
+      scope: 'stripe-webhook',
+      handler: 'discount-usage',
+      order_id,
+      payment_intent_id: intent.id,
+    })
+    console.error('[webhook] discount usage write threw (non-fatal, continuing):', discountErr)
+  }
 
   // M6 Phase 3: destination-charge ledger entries (organiser credit, reserve
   // hold, mirror debit, org counters). Idempotent on the ledger table.

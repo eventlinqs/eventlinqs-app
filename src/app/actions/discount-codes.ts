@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import type { DiscountCode } from '@/types/database'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
+import { resolveDiscountCents } from '@/lib/payments/discount-math'
 
 // ─── Validate a discount code at checkout ────────────────────────────────────
 
@@ -67,18 +68,19 @@ export async function validateDiscountCode(
     }
   }
 
-  // Calculate discount
-  let discount_cents: number
-  if (dc.discount_type === 'percentage') {
-    discount_cents = Math.round(order_subtotal_cents * (dc.discount_value / 100))
-  } else {
-    discount_cents = dc.discount_value
-  }
+  /*
+   * THE AMOUNT, through the one pure function that owns this arithmetic.
+   *
+   * This read `dc.discount_value`, a column migration 20260520000001 (P1-4)
+   * DROPPED and split in two. The field was simply `undefined`, so a percentage
+   * code computed NaN and a fixed code returned undefined, and BOTH were handed
+   * back as `valid: true`. The math now lives in src/lib/payments/discount-math.ts
+   * where it is tested against every shape the table allows.
+   */
+  const amount = resolveDiscountCents(dc, order_subtotal_cents)
+  if (!amount.ok) return { valid: false, discount_cents: 0, error: amount.reason }
 
-  // Cap at subtotal
-  discount_cents = Math.min(discount_cents, order_subtotal_cents)
-
-  return { valid: true, discount_cents, discount_code_id: dc.id }
+  return { valid: true, discount_cents: amount.discount_cents, discount_code_id: dc.id }
 }
 
 // ─── Organiser: Create discount code ────────────────────────────────────────
@@ -148,9 +150,24 @@ export async function createDiscountCode(
       organisation_id: event.organisation_id,
       code: parsed.data.code.toUpperCase(),
       discount_type: parsed.data.discount_type,
-      discount_value: parsed.data.discount_type === 'percentage'
+      /*
+       * THE TWO TYPED COLUMNS, NOT THE RETIRED ONE.
+       *
+       * This wrote `discount_value`, which migration 20260520000001 (P1-4)
+       * dropped on 20 May 2026. Every insert since has failed PGRST204,
+       * "Could not find the 'discount_value' column", and the panel reported
+       * it as the generic "Failed to create discount code". No organiser has
+       * been able to create a discount code since that migration landed.
+       *
+       * discount_codes_value_split_check requires EXACTLY one of these to be
+       * set for the type, so the other is explicitly NULL rather than omitted.
+       */
+      discount_percentage: parsed.data.discount_type === 'percentage'
         ? parsed.data.discount_value
-        : Math.round(parsed.data.discount_value * 100), // dollars to cents
+        : null,
+      discount_amount_cents: parsed.data.discount_type === 'fixed_amount'
+        ? Math.round(parsed.data.discount_value * 100) // dollars to cents
+        : null,
       currency: parsed.data.currency ?? null,
       max_uses: parsed.data.max_uses ?? null,
       max_uses_per_user: parsed.data.max_uses_per_user,
@@ -165,7 +182,21 @@ export async function createDiscountCode(
 
   if (error) {
     if (error.code === '23505') return { error: 'A code with that name already exists for this event' }
-    return { error: 'Failed to create discount code' }
+    /*
+     * SAY WHAT WENT WRONG, AND LEAVE IT IN THE LOG.
+     *
+     * "Failed to create discount code" was the whole message for three months
+     * while every insert failed on a dropped column. A refusal that cannot name
+     * its own cause hides a defect for exactly as long as nobody opens a
+     * database client. The code is short and non-sensitive; the full error goes
+     * to the server log where an incident starts.
+     */
+    console.error('[discount-codes] insert failed', {
+      event_id: parsed.data.event_id,
+      pg_code: error.code,
+      message: error.message,
+    })
+    return { error: `Could not create the code (${error.code ?? 'unknown'}). It has been logged.` }
   }
 
   revalidatePath(`/dashboard/events/${parsed.data.event_id}/discounts`)

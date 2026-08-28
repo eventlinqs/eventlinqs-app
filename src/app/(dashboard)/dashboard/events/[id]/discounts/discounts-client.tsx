@@ -37,6 +37,8 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(initialForm)
   const [formError, setFormError] = useState<string | null>(null)
+  /** A refusal from the row controls (activate, deactivate, delete). */
+  const [rowError, setRowError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function handleChange(field: string, value: string | boolean | string[]) {
@@ -90,23 +92,29 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
   }
 
   function handleToggle(id: string, isActive: boolean) {
+    setRowError(null)
     startTransition(async () => {
       const result = await updateDiscountCode(id, { is_active: !isActive })
-      if (!result.error) {
-        setCodes(prev => prev.map(c => c.id === id ? { ...c, is_active: !isActive } : c))
+      // A refused toggle used to fall through this branch and change nothing,
+      // which reads to the organiser as a dead button. Say why instead.
+      if (result.error) {
+        setRowError(result.error)
+        return
       }
+      setCodes(prev => prev.map(c => c.id === id ? { ...c, is_active: !isActive } : c))
     })
   }
 
   function handleDelete(id: string) {
     if (!confirm('Delete this discount code?')) return
+    setRowError(null)
     startTransition(async () => {
       const result = await deleteDiscountCode(id)
       if (result.error) {
-        alert(result.error)
-      } else {
-        setCodes(prev => prev.filter(c => c.id !== id))
+        setRowError(result.error)
+        return
       }
+      setCodes(prev => prev.filter(c => c.id !== id))
     })
   }
 
@@ -158,8 +166,23 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
                 type="number"
                 value={form.discount_value}
                 onChange={e => handleChange('discount_value', e.target.value)}
-                min="0.01"
-                step={form.discount_type === 'percentage' ? '1' : '0.01'}
+                min={form.discount_type === 'percentage' ? '1' : '0.01'}
+                /*
+                 * STEP IS "any" DELIBERATELY, AND THIS IS THE FIX.
+                 *
+                 * HTML steps from `min`, never from zero. min="0.01" with
+                 * step="1" made EVERY whole number a stepMismatch: 20 sat
+                 * between the two nearest valid values, 19.01 and 20.01. So
+                 * form.checkValidity() was false, the browser refused the
+                 * submit before React saw the event, and onSubmit never fired.
+                 * No handleSubmit, no action call, no network request, and no
+                 * formError to explain any of it: the panel looked dead.
+                 *
+                 * The range is the real constraint and min/max carry it. A
+                 * percentage is NUMERIC(10,2) and 12.5 percent is legal, so no
+                 * numeric step is correct here anyway.
+                 */
+                step="any"
                 max={form.discount_type === 'percentage' ? '100' : undefined}
                 className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold-400"
                 required
@@ -248,7 +271,7 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
           )}
 
           {formError && (
-            <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div role="alert" className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
               {formError}
             </div>
           )}
@@ -270,6 +293,12 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
             </button>
           </div>
         </form>
+      )}
+
+      {rowError && (
+        <div role="alert" className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          {rowError}
+        </div>
       )}
 
       {codes.length === 0 ? (
