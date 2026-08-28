@@ -1,0 +1,16 @@
+Repro: the cover composer stops after N covers
+==============================================
+01. Signed in
+      jo.free.629351@example.com -> /dashboard
+02. Reached the Event Media step
+      now pressing Make a cover repeatedly
+03. Press 1 FAILED
+      shown to the person: We could not make a cover just now. Try again in a moment.
+04. Waited 8s and pressed again (retry 1)
+      still failing: We could not make a cover just now. Try again in a moment.
+05. Waited 8s and pressed again (retry 2)
+      still failing: We could not make a cover just now. Try again in a moment.
+06. Waited 8s and pressed again (retry 3)
+      still failing: We could not make a cover just now. Try again in a moment.
+07. Result of every press
+      1:FAILED
