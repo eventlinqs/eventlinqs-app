@@ -12,6 +12,11 @@ sleep 1
 
 set -a; . ./.env.test; set +a
 export NEXT_PUBLIC_APP_URL="http://localhost:${PORT}"
+# `next start` sets NODE_ENV=production, and order-access fails CLOSED there:
+# with no secret it neither mints nor honours a guest link, so the refund and
+# transfer controls correctly vanish and every guest journey reads as broken.
+# A LOCAL-ONLY value, never a production one.
+export ORDER_ACCESS_SECRET="${ORDER_ACCESS_SECRET:-local-journey-order-access-secret-32chars}"
 
 if [ "${SKIP_BUILD:-0}" != "1" ]; then
   # A killed build leaves a half-written .next that the next build cannot

@@ -15,6 +15,8 @@ import { recordShareConversionForOrder } from '@/lib/broadcast/conversion'
 import type { Order, OrderItem } from '@/types/database'
 import { BuyerRefundPanel } from './refund-panel'
 import { getRefundPanelState } from '@/lib/refunds/panel-state'
+import { verifyOrderAccessToken } from '@/lib/orders/order-access'
+import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
 import { describeRefundPolicy, policyFromEvent } from '@/lib/refunds/policy'
 
 export const runtime = 'nodejs'
@@ -32,6 +34,7 @@ type FullOrder = Order & { order_items: OrderItem[] }
 const QR_STATUSES = new Set(['valid', 'scanned'])
 
 type IssuedTicket = {
+  id: string
   ticket_code: string
   secret: string
   status: string
@@ -204,7 +207,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   // have been generated yet (a genuine pending state while the webhook runs).
   const { data: ticketRows } = await adminClient
     .from('tickets')
-    .select('ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name), seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))')
+    .select('id, ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name), seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))')
     .eq('order_id', fullOrder.id)
     .order('created_at', { ascending: true })
 
@@ -221,6 +224,8 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           errorCorrectionLevel: 'M',
         })
         return {
+          id: t.id,
+          status: t.status,
           ticket_code: t.ticket_code,
           href,
           qrSvg,
@@ -237,6 +242,28 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
         }
       })
   )
+
+  /*
+   * MAY THIS VIEWER ACT ON THIS ORDER?
+   *
+   * The same three ways to be the owner the refund action uses, kept in step
+   * with it deliberately: the signed link, the signed-in buyer, or a signed-in
+   * user whose account email is the order's guest email. A guest has only the
+   * first, which is the whole point of it.
+   *
+   * The confirmation page itself is readable by anyone holding the unguessable
+   * order id, so this must NOT be inferred from "you can see this page". It
+   * gates the controls that CHANGE something.
+   */
+  const { data: { user: viewer } } = await supabase.auth.getUser()
+  const viaLink = verifyOrderAccessToken(fullOrder.id, accessToken ?? null)
+  const canManageOrder =
+    viaLink ||
+    (viewer
+      ? fullOrder.user_id === viewer.id ||
+        (!!fullOrder.guest_email && fullOrder.guest_email === viewer.email)
+      : false)
+  const guestAccess = viaLink && !viewer ? { orderId: fullOrder.id, accessToken: accessToken ?? null } : undefined
 
   const ticketNoun = issuedTickets.length === 1 ? 'ticket' : 'tickets'
 
@@ -391,6 +418,25 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
                   <p className="mt-2 text-center text-xs text-ink-600">
                     Show this QR at entry. One QR admits one person.
                   </p>
+                  {/*
+                    * TRANSFER, ON THE ONLY SURFACE A GUEST EVER REACHES.
+                    *
+                    * This control used to live solely on /tickets, which is
+                    * behind sign-in, so a guest buyer could see their ticket
+                    * and had no way to move it (journey 5). Offered only to a
+                    * viewer who can prove the order is theirs, and only for a
+                    * ticket that is still valid: a scanned ticket must not be
+                    * transferable, or one QR would admit two people.
+                    */}
+                  {canManageOrder && t.status === 'valid' && (
+                    <div className="mt-3 border-t border-ink-100 pt-3">
+                      <TransferTicketForm
+                        ticketId={t.id}
+                        eventTitle={event.title}
+                        guestAccess={guestAccess}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

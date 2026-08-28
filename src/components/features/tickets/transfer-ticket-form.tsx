@@ -10,7 +10,20 @@ import { transferTicket } from '@/app/actions/transfer-ticket'
  * the old code dies and the new holder is emailed a fresh bearer link. Only the
  * ticket owner / current holder can do this (enforced server-side).
  */
-export function TransferTicketForm({ ticketId, eventTitle }: { ticketId: string; eventTitle: string }) {
+export function TransferTicketForm({
+  ticketId,
+  eventTitle,
+  guestAccess,
+}: {
+  ticketId: string
+  eventTitle: string
+  /*
+   * A guest's proof of this order, taken from the signed link in their own
+   * confirmation email. Absent on /tickets, which is behind sign-in; present on
+   * the order confirmation page, which is the only surface a guest ever reaches.
+   */
+  guestAccess?: { orderId: string; accessToken: string | null }
+}) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
@@ -22,7 +35,7 @@ export function TransferTicketForm({ ticketId, eventTitle }: { ticketId: string;
     e.preventDefault()
     setMsg(null)
     startTransition(async () => {
-      const res = await transferTicket(ticketId, email, name)
+      const res = await transferTicket(ticketId, email, name, guestAccess)
       if ('ok' in res) {
         setMsg({ kind: 'ok', text: `Sent to ${email.trim().toLowerCase()}. Their new QR is on the way and your old code no longer works.` })
         setOpen(false)
