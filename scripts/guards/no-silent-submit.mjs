@@ -160,9 +160,6 @@ function actionNamesImportedBy(src) {
   return names
 }
 
-/** The statement window after a call, where its result would be handled. */
-const WINDOW = 1500
-
 function checkActionResults() {
   const files = tracked('src/**/*.tsx')
   let clientFiles = 0

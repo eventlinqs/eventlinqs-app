@@ -104,7 +104,7 @@ try {
       }
     }
     await page.waitForTimeout(4000)
-    const asked = await describe(j, page, 'Asking for a refund')
+    await describe(j, page, 'Asking for a refund')
     const reason = await page.$('textarea')
     if (reason) await reason.fill('Cannot attend, something came up.').catch(() => {})
     for (const el of await page.$$('button')) {

@@ -21,7 +21,7 @@ Journey 3: a stranger buys a ticket
 07. Moving to checkout
       Checkout · AUD 26.87
 08. Checkout
-      URL     /checkout/925f98af-9884-4c57-b2c9-870cb0d55d14
+      URL     /checkout/a101ba7e-3300-4c4b-97f2-76cbf0a6a5f3
       heading "Order summary"
       fields  Full name* | Email* | First name* | Last name* | Email* | Enter code | Keep me updated by Baseline  | Keep me posted on events in 
       buttons Apply | Continue to payment - AUD 26.87
@@ -30,7 +30,7 @@ Journey 3: a stranger buys a ticket
 10. Submitted buyer details
       Continue to payment - AUD 26.87
 11. Payment step
-      URL     /checkout/925f98af-9884-4c57-b2c9-870cb0d55d14
+      URL     /checkout/a101ba7e-3300-4c4b-97f2-76cbf0a6a5f3
       heading "Order summary"
       fields  (none)
       buttons Pay AUD 26.87
@@ -39,11 +39,11 @@ Journey 3: a stranger buys a ticket
 13. Pressed pay
       Pay AUD 26.87
 14. After paying
-      URL     /orders/12ef594e-25e1-4174-9e98-f216e32afe54/confirmation?payment_intent=pi_3U9UVWGqHIQtgS8t0AHvhpL6&payment_intent_client_secret=pi_3U9UVWGqHIQtgS8t0AHvhpL6_secret_Od0dgpQWB3ZKd7H1oCJez4MU7&redirect_status=succeeded
+      URL     /orders/1b75d59a-cc66-4028-8770-4f10976ba756/confirmation?payment_intent=pi_3U9VaXGqHIQtgS8t0e06rCUh&payment_intent_client_secret=pi_3U9VaXGqHIQtgS8t0e06rCUh_secret_kOtOGa0uN6I7YVc8OiQGU1WSv&redirect_status=succeeded
       heading "You're going"
       fields  (none)
-      buttons Add to Calendar | Share Event
+      buttons Request a refund | Add to Calendar | Share Event
 15. Where the buyer ends up
-      /orders/12ef594e-25e1-4174-9e98-f216e32afe54/confirmation?payment_intent=pi_3U9UVWGqHIQtgS8t0AHvhpL6&payment_intent_client_secret=pi_3U9UVWGqHIQtgS8t0AHvhpL6_secret_Od0dgpQWB3ZKd7H1oCJez4MU7&redirect_status=succeeded :: no message
+      /orders/1b75d59a-cc66-4028-8770-4f10976ba756/confirmation?payment_intent=pi_3U9VaXGqHIQtgS8t0e06rCUh&payment_intent_client_secret=pi_3U9VaXGqHIQtgS8t0e06rCUh_secret_kOtOGa0uN6I7YVc8OiQGU1WSv&redirect_status=succeeded :: no message
 16. The buyer has a ticket
-      /orders/12ef594e-25e1-4174-9e98-f216e32afe54/confirmation?payment_intent=pi_3U9UVWGqHIQtgS8t0AHvhpL6&payment_intent_client_secret=pi_3U9UVWGqHIQtgS8t0AHvhpL6_secret_Od0dgpQWB3ZKd7H1oCJez4MU7&redirect_status=succeeded
+      /orders/1b75d59a-cc66-4028-8770-4f10976ba756/confirmation?payment_intent=pi_3U9VaXGqHIQtgS8t0e06rCUh&payment_intent_client_secret=pi_3U9VaXGqHIQtgS8t0e06rCUh_secret_kOtOGa0uN6I7YVc8OiQGU1WSv&redirect_status=succeeded

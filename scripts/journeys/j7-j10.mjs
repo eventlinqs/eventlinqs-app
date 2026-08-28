@@ -60,7 +60,7 @@ try {
     const { ctx, p } = await anon()
     const r = await p.goto(`${BASE}/events/${SEATED}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
     await p.waitForTimeout(4000)
-    const v = await describe(j, p, 'A stranger opens a seated event')
+    await describe(j, p, 'A stranger opens a seated event')
     const started = await (async () => {
       for (const el of await p.$$('button, a')) {
         const t = ((await el.innerText().catch(() => '')) || '').trim()
@@ -237,7 +237,7 @@ try {
     const { ctx, p } = await organiser()
     const r = await p.goto(`${BASE}/dashboard/payouts`, { waitUntil: 'domcontentloaded', timeout: 60000 })
     await p.waitForTimeout(4000)
-    const v = await describe(j, p, 'The payouts screen')
+    await describe(j, p, 'The payouts screen')
     const text = await p.evaluate(() => (document.querySelector('main')?.innerText || '').replace(/\s+/g, ' ').slice(0, 400))
     const saysMoney = /\$|AUD|balance|payout|paid|transfer/i.test(text)
     const saysWhen = /after the event|once the event|\d+ (day|business)|schedule|next payout/i.test(text)

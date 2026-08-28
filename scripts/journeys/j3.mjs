@@ -7,7 +7,7 @@
  *
  * Usage: node scripts/journeys/j3.mjs [slug]
  */
-import { chromium, BASE, makeJourney, note, attach, describe, finish, messagesOnScreen, fillIf } from './harness.mjs'
+import { chromium, BASE, makeJourney, note, attach, describe, finish, messagesOnScreen } from './harness.mjs'
 
 const SLUG = process.argv[2] ?? 'lineup-loop-proof-night-d6hcae'
 const stamp = process.env.RUN_STAMP ?? String(Date.now()).slice(-6)
@@ -39,7 +39,7 @@ try {
   const res = await page.goto(`${BASE}/events/${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
   await page.waitForTimeout(3000)
   note(j, 'A stranger opens the event page', `HTTP ${res?.status()} ${SLUG}`)
-  const ev = await describe(j, page, 'The event page, signed out')
+  await describe(j, page, 'The event page, signed out')
   const priceShown = await page.evaluate(() => {
     const t = document.querySelector('main')?.innerText || ''
     const m = t.match(/\$[\d,]+(\.\d{2})?/g)

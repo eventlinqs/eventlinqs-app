@@ -9,7 +9,7 @@ import { mkdirSync, appendFileSync, writeFileSync, readFileSync } from 'node:fs'
 export const BASE = process.env.BASE ?? 'http://localhost:3311'
 const SERVER_LOG = '.tmp-serve.log'
 
-export function makeJourney(id, title, viewport = { width: 1440, height: 1000 }) {
+export function makeJourney(id, title, _viewport = { width: 1440, height: 1000 }) {
   const OUT = `docs/verification/journeys-2026-08-28/${id}`
   mkdirSync(OUT, { recursive: true })
   writeFileSync(`${OUT}/log.txt`, `${title}\n${'='.repeat(title.length)}\n`)

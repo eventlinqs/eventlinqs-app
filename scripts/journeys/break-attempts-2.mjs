@@ -187,7 +187,7 @@ try {
     email: `gate.${stamp}@example.com`,
     password: `Str0ng-${stamp}-Pass!`,
   })
-  for (const [name, omit, wants, expected] of CASES) {
+  for (const [name, omit, wants] of CASES) {
     const p = gateP
     if (!gateOk) {
       verdict(name, 'SKIPPED', 'could not create an account (signup limiter is 5 per 10 minutes per IP)')
@@ -247,7 +247,7 @@ try {
       })
       await p.waitForTimeout(2500)
       const landed = new URL(p.url()).pathname
-      const body = await p.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 160))
+      await p.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 160))
       /*
        * Judge by CONTENT. Next renders its not-found page with a 200 here, so a
        * status check called a correctly refused request "ALLOWED". What decides
