@@ -21,7 +21,7 @@ export const runtime = 'nodejs'
 
 type Props = {
   params: Promise<{ order_id: string }>
-  searchParams: Promise<{ payment_intent?: string; redirect_status?: string }>
+  searchParams: Promise<{ payment_intent?: string; redirect_status?: string; t?: string }>
 }
 
 type FullOrder = Order & { order_items: OrderItem[] }
@@ -49,7 +49,12 @@ type IssuedTicket = {
 
 export default async function OrderConfirmationPage({ params, searchParams }: Props) {
   const { order_id } = await params
-  const { redirect_status } = await searchParams
+  /*
+   * `t` is the signed link from the confirmation email. It is the ONLY identity
+   * a guest buyer has, so it is read here and handed to the controls that act on
+   * this order. See src/lib/orders/order-access.ts.
+   */
+  const { redirect_status, t: accessToken } = await searchParams
 
   const supabase = await createClient()
   // Admin client - order may belong to a guest (user_id null) or a different user (organiser view),
@@ -461,6 +466,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
         {refundState && (
           <BuyerRefundPanel
             orderId={fullOrder.id}
+            accessToken={accessToken ?? null}
             canRequest={refundState.eligibility.canRequest}
             reason={refundState.eligibility.reason}
             policyMessage={refundState.eligibility.message}

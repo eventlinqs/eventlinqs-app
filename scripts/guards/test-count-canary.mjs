@@ -514,8 +514,17 @@ const ROOT = join(HERE, '..', '..')
  * press of a seven-step wizard. Every clause was false and waiting could never
  * clear it. Three of the five pin those exact clauses out of the message.
  */
-const MIN_FILES = 232
-const MIN_TESTS = 2857
+/*
+ * 2026-08-29: raised 232/2857 -> 233/2868. One file, eight tests, plus three
+ * added to the env-manifest suite by the new variable:
+ * tests/unit/orders/order-access.test.ts. It pins the token that lets a GUEST
+ * buyer act on their own order. The properties are the ones that matter if it
+ * is wrong: a token for order A must not open order B, and with no secret in
+ * production it must refuse to mint AND refuse to honour rather than fall back
+ * to the public dev constant.
+ */
+const MIN_FILES = 233
+const MIN_TESTS = 2868
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

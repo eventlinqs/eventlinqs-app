@@ -1,9 +1,9 @@
 Journey 4: a buyer asks for a refund
 ====================================
 01. Bought a ticket
-      refund.726114@example.com -> /orders/964810bf-e6b1-4953-b9a2-1545bd7b213d/confirmation?payment_intent=pi_3U9K
+      refund.105241@example.com -> /orders/3e4a1013-2612-43cf-a9eb-eff0ac56d237/confirmation?payment_intent=pi_3U9R
 02. The order the buyer is holding
-      URL     /orders/964810bf-e6b1-4953-b9a2-1545bd7b213d/confirmation
+      URL     /orders/3e4a1013-2612-43cf-a9eb-eff0ac56d237/confirmation?t=a83d0c90027a8103f2dce1323dc39fd8563ccef5
       heading "You're going"
       fields  (none)
       buttons Request a refund | Add to Calendar | Share Event
@@ -12,10 +12,10 @@ Journey 4: a buyer asks for a refund
 04. A link to the refund policy
       NONE ON THE ORDER PAGE
 05. Asking for a refund
-      URL     /orders/964810bf-e6b1-4953-b9a2-1545bd7b213d/confirmation
+      URL     /orders/3e4a1013-2612-43cf-a9eb-eff0ac56d237/confirmation?t=a83d0c90027a8103f2dce1323dc39fd8563ccef5
       heading "You're going"
       fields  Anything the organiser shoul
       buttons Send refund request | Cancel | Add to Calendar | Share Event
 06. After asking
-      You need to be signed in as the person who bought these tickets to request a refund. If you checked out as a guest, sign in with the email you used.Try again
+      Your refund request has been sent to the organiser. They will respond, and you will get an email either way.
       

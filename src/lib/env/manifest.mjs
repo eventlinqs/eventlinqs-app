@@ -496,6 +496,24 @@ export const ENV_MANIFEST = [
     publicVar: false,
   },
   {
+    name: 'ORDER_ACCESS_SECRET',
+    describe: 'Signs the guest link that opens a buyer own order',
+    // Missing means guest order links are neither issued nor honoured. It fails
+    // CLOSED rather than falling back to the public dev constant, which would
+    // let anyone open any order by guessing an id. A buyer with no account then
+    // keeps exactly the access they had before this existed, which is the
+    // confirmation page, rather than being handed a link that never verifies.
+    requiredOn: ['production'],
+    forbiddenOn: [],
+    optionalOn: ['preview', 'development'],
+    mustBeSensitive: true,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.strongSecret32,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
+  },
+  {
     name: 'QUEUE_SECRET',
     describe: 'Signs queue position and admission tokens',
     // Missing means token issuance and validation fail CLOSED (everyone queues)

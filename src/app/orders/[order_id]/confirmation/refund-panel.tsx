@@ -33,6 +33,8 @@ type RequestState = {
 
 interface Props {
   orderId: string
+  /** The signed link from the confirmation email; a guest has no other identity. */
+  accessToken?: string | null
   canRequest: boolean
   reason: string
   policyMessage: string
@@ -79,7 +81,7 @@ const STATE_COPY: Record<string, { title: string; tone: string; body: (r: NonNul
 }
 
 export function BuyerRefundPanel({
-  orderId, canRequest, reason: _reason, policyMessage, policyDescription, liveTicketIds, latestRequest,
+  orderId, accessToken, canRequest, reason: _reason, policyMessage, policyDescription, liveTicketIds, latestRequest,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
@@ -145,6 +147,7 @@ export function BuyerRefundPanel({
                 startTransition(async () => {
                   const r = await submitBuyerRefundRequest({
                     orderId,
+                    accessToken,
                     ticketIds: liveTicketIds,
                     message: message.trim() || null,
                   })

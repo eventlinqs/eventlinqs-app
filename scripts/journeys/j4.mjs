@@ -37,6 +37,19 @@ try {
   const orderId = await buyTicket(j, page, SLUG, BUYER, 'Refund Tester')
   if (!orderId) throw new Error('could not buy a ticket to refund')
 
+  /*
+   * THE LINK FROM THE CONFIRMATION EMAIL. In production this arrives by email;
+   * the console transport does not run for the Stripe webhook locally, so the
+   * journey derives the same token the server would mint, using the documented
+   * dev fallback secret. It proves the SERVER honours the link, which is the
+   * thing under test.
+   */
+  const { createHmac } = await import('node:crypto')
+  const token = createHmac('sha256', process.env.ORDER_ACCESS_SECRET ?? 'dev-order-access-secret-change-in-prod')
+    .update(`order-access-v1:${orderId}`)
+    .digest('hex')
+    .slice(0, 40)
+
   // ── The order the buyer is holding ────────────────────────────────────────
   /*
    * Retry the order page. Straight after paying it can render the not-found
@@ -45,7 +58,7 @@ try {
    */
   let settled = false
   for (let attempt = 1; attempt <= 6 && !settled; attempt += 1) {
-    await page.goto(`${BASE}/orders/${orderId}/confirmation`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+    await page.goto(`${BASE}/orders/${orderId}/confirmation?t=${token}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
     await page.waitForTimeout(3000)
     settled = await page.evaluate(() => !/can.t find that page/i.test(document.querySelector('main')?.innerText || ''))
     if (!settled) note(j, `The order page is not ready yet (attempt ${attempt})`, 'retrying')
