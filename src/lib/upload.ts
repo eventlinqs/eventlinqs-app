@@ -235,7 +235,18 @@ export async function generateEventCoverPreview(input: {
     }
   } catch (err) {
     console.error('[upload] cover generation failed:', err)
-    return { ok: false, error: 'We could not make a cover just now. Try again in a moment.' }
+    /*
+     * NOT "try again in a moment". When this fails it has been observed to keep
+     * failing for the life of the server process, so telling the organiser to
+     * wait sends them off to do something that will never work, on the one step
+     * standing between them and publishing. The message now says whose fault it
+     * is and names the way forward that always works: their own artwork.
+     */
+    return {
+      ok: false,
+      error:
+        'We could not make a cover. That is our end, not yours. Upload your own artwork to keep going, or try again.',
+    }
   }
 }
 

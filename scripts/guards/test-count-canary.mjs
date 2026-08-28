@@ -496,8 +496,18 @@ const ROOT = join(HERE, '..', '..')
  * reports no problems, exactly as a suite that runs nothing reports no
  * failures.
  */
-const MIN_FILES = 230
-const MIN_TESTS = 2849
+/*
+ * 2026-08-28: raised 230/2849 -> 231/2852. One file, three tests:
+ * tests/unit/media/cover-pipeline.test.ts. It pins the cover and share-card
+ * pipeline, which failed on this date with sharp reporting "Input buffer
+ * contains unsupported image format" and took EVERY event's share preview down
+ * with it. Two of the three assert that image bytes are sniffed by magic number
+ * rather than trusted from a content-type header; the third renders TWICE in one
+ * process, because a single render always passed and the whole class of defect
+ * is a resource consumed on first use.
+ */
+const MIN_FILES = 231
+const MIN_TESTS = 2852
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

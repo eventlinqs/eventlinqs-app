@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 import { canonicalHost } from '@/lib/site-url'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { fetchImageDataUri } from '@/lib/media/fetch-image'
 import { captureException } from '@/lib/observability/sentry'
 
 /**
@@ -74,7 +75,20 @@ export default async function OpengraphImage({ params }: { params: Promise<{ slu
     ? [event.venue_name, event.venue_city].filter(Boolean).join(', ')
     : ''
   const metaLabel = [dateLabel, placeLabel].filter(Boolean).join('  ·  ')
-  const cover = event?.cover_image_url ?? null
+  /*
+   * EMBED the cover, never hand satori a URL to fetch.
+   *
+   * satori fetching it itself means one unreachable object, one error body, or
+   * one format the decoder does not know takes the WHOLE response down with
+   * "failed to pipe response", and the share preview is dead. That is exactly
+   * what happened on 28 August: every event's card failed while the route's own
+   * documented no-cover fallback sat unused, because the failure happened inside
+   * the renderer rather than before it.
+   *
+   * Sniffed by magic number, so a lying content-type cannot get through, and
+   * null on anything unusable so the branded fallback below draws instead.
+   */
+  const cover = await fetchImageDataUri(event?.cover_image_url ?? null)
 
   return new ImageResponse(
     (
