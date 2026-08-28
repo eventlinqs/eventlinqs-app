@@ -1,5 +1,7 @@
 import { canonicalHost } from '@/lib/site-url'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { mailTransportReady, resolveMailTransport } from '@/lib/email/transport-ready'
+import { printConsoleEmail } from '@/lib/email/send'
 import { Resend } from 'resend'
 import QRCode from 'qrcode'
 import { getSiteUrl } from '@/lib/site-url'
@@ -142,8 +144,13 @@ export async function sendConfirmationEmail(
   order_id: string,
   receipt_url: string | null
 ) {
-  const resendKey = process.env.RESEND_API_KEY
-  if (!resendKey) return
+  /*
+   * This used to be `if (!process.env.RESEND_API_KEY) return`: a silent skip
+   * that sat ABOVE sendEmail and therefore above the console transport, so the
+   * buyer's ticket email could never be driven locally and, on a deployment
+   * missing the key, was dropped for every buyer without a line in any log.
+   */
+  if (!mailTransportReady(`the ticket confirmation for order ${order_id}`)) return
 
   const { data: order } = await db
     .from('orders')
@@ -206,7 +213,22 @@ export async function sendConfirmationEmail(
   }
 
   const firstName = deriveFirstName(buyerName)
-  const resend = new Resend(resendKey)
+  const html = buildConfirmationEmailHtml(order, event, tickets, receipt_url, firstName)
+
+  /*
+   * The console transport, so the buyer's ticket email can actually be OBSERVED
+   * locally. This is the whole reason the path was unproven: the old
+   * `if (!RESEND_API_KEY) return` sat above every transport, so a real card-4242
+   * purchase produced a confirmed order, a valid ticket, and total silence here.
+   * This sender builds its own Resend client for the inline QR attachments, so
+   * it cannot go through sendEmail and prints through the shared format instead.
+   */
+  if (resolveMailTransport() === 'console') {
+    printConsoleEmail({ to: buyerEmail, subject: `Your tickets for ${event.title}`, html })
+    return
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY as string)
 
   try {
     await resend.emails.send({
@@ -214,7 +236,7 @@ export async function sendConfirmationEmail(
       to: buyerEmail,
       replyTo: getReplyToAddress(),
       subject: `Your tickets for ${event.title}`,
-      html: buildConfirmationEmailHtml(order, event, tickets, receipt_url, firstName),
+      html,
       text: buildConfirmationEmailText(order, event, tickets, receipt_url, firstName),
       attachments: attachments.length > 0 ? attachments : undefined,
     })

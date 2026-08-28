@@ -9,7 +9,8 @@ import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 // replaces two hardcoded address literals so every sender in the codebase
 // derives from src/lib/email/sender.ts (founder ruling 2026-08-03).
 import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
-import { sendEmail } from '@/lib/email/send'
+import { sendEmail, printConsoleEmail } from '@/lib/email/send'
+import { mailTransportReady, resolveMailTransport } from '@/lib/email/transport-ready'
 import { alertDestination } from '@/lib/env/destinations'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { promoteWaitlist } from '@/lib/waitlist/promote'
@@ -1597,8 +1598,9 @@ async function sendRefundConfirmationEmail(
   charge: Stripe.Charge,
   override?: { amountCents?: number; ticketCount?: number },
 ) {
-  const resendKey = process.env.RESEND_API_KEY
-  if (!resendKey) return
+  // Was a silent `if (!RESEND_API_KEY) return`, above every transport: a buyer
+  // whose refund landed was told nothing, and nothing recorded that either.
+  if (!mailTransportReady(`the refund confirmation for order ${order_id}`)) return
 
   const { data: order } = await db
     .from('orders')
@@ -1664,24 +1666,32 @@ async function sendRefundConfirmationEmail(
   const refundAmountCents = override?.amountCents ?? charge.amount_refunded ?? order.total_cents
   const currency = (charge.currency ?? order.currency ?? 'AUD').toUpperCase()
 
-  const resend = new Resend(resendKey)
+  const refundSubject = buildRefundConfirmationSubject(event.title)
+  const refundHtml = buildRefundConfirmationHtml({
+    buyerName,
+    orderNumber: order.order_number,
+    eventTitle: event.title,
+    ticketCount,
+    refundAmountCents,
+    currency,
+    customMessage: null,
+    organiserName,
+    organiserContactEmail,
+  })
+
+  if (resolveMailTransport() === 'console') {
+    printConsoleEmail({ to: buyerEmail, subject: refundSubject, html: refundHtml })
+    return
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY as string)
   try {
     await resend.emails.send({
       from: getNoReplyFrom(),
       to: buyerEmail,
       replyTo: getReplyToAddress(),
-      subject: buildRefundConfirmationSubject(event.title),
-      html: buildRefundConfirmationHtml({
-        buyerName,
-        orderNumber: order.order_number,
-        eventTitle: event.title,
-        ticketCount,
-        refundAmountCents,
-        currency,
-        customMessage: null,
-        organiserName,
-        organiserContactEmail,
-      }),
+      subject: refundSubject,
+      html: refundHtml,
       text: buildRefundConfirmationText({
         buyerName,
         orderNumber: order.order_number,
