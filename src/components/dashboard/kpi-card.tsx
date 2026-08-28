@@ -46,8 +46,8 @@ function DeltaPill({ delta }: { delta: NonNullable<Props['delta']> }) {
   const positive = delta.value >= 0
   const sign = positive ? '+' : ''
   const cls = positive
-    ? 'bg-success/10 text-success'
-    : 'bg-error/10 text-error'
+    ? 'bg-success/10 text-ink-900'
+    : 'bg-error/10 text-ink-900'
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}

@@ -108,7 +108,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
                 setSubject(initialSubject)
                 setMessage('')
               }}
-              className="mt-6 text-sm font-medium text-[var(--brand-accent)] underline underline-offset-2 hover:text-[var(--brand-accent-hover)]"
+              className="mt-6 text-sm font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 hover:text-[var(--brand-accent-strong-hover)]"
             >
               Send another message
             </button>
@@ -243,7 +243,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
           </p>
           <Link
             href="/help"
-            className="mt-3 inline-flex text-sm font-medium text-[var(--brand-accent)] underline underline-offset-2 hover:text-[var(--brand-accent-hover)] transition-colors"
+            className="mt-3 inline-flex text-sm font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 hover:text-[var(--brand-accent-strong-hover)] transition-colors"
           >
             Go to Help Centre &rsaquo;
           </Link>

@@ -47,11 +47,16 @@ interface MyTicketRow {
 // ticket to a 9pm Perth event and reading it in Sydney was shown the NEXT DAY.
 // This is the page people open to check when to turn up.
 
+// Dark ink on the status tint, NOT the semantic text colour. text-success on
+// bg-success/15 measures 2.94:1, well under AA, and there is no darker success
+// token to reach for. src/app/t/[code]/page.tsx already made exactly this call
+// for the bearer view; this is its twin and was missed at the time, so /tickets
+// shipped 57 failing badges on one screen. The tint still carries the status.
 const STATUS_TONE: Record<string, string> = {
-  valid: 'bg-success/15 text-success',
+  valid: 'bg-success/15 text-ink-900',
   scanned: 'bg-ink-200 text-ink-700',
-  refunded: 'bg-error/15 text-error',
-  void: 'bg-error/15 text-error',
+  refunded: 'bg-error/15 text-ink-900',
+  void: 'bg-error/15 text-ink-900',
   transferred: 'bg-ink-200 text-ink-700',
 }
 

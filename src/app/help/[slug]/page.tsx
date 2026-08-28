@@ -76,7 +76,7 @@ export default async function HelpSlugPage({ params }: Props) {
           </p>
           <a
             href="/contact"
-            className="mt-4 inline-flex text-sm font-medium text-[var(--brand-accent)] underline underline-offset-2 hover:text-[var(--brand-accent-hover)] transition-colors"
+            className="mt-4 inline-flex text-sm font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 hover:text-[var(--brand-accent-strong-hover)] transition-colors"
           >
             Contact support &rsaquo;
           </a>

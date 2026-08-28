@@ -228,7 +228,7 @@ export function PayoutCalculator({ rates, currency = 'AUD' }: Props) {
             </div>
           </dl>
         )}
-        <p className="mt-6 text-xs leading-relaxed text-[var(--text-muted)]">
+        <p className="mt-6 text-xs leading-relaxed text-[var(--text-secondary)]">
           Live rates from the same pricing engine that runs checkout, GST
           inclusive. What you see here is what the numbers would be today.
         </p>
