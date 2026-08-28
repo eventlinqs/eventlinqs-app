@@ -93,7 +93,8 @@ export function linkFromInbox(toEmail, match = /auth\/confirm/) {
  * runs of journey 1 reported "NOTHING AT ALL" while a message sat on screen.
  */
 export const MESSAGE_SELECTOR =
-  '[role=alert],[role=status],.text-red-600,.text-error,.text-error-strong,.text-amber-800,.text-amber-900,[data-error]'
+  '[role=alert],[role=status],.text-red-600,.text-red-700,.text-red-800,.text-error,.text-error-strong,' +
+  '.text-amber-800,.text-amber-900,.bg-red-50,.bg-error\\/10,[data-error]'
 
 /** Every refusal or status the person can actually read right now. */
 export async function messagesOnScreen(page) {

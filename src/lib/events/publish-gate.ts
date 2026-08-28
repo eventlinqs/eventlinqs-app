@@ -240,6 +240,39 @@ export async function checkPublishGate(
     }
   }
 
+  /*
+   * NEVER RECONCILE AN ACCOUNT THAT DOES NOT EXIST.
+   *
+   * An organiser who has simply not connected Stripe yet has no
+   * stripe_account_id, so there is nothing for the reconciler to read. It fails
+   * with `stripe_error`, and the branch below then tells them:
+   *
+   *   "We could not check your Stripe status just now ... Nothing is wrong with
+   *    your account as far as we know. Try again shortly."
+   *
+   * Every clause of that is false for them. Nothing failed to check, because
+   * there is nothing to check; something IS wrong, in the sense that they have
+   * not connected payouts; and trying again shortly will never work, because
+   * waiting does not connect Stripe. It is the exact failure the founder named:
+   * a refusal that blames the wrong cause, on the last step before publishing,
+   * to someone who has just built an entire event.
+   *
+   * The correct message already existed two branches down. This routes the case
+   * to it instead of through a reconcile that can only fail. Found by journey 2
+   * on 28 August 2026.
+   */
+  if (!org.stripe_account_id) {
+    return {
+      ok: false,
+      reason: 'paid_event_charges_disabled',
+      message:
+        'Connect Stripe before publishing a paid event: that is how you get paid, and we cannot take money for a ticket without it. Free events can be published right now.',
+      outstanding: [],
+      disabledReason: null,
+      nextAction: { label: 'Connect Stripe', href: '/dashboard/payouts' },
+    }
+  }
+
   // SLOW PATH. We are about to refuse. Before doing that, find out what Stripe
   // actually says, because the stored columns are exactly what cannot be trusted.
   const fresh = await reconcile(input.organisationId)

@@ -506,8 +506,16 @@ const ROOT = join(HERE, '..', '..')
  * process, because a single render always passed and the whole class of defect
  * is a resource consumed on first use.
  */
-const MIN_FILES = 231
-const MIN_TESTS = 2852
+/*
+ * 2026-08-28 (later): raised 231/2852 -> 232/2857. One file, five tests:
+ * tests/unit/events/publish-gate-never-connected.test.ts. An organiser who had
+ * never connected Stripe was told "We could not check your Stripe status just
+ * now ... Nothing is wrong with your account ... Try again shortly", on the last
+ * press of a seven-step wizard. Every clause was false and waiting could never
+ * clear it. Three of the five pin those exact clauses out of the message.
+ */
+const MIN_FILES = 232
+const MIN_TESTS = 2857
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

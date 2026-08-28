@@ -462,6 +462,8 @@ export function EventForm({
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Where the publish gate says to go next, when it says anything. */
+  const [errorAction, setErrorAction] = useState<{ label: string; href: string } | null>(null)
   const [stepError, setStepError] = useState<string | null>(null)
 
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
@@ -601,7 +603,7 @@ export function EventForm({
     setError(null)
     try {
       const payload = buildPayload(status)
-      let result: { error?: string }
+      let result: { error?: string; nextAction?: { label: string; href: string } }
       if (editMode && existingEventId) {
         result = await updateEvent({ ...payload, eventId: existingEventId })
       } else {
@@ -609,6 +611,7 @@ export function EventForm({
       }
       if (result.error) {
         setError(result.error)
+        setErrorAction(result.nextAction ?? null)
         // Only re-enable the buttons on a FAILED submit. On success the
         // component is navigating away, so we deliberately keep isSubmitting
         // true through the navigation: this closes the brief window where a
@@ -1867,8 +1870,23 @@ export function EventForm({
         )}
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          /*
+           * role=alert so the refusal is ANNOUNCED, not just rendered. An
+           * organiser at the bottom of a seven-step wizard pressing Publish, and
+           * anyone using a screen reader, previously got no signal at all that
+           * the press had been refused.
+           *
+           * The link is the gate's own nextAction. It already knew where to send
+           * them; the caller used to throw it away, so "Connect Stripe" was
+           * advice with no door.
+           */
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
+            {errorAction && (
+              <a href={errorAction.href} className="ml-2 font-semibold underline underline-offset-2">
+                {errorAction.label}
+              </a>
+            )}
           </div>
         )}
 

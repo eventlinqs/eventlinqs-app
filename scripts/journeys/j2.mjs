@@ -88,11 +88,54 @@ try {
      * no idea that money is the problem.
      */
     if (!/\/launch-kit/.test(url)) {
-      j.blockers.push(
-        'a PAID event with no Stripe: Publish is ENABLED, the press does nothing, no event is created, ' +
-          `and nothing is shown. Landed back on ${url} with ${after.length ? after.join(' // ') : 'NO MESSAGE AT ALL'}`,
-      )
-      await page.screenshot({ path: `${j.OUT}/publish-did-nothing.png`, fullPage: true })
+      /*
+       * Is the refusal ON SCREEN, IN VIEW, and ANNOUNCED? Those are three
+       * different questions and the platform can fail any of them separately. A
+       * refusal rendered at the top of a seven-step wizard, while the organiser
+       * is at the bottom pressing Publish, is invisible in every way that
+       * matters even though it is technically present.
+       */
+      /*
+       * Ask for THE REFUSAL BOX, not for "any element mentioning Stripe". Two
+       * earlier versions of this check were wrong in opposite directions: one
+       * required a leaf node and missed the box because it now contains a link,
+       * the other took the shortest match and picked the "Payouts" nav item.
+       * The refusal is a specific thing on screen; query that.
+       */
+      const detail = await page.evaluate(() => {
+        const el =
+          document.querySelector('[role=alert]') ??
+          [...document.querySelectorAll('.bg-red-50, .text-red-700')].find(
+            (e) => e.getBoundingClientRect().width > 0,
+          )
+        if (!el) return null
+        const r = el.getBoundingClientRect()
+        return {
+          text: el.textContent.trim().replace(/\s+/g, ' ').slice(0, 200),
+          linkToFix: el.querySelector('a')?.getAttribute('href') ?? null,
+          inViewport: r.top >= 0 && r.bottom <= window.innerHeight,
+          scrolledPast: Math.round(r.top),
+          announced: Boolean(el.closest('[role=alert]') || el.getAttribute('role') === 'alert'),
+        }
+      })
+      note(j, 'The refusal on screen', detail ? JSON.stringify(detail) : 'NONE FOUND ANYWHERE')
+      if (!detail) {
+        j.blockers.push(
+          'a PAID event with no Stripe: Publish is ENABLED, the press does nothing, no event is created, ' +
+            `and no refusal naming Stripe appears anywhere. Landed back on ${url}`,
+        )
+      } else {
+        if (!detail.announced) {
+          j.blockers.push(`the Stripe refusal is not announced (no role=alert): "${detail.text.slice(0, 90)}"`)
+        }
+        if (!detail.inViewport) {
+          j.blockers.push(
+            `the Stripe refusal renders ${detail.scrolledPast}px outside the viewport, so the organiser pressing ` +
+              'Publish at the bottom of the wizard never sees it',
+          )
+        }
+      }
+      await page.screenshot({ path: `${j.OUT}/publish-refused.png`, fullPage: true })
     }
 
     if (/\/launch-kit/.test(url)) {

@@ -147,7 +147,17 @@ export type CreateEventInput = {
   queue_admission_window_minutes: number
 }
 
-export async function createEvent(input: CreateEventInput): Promise<{ error?: string }> {
+/**
+ * What a create/update/publish action hands back.
+ *
+ * `nextAction` is the publish gate's own answer to "where do I go to fix this".
+ * It used to be computed by the gate and then thrown away by the caller, so an
+ * organiser was told to connect Stripe with no way to get there from the screen
+ * they were on. Carrying it costs nothing and closes the loop.
+ */
+export type ActionResult = { error?: string; nextAction?: { label: string; href: string } }
+
+export async function createEvent(input: CreateEventInput): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
@@ -204,7 +214,7 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
       coverImageUrl: input.cover_image_url,
     })
-    if (!gate.ok) return { error: gate.message }
+    if (!gate.ok) return { error: gate.message, nextAction: gate.nextAction }
 
     // Nothing in the publish path asked whether there was anything to sell.
     // See src/lib/events/sellable-guard.ts.
@@ -366,7 +376,7 @@ export type UpdateEventInput = Omit<CreateEventInput, 'eventId' | 'organisationI
   eventId: string
 }
 
-export async function updateEvent(input: UpdateEventInput): Promise<{ error: string } | never> {
+export async function updateEvent(input: UpdateEventInput): Promise<ActionResult | never> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
@@ -440,7 +450,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
       coverImageUrl: input.cover_image_url,
     })
-    if (!gate.ok) return { error: gate.message }
+    if (!gate.ok) return { error: gate.message, nextAction: gate.nextAction }
 
     // The edit path publishes too, so a guard only on create would be
     // bypassed by saving a draft and publishing from the edit screen.
@@ -601,7 +611,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
   redirect('/dashboard/events?saved=1')
 }
 
-export async function publishEvent(eventId: string): Promise<{ error?: string }> {
+export async function publishEvent(eventId: string): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
@@ -648,7 +658,7 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
     tiersHavePaid: hasPaidTier(tiers ?? []),
     coverImageUrl: event.cover_image_url,
   })
-  if (!gate.ok) return { error: gate.message }
+  if (!gate.ok) return { error: gate.message, nextAction: gate.nextAction }
 
   const sellable = checkSellable(tiers ?? [], {
     hasReservedSeating: Boolean(event.has_reserved_seating),

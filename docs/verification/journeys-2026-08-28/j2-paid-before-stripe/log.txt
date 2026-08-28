@@ -1,7 +1,7 @@
 Journey 2: paid event, Stripe not connected
 ===========================================
 01. Signed up and confirmed
-      sam.paid.735570@example.com -> /dashboard
+      sam.paid.863570@example.com -> /dashboard
 02. Uploaded a cover
       it appeared immediately
 03. At the review step with a PAID event
@@ -12,11 +12,13 @@ Journey 2: paid event, Stripe not connected
       fields  Search
       buttons SOSam | Collapse | Save as Draft | Publish and get your launch kit | Back
 05. Publish was ALLOWED on a paid event with no Stripe
-      landed /dashboard/events/create :: no message
-06. The payouts screen, where money gets connected
+      landed /dashboard/events/create :: Connect Stripe before publishing a paid event: that is how you get paid, and we cannot take money for a ticket without it. Free events can be published right now.Connect Stripe
+06. The refusal on screen
+      {"text":"Connect Stripe before publishing a paid event: that is how you get paid, and we cannot take money for a ticket without it. Free events can be published right now.Connect Stripe","linkToFix":"/dashboard/payouts","inViewport":true,"scrolledPast":631,"announced":true}
+07. The payouts screen, where money gets connected
       URL     /dashboard/payouts
       heading "Payouts"
       fields  Search | Where is your business based
       buttons SOSam | Collapse | Refresh Stripe status | Set up payouts
-07. Is there a way to connect payouts from here?
+08. Is there a way to connect payouts from here?
       yes
