@@ -1,0 +1,4 @@
+buy one ticket for the door
+===========================
+01. Bought a ticket
+      door.437737@example.com -> /orders/d07ff8cf-7a0b-4932-a473-7c0b9ca82d86/confirmation?payment_intent=pi_3U9K
