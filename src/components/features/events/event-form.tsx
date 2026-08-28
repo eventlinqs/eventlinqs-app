@@ -1154,7 +1154,14 @@ export function EventForm({
             <div>
               <label htmlFor={`tier-price-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Price</label>
               <div className="flex gap-2">
-                <select id={`tier-price-${idx}`}
+                {/* The "Price" label used to point HERE, at the currency
+                    dropdown, so pressing it focused the currency and the price
+                    field itself was reachable only through its aria-label. The
+                    label now points at the price input; the currency carries its
+                    own name. Found by journey 2 on 2026-08-28: filling the field
+                    the label named produced a $0 ticket on a paid event. */}
+                <select
+                  aria-label="Currency"
                   value={tier.currency}
                   onChange={e => {
                     const tiers = [...formData.ticket_tiers]
@@ -1168,6 +1175,7 @@ export function EventForm({
                   ))}
                 </select>
                 <input
+                  id={`tier-price-${idx}`}
                   type="number"
                   min="0"
                   step="0.01"

@@ -1,0 +1,22 @@
+Journey 2: paid event, Stripe not connected
+===========================================
+01. Signed up and confirmed
+      sam.paid.735570@example.com -> /dashboard
+02. Uploaded a cover
+      it appeared immediately
+03. At the review step with a PAID event
+      Publish disabled=false
+04. Review step, paid event, no Stripe
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search
+      buttons SOSam | Collapse | Save as Draft | Publish and get your launch kit | Back
+05. Publish was ALLOWED on a paid event with no Stripe
+      landed /dashboard/events/create :: no message
+06. The payouts screen, where money gets connected
+      URL     /dashboard/payouts
+      heading "Payouts"
+      fields  Search | Where is your business based
+      buttons SOSam | Collapse | Refresh Stripe status | Set up payouts
+07. Is there a way to connect payouts from here?
+      yes

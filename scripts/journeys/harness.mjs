@@ -87,6 +87,241 @@ export function linkFromInbox(toEmail, match = /auth\/confirm/) {
   return null
 }
 
+/**
+ * Widened from the original [role=alert],.text-red-600 pair. The media step
+ * renders its refusal as an amber div with no role at all, so the first four
+ * runs of journey 1 reported "NOTHING AT ALL" while a message sat on screen.
+ */
+export const MESSAGE_SELECTOR =
+  '[role=alert],[role=status],.text-red-600,.text-error,.text-error-strong,.text-amber-800,.text-amber-900,[data-error]'
+
+/** Every refusal or status the person can actually read right now. */
+export async function messagesOnScreen(page) {
+  return page.evaluate(
+    (sel) =>
+      [...document.querySelectorAll(sel)]
+        .filter((e) => e.getBoundingClientRect().width > 0)
+        .map((e) => e.textContent.trim().replace(/\s+/g, ' ').slice(0, 200))
+        .filter(Boolean),
+    MESSAGE_SELECTOR,
+  )
+}
+
+/** Fill if present and fillable. Never throws: a field can legitimately vanish. */
+export async function fillIf(page, sel, val) {
+  try {
+    const el = await page.$(sel)
+    if (!el) return false
+    await el.fill(val)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function clickText(page, t) {
+  const b = await page.$(`button:has-text("${t}")`)
+  if (!b) return false
+  await b.click()
+  return true
+}
+
+/** Sign in through the real form. Returns the path it landed on. */
+export async function signIn(j, page, email, password) {
+  await page.goto(`${BASE}/login`, { waitUntil: 'networkidle', timeout: 60000 })
+  await fillIf(page, 'input[type="email"]', email)
+  await fillIf(page, 'input[type="password"]', password)
+  await page.click('button[type="submit"]')
+  await page.waitForTimeout(6000)
+  const landed = new URL(page.url()).pathname
+  note(j, 'Signed in', `${email} -> ${landed}`)
+  if (landed.startsWith('/login')) {
+    j.blockers.push(`sign-in refused: ${(await messagesOnScreen(page)).join(' // ') || 'NOTHING SHOWN'}`)
+  }
+  return landed
+}
+
+/**
+ * Sign up through the real form and confirm through the emailed link.
+ * Returns true only if the account is confirmed and signed in.
+ */
+export async function signUpAndConfirm(j, page, { name, email, password }) {
+  await page.goto(`${BASE}/signup`, { waitUntil: 'networkidle', timeout: 60000 })
+  await fillIf(page, 'input#fullName', name)
+  await fillIf(page, 'input[type="email"]', email)
+  await fillIf(page, 'input[type="password"]', password)
+  await page.click('button[type="submit"]')
+  await page.waitForTimeout(7000)
+  const landed = new URL(page.url()).pathname
+  if (!landed.startsWith('/verify-email-sent')) {
+    const shown = await messagesOnScreen(page)
+    note(j, 'Signup did not ask for confirmation', `${landed} :: ${shown.join(' // ') || 'NOTHING SHOWN'}`)
+    j.blockers.push(`signup refused: ${shown.join(' // ') || 'NOTHING SHOWN'}`)
+    return false
+  }
+  const link = linkFromInbox(email)
+  if (!link) {
+    j.blockers.push('no confirmation email reached the inbox')
+    return false
+  }
+  await page.goto(link, { waitUntil: 'networkidle', timeout: 60000 })
+  await page.waitForTimeout(3500)
+  note(j, 'Signed up and confirmed', `${email} -> ${new URL(page.url()).pathname}`)
+  return true
+}
+
+/**
+ * Walk the create-event wizard the way a person does, and stop at Review.
+ *
+ * TWO THINGS ARE DELIBERATE AND BOTH COST A DAY TO LEARN.
+ *
+ * Sale Starts and Sale Ends are NEVER filled. They default to empty and are
+ * optional, and filling every date field on every step set a sale window that
+ * ran to the event's own end time. The wizard then refused to advance and said
+ * nothing at all, which reads exactly like a dead Continue button.
+ *
+ * The cover is made and then ACCEPTED. The composer offers a preview and does
+ * not apply it until "Use this cover" is pressed, so skipping that reaches
+ * Review with no cover and a correctly disabled Publish.
+ *
+ * Returns what the review step actually offers, so the caller can judge it.
+ */
+export async function createEventThroughWizard(j, page, opts) {
+  const { title, summary, description, price = null, capacity = '100', wantCover = true } = opts
+
+  await page.goto(`${BASE}/dashboard/events/create`, { waitUntil: 'networkidle', timeout: 60000 })
+  await page.waitForTimeout(2500)
+
+  // The organisation step appears only for an organiser who has none yet.
+  if (await page.$('button:has-text("Continue to event details")')) {
+    await fillIf(page, 'input#name, input[name="name"]', opts.orgName ?? `${title} Presents`)
+    await fillIf(page, 'textarea#description, textarea[name="description"]', 'Events for our community.')
+    await clickText(page, 'Continue to event details')
+    await page.waitForTimeout(6000)
+  }
+
+  await fillIf(page, 'input[placeholder^="e.g. Summer Music Festival"]', title)
+  await fillIf(page, 'input[placeholder^="A brief one-line"]', summary)
+  await fillIf(page, 'textarea[placeholder^="Describe your event in detail"]', description)
+  const sel = await page.$('select')
+  if (sel) {
+    const opt = await page.evaluate(() => {
+      const s = document.querySelector('select')
+      const o = [...s.options].find((x) => /arts/i.test(x.textContent)) ?? [...s.options].find((x) => x.value)
+      return o?.value ?? null
+    })
+    if (opt) await page.selectOption('select', opt)
+  }
+  await clickText(page, 'Continue')
+  await page.waitForTimeout(4000)
+
+  let madeCover = false
+  for (let i = 0; i < 9; i += 1) {
+    const onTicketing = Boolean(await page.$('button:has-text("Add Ticket Tier")'))
+    if (!onTicketing) {
+      const dates = await page.$$('input[type="date"], input[type="datetime-local"]')
+      for (let d = 0; d < dates.length; d += 1) {
+        const when = new Date(Date.now() + 21 * 864e5 + d * 3 * 36e5)
+        const type = await page.evaluate((e) => e.type, dates[d])
+        await dates[d]
+          .fill(type === 'date' ? when.toISOString().slice(0, 10) : when.toISOString().slice(0, 16))
+          .catch(() => {})
+      }
+      await fillIf(page, 'input[placeholder*="Venue"], input[placeholder*="Address"]', 'The Wool Exchange, Geelong')
+    }
+
+    /*
+     * UPLOAD a cover rather than compose one, when asked. The composer is
+     * currently broken (see the j1 findings), and a journey that cannot get past
+     * the media step cannot test anything downstream of it. Uploading is also
+     * the path most organisers take: they have their own artwork.
+     */
+    if (opts.uploadCover && !madeCover && (await page.$('input[type="file"]'))) {
+      const input = await page.$('input[type="file"]')
+      await input.setInputFiles(opts.uploadCover)
+      const started = Date.now()
+      while (Date.now() - started < 60000) {
+        madeCover = await page.evaluate(() =>
+          [...document.querySelectorAll('img')].some((im) => {
+            const r = im.getBoundingClientRect()
+            return r.width > 120 && r.height > 80 && im.complete && im.naturalWidth > 0
+          }),
+        )
+        if (madeCover) break
+        await page.waitForTimeout(1500)
+      }
+      const shown = await messagesOnScreen(page)
+      note(j, 'Uploaded a cover', madeCover ? 'it appeared immediately' : `NOTHING APPEARED: ${shown.join(' // ') || 'no message'}`)
+      if (!madeCover) j.blockers.push(`uploading a cover showed nothing: ${shown.join(' // ') || 'no message'}`)
+    }
+
+    if (wantCover && !madeCover && (await page.$('button:has-text("Make a cover")'))) {
+      await clickText(page, 'Make a cover')
+      const started = Date.now()
+      while (Date.now() - started < 45000) {
+        madeCover = await page.evaluate(() =>
+          [...document.querySelectorAll('img')].some((im) => {
+            const r = im.getBoundingClientRect()
+            return r.width > 120 && r.height > 80 && im.complete && im.naturalWidth > 0
+          }),
+        )
+        if (madeCover) break
+        const shown = await messagesOnScreen(page)
+        if (shown.some((t) => /could not make a cover/i.test(t))) break
+        await page.waitForTimeout(1500)
+      }
+      const shown = await messagesOnScreen(page)
+      note(j, 'Made a cover', madeCover ? 'the platform composed one' : `FAILED: ${shown.join(' // ') || 'no message'}`)
+      if (!madeCover) {
+        j.blockers.push(
+          `the cover composer failed: ${shown.join(' // ') || 'no message'} (known: it works once per server process)`,
+        )
+      } else if (await page.$('button:has-text("Use this cover")')) {
+        await clickText(page, 'Use this cover')
+        await page.waitForTimeout(6000)
+      }
+    }
+
+    if (onTicketing) {
+      await fillIf(page, '#tier-name-0, input[placeholder^="e.g. General Admission"]', 'General admission')
+      const typeSel = await page.$('#type-21, select')
+      if (typeSel) {
+        const want = price === null || price === 0 ? 'free' : 'general_admission'
+        // page.evaluate takes ONE argument; a second is a hard error.
+        const has = await page.evaluate(
+          ({ s, w }) => [...s.options].some((o) => o.value === w),
+          { s: typeSel, w: want },
+        )
+        if (has) await typeSel.selectOption(want)
+      }
+      // By the price input's own name, not by the label's htmlFor: that pointed
+      // at the CURRENCY select until 28 August, so filling it left the ticket at
+      // zero and the "paid" event published as free.
+      if (price) {
+        const filled =
+          (await fillIf(page, 'input[aria-label^="Ticket price for tier"]', String(price))) ||
+          (await fillIf(page, '#tier-price-0', String(price)))
+        if (!filled) j.blockers.push('could not find the ticket price field on the ticketing step')
+      }
+      await fillIf(page, '#tier-capacity-0', capacity)
+      await page.waitForTimeout(1200)
+    }
+
+    if (await page.$('button:has-text("Publish and get your launch kit")')) break
+    if (!(await clickText(page, 'Continue'))) break
+    await page.waitForTimeout(4000)
+  }
+
+  const pub = await page.$('button:has-text("Publish and get your launch kit")')
+  if (!pub) {
+    j.blockers.push('never reached the Review step: no Publish button')
+    return { reachedReview: false, madeCover }
+  }
+  const disabled = await page.evaluate((b) => b.disabled, pub)
+  const reviewText = await page.evaluate(() => (document.querySelector('main')?.innerText || '').replace(/\s+/g, ' '))
+  return { reachedReview: true, madeCover, publishDisabled: disabled, reviewText, publishButton: pub }
+}
+
 export async function finish(j) {
   writeFileSync(`${j.OUT}/errors.txt`, j.errors.join('\n'))
   console.log(`\n--- ${j.title}`)

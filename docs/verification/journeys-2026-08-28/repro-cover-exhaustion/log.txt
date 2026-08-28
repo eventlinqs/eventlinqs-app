@@ -1,7 +1,7 @@
 Repro: the cover composer stops after N covers
 ==============================================
 01. Signed in
-      jo.free.629351@example.com -> /dashboard
+      sam.paid.142631@example.com -> /dashboard
 02. Reached the Event Media step
       now pressing Make a cover repeatedly
 03. Press 1 FAILED
