@@ -63,24 +63,49 @@ function tracked(pattern) {
  * A. A number input whose min and step disagree.
  * ------------------------------------------------------------------ */
 
-/** Every literal a `step={...}` or `step="..."` can evaluate to. */
-function stepLiterals(tag) {
+/**
+ * Every literal a `<name>={...}` or `<name>="..."` can evaluate to.
+ *
+ * BARE NUMBERS IN BRACES ARE READ TOO. The first version only matched QUOTED
+ * literals inside an expression, so `min={10}` produced nothing and 32 of the
+ * 47 number inputs in this codebase were invisible to rule A. A guard that
+ * cannot see the commonest way the attribute is written in the tree is a guard
+ * that agrees with everything.
+ */
+function attrLiterals(tag, name) {
   const out = []
-  const literal = tag.match(/\bstep=["']([^"']+)["']/)
+  const literal = tag.match(new RegExp(`\\b${name}=["']([^"']+)["']`))
   if (literal) out.push(literal[1])
-  const expr = tag.match(/\bstep=\{([^}]*)\}/)
-  if (expr) for (const m of expr[1].matchAll(/'([^']*)'|"([^"]*)"/g)) out.push(m[1] ?? m[2])
+  const expr = tag.match(new RegExp(`\\b${name}=\\{([^}]*)\\}`))
+  if (expr) {
+    for (const m of expr[1].matchAll(/'([^']*)'|"([^"]*)"/g)) out.push(m[1] ?? m[2])
+    const bare = expr[1].trim()
+    if (/^-?\d+(\.\d+)?$/.test(bare)) out.push(bare)
+  }
   return out
 }
 
-/** Every literal a `min={...}` or `min="..."` can evaluate to. */
-function minLiterals(tag) {
-  const out = []
-  const literal = tag.match(/\bmin=["']([^"']+)["']/)
-  if (literal) out.push(literal[1])
-  const expr = tag.match(/\bmin=\{([^}]*)\}/)
-  if (expr) for (const m of expr[1].matchAll(/'([^']*)'|"([^"]*)"/g)) out.push(m[1] ?? m[2])
-  return out
+const stepLiterals = tag => attrLiterals(tag, 'step')
+const minLiterals = tag => attrLiterals(tag, 'min')
+const maxLiterals = tag => attrLiterals(tag, 'max')
+
+/**
+ * THE STEP HTML ACTUALLY APPLIES, which is not always the one that is written.
+ *
+ * `step` defaults to 1 on `<input type="number">` when the attribute is absent
+ * (HTML Standard, the step attribute: "default step" is 1 for number).
+ * https://html.spec.whatwg.org/multipage/input.html#attr-input-step
+ *
+ * So `min="0.5"` with NO step is exactly the defect journey 8 was, and the
+ * first version of this rule skipped it, because it required BOTH a min and a
+ * step literal to be present before it would judge anything. The defect it was
+ * written for happened to spell the step out. The next one need not.
+ */
+function effectiveSteps(tag) {
+  const written = stepLiterals(tag)
+  if (written.length > 0) return { steps: written, implied: false }
+  if (/\bstep=/.test(tag)) return { steps: [], implied: false } // present but not a literal we can read
+  return { steps: ['1'], implied: true }
 }
 
 function checkNumberInputs() {
@@ -108,11 +133,32 @@ function checkNumberInputs() {
       inputs++
 
       const mins = minLiterals(tag)
-      const steps = stepLiterals(tag)
-      if (!mins.length || !steps.length) continue
+      const maxes = maxLiterals(tag)
+      const { steps, implied } = effectiveSteps(tag)
 
       const id = tag.match(/\bid=["']([^"']+)["']/)?.[1] ?? '(no id)'
       const line = src.slice(0, src.indexOf(tag.slice(0, 60))).split('\n').length
+
+      // A RANGE WITH NOTHING IN IT. min > max makes every value out of range,
+      // so the browser refuses the form and no handler ever runs. Same silence,
+      // different arithmetic.
+      for (const rawMin of mins) {
+        for (const rawMax of maxes) {
+          const min = Number(rawMin)
+          const max = Number(rawMax)
+          if (!Number.isFinite(min) || !Number.isFinite(max) || min <= max) continue
+          findings.push({
+            file,
+            line,
+            detail:
+              `#${id} has min="${rawMin}" with max="${rawMax}". No value satisfies both, so ` +
+              `every entry is rangeUnderflow or rangeOverflow, form.checkValidity() is false, ` +
+              `and the browser refuses the submit before any handler runs.`,
+          })
+        }
+      }
+
+      if (!mins.length || !steps.length) continue
 
       for (const rawMin of mins) {
         for (const rawStep of steps) {
@@ -128,11 +174,14 @@ function checkNumberInputs() {
             file,
             line,
             detail:
-              `#${id} has min="${rawMin}" with step="${rawStep}". HTML steps from min, ` +
-              `so the valid values are ${rawMin}, ${min + step}, ${min + 2 * step}, ... ` +
-              `A round number is a stepMismatch, form.checkValidity() is false, and the ` +
-              `browser refuses the submit before any handler runs. Use step="any", or ` +
-              `make min an exact multiple of step.`,
+              `#${id} has min="${rawMin}" with ` +
+              (implied
+                ? 'NO step attribute, which HTML reads as step="1" on a number input'
+                : `step="${rawStep}"`) +
+              `. HTML steps from min, so the valid values are ${rawMin}, ${min + step}, ` +
+              `${min + 2 * step}, ... A round number is a stepMismatch, ` +
+              `form.checkValidity() is false, and the browser refuses the submit before any ` +
+              `handler runs. Use step="any", or make min an exact multiple of step.`,
           })
         }
       }

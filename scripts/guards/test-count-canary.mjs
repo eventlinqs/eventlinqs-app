@@ -541,8 +541,23 @@ const ROOT = join(HERE, '..', '..')
  *     that matters: a correctly signed order-access token for a DIFFERENT order
  *     must move nothing.
  */
-const MIN_FILES = 237
-const MIN_TESTS = 2914
+/*
+ * 2026-08-29 (second raise): 237/2914 -> 238/2921. One file, seven tests.
+ *   tests/unit/security/upload-size-gate.test.ts   the server-side upload size
+ *     refusal and, more importantly, WHERE IT SITS. The break attempt "upload
+ *     an image far over the size limit" sat at READ NOT DRIVEN because its only
+ *     evidence was somebody reading upload.ts:106. The browser drive that now
+ *     exists (scripts/verify/oversize-upload-drive.mjs) reaches the CLIENT gate
+ *     and can never reach the server one, because the client refuses first and
+ *     no request is sent. So this pins the part that can silently rot: the size
+ *     test must come BEFORE arrayBuffer() and before the permission check, so
+ *     oversized attacker bytes are never read into memory and never handed to
+ *     the native decoder. That is an ordering property, and ordering is exactly
+ *     what a refactor moves without changing any return value a normal test
+ *     would look at.
+ */
+const MIN_FILES = 238
+const MIN_TESTS = 2921
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -1019,6 +1019,37 @@ const DRILLS = [
     replace: '      const result = await respondToRequestAction({ requestId, response })',
     expect: 'never referenced again',
   },
+  {
+    /*
+     * THE SAME ARITHMETIC WITH THE STEP LEFT OUT, added 29 August 2026.
+     *
+     * `step` defaults to 1 on <input type="number"> when the attribute is
+     * absent (HTML Standard, the step attribute), so min="0.01" with NO step is
+     * bit-for-bit the journey 8 defect. The first version of the guard required
+     * BOTH a min and a step literal before it would judge anything, so it would
+     * have walked straight past this one. The defect it was written for
+     * happened to spell the step out; the next one need not.
+     */
+    name: 'a number input with a fractional min and NO step, which HTML reads as step=1',
+    guard: `${GUARDS}/no-silent-submit.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: '                step="any"',
+    replace: '                data-drill="no-step-attribute"',
+    expect: 'NO step attribute',
+  },
+  {
+    /*
+     * A RANGE WITH NOTHING IN IT. min > max makes every entry out of range, so
+     * checkValidity() is false and the submit never reaches a handler. Same
+     * silence as the step defect, different constraint.
+     */
+    name: 'a number input whose min is greater than its max',
+    guard: `${GUARDS}/no-silent-submit.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: '                step="any"',
+    replace: '                step="any"\n                max="0"',
+    expect: 'No value satisfies both',
+  },
 ]
 
 function run(guard) {

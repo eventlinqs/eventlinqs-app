@@ -273,20 +273,112 @@ if (!event) {
 }
 
 // ─── 5. DISCOUNT OVER CAP ───────────────────────────────────────────────────
-// The honest one. The cap is read from current_uses, and nothing increments it
-// until migration 20260829000001 lands.
+//
+// DRIVEN, not read. Until 29 August this attempt only asked whether
+// increment_discount_uses EXISTS, and reported HELD on the strength of the
+// function being present. That is a static read wearing a verdict's clothes,
+// and it is the exact class this project has been burned by: a function can
+// exist and still not hold under two buyers arriving at the same instant.
+//
+// So a real code is staged with max_uses = 1 and eight simultaneous claims are
+// fired at it with no stagger. The cap test lives in the WHERE clause of the
+// UPDATE, so PostgreSQL holds the row lock across the read and the write and
+// exactly one caller may win. current_uses is read back afterwards, because the
+// number of TRUEs returned and the number actually recorded are different
+// claims and only the second one is the money.
 {
-  const { error } = await db.rpc('increment_discount_uses', {
-    p_code_id: '00000000-0000-4000-8000-000000000000',
-  })
-  const missing = error?.code === 'PGRST202'
-  verdict(
-    'a discount code used more times than its cap',
-    missing ? 'NEEDS MIGRATION' : 'HELD',
-    missing
-      ? 'increment_discount_uses does not exist on this database, so discount_codes.current_uses is permanently 0 and max_uses is unenforced on every path. Migration 20260829000001 adds it and decides the cap inside one UPDATE so it holds under concurrency.'
-      : 'the function exists and refuses atomically once current_uses reaches max_uses.',
-  )
+  const code = `CAP${String(Date.now()).slice(-6)}`
+  const WAVE = 8
+  const { data: staged, error: insErr } = await db
+    .from('discount_codes')
+    .insert({
+      event_id: event.id,
+      organisation_id: event.organisation_id,
+      code,
+      discount_type: 'percentage',
+      discount_percentage: 100,
+      discount_amount_cents: null,
+      max_uses: 1,
+      max_uses_per_user: 1,
+      current_uses: 0,
+      is_active: true,
+    })
+    .select('id')
+    .single()
+
+  if (insErr) {
+    verdict('a discount code used more times than its cap', 'SKIPPED', `could not stage the code: ${insErr.message.slice(0, 90)}`)
+  } else {
+    const wave = await Promise.all(
+      Array.from({ length: WAVE }, () => db.rpc('increment_discount_uses', { p_code_id: staged.id })),
+    )
+    const missing = wave.some(r => r.error?.code === 'PGRST202')
+    const claimed = wave.filter(r => r.data === true).length
+    const refused = wave.filter(r => r.data === false).length
+    const errored = wave.filter(r => r.error).length
+
+    const { data: after } = await db
+      .from('discount_codes')
+      .select('current_uses, max_uses')
+      .eq('id', staged.id)
+      .single()
+
+    // A code already at its cap must keep refusing, so the same call is made
+    // once more after the wave has settled.
+    const { data: afterwards } = await db.rpc('increment_discount_uses', { p_code_id: staged.id })
+
+    const held =
+      !missing &&
+      errored === 0 &&
+      claimed === 1 &&
+      refused === WAVE - 1 &&
+      after?.current_uses === 1 &&
+      afterwards === false
+
+    verdict(
+      'a discount code used more times than its cap',
+      missing ? 'NEEDS MIGRATION' : held ? 'HELD' : 'BROKEN',
+      missing
+        ? 'increment_discount_uses does not exist on this database, so discount_codes.current_uses is permanently 0 and max_uses is unenforced on every path. Migration 20260829000001 adds it and decides the cap inside one UPDATE so it holds under concurrency.'
+        : `${WAVE} simultaneous claims on a code capped at 1: ${claimed} claimed, ${refused} refused, ${errored} errored. ` +
+          `current_uses settled at ${after?.current_uses} of max_uses ${after?.max_uses}; a ninth claim afterwards returned ${afterwards}.` +
+          (held ? '' : ' THAT IS NOT A CAP.'),
+    )
+
+    // ─── 5b. THE WINDOW BETWEEN VALIDATION AND THE CLAIM ─────────────────────
+    //
+    // The SQL cap above is not the whole question, and reporting only it would
+    // overstate what is held. validateDiscountCode reads current_uses at
+    // src/app/actions/discount-codes.ts:43 to decide whether the buyer may have
+    // the discount; recordDiscountUse claims the use only AFTER the order is
+    // confirmed (src/app/actions/checkout.ts:469 on the free path, and the
+    // Stripe webhook at route.ts:345 on the paid one). Two buyers who both read
+    // current_uses = 0 before either claims therefore both receive the
+    // discount, and only one of them advances the counter.
+    //
+    // That window is measured here rather than argued: current_uses is reset to
+    // 0 with max_uses still 1, both reads are taken, and only then is the claim
+    // made. If both reads say "available" the window is real and its size is
+    // the whole interval between checkout and confirmation.
+    await db.from('discount_codes').update({ current_uses: 0 }).eq('id', staged.id)
+    const [readA, readB] = await Promise.all([
+      db.from('discount_codes').select('current_uses, max_uses').eq('id', staged.id).single(),
+      db.from('discount_codes').select('current_uses, max_uses').eq('id', staged.id).single(),
+    ])
+    const availableTo = [readA, readB].filter(
+      r => r.data && (r.data.max_uses === null || r.data.current_uses < r.data.max_uses),
+    ).length
+
+    verdict(
+      'two buyers granted the SAME last use of a capped code',
+      availableTo > 1 ? 'OPEN WINDOW' : 'HELD',
+      availableTo > 1
+        ? `both concurrent validations of a code capped at 1 read current_uses = 0 and would each grant the discount; the claim that closes the cap runs only after confirmation. current_uses can never EXCEED max_uses (proved above), but the discount can be GRANTED more often than max_uses. Bounded by max_uses_per_user for a signed-in buyer, unbounded across different buyers or guests. Not closable without claiming the use at reservation time and releasing it when a hold lapses, which is a product decision, not a defect fix.`
+        : 'a second concurrent validation of the last use was refused.',
+    )
+
+    await db.from('discount_codes').delete().eq('id', staged.id)
+  }
 }
 
 // ─── 6. REFUND AFTER CHECK-IN ───────────────────────────────────────────────
@@ -310,30 +402,69 @@ if (!event) {
 }
 
 // ─── 7. CROSS-TENANT PAYOUT READ ────────────────────────────────────────────
+/*
+ * THE ONLY ATTEMPT HERE THAT NEEDS A SERVER, so it is the only one that can be
+ * stopped by not having one. It used to throw, and an unhandled fetch failure
+ * on attempt 7 of 10 takes the whole run down with it: on 29 August the three
+ * attempts after this one were never reported, and the run looked like a crash
+ * rather than like a missing local server. A break-attempt suite that cannot
+ * survive one unreachable target is not a suite.
+ */
 {
-  const res = await fetch(`${BASE}/api/payouts/list?limit=5`, { headers: { accept: 'application/json' } })
-  const body = await res.text()
-  const leaked = res.status === 200 && /"amount|payout_id|organisation_id/i.test(body)
-  verdict(
-    'read another organisation payouts while signed out',
-    leaked ? 'BROKEN' : 'HELD',
-    `HTTP ${res.status}; ${leaked ? 'PAYOUT DATA RETURNED' : `no payout data returned (${body.slice(0, 90).replace(/\s+/g, ' ')})`}`,
-  )
+  let res = null
+  let reason = ''
+  try {
+    res = await fetch(`${BASE}/api/payouts/list?limit=5`, { headers: { accept: 'application/json' } })
+  } catch (err) {
+    reason = String(err?.cause?.code ?? err?.message ?? err)
+  }
+  if (!res) {
+    verdict(
+      'read another organisation payouts while signed out',
+      'SKIPPED',
+      `no server answered at ${BASE} (${reason}). This attempt is the only one that needs one; start it with scripts/dev/rebuild-and-serve.sh and re-run.`,
+    )
+  } else {
+    const body = await res.text()
+    const leaked = res.status === 200 && /"amount|payout_id|organisation_id/i.test(body)
+    verdict(
+      'read another organisation payouts while signed out',
+      leaked ? 'BROKEN' : 'HELD',
+      `HTTP ${res.status}; ${leaked ? 'PAYOUT DATA RETURNED' : `no payout data returned (${body.slice(0, 90).replace(/\s+/g, ' ')})`}`,
+    )
+  }
 }
 
 // ─── 8. OVERSIZED UPLOAD ────────────────────────────────────────────────────
-// READ, NOT DRIVEN, and labelled as such rather than banked as a pass.
+//
+// DRIVEN AS OF 29 AUGUST 2026, in its own script, because it is the only
+// attempt here that needs a browser AND an organiser who owns an event.
+//
+// It sat at READ NOT DRIVEN for a week on the strength of somebody reading
+// upload.ts:106. It is now watched: a real 12MB PNG offered to the real media
+// step is refused with "Each image must be under 10MB." and ZERO upload
+// requests are made, so the bytes are never sent.
+//
+// THE HONEST BOUNDARY, kept rather than rounded off. That drive reaches the
+// CLIENT gate, which is the one a person meets. It cannot reach the SERVER gate
+// at upload.ts:106, because the client refuses first and no request is ever
+// sent, and the server gate is the one that matters against somebody who does
+// not run our client. That one is pinned by
+// tests/unit/security/upload-size-gate.test.ts, which asserts the ORDER: the
+// size test before arrayBuffer() and before the permission check, so oversized
+// attacker bytes are never read into memory and never handed to the native
+// decoder. Ordering is exactly what a refactor moves without changing any
+// return value.
 {
   verdict(
     'upload an image far over the size limit',
-    'READ NOT DRIVEN',
-    'src/lib/upload.ts:106 refuses before decoding: `if (file.size > MAX_IMAGE_BYTES) return { ok: false, ' +
-      'error: "Image must be under 10MB." }`, on the size field and ahead of arrayBuffer(), so an oversized ' +
-      'file is never read into memory and never reaches the native decoder (empty files refused on line 105). ' +
-      'THAT IS A CODE READING. Driving it needs an organiser session that owns an event sitting on the media ' +
-      'step of the wizard; the saved session could not reach that step, and a claim of HELD from reading alone ' +
-      'is exactly the kind this project has been burned by. Next step: drive it from a freshly created event ' +
-      'in the same run, the way scripts/journeys/j1.mjs builds one.',
+    'HELD (driven separately)',
+    'Driven by scripts/verify/oversize-upload-drive.mjs: a 12MB PNG against the 10MB cap is refused at the ' +
+      'media step with "Each image must be under 10MB." and 0 upload requests follow it, so the bytes never ' +
+      'leave the browser. The SERVER gate is a second layer a browser drive cannot reach (the client refuses ' +
+      'first), and its ordering is pinned by tests/unit/security/upload-size-gate.test.ts. Run the drive to ' +
+      're-prove it; this line reports it rather than re-deriving it, and does not claim the server layer was ' +
+      'exercised here.',
   )
 }
 

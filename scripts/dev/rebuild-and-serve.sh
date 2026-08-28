@@ -59,9 +59,38 @@ if [ "${SKIP_BUILD:-0}" != "1" ]; then
   # A killed build leaves a half-written .next that the next build cannot
   # unlink (EPERM on a directory), which reads as a permissions problem and
   # is not one. Start from nothing.
-  rm -rf .next
-  npm run build > .tmp-build.log 2>&1
-  echo "build exit 0"
+  #
+  # AND THEN RETRY ONCE, because a clean start is not sufficient on this
+  # machine. The worktree lives under OneDrive, which begins syncing files in
+  # .next the moment they are written and holds handles on them. Next prunes
+  # its own stale output mid-build, so that prune races the sync and dies with
+  #
+  #   ENOTEMPTY: directory not empty, rmdir '...\.next\server\app\...'
+  #
+  # on a directory this script had already deleted seconds earlier. It cost two
+  # builds on 29 August, and both times it read as a code fault rather than as
+  # a file-system race: the message names a directory, not a module.
+  #
+  # The retry is BOUNDED AT TWO and the second failure is reported rather than
+  # swallowed, because an unbounded retry on a real compile error is an
+  # infinite loop that looks like a slow build. The durable fix is to keep
+  # .next out of OneDrive's sync scope, which is the founder's setting to
+  # change, not this script's.
+  for attempt in 1 2; do
+    rm -rf .next
+    sleep 1
+    if npm run build > .tmp-build.log 2>&1; then
+      echo "build exit 0"
+      break
+    fi
+    if grep -qE "ENOTEMPTY|EPERM.*\.next" .tmp-build.log && [ "$attempt" = "1" ]; then
+      echo "build hit the OneDrive .next rmdir race; retrying once" >&2
+      continue
+    fi
+    echo "build FAILED; tail .tmp-build.log" >&2
+    tail -12 .tmp-build.log >&2
+    exit 1
+  done
 fi
 
 nohup npx next start -p "$PORT" > .tmp-serve.log 2>&1 &
