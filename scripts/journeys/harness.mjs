@@ -323,6 +323,99 @@ export async function createEventThroughWizard(j, page, opts) {
   return { reachedReview: true, madeCover, publishDisabled: disabled, reviewText, publishButton: pub }
 }
 
+/**
+ * Buy one ticket as a signed-out stranger, from the public event page through
+ * Stripe, and return where it landed.
+ *
+ * Extracted from journey 3, which proved it end to end. Three traps are baked in
+ * because each cost a run there:
+ *   - the quantity stepper is a "+" BUTTON. The only <select> on an event page
+ *     is the footer language picker, and choosing from it sets the site language
+ *     while leaving the cart empty.
+ *   - the real CTA carries the all-in total ("Checkout · AUD 26.87"). A loose
+ *     match on /checkout|get tickets/ hits the page's own heading button.
+ *   - checkout asks for the BUYER and then for each ATTENDEE. There is a "Use my
+ *     details for all tickets" control; without it, required fields stay empty
+ *     and "Continue to payment" does nothing.
+ */
+export async function buyTicket(j, page, slug, buyerEmail, buyerName = 'Robin Ashe') {
+  const clickAny = async rx => {
+    for (const el of await page.$$('button, a')) {
+      const t = ((await el.innerText().catch(() => '')) || '').trim()
+      if (rx.test(t) && (await el.isVisible().catch(() => false))) {
+        await el.click().catch(() => {})
+        return t
+      }
+    }
+    return null
+  }
+  const byLabel = async (rx, value) => {
+    for (const el of await page.$$('input')) {
+      if (!(await el.isVisible().catch(() => false))) continue
+      const n = await el.evaluate(
+        e => e.labels?.[0]?.textContent?.trim() || e.getAttribute('aria-label') || e.getAttribute('placeholder') || '',
+      )
+      if (rx.test(n)) {
+        await el.fill(value).catch(() => {})
+        return true
+      }
+    }
+    return false
+  }
+
+  await page.goto(`${BASE}/events/${slug}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  await page.waitForTimeout(3000)
+  if (!(await clickAny(/^(get tickets|buy tickets|select tickets)/i))) {
+    j.blockers.push(`no way to start buying on /events/${slug}`)
+    return null
+  }
+  await page.waitForTimeout(2500)
+  for (const b of await page.$$('button')) {
+    const t = ((await b.innerText().catch(() => '')) || '').trim()
+    if (t === '+') {
+      await b.click().catch(() => {})
+      break
+    }
+  }
+  await page.waitForTimeout(2500)
+  if (!(await clickAny(/^checkout\b/i))) {
+    j.blockers.push('ticket selection offers no way to continue to checkout')
+    return null
+  }
+  await page.waitForTimeout(6000)
+
+  await byLabel(/full name/i, buyerName)
+  await byLabel(/^email/i, buyerEmail)
+  await page.waitForTimeout(800)
+  await clickAny(/use my details for all tickets/i)
+  await page.waitForTimeout(1200)
+  await clickAny(/^continue to payment/i)
+  await page.waitForTimeout(8000)
+
+  let carded = false
+  for (const frame of page.frames()) {
+    const num = await frame.$('input[name="number"], input[autocomplete="cc-number"]')
+    if (!num) continue
+    await num.fill('4242424242424242').catch(() => {})
+    await (await frame.$('input[name="expiry"], input[autocomplete="cc-exp"]'))?.fill('12 / 34').catch(() => {})
+    await (await frame.$('input[name="cvc"], input[autocomplete="cc-csc"]'))?.fill('123').catch(() => {})
+    await (await frame.$('input[name="postalCode"], input[autocomplete="postal-code"]'))?.fill('3000').catch(() => {})
+    carded = true
+    break
+  }
+  if (!carded) {
+    j.blockers.push(`no card field on checkout: ${(await messagesOnScreen(page)).join(' // ') || 'no message'}`)
+    return null
+  }
+  await clickAny(/^pay\b/i)
+  await page.waitForTimeout(20000)
+  const url = page.url().replace(BASE, '')
+  const orderId = url.match(/\/orders\/([0-9a-f-]{36})/)?.[1] ?? null
+  note(j, 'Bought a ticket', `${buyerEmail} -> ${url.slice(0, 80)}`)
+  if (!orderId) j.blockers.push(`the purchase did not reach an order: ${url}`)
+  return orderId
+}
+
 export async function finish(j) {
   writeFileSync(`${j.OUT}/errors.txt`, j.errors.join('\n'))
   console.log(`\n--- ${j.title}`)
