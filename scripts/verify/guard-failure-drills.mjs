@@ -904,6 +904,44 @@ const DRILLS = [
       + '        <input id="drill-field" type="text" value="" onChange={() => {}} />\n'
       + '        <select\n          aria-label="Filter orders by status"',
   },
+  /*
+   * A LABEL THAT NAMES THE WRONG CONTROL. Drilled from both sides for the same
+   * reason as its sibling: this guard reasons about MEANING, so a false positive
+   * is the likelier death. The quiet-side drill uses the real ticket tier group,
+   * where a label and two controls legitimately sit together.
+   */
+  {
+    name: 'a label points at an element that cannot be labelled',
+    guard: `${GUARDS}/labels-name-the-right-control.mjs`,
+    file: 'src/components/waitlist/join-waitlist-modal.tsx',
+    find: '<div id="waitlist-quantity-label" className="block text-sm font-medium text-ink-600 mb-1.5">',
+    replace: '<label htmlFor="waitlist-quantity" className="block text-sm font-medium text-ink-600 mb-1.5">',
+    expect: 'which cannot be labelled',
+  },
+  {
+    name: 'a label names the control BESIDE the one it describes',
+    guard: `${GUARDS}/labels-name-the-right-control.mjs`,
+    file: 'src/components/features/events/event-form.tsx',
+    /*
+     * Take the id OFF the price input, which is exactly the shape of the
+     * original defect: the "Price" label no longer resolves to the field it
+     * describes, while that field still carries its own aria-label saying what
+     * it is. An earlier version of this drill ADDED the id to the currency
+     * select instead, which produced two elements sharing one id; the guard
+     * matched the input and stayed quiet, and the drill proved nothing.
+     */
+    find: '                  id={`tier-price-${idx}`}\n                  type="number"',
+    replace: '                  type="number"',
+    expect: 'appears in a sibling',
+  },
+  {
+    name: 'NO FALSE POSITIVE: the ticket tier group as it correctly stands',
+    guard: `${GUARDS}/labels-name-the-right-control.mjs`,
+    expectPass: 'Every label names the control it describes',
+    file: 'src/components/features/events/event-form.tsx',
+    find: '                  placeholder="0.00"',
+    replace: '                  placeholder="0.00"\n                  inputMode="decimal"',
+  },
   {
     name: 'NO FALSE POSITIVE: an input inside the Field wrapper that fooled two greps',
     guard: `${GUARDS}/labelled-form-controls.mjs`,

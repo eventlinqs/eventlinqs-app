@@ -30,6 +30,8 @@
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
  *   labelled-form-controls     every raw input, select and textarea carries a
  *                              programmatic label, so assistive technology can name it
+ *   labels-name-the-right-control  and that label points at the control it describes,
+ *                              not at the one that happens to sit beside it
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
  *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
  *                              names a column that does not exist
@@ -350,6 +352,14 @@ const GUARDS = [
   // htmlFor pairing, an ancestor label element, and a component that wraps its
   // children in a label. The DOM remains the authority; this is the fast gate.
   'scripts/guards/labelled-form-controls.mjs',
+
+  // The sibling of the guard above, and the founder was right that the first one
+  // could never catch this: it proves a control HAS a name, not that the name is
+  // TRUE. On 28 August a label reading "Price" pointed at the CURRENCY select
+  // beside the price input, so pressing the label focused the currency and
+  // filling the field the label named produced a zero-priced ticket on a paid
+  // event. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/labels-name-the-right-control.mjs',
 
   // Founder brief 2026-08-23: an event page can never ship without its
   // structured data. A production audit that day found every event page valid
