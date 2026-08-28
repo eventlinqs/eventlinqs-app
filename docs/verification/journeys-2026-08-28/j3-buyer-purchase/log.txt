@@ -1,0 +1,49 @@
+Journey 3: a stranger buys a ticket
+===================================
+01. A stranger opens the event page
+      HTTP 200 lineup-loop-proof-night-d6hcae
+02. The event page, signed out
+      URL     /events/lineup-loop-proof-night-d6hcae
+      heading "Lineup Loop Proof Night"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Follow | Share | Copy link | − | + | Select tickets to continue | Share
+03. Prices visible before any click
+      $25
+04. Ticket selection
+      URL     /events/lineup-loop-proof-night-d6hcae
+      heading "Lineup Loop Proof Night"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Follow | Share | Copy link | − | + | Select tickets to continue | Share
+05. Added a ticket
+      MUSIC Lineup Loop Proof Night Friday 18 September 2026 at 7:00 pm AEST Get tickets From AUD $25 Secure checkout Community organiser Refund policy THE DETAILS About this event Two acts, one room, tracked links An evening 
+06. What the buyer is told the total is
+      MUSIC Lineup Loop Proof Night Friday 18 September 2026 at 7:00 pm AEST Get tickets From AUD $25 Secure checkout Community organiser Refund policy THE DETAILS About this event Two acts, one room, tracked links An evening of live music to prove the lineup loop end to end. WHEN Friday 18 September 2026
+07. Moving to checkout
+      Checkout · AUD 26.87
+08. Checkout
+      URL     /checkout/1f9de60f-16da-4e20-96cc-0d35b2b9d1a9
+      heading "Order summary"
+      fields  Full name* | Email* | First name* | Last name* | Email* | Enter code | Keep me updated by Baseline  | Keep me posted on events in 
+      buttons Apply | Continue to payment - AUD 26.87
+09. Attendee details
+      used the buyer details for the ticket
+10. Submitted buyer details
+      Continue to payment - AUD 26.87
+11. Payment step
+      URL     /checkout/1f9de60f-16da-4e20-96cc-0d35b2b9d1a9
+      heading "Order summary"
+      fields  (none)
+      buttons Pay AUD 26.87
+12. Card entered
+      test card 4242 into the Stripe frame
+13. Pressed pay
+      Pay AUD 26.87
+14. After paying
+      URL     /orders/b769acde-2481-4918-84cf-0b7449b5906e/confirmation?payment_intent=pi_3U9IjSGqHIQtgS8t0vAHoeK4&payment_intent_client_secret=pi_3U9IjSGqHIQtgS8t0vAHoeK4_secret_N862yNnqg7C5KvXfX8lRZgbrK&redirect_status=succeeded
+      heading "You're going"
+      fields  (none)
+      buttons Add to Calendar | Share Event
+15. Where the buyer ends up
+      /orders/b769acde-2481-4918-84cf-0b7449b5906e/confirmation?payment_intent=pi_3U9IjSGqHIQtgS8t0vAHoeK4&payment_intent_client_secret=pi_3U9IjSGqHIQtgS8t0vAHoeK4_secret_N862yNnqg7C5KvXfX8lRZgbrK&redirect_status=succeeded :: no message
+16. The buyer has a ticket
+      /orders/b769acde-2481-4918-84cf-0b7449b5906e/confirmation?payment_intent=pi_3U9IjSGqHIQtgS8t0vAHoeK4&payment_intent_client_secret=pi_3U9IjSGqHIQtgS8t0vAHoeK4_secret_N862yNnqg7C5KvXfX8lRZgbrK&redirect_status=succeeded
