@@ -15,13 +15,13 @@ Journey 3: a stranger buys a ticket
       fields  LanguageEnglish (AU)
       buttons What are you in the mood for?/ | Melbourne | Follow | Share | Copy link | − | + | Select tickets to continue | Share
 05. Added a ticket
-      MUSIC Lineup Loop Proof Night Friday 18 September 2026 at 7:00 pm AEST Get tickets From AUD $25 Secure checkout Community organiser Refund policy THE DETAILS About this event Two acts, one room, tracked links An evening 
+      MUSIC Lineup Loop Proof Night Friday 18 September 2026 at 7:00 pm AEST 17 people going Get tickets From AUD $25 Secure checkout Community organiser Refund policy THE DETAILS About this event Two acts, one room, tracked l
 06. What the buyer is told the total is
-      MUSIC Lineup Loop Proof Night Friday 18 September 2026 at 7:00 pm AEST Get tickets From AUD $25 Secure checkout Community organiser Refund policy THE DETAILS About this event Two acts, one room, tracked links An evening of live music to prove the lineup loop end to end. WHEN Friday 18 September 2026
+      MUSIC Lineup Loop Proof Night Friday 18 September 2026 at 7:00 pm AEST 17 people going Get tickets From AUD $25 Secure checkout Community organiser Refund policy THE DETAILS About this event Two acts, one room, tracked links An evening of live music to prove the lineup loop end to end. WHEN Friday 1
 07. Moving to checkout
       Checkout · AUD 26.87
 08. Checkout
-      URL     /checkout/1f9de60f-16da-4e20-96cc-0d35b2b9d1a9
+      URL     /checkout/925f98af-9884-4c57-b2c9-870cb0d55d14
       heading "Order summary"
       fields  Full name* | Email* | First name* | Last name* | Email* | Enter code | Keep me updated by Baseline  | Keep me posted on events in 
       buttons Apply | Continue to payment - AUD 26.87
@@ -30,7 +30,7 @@ Journey 3: a stranger buys a ticket
 10. Submitted buyer details
       Continue to payment - AUD 26.87
 11. Payment step
-      URL     /checkout/1f9de60f-16da-4e20-96cc-0d35b2b9d1a9
+      URL     /checkout/925f98af-9884-4c57-b2c9-870cb0d55d14
       heading "Order summary"
       fields  (none)
       buttons Pay AUD 26.87
@@ -39,11 +39,11 @@ Journey 3: a stranger buys a ticket
 13. Pressed pay
       Pay AUD 26.87
 14. After paying
-      URL     /orders/b769acde-2481-4918-84cf-0b7449b5906e/confirmation?payment_intent=pi_3U9IjSGqHIQtgS8t0vAHoeK4&payment_intent_client_secret=pi_3U9IjSGqHIQtgS8t0vAHoeK4_secret_N862yNnqg7C5KvXfX8lRZgbrK&redirect_status=succeeded
+      URL     /orders/12ef594e-25e1-4174-9e98-f216e32afe54/confirmation?payment_intent=pi_3U9UVWGqHIQtgS8t0AHvhpL6&payment_intent_client_secret=pi_3U9UVWGqHIQtgS8t0AHvhpL6_secret_Od0dgpQWB3ZKd7H1oCJez4MU7&redirect_status=succeeded
       heading "You're going"
       fields  (none)
       buttons Add to Calendar | Share Event
 15. Where the buyer ends up
-      /orders/b769acde-2481-4918-84cf-0b7449b5906e/confirmation?payment_intent=pi_3U9IjSGqHIQtgS8t0vAHoeK4&payment_intent_client_secret=pi_3U9IjSGqHIQtgS8t0vAHoeK4_secret_N862yNnqg7C5KvXfX8lRZgbrK&redirect_status=succeeded :: no message
+      /orders/12ef594e-25e1-4174-9e98-f216e32afe54/confirmation?payment_intent=pi_3U9UVWGqHIQtgS8t0AHvhpL6&payment_intent_client_secret=pi_3U9UVWGqHIQtgS8t0AHvhpL6_secret_Od0dgpQWB3ZKd7H1oCJez4MU7&redirect_status=succeeded :: no message
 16. The buyer has a ticket
-      /orders/b769acde-2481-4918-84cf-0b7449b5906e/confirmation?payment_intent=pi_3U9IjSGqHIQtgS8t0vAHoeK4&payment_intent_client_secret=pi_3U9IjSGqHIQtgS8t0vAHoeK4_secret_N862yNnqg7C5KvXfX8lRZgbrK&redirect_status=succeeded
+      /orders/12ef594e-25e1-4174-9e98-f216e32afe54/confirmation?payment_intent=pi_3U9UVWGqHIQtgS8t0AHvhpL6&payment_intent_client_secret=pi_3U9UVWGqHIQtgS8t0AHvhpL6_secret_Od0dgpQWB3ZKd7H1oCJez4MU7&redirect_status=succeeded

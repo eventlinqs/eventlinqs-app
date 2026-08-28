@@ -31,6 +31,18 @@
  * Usage: node scripts/verify/oversell-under-concurrency.mjs
  */
 import { createClient } from '@supabase/supabase-js'
+import { assertNotProduction } from '../lib/production-write-preflight.mjs'
+
+/*
+ * THE SHARED PREFLIGHT, not this file's own opinion.
+ *
+ * A hand-rolled `if (URL.includes(PRODUCTION_REF))` check reads the URL this
+ * FILE happens to look at. The preflight resolves the project the PROCESS will
+ * actually use, refuses production unless ALLOW_PRODUCTION_SUPABASE=1 is set
+ * explicitly, and refuses outright when it cannot tell which it is, which is
+ * the case a local check silently passes.
+ */
+assertNotProduction()
 
 const PRODUCTION_REF = 'gndnldyfudbytbboxesk'
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''

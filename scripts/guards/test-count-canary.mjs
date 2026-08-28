@@ -523,8 +523,26 @@ const ROOT = join(HERE, '..', '..')
  * production it must refuse to mint AND refuse to honour rather than fall back
  * to the public dev constant.
  */
-const MIN_FILES = 233
-const MIN_TESTS = 2868
+/*
+ * 2026-08-29: raised 233/2868 -> 237/2914. Four files, forty-six tests, from
+ * the journey-8 session:
+ *   tests/unit/checkout/discount-math.test.ts   the discount arithmetic, pinned
+ *     as a pure function after the checkout path spent three months reading a
+ *     column migration 20260520000001 had DROPPED, returning NaN for a
+ *     percentage code and undefined for a fixed one, both marked valid: true.
+ *     The first test in the file is that exact post-migration row shape.
+ *   tests/unit/email/transport-ready.test.ts    whether a deployment can send
+ *     mail at all. Four senders each returned silently on a missing
+ *     RESEND_API_KEY, above every transport, so the buyer ticket email could
+ *     not be observed locally and, on a deploy without the key, was dropped for
+ *     every buyer with nothing in any log. Includes the empty-string key, which
+ *     is the shape a dashboard variable actually takes when it goes wrong.
+ *   the guest half of tests/unit/tickets/transfer.test.ts, including the attack
+ *     that matters: a correctly signed order-access token for a DIFFERENT order
+ *     must move nothing.
+ */
+const MIN_FILES = 237
+const MIN_TESTS = 2914
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
