@@ -26,7 +26,17 @@ import { checkPublishGate } from '@/lib/events/publish-gate'
  * passed a working reconciler would prove nothing about this path.
  */
 
-const PAID = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: 'https://x/y.jpg' }
+const PAID = {
+  organisationId: 'org_1',
+  tiersHavePaid: true,
+  coverImageUrl: 'https://x/y.jpg',
+  // A future end, a physical event with a venue: everything the OTHER gate
+  // rules need in order to be satisfied, so each test isolates its own subject.
+  endsAt: new Date(Date.now() + 7 * 864e5).toISOString(),
+  isPhysical: true,
+  venueName: 'The Wool Exchange',
+  venueAddress: '44 Moorabool St, Geelong',
+}
 
 function clientReturning(row: Record<string, unknown> | null) {
   return {

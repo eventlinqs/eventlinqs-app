@@ -77,6 +77,17 @@ function dueEvent(over: Row = {}): Row {
     organisation_id: 'org-1',
     cover_image_url: 'https://cdn.example.com/real-cover.jpg',
     scheduled_publish_at: '2026-08-10T08:55:00Z',
+    /*
+     * A future end and a real venue. The publish gate gained both rules on
+     * 29 August: an event that has already ENDED cannot go on sale, and an
+     * in-person event with no venue cannot be attended. A fixture missing them
+     * is refused, correctly, which is what these lines stop from masking the
+     * thing each test is actually about.
+     */
+    end_date: new Date(Date.now() + 30 * 864e5).toISOString(),
+    event_type: 'in_person',
+    venue_name: 'The Wool Exchange',
+    venue_address: '44 Moorabool St, Geelong',
     ticket_tiers: [{ price: 0 }],
     ...over,
   }

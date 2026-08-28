@@ -27,6 +27,8 @@ export type PublishGateResult =
         | 'paid_event_charges_disabled'
         | 'organisation_payouts_restricted'
         | 'cover_image_required'
+        | 'event_already_ended'
+        | 'venue_required'
       message: string
       /** What Stripe says is outstanding, most urgent first. Empty if Stripe wants nothing. */
       outstanding?: OutstandingRequirement[]
@@ -141,7 +143,22 @@ export async function checkPublishGate(
   client: SupabaseClient,
   // `coverImageUrl` is REQUIRED, not optional. Making it optional is what let
   // callers skip the cover check by omission; the type now refuses that.
-  input: { organisationId: string; tiersHavePaid: boolean; coverImageUrl: string | null },
+  /*
+   * Every field is REQUIRED, not optional, for the reason written on
+   * coverImageUrl below: a gate a caller can skip by forgetting a field is not a
+   * gate. endsAt and the venue pair joined it on 29 August.
+   */
+  input: {
+    organisationId: string
+    tiersHavePaid: boolean
+    coverImageUrl: string | null
+    /** ISO end time. An event that has already ended cannot go on sale. */
+    endsAt: string | null
+    /** True for an in-person event. An online event needs no address. */
+    isPhysical: boolean
+    venueName: string | null
+    venueAddress: string | null
+  },
   /** `null` opts out of the Stripe re-read; see the branch below for when that is right. */
   reconcile: ReconcileFn | null = defaultReconcile,
 ): Promise<PublishGateResult> {
@@ -159,6 +176,48 @@ export async function checkPublishGate(
       reason: 'cover_image_required',
       message:
         'Upload a cover photo before publishing this event. Photo-required helps every event look its best on EventLinqs.',
+    }
+  }
+
+  /*
+   * AN EVENT THAT HAS ALREADY ENDED CANNOT BE ATTENDED.
+   *
+   * Founder ruling 29 August 2026, after a break attempt published an event
+   * starting a month in the past through the ordinary wizard with no warning at
+   * any step. The only date rule anywhere was "End date and time must be after
+   * start date and time", which a fat-fingered year satisfies perfectly.
+   *
+   * ENDED, not "starts in the past", and the difference is the whole ruling: a
+   * festival that opened yesterday and runs for a week is a real event that must
+   * still be publishable and still be sellable. What cannot be sold is a night
+   * that is over.
+   */
+  if (input.endsAt) {
+    const ends = new Date(input.endsAt)
+    if (!Number.isNaN(ends.getTime()) && ends.getTime() < Date.now()) {
+      return {
+        ok: false,
+        reason: 'event_already_ended',
+        message:
+          'This event has already finished, so it cannot go on sale. Check the date and year, then publish again.',
+      }
+    }
+  }
+
+  /*
+   * A PHYSICAL EVENT WITH NO VENUE CANNOT BE ATTENDED EITHER.
+   *
+   * Founder ruling 29 August 2026. Scoped to in-person events on purpose: an
+   * online event legitimately has no address, and refusing one would be a new
+   * defect rather than a fix.
+   */
+  if (input.isPhysical && !input.venueName?.trim() && !input.venueAddress?.trim()) {
+    return {
+      ok: false,
+      reason: 'venue_required',
+      message:
+        'Add where this event happens before publishing. An in-person event with no venue cannot be found or attended.',
+      nextAction: { label: 'Add the venue', href: '#location' },
     }
   }
 

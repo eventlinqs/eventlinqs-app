@@ -85,7 +85,21 @@ async function wizardOmitting(p, omit, title) {
           .catch(() => {})
       }
       if (omit !== 'venue') {
-        await fillIf(p, 'input[placeholder*="Venue"], input[placeholder*="Address"]', 'The Wool Exchange, Geelong')
+        /*
+         * BY LABEL, not by a guessed placeholder. The location step labels its
+         * fields "Venue Name" and "Address" and carries no matching placeholder,
+         * so the old selector filled nothing: every case ran with an empty venue
+         * and, once the venue rule existed, was refused for THAT instead of its
+         * own subject. The price case passed while testing nothing.
+         */
+        for (const el of await p.$$('input')) {
+          if (!(await el.isVisible().catch(() => false))) continue
+          const name = await el.evaluate(
+            e => e.labels?.[0]?.textContent?.trim() || e.getAttribute('aria-label') || e.getAttribute('placeholder') || '',
+          )
+          if (/venue name/i.test(name)) { await el.fill('The Wool Exchange').catch(() => {}); }
+          if (/^address/i.test(name)) { await el.fill('44 Moorabool St, Geelong').catch(() => {}); }
+        }
       }
     }
     if (await p.$('input[type="file"]')) {
@@ -153,7 +167,13 @@ try {
   const CASES = [
     ['publish with a PAST date', 'date', /past|already|future|before|date/i],
     ['publish with NO venue', 'venue', /venue|address|location|where/i],
-    ['publish with NO price set', 'price', /price|free|ticket|amount/i],
+    /*
+     * EXPECTED TO BE ALLOWED. A tier with no price is a FREE event, and a free
+     * event publishing is correct: it is the whole point of journey 1. It is
+     * driven anyway because the founder asked for it to be checked to the same
+     * standard, and because the interesting failure would be it being refused.
+     */
+    ['publish with NO price set', 'price', /price|free|ticket|amount/i, 'ALLOWED'],
   ]
   /*
    * ONE account for all three cases. Signup is limited to 5 per 10 minutes per
@@ -167,7 +187,7 @@ try {
     email: `gate.${stamp}@example.com`,
     password: `Str0ng-${stamp}-Pass!`,
   })
-  for (const [name, omit, wants] of CASES) {
+  for (const [name, omit, wants, expected] of CASES) {
     const p = gateP
     if (!gateOk) {
       verdict(name, 'SKIPPED', 'could not create an account (signup limiter is 5 per 10 minutes per IP)')
@@ -175,13 +195,13 @@ try {
     }
     const r = await wizardOmitting(p, omit, `Gate ${omit} ${stamp}`)
     const said = (r.shown ?? []).join(' // ')
-    const all = `${said} ${r.text ?? ''}`
+    const judged = said
     const published = /\/launch-kit/.test(r.url ?? '')
     verdict(
       name,
       published
         ? 'ALLOWED'
-        : wants.test(all)
+        : wants.test(judged)
           ? 'REFUSED-TRUE'
           : said || r.stoppedAt === 'wizard'
             ? 'REFUSED-WRONG'
@@ -256,7 +276,10 @@ try {
   console.log('')
   console.log('==== BREAK ATTEMPT VERDICTS (set 2) ====')
   for (const r of results) console.log(`  ${r.v.padEnd(15)} ${r.name}`)
-  for (const b of results.filter(r => r.v === 'REFUSED-WRONG' || r.v === 'REFUSED-SILENT' || r.v === 'ALLOWED')) {
+  const EXPECTED = { 'publish with NO price set': 'ALLOWED' }
+  for (const b of results.filter(
+    r => (r.v === 'REFUSED-WRONG' || r.v === 'REFUSED-SILENT' || r.v === 'ALLOWED') && EXPECTED[r.name] !== r.v,
+  )) {
     j.blockers.push(`${b.v}: ${b.name} :: ${b.detail.replace(/\s+/g, ' ').slice(0, 170)}`)
   }
   await finish(j)

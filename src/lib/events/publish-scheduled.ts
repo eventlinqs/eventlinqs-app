@@ -68,7 +68,7 @@ export async function publishScheduledEvents(
   const { data, error } = await admin
     .from('events')
     .select(
-      'id, slug, title, organisation_id, cover_image_url, scheduled_publish_at, ticket_tiers(price)',
+      'id, slug, title, organisation_id, cover_image_url, scheduled_publish_at, end_date, event_type, venue_name, venue_address, ticket_tiers(price)',
     )
     .eq('status', 'scheduled')
     .not('scheduled_publish_at', 'is', null)
@@ -95,6 +95,12 @@ export async function publishScheduledEvents(
     organisation_id: string
     cover_image_url: string | null
     scheduled_publish_at: string
+    // Read so the gate can refuse an event that has already ended, and an
+    // in-person event with nowhere to go. Added 29 August 2026 with those rules.
+    end_date: string | null
+    event_type: string | null
+    venue_name: string | null
+    venue_address: string | null
     ticket_tiers: { price: number }[] | null
   }
 
@@ -108,6 +114,10 @@ export async function publishScheduledEvents(
         organisationId: event.organisation_id,
         tiersHavePaid: hasPaidTier(event.ticket_tiers ?? []),
         coverImageUrl: event.cover_image_url,
+        endsAt: event.end_date,
+        isPhysical: event.event_type !== 'virtual',
+        venueName: event.venue_name,
+        venueAddress: event.venue_address,
       },
       // NO STRIPE RE-READ FROM THE CRON. Deliberate, and this is a
       // MERGE-INDUCED defect being closed rather than a feature being declined.

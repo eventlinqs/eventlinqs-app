@@ -213,6 +213,11 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
       organisationId: input.organisationId,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
       coverImageUrl: input.cover_image_url,
+      endsAt: input.end_date,
+      // 'virtual' needs no address; 'hybrid' still happens somewhere.
+      isPhysical: input.event_type !== 'virtual',
+      venueName: input.venue_name || null,
+      venueAddress: input.venue_address || null,
     })
     if (!gate.ok) return { error: gate.message, nextAction: gate.nextAction }
 
@@ -449,6 +454,10 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       organisationId: event.organisation_id,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
       coverImageUrl: input.cover_image_url,
+      endsAt: input.end_date,
+      isPhysical: input.event_type !== 'virtual',
+      venueName: input.venue_name || null,
+      venueAddress: input.venue_address || null,
     })
     if (!gate.ok) return { error: gate.message, nextAction: gate.nextAction }
 
@@ -618,7 +627,7 @@ export async function publishEvent(eventId: string): Promise<ActionResult> {
 
   const { data: event } = await supabase
     .from('events')
-    .select('status, organisation_id, cover_image_url, slug, has_reserved_seating')
+    .select('status, organisation_id, cover_image_url, slug, has_reserved_seating, end_date, event_type, venue_name, venue_address')
     .eq('id', eventId)
     .single()
 
@@ -657,6 +666,10 @@ export async function publishEvent(eventId: string): Promise<ActionResult> {
     organisationId: event.organisation_id,
     tiersHavePaid: hasPaidTier(tiers ?? []),
     coverImageUrl: event.cover_image_url,
+    endsAt: event.end_date,
+    isPhysical: event.event_type !== 'virtual',
+    venueName: event.venue_name,
+    venueAddress: event.venue_address,
   })
   if (!gate.ok) return { error: gate.message, nextAction: gate.nextAction }
 
