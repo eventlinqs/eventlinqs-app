@@ -14,7 +14,7 @@ Journeys 7 to 10: seated, discount, attribution, payouts
       fields  Search
       buttons TUTest | Collapse | + Create Code
 04. NOT MADE     journey 8: an organiser makes a discount code
-      code NIGHT944396; on the page afterwards: false; no message
+      code NIGHT209821; on the page afterwards: false; no message
 05. The launch kit, where the share links live
       URL     /dashboard/events/9f6b6405-9a38-4176-b5d5-67936fa1e06c/launch-kit
       heading "Lineup Loop Proof Night is live."
@@ -27,6 +27,6 @@ Journeys 7 to 10: seated, discount, attribution, payouts
       heading "Payouts"
       fields  Search | Status filter
       buttons TUTest | Collapse | Open Stripe Dashboard | Refresh Stripe status | Open Stripe Dashboard | Previous | Next
-08. NO TIMING    journey 10: an organiser looks for their money
-      HTTP 200; mentions money: true; says WHEN: false
-      Payouts Track every payout, reserve release, and refund for Baseline Capture Draft 2026-07-04. Open Stripe Dashboard Stripe status If your Stripe account is ready but EventLinqs has not caught up, refresh it here. Refresh Stripe status Your Stripe business nam
+08. CLEAR        journey 10: an organiser looks for their money
+      HTTP 200; mentions money: true; says WHEN: true
+      Payouts Track every payout, reserve release, and refund for Baseline Capture Draft 2026-07-04. Money for a paid event is released 3 days after the event ends, then paid out by Stripe on your account schedule. That window absorbs late refunds and card disputes,

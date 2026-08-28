@@ -9,9 +9,9 @@ Journey 6: admitting a ticket, once
       ADMITDoor Tester
       Lineup Loop Proof Night ADMIT Door Tester
 03. SECOND scan of the same ticket
-      REJECTDoor TesterAlready used
-      Lineup Loop Proof Night REJECT Door Tester Already used
+      REJECTDoor TesterAlready used just now
+      Lineup Loop Proof Night REJECT Door Tester Already used just now
 04. The second scan was refused
-      REJECTDoor TesterAlready used Lineup Loop Proof Night REJECT Door Tester Already used
+      REJECTDoor TesterAlready used just now Lineup Loop Proof Night REJECT Door Tester Already used just now
 05. Does it say WHEN it was first used?
       no time given

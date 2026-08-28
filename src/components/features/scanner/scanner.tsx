@@ -66,7 +66,7 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
           setError(outcome.error ?? 'Scan failed. Try again.')
           setResult(null)
         } else {
-          const view = describeScanResult(outcome.result)
+          const view = describeScanResult(outcome.result, outcome.firstScannedAt)
           setResult({ ...view, holderName: outcome.holderName, seatLabel: outcome.seatLabel })
         }
       } finally {
