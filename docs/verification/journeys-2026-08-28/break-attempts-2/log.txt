@@ -1,0 +1,14 @@
+Break attempts 2: the publish gate and tenancy
+==============================================
+01. Signed up and confirmed
+      gate.975272@example.com -> /dashboard
+02. ALLOWED         publish with a PAST date
+      stopped at review (publish disabled=false); said: NOTHING
+03. ALLOWED         publish with NO venue
+      stopped at review (publish disabled=false); said: NOTHING
+04. ALLOWED         publish with NO price set
+      stopped at review (publish disabled=false); said: NOTHING
+05. REFUSED-TRUE    checkout on a reservation that does not exist
+      HTTP 200 :: That reservation is no longer availableWe could not find the seats you were holding, so nothing has been charged. Choose your tickets again 
+06. REFUSED-TRUE    open another organisation event in the dashboard
+      HTTP 200 landed /dashboard/events/38333f25-a716-4f45-9e24-7cf1452ef246/edit; not-found state: true; form values exposed: []
