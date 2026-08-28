@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { respondToRequestAction } from '@/app/actions/gigs'
 import { PAY_TYPE_LABELS, type BookingRequestRow, type PayType } from '@/lib/marketplace/gigs'
@@ -28,10 +28,22 @@ function payLine(payType: PayType | null, cents: number | null, note: string | n
 export function RequestsPanel({ requests }: { requests: RequestView[] }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  /*
+   * respondToRequestAction returns { ok, error } and has five distinct
+   * refusals, including "This request was already answered" and "Not your
+   * request". Every one of them used to be discarded: the panel refreshed, the
+   * request sat there still pending, and the performer was told nothing.
+   */
+  const [respondError, setRespondError] = useState<string | null>(null)
 
   function respond(requestId: string, response: 'accepted' | 'declined') {
+    setRespondError(null)
     startTransition(async () => {
-      await respondToRequestAction({ requestId, response })
+      const result = await respondToRequestAction({ requestId, response })
+      if (!result.ok) {
+        setRespondError(result.error ?? 'That could not be saved. Try again.')
+        return
+      }
       router.refresh()
     })
   }
@@ -46,7 +58,13 @@ export function RequestsPanel({ requests }: { requests: RequestView[] }) {
   }
 
   return (
-    <ul className="divide-y divide-ink-200/60">
+    <>
+      {respondError && (
+        <p role="alert" className="mx-5 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {respondError}
+        </p>
+      )}
+      <ul className="divide-y divide-ink-200/60">
       {requests.map((req) => {
         const pay = payLine(req.pay_type, req.pay_amount_cents, req.pay_note)
         return (
@@ -107,6 +125,7 @@ export function RequestsPanel({ requests }: { requests: RequestView[] }) {
           </li>
         )
       })}
-    </ul>
+      </ul>
+    </>
   )
 }

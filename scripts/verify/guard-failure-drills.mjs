@@ -954,6 +954,71 @@ const DRILLS = [
       + '        </Field>\n'
       + '        <Field label="Rows">',
   },
+  /*
+   * no-silent-submit, three drills, one per shape the guard decides.
+   *
+   * The class: a control the user operates that completes with neither a
+   * visible result nor a visible error. Journey 8, 29 August 2026.
+   */
+  {
+    /*
+     * THE ACTUAL DEFECT, restored. min="0.01" with step="1" means HTML steps
+     * 0.01, 1.01, 2.01, ... so a person typing 20 produces a stepMismatch, the
+     * browser refuses the submit, and no handler ever runs. Two sessions read
+     * the handler and the server action looking for this.
+     */
+    name: 'a number input whose min and step make every round value unsubmittable',
+    guard: `${GUARDS}/no-silent-submit.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    // Restores step="1" against the fixed_amount min of 0.01. The FIRST version
+    // of this drill restored only the min and left step="any", and the guard
+    // correctly stayed quiet: with no numeric step there is no arithmetic to be
+    // wrong. The drill has to put back the step, which is where the defect was.
+    find: '                step="any"',
+    replace: '                step="1"',
+    expect: 'stepMismatch',
+  },
+  {
+    /*
+     * The refusal read and dropped: the success branch applies and the error
+     * branch does not exist. This is what the venue create and update handlers
+     * did until 29 August 2026.
+     */
+    name: 'a server action refusal is read and then dropped on the floor',
+    guard: `${GUARDS}/no-silent-submit.mjs`,
+    file: 'src/app/(dashboard)/dashboard/venues/venues-client.tsx',
+    find: [
+      '        if (result.error) {',
+      '          setSaveError(result.error)',
+      '          resolve()',
+      '          return',
+      '        }',
+      '        setVenues(prev =>',
+    ].join('\n'),
+    replace: [
+      '        if (!result.error) {',
+      '        setVenues(prev =>',
+    ].join('\n'),
+    expect: 'has no else',
+  },
+  {
+    /*
+     * The refusal never read at all: the result is assigned and abandoned, so
+     * nothing downstream can surface it.
+     */
+    name: 'a server action result is assigned and never referenced again',
+    guard: `${GUARDS}/no-silent-submit.mjs`,
+    file: 'src/components/marketplace/requests-panel.tsx',
+    find: [
+      '      const result = await respondToRequestAction({ requestId, response })',
+      '      if (!result.ok) {',
+      "        setRespondError(result.error ?? 'That could not be saved. Try again.')",
+      '        return',
+      '      }',
+    ].join('\n'),
+    replace: '      const result = await respondToRequestAction({ requestId, response })',
+    expect: 'never referenced again',
+  },
 ]
 
 function run(guard) {

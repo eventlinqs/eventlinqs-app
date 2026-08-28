@@ -23,6 +23,7 @@
  *   payment-critical-doctrine  every paymentCritical variable is actually protected
  *   rls-exposure-scan          no world-readable policy exposes a sensitive column
  *   no-native-submit           no form puts a credential in the URL pre-hydration
+ *   no-silent-submit           no control completes with no result and no error
  *   revoked-column-reads       no untrusted-role query selects a revoked column
  *   no-plaintext-credential    no tracked file contains a plaintext credential
  *   entrypoint-authz-audit     every request entry point declares an auth posture
@@ -334,6 +335,11 @@ const GUARDS = [
   // docs/security/AUDIT-2026-08-08.md.
   'scripts/security/rls-exposure-scan.mjs',
   'scripts/guards/no-native-submit-guard.mjs',
+  // A control that completes with neither a visible result nor a visible
+  // error. Journey 8, 29 August 2026: a number input whose min and step
+  // disagreed made every round value a stepMismatch, so the browser refused
+  // the submit before React saw it and the panel showed nothing at all.
+  'scripts/guards/no-silent-submit.mjs',
   'scripts/security/revoked-column-reads.mjs',
   'scripts/guards/no-plaintext-credential.mjs',
   'scripts/security/entrypoint-authz-audit.mjs',

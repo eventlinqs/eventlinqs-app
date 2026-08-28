@@ -195,18 +195,28 @@ export function VenuesClient({ venues: initialVenues }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  /*
+   * A refused create or update used to fall through `if (!result.error)` and
+   * change nothing: the form stayed open, no row appeared, and the organiser
+   * was told nothing at all. Same shape as the discount panel, journey 8.
+   */
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
   function handleCreate(input: VenueInput): Promise<void> {
     return new Promise(resolve => {
+      setSaveError(null)
       startTransition(async () => {
         const result = await createVenue(input)
-        if (!result.error && result.venue) {
-          const newVenue: Venue = { ...result.venue as VenueRow, _seat_map_count: 0 }
-          setVenues(prev => [...prev, newVenue])
-          setShowCreate(false)
-          router.refresh()
+        if (result.error || !result.venue) {
+          setSaveError(result.error ?? 'The venue could not be created.')
+          resolve()
+          return
         }
+        const newVenue: Venue = { ...result.venue as VenueRow, _seat_map_count: 0 }
+        setVenues(prev => [...prev, newVenue])
+        setShowCreate(false)
+        router.refresh()
         resolve()
       })
     })
@@ -214,17 +224,21 @@ export function VenuesClient({ venues: initialVenues }: Props) {
 
   function handleUpdate(venueId: string, input: VenueInput): Promise<void> {
     return new Promise(resolve => {
+      setSaveError(null)
       startTransition(async () => {
         const result = await updateVenue(venueId, input)
-        if (!result.error) {
-          setVenues(prev =>
-            prev.map(v =>
-              v.id === venueId ? { ...v, ...input } : v
-            )
-          )
-          setEditingId(null)
-          router.refresh()
+        if (result.error) {
+          setSaveError(result.error)
+          resolve()
+          return
         }
+        setVenues(prev =>
+          prev.map(v =>
+            v.id === venueId ? { ...v, ...input } : v
+          )
+        )
+        setEditingId(null)
+        router.refresh()
         resolve()
       })
     })
@@ -263,6 +277,12 @@ export function VenuesClient({ venues: initialVenues }: Props) {
           </button>
         )}
       </div>
+
+      {saveError && (
+        <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {saveError}
+        </div>
+      )}
 
       {showCreate && (
         <VenueForm
