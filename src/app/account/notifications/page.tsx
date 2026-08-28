@@ -99,7 +99,7 @@ export default async function NotificationsSettingsPage() {
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
-      <main id="main-content" className="flex-1">
+      <main className="flex-1">
         <section className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
           <Link href="/account" className="text-sm font-medium text-gold-800 underline hover:text-gold-700">
             Back to your account

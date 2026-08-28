@@ -156,7 +156,10 @@ function SocialRow() {
   )
 }
 
-function LanguagePicker() {
+// The footer renders this TWICE, once in the desktop strip and once in the
+// mobile sub-footer, so a hardcoded id shipped a duplicate on every page of the
+// platform. The id is passed in by each call site instead.
+function LanguagePicker({ id }: { id: string }) {
   return (
     <label className="flex items-center gap-2 text-xs text-white/60">
       <span className="sr-only">Language</span>
@@ -166,7 +169,7 @@ function LanguagePicker() {
         <path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20" />
       </svg>
       <select
-        id="footer-language"
+        id={id}
         name="language"
         defaultValue="en-AU"
         className="bg-transparent text-xs text-white/70 outline-none focus:text-white"
@@ -231,7 +234,7 @@ export function SiteFooter() {
             </div>
             <div className="flex items-center gap-6">
               <SocialRow />
-              <LanguagePicker />
+              <LanguagePicker id="footer-language-desktop" />
             </div>
           </div>
 
@@ -262,7 +265,7 @@ export function SiteFooter() {
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">
-            <LanguagePicker />
+            <LanguagePicker id="footer-language-mobile" />
           </div>
         </div>
       </div>

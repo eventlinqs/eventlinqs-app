@@ -60,7 +60,7 @@ export default async function ArtistDashboardPage({
     return (
       <div className="flex min-h-screen flex-col bg-canvas">
         <SiteHeader />
-        <main id="main-content" className="flex-1">
+        <main className="flex-1">
           <section className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
             <h1 className="font-display text-3xl font-extrabold text-ink-900">
               Your artist dashboard
@@ -127,7 +127,7 @@ export default async function ArtistDashboardPage({
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
-      <main id="main-content" className="flex-1">
+      <main className="flex-1">
         <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
           {claimed === '1' && (
             <div
