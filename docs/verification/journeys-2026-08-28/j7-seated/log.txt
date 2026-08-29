@@ -1,10 +1,10 @@
 Journey 7: a stranger buys a reserved seat
 ==========================================
 01. A stranger opens the seated event
-      HTTP 200 final-proof-three-block-theatre
+      HTTP 200 grand-hall-proof-the-full-house
 02. The seated event page
-      URL     /events/final-proof-three-block-theatre
-      heading "Final Proof: Three Block Theatre"
+      URL     /events/grand-hall-proof-the-full-house
+      heading "Grand Hall Proof: The Full House"
       fields  LanguageEnglish (AU)
       buttons What are you in the mood for?/ | Melbourne | Follow | Share | Copy link
 03. Entered the seat map
@@ -16,24 +16,24 @@ Journey 7: a stranger buys a reserved seat
 06. Took a seat with the keyboard
       a seat is selected and the CTA is live
 07. The seat the buyer chose
-      Stalls: Row A, Seat 3
+      Premium Stalls: Row A, Seat 17
 08. Moving to checkout
-      Reserve 1 seat · AUD 89.00
+      Reserve 1 seat · AUD 149.00
 09. Checkout, holding a seat
-      URL     /checkout/e2932a47-7d7b-4bed-9513-e671fffd85cc?seat=1
+      URL     /checkout/5e3caf8a-10aa-4d2a-a9be-d6f2bb7e92f6?seat=1
       heading "Order summary"
       fields  Full name* | Email* | Enter code | Keep me updated by Harbour L | Keep me posted on events in 
-      buttons Apply | Continue to payment - AUD 93.11
+      buttons Apply | Continue to payment - AUD 155.21
 10. Submitted buyer details
-      Continue to payment - AUD 93.11
+      Continue to payment - AUD 155.21
 11. Payment step, holding a seat
-      URL     /checkout/e2932a47-7d7b-4bed-9513-e671fffd85cc?seat=1
+      URL     /checkout/5e3caf8a-10aa-4d2a-a9be-d6f2bb7e92f6?seat=1
       heading "Order summary"
       fields  (none)
-      buttons Pay AUD 93.11
+      buttons Pay AUD 155.21
 12. Card entered
       test card 4242 into the Stripe frame
 13. After paying
-      http://localhost:3311/orders/472f2aec-9b05-40f2-a7f3-85e08d6c50fa/confirmation?payment_intent=pi_3U9V2xGqHIQtgS8t0uxB3XVY&payment_intent_client_secret=pi_3U9V2xGqHIQtgS8t0uxB3XVY_secret_OmcQnxAUZjmwN3J0BO5cByhca&redirect_status=succeeded
+      http://localhost:3311/orders/cdfbf4ff-8216-4c24-96b6-de41a43988d2/confirmation?payment_intent=pi_3U9aCkGqHIQtgS8t01jroO4L&payment_intent_client_secret=pi_3U9aCkGqHIQtgS8t01jroO4L_secret_CS1guGlB9xQfYbnotadPgn3n8&redirect_status=succeeded
 14. THE DATABASE: what the buyer actually owns
-      order confirmed; ticket EL-ZYEH-3DZ7 (valid); seat A3
+      order confirmed; ticket EL-YSWW-T38A (valid); seat A17

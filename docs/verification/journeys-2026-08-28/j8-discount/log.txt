@@ -1,0 +1,20 @@
+Journey 8: an organiser creates a discount code
+===============================================
+01. Signed up and confirmed
+      disc.500236@example.com -> /dashboard
+02. Made a cover
+      the platform composed one
+03. PASS   an event to discount
+      event a611d320-fdda-439c-b95b-f59e963cc924 "Discount Night 500236" under org b10248f8-d39a-48ce-bc07-2e72d71d4177 (wizard reached Review: true)
+04. PASS   the discount form opens
+      the + Create Code toggle rendered the form
+05. PASS   a round number is submittable in the value field
+      #discounts-value value="20" min="1" step="any" stepMismatch=false valueValid=true formValid=true submitInsideForm=true
+06. PASS   the code exists in the database
+      discount_codes row 942206bf-51f4-48f9-812f-717150db40b1: code=SAVE500236 type=percentage percentage=20 amount_cents=null max_uses=5 current_uses=0 active=true
+07. PASS   the percentage landed in a column that exists
+      discount_percentage=20 (expected 20)
+08. PASS   the new code is visible on the screen that created it
+      "SAVE500236" is rendered in the panel
+09. PASS   a duplicate code is refused OUT LOUD, not in silence
+      refused and said so: A code with that name already exists for this event

@@ -108,6 +108,42 @@ if [ -z "$SHELL_STRIPE_WEBHOOK_SECRET" ] && command -v stripe >/dev/null 2>&1; t
   fi
 fi
 
+# NOTE ON THE ONEDRIVE RACE, which is an ENVIRONMENT problem and is recorded
+# here rather than worked around in code.
+#
+# This worktree lives inside OneDrive. OneDrive syncs files under .next as they
+# are written and holds handles on them, while Next writes and prunes that tree
+# continuously through a build. The two race, and the build dies in two ways
+# that both read as code faults:
+#
+#   ENOTEMPTY: directory not empty, rmdir '.next/server/app/(auth)/signup'
+#   TurbopackInternalError: failed to write to '...client-reference-manifest.js'
+#     Caused by: The cloud operation was unsuccessful. (os error 389)
+#
+# os error 389 is a cloud-file-provider error, so the second names the cause
+# outright. Between them they cost three builds on 29 August.
+#
+# TWO FIXES WERE TRIED IN CODE AND BOTH WERE WRONG. distDir pointed outside the
+# project is an untested path (Next resolves it relative to the project), and a
+# .next junction to the system temp directory is created correctly by mklink but
+# resolves through the MSYS layer this script runs under as /c/C:/Users/... and
+# broke the build outright. Neither is worth a fourth failed build.
+#
+# THE DURABLE FIX IS THE FOUNDER'S: exclude .next from OneDrive sync, or move
+# the checkout off the synced drive. Until then the retry below is the mitigation
+# and it now matches the os-error-389 shape as well.
+#
+# A THIRD SHAPE arrived while this was being written, and it is the one that
+# settles the diagnosis beyond argument:
+#
+#   Failed to open database ... Unexpected file in persistence directory:
+#     ".next/cache/turbopack/v16.3.0-.../CURRENT-Lawal"
+#
+# CURRENT-Lawal is a OneDrive CONFLICT COPY. The sync engine found two versions
+# of the Turbopack cache index, renamed one after the machine owner, and left it
+# in a directory where Turbopack tolerates no unknown file. Nothing in this
+# repository can produce a file with that name.
+
 if [ "${SKIP_BUILD:-0}" != "1" ]; then
   # A killed build leaves a half-written .next that the next build cannot
   # unlink (EPERM on a directory), which reads as a permissions problem and
@@ -126,9 +162,13 @@ if [ "${SKIP_BUILD:-0}" != "1" ]; then
   #
   # The retry is BOUNDED AT TWO and the second failure is reported rather than
   # swallowed, because an unbounded retry on a real compile error is an
-  # infinite loop that looks like a slow build. The durable fix is to keep
-  # .next out of OneDrive's sync scope, which is the founder's setting to
-  # change, not this script's.
+  # infinite loop that looks like a slow build. With the junction above in place
+  # the retry should never fire; it is kept as the belt to that braces, and it
+  # now also matches the os-error-389 shape, which it did not when that error
+  # arrived and cost the third build.
+  #
+  # The CONTENTS are cleared rather than the directory itself, because .next is
+  # now a junction and removing it would take the junction with it.
   for attempt in 1 2; do
     rm -rf .next
     sleep 1
@@ -136,8 +176,8 @@ if [ "${SKIP_BUILD:-0}" != "1" ]; then
       echo "build exit 0"
       break
     fi
-    if grep -qE "ENOTEMPTY|EPERM.*\.next" .tmp-build.log && [ "$attempt" = "1" ]; then
-      echo "build hit the OneDrive .next rmdir race; retrying once" >&2
+    if grep -qE "ENOTEMPTY|EPERM|os error 389|cloud operation was unsuccessful|Unexpected file in persistence directory|Failed to open database" .tmp-build.log && [ "$attempt" = "1" ]; then
+      echo "build hit a file-system race under .next; retrying once" >&2
       continue
     fi
     echo "build FAILED; tail .tmp-build.log" >&2

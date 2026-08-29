@@ -556,8 +556,26 @@ const ROOT = join(HERE, '..', '..')
  *     what a refactor moves without changing any return value a normal test
  *     would look at.
  */
-const MIN_FILES = 238
-const MIN_TESTS = 2921
+/*
+ * 2026-08-29 (third raise): 238/2921 -> 240/2940. Two files, nineteen tests,
+ * both from opening the Launch Kit artefacts.
+ *   tests/unit/flags/flag-cache-cannot-switch-off.test.ts   the flag cache must
+ *     never be able to decide a feature is OFF. readCache collapsed every
+ *     unrecognised value to false and returned it as a DECISION, without ever
+ *     asking the database, so /api/organiser/events/[id]/poster answered 404
+ *     feature_off on three runs in four while the row AND the cached value both
+ *     said the flag was on. Deleting the cache key made it 200 four times in
+ *     four. The eight nonsense shapes are the ones a real store produces.
+ *   tests/unit/broadcast/social-card-renders.test.ts   every card format renders
+ *     a decodable JPEG at its published size, typographic AND photographic.
+ *     Written to separate a broken artefact from a broken environment: the
+ *     route was answering 500 with a zero-byte body on a machine whose build
+ *     directory OneDrive had demonstrably corrupted, and "the cards are broken"
+ *     could not honestly be claimed without running the renderer outside the
+ *     server. It passes, so the renderer is sound.
+ */
+const MIN_FILES = 240
+const MIN_TESTS = 2940
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -70,7 +70,31 @@ function run(command) {
       return entry ? String(entry.value) : null
     }
     case 'set': {
-      store.set(String(args[0]), { value: args[1], expiresAt: null })
+      /*
+       * THE TTL IS HONOURED, and ignoring it was a real bug in this shim.
+       *
+       * `set(key, value, { ex })` arrives as ["set", key, value, "ex", 3600].
+       * This used to drop everything after the value and store the entry with
+       * expiresAt: null, so a cached value lived for the life of the process
+       * instead of for its TTL.
+       *
+       * That is not academic. On 29 August the feature-flag cache
+       * (`<project>:ff:v2:broadcast_share`, written with a TTL by
+       * src/lib/flags/broadcast.ts) held a stale value across a whole session,
+       * and /api/organiser/events/[id]/poster answered 404 feature_off while
+       * the database row said the flag was on. It read exactly like a product
+       * defect in the Launch Kit, cost half an hour, and was this line.
+       *
+       * A shim that silently disagrees with the thing it stands in for is
+       * worse than no shim, because every result it touches is suspect.
+       */
+      const opts = args.slice(2).map(a => String(a).toLowerCase())
+      const exAt = opts.indexOf('ex')
+      const pxAt = opts.indexOf('px')
+      let expiresAt = null
+      if (exAt !== -1 && args[exAt + 3] !== undefined) expiresAt = now() + Number(args[exAt + 3]) * 1000
+      else if (pxAt !== -1 && args[pxAt + 3] !== undefined) expiresAt = now() + Number(args[pxAt + 3])
+      store.set(String(args[0]), { value: args[1], expiresAt })
       return 'OK'
     }
     case 'del': {

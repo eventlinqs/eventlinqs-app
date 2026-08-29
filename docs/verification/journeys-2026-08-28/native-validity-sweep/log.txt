@@ -1,0 +1,4 @@
+Every form: can the browser ever accept it?
+===========================================
+01. Signed up and confirmed
+      sweep.785993@example.com -> /dashboard

@@ -1,0 +1,16 @@
+Journey 5, guest half: moving a ticket with no account
+======================================================
+01. PASS   a real guest order to move
+      order EL-J3A3GBS7 (1b75d59a-cc66-4028-8770-4f10976ba756) bought by guest buyer.789153@example.com, ticket EL-PHNJ-SYZV held by buyer.789153@example.com
+02. PASS   the signed link offers the transfer control
+      transfer=true refund=true on the confirmation page as a signed-out stranger
+03. PASS   the ticket actually moved, in the database
+      holder_email buyer.789153@example.com -> newholder.193910@example.com, holder_name -> New Holder 193910, transferred_to_email=newholder.193910@example.com, status=valid. On screen: "Sent to newholder.193910@example.com. Their new QR is on the way and your old code no longer works."
+04. PASS   the old QR is dead: the secret rotated
+      the ticket secret changed, so the code the original buyer is holding no longer scans
+05. PASS   no token offers no transfer
+      transfer=false with no ?t= at all
+06. PASS   a forged token offers no transfer
+      transfer=false with a 40-character token that was never signed
+07. PASS   a VALID token for a DIFFERENT order opens nothing here
+      transfer=false using a correctly signed token minted for order 22b1426d-5f7a-4b47-8102-f1516830a2ac. This is the attack that matters: the token is genuine, it is simply not for this order.
