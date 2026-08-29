@@ -587,8 +587,20 @@ const ROOT = join(HERE, '..', '..')
  *     pre-push hook could have caught it: the code is correct, it just cannot
  *     run where it has to run.
  */
-const MIN_FILES = 241
-const MIN_TESTS = 2943
+/*
+ * 2026-08-29 (fifth raise): 241/2943 -> 242/2950. One file, seven tests.
+ *   tests/unit/checkout/discount-claim-ordering.test.ts   the discount use is
+ *     CLAIMED when the code is applied to the reservation, not after the money
+ *     moves. These are ORDERING tests on purpose: the claim itself is SQL under
+ *     a row lock, driven for real by scripts/verify/discount-claim-drive.mjs,
+ *     and a unit test cannot take a row lock. What they pin is what a refactor
+ *     moves silently and where this defect actually lived: the claim must sit
+ *     BEFORE the PaymentCalculator call, and the confirmation path must CONVERT
+ *     the hold rather than incrementing a second time, which would exhaust an
+ *     organiser's code at half its stated limit.
+ */
+const MIN_FILES = 242
+const MIN_TESTS = 2950
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

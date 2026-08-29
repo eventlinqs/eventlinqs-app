@@ -53,10 +53,43 @@ export async function GET(request: NextRequest) {
       console.log(`[cron/reservation-expire] released ${seatsReleased} expired seat holds`)
     }
 
+    /*
+     * DISCOUNT HOLDS, released the same way and in the same tick as seats.
+     *
+     * Since migration 20260829000003 a discount use is CLAIMED when the code is
+     * applied to a reservation, so a lapsed reservation must give its use back
+     * or the code stays permanently one short of its cap. That is an organiser
+     * losing sales to abandoned carts, which is the same failure a seat left in
+     * limbo causes, so it is swept the same way.
+     *
+     * Runs after the two sweepers above for the same reason the seat sweeper
+     * does: a reservation either of them has just marked 'expired' releases its
+     * hold in this pass rather than the next one.
+     *
+     * A failure here is logged and does NOT fail the run. The tier and seat
+     * inventory have already been released by this point, and taking the whole
+     * cron down over a discount counter would hold real seats hostage to it.
+     */
+    const { data: discountsReleased, error: discountError } = await adminClient.rpc(
+      'release_expired_discount_claims'
+    )
+    if (discountError) {
+      console.error(
+        '[cron/reservation-expire] release_expired_discount_claims RPC error:',
+        discountError,
+        discountError.code === 'PGRST202'
+          ? 'The function does not exist on this database. Apply migration 20260829000003_discount_claims_at_reservation.sql.'
+          : '',
+      )
+    } else if ((discountsReleased as number) > 0) {
+      console.log(`[cron/reservation-expire] released ${discountsReleased} expired discount holds`)
+    }
+
     return NextResponse.json({
       ok: true,
       released,
       seatsReleased: (seatsReleased as number) ?? 0,
+      discountsReleased: (discountsReleased as number) ?? 0,
       timestamp: new Date().toISOString(),
     })
   } catch (err) {

@@ -337,7 +337,7 @@ async function handlePaymentSucceeded(
   try {
     const { data: discountedOrder } = await adminClient
       .from('orders')
-      .select('discount_code_id, user_id, guest_email, discount_cents')
+      .select('discount_code_id, user_id, guest_email, discount_cents, reservation_id')
       .eq('id', order_id)
       .maybeSingle()
 
@@ -348,6 +348,7 @@ async function handlePaymentSucceeded(
         order_id,
         user_id: discountedOrder.user_id ?? null,
         guest_email: discountedOrder.guest_email ?? null,
+        reservation_id: discountedOrder.reservation_id ?? null,
         discount_cents: discountedOrder.discount_cents ?? 0,
       })
     }

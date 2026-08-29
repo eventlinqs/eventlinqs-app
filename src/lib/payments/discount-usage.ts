@@ -39,6 +39,16 @@ interface RecordDiscountUseArgs {
   user_id: string | null
   /** The guest's address, so a code used without an account is still attributable. */
   guest_email?: string | null
+  /**
+   * The reservation that HELD the use, when there was one.
+   *
+   * Present since migration 20260829000003: the use is claimed against the
+   * reservation at checkout, so confirmation CONVERTS that hold rather than
+   * incrementing again. Null for a path with no hold behind it (a squad
+   * completion, or an order built before the migration landed), which falls
+   * back to the direct increment.
+   */
+  reservation_id?: string | null
   discount_cents: number
 }
 
@@ -48,6 +58,7 @@ export async function recordDiscountUse({
   order_id,
   user_id,
   guest_email = null,
+  reservation_id = null,
   discount_cents,
 }: RecordDiscountUseArgs): Promise<void> {
   if (!discount_code_id) return
@@ -87,9 +98,47 @@ export async function recordDiscountUse({
     return
   }
 
-  const { data: claimed, error: claimError } = await adminClient.rpc('increment_discount_uses', {
-    p_code_id: discount_code_id,
-  })
+  /*
+   * CONVERT THE HOLD FIRST, and only increment directly if there was no hold.
+   *
+   * Since migration 20260829000003 the use is CLAIMED when the code is applied
+   * to the reservation, not here. So on the ordinary path the work at this point
+   * is to turn that hold into a confirmed use: reserved_uses down, current_uses
+   * up, claim row gone, in one statement.
+   *
+   * Calling increment_discount_uses as well would count the same redemption
+   * TWICE, once as a hold that was already deducted from the cap and once as a
+   * fresh increment, which would exhaust an organiser's code at half its stated
+   * limit. So the two are alternatives, never both.
+   *
+   * The direct increment stays as the fallback for an order that carries a
+   * discount with NO reservation hold behind it: a squad completion, an order
+   * built before this migration was applied, or any path that reaches
+   * confirmation without having gone through the checkout claim.
+   * convert_discount_claim returns FALSE when nothing was held, which is exactly
+   * the signal for that.
+   */
+  let claimed: boolean | null = null
+  let claimError: { code?: string; message: string } | null = null
+
+  if (reservation_id) {
+    const converted = await adminClient.rpc('convert_discount_claim', {
+      p_reservation_id: reservation_id,
+    })
+    if (converted.error) {
+      claimError = converted.error
+    } else if (converted.data === true) {
+      claimed = true
+    }
+  }
+
+  if (claimed === null && !claimError) {
+    const direct = await adminClient.rpc('increment_discount_uses', {
+      p_code_id: discount_code_id,
+    })
+    claimed = direct.data as boolean | null
+    claimError = direct.error
+  }
 
   if (claimError) {
     console.error('[discount-usage] increment_discount_uses failed: the code cap is NOT being enforced', {

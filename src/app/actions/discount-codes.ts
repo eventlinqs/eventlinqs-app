@@ -40,7 +40,28 @@ export async function validateDiscountCode(
   if (dc.valid_from && dc.valid_from > now) return { valid: false, discount_cents: 0, error: 'This code is not yet active' }
   if (dc.valid_until && dc.valid_until < now) return { valid: false, discount_cents: 0, error: 'This code has expired' }
 
-  if (dc.max_uses !== null && dc.current_uses >= dc.max_uses) {
+  /*
+   * THE CAP COUNTS HELD USES AS WELL AS CONFIRMED ONES.
+   *
+   * This used to read `dc.current_uses >= dc.max_uses`, and current_uses only
+   * moves after an order is CONFIRMED. So two buyers arriving at the same time
+   * both read 0, both passed this test, and both were granted the discount;
+   * only one of them ever advanced the counter. The counter was bounded and the
+   * money was not. Measured on 29 August 2026: on a code capped at 1, the second
+   * buyer still paid the discounted price and the organiser still lost the
+   * difference.
+   *
+   * reserved_uses is the hold, taken by claim_discount_use under a row lock at
+   * the moment the code is applied to a reservation (migration 20260829000003),
+   * and released when that reservation lapses. Reading it here is what makes the
+   * second buyer see the code as exhausted while the first is still paying.
+   *
+   * This read is still only advisory: it is what the BUYER is told. The binding
+   * decision is the claim itself, because only the claim holds a lock. A check
+   * without a claim is exactly what this defect was.
+   */
+  const heldAndUsed = (dc.current_uses ?? 0) + (dc.reserved_uses ?? 0)
+  if (dc.max_uses !== null && heldAndUsed >= dc.max_uses) {
     return { valid: false, discount_cents: 0, error: 'This code has reached its usage limit' }
   }
 

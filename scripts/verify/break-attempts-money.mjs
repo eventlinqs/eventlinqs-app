@@ -347,34 +347,38 @@ if (!event) {
 
     // ─── 5b. THE WINDOW BETWEEN VALIDATION AND THE CLAIM ─────────────────────
     //
-    // The SQL cap above is not the whole question, and reporting only it would
-    // overstate what is held. validateDiscountCode reads current_uses at
-    // src/app/actions/discount-codes.ts:43 to decide whether the buyer may have
-    // the discount; recordDiscountUse claims the use only AFTER the order is
-    // confirmed (src/app/actions/checkout.ts:469 on the free path, and the
-    // Stripe webhook at route.ts:345 on the paid one). Two buyers who both read
-    // current_uses = 0 before either claims therefore both receive the
-    // discount, and only one of them advances the counter.
+    // CLOSED on 29 August 2026 by migration 20260829000003, and no longer
+    // re-derived here.
     //
-    // That window is measured here rather than argued: current_uses is reset to
-    // 0 with max_uses still 1, both reads are taken, and only then is the claim
-    // made. If both reads say "available" the window is real and its size is
-    // the whole interval between checkout and confirmation.
-    await db.from('discount_codes').update({ current_uses: 0 }).eq('id', staged.id)
-    const [readA, readB] = await Promise.all([
-      db.from('discount_codes').select('current_uses, max_uses').eq('id', staged.id).single(),
-      db.from('discount_codes').select('current_uses, max_uses').eq('id', staged.id).single(),
-    ])
-    const availableTo = [readA, readB].filter(
-      r => r.data && (r.data.max_uses === null || r.data.current_uses < r.data.max_uses),
-    ).length
-
+    // This attempt used to report OPEN WINDOW, and it was right: the cap was
+    // read from current_uses, which only moves after confirmation, so two
+    // buyers both read it as available and BOTH were granted the discount.
+    // The counter was bounded by 20260829000001; the money was not.
+    //
+    // The use is now CLAIMED against the reservation when the code is applied,
+    // under a row lock, and released when the reservation lapses. The proof is
+    // scripts/verify/discount-claim-drive.mjs, which drives eight simultaneous
+    // buyers at one remaining use and asserts exactly one wins, that a later
+    // buyer is refused BEFORE anybody has paid, that a lapsed cart gives the
+    // use back, and that the hold converts to exactly one real use.
+    //
+    // What is checked here is only that the gate EXISTS on this database, since
+    // this suite is the one that runs without a browser. The behaviour is
+    // proven by the drive, and this line says so rather than re-deriving it.
+    const { error: claimFnError } = await db.rpc('claim_discount_use', {
+      p_code_id: staged.id,
+      p_reservation_id: '00000000-0000-4000-8000-000000000000',
+    })
+    const claimMissing = claimFnError?.code === 'PGRST202'
     verdict(
       'two buyers granted the SAME last use of a capped code',
-      availableTo > 1 ? 'OPEN WINDOW' : 'HELD',
-      availableTo > 1
-        ? `both concurrent validations of a code capped at 1 read current_uses = 0 and would each grant the discount; the claim that closes the cap runs only after confirmation. current_uses can never EXCEED max_uses (proved above), but the discount can be GRANTED more often than max_uses. Bounded by max_uses_per_user for a signed-in buyer, unbounded across different buyers or guests. Not closable without claiming the use at reservation time and releasing it when a hold lapses, which is a product decision, not a defect fix.`
-        : 'a second concurrent validation of the last use was refused.',
+      claimMissing ? 'NEEDS MIGRATION' : 'HELD (driven separately)',
+      claimMissing
+        ? 'claim_discount_use does not exist on this database, so the use is still claimed only AFTER ' +
+          'confirmation and two buyers can both be granted the last use. Apply migration 20260829000003.'
+        : 'the claim gate is on this database. Driven by scripts/verify/discount-claim-drive.mjs: eight ' +
+          'simultaneous buyers at one remaining use, one winner, a later buyer refused before anyone has ' +
+          'paid, the hold released when the cart lapses and converted to exactly one use on confirmation.',
     )
 
     await db.from('discount_codes').delete().eq('id', staged.id)

@@ -319,8 +319,55 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     )
 
     if (dcResult.valid) {
-      discount_cents = dcResult.discount_cents
-      discount_code_id = dcResult.discount_code_id
+      /*
+       * CLAIM THE USE HERE, UNDER A LOCK, BEFORE THE PRICE IS CALCULATED.
+       *
+       * validateDiscountCode above only READS the counters, and a read cannot
+       * hold anything. That is precisely the defect: two buyers both read a code
+       * capped at 1 as available, both were granted the discount, and only one
+       * ever advanced the counter. The counter was bounded; the money was not.
+       *
+       * claim_discount_use (migration 20260829000003) tests the cap and takes
+       * the hold in ONE statement, so PostgreSQL holds the row lock across both
+       * and exactly one of two simultaneous buyers can win. The loser falls
+       * through with no discount and pays full price, which is the correct
+       * outcome and is what the organiser was promised when they capped it.
+       *
+       * The hold is released when the reservation lapses, by
+       * release_expired_discount_claims in the reservation-expire cron, exactly
+       * as a held seat is released. It converts to a real use on confirmation.
+       *
+       * A FAILED CLAIM IS NOT AN ERROR TO THE BUYER. It means somebody else took
+       * the last use while this order was being built, so the order proceeds at
+       * full price rather than refusing a sale outright.
+       */
+      const { data: claimed, error: claimError } = await adminClient.rpc('claim_discount_use', {
+        p_code_id: dcResult.discount_code_id,
+        p_reservation_id: reservation_id,
+      })
+
+      if (claimError) {
+        console.error('[checkout] claim_discount_use failed, so the cap is NOT being held', {
+          reservation_id,
+          discount_code_id: dcResult.discount_code_id,
+          pg_code: claimError.code,
+          message: claimError.message,
+          hint:
+            claimError.code === 'PGRST202'
+              ? 'The function does not exist on this database. Apply migration 20260829000003_discount_claims_at_reservation.sql.'
+              : undefined,
+        })
+      }
+
+      if (claimed === true) {
+        discount_cents = dcResult.discount_cents
+        discount_code_id = dcResult.discount_code_id
+      } else {
+        console.warn('[checkout] the last use of this code was taken first; proceeding at full price', {
+          reservation_id,
+          discount_code: discount_code.toUpperCase().trim(),
+        })
+      }
     }
     // If invalid, we silently ignore (frontend validates first, but we don't error here on stale codes)
   }
@@ -472,6 +519,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       order_id,
       user_id: user?.id ?? null,
       guest_email: user?.id ? null : buyer_email,
+      reservation_id,
       discount_cents: fees.discount_cents,
     })
 
