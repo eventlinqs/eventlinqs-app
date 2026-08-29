@@ -10,6 +10,19 @@ PORT="${PORT:-3311}"
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { \$_.CommandLine -like '*next*start*-p*${PORT}*' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }" >/dev/null 2>&1 || true
 sleep 1
 
+# CAPTURED BEFORE .env.test IS SOURCED, and the order is the whole point.
+#
+# .env.test carries a STRIPE_WEBHOOK_SECRET, and it belongs to the DEPLOYED
+# endpoint. `stripe listen` mints a different one per session, so the file's
+# value cannot verify a locally forwarded event: every webhook is rejected as
+# an invalid signature, the order never leaves `pending`, and the journey
+# reports a payment that produced no ticket. Sourcing the file first therefore
+# guarantees the wrong secret wins, silently, which is what happened the first
+# time this was wired.
+#
+# So "did the OPERATOR choose one" is asked before the file can answer for them.
+SHELL_STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET:-}"
+
 set -a; . ./.env.test; set +a
 export NEXT_PUBLIC_APP_URL="http://localhost:${PORT}"
 # `next start` sets NODE_ENV=production, and order-access fails CLOSED there:
@@ -53,6 +66,46 @@ if [ -z "${UPSTASH_REDIS_REST_URL:-}" ]; then
   export UPSTASH_REDIS_REST_URL="http://127.0.0.1:${UPSTASH_SHIM_PORT}"
   export UPSTASH_REDIS_REST_TOKEN="local"
   echo "rate-limit store: local shim on ${UPSTASH_SHIM_PORT}"
+fi
+
+# THE STRIPE WEBHOOK, which is what turns a payment into a ticket.
+#
+# Without it the buyer pays, Stripe is happy, and the order sits at `pending`
+# for ever: no ticket is issued and no confirmation email is sent. Every seated
+# and card journey asserts on a CONFIRMED order, so they all fail at the last
+# step, and they fail in the way that looks most like a product defect, because
+# the payment genuinely succeeded.
+#
+# `stripe listen` mints a NEW signing secret per session, so the value in
+# .env.test (which belongs to the deployed endpoint) cannot verify these events.
+# The secret is read out of the CLI's own output and exported, never written to
+# a file in the tree: a signing secret in a tracked-shaped file is a credential
+# in the tree, and scripts/guards/no-plaintext-credential.mjs is right about it.
+#
+# Export STRIPE_WEBHOOK_SECRET in your SHELL to skip all of this and use your
+# own. A value in .env.test does NOT count, for the reason recorded where
+# SHELL_STRIPE_WEBHOOK_SECRET is captured above.
+if [ -z "$SHELL_STRIPE_WEBHOOK_SECRET" ] && command -v stripe >/dev/null 2>&1; then
+  if ! grep -q "Ready! You are using Stripe API Version" .tmp-stripe-listen.log 2>/dev/null ||
+     ! powershell -NoProfile -Command "Get-Process stripe -ErrorAction SilentlyContinue | Select-Object -First 1" >/dev/null 2>&1; then
+    # The CLI's own stored key expires and then it fails with a 401 that reads
+    # like a network problem. The project's TEST key is the one that is kept
+    # current, so it is passed explicitly rather than relied on.
+    nohup stripe listen --api-key "$STRIPE_SECRET_KEY" \
+      --forward-to "localhost:${PORT}/api/webhooks/stripe" > .tmp-stripe-listen.log 2>&1 &
+    for _ in $(seq 1 30); do
+      grep -q "whsec_" .tmp-stripe-listen.log 2>/dev/null && break
+      sleep 1
+    done
+  fi
+  WHSEC=$(grep -o 'whsec_[A-Za-z0-9]*' .tmp-stripe-listen.log 2>/dev/null | tail -1)
+  if [ -n "$WHSEC" ]; then
+    export STRIPE_WEBHOOK_SECRET="$WHSEC"
+    export STRIPE_WEBHOOK_SECRETS="$WHSEC"
+    echo "stripe webhook: forwarding to :${PORT}, signing secret taken from the running listener"
+  else
+    echo "stripe listen produced no signing secret; card journeys will leave orders pending. See .tmp-stripe-listen.log" >&2
+  fi
 fi
 
 if [ "${SKIP_BUILD:-0}" != "1" ]; then

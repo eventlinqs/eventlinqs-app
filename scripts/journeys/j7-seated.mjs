@@ -38,12 +38,35 @@ page.on('console', m => {
   if (m.type() === 'error') j.errors.push(`console ${m.text().slice(0, 140)}`)
 })
 
+/*
+ * SURVIVES A NAVIGATION THAT IS ALREADY IN FLIGHT.
+ *
+ * page.$$ resolves against the live document, so if the page starts navigating
+ * between the call and its result, Playwright throws "Execution context was
+ * destroyed" and, because this is the first thing the journey does after
+ * landing on the event page, it took the whole run down at step 10 on
+ * 29 August with a stack trace and no verdict. The event page fires RSC
+ * prefetches for several seconds after it settles, so the race is ordinary
+ * rather than exotic.
+ *
+ * A destroyed context is not a product failure and must not be reported as
+ * one: it means "the page moved, look again". So it looks again, up to three
+ * times, and only a genuinely different error is allowed to escape.
+ */
 const clickAny = async rx => {
-  for (const el of await page.$$('button, a[role=button], a')) {
-    const t = ((await el.innerText().catch(() => '')) || '').trim()
-    if (rx.test(t) && (await el.isVisible().catch(() => false))) {
-      await el.click().catch(() => {})
-      return t
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      for (const el of await page.$$('button, a[role=button], a')) {
+        const t = ((await el.innerText().catch(() => '')) || '').trim()
+        if (rx.test(t) && (await el.isVisible().catch(() => false))) {
+          await el.click().catch(() => {})
+          return t
+        }
+      }
+      return null
+    } catch (err) {
+      if (!/Execution context was destroyed|Target closed|Navigation/i.test(String(err?.message ?? err))) throw err
+      await page.waitForTimeout(2000)
     }
   }
   return null
@@ -203,22 +226,39 @@ try {
 
   const cont = await clickAny(/^continue to payment/i)
   note(j, 'Submitted buyer details', cont ?? 'no control')
-  await page.waitForTimeout(9000)
-  await describe(j, page, 'Payment step, holding a seat')
 
-  // ── 6. pay ───────────────────────────────────────────────────────────────
+  /*
+   * WAIT FOR THE CARD FIELD, NOT FOR A CLOCK.
+   *
+   * This was waitForTimeout(9000). The step advances only after the server has
+   * created the payment intent, and Stripe then loads its own iframe, so on a
+   * cold local server nine seconds regularly lands while the button still says
+   * "Processing…". The journey then looked for a card field, correctly found
+   * none, and reported "NO CARD FIELD FOUND" against a checkout that was
+   * working perfectly and simply had not finished. It did exactly that on
+   * 29 August, twice, and the blocker it filed named the wrong thing.
+   *
+   * Sixty seconds is generous on purpose: a slow local payment intent is not a
+   * product defect, and a false blocker on the money path is far more expensive
+   * than a wait.
+   */
   let paid = false
-  for (const frame of page.frames()) {
-    const num = frame.locator('input[name="number"], input[placeholder*="1234"]').first()
-    if (await num.count().catch(() => 0)) {
-      await num.fill('4242424242424242').catch(() => {})
-      await frame.locator('input[name="expiry"]').first().fill('12/34').catch(() => {})
-      await frame.locator('input[name="cvc"]').first().fill('123').catch(() => {})
-      await frame.locator('input[name="postalCode"]').first().fill('3000').catch(() => {})
-      paid = true
-      break
+  const deadline = Date.now() + 60000
+  while (Date.now() < deadline && !paid) {
+    for (const frame of page.frames()) {
+      const num = frame.locator('input[name="number"], input[placeholder*="1234"]').first()
+      if (await num.count().catch(() => 0)) {
+        await num.fill('4242424242424242').catch(() => {})
+        await frame.locator('input[name="expiry"]').first().fill('12/34').catch(() => {})
+        await frame.locator('input[name="cvc"]').first().fill('123').catch(() => {})
+        await frame.locator('input[name="postalCode"]').first().fill('3000').catch(() => {})
+        paid = true
+        break
+      }
     }
+    if (!paid) await page.waitForTimeout(2000)
   }
+  await describe(j, page, 'Payment step, holding a seat')
   note(j, 'Card entered', paid ? 'test card 4242 into the Stripe frame' : 'NO CARD FIELD FOUND')
   if (!paid) {
     const said = await page.evaluate(() => document.body.innerText.slice(0, 200))
