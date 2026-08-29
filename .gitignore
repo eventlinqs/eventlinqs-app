@@ -190,3 +190,6 @@ tmp-repro.mjs
 
 # Scratch credential notes are never committed. Keep on disk, out of git.
 .secret-tmp.txt
+
+# ESLint cache: makes the pre-push lint proportional to what changed.
+.eslintcache

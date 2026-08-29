@@ -77,7 +77,24 @@ echo "[pre-push] typecheck clean"
 # It runs AFTER the typecheck and BEFORE the suite on purpose: slower than tsc,
 # far faster than fifty seconds of tests, so the cheapest failures still come
 # first.
-npx eslint --max-warnings=0
+# --cache IS NOT OPTIONAL HERE, and the reason is measured rather than assumed.
+#
+# The first version of this step ran a bare `eslint --max-warnings=0` and took
+# OVER TWENTY MINUTES from the hook, on a tree where the same command run by
+# hand finishes in a few. Two things make the hook's run the slow one: it uses
+# whatever node is on PATH, which here is the system install rather than the
+# pinned runtime, and it competes with whatever else the machine is doing at
+# push time.
+#
+# A gate that turns every push into a twenty minute wait is a gate somebody
+# starts passing --no-verify to, which is worse than not having it. The cache
+# makes a repeat run proportional to what CHANGED rather than to the tree, so
+# the first push after a cold checkout pays once and the rest are quick.
+#
+# .eslintcache is gitignored. It is a cache: deleting it costs one slow run and
+# nothing else, and eslint invalidates entries by content hash, so a stale cache
+# cannot hide a new warning.
+npx eslint --max-warnings=0 --cache --cache-location .eslintcache
 lint_status=$?
 
 if [ $lint_status -ne 0 ]; then
