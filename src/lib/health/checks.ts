@@ -368,6 +368,110 @@ async function checkSslDomain(origin: string): Promise<HealthResult> {
 const ORDER_ACCESS_PROBE_A = '00000000-0000-4000-8000-00000000feed'
 const ORDER_ACCESS_PROBE_B = '00000000-0000-4000-8000-00000000beef'
 
+/**
+ * CAN THIS DEPLOYMENT ACTUALLY TURN A CARD INTO PIXELS? Probed, never read.
+ *
+ * WHY THIS EXISTS, 29 August 2026. Every social card download answered 500 with
+ * a zero-byte body, because next/og rasterises by handing satori's SVG to sharp
+ * and sharp inside the Next server runtime CANNOT DECODE SVG. The decisive
+ * measurement, taken from inside the running server:
+ *
+ *     svgInput:      {"file":true,"buffer":true,...}   <- sharp SAYS it can
+ *     svgRoundTrip:  FAILED: Input buffer contains unsupported image format
+ *
+ * on an 8x8 red rectangle. sharp.format.svg.input is STATIC METADATA compiled
+ * into the package, not a live probe of the loaded libvips, and in that runtime
+ * it was simply lying. Every proof we had that the image pipeline worked came
+ * from vitest, which is a different process with a different module resolution,
+ * so nothing anywhere would have caught it.
+ *
+ * THAT IS THE CLASS, and it is why this check reads nothing and proves
+ * everything: it round-trips REAL BYTES through the REAL library in the REAL
+ * runtime, on every sentinel run.
+ *
+ *   PNG decode   the organiser upload path and the card JPEG step both need it
+ *   JPEG encode  every card and every processed cover is written as one
+ *   card raster  satori plus resvg, the actual artefact path, end to end
+ *
+ * A declared capability is a promise. A round trip is evidence. Where the two
+ * disagree, only one of them is visible to an organiser.
+ */
+async function checkImagePipeline(): Promise<HealthResult> {
+  const base = {
+    id: 'image_pipeline',
+    label: 'Image pipeline (decode, encode, card raster)',
+    severity: 'critical' as Severity,
+  }
+
+  try {
+    const { default: sharp } = await import('sharp')
+
+    // A real 1x1 PNG, decoded and re-encoded as JPEG. Not a capability flag.
+    const png = await sharp({
+      create: { width: 8, height: 8, channels: 3, background: { r: 220, g: 180, b: 60 } },
+    })
+      .png()
+      .toBuffer()
+    const meta = await sharp(png).metadata()
+    if (meta.format !== 'png' || meta.width !== 8) {
+      return {
+        ...base,
+        ok: false,
+        detail: `sharp did not read back a PNG it had just written (got ${meta.format} ${meta.width}x${meta.height}).`,
+        probableCause: 'The native libvips in this runtime is not the one the package expects.',
+        action: 'Redeploy. If it persists, the sharp binary for this platform is broken and organiser uploads are also affected.',
+      }
+    }
+    const jpeg = await sharp(png).jpeg({ quality: 90 }).toBuffer()
+    if (jpeg.byteLength === 0) {
+      return {
+        ...base,
+        ok: false,
+        detail: 'sharp produced a zero-byte JPEG, so no card and no processed cover can be written.',
+        action: 'Redeploy and re-run this check.',
+      }
+    }
+
+    // The artefact path itself: satori composes, resvg rasterises. This is the
+    // exact call the card routes make, so a failure here IS the card failing.
+    const { renderCardPng } = await import('@/lib/broadcast/card-raster')
+    const probe = await renderCardPng(
+      {
+        type: 'div',
+        props: {
+          style: { display: 'flex', width: 32, height: 32, background: '#0A1628' },
+          children: '',
+        },
+      } as unknown as React.ReactNode,
+      { width: 32, height: 32, fonts: [] },
+    )
+    if (!probe || probe.byteLength === 0) {
+      return {
+        ...base,
+        ok: false,
+        detail: 'The card rasteriser produced no bytes, so every social card download would answer 500.',
+        probableCause: 'resvg-wasm failed to initialise in this runtime.',
+        action: 'Check the deployment logs for a wasm initialisation error and redeploy.',
+      }
+    }
+
+    return {
+      ...base,
+      ok: true,
+      detail: `Proved by round trip, not by a capability flag: PNG decoded (${meta.width}x${meta.height}), JPEG encoded (${jpeg.byteLength} bytes), card rasterised (${probe.byteLength} bytes).`,
+    }
+  } catch (error) {
+    return {
+      ...base,
+      ok: false,
+      detail: `The image pipeline threw in this runtime: ${error instanceof Error ? error.message : String(error)}`,
+      probableCause:
+        'A native decoder is unavailable here even if the package reports otherwise. This is the shape that broke every social card download on 29 August 2026.',
+      action: 'Read docs/verification/SOCIAL-CARD-500-ROOT-CAUSE.md, then redeploy.',
+    }
+  }
+}
+
 async function checkOrderAccess(): Promise<HealthResult> {
   const base = {
     id: 'order_access',
@@ -586,6 +690,7 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
     timed('env', () => checkEnvVars()),
     timed('manifest', () => checkEnvManifest()),
     timed('order_access', () => checkOrderAccess()),
+    timed('image_pipeline', () => checkImagePipeline()),
   ])
 
   if (!drill) return results

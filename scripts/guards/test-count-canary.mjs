@@ -599,8 +599,23 @@ const ROOT = join(HERE, '..', '..')
  *     the hold rather than incrementing a second time, which would exhaust an
  *     organiser's code at half its stated limit.
  */
-const MIN_FILES = 242
-const MIN_TESTS = 2950
+/*
+ * 2026-08-29 (sixth raise): 242/2950 -> 245/2961. Three files, eleven tests,
+ * from the resvg rasteriser swap.
+ *   tests/unit/broadcast/card-raster-parity.test.ts   renders every format
+ *     through BOTH rasterisers and compares pixel by pixel. The old path can
+ *     only be exercised in vitest, because inside the Next server sharp cannot
+ *     decode SVG at all, which IS the defect.
+ *   tests/unit/broadcast/card-raster-diff.test.ts     writes both images and an
+ *     amplified difference map to docs/verification/card-raster/ so a person can
+ *     LOOK rather than argue about a number.
+ *   tests/unit/health/capability-is-probed-not-read.test.ts   no source file may
+ *     branch on a DECLARED capability table, and the health sentinel must prove
+ *     the image pipeline by round-tripping real bytes in the deployed runtime.
+ *     sharp.format.svg.input reported true while an 8x8 red rectangle failed.
+ */
+const MIN_FILES = 245
+const MIN_TESTS = 2961
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
