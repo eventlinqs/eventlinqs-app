@@ -7,7 +7,22 @@ import { chromium } from 'playwright'
 import { mkdirSync, appendFileSync, writeFileSync, readFileSync } from 'node:fs'
 
 export const BASE = process.env.BASE ?? 'http://localhost:3311'
-const SERVER_LOG = '.tmp-serve.log'
+/*
+ * WHERE THE CONSOLE MAIL TRANSPORT WRITES.
+ *
+ * Overridable, because the server being driven is not always the one in this
+ * directory. On 29 August the journeys were pointed at a clean checkout off the
+ * synced drive (BASE=http://localhost:3312), whose log lives in THAT worktree.
+ * This constant was hardcoded, so linkFromInbox read this worktree's stale log,
+ * found no confirmation link for the new address, and the run reported
+ * "could not create an account" against a signup that had worked perfectly and
+ * whose email was sitting in the other log file.
+ *
+ * A journey that reads the wrong log indicts the product for the harness's
+ * bookkeeping, which is the same failure this harness has now made three times
+ * in one day, in three different ways.
+ */
+const SERVER_LOG = process.env.SERVER_LOG ?? '.tmp-serve.log'
 
 export function makeJourney(id, title, _viewport = { width: 1440, height: 1000 }) {
   const OUT = `docs/verification/journeys-2026-08-28/${id}`

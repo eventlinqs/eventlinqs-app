@@ -574,8 +574,21 @@ const ROOT = join(HERE, '..', '..')
  *     could not honestly be claimed without running the renderer outside the
  *     server. It passes, so the renderer is sound.
  */
-const MIN_FILES = 240
-const MIN_TESTS = 2940
+/*
+ * 2026-08-29 (fourth raise): 240/2940 -> 241/2943. One file, three tests.
+ *   tests/unit/guards/guards-do-not-need-git.test.ts   no guard may require git
+ *     to be present. no-silent-submit shipped listing its files with a git
+ *     spawn, and VERCEL'S BUILD CONTAINER IS NOT A GIT REPOSITORY, so the call
+ *     died with "fatal: not a git repository" and took the whole guard runner
+ *     with it. FIFTEEN consecutive preview deployments failed; the deployment
+ *     for the commit immediately before it succeeded. Locally there is always a
+ *     git repository and the Actions checkout has one too, so lint, typecheck,
+ *     build and test were all green throughout. Neither a lint rule nor the
+ *     pre-push hook could have caught it: the code is correct, it just cannot
+ *     run where it has to run.
+ */
+const MIN_FILES = 241
+const MIN_TESTS = 2943
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

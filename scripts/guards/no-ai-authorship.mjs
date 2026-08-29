@@ -87,6 +87,22 @@ const WINDOW = 200
  */
 const INHERITED_DEFERRED = new Map([
   [
+    '9cf7d3651f0d3b24ea4750d35f4eb378210a9d22',
+    'origin/main tip: "Integration/launch (#121)", squash-merged by GitHub on\n' +
+      '      28 August 2026 and CURRENTLY DEPLOYED TO PRODUCTION. Same shape and same\n' +
+      '      ruling as the two below: the committer is GitHub, the trailer was\n' +
+      "      aggregated by the squash from constituent commits, and it is main's\n" +
+      '      history rather than work written on this branch. It entered here by\n' +
+      '      merging main on 29 August.\n' +
+      '      REMOVING IT WOULD REWRITE MAIN, which is not authorised and which would\n' +
+      '      invalidate the sha production is running.\n' +
+      '      THIS IS THE FOURTH SQUASH TO DO THIS. The previous entry predicted the\n' +
+      '      third would be the last because the branch would be recreated from main;\n' +
+      '      it was not recreated, and the debt recurred exactly as written. The cut\n' +
+      '      is now a standing item in docs/roast/AUTHORSHIP-HISTORY-REWRITE.md.\n' +
+      '      Founder ruling 2026-08-12 (R-LAW8-DEBT). Clears with the rewrite.',
+  ],
+  [
     '8663a4ded01a83b7eff002884604a96ae00d2a0a',
     'origin/main tip: "Refund result, the lockdown 404, and the types drift (#120)",\n' +
       '      squash-merged by GitHub on 26 August 2026. THE COMMITTER IS GitHub, not a\n' +

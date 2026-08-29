@@ -48,15 +48,46 @@
  * and FAILS when it scanned nothing.
  */
 import { readFileSync } from 'node:fs'
-import { execFileSync } from 'node:child_process'
-import { gitEnv } from '../lib/git-env.mjs'
+import { sourceFiles } from './lib/source.mjs'
 
 const NAME = '[no-silent-submit]'
 
-function tracked(pattern) {
-  return execFileSync('git', ['ls-files', pattern], { encoding: 'utf8', env: gitEnv() })
-    .split('\n')
-    .filter(Boolean)
+/**
+ * EVERY .tsx UNDER src/, LISTED WITHOUT GIT.
+ *
+ * WHY THIS IS NOT `git ls-files`, and it is the whole reason fifteen preview
+ * deployments failed.
+ *
+ * This guard shipped on 28 August 2026 asking git for the file list, by
+ * spawning it and reading the tracked .tsx paths out of the result. The call
+ * expression is deliberately NOT reproduced here: no-inherited-git-env scans
+ * this directory for git spawns, and a comment quoting one is indistinguishable
+ * from the real thing to a scanner, so quoting it made this file fail that
+ * guard after the call had already been removed.
+ *
+ * VERCEL'S BUILD CONTAINER IS NOT A GIT REPOSITORY. It receives a source
+ * tarball, so the call dies with
+ *
+ *     fatal: not a git repository (or any parent up to mount point /vercel)
+ *     Error: Command failed: git ls-files src/**\/*.tsx
+ *
+ * and takes the whole guard runner with it. Every preview from 1516de0d
+ * onwards failed, fifteen in a row; the deployment for the commit immediately
+ * before it succeeded. Nothing local caught it, because locally there is always
+ * a git repository, and the GitHub Actions checkout has one too, so CI stayed
+ * green the entire time while every preview was red.
+ *
+ * The fix is not a try/catch. A guard that SKIPS when git is missing would skip
+ * on exactly the platform it most needs to run on, and report PASS while
+ * enforcing nothing, which is this repository's most-repeated failure shape.
+ *
+ * sourceFiles() is the shared walker in lib/source.mjs, already used by nine
+ * guards, and its own header records that it exists so a guard's file list
+ * cannot depend on something that varies between environments. This guard was
+ * the only one that rolled its own. It no longer does.
+ */
+function tsxUnderSrc(root) {
+  return sourceFiles(root, { extensions: ['.tsx'], subdir: 'src' })
 }
 
 /* ------------------------------------------------------------------ *
@@ -109,7 +140,7 @@ function effectiveSteps(tag) {
 }
 
 function checkNumberInputs() {
-  const files = tracked('src/**/*.tsx')
+  const files = tsxUnderSrc(process.cwd())
   let filesWithNumberInputs = 0
   let inputs = 0
   const findings = []
@@ -210,7 +241,7 @@ function actionNamesImportedBy(src) {
 }
 
 function checkActionResults() {
-  const files = tracked('src/**/*.tsx')
+  const files = tsxUnderSrc(process.cwd())
   let clientFiles = 0
   let callSites = 0
   const findings = []
