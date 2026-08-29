@@ -118,7 +118,47 @@ export async function GET(
     })
   } catch (error) {
     captureException(error, { where: 'app/api/organiser/events/[id]/card/[format]/route:render' })
+
+    /*
+     * WHAT SHARP LOOKS LIKE FROM INSIDE THIS SERVER.
+     *
+     * @vercel/og rasterises by handing the SVG satori produced straight to
+     * sharp (its render() does `sharp(encode(svg)).resize(w).png()`), and it
+     * only falls back to resvg-wasm when `await import("sharp")` FAILS. There is
+     * no option to choose; getSharp() is unconditional.
+     *
+     * The same render with the same real context succeeds in a plain Node
+     * process and fails here, so the difference is this runtime. The one thing
+     * not yet measured is what sharp reports about ITSELF when imported inside
+     * the Next server: if SVG input is unavailable to this instance, the
+     * "unsupported image format" message is exactly what libvips says when it
+     * cannot identify the buffer, and the whole failure is explained.
+     *
+     * Read once, on the failure path only, so it costs nothing in the ordinary
+     * case.
+     */
+    let sharpReport: Record<string, unknown> = {}
+    try {
+      const { default: sharpLib } = await import('sharp')
+      sharpReport = {
+        sharpVersion: (sharpLib as unknown as { versions?: Record<string, string> }).versions?.vips ?? 'unknown',
+        svgInput: JSON.stringify(sharpLib.format?.svg?.input ?? null),
+        svgRoundTrip: await sharpLib(
+          new TextEncoder().encode(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="red"/></svg>',
+          ),
+        )
+          .png()
+          .toBuffer()
+          .then(b => `ok ${b.byteLength} bytes`)
+          .catch(e => `FAILED: ${e instanceof Error ? e.message : String(e)}`),
+      }
+    } catch (probeError) {
+      sharpReport = { probeFailed: probeError instanceof Error ? probeError.message : String(probeError) }
+    }
+
     console.error('[card] render failed', {
+      ...sharpReport,
       eventId: id,
       format,
       channel,

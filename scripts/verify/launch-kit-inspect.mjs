@@ -220,7 +220,28 @@ try {
       venue_city: 'Melbourne',
       venue_state: 'VIC',
       venue_country: 'Australia',
-      cover_image_url: donor?.cover_image_url ?? null,
+      /*
+       * KIT_NO_COVER=1 stages the event WITHOUT a photograph, which sends every
+       * card down the TYPOGRAPHIC composition. That is a real product path, not
+       * a test-only shape: Law 6 says an organiser who supplies no artwork gets
+       * a typographic card built from their own event details.
+       *
+       * It is also the bisect that separates a renderer fault from a fault in
+       * embedding the organiser's cover, which is the open question on the 500s.
+       */
+      /*
+       * KIT_COVER_URL overrides the donor photograph.
+       *
+       * KIT_NO_COVER=1 was tried first and is IMPOSSIBLE for a published event:
+       * the database refuses it with the check constraint
+       * events_published_real_cover. That is worth knowing on its own, because
+       * it means the TYPOGRAPHIC card composition can never occur on an
+       * organiser's published event; every organiser card embeds a photograph.
+       *
+       * So the bisect is on the cover's SIZE instead, which is what
+       * KIT_COVER_URL is for.
+       */
+      cover_image_url: process.env.KIT_COVER_URL || (donor?.cover_image_url ?? null),
       status: 'published',
       visibility: 'public',
       published_at: new Date().toISOString(),
