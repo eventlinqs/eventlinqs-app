@@ -1,7 +1,7 @@
 ﻿# EventLinqs Launch Readiness Session Log
 
 Operator: Lawal Adams (sole author). Windows 11, PowerShell 5.1.
-Session ran 2026-09-02, 00:05 to 04:05. Newest detail entries at the bottom.
+Session ran 2026-09-02, 00:05 to 06:00. Newest detail entries at the bottom.
 
 ---
 
@@ -16,7 +16,7 @@ pages, two of them payment test artefacts. The 261 events across 20 cities are n
 there. This is DATA, not code, so the deploy does not fix it. That is GATE 0.
 
 **2. Every fix from this session is LOCAL ONLY.** The remote `integration/launch`
-is still on `ea6df9f5`, the commit that does not build. Four commits exist only on
+is still on `ea6df9f5`, the commit that does not build. SEVEN commits exist only on
 this machine. **If you deploy from the remote as it stands, the Vercel build fails**
 at `Module not found: Can't resolve 'wbg'`. The push command is at the top of
 `C:\dev\PRODUCTION-STEPS.md`.
@@ -26,9 +26,14 @@ at `Module not found: Can't resolve 'wbg'`. The push command is at the top of
     1 guest magic link  PASS   2 discount claim  PASS   3 ticket email  PASS
     4 paid publish refusal  PASS   (closed 04:45, the money refusal now fires)
     5 cover composer  PASS     6 label guard one PASS   7 label guard two PASS
-    8 seat map  PASS           9 door scanner  PASS
+    8 seat map  PASS           9 door scanner  PASS (including ON A PHONE)
     NINE OF TEN PASS.
     10 ticket purchase and refund  FAIL
+
+All ten are now driven at all THREE viewports, 30 rows, in
+`EVIDENCE\journeys\TASK7-TABLE.txt`: **PASS 18, FAIL 12, and every one of the
+twelve failures is the same missing Stripe key.** Not twelve problems. One
+problem, counted twelve times.
 
 **THE TENTH IS TICKET PURCHASE AND REFUND.** It is an expired Stripe credential,
 not a defect: everything either side of the card step is proven, including the
@@ -45,8 +50,17 @@ the locked fee. Three things stand in the way:
 2. **No paid purchase or refund has been driven.** Both Stripe keys stored by the
    CLI expired (2026-07-29 and 2026-07-07). One `stripe login` fixes it and needs
    your browser.
-3. **The city page hero map is dead on production.** `/city/melbourne` answers 200
-   and makes zero requests to Google; the event map on the same build makes 16.
+3. **No organiser-created event can ever appear on a city map.** The event builder
+   captures a venue as two plain text inputs and NO coordinates: `venue_latitude`
+   appears once, as null, and is never assigned. Scope 3.1.1 requires "Google Maps
+   integration and embedded map preview" on the builder and neither exists, so this
+   is a documented build gap rather than a regression.
+
+   THIS REPLACES an earlier claim of mine that "the city page hero map is dead on
+   production", which I WITHDREW. The map is correctly gated on
+   `mapPins.length > 0` (`CityLandingPage.tsx:180`) and behaves properly when it
+   has pins. It has no pins because nothing geocodes a venue, which is the real
+   finding and a deeper one.
 
 ## PROVEN by driving it
 
@@ -121,6 +135,30 @@ under PROVEN instead, and the detail is at 05:20, 05:25 and 05:45.
                          1440. Table: `EVIDENCE\journeys\TASK7-TABLE.txt`.
                          PASS 18, FAIL 12, and all twelve failures are the one
                          missing Stripe key.
+
+## WAITING AT THE TWO STOP GATES, NEITHER RUN
+
+Both are written in full, with expected output and rollbacks, in
+`C:\dev\PRODUCTION-STEPS.md`. Nothing in that file was executed.
+
+  GATE 0   production has no catalogue. A DECISION, not a command: seed, launch
+           small, or delay. Not something I could write a command for without
+           knowing which you want.
+  GATE 1   the Arts storage object. Three objects copied inside `event-images`,
+           `arts-culture/` to `arts-community/`. MUST run BEFORE the deploy or the
+           Arts tile 404s on the homepage. Copy only, nothing deleted, idempotent.
+  GATE 2   the four pending production migrations, then the Vercel deploy, then
+           six post-deploy smoke checks. Verified read-only against production:
+           107 migration rows, 103 applied, exactly 4 pending, and they are the
+           four named.
+
+Also waiting, and NOT a stop gate but a blocker on the deploy: the seven commits
+are still local. The remote cannot build without them.
+
+## FREE DISK
+
+    9.22 GB free on C:. Floor is 5 GB and it was never approached.
+    Session low point 9.18 GB, high 9.32 GB.
 
 ## THINGS YOU DO NOT KNOW YET
 
