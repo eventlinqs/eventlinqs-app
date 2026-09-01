@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { createRequire } from 'node:module'
+import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import satori, { type SatoriOptions } from 'satori'
 import { Resvg, initWasm } from '@resvg/resvg-wasm'
@@ -67,7 +67,54 @@ import { captureException } from '@/lib/observability/sentry'
  *   overseas-born, India the largest group), that is not an edge case.
  */
 
-const require_ = createRequire(import.meta.url)
+/**
+ * WHERE THE WEBASSEMBLY BINARY IS, FOUND WITHOUT ASKING THE BUNDLER.
+ *
+ * The binary is DATA to this module: it is read with readFile and handed to
+ * initWasm as bytes. It must never enter the module graph, and equally it must
+ * never be located THROUGH the module graph.
+ *
+ * Two ways of asking have now failed here, both on 2 September 2026, and both
+ * are recorded so neither is tried a third time:
+ *
+ *   require_.resolve('@resvg/resvg-wasm/index_bg.wasm')
+ *       Turbopack read the literal '.wasm' specifier statically, treated the
+ *       binary as a module, and put it through its wasm-bindgen loader, which
+ *       emits glue importing a namespace called `wbg` that nothing supplies.
+ *       `next build` died: "Module not found: Can't resolve 'wbg'".
+ *
+ *   require_.resolve('@resvg/resvg-wasm')
+ *       That BUILDS, and then fails at run time, which is worse. Inside a
+ *       bundled chunk require.resolve does not return a filesystem path, it
+ *       returns Turbopack's internal module id, so the call produced the number
+ *       209426 and every one of the eighteen cards answered HTTP 500 with
+ *       "The "path" argument must be of type string. Received type number".
+ *
+ * So the lookup uses fs and path only, on strings computed at run time. There is
+ * nothing here for a bundler to rewrite. The walk upwards covers a hoisted
+ * node_modules, a monorepo root, and the Vercel lambda layout, and the file is
+ * additionally pinned into the traced output in next.config.ts so it is present
+ * to be found.
+ */
+const WASM_RELATIVE = join('node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm')
+
+function locateResvgWasm(): string {
+  const tried: string[] = []
+  let dir = process.cwd()
+  for (let hop = 0; hop < 8; hop += 1) {
+    const candidate = join(dir, WASM_RELATIVE)
+    tried.push(candidate)
+    if (existsSync(candidate)) return candidate
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  // Naming every path tried, because "cannot find the wasm" with no list is the
+  // same unhelpful shape as the zero-byte 500 this whole module replaced.
+  throw new Error(
+    `resvg WebAssembly binary not found. Looked for ${WASM_RELATIVE} in:\n  ${tried.join('\n  ')}`,
+  )
+}
 
 /**
  * initWasm may be called ONCE per process and throws on a second call, so the
@@ -78,26 +125,7 @@ let wasmReady: Promise<void> | null = null
 function ensureWasm(): Promise<void> {
   if (!wasmReady) {
     wasmReady = (async () => {
-      // RESOLVE THE PACKAGE, THEN JOIN THE FILE. Do not hand the bundler a
-      // literal '.wasm' specifier.
-      //
-      // This previously read require_.resolve('@resvg/resvg-wasm/index_bg.wasm').
-      // That is correct Node, and it is exactly what broke `next build` on
-      // 2 September 2026, the first time this module was ever built rather than
-      // exercised in isolation. Turbopack statically analyses require.resolve, saw
-      // a literal ending in .wasm, and routed it through its wasm-bindgen loader,
-      // which emits glue importing a namespace called `wbg` that nothing provides:
-      //
-      //     ./node_modules/@resvg/resvg-wasm/index_bg.wasm_.loader.mjs:1:1
-      //     Module not found: Can't resolve 'wbg'
-      //
-      // The binary is DATA to this module, not a module. It is read with readFile
-      // and handed to initWasm as bytes, so it must never enter the module graph.
-      // Resolving the package entry and joining the filename keeps the lookup
-      // exactly as robust (still Node's own resolution, still correct under pnpm
-      // or a hoisted node_modules) while leaving nothing for a bundler to follow.
-      const wasmPath = join(dirname(require_.resolve('@resvg/resvg-wasm')), 'index_bg.wasm')
-      await initWasm(await readFile(wasmPath))
+      await initWasm(await readFile(locateResvgWasm()))
     })().catch(error => {
       // A failed init must not be cached as resolved, or every later render
       // fails with a confusing "already initialised" instead of the real cause.

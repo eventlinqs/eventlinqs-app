@@ -97,6 +97,38 @@ function run(command) {
       store.set(String(args[0]), { value: args[1], expiresAt })
       return 'OK'
     }
+    case 'setex': {
+      /*
+       * ["setex", key, seconds, value]. Added 2 September 2026.
+       *
+       * Its absence was not a gap in coverage, it was a silent wrong answer of
+       * exactly the kind the `set` comment above warns about. The public
+       * composer's draft store (src/lib/launch/draft-store.ts) persists with
+       * setex, because the founder ruling's 30-day bookmarkable link IS a TTL.
+       * The shim answered `{"error":"upstash-shim does not implement setex"}`,
+       * the write was lost, and readDraftByCode then answered null, so every
+       * one of the eighteen cards served HTTP 404 not_found from a composer
+       * that had just rendered a complete kit on screen.
+       *
+       * That reads precisely like a broken card route. It was the store.
+       */
+      const key = String(args[0])
+      const seconds = Number(args[1])
+      store.set(key, { value: args[2], expiresAt: now() + seconds * 1000 })
+      return 'OK'
+    }
+    case 'ttl': {
+      // Redis semantics, which the draft store depends on: -2 when the key does
+      // not exist, -1 when it exists with no expiry, otherwise seconds left.
+      // draft-store reads this to preserve the remaining life across an edit,
+      // so returning the wrong shape here silently shortens or immortalises a
+      // draft rather than failing.
+      const key = String(args[0])
+      const entry = live(key)
+      if (!entry) return -2
+      if (entry.expiresAt === null) return -1
+      return Math.max(0, Math.ceil((entry.expiresAt - now()) / 1000))
+    }
     case 'del': {
       let removed = 0
       for (const k of args) if (store.delete(String(k))) removed++
@@ -150,5 +182,7 @@ const server = createServer((req, res) => {
 })
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`[upstash-shim] INCR/EXPIRE on http://127.0.0.1:${PORT} (in memory, local only)`)
+  console.log(
+    `[upstash-shim] GET/SET/SETEX/TTL/DEL/INCR/EXPIRE on http://127.0.0.1:${PORT} (in memory, local only)`,
+  )
 })

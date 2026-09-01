@@ -144,7 +144,26 @@ const nextConfig: NextConfig = {
     // The social cards draw brand type. satori is handed real font buffers
     // read from disk at render time, so the TTFs have to be traced into the
     // card lambda or every card would silently fall back to a system face.
-    '/api/organiser/events/[id]/card/[format]': ['./src/assets/fonts/*.ttf'],
+    '/api/organiser/events/[id]/card/[format]': [
+      './src/assets/fonts/*.ttf',
+      // The resvg WebAssembly binary is read from disk at run time by
+      // src/lib/broadcast/card-raster.ts (it is data, not a module, for the
+      // reasons written out at length there). Nothing imports it, so nothing
+      // traces it, so without this line the lambda ships without the one file
+      // the rasteriser cannot work without.
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    // The public composer serves the same three formats from an anonymous
+    // draft and rasterises through the identical path, so it needs the binary
+    // just as much. It was the route that proved this: all eighteen of its
+    // cards answered HTTP 500 until the lookup was fixed.
+    '/api/launch/[code]/card/[format]': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    // The admin health page runs the card raster check end to end, which is the
+    // second entry point into the same module.
+    '/admin/health': ['./node_modules/@resvg/resvg-wasm/index_bg.wasm'],
   },
   async redirects() {
     // THE TABLE ITSELF MOVED to src/lib/seo/permanent-redirects.ts, unchanged,
