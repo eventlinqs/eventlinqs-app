@@ -753,3 +753,307 @@ Free disk at end of TASK 6: 10.53 GB.
 
 ---
 
+
+## 2026-09-02 00:57 SESSION RESUMED AFTER AN INTERRUPTION
+
+The previous session ended mid build. State on resume, verified rather than assumed:
+
+    branch          integration/launch
+    HEAD            ea6df9f592a4e01437dba3d269a59b9ee957e058
+    modified        next.config.ts, src/lib/broadcast/card-raster.ts
+    free disk       9.55 GB
+    last build      had reached "Running TypeScript" with the wbg error GONE
+
+So the first resvg fix had worked as far as compilation and the build was simply
+cut off. No finished work was repeated.
+
+---
+
+## 2026-09-02 01:05 TASK 2 COMPLETE. DEPENDENCIES AND BUILD. GREEN.
+
+    npm ci                exit 0    node_modules 952.6 MB, 689 packages
+    npm cache clean       exit 0
+    playwright chromium   exit 0    chromium 406.6 MB + headless shell 264.8 MB
+                                    + ffmpeg 3.4 MB. No firefox, no webkit.
+    npm run build         exit 0
+    [guards] all 54 guards PASS
+
+Build summary, from the run itself:
+
+    Running next.config.ts     1320 ms
+    Compiled successfully      44 s
+    Static pages               134 generated in 8.5 s with 8 workers
+    Routes                     197 total: 10 static, 187 dynamic
+    .next on disk              541.3 MB
+    client JS shipped          126 files, 2.5 MB total
+    largest client chunks      236.2 kB, 196.3 kB, 125.3 kB, 116.7 kB, 110.0 kB
+
+NOTE ON THE BRIEF'S REQUEST FOR BUNDLE SIZES. Next 16 with Turbopack no longer
+prints a per route size column; the route table carries only Revalidate and
+Expire. The per chunk figures above are measured directly from .next/static
+instead, which is the same information from the artefact rather than the log.
+
+### npm audit, and what was fixed
+
+Raw totals: 31 findings, 0 critical, 11 high, 18 moderate, 2 low.
+
+That number on its own is misleading, so I split it by what actually reaches a
+user. Production dependencies only:
+
+    BEFORE   6 findings: 1 low, 2 moderate, 3 high
+             high: brace-expansion, fast-uri, ws
+             low : @babel/core
+             mod : uuid (via exceljs)
+
+    npm audit fix          (no --force, semver compatible only)
+
+    AFTER    2 findings: 2 moderate, and NO high at all
+
+Then rebuilt, because a lockfile change that has not been rebuilt is not a fix:
+build exit 0, all 54 guards pass.
+
+DELIBERATELY LEFT, with reasoning: uuid via exceljs. The only offered remedy is
+npm audit fix --force, which DOWNGRADES exceljs from >=3.5.0 to 3.4.0, a breaking
+major change to spreadsheet export hours before a launch. The advisory is a
+missing buffer bounds check in uuid v3/v5/v6 when a caller supplies its own
+buffer, which is not how exceljs uses it here.
+
+The other 8 high findings are dev only, almost all in the lighthouse and puppeteer
+chain, and ship to nobody.
+
+Commit: 793ebf5b "The three high advisories in the shipped tree are gone"
+
+Free disk at end of TASK 2: 9.12 GB.
+
+---
+
+## 2026-09-02 01:30 TASK 5. THE EIGHTEEN SOCIAL CARDS. THE REAL DEFECT, FOUND BY DRIVING.
+
+This is the task the brief said had never once been proven against a running
+server. It had not, and it did not work. Three separate faults, each one hidden
+behind the one in front of it.
+
+### FAULT 1. The build. Found in TASK 2, fixed there, restated because it belongs here.
+
+The top commit of integration/launch, "The cards rasterise through resvg now",
+had never been through `next build`. The first build of it died:
+
+    ./node_modules/@resvg/resvg-wasm/index_bg.wasm_.loader.mjs:1:1
+    Module not found: Can't resolve 'wbg'
+
+reached from BOTH rasterising entry points, the eighteen organiser cards and the
+admin health page. Turbopack read the literal '.wasm' specifier in
+require_.resolve, decided the binary was a module, and ran it through its
+wasm-bindgen loader, which emits glue importing a namespace nothing supplies.
+
+THE IMPORTANT PART: Vercel would have hit exactly this. Next 16 builds with
+Turbopack by default and the deployed chunks are already named turbopack-*.js.
+Had tonight's deploy been run against this branch as it stood, the BUILD WOULD
+HAVE FAILED. Not the cards, the deploy.
+
+### FAULT 2. The draft store, and a shim that lied
+
+With the build green I started the production server and drove all eighteen from
+the public composer. Every one answered:
+
+    HTTP 404  {"ok":false,"error":"not_found"}   32 bytes
+
+The composer had produced a real kit and a real code (6877bhgjfvrv) on screen,
+and the card route could not find it. The cause was not the card route.
+
+src/lib/launch/draft-store.ts persists drafts in Redis with `setex`, because the
+founder ruling's 30 day bookmarkable link IS a TTL, and reads the remaining life
+back with `ttl`. Locally Redis is scripts/dev/upstash-shim.mjs, and that shim
+implemented incr, expire, get, set, del, ping, dbsize and flushdb.
+
+It did NOT implement setex or ttl. Its default branch returns
+
+    {"error":"upstash-shim does not implement setex"}
+
+so every draft write was silently discarded and every read then answered null.
+
+I added both, with Redis semantics, and proved them before trusting them:
+
+    ping            PONG
+    setex k 60      OK
+    get k           {"a":1}
+    ttl k           60      (expected about 60)
+    ttl missing     -2      (expected -2, key absent)
+    set no expiry   OK
+    ttl no expiry   -1      (expected -1, no TTL)
+    del             2
+
+This matters beyond the cards. The same shim serves the fail closed rate limiter
+on checkout, refund and transfer, and its own header explains that a shim which
+silently disagrees with the thing it stands in for is worse than no shim. It was
+disagreeing.
+
+### FAULT 3. require.resolve does not return a path inside a bundle
+
+With the store fixed the eighteen moved from 404 to:
+
+    HTTP 500, ZERO BYTE BODY
+
+which is the exact signature the module's own comments describe and exist to
+prevent. The server log named it:
+
+    TypeError: The "path" argument must be of type string.
+               Received type number (209426)
+    code: 'ERR_INVALID_ARG_TYPE'
+
+My TASK 2 fix had changed the lookup to
+require_.resolve('@resvg/resvg-wasm') and joined the filename. That BUILDS, and
+then fails at run time, which is the worse of the two failures: inside a bundled
+chunk require.resolve does not return a filesystem path at all, it returns
+Turbopack's internal module id. The number 209426 is that id.
+
+So marking the package external in next.config.ts was never sufficient either.
+The evidence is direct: build attempt two had serverExternalPackages in place and
+still failed with the wbg error.
+
+THE FIX THAT HOLDS. The binary is DATA to that module: it is read with readFile
+and handed to initWasm as bytes. So it is now located with fs and path only, on
+strings computed at run time, walking up from the working directory to find
+node_modules/@resvg/resvg-wasm/index_bg.wasm. There is nothing left for a bundler
+to rewrite. The error path names every directory it tried, because "cannot find
+the wasm" with no list is the same unhelpful shape as the zero byte 500.
+
+AND, because nothing imports the binary, nothing traces it either. It is now
+pinned into outputFileTracingIncludes for all three entry points that rasterise:
+the organiser card route, the public launch card route, and the admin health page.
+Without that the Vercel lambda would ship without the one file the rasteriser
+cannot work without, and the cards would fail in production while passing locally.
+
+
+
+## 2026-09-02 01:25 TASK 5. EIGHTEEN CARDS DRIVEN AND PASSING, WITH TWO HONEST GAPS.
+
+### The run
+
+Production server (`next start`, NODE_ENV=production) on http://localhost:3311,
+built from the fixed branch. A launch draft was created through the PUBLIC
+composer at /launch exactly as a stranger would, then all eighteen were fetched.
+
+    18 passed, 0 failed, of 18
+
+Per artefact, every one of these was checked and passed:
+
+    format   channel     dimensions   bytes    max stdev   distinct luma   time
+    story    x6          1080x1920    180545   71.81       235             1.1 to 5.5 s
+    square   x6          1080x1080    156238   85.11       239             0.7 to 0.8 s
+    feed     x6          1440x1800    239365   81.48       243             1.4 to 1.5 s
+
+  HTTP 200 and content-type image/jpeg                        all 18
+  real JPEG magic bytes FF D8 FF, not a header claim          all 18
+  dimensions exactly the published size for the format        all 18
+  CARRIES INK, by two independent measures                    all 18
+      channel standard deviation, floor 8, observed 71 to 85
+      distinct luma values in a 64x64 greyscale sample, floor 12, observed 235 to 243
+  under the 5 MB ceiling the spec sets                        all 18 (max 234 kB)
+
+Evidence: C:\dev\EVIDENCE\social-cards\  (18 JPEGs, contact-sheet.jpg, card-results.json)
+
+### The resvg path is the one executing. Proved by breaking it.
+
+Reading the source proves nothing about what runs, so the binary was taken away
+and the server restarted, three phases, each with a fresh server process because
+ensureWasm() memoises its init promise:
+
+    PHASE 1  binary present     0 resvg errors, card served
+    PHASE 2  binary removed     4 errors, each naming the file and every
+                                directory searched, card failed
+    PHASE 3  binary restored    0 resvg errors, card served
+
+The phase 2 error, verbatim from the server:
+
+    Error: resvg WebAssembly binary not found. Looked for
+    node_modules\@resvg\resvg-wasm\index_bg.wasm in:
+      C:\dev\EventLinqs\eventlinqs-app\node_modules\@resvg\resvg-wasm\index_bg.wasm
+      C:\dev\EventLinqs\node_modules\@resvg\resvg-wasm\index_bg.wasm
+      C:\dev\node_modules\@resvg\resvg-wasm\index_bg.wasm
+      C:\node_modules\@resvg\resvg-wasm\index_bg.wasm
+
+reached through src_lib_broadcast chunk, the card route. That is a deliberate
+failure test, not an inference.
+
+Logs: C:\dev\resvg-phase1.log.err, resvg-phase2.log.err, resvg-phase3.log.err
+
+### Visual inspection of the contact sheet, which the numbers could not give
+
+I generated the sheet and OPENED it. What renders correctly, seen not assumed:
+
+  the title wraps and fits at all three formats and is clipped at no edge
+  the date line reads Sunday 20 September, 10:00 pm
+  the LIVE EVENT eyebrow badge renders in gold
+  the gold price pill carries From $25 and the short link
+  the QR code renders as a clean scannable block with Scan to buy beneath
+  Ticketing by EVENTLINQS. renders
+  navy and gold throughout, correct brand palette
+
+### GAP 1. There is no cover photograph on the square and feed cards.
+
+The spec builds square and feed as BandedCard, a photograph ABOVE a navy
+information band, with photoHeight 600 for square and 1150 for feed. In all
+twelve of those cards that region is empty navy. story is typographic by design
+(photoHeight 0), so story is correct as rendered.
+
+The cause is that an anonymous, unclaimed draft carries no cover image, so
+prepareCardCover is never called. Whether that is acceptable degradation or a
+defect depends on whether a real organiser can reach a card with no cover, and
+that is decided on the ORGANISER route, not this one. I am not calling it either
+way on evidence I do not have.
+
+### GAP 2. The EventLinqs logo is NOT proven.
+
+The brief requires that the logo renders correctly and is not distorted or cut.
+On these eighteen there is no logo mark at all, only the words Ticketing by
+EVENTLINQS. as type. organiserLogo was null because an anonymous draft has no
+organiser. So that check is NOT satisfied by this run and I am not claiming it.
+
+### GAP 3. Per channel attribution is not exercised on this route.
+
+The six channels within a format are BYTE IDENTICAL. Confirmed by hashing: three
+distinct SHA-256 values across eighteen files, one per format.
+
+That is not a defect here. toCardInput resolves
+context.links[channel] ?? context.links.fallback, and an unclaimed draft has no
+minted per channel short codes, so all six correctly fall back to one URL. The
+route's own comment says the attribution is the whole point of the artefact, so
+it does need proving, but it can only be proved on the organiser route where the
+tracked links exist.
+
+### Why the organiser route was not driven, and what it would take
+
+scripts/verify/launch-kit-inspect.mjs is the repository's canonical proof and
+produces the canonical contact sheet. It cannot run here. Line 65:
+
+    const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,
+                            process.env.SUPABASE_SERVICE_ROLE_KEY)
+
+SUPABASE_SERVICE_ROLE_KEY is one of the nineteen values Vercel will not decrypt.
+The organiser card route is gated the same way: getOrganiserEvent calls
+supabase.auth.getUser() and then resolveEventAccess, so it needs a signed in
+organiser who owns a published event with a cover image and an organiser logo.
+
+With that one key in .env.local, launch-kit-inspect.mjs closes all three gaps
+above in a single run, including decoding the poster QR with jsqr and comparing
+it against the minted qr channel link.
+
+### A separate error seen in every server phase
+
+    [launch.taxonomy] listCategoryNames: Error: supabaseKey is required.
+    [launch.taxonomy] listCommunitySlugs: Error: supabaseKey is required.
+
+src/lib/launch/taxonomy.ts builds its client with createAdminClient, which needs
+the service role key. Same credential gap, caught and logged rather than thrown,
+and the composer still produced a complete kit. Not a code defect. It will not
+occur on Vercel, where the key exists.
+
+### Minor: .tmp-serve.log is not gitignored
+
+The journey harness defaults its console mail transport log to .tmp-serve.log in
+the repository root, and `git check-ignore` returns nothing for it. It is
+untracked today so nothing is broken, but it is one `git add -A` away from being
+committed. Worth a line in .gitignore.
+
+
