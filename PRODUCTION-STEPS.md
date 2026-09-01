@@ -7,13 +7,14 @@ Every command below is a production write and was held at a stop gate.
 
 ## READ THIS BEFORE STEP 5. EVERY FIX FROM THIS SESSION IS LOCAL ONLY.
 
-    integration/launch  local   6ccb2950533fca4575a56d09c5fa1e30e44f2c63
+    integration/launch  local   bcbe339db5c57aaa562fa4ecca38fde9d09f412c
     integration/launch  remote  ea6df9f592a4e01437dba3d269a59b9ee957e058
     launch-prepared             local only, deliberately never pushed
 
-The remote is still sitting on the commit that DOES NOT BUILD. Four commits exist
+The remote is still sitting on the commit that DOES NOT BUILD. Five commits exist
 only on this machine:
 
+    bcbe339d  The journeys could only ever run at 1440, and nothing said so
     6ccb2950  Twenty two city browse pages were sharing as a bare link with no card
     7afc5913  The eighteen cards render from a running server, proved by breaking it on purpose
     793ebf5b  The three high advisories in the shipped tree are gone
@@ -21,7 +22,7 @@ only on this machine:
 
 If you deploy from the remote as it stands, the Vercel build FAILS at
 `Module not found: Can't resolve 'wbg'`, because the resvg fix is one of those
-four. Push the branch before step 5, or the deploy cannot succeed:
+five. Push the branch before step 5, or the deploy cannot succeed:
 
 ```powershell
 $env:Path = "C:\node24\node-v24.19.0-win-x64;" + $env:Path
