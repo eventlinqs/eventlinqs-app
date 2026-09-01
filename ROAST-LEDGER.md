@@ -18,7 +18,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | # | Requirement | Verdict | Evidence |
 |---|---|---|---|
 | S1 | PowerShell command groups begin with the Node path and an explicit Set-Location | MET | Every PowerShell call this session; visible throughout the transcript |
-| S2 | PRODUCTION Supabase `gndnldyfudbytbboxesk` READ ONLY, no writes of any kind | MET | Zero production writes. `drive-j6-viewports.mjs` refuses on a ref check before acting. Only read-only fetches to the production sitemap and homepage |
+| S2 | PRODUCTION Supabase `gndnldyfudbytbboxesk` READ ONLY, no writes of any kind | **MET**, and PROVEN 14:10 | Not merely asserted. Three independent read-only re-measurements all match their originals: the sitemap (552 URLs, 4 events, 0 added, 0 removed), storage (arts-culture sources present and untouched), and the schema (107/103/4, the same four pending as 13 hours earlier). A session that had written would move at least one |
 | S3 | TEST Supabase `vkapkibzokmfaxqogypq` writable | MET | Password reset and ticket queries, ref read back and asserted first |
 | S4 | Before ANY supabase command, read the project ref back and log it | MET | `supabase/.temp/project-ref` reads `vkapkibzokmfaxqogypq`; the j6 driver prints and asserts the ref before any write |
 | S5 | OneDrive archive read once, TASK 4 only, time boxed, never written | MET | Read once in TASK 4. No writes, no OneDrive.exe restart |
@@ -129,7 +129,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | SG1.1 | Write the exact ready-to-run Arts storage command to PRODUCTION-STEPS.md | MET | Stop gate 1 |
 | SG1.2 | How to verify the object exists afterwards | MET | Three HEAD checks |
 | SG1.3 | How to confirm the tile renders on the live homepage | MET | Written |
-| SG1.4 | DO NOT RUN | MET | Not run |
+| SG1.4 | DO NOT RUN | **MET**, and the gate is MOOT | Not run. AND verified 13:50 that all three objects ALREADY EXIST on production (HTTP 200, image/avif, real `ftypavif` magic, the 960 byte-identical to its source), almost certainly from the founder-approved run of 26 August. The gate is a no-op and its ordering constraint dissolves |
 | SG2.1 | The supabase link command for the production ref | MET | Step 1 |
 | SG2.2 | The command that READS THE REF BACK with exact expected output | MET | Step 2 |
 | SG2.3 | The db push command | MET | Step 3 |

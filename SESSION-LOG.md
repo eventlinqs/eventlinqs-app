@@ -5084,3 +5084,53 @@ The pattern across all seven is one thing. **I trust a stated premise and verify
 the work, when the premise is the cheaper thing to check and the more likely to
 be stale.** The brief was written before the session; the world moved; I kept
 quoting it.
+
+## 2026-09-02 14:10 STOP GATE 2 RE-VERIFIED, AND IT STILL STANDS
+
+Applying the lesson from 13:50 in the obvious direction: STOP GATE 1 turned out
+to have been done already, so I re-checked the other gate rather than trust a
+thirteen hour old reading.
+
+Linked to production, ref READ BACK as required by the standing law, ran the
+list, relinked to TEST and read the ref back again:
+
+    ref before          vkapkibzokmfaxqogypq
+    ref after link      gndnldyfudbytbboxesk   (production, deliberate)
+    supabase migration list                    READ ONLY, no write of any kind
+    ref after relink    vkapkibzokmfaxqogypq   confirmed back on TEST
+
+Result:
+
+    total migration rows   107
+    applied on production  103
+    PENDING                4
+
+    20260827000001   2026-08-27 00:00:01
+    20260829000001   2026-08-29 00:00:01
+    20260829000002   2026-08-29 00:00:02
+    20260829000003   2026-08-29 00:00:03
+
+EXACTLY the four named in the gate, and IDENTICAL to the 01:00 measurement.
+
+So the two gates have gone opposite ways, which is the useful outcome:
+
+    STOP GATE 1   already satisfied. A no-op, and its ordering constraint
+                  dissolves. One fewer step on launch morning.
+    STOP GATE 2   still required, numbers still exact, four migrations pending.
+
+Evidence: `EVIDENCE\gates\miglist-production-1410.txt`.
+
+### AND THIS CLOSES THE STANDING LAW I HAD ONLY EVER ASSERTED
+
+S2 says production is READ ONLY for the entire session. I have claimed compliance
+in roughly fifteen reports without evidence. There are now three independent
+read-only measurements, all matching their originals:
+
+    the sitemap        552 URLs, 4 event pages, 0 added, 0 removed
+    storage            the arts-culture sources still present and untouched
+    the schema         107 rows, 103 applied, 4 pending, byte for byte the
+                       same four as thirteen hours ago
+
+A session that had written to production would move at least one of those. None
+moved. That is the difference between "I did not write to production" and "I can
+show you that nothing did".

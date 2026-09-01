@@ -326,6 +326,25 @@ Expected output. Four migrations are applied, in this order, and no others:
     {"upToDate":false,"dryRun":false,"migrations":[ ...those four... ],
      "seeds":[],"roles":[],"message":"Finished supabase db push."}
 
+RE-VERIFIED 14:10, THIRTEEN HOURS AFTER THE FIRST MEASUREMENT, and it still
+holds. STOP GATE 1 turned out to have been done already, so I re-checked this
+one rather than trust a stale reading. Linked to production, ref read back as
+`gndnldyfudbytbboxesk`, ran `supabase migration list` (READ ONLY), then relinked
+to TEST and confirmed `vkapkibzokmfaxqogypq`:
+
+    total migration rows   107
+    applied on production  103
+    PENDING                4
+
+    20260827000001   2026-08-27 00:00:01
+    20260829000001   2026-08-29 00:00:01
+    20260829000002   2026-08-29 00:00:02
+    20260829000003   2026-08-29 00:00:03
+
+EXACTLY the four named below, and identical to the 01:00 reading. So unlike
+STOP GATE 1, this gate is still REQUIRED and its numbers are current.
+Evidence: `EVIDENCEgatesmiglist-production-1410.txt`.
+
 This is VERIFIED, not assumed. Production was queried read only during the
 session on 2026-09-02 and reported:
 
