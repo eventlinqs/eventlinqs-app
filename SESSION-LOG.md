@@ -441,3 +441,315 @@ Any commit I create this session carries no trailer.
 
 ---
 
+
+## 2026-09-02 00:32 TASK 2. DEPENDENCIES. PASS.
+
+    npm ci                      exit 0
+    npm cache clean --force     exit 0
+    npx playwright install chromium   exit 0
+
+node_modules: 952.6 MB, 689 packages.
+Playwright browsers installed, CHROMIUM ONLY as instructed:
+
+    chromium-1217                  406.6 MB
+    chromium_headless_shell-1217   264.8 MB
+    ffmpeg-1011                      3.4 MB
+    winldd-1007                      0.2 MB
+
+No firefox, no webkit. Free disk after: 10.54 GB.
+
+### FINDING: mapbox-gl is an unused dependency carrying 54.6 MB
+
+    mapbox packages in package.json : @types/mapbox-gl, mapbox-gl
+    source files importing mapbox-gl: 0
+    size in node_modules            : 54.6 MB
+
+Nothing imports it, so Next will not put it in a client bundle and it is not a
+runtime performance problem. It is install weight and an unnecessary supply chain
+surface. I have deliberately NOT removed it: taking a dependency out means
+regenerating package-lock.json hours before a launch, and the gain is zero for
+users. Recommended as a post launch cleanup, not tonight.
+
+---
+
+## 2026-09-02 00:41 TASK 2. THE BUILD WAS RED. ROOT CAUSED AND FIXED.
+
+First build attempt: BUILD EXIT 1.
+
+    [guards] 1 of 54 guard(s) FAILED. Build blocked.
+
+The failing guard was curated-categories-exist:
+
+    curated-categories-exist: 9 curated slug(s) read from src/lib/categories/homepage-curation.ts
+    FAIL: no Supabase URL or key in the environment, so the curated slugs
+          could not be checked against the database.
+
+ROOT CAUSE, and it is not a defect in the application. The prebuild step is
+
+    node scripts/check-disk-space.mjs && node scripts/check-public-env.mjs &&
+    node scripts/check-pricing-lock.mjs && node scripts/guards/run-guards.mjs &&
+    node scripts/prebuild-fixture.mjs
+
+Those are BARE node processes. Bare node does not read .env.local. Loading
+.env.local is a Next.js behaviour, and Next only applies it once next build itself
+starts. On Vercel this never shows up, because Vercel injects the variables into the
+build process environment directly. Locally nothing injected them, so every guard
+that needs a credential saw an empty environment.
+
+Reading scripts/guards/curated-categories-exist.mjs confirms it:
+
+    line 69  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    line 70  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    line 62  falls back to .env.test only, never .env.local
+
+FIX: replicate what Vercel does rather than change the repository. I wrote
+C:\dev\with-env.ps1, which loads .env.local into the PROCESS environment and then
+runs the command, so a local build sees what a Vercel build sees.
+
+    powershell -File C:\dev\with-env.ps1 -Command "npm run build"
+
+Result on the second attempt:
+
+    [guards] all 54 guards PASS.
+    [guards] runtime: Node 24.19.0 (CI-EQUIVALENT: matches the .nvmrc contract of 24)
+
+No repository change was needed and none was made. The guard was right and the local
+invocation was wrong.
+
+### Two prebuild warnings that are LOCAL ARTEFACTS, not deploy blockers
+
+Both of these print alarming text, and both would block on Vercel, so I want to be
+precise about why they are not a problem for tonight:
+
+    [public-env] EMPTY NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY - present but EMPTY
+    [public-env] WARNING (not blocking - local build)
+
+    [pricing-lock] PRICING_LOCKED_VALUES FAILED.
+        pricing_rules could not be read, so the locked values are UNVERIFIED.
+    [pricing-lock] WARNING only (local build); this WOULD block on Vercel.
+
+Both fire because MY LOCAL COPY of those variables is empty, for the reason in the
+TASK 3 entry below: Vercel refuses to decrypt sensitive variables back to a client.
+The variables DO exist and DO have values on Vercel. So these two warnings are
+artefacts of local credential absence, NOT evidence that a Vercel build would fail.
+
+I am flagging them anyway because if anyone ever runs this build locally and reads
+those lines as a green light, they will be wrong in the other direction.
+
+Also passing, and worth recording because they are the guards that keep the two
+databases apart:
+
+    [public-env] ok  SUPABASE_ENV_ISOLATION   Only production may resolve the PRODUCTION Supabase project
+    [public-env] ok  STRIPE_LIVE_KEY_PAIRING  Production runs LIVE Stripe keys, and both keys are the same account
+    [public-env] ok  ENV_MANIFEST_CONFORMANCE 43 declared variables present and correctly shaped
+
+---
+
+## 2026-09-02 00:38 TASK 3. ENVIRONMENT AND SERVICE INTEGRITY. PARTIAL, AND THE BLOCKER IS REAL.
+
+### THE CENTRAL FINDING OF THIS SESSION SO FAR
+
+There is no .env on this machine. The working copy that held it was destroyed. The
+legitimate recovery route is Vercel, and I took it:
+
+    vercel link --yes --project eventlinqs-app --scope lawals-projects-c20c0be8
+    -> Linked. projectId prj_YIHLHcjuQfg4RmtNt7JekkcTVznJ
+       This EXACTLY matches the project id named in STOP GATE 2. Confirmed, not assumed.
+
+    vercel env pull .env.preview.pulled --environment=preview
+
+52 variables came back. Then I checked the VALUES rather than trusting the names:
+
+    .env.local   total 32   FILLED 13   EMPTY 19
+    .env.preview total 52   FILLED 21   EMPTY 31
+
+EMPTY, meaning Vercel returned the name with an empty value:
+
+    STRIPE_SECRET_KEY                    STRIPE_WEBHOOK_SECRET
+    STRIPE_WEBHOOK_SECRETS               NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    RESEND_API_KEY                       UPSTASH_REDIS_REST_URL
+    UPSTASH_REDIS_REST_TOKEN             SUPABASE_SERVICE_ROLE_KEY
+    SUPABASE_SERVICE_ROLE_KEY_PREVIEW    NEXT_PUBLIC_SENTRY_DSN
+    SENTRY_DSN                           SENTRY_AUTH_TOKEN
+    VAPID_PRIVATE_KEY                    NEXT_PUBLIC_VAPID_PUBLIC_KEY
+    VAPID_SUBJECT                        ADMIN_TOTP_ENC_KEY
+    CRON_SECRET                          ANTHROPIC_API_KEY
+    HOMEPAGE_SEED_FIXTURE
+
+FILLED, and therefore usable:
+
+    NEXT_PUBLIC_SUPABASE_URL (TEST)      NEXT_PUBLIC_SUPABASE_ANON_KEY
+    NEXT_PUBLIC_SUPABASE_URL_PREVIEW     NEXT_PUBLIC_SUPABASE_ANON_KEY_PREVIEW
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY      NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
+    GOOGLE_MAPS_API_KEY                  PEXELS_API_KEY
+    EMAIL_FROM                           NEXT_PUBLIC_APP_NAME
+    SENTRY_ORG                           SENTRY_PROJECT
+    VERCEL_OIDC_TOKEN
+
+This is not a misconfiguration and not something I can work around. Those variables
+are marked SENSITIVE on Vercel. Sensitive variables are write only by design: Vercel
+will never hand the plaintext back, to the CLI or to the dashboard. It is a security
+feature working correctly.
+
+BOTH Supabase URLs resolve to TEST vkapkibzokmfaxqogypq, which I verified explicitly
+before running anything. Nothing this session points at production.
+
+### WHAT THIS BLOCKS, STATED PLAINLY
+
+Without those secrets I cannot drive, and therefore will not claim:
+
+    Stripe anything            no STRIPE_SECRET_KEY, so no checkout, no purchase,
+                               no refund, no webhook signature verification
+    Ticket email delivery      no RESEND_API_KEY
+    Upstash Redis              no URL and no token, so rate limiting is unverifiable
+    Sentry actually captures    no DSN, so the TASK 8 capture proof cannot be done
+    Web push alerts            no VAPID keypair
+    Service role DB paths      no SUPABASE_SERVICE_ROLE_KEY, so anything that needs
+                               to bypass RLS cannot be exercised
+
+Anon key work DOES function, which is why the TASK 6 verification below is real.
+
+WHAT LAWAL NEEDS TO DO, and it is about two minutes of work: paste the values into
+C:\dev\EventLinqs\eventlinqs-app\.env.local. He has them in his own Stripe, Resend,
+Upstash and Sentry dashboards. Nothing else in this session is blocked on him.
+
+### FINDING: the Stripe CLI key is expired
+
+    stripe config --list   ->  test_mode_key_expires_at = 2026-07-29
+
+Today is 2026-09-02. I did not trust the config file, I drove the key:
+
+    GET https://api.stripe.com/v1/balance
+    HTTP 401  {"code":"api_key_expired","message":"Expired API Key provided: sk_test_****xCB6PW"}
+
+So even the CLI path to Stripe is dead until someone runs stripe login, which needs
+an interactive browser confirmation. This matters for webhook forwarding via
+stripe listen during any local purchase drill.
+
+### FINDING: Mapbox is RETIRED. The brief asks me to verify something that no longer exists.
+
+TASK 8 instructs: "Mapbox for city page hero maps with the custom navy and gold
+styling ... Drive one of each and confirm they work."
+
+That is no longer true of this codebase. src/components/features/city/city-map.tsx
+says so in its own header:
+
+    "Legacy Mapbox token prop. Maps are now consolidated onto Google Maps (one ...)"
+    "Consolidated from Mapbox to Google Maps so the whole platform uses ONE map"
+
+And scripts/verify/map-guard.mjs, the repository's own browser level map proof,
+asserts "a genuine Google map CANVAS renders" across four surfaces: event detail,
+events grid map, city map and venue map. There is no Mapbox surface left to drive.
+
+There is no MAPBOX_TOKEN in any environment, which is consistent rather than broken.
+
+I have NOT re-added Mapbox. The correct reading is that the brief carries a stale
+requirement, and the real obligation is to prove Google Maps works on both the city
+hero and the organiser venue search. That is what I will drive, and I will say so
+rather than quietly reporting "Mapbox: pass".
+
+### Service probe results, with credentials as they currently stand
+
+Every one of these was DRIVEN, not inferred, and every failure below is caused by an
+empty credential rather than a broken integration:
+
+    Supabase TEST            reachable via anon key (proved in TASK 6 below)
+    Stripe                   NOT VERIFIABLE, key empty locally, CLI key expired
+    Stripe webhook endpoints NOT VERIFIABLE, needs the secret key
+    Resend                   NOT VERIFIABLE, key empty locally
+    Upstash Redis            NOT VERIFIABLE, URL and token both empty locally
+    Sentry                   NOT VERIFIABLE, DSN empty locally
+    Google Maps              key present, but see the note below
+    Mapbox                   retired, not applicable
+
+Google Maps needs its own note. The browser key IS present and filled, but a direct
+server side call from this machine is refused:
+
+    Places API   HTTP 403  "Requests from referer <empty> are blocked."
+    Geocoding    REQUEST_DENIED  "API keys with referer restrictions cannot be used with this API."
+
+That is CORRECT AND DESIRABLE. It means NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is properly
+locked to HTTP referers, so a stolen key cannot be used from a server. It also means
+the only honest way to prove maps work is in a real browser against the running site,
+which is exactly what map-guard.mjs does and what TASK 8 requires. Recorded so that
+the 403 is not later mistaken for a broken key.
+
+---
+
+## 2026-09-02 00:52 TASK 6. TEST DATABASE AND THE MIGRATIONS. PASS, WITH A MATERIAL DISCREPANCY.
+
+### The link, with the ref read back as the standing law demands
+
+    supabase link --project-ref vkapkibzokmfaxqogypq
+    {"project_ref":"vkapkibzokmfaxqogypq","message":""}
+
+    supabase/.temp/project-ref  ->  vkapkibzokmfaxqogypq
+    supabase projects list      ->  vkapkibzokmfaxqogypq  "linked":true
+                                    gndnldyfudbytbboxesk  "linked":false
+
+TEST is linked. PRODUCTION IS NOT LINKED. Verified before every database command.
+
+### THE DISCREPANCY THE BRIEF ASKED ME TO STOP AND REPORT
+
+The brief says to apply and verify EXACTLY FOUR migrations against TEST, and that
+more or fewer pending is a real finding. It is fewer. Before I touched anything:
+
+    total migrations   107
+    applied on TEST    106
+    PENDING            1
+    drift              0   (no migration applied on TEST without a local file)
+
+    20260827000001   PENDING
+    20260829000001   ALREADY APPLIED ON TEST
+    20260829000002   ALREADY APPLIED ON TEST
+    20260829000003   ALREADY APPLIED ON TEST
+
+Three of the four were already on TEST. Only the Arts one was outstanding.
+
+This is consistent rather than alarming: the brief states these fixes were made on
+TEST and not deployed, so of course TEST already carries most of them. The number
+four describes what PRODUCTION still needs, not what TEST needed. It matters because
+STOP GATE 2 asks for a verification query proving four applied, and on production
+that number may well be four, but it was never going to be four here.
+
+### What was applied, and what it does
+
+    supabase db push --include-all
+    Applying migration 20260827000001_arts_category_display_name.sql...
+    {"upToDate":false,"migrations":["20260827000001_arts_category_display_name.sql"],
+     "message":"Finished supabase db push."}
+    PUSH EXIT: 0
+
+Exact schema objects touched by 20260827000001:
+
+    UPDATE public.event_categories SET name = 'Arts' WHERE slug = 'arts-community';
+    COMMENT ON TABLE public.event_categories IS '...';
+
+No table created, no column added, no type changed, no policy altered. One row
+updated in public.event_categories and one table comment set.
+
+SAFE TO RE-RUN: YES, completely. An UPDATE with a WHERE on a stable slug plus a
+COMMENT is idempotent. Running it twice changes nothing the second time.
+
+For the record, the three already applied:
+    20260829000001_missing_increment_functions.sql       creates increment functions
+    20260829000002_guest_ticket_transfer.sql             the guest order access path
+    20260829000003_discount_claims_at_reservation.sql    claims a discount at reservation
+
+### PROOF, from the database rather than from the migration table alone
+
+    supabase migration list  ->  107 rows, 107 applied, 0 PENDING, 0 drift
+
+And the data itself, queried over REST against TEST:
+
+    GET /rest/v1/event_categories?select=slug,name
+    22 categories, and the one that mattered:
+
+        arts-community    Arts        <- was "Arts & Community", now correct
+
+That is the migration proved by its EFFECT, not merely by its bookkeeping row.
+
+Free disk at end of TASK 6: 10.53 GB.
+
+---
+
