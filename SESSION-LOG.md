@@ -114,9 +114,11 @@ were driven at all three. The rest ran at 1440, because
    more than one query parameter is broken for a human copying it. The journey
    harness works around it at line 99; nothing else does.
 6. **`Diaspora Pop` is a rendered scene label**, plus two more diaspora uses.
-7. **The brief asks for three things that no longer exist**: Mapbox (retired to
+7. **The brief asks for FOUR things that no longer exist**: Mapbox (retired to
    Google Maps), the venue revenue share (removed 5 July), the processing fee
-   (deleted 15 August). None was reported as passing.
+   (deleted 15 August), and destination charges (replaced by separate charges and
+   transfers, so EventLinqs is the merchant of record and HOLDS the funds). None
+   was reported as passing. The last one changes where the money sits.
 8. **The payouts screen never says WHEN money arrives.**
 9. **Two controls are under the 44px touch target** on tablet and desktop. Mobile
    390 is clean.
@@ -2647,5 +2649,102 @@ NEXT_PUBLIC_SENTRY_DSN is baked at build time, so the local `.next` carried the
 sink DSN until the rebuild above cleared it.
 
 Not a product defect, and it would have been easy to file as one.
+
+
+
+## 2026-09-02 04:30 THE LAST TWO COMMERCIAL ITEMS. ONE IS A FOURTH STALE REQUIREMENT.
+
+### DESTINATION CHARGES: the platform deliberately does NOT use them
+
+The brief says: "Verify Stripe uses destination charges with
+transfer_data.destination."
+
+It does not, and that is a decision rather than a defect.
+
+`src/lib/payments/create-platform-charge.ts`, in its own header:
+
+    the PLATFORM account (separate charges and transfers). No `on_behalf_of`, no
+    `transfer_data`, no `application_fee_amount` - the platform is the merchant of
+    record and the funds settle to, and are HELD in, the platform balance. The
+    organiser's net share is recorded as an event-scoped held liability in the
+    ledger and released later by a platform->connected Transfer after the event
+    (Stage 4). This replaces the old `createDestinationCharge`.
+
+Traced to the end rather than taken from a comment:
+
+    createDestinationCharge          no longer exists. The only remaining match is
+                                     assertCanCreateDestinationCharge, a guard.
+    every live checkout path         calls createPlatformCharge:
+                                       app/actions/checkout.ts:569
+                                       app/actions/checkout.ts:938
+                                       app/actions/squad-checkout.ts:242
+    stripe-adapter.ts:65             isDestinationCharge = connectFieldsPresent === 3
+    stripe-adapter.ts:99-104         the transfer_data branch fires only when all
+                                     THREE Connect fields are supplied
+    createPlatformCharge             supplies NONE of the three
+
+So the destination-charge branch in the adapter is a capability nothing currently
+reaches. This matches CLAIMS made in CLAUDE.md's Launch sequence, which describes
+`feat/funds-holding-payments` as "the proven funds-holding re-platform (EventLinqs
+is the merchant of record, holds funds, and pays the organiser after the event,
+with reserve, refund and dispute proven across 16 of 16 Stripe TEST surfaces)".
+
+**WHY THIS MATTERS MORE THAN A STALE LINE IN A BRIEF.** The two models put the
+money in different places. Under destination charges the funds route to the
+connected account and EventLinqs takes a fee. Under separate charges and
+transfers EventLinqs is the MERCHANT OF RECORD, the money lands in and is HELD in
+the EventLinqs balance, and the organiser's share is a liability on the ledger
+until released. That is a materially different accounting, tax and regulatory
+posture, and it is the one the platform is actually running. If the mental model
+going into launch is "destination charges", it is wrong in the direction that
+matters.
+
+This is the FOURTH requirement in the brief describing something the platform has
+deliberately moved away from, after Mapbox, the venue revenue share and the
+processing fee.
+
+### PAYOUT TIERS: the machinery exists, the thresholds are operational
+
+`src/lib/payouts/queries.ts` lines 213 to 227 build exactly what the brief asks
+about, and its own comment names the contract:
+
+    Tier, cadence, and reserve that apply to the organisation - the exact view
+    the organiser terms promise ("The current payout tier, cadence, and reserve
+    ...", src/app/legal/organiser-terms). Tier/schedule come from the organisations
+    row; reserve % and cadence days come from the pricing-rules service (the same
+    source the settlement and reserve workers use), so what the organiser is told
+    and what the workers do cannot disagree.
+
+That single-source property is the important part and it holds.
+
+TIER 1 IS CONFIRMED against live data, read from pricing_rules on TEST:
+
+    reserve_percentage    AU AUD   20%
+    payout_schedule_days  AU AUD   3
+
+which is exactly the brief's "Tier 1 three day post event with 20 percent
+reserve".
+
+TIER 2 AND TIER 3 ARE NOT VERIFIABLE HERE. The brief describes thresholds (after
+a first successful event, capped at $50K; after five events and $50K volume,
+capped at $250K, reserve reduced to 10 percent). Those figures do not appear
+anywhere in the source: a repository-wide search for 50000, 50_000, 250000 and
+250_000 returns only migration timestamps. The tier lives as a column on the
+organisations row, so promotion appears to be an operational or admin act rather
+than an automatic code rule. Verifying the display for tier 2 or 3 needs an
+organisation actually sitting on one, which no TEST organisation does.
+
+I am recording that as UNVERIFIED rather than either passing or failing it. What
+I can say is that the tier the organisation holds, its cadence and its reserve
+all resolve through one path, so a tier 2 organisation would be shown the same
+numbers the workers use.
+
+### And the driven observation that goes with it
+
+Journey 10 drove the payouts screen and reported it renders, mentions money, and
+does NOT say WHEN money arrives. On a funds-holding model where EventLinqs holds
+the money until after the event, "when do I get paid" is the first question an
+organiser asks, and the screen does not answer it.
+
 
 
