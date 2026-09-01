@@ -4776,3 +4776,65 @@ I read the header before interpreting the output. Given that I have written up
 four false findings tonight from misreading my own tools, reporting those 24
 lines as live defects would have been the worst of them by a distance, and it was
 one careless paragraph away.
+
+## 2026-09-02 12:40 NARROWING THE DEPLOY WARNING, AND SAYING WHAT LOCK 3 CANNOT SEE
+
+PRODUCTION-STEPS.md has told Lawal since 03:00 to watch the Vercel build log for
+two guards that "block on Vercel":
+
+    [public-env]   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY must not be empty
+    [pricing-lock] PRICING_LOCKED_VALUES must be readable
+
+Having run LOCK 3, I checked whether that warning could now be retired. It can be
+NARROWED, not retired, and the distinction is the useful part.
+
+    RULED OUT      "missing". The variable is requiredOn ['production','preview']
+                   and LOCK 3's `missing-scope` check fires when a required
+                   record does not exist on a scope. It passed all 93 records, so
+                   a record DOES exist on production.
+
+    NOT RULED OUT  "present but EMPTY". The store check validates presence,
+                   forbidden scopes, branch pinning and read-back exposure. It
+                   does NOT call `checkShape`, which needs the actual value and
+                   belongs to the environment evaluator running inside the build.
+                   An empty-but-present record satisfies LOCK 3 and still fails
+                   `[public-env]`.
+
+That is not a hole in LOCK 3, it is the division of labour, and the platform
+models it explicitly: the env-locks drill carries a case named "a value emptied
+AFTER deploy is visible to the runtime evaluator ... present but EMPTY (the
+silent-failure class)".
+
+So the honest instruction is now: the deploy will not fail because that variable
+is ABSENT. It could still fail because the value is empty or test-mode, and
+`[public-env]` is the thing that would say so. Watch it, but expect it to pass.
+
+I nearly wrote "LOCK 3 passed, so those two warnings are retired". That would
+have been a fifth inference presented as a measurement, and this time the
+difference is one a deploy would have discovered rather than me.
+
+## WHERE THIS SESSION ACTUALLY IS
+
+Nine consecutive rounds have now each produced something real, but the shape has
+changed and it is worth saying plainly rather than letting the log imply
+otherwise. The last four rounds closed NOTHING. They added evidence, corrected
+five of my own framings, and killed two false findings before they reached him.
+That is worth doing and it is not the same as progress against the brief.
+
+The five NOT MET items have not moved because none of them is work:
+
+    T0.2   the 12 GB gate was never met. His ruling, not a task
+    T8.1   mobile Lighthouse. Diagnosed to one metric on one element with an
+           issue number. Fixing it is a performance workstream
+    T8.7   community share of the sitemap. Reframed: those are working
+           recruitment pages, and the ratio self-corrects at ~376 events
+    T8.24  venue geocoding. Needs the existing key's VALUE replaced first,
+           then a build he has not scoped
+    T8.28  the 261 seed. GATE 0, and option (a) is withdrawn
+
+And four are credentials or a device: `stripe login`, an organisation on payout
+tier 2, a real browser for push, and the Google key replacement.
+
+I am not going to manufacture a tenth round of diagnostics to look busy. If the
+next instruction is the same, the honest answer is that the remaining work needs
+Lawal, and the most useful thing I can do is keep the handover exact.

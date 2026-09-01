@@ -375,15 +375,35 @@ Expected output: a build starts, the log ends with `Production: https://...`,
 and `vercel ls --scope lawals-projects-c20c0be8` shows the new deployment as
 READY against `eventlinqs.com.au`.
 
-WATCH THE BUILD LOG FOR THESE TWO, because both are warnings locally and both
-BLOCK on Vercel:
+WATCH THE BUILD LOG FOR THESE TWO, NARROWED 12:40 by running LOCK 3.
 
     [public-env]  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY must not be empty
     [pricing-lock] PRICING_LOCKED_VALUES must be readable
 
-Both were warnings during this session only because the local copy of those
-values is empty. They exist on Vercel, so the build should pass, but if either
-fires as an error the deploy stops there and that is the reason.
+Both were warnings locally only because the local copy of those values is empty.
+What LOCK 3 (`node scripts/check-env-stores.mjs --mode=stores`) now proves, and
+what it deliberately cannot:
+
+  RULED OUT   "missing". `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is
+              requiredOn ['production','preview'], and LOCK 3's `missing-scope`
+              check fires when a required record does not exist on a scope. It
+              passed all 93 records, so a record DOES exist on production.
+
+  NOT RULED   "present but EMPTY". The store check validates presence, forbidden
+  OUT         scopes, branch pinning and read-back exposure. It does NOT call
+              `checkShape`, which needs the actual value and belongs to the
+              environment evaluator that runs inside the build. So an
+              empty-but-present record would satisfy LOCK 3 and still fail
+              `[public-env]`.
+
+That is not a gap in LOCK 3, it is the division of labour: the platform models
+"present but EMPTY" as its own silent-failure class, and the env-locks drill
+includes a case for exactly it ("a value emptied AFTER deploy is visible to the
+runtime evaluator").
+
+So: the deploy will not fail because the variable is ABSENT. It could still fail
+because the value is empty or test-mode, and `[public-env]` is the thing that
+would say so. Watch it, but expect it to pass.
 
 ### Step 6. Post deploy smoke checks
 
