@@ -68,7 +68,23 @@ const EFFECTIVE_FROM = '579e3a6011f5cb27ccaa9da37f7134959b2dca83'
  * silently stops examining its own oldest commits. That is enforcement which is
  * not happening, reported as enforcement which is.
  */
-const WINDOW = 200
+/*
+ * RAISED from 200 to 400 on 2 September 2026, because the scope reached 201 and
+ * the guard did exactly what the paragraph above promises: it FAILED rather than
+ * quietly inspecting the newest 200 and reporting a pass it had not earned. The
+ * build went red on a launch branch and named its own reason, which is the design
+ * working, not a defect in it.
+ *
+ * The number is a BOUND on how far back the guard must be able to see, not a
+ * threshold with any meaning of its own, so the correct response to outgrowing it
+ * is to raise it rather than to narrow what is checked. 400 is roughly double the
+ * present scope, which buys headroom without pretending the ceiling is gone: this
+ * WILL need raising again, and when it does the failure will say so in one line.
+ *
+ * It disappears entirely with EFFECTIVE_FROM on the day the authorship history
+ * rewrite lands (docs/roast/AUTHORSHIP-HISTORY-REWRITE.md).
+ */
+const WINDOW = 400
 
 /**
  * Commits that carry a trailer, were INHERITED from another branch rather than
