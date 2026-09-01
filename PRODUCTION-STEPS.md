@@ -382,18 +382,63 @@ step 3. It is the only real rollback the migration half of this has.
 
 ---
 
+## What this session PROVED by driving it, so the smoke checks have a baseline
+
+Everything here was driven in a real browser against the production build on TEST.
+
+  organiser signup, event creation, publish   PASS, journey 1, 0 blockers
+  a guest claims a free ticket, end to end    PASS, "You're going", TOTAL AUD 0.00
+  ticket email delivery                       PASS, read from the console transport
+  the guest magic link                        PASS 3 of 3, and closed to a
+                                              forged or absent token
+  guest ticket transfer                       PASS 7 of 7, ticket moved in the
+                                              database and the old QR secret rotated
+  the door scanner                            PASS, ADMIT then REJECT
+                                              "Already used just now"
+  discount code creation                      PASS 7 of 7, row lands, duplicate
+                                              refused out loud
+  the seat map                                seat selected and HELD at AUD 155.21
+  all 18 social cards + the A4 poster         PASS 28 of 28, canonical Launch Kit
+                                              proof, 9 tracked links all resolving
+  the fee on the RENDERED checkout            AUD 59.00 + Service fee AUD 3.06
+                                              = AUD 62.06.  59.00 x 3.5% + 0.99
+                                              = 3.055, so the locked platform fee
+                                              is exactly what the buyer is charged,
+                                              as ONE fee with no processing line
+  axe-core                                    0 violations across 11 surfaces,
+                                              the whole pinned gate set
+
 ## What this session could NOT verify, so you know what is untested
 
-  Stripe anything          no STRIPE_SECRET_KEY locally, and the Stripe CLI's own
-                           test key expired on 2026-07-29 (proved: HTTP 401
-                           api_key_expired)
-  All ten stranger journeys blocked at account creation by the missing
-                           SUPABASE_SERVICE_ROLE_KEY
-  Sentry capture           no DSN locally, so nothing could be made to arrive
-  Ticket email delivery    no RESEND_API_KEY
-  The event detail page    renders its error boundary locally for the same
-                           service role key reason, so it is UNPROVEN on this
-                           branch at any viewport
+  A PAID purchase, and therefore refund       BOTH Stripe keys stored by the CLI
+  and signed-in transfer                      are expired (2026-07-29 and
+                                              2026-07-07, driven, HTTP 401
+                                              api_key_expired). The server says
+                                              "STRIPE_SECRET_KEY is not set".
+                                              Fix: run `stripe login`.
+  Sentry capture                              no DSN available locally, and the
+                                              server confirms dsnPresent:false on
+                                              every boot. Nothing could be made
+                                              to arrive, so it is not claimed.
+  Google Maps in a browser                    the browser key is correctly locked
+                                              to HTTP referers, so localhost is
+                                              refused (RefererNotAllowedMapError).
+                                              That refusal is the key being
+                                              configured properly. Prove it with
+                                              scripts/verify/map-guard.mjs against
+                                              the deployment, not locally.
+  The three viewport runs                     everything above ran at desktop 1440.
+                                              scripts/journeys/harness.mjs takes a
+                                              viewport argument it never uses, so
+                                              390 and 768 need the harness changed.
+  Paid-publish refusal specifically           journey 2 passes, but it was refused
+                                              for a MISSING VENUE before it could
+                                              reach the money refusal.
 
-Pasting SUPABASE_SERVICE_ROLE_KEY and STRIPE_SECRET_KEY into
-`C:\dev\EventLinqs\eventlinqs-app\.env.local` unblocks all of it locally.
+### One environment gap worth fixing before the next preview
+
+`ORDER_ACCESS_SECRET` exists on PRODUCTION only. It is absent from Preview, and
+`src/lib/orders/order-access.ts` fails CLOSED without it when NODE_ENV is
+production. So the guest magic link cannot work on ANY preview deployment: links
+are neither issued nor honoured there. Set it on Preview too, or guest order
+access is untestable outside production.

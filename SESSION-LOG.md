@@ -1,7 +1,7 @@
 ﻿# EventLinqs Launch Readiness Session Log
 
 Operator: Lawal Adams (sole author). Windows 11, PowerShell 5.1.
-Session ran 2026-09-02, roughly 00:05 to 02:15. Newest detail entries at the bottom.
+Session ran 2026-09-02, roughly 00:05 to 03:50. Newest detail entries at the bottom.
 
 ---
 
@@ -19,161 +19,146 @@ DATA, not code, so tonight's deploy does not change it. Going to market tomorrow
 in this state means the first organiser who visits sees a ticketing platform with
 one test event on it.
 
-That is written up as GATE 0 in `C:\dev\PRODUCTION-STEPS.md` and needs your
-decision, because seeding production is a production write and was forbidden here.
+That is GATE 0 in `C:\dev\PRODUCTION-STEPS.md` and it needs your decision, because
+seeding production is a production write and was forbidden here.
 
-## Honest verdict: is it ready to go in front of real organisers and buyers tonight?
+## Honest verdict: is it ready to go in front of real organisers and buyers?
 
-**No, and not because of the code.** The branch is in better shape than it was
-when the session started. Three things stand in the way, in order:
+**The platform itself is in far better shape than the start of the session
+suggested.** Seven stranger journeys pass, the eighteen social cards pass their
+canonical proof 28 of 28, accessibility is a clean 100 on every gate URL on both
+form factors, and the fee a buyer is actually charged is exactly the locked fee.
 
-1. **The empty catalogue above.** Nothing else matters until that is answered.
-2. **Not one of the ten stranger journeys could be driven**, so purchase, refund,
-   guest magic link, discount codes, the seat map and the door scanner are all
-   UNPROVEN on this branch tonight. The cause is one missing credential, not a
-   defect, and it is two minutes of your time to unblock.
-3. **The event detail page is unproven on this branch.** It answers HTTP 200 and
-   renders "We hit a snag loading this page" locally. That is the same missing
-   credential and it almost certainly works on Vercel, but "almost certainly" is
-   not the standard this brief sets, and I did not drive it.
+**Three things stand in the way, in order:**
 
-What I would do in your position: paste two keys into `.env.local`, re-run the
-journeys, and decide GATE 0. That is a short evening, not another week.
+1. **The empty production catalogue.** Nothing else matters until that is answered.
+2. **No paid purchase or refund has been driven**, because both Stripe keys stored
+   by the CLI expired (2026-07-29 and 2026-07-07). One `stripe login` fixes it,
+   and it needs your browser. Until then purchase, refund and signed-in transfer
+   are UNPROVEN.
+3. **The city page hero map is dead on production.** Driven, read only:
+   /city/melbourne answers HTTP 200 and makes zero requests to Google, while the
+   event page map on the same build mounts fine with 16 requests.
 
-## PROVEN, with evidence
+Everything else I would call ready.
+
+## PROVEN by driving it, with evidence
 
 | What | Evidence |
 |---|---|
-| Fresh local repo off OneDrive, HEAD ea6df9f5, clean, fsck clean, ZERO reparse points across 6898 items | log TASK 1 |
-| Production build GREEN, exit 0, all 54 guards pass, 197 routes, 134 static pages | `C:\dev\build.log` |
-| The build was RED and is fixed. The top commit had never been built and would have failed on Vercel | commit 571b7b15, log TASK 2 |
-| All 18 social cards render from a running server: exact dimensions, real JPEG bytes, ink present | `C:\dev\EVIDENCE\social-cards\` (18 JPEGs + contact-sheet.jpg + card-results.json) |
+| Fresh local repo off OneDrive, HEAD ea6df9f5, clean, fsck clean, ZERO reparse points | log TASK 1 |
+| Production build GREEN, all 54 guards pass, 197 routes | `C:\dev\build.log` |
+| The build was RED and is fixed. The top commit had never been built and would have failed on Vercel | commit 571b7b15 |
+| All 18 social cards, canonical Launch Kit proof **28 of 28**, 9 tracked links all resolving, A4 poster, cover photo, per-channel attribution | `C:\dev\EVIDENCE\launch-kit\` |
 | resvg is genuinely the executing path, proved by removing the binary | `C:\dev\resvg-phase{1,2,3}.log.err` |
-| Four migrations pending on PRODUCTION, exactly as the brief said. One pending on TEST, applied and verified by its effect | log TASK 6, `C:\dev\miglist-prod.txt` |
+| Journey 1: organiser signs up, builds and publishes, stranger finds it | `C:\dev\EVIDENCE\journeys\j1.log` |
+| A guest claims a free ticket end to end, TOTAL AUD 0.00, "You're going" | `EVIDENCE\journeys\free-ticket-run.json` |
+| Ticket email delivery, read from the console transport | same |
+| Guest magic link 3 of 3: opens on the signed link, closed to forged and absent tokens | `EVIDENCE\journeys\guest-link-run.json` |
+| Guest ticket transfer 7 of 7: ticket moved in the database, old QR secret rotated | `EVIDENCE\journeys\j5g.log` |
+| Door scanner: ADMIT then REJECT "Already used just now" | `EVIDENCE\journeys\` |
+| Discount code creation 7 of 7, duplicate refused out loud | `EVIDENCE\journeys\j8.log` |
+| Seat map: a stranger selected and HELD a seat at AUD 155.21 | `EVIDENCE\journeys\j7.log` |
+| **The same flow at all three viewports, 390 / 768 / 1440, 3 of 3** | `EVIDENCE\journeys\viewports\` |
+| Fee on the RENDERED checkout: 59.00 + Service fee 3.06 = 62.06, which is 3.5% + $0.99 exactly, as ONE fee | `EVIDENCE\gates\checkout-fees.json` |
+| ACCC all-in: the total is on the CTA before checkout ("Checkout Â· AUD 62.06") | same |
+| axe-core ZERO violations across **11 surfaces**, the whole gate set | `EVIDENCE\gates\axe-*.json` |
+| Lighthouse: **desktop 98 to 100 on all 12 URLs**, accessibility and best practices 100 on all 24 runs | `EVIDENCE\gates\lighthouse-summary.json` |
+| Four migrations pending on PRODUCTION, exactly as briefed; one pending on TEST, applied and proved by its effect | `C:\dev\miglist-prod.txt` |
 | Lint clean, typecheck clean, 2961 of 2961 tests pass | `C:\dev\test-clean.log` |
-| Accessibility 100, best practices 100, SEO 100 on every surface measured | `C:\dev\EVIDENCE\gates\` |
-| Three high severity advisories in the SHIPPED dependency tree removed | commit 793ebf5b |
-| Merge prepared on launch-prepared, zero conflicts, tree byte identical to integration/launch, local and unpushed | log TASK 9 |
-| Both stop gates written with exact expected output | `C:\dev\PRODUCTION-STEPS.md` |
-| axe-core ZERO violations on 5 rendered surfaces | `C:\dev\EVIDENCE\gates\axe-*.json` |
-| SOUNDS rail renders 12 of 12 in the exact locked order | log TASK 8 rendered pass |
-| First Nations (Aboriginal & Torres Strait Islander) renders FIRST | log TASK 8 rendered pass |
-| Zero trust signals on homepage, pricing, organisers, about | `C:\dev\EVIDENCE\gates\trust-signals.json` |
-| No glassmorphism, no dark theme, logo correct at 1440/768/390 | `C:\dev\EVIDENCE\gates\homepage-*.png` |
+| Three high advisories removed from the shipped dependency tree | commit 793ebf5b |
+| SOUNDS rail 12 of 12 in locked order; Aboriginal & Torres Strait Islander renders FIRST | log TASK 8 |
+| Trust signals: zero on homepage/pricing/organisers/about, contextual row on event detail, full treatment on checkout | `EVIDENCE\gates\trust-signals.json` |
+| No glassmorphism, no dark theme, logo correct at 1440/768/390 | `EVIDENCE\gates\homepage-*.png` |
+| Merge prepared: zero conflicts, tree byte identical, local and unpushed | log TASK 9 |
 
-## FAILED or NOT PROVEN, with diagnosis
+## NOT PROVEN, and not claimed
 
-**All ten stranger journeys. BLOCKED.** Every one stops at account creation:
-`[auth/signup] admin client unavailable { reason: 'supabaseKey is required.' }`.
-`SUPABASE_SERVICE_ROLE_KEY` is one of nineteen values Vercel refuses to decrypt
-back to a local machine, by design, because they are marked sensitive. I drove j1
-and j3 to confirm this rather than inferring it. Nothing was driven at any of the
-three viewports.
+**A paid purchase, and therefore refund and signed-in transfer.** All four reach
+the payment step and stop. The server names it: `Stripe PaymentIntent error:
+Error: STRIPE_SECRET_KEY is not set`. Both CLI keys are expired, driven against
+the API, HTTP 401 `api_key_expired`. Needs `stripe login`.
 
-I deliberately did NOT manufacture a pass by seeding accounts around the blocked
-step, because the brief says a journey that passes only on state a real user could
-not create is a failed journey.
+**Sentry actually captures.** `dsnPresent: false, dsnSource: 'NONE'` on every
+boot. Unlike the Supabase key there is no second authenticated route: the auth
+token is empty too, so the Sentry API cannot be asked.
 
-**Stripe anything. BLOCKED.** No `STRIPE_SECRET_KEY` locally, and separately the
-Stripe CLI's own stored test key EXPIRED on 2026-07-29. I drove it: HTTP 401
-`api_key_expired`. So purchase, refund, and webhook verification are all unproven.
+**The demand engine alert end to end.** Needs the VAPID keypair for web push and
+Resend for the email backbone. Both are among the values Vercel will not decrypt.
 
-**Sentry capture. NOT PROVEN.** The server log says it plainly on every boot:
-`dsnPresent: false, dsnSource: 'NONE'`. No DSN locally means nothing can be made
-to arrive, so I did not claim it.
+**Mobile Lighthouse against the 95 floor.** Mobile ranges 81 to 93 across the gate
+set. All are above the repository's own 0.80 floor, and the lowest, the homepage
+at 81, carries a documented exemption to 2026-11-01 for the image optimiser cold
+start. Desktop passes 95 everywhere. These are localhost numbers, and CLAUDE.md
+records that a warmed real client measures materially higher than a runner.
 
-**Ticket email delivery. NOT PROVEN.** No `RESEND_API_KEY`. The console transport
-(`EMAIL_TRANSPORT=console`) does exist and would have made this drivable, but it
-needs a journey to reach it and the journeys stop earlier.
+**Paid-publish refusal specifically.** Journey 2 passes, but the refusal it
+produced was a missing VENUE, so the money refusal was never reached.
 
-**Lighthouse 95. NOT MET on mobile.** Median of 3, local production build:
-desktop / 98 and desktop /pricing 100 PASS; mobile /pricing 93 and mobile / 80 are
-below; /events could not be measured because it answers 500 for the same missing
-key. Note the repository's own gate asserts 0.80, not 0.95, and the homepage
-carries a documented performance exemption until 2026-11-01.
-
-**The 18 cards have two gaps.** They render and carry ink, but the run used an
-anonymous draft, which has no cover photograph and no organiser logo. So the
-square and feed photo bands are empty navy, and the brief's requirement that the
-EventLinqs logo renders correctly is NOT satisfied by that evidence. The six
-channels are also byte identical per format (3 distinct images, not 18), which is
-correct for an unclaimed draft but means per channel attribution is unproven.
+**The three viewport requirement, for the OTHER journeys.** The free purchase flow
+was driven at all three. The rest ran at 1440 only, because
+`scripts/journeys/harness.mjs` takes a viewport argument it never uses and each
+journey hardcodes 1440.
 
 ## THINGS YOU DO NOT KNOW YET
 
-1. **43 proper nouns are corrupted in user facing content.** A blind find-replace
-   of "cultural" to "community" produced "Multicommunity Council of the Northern
-   Territory", "National Multicommunity Festival", "Illawarra Multicommunity
-   Services" and 40 more, across `/community` and `/city` pages that are 88
-   percent of your indexed surface. These are real organisations named wrongly.
-   I did not change them: it needs your ruling on whether proper nouns are exempt
-   from the word ban, and each name needs verifying rather than inferring.
+1. **The city page hero map is dead on production.** Zero Google requests from
+   /city/melbourne while the event map on the same build makes 16.
+2. **43 proper nouns are corrupted.** A find-replace of "cultural" to "community"
+   produced "Multicommunity Council of the Northern Territory", "National
+   Multicommunity Festival", "Illawarra Multicommunity Services" and 40 more, on
+   the pages that are 88 percent of your indexed surface. Needs your ruling on
+   whether proper nouns are exempt from the word ban.
+3. **80 percent of your sitemap is /community** (441 of 552) against the 10 to 20
+   percent lock. And it carries 552 URLs against the 586 you submitted.
+4. **`ORDER_ACCESS_SECRET` is Production only.** It is absent from Preview, and
+   the code fails CLOSED without it, so the guest magic link cannot work on ANY
+   preview deployment. This cost me an hour and a wrong conclusion tonight.
+5. **`Diaspora Pop` is a rendered scene label**, plus two more diaspora uses.
+6. **The brief asks for three things that no longer exist**: Mapbox (retired to
+   Google Maps), the venue revenue share (you removed it 5 July), the processing
+   fee (you deleted it 15 August). None was reported as passing.
+7. **The payouts screen never says WHEN money arrives**, which is the first thing
+   an organiser asks.
+8. **Two controls are under the 44px touch target** on tablet and desktop
+   ("What are you in the mood for" 40px, the city chip 36px). Mobile 390 is clean.
+9. **The repo is 95 percent screenshots**: 2486 committed PNGs, 1.56 GB, against
+   6.9 MB of source. No clone strategy fits the brief's 2.5 GB rule.
+10. **`mapbox-gl` is still a dependency**, 54.6 MB, zero source imports.
+11. **The Upstash shim was silently wrong**: no `setex`, no `ttl`, so every kit
+    draft write was discarded. Fixed. It also serves the money path limiter.
+12. **5 tests fail whenever a `.env.local` exists** (the preflight resolves its
+    target from it and short-circuits). Not real, but confusing.
+13. **`.tmp-serve.log` is not gitignored**, and running the journeys OVERWRITES
+    committed evidence under `docs/verification/journeys-2026-08-28/`.
+14. **A second dormant Vercel project** named `eventlinqs` exists, 54 days stale.
 
-2. **80 percent of your sitemap is /community.** 441 of 552 URLs. CLAUDE.md locks
-   community at 10 to 20 percent of any surface, never the dominant identity. What
-   Google has been given is the opposite of the positioning lock.
+## The correction I owe you
 
-3. **Your sitemap has 552 URLs against the 586 you submitted.** 34 short.
-
-4. **`Diaspora Pop` is a rendered scene label** in `src/lib/communities/data.ts`,
-   plus two more diaspora uses in community copy. CLAUDE.md bans the word by name.
-
-5. **The brief asks for three things that no longer exist.** Mapbox is retired and
-   consolidated onto Google Maps. The venue revenue share was removed by your own
-   decision on 5 July 2026. The processing fee was deleted by your ruling of
-   15 August 2026, so "verify processing 2.5 percent on the rendered checkout"
-   would be verifying a fee you deliberately stopped charging. I did not report
-   any of the three as passing.
-
-6. **The blobless clone rule in the brief cannot work.** The working tree at HEAD
-   is 1.97 GB on its own, so no clone strategy fits under 2.5 GB. The cause is
-   2486 committed PNG screenshots weighing 1.56 GB in `docs/`, against 6.9 MB of
-   actual source. Every clone anywhere, including CI, pays that.
-
-7. **`mapbox-gl` is still a dependency**, 54.6 MB, with zero source imports.
-
-8. **The local Upstash shim was silently wrong.** It implemented neither `setex`
-   nor `ttl`, which the draft store uses, so every kit draft write was discarded
-   and the cards answered 404 from a composer that had just built a kit. Fixed
-   this session. It also serves the fail-closed limiter on the money path.
-
-9. **`.tmp-serve.log` is not gitignored**, and the journey harness writes it into
-   the repo root. Also: running the journeys OVERWRITES committed evidence files
-   under `docs/verification/journeys-2026-08-28/`. Mine wrote failure logs over
-   your passing ones; I restored them with `git checkout -- docs/`.
-
-10. **5 tests fail whenever a `.env.local` exists.** Not a real failure, but a
-    developer with a local env file sees red tests that are not red in CI.
-
-11. **The `/culture/*` Lighthouse exemption is dead config.** Those routes now
-    301 to `/community/*`, so the pattern matches nothing. The homepage exemption
-    is live.
-
-12. **There is a second, dormant Vercel project** named `eventlinqs`, no
-    production URL, 54 days since update. A stray project can capture a domain or
-    a webhook by accident.
+Earlier in this session I reported that the service role key was unobtainable and
+that the journeys and the event detail page were therefore blocked. That was
+wrong. `supabase projects api-keys --project-ref <ref>` returns it, because the
+CLI is authenticated as the project owner. I had one route, tried it, and treated
+its failure as the end. Everything from journey 1 onward became possible once I
+kept looking. The detail is in the 02:05 entry.
 
 ## Waiting at the stop gates
 
-`C:\dev\PRODUCTION-STEPS.md` holds all of it, unrun:
+`C:\dev\PRODUCTION-STEPS.md`, all unrun: GATE 0 (the empty catalogue, your
+decision), STOP GATE 1 (the Arts storage copy, which MUST precede the deploy),
+STOP GATE 2 (link, read the ref back, db push, verify, deploy, six smoke checks),
+each with exact expected output and a rollback where one exists.
 
-  - **GATE 0** the empty production catalogue, needing your decision
-  - **STOP GATE 1** the Arts storage copy, which MUST run before the deploy, with
-    the exact command, the verification, and why no rollback is needed
-  - **STOP GATE 2** link, read the ref back, `db push`, the verification query,
-    the Vercel deploy, and six post deploy smoke checks, each with expected
-    output and a rollback where one exists
-
-Production migration state was read (read only) and is exact: 107 rows, 103
-applied, **4 pending**, and they are precisely the four the brief names. The CLI
-was re-linked to TEST immediately afterwards and left there.
+Production migration state was read, read only, and is exact: 107 rows, 103
+applied, **4 pending**, precisely the four the brief names. The CLI was re-linked
+to TEST immediately and left there.
 
 Take the `supabase db dump` backup named in step 3 before pushing. There is no
 Supabase rollback command and three of the four migrations have no down file.
 
 ## Disk
 
-Started 12.93 GB free, ended 8.86 GB. Never went below 8.8 GB, so the 6 GB
+Started 12.93 GB free, ended 9.18 GB. Never went below 8.8 GB, so the 6 GB
 reclaim threshold and the 5 GB floor were never approached.
 
 ## What I changed
@@ -181,24 +166,15 @@ reclaim threshold and the 5 GB floor were never approached.
 Three commits on `integration/launch`, all authored `EventLinqs
 <hello@eventlinqs.com>`, all with zero trailers:
 
-    7afc5913  The eighteen cards render from a running server, proved by breaking them on purpose
+    7afc5913  The eighteen cards render from a running server, proved by breaking it on purpose
     793ebf5b  The three high advisories in the shipped tree are gone
     571b7b15  The card rasteriser survives the bundler, so a production build exists at all
 
 Plus `launch-prepared` created locally and left unpushed, and this log pushed to
-the `ops/session-log` branch so it can be read from a phone.
+`ops/session-log` so it reads from a phone.
 
 Nothing was written to production. The production Supabase project was read from
-twice, both times read only, and the CLI is linked to TEST as it was found.
-
----
-
-## RUNNING STATUS (updated as the session proceeds)
-
-- TASK 0 disk gate: PASS
-- TASK 1 fresh local repo: IN PROGRESS (blobless clone running)
-- TASK 4 recovery of five files: FAILED, definitively, evidence below. Non blocking as briefed.
-- All other tasks: not started
+twice, both read only, and the CLI is linked to TEST as it was found.
 
 ---
 
@@ -2150,5 +2126,150 @@ because the test organiser uploaded none, and an organiser logo is optional.
 Artefacts copied to `C:\dev\EVIDENCE\launch-kit\` (23 files including all
 eighteen cards, the A4 poster PDF, the kit screen, the event page, the reach
 panel and the contact sheet index.html).
+
+
+
+## 2026-09-02 03:35 TASK 8 COMPLETED. THE FULL GATE SET, MEASURED.
+
+### Lighthouse, median of 3, all 12 gate URLs, mobile and desktop
+
+Local production build. Evidence in `C:\dev\EVIDENCE\gates\`.
+
+    surface                              mobile                    desktop
+                                    perf a11y  bp  seo        perf a11y  bp  seo
+    /                                 81  100 100  100          98  100 100  100
+    /events                           90  100 100  100         100  100 100  100
+    /events/browse/melbourne          89  100 100  100         100  100 100  100
+    /community/african                89  100 100  100         100  100 100  100
+    /organisers                       90  100 100  100          99  100 100  100
+    /pricing                          93  100 100  100         100  100 100  100
+    /help                             93  100 100  100         100  100 100  100
+    /legal/terms                      93  100 100  100         100  100 100  100
+    /login                            89  100 100   66         100  100 100   69
+    /signup                           89  100 100   66         100  100 100   69
+    /events/cat-indie-sounds-...      85  100 100  100          99  100 100  100
+    /events/artist-layer-...          88  100 100  100          99  100 100  100
+
+**ACCESSIBILITY IS 100 ON ALL TWENTY FOUR RUNS. BEST PRACTICES IS 100 ON ALL
+TWENTY FOUR.** Those are the two the repository asserts at a floor of 1.0, and
+both are met everywhere, on both form factors, across the whole pinned set.
+
+**DESKTOP MEETS THE BRIEF'S 95 FLOOR ON EVERY URL**, ranging 98 to 100.
+
+**MOBILE DOES NOT**, ranging 81 to 93. Every one is above the repository's own
+0.80 floor, and the lowest, the homepage at 81, is precisely the surface that
+carries a documented performance exemption to 2026-11-01 for the Vercel image
+optimiser cold-start race (Issue #42).
+
+SEO 66 and 69 on /login and /signup is CORRECT, not a defect. lighthouserc.json
+switches the SEO category off for exactly those two paths because they are
+deliberately noindex and non-canonical, so `is-crawlable` and `canonical` can
+never pass there by design.
+
+A caveat I will not leave out: CLAUDE.md records that on the same commit the CI
+runner measured /events at 0.76 while a warmed real client measured 0.88. These
+are localhost numbers. A warmed production client would likely read higher than
+the mobile column above, and the honest gate is a warmed preview, not this.
+
+### axe-core: ZERO violations, 11 surfaces, the whole gate set
+
+    /                /pricing        /organisers      /help        /legal/terms
+    /events          /events/browse/melbourne         /community/african
+    /events/cat-indie-sounds-live-at-the-enmore-sydney
+    /login           /signup
+
+Run against wcag2a, wcag2aa, wcag21a and wcag21aa. Per surface JSON in
+`C:\dev\EVIDENCE\gates\axe-*.json`. The brief's zero-violations requirement is
+met across every gate URL, not a subset.
+
+### Commercial correctness, read off the RENDERED checkout
+
+The brief asks for this to be verified on the rendered checkout rather than the
+constants file. Driven as a guest on a real paid event:
+
+    on the event page, before any click:   AUD $59      the price IS shown early
+    trust row on event detail:             Secure checkout, Community organiser,
+                                           Refund policy
+    the CTA once a ticket is added:        "Checkout Â· AUD 62.06"
+
+That last line is the ACCC point: the ALL-IN total is on the button, before the
+buyer enters checkout at all, not sprung at the end.
+
+The rendered order summary:
+
+    General admission x 1        AUD 59.00
+    Subtotal
+    Service fee                  AUD  3.06
+    Total                        AUD 62.06
+
+The arithmetic, against the locked figures in pricing_rules:
+
+    59.00 x 3.5%  =  2.065
+    plus the fixed 0.99
+                  =  3.055   ->  AUD 3.06 as rendered
+
+So the platform fee of 3.5 percent plus $0.99 is EXACTLY what the buyer is
+charged, and it is charged as ONE line called Service fee. There is NO processing
+fee line, which confirms the founder ruling of 15 August 2026 that the second fee
+was deleted. The brief's request to verify "processing 2.5 percent" is verifying
+a fee this platform deliberately stopped charging.
+
+FREE EVENTS ARE FREE, also on the rendered checkout: the free event I drove
+showed `TOTAL AUD 0.00`.
+
+PASS ON IS THE DEFAULT: the buyer pays 59.00 + 3.06, the organiser keeps face
+value.
+
+TRUST TREATMENT ON CHECKOUT, which the design law requires near the payment form:
+"SECURE PAYMENT", "Encrypted by Stripe", "Money-back guarantee per organiser
+refund policy", "PCI-DSS compliant payment processing". Present, and correctly
+absent from the homepage, pricing, organisers and about.
+
+Not verified: destination charges with transfer_data.destination, and the Tier 2
+and Tier 3 payout logic. Both need a completed payment, which needs the Stripe
+secret key. Tier 1 IS represented in pricing_rules as reserve_percentage 20 and
+payout_schedule_days 3 for AU, matching the brief.
+
+### MAPS. One real finding, driven against production.
+
+The Google Maps browser key is referer-locked, so localhost is refused by design
+(RefererNotAllowedMapError). The only honest place to drive maps is a real
+deployment, so I ran the repository's own browser-level guard against production,
+read only:
+
+    event detail (venue map)    OK    canvas=1  googleReqs=16
+    events grid map             OK    canvas=1  googleReqs=13
+    city map  (/city/melbourne) DEAD  canvas=0  googleReqs=0
+    venue map (/venues/the-triffid)   my bad test path, HTTP 404 on production
+
+**The city page hero map does not render on production.** /city/melbourne answers
+HTTP 200 with 404205 bytes, so the page is fine; the map simply never loads. Zero
+requests to Google were made from that page, which means the component did not
+even attempt to mount, so this is not a key or quota problem. Both surfaces load
+their maps client side, and the event page's map mounts on the same production
+build with the same key, so the difference is the city surface itself.
+
+The brief names "city page hero maps" specifically. They are dead on production
+right now. I did not chase the cause further because it needs the city surface's
+data path, and I would be guessing rather than measuring.
+
+Also worth restating: MAPBOX IS RETIRED. The city map is Google Maps now, so the
+brief's Mapbox half is asking about something that no longer exists.
+
+### Sentry. STILL NOT PROVEN, and I am not going to claim it.
+
+The server says it on every boot:
+
+    [sentry-server-config] module loaded { dsnPresent: false, dsnSource: 'NONE' }
+    [observability/sentry] shim load: no DSN, skipping init
+
+NEXT_PUBLIC_SENTRY_DSN and SENTRY_DSN are among the values Vercel will not
+decrypt, and unlike the Supabase key there is no second authenticated route to
+them: SENTRY_AUTH_TOKEN is empty too, so the Sentry API cannot be asked. With no
+DSN nothing can be made to arrive, so "Sentry actually captures" is UNPROVEN.
+
+SENTRY_ORG and SENTRY_PROJECT are present and correct, and the instrumentation
+loads and reports its own state honestly, which is the most that can be said.
+
 
 
