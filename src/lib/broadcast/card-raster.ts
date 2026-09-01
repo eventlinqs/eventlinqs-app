@@ -125,10 +125,29 @@ let wasmReady: Promise<void> | null = null
 function ensureWasm(): Promise<void> {
   if (!wasmReady) {
     wasmReady = (async () => {
-      await initWasm(await readFile(locateResvgWasm()))
+      try {
+        await initWasm(await readFile(locateResvgWasm()))
+      } catch (error) {
+        // "Already initialized" means the binary IS loaded and usable, so it is
+        // a success for our purposes, not a failure. Treating it as an error is
+        // what turned a single transient init failure into a permanently broken
+        // process: the catch below nulls the memo, the retry calls initWasm a
+        // second time, resvg refuses, and from then on EVERY social card answers
+        // 500 for the life of that server. Observed on 2026-09-02, all eighteen
+        // cards 500ing on a server that had been serving them minutes earlier.
+        //
+        // The second way in is module duplication. `card-raster` is reached both
+        // by the card routes and by a dynamic import in the image_pipeline health
+        // check, and a bundler is free to give those two copies of this module,
+        // each with its own `wasmReady`, while `@resvg/resvg-wasm` keeps ONE
+        // global instance. The first copy initialises, the second is refused.
+        const message = error instanceof Error ? error.message : String(error)
+        if (/already initiali[sz]ed/i.test(message)) return
+        throw error
+      }
     })().catch(error => {
-      // A failed init must not be cached as resolved, or every later render
-      // fails with a confusing "already initialised" instead of the real cause.
+      // A genuinely failed init must not be cached as resolved, or every later
+      // render fails with a confusing message instead of the real cause.
       wasmReady = null
       throw error
     })

@@ -434,7 +434,17 @@ async function checkImagePipeline(): Promise<HealthResult> {
 
     // The artefact path itself: satori composes, resvg rasterises. This is the
     // exact call the card routes make, so a failure here IS the card failing.
+    //
+    // THE FONTS ARE NOT OPTIONAL. This probe passed `fonts: []` until
+    // 2026-09-02, and satori refuses to lay out anything without at least one
+    // face, so this CRITICAL check reported "The image pipeline threw in this
+    // runtime: No fonts are loaded" on every single run, in every environment,
+    // and could never once have gone green. A check that is permanently red is
+    // worse than no check: it trains the reader to ignore the one alert that
+    // would have told them the social cards were genuinely down.
     const { renderCardPng } = await import('@/lib/broadcast/card-raster')
+    const { loadCardFonts } = await import('@/lib/broadcast/card-fonts')
+    const probeFonts = await loadCardFonts()
     const probe = await renderCardPng(
       {
         type: 'div',
@@ -443,7 +453,16 @@ async function checkImagePipeline(): Promise<HealthResult> {
           children: '',
         },
       } as unknown as React.ReactNode,
-      { width: 32, height: 32, fonts: [] },
+      {
+        width: 32,
+        height: 32,
+        fonts: probeFonts.map(font => ({
+          name: font.name,
+          data: font.data,
+          weight: font.weight,
+          style: font.style,
+        })),
+      },
     )
     if (!probe || probe.byteLength === 0) {
       return {
