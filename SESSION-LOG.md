@@ -55,6 +55,11 @@ journeys, and decide GATE 0. That is a short evening, not another week.
 | Three high severity advisories in the SHIPPED dependency tree removed | commit 793ebf5b |
 | Merge prepared on launch-prepared, zero conflicts, tree byte identical to integration/launch, local and unpushed | log TASK 9 |
 | Both stop gates written with exact expected output | `C:\dev\PRODUCTION-STEPS.md` |
+| axe-core ZERO violations on 5 rendered surfaces | `C:\dev\EVIDENCE\gates\axe-*.json` |
+| SOUNDS rail renders 12 of 12 in the exact locked order | log TASK 8 rendered pass |
+| First Nations (Aboriginal & Torres Strait Islander) renders FIRST | log TASK 8 rendered pass |
+| Zero trust signals on homepage, pricing, organisers, about | `C:\dev\EVIDENCE\gates\trust-signals.json` |
+| No glassmorphism, no dark theme, logo correct at 1440/768/390 | `C:\dev\EVIDENCE\gates\homepage-*.png` |
 
 ## FAILED or NOT PROVEN, with diagnosis
 
@@ -1761,6 +1766,121 @@ a discovery. It is not: CLAUDE.md Law 8 already records it, with the count
 until after launch. The runbook is at docs/roast/AUTHORSHIP-HISTORY-REWRITE.md.
 The audit stands as a measurement; it is not news, and I should not have framed it
 as such.
+
+
+
+
+## 2026-09-02 02:20 TASK 8 CONTINUED. THE RENDERED CHECKS, DRIVEN IN A REAL BROWSER.
+
+These are the TASK 8 items that do NOT need the missing credentials, so they were
+driven rather than deferred. Evidence in `C:\dev\EVIDENCE\gates\`.
+
+### axe-core: ZERO VIOLATIONS on every surface that renders
+
+    /              0 violations
+    /pricing       0 violations
+    /organisers    0 violations
+    /help          0 violations
+    /legal/terms   0 violations
+
+Run with axe-core against wcag2a, wcag2aa, wcag21a and wcag21aa. Per surface JSON
+in `C:\dev\EVIDENCE\gates\axe-*.json`. This is the brief's zero violations
+requirement, met on five of the ten static gate URLs.
+
+`/events` could not be checked: HTTP 500 locally, `supabaseKey is required`.
+
+### The Scenes V2 SOUNDS rail renders in the EXACT locked order
+
+Read out of the rendered homepage, not the source:
+
+    Electronic & Dance | Country | Indie & Rock | Hip-Hop & RnB | Pop |
+    Folk & Acoustic | Blues & Roots | Afrobeats & Amapiano | Latin |
+    Caribbean & Dancehall | Jazz & Soul | Metal & Hardcore
+
+Twelve of twelve, in the order CLAUDE.md locks. PASS.
+
+### First Nations IS genuinely first. My first check was wrong, not the platform.
+
+An automated pass reported "First Nations NOT FOUND in any rendered rail", which
+was a defect in my check: it searched for the literal string "First Nations", and
+the platform renders the heritage under its proper name.
+
+The actual rendered community rail, in order:
+
+    Aboriginal & Torres Strait Islander | African | Caribbean | Indian |
+    Chinese | Filipino | Latin American | Vietnamese | Lebanese & Levantine |
+    Greek | Italian | Korean | Japanese | Pacific / Pasifika ...
+
+Aboriginal & Torres Strait Islander leads, in BOTH places communities appear: the
+"Your people, your events" rail and the value band under the tagline. CLAUDE.md
+describes exactly this ("heritageOrder, so Aboriginal & Torres Strait Islander
+leads - First Nations first, per law"). PASS.
+
+A related correction: the homepage community rail carries the 21 canonical
+HERITAGES, which is a different taxonomy from the Scenes V2 COMMUNITIES family the
+brief lists (South Asian, Asian, Pasifika & Maori, Mediterranean, Pride, Faith &
+Worship). My second check conflated the two and reported a false failure. The
+heritages rail is behaving as designed.
+
+### Trust signals: CONTEXTUAL ONLY, and the marketing surfaces are clean
+
+Checked against VISIBLE text nodes only, with script, style and hidden elements
+excluded. The first pass matched JSON-LD and Next.js flight data inside `<script>`
+and reported a false failure; this is the corrected run.
+
+    /             zero trust signals in visible copy   PASS
+    /pricing      zero                                 PASS
+    /organisers   zero                                 PASS
+    /about        zero                                 PASS
+    /events       HTTP 500, could not check
+
+The event detail and checkout halves of that law (a small icon row below Get
+tickets, full treatment near the payment form) are UNVERIFIED, because both
+surfaces need the service role key and a working Stripe key.
+
+### Rejected patterns: none present
+
+    backdrop-filter elements on the homepage    0        no glassmorphism
+    body background                             rgb(250, 250, 247)   light, not dark
+
+No bento grid, no scroll hijacking, no holographic ticket and no NLP search were
+observed on the rendered homepage. Confirmed visually on the captured screenshot
+as well as by measurement.
+
+### The logo renders correctly at every viewport
+
+    desktop 1440   <a aria-label="EventLinqs home">  EVENTLINQS.  137 x 24
+    tablet   768   same                              EVENTLINQS.  137 x 24
+    mobile   390   same                              EVENTLINQS.  137 x 24
+
+Identical dimensions at all three, so it is neither distorted nor cut. Screenshots
+at `C:\dev\EVIDENCE\gates\homepage-{desktop-1440,tablet-768,mobile-390}.png`.
+
+NOTE, so this is not over-claimed: this proves the logo in the SITE HEADER. The
+brief also asks that the logo renders correctly on every CARD. On the eighteen
+social cards the organiser logo slot was null, because an anonymous draft has no
+organiser, so the card half of that requirement remains UNPROVEN.
+
+### Visual inspection of the rendered homepage
+
+Opened and looked at, not merely captured. The header is solid navy with the
+EVENTLINQS. wordmark and a gold Get Started CTA. The hero is a full bleed
+photograph with a bottom up navy scrim, a GOLD eyebrow, white display type and a
+gold Get tickets button, with minimal carousel dots. Below it the canvas is light
+cream and the Browse by Category rail carries photographic tiles with the count
+under each. Navy and gold, light, refined. It matches the design law and it does
+not look like a template.
+
+### Summary of the rendered pass
+
+    PASS   axe-core zero violations, 5 surfaces
+    PASS   SOUNDS rail, 12 of 12 in locked order
+    PASS   First Nations first in the rendered community order
+    PASS   zero trust signals on homepage, pricing, organisers, about
+    PASS   no glassmorphism, no dark theme
+    PASS   logo correct at 1440, 768 and 390
+    PASS   tagline renders as a section heading on the homepage
+    BLOCKED  /events, event detail, and checkout: HTTP 500 on the missing key
 
 
 
