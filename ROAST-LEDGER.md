@@ -64,7 +64,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | T3.4 | Upstash Redis | MET | Local REST shim driven; `setex`/`ttl` defects found and fixed |
 | T3.5 | Mapbox | REFUSED | Retired from the platform. Correct to refuse: verifying a removed integration is not possible. Recorded as a brief-versus-code divergence |
 | T3.6 | Google Maps Places API | PARTIAL | Key present; server-side call correctly refused by referer restriction. Browser proof not driven |
-| T3.7 | Sentry | PARTIAL | Client send proven against a LOCAL SINK. The real Sentry project receiving is NOT proven, no DSN |
+| T3.7 | Sentry | PARTIAL, and CORRECTED 11:00 | `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` ARE set on Production and Preview, 122d old, stored Secret. I could not READ them, which is not the same as unset, and I had been reporting it as unset. Sentry is CONFIGURED; only end-to-end capture on the live project is unproven |
 | T3.8 | Any missing or misconfigured env var is a finding; fix or log precisely | MET | Each logged with exactly what is needed |
 | T4.1 | One read-only pass over the OneDrive archive, 15 minute box | MET | Logged TASK 4 |
 | T4.2 | If not recovered, log and continue | MET | Logged, continued |
@@ -107,7 +107,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | T8.14 | Scenes V2 rail renders both families correctly | MET | All 12 SOUNDS families in `sounds-rail.tsx`, rendered |
 | T8.15 | First Nations genuinely first in the rendered order | MET | "Your people, your events" opens with Aboriginal and Torres Strait Islander |
 | T8.16 | Verify the demand engine: taste/follow graph, feed, alert engine | MET | `demand-engine.json` 5 of 5, `alert-run.json` dispatches:1 sent:1 |
-| T8.17 | Including PWA web push | **BLOCKED** | VAPID private key is sensitive and unavailable; also needs a browser subscription |
+| T8.17 | Including PWA web push | **BLOCKED**, and CORRECTED 11:00 | All three VAPID vars ARE set on Production and Preview, 40d old. The block is NOT a credential: push needs a REAL BROWSER to grant permission and register a subscription, which a headless run cannot produce |
 | T8.18 | Drive at least one alert end to end | MET | Follower received "Just announced: ..." |
 | T8.19 | Navy and gold, light, luxury, refined | PARTIAL | Tokens verified in `globals.css`. Not benchmarked against competitors as CLAUDE.md Law 2 requires |
 | T8.20 | Trust signals contextual only: event detail icon row, full on checkout, ZERO on homepage/browse/marketing | **MET** (closed 07:55) | All three halves driven. ZERO on 6 marketing surfaces. Event detail: 20px icon row below "Get tickets", confirmed in a screenshot. CHECKOUT: driven to a real reservation `/checkout/23b72c1f...`, block present, near the form, "Encrypted by Stripe / Money-back guarantee / PCI-DSS compliant". `trust-checkout.json` |

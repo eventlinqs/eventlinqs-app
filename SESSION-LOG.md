@@ -4500,3 +4500,88 @@ the login logo, and now this. Every one the same mistake, which is worth stating
 once more because it is clearly a habit rather than an accident. I search for the
 shape I expect instead of reading what is there, and a negative grep result is
 the weakest evidence there is.
+
+## 2026-09-02 11:00 THE SERVER MAPS KEY ALREADY EXISTS, IS REQUIRED, AND IS THE WRONG KEY
+
+I told Lawal in PRODUCTION-STEPS.md that a server-restricted Google key "has to
+exist before any of that code could run" and that "only you can mint it". I had
+never listed the Vercel environment to check whether one already existed. It does,
+and what I found is worse than a missing key.
+
+### What is actually there
+
+`vercel env ls`, names only, read only:
+
+    GOOGLE_MAPS_API_KEY    Config   Production, Preview, Development   137d ago
+
+And the manifest declares it, in its own words:
+
+    name: 'GOOGLE_MAPS_API_KEY',
+    describe: 'Google Maps server key: geocoding at seed and publish time',
+    requiredOn: ['production', 'preview'],
+    publicVar: false,
+
+So the repository already has a variable NAMED as the server key, DESCRIBED as
+doing geocoding, and REQUIRED on production and preview.
+
+### It is the same key as the browser one
+
+Pulled the Development scope and compared by hash rather than by eye:
+
+    GOOGLE_MAPS_API_KEY              len 39   sha256 3dcc7ad828a5
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY  len 39   sha256 3dcc7ad828a5
+    SAME KEY UNDER TWO NAMES: true
+
+And driven against Google, twice:
+
+    Geocoding API        REQUEST_DENIED
+    Places Autocomplete  REQUEST_DENIED
+    both: "API keys with referer restrictions cannot be used with this API."
+
+Nothing in `src/` or `scripts/` reads the server-named one. Only the manifest
+mentions it.
+
+### Why this is a landmine rather than a curiosity
+
+Anyone building the venue geocoding would look at the environment, see a
+non-public variable called `GOOGLE_MAPS_API_KEY` described as the server key and
+marked required on production, wire to it, and ship. It would fail with
+REQUEST_DENIED in production, and the failure would look like their code rather
+than a credential that was never what its name says.
+
+So my handover instruction was wrong in a way that matters. The correction:
+
+    WRONG   mint a server key and add it
+    RIGHT   the variable already exists and is required. REPLACE ITS VALUE
+            with a genuinely server-restricted key (IP restricted, or
+            unrestricted and held server side). The name, the manifest entry
+            and the scopes are already correct.
+
+That is a smaller job than I described and a more precise one.
+
+### One more thing, which is the manifest agreeing with me in advance
+
+The manifest's own doctrine note, line 1289, already names this variable:
+
+    "THE DEVELOPMENT SCOPE MUST NOT HOLD SECRETS AT ALL (founder ruling R3,
+     2026-08-03) ... the audit found a live RESEND_API_KEY and a billable
+     GOOGLE_MAPS_API_KEY sitting readable there, and no mode rule can protect
+     either, because neither has a mode."
+
+`GOOGLE_MAPS_API_KEY` is still on the Development scope today, 137 days old, and
+I pulled it to a laptop in one command to run the test above, which is exactly
+the exposure that ruling describes. I deleted the pulled file immediately. The
+manifest entry permits it (`optionalOn: ['development']`, `mustBeSensitive:
+false`), so the declaration and the doctrine note disagree with each other.
+
+### And two of my blocked items were less blocked than I said
+
+The same listing shows `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` set on BOTH
+Production and Preview, 122 days old, and `VAPID_PRIVATE_KEY`,
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `VAPID_SUBJECT` on both, 40 days old.
+
+I have been telling Lawal he needs to supply a Sentry DSN and a VAPID key. He
+does not. Both are already configured on production. What I could not do was
+READ them, because they are stored Secret, which is correct for a secret and is
+a different statement from "they do not exist". The honest version is that
+Sentry and web push are unverifiable FROM HERE, not unconfigured.

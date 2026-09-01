@@ -655,7 +655,52 @@ re-drives j3, j4, j5 and j7-seated at desktop and mobile and prints one verdict.
 It never prints a secret, only a length and a prefix. If it still reports a
 missing card field it tells you the server, not the key, is the problem.
 
-### 2. A SERVER-restricted Google Maps key   IMPOSSIBLE for me
+### 2. REPLACE the value of the existing GOOGLE_MAPS_API_KEY   IMPOSSIBLE for me
+
+**CORRECTED 11:00. I first wrote this as "mint a server key and add it". That was
+wrong, and wrong in a way that would have cost somebody a deploy.**
+
+The variable ALREADY EXISTS and is already required:
+
+    vercel env ls   ->   GOOGLE_MAPS_API_KEY   Config
+                         Production, Preview, Development   137d ago
+
+    manifest        ->   describe: 'Google Maps server key: geocoding at seed
+                                    and publish time'
+                         requiredOn: ['production', 'preview']
+                         publicVar: false
+
+But its VALUE is byte-identical to the browser key. Compared by hash, not by eye:
+
+    GOOGLE_MAPS_API_KEY              sha256 3dcc7ad828a5
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY  sha256 3dcc7ad828a5
+
+so it carries the same HTTP referer restriction and is refused for both APIs:
+
+    Geocoding API        REQUEST_DENIED
+    Places Autocomplete  REQUEST_DENIED
+    "API keys with referer restrictions cannot be used with this API."
+
+Nothing in `src/` or `scripts/` reads it, so nothing is broken TODAY. The trap is
+tomorrow: anyone building the venue geocoding will see a non-public variable named
+`GOOGLE_MAPS_API_KEY`, described as the server key, marked required on production,
+wire to it and ship. It will fail in production and look like their code.
+
+**THE ACTUAL STEP:** mint a key in the Google Cloud console restricted by IP (or
+unrestricted and held server side), then replace the VALUE of the existing
+`GOOGLE_MAPS_API_KEY` on Production and Preview. The name, the manifest entry and
+the scopes are already right. Do not add a new variable.
+
+**WHILE YOU ARE THERE:** that key is also on the DEVELOPMENT scope, which the
+manifest's own doctrine note (line 1289, founder ruling R3 of 2026-08-03) names
+as a problem for this exact variable: "the audit found a live RESEND_API_KEY and
+a billable GOOGLE_MAPS_API_KEY sitting readable there, and no mode rule can
+protect either". I pulled it to this laptop in one command to run the test above,
+which is precisely the exposure that ruling describes, and deleted the file
+immediately afterwards. The manifest entry permits it while the doctrine note
+forbids it, so those two disagree and one of them should change.
+
+### 2b. The original framing, kept for the record
 
 This one is worse than "not built", and the distinction matters for what you do
 first. Scope 3.1.1 requires "Google Maps integration and embedded map preview"
@@ -677,11 +722,20 @@ can mint it in the Google Cloud console.
 
 So the order is: mint the server key, THEN build the geocoding. Not the reverse.
 
-### 3. The Sentry DSN   IMPOSSIBLE for me, then SCRIPTED
+### 3. The Sentry DSN   ALREADY SET. Nothing for you to do but confirm it fires
 
-`dsnPresent:false` on every boot this session. Sentry capture was proven against
-a LOCAL SINK, which proves the client SENDS and proves nothing about the real
-project RECEIVING. The DSN does not exist until your dashboard mints it.
+**CORRECTED 11:00.** I wrote that the DSN "does not exist until your dashboard
+mints it". It exists:
+
+    SENTRY_DSN              Secret   Preview, Production   122d ago
+    NEXT_PUBLIC_SENTRY_DSN  Secret   Preview, Production   122d ago
+
+What is true is that I could not READ them, because they are stored Secret, which
+is correct for a secret and is a completely different statement from "unset".
+`dsnPresent:false` was a fact about THIS MACHINE, not about production.
+
+So Sentry is CONFIGURED. What remains unproven is only that it CAPTURES end to
+end on the live project, which needs one deliberate error after the deploy:
 
 After you have it:
 
@@ -692,14 +746,19 @@ node scripts/verify/sentry-capture.mjs      # if present, else trigger
                                             # in the Sentry issue stream
 ```
 
-### 4. The VAPID private key   IMPOSSIBLE for me
+### 4. The VAPID keys   ALREADY SET. Push needs a browser, not a key
 
-PWA web push is the only half of the alert engine not proven. The email half is
-driven end to end (`cron dispatches:1 sent:1`, follower received "Just
-announced: ..."). The private key is sensitive in Vercel and cannot be read back,
-and generating a NEW pair would invalidate every existing push subscription, so
-it must come from you rather than be regenerated. Push also needs a real browser
-subscription, which is a second thing a headless run cannot produce.
+**CORRECTED 11:00.** I implied you had to supply these. All three are set:
+
+    VAPID_PRIVATE_KEY             Secret   Preview, Production   40d ago
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY  Secret   Preview, Production   40d ago
+    VAPID_SUBJECT                 Secret   Preview, Production   40d ago
+
+The email half of the alert engine is driven end to end (`cron dispatches:1
+sent:1`, follower received "Just announced: ..."). The push half is unproven for
+one reason only, and it is not a credential: it needs a REAL BROWSER to grant
+notification permission and register a subscription, which a headless run cannot
+produce. Open the site on a phone, accept notifications, then fire the alert cron.
 
 ### 5. An organisation on payout tier 2 or 3   IMPOSSIBLE for me, and DOWNSTREAM
 
