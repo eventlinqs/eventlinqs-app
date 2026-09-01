@@ -596,10 +596,30 @@ buyer's own ticket. Both could NOT be driven this session.
 
 **Deploy.** Instant, and this is the one to reach for first:
 
+FIXED 15:45. This block DID NOT PARSE, and it is the one you reach for in an
+emergency. `<previous-deployment-url>` starts with a bare `<`, which PowerShell
+rejects as a reserved operator, so pasting the block errored out and took the
+rollback command on the line above down with it. Found by parsing every
+PowerShell block in this file rather than by reading them.
+
 ```powershell
+$env:Path = "C:\node24\node-v24.19.0-win-x64;" + $env:Path
+Set-Location C:\dev\EventLinqs\eventlinqs-app
+
+# The fastest path: roll back to the previous production deployment.
 vercel rollback --scope lawals-projects-c20c0be8
-# or promote a known-good deployment explicitly:
-vercel promote <previous-deployment-url> --scope lawals-projects-c20c0be8
+```
+
+If you would rather promote a specific known-good deployment, list them first and
+then promote by URL. The placeholder is a QUOTED string here so the block parses:
+
+```powershell
+# 1. find the deployment you want, newest first
+vercel ls --scope lawals-projects-c20c0be8
+
+# 2. promote it, pasting its URL in place of the quoted placeholder
+$target = "PASTE-THE-DEPLOYMENT-URL-HERE"
+vercel promote $target --scope lawals-projects-c20c0be8
 ```
 
 **Migrations.** THERE IS NO SUPABASE ROLLBACK COMMAND. `supabase db push` is

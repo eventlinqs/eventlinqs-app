@@ -5345,3 +5345,54 @@ end.
 
 That is the same habit one more time, in the one place it would have wasted his
 morning: a filename I produced from expectation rather than from looking.
+
+## 2026-09-02 15:45 THE ROLLBACK COMMAND DID NOT PARSE, WHICH IS THE WORST ONE TO GET WRONG
+
+Having checked that the handover points at real FILES, the other half is whether
+its COMMANDS actually run. Lawal will paste these at six in the morning against
+production. I have never once parsed them.
+
+`verify-handover-commands.ps1` extracts every ```powershell block and runs it
+through `[System.Management.Automation.Language.Parser]::ParseInput`. It executes
+nothing.
+
+    powershell blocks found : 20
+    blocks that do not parse: 1
+
+**The one that failed was the ROLLBACK.**
+
+    vercel promote <previous-deployment-url> --scope lawals-projects-c20c0be8
+                   ^
+    line 3: The '<' operator is reserved for future use.
+
+A bare `<` is a PowerShell parse error, so pasting that block errors out AND
+TAKES THE `vercel rollback` LINE ABOVE IT DOWN WITH IT. The block he reaches for
+when a deploy has gone wrong was the one block that could not be pasted.
+
+Fixed. `vercel rollback` now stands alone in its own block with the path and
+Set-Location, and the promote path is a separate block that lists deployments
+first and uses a QUOTED placeholder so it parses:
+
+    $target = "PASTE-THE-DEPLOYMENT-URL-HERE"
+    vercel promote $target --scope lawals-projects-c20c0be8
+
+Re-parsed: 21 blocks, 0 failures.
+
+Worth noting why block 15 survived the same mistake. It also carries a
+placeholder, `<a real kit code>`, but inside a double-quoted string, where `<` is
+just a character. The rollback one was bare. That is the kind of difference that
+is invisible when reading and obvious to a parser, which is the entire argument
+for running one.
+
+### THIS IS THE SECOND DEFECT IN MY OWN HANDOVER IN TWO ROUNDS
+
+    15:25   a command pointing at `scripts/verify/sentry-capture.mjs`,
+            which does not exist. I guessed a filename.
+    15:45   a rollback block that could not be pasted. I never parsed it.
+
+Both were in the DELIVERABLE rather than the platform, and both would have cost
+him time at the moment he could least afford it: the first while verifying
+observability, the second while trying to undo a bad deploy.
+
+Fifteen hours of checking the platform, and the least-checked artefact in the
+room was the document I was writing about it.
