@@ -595,13 +595,26 @@ out of it. They are recorded in the PROVED table above instead:
                                               refusal. Fixed in 0c503050 and
                                               re-driven at all three viewports.
 
-### One environment gap worth fixing before the next preview
+### One environment fact worth knowing before the next preview
 
-`ORDER_ACCESS_SECRET` exists on PRODUCTION only. It is absent from Preview, and
-`src/lib/orders/order-access.ts` fails CLOSED without it when NODE_ENV is
-production. So the guest magic link cannot work on ANY preview deployment: links
-are neither issued nor honoured there. Set it on Preview too, or guest order
-access is untestable outside production.
+CORRECTED 11:50. I first wrote this as "one environment GAP worth fixing". That
+was wrong and the manifest says so plainly:
+
+    ORDER_ACCESS_SECRET
+      requiredOn: ['production'],
+      optionalOn: ['preview', 'development'],
+
+with the reason in its own comment: "Missing means guest order links are neither
+issued nor honoured. It fails CLOSED rather than falling back to the public dev
+constant, which would let anyone open any order by guessing an id."
+
+So its absence from Preview is the DESIGNED, SAFE state. Nothing is broken and
+nothing needs fixing.
+
+The narrower true statement: `src/lib/orders/order-access.ts` fails closed
+without it under NODE_ENV=production, so the guest magic link cannot be exercised
+on any preview deployment. If you want to test that flow outside production, set
+`ORDER_ACCESS_SECRET` on Preview. Until then it is untestable there, by design.
 
 
 

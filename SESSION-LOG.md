@@ -4648,3 +4648,74 @@ a buyer's behalf or reach the database. Both are billable, so the exposure is
 quota theft and a bill, not a breach of customer data. That is why this is a
 tidy-up rather than a launch blocker, and why it can wait for him rather than be
 forced tonight.
+
+## 2026-09-02 11:50 I RAN LOCK 3, WHICH NOBODY HAD RUN THIS SESSION, AND IT PASSES
+
+TASK 3 is environment and service integrity, and I had been answering it by
+probing services one at a time. The repository has a purpose-built check for the
+half no single probe can see, and I had never run it:
+`scripts/check-env-stores.mjs`, LOCK 3, cross-store and cross-variable
+consistency. Its own header says what it catches that nothing else can:
+
+    - whether a variable also exists on a scope that FORBIDS it
+    - whether a variable every preview needs is PINNED to one git branch, so
+      every other branch deploys without it
+    - whether a secret can be READ BACK by anyone with project access
+    - whether a variable that must live in TWO stores is missing from the second
+
+Run against the live stores, never printing a value:
+
+    manifest: 43 variables, 7 cross rules
+
+    PASS  the Vercel environment listing is readable
+          93 scope records across 39 variables
+    PASS  read-back exposure was measured for every scope and every pinned branch
+          8 scope/branch combinations pulled, covering all 93 records
+    PASS  the GitHub Actions secret list is readable, 4 repository secrets
+    PASS  every manifest expectation holds across the stores, 93 records checked
+
+    ALL 4 CHECKS PASSED.
+
+That is real evidence for TASK 3 that I did not have before, and it is stronger
+than my per-service probing because it sees the whole store rather than one
+credential at a time.
+
+## A FIFTH SUSPICION OF MINE, AND THIS TIME I CHECKED BEFORE WRITING IT UP
+
+The env listing shows `STRIPE_SECRET_KEY` pinned to three git branches, and its
+manifest entry reads `previewBranchScoping: 'forbidden'` with
+`paymentCritical: true`. I had that written as a live misconfiguration on the
+money path.
+
+It is not. `manifest-checks.mjs:497` fires only when
+
+    scopeWide.length === 0 && branchPinned.length > 0
+
+that is, only when a variable is ONLY branch-pinned with no scope-wide record, so
+that every other branch deploys without it. Stripe has a scope-wide Preview
+record AND three branch overrides, so the rule correctly stays silent. Overrides
+are legitimate; being pinned with no fallback is the defect, and that is not what
+is there.
+
+Four times tonight I have written up a finding that was my own tooling being
+wrong. This is the fifth suspicion and the first one I killed before it reached
+a report, by running the repository's own check instead of reasoning from a
+listing. That is the habit the other four should have had.
+
+## AND A CORRECTION TO SOMETHING I PUT IN PRODUCTION-STEPS.md
+
+I recorded "One environment gap worth fixing before the next preview:
+ORDER_ACCESS_SECRET exists on PRODUCTION only ... Set it on Preview too". Calling
+it a GAP was wrong. The manifest is explicit:
+
+    requiredOn: ['production'],
+    optionalOn: ['preview', 'development'],
+
+with a comment saying why: "Missing means guest order links are neither issued
+nor honoured. It fails CLOSED rather than falling back to the public dev
+constant, which would let anyone open any order by guessing an id."
+
+So its absence from Preview is the DESIGNED, SAFE state, not a misconfiguration.
+The true statement is narrower and I have rewritten it as such: if you want to
+exercise guest magic links on a preview you must set it there, and until you do,
+that flow is untestable outside production. Nothing is broken.
