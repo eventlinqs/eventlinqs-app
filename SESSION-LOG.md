@@ -4196,3 +4196,58 @@ That is the third time tonight one of my own probes manufactured a defect that
 was not there: the door scanner at 390, the checkout stepper, and now this. The
 pattern is the same every time, which is worth naming: I measure the first
 element that matches a selector instead of the one a person can actually see.
+
+## 2026-09-02 09:00 LAW 10, WHICH I HAD NOT ACTUALLY DONE
+
+CLAUDE.md Law 10 says every step assigned to the founder carries a verdict:
+SCRIPTED with the command, RESERVED naming the law, or IMPOSSIBLE naming what a
+machine cannot do, and "a step with no verdict has not been thought about." I had
+been listing four blocked items in every report without ever giving them
+verdicts, which is the shape the law exists to stop.
+
+`PRODUCTION-STEPS.md` now carries a section that does it, five steps, each
+adjudicated. Two findings came out of writing it.
+
+### The Google Maps gap is worse than "not built", and the ORDER matters
+
+I had this as a build I skipped. It is not. Driven just now against the only key
+on this machine:
+
+    Geocoding API        REQUEST_DENIED
+    Places Autocomplete  REQUEST_DENIED
+    both: "API keys with referer restrictions cannot be used with this API."
+
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is correctly locked to HTTP referers, which is
+exactly right for a key that ships to a browser, and is precisely why it cannot
+geocode server side. **So building the venue geocoding tonight would have
+produced code that could not run.** A SECOND key, IP-restricted or server held,
+has to exist first, and only Lawal can mint it in the Google console.
+
+That reverses the order in the handover: mint the server key, THEN build. Had I
+written "build the geocoding" as the next step, whoever picked it up would have
+lost an afternoon before discovering the key refuses.
+
+### The Stripe step is now split, and the scripted half is committed
+
+`scripts/ops/after-stripe-login.mjs`, commit `836768d5`. The login is a browser
+OAuth I cannot authorise. Everything after it is scripted: prove the key
+authenticates, then re-drive j3, j4, j5 and j7-seated at desktop and mobile and
+print one verdict.
+
+It follows the reference shape the law names, and I drove both refusal paths
+rather than assuming them:
+
+    no key at all      refuses, and says exactly what to run
+    a LIVE key         hard refusal: "This drives real checkouts. It will not
+                       do that against live money."
+    the CLI's key      reproduces tonight's blocker exactly:
+                       HTTP 401, code api_key_expired
+
+It never prints a secret, only a length and a prefix.
+
+One implementation note worth keeping, because the obvious version is wrong on
+Node 24: spawning with `shell: true` and an args array raises DEP0190 and prints
+a deprecation warning into the middle of the report, which makes a clean run look
+broken. My first fix then lost the ability to find the CLI key at all, which was
+worse than the warning. It now tries stripe.cmd, stripe.exe and stripe by name
+and says which one answered.

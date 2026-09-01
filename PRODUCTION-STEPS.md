@@ -7,13 +7,17 @@ Every command below is a production write and was held at a stop gate.
 
 ## READ THIS BEFORE STEP 5. EVERY FIX FROM THIS SESSION IS LOCAL ONLY.
 
-    integration/launch  local   a87198e4
+    integration/launch  local   836768d5
     integration/launch  remote  ea6df9f592a4e01437dba3d269a59b9ee957e058
     launch-prepared             local only, deliberately never pushed
 
-The remote is still sitting on the commit that DOES NOT BUILD. EIGHT commits exist
-only on this machine:
+The remote is still sitting on the commit that DOES NOT BUILD. TWELVE commits
+exist only on this machine:
 
+    836768d5  Script everything that happens after stripe login
+    ae8dbfac  Name the new guard in the header the registry test reads
+    e7684304  The guard I just added was caught by another guard, which is the system working
+    a9a3a346  The last backdrop-filter in the tree, and a guard so it stays gone
     a87198e4  Every social card answered 500 once the rasteriser was initialised twice
     098a0aa4  The authorship guard outgrew its own window and said so
     0c503050  Journey 2 never tested the thing in its own title, no venue was filled
@@ -31,12 +35,12 @@ green deploy, silently, and stay down until the lambda recycles.
 
 If you deploy from the remote as it stands, the Vercel build FAILS at
 `Module not found: Can't resolve 'wbg'`, because the resvg fix is one of those
-seven. Push the branch before step 5, or the deploy cannot succeed:
+twelve. Push the branch before step 5, or the deploy cannot succeed:
 
 ```powershell
 $env:Path = "C:\node24\node-v24.19.0-win-x64;" + $env:Path
 Set-Location C:\dev\EventLinqs\eventlinqs-app
-git log --oneline origin/integration/launch..integration/launch   # expect the seven above
+git log --oneline origin/integration/launch..integration/launch   # expect the twelve above
 git push origin integration/launch
 git rev-parse integration/launch
 git ls-remote origin refs/heads/integration/launch                # the two must match
@@ -550,3 +554,113 @@ are neither issued nor honoured there. Set it on Preview too, or guest order
 access is untestable outside production.
 
 
+
+---
+
+## WHAT ONLY YOU CAN DO, each with a verdict
+
+Law 10 requires every step assigned to the founder to carry one of three
+verdicts: SCRIPTED with the command, RESERVED naming the law, or IMPOSSIBLE
+naming what a machine cannot do. A step with no verdict has not been thought
+about. There are five, and four of them gate real product.
+
+### 1. `stripe login`   IMPOSSIBLE for me, then SCRIPTED
+
+The single most expensive item on this list. TWELVE of the thirty journey rows
+failed on it, and all twelve are this one credential, not twelve defects.
+
+IMPOSSIBLE part, and it is one command:
+
+```powershell
+stripe login
+```
+
+It is a browser OAuth that mints a session against your Stripe account. I cannot
+authorise it, and the two keys the CLI had stored are both expired, driven and
+confirmed again just now:
+
+    GET https://api.stripe.com/v1/balance  ->  HTTP 401
+    "Expired API Key provided: sk_test_***...xCB6PW"
+    code: api_key_expired
+
+Vercel will not decrypt a sensitive variable back to a client on any scope or
+branch, so there was no second route to it.
+
+SCRIPTED part, everything after:
+
+```powershell
+$env:Path = "C:\node24\node-v24.19.0-win-x64;" + $env:Path
+Set-Location C:\dev\EventLinqs\eventlinqs-app
+
+# one window: the server, with the key in ITS environment, because the
+# journeys drive the SERVER rather than the script
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\serve.ps1 3311
+
+# another window
+node scripts/ops/after-stripe-login.mjs
+```
+
+It proves the key authenticates, REFUSES a live key before it acts, then
+re-drives j3, j4, j5 and j7-seated at desktop and mobile and prints one verdict.
+It never prints a secret, only a length and a prefix. If it still reports a
+missing card field it tells you the server, not the key, is the problem.
+
+### 2. A SERVER-restricted Google Maps key   IMPOSSIBLE for me
+
+This one is worse than "not built", and the distinction matters for what you do
+first. Scope 3.1.1 requires "Google Maps integration and embedded map preview"
+on the event builder, and neither exists: `venue_latitude` appears once, as null,
+and is never assigned, so no organiser-created event can reach a city map.
+
+Building it would NOT have been enough. Driven just now against the only key on
+this machine:
+
+    Geocoding API          REQUEST_DENIED
+    Places Autocomplete    REQUEST_DENIED
+    both: "API keys with referer restrictions cannot be used with this API."
+
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is correctly locked to HTTP referers, which is
+exactly what you want for a key that ships to a browser, and it is precisely why
+it cannot geocode server side. A SECOND key, restricted by IP or unrestricted
+and held server side, has to exist before any of that code could run. Only you
+can mint it in the Google Cloud console.
+
+So the order is: mint the server key, THEN build the geocoding. Not the reverse.
+
+### 3. The Sentry DSN   IMPOSSIBLE for me, then SCRIPTED
+
+`dsnPresent:false` on every boot this session. Sentry capture was proven against
+a LOCAL SINK, which proves the client SENDS and proves nothing about the real
+project RECEIVING. The DSN does not exist until your dashboard mints it.
+
+After you have it:
+
+```powershell
+$env:SENTRY_DSN = "<the DSN>"
+node scripts/verify/sentry-capture.mjs      # if present, else trigger
+                                            # /api/health/sentry-error and look
+                                            # in the Sentry issue stream
+```
+
+### 4. The VAPID private key   IMPOSSIBLE for me
+
+PWA web push is the only half of the alert engine not proven. The email half is
+driven end to end (`cron dispatches:1 sent:1`, follower received "Just
+announced: ..."). The private key is sensitive in Vercel and cannot be read back,
+and generating a NEW pair would invalidate every existing push subscription, so
+it must come from you rather than be regenerated. Push also needs a real browser
+subscription, which is a second thing a headless run cannot produce.
+
+### 5. An organisation on payout tier 2 or 3   IMPOSSIBLE for me, and DOWNSTREAM
+
+Tier 1 is observable. Tiers 2 and 3 display only for an organisation that has
+completed paid events and cleared the volume thresholds. That needs real paid
+orders, which needs item 1. It is not separately blocked; it unblocks itself
+once Stripe works and a test organisation has traded.
+
+### And one that is RESERVED rather than blocked
+
+Applying a migration to production is yours by your own ruling of 26 August 2026,
+restated in CLAUDE.md Law 10: "a production schema change is the one thing he
+wants to press himself." That is a decision about authority, not capability. The
+commands are written above in STOP GATE 2 and were deliberately not run.
