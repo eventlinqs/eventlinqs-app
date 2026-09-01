@@ -476,7 +476,30 @@ Everything here was driven in a real browser against the production build on TES
                                               deliberate-looking choice and it works,
                                               but a buyer-facing reader should know
                                               the button does not look blocked.
-  every journey at three viewports            390, 768 and 1440, 0 blockers at each
+  every journey at three viewports            ALL TEN, at 390, 768 and 1440.
+                                              30 rows: PASS 18, FAIL 12, and
+                                              every one of the twelve failures is
+                                              the SAME missing Stripe key. Nothing
+                                              is left unexplained by it.
+                                              Table: EVIDENCE\journeys\TASK7-TABLE.txt
+  the door scanner ON A PHONE                 ADMIT then REJECT "Already used just
+                                              now" at 390 and at 768, not only at
+                                              1440. A door is only ever run from a
+                                              phone, so this is the size that
+                                              mattered and it had never been tried.
+  trust signals, BOTH halves of the law       ZERO on 6 marketing surfaces
+                                              (including /events and browse, which
+                                              the earlier gate could not read
+                                              because they answered HTTP 500), and
+                                              PRESENT on event detail as a 20px
+                                              icon row below "Get tickets":
+                                              "Secure checkout | Community
+                                              organiser | Refund policy".
+  Scenes V2 and the tagline                   all 12 SOUNDS families render,
+                                              First Nations is genuinely first in
+                                              the rendered order, and the tagline
+                                              reads exactly "Every community.
+                                              Every event. One platform."
 
 ## What this session could NOT verify, so you know what is untested
 

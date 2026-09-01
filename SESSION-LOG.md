@@ -66,6 +66,12 @@ the locked fee. Three things stand in the way:
 | Discount code creation 7 of 7, duplicate refused out loud | `j8.log` |
 | Seat map: a stranger selected and HELD a seat at AUD 155.21 | `j7.log` |
 | **The full guest flow at all three viewports, 390/768/1440, 3 of 3** | `EVIDENCE\journeys\viewports\` |
+| **ALL TEN JOURNEYS at ALL THREE viewports, 30 rows: PASS 18, FAIL 12, and all twelve failures are the ONE missing Stripe key** | `EVIDENCE\journeys\TASK7-TABLE.txt` |
+| **The door scanner works ON A PHONE**: ADMIT then REJECT "Already used just now" at 390 and at 768 | `j6-viewport-runs.json` |
+| **Paid-publish reaches the MONEY refusal** at all three viewports, in viewport, announced, linking to /dashboard/payouts | `j2-*.log` |
+| **Trust signals are contextual, both halves**: ZERO on 6 marketing surfaces including /events and browse, PRESENT as a 20px icon row below "Get tickets" on event detail | `EVIDENCE\gates\trust-presence.json` |
+| **Scenes V2**: all 12 SOUNDS families render, First Nations genuinely first, tagline exact | `homepage-rails.json` |
+| Banned terms: zero hits for diaspora, friends-launch, culture-first, "Where the culture gathers"; no `/culture` route; `Multicommunity` now zero repo-wide | log 05:30 |
 | **One alert end to end**: signed up, Followed, cron `dispatches:1 sent:1`, "Just announced: ..." received | `alert-run.json` |
 | **Demand engine 5 of 5**: personalised feed ("Your feed, Follower."), saved surface, who is going "27 people going", per-organiser follow state | `EVIDENCE\gates\demand-engine.json` |
 | **Sentry CAPTURES**: a real error envelope arrived at the ingest endpoint with stack and tags | `EVIDENCE\gates\sentry-captured.json` |
@@ -105,12 +111,16 @@ above the repository's own 0.80 floor; the homepage at 81 carries a documented
 exemption to 2026-11-01. Desktop passes 95 everywhere. These are localhost numbers
 and CLAUDE.md records a warmed client measuring materially higher.
 
-**Paid-publish refusal specifically.** Journey 2 passes, but was refused for a
-missing VENUE before reaching the money refusal.
+**BOTH OF THE TWO ITEMS THAT USED TO SIT HERE ARE NOW DONE.** They are listed
+under PROVEN instead, and the detail is at 05:20, 05:25 and 05:45.
 
-**Three viewports for the other journeys.** The full guest flow and the homepage
-were driven at all three. The rest ran at 1440, because
-`scripts/journeys/harness.mjs` takes a viewport argument it never uses.
+  paid-publish refusal   the venue is filled now, so journey 2 reaches the MONEY
+                         refusal it is named for. Driven at all three viewports.
+  three viewports        the harness ignored its own viewport argument. Fixed,
+                         and all ten journeys are now driven at 390, 768 and
+                         1440. Table: `EVIDENCE\journeys\TASK7-TABLE.txt`.
+                         PASS 18, FAIL 12, and all twelve failures are the one
+                         missing Stripe key.
 
 ## THINGS YOU DO NOT KNOW YET
 
@@ -3422,3 +3432,75 @@ minutes later, blocking the whole suite behind it. Killed to let the run
 continue. The journey REPORTS correctly; it just never exits, so any unattended
 runner that waits on it stalls forever. Worth fixing before this suite is put in
 CI, where it would burn the job timeout rather than report a failure.
+
+## 2026-09-02 05:45 TASK 7 IS NOW ACTUALLY COMPLETE. THE TABLE THE BRIEF ASKED FOR.
+
+Ten journeys, three viewports, thirty rows. Full table also at
+`C:\dev\EVIDENCE\journeys\TASK7-TABLE.txt` and `.json`.
+
+```
+journe what a stranger is actually doing                    viewport      verdict       secs   blockers  why
+--------------------------------------------------------------------------------------------------------------------------------------------
+j1     organiser signs up, creates and publishes a free eve mobile-390    PASS                 0         
+j1     organiser signs up, creates and publishes a free eve tablet-768    PASS                 0         
+j1     organiser signs up, creates and publishes a free eve desktop-1440  PASS                 0         
+j2     paid publish refused with no Stripe connected        mobile-390    PASS                 0         
+j2     paid publish refused with no Stripe connected        tablet-768    PASS                 0         
+j2     paid publish refused with no Stripe connected        desktop-1440  PASS                 0         
+j3     a stranger buys a ticket                             mobile-390    FAIL                 2         Stripe key absent
+j3     a stranger buys a ticket                             tablet-768    FAIL                 2         Stripe key absent
+j3     a stranger buys a ticket                             desktop-1440  FAIL                 2         Stripe key absent
+j4     a buyer asks for a refund                            mobile-390    FAIL                 2         Stripe key absent
+j4     a buyer asks for a refund                            tablet-768    FAIL                 2         Stripe key absent
+j4     a buyer asks for a refund                            desktop-1440  FAIL                 2         Stripe key absent
+j5     a signed-in buyer passes a ticket to a friend        mobile-390    FAIL                 3         Stripe key absent
+j5     a signed-in buyer passes a ticket to a friend        tablet-768    FAIL                 3         Stripe key absent
+j5     a signed-in buyer passes a ticket to a friend        desktop-1440  FAIL                 3         Stripe key absent
+j5g    a GUEST passes a ticket to a friend                  mobile-390    PASS                 0         
+j5g    a GUEST passes a ticket to a friend                  tablet-768    PASS                 0         
+j5g    a GUEST passes a ticket to a friend                  desktop-1440  PASS                 0         
+j6     the door: admit once, refuse the second scan         mobile-390    PASS          20.7   0         re-driven cleanly; first attempt was a harness artefact
+j6     the door: admit once, refuse the second scan         tablet-768    PASS          12     0         driven by drive-j6-viewports.mjs
+j6     the door: admit once, refuse the second scan         desktop-1440  PASS                 0         driven 2026-09-02 with hand-supplied args; evidence repo-evidence/j6-door/
+j7s    a stranger buys a reserved SEAT                      mobile-390    FAIL                 1         Stripe key absent
+j7s    a stranger buys a reserved SEAT                      tablet-768    FAIL                 1         Stripe key absent
+j7s    a stranger buys a reserved SEAT                      desktop-1440  FAIL                 1         Stripe key absent
+j710   cover composer and the label guards                  mobile-390    PASS                 0         
+j710   cover composer and the label guards                  tablet-768    PASS                 0         
+j710   cover composer and the label guards                  desktop-1440  PASS                 0         
+j8     an organiser creates a discount code                 mobile-390    PASS                 0         
+j8     an organiser creates a discount code                 tablet-768    PASS                 0         
+j8     an organiser creates a discount code                 desktop-1440  PASS                 0         
+
+PASS 18   FAIL 12   of which the ONE missing Stripe key accounts for 12, leaving 0 unexplained by it.```
+
+**PASS 18. FAIL 12. Every single one of the twelve is the same missing Stripe
+key. Nothing is left unexplained by it.**
+
+That is the number worth carrying into a launch decision. It is not twelve
+problems, it is one problem counted twelve times, and it is the one problem
+only Lawal can clear.
+
+Everything that does not touch a card works at all three sizes: signup, the
+seven step wizard, publish, the paid-publish money refusal, the guest ticket
+transfer, the door scanner, the cover composer, both label guards and discount
+codes. The seat map RESERVES a seat at 390 and only stops at the card.
+
+### Two rows in that table were wrong before I re-drove them
+
+**j5g at desktop read FAIL.** The desktop log was written at 02:17, BEFORE
+ORDER_ACCESS_SECRET was set locally, and recorded a failure that stopped
+happening hours ago. Quoting a stale log is how a fixed thing gets reported as
+broken. Re-driven: PASS, 0 blockers, 28.4s.
+
+**j7s, j710 and j8 read NOT RUN at desktop.** That was my table script looking
+for filenames that did not exist, not a gap in the driving. Re-driven anyway,
+so the row is a real run rather than an inference: j710 PASS 47.4s, j8 PASS
+75.4s, j7s FAIL on the card field at 242s.
+
+### The seated journey has to be time-boxed or it never returns
+
+j7-seated reports and then never exits. It burned 622s at mobile and 166s at
+tablet before being killed, and 242s at desktop under a deliberate 240s box. Any
+unattended runner that waits on it stalls indefinitely. The journey is fine; the
+process lifecycle is not.
