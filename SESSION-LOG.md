@@ -1057,3 +1057,189 @@ untracked today so nothing is broken, but it is one `git add -A` away from being
 committed. Worth a line in .gitignore.
 
 
+
+## 2026-09-02 01:45 READ THIS FIRST. PRODUCTION HAS NO CATALOGUE.
+
+This is the most important thing I found tonight and it is not what the brief
+expected me to be looking at. It is a read only observation of the live site.
+
+    https://www.eventlinqs.com.au/events            1 event linked
+                                                    payment-verification-test-2-e1ukdb
+    https://www.eventlinqs.com.au/events/browse/sydney      0 events
+    https://www.eventlinqs.com.au/events/browse/melbourne   0 events
+    https://www.eventlinqs.com.au/                  1 event linked
+                                                    payment-verification-test-2-e1ukdb
+
+The only event a visitor can find on the live homepage, and the only event on the
+live browse grid, is a payment verification test artefact.
+
+The production sitemap agrees. Of its 552 URLs, exactly FOUR are event detail
+pages, and two of those four are test events:
+
+    /events/open-field-party-v8yqlp
+    /events/open-party-r3wpl0
+    /events/payment-verification-test-2-e1ukdb
+    /events/payment-verification-test-3c1p9f
+
+The brief says to verify that the national seed of 261 published events across 20
+Australian cities is intact and rendering on production. IT IS NOT THERE. Not
+partially, not stale. There are four event pages in the sitemap and one visible
+event on the homepage.
+
+For comparison, TEST holds 117 published events visible to an anonymous reader.
+That is also not 261, but it is a catalogue. Production is not.
+
+WHAT THIS MEANS FOR TONIGHT. Going to market tomorrow with this state means the
+first organiser or buyer who lands on eventlinqs.com.au sees a ticketing platform
+with one event on it called payment-verification-test-2. Every other launch item
+in this brief is downstream of that. Deploying the code fixes nothing here,
+because this is DATA, not code: the seed has never been run against production, or
+was run and rolled back.
+
+This needs a decision from Lawal, and it is not one I can take: seeding production
+is a production write and is forbidden this session. It is written into
+PRODUCTION-STEPS.md as a gate of its own.
+
+---
+
+## 2026-09-02 01:40 TASK 8 PARTIAL. SITEMAP AND POSITIONING, MEASURED ON PRODUCTION.
+
+### Sitemap count against Search Console
+
+    production sitemap URLs   552
+    submitted to Search Console (per the brief)   586
+    difference                -34
+
+I cannot see Search Console from here, so the explanation is inference and I will
+mark it as such: 34 URLs that existed when the sitemap was submitted no longer
+resolve or are no longer published. Given that the catalogue is now four event
+pages, the most likely explanation is that event pages have been removed from the
+sitemap since submission. That is consistent with the finding above and not with
+a healthy catalogue.
+
+### POSITIONING VIOLATION, measured rather than judged
+
+The brief's positioning lock says community is a go to market layer of roughly 10
+to 20 percent of the surface, not the dominant identity, and that the platform
+must read as a general ticketing platform first.
+
+The production sitemap, by first path segment:
+
+    /community      441      79.9 percent
+    /city            44       8.0
+    /events          26       4.7      (22 of these are browse pages, 4 are events)
+    /guides           9
+    /help             7
+    /legal            6
+    /faith            5
+    /organisers       4
+    /contact, /venues, /categories, /cities, /communities, /, /pricing,
+    /careers, /press, /about   1 each
+
+Eighty percent of the indexed surface is /community. The target is 10 to 20
+percent. This is the opposite of the stated positioning, and it is what Google has
+been given. It is measurable, it is on production now, and it is not a matter of
+taste.
+
+I have NOT changed it. Re-weighting the sitemap is a positioning decision with SEO
+consequences and belongs to Lawal, not to me at two in the morning.
+
+---
+
+## 2026-09-02 01:38 TASK 7. THE TEN STRANGER JOURNEYS. BLOCKED, WITH THE CAUSE PROVED.
+
+I drove them rather than reasoning about them, and they stop in the same place.
+
+### Journey 1, solo organiser, free event
+
+    node scripts/journeys/j1.mjs
+
+    01. Signed up
+          jo.free.974083@example.com -> /signup
+    02. THREW  Error: signup refused
+    server errors: HTTP 503 /api/auth/signup
+    blocker: We could not reach our account service just now.
+
+Server log, the real cause:
+
+    [auth/signup] admin client unavailable { reason: 'supabaseKey is required.' }
+
+### Journey 3, a stranger buys a ticket
+
+Driven against a real published TEST event, cat-indie-sounds-live-at-the-enmore-sydney,
+which is also one of the three pinned Lighthouse event pages:
+
+    01. A stranger opens the event page      HTTP 200
+    02. heading "We hit a snag loading this page", only a Retry button
+    03. Prices visible before any click:     NONE SHOWN
+    04. THREW  Error: no buy control
+    console: Minified React error #441
+
+Server log, the real cause, again:
+
+    Error: supabaseKey is required.
+      digest: '3574394017'
+
+### The single cause, and why it is not a product defect
+
+SUPABASE_SERVICE_ROLE_KEY is one of the nineteen values Vercel refuses to decrypt
+back to a local machine. It is not optional plumbing here:
+
+  1. /api/auth/signup builds an admin client with it. No account can be created,
+     so every journey that starts by signing somebody up stops at step one.
+  2. The PUBLIC event detail page needs it. Migration
+     20260808000010_rls_column_privilege_lockdown.sql REVOKED the organiser sale
+     posture columns from anon, and the event page reads them with a privileged
+     client to decide whether to render a ticket selector. Without the key the
+     page throws and renders its error boundary.
+  3. src/lib/launch/taxonomy.ts and scripts/verify/launch-kit-inspect.mjs use it too.
+
+Note the shape of item 2, because it matters for the gates: the page still answers
+HTTP 200 with 63951 bytes. A crawler, an uptime check and a naive Lighthouse run
+all see 200. A human sees "We hit a snag loading this page". A gate that only
+checks status codes would call this green.
+
+### What is blocked, and by what
+
+    j1  free organiser, publish       BLOCKED  service role key (signup)
+    j2  paid publish refusal          BLOCKED  service role key (signup)
+    j3  guest ticket purchase         BLOCKED  service role key (event page), then Stripe
+    j4  refund                        BLOCKED  as j3, then Stripe
+    j5  ticket transfer, signed in    BLOCKED  service role key (signup), then Stripe
+    j5-guest  guest transfer          BLOCKED  as j3, then Stripe
+    j6  door scanner                  BLOCKED  needs an organiser and a ticket
+    j7  seated purchase               BLOCKED  as j3, then Stripe
+    j8  discount code                 BLOCKED  service role key (signup)
+    j9/j10 attribution and payouts    BLOCKED  as above
+
+ZERO of the ten could be driven. I am not going to record any of them as passing,
+and I am not going to substitute a unit test for a driven flow.
+
+### What I did NOT do, deliberately
+
+I could have created accounts straight in the auth API and seeded state around the
+blocked steps. I did not, for the reason the brief itself gives: a journey that
+passes only because a test seeded state a real user could not create is a failed
+journey. Manufacturing a green here would be worse than reporting a blocked one.
+
+I did test whether a legitimate route existed. Supabase rejects the harness's
+@example.com addresses outright (email_address_invalid), which is exactly why the
+product signs users up through the admin client. The one documented test account,
+test-user@eventlinqs.com, has its credentials in
+docs/redesign/batch-9-2-1-evidence/test-user-credentials.md, which is gitignored at
+.gitignore:155 and has never been committed, so it is not recoverable here either.
+
+### What unblocks it
+
+One value. Paste the real SUPABASE_SERVICE_ROLE_KEY into
+C:\dev\EventLinqs\eventlinqs-app\.env.local and journeys 1, 2 and 8 can be driven
+immediately. Add STRIPE_SECRET_KEY and the remaining seven follow. Both are in
+Lawal's own dashboards and neither takes a minute.
+
+The three viewport requirement is untouched by this: nothing was driven at any
+viewport, so mobile 390, tablet 768 and desktop 1440 are all outstanding. I note
+also that scripts/journeys/harness.mjs takes a viewport argument it never uses
+(`makeJourney(id, title, _viewport)`), so the three viewport runs would need the
+harness changed, not merely invoked three times.
+
+
