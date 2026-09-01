@@ -4143,3 +4143,56 @@ rather than being tidied away: `j5-guest-transfer` and `j8-discount` produced no
 images at all, so those journeys are proven by their logs and assertions only.
 
 PASS 18, FAIL 12, all twelve the one Stripe key, unchanged.
+
+## 2026-09-02 08:35 THE LOGO, ON EVERY PAGE THIS TIME
+
+`logo-check.json` covered three viewports on ONE page and did not record which
+page, so "on every page" had never been tested. Driven properly: 18 public pages
+at 390, 768 and 1440.
+
+    PASS 54   FAIL 0   MISSING 0   not 200 or errored 0
+
+Asserted per page per viewport, derived from the component rather than from
+taste: the wordmark is present, reads EVENTLINQS, carries its gold full stop as
+a separate span, has a real box, sits inside the viewport horizontally, and
+renders at a font-size the component actually defines.
+
+### "AT EVERY SIZE" IS SATISFIED, BUT NOT THE WAY THE BRIEF IMPLIES
+
+The component offers three sizes: sm 16px, md 20px, lg 30px. Every one of the
+SEVEN call sites in the codebase asks for `md`:
+
+    site-header-client.tsx  x2      site-footer.tsx        x2
+    auth-shell.tsx          x2      dashboard-topbar.tsx   x1
+
+So the platform renders its logo at exactly ONE size, and the check confirms
+20px on all 54 page-viewport pairs. `sm` and `lg` are dead configuration: they
+exist in the type union and are never called. That is not a defect, it is
+unused surface area, and it is worth knowing before someone assumes the small
+variant is proven somewhere.
+
+Cards are covered separately: "Ticketing by EVENTLINQS." was read off the
+contact sheet on all 18 cells at 06:15, a different rendering path (satori
+composition) from the DOM one measured here.
+
+### A THIRD FALSE FINDING OF MINE, CAUGHT BEFORE IT WAS REPORTED
+
+The first run came back FAIL on /login and /signup at 390 and 768, with the
+logo at a zero box, and passing at 1440. I was one step from writing up "the
+logo disappears on mobile auth pages", which would have been a launch-blocking
+brand defect on the two pages every new user sees.
+
+Every page carries TWO marks: the header wordmark and a second copy inside the
+closed mobile navigation drawer. My probe measured `marks[0]`, and on those two
+routes the DOM order puts the hidden one first. Measuring ALL of them and
+judging the visible one: 125x20, correct, on both routes at all three viewports.
+
+`auth-shell.tsx` renders the logo twice on purpose, lines 35 and 54, which is
+the desktop brand panel plus the mobile card that the competitor benchmark in
+CLAUDE.md describes as "EB/TM desktop auth brand panel + mobile card-only". The
+pattern is implemented and both copies carry the logo.
+
+That is the third time tonight one of my own probes manufactured a defect that
+was not there: the door scanner at 390, the checkout stepper, and now this. The
+pattern is the same every time, which is worth naming: I measure the first
+element that matches a selector instead of the one a person can actually see.
