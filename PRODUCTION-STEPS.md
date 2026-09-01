@@ -700,6 +700,41 @@ which is precisely the exposure that ruling describes, and deleted the file
 immediately afterwards. The manifest entry permits it while the doctrine note
 forbids it, so those two disagree and one of them should change.
 
+### 2c. A five minute security tidy-up, whenever you want it
+
+NOT a launch blocker and I have deliberately not applied it, because applying it
+turns the build RED until you remove two values from Vercel, and that is your
+timing to choose rather than mine on launch morning.
+
+Founder ruling R3 (2026-08-03), recorded in the manifest itself: "THE DEVELOPMENT
+SCOPE MUST NOT HOLD SECRETS AT ALL". Its own audit evidence named two variables.
+One was fixed, one was not:
+
+    RESEND_API_KEY        mustBeSensitive: TRUE    gone from Development. Correct
+    GOOGLE_MAPS_API_KEY   mustBeSensitive: false   STILL readable there
+    PEXELS_API_KEY        mustBeSensitive: false   STILL readable there, billable
+
+The rule enforces itself through `storePolicyFor`, which forbids a variable on a
+non-sensitive-capable scope ONLY when `mustBeSensitive` is true. Development
+cannot take `--sensitive`, so a true flag removes the variable from it
+permanently. A false flag lets it sit there in plain text.
+
+I proved the exposure rather than asserting it: one `vercel env pull` put the
+billable Google key on this laptop in plain text, twice today. I deleted the file
+both times and verified.
+
+THE EDIT, one line each, in `src/lib/env/manifest.mjs`:
+
+    GOOGLE_MAPS_API_KEY    mustBeSensitive: false  ->  true
+    PEXELS_API_KEY         mustBeSensitive: false  ->  true
+
+Then remove both from the Development scope in Vercel. The guards will tell you
+if you miss one.
+
+SCOPE OF THE RISK, so it is weighed correctly: neither key can spend on a buyer
+behalf or reach the database. Both are billable, so this is quota theft and a
+bill, not customer data. That is why it waits for you.
+
 ### 2b. The original framing, kept for the record
 
 This one is worse than "not built", and the distinction matters for what you do

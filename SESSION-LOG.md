@@ -4585,3 +4585,66 @@ does not. Both are already configured on production. What I could not do was
 READ them, because they are stored Secret, which is correct for a secret and is
 a different statement from "they do not exist". The honest version is that
 Sentry and web push are unverifiable FROM HERE, not unconfigured.
+
+## 2026-09-02 11:25 FOUNDER RULING R3 IS HALF ENFORCED, AND THE MANIFEST SAYS WHY
+
+Following the thread from 11:00. The manifest's doctrine note records founder
+ruling R3 of 2026-08-03, "THE DEVELOPMENT SCOPE MUST NOT HOLD SECRETS AT ALL",
+and names its own audit evidence: "a live RESEND_API_KEY and a billable
+GOOGLE_MAPS_API_KEY sitting readable there".
+
+I pulled the Development scope to see which of those is still true. Names and
+lengths only, never values:
+
+    EMAIL_FROM                      len 41
+    GOOGLE_MAPS_API_KEY             len 39     <- still there
+    NEXT_PUBLIC_APP_NAME            len 10
+    NEXT_PUBLIC_SUPABASE_ANON_KEY   len 208
+    NEXT_PUBLIC_SUPABASE_URL        len 40
+    PEXELS_API_KEY                  len 56     <- also billable
+    VERCEL_OIDC_TOKEN               len 1324
+
+**RESEND_API_KEY is GONE.** That half of the ruling was acted on. The other half
+was not, and the manifest explains exactly why.
+
+### The enforcement is real but it only fires on one flag
+
+`storePolicyFor` returns 'forbidden' when `entry.mustBeSensitive` is true and the
+scope is not sensitive-capable, and Vercel refuses `--sensitive` on Development
+by design. So the rule enforces itself, but ONLY for variables declared
+`mustBeSensitive: true`.
+
+    RESEND_API_KEY        mustBeSensitive: TRUE    -> forbidden on Development,
+                                                      removed, cannot come back
+    GOOGLE_MAPS_API_KEY   mustBeSensitive: false   -> permitted, still readable
+    PEXELS_API_KEY        mustBeSensitive: false   -> permitted, still readable
+
+So the ruling's own written evidence names GOOGLE_MAPS_API_KEY as a thing that
+must not sit readable on a laptop, and its declaration is the one line that lets
+it. The doctrine and the manifest disagree, and the manifest is what executes.
+
+I demonstrated the exposure rather than describing it: one `vercel env pull`
+put a billable Google key on this machine in plain text, twice today, and I
+deleted the file both times.
+
+### The fix, and why I am NOT applying it tonight
+
+One line each:
+
+    mustBeSensitive: false   ->   true
+
+on `GOOGLE_MAPS_API_KEY` and, on the same argument, `PEXELS_API_KEY`.
+
+I am not making that change now, deliberately. The moment it lands, the env
+guards will correctly flag the values currently sitting on Development, and the
+build goes RED until somebody removes them from Vercel, which is an action only
+Lawal can take. Handing him a newly red build on launch morning over a tidy-up
+he has not chosen the timing of is the wrong trade. It is written up here and in
+PRODUCTION-STEPS.md instead, with the exact edit, so it is a five minute job
+whenever he wants it.
+
+Worth saying plainly what the risk is and is not. Neither key can spend money on
+a buyer's behalf or reach the database. Both are billable, so the exposure is
+quota theft and a bill, not a breach of customer data. That is why this is a
+tidy-up rather than a launch blocker, and why it can wait for him rather than be
+forced tonight.
