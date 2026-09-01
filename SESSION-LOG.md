@@ -24,9 +24,10 @@ at `Module not found: Can't resolve 'wbg'`. The push command is at the top of
 ## The brief's ten, in one line each
 
     1 guest magic link  PASS   2 discount claim  PASS   3 ticket email  PASS
-    4 paid publish refusal  PARTIAL (refused on venue, not money)
+    4 paid publish refusal  PASS   (closed 04:45, the money refusal now fires)
     5 cover composer  PASS     6 label guard one PASS   7 label guard two PASS
     8 seat map  PASS           9 door scanner  PASS
+    NINE OF TEN PASS.
     10 ticket purchase and refund  FAIL
 
 **THE TENTH IS TICKET PURCHASE AND REFUND.** It is an expired Stripe credential,
@@ -2931,5 +2932,141 @@ specifically, the one that names Stripe as the reason and points at the fix, is
 still unproven. The journey passes its own assertions and does not prove its own
 title, which is worth more than the green tick it prints.
 
+
+
+
+## 2026-09-02 04:45 THE PAID PUBLISH REFUSAL IS NOW PROVEN. NINE OF TEN PASS.
+
+Journey 2 was the last item I had recorded as PARTIAL: it refused publication,
+but for a MISSING VENUE, so it never reached the money check and never tested the
+thing in its own title. I chased why, and the cause was in the harness.
+
+### The harness never filled a venue, on any journey, ever
+
+`createEventThroughWizard` tried:
+
+    input[placeholder*="Venue"], input[placeholder*="Address"]
+
+Neither selector matches anything on the form. The real fields are
+
+    <label htmlFor="venue-name-13">Venue Name</label>
+    <input id="venue-name-13" placeholder="e.g. Melbourne Convention Centre">
+
+    <label htmlFor="address-14">Address</label>
+    <input id="address-14" placeholder="Street address">
+
+The word "Venue" appears in no placeholder at all, and CSS attribute selectors are
+CASE SENSITIVE by default, so `*="Address"` does not match "Street address"
+either. `fillIf` swallows a miss and returns false, so this failed silently on
+every run of every journey that builds an event, for as long as it has existed.
+
+A green tick on a test that cannot reach its own subject is worse than a red one,
+and this is the second instance of that exact shape in this harness tonight, after
+the viewport argument that was accepted and ignored.
+
+FIXED by filling via LABEL, which is what a person reads, and which the
+labelled-form-controls guard already proves exists for every control on this form
+(296 labelled, 0 unlabelled). Commit 0c503050.
+
+### Driven after the fix. The refusal is now the RIGHT refusal.
+
+    05. Publish was ALLOWED on a paid event with no Stripe
+        landed /dashboard/events/create ::
+        "Connect Stripe before publishing a paid event: that is how you get paid,
+         and we cannot take money for a ticket without it. Free events can be
+         published right now."
+
+    06. The refusal on screen
+        linkToFix    : /dashboard/payouts
+        inViewport   : true
+        announced    : true
+        scrolledPast : 631
+
+    07. The payouts screen           heading "Payouts", "Set up payouts" present
+    08. A way to connect from here?  yes
+
+    server errors 0, BLOCKERS 0, unclear steps 0
+
+That is exactly what the brief asks of this journey: "If publishing is refused,
+the refusal has to say that money is the reason and point at the fix." It names
+money, it points at /dashboard/payouts, it is in the viewport rather than a banner
+at the top of a seven step wizard, and it is announced to screen readers.
+
+Journey 4 on the brief's list moves from PARTIAL to PASS.
+
+Journey 1 was re-run afterwards and still publishes a free event end to end with
+zero blockers, so filling the venue breaks nothing that was already passing.
+
+### THE BRIEF'S TEN, FINAL
+
+    1  guest magic link              PASS
+    2  discount reservation claim    PASS
+    3  ticket email delivery         PASS
+    4  paid publish refusal          PASS   (was PARTIAL, closed above)
+    5  cover composer                PASS
+    6  label guard one               PASS
+    7  label guard two               PASS
+    8  seat map                      PASS
+    9  door scanner                  PASS
+    10 ticket purchase and refund    FAIL
+
+**NINE OF TEN PASS.** That is the number the brief opened with, and it is now true
+for a different reason than it was then: the nine are proven by driving rather
+than inherited, and the tenth is named.
+
+**THE TENTH IS TICKET PURCHASE AND REFUND END TO END**, and I cannot fix it.
+Everything either side of the card step is proven, including a complete free
+purchase, the correct one-fee breakdown, and a held seat. The stop is one line:
+
+    Stripe PaymentIntent error: Error: STRIPE_SECRET_KEY is not set
+
+Both keys the Stripe CLI holds expired, driven against the API. Vercel will not
+return the value because it is marked sensitive, on the plain pull and the branch
+scoped pull alike. `stripe login` is an interactive browser confirmation and is
+Lawal's to run. It is an expired credential, not broken code.
+
+
+
+## 2026-09-02 04:55 THE BUILD WENT RED, AND THE GUARD THAT DID IT WAS RIGHT.
+
+The rebuild after the harness fix failed:
+
+    [no-ai-authorship] FAIL - the scope holds 201 commits but WINDOW is 200.
+    [guards] 1 of 54 guard(s) FAILED. Build blocked.
+
+That is not a defect. WINDOW is a BOUND on how far back the guard must be able to
+see, not a filter, and its own header says what happens when the scope outgrows
+it: it FAILS rather than inspecting only the newest 200 and reporting a pass it
+has not earned. In its words, "enforcement which is not happening, reported as
+enforcement which is."
+
+The scope crossed 200 because this session added commits to it. It would have
+crossed on the next commit whoever wrote it.
+
+Raised to 400, about double the present scope, with the reasoning written into the
+constant so the next person to hit it knows it is a bound to raise rather than a
+threshold to argue with. It disappears entirely with EFFECTIVE_FROM the day the
+authorship history rewrite lands. Commit 098a0aa4.
+
+Verified by running the guard alone before rebuilding:
+
+    [no-ai-authorship] DEFERRED (pre-boundary): 129 of the last 400 commits
+                      up to 579e3a601 carry an AI trailer.
+    [no-ai-authorship] PASS - no commit in scope attributes this work to an AI.
+
+That second line is worth keeping: it confirms every commit I made this session is
+clean under Law 8, and that the 129 are the documented pre-boundary debt listed in
+docs/roast/LAW8-DEBT.md.
+
+### And one of my own making, fixed in the same pass
+
+    - FAIL  CRON_SECRET [local]: 17 characters, below the 32-character minimum
+
+I set CRON_SECRET to "local-cron-secret" when driving the alert cron, which is 17
+characters and violates the shape the env manifest declares. Replaced with a
+41 character random value. It was warning-level locally and would have been a hard
+failure on a deployed scope, so it is fixed rather than left.
+
+Rebuilt: BUILD EXIT 0, all 54 guards PASS, CRON_SECRET ok on every scope.
 
 
