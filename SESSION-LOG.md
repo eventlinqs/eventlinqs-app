@@ -5203,3 +5203,52 @@ been presenting it as one.
 That is the eighth time this session the answer was in a premise I was quoting
 rather than testing, and this one I had quoted from a file I saved myself at
 00:30 and never re-read.
+
+## 2026-09-02 14:50 TWO DIFFERENT FOURS, AND THE TRAP BETWEEN THEM
+
+Last premise worth testing, and it is a small one with a sharp edge. Your brief
+says "Four migrations applied" on production. My handover says four migrations
+are PENDING. Those two sentences sit in two documents you will read together at
+six in the morning, and reading them as the same four would make you skip step 3.
+
+They are different sets. Verified against the production list, zero overlap:
+
+    APPLIED, what your brief means, all dated 25 August
+        20260825000001   20260825000002   20260825000003   20260825000004
+
+    PENDING, what this gate means, dated 27 and 29 August
+        20260827000001   20260829000001   20260829000002   20260829000003
+
+The boundary is clean. Newest applied is 25 August 00:00:04, oldest pending is
+27 August 00:00:01. Nothing sits between them and nothing appears in both lists.
+
+So both statements are true at once: the work your brief calls done IS done, and
+the work this gate describes is still outstanding. That is now written into
+PRODUCTION-STEPS.md immediately before step 3, where the mistake would be made,
+rather than left as something a careful reader might work out.
+
+## WHERE THIS SESSION STANDS, PLAINLY
+
+Six consecutive rounds have applied one lesson: check the premise, not just the
+work. It has been worth it every time, and the results have almost all been
+CORRECTIONS TO MY OWN REPORTING rather than new defects in the platform:
+
+    STOP GATE 1        already done. A gate and an ordering constraint removed
+    purchase/refund    already proven on production, and this branch touches
+                       no product code on the money path. Downgraded from a
+                       blocker to a nice-to-have
+    Sentry, VAPID      already configured. I had been asking you to supply them
+    Google Maps key    already exists and is already required. Its VALUE is
+                       wrong, which is a smaller and more precise job
+    GATE 0 option (a)  withdrawn. The seeder refuses production by design
+    the two fours      disambiguated before you can act on the wrong one
+
+Your production sequence is now materially shorter than the one I handed you at
+03:00, and the difference is entirely things that were already true and that I
+had not checked.
+
+What has NOT changed: the five NOT MET requirements, and the fact that
+`SESSION-COMPLETE.txt` must not exist. The brief's ten journeys are 18 of 30 rows
+on my own driving, mobile Lighthouse is 82 against a 95 bar, the venue geocoding
+is unbuilt, the 261 seed does not exist, and the 12 GB gate was never met. None
+of those is closed by better reporting.

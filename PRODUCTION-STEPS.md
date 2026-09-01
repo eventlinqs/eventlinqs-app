@@ -311,6 +311,31 @@ Expected in the second: the JSON row for `gndnldyfudbytbboxesk` carries
 
 STOP if either disagrees.
 
+### TWO DIFFERENT FOURS. DO NOT CONFLATE THEM.
+
+Your brief says "Four migrations applied" on production. This gate says four
+migrations are PENDING. Those are DIFFERENT SETS and reading them as the same
+four would make you skip step 3 entirely. Verified 14:50, zero overlap:
+
+    THE FOUR YOUR BRIEF MEANS, all APPLIED, all dated 25 August
+        20260825000001    2026-08-25 00:00:01
+        20260825000002    2026-08-25 00:00:02
+        20260825000003    2026-08-25 00:00:03
+        20260825000004    2026-08-25 00:00:04
+
+    THE FOUR THIS GATE MEANS, all PENDING, dated 27 and 29 August
+        20260827000001    2026-08-27 00:00:01
+        20260829000001    2026-08-29 00:00:01
+        20260829000002    2026-08-29 00:00:02
+        20260829000003    2026-08-29 00:00:03
+
+The boundary is clean: the newest APPLIED is 25 August 00:00:04, the oldest
+PENDING is 27 August 00:00:01. Nothing sits between them and nothing appears in
+both lists.
+
+So the work your brief describes as done IS done, and the work this gate
+describes is still outstanding. Both statements are true at once.
+
 ### Step 3. Apply the migrations
 
 ```powershell
