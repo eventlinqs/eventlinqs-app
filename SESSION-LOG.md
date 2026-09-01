@@ -42,9 +42,20 @@ free purchase path end to end. `stripe login` is the fix and it is yours.
 ## Honest verdict
 
 The platform is in materially better shape than the start of the session
-suggested. Seven journeys pass, the Launch Kit proof is 28 of 28, accessibility is
-100 everywhere, zero dead links, and the fee a buyer is actually charged is exactly
-the locked fee. Three things stand in the way:
+suggested. All TEN journeys are now driven at THREE viewports, 30 rows, 18 PASS
+and 12 FAIL where every one of the twelve is the same missing Stripe key. The
+Launch Kit proof is 28 of 28, accessibility is 100 everywhere, zero dead links,
+the fee a buyer is actually charged is exactly the locked fee, and the
+environment locks are not merely passing but PROVEN able to fail (24 injected
+faults, every lock fires).
+
+ONE CODE DEFECT FOUND LATE AND FIXED, worth reading before anything else: every
+social card was answering HTTP 500 for the life of a server once the WebAssembly
+rasteriser had been initialised twice, which the scheduled health cron can cause
+on its own. That is the Launch Kit going dark hours after a green deploy,
+silently. Commit `a87198e4`.
+
+Three things stand in the way:
 
 1. **The empty production catalogue** (GATE 0).
 2. **No paid purchase or refund has been driven.** Both Stripe keys stored by the
@@ -55,6 +66,12 @@ the locked fee. Three things stand in the way:
    appears once, as null, and is never assigned. Scope 3.1.1 requires "Google Maps
    integration and embedded map preview" on the builder and neither exists, so this
    is a documented build gap rather than a regression.
+
+   AND THE ORDER MATTERS, which I got wrong at first. Building it is not step one.
+   `GOOGLE_MAPS_API_KEY` already exists and is already required on production, but
+   its value is the referer-restricted BROWSER key, so any geocoding wired to it
+   fails with REQUEST_DENIED. Replace that value with a server-restricted key
+   FIRST, then build. See item 20 and PRODUCTION-STEPS section 2.
 
    THIS REPLACES an earlier claim of mine that "the city page hero map is dead on
    production", which I WITHDREW. The map is correctly gated on
@@ -162,16 +179,28 @@ are still local. The remote cannot build without them.
 
 ## THINGS YOU DO NOT KNOW YET
 
-1. **The city page hero map is dead on production.** Zero Google requests from
-   /city/melbourne while the event map on the same build makes 16.
+1. **WITHDRAWN. It read "the city page hero map is dead on production".** It is
+   not. The map is correctly gated on `mapPins.length > 0`
+   (`CityLandingPage.tsx:180`) and behaves properly when it has pins. It has no
+   pins because nothing geocodes a venue, which is item 16 and is the real and
+   deeper finding. Left visible rather than deleted so the mistake is on record.
 2. **43 proper nouns are corrupted** by a find-replace of "cultural" to
    "community": "Multicommunity Council of the Northern Territory", "National
    Multicommunity Festival" and 41 more, on the pages that are 88 percent of your
    indexed surface. Needs your ruling on whether proper nouns are exempt.
-3. **80 percent of your sitemap is /community** (441 of 552) against the 10 to 20
-   percent lock; 552 URLs against the 586 submitted.
-4. **`ORDER_ACCESS_SECRET` is Production only.** Absent from Preview, and the code
-   fails CLOSED, so the guest magic link cannot work on ANY preview deployment.
+3. **80 percent of your sitemap is /community** (441 of 552), but REFRAMED at
+   10:35 after driving those pages. They are not thin content: each renders "The
+   first African event on EventLinqs could be yours." with a live CTA to
+   `/contact?topic=organiser&interest=<slug>` that resolves 200 and honours both
+   parameters. They are 441 organiser-RECRUITMENT pages, which is your ranked
+   growth lever number one at scale. The ratio is a pre-launch marketplace shape
+   and self-corrects: 26 percent at 261 events, 20 percent at 376.
+4. **`ORDER_ACCESS_SECRET` is Production only, BY DESIGN.** I first called this a
+   gap; it is not. The manifest reads `optionalOn: [preview,development]` and
+   explains why: missing means guest links fail CLOSED rather than falling back to
+   a public dev constant that would let anyone open any order by guessing an id.
+   The narrow true statement: the guest magic link is untestable on any preview
+   until you set it there. Nothing is broken.
 5. **`printConsoleEmail` prints an HTML-escaped link**, so every link it emits with
    more than one query parameter is broken for a human copying it. The journey
    harness works around it at line 99; nothing else does.
@@ -208,6 +237,72 @@ are still local. The remote cannot build without them.
     (3.6) likewise. Both sit in Module 8, already marked "Not started" in May, so
     neither is new, but the platform goes to market without the section its own
     scope names as the moat. That should be a decision, not a surprise.
+
+19. **GATE 0 OPTION (a) IS WITHDRAWN, and this is the most consequential thing
+    I found late.** I spent several rounds offering "seed production" as one of
+    three neutral options. `scripts/seed-national-catalogue.mjs` IS the
+    261-across-20-cities catalogue, and it REFUSES production by a hard
+    guardrail, on purpose. Worse, `is_seed_data` is honoured in exactly ONE place
+    in the codebase (`digest.ts:240`, the email digest) and filters NO public
+    surface. Driven on TEST: a seed event renders HTTP 200 with "Get tickets" at
+    AUD 49.00, carries no marker that it is not real, and sits in the sitemap. A
+    seeded production catalogue would be 261 fabricated purchasable events in
+    front of real buyers and Google. The guardrail is the correct answer, already
+    encoded.
+
+20. **`GOOGLE_MAPS_API_KEY` is a landmine.** It exists on Production, Preview and
+    Development, 137 days old, and the manifest describes it as "Google Maps
+    server key: geocoding at seed and publish time", requiredOn production and
+    preview. Its value is byte-identical to the browser key (sha256 3dcc7ad828a5),
+    so it is referer-restricted and REQUEST_DENIED for both Geocoding and Places.
+    Nothing reads it, so nothing is broken today. Tomorrow, whoever builds the
+    venue geocoding will wire to it, ship, and get a production failure that looks
+    like their code. REPLACE ITS VALUE; do not add a new variable.
+
+21. **Sentry and web push are CONFIGURED, not missing.** I told you for several
+    rounds that you needed to supply a Sentry DSN and a VAPID key. Both are set on
+    Production and Preview (122 and 40 days old). I could not READ them because
+    they are stored Secret, which is correct and is a different statement from
+    unset. Push is unproven for one reason and it is not a credential: it needs a
+    real browser to grant permission.
+
+22. **Founder ruling R3 is half enforced.** "The Development scope must not hold
+    secrets at all" (2026-08-03). Its own audit evidence named two variables.
+    `RESEND_API_KEY` is gone from Development, correctly, because it is declared
+    `mustBeSensitive: true` and Vercel refuses sensitive there. `GOOGLE_MAPS_API_KEY`
+    and `PEXELS_API_KEY` are declared `mustBeSensitive: false`, so both are still
+    readable in plain text by anyone with project access. One line each fixes it.
+    I did not apply it: it turns the build red until you remove the values, and
+    that timing is yours. Quota theft and a bill, not customer data.
+
+23. **The environment locks are PROVEN, which is stronger than "they pass".** Two
+    checks nobody had run this session. LOCK 3 live: 93 scope records across 39
+    variables, every manifest expectation holds. And `env-locks-verify.mjs`: 24
+    deliberately injected faults, every lock observed to fire and name its rule,
+    exit 0. The environment is correct AND the thing that says so is proven able
+    to say otherwise. Among what it catches: a publishable key paired with a
+    secret key from a DIFFERENT Stripe account, and a test key on production where
+    "production would take card details and settle NOTHING".
+
+24. **A design law had no gate and was being broken.** `ui/glass-card.tsx` carried
+    `backdrop-blur-2xl` on a variant two live surfaces render, against a ban
+    written TWICE in CLAUDE.md. Fixed in `a9a3a346` and now gated by
+    `no-glassmorphism.mjs`, the 55th blocking guard. Confirmed three ways
+    including a rendered-DOM query returning zero.
+
+25. **Every social card was one initialisation away from 500ing forever.** Found
+    live: all eighteen returned HTTP 500 with "Already initialized. The initWasm()
+    function can be used only once." A single transient failure poisoned the
+    process permanently. Fixed in `a87198e4` with a regression test proved both
+    ways. The health check meant to guard the cards could itself never have gone
+    green: it called the rasteriser with an empty font list.
+
+26. **Mobile Lighthouse is one metric, not a performance problem.** 82/90/93
+    against the 95 bar, and largest-contentful-paint costs 16.0, 10.3 and 6.8 of
+    the lost points while every other metric sits between 96 and 100. 18 of 20
+    homepage images are optimised on demand from remote origins, so it is a cache
+    warmth property: worst for one visitor per image per deploy, near free after.
+
 
 ## The correction I owe you
 
@@ -4838,3 +4933,48 @@ tier 2, a real browser for push, and the Google key replacement.
 I am not going to manufacture a tenth round of diagnostics to look busy. If the
 next instruction is the same, the honest answer is that the remaining work needs
 Lawal, and the most useful thing I can do is keep the handover exact.
+
+## 2026-09-02 13:05 THE THING HE READS FIRST WAS 4700 LINES OUT OF DATE
+
+The brief is explicit that the summary at the TOP must carry "anything you
+discovered that Lawal does not yet know about, however small", and that the log
+must be good enough for a cold restart. This log is now 4840 lines and the first
+140 of them, the part he actually reads, carried NONE of the last six rounds of
+findings. Checked rather than assumed:
+
+    seed-national-catalogue   0 mentions in the summary
+    is_seed_data              0
+    GOOGLE_MAPS_API_KEY       0
+    LOCK 3                    0
+    recruitment               0
+    backdrop                  0
+
+Worse than missing: three items at the top were things I had since WITHDRAWN or
+reframed further down, and a reader who stopped after the summary would have
+acted on all three.
+
+    item 1  "the city page hero map is dead on production"  WITHDRAWN at 04:10,
+            still standing at the top nine hours later
+    item 3  the 80 percent community sitemap, framed as a positioning breach,
+            after I had established at 10:35 that those are working recruitment
+            pages with a live CTA
+    item 4  ORDER_ACCESS_SECRET framed as a gap, after establishing at 11:50
+            that its absence from Preview is the designed fail-closed state
+
+All three corrected in place, with the withdrawn one left visible and marked
+rather than deleted, so the mistake stays on the record.
+
+Eight new findings added as items 19 to 26, in the order they matter: GATE 0
+option (a) withdrawn, the GOOGLE_MAPS_API_KEY landmine, Sentry and VAPID being
+configured rather than missing, founder ruling R3 half enforced, the env locks
+proven to fire, the glassmorphism law that had no gate, the social cards that
+were one initialisation from 500ing forever, and mobile Lighthouse being one
+metric rather than a performance problem.
+
+The honest verdict is current too: it said "seven journeys pass" when all ten are
+now driven at three viewports, and its map item now leads with the ORDER of the
+fix, because I had that backwards and building before replacing the key value
+would have produced code that cannot run.
+
+This was the right use of a round. A 4840-line log with a stale first page is a
+log that misinforms confidently, and the founder reads the first page.

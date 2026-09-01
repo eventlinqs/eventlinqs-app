@@ -143,7 +143,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | F3 | What FAILED, with diagnosis and what was tried | MET | Present |
 | F4 | What is waiting at the two stop gates | MET | Added 06:25 |
 | F5 | Free disk remaining | MET | Added 06:25 |
-| F6 | Anything discovered Lawal does not know, however small | MET | "THINGS YOU DO NOT KNOW YET" |
+| F6 | Anything discovered Lawal does not know, however small | **MET**, refreshed 13:05 | 26 numbered items. Three that had been WITHDRAWN or reframed further down were still standing at the top and are now corrected in place; eight findings from the last six rounds added as items 19 to 26 |
 | F7 | Honest assessment of readiness, and precisely what stands in the way | MET | "Honest verdict" |
 | M1 | Save the brief verbatim to `C:\dev\BRIEF.md` | MET | 416 lines |
 | M2 | After every task commit SESSION-LOG.md to `ops/session-log` and push | MET | Pushed after every task |
