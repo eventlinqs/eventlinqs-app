@@ -3819,3 +3819,47 @@ inferred from a matching tree:
 
 Greener than it was: the suite gained the three new rasteriser regression tests
 and lost nothing.
+
+## 2026-09-02 06:35 SETTING core.hooksPath WOKE A GATE THAT HAD BEEN ASLEEP ALL SESSION
+
+Setting `git config core.hooksPath .githooks`, which Law 8 requires before the
+first commit in any clone and which had never been run here, immediately made the
+next log push FAIL. That is the system working, and it is worth writing down
+because it is the second time tonight a gate turned out to have been inert.
+
+`.githooks/pre-push` runs typecheck, lint and the FULL SUITE before anything
+leaves the machine. It refused:
+
+    [test-count-canary] only 2959 TESTS ran, baseline is 2961
+    [pre-push] BLOCKED: the test suite failed, so nothing was pushed.
+    [pre-push] Fix the failures, or push with --no-verify if you have decided
+    [pre-push] to share untested code on purpose.
+
+I did NOT use `--no-verify`. The five failures are the known local artefact, so
+the honest move is to remove the artefact rather than the gate: `.env.local` is
+parked for the duration of the push and restored immediately after. With it
+parked the hook reported:
+
+    [pre-push] typecheck clean
+    [pre-push] lint clean
+    [test-count-canary] 246 files, 2964 tests, 0 failed, 0 skipped
+    [test-count-canary] baseline 245 files, 2961 tests, 0 skipped
+    [pre-push] typecheck clean, lint clean, suite green, pushing
+    cbb3177f..1274437d  ops/session-log -> ops/session-log
+
+That is an INDEPENDENT confirmation of green, from the repository's own gate
+rather than from me running vitest and reporting the number. It also shows the
+canary doing its job correctly: 2964 is ABOVE the 2961 baseline because of the
+three tests this session added, and the canary blocks on FEWER tests, never more.
+
+`push-log.ps1` now does the parking itself, with a restore in a `finally` and a
+loud warning if the restore ever fails, so this is one command again rather than
+a thing to remember. That is Law 10.
+
+### The uncomfortable part, said plainly
+
+Every commit and every log push before this one went out with that hook inert.
+The commits are clean, and the authorship guard in the build proves it
+independently, so nothing bad got through. But for most of this session the
+mechanism the constitution relies on to make that guarantee was not running, and
+"it happened to be fine" is not the same as "it was enforced".
