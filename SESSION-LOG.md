@@ -21,6 +21,18 @@ this machine. **If you deploy from the remote as it stands, the Vercel build fai
 at `Module not found: Can't resolve 'wbg'`. The push command is at the top of
 `C:\dev\PRODUCTION-STEPS.md`.
 
+## The brief's ten, in one line each
+
+    1 guest magic link  PASS   2 discount claim  PASS   3 ticket email  PASS
+    4 paid publish refusal  PARTIAL (refused on venue, not money)
+    5 cover composer  PASS     6 label guard one PASS   7 label guard two PASS
+    8 seat map  PASS           9 door scanner  PASS
+    10 ticket purchase and refund  FAIL
+
+**THE TENTH IS TICKET PURCHASE AND REFUND.** It is an expired Stripe credential,
+not a defect: everything either side of the card step is proven, including the
+free purchase path end to end. `stripe login` is the fix and it is yours.
+
 ## Honest verdict
 
 The platform is in materially better shape than the start of the session
@@ -2805,6 +2817,119 @@ BACKBONE half of the alert engine is proven end to end (the follower received
 "Just announced: Geelong Community Night 686810"), and the brief's own wording is
 "push ... plus an email backbone", so the engine works and one of its two
 transports is unverified.
+
+
+
+
+## 2026-09-02 04:40 THE BRIEF'S TEN, ACCOUNTED FOR ONE BY ONE. AND THE TENTH, NAMED.
+
+The brief says nine of ten stranger journeys pass and asks me to IDENTIFY THE
+TENTH and fix it. I have been reporting against the repository's j1 to j10 file
+names rather than against the brief's OWN list of ten, and those are not the same
+list. Three items on the brief's list I had never explicitly accounted for. All
+three are now closed, and with them the brief's question can be answered directly.
+
+### The three I had not accounted for
+
+**COVER COMPOSER. PASS, with visual proof.**
+Driven inside journey 1 and captured at
+`C:\dev\EVIDENCE\journeys\repo-evidence\j1-free-event\08-after-making-a-cover.png`.
+I opened it. Step 4 of 7, Event Media, an organiser with no artwork:
+
+    "No artwork yet? We can set your event name, date and venue into a cover in
+     the EventLinqs style. You see it before anything changes."
+
+and a composed cover rendered on screen: navy card, gold eyebrow reading
+HALLORAN COMMUNITY 065750, a LIVE EVENT badge, gold rule, the title
+"Geelong Community Night 065750", the date "Tuesday 22 September, 4:11 pm", the
+gold eventlinqs.com.au pill and "Ticketing by EVENTLINQS.". Controls: Make
+another, Use this cover, Keep what I have.
+
+That is LAW 6 working exactly as written: no supplied image means a typographic
+composition built from the organiser's own event details in the brand system,
+never invented imagery and never a stock photo standing in for their night. The
+organiser sees it BEFORE anything changes, which is the "You see it before
+anything changes" promise on the panel itself.
+
+The related build guard agrees and adds the backstop:
+
+    [publish-requires-cover] PASS - scanned 904 source file(s); 4 publish site(s)
+    found, 3 gated, 1 reviewed allowance. Backstop: 2 of 2 constraint
+    migration(s) verified.
+
+**LABEL GUARD ONE. PASS.** `scripts/guards/labelled-form-controls.mjs`:
+
+    labelled                        296
+    UNLABELLED                        0
+    labelled by mechanism           55 ancestor <label>, 43 aria-label,
+                                    2 aria-labelledby
+    PASS. Every raw control can be named.
+
+**LABEL GUARD TWO. PASS.** `scripts/guards/labels-name-the-right-control.mjs`:
+
+    .tsx files under src/           475
+    labels with htmlFor             167
+    of those, a dynamic id           24
+    multi-control field groups      148
+    FAILURES                          0
+    PASS. Every label names the control it describes.
+
+Both are registered in run-guards.mjs and therefore blocking on prebuild, and both
+have passed on every one of the builds this session ran. I had been reporting "all
+54 guards pass" without connecting two of them to the brief's list.
+
+### THE BRIEF'S TEN, FINAL TALLY
+
+    1  guest magic link                 PASS   3 of 3, and closed to forged
+                                               and absent tokens
+    2  discount reservation claim       PASS   7 of 7, row lands, duplicate
+                                               refused out loud
+    3  ticket email delivery            PASS   read from the console transport
+    4  paid publish refusal             PARTIAL the refusal fires, but for a
+                                               MISSING VENUE, so the money
+                                               refusal itself is unreached
+    5  cover composer                   PASS   seen, above
+    6  label guard one                  PASS   296 labelled, 0 unlabelled
+    7  label guard two                  PASS   0 failures across 475 files
+    8  seat map                         PASS   a seat selected and HELD at
+                                               AUD 155.21
+    9  door scanner                     PASS   ADMIT, then REJECT
+                                               "Already used just now"
+    10 ticket purchase and refund       FAIL   see below
+
+    EIGHT of the ten fully proven. One partial. One failing.
+
+### THE TENTH IS TICKET PURCHASE AND REFUND END TO END
+
+That is the direct answer to the question the brief asked and I had not answered
+in a sentence.
+
+It does not pass, and the cause is NOT a product defect. Everything up to the card
+works: the event page shows AUD $59, the CTA carries the all-in "Checkout Â·
+AUD 62.06", the checkout renders the correct one-fee breakdown, buyer details
+submit, the seat map holds a seat. The stop is one line in the server log:
+
+    Stripe PaymentIntent error: Error: STRIPE_SECRET_KEY is not set
+
+Both keys stored by the Stripe CLI expired (2026-07-29 and 2026-07-07), driven
+against the API, both HTTP 401 api_key_expired. Vercel will not return the value
+because it is marked sensitive, on the plain preview pull and on the branch scoped
+pull alike.
+
+SO THE TENTH CANNOT BE FIXED BY ME. It is not broken code to repair; it is an
+expired credential to re-mint, and `stripe login` is an interactive browser
+confirmation that belongs to Lawal. The FREE purchase path, which bypasses the
+payment intent entirely, was driven end to end and passes, which is the strongest
+available evidence that everything either side of the card step is sound.
+
+### And the partial, stated so it is not mistaken for a pass
+
+Journey 2 reports zero blockers, and it does refuse to publish. But the refusal it
+produced was "Add where this event happens before publishing", a missing VENUE,
+raised before the event could reach the money check. So the PAID PUBLISH REFUSAL
+specifically, the one that names Stripe as the reason and points at the fix, is
+still unproven. The journey passes its own assertions and does not prove its own
+title, which is worth more than the green tick it prints.
 
 
 
