@@ -33,6 +33,26 @@ rasteriser has been initialised twice, which the scheduled health cron can cause
 on its own. Without it, the Launch Kit can go down on production hours after a
 green deploy, silently, and stay down until the lambda recycles.
 
+EVIDENCED 15:05, not inferred. This claim drives your first action, so here is
+the whole chain rather than my word for it:
+
+  1. `ea6df9f5` was the verified HEAD when this session began. TASK 1 proved
+     `git rev-parse HEAD` equalled it, with a clean status and a clean fsck.
+  2. Building THAT tree is what produced the failure. It was the first thing
+     this session did and the first thing it fixed.
+  3. The bug is still visible in that commit today:
+
+         git show ea6df9f5:src/lib/broadcast/card-raster.ts
+
+         80:  const wasmPath = require_.resolve('@resvg/resvg-wasm/index_bg.wasm')
+         81:  await initWasm(await readFile(wasmPath))
+
+     Turbopack statically analyses that `require_.resolve` and fails the build
+     with `Module not found: Can't resolve 'wbg'`.
+  4. `571b7b15` changes exactly that file plus `next.config.ts`, and `ea6df9f5`
+     is its ancestor, so the fix is genuinely absent from the remote.
+
+
 If you deploy from the remote as it stands, the Vercel build FAILS at
 `Module not found: Can't resolve 'wbg'`, because the resvg fix is one of those
 twelve. Push the branch before step 5, or the deploy cannot succeed:

@@ -5252,3 +5252,49 @@ What has NOT changed: the five NOT MET requirements, and the fact that
 on my own driving, mobile Lighthouse is 82 against a 95 bar, the venue geocoding
 is unbuilt, the 261 seed does not exist, and the 12 GB gate was never met. None
 of those is closed by better reporting.
+
+## 2026-09-02 15:05 THE LAST UNCHECKED PREMISE, AND THIS ONE HOLDS
+
+Six rounds of checking premises have overturned six of my own claims. The last
+one standing was the boldest, repeated in every version of the handover and the
+thing that drives Lawal's FIRST action:
+
+    "The remote is still sitting on the commit that DOES NOT BUILD."
+
+I had never separated "I saw a build fail" from "that specific commit fails". So
+I checked, and this time the claim survives, with a complete chain:
+
+  1. `ea6df9f5` was the VERIFIED HEAD at TASK 1: rev-parse matched, status
+     clean, fsck clean.
+  2. Building that tree is what produced the failure. It was the first thing
+     this session did and the first thing it fixed.
+  3. The bug is still visible in the commit today:
+
+         git show ea6df9f5:src/lib/broadcast/card-raster.ts
+         80:  const wasmPath = require_.resolve('@resvg/resvg-wasm/index_bg.wasm')
+
+     which is exactly the `require_.resolve` Turbopack statically analyses into
+     `Module not found: Can't resolve 'wbg'`.
+  4. `571b7b15` touches precisely that file and `next.config.ts`, and `ea6df9f5`
+     is its ancestor, so the fix is genuinely absent from the remote.
+
+PRODUCTION-STEPS.md now carries that chain instead of the assertion.
+
+### The scoreboard on premise-checking, since it is the lesson of the day
+
+    STOP GATE 1 must run first          FALSE, already done
+    purchase and refund unproven        FALSE, proven on production, and this
+                                        branch touches no product money code
+    you must supply a Sentry DSN        FALSE, set 122 days ago
+    you must supply a VAPID key         FALSE, set 40 days ago
+    mint a new Google server key        FALSE, one exists and is required. Only
+                                        its VALUE is wrong
+    seed production is an option        FALSE, the seeder refuses by design
+    the remote does not build           TRUE, and now evidenced
+
+Six wrong, one right. Every one of the six made his job sound larger than it is,
+and every one was a premise I quoted from the brief or from my own earlier notes
+instead of testing. The one that held is the one I had actually observed.
+
+That is the whole lesson of this session in a line: **I was reliable about what I
+drove and unreliable about what I repeated.**
