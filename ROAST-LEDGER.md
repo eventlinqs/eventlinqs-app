@@ -144,7 +144,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | F4 | What is waiting at the two stop gates | MET | Added 06:25 |
 | F5 | Free disk remaining | MET | Added 06:25 |
 | F6 | Anything discovered Lawal does not know, however small | **MET**, refreshed 13:05 | 26 numbered items. Three that had been WITHDRAWN or reframed further down were still standing at the top and are now corrected in place; eight findings from the last six rounds added as items 19 to 26 |
-| F7 | Honest assessment of readiness, and precisely what stands in the way | MET | "Honest verdict" |
+| F7 | Honest assessment of readiness, and precisely what stands in the way | **MET**, properly, 16:45 | The old "Honest verdict" described state and listed obstacles but never ANSWERED the question. It now does, directly: THE PLATFORM IS READY, THE MARKETPLACE IS NOT. Deploy tonight (the branch touches no money-path product code and carries a real production fix); do not go to market tomorrow (production holds one event, named payment-verification-test, indexed by Google). Two decisions, taken separately |
 | M1 | Save the brief verbatim to `C:\dev\BRIEF.md` | MET | 416 lines |
 | M2 | After every task commit SESSION-LOG.md to `ops/session-log` and push | MET | Pushed after every task |
 | M3 | Create SESSION-COMPLETE.txt ONLY when every task is done and both gates written | MET | Correctly ABSENT |
