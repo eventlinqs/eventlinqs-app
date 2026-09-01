@@ -3504,3 +3504,83 @@ j7-seated reports and then never exits. It burned 622s at mobile and 166s at
 tablet before being killed, and 242s at desktop under a deliberate 240s box. Any
 unattended runner that waits on it stalls indefinitely. The journey is fine; the
 process lifecycle is not.
+
+## 2026-09-02 05:55 THE TASK 8 GATES NOTHING HAD ACTUALLY CHECKED
+
+### The trust-signal law was only ever half tested
+
+`check-trust.mjs` proved trust signals were ABSENT from the marketing pages and
+stopped there. The brief asks for two more things it never tested: "a small icon
+row below 'Get tickets' on the event detail page" and "full trust treatment on
+checkout near the payment form". A gate that only tests absence passes just as
+happily on a build where the trust signals were DELETED everywhere, which is the
+opposite of what the law is for.
+
+Both halves now driven, `EVIDENCE\gates\trust-presence.json`:
+
+    ABSENT, 6 of 6   /  /events  /events/browse/melbourne  /pricing
+                     /organisers  /about
+    PRESENT          event detail carries aria-label="Trust signals",
+                     "Secure checkout | Community organiser | Refund policy",
+                     20px tall, BELOW the Get tickets control
+
+Two of those absence surfaces are new: /events and /events/browse/melbourne were
+recorded as "not 200, could not check" last time because they answered HTTP 500
+for want of a service role key. They answer 200 now and they are clean.
+
+One caveat I am not going to dress up: the "Get tickets" control the position
+check anchored to reports y=-53, which means it matched a sticky element rather
+than the main in-flow button. The row sits at y=589 so it is genuinely below it,
+but the anchor is weaker evidence than I would like and I am saying so.
+
+### Taxonomy: the SOUNDS families are exactly right
+
+All twelve the brief names render, from `sounds-rail.tsx`:
+
+    Electronic & Dance   Country        Indie & Rock      Hip-Hop & RnB
+    Pop                  Folk & Acoustic Blues & Roots    Afrobeats & Amapiano
+    Latin                Caribbean & Dancehall  Jazz & Soul  Metal & Hardcore
+
+First Nations is genuinely first in the RENDERED order: "Your people, your
+events" opens with Aboriginal & Torres Strait Islander. The tagline renders
+exactly, as its own homepage rail: "Every community. Every event. One platform."
+
+I ALSO GOT THIS WRONG EARLIER IN THE SAME HOUR and am correcting it. I said the
+community families were absent from `src/` and therefore came from the database.
+That was a broken grep of mine (`-F` with a misplaced `--include`, returning
+false zeros for terms another grep had just found). They are all in code:
+south-asian 45 hits, mediterranean 30, pride 40, first-nations 6, pasifika-maori
+2. There is also a whole `/faith/[faith]` dimension I had not seen. The platform
+carries 21 heritages, 5 faith communities and 12 sounds, which is RICHER than the
+brief's seven-family list, not poorer.
+
+### Banned terms: clean
+
+    diaspora, friends-launch, culture-first, "Where the culture gathers"   0 each
+    a /culture route                                                       none
+    Multicommunity, the proper-noun corruption found earlier               0 repo-wide
+
+Twelve `culture` hits survive in src and every one is legitimate: an AI prompt
+instruction telling the model never to use the word, a reserved-slug blocklist so
+nobody can claim /culture, migration comments, and the 301 redirects that keep
+the old URLs alive (/cultures to /communities, /culture/:slug to /community/:slug,
+arts-culture to arts-community). Keeping those redirects is correct SEO, not a
+banned term surviving.
+
+### The rejected design patterns, checked in the RENDERED output
+
+    scroll-hijack, holographic, WebGL, three.js, NLP search   absent from src
+    bento, glassmorphism, backdrop-blur                       ZERO in the rendered
+                                                              HTML of /, /events,
+                                                              an event detail page,
+                                                              /events/browse/melbourne
+                                                              and /pricing
+
+Worth naming rather than burying: `src/components/ui/glass-card.tsx` DOES exist
+and does carry `backdrop-blur-2xl`, and it is imported by `event-bento-tile.tsx`
+and `featured-event-hero.tsx`. It did not render on any surface I fetched. So
+glassmorphism is LATENT in the codebase rather than shipped. That is a different
+thing from absent, and if one of those components is ever put on a page the
+rejected treatment arrives with it. Most of the other `glassmorphism` hits are
+comments recording that it is banned, which is the codebase agreeing with the
+brief.
