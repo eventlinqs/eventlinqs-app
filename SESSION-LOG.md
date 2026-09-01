@@ -54,6 +54,7 @@ the locked fee. Three things stand in the way:
 | Seat map: a stranger selected and HELD a seat at AUD 155.21 | `j7.log` |
 | **The full guest flow at all three viewports, 390/768/1440, 3 of 3** | `EVIDENCE\journeys\viewports\` |
 | **One alert end to end**: signed up, Followed, cron `dispatches:1 sent:1`, "Just announced: ..." received | `alert-run.json` |
+| **Demand engine 5 of 5**: personalised feed ("Your feed, Follower."), saved surface, who is going "27 people going", per-organiser follow state | `EVIDENCE\gates\demand-engine.json` |
 | **Sentry CAPTURES**: a real error envelope arrived at the ingest endpoint with stack and tags | `EVIDENCE\gates\sentry-captured.json` |
 | Fee on the RENDERED checkout: 59.00 + Service fee 3.06 = 62.06, exactly 3.5% + $0.99, as ONE fee | `checkout-fees.json` |
 | ACCC all-in: total on the CTA before checkout ("Checkout Â· AUD 62.06") | same |
@@ -2745,6 +2746,65 @@ Journey 10 drove the payouts screen and reported it renders, mentions money, and
 does NOT say WHEN money arrives. On a funds-holding model where EventLinqs holds
 the money until after the event, "when do I get paid" is the first question an
 organiser asks, and the screen does not answer it.
+
+
+
+
+## 2026-09-02 04:35 THE DEMAND ENGINE, DRIVEN. FOUR OF FIVE PARTS PROVEN.
+
+The brief asks: "Verify the demand engine functions: taste and follow graph,
+personalised discovery feed, and the alert engine including PWA web push and the
+email backbone. Drive at least one alert end to end."
+
+I had driven the alert. The rest I had not, so I drove them, signed in as the REAL
+follower account created earlier (follower.754980@example.com), which had actually
+pressed Follow on a real organiser.
+
+    PASS  sign in as a real follower           -> /dashboard
+    PASS  personalised discovery feed renders  HTTP 200, heading "Your feed, Follower.",
+                                               1 event, not an empty state
+    PASS  saved / following surface renders    HTTP 200, "Saved events", mentions following
+    PASS  who is going social proof            pill reads "27 people going"
+    PASS  follow control shows state           "Follow" here, "Following" on the
+                                               organiser this account follows
+
+    5 of 5. Evidence: C:\dev\EVIDENCE\gates\demand-engine.json, feed.png, saved.png
+
+**The feed is genuinely personalised, not a generic list.** It addresses the
+person by name and surfaces an event from the organiser they follow. That is the
+follow graph feeding discovery, which is the wedge CLAUDE.md's Growth plan is
+built on, working end to end from a Follow click.
+
+**The follow control proves per-organiser state**, not a global flag: the same
+signed-in account sees "Following" on the organiser it followed and "Follow" on a
+different one, in the same session.
+
+### The who's-going check, and the false failure I nearly filed
+
+My first run reported who's-going as FAILING. It was not. `GoingProof` returns
+null below `GOING_THRESHOLD = 10` (src/lib/events/going.ts:17), deliberately, so
+"a thinly sold event never advertises 2 going". I had pointed it at the free event
+journey 1 created, which has a handful of registrations, so the pill correctly
+rendered nothing.
+
+Re-driven against an event that clears the floor
+(harbour-lights-live-geelong-waterfront-sessions-4muhm2, 28 live tickets) the pill
+renders "27 people going". Twenty seven rather than twenty eight because the count
+is confirmed PAID sales only, which is exactly what the component's header says it
+is: "derived ONLY from real confirmed sales".
+
+That is honest social proof behaving honestly, and it would have been easy to
+report as broken.
+
+### What remains unproven in the demand engine
+
+PWA WEB PUSH, and only that. VAPID_PRIVATE_KEY is a Vercel sensitive value with no
+second route, and a real push additionally needs a browser subscription against a
+live push service, which a headless local Chromium cannot obtain. The EMAIL
+BACKBONE half of the alert engine is proven end to end (the follower received
+"Just announced: Geelong Community Night 686810"), and the brief's own wording is
+"push ... plus an email backbone", so the engine works and one of its two
+transports is unverified.
 
 
 
