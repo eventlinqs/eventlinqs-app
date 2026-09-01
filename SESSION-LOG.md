@@ -3122,6 +3122,11 @@ scope document and the mechanism to satisfy it was never designed.
 
 ### A correction to the brief's own framing
 
+WITHDRAWN AT 05:00. The paragraph below is WRONG and the entry immediately after
+this one explains why: 18 is the number of FEATURE SECTIONS in scope section 3,
+12 is the number of DELIVERY MODULES that carve them up, and I compared the two.
+The brief was right. Left in place rather than deleted so the mistake is visible.
+
 The brief calls this "the authoritative 12 module scope" and instructs me never to
 invent module numbers from memory. Counted rather than assumed, section 3 carries
 EIGHTEEN feature sections, not twelve:
@@ -3249,6 +3254,7 @@ hand afterwards, which is why only those two are reported above.
 
 A file existing is not a working feature, and I have not audited the other ten
 modules. Their May statuses stand, unverified by this session.
+
 
 
 
