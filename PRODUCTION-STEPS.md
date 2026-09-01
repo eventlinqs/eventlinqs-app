@@ -918,12 +918,27 @@ end on the live project, which needs one deliberate error after the deploy:
 
 After you have it:
 
+CORRECTED 15:25. I previously wrote `node scripts/verify/sentry-capture.mjs`
+here, hedged with "if present". It is NOT present. I guessed a filename instead
+of listing the directory, which is the same habit as everything else today. What
+actually exists:
+
+    scripts/verify/sentry-pre-init-capture-proof.mjs
+    scripts/verify/sentry-replay-window.mjs
+    the route  /api/health/sentry-error
+
+The real check, AFTER the deploy, using the route that exists:
+
 ```powershell
-$env:SENTRY_DSN = "<the DSN>"
-node scripts/verify/sentry-capture.mjs      # if present, else trigger
-                                            # /api/health/sentry-error and look
-                                            # in the Sentry issue stream
+# Fire a deliberate server error on production.
+Invoke-WebRequest -Uri "https://www.eventlinqs.com.au/api/health/sentry-error" `
+  -UseBasicParsing -TimeoutSec 60 -SkipHttpErrorCheck | Select-Object StatusCode
 ```
+
+Then open the Sentry issue stream for the project and confirm the event arrived,
+with a stack and the release tag. Configuration is not proof: the DSN being set
+(and it IS set, 122 days, on Production and Preview) says the client is pointed
+somewhere. Only an event landing in the project proves the far end.
 
 ### 4. The VAPID keys   ALREADY SET. Push needs a browser, not a key
 

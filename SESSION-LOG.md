@@ -5298,3 +5298,50 @@ instead of testing. The one that held is the one I had actually observed.
 
 That is the whole lesson of this session in a line: **I was reliable about what I
 drove and unreliable about what I repeated.**
+
+## 2026-09-02 15:25 I CHECKED WHETHER MY OWN HANDOVER POINTS AT REAL FILES
+
+The brief says the log must be good enough for a cold restart. I have cited
+dozens of evidence paths across three documents over fifteen hours and never once
+checked that they resolve. A handover that points at a missing file is worse than
+one that cites nothing, because the reader trusts it and then cannot find the
+proof.
+
+`verify-handover-paths.mjs` extracts every cited path and tests it:
+
+    distinct paths cited across the three documents   93
+      resolve                                         75
+      do not resolve                                  18
+
+Of the eighteen, THIRTEEN are my regex rather than my citations:
+
+    three   a glob truncated at the hyphen: `axe-*.json`, `homepage-*.png`,
+            `j8-*.log` all resolve, the pattern just stopped before the asterisk
+    ten     `.tsx` matched as `.ts`, because my alternation put `ts` first, so
+            every React file came back "missing" by one character
+
+THREE are the TASK 4 files that were genuinely lost to the OneDrive sync
+(`MOVE-OFF-ONEDRIVE.md`, `move-off-onedrive.mjs`,
+`PRE-MERGE-BLOCKER-SWEEP-2026-08-29.md`). Citing them as absent is correct: the
+log discusses them precisely because they are gone.
+
+### THE ONE THAT MATTERED
+
+`scripts/verify/sentry-capture.mjs` DOES NOT EXIST, and I put it in
+PRODUCTION-STEPS.md as a command for Lawal to run. I hedged it with "if present",
+which is not good enough: I guessed a filename instead of listing the directory.
+
+What is actually there:
+
+    scripts/verify/sentry-pre-init-capture-proof.mjs
+    scripts/verify/sentry-replay-window.mjs
+    the route  /api/health/sentry-error
+
+Replaced with a check that uses the route that exists: fire
+`/api/health/sentry-error` on production after the deploy, then confirm the event
+landed in the Sentry issue stream with a stack and a release tag. The DSN being
+set proves the client is pointed somewhere; only an event arriving proves the far
+end.
+
+That is the same habit one more time, in the one place it would have wasted his
+morning: a filename I produced from expectation rather than from looking.
