@@ -564,6 +564,17 @@ const GUARDS = [
   // and the rule that the counters have exactly one owner.
   'scripts/guards/inventory-lock-integrity.mjs',
   'scripts/guards/no-unowned-organisation-read.mjs',
+  // A founder-locked DESIGN law with no gate until 2026-09-02, which is how it
+  // survived being written down twice. "Surfaces are solid and opaque. No
+  // glassmorphism anywhere: no backdrop-filter / backdrop-blur chrome" is in the
+  // Design system, and glassmorphism is in Motion's forbidden list beside GSAP
+  // and bento grids. The site header had already been de-frosted for legibility
+  // and its comment says so. `src/components/ui/glass-card.tsx` still carried
+  // backdrop-blur-2xl on a variant two live surfaces render, plus backdrop-blur-md
+  // on a variant nothing used, and a launch readiness audit found it by reading.
+  // Translucency without a filter stays legal, so this only fails on an APPLIED
+  // filter, never on a /95 badge, a comment, or an inert transition property list.
+  'scripts/guards/no-glassmorphism.mjs',
 ]
 
 /**
