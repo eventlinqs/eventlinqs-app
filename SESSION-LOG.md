@@ -2479,3 +2479,173 @@ landed on the wrong branch. Corrected rather than left:
 
 
 
+
+## 2026-09-02 04:10 CORRECTION, AND A BIGGER FINDING UNDERNEATH IT.
+
+Earlier I recorded "the city page hero map is dead on production" as a defect.
+**That framing was wrong and I am withdrawing it.** The map component is fine. What
+I found when I chased it is worse than a broken map.
+
+### First, the correction
+
+`src/components/templates/CityLandingPage.tsx` line 180:
+
+    {mapPins.length > 0 ? ( ...the whole map section... ) : null}
+
+The map section is not rendered at all when there are no pins, which is correct
+design: an empty map helps nobody. So "canvas=0, googleReqs=0" was the guard
+faithfully reporting that there was no map to find, not a map failing to load.
+
+I also checked the other explanation before settling: `scripts/verify/map-guard.mjs`
+lines 43 to 52 DO scroll the page in 600px steps and poll for up to 25 seconds,
+precisely so a lazy IntersectionObserver map is not missed. The guard is sound. My
+reading of its output was not.
+
+### Why there are no pins, traced to the end
+
+`src/app/city/[slug]/page.tsx` line 131: "Map pins: only events with geocoded
+venues", filtered on `venue_latitude` and `venue_longitude` being numbers.
+
+Replicating the page's own query against TEST, one filter at a time:
+
+    published only                      120
+    + visibility public                 120
+    + venue_city ilike Melbourne         34
+    + future-dated                       11
+    of those 11, geocoded                 0
+
+Across the whole TEST catalogue, 85 of 120 published events DO carry coordinates.
+Every one of them is in the PAST. Every FUTURE Melbourne event has
+`venue_latitude: null`.
+
+### THE ACTUAL FINDING: there is no venue search, geocoding or autocomplete anywhere
+
+I went looking for where a new event gets its coordinates. It does not get them.
+
+    src/components/features/events/event-form.tsx
+      venue_latitude appears exactly ONCE, at line 544, as:  venue_latitude: null,
+      It is never assigned anywhere else in the file.
+
+    The venue fields are plain text inputs:
+      line 1010  placeholder="e.g. Melbourne Convention Centre"
+      line 1020  placeholder="Street address"
+
+    A repository-wide search for the Places API finds NOTHING:
+      no importLibrary('places'), no PlaceAutocompleteElement, no places:searchText,
+      no Autocomplete widget. Every `autoComplete` hit in src is the plain HTML
+      attribute on an unrelated input.
+
+So `venue_latitude` and `venue_longitude` are written straight through from form
+input that nothing ever populates. The 85 geocoded events are SEED DATA with
+hardcoded coordinates.
+
+**Every event a real organiser creates through the UI has null coordinates,
+permanently.**
+
+### What that costs, stated plainly
+
+1. No organiser-created event will EVER appear as a pin on a city map. Once the
+   seeded past events age out, the city map section stops rendering everywhere.
+2. The brief asks me to verify "Google Maps Places API for venue search,
+   geocoding and autocomplete in organiser flows". That is NOT BUILT. I am not
+   reporting it as passing, and I am not reporting it as broken either: it does
+   not exist.
+3. It is silent. An organiser types a venue name, the event publishes happily,
+   and nothing anywhere says the event will not show on a map.
+
+The server key `GOOGLE_MAPS_API_KEY` is present and filled, and is the right
+credential for a server-side geocode, so the ingredient is there. Adding a
+geocoding step on event create, or a Places autocomplete to the venue field, is a
+real feature with a per-event API cost and a founder decision attached. I have NOT
+built it at four in the morning on a launch branch. It is written down here with
+the exact file and line so it can be decided in one sitting.
+
+### What IS proven about maps
+
+    event detail (venue map)   OK   canvas=1  googleReqs=16   on PRODUCTION
+    events grid map            OK   canvas=1  googleReqs=13   on PRODUCTION
+
+Those two render live Google canvases on the real deployment. The map component,
+the loader and the production key all work. The gap is upstream, in the data.
+
+
+
+## 2026-09-02 04:25 THE THREE VIEWPORT REQUIREMENT, CLOSED FOR WHAT CAN RUN.
+
+The brief asks for all ten journeys at mobile 390, tablet 768 and desktop 1440.
+That was not achievable by invoking them differently, and the reason is a latent
+defect in the test infrastructure rather than a limitation:
+
+    scripts/journeys/harness.mjs
+      makeJourney(id, title, _viewport = { width: 1440, height: 1000 })
+                              ^ taken, never used
+
+    and then every journey hardcodes its own:
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, ... })
+
+So passing a viewport did nothing, silently. The whole suite was desktop-only and
+nothing anywhere said so, which is the worst shape a test control can have: it
+accepts the instruction and ignores it.
+
+### The fix, in one place rather than ten
+
+The exported `chromium` is now wrapped in the harness so `JOURNEY_VIEWPORT`
+overrides the viewport of every context any journey opens. Unset, nothing changes.
+
+    JOURNEY_VIEWPORT=mobile-390  node scripts/journeys/j1.mjs
+    JOURNEY_VIEWPORT=tablet-768  node scripts/journeys/j1.mjs
+
+Verified against a REAL PAGE rather than about:blank, because about:blank carries
+no viewport meta and reports the 980px layout fallback, which would have looked
+exactly like the override failing:
+
+    mobile-390    innerWidth 390   dpr 3   touch
+    tablet-768    innerWidth 768   dpr 2   touch
+    unset         innerWidth 1440  dpr 1
+
+The bare `export { chromium }` at the foot of the file is gone: it collided with
+the wrapper as a duplicate export, which is how I found it.
+
+Commit bcbe339d. Rebuilt afterwards: all 54 guards PASS, including
+node-version-contract across 463 scripts, so the harness change breaks nothing.
+
+### The runs
+
+    journey                              mobile-390   tablet-768   desktop-1440
+    j1  organiser signup, wizard, publish   PASS         PASS         PASS
+    j2  paid publish with no Stripe         PASS         PASS         PASS
+    j8  organiser creates a discount code   PASS         PASS         PASS
+
+    6 of 6 at the two viewports that had never been driven. Zero blockers.
+
+Plus the guest purchase flow already driven at all three earlier, 3 of 3, and the
+homepage logo check at all three. So the organiser signup, the seven step wizard,
+publish, discount creation, and the whole buyer path are now proven on a phone,
+which was previously unknown territory.
+
+Evidence: `C:\dev\EVIDENCE\journeys\viewports\`.
+
+STILL DESKTOP ONLY: j5g (guest transfer) and j6 (the door) were not re-run at the
+other viewports, because each needs state built by a prior run (a confirmed guest
+order, and a fresh unscanned ticket plus its secret) and re-running them at three
+viewports needs that state rebuilt three times. The four Stripe-blocked journeys
+could not be run at any viewport. I am not claiming the full ten at three.
+
+### A false alarm I chased down rather than reported
+
+The mobile and tablet runs reported `server errors: 9` and `7` while showing zero
+blockers, which the desktop runs had not. Every one was
+
+    console Failed to load resource: net::ERR_CONNECTION_REFUSED
+
+and the cause was mine: `.env.local` still pointed SENTRY_DSN and
+NEXT_PUBLIC_SENTRY_DSN at the local ingest sink on port 9099, which I had stopped
+after capturing the Sentry proof. Every client-side Sentry POST was refused.
+
+Both DSNs are now restored to empty, matching what Vercel returns. Worth knowing:
+NEXT_PUBLIC_SENTRY_DSN is baked at build time, so the local `.next` carried the
+sink DSN until the rebuild above cleared it.
+
+Not a product defect, and it would have been easy to file as one.
+
+
