@@ -3,6 +3,38 @@
 Written 2026-09-02 by the launch readiness session. NOTHING IN THIS FILE WAS RUN.
 Every command below is a production write and was held at a stop gate.
 
+---
+
+## READ THIS BEFORE STEP 5. EVERY FIX FROM THIS SESSION IS LOCAL ONLY.
+
+    integration/launch  local   6ccb2950533fca4575a56d09c5fa1e30e44f2c63
+    integration/launch  remote  ea6df9f592a4e01437dba3d269a59b9ee957e058
+    launch-prepared             local only, deliberately never pushed
+
+The remote is still sitting on the commit that DOES NOT BUILD. Four commits exist
+only on this machine:
+
+    6ccb2950  Twenty two city browse pages were sharing as a bare link with no card
+    7afc5913  The eighteen cards render from a running server, proved by breaking it on purpose
+    793ebf5b  The three high advisories in the shipped tree are gone
+    571b7b15  The card rasteriser survives the bundler, so a production build exists at all
+
+If you deploy from the remote as it stands, the Vercel build FAILS at
+`Module not found: Can't resolve 'wbg'`, because the resvg fix is one of those
+four. Push the branch before step 5, or the deploy cannot succeed:
+
+```powershell
+$env:Path = "C:\node24\node-v24.19.0-win-x64;" + $env:Path
+Set-Location C:\dev\EventLinqs\eventlinqs-app
+git log --oneline origin/integration/launch..integration/launch   # expect the four above
+git push origin integration/launch
+git rev-parse integration/launch
+git ls-remote origin refs/heads/integration/launch                # the two must match
+```
+
+I did not push it myself: the brief holds every outward action at a stop gate and
+this is one. `launch-prepared` stays local and unpushed either way, as instructed.
+
 Run them in the order given. The order is a constraint, not a preference.
 
 Before anything: this session left the Supabase CLI linked to TEST. Every step

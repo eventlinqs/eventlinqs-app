@@ -2273,3 +2273,209 @@ loads and reports its own state honestly, which is the most that can be said.
 
 
 
+
+## 2026-09-02 03:45 SENTRY. CAPTURE PROVEN, WITH THE LIMIT STATED.
+
+The brief demands proof that Sentry ACTUALLY CAPTURES, by triggering a test error
+and confirming it arrives, and explicitly refuses configuration as proof.
+
+### The real DSN is unobtainable, and I established that rather than assuming it
+
+The Supabase key came back from the CLI, so I looked for the same kind of second
+route here. There is not one:
+
+  - `vercel env pull` returns NEXT_PUBLIC_SENTRY_DSN and SENTRY_DSN EMPTY. I also
+    tried the branch scoped pull, `--git-branch release/launch-line`, in case a
+    branch override carried a readable value. Same result. These are Vercel
+    SENSITIVE variables and are never returned, to anyone, by design.
+  - SENTRY_AUTH_TOKEN is empty too, so the Sentry API cannot be asked either.
+  - /api/health/sentry-error on production needs HEALTH_CHECK_TOKEN, which is
+    also sensitive, and each call would fire a real event into the production
+    Sentry project.
+
+### What production DOES tell us, read only
+
+The production homepage server-renders a live Sentry trace:
+
+    sentry-environment  production
+    sentry-release      9cf7d3651f0d3b24ea4750d35f4eb378210a9d22
+    sentry-public_key   41885c6bea0d8c69a241d1e782ec16d0
+    sentry-org_id       4511144322203648
+    sentry-sample_rate  0.1
+    sentry-trace        1b2e0fcafb604a2f80794dac329eb679-ba721a2011db15e8-0
+
+So Sentry IS initialised and tracing on production. The sample rate matches the
+0.1 CLAUDE.md documents. And the release value is worth noticing on its own: it is
+main's HEAD, which independently confirms production runs code that predates
+everything on integration/launch.
+
+### The capture proof
+
+The half that belongs to this application can be proved, so I proved it. I stood
+up a local ingest endpoint, pointed the DSN at it, restarted, and fired the
+repository's own synthetic error route.
+
+The server, on boot:
+
+    [sentry-server-config] module loaded { dsnPresent: true, dsnSource: 'SENTRY_DSN' }
+    [sentry-server-config] Sentry.init returned { isInitialized: true }
+
+The endpoint's own answer:
+
+    {"ok":true,"sentryEnabled":true,"sentryEnvironment":"production",
+     "diag":{"registerCalledAt":"...","runtime":"nodejs",
+             "serverDsnSource":"SENTRY_DSN","serverDsnPresent":true,
+             "serverInitOk":true}}
+
+And what actually ARRIVED at the ingest endpoint, which is the part that matters:
+
+    ENVELOPE RECEIVED /api/1/envelope/?sentry_version=7&sentry_key=41885c6b...
+      event_id : 418648c99d464fb59637ba9c82462892
+      level    : error
+      type     : Error
+      value    : Synthetic Sentry verification error - safe to ignore
+      release  : local
+      env      : production
+      tags     : {"turbopack":true,"synthetic":"true","source":"api/health/sentry-error"}
+      frames   : 10
+
+A real error, captured, serialised into a real Sentry envelope with a stack, and
+dispatched. Evidence: `C:\dev\EVIDENCE\gates\sentry-captured.json` and
+`sentry-sink.log`.
+
+WHAT THIS DOES NOT PROVE, said plainly: that Sentry's own servers accept and
+display it. That needs the real DSN and is the one part still outstanding. What it
+does prove is that nothing on this platform's side silently swallows the error,
+which is what the check exists to catch.
+
+One detail worth keeping: `registerCalledAt` IS populated here. The route's own
+header records that on the deployed Vercel function it comes back null, which is
+why that route initialises Sentry inside the handler. So the workaround is load
+bearing in production and is not needed locally.
+
+---
+
+## 2026-09-02 03:50 THE DEMAND ENGINE ALERT, DRIVEN END TO END.
+
+The brief asks for at least one alert driven end to end. Done, with no seeded
+state: a real new account, a real Follow click, the real cron.
+
+    01. Signed up                    follower.754980@example.com -> /verify-email-sent
+    02. Confirmed from the emailed link, then signed in          -> /dashboard
+    03. Pressed Follow on the organiser   the control now reads "Following"
+    04. Ran the just-announced alert cron
+        HTTP 200 {"ok":true,"events":18,"organisations":17,
+                  "dispatches":1,"sent":1}
+    05. What the follower received
+        [email:console] to      follower.754980@example.com
+        [email:console] subject Just announced: Geelong Community Night 686810
+
+That exercises the follow graph (saved_organisers), the alert engine
+(dispatchAlert), and the email backbone in one run. `dispatches:1, sent:1` is the
+engine reporting it found exactly the one follower that had just been created and
+alerted them.
+
+NOT covered by this run: PWA web push specifically. VAPID_PRIVATE_KEY is another
+sensitive value, and while a keypair could be generated locally, push also needs a
+real browser subscription and a rebuild for the public key. The email backbone
+half is proven; the push half is not.
+
+### A finding on the way: the console transport prints a broken link
+
+The confirmation link this run first followed did nothing, and the account stayed
+unconfirmed. The cause is in `printConsoleEmail`:
+
+    const links = [...String(input.html ?? '').matchAll(/https?:\/\/[^"'\s<>]+/g)]
+
+It lifts the raw href out of the HTML without decoding entities, so it prints
+
+    /auth/confirm?token_hash=5a05...&amp;type=signup&amp;next=%2Fdashboard
+
+and everything after the first parameter is swallowed when that URL is used.
+
+`scripts/journeys/harness.mjs` line 99 already works around it with
+`.replaceAll('&amp;', '&')`, which is why the repository's own journeys are
+unaffected. A human copying the link out of the log would hit the wall I hit.
+Small, real, and one `.replaceAll` from being fixed at the source.
+
+---
+
+## 2026-09-02 03:55 SEO AND LAW 5 GATES.
+
+### OpenGraph, canonicals and robots: 6 of 6 after a fix
+
+Driven, and the og:image was FETCHED and decoded rather than merely counted,
+because the brief is explicit that a card that renders but is not referenced is
+still a failure.
+
+    surface        canonical   og:image                          fetched
+    event detail   present     /events/<slug>/opengraph-image    200 png 1200x630 ink 32.5
+    city           present     /opengraph-image                  200 png 1200x630 ink 55.3
+    browse         present     /opengraph-image                  200 png 1200x630 ink 55.3
+    city browse    present     MISSING  -> now /opengraph-image  200 png 1200x630 ink 55.3
+    community      present     /opengraph-image                  200 png 1200x630 ink 55.3
+    homepage       present     /opengraph-image                  200 png 1200x630 ink 55.3
+
+Every canonical is absolute and correct. Every page carries
+`twitter:card=summary_large_image` and `robots: index, follow`.
+
+FIXED THIS SESSION: /events/browse/[city] carried NO og:image. Declaring an
+openGraph object in generateMetadata and omitting `images` does not inherit the
+root opengraph-image.tsx, it SUPPRESSES it. The two siblings that work spell the
+line out (city page line 52, community page line 52). Twenty two of these city
+browse pages are in the production sitemap and every one was sharing as a bare
+link. One line, matching the established pattern, verified by re-driving the check
+to 6 of 6. Commit 6ccb2950.
+
+robots.txt is correct: Allow /, Disallow /api/, /dashboard/, /checkout/, /auth/,
+/admin/, /account/, /orders/.
+
+Local sitemap: 812 URLs against production's 552, which is simply TEST carrying
+117 published events where production carries four.
+
+A correction to the brief's premise, gently: the OG tags do NOT consume the
+eighteen social cards. The OG image is its own 1200x630 route. The eighteen are
+story, square and feed artefacts an organiser downloads and posts by hand. Both
+work; they are different things.
+
+### Law 5: ZERO DEAD LINKS
+
+    node scripts/link-integrity-crawl.mjs http://localhost:3311
+
+    18 seed pages crawled, 269 unique internal links verified
+    4 resolved via a deliberate redirect (/account -> /login?next=..., etc)
+    ZERO DEAD LINKS. 269 internal links all resolve to 200.
+
+### Law 5: NO DEAD-END TILES
+
+    node scripts/affordance-scan.mjs http://localhost:3311
+
+    19 pages scanned, TOTAL dead-end tiles: 0, AFFORDANCE SCAN: PASS
+
+One note so the log is not read as cleaner than it is: that scan's `event-detail`
+probe reports [404] because it holds a hardcoded slug that does not exist on TEST.
+It found no dead-end tiles on the other 18 either way, and the event detail page
+itself is separately proven to answer 200 and render.
+
+---
+
+## 2026-09-02 04:00 TASK 9 REDONE AFTER THE LATE FIX.
+
+The OG fix was committed while I was still standing on launch-prepared, so it
+landed on the wrong branch. Corrected rather than left:
+
+    git checkout integration/launch
+    git cherry-pick 2b12ff9f        -> 6ccb2950 on integration/launch
+    git branch -f launch-prepared main
+    git checkout launch-prepared
+    git merge --no-ff --no-edit integration/launch
+
+    MERGE EXIT 0, ZERO conflicted files
+
+    launch-prepared tree    1caa34fe31cc71541146818f7010b0ce5f2f2734
+    integration/launch tree 1caa34fe31cc71541146818f7010b0ce5f2f2734
+    git diff integration/launch launch-prepared  ->  no differences
+
+    launch-prepared on remote: 0 refs.  Still local, still unpushed.
+
+
