@@ -91,7 +91,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | T7.3 | Log name, viewport, pass/fail, duration, screenshot path per journey | PARTIAL | Name, viewport, verdict, blockers, cause and a genuinely per-viewport LOG path for all 30 rows. Durations present for every run I timed. PER-VIEWPORT SCREENSHOTS DO NOT EXIST and the table says so in its own header: each journey writes to one fixed directory, so three viewport runs leave only the last one's images. Fixing it is a harness change (per-viewport output directory), named rather than done |
 | T7.4 | Save screenshots under `C:\dev\EVIDENCE\journeys\` | MET | 280 evidence files |
 | T7.5 | A journey passing only on state a real user could not create FAILS; say so and fix | MET | j6 first attempt invalidated by me for exactly this and re-driven properly |
-| T8.1 | Lighthouse 95+ on BOTH desktop and mobile across the gate URL set | **NOT MET** | Desktop 98 to 100 on all 12. Mobile 81 to 93 on all 12. Documented exemption to 2026-11-01, but the brief's number is not met |
+| T8.1 | Lighthouse 95+ on BOTH desktop and mobile across the gate URL set | **NOT MET**, now DIAGNOSED | Desktop 98 to 100. Mobile 82/90/93, and the gap is ENTIRELY largest-contentful-paint: it costs 16.0, 10.3 and 6.8 of the lost points while FCP, TBT, speed index and CLS all sit between 96 and 100. One element, the hero raster, on a cold next/image optimiser (Issue #42). `mobile-perf-diagnosis.json` |
 | T8.2 | axe-core zero violations, fix what fails | MET | 11 surfaces, 0 violations |
 | T8.3 | Lint clean, typecheck clean, full suite green | MET | Pre-push hook: 246 files, 2964 tests, 0 failed, 0 skipped |
 | T8.4 | Banned terms appear NOWHERE in user-facing copy | MET | 0 hits for all four; 12 `culture` hits all internal; no `/culture` route |
@@ -283,8 +283,10 @@ a decision or a credential changes:
 
     T0.2   the 12 GB gate was never met. Only Lawal can rule on whether the
            5 GB floor was the right substitute. It cannot be closed by working
-    T8.1   mobile Lighthouse is 81 to 93 against a 95 bar, with a documented
-           exemption to 2026-11-01. Closing it is a performance workstream
+    T8.1   mobile is 82 to 93 against a 95 bar. Now DIAGNOSED rather than
+           just reported: 100 percent of the gap is LCP on the hero raster,
+           every other metric is 96 to 100. It is one element and a known
+           issue number, not an open-ended performance push
     T8.7   community is 79.9 percent of the production sitemap, and the
            arithmetic says the 20 percent lock needs about 376 events. It is
            GATE 0 wearing a different hat
