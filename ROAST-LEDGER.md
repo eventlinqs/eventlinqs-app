@@ -97,7 +97,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | T8.4 | Banned terms appear NOWHERE in user-facing copy | MET | 0 hits for all four; 12 `culture` hits all internal; no `/culture` route |
 | T8.5 | Tagline reads exactly "Every community. Every event. One platform." | MET | Rendered as homepage rail 11, `homepage-rails.json` |
 | T8.6 | Positioning community-first not culture-first | MET | Verified in copy |
-| T8.7 | Platform reads as general ticketing first; community 10 to 20 percent of surface | **NOT MET** | Production sitemap is 79.9 percent `/community`. Measured, and now with arithmetic: see A3 |
+| T8.7 | Platform reads as general ticketing first; community 10 to 20 percent of surface | **NOT MET**, and now understood | 79.9 percent measured. `sitemap.ts:296` emits every (community, city) pair with NO event gate. Driven: those pages render a working empty state ("The first African event could be yours") with a live CTA to `/contact?topic=organiser&interest=<slug>` which resolves 200 and honours both params. They are 441 organiser-recruitment landing pages, which is growth lever 1 at scale. Self-corrects to 26 percent at 261 events, 20 at 376 |
 | T8.8 | No generic content anywhere | PARTIAL | Not systematically audited. I checked banned terms and rendered rails, not every surface for filler |
 | T8.9 | Verify fee on the RENDERED checkout: 3.5 percent + $0.99, free events free, pass-on default, ACCC all-in | MET | `checkout-fees.json`: 59.00 + 3.06 = 62.06 |
 | T8.10 | Verify processing 2.5 percent | REFUSED | The second fee was DELETED by founder ruling 15 August 2026. Verifying it would be verifying a removed feature |
@@ -287,9 +287,9 @@ a decision or a credential changes:
            just reported: 100 percent of the gap is LCP on the hero raster,
            every other metric is 96 to 100. It is one element and a known
            issue number, not an open-ended performance push
-    T8.7   community is 79.9 percent of the production sitemap, and the
-           arithmetic says the 20 percent lock needs about 376 events. It is
-           GATE 0 wearing a different hat
+    T8.7   79.9 percent community, but the 441 URLs are working organiser
+           recruitment pages with a live CTA, not thin content. The ratio is
+           a marketplace pre-launch shape and self-corrects at ~376 events
     T8.24  Google Places venue geocoding is not built. Scope 3.1.1 requires it.
            That is a build, not a verification
     T8.28  the 261-event seed exists as a TEST-ONLY script that refuses

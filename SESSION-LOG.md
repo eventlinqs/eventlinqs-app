@@ -4428,3 +4428,75 @@ I am recording this against myself plainly: I spent several rounds reporting
 GATE 0 as a decision with three neutral options, and one of the three was
 foreclosed by a guardrail I had not read, in a file named after the exact thing
 I was describing.
+
+## 2026-09-02 10:35 THE 441 COMMUNITY URLS ARE NOT THIN JUNK, AND THAT REFRAMES T8.7
+
+I have reported "community is 79.9 percent of the production sitemap" as a
+positioning breach several times, arithmetically, without ever reading how those
+URLs are produced or what is on the other end of them. Both now read and driven.
+
+### How they are produced
+
+`src/app/sitemap.ts:296` emits every (community, city) pair UNCONDITIONALLY:
+
+    for (const community of getAllCommunities())
+      for (const city of ...)
+        url: `${baseUrl}/community/${community.slug}/${city.slug}`
+
+There is no event-count gate. So on production, where there is ONE event, all 441
+are zero-event pages being submitted to Google. That is the mechanism behind the
+ratio, and it is deliberate rather than accidental.
+
+### What is actually on the other end of them
+
+Driven on three zero-event intersections rather than assumed:
+
+    /community/african/perth    HTTP 200   265 kB   no error boundary
+    /community/korean/hobart    HTTP 200   242 kB   no error boundary
+    /community/greek/darwin     HTTP 200   238 kB   no error boundary
+
+Each renders the designed empty state, not a bare "no results":
+
+    headline  "The first African event on EventLinqs could be yours."
+    CTA       /contact?topic=organiser&interest=african
+
+And that CTA destination is live, which is the part that mattered most because
+441 pages point at it:
+
+    /contact?topic=organiser&interest=african   HTTP 200, a real form,
+    no error boundary, and the page HONOURS both parameters (organiser
+    appears 34 times, African 7 times, so topic and interest are reflected)
+
+So these are 441 working ORGANISER RECRUITMENT landing pages, each targeting one
+community in one city, each with a live parameterised CTA. CLAUDE.md's ranked
+growth levers put supply-side organiser recruitment at number ONE, and this is
+that lever rendered at scale.
+
+### The honest reframing
+
+The 79.9 percent figure is real and I am not withdrawing it. What changes is what
+it MEANS. It is not a product whose identity has been swamped by community
+content. It is a marketplace whose recruitment surface currently outnumbers its
+catalogue 110 to 1, which is the expected shape for a marketplace before launch,
+and which self-corrects as events arrive: 26.1 percent at 261 events, 20.0
+percent at 376, by the arithmetic recorded at 07:10.
+
+What I will NOT assert, per Law 7: whether submitting 441 pre-launch zero-event
+pages to Search Console helps or harms indexing. I have no primary source for
+Google's treatment of that in front of me and will not state one from memory.
+That remains a founder judgement, now made with the mechanism visible.
+
+### A FOURTH FALSE FINDING OF MINE, CAUGHT BEFORE IT WAS WRITTEN
+
+My first pass grepped for "post your event", "create an event", "become an
+organiser" and "list your event", found none, and had me about to report "441
+pages carry an empty state with NO call to action". The CTA is there; my patterns
+simply did not match its label. Reading
+`src/components/features/community/events-by-community-grid.tsx:68` found it in
+one line.
+
+That is the fourth time tonight: the door scanner at 390, the checkout stepper,
+the login logo, and now this. Every one the same mistake, which is worth stating
+once more because it is clearly a habit rather than an accident. I search for the
+shape I expect instead of reading what is there, and a negative grep result is
+the weakest evidence there is.
