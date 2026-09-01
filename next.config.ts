@@ -101,6 +101,32 @@ const nextConfig: NextConfig = {
   // grid + event-detail loading skeletons) is governed by Next's separate
   // built-in bot regex and is unchanged.
   htmlLimitedBots: /./,
+  // KEEP THE CARD RASTERISER OUT OF THE BUNDLER.
+  //
+  // src/lib/broadcast/card-raster.ts loads the resvg WebAssembly binary at RUN
+  // time on purpose:
+  //
+  //     const wasmPath = require_.resolve('@resvg/resvg-wasm/index_bg.wasm')
+  //     await initWasm(await readFile(wasmPath))
+  //
+  // Turbopack reads that static specifier, decides the .wasm is a module it
+  // should bundle, and emits a wasm-bindgen loader that imports the glue
+  // namespace `wbg`. Nothing provides `wbg`, so the production build dies:
+  //
+  //     ./node_modules/@resvg/resvg-wasm/index_bg.wasm_.loader.mjs:1:1
+  //     Module not found: Can't resolve 'wbg'
+  //
+  // reached through both entry points that rasterise:
+  //     app/api/organiser/events/[id]/card/[format]/route.ts   (the 18 cards)
+  //     app/admin/(authed)/health/page.tsx                     (health checks)
+  //
+  // Marking the package external leaves it to Node's own require at run time,
+  // which is exactly what the module was written to expect. This changes NOTHING
+  // about how a card is rendered; it only stops the bundler from pre-empting a
+  // deliberate runtime load. Found on 2 September 2026, when the resvg swap was
+  // built for the first time: it had been proved in isolation but never through
+  // `next build`, so this error had never had the chance to appear.
+  serverExternalPackages: ['@resvg/resvg-wasm'],
   // Preview-density fixture. The homepage reads the 55-event catalogue fixture
   // (src/lib/dev/home-seed-fixture.json) at runtime via fs when
   // HOMEPAGE_SEED_FIXTURE=1. Trace it into the homepage serverless bundle so

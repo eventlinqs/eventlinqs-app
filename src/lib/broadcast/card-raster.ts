@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import satori, { type SatoriOptions } from 'satori'
 import { Resvg, initWasm } from '@resvg/resvg-wasm'
 import { captureException } from '@/lib/observability/sentry'
@@ -77,7 +78,25 @@ let wasmReady: Promise<void> | null = null
 function ensureWasm(): Promise<void> {
   if (!wasmReady) {
     wasmReady = (async () => {
-      const wasmPath = require_.resolve('@resvg/resvg-wasm/index_bg.wasm')
+      // RESOLVE THE PACKAGE, THEN JOIN THE FILE. Do not hand the bundler a
+      // literal '.wasm' specifier.
+      //
+      // This previously read require_.resolve('@resvg/resvg-wasm/index_bg.wasm').
+      // That is correct Node, and it is exactly what broke `next build` on
+      // 2 September 2026, the first time this module was ever built rather than
+      // exercised in isolation. Turbopack statically analyses require.resolve, saw
+      // a literal ending in .wasm, and routed it through its wasm-bindgen loader,
+      // which emits glue importing a namespace called `wbg` that nothing provides:
+      //
+      //     ./node_modules/@resvg/resvg-wasm/index_bg.wasm_.loader.mjs:1:1
+      //     Module not found: Can't resolve 'wbg'
+      //
+      // The binary is DATA to this module, not a module. It is read with readFile
+      // and handed to initWasm as bytes, so it must never enter the module graph.
+      // Resolving the package entry and joining the filename keeps the lookup
+      // exactly as robust (still Node's own resolution, still correct under pnpm
+      // or a hoisted node_modules) while leaving nothing for a bundler to follow.
+      const wasmPath = join(dirname(require_.resolve('@resvg/resvg-wasm')), 'index_bg.wasm')
       await initWasm(await readFile(wasmPath))
     })().catch(error => {
       // A failed init must not be cached as resolved, or every later render
