@@ -306,14 +306,46 @@ export async function createEventThroughWizard(j, page, opts) {
           .fill(type === 'date' ? when.toISOString().slice(0, 10) : when.toISOString().slice(0, 16))
           .catch(() => {})
       }
-      await fillIf(page, 'input[placeholder*="Venue"], input[placeholder*="Address"]', 'The Wool Exchange, Geelong')
+      /*
+       * THE VENUE WAS NEVER BEING FILLED, AND THAT HID A JOURNEY'S OWN SUBJECT.
+       *
+       * This read `input[placeholder*="Venue"], input[placeholder*="Address"]`.
+       * Neither matches. The real fields are
+       *   <input id="venue-name-13" placeholder="e.g. Melbourne Convention Centre">
+       *   <input id="address-14"    placeholder="Street address">
+       * so "Venue" appears in no placeholder at all, and CSS attribute selectors
+       * are case sensitive by default, so "Address" does not match "Street
+       * address" either. fillIf swallows a miss and returns false, so this failed
+       * silently on every run.
+       *
+       * The cost was not cosmetic. Journey 2 exists to prove that a PAID event
+       * with no Stripe connection is refused publication FOR THE MONEY REASON.
+       * With no venue, publish was refused earlier for a missing venue, the money
+       * check was never reached, and the journey reported zero blockers while
+       * never testing the thing in its own title.
+       *
+       * Filled by LABEL, which is what a person reads and what the labelled-form-
+       * controls guard already proves exists for every control on this form.
+       */
+      const venueName = page.getByLabel(/^venue name/i).first()
+      if (await venueName.count()) await venueName.fill('The Wool Exchange').catch(() => {})
+      const venueAddress = page.getByLabel(/^address/i).first()
+      if (await venueAddress.count()) await venueAddress.fill('44 Moorabool Street, Geelong').catch(() => {})
     }
 
     /*
-     * UPLOAD a cover rather than compose one, when asked. The composer is
-     * currently broken (see the j1 findings), and a journey that cannot get past
-     * the media step cannot test anything downstream of it. Uploading is also
-     * the path most organisers take: they have their own artwork.
+     * UPLOAD a cover rather than compose one, when asked. Uploading is the path
+     * most organisers take: they have their own artwork.
+     *
+     * This comment used to say the composer was "currently broken (see the j1
+     * findings)" and that a journey could not get past the media step. That is no
+     * longer true and the note was outliving the defect. Driven on 2 September
+     * 2026 through journey 1 and captured at
+     * docs/verification/journeys-2026-08-28/j1-free-event/08-after-making-a-cover.png:
+     * an organiser with no artwork is offered "No artwork yet?", a composed navy
+     * and gold cover carrying their own event name, date and venue is rendered
+     * before anything changes, and Use this cover works. Law 6 behaving exactly
+     * as written.
      */
     if (opts.uploadCover && !madeCover && (await page.$('input[type="file"]'))) {
       const input = await page.$('input[type="file"]')
