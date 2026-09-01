@@ -78,20 +78,70 @@ CLAUDE.md, "The market-ready completeness bar (volume law)", makes this a breach
 rather than a nice-to-have: "All of Australia from day one ... Every city the
 platform lists must be represented with real events".
 
-DECISION REQUIRED FROM LAWAL, and it is not a step I can write a command for
-without knowing which of these he wants:
+DECISION REQUIRED FROM LAWAL. I originally wrote three options and presented
+them as neutral. **After reading the seeder I am withdrawing option (a) as
+written**, and the reason is the most important thing in this section.
 
-  a. Seed production from the same catalogue TEST carries (TEST currently holds
-     117 published events visible to an anonymous reader, not 261 either).
-  b. Onboard real organisers first and launch with a genuinely small catalogue,
-     accepting that the browse grid is nearly empty on day one.
-  c. Delay go-to-market until there is a catalogue.
+### WHY YOU CANNOT SIMPLY SEED PRODUCTION
+
+`scripts/seed-national-catalogue.mjs` is the only national seeder, and it is
+exactly the 261-across-20-cities catalogue the brief describes. It **REFUSES to
+run against production**, by a hard guardrail, on purpose:
+
+    if (URL.includes(PROD_REF)) {
+      console.error('[seed] ABORT: target is PRODUCTION. Refusing.')
+      process.exit(1)
+    }
+
+Its own header says "TEST only". Every row it writes is marked
+`is_seed_data = true`.
+
+So seeding production is not a command anybody can run today. It would need a
+NEW seeder written deliberately to defeat that guardrail, and before anyone does
+that, this is what the flag actually buys you:
+
+**`is_seed_data` is honoured in exactly ONE place in the entire codebase**,
+`src/lib/broadcast/digest.ts:240`, which excludes seed events from the email
+digest. It is filtered from NO public surface. Driven on TEST just now against a
+real seed event:
+
+    /events/endurance-hall-five-thousand-seats
+      HTTP 200, renders fully, no error boundary
+      shows "Get tickets" at AUD 49.00
+      carries ZERO visible marker that it is not a real event
+      IS PRESENT IN THE SITEMAP
+
+A seeded production catalogue would therefore be 261 fabricated events that a
+real buyer cannot tell from a real one, with prices and a working ticket
+selector, indexed by Google. CLAUDE.md's Definition of Done bans exactly this:
+"Zero placeholders. No stubs, mocks, fake or hardcoded sample values" and
+"Everything works on real data". Selling, or appearing to sell, tickets to
+events that do not exist is also not a position to take under Australian
+Consumer Law.
+
+The seeder's guardrail is not an obstacle to work around. It is the correct
+answer already encoded.
+
+### THE OPTIONS, RESTATED HONESTLY
+
+  a. **Seed production. NOT AVAILABLE as written, and I recommend against
+     building it.** It needs a new seeder that defeats a deliberate guardrail,
+     and it puts fake purchasable events in front of real buyers and Google.
+     If you want it anyway, the minimum precondition is making `is_seed_data`
+     a real display filter across discovery, detail, checkout and the sitemap,
+     which is a build in itself and is not currently anywhere.
+  b. **Onboard real organisers first** and launch with a genuinely small
+     catalogue, accepting a thin browse grid on day one. The platform is built
+     for this: the "one event shows the rail" ruling of 23 August fills a sparse
+     rail with InvitationCards rather than hiding the real event, so a thin
+     catalogue reads as recruitment.
+  c. **Delay go to market** until there is a catalogue.
 
 Whichever is chosen, the two payment verification test events should not be the
 public face of the platform. They are indexed in the sitemap submitted to Google.
 
-Rollback for any seeding: none is written, because no seed command is written.
-Do not run an unrehearsed seed against production.
+Rollback for any seeding: none is written, because no production seed command
+exists and, per the above, none should be written casually.
 
 ---
 

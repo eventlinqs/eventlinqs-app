@@ -118,7 +118,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | T8.25 | Verify Sentry ACTUALLY CAPTURES by triggering a test error and confirming arrival; config is not proof | PARTIAL | Arrival proven at a LOCAL SINK. Arrival at the real Sentry project NOT proven |
 | T8.26 | Verify the sitemap resolves and log its URL count against 586; explain any difference | MET | 552 measured; difference now EXPLAINED BY MEASUREMENT rather than inference. See A3 |
 | T8.27 | Verify robots, canonicals and OpenGraph on event, city and browse pages | MET | `seo-check.json` 6 of 6 after fixing the city browse OG (6ccb2950) |
-| T8.28 | Verify the national seed of 261 events across 20 cities is intact and rendering | **NOT MET** | Production has ONE event. TEST has 117 published, 68 in the sitemap. The 261 do not exist anywhere |
+| T8.28 | Verify the national seed of 261 events across 20 cities is intact and rendering | **NOT MET**, and now understood | Production has ONE event. TEST has 123 published (16 seed, 107 organiser-created). `scripts/seed-national-catalogue.mjs` IS that catalogue and REFUSES production by hard guardrail, on purpose. `is_seed_data` is honoured in one place only, the email digest, so seed events render publicly with prices and sit in the sitemap. GATE 0 option (a) withdrawn |
 | T8.29 | Save every report under `C:\dev\EVIDENCE\gates\` | MET | 56 files |
 | T9.1 | Prepare the merge on a LOCAL branch named `launch-prepared` | MET | Exists, local |
 | T9.2 | Resolve every conflict; four squash conflicts expected | MET | Zero conflicts on both merges |
@@ -292,7 +292,8 @@ a decision or a credential changes:
            GATE 0 wearing a different hat
     T8.24  Google Places venue geocoding is not built. Scope 3.1.1 requires it.
            That is a build, not a verification
-    T8.28  the 261-event national seed does not exist anywhere. GATE 0
+    T8.28  the 261-event seed exists as a TEST-ONLY script that refuses
+           production by design. GATE 0, and option (a) is withdrawn
 
 And four are credential-blocked: T3.2 (`stripe login`), T7.2 (the same key),
 T8.12 (an organisation on payout tier 2, which needs completed paid events),

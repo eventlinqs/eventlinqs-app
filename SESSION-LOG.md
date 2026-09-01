@@ -4364,3 +4364,67 @@ placeholder in use.
 Both were plausible findings that dissolved on inspection. Recording them because
 the next person to read `remotePatterns` will have the same two thoughts, and
 should not have to re-derive the answers.
+
+## 2026-09-02 10:10 I OFFERED LAWAL A CHOICE THAT SHOULD NOT HAVE BEEN ON THE TABLE
+
+GATE 0, the empty production catalogue, is the biggest decision waiting for him,
+and my own write-up offered three options as though they were neutral. The first
+was "seed production from the same catalogue TEST carries". I never read the
+seeder before writing that. I have now, and I am withdrawing it.
+
+### The seeder refuses production, deliberately
+
+`scripts/seed-national-catalogue.mjs` IS the 261-across-20-cities catalogue the
+brief describes. Its header says "TEST only" and it enforces it:
+
+    if (URL.includes(PROD_REF)) {
+      console.error('[seed] ABORT: target is PRODUCTION. Refusing.')
+      process.exit(1)
+    }
+
+So seeding production is not a command anyone can run. It would need a NEW seeder
+written specifically to defeat that guardrail.
+
+### And the flag that is supposed to make seed data safe does almost nothing
+
+Every seeded row is marked `is_seed_data = true`, which sounds like the safety
+net. It is honoured in **exactly one place in the whole codebase**:
+`src/lib/broadcast/digest.ts:240`, which keeps seed events out of the email
+digest. It filters NO public surface.
+
+Driven on TEST against a real seed event rather than reasoned about:
+
+    /events/endurance-hall-five-thousand-seats
+      HTTP 200, renders fully, no error boundary
+      "Get tickets" at AUD 49.00
+      ZERO visible marker that it is not a real event
+      PRESENT IN THE SITEMAP
+
+TEST currently holds 123 published events: 16 seed, 107 organiser-created.
+
+So a seeded production catalogue would be 261 fabricated events a buyer cannot
+distinguish from real ones, with prices and a working ticket selector, indexed by
+Google. CLAUDE.md's Definition of Done bans precisely that: "Zero placeholders.
+No stubs, mocks, fake or hardcoded sample values" and "Everything works on real
+data". Appearing to sell tickets to events that do not exist is also not a
+position to take under Australian Consumer Law.
+
+**The guardrail in that script is not an obstacle to work around. It is the
+correct answer, already encoded, by whoever wrote it.**
+
+GATE 0 in PRODUCTION-STEPS.md now says this, and option (a) carries the
+precondition it would actually need: making `is_seed_data` a real display filter
+across discovery, detail, checkout and the sitemap, which is a build in itself
+and exists nowhere today.
+
+Option (b) is also stronger than I gave it credit for. The founder ruling of
+23 August, "one event shows the rail", fills a sparse rail with InvitationCards
+rather than hiding the single real event, so a thin catalogue on day one reads as
+recruitment rather than emptiness. That is growth lever 1 rendered on the page,
+and it is already built and tested
+(`tests/unit/growth/one-event-shows-the-rail.test.ts`).
+
+I am recording this against myself plainly: I spent several rounds reporting
+GATE 0 as a decision with three neutral options, and one of the three was
+foreclosed by a guardrail I had not read, in a file named after the exact thing
+I was describing.
