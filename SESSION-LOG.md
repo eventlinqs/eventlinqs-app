@@ -58,9 +58,25 @@ silently. Commit `a87198e4`.
 Three things stand in the way:
 
 1. **The empty production catalogue** (GATE 0).
-2. **No paid purchase or refund has been driven.** Both Stripe keys stored by the
-   CLI expired (2026-07-29 and 2026-07-07). One `stripe login` fixes it and needs
-   your browser.
+2. **DOWNGRADED 14:35, and I had this framed misleadingly.** I listed "no paid
+   purchase or refund has been driven" as one of three blockers. Your OWN BRIEF
+   says they were: "Live and proven on production today: ticket purchase and
+   refund, both driven with a real card and real money returned." The production
+   sitemap corroborates it, carrying `payment-verification-test-2-e1ukdb`.
+
+   What is true is narrower: I could not RE-drive them here, because both Stripe
+   keys the CLI holds are expired (2026-07-29 and 2026-07-07). And it matters
+   less than I implied, because **this branch does not touch the money path at
+   all.** Thirteen files change across the twelve commits, and a grep for
+   payment, payout, refund, checkout, stripe, order, reservation, pricing, fee
+   and webhook matches exactly ONE: `scripts/ops/after-stripe-login.mjs`, the
+   handover script I wrote, which is not product code and runs nothing in
+   production. The four `src/` files that change are the city browse OG images,
+   the glassmorphism card, the social card rasteriser and the health check.
+
+   So the money path is proven on production, and nothing shipping here changes
+   it. `stripe login` still unblocks re-verification and the twelve journey rows,
+   and remains worth doing, but it is NOT a launch blocker.
 3. **No organiser-created event can ever appear on a city map.** The event builder
    captures a venue as two plain text inputs and NO coordinates: `venue_latitude`
    appears once, as null, and is never assigned. Scope 3.1.1 requires "Google Maps
@@ -5134,3 +5150,56 @@ read-only measurements, all matching their originals:
 A session that had written to production would move at least one of those. None
 moved. That is the difference between "I did not write to production" and "I can
 show you that nothing did".
+
+## 2026-09-02 14:35 I HAVE BEEN OVERSTATING THE SECOND BLOCKER ALL SESSION
+
+Two premises left unchecked in the handover. Both now checked, and the second
+one matters.
+
+**The remote has not moved.** `git ls-remote` puts `integration/launch` at
+`ea6df9f592a4e01437dba3d269a59b9ee957e058`, exactly what the handover claims, and
+`main` at `9cf7d365`. So the "twelve commits exist only on this machine" warning
+is still accurate and nobody has pushed underneath me.
+
+**Purchase and refund were ALREADY proven on production, and I kept calling it a
+blocker.** Your own brief, which I saved verbatim and then stopped re-reading:
+
+    "Live and proven on production today: ticket purchase and refund, both
+     driven with a real card and real money returned."
+
+The production sitemap corroborates it, carrying `payment-verification-test-2-e1ukdb`.
+
+I have led with "no paid purchase or refund has been driven" as one of three
+things standing in the way, in report after report. That is misleading. The true
+statement is narrower: I could not RE-drive it HERE, because both Stripe keys the
+CLI holds are expired.
+
+### And the branch does not touch the money path at all
+
+The decisive question, which I had never asked. Thirteen files change across the
+twelve commits:
+
+    next.config.ts                         scripts/guards/no-glassmorphism.mjs
+    package-lock.json                      scripts/guards/run-guards.mjs
+    scripts/dev/upstash-shim.mjs           scripts/journeys/harness.mjs
+    scripts/guards/no-ai-authorship.mjs    scripts/ops/after-stripe-login.mjs
+    src/app/events/browse/[city]/page.tsx  src/components/ui/glass-card.tsx
+    src/lib/broadcast/card-raster.ts       src/lib/health/checks.ts
+    tests/unit/broadcast/card-raster-double-init.test.ts
+
+A grep across payment, payout, refund, checkout, stripe, order, reservation,
+pricing, fee and webhook matches exactly ONE, `scripts/ops/after-stripe-login.mjs`,
+which is the handover script I wrote this morning. It is not product code and
+runs nothing in production.
+
+The four `src/` files are the city browse OG images, the glassmorphism card, the
+social card rasteriser and the health check. None is on the money path.
+
+**So the money path is proven on production and nothing shipping here changes
+it.** `stripe login` still unblocks re-verification and the twelve journey rows,
+and is still worth doing, but it is not a launch blocker and I should not have
+been presenting it as one.
+
+That is the eighth time this session the answer was in a premise I was quoting
+rather than testing, and this one I had quoted from a file I saved myself at
+00:30 and never re-read.
