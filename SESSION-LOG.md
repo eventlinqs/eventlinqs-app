@@ -3331,3 +3331,94 @@ C:\dev\EVIDENCE\journeys\j2-after-venue-fix-2026-09-02\ under its own real date,
 and the repository folder was reverted. Backdating tonight's screenshots into a
 folder named for August would have falsified the record. Working tree clean, the
 seven commits are untouched.
+
+## 2026-09-02 05:25 TASK 7 WAS NOT FINISHED AND I HAD STOPPED CHECKING
+
+I had recorded the three-viewport work as done. Going back to the brief line by
+line, TASK 7 asks for ALL TEN journeys at THREE viewports with a per-journey
+duration and screenshot path. What actually existed on disk was j1, j2 and j8 at
+three viewports. SEVEN journeys had only ever run at 1440: j3, j4, j5,
+j5-guest-transfer, j6, j7-seated and j7-j10.
+
+Driving them now. Results so far, mobile-390:
+
+    j3   buy a ticket          FAIL  59.9s  no card field, Stripe
+    j4   refund                FAIL  56.5s  could not buy a ticket to refund
+    j5   signed-in transfer    FAIL  125s   no ticket to transfer, same cause
+    j5g  guest transfer        PASS  26.8s  0 blockers
+    j7s  seated purchase       FAIL          seat RESERVED at 390, then no card
+
+j3, j4 and j5 are all ONE cause, the Stripe key, not three defects. j5 is worth
+saying plainly because it looks alarming: "a signed-in buyer holding a ticket is
+offered no way to transfer it" is a CONSEQUENCE of never getting a ticket, not a
+missing transfer control. The account had no tickets at all.
+
+Worth keeping from j7-seated: the seat WAS reserved at 390 ("Tickets reserved for
+08:53"). The seat map works on a phone. Only the card field stopped it.
+
+## FIRST I HAD TO CHECK THE VIEWPORT OVERRIDE WAS REAL
+
+j6.mjs passes its OWN `viewport: { width: 1440, height: 1000 }` to newContext. If
+my harness wrapper only supplied a default, every journey that sets its own
+viewport would have silently run at 1440 and the whole three-viewport claim would
+be false. Checked rather than assumed:
+
+    browser.newContext = (options = {}) => original({ ...options, ...viewportOverride })
+
+The override spreads AFTER options, so it wins. The claim holds.
+
+## THE DOOR SCANNER HAD NEVER RUN AT ANY VIEWPORT THROUGH THE RUNNER
+
+j6.mjs takes `<ticketCode> <secret> <eventId>`. The generic runner cannot supply
+them, so j6 exited 2 in 0.8s at mobile. Checking the ORIGINAL desktop log,
+`EVIDENCE/journeys/j6.log` is the SAME crash. j6.log is not evidence of anything.
+
+The door scanner WAS genuinely driven, with hand-supplied arguments, and the real
+evidence is at `EVIDENCE/journeys/repo-evidence/j6-door/`. But it had never been
+driven on a PHONE, which is the only device a door is ever run from.
+
+### My first attempt was invalid and I am recording it rather than binning it
+
+I picked unscanned tickets at random from the whole TEST database, so they
+belonged to events the signed-in organiser did not own. Both viewports answered:
+
+    "You do not have permission to scan tickets for this event.
+     Ask the event organiser to add you to their team."
+
+That is the door working, not failing. The stored session was also EXPIRED
+(2026-09-01T18:03:08Z). Two faults of mine, neither of them the product's.
+
+### Driven properly: the organiser who OWNS the event, signed in through the form
+
+    tablet-768   PASS  12s    ADMIT "Viewport 008861", then
+                              REJECT "Already used just now"
+    mobile-390   PASS  ~14s   ADMIT "New Holder 122907", then
+                              REJECT "Already used just now"   0 blockers
+
+### A FALSE ALARM I RAISED AND AM WITHDRAWING IN THE SAME BREATH
+
+The first mobile run came back FAIL with "Enter a valid ticket code and key",
+while tablet passed. I nearly wrote that up as a launch-blocking mobile defect in
+the door scanner. Before writing it I probed the actual DOM at both sizes:
+
+    mobile-390   2 visible inputs, "Ticket code or ticket link" and
+                 "Ticket key", both 44px tall, button "Check in", 358px wide
+    tablet-768   the same two inputs, the same button, 448px wide
+
+Identical but for width, which is correct responsive behaviour. Re-driven cleanly
+at 390 with a valid ticket: ADMIT then REJECT, 0 blockers. THE SCANNER WORKS ON A
+PHONE. The first failure was my script, not the product, and had I trusted the
+first result I would have handed Lawal a launch blocker that does not exist.
+
+One honest unclear step, the same one desktop found: the refusal says "Already
+used just now" and never names the time of the first admission. At a door with a
+queue that is the difference between "someone just walked in on your ticket" and
+"you already came in this morning".
+
+## j7-seated HANGS AFTER IT FINISHES
+
+It wrote its result at 05:17 and the process was still alive at 05:25, ten
+minutes later, blocking the whole suite behind it. Killed to let the run
+continue. The journey REPORTS correctly; it just never exits, so any unattended
+runner that waits on it stalls forever. Worth fixing before this suite is put in
+CI, where it would burn the job timeout rather than report a failure.
