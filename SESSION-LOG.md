@@ -5396,3 +5396,45 @@ observability, the second while trying to undo a bad deploy.
 
 Fifteen hours of checking the platform, and the least-checked artefact in the
 room was the document I was writing about it.
+
+## 2026-09-02 16:05 THE DEPLOY TARGET IS REAL, AND THE HANDOVER QA IS NOW COMPLETE
+
+Third check in the same vein, and this one comes back CLEAN, which is worth
+stating as plainly as the two failures were.
+
+The deploy command depends on four identifiers I took from the brief and never
+verified. Checked against `.vercel/project.json` on disk and against the live
+team list:
+
+    projectId    prj_YIHLHcjuQfg4RmtNt7JekkcTVznJ    matches project.json
+    orgId        team_yPo8T18zSl5VczJfWIIrNqly       matches project.json
+    projectName  eventlinqs-app                      matches project.json
+    scope slug   lawals-projects-c20c0be8            resolves to "Lawal's projects"
+
+All four correct, and the scope slug is used in five places (the deploy, the
+verification `ls`, the rollback, the deployment listing and the promote). All
+five are right.
+
+And nothing escaped the parser. Every fenced block in the file is powershell:
+
+    powershell open fences  21
+    closing fences          21
+    balanced                yes
+    other languages         none
+
+So the parse run covered 100 percent of the executable content rather than a
+subset, which I had not established when I reported "21 blocks, 0 failures".
+
+### THE HANDOVER HAS NOW BEEN QA'd THE WAY THE PLATFORM WAS
+
+    93 evidence paths cited      every real one resolves
+    21 command blocks            every one parses
+    fences                       balanced, nothing unchecked
+    deploy target                four identifiers, all verified live
+    two defects found and fixed  a script that does not exist, and a
+                                 rollback block that could not be pasted
+
+That is the same standard the brief demands of the product, applied to the
+document about the product. It should not have taken until hour sixteen to think
+of it, and the two defects it found were both in the emergency paths: verifying
+observability, and undoing a bad deploy.

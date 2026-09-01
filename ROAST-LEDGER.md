@@ -134,7 +134,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | SG2.2 | The command that READS THE REF BACK with exact expected output | MET | Step 2 |
 | SG2.3 | The db push command | MET | Step 3 |
 | SG2.4 | Verification query proving exactly four migrations applied | MET | Step 4, plus an effect check |
-| SG2.5 | The Vercel deploy command for the named project | MET | Step 5 |
+| SG2.5 | The Vercel deploy command for the named project | **MET**, verified 16:05 | Step 5. All four identifiers checked rather than quoted: projectId, orgId and projectName match `.vercel/project.json`, and the scope slug `lawals-projects-c20c0be8` resolves to "Lawal's projects" in the live team list. Used correctly in all five places |
 | SG2.6 | Post-deploy smoke checks, six named | MET | Steps 6a to 6g |
 | SG2.7 | Rollback for each step that has one | MET | Deploy, migrations, storage |
 | SG2.8 | DO NOT RUN | MET | Not run |
