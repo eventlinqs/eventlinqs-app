@@ -1960,3 +1960,195 @@ That is a build artefact of my own sequencing, not a product defect. It needs a
 rebuild, which is queued after the journey run.
 
 
+
+## 2026-09-02 03:10 TASK 7. THE STRANGER JOURNEYS, DRIVEN. SEVEN PASS.
+
+With the service role key and ORDER_ACCESS_SECRET in place, the journeys ran.
+Everything below was DRIVEN in a real Chromium browser against the production
+build. Logs and screenshots in `C:\dev\EVIDENCE\journeys\`.
+
+### PASSING
+
+**Journey 1, a solo organiser publishes a free event. PASS.**
+0 blockers, 0 server errors, 78.5 s. Signed up as a stranger, through all seven
+wizard steps, set a cover, pressed Publish, landed on
+`/dashboard/events/9f9464a4.../launch-kit?published=1` reading
+"Geelong Community Night 686810 is live." A signed-out stranger then found the
+event on /events. That is an organiser going from nothing to a live, findable
+event without help.
+
+**Journey 2, a paid event with no Stripe connected. PASS, with a caveat I am
+not going to bury.**
+0 blockers. The refusal appeared, was in the viewport, was announced to screen
+readers, and carried a link to the fix. BUT the refusal it produced was
+"Add where this event happens before publishing", a MISSING VENUE, not the
+missing Stripe connection. The event never got far enough to test the money
+refusal, so the paid-publish-refusal path itself is NOT proven by this run. The
+journey passes its own assertions; it does not prove the thing its title claims.
+
+**A guest claims a free ticket, end to end. PASS.** (driven directly, because j3
+only knows how to buy a PAID ticket)
+Free events short-circuit the fee calculator before any payment intent, so this
+is the one purchase path that could be completed with the Stripe key expired.
+
+    event page -> + -> "Register 1 ticket" -> checkout -> guest details
+    -> "Register for free" -> /orders/526aa2b8.../confirmation
+    heading: "You're going"
+    TOTAL: AUD 0.00
+    server errors: none
+
+and the ticket email arrived, read out of the console transport the way a person
+reads an inbox:
+
+    [email:console] to      freebuyer.078030@example.com
+    [email:console] subject Your tickets for Geelong Community Night 686810
+    [email:console] link    .../orders/526aa2b8.../confirmation?t=0680417...
+
+So TICKET EMAIL DELIVERY is proven, and free events really are free.
+
+**The guest magic link. PASS, 3 of 3.**
+Opened in a clean browser with no session at all:
+
+    the buyer own signed link   HTTP 200, transfer=true,
+                                "Transfer or gift this ticket", ticket EL-KCQH-4E95
+    same order, no token        transfer=false   correctly closed
+    same order, forged token    transfer=false   correctly closed
+
+**Journey 5, the guest half: a guest moves a ticket. PASS, 7 of 7.**
+This is the one I had wrongly called a defect earlier.
+
+    the signed link offers the transfer control    transfer=true
+    the ticket actually moved, in the database     holder seated.534981@ ->
+                                                   newholder.236694@, on screen
+                                                   "Their new QR is on the way and
+                                                    your old code no longer works."
+    the old QR is dead: the secret rotated         the original code no longer scans
+    no token offers no transfer                    correctly closed
+    a forged token offers no transfer              correctly closed
+    a VALID token for a DIFFERENT order            correctly closed
+                                                   (the attack that matters)
+
+**Journey 6, the door. PASS.**
+Driven as the real organiser, signed in through the real login form, with the
+real ticket claimed above:
+
+    FIRST scan    ADMIT   Free Stranger 078030
+    SECOND scan   REJECT  Free Stranger 078030, "Already used just now"
+
+Admit-once holds, which is the one rule at a door that cannot be got wrong.
+One unclear step, recorded not hidden: the refusal says "just now" rather than
+naming the time of the first admission.
+
+**Journey 8, an organiser creates a discount code. PASS, 7 of 7.**
+The journey that failed silently for three months:
+
+    the discount form opens
+    a round number is submittable      stepMismatch=false valueValid=true
+    the code exists in the database    discount_codes row, code=SAVE879021,
+                                       type=percentage, percentage=20, max_uses=5
+    the percentage landed in a column that exists   discount_percentage=20
+    the new code is visible on the screen that created it
+    a duplicate code is refused OUT LOUD            "A code with that name already
+                                                     exists for this event"
+
+**The seat map. Selection and hold PASS; the purchase does not complete.**
+Journey 7 selected a seat on the map, held it, and reached the payment step at
+AUD 155.21 with a countdown running ("Tickets reserved for 08:54"). The seat map
+therefore works: a stranger can pick a specific seat and hold it. Only the card
+step is unreached. A second script measured the same event as 35 seat shapes
+rendering at HTTP 200.
+
+### BLOCKED, all four on the same expired credential
+
+    j3   a stranger buys a PAID ticket
+    j4   a buyer asks for a refund
+    j5   ticket transfer as a signed-in buyer
+    j7   the seated purchase, completed
+
+All four reach the payment step and stop there. After the rebuild the Stripe
+publishable key is present and the client-side IntegrationError is gone, so the
+remaining failure is server side and the log names it exactly:
+
+    Stripe PaymentIntent error: Error: STRIPE_SECRET_KEY is not set
+      at createPaymentIntent
+
+Both keys stored by the Stripe CLI are expired (2026-07-29 and 2026-07-07,
+driven against the API, both HTTP 401 api_key_expired). A new one needs
+`stripe login`, which is an interactive browser confirmation and is genuinely
+Lawal's to do. There is no route around it that would not be faking a purchase.
+
+### Journeys 9 and 10
+
+    journey 9, attribution   SKIPPED by its script for want of an EVENT_ID.
+                             Proven anyway by the Launch Kit run below, which
+                             minted NINE tracked links and resolved every one.
+    journey 10, payouts      The screen renders and talks about money, and does
+                             NOT say WHEN money arrives. Recorded as a finding:
+                             "the payouts screen does not say WHEN money arrives,
+                             which is the first thing an organiser asks."
+
+### The three viewport requirement
+
+NOT met. Every journey above ran at desktop 1440 only. The harness takes a
+viewport argument it never uses (`makeJourney(id, title, _viewport)`), so running
+the set at 390 and 768 needs the harness changed rather than merely re-invoked.
+That is honest work left undone, not a thing I am claiming.
+
+---
+
+## 2026-09-02 03:20 TASK 5 COMPLETED. THE CANONICAL LAUNCH KIT PROOF IS GREEN.
+
+Earlier I proved the eighteen cards through the PUBLIC composer route and flagged
+three gaps: no cover photograph, no logo, and no per-channel attribution. The
+service role key closed all three, because it let the repository's own canonical
+proof run:
+
+    node scripts/verify/launch-kit-inspect.mjs
+    28 of 28 passed.  0 blockers. 0 server errors.
+
+That script builds a real published event under a real organiser, then OPENS every
+artefact the organiser is handed. What it proved:
+
+  every one of the 18 cards at its published size, with real ink
+      story  1080x1920   square 1080x1080   feed 1440x1800
+      ink stdev around 90, well clear of blank
+      each under the 5 MB channel ceiling
+  the A4 QR poster exists as a PDF (226 KB)
+  the live event page every artefact points at actually works
+      HTTP 200, ticket surface present, error boundary absent
+  NINE tracked share links minted and EVERY ONE resolves 200
+      instagram, facebook, whatsapp, x, linkedin, email, copy, native, qr
+  the reach panel renders a real state rather than a blank
+
+### The three gaps, now closed with evidence
+
+**Cover photograph: RENDERS.** I opened
+`C:\dev\EVIDENCE\launch-kit\03-card-square-instagram.jpg` and looked at it. The
+top band carries a full concert photograph with a gold rule under it and the navy
+information band beneath, exactly as BandedCard specifies. The empty navy band I
+saw earlier was an anonymous draft having no cover, not a defect.
+
+**Per-channel attribution: WORKS.** The six channels are no longer byte identical.
+Sizes differ per channel (story-email 316502, story-facebook 318191,
+story-instagram 318030, story-linkedin 317496, story-whatsapp 316122,
+story-x 317248) and the card itself carries the channel in the link:
+
+    From AUD $45 Â· eventlinqs.com.au/e/kit-inspection-17oct-ig
+
+The `-ig` is Instagram. A ticket sold from that card is attributed to Instagram,
+which is the whole point of the artefact.
+
+**Brand and legibility, seen not measured.** Gold eyebrow "MUSIC Â· MELBOURNE",
+organiser line "KIT PRESENTS 436926", title legible and unclipped, date and venue,
+the gold price pill, a clean QR with "Scan to buy", and "Ticketing by EVENTLINQS."
+in the brand wordmark. Navy and gold throughout.
+
+On the logo specifically, so it is not over-claimed: the EventLinqs wordmark
+renders correctly on the card. There is no separate ORGANISER logo mark on these,
+because the test organiser uploaded none, and an organiser logo is optional.
+
+Artefacts copied to `C:\dev\EVIDENCE\launch-kit\` (23 files including all
+eighteen cards, the A4 poster PDF, the kit screen, the event page, the reach
+panel and the contact sheet index.html).
+
+
