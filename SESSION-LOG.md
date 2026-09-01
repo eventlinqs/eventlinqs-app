@@ -4022,3 +4022,124 @@ Sounds rail plus the 21-heritage community rail, not the seven scene families.
 
 I am recording all three rather than quietly dropping them, because a reader
 finding that JSON later deserves to know it was adjudicated and why.
+
+## 2026-09-02 07:55 THE CHECKOUT TRUST BLOCK, DRIVEN AT LAST, ON THE SEVENTH ATTEMPT
+
+Six attempts failed because I kept writing my own navigation with Playwright
+locators, and the quantity stepper never incremented, so the CTA stayed
+"Select tickets to continue" across four different paid events. j3 reaches
+checkout every time, so the flow was never the problem and my probe was.
+
+The seventh stopped writing navigation and IMPORTED THE HARNESS j3 uses, with
+j3's own `clickAny`. The missing piece was one call:
+
+    if (rx.test(t) && (await el.isVisible().catch(() => false)))
+
+j3 checks visibility before clicking. Mine did not, so it kept clicking a
+matching element that was not the one a person sees.
+
+Driven, on a real reservation created by the real flow:
+
+    04. moved to checkout
+        clicked "Checkout · AUD 26.87"
+        landed /checkout/23b72c1f-d611-4cc2-ac80-0c503c2bcacc
+    05. the trust treatment on checkout
+        "Secure payment
+         Encrypted by Stripe. Card details never touch our servers.
+         Money-back guarantee per organiser refund policy.
+         PCI-DSS compliant payment processing.
+         We accept Visa · Mastercard · Amex · Apple Pay · Google Pay"
+
+    VERDICT {"onCheckout":true,"blockPresent":true,"copyPresent":true,"nearTheForm":true}
+
+So BOTH halves of the trust law are now driven rather than read out of the
+source: zero on six marketing surfaces, a 20px icon row below "Get tickets" on
+event detail, and the full treatment beside the payment form on checkout.
+Evidence `EVIDENCE\gates\trust-checkout.json` and `trust-checkout.png`.
+
+Worth keeping from the same run: the CTA itself reads "Checkout · AUD 26.87",
+which is the ACCC all-in total carried on the control the buyer presses, not
+sprung at the final step.
+
+## THE PER-VIEWPORT SCREENSHOTS DO NOT EXIST, AND I AM NOT PRETENDING THEY DO
+
+TASK 7 asks for a screenshot path per journey per viewport. The per-row LOG is
+genuinely per viewport, all 30 of them. The SCREENSHOTS are not: every journey
+writes into one fixed directory, `docs/verification/journeys-2026-08-28/<id>/`,
+so running the same journey at three viewports leaves only the LAST run's images.
+
+I could have listed the same directory three times and called the requirement
+met. The table now says this in its own header instead, with the surviving image
+count per journey, and names the fix: the harness needs a per-viewport output
+directory. That is a harness change rather than a product one, so it is recorded
+rather than made at this hour.
+
+## FREE DISK, AND A STANDING LAW I ONLY PARTLY KEPT
+
+Section B says "Log free space at the start and end of every task." I logged it
+at intervals and in the summary, not at both ends of every task. Recording that
+as PARTIAL rather than claiming it.
+
+    now                    8.99 GB free
+    session range          8.99 to 9.32 GB
+    floor                  5 GB, never approached
+    TASK 0's 12 GB gate    never met, see the ledger, adversarial finding A2
+
+What this session actually put on the disk:
+
+    node_modules      942 MB
+    .next             538 MB   (deleted and rebuilt four times, never accumulated)
+    C:\dev\EVIDENCE    35 MB   284 files
+
+The .next figure is the one worth knowing: the brief's instruction to delete it
+before every fresh production build is why 538 MB is a current figure rather than
+four times that.
+
+## 2026-09-02 08:15 LIGHTHOUSE RE-RUN ON launch-prepared, AND THE RUNNER WAS LYING TO ME
+
+Two Lighthouse runs "failed" tonight with exit 1 and wrote no summary:
+
+    errno: 1, code: 'EPERM', syscall: 'rm',
+    path: '\?\C:\Users\61416\AppData\Local\Temp\lighthouse.17761141'
+
+**The audits had already finished both times.** chrome-launcher creates a temp
+profile directory and deletes it inside `kill()`, and on Windows that delete
+fails while Chrome still holds a handle. So a completed measurement exited
+non-zero and threw its own numbers away. Killing every Chrome and clearing the
+temp directories first did not help, because the race is inside `kill()`.
+
+Fixed by giving the launcher a user-data directory it does not own
+(`C:\dev\.lighthouse-profile`), so it never tries to remove one, plus a tolerant
+`kill()` and cleanup that WARN rather than abort. A finished audit is no longer
+discarded because Chrome would not close tidily. The warning fired on this run,
+exactly as intended, and the run still exited 0 and wrote its summary.
+
+### The numbers, median of 3, on the rebuilt launch-prepared
+
+    mobile   /          79   BELOW 95
+    mobile   /events    90   BELOW 95
+    mobile   /pricing   93   BELOW 95
+    desktop  /          98   PASS
+    desktop  /events   100   PASS
+    desktop  /pricing  100   PASS
+
+**`/events` has a number for the first time.** Every previous run recorded it as
+NULL, because the page answered HTTP 500 for want of a service role key, so
+Lighthouse measured an error boundary and reported nothing. It answers 200 now
+and scores 90 mobile, 100 desktop.
+
+Desktop passes the brief's 95 on every path. Mobile does not, on any, and I am
+not softening that: **TASK 8's "95 or above on BOTH desktop and mobile" is NOT
+MET.** The repository's own floor is 0.80 and the homepage carries a documented
+exemption to 2026-11-01, and CLAUDE.md records that the same commit measured 0.76
+on a CI runner and 0.88 from a warmed real client, so these localhost figures are
+indicative rather than the gate. None of that makes 79 into 95.
+
+## THE TASK 7 TABLE NOW CARRIES ITS EVIDENCE PATHS
+
+Rebuilt with a genuinely per-viewport LOG path on all 30 rows, and the screenshot
+directory count per journey. Two of those counts are zero, and they stay visible
+rather than being tidied away: `j5-guest-transfer` and `j8-discount` produced no
+images at all, so those journeys are proven by their logs and assertions only.
+
+PASS 18, FAIL 12, all twelve the one Stripe key, unchanged.

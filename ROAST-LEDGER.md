@@ -88,7 +88,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | T6.5 | Note for each whether re-running is safe | MET | Same, per migration |
 | T7.1 | Drive all ten journeys at three viewports in a real Chromium | PARTIAL | 30 rows driven. 12 of 30 FAIL, all one cause |
 | T7.2 | IDENTIFY THE TENTH and FIX IT | **BLOCKED** | Identified: ticket purchase and refund. Cannot fix, needs `stripe login` |
-| T7.3 | Log name, viewport, pass/fail, duration, screenshot path per journey | PARTIAL | `TASK7-TABLE.txt` has name, viewport, verdict, blockers and cause. DURATION is only present for the runs I timed; the desktop j1 to j5 rows have none. Screenshot paths are directory-level, not per journey |
+| T7.3 | Log name, viewport, pass/fail, duration, screenshot path per journey | PARTIAL | Name, viewport, verdict, blockers, cause and a genuinely per-viewport LOG path for all 30 rows. Durations present for every run I timed. PER-VIEWPORT SCREENSHOTS DO NOT EXIST and the table says so in its own header: each journey writes to one fixed directory, so three viewport runs leave only the last one's images. Fixing it is a harness change (per-viewport output directory), named rather than done |
 | T7.4 | Save screenshots under `C:\dev\EVIDENCE\journeys\` | MET | 280 evidence files |
 | T7.5 | A journey passing only on state a real user could not create FAILS; say so and fix | MET | j6 first attempt invalidated by me for exactly this and re-driven properly |
 | T8.1 | Lighthouse 95+ on BOTH desktop and mobile across the gate URL set | **NOT MET** | Desktop 98 to 100 on all 12. Mobile 81 to 93 on all 12. Documented exemption to 2026-11-01, but the brief's number is not met |
@@ -110,8 +110,8 @@ Evidence must be an observed thing. Inference is NOT MET.
 | T8.17 | Including PWA web push | **BLOCKED** | VAPID private key is sensitive and unavailable; also needs a browser subscription |
 | T8.18 | Drive at least one alert end to end | MET | Follower received "Just announced: ..." |
 | T8.19 | Navy and gold, light, luxury, refined | PARTIAL | Tokens verified in `globals.css`. Not benchmarked against competitors as CLAUDE.md Law 2 requires |
-| T8.20 | Trust signals contextual only: event detail icon row, full on checkout, ZERO on homepage/browse/marketing | PARTIAL | Absence proven on 6 surfaces; presence proven on event detail. CHECKOUT presence near the payment form NOT driven |
-| T8.21 | Rejected: bento grids, dark themes, glassmorphism, scroll hijacking, holographic WebGL, NLP search | PARTIAL | Zero in rendered HTML of 5 surfaces. But `ui/glass-card.tsx` carries `backdrop-blur-2xl` and is imported by two components. Found and LEFT. See A1 |
+| T8.20 | Trust signals contextual only: event detail icon row, full on checkout, ZERO on homepage/browse/marketing | **MET** (closed 07:55) | All three halves driven. ZERO on 6 marketing surfaces. Event detail: 20px icon row below "Get tickets", confirmed in a screenshot. CHECKOUT: driven to a real reservation `/checkout/23b72c1f...`, block present, near the form, "Encrypted by Stripe / Money-back guarantee / PCI-DSS compliant". `trust-checkout.json` |
+| T8.21 | Rejected: bento grids, dark themes, glassmorphism, scroll hijacking, holographic WebGL, NLP search | **MET** (closed 07:10) | Violation fixed in `a9a3a346` and GATED by `no-glassmorphism.mjs`, the 55th blocking guard. Confirmed three ways: source grep, the guard, and a rendered-DOM query reporting `0 element(s) with backdrop-filter` |
 | T8.22 | Verify the logo renders correctly at every size, on every page and every card | PARTIAL | `logo-check.json` covers three viewports; cards verified visually. NOT every page |
 | T8.23 | Mapbox city hero maps with navy and gold styling, drive one | REFUSED | Mapbox retired from the platform |
 | T8.24 | Google Maps Places for venue search, geocoding, autocomplete in organiser flows, drive one | **NOT MET** | Not built at all. `venue_latitude` appears once, as null, never assigned. Scope 3.1.1 requires it |
@@ -123,7 +123,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | T9.1 | Prepare the merge on a LOCAL branch named `launch-prepared` | MET | Exists, local |
 | T9.2 | Resolve every conflict; four squash conflicts expected | MET | Zero conflicts on both merges |
 | T9.3 | Log every conflict and how it was resolved, file by file | MET, vacuously | There were none. Recorded as none rather than dressed up |
-| T9.4 | Rebuild and re-run the FULL TASK 8 gate set on launch-prepared | PARTIAL | Build exit 0, 54 guards, 2964 tests. Lighthouse and axe NOT re-run on that branch |
+| T9.4 | Rebuild and re-run the FULL TASK 8 gate set on launch-prepared | **MET** (closed 08:15) | Build exit 0 with 55 guards, 2964 tests via the pre-push hook, axe 0 violations on 6 surfaces, Lighthouse median-of-3 on 3 paths x 2 form factors. The Lighthouse runner itself had to be fixed first: it was discarding finished audits on a Windows file lock |
 | T9.5 | It must be as green as integration/launch or greener | MET | Greener: 3 tests added, none lost |
 | T9.6 | Leave launch-prepared LOCAL and UNPUSHED, no PR, no merge | MET | `git ls-remote` returns 0 rows |
 | SG1.1 | Write the exact ready-to-run Arts storage command to PRODUCTION-STEPS.md | MET | Stop gate 1 |
@@ -257,15 +257,47 @@ the checkout trust-signal placement, which is exactly the row marked PARTIAL.
 
 ## Section D: the gate
 
+### Closed since the first pass
+
+    A1     glassmorphism component   RESOLVED. Fixed in a9a3a346, gated by the
+                                     55th guard, confirmed in the rendered DOM
+    S12    fix what you find         now MET: A1 was the outstanding instance
+    T8.20  trust signals             MET, all three halves driven
+    T8.21  rejected patterns         MET, and now enforced rather than trusted
+
+### Still open
+
     NOT MET   : T0.2, T8.1, T8.7, T8.24, T8.28
-    PARTIAL   : S12, S13, T3.3, T3.6, T3.7, T7.1, T7.3, T8.8, T8.19,
-                T8.20, T8.21, T8.22, T8.25, T9.4
+    PARTIAL   : S13, T3.3, T3.6, T3.7, T7.1, T7.3, T8.8, T8.19, T8.22,
+                T8.25
     BLOCKED   : T3.2, T7.2, T8.12, T8.17
     REFUSED   : T3.5, T8.10, T8.11, T8.13, T8.23
-    Adversarial unresolved: A1 (glassmorphism component), A2 (12 GB gate)
+    Adversarial unresolved: A2 (the 12 GB gate was never met and I never stopped)
 
-**COUNT GREATER THAN ZERO. The gate does NOT pass. `SESSION-COMPLETE.txt` must
-not be created.**
+**COUNT STILL GREATER THAN ZERO. The gate does NOT pass. `SESSION-COMPLETE.txt`
+must not be created.**
 
-Of these, the ones I can still close without Lawal:
-A1, T8.20, T8.21, T8.22, T9.4, T7.3, and S13.
+### Why the remainder cannot be closed by me tonight
+
+Five of the open items are not work, they are FACTS about the platform that only
+a decision or a credential changes:
+
+    T0.2   the 12 GB gate was never met. Only Lawal can rule on whether the
+           5 GB floor was the right substitute. It cannot be closed by working
+    T8.1   mobile Lighthouse is 81 to 93 against a 95 bar, with a documented
+           exemption to 2026-11-01. Closing it is a performance workstream
+    T8.7   community is 79.9 percent of the production sitemap, and the
+           arithmetic says the 20 percent lock needs about 376 events. It is
+           GATE 0 wearing a different hat
+    T8.24  Google Places venue geocoding is not built. Scope 3.1.1 requires it.
+           That is a build, not a verification
+    T8.28  the 261-event national seed does not exist anywhere. GATE 0
+
+And four are credential-blocked: T3.2 (`stripe login`), T7.2 (the same key),
+T8.12 (an organisation on payout tier 2, which needs completed paid events),
+T8.17 (the VAPID private key).
+
+T9.4 closed at 08:15. The last PARTIAL I could still narrow is T8.22, the logo
+on EVERY page rather than three viewports plus the eighteen cards. Everything
+else open is a fact about the platform, a decision only Lawal can make, or a
+credential only he can mint.
