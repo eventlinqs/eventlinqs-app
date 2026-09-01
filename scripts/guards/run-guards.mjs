@@ -65,6 +65,8 @@
  *                              service-role call to the publish gate, must prove the caller
  *                              may act for that organisation first (the service role bypasses
  *                              RLS, so an unchecked read is a cross-tenant read)
+ *   no-glassmorphism           no applied backdrop-filter anywhere in src, because the
+ *                              Design system and Motion both ban it and neither had a gate
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
