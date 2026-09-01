@@ -4719,3 +4719,60 @@ So its absence from Preview is the DESIGNED, SAFE state, not a misconfiguration.
 The true statement is narrower and I have rewritten it as such: if you want to
 exercise guest magic links on a preview you must set it there, and until you do,
 that flow is untestable outside production. Nothing is broken.
+
+## 2026-09-02 12:15 THE ENV LOCKS ARE PROVEN TO FIRE, WHICH IS THE OTHER HALF OF LOCK 3
+
+Having run LOCK 3 and had it pass, the obvious next question is the one the
+repository asks of itself in `scripts/verify/env-locks-verify.mjs`:
+
+    "A lock nobody has ever seen fire is a lock nobody has proven exists."
+
+That harness takes a known-good production environment and a known-good store
+inventory, breaks exactly ONE manifest expectation at a time, and asserts both
+that the evaluator FAILS and that the failure NAMES the right rule. Then it
+restores and asserts the same input passes clean.
+
+Driven, exit code 0:
+
+    CLEAN   [2] a complete, correct production environment passes
+    CLEAN   [3] a complete, correct store inventory passes
+    ... 24 deliberately broken cases, each observed to fire ...
+    CLEAN   [2] the production environment is clean again
+    CLEAN   [3] the store inventory is clean again
+
+    ALL 24 CASES BEHAVED AS DECLARED. Every lock has been observed to fire.
+    [env-locks] found 0 cases that did not behave as declared
+
+So TASK 3 now has both halves, which is the strongest form the argument takes:
+
+    LOCK 3, live      93 scope records across 39 variables, every manifest
+                      expectation holds. The environment IS correct.
+    the drill         24 injected faults, every lock fires and names its rule.
+                      The thing that says so is PROVEN capable of saying otherwise.
+
+Either alone is weak. A passing check nobody has seen fail is not evidence, and a
+firing drill against a broken environment would be alarming. Together they are
+the actual answer to "environment and service integrity".
+
+Among the 24 the drill proves it catches: a live Stripe publishable key paired
+with a secret key from a DIFFERENT Stripe account; a test secret key sitting on
+production, where "production would take card details and settle NOTHING"; the
+PRODUCTION Supabase ref appearing on the PREVIEW scope; a service-role key
+readable back out of the store; and CRON_SECRET present in one store and absent
+from the other. Those are the failures that would be expensive and quiet, and
+each has been watched to fire.
+
+### THE NEAR MISS, WHICH IS THE POINT
+
+The output is twenty four lines beginning `FIRES`, each naming a serious defect
+in plain language. Read without its header it looks exactly like an audit that
+just found twenty four live problems on the money path on launch morning.
+
+It is the opposite: every one is a fault the harness INJECTED on purpose to prove
+the lock catches it, using synthetic values the file states are "built from
+repeated characters. Nothing in this file is or resembles a real credential."
+
+I read the header before interpreting the output. Given that I have written up
+four false findings tonight from misreading my own tools, reporting those 24
+lines as live defects would have been the worst of them by a distance, and it was
+one careless paragraph away.

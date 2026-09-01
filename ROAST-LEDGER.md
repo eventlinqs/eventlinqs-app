@@ -65,7 +65,7 @@ Evidence must be an observed thing. Inference is NOT MET.
 | T3.5 | Mapbox | REFUSED | Retired from the platform. Correct to refuse: verifying a removed integration is not possible. Recorded as a brief-versus-code divergence |
 | T3.6 | Google Maps Places API | PARTIAL | Key present; server-side call correctly refused by referer restriction. Browser proof not driven |
 | T3.7 | Sentry | PARTIAL, and CORRECTED 11:00 | `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` ARE set on Production and Preview, 122d old, stored Secret. I could not READ them, which is not the same as unset, and I had been reporting it as unset. Sentry is CONFIGURED; only end-to-end capture on the live project is unproven |
-| T3.8 | Any missing or misconfigured env var is a finding; fix or log precisely | MET | Each logged with exactly what is needed |
+| T3.8 | Any missing or misconfigured env var is a finding; fix or log precisely | **MET**, and strengthened 12:15 | Each logged individually. PLUS the two checks that answer it properly, neither run before: LOCK 3 live (93 scope records across 39 variables, every manifest expectation holds) and `env-locks-verify.mjs` (24 injected faults, every lock observed to fire and name its rule, exit 0). The environment is correct AND the check that says so is proven able to say otherwise |
 | T4.1 | One read-only pass over the OneDrive archive, 15 minute box | MET | Logged TASK 4 |
 | T4.2 | If not recovered, log and continue | MET | Logged, continued |
 | T4.3 | CRITICAL: grep for references to `lighthouse-gate-urls.json`; reconstruct if anything reads it | MET | `git ls-files --error-unmatch` shows it is TRACKED, so nothing was lost and no reconstruction was needed. Log line 562 |
