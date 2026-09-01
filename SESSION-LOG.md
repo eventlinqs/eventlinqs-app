@@ -1,7 +1,190 @@
-# EventLinqs Launch Readiness Session Log
+﻿# EventLinqs Launch Readiness Session Log
 
-Operator: Lawal Adams (sole author). Session machine: Windows 11, PowerShell 5.1.
-Newest entries appended at the bottom. Summary block will be added at the top when the session closes.
+Operator: Lawal Adams (sole author). Windows 11, PowerShell 5.1.
+Session ran 2026-09-02, roughly 00:05 to 02:15. Newest detail entries at the bottom.
+
+---
+
+# SUMMARY, WRITTEN LAST, READ FIRST
+
+## The one thing to read if you read nothing else
+
+**Production has no catalogue.** The live homepage and the live browse grid each
+link to exactly ONE event, and it is called `payment-verification-test-2-e1ukdb`.
+Sydney and Melbourne browse pages show zero events. The production sitemap holds
+552 URLs of which four are event pages, two of them payment test artefacts.
+
+The 261 published events across 20 cities the brief expects are not there. This is
+DATA, not code, so tonight's deploy does not change it. Going to market tomorrow
+in this state means the first organiser who visits sees a ticketing platform with
+one test event on it.
+
+That is written up as GATE 0 in `C:\dev\PRODUCTION-STEPS.md` and needs your
+decision, because seeding production is a production write and was forbidden here.
+
+## Honest verdict: is it ready to go in front of real organisers and buyers tonight?
+
+**No, and not because of the code.** The branch is in better shape than it was
+when the session started. Three things stand in the way, in order:
+
+1. **The empty catalogue above.** Nothing else matters until that is answered.
+2. **Not one of the ten stranger journeys could be driven**, so purchase, refund,
+   guest magic link, discount codes, the seat map and the door scanner are all
+   UNPROVEN on this branch tonight. The cause is one missing credential, not a
+   defect, and it is two minutes of your time to unblock.
+3. **The event detail page is unproven on this branch.** It answers HTTP 200 and
+   renders "We hit a snag loading this page" locally. That is the same missing
+   credential and it almost certainly works on Vercel, but "almost certainly" is
+   not the standard this brief sets, and I did not drive it.
+
+What I would do in your position: paste two keys into `.env.local`, re-run the
+journeys, and decide GATE 0. That is a short evening, not another week.
+
+## PROVEN, with evidence
+
+| What | Evidence |
+|---|---|
+| Fresh local repo off OneDrive, HEAD ea6df9f5, clean, fsck clean, ZERO reparse points across 6898 items | log TASK 1 |
+| Production build GREEN, exit 0, all 54 guards pass, 197 routes, 134 static pages | `C:\dev\build.log` |
+| The build was RED and is fixed. The top commit had never been built and would have failed on Vercel | commit 571b7b15, log TASK 2 |
+| All 18 social cards render from a running server: exact dimensions, real JPEG bytes, ink present | `C:\dev\EVIDENCE\social-cards\` (18 JPEGs + contact-sheet.jpg + card-results.json) |
+| resvg is genuinely the executing path, proved by removing the binary | `C:\dev\resvg-phase{1,2,3}.log.err` |
+| Four migrations pending on PRODUCTION, exactly as the brief said. One pending on TEST, applied and verified by its effect | log TASK 6, `C:\dev\miglist-prod.txt` |
+| Lint clean, typecheck clean, 2961 of 2961 tests pass | `C:\dev\test-clean.log` |
+| Accessibility 100, best practices 100, SEO 100 on every surface measured | `C:\dev\EVIDENCE\gates\` |
+| Three high severity advisories in the SHIPPED dependency tree removed | commit 793ebf5b |
+| Merge prepared on launch-prepared, zero conflicts, tree byte identical to integration/launch, local and unpushed | log TASK 9 |
+| Both stop gates written with exact expected output | `C:\dev\PRODUCTION-STEPS.md` |
+
+## FAILED or NOT PROVEN, with diagnosis
+
+**All ten stranger journeys. BLOCKED.** Every one stops at account creation:
+`[auth/signup] admin client unavailable { reason: 'supabaseKey is required.' }`.
+`SUPABASE_SERVICE_ROLE_KEY` is one of nineteen values Vercel refuses to decrypt
+back to a local machine, by design, because they are marked sensitive. I drove j1
+and j3 to confirm this rather than inferring it. Nothing was driven at any of the
+three viewports.
+
+I deliberately did NOT manufacture a pass by seeding accounts around the blocked
+step, because the brief says a journey that passes only on state a real user could
+not create is a failed journey.
+
+**Stripe anything. BLOCKED.** No `STRIPE_SECRET_KEY` locally, and separately the
+Stripe CLI's own stored test key EXPIRED on 2026-07-29. I drove it: HTTP 401
+`api_key_expired`. So purchase, refund, and webhook verification are all unproven.
+
+**Sentry capture. NOT PROVEN.** The server log says it plainly on every boot:
+`dsnPresent: false, dsnSource: 'NONE'`. No DSN locally means nothing can be made
+to arrive, so I did not claim it.
+
+**Ticket email delivery. NOT PROVEN.** No `RESEND_API_KEY`. The console transport
+(`EMAIL_TRANSPORT=console`) does exist and would have made this drivable, but it
+needs a journey to reach it and the journeys stop earlier.
+
+**Lighthouse 95. NOT MET on mobile.** Median of 3, local production build:
+desktop / 98 and desktop /pricing 100 PASS; mobile /pricing 93 and mobile / 80 are
+below; /events could not be measured because it answers 500 for the same missing
+key. Note the repository's own gate asserts 0.80, not 0.95, and the homepage
+carries a documented performance exemption until 2026-11-01.
+
+**The 18 cards have two gaps.** They render and carry ink, but the run used an
+anonymous draft, which has no cover photograph and no organiser logo. So the
+square and feed photo bands are empty navy, and the brief's requirement that the
+EventLinqs logo renders correctly is NOT satisfied by that evidence. The six
+channels are also byte identical per format (3 distinct images, not 18), which is
+correct for an unclaimed draft but means per channel attribution is unproven.
+
+## THINGS YOU DO NOT KNOW YET
+
+1. **43 proper nouns are corrupted in user facing content.** A blind find-replace
+   of "cultural" to "community" produced "Multicommunity Council of the Northern
+   Territory", "National Multicommunity Festival", "Illawarra Multicommunity
+   Services" and 40 more, across `/community` and `/city` pages that are 88
+   percent of your indexed surface. These are real organisations named wrongly.
+   I did not change them: it needs your ruling on whether proper nouns are exempt
+   from the word ban, and each name needs verifying rather than inferring.
+
+2. **80 percent of your sitemap is /community.** 441 of 552 URLs. CLAUDE.md locks
+   community at 10 to 20 percent of any surface, never the dominant identity. What
+   Google has been given is the opposite of the positioning lock.
+
+3. **Your sitemap has 552 URLs against the 586 you submitted.** 34 short.
+
+4. **`Diaspora Pop` is a rendered scene label** in `src/lib/communities/data.ts`,
+   plus two more diaspora uses in community copy. CLAUDE.md bans the word by name.
+
+5. **The brief asks for three things that no longer exist.** Mapbox is retired and
+   consolidated onto Google Maps. The venue revenue share was removed by your own
+   decision on 5 July 2026. The processing fee was deleted by your ruling of
+   15 August 2026, so "verify processing 2.5 percent on the rendered checkout"
+   would be verifying a fee you deliberately stopped charging. I did not report
+   any of the three as passing.
+
+6. **The blobless clone rule in the brief cannot work.** The working tree at HEAD
+   is 1.97 GB on its own, so no clone strategy fits under 2.5 GB. The cause is
+   2486 committed PNG screenshots weighing 1.56 GB in `docs/`, against 6.9 MB of
+   actual source. Every clone anywhere, including CI, pays that.
+
+7. **`mapbox-gl` is still a dependency**, 54.6 MB, with zero source imports.
+
+8. **The local Upstash shim was silently wrong.** It implemented neither `setex`
+   nor `ttl`, which the draft store uses, so every kit draft write was discarded
+   and the cards answered 404 from a composer that had just built a kit. Fixed
+   this session. It also serves the fail-closed limiter on the money path.
+
+9. **`.tmp-serve.log` is not gitignored**, and the journey harness writes it into
+   the repo root. Also: running the journeys OVERWRITES committed evidence files
+   under `docs/verification/journeys-2026-08-28/`. Mine wrote failure logs over
+   your passing ones; I restored them with `git checkout -- docs/`.
+
+10. **5 tests fail whenever a `.env.local` exists.** Not a real failure, but a
+    developer with a local env file sees red tests that are not red in CI.
+
+11. **The `/culture/*` Lighthouse exemption is dead config.** Those routes now
+    301 to `/community/*`, so the pattern matches nothing. The homepage exemption
+    is live.
+
+12. **There is a second, dormant Vercel project** named `eventlinqs`, no
+    production URL, 54 days since update. A stray project can capture a domain or
+    a webhook by accident.
+
+## Waiting at the stop gates
+
+`C:\dev\PRODUCTION-STEPS.md` holds all of it, unrun:
+
+  - **GATE 0** the empty production catalogue, needing your decision
+  - **STOP GATE 1** the Arts storage copy, which MUST run before the deploy, with
+    the exact command, the verification, and why no rollback is needed
+  - **STOP GATE 2** link, read the ref back, `db push`, the verification query,
+    the Vercel deploy, and six post deploy smoke checks, each with expected
+    output and a rollback where one exists
+
+Production migration state was read (read only) and is exact: 107 rows, 103
+applied, **4 pending**, and they are precisely the four the brief names. The CLI
+was re-linked to TEST immediately afterwards and left there.
+
+Take the `supabase db dump` backup named in step 3 before pushing. There is no
+Supabase rollback command and three of the four migrations have no down file.
+
+## Disk
+
+Started 12.93 GB free, ended 8.86 GB. Never went below 8.8 GB, so the 6 GB
+reclaim threshold and the 5 GB floor were never approached.
+
+## What I changed
+
+Three commits on `integration/launch`, all authored `EventLinqs
+<hello@eventlinqs.com>`, all with zero trailers:
+
+    7afc5913  The eighteen cards render from a running server, proved by breaking them on purpose
+    793ebf5b  The three high advisories in the shipped tree are gone
+    571b7b15  The card rasteriser survives the bundler, so a production build exists at all
+
+Plus `launch-prepared` created locally and left unpushed, and this log pushed to
+the `ops/session-log` branch so it can be read from a phone.
+
+Nothing was written to production. The production Supabase project was read from
+twice, both times read only, and the CLI is linked to TEST as it was found.
 
 ---
 
@@ -1241,5 +1424,343 @@ viewport, so mobile 390, tablet 768 and desktop 1440 are all outstanding. I note
 also that scripts/journeys/harness.mjs takes a viewport argument it never uses
 (`makeJourney(id, title, _viewport)`), so the three viewport runs would need the
 harness changed, not merely invoked three times.
+
+
+
+## 2026-09-02 02:00 TASK 8. QUALITY GATES. WHAT PASSED AND WHAT COULD NOT BE MEASURED.
+
+### Lint, typecheck, tests. ALL GREEN.
+
+    npm run lint     exit 0    eslint --max-warnings=0
+    npx tsc --noEmit exit 0
+    npx vitest run   exit 0    245 test files, 2961 tests, ALL PASSING
+
+A NOTE ON THE TEST RUN, because the first attempt showed 5 failures and they were
+not real. `tests/unit/security/production-write-preflight-approval.test.ts` failed
+5 of its 8 drills while a `.env.local` existed in the repository. The preflight
+resolves its target from `.env.local`, saw TEST, and short-circuited before the
+approval logic the drills are testing ever ran. With `.env.local` moved aside the
+same file passes 8 of 8 and the whole suite goes green.
+
+So: the suite is green on a clean checkout and in CI, and the 5 failures were
+caused by a file I created this session with `vercel env pull`. It is still worth
+a line: any developer with a local env file sees 5 red tests that are not real.
+
+### Lighthouse, median of 3, on the local production build
+
+    surface              perf   a11y   best-practices   seo
+    mobile   /             80    100        100         100
+    mobile   /events      ERR    ERR        ERR         ERR
+    mobile   /pricing      93    100        100         100
+    desktop  /             98    100        100         100
+    desktop  /events      ERR    ERR        ERR         ERR
+    desktop  /pricing     100    100        100         100
+
+Evidence: C:\dev\EVIDENCE\gates\
+
+Against the brief's floor of 95:
+
+    desktop /          98    PASS
+    desktop /pricing  100    PASS
+    mobile  /pricing   93    BELOW
+    mobile  /          80    BELOW
+    /events           ERR    could not be measured
+
+ACCESSIBILITY IS 100 ON EVERY SURFACE THAT MEASURED, which is the category floor
+lighthouserc.json sets at 1.0 and the brief sets as zero axe violations. Best
+practices and SEO are likewise 100 everywhere.
+
+Three things have to be said honestly about these numbers.
+
+1. THIS IS A SUBSET, not the pinned gate set. The gate is 13 URLs; I measured 3
+   surfaces at 2 form factors. There was not time for the full set as well as the
+   stop gates, and the stop gates are the deliverable Lawal cannot proceed without.
+
+2. /events COULD NOT BE MEASURED because it answers HTTP 500 locally:
+       Error: supabaseKey is required.
+   Same missing service role key as everything else. Not a product defect.
+   The three pinned EVENT DETAIL urls were excluded for the same reason: they
+   render their error boundary locally, so auditing them would produce a number
+   about a broken page.
+
+3. A LOCALHOST RUN IS NOT THE GATE, and CLAUDE.md says so explicitly. The
+   Lighthouse gate measures a warmed Vercel preview, and the founder ruling of
+   25 August 2026 records that on the SAME commit /events scored 0.76 on the CI
+   runner and 0.88 from a warmed real client. These figures are indicative.
+
+### The 95 floor is not what the repository enforces, and that gap is documented
+
+The brief demands 95 or above. lighthouserc.json asserts `categories:performance`
+at minScore 0.80, and:
+
+  - the HOMEPAGE has performance at WARN level only, exempted until 2026-11-01
+    for the Vercel image optimiser cold-start race (Issue #42)
+  - `/culture/*` has the same exemption, also to 2026-11-01
+
+So mobile / at 80 is exactly at the repository's floor and inside a documented
+exemption, while being 15 points under the brief's number. CLAUDE.md is explicit
+that the advisory ruling "IS NOT A RELAXATION OF THE 95+ LAW". Both statements are
+true at once: the law says 95, the gate enforces 80 and does not block.
+
+One stale detail worth fixing: the `/culture/.+$` exemption pattern can no longer
+match anything, because the routes moved to `/community/...` and `/culture/*` now
+301s. The homepage exemption is live; the culture one is dead config.
+
+### Language and positioning
+
+Scanned 904 TypeScript files under src/, comments stripped so a comment
+explaining a retired word is not counted as copy.
+
+    diaspora                        3 occurrences
+    friends-launch                  0
+    culture-first                   0
+    "Where the culture gathers"     0
+    culture / cultural / cultures   8 occurrences
+
+THE TAGLINE IS CORRECT AND CONSISTENT. The exact string
+"Every community. Every event. One platform." appears in 14 files including
+layout.tsx, page.tsx, opengraph-image.tsx and twitter-image.tsx.
+
+The 8 culture hits are ALL non user facing and all deliberate:
+    magic-start.ts:148      an AI prompt instruction that says never to use it
+    short-links.ts:51       a RESERVED word list holding back the legacy paths
+    search-params.ts:82     the alias map from the retired slug
+    spine.ts:97 and :116    two STORAGE KEYS naming objects that exist under
+                            those names in the bucket, recorded in
+                            docs/POST-LAUNCH-FINDINGS.md and deliberately left
+    permanent-redirects.ts  the 301 table, which has to spell the retired path
+
+The 3 diaspora hits are user facing and are real:
+    src/lib/communities/data.ts:616   a community blurb
+    src/lib/communities/data.ts:624   { slug: 'diaspora-pop', label: 'Diaspora Pop' }
+    src/lib/communities/intersection-editorial.ts:134   editorial prose
+
+`Diaspora Pop` is a rendered scene label. CLAUDE.md bans the word by name.
+
+### FINDING: a blind find-replace has corrupted 43 proper nouns
+
+Searching for the shape rather than the word turned up something worse than a
+banned term. "Multicultural" has been replaced with "Multicommunity" across 43
+sites in user facing content:
+
+    src/lib/cities/data.ts                    5
+    src/lib/communities/data.ts               1
+    src/lib/communities/intersection-editorial.ts   33
+    src/lib/images/*.ts                       4
+
+Every one names a real Australian organisation or event:
+
+    "Multicommunity Council of the Northern Territory"   is the Multicultural Council of the NT
+    "Multicommunity Council of Tasmania"                 is the Multicultural Council of Tasmania
+    "Multicommunity Services Centre" (Mirrabooka)        is the Multicultural Services Centre of WA
+    "Multicommunity Neighbourhood Centre" (Newcastle)    is the Multicultural Neighbourhood Centre
+    "Illawarra Multicommunity Services"                  is Illawarra Multicultural Services
+    "Queensland Multicommunity Festival"                 is the Queensland Multicultural Festival
+    "National Multicommunity Festival"                   is the National Multicultural Festival
+    plus generic prose ("deep multicommunity roots") and an SEO keyword
+    ("canberra multicommunity")
+
+These render on the /community and /city pages, which are 441 and 44 of the 552
+URLs in the production sitemap. Eighty eight percent of what Google has been given
+is these pages, and they currently name organisations that do not exist.
+
+I HAVE NOT CHANGED THEM, and the reason is a genuine conflict between two of the
+founder's own rules rather than caution:
+
+  - CLAUDE.md: the word culture is banned "everywhere, in every form ...
+    permanently", explicitly including data, and "any recurrence of culture in
+    the repo is a defect".
+  - The same document, Law 1 and the Definition of Done: nothing generic, nothing
+    invented, and copy that is wrong is a defect.
+
+Publishing "Multicommunity Council of Tasmania" satisfies the first and breaks the
+second, on a platform whose pitch is to community organisers whose peak bodies
+these are. Restoring the real names needs a founder ruling that proper nouns are
+exempt from the word ban, and it also needs each name verified rather than
+inferred from the pattern, which I am not going to do from memory at two in the
+morning on user facing content. It is written up here in full so the decision can
+be made in one sitting.
+
+### Sitemap, positioning weight, and the Search Console gap
+
+    production sitemap URLs                552
+    submitted to Search Console per brief  586
+    difference                             -34
+
+By first path segment:
+
+    /community   441   79.9 percent
+    /city         44    8.0
+    /events       26    4.7   (22 browse pages, 4 event details)
+    /guides        9
+    /help          7
+    /legal         6
+    /faith         5
+    /organisers    4
+    thirteen more at 1 each
+
+CLAUDE.md: "Community is a differentiating layer on top, roughly 10 to 20 percent
+of any surface, never the dominant identity." The indexed surface is 80 percent
+community. That is the opposite of the lock, it is live, and it is measurable.
+
+The most likely explanation for the missing 34 is the same as GATE 0 in
+PRODUCTION-STEPS.md: event pages that existed at submission are no longer in the
+sitemap. I cannot see Search Console from here, so that is inference and is marked
+as such.
+
+### Commercial correctness: THE BRIEF IS OUT OF DATE HERE
+
+The brief asks me to verify "platform fee 3.5 percent plus $0.99, processing 2.5
+percent ... pass on by default".
+
+CLAUDE.md, Locked fee structure, founder ruling 15 August 2026:
+
+    "ONE fee on every PAID ticket. Card processing comes out of it; there is no
+     second fee and no processing line."
+
+The second fee was DELETED three weeks ago. There is a build guard,
+`scripts/guards/one-fee-copy.mjs`, that fails the build if any customer facing
+surface names a second fee, and all 54 guards pass, so the one fee model is
+enforced and green.
+
+What the TEST database actually holds, read live:
+
+    platform_fee_percentage      AU AUD   3.5%
+    platform_fee_fixed           AU AUD   99 cents
+    processing_fee_percentage    AU AUD   2.5%
+    processing_fee_pass_through  AU AUD   1
+    processing_fee_fixed_cents   AU AUD   0
+    reserve_percentage           AU AUD   20%
+    payout_schedule_days         AU AUD   3
+
+The platform fee matches the brief exactly. The processing_fee rows are still
+present, and CLAUDE.md explains why: "No migration was needed to delete the second
+fee: nothing reads those rows any more, so they are inert history."
+
+So verifying "processing 2.5 percent" on the rendered checkout would be verifying
+a fee the platform deliberately stopped charging. I did NOT confirm the rendered
+checkout either way: reaching checkout needs a published paid event and a working
+Stripe key, and neither was available.
+
+The reserve at 20 percent and the payout schedule at 3 days match the brief's
+Tier 1 description. Tiers 2 and 3 are not represented as rows in pricing_rules at
+all, so tier progression is either code side or not built; unverified.
+
+### Venue revenue share: THE BRIEF ASKS ABOUT A REMOVED FEATURE
+
+The brief asks me to verify the venue revenue share is opt in and writes to the
+append only ledger. CLAUDE.md records it as REMOVED by founder decision on
+5 July 2026: the rate rows were ended, the accrual and refund reversal call sites
+were removed from the Stripe webhook, the disbursement leg was removed from the
+cron, and the organiser page was deleted. `venue_revenue_share_percentage` still
+appears as a rule_type with no active row, which is consistent with that removal.
+
+There is nothing to verify. Reporting it as passing would have been false.
+
+### Maps: MAPBOX IS RETIRED, and the brief asks for it
+
+Already logged in the TASK 3 entry and repeated here because it belongs to this
+task. `src/components/features/city/city-map.tsx` says maps are "consolidated onto
+Google Maps", `scripts/verify/map-guard.mjs` asserts a Google map canvas on four
+surfaces, and there is no Mapbox token in any environment. `mapbox-gl` remains an
+unused 54.6 MB dependency with zero source imports.
+
+I could not DRIVE either map. The browser key is correctly locked to HTTP
+referers, so a server side call is refused by design:
+
+    Places API   HTTP 403  Requests from referer <empty> are blocked
+    Geocoding    REQUEST_DENIED  API keys with referer restrictions cannot be used
+
+That refusal is the key being configured correctly. Proving the maps needs
+map-guard.mjs against a real browser on a working deployment, and the local event
+and venue surfaces are the ones the missing service role key breaks.
+
+### Not verified at all, and not claimed
+
+    Sentry captures            server log confirms dsnPresent:false, dsnSource:NONE.
+                               No DSN locally, so nothing could be made to arrive.
+    Trust signal placement     needs the rendered event detail and checkout pages,
+                               both blocked
+    Scenes V2 rail order       needs the rendered homepage rail inspected; the
+                               homepage renders, but I ran out of session before
+                               driving the rail order check. First Nations first
+                               is asserted in code via heritageOrder and is
+                               UNVERIFIED in the rendered output.
+    Demand engine and alerts   needs accounts
+    261 events across 20 cities  NOT on production. See GATE 0.
+    Robots, canonicals, OG tags  partially: the production browse page I sampled
+                               carried no og:image. Not pursued further.
+
+---
+
+## 2026-09-02 01:55 TASK 9. MERGE PREPARED. NO CONFLICTS, AND NONE WERE POSSIBLE.
+
+The brief expected four squash conflicts. There are none, and there could not have
+been, because main is a STRICT ANCESTOR of integration/launch:
+
+    merge base                          9cf7d3651f0d3b24ea4750d35f4eb378210a9d22
+    main HEAD                           9cf7d3651f0d3b24ea4750d35f4eb378210a9d22
+    commits on launch not on main       366
+    commits on main not on launch       0
+
+So:
+
+    git branch -f launch-prepared main
+    git checkout launch-prepared
+    git merge --no-ff --no-edit integration/launch
+
+    MERGE EXIT 0
+    conflicted files: ZERO
+
+The proof that nothing was lost or altered in the merge is that the trees are
+identical:
+
+    launch-prepared tree     08d9e52fd56382830617132d3f24215b7dee4167
+    integration/launch tree  08d9e52fd56382830617132d3f24215b7dee4167
+    git diff integration/launch launch-prepared   ->  no differences at all
+
+### Re-running the gate set on launch-prepared
+
+The brief requires the full TASK 8 gate set re-run on launch-prepared and that it
+be as green or greener. Because the TREE IS BYTE IDENTICAL to integration/launch,
+the build inputs are identical and the gate results are necessarily identical.
+That is a proof, not an assumption, and the tree hashes above are the evidence.
+
+Run concretely on launch-prepared to make it concrete rather than only argued:
+
+    npx tsc --noEmit    exit 0
+
+I did not spend a further ten minutes rebuilding a byte identical tree.
+
+### It is LOCAL and UNPUSHED, as instructed
+
+    git rev-parse --abbrev-ref --symbolic-full-name launch-prepared@{upstream}
+      -> fatal: no upstream configured for branch 'launch-prepared'
+    git ls-remote --heads origin launch-prepared
+      -> 0 refs
+
+No pull request was opened. No merge to main was performed. `gh pr merge --admin`
+was never invoked.
+
+### Three commits were added to integration/launch this session
+
+    7afc5913  The eighteen cards render from a running server, proved by breaking them on purpose
+    793ebf5b  The three high advisories in the shipped tree are gone
+    571b7b15  The card rasteriser survives the bundler, so a production build exists at all
+
+All three are authored `EventLinqs <hello@eventlinqs.com>` and carry ZERO
+trailers. Verified by grep over their bodies: 0 matches for Co-Authored-By,
+Generated with, or anthropic.
+
+### Correction to my earlier trailer audit
+
+Earlier in this log I reported 285 commits carrying AI trailers as though it were
+a discovery. It is not: CLAUDE.md Law 8 already records it, with the count
+(705 of 1351 reachable), the reason the guard is bounded to commits after
+2026-08-09, and an explicit founder decision NOT to authorise the history rewrite
+until after launch. The runbook is at docs/roast/AUTHORSHIP-HISTORY-REWRITE.md.
+The audit stands as a measurement; it is not news, and I should not have framed it
+as such.
+
 
 
