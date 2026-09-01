@@ -370,13 +370,30 @@ As written under stop gate 1 above.
 
 Open `$BASE` in a private window. Buy or locate an order as a guest, then use the
 "find my order" path and confirm the emailed link opens the order without an
-account. This is journey 5 guest half and it could NOT be driven this session.
+account.
+
+This WAS driven this session, 3 of 3, against TEST: the signed link opens the
+order and exposes "Transfer or gift this ticket", the same order WITHOUT a token
+opens but hides the transfer action, and a forged token is refused. Guest ticket
+transfer passed 7 of 7 on top of that, with the ticket moving in the database and
+the old QR secret rotated. Evidence: `C:\dev\EVIDENCE\journeys\guest-link-run.json`.
+
+Re-check it on production anyway, because `ORDER_ACCESS_SECRET` differs per
+environment and a TEST pass is not a production pass. This is a confirmation, not
+an unknown.
 
 **6e. Discount code creation**
 
 Sign in as an organiser, open an event, create a discount code, and confirm a row
-appears and the code applies at checkout. This is journey 8 and it could NOT be
-driven this session.
+appears and the code applies at checkout.
+
+This WAS driven this session, 7 of 7, at all three viewports: the row lands, the
+new code renders on the screen that created it, the percentage persists, and a
+duplicate is refused OUT LOUD with "A code with that name already exists for this
+event" rather than failing silently. Evidence:
+`C:\dev\EVIDENCE\journeys\viewports\j8-*.log`.
+
+Re-check on production as a confirmation, not as an unknown.
 
 **6f. One real ticket purchase, and 6g. one real refund**
 
@@ -442,6 +459,24 @@ Everything here was driven in a real browser against the production build on TES
                                               as ONE fee with no processing line
   axe-core                                    0 violations across 11 surfaces,
                                               the whole pinned gate set
+  the paid-publish money refusal              PASS at 390, 768 and 1440, driven
+                                              after the venue fix. The organiser is
+                                              refused with "Connect Stripe before
+                                              publishing a paid event: that is how
+                                              you get paid, and we cannot take money
+                                              for a ticket without it. Free events
+                                              can be published right now", the
+                                              message is IN VIEWPORT and ANNOUNCED
+                                              to a screen reader, and it carries a
+                                              link to /dashboard/payouts which then
+                                              offers "Set up payouts".
+                                              WORTH KNOWING: the Publish button is
+                                              NOT disabled beforehand. The refusal
+                                              is server side, on click. That is a
+                                              deliberate-looking choice and it works,
+                                              but a buyer-facing reader should know
+                                              the button does not look blocked.
+  every journey at three viewports            390, 768 and 1440, 0 blockers at each
 
 ## What this session could NOT verify, so you know what is untested
 
@@ -462,13 +497,19 @@ Everything here was driven in a real browser against the production build on TES
                                               configured properly. Prove it with
                                               scripts/verify/map-guard.mjs against
                                               the deployment, not locally.
-  The three viewport runs                     everything above ran at desktop 1440.
-                                              scripts/journeys/harness.mjs takes a
-                                              viewport argument it never uses, so
-                                              390 and 768 need the harness changed.
-  Paid-publish refusal specifically           journey 2 passes, but it was refused
-                                              for a MISSING VENUE before it could
-                                              reach the money refusal.
+
+Two entries that USED to sit in this list have been driven since and were moved
+out of it. They are recorded in the PROVED table above instead:
+
+  the three viewport runs                     the harness ignored its own viewport
+                                              argument. Fixed in bcbe339d and the
+                                              journeys were re-driven at 390, 768
+                                              and 1440.
+  paid-publish refusal specifically           the venue was never filled, so the
+                                              publish was refused for a MISSING
+                                              VENUE before it could reach the money
+                                              refusal. Fixed in 0c503050 and
+                                              re-driven at all three viewports.
 
 ### One environment gap worth fixing before the next preview
 

@@ -3258,3 +3258,68 @@ modules. Their May statuses stand, unverified by this session.
 
 
 
+
+## 2026-09-02 05:20 I COMMITTED A FIX AND NEVER RAN THE THING IT FIXED
+
+At 04:41 I committed 0c503050, "Journey 2 never tested the thing in its own title,
+because no venue was ever filled". I did not then re-drive journey 2. The last j2
+evidence on disk was timestamped 04:10 and 04:15, BEFORE the fix. So the branch
+carried a fix whose entire purpose was unproven, and PRODUCTION-STEPS.md still
+described the old broken behaviour as current.
+
+Driven just now, all three viewports, against the production build on TEST:
+
+    05. Publish was ALLOWED on a paid event with no Stripe
+        landed /dashboard/events/create ::
+        "Connect Stripe before publishing a paid event: that is how you get paid,
+         and we cannot take money for a ticket without it. Free events can be
+         published right now."
+    06. The refusal on screen
+        linkToFix    /dashboard/payouts
+        inViewport   true
+        announced    true
+        scrolledPast 631 (1440), 235 (390), 597 (768)
+    07. /dashboard/payouts offers "Set up payouts"
+
+    server errors 0   BLOCKERS 0   unclear steps 0   exit 0, at each viewport.
+
+So journey 2 now refuses for the MONEY reason it is named for, rather than dying
+earlier on a missing venue. The fix does what its commit message claims.
+
+ONE THING WORTH SAYING PLAINLY, because it is not a defect but reads like one:
+the Publish button is NOT disabled beforehand (`Publish disabled=false` at step
+03). The refusal is server side, on click. It is clear, in viewport, announced and
+carries a link to the fix, so the organiser is not stranded, but the button does
+not LOOK blocked before they press it. That is a design choice to confirm, not a
+bug I am reporting.
+
+## PRODUCTION-STEPS.md CONTRADICTED ITSELF AND I HAVE FIXED IT
+
+That file is what Lawal reads to decide what to smoke-test after deploying. It
+listed the SAME items as both proven and undriven:
+
+    6d guest magic link        "could NOT be driven this session"
+                              ... while the PROVED table above it recorded
+                              PASS 3 of 3, plus transfer 7 of 7
+    6e discount code creation  "could NOT be driven this session"
+                              ... while the PROVED table recorded PASS 7 of 7
+    three viewport runs        "the harness takes a viewport argument it never
+                              uses, so 390 and 768 need the harness changed"
+                              ... while commit bcbe339d, named in the same file,
+                              is the commit that changed it
+    paid-publish refusal       described as still dying on the missing venue
+
+Every one of those was written before the work that invalidated it and never
+revised. Corrected now: 6d and 6e say what was actually driven and against what,
+and say to re-check on production as a CONFIRMATION rather than as an unknown,
+which is still worth doing because ORDER_ACCESS_SECRET differs per environment
+and a TEST pass is not a production pass. The two stale rows moved out of the
+could-not-verify list into the proved table.
+
+What stays in the could-not-verify list, correctly: the paid purchase and refund,
+Sentry capture, and Google Maps in a browser. 6f and 6g still read "could NOT be
+driven this session" because that is true.
+
+The lesson I am recording against myself: I was treating "committed" as "done".
+The brief says never record something as working unless I drove it and observed
+the result, and a commit is not an observation.
