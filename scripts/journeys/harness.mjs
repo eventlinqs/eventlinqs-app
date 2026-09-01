@@ -3,8 +3,44 @@
  * not do it. Reads the confirmation link out of the console mail transport the
  * way a person reads it out of their inbox.
  */
-import { chromium } from 'playwright'
+import { chromium as playwrightChromium } from 'playwright'
 import { mkdirSync, appendFileSync, writeFileSync, readFileSync } from 'node:fs'
+
+/*
+ * THE THREE VIEWPORT RUNS, MADE POSSIBLE IN ONE PLACE.
+ *
+ * The standard is mobile 390, tablet 768 and desktop 1440 (CLAUDE.md,
+ * Verification and gates: "Playwright before and after at 1440, 768, and 390").
+ * That could not be had by invoking these journeys differently, for two reasons:
+ * makeJourney below takes a viewport argument it has never used (`_viewport`),
+ * and every journey hardcodes `viewport: { width: 1440, height: 1000 }` in its
+ * own newContext call. So the whole suite was desktop-only and silently so.
+ *
+ * Rather than edit ten journey files, the exported `chromium` is wrapped here so
+ * JOURNEY_VIEWPORT overrides the viewport for every context any journey opens.
+ * Unset, nothing changes and every journey keeps its current 1440 behaviour.
+ *
+ *   JOURNEY_VIEWPORT=mobile-390  node scripts/journeys/j1.mjs
+ *   JOURNEY_VIEWPORT=tablet-768  node scripts/journeys/j1.mjs
+ */
+const JOURNEY_VIEWPORTS = {
+  'mobile-390': { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 },
+  'tablet-768': { viewport: { width: 768, height: 1024 }, isMobile: false, hasTouch: true, deviceScaleFactor: 2 },
+  'desktop-1440': { viewport: { width: 1440, height: 1000 }, isMobile: false, hasTouch: false, deviceScaleFactor: 1 },
+}
+const viewportOverride = JOURNEY_VIEWPORTS[process.env.JOURNEY_VIEWPORT ?? '']
+
+export const chromium = viewportOverride
+  ? {
+      ...playwrightChromium,
+      async launch(...args) {
+        const browser = await playwrightChromium.launch(...args)
+        const original = browser.newContext.bind(browser)
+        browser.newContext = (options = {}) => original({ ...options, ...viewportOverride })
+        return browser
+      },
+    }
+  : playwrightChromium
 
 export const BASE = process.env.BASE ?? 'http://localhost:3311'
 /*
@@ -469,4 +505,6 @@ export async function finish(j) {
   for (const u of j.unclear) console.log(`    ${u}`)
 }
 
-export { chromium }
+// `chromium` is exported at the top of this file, where the JOURNEY_VIEWPORT
+// wrapper is defined. The bare re-export that used to sit here is gone because
+// the two collide as a duplicate export.
