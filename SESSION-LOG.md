@@ -5438,3 +5438,56 @@ That is the same standard the brief demands of the product, applied to the
 document about the product. It should not have taken until hour sixteen to think
 of it, and the two defects it found were both in the emergency paths: verifying
 observability, and undoing a bad deploy.
+
+## 2026-09-02 16:25 THE LAST LINK: WHAT HE READS IS WHAT I VERIFIED
+
+I have QA'd the local documents. But Lawal does not read the local documents. He
+reads the copies on `ops/session-log`, written by a plumbing script that builds a
+tree against a TEMPORARY INDEX. If that script ever dropped a file or pushed a
+stale blob, everything I verified would be true of a document he never sees.
+
+Never checked until now. Checked:
+
+    pushed branch contains   BRIEF.md, PRODUCTION-STEPS.md,
+                             ROAST-LEDGER.md, SESSION-LOG.md
+
+    SESSION-LOG.md         MATCH   268664 bytes both sides
+    PRODUCTION-STEPS.md    MATCH    45218 bytes both sides
+    ROAST-LEDGER.md        MATCH    27618 bytes both sides
+    BRIEF.md               MATCH    21085 bytes both sides
+
+Byte for byte by md5, all four. Nothing extra in the tree, nothing missing.
+
+So the chain closes: the documents are correct, and the documents he receives ARE
+those documents.
+
+## THE SESSION IS AT ITS HONEST END
+
+I have now verified, in this order:
+
+    the platform      tasks 0 to 9, driven, with 287 evidence files
+    the premises      every claim in the brief and in my own notes. Six were
+                      false and one was true
+    the deliverable   93 cited paths, 21 command blocks, balanced fences,
+                      four deploy identifiers. Two defects found and fixed
+    the delivery      the pushed copies are byte-identical to what I checked
+
+There is nothing left in that list to extend. Every remaining requirement needs
+Lawal, and none of them is closed by more verification:
+
+    T0.2   the 12 GB gate was never met            his ruling
+    T8.1   mobile Lighthouse 82 against 95         a performance workstream
+    T8.7   community share of the sitemap          self-corrects at ~376 events
+    T8.24  venue geocoding                         replace a key VALUE, then
+                                                   a build he scopes
+    T8.28  the 261-event seed                      GATE 0, a decision
+
+    plus  stripe login, an organisation on payout tier 2, and a real browser
+          for web push
+
+`SESSION-COMPLETE.txt` does not exist and must not, because the instruction was
+to create it when every task is finished and never for any other reason. Five
+tasks are not finished.
+
+If this session is resumed again, the honest starting point is that the
+verification work is done and the next move is a decision, not a command.
