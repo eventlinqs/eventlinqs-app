@@ -149,9 +149,17 @@ were driven at all three. The rest ran at 1440, because
     the event builder. Neither is built.** The venue is two plain text inputs, no
     coordinates are captured, so no organiser-created event can ever appear on a
     city map, silently. Corroborated from the authoritative scope, not just the brief.
-17. **The scope has EIGHTEEN feature sections, not twelve**, and I audited none of
-    them beyond 3.1. Dynamic pricing, gamification, resale and virtual events are
-    untouched by this session and must not be assumed proven by it.
+17. **The twelve modules are real and the May 2026 audit is now stale in named
+    ways.** Module 2 (Event Management) was "unverified end to end by a real
+    organiser" and is now driven. Module 4's door scanner is driven. Module 8
+    (Social) was "Not started" and its who-is-going, follow graph, feed and alert
+    halves are now built and driven. Module 6's "destination charges" line is
+    stale: the platform moved to separate charges and transfers.
+18. **SmartLinq (scope 3.5) has NO implementation anywhere in src.** The scope
+    calls it "EventLinqs' proprietary competitive moat". Gamification and loyalty
+    (3.6) likewise. Both sit in Module 8, already marked "Not started" in May, so
+    neither is new, but the platform goes to market without the section its own
+    scope names as the moat. That should be a decision, not a surprise.
 
 ## The correction I owe you
 
@@ -3138,6 +3146,109 @@ in this log.
 
 Its own header, worth reading beside that: "Every feature below is included in the
 build scope. Nothing is optional."
+
+
+
+
+## 2026-09-02 05:00 CORRECTION: THERE ARE TWELVE MODULES. THE BRIEF WAS RIGHT.
+
+Last entry I wrote that the scope carries "EIGHTEEN feature sections, not twelve"
+and implied the brief's "12 module scope" was loose. **That was wrong and I am
+withdrawing it.**
+
+The twelve MODULES are real and are enumerated in
+`docs/LAUNCH-READINESS-AUDIT-2026-05-31.md`. Each module maps to one or more
+scope 3.x refs, which is why the counts differ: 18 is the number of FEATURE
+SECTIONS in scope section 3, and 12 is the number of DELIVERY MODULES that carve
+those sections up. I compared two different things and reported the mismatch as
+the brief's error. It was mine.
+
+    Module  1  Foundation (auth, database, RBAC, environment)
+    Module  2  Event Management (builder, lifecycle, tiers, add-ons, seating)
+    Module  3  Checkout and Payments (one-page checkout, pricing, tax, discounts)
+    Module  4  Ticketing Engine and Inventory (reservations, QR e-tickets, scanner)
+    Module  5  Public Pages and Discovery (homepage, browse, event detail, cities)
+    Module  6  Payment Operations: Connect, payouts, refunds, disputes
+    Module  7  Admin Panel
+    Module  8  Social and SmartLinq (who's going, follows, recommendations, gamification)
+    Module  9  Search, Genre Discovery, and SEO
+    Module 10  PWA, Notifications, Marketing, Sharing
+    Module 11  Resale, Multi-gateway, Multi-currency, Africa
+    Module 12  Hardening, Observability, Tax, Compliance, Public API, Queue
+
+The brief's instruction not to invent module numbers from memory is well founded,
+and I should have found this file before writing a correction to it.
+
+## THE MAY AUDIT IS THREE MONTHS STALE, IN SPECIFIC WAYS THIS SESSION CAN NAME
+
+That audit is dated 31 May 2026. Tonight's driven evidence moves several of its
+verdicts. I am naming only the ones I actually drove; the rest keep their May
+status and are NOT re-verified by me.
+
+**Module 2, Event Management.** May: "Built, unverified end to end by a real
+organiser." NOW VERIFIED. Journey 1 drove signup, the seven step wizard, a
+composed cover, publish, and a signed-out stranger finding the event on /events,
+with zero blockers, at 1440, 768 and 390.
+
+**Module 4, Ticketing Engine and Inventory.** May: "Partial, issuance and
+inventory locking are built and proven; the door scanner ..." NOW DRIVEN. First
+scan ADMIT, second scan REJECT "Already used just now", as the real organiser,
+signed in through the real login form, on a real ticket bought through the real
+free checkout.
+
+**Module 8, Social and SmartLinq.** May: "Not started (one inventory-scarcity
+badge aside)" and "Who's Going attendee social proof: not built". THAT HALF IS NOW
+BUILT AND DRIVEN. Tonight, signed in as a real follower:
+
+    who is going          "27 people going", threshold-gated at 10 confirmed
+                          PAID sales (GOING_THRESHOLD, src/lib/events/going.ts:17)
+    follow graph          per organiser, "Following" on one and "Follow" on
+                          another in the same session
+    personalised feed     "Your feed, Follower.", carrying an event from the
+                          organiser that account follows
+    alert engine          cron dispatches:1 sent:1, follower received
+                          "Just announced: ..."
+
+So Module 8 is no longer "not started". The SOCIAL half is built and proven.
+
+**Module 6, Payment Operations.** May describes it as "destination charges, the
+organiser ledger, reserves, and webhook idempotency". The destination-charge half
+of that sentence is now stale: the platform moved to SEPARATE CHARGES AND
+TRANSFERS, EventLinqs is the merchant of record and HOLDS the funds, and
+`createDestinationCharge` no longer exists. Recorded in full at 04:30.
+
+## WHAT IS GENUINELY NOT BUILT, and it is already documented
+
+Two things from my existence sweep came back absent, and both are already on the
+record rather than being discoveries:
+
+**SmartLinq AI Engine (scope 3.5).** The string "SmartLinq" appears in exactly
+three files, all of them documents: the scope, the May audit, and
+M5-PUBLIC-PAGES-SCOPE.md. It appears NOWHERE in src/ or scripts/. The scope calls
+it "EventLinqs' proprietary competitive moat. No competitor has anything like it."
+It has no implementation of any kind.
+
+**Gamification and Loyalty (scope 3.6).** Loyalty points, attendance badges and
+referral rewards. No implementation.
+
+Both sit inside Module 8, which the May audit already marks "Not started", so
+neither is news. What IS worth saying plainly for a launch decision: the scope's
+own words are "Every feature below is included in the build scope. Nothing is
+optional", and the platform is going to market without the section the scope names
+as its competitive moat. That is a founder decision and may well be the right one,
+but it should be a decision rather than a surprise.
+
+## A CAVEAT ON MY OWN SWEEP, so it is not quoted as more than it is
+
+The existence sweep I ran is CRUDE and I am not publishing its table as a result.
+Two faults I found in it immediately: its route matching had a path separator bug
+so every route count read zero, and generic terms inflated two sections into false
+positives (`offset` matched CSS in 3.15 Sustainability, `aria-label` matched
+everywhere in 3.16 Accessibility). Only the two ABSENT results were verified by
+hand afterwards, which is why only those two are reported above.
+
+A file existing is not a working feature, and I have not audited the other ten
+modules. Their May statuses stand, unverified by this session.
 
 
 
