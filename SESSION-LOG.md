@@ -4311,3 +4311,56 @@ The diagnostic hit the same Windows file lock on its own profile directory:
 and the run completed anyway and wrote its report, because that cleanup warns
 rather than aborts. Before tonight's fix that same EPERM discarded two completed
 audits and exited 1.
+
+## 2026-09-02 09:50 THE LCP MECHANISM, ONE LEVEL BELOW "COLD START"
+
+"The gap is LCP" was still a level too abstract to act on, because two very
+different things produce it: a pre-built static hero that is merely slow to
+arrive on a throttled localhost, or imagery generated on demand from a remote
+origin on every cold request. Those have different consequences on launch day.
+
+Measured on the mobile homepage:
+
+    image requests total     20
+    served via /_next/image  18   ON DEMAND
+    upstream origins         vkapkibzokmfaxqogypq.supabase.co, images.pexels.com
+
+**Eighteen of twenty images are optimised at request time, from REMOTE origins.**
+So a cold request is, per image: a fetch out to Supabase storage or the Pexels
+CDN, then an AVIF encode, before anything can paint. That is the concrete
+mechanism behind Issue #42, and it is not localhost-only. The first visitor
+after a deploy pays it on production too, until the edge cache is warm.
+
+It also explains the shape of the earlier numbers precisely: `/` carries the most
+imagery and scores 82, `/pricing` the least and scores 93, monotonically.
+
+What that changes for a launch decision: this is a CACHE WARMTH property, not a
+slow page. It is worst for exactly one visitor per image per deploy and
+approximately free thereafter, which is why the repository's own warmed
+measurement is 0.88 against 0.76 cold on identical bytes. Whether that is
+acceptable on day one is a founder call, and it is now a call that can be made on
+a mechanism rather than on a score.
+
+Lighthouse did not report an LCP element node or a phase breakdown on this
+version, so I cannot name the exact element. Saying so rather than inferring it
+from the largest image, which would have been a guess dressed as a measurement.
+
+### TWO THINGS I CHECKED AND AM NOT REPORTING AS FINDINGS
+
+**`images.pexels.com` on the homepage.** My first read was a third-party hotlink
+on the LCP path. It is not: `src/lib/images/category-photo.ts` and `city-photo.ts`
+call the Pexels API deliberately, cached with a seven day revalidate and a tag,
+and the host is allowlisted in both `remotePatterns` and the CSP. It is a
+designed part of the media spine.
+
+**`picsum.photos` is allowlisted**, and picsum is a placeholder service, which the
+Definition of Done bans outright. Checked rather than assumed: ZERO picsum
+references in the rendered output of /, /events, /events/browse/melbourne,
+/pricing, /communities and /cities. It is rejected in code twice
+(`fetchers.ts:597` and `publish-gate.ts:50`) and by the blocking
+`publish-requires-cover` guard. The allowlist entry is defensive, not a
+placeholder in use.
+
+Both were plausible findings that dissolved on inspection. Recording them because
+the next person to read `remotePatterns` will have the same two thoughts, and
+should not have to re-derive the answers.
