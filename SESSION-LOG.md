@@ -3323,3 +3323,11 @@ driven this session" because that is true.
 The lesson I am recording against myself: I was treating "committed" as "done".
 The brief says never record something as working unless I drove it and observed
 the result, and a commit is not an observation.
+
+Housekeeping on that run: the journey scripts write their evidence INTO the
+repository, at docs/verification/journeys-2026-08-28/, so re-driving j2 overwrote
+four committed files that are dated 28 August. Tonight's output is preserved at
+C:\dev\EVIDENCE\journeys\j2-after-venue-fix-2026-09-02\ under its own real date,
+and the repository folder was reverted. Backdating tonight's screenshots into a
+folder named for August would have falsified the record. Working tree clean, the
+seven commits are untouched.
