@@ -4978,3 +4978,51 @@ would have produced code that cannot run.
 
 This was the right use of a round. A 4840-line log with a stale first page is a
 log that misinforms confidently, and the founder reads the first page.
+
+## 2026-09-02 13:30 I REPORTED A FILE SHRINKING AFTER I ADDED TO IT, AND CHASED IT DOWN
+
+My last status line said `SESSION-LOG.md : 3684 lines` immediately after an edit
+that ADDED three corrections, eight findings and a log entry. A file cannot lose
+1156 lines while being appended to. Rather than let it pass I checked for data
+loss, because this log is the deliverable.
+
+**There is none.** git holds every push and the growth is monotonic:
+
+    2cde71c5   4587 lines
+    4a5c20ff   4650
+    45393f26   4721
+    84d55cd1   4778
+    2498a765   4840
+    8c88b98e   4980   <- current, +140 from the edits
+
+The file is 4980 lines and 246717 bytes. Nothing was lost.
+
+### The cause, and it invalidates several numbers I have given
+
+`(Get-Content $f | Measure-Object -Line).Lines` DOES NOT COUNT EMPTY LINES. On
+these files the gap is large:
+
+    file                  Measure-Object -Line    real (wc -l)
+    SESSION-LOG.md                   3684              4980
+    PRODUCTION-STEPS.md               628               843
+    ROAST-LEDGER.md                   258               309
+    BRIEF.md                          356               416
+
+So every line count I reported through that path was understated, including
+"SESSION-LOG.md 3684 lines", "PRODUCTION-STEPS.md 413 lines" and later "662",
+and "ROAST-LEDGER.md 227 lines". The true figures are the right-hand column.
+None of it changes a finding; all of it was wrong in a status report, which is
+the kind of small inaccuracy that erodes trust in the large ones.
+
+Corrected going forward: `(Get-Content $f).Count` or `wc -l`.
+
+### Why I am recording this at all
+
+It is the sixth measurement error of the session. The first five I shipped and
+then withdrew: the door scanner at 390, the checkout stepper, the login logo, the
+441 pages with "no CTA", and the near-miss on reading 24 injected faults as live
+defects.
+
+This one is different and it is the reason to write it down. I caught it in MY
+OWN OUTPUT, by noticing that a number was impossible, before it did any harm.
+That is the habit the other five needed, arriving late but arriving.
