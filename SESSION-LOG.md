@@ -16,7 +16,7 @@ pages, two of them payment test artefacts. The 261 events across 20 cities are n
 there. This is DATA, not code, so the deploy does not fix it. That is GATE 0.
 
 **2. Every fix from this session is LOCAL ONLY.** The remote `integration/launch`
-is still on `ea6df9f5`, the commit that does not build. SEVEN commits exist only on
+is still on `ea6df9f5`, the commit that does not build. EIGHT commits exist only on
 this machine. **If you deploy from the remote as it stands, the Vercel build fails**
 at `Module not found: Can't resolve 'wbg'`. The push command is at the top of
 `C:\dev\PRODUCTION-STEPS.md`.
@@ -97,7 +97,7 @@ the locked fee. Three things stand in the way:
 | **ZERO dead-end tiles** across 19 pages | `affordance-scan.log` |
 | OpenGraph, canonicals, robots: 6 of 6 after fixing one | `seo-check.json` |
 | Four migrations pending on PRODUCTION exactly as briefed; one applied on TEST and proved by its effect | `miglist-prod.txt` |
-| Lint clean, typecheck clean, 2961 of 2961 tests pass | `test-clean.log` |
+| Lint clean, typecheck clean, **2964 of 2964 tests pass on launch-prepared**, 246 of 246 files, clean environment | `build-launch-prepared.log` |
 | Three high advisories removed from the shipped tree | commit 793ebf5b |
 | SOUNDS rail 12 of 12 in locked order; Aboriginal & Torres Strait Islander FIRST | log TASK 8 |
 | Trust signals: none on marketing, contextual on event detail, full on checkout | `trust-signals.json` |
@@ -3622,3 +3622,200 @@ thing from absent, and if one of those components is ever put on a page the
 rejected treatment arrives with it. Most of the other `glassmorphism` hits are
 comments recording that it is banned, which is the codebase agreeing with the
 brief.
+
+## 2026-09-02 06:00 THE EIGHTEEN CARDS WENT DOWN IN FRONT OF ME, AND I FOUND OUT WHY
+
+TASK 5 asks for more per card than "18 of 18 passed": pixel dimensions, ink,
+legible unclipped text, an undistorted logo, and the contact sheet OPENED and
+inspected rather than merely written. Auditing what the existing proof actually
+covered, I re-ran the cards. All eighteen came back **HTTP 500**.
+
+    RESULT: 0 passed, 18 failed, of 18
+
+Same build, same server, same machine that had served them at 15:18 the previous
+day. The server log said:
+
+    Error: Already initialized. The `initWasm()` function can be used only once.
+
+### What that actually means, because the shape of it is the dangerous part
+
+`src/lib/broadcast/card-raster.ts` memoised the WASM init, correctly, and then
+did this on failure:
+
+    })().catch(error => {
+      wasmReady = null
+      throw error
+    })
+
+The comment above it said a failed init must not be cached as resolved, which is
+right. But the handler does not distinguish WHY the init failed, and "Already
+initialized" is not a failure at all: it means the binary IS loaded and ready.
+
+So the failure mode is self-sustaining. One init throws for any reason, the memo
+is nulled, the next request calls `initWasm` a second time, resvg refuses because
+it is already initialised, that refusal nulls the memo again, and **from that
+moment every social card in that process answers 500 forever.** A single
+transient hiccup takes down the whole Launch Kit for the life of the lambda, and
+it self-heals only on a restart, which is exactly why a fresh server looked fine
+and hid it.
+
+There is a second door into the same room. `card-raster` is reached BOTH directly
+by the card routes AND through a dynamic `await import()` in the image_pipeline
+health check. A bundler is free to give those two paths separate copies of the
+module, each with its own `wasmReady`, while `@resvg/resvg-wasm` keeps ONE global
+instance. First copy initialises, second copy is refused.
+
+### The fix, and the proof it is a real regression test
+
+"Already initialized" is now treated as SUCCESS, because it is one. A genuine
+failure still throws and still nulls the memo.
+
+New test `tests/unit/broadcast/card-raster-double-init.test.ts`, three cases: the
+second init still renders, the process is not poisoned for later renders, and a
+REAL failure is still surfaced rather than swallowed. Driven both ways rather
+than assumed:
+
+    pre-fix source  + new test    2 failed | 1 passed
+    fixed source    + new test    3 passed
+
+Then, fresh server, all eighteen driven again: **18 passed, 0 failed**, correct
+dimensions per format (1080x1920 story, 1080x1080 square, 1440x1800 feed),
+image/jpeg, and real ink on every one (stdev 71 to 85, uniqLuma 235 to 246).
+
+### HONESTY ABOUT WHAT I COULD NOT REPRODUCE
+
+I could not make the failure happen on demand. I tried the health cron and then
+the cards: cards passed. I tried the cover composer and then the cards: cards
+passed. So I have the failure OBSERVED, the mechanism READ out of the source, and
+a test that proves the guard, but I do not have the specific trigger that started
+it that time. I am not going to dress that up. The fix is correct regardless of
+trigger because it removes the entire class, but if you see a card 500 again, the
+trigger is still unnamed.
+
+## THE CRITICAL HEALTH CHECK GUARDING THE CARDS COULD NEVER HAVE GONE GREEN
+
+While chasing the above I ran the health cron the way Vercel schedules it, and
+`image_pipeline`, severity **critical**, came back:
+
+    ok: false
+    "The image pipeline threw in this runtime: No fonts are loaded.
+     At least one font is required to calculate the layout."
+
+It calls `renderCardPng(..., { fonts: [] })`. satori refuses to lay out anything
+without at least one face, so this check has reported critical failure on every
+run, in every environment, since it was written, and could not once have passed.
+
+Its own comment reads "This is the exact call the card routes make, so a failure
+here IS the card failing", which is the problem: it is NOT the call the card
+routes make, because they pass the four brand faces through `loadCardFonts()`.
+
+That is worse than having no check. A permanently red critical alert trains the
+reader to ignore it, so the one time it fires for the real reason, the reason the
+cards ACTUALLY went down tonight, nobody would look. Fixed: the probe now loads
+the real brand fonts, so it exercises the true path and can go green.
+
+## 2026-09-02 06:15 BOTH FIXES DRIVEN, COMMITTED, AND MERGED. AND ONE CLAIM WITHDRAWN.
+
+Committed to integration/launch as `a87198e4`, three files, author
+`EventLinqs <hello@eventlinqs.com>`, zero AI trailers. That is the EIGHTH
+unpushed commit. Merged into `launch-prepared` with zero conflicts; trees match
+integration/launch again and it remains local and unpushed.
+
+Law 8 housekeeping worth recording: `core.hooksPath` was NEVER SET in this clone.
+The constitution says to run `git config core.hooksPath .githooks` before the
+first commit in a repository, and nobody had, so the commit-msg hook that refuses
+an AI trailer had been inert for all eight commits on this branch. They are clean
+regardless, verified by the guard, but they were clean by care rather than by the
+mechanism meant to guarantee it. Now set.
+
+### Proof, in the order it was taken
+
+    fresh server, 18 cards                          18 passed, 0 failed
+    new test against the OLD source                 2 failed | 1 passed
+    new test against the FIXED source               3 passed
+    typecheck                                       exit 0
+    full suite                                      2959 passed, 5 failed
+    the 5, with .env.local parked                   8 of 8 pass
+    build, environment loaded                       exit 0, no guard blocked
+    health cron after the fix                       ok TRUE, "card rasterised
+                                                    (104 bytes)"
+    18 cards AFTER the health check had already
+    initialised the WASM, the exact sequence
+    that used to poison the process                 18 passed, 0 failed
+                                                    "Already initialized" in the
+                                                    log: 0
+
+The five suite failures are the known local artefact, not a regression: they are
+all in `production-write-preflight-approval.test.ts`, they fail because MY
+`.env.local` exists, and parking it makes all eight pass. Driven both ways rather
+than asserted, because I have quoted that excuse before and it deserved a check.
+
+My first build attempt FAILED and it was my own doing: I ran bare `npm run build`
+instead of going through `with-env.ps1`, so `pricing-lock` and
+`curated-categories-exist` could not reach Supabase and both refused. Both guards
+are RIGHT to refuse: "could not look" reported as a pass is exactly the shape this
+repository has spent a week removing. Re-run with the environment loaded, all 54
+pass.
+
+## I LOOKED AT THE CONTACT SHEET, WHICH THE BRIEF ASKED FOR AND NOBODY HAD DONE
+
+TASK 5 says to OPEN the contact sheet and inspect it visually, not merely confirm
+it was written, and to check text is legible, correctly positioned and unclipped
+and that the logo is not distorted or cut. The existing proof measured dimensions,
+bytes, content type and pixel variance, and none of those can see a clipped word.
+
+Opened and read, 1898x1874, all 18 cells:
+
+    eyebrow      gold NIGHTLIFE badge, crisp, inside the margin on all 18
+    title        "Warehouse party at the Barwon Club, Marlo Reyes b2b Kita"
+                 wraps to 3 or 4 lines by format, NOT truncated, NOT clipped
+                 at any edge, and re-flows correctly per aspect
+    date         "Sunday 20 September, 10:00 pm", legible at every size
+    CTA pill     "From $25 . eventlinqs.com.au/launch/k/q3r9f6t8df48", gold,
+                 fully inside the card
+    QR           square, undistorted, quiet zone intact, "Scan to buy" beneath
+    logo         "Ticketing by EVENTLINQS." renders as brand type, correct
+                 proportions, not stretched and not cut
+
+So the visual half of TASK 5 passes, and it passes on evidence I actually looked
+at rather than on a byte count.
+
+### A CLAIM OF MINE I AM WITHDRAWING
+
+Checksumming the cards showed all six channels at a given format are BYTE
+IDENTICAL. Three distinct images served six times each, not eighteen distinct
+cards. I started writing that up as a broken per-channel attribution, because
+`toCardInput` does feed `context.links[channel]` into the rendered short URL.
+
+It is NOT a defect, and I checked before publishing it. `buildDraftContext`:
+
+    const shortCode = externalCodes?.[channel] ?? externalCodes?.fallback
+    return shortCode ? `${origin}/e/${shortCode}` : kitUrl
+
+An EventLinqs-ticketed draft has no external codes, so every channel correctly
+resolves to the one kit URL. Per-channel codes exist for EXTERNALLY ticketed
+drafts and for published events, where `getOrCreateShareLink` mints one per
+channel. The design is right.
+
+What IS wrong is my own earlier wording. I recorded the cards as carrying
+"per-channel attribution". For a draft kit they do not, and cannot, and should
+not. The eighteen are three formats times six channel-labelled downloads, which
+is still the right deliverable for an organiser posting to six places.
+
+## 2026-09-02 06:25 TASK 9 RE-RUN ON launch-prepared, FULLY GREEN
+
+The brief requires the whole TASK 8 gate set re-run on `launch-prepared` and it
+to be as green as `integration/launch` or greener. Driven on that branch, not
+inferred from a matching tree:
+
+    build                exit 0, environment loaded, 54 of 54 guards pass,
+                         nothing blocked, pricing-lock ok against
+                         project vkapkibzokmfaxqogypq
+    full test suite      246 of 246 files, 2964 of 2964 tests, on a CLEAN
+                         environment with my .env.local parked
+    merge                zero conflicts
+    trees                identical to integration/launch
+    remote               launch-prepared still absent from origin, as instructed
+
+Greener than it was: the suite gained the three new rasteriser regression tests
+and lost nothing.

@@ -7,13 +7,14 @@ Every command below is a production write and was held at a stop gate.
 
 ## READ THIS BEFORE STEP 5. EVERY FIX FROM THIS SESSION IS LOCAL ONLY.
 
-    integration/launch  local   098a0aa4
+    integration/launch  local   a87198e4
     integration/launch  remote  ea6df9f592a4e01437dba3d269a59b9ee957e058
     launch-prepared             local only, deliberately never pushed
 
-The remote is still sitting on the commit that DOES NOT BUILD. Seven commits exist
+The remote is still sitting on the commit that DOES NOT BUILD. EIGHT commits exist
 only on this machine:
 
+    a87198e4  Every social card answered 500 once the rasteriser was initialised twice
     098a0aa4  The authorship guard outgrew its own window and said so
     0c503050  Journey 2 never tested the thing in its own title, no venue was filled
     bcbe339d  The journeys could only ever run at 1440, and nothing said so
@@ -21,6 +22,12 @@ only on this machine:
     7afc5913  The eighteen cards render from a running server, proved by breaking it on purpose
     793ebf5b  The three high advisories in the shipped tree are gone
     571b7b15  The card rasteriser survives the bundler, so a production build exists at all
+
+READ a87198e4 BEFORE YOU DECIDE THE ORDER OF ANYTHING. It fixes a defect where
+EVERY social card answers HTTP 500 for the life of a server once the WebAssembly
+rasteriser has been initialised twice, which the scheduled health cron can cause
+on its own. Without it, the Launch Kit can go down on production hours after a
+green deploy, silently, and stay down until the lambda recycles.
 
 If you deploy from the remote as it stands, the Vercel build FAILS at
 `Module not found: Can't resolve 'wbg'`, because the resvg fix is one of those
