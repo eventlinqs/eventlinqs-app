@@ -1,4 +1,4 @@
-# EventLinqs production steps
+﻿# EventLinqs production steps
 
 Written 2026-09-02 by the launch readiness session. NOTHING IN THIS FILE WAS RUN.
 Every command below is a production write and was held at a stop gate.
@@ -475,3 +475,4 @@ Everything here was driven in a real browser against the production build on TES
 production. So the guest magic link cannot work on ANY preview deployment: links
 are neither issued nor honoured there. Set it on Preview too, or guest order
 access is untestable outside production.
+
