@@ -5026,3 +5026,61 @@ defects.
 This one is different and it is the reason to write it down. I caught it in MY
 OWN OUTPUT, by noticing that a number was impossible, before it did any harm.
 That is the habit the other five needed, arriving late but arriving.
+
+## 2026-09-02 13:50 STOP GATE 1 WAS ALREADY DONE, AND I NEVER CHECKED
+
+The counting error at 13:30 made me look at what else I had ASSERTED rather than
+proven. Top of that list: "zero production writes", which I have now claimed in
+roughly fifteen reports without once verifying it. It is the brief's most
+emphatic standing law.
+
+Verified read-only, production sitemap against my 01:40 capture:
+
+    URLs now                552   (earlier: 552)
+    event detail pages      4     (earlier: 4)
+    URLs added since        0
+    URLs removed since      0
+
+Production data is untouched. Then I checked STOP GATE 1 the same way, expecting
+three 404s to prove the copy had not been run.
+
+**All three returned HTTP 200.**
+
+    arts-community/theatre-interior-evening-480.avif    200  image/avif  11083 B
+    arts-community/theatre-interior-evening-960.avif    200  image/avif  21351 B
+    arts-community/theatre-interior-evening-1440.avif   200  image/avif  30979 B
+
+Real files, not a CDN quirk: each carries the AVIF magic `ftypavif`, and the 960
+is BYTE IDENTICAL (same md5) to its `arts-culture` source, which is exactly what
+a copy produces. The sources are all still present, as the copy-only design
+intends.
+
+I did not run it. So it was already done, most likely by the founder-approved run
+of 26 August 2026 that the script's own header references.
+
+### WHAT THIS ACTUALLY CHANGES
+
+STOP GATE 1 is a NO-OP, and more importantly **the ordering constraint is gone**.
+That section said in bold that the copy MUST run before the deploy or the Arts
+tile 404s on the homepage. The objects are there, so the deploy is not gated on
+it. Running it anyway is harmless (idempotent, reports each as already present)
+but unnecessary.
+
+That is one fewer thing on his launch morning, and one fewer sequencing trap.
+
+### THE SEVENTH INSTANCE OF THE SAME HABIT
+
+I took the brief's premise ("it must happen BEFORE any deploy or the Arts tile
+404s") and faithfully documented the step for twelve hours without once testing
+whether it was still true. Three HEAD requests, thirty seconds, and the answer
+was there the whole time.
+
+It is exactly the GATE 0 mistake again: I documented a required action without
+checking whether it was already done. And exactly the Sentry and VAPID mistake:
+I reported credentials as needing to be supplied without listing what was already
+set. And the Google key: I said mint a new one without looking for an existing.
+
+The pattern across all seven is one thing. **I trust a stated premise and verify
+the work, when the premise is the cheaper thing to check and the more likely to
+be stale.** The brief was written before the session; the world moved; I kept
+quoting it.

@@ -147,6 +147,53 @@ exists and, per the above, none should be written casually.
 
 ## STOP GATE 1. THE ARTS STORAGE OBJECT
 
+### ALREADY DONE. VERIFIED 13:50. THIS IS NOW A NO-OP.
+
+I documented this as a required step for twelve hours without ever checking
+whether it had already been performed. It has. Measured read-only against
+production storage just now:
+
+    arts-community/theatre-interior-evening-480.avif    HTTP 200  image/avif  11083 B
+    arts-community/theatre-interior-evening-960.avif    HTTP 200  image/avif  21351 B
+    arts-community/theatre-interior-evening-1440.avif   HTTP 200  image/avif  30979 B
+
+Real files, not a CDN quirk: every one carries the AVIF magic `ftypavif`, and the
+960 is BYTE IDENTICAL (same md5) to its `arts-culture` source, which is exactly
+what the copy produces. The source objects are all still present and untouched,
+as the copy-only design intends.
+
+The most likely history is the founder-approved run of 26 August 2026 that the
+script's own header references.
+
+### WHAT THIS CHANGES FOR YOUR LAUNCH MORNING
+
+**The ordering constraint is GONE.** This section used to say, in bold, that the
+copy MUST run before the deploy or the Arts tile serves a 404 on the homepage.
+The objects are already there, so the deploy is not gated on it and you can
+ignore the sequencing.
+
+Running the command anyway is harmless: the script is idempotent and will report
+each object as already present and skip it. That is success, not failure. But it
+is not necessary.
+
+Verify for yourself in one command if you want to see it:
+
+```powershell
+foreach ($w in 480,960,1440) {
+  $u = "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/arts-community/theatre-interior-evening-$w.avif"
+  try {
+    $r = Invoke-WebRequest -Uri $u -Method Head -UseBasicParsing -TimeoutSec 30
+    "OK  $w  HTTP $($r.StatusCode)"
+  } catch { "FAIL $w  $($_.Exception.Message)" }
+}
+```
+
+Expected: three lines reading OK 480 / OK 960 / OK 1440, all HTTP 200.
+
+### The original gate, kept below for the record
+
+
+
 This MUST run BEFORE the deploy. After the deploy `src/lib/images/spine.ts` asks
 for the community-first path, and if the objects are not there the Arts tile
 serves a 404 on the homepage.
