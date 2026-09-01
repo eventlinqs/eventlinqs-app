@@ -145,6 +145,13 @@ were driven at all three. The rest ran at 1440, because
 14. **`.tmp-serve.log` is not gitignored**, and running the journeys OVERWRITES
     committed evidence under `docs/verification/journeys-2026-08-28/`.
 15. **A second dormant Vercel project** named `eventlinqs`, 54 days stale.
+16. **Scope 3.1.1 requires "Google Maps integration and embedded map preview" on
+    the event builder. Neither is built.** The venue is two plain text inputs, no
+    coordinates are captured, so no organiser-created event can ever appear on a
+    city map, silently. Corroborated from the authoritative scope, not just the brief.
+17. **The scope has EIGHTEEN feature sections, not twelve**, and I audited none of
+    them beyond 3.1. Dynamic pricing, gamification, resale and virtual events are
+    untouched by this session and must not be assumed proven by it.
 
 ## The correction I owe you
 
@@ -3068,5 +3075,69 @@ characters and violates the shape the env manifest declares. Replaced with a
 failure on a deployed scope, so it is fixed rather than left.
 
 Rebuilt: BUILD EXIT 0, all 54 guards PASS, CRON_SECRET ok on every scope.
+
+
+
+## 2026-09-02 04:55 THE AUTHORITATIVE SCOPE CORROBORATES THE VENUE FINDING.
+
+The brief names `docs/EventLinqs_Scope_v5.md` as authoritative and I had never
+opened it. I have now, and it independently confirms the most consequential
+product gap this session found.
+
+### Scope 3.1.1, Event Builder, line 347, verbatim
+
+    Location: physical venue with Google Maps integration and embedded map
+    preview, OR virtual event with streaming link integration.
+
+Neither half of that exists in the builder:
+
+    src/components/features/events/event-form.tsx
+      searched for a map: every hit is seat_map_id or an Array.map() call.
+      There is NO VenueMap, no embedded preview, no Google Maps anything.
+      venue_latitude appears once, line 544, as null, and is never assigned.
+      The venue fields are two plain text inputs.
+
+    VenueMap is used on exactly two surfaces, and the builder is neither:
+      src/app/events/[slug]/page.tsx      the public event detail page
+      src/app/venues/[handle]/page.tsx    the venue profile page
+
+So the organiser types a venue name and a street address as free text, no
+coordinates are captured, no map is previewed, and nothing tells them the event
+will never appear on a city map. That was already recorded from the code side at
+04:10; it is now also a documented scope item that has not been built, rather than
+only a brief expectation that had drifted.
+
+The scope mentions no "autocomplete", no "Places API" and no "geocode" anywhere,
+so the WAY to capture coordinates was never specified. That makes this a genuine
+build gap rather than a regression: the requirement is one line in a March 2026
+scope document and the mechanism to satisfy it was never designed.
+
+### A correction to the brief's own framing
+
+The brief calls this "the authoritative 12 module scope" and instructs me never to
+invent module numbers from memory. Counted rather than assumed, section 3 carries
+EIGHTEEN feature sections, not twelve:
+
+    3.1  Event Creation & Management      3.10 Event Discovery & Search
+    3.2  Group & Social Ticketing         3.11 Virtual & Hybrid Events
+    3.3  Dynamic Pricing                  3.12 E-Ticketing & QR Code System
+    3.4  Social & Community Features      3.13 Event Day, Check-In & Door
+    3.5  SmartLinq AI Engine              3.14 Marketing & Promotion Tools
+    3.6  Gamification & Loyalty           3.15 Sustainability
+    3.7  Payment & Checkout               3.16 Accessibility & Inclusivity
+    3.8  Built-In Resale Market           3.17 Analytics & Reporting Dashboard
+    3.9  User Management & Authentication 3.18 Admin Panel, EventLinqs Internal
+
+I have NOT audited all eighteen against the running platform. That is a
+multi-session piece of work and this session was scoped to the ten journeys and
+the gates, both of which are done. I am recording the count because the brief's
+"12" is the kind of number that gets quoted onwards, and because several of those
+sections (3.3 dynamic pricing, 3.6 gamification, 3.8 resale, 3.11 virtual events)
+are areas I have not touched at all and should not be assumed proven by anything
+in this log.
+
+Its own header, worth reading beside that: "Every feature below is included in the
+build scope. Nothing is optional."
+
 
 
