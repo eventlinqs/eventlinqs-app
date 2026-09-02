@@ -16,7 +16,7 @@ running record, newest task last.
 | 2b | Orphaned community editorial (found in 2) | DONE |
 | 3 | Venue geocoding | BLOCKED ON FOUNDER (amendment 2) |
 | 4 | Mobile Lighthouse 95 | DONE, but 95 NOT MET. Ceiling 0.80 on /. Founder ruling needed |
-| 5 | Full Scope v5 audit, 18 sections | NOT STARTED |
+| 5 | Full Scope v5 audit, 18 sections | DONE. 4 BUILT, 10 PARTIAL, 4 NOT BUILT |
 | 6 | Remaining known defects, a to h | NOT STARTED |
 | 7 | Prove the configured things | Stripe half BLOCKED, rest NOT STARTED |
 
@@ -457,3 +457,57 @@ encodes, both learned the hard way today:
 - It reports the **median**, not the best run, because the CI gate aggregates
   with `optimistic` (which is `Math.max`) and reading that as a median has
   already cost this project hours once, per `lighthouserc.json`'s own note.
+
+---
+
+# TASK 5. THE FULL SCOPE v5 AUDIT
+
+**State: DONE.** Full document at `C:\dev\SCOPE-AUDIT.md`, pushed to
+`ops/session-log`. All eighteen sections audited by reading the code and the
+production schema, not by guessing.
+
+**Tally: 4 BUILT, 10 PARTIAL, 4 NOT BUILT.**
+
+| Verdict | Sections |
+|---|---|
+| BUILT | 3.2 Group ticketing, 3.3 Dynamic pricing, 3.7 Payment and checkout, 3.18 Admin panel |
+| NOT BUILT | 3.5 SmartLinq, 3.6 Gamification, 3.8 Resale, 3.15 Sustainability |
+| PARTIAL | the other ten |
+
+## The two findings nobody had on a list
+
+**1. A virtual event sells a stream link the buyer can never see (3.11).**
+`events.virtual_url` is captured by the organiser form and saved, and it is
+surfaced NOWHERE to a ticket holder. Searching `src/app/tickets`,
+`src/app/orders` and `src/app/events` for it returns nothing. Small fix, real
+defect, blocks launch the moment one virtual ticket is sold.
+
+**2. The door scanner has no offline mode (3.13).** No IndexedDB, no cached
+validation set, no offline queue, and no Supabase Realtime channel anywhere in
+`src` for multi-scanner sync. The scope itself calls offline "critical for
+outdoor events and venues with poor signal" and specifies a 50,000 ticket local
+cache. A door with no signal cannot admit anybody, on exactly the outdoor and
+community events being recruited this week.
+
+## Three scope claims that are false today
+
+Remove from any pitch until built: **Meilisearch** instant typo-tolerant search
+(it is Postgres `ilike`), **multi-language UI** (no i18n of any kind, English
+only), and **PostHog conversion analytics** (PostHog appears nowhere in `src`, so
+the scope's own definition of conversion cannot be computed).
+
+## What is genuinely good
+
+The commerce spine is real and coherent: checkout, squads, reserved seating with
+**accessible seat and companion auto-selection**, discount codes, payouts,
+refunds, disputes, the single-source fee system, and twenty admin surfaces behind
+RBAC and an audit log.
+
+**The data-ownership promise is real.** `/dashboard/events/[id]/attendees/export`
+serves CSV, Excel and PDF, with the ownership statement on the page. That is the
+second blade of the wedge and it works.
+
+**No false promise on resale.** I checked deliberately, because 3.8 is not built.
+The only mentions in the product are in the legal pages and both PROHIBIT resale
+above face value under Australian law. Nothing sells a marketplace that does not
+exist.
