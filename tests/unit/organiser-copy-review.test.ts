@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { writeProofArtefact } from '../helpers/proof-artefact'
-import fs from 'node:fs'
 import path from 'node:path'
 import { buildDeterministicDraft, type MagicStartDraft } from '@/lib/ai/magic-start'
 import { findCopyTells } from '@/lib/ai/copy-tells'
