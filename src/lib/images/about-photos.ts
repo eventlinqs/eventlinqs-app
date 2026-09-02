@@ -32,7 +32,7 @@ function spineSlot(
 }
 
 export const ABOUT_PHOTOS: Record<'hero' | 'storyBand', PhotoSlot> = {
-  // The multicommunity festival crowd: the platform itself, not any one scene.
+  // The festival crowd: the platform itself, not any one scene.
   hero: {
     src: `${HERO}/afrobeats.jpg`,
     alt: 'A festival crowd celebrating together at an Australian community event',

@@ -41,6 +41,7 @@
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { PROPER_NOUNS, withoutProperNouns } from './lib/proper-nouns.mjs'
 
 const SEP = String.fromCharCode(92)
 const ROOTS = ['src', 'scripts', 'supabase/seed']
@@ -107,6 +108,16 @@ const EXEMPT = [
     occurrences: null,
     why: 'the copy gate carries the same word in its own detector and in the reasons on its allowlist',
   },
+  {
+    file: 'scripts/guards/lib/proper-nouns.mjs',
+    occurrences: null,
+    why: 'the proper noun registry: every entry is the NAME of a real organisation, exempt from the ban by founder ruling of 3 September 2026, and each carries the source URL it was confirmed against. It has to spell the names it protects',
+  },
+  {
+    file: 'scripts/guards/proper-nouns-intact.mjs',
+    occurrences: null,
+    why: 'the guard that holds those names in place: it has to spell both the real name and the corrupted form it hunts',
+  },
 ]
 
 /** Whole directories exempt as a class, with the reason. */
@@ -166,8 +177,20 @@ for (const file of files) {
   const lines = src.split(String.fromCharCode(10))
   const found = []
   for (let i = 0; i < lines.length; i += 1) {
-    if (!BANNED.test(lines[i])) continue
-    if (NOT_THE_WORD.test(lines[i])) continue
+    /*
+     * PROPER NOUNS ARE EXEMPT, BY FOUNDER RULING OF 3 SEPTEMBER 2026.
+     *
+     * The registered name is REMOVED from the line before the line is tested,
+     * so this excuses an exact STRING rather than a file or even a count. A
+     * second, unregistered use of the banned word on the same line still fails,
+     * which is the same principle as the count budget below, tightened.
+     *
+     * The registry, with a source URL for every name, is in
+     * scripts/guards/lib/proper-nouns.mjs.
+     */
+    const scrubbed = withoutProperNouns(lines[i])
+    if (!BANNED.test(scrubbed)) continue
+    if (NOT_THE_WORD.test(scrubbed)) continue
     found.push({ line: i + 1, text: lines[i].trim().slice(0, 100) })
   }
 
@@ -212,6 +235,8 @@ const pathHits = files
 console.log(`no-banned-word-anywhere: ${files.length} file(s) under ${ROOTS.join(', ')}`)
 console.log(`  ${scanned} scanned, ${exemptedFiles} exempt`)
 console.log(`  looking for: identifiers, string comparisons, slugs, URLs, storage keys, filenames, config`)
+console.log(`  proper nouns exempt by founder ruling (${PROPER_NOUNS.length}), each with a source:`)
+for (const n of PROPER_NOUNS) console.log(`    ${n.name}${String.fromCharCode(10)}      ${n.source}`)
 console.log(`  directory exemptions (${EXEMPT_DIRS.length}):`)
 for (const d of EXEMPT_DIRS) console.log(`    ${d.prefix}${String.fromCharCode(10)}      ${d.why}`)
 console.log(`  file exemptions (${EXEMPT.length}):`)

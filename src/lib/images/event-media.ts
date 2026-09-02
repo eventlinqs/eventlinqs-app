@@ -159,7 +159,7 @@ const HERO_RASTER_DIR = '/images/hero'
 
 // Slugs we have on disk (see scripts/fetch-hero-rasters.mjs). Anything not in
 // this set falls back to the canonical "afrobeats" raster - chosen because
-// the multicommunity-festival shot reads as "the platform" rather than as any
+// the festival-crowd shot reads as "the platform" rather than as any
 // one category.
 const HERO_RASTER_SLUGS = new Set([
   'afrobeats',

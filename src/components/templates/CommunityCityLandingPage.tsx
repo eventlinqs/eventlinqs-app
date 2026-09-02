@@ -124,7 +124,7 @@ export function CommunityCityLandingPage({
       {/* S3 Editorial */}
       <CityEditorialSection
         eyebrow={`${community.displayName} in ${cityName}`}
-        heading={`Where ${community.displayName.toLowerCase()} ${cityName} happens`}
+        heading={`Where ${community.displayName} ${cityName} happens`}
         paragraphs={[editorial]}
       />
 
@@ -189,7 +189,7 @@ export function CommunityCityLandingPage({
             containerBg="ink-100"
             header={{
               eyebrow: `${community.displayName} in ${cityName}`,
-              title: `Every ${community.displayName.toLowerCase()} sound, in ${cityName}`,
+              title: `Every ${community.displayName} sound, in ${cityName}`,
             }}
           >
             {subCommunities.map(sc => {
@@ -259,7 +259,7 @@ export function CommunityCityLandingPage({
               Map
             </p>
             <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              Where {community.displayName.toLowerCase()} {cityName} is happening
+              Where {community.displayName} {cityName} is happening
             </h2>
           </div>
           <CityMap

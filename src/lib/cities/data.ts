@@ -111,7 +111,7 @@ const CITIES: Record<CitySlug, CityContent> = {
   perth: {
     slug: 'perth', name: 'Perth', state: 'WA', region: 'Perth Metropolitan',
     tier: 1, population: 2192000, latitude: -31.9523, longitude: 115.8613,
-    descriptor: 'Western capital with deep multicommunity roots.',
+    descriptor: 'Western capital with deep migrant roots.',
     editorial:
       "Perth is a city of Indian Ocean sunsets, Sunday markets and a global festival calendar tucked into the western edge of the country. Filipino fiestas in Mirrabooka, Italian community feasts in Balcatta, Burmese new year water festivals in Cannington, South African braais in Joondalup, Korean lunar new year in Northbridge, Croatian club dances in Fremantle. Beach DJs at Scarborough every summer Sunday. Concerts at RAC Arena. Comedy at the Astor. Theatre at His Majesty's. Workshop weekends at PICA. Community festivals in Hyde Park year round. EventLinqs gives Perth organisers fees that make sense, share flows that respect WhatsApp, and a platform tuned for a city that runs on long days and warm nights.",
     mapZoom: 11,
@@ -146,11 +146,11 @@ const CITIES: Record<CitySlug, CityContent> = {
     tier: 1, population: 463000, latitude: -35.2809, longitude: 149.1300,
     descriptor: 'National capital, embassy quarter, civic community.',
     editorial:
-      "Canberra is small, surprisingly young, and full of Friday night events. Embassies host community nights for every country represented. Multicommunity Festival turns the city centre into a 200-stall outdoor party every February. Filipino, Vietnamese, Indian, Sudanese and Korean community festivals run through the year. Floriade brings live music and food to Commonwealth Park every spring. Live music at the Polish Club, jazz at Smith's Alternative, comedy at the Belconnen Arts Centre, theatre at the Canberra Theatre Centre. Concerts at GIO Stadium and AIS Arena. Workshops at the National Gallery and the National Portrait Gallery. EventLinqs gives Canberra organisers a fair platform for a city that punches well above its population.",
+      "Canberra is small, surprisingly young, and full of Friday night events. Embassies host community nights for every country represented. The National Multicultural Festival turns the city centre into a 200-stall outdoor party every February. Filipino, Vietnamese, Indian, Sudanese and Korean community festivals run through the year. Floriade brings live music and food to Commonwealth Park every spring. Live music at the Polish Club, jazz at Smith's Alternative, comedy at the Belconnen Arts Centre, theatre at the Canberra Theatre Centre. Concerts at GIO Stadium and AIS Arena. Workshops at the National Gallery and the National Portrait Gallery. EventLinqs gives Canberra organisers a fair platform for a city that punches well above its population.",
     mapZoom: 11,
     relatedCities: ['sydney', 'wollongong', 'melbourne', 'newcastle', 'albury', 'geelong'],
     suburbs: ['canberra-civic'],
-    keywords: ['canberra events', 'things to do canberra', 'canberra festivals', 'canberra concerts', 'canberra multicommunity', 'canberra comedy'],
+    keywords: ['canberra events', 'things to do canberra', 'canberra festivals', 'canberra concerts', 'canberra community festivals', 'canberra comedy'],
   },
   hobart: {
     slug: 'hobart', name: 'Hobart', state: 'TAS', region: 'Greater Hobart',
@@ -245,7 +245,7 @@ const CITIES: Record<CitySlug, CityContent> = {
     tier: 2, population: 100000, latitude: -36.7570, longitude: 144.2794,
     descriptor: 'Goldfields heritage city.',
     editorial:
-      "Bendigo is the heart of the Victorian goldfields: heritage architecture, a Chinese community precinct, a major regional gallery and a calendar of festivals that fills every season. Bendigo Easter Festival is one of the longest-running multicommunity festivals in Australia. Chinese New Year at the Golden Dragon Museum. Festival of Light around Diwali. Greek paneghiri at the Greek Centre. Filipino community fiesta at Lake Weeroona. Italian Festa in central Bendigo. Live music at the Old Church on the Hill. Theatre at the Capital Theatre. Comedy at the Golden Vine. Concerts at Ulumbarra Theatre. Workshops at the Bendigo Art Gallery. EventLinqs is built for goldfields organisers running events that honour the heritage and the diversity of a city built by the rest of the world.",
+      "Bendigo is the heart of the Victorian goldfields: heritage architecture, a Chinese community precinct, a major regional gallery and a calendar of festivals that fills every season. Bendigo Easter Festival is one of the longest-running community festivals in Australia. Chinese New Year at the Golden Dragon Museum. Festival of Light around Diwali. Greek paneghiri at the Greek Centre. Filipino community fiesta at Lake Weeroona. Italian Festa in central Bendigo. Live music at the Old Church on the Hill. Theatre at the Capital Theatre. Comedy at the Golden Vine. Concerts at Ulumbarra Theatre. Workshops at the Bendigo Art Gallery. EventLinqs is built for goldfields organisers running events that honour the heritage and the diversity of a city built by the rest of the world.",
     mapZoom: 11,
     relatedCities: ['ballarat', 'melbourne', 'geelong', 'albury', 'adelaide', 'sydney'],
     suburbs: [],
@@ -484,7 +484,7 @@ const SUBURBS: Record<SuburbSlug, SuburbContent> = {
     characterDescriptor: "Canberra's central nightlife and arts.",
     latitude: -35.2809, longitude: 149.1300,
     editorial:
-      "Civic and Braddon together form Canberra's central nightlife and arts quarter: Lonsdale Street dining, the Australian Centre for Christian and Community, the Canberra Theatre Centre, embassies running community nights every weekend. Multicommunity Festival turns Civic into a 200-stall outdoor party every February. Floriade across spring. Live music at the Polish Club, jazz at Smith's Alternative, comedy at the Belconnen Arts Centre, theatre at the Canberra Theatre Centre.",
+      "Civic and Braddon together form Canberra's central nightlife and arts quarter: Lonsdale Street dining, the Australian Centre for Christian and Community, the Canberra Theatre Centre, embassies running community nights every weekend. The National Multicultural Festival turns Civic into a 200-stall outdoor party every February. Floriade across spring. Live music at the Polish Club, jazz at Smith's Alternative, comedy at the Belconnen Arts Centre, theatre at the Canberra Theatre Centre.",
     relatedSuburbs: [],
   },
 
