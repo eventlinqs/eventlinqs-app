@@ -235,7 +235,27 @@ export async function PricingPage() {
               Their numbers live behind their own pages; ours live here.
             </p>
           </div>
-          <div className="mt-5 overflow-x-auto rounded-card border border-[var(--surface-2)] bg-white">
+          {/*
+            KEYBOARD ACCESS TO THE SCROLLING COMPARISON.
+          
+            The table is min-w-[560px] inside overflow-x-auto, so on a 390px phone it
+            scrolls sideways. A mouse or a finger can move it; a keyboard could not,
+            because the scrolling element was not focusable. axe reports that as
+            serious (scrollable-region-focusable), and it was the only serious
+            violation on any surface this sweep touched. Found 3 September 2026 at
+            390px; the same page is clean at 1440 because nothing overflows there,
+            which is why a desktop-only accessibility pass would never see it.
+          
+            tabIndex={0} makes it reachable and scrollable by arrow key. role and
+            aria-label give it a name when it takes focus, so it is announced as
+            something rather than as an unlabelled box.
+          */}
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Published pricing compared across platforms"
+            className="mt-5 overflow-x-auto rounded-card border border-[var(--surface-2)] bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-accent)]"
+          >
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-ink-100 text-left">

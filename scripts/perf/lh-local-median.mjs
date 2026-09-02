@@ -68,9 +68,27 @@ if (!process.env.CHROME_PATH) {
 }
 process.stdout.write('chrome: ' + process.env.CHROME_PATH + String.fromCharCode(10))
 
+/* --desktop measures the desktop profile. Default stays mobile, because mobile
+ * is the one the 95 law is failing and the one the CI gate audits. */
+const DESKTOP = args.includes('--desktop')
+
 const SETTINGS = {
-  formFactor: 'mobile',
-  screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false },
+  formFactor: DESKTOP ? 'desktop' : 'mobile',
+  screenEmulation: DESKTOP
+    ? { mobile: false, width: 1350, height: 940, deviceScaleFactor: 1, disabled: false }
+    : { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false },
+  /*
+   * THROTTLING MUST MOVE WITH THE FORM FACTOR, and forgetting that produces a
+   * number that looks like a finding and is not. Measured on 3 September 2026:
+   * setting only formFactor and the viewport to desktop, while leaving the
+   * MOBILE throttling in place (4x CPU, simulated slow 4G), scored the homepage
+   * 0.62 desktop against 0.80 mobile. Desktop is not slower than mobile; the
+   * page was being run at mobile speed and marked against desktop's stricter
+   * thresholds. These are Lighthouse's own desktop preset values.
+   */
+  throttling: DESKTOP
+    ? { rttMs: 40, throughputKbps: 10240, cpuSlowdownMultiplier: 1, requestLatencyMs: 0, downloadThroughputKbps: 0, uploadThroughputKbps: 0 }
+    : { rttMs: 150, throughputKbps: 1638.4, cpuSlowdownMultiplier: 4, requestLatencyMs: 562.5, downloadThroughputKbps: 1474.56, uploadThroughputKbps: 675 },
   onlyCategories: ['performance'],
   maxWaitForLoad: 60000,
   pauseAfterLoadMs: 5000,
@@ -156,7 +174,7 @@ for (const p of paths) {
   process.stdout.write(`  LCP element: ${lcpElement}\n`)
 }
 
-process.stdout.write(`\n${'='.repeat(72)}\nMEDIAN OF ${RUNS}, mobile, warmed, base ${base}\n${'='.repeat(72)}\n`)
+process.stdout.write(`\n${'='.repeat(72)}\nMEDIAN OF ${RUNS}, ${DESKTOP ? 'desktop' : 'mobile'}, warmed, base ${base}\n${'='.repeat(72)}\n`)
 for (const s of summary) {
   process.stdout.write(
     `${s.path.padEnd(12)} perf ${s.score.toFixed(2)}  LCP ${String(Math.round(s.lcp)).padStart(6)}ms   runs [${s.scores.map((x) => x.toFixed(2)).join(', ')}]\n`,
