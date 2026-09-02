@@ -1,4 +1,5 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
+import { writeProofArtefact } from '../helpers/proof-artefact'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import QRCode from 'qrcode'
 import { buildEventPosterPdf } from '@/lib/broadcast/poster'
@@ -45,7 +46,6 @@ type Case = {
 
 describe('the poster visual proof set', () => {
   it('renders every case to a real PDF', async () => {
-    mkdirSync(OUT, { recursive: true })
     const shortUrl = 'https://eventlinqs.com/launch/k/abcdefghjkmn'
     const qrPng = new Uint8Array(await QRCode.toBuffer(shortUrl, { margin: 1, width: 600 }))
     const index: string[] = []
@@ -56,14 +56,14 @@ describe('the poster visual proof set', () => {
         : null
 
       const pdf = await buildEventPosterPdf({ ...entry.input, shortUrl, qrPng, coverImage })
-      writeFileSync(`${OUT}/${entry.slug}.pdf`, Buffer.from(pdf))
+      writeProofArtefact(`${OUT}/${entry.slug}.pdf`, Buffer.from(pdf))
       index.push(`${entry.slug}.pdf  ${entry.note}`)
 
       expect(Buffer.from(pdf.slice(0, 5)).toString('latin1')).toBe('%PDF-')
       expect(pdf.byteLength).toBeGreaterThan(1000)
     }
 
-    writeFileSync(`${OUT}/INDEX.txt`, `${index.join('\n')}\n`)
+    writeProofArtefact(`${OUT}/INDEX.txt`, `${index.join('\n')}\n`)
     expect(index.length).toBe(POSTER_SET.length)
     // Six PDFs, two of them embedding real multi-hundred-kilobyte photographs
     // and all six embedding and subsetting four font faces. That is about 2.8s

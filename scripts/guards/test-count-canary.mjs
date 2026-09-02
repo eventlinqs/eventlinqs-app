@@ -614,8 +614,24 @@ const ROOT = join(HERE, '..', '..')
  *     the image pipeline by round-tripping real bytes in the deployed runtime.
  *     sharp.format.svg.input reported true while an 8x8 red rectangle failed.
  */
-const MIN_FILES = 245
-const MIN_TESTS = 2961
+/*
+ * 2026-09-03 (seventh raise): 245/2961 -> 246/2964. One file, three tests.
+ *   tests/unit/broadcast/card-raster-double-init.test.ts pins the fix for a
+ *   REAL production incident on 2 September 2026: all eighteen social cards
+ *   answered HTTP 500 with "Already initialized. The initWasm() function can be
+ *   used only once." A fresh process served them all again, so the bytes were
+ *   fine and the PROCESS was poisoned. "Already initialised" was being treated
+ *   as a failure, the memoised promise nulled itself so the next request
+ *   retried, the retry called initWasm a second time, and resvg refused for the
+ *   life of the lambda. One transient hiccup became permanent and took the
+ *   whole Launch Kit down with it.
+ *
+ *   Raised during the launch-worthy sweep. The canary had been reporting the
+ *   growth correctly on every push since the file landed; nothing was broken,
+ *   the floor had simply not been moved up to hold the new work.
+ */
+const MIN_FILES = 246
+const MIN_TESTS = 2964
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

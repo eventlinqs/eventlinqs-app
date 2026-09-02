@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { writeProofArtefact } from '../helpers/proof-artefact'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import QRCode from 'qrcode'
 import { buildEventPosterPdf } from '@/lib/broadcast/poster'
@@ -80,7 +80,6 @@ const BASE = {
 
 describe('poster parity', () => {
   it('renders both compositions and records the hashes', async () => {
-    mkdirSync(OUT, { recursive: true })
     const qrPng = new Uint8Array(await QRCode.toBuffer(BASE.shortUrl, { margin: 1, width: 600 }))
 
     const withCover = await buildEventPosterPdf({
@@ -90,9 +89,9 @@ describe('poster parity', () => {
     })
     const noCover = await buildEventPosterPdf({ ...BASE, qrPng, coverImage: null })
 
-    writeFileSync(`${OUT}/with-artwork.pdf`, Buffer.from(withCover))
-    writeFileSync(`${OUT}/no-artwork.pdf`, Buffer.from(noCover))
-    writeFileSync(
+    writeProofArtefact(`${OUT}/with-artwork.pdf`, Buffer.from(withCover))
+    writeProofArtefact(`${OUT}/no-artwork.pdf`, Buffer.from(noCover))
+    writeProofArtefact(
       `${OUT}/parity.json`,
       JSON.stringify(
         {

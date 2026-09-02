@@ -10,7 +10,8 @@
  * screenshot both and show me before shipping it."
  */
 import { describe, it } from 'vitest'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
+import { writeProofArtefact, WRITE_ARTEFACTS } from '../../helpers/proof-artefact'
 import { join } from 'node:path'
 import sharp from 'sharp'
 import { ImageResponse } from 'next/og'
@@ -20,7 +21,6 @@ import { buildCardElement, prepareCardCover } from '@/lib/broadcast/social-cards
 import { SOCIAL_CARD_FORMATS, type SocialCardFormat } from '@/lib/broadcast/social-card-spec'
 
 const OUT = join(process.cwd(), 'docs', 'verification', 'card-raster')
-mkdirSync(OUT, { recursive: true })
 
 const FORMATS: SocialCardFormat[] = ['story', 'square', 'feed']
 
@@ -84,8 +84,8 @@ describe('what the two rasterisers actually differ on', () => {
           await renderCardPng(element, { width: spec.width, height: spec.height, fonts }),
         )
 
-        writeFileSync(join(OUT, `${tag}-A-imageresponse.png`), oldPng)
-        writeFileSync(join(OUT, `${tag}-B-resvg.png`), newPng)
+        writeProofArtefact(join(OUT, `${tag}-A-imageresponse.png`), oldPng)
+        writeProofArtefact(join(OUT, `${tag}-B-resvg.png`), newPng)
 
         const [a, b] = await Promise.all([
           sharp(oldPng).ensureAlpha().raw().toBuffer({ resolveWithObject: true }),
@@ -117,9 +117,16 @@ describe('what the two rasterisers actually differ on', () => {
           diff[i + 3] = 255
         }
 
-        await sharp(diff, { raw: { width: a.info.width, height: a.info.height, channels: 4 } })
-          .png()
-          .toFile(join(OUT, `${tag}-C-difference.png`))
+        /* The amplified difference map is for a human to LOOK at, so it is
+         * written only when artefacts are explicitly requested. sharp writes
+         * straight to disk and cannot go through writeProofArtefact, so the
+         * directory is created here rather than on import. */
+        if (WRITE_ARTEFACTS) {
+          mkdirSync(OUT, { recursive: true })
+          await sharp(diff, { raw: { width: a.info.width, height: a.info.height, channels: 4 } })
+            .png()
+            .toFile(join(OUT, `${tag}-C-difference.png`))
+        }
 
         const total = a.data.length / 4
         const top = [...hist.entries()].sort((x, y) => y[1] - x[1]).slice(0, 5)

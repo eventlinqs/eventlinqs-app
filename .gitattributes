@@ -1,0 +1,55 @@
+# EventLinqs line-ending and binary contract.
+#
+# WHY THIS FILE EXISTS, added 3 September 2026. The repository had NO
+# .gitattributes at all. With `core.autocrlf = true` on Windows, git checks text
+# files out with CRLF, while the test suite writes its proof artefacts with LF.
+# Four tracked files therefore came back MODIFIED after every single test run,
+# with no change of content whatsoever:
+#
+#   docs/design/poster-band/hashes.json
+#   docs/design/poster-composition/parity.json
+#   docs/design/poster-composition/set/INDEX.txt
+#   docs/roast/organiser-copy/OUTPUT.md
+#
+# A permanently dirty tree is not a cosmetic problem. It trains everyone to
+# ignore `git status`, and an ignored `git status` is how an unintended change
+# eventually rides along inside somebody else's commit.
+#
+# THE WRITES THEMSELVES ARE ALSO GATED NOW, behind WRITE_PROOF_ARTEFACTS=1, so a
+# normal test run does not touch a tracked file in the first place. This file is
+# the second half of that fix: it keeps the checked-out bytes and the written
+# bytes identical, so the artefacts stay clean even when they ARE regenerated.
+
+# Normalise line endings in the INDEX for everything git detects as text. This
+# does not fight autocrlf in the working tree; it stops mixed endings entering
+# history.
+* text=auto
+
+# The proof artefacts the test suite writes. These are pinned to LF in the
+# WORKING TREE, not just the index, because the writer is Node and Node writes
+# LF. Anything else reintroduces the phantom diff above.
+docs/design/poster-band/hashes.json          text eol=lf
+docs/design/poster-composition/parity.json   text eol=lf
+docs/design/poster-composition/set/INDEX.txt text eol=lf
+docs/roast/organiser-copy/OUTPUT.md          text eol=lf
+
+# Shell scripts and git hooks must keep LF or they will not execute.
+*.sh        text eol=lf
+.githooks/* text eol=lf
+
+# Binary evidence. Never diffed, never line-ending converted. The poster and
+# card PDFs are byte-for-byte deterministic and are compared by hash, so a single
+# CRLF substitution inside one would corrupt it and read as a rendering change.
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.avif  binary
+*.webp  binary
+*.gif   binary
+*.ico   binary
+*.mp4   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary

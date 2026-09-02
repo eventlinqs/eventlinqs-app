@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { writeProofArtefact } from '../helpers/proof-artefact'
 import fs from 'node:fs'
 import path from 'node:path'
 import { buildDeterministicDraft, type MagicStartDraft } from '@/lib/ai/magic-start'
@@ -226,9 +227,16 @@ describe('organiser copy: the output review', () => {
     out('one word, a field left empty that the organiser now has to fill by hand.')
 
     const dir = path.join(process.cwd(), 'docs/roast/organiser-copy')
-    fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(path.join(dir, 'OUTPUT.md'), lines.join('\n') + '\n')
-    expect(fs.existsSync(path.join(dir, 'OUTPUT.md'))).toBe(true)
+    writeProofArtefact(path.join(dir, 'OUTPUT.md'), lines.join('\n') + '\n')
+
+    /*
+     * ASSERT THE REVIEW, NOT THE FILE. This used to assert that OUTPUT.md
+     * exists, which was true on every run for the wrong reason: the file is
+     * tracked, so it exists whether or not this test wrote it. Now that the
+     * write is gated behind WRITE_PROOF_ARTEFACTS the old assertion would have
+     * been checking git rather than the code. Assert what the test produces.
+     */
+    expect(lines.length).toBeGreaterThan(0)
   })
 
   describe('the machine-checkable floor, per input', () => {

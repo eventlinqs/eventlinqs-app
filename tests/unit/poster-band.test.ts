@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
+import { writeProofArtefact } from '../helpers/proof-artefact'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import QRCode from 'qrcode'
 import { buildEventPosterPdf } from '@/lib/broadcast/poster'
@@ -88,7 +89,6 @@ function sha(bytes: Uint8Array): string {
 
 describe('the information band, with artwork', () => {
   it('renders all six arrivals with a photograph, and a no-artwork control', async () => {
-    mkdirSync(OUT, { recursive: true })
     const shortUrl = 'https://eventlinqs.com/launch/k/abcdefghjkmn'
     const qrPng = new Uint8Array(await QRCode.toBuffer(shortUrl, { margin: 1, width: 600 }))
     const cover = { bytes: new Uint8Array(readFileSync(PHOTO)), format: 'jpg' as const }
@@ -97,7 +97,7 @@ describe('the information band, with artwork', () => {
 
     for (const a of ARRIVALS) {
       const pdf = await buildEventPosterPdf({ ...a, shortUrl, qrPng, coverImage: cover })
-      writeFileSync(`${OUT}/${a.slug}-artwork.pdf`, Buffer.from(pdf))
+      writeProofArtefact(`${OUT}/${a.slug}-artwork.pdf`, Buffer.from(pdf))
       hashes[`${a.slug}-artwork`] = sha(pdf)
       expect(Buffer.from(pdf.slice(0, 5)).toString('latin1')).toBe('%PDF-')
     }
@@ -106,11 +106,11 @@ describe('the information band, with artwork', () => {
     // as a result of the band change, and this is what proves it.
     for (const a of ARRIVALS) {
       const pdf = await buildEventPosterPdf({ ...a, shortUrl, qrPng, coverImage: null })
-      writeFileSync(`${OUT}/${a.slug}-no-artwork.pdf`, Buffer.from(pdf))
+      writeProofArtefact(`${OUT}/${a.slug}-no-artwork.pdf`, Buffer.from(pdf))
       hashes[`${a.slug}-no-artwork`] = sha(pdf)
     }
 
-    writeFileSync(`${OUT}/hashes.json`, `${JSON.stringify(hashes, null, 2)}\n`)
+    writeProofArtefact(`${OUT}/hashes.json`, `${JSON.stringify(hashes, null, 2)}\n`)
     expect(Object.keys(hashes)).toHaveLength(ARRIVALS.length * 2)
   }, 60_000)
 })
