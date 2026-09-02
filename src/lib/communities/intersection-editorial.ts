@@ -969,102 +969,102 @@ const INTERSECTIONS: Record<string, IntersectionEntry> = {
   // ============================================================
   // PACIFIC
   // ============================================================
-  'pacific/sydney': {
+  'pacific-pasifika/sydney': {
     hero_subtitle: "Pacific peoples, Sydney harbours.",
     editorial:
       "Sydney's Pacific community is one of the largest in Australia. Mt Druitt and Blacktown hold the Samoan and Tongan families, Liverpool holds the Fijian community, Penrith holds the Cook Islands and Niuean families, Auburn holds the Maori community. Pasifika Festival at Tumbalong Park every February pulls forty thousand, Polyfest at Sydney Olympic Park every May pulls twenty thousand for the largest Polynesian dance festival outside the islands, Tongan Methodist services across Mt Druitt every Sunday pull two thousand each, Samoan Independence Day at Bonnyrigg every June, Fijian Day at Liverpool every October. Pacific food in Mt Druitt and Liverpool. The Pasifika Community Trust and the Samoan Federation of Australia coordinate year-round events. The Marrickville-based Pacific Islander Community Centre runs weekend community nights. EventLinqs is built for Sydney Pacific organisers running events that anchor a deep generations-old community across the city's western suburbs.",
   },
-  'pacific/melbourne': {
+  'pacific-pasifika/melbourne': {
     hero_subtitle: "Pacific peoples, Melbourne stage.",
     editorial:
       "Melbourne's Pacific community runs through the western and southeastern suburbs. Footscray and Sunshine hold the Samoan and Tongan families, Dandenong holds the Cook Islands community, Cranbourne holds the Fijian families, Frankston holds the Maori community. Pasifika Festival at Federation Square every February pulls thirty thousand, Polyfest Melbourne at Cranbourne East Secondary every May pulls fifteen thousand, Tongan Methodist services across Footscray every Sunday pull one thousand five hundred each, Samoan Independence Day at Wyndham Park every June, Fijian Day at Cranbourne every October. Pacific food in Footscray and Sunshine. The Pasifika Australia Council and the Samoan Federation of Victoria coordinate year-round events. The Federation Square hosts the annual Pacific Community Festival each July. EventLinqs is built for Melbourne Pacific organisers running events that anchor a generations-deep community across the city's working-class corridors.",
   },
-  'pacific/brisbane': {
+  'pacific-pasifika/brisbane': {
     hero_subtitle: "Sunshine state, Pacific harbour.",
     editorial:
       "Brisbane's Pacific community is the second-largest in Australia. Logan and Beenleigh hold the Samoan and Tongan families (the largest Pacific community in any Australian council area), Inala holds the Fijian community, Caboolture holds the Cook Islands and Niuean families, the South Side holds the Maori community. Pacific Islander Festival at Logan Gardens every August pulls twenty-five thousand, Polyfest Queensland at Logan Metro every May pulls fifteen thousand, Tongan Methodist services across Logan every Sunday pull two thousand each, Samoan Independence Day at Logan Central every June, Fijian Day at Inala every October. Pacific food across Slacks Creek and Browns Plains. The Logan Pacific Islander Council and the Pasifika Community Trust Queensland coordinate year-round events. EventLinqs is built for Brisbane Pacific organisers running events in Australia's largest single Pacific Islander population centre.",
   },
-  'pacific/perth': {
+  'pacific-pasifika/perth': {
     hero_subtitle: "Indian Ocean meets Pacific.",
     editorial:
       "Perth's Pacific community is mid-sized and family-led. Mirrabooka holds the Samoan and Tongan families, Balga holds the Fijian community, Cannington holds the Cook Islands families, Maddington holds the Maori community. Pacific Islander Festival at Russell Square every February pulls eight thousand, Polyfest WA at HBF Stadium every May pulls four thousand, Tongan Methodist services across Mirrabooka every Sunday pull six hundred each, Samoan Independence Day at Forrest Place every June, Fijian Day at Whiteman Park every October. Pacific food in Mirrabooka and Balga. The Pacific Islander Council of Western Australia and the Samoan Federation of WA coordinate year-round events. The Edith Cowan University Pacific Community Society runs community nights through every semester. EventLinqs is built for Perth Pacific organisers running events that anchor a Polynesian community on Australia's western edge.",
   },
-  'pacific/adelaide': {
+  'pacific-pasifika/adelaide': {
     hero_subtitle: "Festival city, Pacific welcome.",
     editorial:
       "Adelaide's Pacific community is mid-sized and tightly woven. Salisbury and Smithfield hold the Samoan and Tongan families, Para Hills holds the Fijian community, Mawson Lakes holds the Cook Islands families, Pooraka holds the Maori community. Pacific Islander Festival at Bonython Park every March pulls four thousand, Polyfest South Australia at the Adelaide Showgrounds every May pulls two thousand, Tongan Methodist services across Salisbury every Sunday pull four hundred each, Samoan Independence Day at the Adelaide Convention Centre every June, Fijian Day at Pooraka every October. Pacific food in Salisbury. The Pacific Islander Council of South Australia and the Samoan Federation of SA coordinate year-round events. Adelaide Fringe each March picks up at least one Pacific music or comedy act. EventLinqs is built for Adelaide Pacific organisers running events that anchor a Polynesian community in the festival city.",
   },
-  'pacific/gold-coast': {
+  'pacific-pasifika/gold-coast': {
     hero_subtitle: "Coast life, Pacific heritage.",
     editorial:
       "The Gold Coast Pacific community is mid-sized and lifestyle-led. Robina and Carrara hold the Samoan and Tongan families, Helensvale holds the Fijian community, Coomera holds the Cook Islands families, Burleigh Heads holds the Maori community. Pacific Islander Festival at HOTA every February pulls four thousand, Polyfest Gold Coast at Carrara Stadium function rooms every May pulls two thousand, Tongan Methodist services across Robina every Sunday pull four hundred each, Samoan Independence Day at Broadwater Parklands every June, Fijian Day at Helensvale every October. Pacific food in Robina and Helensvale. The Gold Coast Pacific Islander Council coordinates year-round events. The Bond and Griffith University Pacific Community Societies pull fresh student energy each semester. EventLinqs is built for Gold Coast Pacific organisers running events that match coast lifestyle to Polynesian heritage.",
   },
-  'pacific/canberra': {
+  'pacific-pasifika/canberra': {
     hero_subtitle: "Capital community, Pacific stage.",
     editorial:
       "Canberra's Pacific community is small but tightly organised. Tuggeranong and Kambah hold the Samoan and Tongan families, Belconnen holds the Fijian community, Gungahlin holds the Cook Islands and Maori families. Pacific Islander Festival at Glebe Park every February pulls one thousand five hundred, Polyfest ACT at the AIS Arena every May pulls one thousand, Tongan Methodist services across Tuggeranong every Sunday pull two hundred each, Samoan Independence Day at Garema Place every June, Fijian Day at Belconnen every October. Pacific food in Tuggeranong. The ACT Pacific Islander Council coordinates year-round events. The ANU Pacific Studies programme runs community nights through every semester. The Pacific Embassies (PNG, Fiji, Samoa, Tonga) run year-round community events. EventLinqs is built for Canberra Pacific organisers running events that thread Polynesian heritage through the federal capital.",
   },
-  'pacific/hobart': {
+  'pacific-pasifika/hobart': {
     hero_subtitle: "Apple Isle, Pacific welcome.",
     editorial:
       "From Tongan Methodist services in Glenorchy to Samoan rugby celebrations spilling out of Bellerive, Tasmania's Pacific community gathers small but proud. The Maori community nights in North Hobart, Fijian wedding receptions at Wrest Point, the slow steady Pasifika fellowship that anchors family across the Bass Strait. EventLinqs is built for the Hobart Pacific organisers running it all - the community elders, the young families, the community choirs keeping song alive in our southernmost capital.",
   },
-  'pacific/newcastle': {
+  'pacific-pasifika/newcastle': {
     hero_subtitle: "Steel city, Pacific welcome.",
     editorial:
       "Newcastle's Pacific community is small but established. Mayfield and Hamilton hold the Samoan and Tongan families, Wallsend holds the Fijian community, Charlestown holds the Cook Islands and Maori families. Pacific Islander Festival at Civic Park every February pulls one thousand five hundred, Polyfest Hunter at the Newcastle Showgrounds every May pulls eight hundred, Tongan Methodist services across Mayfield every Sunday pull two hundred each, Samoan Independence Day at Foreshore Park every June, Fijian Day at Wallsend every October. Pacific food in Mayfield. The Hunter Region Pacific Islander Council coordinates year-round events. The University of Newcastle Pacific Studies programme runs community nights through every semester. EventLinqs is built for Newcastle Pacific organisers running events that anchor a Polynesian community in the steel river city.",
   },
-  'pacific/wollongong': {
+  'pacific-pasifika/wollongong': {
     hero_subtitle: "Illawarra coast, Pacific welcome.",
     editorial:
       "Wollongong's Pacific community is small but proudly anchored. Berkeley and Warrawong hold the Samoan and Tongan families, Cringila holds the Fijian community, Coniston holds the Cook Islands and Maori families. Pacific Islander Festival at Stuart Park every February pulls one thousand, Polyfest Illawarra at the Beaton Park Leisure Centre every May pulls six hundred, Tongan Methodist services across Berkeley every Sunday pull two hundred each, Samoan Independence Day at McCabe Park every June, Fijian Day at Warrawong every October. Pacific food in Warrawong. The Illawarra Pacific Islander Council coordinates year-round events. The University of Wollongong Pacific Studies programme runs community nights through every semester. EventLinqs is built for Wollongong Pacific organisers running events that thread Polynesian welcome through the steel coast.",
   },
-  'pacific/geelong': {
+  'pacific-pasifika/geelong': {
     hero_subtitle: "Bay city, Pacific welcome.",
     editorial:
       "Geelong's Pacific community is small but family-led. Norlane holds the Samoan and Tongan families, Corio holds the Fijian community, Whittington holds the Cook Islands and Maori families. Pacific Islander Festival at Steampacket Gardens every February pulls eight hundred, Polyfest Geelong at the Geelong Showgrounds every May pulls five hundred, Tongan Methodist services across Norlane every Sunday pull one hundred fifty each, Samoan Independence Day at Johnstone Park every June, Fijian Day at Corio every October. Pacific food in Norlane. The Geelong Pacific Islander Council coordinates year-round events. The Deakin University Pacific Studies programme runs community nights through every semester. EventLinqs is built for Geelong Pacific organisers running events that anchor a Polynesian community in the second city of Victoria.",
   },
-  'pacific/sunshine-coast': {
+  'pacific-pasifika/sunshine-coast': {
     hero_subtitle: "Hinterland warm, Pacific welcome.",
     editorial:
       "The Sunshine Coast Pacific community is small but lifestyle-led. Caloundra holds the Samoan and Tongan families, Maroochydore holds the Fijian community, Buderim holds the Cook Islands and Maori families. Pacific Islander Festival at Cotton Tree Park every February pulls eight hundred, Polyfest Sunshine Coast at the Lake Kawana Community Centre every May pulls four hundred, Tongan Methodist services across Caloundra every Sunday pull one hundred fifty each, Samoan Independence Day at Mooloolaba Esplanade every June, Fijian Day at Buderim every October. Pacific food in Caloundra. The Sunshine Coast Pacific Islander Council coordinates year-round events. The University of the Sunshine Coast Pacific Studies programme runs community nights through every semester. EventLinqs is built for Sunshine Coast Pacific organisers running events that match coast lifestyle to Polynesian welcome.",
   },
-  'pacific/cairns': {
+  'pacific-pasifika/cairns': {
     hero_subtitle: "Tropical north, Pacific harbour.",
     editorial:
       "Cairns has a small but warm Pacific community, drawn to the tropical climate that mirrors the islands. Manunda holds the Samoan and Tongan families, Edmonton holds the Fijian community, Westcourt holds the Cook Islands and Maori families. Pacific Islander Festival at Munro Martin Parklands every February pulls six hundred, Polyfest Far North Queensland at the Cairns Showgrounds every May pulls three hundred, Tongan Methodist services across Manunda every Sunday pull one hundred each, Samoan Independence Day at the Esplanade every June, Fijian Day at Edmonton every October. Pacific food in Manunda. The Far North Queensland Pacific Islander Council coordinates year-round events. The James Cook University Pacific Studies programme runs community nights through every semester. EventLinqs is built for Cairns Pacific organisers running events that bring Polynesian welcome into Australia's most island-feeling tropical city.",
   },
-  'pacific/darwin': {
+  'pacific-pasifika/darwin': {
     hero_subtitle: "Top End, Pacific welcome.",
     editorial:
       "Darwin's Pacific community is small but Top End-anchored. Karama holds the Samoan and Tongan families, Anula holds the Fijian community, Casuarina holds the Cook Islands and Maori families. Pacific Islander Festival at Bicentennial Park every August pulls eight hundred, Polyfest NT at the Darwin Convention Centre every May pulls four hundred, Tongan Methodist services across Karama every Sunday pull one hundred each, Samoan Independence Day at Mindil Beach Sunset Markets every June, Fijian Day at the Marrara Sporting Complex every October. Pacific food in Karama. The Northern Territory Pacific Islander Council coordinates year-round events. The Charles Darwin University Pacific Studies programme runs community nights through every semester. EventLinqs is built for Darwin Pacific organisers running events that bring Polynesian welcome to Australia's most Asia-and-Pacific-facing capital.",
   },
-  'pacific/townsville': {
+  'pacific-pasifika/townsville': {
     hero_subtitle: "Tropical north, Pacific welcome.",
     editorial:
       "Townsville's Pacific community is established and family-led. Annandale and Heatley hold the Samoan and Tongan families, Kelso holds the Fijian community, Kirwan holds the Cook Islands and Maori families. Pacific Islander Festival at Riverway every February pulls one thousand five hundred, Polyfest North Queensland at the Townsville Showgrounds every May pulls eight hundred, Tongan Methodist services across Annandale every Sunday pull two hundred each, Samoan Independence Day at the Strand every June, Fijian Day at Kirwan every October. Pacific food in Heatley. The North Queensland Pacific Islander Council coordinates year-round events. The James Cook University Pacific Studies programme runs community nights through every semester. The Townsville rugby community has produced more Pacific Islander NRL players than almost any other Australian region. EventLinqs is built for Townsville Pacific organisers running events that anchor a Polynesian community in tropical north Queensland.",
   },
-  'pacific/auckland': {
+  'pacific-pasifika/auckland': {
     hero_subtitle: "Tāmaki Makaurau, Pacific stage.",
     editorial:
       "Auckland is the largest Polynesian city in the world. Otara, Mangere and Manurewa hold the Samoan and Tongan families (each suburb is more Pacific Islander than any non-island city in the world), Onehunga holds the Cook Islands community, Te Atatu holds the Niuean families, Henderson holds the Fijian community. Pasifika Festival at Western Springs every March pulls one hundred thousand for the largest Pacific community festival in the world, Polyfest at Manukau every March pulls one hundred thousand of high school Polynesian community performance, Te Matatini Maori community festival pulls fifty thousand, Tongan Heilala Festival every June, Samoan Independence Day every June. Pacific food across South Auckland. The Pasifika Trust coordinates the year-round calendar. Auckland is the city that defines Pacific Islander celebration globally and exports it. EventLinqs is built for Auckland Pacific organisers running the events the global Pasifika community watches.",
   },
-  'pacific/wellington': {
+  'pacific-pasifika/wellington': {
     hero_subtitle: "Te Whanganui-a-Tara, Pacific harbour.",
     editorial:
       "Wellington is New Zealand's capital and one of the most Pacific cities in the world. Porirua and Cannons Creek hold the Samoan and Tongan families, Petone holds the Cook Islands community, Wainuiomata holds the Fijian families, Naenae holds the Maori-Pacific overlap. Pasifika Festival at Frank Kitts Park every March pulls thirty thousand, Polyfest Wellington at Porirua every June pulls twenty thousand, Te Matatini in Wellington every two years pulls fifty thousand for the largest Maori community festival, Samoan Language Week every May fills government buildings, Tongan Heilala Festival every June. Pacific food in Porirua. The Wellington Pasifika Trust coordinates the year-round calendar. The Pacific peoples are the third-largest population group in Wellington. EventLinqs is built for Wellington Pacific organisers running events that anchor New Zealand's most Pacific-feeling capital.",
   },
-  'pacific/honolulu': {
+  'pacific-pasifika/honolulu': {
     hero_subtitle: "Where Polynesia meets America.",
     editorial:
       "Honolulu is the community heart of Hawaiian Polynesia. Waikiki holds the tourist hospitality crowd, Kalihi holds the Samoan and Tongan families (the largest American Samoan community outside the US territory), Waipahu holds the Filipino-Pacific overlap, Pearl City holds the Hawaiian community. Aloha Festivals every September pull one million across the city for the largest Hawaiian community festival, Pan Pacific Festival every June pulls four hundred thousand, Hawaiian Slack Key Guitar Festival every August, Samoan Flag Day every April pulls fifty thousand. Pacific food across Kalihi. The Hawaii State Foundation on Community and the Arts coordinates the year-round calendar. The geography makes Honolulu the natural meeting point of Pacific Islander communities and continental Polynesia. EventLinqs is built for Honolulu Pacific organisers running events that anchor the Polynesian capital of the United States.",
   },
-  'pacific/los-angeles': {
+  'pacific-pasifika/los-angeles': {
     hero_subtitle: "West coast, Polynesian welcome.",
     editorial:
       "Los Angeles holds the largest Pacific Islander community in continental America. Carson is the heart of the Samoan-American community (the largest outside Samoa), Long Beach holds the Cambodian-Polynesian overlap, Inglewood holds the Tongan community, Hawthorne holds the Fijian families. Polynesian Festival at Carson Park every July pulls thirty thousand for the largest Pacific community festival in continental America, Pacific Islander Festival at the LA Convention Center every September, Samoan Flag Day every April, Tongan Independence Day every June. Pacific food in Carson and Long Beach. The Pacific Islander Health Partnership coordinates year-round events. The University of Southern California Pacific Islander Student Association pulls fresh student energy each semester. EventLinqs is built for LA Pacific organisers running events that anchor the largest Pacific Islander community in continental America.",
   },
-  'pacific/toronto': {
+  'pacific-pasifika/toronto': {
     hero_subtitle: "Lakeside, Pacific welcome.",
     editorial:
       "Toronto's Pacific community is small but tightly woven. Scarborough and Pickering hold the Fijian and Samoan families, Markham holds the Cook Islands community, North York holds the Tongan and Maori families. Pasifika Festival at Yonge-Dundas Square every August pulls four thousand, Polynesian Community Festival at Centerpoint Mall every May pulls two thousand, Samoan Independence Day at the Civic Centre every June, Tongan Independence Day at Mel Lastman Square every November. Pacific food in Scarborough. The Pacific Islander Community Foundation of Canada coordinates the year-round calendar. The University of Toronto Pacific Studies programme runs community nights through every semester. The community is small enough that everyone shows up, big enough that the calendar stays steady. EventLinqs is built for Toronto Pacific organisers running events that bring Polynesian welcome to Canada's largest city.",

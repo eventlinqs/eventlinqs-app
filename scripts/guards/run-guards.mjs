@@ -44,6 +44,7 @@
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
  *   proper-nouns-intact      and the names of real organisations survive that sweep intact
+ *   community-editorial-reachable  bespoke community copy reaches a page, or is declared dead
  *   no-unguarded-production-write  no script writes to a database without checking which one
  *   one-db-connection-source   no script assembles its own database connection
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
@@ -441,6 +442,13 @@ const GUARDS = [
   // than a note. This comment names those bodies correctly on purpose: both
   // guards read the same registry, so the real names are the safe spelling.
   'scripts/guards/proper-nouns-intact.mjs',
+  // Found 3 September 2026 by driving the pages. intersection-editorial.ts is
+  // keyed on community taxonomy V1 while the site runs V2, so 211 of its 271
+  // hand-written paragraphs reached no page. Nothing reported it, because the
+  // templated fallback makes a page with missing bespoke copy look finished.
+  // One retired slug had no redirect at all and returned a 404. This guard
+  // makes an unreachable paragraph loud instead of silent.
+  'scripts/guards/community-editorial-reachable.mjs',
   // Founder ruling 2026-08-13. `.env.local` in this repo points at the
   // PRODUCTION project, deliberately, because the app is run against production
   // from here. An audit that day found ten write-capable scripts with a
