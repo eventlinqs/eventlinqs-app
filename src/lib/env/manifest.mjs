@@ -649,7 +649,24 @@ export const ENV_MANIFEST = [
     requiredOn: ['production', 'preview'],
     forbiddenOn: [],
     optionalOn: ['development'],
-    mustBeSensitive: false,
+    /*
+     * RULING R3 IS NOW ENFORCED HERE, 3 September 2026.
+     * 
+     * R3 (docs/ENV-DOCTRINE.md 3.2) names this variable in its OWN evidence
+     * table, as: "NO. A billable key with no test mode." It is one of the four
+     * the 2026-08-03 audit removed from the Development scope.
+     * 
+     * The ruling was nevertheless only half enforced: this single line said
+     * mustBeSensitive: false, and that line is the one thing permitting the key
+     * to sit readable in plain text on Development, which is exactly what R3
+     * exists to stop. Vercel refuses --sensitive on Development by design, so a
+     * value stored there can never be protected: the correct home is a local
+     * gitignored file, per doctrine 3.3.
+     * 
+     * A billable key readable by anyone with project access is a bill somebody
+     * else can run up, and Google has no test mode to fall back on.
+     */
+    mustBeSensitive: true,
     previewBranchScoping: 'forbidden',
     shape: SHAPES.googleApiKey,
     paymentCritical: false,
@@ -981,7 +998,14 @@ export const ENV_MANIFEST = [
     optionalReason:
       'used only by the seeding scripts under scripts/, never by any code path a request can reach, so ' +
       'no deployment needs it and its absence cannot affect a user',
-    mustBeSensitive: false,
+    /*
+     * RULING R3, same reasoning, 3 September 2026. A billable third-party key
+     * with no test mode. That it is "only used by the seeding scripts" bounds
+     * the BLAST RADIUS if it is misused, not the exposure: a key readable in
+     * plain text on Development is readable by anyone with project access, and
+     * Pexels bills against it either way. Its home is a local gitignored file.
+     */
+    mustBeSensitive: true,
     previewBranchScoping: 'allowed',
     shape: SHAPES.anyNonEmpty,
     paymentCritical: false,
