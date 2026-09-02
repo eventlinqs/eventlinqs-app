@@ -193,3 +193,9 @@ tmp-repro.mjs
 
 # ESLint cache: makes the pre-push lint proportional to what changed.
 .eslintcache
+
+# Local Lighthouse harness output (scripts/perf/lh-local-median.mjs). Per-run
+# numbers for a human to read, regenerated on every run. The tree must not go
+# dirty because somebody measured something, which is the same rule the test
+# suite now follows via WRITE_PROOF_ARTEFACTS.
+docs/verification/lh-local/

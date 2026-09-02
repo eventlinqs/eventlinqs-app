@@ -1,0 +1,17 @@
+Journey 6: admitting a ticket, once
+===================================
+01. The door, after the first scan
+      URL     /scan/9f9464a4-fffd-4e2b-81cb-7002bd7a9148
+      heading "Geelong Community Night 686810"
+      fields  Ticket code or ticket link | Ticket key
+      buttons Check in
+02. FIRST scan
+      ADMITNew Holder 546216
+      Geelong Community Night 686810 ADMIT New Holder 546216
+03. SECOND scan of the same ticket
+      REJECTNew Holder 546216Already used just now
+      Geelong Community Night 686810 REJECT New Holder 546216 Already used just now
+04. The second scan was refused
+      REJECTNew Holder 546216Already used just now Geelong Community Night 686810 REJECT New Holder 546216 Already used just now
+05. Does it say WHEN it was first used?
+      no time given
