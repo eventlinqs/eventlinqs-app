@@ -17,7 +17,7 @@ running record, newest task last.
 | 3 | Venue geocoding | BLOCKED ON FOUNDER (amendment 2) |
 | 4 | Mobile Lighthouse 95 | DONE, but 95 NOT MET. Ceiling 0.80 on /. Founder ruling needed |
 | 5 | Full Scope v5 audit, 18 sections | DONE. 4 BUILT, 10 PARTIAL, 4 NOT BUILT |
-| 6 | Remaining known defects, a to h | NOT STARTED |
+| 6 | Remaining known defects, a to h | DONE. Found a launch blocker: the door refused 23.4% of tickets |
 | 7 | Prove the configured things | Stripe half BLOCKED, rest NOT STARTED |
 
 ## AWAITING A FOUNDER RULING (content, not code)
@@ -511,3 +511,203 @@ second blade of the wedge and it works.
 The only mentions in the product are in the legal pages and both PROHIBIT resale
 above face value under Australian law. Nothing sells a marketplace that does not
 exist.
+
+---
+
+# TASK 6. THE REMAINING KNOWN DEFECTS
+
+**State: DONE, all eight, plus one carried finding.** Commits `e1ae6b3a`,
+`78b69e8d`, `671a910c`, `9b0530cc`, `c8e43141`, `a3242249`.
+
+**And it turned up the worst defect of the whole sweep.** See 6d.
+
+| Item | State |
+|---|---|
+| a. Stale test baseline | DONE, raised three times as the sweep added tests |
+| b. Phantom LF/CRLF modifications | DONE, `.gitattributes` created |
+| c. Test suite writes into tracked files | DONE, gated behind a flag |
+| d. Journey harness j6 and j7-seated | DONE, **and it found a launch blocker** |
+| e. Journey screenshots overwriting | DONE, namespaced per viewport |
+| f. Dishonest Publish button | DONE |
+| g. Ruling R3 half enforced | DONE, six live findings reported |
+| h. Payout tiers 2 and 3 | DONE, confirmed manual and documented |
+| F2. `caniuse-lite` six months stale | DONE, refreshed |
+
+---
+
+## 6d. THE DOOR REFUSED ONE TICKET IN FOUR
+
+This is the most serious thing found in the entire sweep, and it was found only
+because fixing the harness made journey 6 runnable for the first time.
+
+**Two alphabets had drifted apart:**
+
+| Source | Alphabet | |
+|---|---|---|
+| `gen_ticket_code()` in the ticketing migration | `23456789ABCDEFGHJKMNPQRSTUVWXYZ` | emits **U**, never L |
+| `src/lib/scanner/parse-qr.ts` | `ABCDEFGHJKLMNPQRSTVWXYZ23456789` | rejects **U**, allows L |
+
+**Measured against 128 real tickets: 30 of them, 23.4 percent, could not be
+admitted at the door AT ALL.** The only offending character was `U`. That matches
+the `1 - (30/31)^8` the two alphabets predict, so it is not a sampling artefact.
+
+**It failed on both paths.** `parseScan` and `parseManual` share one validity
+check, so presenting the QR code was refused exactly like typing the code by
+hand. Roughly one ticket holder in four would have arrived at a door with a
+valid ticket and been told their code was invalid.
+
+**Bounded blast radius, and I checked:** the bearer ticket page `/t/[code]` does
+not use this parser, so buyers could always SEE their ticket. They simply could
+not get in.
+
+**Nothing caught it.** Each file was internally consistent and looked correct on
+its own. The defect lived in the space between them, which is exactly why no test
+existed. The new test reads the alphabet **out of the migration** rather than
+restating it, so it cannot drift with the thing it checks. Proven both ways:
+against the old regex it fails with "the door rejects 1 character(s) the database
+can issue: U", and passes against the fix.
+
+**Driven end to end after the fix:** first scan **ADMIT** with the holder name,
+second scan **REJECT, "Already used just now"**. Zero blockers.
+
+### Why it was never found: j6 could not be run
+
+j6 required three arguments (ticket code, secret, event id). No runner can know
+those, so it exited in under a second and reported nothing. **The door, the one
+place where a mistake means a stranger walks in on someone else's ticket, was the
+single journey never actually driven.**
+
+It now finds a ticket for itself. It reads the organiser's OWN event list from
+the dashboard first, then looks for a ticket on one of those events, because an
+earlier version picked any seed ticket and hit "You do not have permission to
+scan tickets for this event" (the product being right, the harness being wrong).
+Scanning CONSUMES a ticket and `.env.local` points at production on purpose, so
+discovery calls `assertNotProduction()` before it reads anything.
+
+### j7-seated hung for 622 seconds on one missing parameter
+
+`j7-seated.mjs` already called `finish(j, browser)`. `finish` took **one**
+argument, so the browser was ignored and never closed. Playwright keeps live
+handles, so the process printed a complete and correct verdict and then hung.
+
+It was the **only** journey that did not call `browser.close()` itself; the other
+twelve all do. The caller's intent was right and the signature was wrong.
+
+---
+
+## 6a, 6b, 6c. The tree stops dirtying itself
+
+**The repo had NO `.gitattributes` at all.** With `core.autocrlf = true`, git
+checks files out as CRLF while the tests rewrite them as LF. Measured before the
+fix: 14, 11, 7 and 230 carriage returns in the four files.
+
+A permanently dirty tree is not cosmetic. It teaches everyone to ignore
+`git status`, and an ignored `git status` is how an unintended change eventually
+rides along in someone else's commit.
+
+Fixed in **both** halves, because either alone leaves the hole open:
+1. Writes gated behind `WRITE_PROOF_ARTEFACTS=1`. Every assertion still runs.
+   None of the five call sites reads its own artefact back as a baseline, checked
+   before gating, so the artefact is a report and never an oracle.
+2. `.gitattributes` pins those paths to `eol=lf` so a regenerated artefact
+   matches what is checked out.
+
+**Verified both directions:** flag off, full suite green and none of the four
+files in `git status`; flag on, artefacts regenerate **and the tree still comes
+back clean**, which is the `.gitattributes` half proving itself.
+
+One assertion had to change honestly: `organiser-copy-review` asserted OUTPUT.md
+*exists*, true on every run for the wrong reason (the file is tracked). With the
+write gated it would have been checking git rather than the code.
+
+**Suite:** 248 files, 2977 tests, all passing with `.env.local` parked. With it
+present, five tests in one file fail, all `--env-file` approval tests. That is the
+pre-existing interference the pre-push hook already parks around, proven by the
+same tree passing both ways depending only on whether that file is on disk.
+
+---
+
+## 6f. The Publish button now looks as blocked as it is
+
+Disabled only for `isSubmitting`, empty title, missing cover. An organiser with a
+paid tier and no Stripe saw a live gold Publish button, pressed it, and was
+refused server-side.
+
+**This is presentation, not a guard.** `checkPublishGate` still decides and still
+re-reads Stripe before refusing. Three protections stop it inventing a refusal:
+`canSellPaid` defaults to true; a **failed read** resolves to true, not false;
+edit mode never blocks.
+
+That middle one was caught by the `one-sellability-source` guard on my first
+attempt, which is the guard doing its job: destructuring only `data` turns a
+transient read failure into "connect Stripe" shown to an organiser whose Stripe
+is fine. **That is the exact shape that refused every paid event in production on
+18 August 2026.**
+
+**Honest gap:** I did not photograph the disabled button. Reaching Publish means
+completing a seven-step wizard with a paid tier and my automated walk did not get
+there. The decision logic is proven by 8 unit tests (six of which pin the ways it
+must NOT block); the wiring by the build and all 57 guards. I did drive the
+surrounding change on TEST, restricting the session's organisation and restoring
+it, with the restored value read back and confirmed.
+
+---
+
+## 6g. Ruling R3, the six findings for Lawal to act on
+
+R3 names `GOOGLE_MAPS_API_KEY` in its **own** evidence table: *"NO. A billable key
+with no test mode."* Yet one line in the manifest said `mustBeSensitive: false`,
+and that line is the entire permission for the key to sit readable on
+Development. Both keys are now `true`.
+
+**The six findings, with the fix the checker prints for each:**
+
+| Variable | Scope | Finding |
+|---|---|---|
+| `GOOGLE_MAPS_API_KEY` | production | readable in plain text, must be SENSITIVE |
+| `GOOGLE_MAPS_API_KEY` | preview | readable in plain text, must be SENSITIVE |
+| `GOOGLE_MAPS_API_KEY` | development | a SECRET on a scope that cannot hold one |
+| `PEXELS_API_KEY` | production | readable in plain text, must be SENSITIVE |
+| `PEXELS_API_KEY` | preview | readable in plain text, must be SENSITIVE |
+| `PEXELS_API_KEY` | development | a SECRET on a scope that cannot hold one |
+
+**WORSE THAN "A VALUE ON DEVELOPMENT".** The generated snapshot records a
+per-scope fingerprint, and for both variables it is **identical across all three
+scopes**: `3dcc7ad8` for Maps, `d78fb89b` for Pexels. The Development copy is not
+a separate development value. **It is the same billable production key, sitting
+readable on the one scope the platform cannot protect.**
+
+Commands: `vercel env rm <NAME> development` for the Development copies. For
+production and preview, remove and re-add with `--sensitive`, because `--force`
+does NOT change an existing record's sensitivity.
+
+**CI stays green, and I checked rather than assumed.** The env-locks workflow
+runs the break-restore rehearsal (24 of 24 pass with this change) and
+`check-env-stores --mode=handshake` (the CRON bearer only). The full store scan
+needs a live Vercel read and is not a CI step, so this surfaces the finding
+without turning the branch red on something only the founder can fix.
+
+Also reported, untouched, pre-existing: `CRON_SECRET_CROSS_STORE` says the Vercel
+Production copy and the GitHub Actions copy are the **same** secret.
+
+---
+
+## 6h. Payout tier promotion is manual, confirmed
+
+The schema has everything an engine would need: `payout_tier` (tier_1/2/3),
+`total_event_count`, `total_volume_cents`, `tier_progression_log`. **The
+thresholds those columns exist to serve, $50,000, $250,000 and five events,
+appear nowhere in the repository.**
+
+The only writer is the Stripe `account.updated` handler, and it only ever writes
+`tier_1`, the ENTRY tier. It logs that with `reason: 'auto_promotion'`, which
+**reads like a promotion engine and is not one**. No code path can produce
+`tier_2` or `tier_3`, so every organisation stays on tier_1 for ever unless a
+human edits the row, and the tier selects the payout schedule and on-demand
+eligibility.
+
+**Not implemented, on purpose.** Automatic promotion changes when an organiser is
+paid and what reserve is held against them. That is a founder decision about
+money, and inventing the thresholds would be exactly the guess this project's
+laws forbid. Recorded at the point of use in `src/lib/payouts/queries.ts` so the
+next reader does not assume the engine exists.

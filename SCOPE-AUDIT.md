@@ -130,8 +130,25 @@ AUD only; `create-platform-charge.ts` is the only multi-currency mention),
 instant payout for a premium fee, and the automated chargeback evidence pack.
 Apple Pay and Google Pay express checkout not confirmed either way.
 
-**Payout tier promotion is manual.** See sweep Task 6h: the tier 2 and 3
-thresholds do not exist in source.
+**PAYOUT TIER PROMOTION IS MANUAL, confirmed by audit.** The schema carries
+everything a promotion engine would need: `organisations.payout_tier`
+(tier_1 | tier_2 | tier_3), `total_event_count`, `total_volume_cents`, and a
+`tier_progression_log` to record the move. The thresholds those columns exist to
+serve, $50,000, $250,000 and five events, appear **nowhere in the repository**.
+
+The only writer is the Stripe `account.updated` handler
+(`src/lib/stripe/connect-handlers.ts:96-102`), and it only ever writes `tier_1`,
+the ENTRY tier, when onboarding completes. It logs that with
+`reason: 'auto_promotion'`, which reads like a promotion engine and is not one:
+no code path in this repository can produce `tier_2` or `tier_3`.
+
+So every organisation stays on tier_1 for ever unless a human edits the row, and
+the tier selects the payout schedule and on-demand eligibility
+(`src/lib/payouts/queries.ts`). Not implemented in this sweep on purpose:
+automatic promotion changes when an organiser is paid and what reserve is held
+against them, which is a founder decision about money, and inventing the
+thresholds would be a guess. Recorded at the point of use so the next reader does
+not assume the engine exists.
 
 ### 3.8 Built-In Resale Market, NOT BUILT
 
