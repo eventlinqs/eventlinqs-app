@@ -9,14 +9,72 @@
  * The second scan must be REFUSED and must say WHY, because the person holding
  * the phone has a queue behind them and no time to guess.
  *
- * Usage: node scripts/journeys/j6.mjs <ticketCode> <secret> <eventId>
+ * Usage: node scripts/journeys/j6.mjs [ticketCode] [secret] [eventId]
+ *
+ * With no arguments it FINDS a ticket to admit for itself, so that a runner
+ * which cannot know a ticket code can still drive this journey. See below.
  */
 import { chromium, BASE, makeJourney, note, attach, describe, finish, messagesOnScreen, fillIf } from './harness.mjs'
+import { createClient } from '@supabase/supabase-js'
+import { assertNotProduction } from '../lib/production-write-preflight.mjs'
 
-const [, , CODE, SECRET, EVENT_ID] = process.argv
-if (!CODE || !EVENT_ID) {
-  console.error('usage: node scripts/journeys/j6.mjs <ticketCode> <secret> <eventId>')
-  process.exit(2)
+/*
+ * SELF PROVISION WHEN NOTHING IS PASSED IN.
+ *
+ * WHY, 3 September 2026. This journey required three arguments, a ticket code,
+ * its secret and an event id. No generic runner can know those, so when the
+ * sweep ran the whole set, j6 exited(2) in under a second and reported nothing.
+ * The door, which is the one place where a mistake means a stranger walks in on
+ * somebody else's ticket, was the single journey never actually driven.
+ *
+ * Explicit arguments still win, so an operator can aim it at one exact ticket.
+ * With none, it finds a valid unscanned ticket for itself.
+ *
+ * WHY THIS REFUSES ON PRODUCTION. Scanning CONSUMES a ticket: it sets
+ * first_scanned_at, and the second scan of that pair is then refused forever.
+ * Picking a ticket at random out of the production database would burn a real
+ * customer's admission to a real event, and .env.local in this repository points
+ * at production deliberately. So the discovery path calls assertNotProduction()
+ * before it reads anything, and only ever selects a ticket on a SEED event.
+ * An explicitly supplied ticket is left alone: that is an operator's decision.
+ */
+let [, , CODE, SECRET, EVENT_ID] = process.argv
+const SELF_PROVISION = !CODE || !EVENT_ID
+
+/**
+ * Find a ticket this organiser is actually allowed to admit.
+ *
+ * It reads the organiser's OWN event list from the dashboard first, using the
+ * saved session, and only then looks for a ticket on one of those events. An
+ * earlier version picked any seed ticket and hit "You do not have permission to
+ * scan tickets for this event", which is the product being correct and the
+ * harness being wrong: a door journey has to stand at a door it owns.
+ */
+async function discoverTicket(page) {
+  await page.goto(`${BASE}/dashboard/events`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  await page.waitForTimeout(2500)
+  const ids = await page.evaluate(() =>
+    [...new Set(
+      [...document.querySelectorAll('a[href*="/dashboard/events/"]')]
+        .map((a) => (a.getAttribute('href') || '').match(/\/dashboard\/events\/([0-9a-f-]{36})/)?.[1])
+        .filter(Boolean),
+    )],
+  )
+  if (ids.length === 0) return { error: 'the saved organiser session owns no events on this server' }
+
+  const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  const { data, error } = await db
+    .from('tickets')
+    .select('ticket_code, secret, event_id, status, first_scanned_at')
+    .eq('status', 'valid')
+    .is('first_scanned_at', null)
+    .in('event_id', ids)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) return { error: `could not look for a ticket: ${error.message}` }
+  if (!data) return { error: `none of the ${ids.length} event(s) this organiser owns has an unscanned valid ticket` }
+  return { ticket: data }
 }
 
 const j = makeJourney('j6-door', 'Journey 6: admitting a ticket, once')
@@ -28,6 +86,26 @@ const ctx = await browser.newContext({
 })
 const page = await ctx.newPage()
 await attach(j, page)
+
+if (SELF_PROVISION) {
+  /* Scanning CONSUMES a ticket: it sets first_scanned_at and every later scan of
+   * that pair is refused. Choosing one at random out of PRODUCTION would burn a
+   * real customer's admission, and .env.local here points at production on
+   * purpose, so discovery refuses there. An explicitly supplied ticket is left
+   * alone: that is an operator's decision, not a guess. */
+  assertNotProduction()
+  const found = await discoverTicket(page)
+  if (found.error) {
+    console.error(`j6: ${found.error}.`)
+    console.error('    Pass one explicitly: node scripts/journeys/j6.mjs <ticketCode> <secret> <eventId>')
+    await browser.close()
+    process.exit(2)
+  }
+  CODE = found.ticket.ticket_code
+  SECRET = found.ticket.secret
+  EVENT_ID = found.ticket.event_id
+  console.log(`j6: admitting ${CODE} on event ${EVENT_ID}, chosen from this organiser's own events`)
+}
 
 async function scan(label) {
   await page.goto(`${BASE}/scan/${EVENT_ID}`, { waitUntil: 'domcontentloaded', timeout: 60000 })

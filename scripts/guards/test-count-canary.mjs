@@ -630,8 +630,28 @@ const ROOT = join(HERE, '..', '..')
  *   growth correctly on every push since the file landed; nothing was broken,
  *   the floor had simply not been moved up to hold the new work.
  */
-const MIN_FILES = 246
-const MIN_TESTS = 2964
+/*
+ * 2026-09-03 (eighth raise, same day): 246/2964 -> 247/2969. One file, five
+ * tests. tests/unit/scanner/ticket-code-alphabet.test.ts.
+ *
+ *   This one is worth reading. gen_ticket_code() in the ticketing migration
+ *   emits the alphabet '23456789ABCDEFGHJKMNPQRSTUVWXYZ'. The door's parser
+ *   accepted 'ABCDEFGHJKLMNPQRSTVWXYZ23456789'. The two had drifted: the
+ *   generator emits U, the door rejected it.
+ *
+ *   Measured against 128 real tickets, 30 of them, 23.4 percent, could not be
+ *   admitted AT ALL, on the QR path and by hand alike, because both share one
+ *   validity check. Roughly one holder in four would have been turned away at
+ *   the door holding a valid ticket.
+ *
+ *   Nothing caught it, because each file was internally consistent and the
+ *   defect lived in the space between them. The test therefore reads the real
+ *   alphabet OUT OF THE MIGRATION rather than restating it, so it cannot drift
+ *   with the thing it checks. Found by driving journey 6, which until the same
+ *   day could not be run at all.
+ */
+const MIN_FILES = 247
+const MIN_TESTS = 2969
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

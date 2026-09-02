@@ -60,8 +60,22 @@ export const BASE = process.env.BASE ?? 'http://localhost:3311'
  */
 const SERVER_LOG = process.env.SERVER_LOG ?? '.tmp-serve.log'
 
+/**
+ * WHERE A JOURNEY WRITES, NAMESPACED BY VIEWPORT.
+ *
+ * WHY, 3 September 2026. The output directory was fixed per journey id, with no
+ * viewport in the path. Running the same journey at 390, 768 and 1440, which is
+ * exactly what the Definition of Done asks for, left only the LAST run's
+ * screenshots on disk. Two thirds of the evidence was overwritten by the third
+ * pass, silently, and the surviving images looked like a complete set.
+ *
+ * The viewport label is now part of the path. JOURNEY_VIEWPORT unset still means
+ * the harness's own default, which is desktop 1440, so an unlabelled run is
+ * recorded as what it actually was rather than as an unmarked directory.
+ */
 export function makeJourney(id, title, _viewport = { width: 1440, height: 1000 }) {
-  const OUT = `docs/verification/journeys-2026-08-28/${id}`
+  const viewportLabel = process.env.JOURNEY_VIEWPORT ?? 'desktop-1440'
+  const OUT = `docs/verification/journeys-2026-08-28/${id}/${viewportLabel}`
   mkdirSync(OUT, { recursive: true })
   writeFileSync(`${OUT}/log.txt`, `${title}\n${'='.repeat(title.length)}\n`)
   return { OUT, title, step: 0, errors: [], blockers: [], unclear: [] }
@@ -526,7 +540,21 @@ export async function buyTicket(j, page, slug, buyerEmail, buyerName = 'Robin As
   return orderId
 }
 
-export async function finish(j) {
+/**
+ * Print the verdict, and CLOSE THE BROWSER IF ONE WAS HANDED OVER.
+ *
+ * WHY THE SECOND PARAMETER EXISTS, 3 September 2026. j7-seated.mjs already
+ * called `finish(j, browser)`. This function took one argument, so the browser
+ * was silently ignored and never closed. Playwright keeps live handles, so the
+ * process could not exit: the journey printed a complete and correct verdict
+ * and then hung, stalling a full sweep for 622 seconds.
+ *
+ * It was the ONLY journey that did not call `browser.close()` itself; the other
+ * twelve all do. So the caller's intent was already right and the signature was
+ * wrong. Accepting the argument fixes j7-seated and changes nothing for the
+ * twelve that pass only `j`.
+ */
+export async function finish(j, browser) {
   writeFileSync(`${j.OUT}/errors.txt`, j.errors.join('\n'))
   console.log(`\n--- ${j.title}`)
   console.log(`--- server errors : ${j.errors.length}`)
@@ -535,6 +563,8 @@ export async function finish(j) {
   for (const b of j.blockers) console.log(`    ${b}`)
   console.log(`--- unclear steps : ${j.unclear.length}`)
   for (const u of j.unclear) console.log(`    ${u}`)
+
+  if (browser) await browser.close()
 }
 
 // `chromium` is exported at the top of this file, where the JOURNEY_VIEWPORT
