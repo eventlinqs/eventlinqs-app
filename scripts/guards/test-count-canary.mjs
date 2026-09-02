@@ -650,8 +650,22 @@ const ROOT = join(HERE, '..', '..')
  *   with the thing it checks. Found by driving journey 6, which until the same
  *   day could not be run at all.
  */
-const MIN_FILES = 247
-const MIN_TESTS = 2969
+/*
+ * 2026-09-03 (ninth raise, same day): 247/2969 -> 248/2977. One file, eight
+ * tests. tests/unit/events/paid-publish-blocked.test.ts.
+ *
+ *   The Publish button was disabled only for isSubmitting, an empty title and
+ *   a missing cover, so an organiser with a paid tier and no connected Stripe
+ *   account saw a live gold Publish button, pressed it, and was refused by the
+ *   server. The refusal was announced and linked, but the control looked
+ *   available right up to the press.
+ *
+ *   Most of these eight pin the ways the new rule must NEVER invent a refusal
+ *   of its own: free events, edit mode, no tiers, and a half-typed price must
+ *   all stay publishable. The server gate remains the only thing that decides.
+ */
+const MIN_FILES = 248
+const MIN_TESTS = 2977
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

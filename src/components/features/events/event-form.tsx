@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
 import { EventMediaStep, type MediaImage } from './event-media-step'
 import { parseGallery } from '@/lib/media/event-media-model'
+import { isPaidPublishBlocked } from '@/lib/events/paid-publish-blocked'
 import { AssistantPanel, type PanelSuggestion } from '@/components/ai/assistant-panel'
 import { MagicStart } from './magic-start'
 import type { MagicStartDraft } from '@/lib/ai/magic-start'
@@ -431,6 +432,13 @@ type Props = {
   lineupEnabled?: boolean
   /** Magic Start flag (read server-side): AI describe-your-event prefill. */
   magicStartEnabled?: boolean
+  /**
+   * Whether this organisation can currently sell a PAID ticket, resolved on the
+   * server with isOrganiserSellable. Used only to make the Publish button look
+   * as blocked as it actually is. The real guard stays server-side in
+   * checkPublishGate; this never decides anything on its own.
+   */
+  canSellPaid?: boolean
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -448,6 +456,7 @@ export function EventForm({
   launchKitEnabled = false,
   lineupEnabled = false,
   magicStartEnabled = false,
+  canSellPaid = true,
 }: Props) {
   const router = useRouter()
   // A stable event id, generated once. useState (not useRef) so it can be read
@@ -465,6 +474,25 @@ export function EventForm({
   /** Where the publish gate says to go next, when it says anything. */
   const [errorAction, setErrorAction] = useState<{ label: string; href: string } | null>(null)
   const [stepError, setStepError] = useState<string | null>(null)
+
+  /*
+   * Does this event want to charge, and can this organisation take money?
+   *
+   * eventIsPaid is the SAME predicate the sale gate uses, imported rather than
+   * re-derived, so the button and the gate cannot come to different answers
+   * about what counts as a paid event. Prices are strings here for input
+   * binding, so they are parsed before the shared predicate sees them.
+   *
+   * It comes from sale-status and NOT from publish-gate, which is the obvious
+   * home: publish-gate transitively pulls in `server-only` through the Stripe
+   * reconciler, and importing it here failed the build with "'server-only'
+   * cannot be imported from a Client Component module". sale-status is already
+   * imported by the checkout client component, so it is known client-safe.
+   */
+  const paidPublishBlocked = useMemo(
+    () => isPaidPublishBlocked({ canSellPaid, editMode, tierPrices: formData.ticket_tiers }),
+    [canSellPaid, editMode, formData.ticket_tiers],
+  )
 
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setFormData(d => ({ ...d, [key]: value }))
@@ -1911,6 +1939,35 @@ export function EventForm({
           </div>
         )}
 
+        {/*
+          AN HONEST DISABLED STATE.
+
+          Found 3 September 2026: this button was disabled only for isSubmitting,
+          an empty title and a missing cover. An organiser with a PAID tier and no
+          connected Stripe account saw a live, gold, clickable Publish button,
+          pressed it, and was refused by the server.
+
+          The refusal was announced and carried a link, which is good, but the
+          control still looked available right up to the press. A button that
+          cannot do the thing it names should say so before it is pressed.
+
+          THIS DOES NOT REPLACE THE GUARD. checkPublishGate on the server is
+          still the only thing that decides, and it re-reads Stripe before it
+          refuses. This is presentation catching up with a decision already made
+          server-side, which is why canSellPaid defaults to true: if the page did
+          not resolve it, the button behaves exactly as it did before and the
+          server still refuses. It can never create a refusal of its own.
+        */}
+        {paidPublishBlocked && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <span className="font-semibold">This event has a paid ticket, so it needs Stripe connected before it can go live.</span>{' '}
+            Save it as a draft now, connect Stripe, and publish when you come back.
+            <a href="/dashboard/payouts" className="ml-2 font-semibold underline underline-offset-2">
+              Connect Stripe
+            </a>
+          </div>
+        )}
+
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
@@ -1923,7 +1980,7 @@ export function EventForm({
           <button
             type="button"
             onClick={() => handleSubmit('published')}
-            disabled={isSubmitting || !formData.title.trim() || !formData.media[0]?.url || formData.media.some(m => m.uploading)}
+            disabled={isSubmitting || !formData.title.trim() || !formData.media[0]?.url || formData.media.some(m => m.uploading) || paidPublishBlocked}
             className="flex-1 rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-ink-900 hover:bg-gold-600 disabled:opacity-50 transition-colors"
           >
             {isSubmitting
