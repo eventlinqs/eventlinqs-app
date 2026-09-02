@@ -3,6 +3,33 @@
 Branch `integration/launch`, PR #122. Completed 3 September 2026.
 Brief verbatim at `C:\dev\SWEEP-BRIEF.md`. Scope audit at `C:\dev\SCOPE-AUDIT.md`.
 
+**PR #122: every BLOCKING check is green.** `lint / typecheck / build` pass,
+`test (vitest)` pass, `types-drift guard` pass (log body read: "OK:
+src/types/database.ts generated section matches the live schema of
+gndnldyfudbytbboxesk", the production ref), `Resolve Vercel preview` pass,
+`Vercel` pass. PR is MERGEABLE.
+
+**The one non-green check is the ADVISORY Lighthouse mobile gate, and it is
+runner flake, not this work.** It failed on the performance floor (found 0.75
+and 0.78 against >=0.80; LCP 4542ms against <=4500ms). The gate's own history on
+this branch proves the variance:
+
+| Commit | What changed | Gate |
+|---|---|---|
+| `836768d5` | before this sweep | success |
+| `f9739ba3` | **the types file only** | **failure** |
+| `aecdff36` | Task 2 | success |
+| `671a910c` | **includes the srcset trim** | **success** |
+| `a3242249` | browserslist data only | failure |
+| `d6d2634a` | final | failure |
+
+A types-only commit cannot change runtime performance, and it failed. The image
+change was present in a run that PASSED. That is exactly the founder ruling of
+25 August that made this gate advisory: the same bytes score 0.76 on the runner
+and 0.88 from a warmed client, so the gate measures its environment rather than
+the product. **The underlying number is real and is reported honestly in Task 4:
+mobile 0.80 on the homepage against a 0.95 standard.**
+
 **Gate state at close:** 248 test files / **2977 tests, all passing**;
 **all 57 guards pass** (two of them new, from this sweep); `tsc --noEmit` 0;
 `eslint --max-warnings=0` 0; build 0; **axe 0 serious / 0 critical** across 6
