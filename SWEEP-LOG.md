@@ -18,7 +18,7 @@ running record, newest task last.
 | 4 | Mobile Lighthouse 95 | DONE, but 95 NOT MET. Ceiling 0.80 on /. Founder ruling needed |
 | 5 | Full Scope v5 audit, 18 sections | DONE. 4 BUILT, 10 PARTIAL, 4 NOT BUILT |
 | 6 | Remaining known defects, a to h | DONE. Found a launch blocker: the door refused 23.4% of tickets |
-| 7 | Prove the configured things | Stripe half BLOCKED, rest NOT STARTED |
+| 7 | Prove the configured things | DONE as investigation. Sentry NOT proven, reasons identified. Stripe BLOCKED |
 
 ## AWAITING A FOUNDER RULING (content, not code)
 
@@ -711,3 +711,99 @@ paid and what reserve is held against them. That is a founder decision about
 money, and inventing the thresholds would be exactly the guess this project's
 laws forbid. Recorded at the point of use in `src/lib/payouts/queries.ts` so the
 next reader does not assume the engine exists.
+
+---
+
+# TASK 7. PROVE THE THINGS THAT ARE ONLY CONFIGURED
+
+**State: DONE as an investigation. NOTHING IS CLAIMED AS PROVEN, because nothing
+could be, and each reason is a specific fact rather than a shrug.**
+
+## Sentry: I could NOT prove an event arrives. Three independent blockers.
+
+The brief asked me to fire `/api/health/sentry-error` against the deployed
+preview and confirm the event lands with a stack and a release tag. I tried
+three targets and each is blocked for a different, verifiable reason.
+
+**1. The deployed preview returns 503.**
+
+```
+GET https://eventlinqs-atdhphgzx-...vercel.app/api/health/sentry-error
+HTTP 503  {"ok":false,"error":"HEALTH_CHECK_TOKEN not configured on server"}
+```
+
+The homepage on that same preview returns 200, so the deployment is healthy and
+reachable; the variable is simply absent. `docs/verification/ENV-STATE.md:86`
+shows why:
+
+| Variable | Scopes present |
+|---|---|
+| `HEALTH_CHECK_TOKEN` | **preview (release/launch-line)**, production |
+
+**It is branch-scoped to `release/launch-line`.** This sweep is on
+`integration/launch`, so no preview of this branch can ever authenticate to that
+route. That is a real configuration finding: the Sentry verification endpoint is
+unusable on every branch except one.
+
+**2. Production returns 401.** My local `HEALTH_CHECK_TOKEN` is set (18
+characters) but is not the production value, so the probe is refused. I am not
+going to guess at a bearer token.
+
+**3. Even if a probe had fired, I could not confirm ARRIVAL.** Confirming an
+event landed means reading the Sentry API, and locally:
+
+```
+SENTRY_AUTH_TOKEN    EMPTY or unset
+SENTRY_DSN           EMPTY or unset
+SENTRY_ORG           set, length 10
+SENTRY_PROJECT       set, length 17
+```
+
+Without `SENTRY_AUTH_TOKEN` there is no way to ask Sentry whether anything
+arrived, and without `SENTRY_DSN` a local runtime cannot send anything in the
+first place. Driving the route against the local production build confirms
+exactly that, and the product says so itself rather than pretending:
+
+```
+HTTP 200  {"ok":true,"sentryEnabled":false, ...
+  "note":"Sentry.isInitialized() returned false at request time. The synthetic
+   error was routed through the dev console fallback and did NOT reach Sentry."}
+```
+
+**That response is worth crediting.** The endpoint refuses to report success it
+did not achieve, names the failing step, and points at the diagnostic field. It
+is exactly the shape this repository's laws ask for. The client half of Sentry
+remains proven, as the brief said; the delivery half remains **UNPROVEN**.
+
+**What would close it, precisely, in one pass:**
+1. Add `HEALTH_CHECK_TOKEN` to the preview scope **unscoped**, not pinned to one
+   branch, or re-run this on a `release/launch-line` preview.
+2. Put `SENTRY_AUTH_TOKEN` in the local `.env.local` so the Sentry API can be
+   read back.
+
+Then the probe fires and the arrival is confirmed with the stack and release
+tag, in about two minutes.
+
+## Stripe: BLOCKED ON FOUNDER
+
+`stripe login` has not been run and will not be today, per the amendment. The
+paid purchase, refund, signed-in transfer and seated completion rows stay
+blocked, and with them the tenth journey and the 12 blocked rows of the 30-row
+table. Not attempted, not simulated, not claimed.
+
+**One thing did move here even so.** The seated journey (j7-seated) can no longer
+hang the suite for 622 seconds, and the door journey (j6) now runs at all, so
+when the Stripe half is unblocked the harness will not be the thing in the way.
+
+## Web push: UNPROVABLE HEADLESSLY, as the brief anticipated
+
+Web push needs a real browser granting a real notification permission and a real
+push subscription registered against a real service worker. Headless Chromium
+does not grant it and a synthetic subscription proves nothing about delivery.
+
+What I can confirm exists, by inspection rather than by driving:
+`/api/push/subscribe`, `/api/push/unsubscribe`, the `push_subscriptions` table,
+`notification_prefs`, and `public/push-sw.js`.
+
+**Stated as unprovable rather than passed or failed**, which is what the brief
+asked for.
