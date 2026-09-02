@@ -15,7 +15,7 @@ running record, newest task last.
 | 2 | Corrupted proper nouns | DONE |
 | 2b | Orphaned community editorial (found in 2) | DONE |
 | 3 | Venue geocoding | BLOCKED ON FOUNDER (amendment 2) |
-| 4 | Mobile Lighthouse 95 | NOT STARTED |
+| 4 | Mobile Lighthouse 95 | DONE, but 95 NOT MET. Ceiling 0.80 on /. Founder ruling needed |
 | 5 | Full Scope v5 audit, 18 sections | NOT STARTED |
 | 6 | Remaining known defects, a to h | NOT STARTED |
 | 7 | Prove the configured things | Stripe half BLOCKED, rest NOT STARTED |
@@ -318,3 +318,142 @@ move and the `finally`, the file stays parked.
 `curated-categories-exist` fails with "no Supabase URL or key in the
 environment". Not a defect in CI, where the values are real environment
 variables, but it makes a clean local build look broken.
+
+---
+
+# TASK 4. MOBILE LIGHTHOUSE
+
+**State: DONE as an investigation and a partial fix. THE 95 TARGET IS NOT MET,
+and I am not going to claim it.** Commit `4c3892fa`.
+
+## The honest headline
+
+**Mobile 95 is not reached on the homepage, and the reason is not the one in the
+brief.** Measured ceiling on the homepage today: **0.80**.
+
+| Path | Before | After | LCP after | Target |
+|---|---|---|---|---|
+| `/` | 0.80 | 0.78 | 4712ms | 0.95 |
+| `/events` | 0.88 | 0.88 | 3824ms | 0.95 |
+| `/pricing` | 0.93 | 0.93 | 3198ms | 0.95 |
+
+Median of 3, mobile, warmed, localhost production build. My harness reproduces
+the founder's reported 79 / 90 / 93 almost exactly (0.80 / 0.88 / 0.93), so it
+is measuring the same thing he is.
+
+## The brief's diagnosis is wrong, and here is the proof
+
+The premise was that 18 of 20 homepage images are optimised on demand, so a cold
+request pays a remote fetch plus an AVIF encode before anything paints.
+
+**`/pricing` carries ZERO images, and still has LCP 3.2s.** Its LCP element is an
+`H1` reading "Simple. Transparent. Fair.", confirmed by a PerformanceObserver in
+a real throttled browser. A page with no images cannot have an image-optimiser
+problem, so the shared floor is something else entirely.
+
+Three further facts close it off:
+
+1. **The images are already excellent.** 17 fetched on mobile, 268 KB total,
+   hero a **33 KB AVIF at w=750**, correctly lazy below the fold.
+2. **Warming already exists.** `scripts/ci/warm-preview.mjs` was added on
+   25 August and pulls every `/_next/image` variant before the gate measures.
+   Option (b) in the brief was built a week ago. Option (c) has nothing to give
+   against a 33 KB hero.
+3. **The real homepage count is 113 images, not 20**, with 1,677 optimiser URLs.
+
+## What is actually expensive
+
+Main-thread breakdown, homepage, mobile:
+
+| Bucket | Time |
+|---|---|
+| other | 954ms |
+| **styleLayout** | **923ms** |
+| scriptEvaluation | 666ms |
+| paintCompositeRender | 210ms |
+| **parseHTML** | **116ms** |
+
+Total main-thread work **3.0 s**. JavaScript and CSS total **742 KB** across 15
+files, the largest chunk 236 KB and a 166 KB stylesheet.
+
+The cost is **laying out 113 image cards and evaluating 742 KB of JS/CSS**. No
+amount of image work reaches it.
+
+## What I changed, and the fact that it did not work
+
+The candidate width lists carried 9 device widths and 8 image widths. Each is
+emitted into the srcset of every image that can use it, at about 208 characters
+per URL, because each carries a percent-encoded absolute storage URL. On the
+homepage that was **348,045 characters, 34% of the entire document**.
+
+Trimmed to 6 and 6, keeping the mobile LCP band intact:
+
+| Measure | Before | After |
+|---|---|---|
+| HTML | 1,023,683 chars | 912,760 (down 11%) |
+| `/_next/image` URLs | 1,677 | 1,162 (down 31%) |
+| srcset bytes | 348,045 | 240,927 (down 31%) |
+| candidates per image | 12.8 | 8.6 |
+| gzip over the wire | 70 KB | 66 KB |
+
+**The Lighthouse score did not move.** 0.78 / 0.88 / 0.93 against 0.80 / 0.88 /
+0.93, inside run noise. I am recording that as a null result rather than dressing
+it up: `parseHTML` is 116ms of a 3.0s main thread, so removing 111 KB of markup
+was never going to be worth much, and the measurement confirms that instead of
+flattering it.
+
+**I kept the change anyway, for a reason that is not the score.** 31% fewer
+distinct variants is 31% less work for the optimiser to generate and for the warm
+pass to cover, and that cost is paid by the first real visitor after every
+deploy, which is exactly what the brief was worried about.
+
+**No regression:** the hero is still served at `w=750` (dropping that width would
+have pushed a 412px phone up to 828 and made the LCP image BIGGER), and 507 image
+elements across 4 routes at 390, 768 and 1440 render with zero broken and zero
+optimiser 4xx.
+
+## What would actually close the gap, precisely
+
+In order of leverage, all measured rather than guessed:
+
+1. **Render fewer cards in the initial homepage document.** 113 image cards cost
+   923ms of styleLayout on a throttled mobile CPU. This is the single biggest
+   bucket. **It collides head on with the market-ready volume law** ("every rail
+   full and balanced", "no empty sections"), so it is a founder decision, not an
+   engineering one. The evidence that document weight tracks score is on the
+   record: 178 KB / 0.93, 421 KB / 0.88, 1,024 KB / 0.80.
+2. **Cut the 742 KB of JS and CSS.** `CLAUDE.md` already names the ~209 KB
+   pre-load client shell as an honest close and it is still open. 666ms of
+   scriptEvaluation plus 0.7s of bootup sits behind it.
+3. **Shorten the image URLs.** Each is ~208 chars because it embeds a
+   percent-encoded absolute Supabase URL. A rewrite serving them from a short
+   local path would cut roughly another 130 KB from the document. Given result
+   above, expect this to help the optimiser and the warm pass, NOT the score.
+
+## THE TENSION THE FOUNDER HAS TO RULE ON
+
+Two laws in the constitution are in direct conflict on the homepage:
+
+- **The market-ready completeness bar** demands every rail full, national
+  density, no empty sections. That is what produces 113 cards.
+- **Lighthouse 95+ on mobile** is law and non-negotiable per this brief.
+
+On a simulated 1.6 Mbps / 4x-CPU mobile profile you cannot have both. Every
+image is already AVIF, already sized correctly, already lazy, already warmed. The
+remaining cost is the DOM and the bundle. Something has to give, and which one
+gives is not my call.
+
+## A measurement trap worth recording
+
+`scripts/perf/lh-local-median.mjs` is added as a kept tool. Two things it
+encodes, both learned the hard way today:
+
+- **Driving Lighthouse with Playwright's bundled Chromium fails every
+  navigation** with `FAILED_DOCUMENT_REQUEST / net::ERR_ABORTED` and reports a
+  null performance score on every URL, including a page with no images. That
+  reads exactly like three broken pages and is not: Playwright itself loads the
+  same URL 200. It needs a REAL Chrome. I nearly reported a catastrophe that did
+  not exist.
+- It reports the **median**, not the best run, because the CI gate aggregates
+  with `optimistic` (which is `Math.max`) and reading that as a median has
+  already cost this project hours once, per `lighthouserc.json`'s own note.
