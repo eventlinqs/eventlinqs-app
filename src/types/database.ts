@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   graphql_public: {
     Tables: {
@@ -585,6 +585,39 @@ export type Database = {
           },
         ]
       }
+      discount_code_claims: {
+        Row: {
+          claimed_at: string
+          discount_code_id: string
+          reservation_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          discount_code_id: string
+          reservation_id: string
+        }
+        Update: {
+          claimed_at?: string
+          discount_code_id?: string
+          reservation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_code_claims_discount_code_id_fkey"
+            columns: ["discount_code_id"]
+            isOneToOne: false
+            referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_code_claims_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: true
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discount_code_usages: {
         Row: {
           created_at: string
@@ -647,6 +680,7 @@ export type Database = {
           max_uses_per_user: number
           min_order_amount_cents: number | null
           organisation_id: string
+          reserved_uses: number
           updated_at: string
           valid_from: string | null
           valid_until: string | null
@@ -667,6 +701,7 @@ export type Database = {
           max_uses_per_user?: number
           min_order_amount_cents?: number | null
           organisation_id: string
+          reserved_uses?: number
           updated_at?: string
           valid_from?: string | null
           valid_until?: string | null
@@ -687,6 +722,7 @@ export type Database = {
           max_uses_per_user?: number
           min_order_amount_cents?: number | null
           organisation_id?: string
+          reserved_uses?: number
           updated_at?: string
           valid_from?: string | null
           valid_until?: string | null
@@ -4455,7 +4491,15 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      stored_aggregate_drift: {
+        Row: {
+          column_name: string | null
+          key: string | null
+          stored: string | null
+          truth: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admit_queue_batch: {
@@ -4467,11 +4511,19 @@ export type Database = {
         Returns: number
       }
       assign_order_seats: { Args: { p_order_id: string }; Returns: number }
+      claim_discount_use: {
+        Args: { p_code_id: string; p_reservation_id: string }
+        Returns: boolean
+      }
       claim_founding_spot: {
         Args: { p_city_slug: string; p_org_id: string }
         Returns: number
       }
       confirm_order: { Args: { p_order_id: string }; Returns: boolean }
+      convert_discount_claim: {
+        Args: { p_reservation_id: string }
+        Returns: boolean
+      }
       create_refund_request: {
         Args: {
           p_actor_id: string
@@ -4658,6 +4710,11 @@ export type Database = {
       gen_ticket_code: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
       get_current_tier_price: { Args: { p_tier_id: string }; Returns: number }
+      increment_discount_uses: { Args: { p_code_id: string }; Returns: boolean }
+      increment_sold_count: {
+        Args: { p_quantity: number; p_tier_id: string }
+        Returns: boolean
+      }
       issue_tickets_for_order: { Args: { p_order_id: string }; Returns: number }
       join_waitlist: {
         Args: {
@@ -4724,6 +4781,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_discount_claim: {
+        Args: { p_reservation_id: string }
+        Returns: boolean
+      }
+      release_expired_discount_claims: { Args: never; Returns: number }
       release_expired_seat_reservations: { Args: never; Returns: number }
       release_holds: { Args: never; Returns: number }
       rematerialize_seats_additive: {
@@ -4745,6 +4807,19 @@ export type Database = {
       }
       transfer_ticket: {
         Args: { p_ticket_id: string; p_to_email: string; p_to_name: string }
+        Returns: {
+          event_title: string
+          new_secret: string
+          ticket_code: string
+        }[]
+      }
+      transfer_ticket_for_order: {
+        Args: {
+          p_order_id: string
+          p_ticket_id: string
+          p_to_email: string
+          p_to_name: string
+        }
         Returns: {
           event_title: string
           new_secret: string
@@ -4876,12 +4951,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4905,11 +4980,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4930,11 +5005,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4955,11 +5030,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4972,11 +5047,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
