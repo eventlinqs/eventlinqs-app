@@ -1,4 +1,169 @@
-# EVENTLINQS LAUNCH-WORTHY SWEEP - RUNNING LOG
+# EVENTLINQS LAUNCH-WORTHY SWEEP - FINAL REPORT
+
+Branch `integration/launch`, PR #122. Completed 3 September 2026.
+Brief verbatim at `C:\dev\SWEEP-BRIEF.md`. Scope audit at `C:\dev\SCOPE-AUDIT.md`.
+
+**Gate state at close:** 248 test files / **2977 tests, all passing**;
+**all 57 guards pass** (two of them new, from this sweep); `tsc --noEmit` 0;
+`eslint --max-warnings=0` 0; build 0; **axe 0 serious / 0 critical** across 6
+changed surfaces x 2 viewports; Lighthouse desktop **0.98 / 0.99 / 1.00**,
+mobile **0.80 / 0.89 / 0.93**.
+
+---
+
+## THE ONE THING TO READ IF YOU READ NOTHING ELSE
+
+**The door was refusing one real ticket in four, and nothing knew.**
+
+`gen_ticket_code()` emits the alphabet `23456789ABCDEFGHJKMNPQRSTUVWXYZ`. The
+scanner accepted `ABCDEFGHJKLMNPQRSTVWXYZ23456789`. They had drifted: the
+generator emits **U**, the door rejected it.
+
+Measured against 128 real tickets: **30 of them, 23.4%, could not be admitted at
+all**, on the QR path and by hand alike, because both share one validity check.
+One holder in four would have reached a door with a valid ticket and been told
+their code was invalid.
+
+It was found only because fixing the journey harness made **journey 6 runnable
+for the first time**. The door, the one place where a mistake means a stranger
+walks in on someone else's ticket, was the single journey never actually driven.
+
+Fixed, tested against the migration so it cannot drift again, and driven end to
+end: first scan **ADMIT**, second scan **REJECT, "Already used just now"**.
+
+---
+
+## EVERY DEFECT FOUND AND FIXED, WITH ITS EVIDENCE
+
+| # | Defect | Evidence | Commit |
+|---|---|---|---|
+| 1 | Committed DB types came from **TEST, not production** | `PostgrestVersion` 14.15 is TEST's value; production is 14.5 | `f9739ba3` |
+| 2 | **43 real organisations renamed** by a word sweep | 48 occurrences, 8 files; 7 bodies verified against their own published pages | `aecdff36` |
+| 3 | **First Nations identity lowercased on every community page** | Live page read "Where aboriginal & torres strait islander Sydney happens" | `aecdff36` |
+| 4 | Article disagreement underneath it | "has a african community" would have become "a African community" | `aecdff36` |
+| 5 | **211 of 271 bespoke editorials reached no page** (78%) | Keyed to taxonomy V1; site runs V2 | `4a7c87cc` |
+| 6 | **`/community/pacific/<city>` returned 404** | Only retired slug with no redirect, against `redirects.ts`'s own contract and Law 5 | `4a7c87cc` |
+| 7 | **The door refused 23.4% of tickets** | 30 of 128 real tickets; only offending character `U` | `78b69e8d` |
+| 8 | **Journey 6 could never run** | Needed 3 args no runner can supply; exited in under a second | `78b69e8d` |
+| 9 | **j7-seated hung 622s** | Called `finish(j, browser)`; `finish` took one argument and never closed it | `78b69e8d` |
+| 10 | Journey screenshots overwrote themselves | One fixed path, no viewport; a 3-viewport run kept only the last | `78b69e8d` |
+| 11 | **Test suite dirtied 4 tracked files every run** | Repo had **no `.gitattributes` at all**; 14/11/7/230 stray carriage returns | `e1ae6b3a` |
+| 12 | Stale test baseline | Canary reported growth on every push for days | `e1ae6b3a` + 2 raises |
+| 13 | **Publish button looked available then was refused** | Disabled only for title/cover/submitting | `671a910c` |
+| 14 | A read failure would have **invented** a Stripe refusal | Caught by `one-sellability-source`: the shape that refused every paid event on 18 Aug | `671a910c` |
+| 15 | **Ruling R3 half enforced** | One `mustBeSensitive: false` line permitted a billable key on Development | `9b0530cc` |
+| 16 | Payout tier promotion silently manual | Thresholds ($50K/$250K/5 events) appear nowhere | `c8e43141` |
+| 17 | `caniuse-lite` 6 months stale | Printed on every build, scrolled past | `a3242249` |
+| 18 | **Pricing table was a keyboard trap on mobile** | axe serious; invisible at 1440 because nothing overflows | `f17c649d` |
+
+**Two new blocking guards**, both proven to fail and to pass:
+`proper-nouns-intact` and `community-editorial-reachable`.
+
+---
+
+## STILL OPEN, AND WHETHER IT BLOCKS LAUNCH
+
+### BLOCKS LAUNCH
+
+| Item | Why | Owner |
+|---|---|---|
+| **Venue geocoding (Task 3)** | Every event a real organiser creates gets **null coordinates, permanently and silently**, so it never appears on a city map. Scope 3.1.1 requires it. | **BLOCKED ON FOUNDER**: needs a genuine Google server key |
+| **Paid purchase and refund unverified** | `stripe login` not run. The paid path, refund, signed-in transfer and seated completion are undriven. You cannot sell a paid ticket you have not watched work. | **BLOCKED ON FOUNDER** |
+| **A virtual event sells a link the buyer can never see** | `events.virtual_url` is captured and saved and surfaced **nowhere** to a ticket holder. | Small fix, unowned |
+
+### SERIOUS, DOES NOT STRICTLY BLOCK
+
+| Item | Why it matters |
+|---|---|
+| **No offline door scanner** | No cached validation set, no offline queue, no multi-scanner sync. The scope calls offline "critical for outdoor events". A door with no signal admits nobody. |
+| **Mobile Lighthouse 0.80, target 0.95** | Not the image optimiser. 923ms of styleLayout for 113 cards plus 742 KB of JS/CSS. **Needs your ruling: the volume law and the 95 law are in direct conflict.** |
+| **6 environment findings (R3)** | The **same billable production Google Maps and Pexels keys** are readable in plain text on Development. Identical fingerprints across all three scopes. |
+| **Sentry delivery unproven** | `HEALTH_CHECK_TOKEN` is branch-scoped to `release/launch-line`, so no other preview can run the probe; production returned 401; no local `SENTRY_AUTH_TOKEN` to confirm arrival. |
+
+### AWAITING A CONTENT RULING (gated, cannot rot)
+
+- **5 corrupted names I refused to guess.** Each reverses to a body I could not
+  confirm exists (the Queensland festival ended in 2011; no Cairns, Newcastle,
+  Geelong or Darwin body of that name).
+- **191 orphaned editorial paragraphs.** Retired roll-ups and removed concepts.
+  Rekeying them would publish claims about Pakistani and Sri Lankan communities
+  on a page about Indian ones.
+
+### UNPROVABLE HERE
+
+- **Web push.** Needs a real browser granting real permission. Stated as
+  unprovable rather than passed or failed.
+
+---
+
+## SCOPE v5 AUDIT SUMMARY (all 18 sections)
+
+**4 BUILT, 10 PARTIAL, 4 NOT BUILT.** Full detail in `SCOPE-AUDIT.md`.
+
+- **BUILT:** group ticketing, dynamic pricing, payment and checkout, admin panel.
+- **NOT BUILT:** SmartLinq AI engine, gamification and loyalty, resale market,
+  sustainability.
+- **The commerce spine is real** and it is the hard part: checkout, squads,
+  reserved seating with accessible-seat and companion auto-selection, discount
+  codes, payouts, refunds, disputes, the single-source fee system, 20 admin
+  surfaces behind RBAC and an audit log.
+- **The data-ownership promise is real.** Attendee export works (CSV, Excel,
+  PDF) with the ownership statement on the page. That is half your wedge and it
+  is genuinely there.
+- **No false promise on resale.** I checked deliberately: the only mentions
+  prohibit resale above face value. Nothing sells a marketplace that does not
+  exist.
+- **Three scope claims are false today** and must come out of any pitch:
+  Meilisearch instant search (it is Postgres `ilike`), multi-language UI (there
+  is no i18n at all), and PostHog conversion analytics (PostHog appears nowhere).
+
+---
+
+## THE THREE ANSWERS, BLUNTLY
+
+### Is this platform ready to go in front of real organisers?
+
+**Yes to show them, no to onboard them this week** — because every event they
+create today gets null coordinates and will never appear on a city map, and you
+cannot yet demonstrate a paid sale end to end; both are waiting on you, not on
+the code.
+
+### Is it ready to go in front of real ticket buyers?
+
+**Not yet, and it was much further away this morning than anyone knew** — the
+door would have turned away roughly one buyer in four, which is now fixed and
+proven, but the paid purchase and refund path still has not been driven once
+since `stripe login` lapsed, and shipping a checkout nobody has watched complete
+is the one risk I would not take.
+
+### Would it stand comparison with Eventbrite on the journeys a user actually takes?
+
+**On buying a ticket, yes; on finding one and on getting through the door, no.**
+Specifically where it would not:
+
+1. **Search.** Postgres `ilike`. A misspelled artist name returns nothing.
+   Eventbrite is typo-tolerant and faceted. This is the first thing a buyer does.
+2. **The door.** Eventbrite has an offline-capable scanner app. You have a web
+   scanner that needs signal, no cached guest list, and no multi-scanner sync.
+   At an outdoor Geelong event with poor reception you cannot admit anybody.
+3. **The social layer that is supposed to be the differentiator.** No Who's
+   Going, no activity feed, no reviews. Scope calls 3.4 "the core competitive
+   advantage"; the invite half exists and the social half does not.
+4. **Mobile speed.** 0.80 on the homepage against a 0.95 standard, driven by 113
+   cards and a 742 KB bundle.
+5. **Ticket delivery polish.** No Apple or Google Wallet pass, no PDF ticket for
+   the attendee, no rotating QR. Eventbrite has all three.
+6. **One language.** English only, against a scope promising five.
+
+**What you beat them on already:** all-in pricing honesty, the fee system's
+single source, reserved seating with genuine accessible-seat and companion
+handling, squad booking, the Launch Kit, and attendee data ownership. Those are
+real and they are the things your wedge is actually built on.
+
+---
+
+# THE RUNNING LOG, TASK BY TASK
+
 
 Branch `integration/launch`. PR #122 into `main`.
 Started 3 September 2026. Brief saved verbatim at `C:\dev\SWEEP-BRIEF.md`.
