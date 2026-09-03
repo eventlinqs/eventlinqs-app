@@ -1,7 +1,7 @@
 A2: hybrid event, livestream ticket, the gated room
 ===================================================
 01. Signed up and confirmed
-      priya.stream.319325@example.com -> /dashboard
+      priya.stream.050531@example.com -> /dashboard
 02. Step 2 dates
       URL     /dashboard/events/create
       heading "Create Event"
@@ -28,36 +28,36 @@ A2: hybrid event, livestream ticket, the gated room
       fields  (none)
       buttons PNPriya | Save as Draft | Publish and get your launch kit | Back
 10. PASS  the hybrid event published
-      /dashboard/events/18cdccec-226f-43ce-9ef2-bf2c8170ba8f/launch-kit?published=1 
+      /dashboard/events/4ca0ea92-79dc-477e-8780-579fa9286eb2/launch-kit?published=1 
 11. After publish
-      URL     /dashboard/events/18cdccec-226f-43ce-9ef2-bf2c8170ba8f/launch-kit?published=1
-      heading "Geelong Sessions Live 319325 is live."
+      URL     /dashboard/events/4ca0ea92-79dc-477e-8780-579fa9286eb2/launch-kit?published=1
+      heading "Geelong Sessions Live 050531 is live."
       fields  Add an act
-      buttons PNPriya | Copy link | InstagramInstagram | Copy caption | Copy caption | Copy caption | Copy caption | Copy caption | Copy subject
+      buttons PNPriya | Copy link | InstagramInstagram | Copy link | Copy caption | Copy caption | Copy caption | Copy caption | Copy caption
 12. Public slug
-      geelong-sessions-live-319325-ukpxpn (event 18cdccec-226f-43ce-9ef2-bf2c8170ba8f)
+      geelong-sessions-live-050531-bfupbz (event 4ca0ea92-79dc-477e-8780-579fa9286eb2)
 13. Signed up and confirmed
-      tom.viewer.319325@example.com -> /dashboard
+      tom.viewer.050531@example.com -> /dashboard
 14. Public event page as Watch the livestream buyer
-      URL     /events/geelong-sessions-live-319325-ukpxpn
-      heading "Geelong Sessions Live 319325"
+      URL     /events/geelong-sessions-live-050531-bfupbz
+      heading "Geelong Sessions Live 050531"
       fields  LanguageEnglish (AU)
       buttons Open menu | Melbourne | Follow | Share | Copy link | − | + | − | +
 15. PASS  the public page never shows the stream link
       searched the rendered text
 16. Confirmation for Watch the livestream
-      URL     /orders/be2ccc6f-da1d-4f62-90d6-833d0b1d80cf/confirmation
+      URL     /orders/56ee5e3a-7199-4784-9278-1051b2e8959d/confirmation
       heading "You're going"
       fields  (none)
       buttons Transfer or gift this ticket | Add to Calendar | Share Event
 17. PASS  the viewer holds a confirmed livestream ticket
-      be2ccc6f-da1d-4f62-90d6-833d0b1d80cf
+      56ee5e3a-7199-4784-9278-1051b2e8959d
 18. PASS  the confirmation email carries a Join the livestream link
-      https://www.eventlinqs.com.au/t/EL-NYNT-TXAR/watch?k=785c3293-aafd-40a6-b269-fec3f414ddd7
+      https://www.eventlinqs.com.au/t/EL-WJSN-EGBF/watch?k=9921a28a-1cb7-4632-8488-0daf7f5afe60
 19. PASS  the confirmation page offers Join the livestream
 20. The watch page as an admitted viewer
-      URL     /t/EL-NYNT-TXAR/watch?k=785c3293-aafd-40a6-b269-fec3f414ddd7
-      heading "Geelong Sessions Live 319325"
+      URL     /t/EL-WJSN-EGBF/watch?k=9921a28a-1cb7-4632-8488-0daf7f5afe60
+      heading "Geelong Sessions Live 050531"
       fields  Say something
       buttons Chat | Questions | 🔥0 | ❤️0 | 👏0 | 😂0 | Send
 21. PASS  the admitted viewer sees the stream
@@ -65,90 +65,90 @@ A2: hybrid event, livestream ticket, the gated room
 22. PASS  the room offers a chat composer
 23. PASS  the viewer sees their own chat message
 24. The room after chatting
-      URL     /t/EL-NYNT-TXAR/watch?k=785c3293-aafd-40a6-b269-fec3f414ddd7
-      heading "Geelong Sessions Live 319325"
+      URL     /t/EL-WJSN-EGBF/watch?k=9921a28a-1cb7-4632-8488-0daf7f5afe60
+      heading "Geelong Sessions Live 050531"
       fields  Say something
       buttons Chat | Questions | 🔥0 | ❤️0 | 👏0 | 😂0 | Send
 25. PASS  the room offers a question composer
 26. PASS  the viewer sees their own question, waiting for the organiser
 27. The room after asking
-      URL     /t/EL-NYNT-TXAR/watch?k=785c3293-aafd-40a6-b269-fec3f414ddd7
-      heading "Geelong Sessions Live 319325"
+      URL     /t/EL-WJSN-EGBF/watch?k=9921a28a-1cb7-4632-8488-0daf7f5afe60
+      heading "Geelong Sessions Live 050531"
       fields  Ask a question
       buttons Chat | Questions (1) | 🔥0 | ❤️0 | 👏0 | 😂0 | Ask
 28. Organiser event overview
-      URL     /dashboard/events/18cdccec-226f-43ce-9ef2-bf2c8170ba8f
-      heading "Geelong Sessions Live 319325"
+      URL     /dashboard/events/4ca0ea92-79dc-477e-8780-579fa9286eb2
+      heading "Geelong Sessions Live 050531"
       fields  Add an act
       buttons PNPriya | Share | Copy link | Add to lineup
 29. PASS  the organiser dashboard offers a Stream tab
 30. Organiser stream room
-      URL     /dashboard/events/18cdccec-226f-43ce-9ef2-bf2c8170ba8f/stream
+      URL     /dashboard/events/4ca0ea92-79dc-477e-8780-579fa9286eb2/stream
       heading "Stream room"
-      fields  Your answer* | Post as Natarajan Presents 3
+      fields  Your answer* | Post as Natarajan Presents 0
       buttons PNPriya | Answer | Hide | Post to the room | Hide
 31. PASS  the organiser sees the question
 32. PASS  the organiser sees their answer saved under the question
 33. Organiser answered the question
-      URL     /dashboard/events/18cdccec-226f-43ce-9ef2-bf2c8170ba8f/stream?done=answered
+      URL     /dashboard/events/4ca0ea92-79dc-477e-8780-579fa9286eb2/stream?done=answered
       heading "Stream room"
-      fields  Post as Natarajan Presents 3
+      fields  Post as Natarajan Presents 0
       buttons PNPriya | Hide | Post to the room | Hide
 34. PASS  the organiser sees the chat message in the Chat section
 35. PASS  the organiser can hide a chat message
 36. Organiser hid the chat message
-      URL     /dashboard/events/18cdccec-226f-43ce-9ef2-bf2c8170ba8f/stream?done=hidden
+      URL     /dashboard/events/4ca0ea92-79dc-477e-8780-579fa9286eb2/stream?done=hidden
       heading "Stream room"
-      fields  Post as Natarajan Presents 3
+      fields  Post as Natarajan Presents 0
       buttons PNPriya | Hide | Post to the room | Show again
 37. PASS  the viewer sees the organiser answer
 38. Viewer sees the answer
-      URL     /t/EL-NYNT-TXAR/watch?k=785c3293-aafd-40a6-b269-fec3f414ddd7
-      heading "Geelong Sessions Live 319325"
+      URL     /t/EL-WJSN-EGBF/watch?k=9921a28a-1cb7-4632-8488-0daf7f5afe60
+      heading "Geelong Sessions Live 050531"
       fields  Ask a question
       buttons Chat | Questions (1) | 🔥0 | ❤️0 | 👏0 | 😂0 | Ask
 39. PASS  the hidden chat message has vanished from the viewer room
 40. Viewer chat after the organiser hid the message
-      URL     /t/EL-NYNT-TXAR/watch?k=785c3293-aafd-40a6-b269-fec3f414ddd7
-      heading "Geelong Sessions Live 319325"
+      URL     /t/EL-WJSN-EGBF/watch?k=9921a28a-1cb7-4632-8488-0daf7f5afe60
+      heading "Geelong Sessions Live 050531"
       fields  Say something
       buttons Chat | Questions (1) | 🔥0 | ❤️0 | 👏0 | 😂0 | Send
 41. PASS  a wrong secret is refused with a 404
       status 404
 42. Wrong secret
-      URL     /t/EL-NYNT-TXAR/watch?k=00000000-0000-0000-0000-000000000000
+      URL     /t/EL-WJSN-EGBF/watch?k=00000000-0000-0000-0000-000000000000
       heading "We can't find that page"
       fields  LanguageEnglish (AU)
       buttons Open menu | Melbourne | Discover | Communities | For organisers | Company
 43. PASS  a viewer outside the allowed countries is refused and told why
-      Skip to main content LIVESTREAM Geelong Sessions Live 319325 This livestream is not available where you are The organiser has made it available to viewers in Au
+      Skip to main content LIVESTREAM Geelong Sessions Live 050531 This livestream is not available where you are The organiser has made it available to viewers in Au
 44. Blocked by geography
-      URL     /t/EL-NYNT-TXAR/watch?k=785c3293-aafd-40a6-b269-fec3f414ddd7
-      heading "Geelong Sessions Live 319325"
+      URL     /t/EL-WJSN-EGBF/watch?k=9921a28a-1cb7-4632-8488-0daf7f5afe60
+      heading "Geelong Sessions Live 050531"
       fields  (none)
       buttons (none)
 45. PASS  a viewer in New Zealand is admitted
 46. Signed up and confirmed
-      mei.door.319325@example.com -> /dashboard
+      mei.door.050531@example.com -> /dashboard
 47. Public event page as In the room buyer
-      URL     /events/geelong-sessions-live-319325-ukpxpn
-      heading "Geelong Sessions Live 319325"
+      URL     /events/geelong-sessions-live-050531-bfupbz
+      heading "Geelong Sessions Live 050531"
       fields  LanguageEnglish (AU)
       buttons Open menu | Melbourne | Follow | Share | Copy link | − | + | − | +
 48. PASS  the public page never shows the stream link
       searched the rendered text
 49. Confirmation for In the room
-      URL     /orders/88f731fe-0e82-4914-a1a3-ecf3e4236ebe/confirmation
+      URL     /orders/af290485-45e1-4dc4-a891-5c4cae988b21/confirmation
       heading "You're going"
       fields  (none)
       buttons Transfer or gift this ticket | Add to Calendar | Share Event
 50. PASS  the walk-in holds a confirmed in-person ticket
 51. PASS  an in-person ticket offers no Join the livestream link
 52. PASS  forcing the watch address with an in-person ticket is refused
-      Skip to main content LIVESTREAM Geelong Sessions Live 319325 This ticket admits in person It gets you through the door and does not include the livestream. Live
+      Skip to main content LIVESTREAM Geelong Sessions Live 050531 This ticket admits in person It gets you through the door and does not include the livestream. Live
 53. In-person ticket forced onto the watch address
-      URL     /t/EL-GKQX-ADD7/watch?k=c2190561-f64e-4a34-863f-4b10f8486d4c
-      heading "Geelong Sessions Live 319325"
+      URL     /t/EL-Q48K-ABVQ/watch?k=df2afae6-4b5c-4b6d-ace5-3f635871a24d
+      heading "Geelong Sessions Live 050531"
       fields  (none)
       buttons (none)
 54. Verdicts
