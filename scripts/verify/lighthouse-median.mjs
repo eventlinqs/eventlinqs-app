@@ -65,13 +65,32 @@ for (const url of urls) {
       ]
       if (form === 'desktop') lhArgs.push('--preset=desktop')
       const res = spawnSync(process.execPath, lhArgs, { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024 })
-      if (res.status !== 0 || !existsSync(file)) {
+      /*
+       * JUDGED BY THE REPORT, NOT THE EXIT CODE. On Windows chrome-launcher's
+       * kill() removes its temporary profile while Chrome still holds a handle
+       * and throws EPERM, AFTER the audit has finished and the JSON is on disk
+       * (the same race is documented in scripts/perf-median.mjs). A complete
+       * measurement that exits 1 is still a measurement; a missing or
+       * unparseable report is the failure. The exit code is printed so nothing
+       * is quietly swallowed.
+       */
+      if (!existsSync(file)) {
         failures += 1
         console.log(`  ${form.padEnd(7)} run ${r}: FAILED to produce a report (${(res.stderr || '').split('\n').filter(Boolean).slice(-2).join(' | ')})`)
         continue
       }
+      if (res.status !== 0) {
+        console.log(`  ${form.padEnd(7)} run ${r}: lighthouse exited ${res.status} after writing the report (profile cleanup race; the audit completed)`)
+      }
       reports += 1
-      const json = JSON.parse(readFileSync(file, 'utf8'))
+      let json
+      try {
+        json = JSON.parse(readFileSync(file, 'utf8'))
+      } catch (err) {
+        failures += 1
+        console.log(`  ${form.padEnd(7)} run ${r}: FAILED, the report is not parseable JSON (${err.message})`)
+        continue
+      }
       const line = []
       for (const cat of Object.keys(scores)) {
         const score = json.categories?.[cat]?.score
