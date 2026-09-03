@@ -71,6 +71,10 @@
  *                              Design system and Motion both ban it and neither had a gate
  *   stream-link-never-public   the livestream link is unreachable from every public surface
  *                              and the inert events.virtual_url column is read by nothing
+ *   schema-ahead-of-code       the database this build runs against already carries every
+ *                              column and table the code names, so code never deploys ahead
+ *                              of its migration (read only; refuses a production build until
+ *                              the founder's push lands, keeps building previews on TEST)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -608,6 +612,15 @@ const GUARDS = [
   // that hand the link back. Proven red against `{event.virtual_url}` on the
   // public event page and green after its removal (C:\dev\EVIDENCE\A2).
   'scripts/guards/stream-link-never-public.mjs',
+  // 4 September 2026. The A2 code SELECTS ticket_tiers.access_mode by name on
+  // the bearer ticket page and the order confirmation, and production did not
+  // have the column (the migration is the founder's push). None of lint,
+  // typecheck, build or the suite reads a database, so a merge before the push
+  // would have passed every gate and 500'd every ticket page on the live site.
+  // This probes the build's own database, read only, and refuses a build whose
+  // schema is behind its code. Proven red against production and green against
+  // TEST on the same day (C:\dev\EVIDENCE\A2\guard-schema-ahead-proof.txt).
+  'scripts/guards/schema-ahead-of-code.mjs',
 ]
 
 /**

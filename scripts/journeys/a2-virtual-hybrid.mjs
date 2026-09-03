@@ -19,7 +19,7 @@
  *
  * Every screenshot is also copied to EVIDENCE_DIR/<viewport>/ when that is set.
  */
-import { copyFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
+import { copyFileSync, mkdirSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   chromium,
@@ -53,15 +53,49 @@ function verdict(name, ok, detail) {
   if (!ok) j.blockers.push(`${name}: ${detail ?? ''}`)
 }
 
+/**
+ * THE VIEWPORT IS THE LABEL, not a decoration on it. The first run of this
+ * journey (3 September 2026) accepted JOURNEY_VIEWPORT for the evidence path
+ * and opened every context at 1440 regardless, so a "mobile-390" run would have
+ * produced desktop screenshots filed under a mobile name. The three sizes the
+ * Definition of Done names are the three sizes opened here.
+ */
+const VIEWPORTS = {
+  'mobile-390': { width: 390, height: 844 },
+  'tablet-768': { width: 768, height: 1024 },
+  'desktop-1440': { width: 1440, height: 1000 },
+}
+const viewport = VIEWPORTS[viewportLabel] ?? VIEWPORTS['desktop-1440']
+
+/**
+ * THREE PEOPLE, THREE CONNECTIONS. The organiser, the viewer and the walk-in are
+ * three different people on three different networks, and the signup limiter
+ * (auth-signup, 5 per address per 10 minutes) keys on the forwarded address,
+ * exactly as it does behind Vercel. Driving all three from one address is not
+ * what happens in the world; it is a harness artefact, and on 3 September it
+ * refused the third signup and reported the product as the problem. Each
+ * context therefore carries its own documentation-range address.
+ */
+let connections = 0
 async function fresh(extraHeaders) {
+  connections += 1
   const ctx = await browser.newContext({
-    viewport: { width: 1440, height: 1000 },
+    viewport,
     locale: 'en-AU',
-    ...(extraHeaders ? { extraHTTPHeaders: extraHeaders } : {}),
+    extraHTTPHeaders: { 'x-forwarded-for': `203.0.113.${connections}`, ...(extraHeaders ?? {}) },
   })
   const p = await ctx.newPage()
   await attach(j, p)
   return { ctx, p }
+}
+
+/** Addresses and sessions the axe and Lighthouse passes need, written beside the evidence. */
+const run = { viewport: viewportLabel, base: BASE }
+async function keepSession(ctx, name) {
+  if (!process.env.EVIDENCE_DIR) return
+  const dest = join(process.env.EVIDENCE_DIR, viewportLabel)
+  mkdirSync(dest, { recursive: true })
+  await ctx.storageState({ path: join(dest, `session-${name}.json`) })
 }
 
 async function textOnPage(p) {
@@ -260,12 +294,20 @@ try {
   const eventId = created?.eventId ?? null
   if (!slug) throw new Error('no event slug')
   note(j, 'Public slug', `${slug} (event ${eventId ?? 'unknown'})`)
+  run.slug = slug
+  run.eventId = eventId
+  run.organiserStreamUrl = eventId ? `/dashboard/events/${eventId}/stream` : null
+  run.organiserEditUrl = eventId ? `/dashboard/events/${eventId}/edit` : null
+  await keepSession(org.ctx, 'organiser')
 
   // ── LIVESTREAM VIEWER (AU) ───────────────────────────────────────────────
   const viewer = await fresh({ 'x-vercel-ip-country': 'AU' })
   if (!(await signUpAndConfirm(j, viewer.p, VIEWER))) throw new Error('viewer signup failed')
   const viewerOrder = await takeTicket(viewer.p, slug, 'Watch the livestream')
   verdict('the viewer holds a confirmed livestream ticket', Boolean(viewerOrder), viewerOrder ?? 'no order')
+  run.viewerConfirmationUrl = viewerOrder ? `/orders/${viewerOrder}/confirmation` : null
+  run.viewerTicketUrl = (await viewer.p.locator('a', { hasText: /view ticket/i }).first().getAttribute('href').catch(() => null)) ?? null
+  await keepSession(viewer.ctx, 'viewer')
 
   // The email the viewer received carries a Join the livestream link.
   const emailWatch = linkFromInbox(VIEWER.email, /\/t\/[^/]+\/watch\?k=/)
@@ -287,7 +329,11 @@ try {
   const embed = await viewer.p.$('iframe[src*="youtube-nocookie.com/embed/"]')
   verdict('the admitted viewer sees the stream', Boolean(embed) || watchText.includes('Open the stream'), embed ? 'YouTube embed present' : 'no embed')
 
-  // Chat and a question.
+  run.watchUrl = watchUrl ? watchUrl.replace(BASE, '') : null
+
+  // Chat, read back on the CHAT tab. The first run of this journey switched to
+  // the Questions tab before reading the page and then reported the chat
+  // message missing, which was the tab filter working, not the room failing.
   const chatBox = viewer.p.getByLabel(/^say something/i).first()
   verdict('the room offers a chat composer', (await chatBox.count()) > 0)
   if (await chatBox.count()) {
@@ -295,7 +341,12 @@ try {
     await clickText(viewer.p, 'Send')
     await viewer.p.waitForTimeout(3000)
   }
-  const askTab = viewer.p.locator('button', { hasText: /^questions$/i }).first()
+  const chatText = await textOnPage(viewer.p)
+  verdict('the viewer sees their own chat message', chatText.includes(`Hello from the stream ${stamp}`))
+  await describe(j, viewer.p, 'The room after chatting')
+
+  // A question, on the Questions tab.
+  const askTab = viewer.p.locator('button', { hasText: /^questions/i }).first()
   if (await askTab.count()) await askTab.click()
   const qBox = viewer.p.getByLabel(/^ask a question/i).first()
   verdict('the room offers a question composer', (await qBox.count()) > 0)
@@ -304,9 +355,9 @@ try {
     await clickText(viewer.p, 'Ask')
     await viewer.p.waitForTimeout(3000)
   }
-  const roomText = await textOnPage(viewer.p)
-  verdict('the viewer sees their own chat message', roomText.includes(`Hello from the stream ${stamp}`))
-  await describe(j, viewer.p, 'The room after chatting and asking')
+  const questionText = await textOnPage(viewer.p)
+  verdict('the viewer sees their own question, waiting for the organiser', questionText.includes(`When does the second set start ${stamp}`) && /waiting for the organiser/i.test(questionText))
+  await describe(j, viewer.p, 'The room after asking')
 
   // ── ORGANISER ANSWERS ────────────────────────────────────────────────────
   if (eventId) {
@@ -332,12 +383,24 @@ try {
       await clickText(org.p, 'Answer')
       await org.p.waitForTimeout(3000)
     }
-    const hide = org.p.locator('button', { hasText: /^hide$/i }).first()
+    const answered = await textOnPage(org.p)
+    verdict('the organiser sees their answer saved under the question', /your answer is in the room/i.test(answered) && answered.includes('The second set starts at nine'))
+    await describe(j, org.p, 'Organiser answered the question')
+
+    // Hide the CHAT message, found inside the Chat section by its own text. The
+    // first run clicked the first Hide on the page, which sat on the question,
+    // and then reported that the viewer never saw the answer: the answer had
+    // been hidden along with the question it belonged to.
+    const chatItem = org.p.locator('section[aria-labelledby="chat-heading"] li', { hasText: `Hello from the stream ${stamp}` }).first()
+    verdict('the organiser sees the chat message in the Chat section', (await chatItem.count()) > 0)
+    const hide = chatItem.locator('button', { hasText: /^hide$/i }).first()
     if (await hide.count()) {
       await hide.click()
       await org.p.waitForTimeout(2500)
     }
-    await describe(j, org.p, 'Organiser answered and hid a message')
+    const hidden = await textOnPage(org.p)
+    verdict('the organiser can hide a chat message', /hidden\. it vanishes from every viewer/i.test(hidden))
+    await describe(j, org.p, 'Organiser hid the chat message')
   }
 
   // ── VIEWER SEES THE ANSWER, HIDDEN MESSAGE GONE ──────────────────────────
@@ -345,6 +408,12 @@ try {
   const afterText = await textOnPage(viewer.p)
   verdict('the viewer sees the organiser answer', afterText.includes('The second set starts at nine'))
   await describe(j, viewer.p, 'Viewer sees the answer')
+  const chatTab = viewer.p.locator('button', { hasText: /^chat$/i }).first()
+  if (await chatTab.count()) await chatTab.click()
+  await viewer.p.waitForTimeout(800)
+  const chatAfter = await textOnPage(viewer.p)
+  verdict('the hidden chat message has vanished from the viewer room', !chatAfter.includes(`Hello from the stream ${stamp}`))
+  await describe(j, viewer.p, 'Viewer chat after the organiser hid the message')
 
   // ── NON-HOLDERS ──────────────────────────────────────────────────────────
   if (watchUrl) {
@@ -382,6 +451,9 @@ try {
     const ticketLink = walkin.p.locator('a', { hasText: /view ticket/i }).first()
     if (await ticketLink.count()) {
       const href = await ticketLink.getAttribute('href')
+      run.walkinTicketUrl = href ?? null
+      run.walkinConfirmationUrl = walkinOrder ? `/orders/${walkinOrder}/confirmation` : null
+      await keepSession(walkin.ctx, 'walkin')
       if (href) {
         const forced = `${BASE}${href.replace('?k=', '/watch?k=')}`
         await walkin.p.goto(forced, { waitUntil: 'networkidle', timeout: 60000 })
@@ -407,6 +479,12 @@ try {
     const dest = join(process.env.EVIDENCE_DIR, viewportLabel)
     mkdirSync(dest, { recursive: true })
     for (const f of readdirSync(j.OUT)) copyFileSync(join(j.OUT, f), join(dest, f))
+    // The addresses this run created, so the axe and Lighthouse passes scan the
+    // same event, ticket and room a person just used rather than a hand-picked
+    // one. Bearer addresses carry their secret, which is why this file lives in
+    // the evidence directory outside the repository and not under docs/.
+    run.verdicts = results
+    writeFileSync(join(dest, 'run.json'), JSON.stringify(run, null, 2))
     note(j, 'Evidence copied', dest)
   }
   await finish(j, browser)
