@@ -672,9 +672,20 @@ const ROOT = join(HERE, '..', '..')
  * pins the repair script that unblocked production on 3 September: the value it
  * mints is judged by the manifest's own shape object, its refusals stay in the
  * source, and the secret is never interpolated into anything printed.
+ *
+ * 2026-09-04 (Scope v5 completion build, item A2): 257 files / 3052 tests. Seven
+ * files, sixty-eight tests, all upward, for virtual and hybrid delivery.
+ * tests/unit/stream/{access,embed,countries,publish-rule}.test.ts pin the bearer
+ * gate, the stream link classifier, the reach and the publish refusal;
+ * tests/unit/email/virtual-confirmation.test.ts pins that the confirmation mail
+ * carries a watch link and never a stream address;
+ * tests/unit/guards/schema-ahead-of-code.test.ts pins the guard that refuses a
+ * build whose database lacks an object the code reads by name; and
+ * tests/unit/stream/room-time-label.test.ts pins that the room stamps a message
+ * in the event's zone, after no-clock-during-render caught the runtime-zone form.
  */
-const MIN_FILES = 250
-const MIN_TESTS = 2984
+const MIN_FILES = 257
+const MIN_TESTS = 3052
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

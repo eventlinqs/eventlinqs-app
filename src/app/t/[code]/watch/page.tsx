@@ -7,6 +7,7 @@ import { resolveStreamAccess, type StreamAccessRefusal } from '@/lib/stream/acce
 import { classifyStreamLink } from '@/lib/stream/embed'
 import { describeCountries } from '@/lib/stream/countries'
 import { StreamRoom } from '@/components/stream/stream-room'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -115,7 +116,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
           )}
           <div className="mt-5 rounded-xl border border-ink-200 bg-canvas p-5">
             <p className="font-display text-lg font-extrabold text-ink-900">{copy.title}</p>
-            <p className="mt-1 text-sm text-ink-700">{copy.body}</p>
+            <p className="mt-1 text-sm text-ink-600">{copy.body}</p>
           </div>
           <Link
             href={ticketHref}
@@ -145,7 +146,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">Livestream</p>
             <h1 className="mt-1 font-display text-2xl font-extrabold leading-tight text-ink-900 sm:text-3xl">{room.eventTitle}</h1>
-            <p className="mt-1 text-sm text-ink-700">
+            <p className="mt-1 text-sm text-ink-600">
               {formatAuDateTime(room.startDate, room.timezone)}
               {room.organisationName ? ` · ${room.organisationName}` : ''}
             </p>
@@ -153,12 +154,12 @@ export default async function WatchPage({ params, searchParams }: Props) {
           <div className="flex flex-col items-end gap-2">
             <span
               className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                state === 'live' ? 'bg-[var(--color-navy-950)] text-gold-400' : 'bg-ink-100 text-ink-700'
+                state === 'live' ? 'bg-[var(--color-navy-950)] text-gold-400' : 'bg-ink-100 text-ink-600'
               }`}
             >
               {statusLine}
             </span>
-            <p className="text-xs text-ink-500">Watching as {room.holderName}</p>
+            <p className="text-xs text-ink-600">Watching as {room.holderName}</p>
           </div>
         </div>
       </header>
@@ -181,7 +182,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
           ) : link.ok && link.kind === 'rtmp' ? (
             <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
               <p className="font-display text-lg font-extrabold text-ink-900">Open this stream in your streaming app</p>
-              <p className="mt-1 text-sm text-ink-700">
+              <p className="mt-1 text-sm text-ink-600">
                 This is an rtmp address, which a browser cannot play. Copy it into VLC, OBS or the app the organiser named.
               </p>
               <label htmlFor="stream-rtmp" className="mt-4 block text-xs font-medium text-ink-600">Stream address</label>
@@ -197,7 +198,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
               <p className="font-display text-lg font-extrabold text-ink-900">
                 {link.kind === 'zoom' ? 'This event streams on Zoom' : link.kind === 'streamyard' ? 'This event streams on StreamYard' : 'Your stream is ready'}
               </p>
-              <p className="mt-1 text-sm text-ink-700">It opens in a new tab. Keep this page open for the chat and the questions.</p>
+              <p className="mt-1 text-sm text-ink-600">It opens in a new tab. Keep this page open for the chat and the questions.</p>
               <a
                 href={link.url}
                 target="_blank"
@@ -210,11 +211,11 @@ export default async function WatchPage({ params, searchParams }: Props) {
           ) : (
             <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
               <p className="font-display text-lg font-extrabold text-ink-900">The stream link could not be read</p>
-              <p className="mt-1 text-sm text-ink-700">The organiser has been asked to check it. Try again shortly.</p>
+              <p className="mt-1 text-sm text-ink-600">The organiser has been asked to check it. Try again shortly.</p>
             </div>
           )}
 
-          <div className="mt-4 rounded-2xl border border-ink-200 bg-white p-5 text-sm text-ink-700 shadow-sm">
+          <div className="mt-4 rounded-2xl border border-ink-200 bg-white p-5 text-sm text-ink-600 shadow-sm">
             <p>
               {room.geoAllow.length > 0
                 ? `This livestream is available to viewers in ${describeCountries(room.geoAllow)}.`
@@ -227,7 +228,12 @@ export default async function WatchPage({ params, searchParams }: Props) {
           </div>
         </section>
 
-        <StreamRoom code={room.ticketCode} secret={secret} holderName={room.holderName} />
+        <StreamRoom
+          code={room.ticketCode}
+          secret={secret}
+          holderName={room.holderName}
+          timezone={room.timezone ?? PLATFORM_TIME_ZONE}
+        />
       </div>
     </main>
   )

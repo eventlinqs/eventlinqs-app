@@ -47,15 +47,32 @@ const REACTIONS: { key: string; label: string; glyph: string }[] = [
 const POLL_MS = 5000
 const MAX_BODY = 500
 
-function timeLabel(iso: string): string {
+/**
+ * A message is stamped in the EVENT's zone, the same zone the watch page prints
+ * the start time in, so the room and its header never disagree about the hour.
+ * Without a timeZone the label is formatted in the runtime's zone, which is UTC
+ * on the server and the reader's in the browser, and the platform's
+ * no-clock-during-render test refuses that form for every component.
+ */
+export function timeLabel(iso: string, timeZone: string): string {
   try {
-    return new Intl.DateTimeFormat('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(iso))
+    return new Intl.DateTimeFormat('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timeZone }).format(new Date(iso))
   } catch {
     return ''
   }
 }
 
-export function StreamRoom({ code, secret, holderName }: { code: string; secret: string; holderName: string }) {
+export function StreamRoom({
+  code,
+  secret,
+  holderName,
+  timezone,
+}: {
+  code: string
+  secret: string
+  holderName: string
+  timezone: string
+}) {
   const endpoint = `/api/stream/${encodeURIComponent(code)}/messages?k=${encodeURIComponent(secret)}`
   const [tab, setTab] = useState<'chat' | 'questions'>('chat')
   const [messages, setMessages] = useState<RoomMessage[]>([])
@@ -167,9 +184,9 @@ export function StreamRoom({ code, secret, holderName }: { code: string; secret:
       </div>
 
       <div ref={listRef} role="log" aria-live="polite" aria-relevant="additions" className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-        {!loaded && <p className="text-sm text-ink-500">Opening the room.</p>}
+        {!loaded && <p className="text-sm text-ink-600">Opening the room.</p>}
         {loaded && visible.length === 0 && (
-          <p className="text-sm text-ink-500">
+          <p className="text-sm text-ink-600">
             {tab === 'chat' ? 'Nobody has said anything yet. Say hello.' : 'No questions yet. Ask the organiser something.'}
           </p>
         )}
@@ -184,9 +201,9 @@ export function StreamRoom({ code, secret, holderName }: { code: string; secret:
                   : 'bg-canvas'
             }`}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-600">
               {m.authorKind === 'organiser' ? `${m.authorName} (organiser)` : m.mine ? 'You' : m.authorName}
-              <span className="ml-2 font-normal normal-case tracking-normal text-ink-400">{timeLabel(m.createdAt)}</span>
+              <span className="ml-2 font-normal normal-case tracking-normal text-ink-400">{timeLabel(m.createdAt, timezone)}</span>
             </p>
             <p className="mt-0.5 whitespace-pre-line text-sm text-ink-900">{m.body}</p>
             {m.kind === 'question' && m.answerBody && (
@@ -196,7 +213,7 @@ export function StreamRoom({ code, secret, holderName }: { code: string; secret:
               </div>
             )}
             {m.kind === 'question' && !m.answerBody && (
-              <p className="mt-1 text-[11px] text-ink-500">Waiting for the organiser.</p>
+              <p className="mt-1 text-[11px] text-ink-600">Waiting for the organiser.</p>
             )}
           </div>
         ))}
@@ -216,7 +233,7 @@ export function StreamRoom({ code, secret, holderName }: { code: string; secret:
               className="inline-flex min-h-[40px] items-center gap-1 rounded-full border border-ink-200 bg-white px-3 text-sm hover:border-gold-500 disabled:opacity-60"
             >
               <span aria-hidden>{r.glyph}</span>
-              <span className="text-xs font-semibold text-ink-700">{reactions[r.key] ?? 0}</span>
+              <span className="text-xs font-semibold text-ink-600">{reactions[r.key] ?? 0}</span>
             </button>
           ))}
         </div>
@@ -239,7 +256,7 @@ export function StreamRoom({ code, secret, holderName }: { code: string; secret:
           className="mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
         <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="text-[11px] text-ink-500">{draft.length} of {MAX_BODY}</p>
+          <p className="text-[11px] text-ink-600">{draft.length} of {MAX_BODY}</p>
           <button
             type="button"
             onClick={() => {

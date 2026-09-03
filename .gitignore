@@ -199,3 +199,7 @@ tmp-repro.mjs
 # dirty because somebody measured something, which is the same rule the test
 # suite now follows via WRITE_PROOF_ARTEFACTS.
 docs/verification/lh-local/
+
+# Local production-server logs written by the journey harness (C:\dev\serve.ps1)
+.tmp-serve.log
+.tmp-serve.err.log

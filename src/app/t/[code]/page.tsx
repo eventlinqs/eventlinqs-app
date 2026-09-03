@@ -145,7 +145,7 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
             <p className="font-display text-lg font-extrabold text-error">
               Refunded
             </p>
-            <p className="mt-1 text-sm text-ink-700">
+            <p className="mt-1 text-sm text-ink-600">
               This ticket has been refunded and is not valid for entry.
             </p>
           </div>
@@ -177,7 +177,7 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
         {admitsToStream && (
           <div className="mt-6 rounded-xl border border-gold-500/40 bg-gold-100/40 p-5 text-center">
             <p className="font-display text-xs font-bold uppercase tracking-[0.18em] text-gold-800">Livestream</p>
-            <p className="mt-1 text-sm text-ink-700">
+            <p className="mt-1 text-sm text-ink-600">
               Your stream, and the room to chat and ask questions, open from this ticket.
             </p>
             <Link

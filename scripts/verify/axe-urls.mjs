@@ -29,12 +29,22 @@ let out = null
 let storageState = null
 const urls = []
 const headers = {}
+/*
+ * THIRD-PARTY FRAMES. axe descends into iframes, so a scan of the watch page
+ * reports YouTube's own player markup (aria-level on a link, prohibited ARIA
+ * on the player div). That markup is not in this repository and cannot be
+ * fixed from it; every site that embeds YouTube carries it. `--exclude` takes
+ * a selector for such a frame so the verdict is about the surface WE ship.
+ * Every exclusion is printed on the scan line, so nothing is hidden quietly.
+ */
+const excludes = []
 for (let i = 0; i < args.length; i += 1) {
   const a = args[i]
   if (a === '--base') base = args[++i].replace(/\/$/, '')
   else if (a === '--out') out = args[++i]
   else if (a === '--url') urls.push(args[++i])
   else if (a === '--storage-state') storageState = args[++i]
+  else if (a === '--exclude') excludes.push(args[++i])
   else if (a === '--header') {
     const v = args[++i]
     const eq = v.indexOf('=')
@@ -68,7 +78,9 @@ for (const path of urls) {
     const res = await page.goto(base + path, { waitUntil: 'networkidle', timeout: 90000 })
     const status = res ? res.status() : 0
     await page.waitForTimeout(800)
-    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+    let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    for (const sel of excludes) builder = builder.exclude(sel)
+    const results = await builder.analyze()
     const violations = results.violations.map((v) => ({
       id: v.id,
       impact: v.impact,
@@ -80,7 +92,9 @@ for (const path of urls) {
     scanned += 1
     totalViolations += violations.length
     if (status !== 200) failedLoads += 1
-    const line = `  ${String(status).padEnd(4)} ${label.padStart(4)}  violations=${violations.length}  ${path.replace(/k=[^&]+/, 'k=***')}`
+    const line = `  ${String(status).padEnd(4)} ${label.padStart(4)}  violations=${violations.length}  ${path.replace(/k=[^&]+/, 'k=***')}${
+      excludes.length ? `  (excluding ${excludes.join(', ')})` : ''
+    }`
     summary.push(line)
     console.log(line)
     for (const v of violations) {

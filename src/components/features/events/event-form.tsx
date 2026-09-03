@@ -1159,7 +1159,7 @@ export function EventForm({
               placeholder="https://www.youtube.com/live/..."
               className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
             />
-            <p className="mt-1.5 text-xs text-ink-500">
+            <p className="mt-1.5 text-xs text-ink-600">
               YouTube Live, Zoom, StreamYard, any https page, or an rtmp address. It is revealed only to
               livestream ticket holders after they buy, and it never appears on your event page.
             </p>
@@ -1172,7 +1172,7 @@ export function EventForm({
 
           <fieldset>
             <legend className="block text-sm font-medium text-ink-600 mb-1">Who can watch</legend>
-            <p className="mb-3 text-xs text-ink-500">
+            <p className="mb-3 text-xs text-ink-600">
               Leave every box clear to stream anywhere. Tick countries to restrict the livestream to viewers there.
             </p>
             <div className="mb-3 flex flex-wrap gap-2">
@@ -1183,7 +1183,7 @@ export function EventForm({
                   onClick={() =>
                     set('stream_geo_allow', normaliseCountryCodes([...formData.stream_geo_allow, ...region.codes]))
                   }
-                  className="min-h-[36px] rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 hover:border-gold-500 hover:text-ink-900"
+                  className="min-h-[36px] rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-600 hover:border-gold-500 hover:text-ink-900"
                 >
                   {region.name}
                 </button>
@@ -1192,7 +1192,7 @@ export function EventForm({
                 <button
                   type="button"
                   onClick={() => set('stream_geo_allow', [])}
-                  className="min-h-[36px] rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 hover:border-gold-500 hover:text-ink-900"
+                  className="min-h-[36px] rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-600 hover:border-gold-500 hover:text-ink-900"
                 >
                   Anywhere
                 </button>
@@ -1213,9 +1213,9 @@ export function EventForm({
                           : formData.stream_geo_allow.filter(code => code !== c.code),
                       )
                     }
-                    className="h-4 w-4 rounded border-ink-300 text-gold-600 focus:ring-gold-500"
+                    className="h-4 w-4 rounded border-ink-200 text-gold-600 focus:ring-gold-500"
                   />
-                  <label htmlFor={`geo-${c.code}`} className="text-sm text-ink-700">
+                  <label htmlFor={`geo-${c.code}`} className="text-sm text-ink-600">
                     {c.name}
                   </label>
                 </div>
@@ -1229,7 +1229,7 @@ export function EventForm({
           </fieldset>
 
           {formData.event_type === 'hybrid' && (
-            <p className="text-xs text-ink-500">
+            <p className="text-xs text-ink-600">
               On the tickets step, choose which tiers admit at the door and which admit to the livestream.
             </p>
           )}
@@ -1329,7 +1329,7 @@ export function EventForm({
               </div>
             )}
             {formData.event_type === 'virtual' && (
-              <p className="self-end rounded-lg border border-ink-200 bg-ink-50 px-3 py-2 text-xs text-ink-700">
+              <p className="self-end rounded-lg border border-ink-200 bg-ink-100 px-3 py-2 text-xs text-ink-600">
                 Admits livestream viewers. A virtual event admits everyone online.
               </p>
             )}

@@ -10,7 +10,7 @@
  *
  * HOW IT GETS CREDENTIALS WITHOUT ANYONE PASTING ONE. The Vercel CLI is logged
  * in on this machine (A1 established that). Production's public URL and anon
- * key are pulled into a temporary file in the system temp directory, read into
+ * key are pulled into a scratch file under the system temp directory, read into
  * memory, and the file is deleted in a `finally` before anything is printed.
  * Sensitive variables are never decrypted by `vercel env pull`, so the service
  * role key is never on disk; the anon key is the one every browser already

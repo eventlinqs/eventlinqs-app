@@ -166,11 +166,16 @@ export default async function StreamRoomPage({ params, searchParams }: Props) {
             <section aria-labelledby="questions-heading" className="rounded-xl border border-ink-200 bg-white p-5">
               <h2 id="questions-heading" className="text-base font-semibold text-ink-900">Questions</h2>
               <p className="mt-1 text-xs text-ink-600">Your answer appears under the question in every viewer&apos;s room.</p>
-              {questions.length === 0 && <p className="mt-4 text-sm text-ink-500">No questions yet.</p>}
+              {questions.length === 0 && <p className="mt-4 text-sm text-ink-600">No questions yet.</p>}
+              {/* A hidden message is marked by a dashed border and the word, never by fading
+                * the row: opacity took the Hide and Show again controls below 4.5:1 and axe
+                * failed the tab for it (4 September 2026). Every shade here is a token in
+                * globals.css; ink-50, ink-300, ink-500 and ink-700 are not, and compile to
+                * nothing. */}
               <ul className="mt-4 space-y-4">
                 {questions.map(q => (
-                  <li key={q.id} className={`rounded-lg border p-4 ${q.hidden_at ? 'border-ink-200 bg-ink-50 opacity-70' : 'border-ink-200 bg-canvas'}`}>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+                  <li key={q.id} className={`rounded-lg border p-4 ${q.hidden_at ? 'border-dashed border-ink-400 bg-ink-100' : 'border-ink-200 bg-canvas'}`}>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-600">
                       {q.author_name} · {when(q.created_at, event.timezone)}
                       {q.hidden_at ? ' · hidden' : ''}
                     </p>
@@ -230,13 +235,13 @@ export default async function StreamRoomPage({ params, searchParams }: Props) {
                   Post to the room
                 </button>
               </form>
-              {chat.length === 0 && <p className="mt-4 text-sm text-ink-500">Nobody has said anything yet.</p>}
+              {chat.length === 0 && <p className="mt-4 text-sm text-ink-600">Nobody has said anything yet.</p>}
               <ul className="mt-4 space-y-3">
                 {chat.map(m => (
-                  <li key={m.id} className={`rounded-lg px-3 py-2 ${m.hidden_at ? 'bg-ink-50 opacity-70' : m.author_kind === 'organiser' ? 'border border-gold-500/40 bg-gold-100/40' : 'bg-canvas'}`}>
+                  <li key={m.id} className={`rounded-lg px-3 py-2 ${m.hidden_at ? 'border border-dashed border-ink-400 bg-ink-100' : m.author_kind === 'organiser' ? 'border border-gold-500/40 bg-gold-100/40' : 'bg-canvas'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-600">
                           {m.author_kind === 'organiser' ? `${m.author_name} (you)` : m.author_name} · {when(m.created_at, event.timezone)}
                           {m.hidden_at ? ' · hidden' : ''}
                         </p>

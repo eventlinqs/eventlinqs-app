@@ -185,16 +185,29 @@ async function createHybridEvent(p) {
     }
     if (made && (await p.$('button:has-text("Use this cover")'))) {
       await clickText(p, 'Use this cover')
-      await p.waitForTimeout(6000)
+      await p.waitForTimeout(3000)
     }
     verdict('a cover was composed for the hybrid event', made)
   }
-  await clickText(p, 'Continue')
-  await p.waitForTimeout(3500)
+
+  // Continue to ticketing, WAITING FOR THE UPLOAD RATHER THAN A CLOCK. The form
+  // refuses Continue while the cover is still uploading and says so ("Your cover
+  // is still uploading. Give it a moment, then continue."). On a cold server the
+  // composed cover outlasted a fixed wait and the first run of this journey
+  // reported "never reached the ticketing step" against the product. A person
+  // reads the sentence, waits, and presses Continue again; so does this.
+  const ticketingStarted = Date.now()
+  while (!(await p.$('button:has-text("Add Ticket Tier")')) && Date.now() - ticketingStarted < 90000) {
+    await clickText(p, 'Continue')
+    await p.waitForTimeout(2500)
+    const shown = await messagesOnScreen(p)
+    if (shown.some((s) => /still uploading/i.test(s))) await p.waitForTimeout(3000)
+  }
 
   // Step 5: two free tiers, one in person and one livestream.
   if (!(await p.$('button:has-text("Add Ticket Tier")'))) {
-    j.blockers.push('never reached the ticketing step')
+    await describe(j, p, 'Stuck before ticketing')
+    j.blockers.push(`never reached the ticketing step: ${(await messagesOnScreen(p)).join(' // ') || 'no message shown'}`)
     return null
   }
   await fillIf(p, '#tier-name-0', 'In the room')
