@@ -663,9 +663,18 @@ const ROOT = join(HERE, '..', '..')
  *   Most of these eight pin the ways the new rule must NEVER invent a refusal
  *   of its own: free events, edit mode, no tiers, and a half-typed price must
  *   all stay publishable. The server gate remains the only thing that decides.
+ *
+ * 2026-09-03 (Scope v5 completion build, item A1): 250 files / 2984 tests. Two
+ * files, seven tests, both upward. tests/unit/ci/vercel-git-deployments.test.ts
+ * pins vercel.json so the ops/session-log branch can never trigger a
+ * production-project build again (six of twenty recent deployments were that
+ * branch failing at prebuild). tests/unit/ops/repair-order-access-secret.test.ts
+ * pins the repair script that unblocked production on 3 September: the value it
+ * mints is judged by the manifest's own shape object, its refusals stay in the
+ * source, and the secret is never interpolated into anything printed.
  */
-const MIN_FILES = 248
-const MIN_TESTS = 2977
+const MIN_FILES = 250
+const MIN_TESTS = 2984
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
