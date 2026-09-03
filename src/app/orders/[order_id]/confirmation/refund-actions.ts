@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { actionRateLimit } from '@/lib/rate-limit/action'
+import { verifyOrderAccessToken } from '@/lib/orders/order-access'
 import { createRefundRequest } from '@/lib/refunds/request-service'
 import { sendRefundRequestedToOrganiser, sendRefundDecisionToBuyer } from '@/lib/refunds/notify'
 import { captureException } from '@/lib/observability/sentry'
@@ -32,6 +33,8 @@ export async function submitBuyerRefundRequest(input: {
   orderId: string
   ticketIds: string[]
   message?: string | null
+  /** The signed link from the confirmation email. A guest has no other identity. */
+  accessToken?: string | null
 }): Promise<SubmitBuyerRefundResult> {
   const parsed = Schema.safeParse(input)
   if (!parsed.success) {
@@ -68,13 +71,26 @@ export async function submitBuyerRefundRequest(input: {
     .maybeSingle()
   if (!order) return { ok: false, message: 'We could not find that order.' }
 
-  const isOwner = user
-    ? order.user_id === user.id || (order.guest_email && order.guest_email === user.email)
-    : false
+  /*
+   * THREE WAYS TO BE THE OWNER, and the third is the one that was missing.
+   *
+   * A guest has no account, so the first two can never be true for them. Until
+   * 29 August the refusal below told a guest to "sign in with the email you
+   * used", which is impossible: guest checkout creates no account. The button
+   * was offered, the form took a reason, and the press could never succeed.
+   *
+   * The signed link from their own confirmation email IS their identity. It is
+   * scoped to this order and verified in constant time; see
+   * src/lib/orders/order-access.ts for why it carries no expiry.
+   */
+  const viaLink = verifyOrderAccessToken(parsed.data.orderId, input.accessToken ?? null)
+  const isOwner =
+    viaLink || (user ? order.user_id === user.id || (order.guest_email && order.guest_email === user.email) : false)
   if (!isOwner) {
     return {
       ok: false,
-      message: 'You need to be signed in as the person who bought these tickets to request a refund. If you checked out as a guest, sign in with the email you used.',
+      message:
+        'We could not tell that this order is yours. Open the link in your confirmation email, which signs you in to this order, or sign in with the email you bought with.',
     }
   }
 

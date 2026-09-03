@@ -246,6 +246,31 @@ export async function getOrganiserPayoutTerms(
     .eq('id', organisationId)
     .maybeSingle()
 
+  /*
+   * TIER PROMOTION IS MANUAL. NOTHING IN THIS CODEBASE PROMOTES AN ORGANISATION.
+   *
+   * Audited 3 September 2026. The schema carries everything the decision would
+   * need: organisations.payout_tier (tier_1 | tier_2 | tier_3), total_event_count,
+   * total_volume_cents, and a tier_progression_log to record the move. The
+   * thresholds those columns exist to serve, 50,000 dollars, 250,000 dollars and
+   * five events, appear NOWHERE in this repository.
+   *
+   * The only writer is the Stripe account.updated handler
+   * (src/lib/stripe/connect-handlers.ts), and it only ever writes 'tier_1', the
+   * ENTRY tier, when onboarding completes. It logs that with
+   * reason: 'auto_promotion', which reads like a promotion engine and is not one:
+   * no code path can produce tier_2 or tier_3.
+   *
+   * So every organisation stays on tier_1 for ever unless a human edits the row.
+   * That is a real operational fact with money attached, because the tier
+   * selects the payout schedule and the on-demand eligibility read just below.
+   *
+   * NOT IMPLEMENTED HERE ON PURPOSE. Automatic promotion changes when an
+   * organiser is paid and what reserve is held against them. That is a founder
+   * decision about money, not a defect to fix in a sweep, and inventing the
+   * thresholds would be exactly the guess this project's laws forbid. Recorded
+   * so the next reader does not assume the engine exists.
+   */
   const tier = (org?.payout_tier as string | null) ?? 'tier_1'
   const schedule = (org?.payout_schedule as string | null) ?? 'post_event_only'
   const countryCode = ((org?.stripe_account_country as string | null) ?? 'AU').toUpperCase()

@@ -477,8 +477,195 @@ const ROOT = join(HERE, '..', '..')
  * Its negative control runs the OLD head-of-list behaviour over the same two
  * slugs in two orders and asserts that it does disagree with itself.
  */
-const MIN_FILES = 223
-const MIN_TESTS = 2764
+/*
+ * RAISED 2026-08-28, 223/2764 to 230/2849, measured on integration/launch at
+ * b883d239. The canary reported the growth itself on the push before this one
+ * and asked for the floor to be moved; a floor left below the real count is a
+ * canary that would not notice seven files being deleted.
+ *
+ * The newest of those files is tests/unit/guards/source-scanner-eol.test.ts,
+ * 6 tests, and it is worth naming because it pins a failure this canary is a
+ * cousin of. This repository stores LF, sets core.autocrlf=true and carries no
+ * .gitattributes, so a scanner pattern containing a literal `\n` matched on the
+ * CI runner and matched nothing on Windows. Two guards went red there and green
+ * on CI from identical bytes; a third, pricing-derive, failed claiming the fee
+ * document disagreed with its own lock block and told the reader to rewrite
+ * that document. The figures were identical once the line endings were.
+ *
+ * The count is the whole point in both cases: a scanner that reads nothing
+ * reports no problems, exactly as a suite that runs nothing reports no
+ * failures.
+ */
+/*
+ * 2026-08-28: raised 230/2849 -> 231/2852. One file, three tests:
+ * tests/unit/media/cover-pipeline.test.ts. It pins the cover and share-card
+ * pipeline, which failed on this date with sharp reporting "Input buffer
+ * contains unsupported image format" and took EVERY event's share preview down
+ * with it. Two of the three assert that image bytes are sniffed by magic number
+ * rather than trusted from a content-type header; the third renders TWICE in one
+ * process, because a single render always passed and the whole class of defect
+ * is a resource consumed on first use.
+ */
+/*
+ * 2026-08-28 (later): raised 231/2852 -> 232/2857. One file, five tests:
+ * tests/unit/events/publish-gate-never-connected.test.ts. An organiser who had
+ * never connected Stripe was told "We could not check your Stripe status just
+ * now ... Nothing is wrong with your account ... Try again shortly", on the last
+ * press of a seven-step wizard. Every clause was false and waiting could never
+ * clear it. Three of the five pin those exact clauses out of the message.
+ */
+/*
+ * 2026-08-29: raised 232/2857 -> 233/2868. One file, eight tests, plus three
+ * added to the env-manifest suite by the new variable:
+ * tests/unit/orders/order-access.test.ts. It pins the token that lets a GUEST
+ * buyer act on their own order. The properties are the ones that matter if it
+ * is wrong: a token for order A must not open order B, and with no secret in
+ * production it must refuse to mint AND refuse to honour rather than fall back
+ * to the public dev constant.
+ */
+/*
+ * 2026-08-29: raised 233/2868 -> 237/2914. Four files, forty-six tests, from
+ * the journey-8 session:
+ *   tests/unit/checkout/discount-math.test.ts   the discount arithmetic, pinned
+ *     as a pure function after the checkout path spent three months reading a
+ *     column migration 20260520000001 had DROPPED, returning NaN for a
+ *     percentage code and undefined for a fixed one, both marked valid: true.
+ *     The first test in the file is that exact post-migration row shape.
+ *   tests/unit/email/transport-ready.test.ts    whether a deployment can send
+ *     mail at all. Four senders each returned silently on a missing
+ *     RESEND_API_KEY, above every transport, so the buyer ticket email could
+ *     not be observed locally and, on a deploy without the key, was dropped for
+ *     every buyer with nothing in any log. Includes the empty-string key, which
+ *     is the shape a dashboard variable actually takes when it goes wrong.
+ *   the guest half of tests/unit/tickets/transfer.test.ts, including the attack
+ *     that matters: a correctly signed order-access token for a DIFFERENT order
+ *     must move nothing.
+ */
+/*
+ * 2026-08-29 (second raise): 237/2914 -> 238/2921. One file, seven tests.
+ *   tests/unit/security/upload-size-gate.test.ts   the server-side upload size
+ *     refusal and, more importantly, WHERE IT SITS. The break attempt "upload
+ *     an image far over the size limit" sat at READ NOT DRIVEN because its only
+ *     evidence was somebody reading upload.ts:106. The browser drive that now
+ *     exists (scripts/verify/oversize-upload-drive.mjs) reaches the CLIENT gate
+ *     and can never reach the server one, because the client refuses first and
+ *     no request is sent. So this pins the part that can silently rot: the size
+ *     test must come BEFORE arrayBuffer() and before the permission check, so
+ *     oversized attacker bytes are never read into memory and never handed to
+ *     the native decoder. That is an ordering property, and ordering is exactly
+ *     what a refactor moves without changing any return value a normal test
+ *     would look at.
+ */
+/*
+ * 2026-08-29 (third raise): 238/2921 -> 240/2940. Two files, nineteen tests,
+ * both from opening the Launch Kit artefacts.
+ *   tests/unit/flags/flag-cache-cannot-switch-off.test.ts   the flag cache must
+ *     never be able to decide a feature is OFF. readCache collapsed every
+ *     unrecognised value to false and returned it as a DECISION, without ever
+ *     asking the database, so /api/organiser/events/[id]/poster answered 404
+ *     feature_off on three runs in four while the row AND the cached value both
+ *     said the flag was on. Deleting the cache key made it 200 four times in
+ *     four. The eight nonsense shapes are the ones a real store produces.
+ *   tests/unit/broadcast/social-card-renders.test.ts   every card format renders
+ *     a decodable JPEG at its published size, typographic AND photographic.
+ *     Written to separate a broken artefact from a broken environment: the
+ *     route was answering 500 with a zero-byte body on a machine whose build
+ *     directory OneDrive had demonstrably corrupted, and "the cards are broken"
+ *     could not honestly be claimed without running the renderer outside the
+ *     server. It passes, so the renderer is sound.
+ */
+/*
+ * 2026-08-29 (fourth raise): 240/2940 -> 241/2943. One file, three tests.
+ *   tests/unit/guards/guards-do-not-need-git.test.ts   no guard may require git
+ *     to be present. no-silent-submit shipped listing its files with a git
+ *     spawn, and VERCEL'S BUILD CONTAINER IS NOT A GIT REPOSITORY, so the call
+ *     died with "fatal: not a git repository" and took the whole guard runner
+ *     with it. FIFTEEN consecutive preview deployments failed; the deployment
+ *     for the commit immediately before it succeeded. Locally there is always a
+ *     git repository and the Actions checkout has one too, so lint, typecheck,
+ *     build and test were all green throughout. Neither a lint rule nor the
+ *     pre-push hook could have caught it: the code is correct, it just cannot
+ *     run where it has to run.
+ */
+/*
+ * 2026-08-29 (fifth raise): 241/2943 -> 242/2950. One file, seven tests.
+ *   tests/unit/checkout/discount-claim-ordering.test.ts   the discount use is
+ *     CLAIMED when the code is applied to the reservation, not after the money
+ *     moves. These are ORDERING tests on purpose: the claim itself is SQL under
+ *     a row lock, driven for real by scripts/verify/discount-claim-drive.mjs,
+ *     and a unit test cannot take a row lock. What they pin is what a refactor
+ *     moves silently and where this defect actually lived: the claim must sit
+ *     BEFORE the PaymentCalculator call, and the confirmation path must CONVERT
+ *     the hold rather than incrementing a second time, which would exhaust an
+ *     organiser's code at half its stated limit.
+ */
+/*
+ * 2026-08-29 (sixth raise): 242/2950 -> 245/2961. Three files, eleven tests,
+ * from the resvg rasteriser swap.
+ *   tests/unit/broadcast/card-raster-parity.test.ts   renders every format
+ *     through BOTH rasterisers and compares pixel by pixel. The old path can
+ *     only be exercised in vitest, because inside the Next server sharp cannot
+ *     decode SVG at all, which IS the defect.
+ *   tests/unit/broadcast/card-raster-diff.test.ts     writes both images and an
+ *     amplified difference map to docs/verification/card-raster/ so a person can
+ *     LOOK rather than argue about a number.
+ *   tests/unit/health/capability-is-probed-not-read.test.ts   no source file may
+ *     branch on a DECLARED capability table, and the health sentinel must prove
+ *     the image pipeline by round-tripping real bytes in the deployed runtime.
+ *     sharp.format.svg.input reported true while an 8x8 red rectangle failed.
+ */
+/*
+ * 2026-09-03 (seventh raise): 245/2961 -> 246/2964. One file, three tests.
+ *   tests/unit/broadcast/card-raster-double-init.test.ts pins the fix for a
+ *   REAL production incident on 2 September 2026: all eighteen social cards
+ *   answered HTTP 500 with "Already initialized. The initWasm() function can be
+ *   used only once." A fresh process served them all again, so the bytes were
+ *   fine and the PROCESS was poisoned. "Already initialised" was being treated
+ *   as a failure, the memoised promise nulled itself so the next request
+ *   retried, the retry called initWasm a second time, and resvg refused for the
+ *   life of the lambda. One transient hiccup became permanent and took the
+ *   whole Launch Kit down with it.
+ *
+ *   Raised during the launch-worthy sweep. The canary had been reporting the
+ *   growth correctly on every push since the file landed; nothing was broken,
+ *   the floor had simply not been moved up to hold the new work.
+ */
+/*
+ * 2026-09-03 (eighth raise, same day): 246/2964 -> 247/2969. One file, five
+ * tests. tests/unit/scanner/ticket-code-alphabet.test.ts.
+ *
+ *   This one is worth reading. gen_ticket_code() in the ticketing migration
+ *   emits the alphabet '23456789ABCDEFGHJKMNPQRSTUVWXYZ'. The door's parser
+ *   accepted 'ABCDEFGHJKLMNPQRSTVWXYZ23456789'. The two had drifted: the
+ *   generator emits U, the door rejected it.
+ *
+ *   Measured against 128 real tickets, 30 of them, 23.4 percent, could not be
+ *   admitted AT ALL, on the QR path and by hand alike, because both share one
+ *   validity check. Roughly one holder in four would have been turned away at
+ *   the door holding a valid ticket.
+ *
+ *   Nothing caught it, because each file was internally consistent and the
+ *   defect lived in the space between them. The test therefore reads the real
+ *   alphabet OUT OF THE MIGRATION rather than restating it, so it cannot drift
+ *   with the thing it checks. Found by driving journey 6, which until the same
+ *   day could not be run at all.
+ */
+/*
+ * 2026-09-03 (ninth raise, same day): 247/2969 -> 248/2977. One file, eight
+ * tests. tests/unit/events/paid-publish-blocked.test.ts.
+ *
+ *   The Publish button was disabled only for isSubmitting, an empty title and
+ *   a missing cover, so an organiser with a paid tier and no connected Stripe
+ *   account saw a live gold Publish button, pressed it, and was refused by the
+ *   server. The refusal was announced and linked, but the control looked
+ *   available right up to the press.
+ *
+ *   Most of these eight pin the ways the new rule must NEVER invent a refusal
+ *   of its own: free events, edit mode, no tiers, and a half-typed price must
+ *   all stay publishable. The server gate remains the only thing that decides.
+ */
+const MIN_FILES = 248
+const MIN_TESTS = 2977
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

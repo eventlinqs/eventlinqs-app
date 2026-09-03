@@ -23,11 +23,16 @@
  *   payment-critical-doctrine  every paymentCritical variable is actually protected
  *   rls-exposure-scan          no world-readable policy exposes a sensitive column
  *   no-native-submit           no form puts a credential in the URL pre-hydration
+ *   no-silent-submit           no control completes with no result and no error
  *   revoked-column-reads       no untrusted-role query selects a revoked column
  *   no-plaintext-credential    no tracked file contains a plaintext credential
  *   entrypoint-authz-audit     every request entry point declares an auth posture
  *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
+ *   labelled-form-controls     every raw input, select and textarea carries a
+ *                              programmatic label, so assistive technology can name it
+ *   labels-name-the-right-control  and that label points at the control it describes,
+ *                              not at the one that happens to sit beside it
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
  *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
  *                              names a column that does not exist
@@ -38,6 +43,8 @@
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
+ *   proper-nouns-intact      and the names of real organisations survive that sweep intact
+ *   community-editorial-reachable  bespoke community copy reaches a page, or is declared dead
  *   no-unguarded-production-write  no script writes to a database without checking which one
  *   one-db-connection-source   no script assembles its own database connection
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
@@ -60,6 +67,8 @@
  *                              service-role call to the publish gate, must prove the caller
  *                              may act for that organisation first (the service role bypasses
  *                              RLS, so an unchecked read is a cross-tenant read)
+ *   no-glassmorphism           no applied backdrop-filter anywhere in src, because the
+ *                              Design system and Motion both ban it and neither had a gate
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -330,11 +339,37 @@ const GUARDS = [
   // docs/security/AUDIT-2026-08-08.md.
   'scripts/security/rls-exposure-scan.mjs',
   'scripts/guards/no-native-submit-guard.mjs',
+  // A control that completes with neither a visible result nor a visible
+  // error. Journey 8, 29 August 2026: a number input whose min and step
+  // disagreed made every round value a stepMismatch, so the browser refused
+  // the submit before React saw it and the panel showed nothing at all.
+  'scripts/guards/no-silent-submit.mjs',
   'scripts/security/revoked-column-reads.mjs',
   'scripts/guards/no-plaintext-credential.mjs',
   'scripts/security/entrypoint-authz-audit.mjs',
   'scripts/guards/sourced-specifications.mjs',
   'scripts/guards/no-ai-authorship.mjs',
+
+  // A raw input, select or textarea that assistive technology cannot name is
+  // unusable without sight, and it is invisible to review because the screen
+  // looks finished. Found on 28 August 2026: 34 such controls across 13
+  // surfaces, including the whole venue form and the whole discount form, where
+  // a visible label sat right beside the field and was associated with nothing.
+  // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  // The guard walks the TSX AST rather than grepping, because both greps tried
+  // that day were wrong: one called 20 controls labelled when 9 were, the other
+  // called 39 unlabelled when 0 were. It resolves aria-label, aria-labelledby,
+  // htmlFor pairing, an ancestor label element, and a component that wraps its
+  // children in a label. The DOM remains the authority; this is the fast gate.
+  'scripts/guards/labelled-form-controls.mjs',
+
+  // The sibling of the guard above, and the founder was right that the first one
+  // could never catch this: it proves a control HAS a name, not that the name is
+  // TRUE. On 28 August a label reading "Price" pointed at the CURRENCY select
+  // beside the price input, so pressing the label focused the currency and
+  // filling the field the label named produced a zero-priced ticket on a paid
+  // event. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/labels-name-the-right-control.mjs',
 
   // Founder brief 2026-08-23: an event page can never ship without its
   // structured data. A production audit that day found every event page valid
@@ -395,6 +430,25 @@ const GUARDS = [
   // identifiers, comparisons, slugs, URLs, storage keys, filenames and config,
   // and fails on an exemption whose file no longer contains the word.
   'scripts/guards/no-banned-word-anywhere.mjs',
+  // Founder ruling 2026-09-03: proper nouns are EXEMPT from the banned word.
+  // The ban stops EventLinqs describing ITSELF with that word; it was never
+  // meant to rename other people's organisations. A find-and-replace had done
+  // exactly that to 43 names. Both
+  //   Multicultural Council of the Northern Territory
+  //   National Multicultural Festival
+  // were published under a mangled name on the /community pages, which are 441
+  // of the 552 URLs in the production sitemap. The corruption made the word-ban gate GREENER while
+  // making the tree untrue, which is why it needed a gate of its own rather
+  // than a note. This comment names those bodies correctly on purpose: both
+  // guards read the same registry, so the real names are the safe spelling.
+  'scripts/guards/proper-nouns-intact.mjs',
+  // Found 3 September 2026 by driving the pages. intersection-editorial.ts is
+  // keyed on community taxonomy V1 while the site runs V2, so 211 of its 271
+  // hand-written paragraphs reached no page. Nothing reported it, because the
+  // templated fallback makes a page with missing bespoke copy look finished.
+  // One retired slug had no redirect at all and returned a 404. This guard
+  // makes an unreachable paragraph loud instead of silent.
+  'scripts/guards/community-editorial-reachable.mjs',
   // Founder ruling 2026-08-13. `.env.local` in this repo points at the
   // PRODUCTION project, deliberately, because the app is run against production
   // from here. An audit that day found ten write-capable scripts with a
@@ -533,6 +587,17 @@ const GUARDS = [
   // and the rule that the counters have exactly one owner.
   'scripts/guards/inventory-lock-integrity.mjs',
   'scripts/guards/no-unowned-organisation-read.mjs',
+  // A founder-locked DESIGN law with no gate until 2026-09-02, which is how it
+  // survived being written down twice. "Surfaces are solid and opaque. No
+  // glassmorphism anywhere: no backdrop-filter / backdrop-blur chrome" is in the
+  // Design system, and glassmorphism is in Motion's forbidden list beside GSAP
+  // and bento grids. The site header had already been de-frosted for legibility
+  // and its comment says so. `src/components/ui/glass-card.tsx` still carried
+  // backdrop-blur-2xl on a variant two live surfaces render, plus backdrop-blur-md
+  // on a variant nothing used, and a launch readiness audit found it by reading.
+  // Translucency without a filter stays legal, so this only fails on an APPLIED
+  // filter, never on a /95 badge, a comment, or an inert transition property list.
+  'scripts/guards/no-glassmorphism.mjs',
 ]
 
 /**

@@ -162,10 +162,18 @@ export function JoinWaitlistModal({
 
                 {/* Quantity */}
                 <div className="mb-5">
-                  <label htmlFor="waitlist-quantity" className="block text-sm font-medium text-ink-600 mb-1.5">
+                  {/*
+                    NOT a <label>. It pointed at the <span> below, which only
+                    displays the number: a span cannot be labelled, so the
+                    question was announced to nobody and the only names in the
+                    group were "Decrease quantity" and "Increase quantity". The
+                    question is now the accessible name of the GROUP, which is
+                    what it actually describes. Same classes, same pixels.
+                  */}
+                  <div id="waitlist-quantity-label" className="block text-sm font-medium text-ink-600 mb-1.5">
                     How many tickets do you need?
-                  </label>
-                  <div className="flex items-center gap-3">
+                  </div>
+                  <div role="group" aria-labelledby="waitlist-quantity-label" className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setQuantity(q => Math.max(1, q - 1))}

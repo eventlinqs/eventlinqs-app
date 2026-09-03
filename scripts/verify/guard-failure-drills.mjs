@@ -841,6 +841,215 @@ const DRILLS = [
       + 'void rogueInventoryWrite',
     expect: 'application-level write(s) to the inventory counters',
   },
+
+  /*
+   * LABELLED FORM CONTROLS. The founder ruling of 28 August 2026: a raw input,
+   * select, textarea or checkbox on a form surface fails the build unless it
+   * carries a programmatic label.
+   *
+   * The first drill is the obvious one. The four after it are the ones that
+   * matter, and they assert the guard STAYS SILENT, because this guard is far
+   * more likely to be switched off for crying wolf than for missing something.
+   *
+   * That is not hypothetical. On the day it was written, two separate static
+   * detectors were run over seat-map-builder.tsx. One reported 20 of 48 controls
+   * labelled; the true figure was 9, because it counted aria-labels belonging to
+   * BUTTONS. The other reported 39 UNLABELLED; the true figure was 0, because
+   * every one of them sits inside a <Field> wrapper that renders
+   * <label><span>{label}</span>{children}</label> and is therefore implicitly
+   * associated. axe over the running application confirmed zero violations in
+   * all eleven states the builder can be driven into.
+   *
+   * So each legitimate way to name a control gets a drill of its own, and the
+   * wrapper case uses the real <Field> that broke both detectors.
+   */
+  {
+    name: 'a raw input is added with nothing naming it',
+    guard: `${GUARDS}/labelled-form-controls.mjs`,
+    file: 'src/components/orders/order-table.tsx',
+    find: '        <select\n          aria-label="Filter orders by status"',
+    replace:
+      '        <input type="text" value="" onChange={() => {}} />\n'
+      + '        <select\n          aria-label="Filter orders by status"',
+    expect: 'nothing names it',
+  },
+  {
+    name: 'NO FALSE POSITIVE: an input named by aria-label',
+    guard: `${GUARDS}/labelled-form-controls.mjs`,
+    expectPass: 'aria-label',
+    file: 'src/components/orders/order-table.tsx',
+    find: '        <select\n          aria-label="Filter orders by status"',
+    replace:
+      '        <input type="text" aria-label="Drill field" value="" onChange={() => {}} />\n'
+      + '        <select\n          aria-label="Filter orders by status"',
+  },
+  {
+    name: 'NO FALSE POSITIVE: an input nested inside its own label',
+    guard: `${GUARDS}/labelled-form-controls.mjs`,
+    expectPass: 'ancestor <label>',
+    file: 'src/components/orders/order-table.tsx',
+    find: '        <select\n          aria-label="Filter orders by status"',
+    replace:
+      '        <label>Drill field<input type="text" value="" onChange={() => {}} /></label>\n'
+      + '        <select\n          aria-label="Filter orders by status"',
+  },
+  {
+    name: 'NO FALSE POSITIVE: an input paired by htmlFor',
+    guard: `${GUARDS}/labelled-form-controls.mjs`,
+    expectPass: 'htmlFor',
+    file: 'src/components/orders/order-table.tsx',
+    find: '        <select\n          aria-label="Filter orders by status"',
+    replace:
+      '        <label htmlFor="drill-field">Drill field</label>\n'
+      + '        <input id="drill-field" type="text" value="" onChange={() => {}} />\n'
+      + '        <select\n          aria-label="Filter orders by status"',
+  },
+  /*
+   * A LABEL THAT NAMES THE WRONG CONTROL. Drilled from both sides for the same
+   * reason as its sibling: this guard reasons about MEANING, so a false positive
+   * is the likelier death. The quiet-side drill uses the real ticket tier group,
+   * where a label and two controls legitimately sit together.
+   */
+  {
+    name: 'a label points at an element that cannot be labelled',
+    guard: `${GUARDS}/labels-name-the-right-control.mjs`,
+    file: 'src/components/waitlist/join-waitlist-modal.tsx',
+    find: '<div id="waitlist-quantity-label" className="block text-sm font-medium text-ink-600 mb-1.5">',
+    replace: '<label htmlFor="waitlist-quantity" className="block text-sm font-medium text-ink-600 mb-1.5">',
+    expect: 'which cannot be labelled',
+  },
+  {
+    name: 'a label names the control BESIDE the one it describes',
+    guard: `${GUARDS}/labels-name-the-right-control.mjs`,
+    file: 'src/components/features/events/event-form.tsx',
+    /*
+     * Take the id OFF the price input, which is exactly the shape of the
+     * original defect: the "Price" label no longer resolves to the field it
+     * describes, while that field still carries its own aria-label saying what
+     * it is. An earlier version of this drill ADDED the id to the currency
+     * select instead, which produced two elements sharing one id; the guard
+     * matched the input and stayed quiet, and the drill proved nothing.
+     */
+    find: '                  id={`tier-price-${idx}`}\n                  type="number"',
+    replace: '                  type="number"',
+    expect: 'appears in a sibling',
+  },
+  {
+    name: 'NO FALSE POSITIVE: the ticket tier group as it correctly stands',
+    guard: `${GUARDS}/labels-name-the-right-control.mjs`,
+    expectPass: 'Every label names the control it describes',
+    file: 'src/components/features/events/event-form.tsx',
+    find: '                  placeholder="0.00"',
+    replace: '                  placeholder="0.00"\n                  inputMode="decimal"',
+  },
+  {
+    name: 'NO FALSE POSITIVE: an input inside the Field wrapper that fooled two greps',
+    guard: `${GUARDS}/labelled-form-controls.mjs`,
+    expectPass: 'wrapper <Field>',
+    file: 'src/app/(dashboard)/dashboard/venues/[id]/seat-maps/seat-map-builder.tsx',
+    find: '        <Field label="Rows">',
+    replace:
+      '        <Field label="Drill field">\n'
+      + '          <input type="number" value={1} onChange={() => {}} />\n'
+      + '        </Field>\n'
+      + '        <Field label="Rows">',
+  },
+  /*
+   * no-silent-submit, three drills, one per shape the guard decides.
+   *
+   * The class: a control the user operates that completes with neither a
+   * visible result nor a visible error. Journey 8, 29 August 2026.
+   */
+  {
+    /*
+     * THE ACTUAL DEFECT, restored. min="0.01" with step="1" means HTML steps
+     * 0.01, 1.01, 2.01, ... so a person typing 20 produces a stepMismatch, the
+     * browser refuses the submit, and no handler ever runs. Two sessions read
+     * the handler and the server action looking for this.
+     */
+    name: 'a number input whose min and step make every round value unsubmittable',
+    guard: `${GUARDS}/no-silent-submit.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    // Restores step="1" against the fixed_amount min of 0.01. The FIRST version
+    // of this drill restored only the min and left step="any", and the guard
+    // correctly stayed quiet: with no numeric step there is no arithmetic to be
+    // wrong. The drill has to put back the step, which is where the defect was.
+    find: '                step="any"',
+    replace: '                step="1"',
+    expect: 'stepMismatch',
+  },
+  {
+    /*
+     * The refusal read and dropped: the success branch applies and the error
+     * branch does not exist. This is what the venue create and update handlers
+     * did until 29 August 2026.
+     */
+    name: 'a server action refusal is read and then dropped on the floor',
+    guard: `${GUARDS}/no-silent-submit.mjs`,
+    file: 'src/app/(dashboard)/dashboard/venues/venues-client.tsx',
+    find: [
+      '        if (result.error) {',
+      '          setSaveError(result.error)',
+      '          resolve()',
+      '          return',
+      '        }',
+      '        setVenues(prev =>',
+    ].join('\n'),
+    replace: [
+      '        if (!result.error) {',
+      '        setVenues(prev =>',
+    ].join('\n'),
+    expect: 'has no else',
+  },
+  {
+    /*
+     * The refusal never read at all: the result is assigned and abandoned, so
+     * nothing downstream can surface it.
+     */
+    name: 'a server action result is assigned and never referenced again',
+    guard: `${GUARDS}/no-silent-submit.mjs`,
+    file: 'src/components/marketplace/requests-panel.tsx',
+    find: [
+      '      const result = await respondToRequestAction({ requestId, response })',
+      '      if (!result.ok) {',
+      "        setRespondError(result.error ?? 'That could not be saved. Try again.')",
+      '        return',
+      '      }',
+    ].join('\n'),
+    replace: '      const result = await respondToRequestAction({ requestId, response })',
+    expect: 'never referenced again',
+  },
+  {
+    /*
+     * THE SAME ARITHMETIC WITH THE STEP LEFT OUT, added 29 August 2026.
+     *
+     * `step` defaults to 1 on <input type="number"> when the attribute is
+     * absent (HTML Standard, the step attribute), so min="0.01" with NO step is
+     * bit-for-bit the journey 8 defect. The first version of the guard required
+     * BOTH a min and a step literal before it would judge anything, so it would
+     * have walked straight past this one. The defect it was written for
+     * happened to spell the step out; the next one need not.
+     */
+    name: 'a number input with a fractional min and NO step, which HTML reads as step=1',
+    guard: `${GUARDS}/no-silent-submit.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: '                step="any"',
+    replace: '                data-drill="no-step-attribute"',
+    expect: 'NO step attribute',
+  },
+  {
+    /*
+     * A RANGE WITH NOTHING IN IT. min > max makes every entry out of range, so
+     * checkValidity() is false and the submit never reaches a handler. Same
+     * silence as the step defect, different constraint.
+     */
+    name: 'a number input whose min is greater than its max',
+    guard: `${GUARDS}/no-silent-submit.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: '                step="any"',
+    replace: '                step="any"\n                max="0"',
+    expect: 'No value satisfies both',
+  },
 ]
 
 function run(guard) {
@@ -880,6 +1089,36 @@ for (const drill of DRILLS) {
   try {
     writeFileSync(path, original.replace(anchor, drill.replace))
     const { code, out } = run(drill.guard)
+
+    /*
+     * A drill that asserts the guard STAYS QUIET. Added 28 August 2026 with the
+     * labelled-form-controls guard, because for that guard the dangerous
+     * failure is the false positive: it fails the build over working markup,
+     * somebody switches it off, and the law loses its enforcement entirely.
+     * `expectPass` names the mechanism that must have recognised the addition,
+     * so a guard that passes for the WRONG reason still fails the drill.
+     */
+    if (drill.expectPass) {
+      if (code !== 0) {
+        failed.push(
+          `${drill.name}: guard FAILED on legitimate markup. It is crying wolf.\n` +
+            `      got: ${out.trim().split('\n').slice(-6).join(' / ')}`,
+        )
+        console.log(`  FALSE POSITIVE  ${drill.name}`)
+        continue
+      }
+      if (!out.includes(drill.expectPass)) {
+        failed.push(
+          `${drill.name}: guard passed, but never reported recognising it via ${drill.expectPass}.`,
+        )
+        console.log(`  PASSED FOR THE WRONG REASON  ${drill.name}`)
+        continue
+      }
+      passed += 1
+      console.log(`  STAYS QUIET AS EXPECTED  ${drill.name}`)
+      console.log(`      recognised via ${drill.expectPass}\n`)
+      continue
+    }
 
     if (code === 0) {
       failed.push(`${drill.name}: guard PASSED on a violating tree. It is not actually guarding.`)

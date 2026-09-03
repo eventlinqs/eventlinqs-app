@@ -51,7 +51,7 @@ export default async function GigBoardPage({ searchParams }: { searchParams: Sea
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
-      <main id="main-content" className="flex-1">
+      <main className="flex-1">
         <MarketplaceHero
           eyebrow="Gig board"
           title="Gigs that come with an audience"

@@ -101,6 +101,32 @@ const nextConfig: NextConfig = {
   // grid + event-detail loading skeletons) is governed by Next's separate
   // built-in bot regex and is unchanged.
   htmlLimitedBots: /./,
+  // KEEP THE CARD RASTERISER OUT OF THE BUNDLER.
+  //
+  // src/lib/broadcast/card-raster.ts loads the resvg WebAssembly binary at RUN
+  // time on purpose:
+  //
+  //     const wasmPath = require_.resolve('@resvg/resvg-wasm/index_bg.wasm')
+  //     await initWasm(await readFile(wasmPath))
+  //
+  // Turbopack reads that static specifier, decides the .wasm is a module it
+  // should bundle, and emits a wasm-bindgen loader that imports the glue
+  // namespace `wbg`. Nothing provides `wbg`, so the production build dies:
+  //
+  //     ./node_modules/@resvg/resvg-wasm/index_bg.wasm_.loader.mjs:1:1
+  //     Module not found: Can't resolve 'wbg'
+  //
+  // reached through both entry points that rasterise:
+  //     app/api/organiser/events/[id]/card/[format]/route.ts   (the 18 cards)
+  //     app/admin/(authed)/health/page.tsx                     (health checks)
+  //
+  // Marking the package external leaves it to Node's own require at run time,
+  // which is exactly what the module was written to expect. This changes NOTHING
+  // about how a card is rendered; it only stops the bundler from pre-empting a
+  // deliberate runtime load. Found on 2 September 2026, when the resvg swap was
+  // built for the first time: it had been proved in isolation but never through
+  // `next build`, so this error had never had the chance to appear.
+  serverExternalPackages: ['@resvg/resvg-wasm'],
   // Preview-density fixture. The homepage reads the 55-event catalogue fixture
   // (src/lib/dev/home-seed-fixture.json) at runtime via fs when
   // HOMEPAGE_SEED_FIXTURE=1. Trace it into the homepage serverless bundle so
@@ -118,7 +144,26 @@ const nextConfig: NextConfig = {
     // The social cards draw brand type. satori is handed real font buffers
     // read from disk at render time, so the TTFs have to be traced into the
     // card lambda or every card would silently fall back to a system face.
-    '/api/organiser/events/[id]/card/[format]': ['./src/assets/fonts/*.ttf'],
+    '/api/organiser/events/[id]/card/[format]': [
+      './src/assets/fonts/*.ttf',
+      // The resvg WebAssembly binary is read from disk at run time by
+      // src/lib/broadcast/card-raster.ts (it is data, not a module, for the
+      // reasons written out at length there). Nothing imports it, so nothing
+      // traces it, so without this line the lambda ships without the one file
+      // the rasteriser cannot work without.
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    // The public composer serves the same three formats from an anonymous
+    // draft and rasterises through the identical path, so it needs the binary
+    // just as much. It was the route that proved this: all eighteen of its
+    // cards answered HTTP 500 until the lookup was fixed.
+    '/api/launch/[code]/card/[format]': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    // The admin health page runs the card raster check end to end, which is the
+    // second entry point into the same module.
+    '/admin/health': ['./node_modules/@resvg/resvg-wasm/index_bg.wasm'],
   },
   async redirects() {
     // THE TABLE ITSELF MOVED to src/lib/seo/permanent-redirects.ts, unchanged,
@@ -289,8 +334,37 @@ const nextConfig: NextConfig = {
   },
   images: {
     formats: ['image/avif', 'image/webp'],
-    deviceSizes: [375, 640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    /*
+     * THE CANDIDATE LIST IS A DOCUMENT-SIZE DECISION, NOT ONLY AN IMAGE ONE.
+     *
+     * Measured on the homepage, 3 September 2026, warmed, mobile:
+     *   1,023,683 chars of HTML, 113 <img>, 1,677 /_next/image URLs
+     *   348,045 of those chars are the srcset URLs themselves: 34% of the page
+     *
+     * Every width in these two lists is emitted into the srcset of every image
+     * that can use it, and each URL costs about 208 characters because it
+     * carries a percent-encoded absolute storage URL. So a width nobody selects
+     * is not free: it is paid 113 times in the document, on a throttled mobile
+     * CPU that has to parse all of it before the hero can win LCP.
+     *
+     * WHAT WAS REMOVED AND WHY EACH ONE IS SAFE:
+     *   375   below every real mobile selection. A 412px viewport at DPR 1.75
+     *         needs 721px and picks 750; the smallest device that reaches this
+     *         entry would have to be under 375 CSS px at DPR 1.
+     *   1200  sits between 1080 and 1920 with no layout breakpoint on it.
+     *   2048  sits beside 1920 and serves the same class of display.
+     *   48,96 no component requests a fixed size in that band. The measured
+     *         fixed sizes in use are 16, 32, 192, 256, 288, 320 and 512.
+     *
+     * WHAT WAS DELIBERATELY KEPT:
+     *   640, 750, 828  the mobile LCP band. Dropping 750 would push a 412px
+     *                  phone up to 828 and make the LCP image BIGGER, which is
+     *                  the opposite of the intent. Verified: the hero is served
+     *                  at w=750 as a 33 KB AVIF.
+     *   3840           the full-bleed hero on a 2x desktop still needs it.
+     */
+    deviceSizes: [640, 750, 828, 1080, 1920, 3840],
+    imageSizes: [16, 32, 64, 128, 256, 384],
     // Constrain quality to brand tiers. Mirrors MEDIA_QUALITY in
     // src/components/media/quality.ts. A forgotten quality={100} on a
     // feature component will now be rejected at build time rather than

@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 type Ticket = {
   id: string
+  order_id: string
   order_user_id: string
   ticket_code: string
   secret: string
@@ -49,6 +50,8 @@ function reset() {
 }
 
 const EVENT = 'event-1'
+const ORDER = '11111111-1111-4111-8111-111111111111'
+const OTHER_ORDER = '22222222-2222-4222-8222-222222222222'
 const CODE = 'EL-7G4K-2PMQ'
 const ORIGINAL_SECRET = '550e8400-e29b-41d4-a716-446655440000'
 
@@ -61,6 +64,29 @@ function transferModel(p_ticket_id: string, p_to_email: string, p_to_name: strin
   const callerEmail = w.profilesByUid.get(uid) ?? null
   const authorised = t.order_user_id === uid || (!!callerEmail && callerEmail.toLowerCase() === t.holder_email.toLowerCase())
   if (!authorised) return { data: null, error: { message: 'not_authorised' } }
+  if (t.status !== 'valid') return { data: null, error: { message: 'not_transferable' } }
+  const fromEmail = t.holder_email
+  const newSecret = `rotated-secret-${++w.secretSeq}-0000-0000-0000-000000000000`
+  t.holder_email = p_to_email
+  t.holder_name = p_to_name
+  t.secret = newSecret
+  w.transfers.push({ ticket_id: t.id, from_email: fromEmail, to_email: p_to_email })
+  return { data: [{ ticket_code: t.ticket_code, new_secret: newSecret, event_title: 'Afrobeats Night' }], error: null }
+}
+
+/**
+ * Mirrors transfer_ticket_for_order() from
+ * supabase/migrations/20260829000002_guest_ticket_transfer.sql.
+ *
+ * The ONLY authorisation it performs is that the ticket sits on the order named
+ * in p_order_id. It takes NO identity: the signed-link check happens in Node
+ * before it is called, which is exactly why it is granted to service_role only.
+ */
+function transferForOrderModel(p_ticket_id: string, p_order_id: string, p_to_email: string, p_to_name: string) {
+  const w = h.world!
+  const t = w.tickets.find((x) => x.id === p_ticket_id)
+  if (!t) return { data: null, error: { message: 'not_found' } }
+  if (t.order_id !== p_order_id) return { data: null, error: { message: 'not_authorised' } }
   if (t.status !== 'valid') return { data: null, error: { message: 'not_transferable' } }
   const fromEmail = t.holder_email
   const newSecret = `rotated-secret-${++w.secretSeq}-0000-0000-0000-000000000000`
@@ -100,15 +126,26 @@ vi.mock('@/lib/supabase/server', () => ({
     }),
   }),
 }))
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: () => ({
+    rpc: vi.fn(async (name: string, args: Record<string, string>) => {
+      if (name === 'transfer_ticket_for_order') {
+        return transferForOrderModel(args.p_ticket_id, args.p_order_id, args.p_to_email, args.p_to_name)
+      }
+      return { data: null, error: null }
+    }),
+  }),
+}))
 vi.mock('@/lib/email/send', () => ({ sendEmail: vi.fn(async () => undefined) }))
 vi.mock('@/lib/site-url', () => ({ getSiteUrl: () => 'https://www.eventlinqs.com' }))
 
 import { transferTicket } from '@/app/actions/transfer-ticket'
+import { mintOrderAccessToken } from '@/lib/orders/order-access'
 import { scanTicket } from '@/app/scan/actions'
 
 function seedTicket() {
   h.world!.tickets.push({
-    id: 'tkt-1', order_user_id: 'buyer-1', ticket_code: CODE, secret: ORIGINAL_SECRET, event_id: EVENT,
+    id: 'tkt-1', order_id: ORDER, order_user_id: 'buyer-1', ticket_code: CODE, secret: ORIGINAL_SECRET, event_id: EVENT,
     status: 'valid', holder_name: 'Buyer One', holder_email: 'buyer@example.com', scan_count: 0, first_scanned_at: null,
   })
 }
@@ -186,11 +223,86 @@ describe('ticket transfer: authorisation and abuse', () => {
     expect('error' in res && res.error).toMatch(/cannot be transferred/i)
   })
 
-  test('an unauthenticated caller is refused', async () => {
+  test('an unauthenticated caller with no signed link is refused, and told what would work', async () => {
     seedTicket()
     h.world!.user = null
     const res = await transferTicket('tkt-1', 'gift@example.com', 'Gift Holder')
-    expect(res).toEqual({ error: 'Sign in to transfer a ticket.' })
+    /*
+     * The message used to be "Sign in to transfer a ticket." That was correct
+     * for a signed-out account holder and impossible for a guest, who has no
+     * account to sign in to: guest checkout creates none. It now names the only
+     * two things that actually work, one of which a guest has.
+     */
+    expect('error' in res && res.error).toMatch(/confirmation email/i)
+    expect('error' in res && res.error).toMatch(/sign in with the email you bought with/i)
+  })
+
+  /*
+   * THE GUEST HALF, journey 5. A guest holds no session; the signed link from
+   * their own confirmation email is their whole identity. These prove the
+   * boundary is the token and nothing else.
+   */
+  test('a guest holding a valid signed link CAN transfer their ticket', async () => {
+    seedTicket()
+    h.world!.user = null
+    const res = await transferTicket('tkt-1', 'Gift@Example.com', 'Gift Holder', {
+      orderId: ORDER,
+      accessToken: mintOrderAccessToken(ORDER),
+    })
+    expect(res).toEqual({ ok: true })
+    const t = h.world!.tickets[0]
+    expect(t.holder_email).toBe('gift@example.com')
+    expect(t.secret).not.toBe(ORIGINAL_SECRET) // the old QR is dead for a guest transfer too
+    expect(h.world!.transfers).toHaveLength(1)
+  })
+
+  test('a forged token transfers nothing', async () => {
+    seedTicket()
+    h.world!.user = null
+    const res = await transferTicket('tkt-1', 'gift@example.com', 'Gift Holder', {
+      orderId: ORDER,
+      accessToken: '0'.repeat(40),
+    })
+    expect('error' in res).toBe(true)
+    expect(h.world!.tickets[0].holder_email).toBe('buyer@example.com')
+    expect(h.world!.tickets[0].secret).toBe(ORIGINAL_SECRET)
+  })
+
+  test('a missing token transfers nothing', async () => {
+    seedTicket()
+    h.world!.user = null
+    const res = await transferTicket('tkt-1', 'gift@example.com', 'Gift Holder', {
+      orderId: ORDER,
+      accessToken: null,
+    })
+    expect('error' in res).toBe(true)
+    expect(h.world!.tickets[0].holder_email).toBe('buyer@example.com')
+  })
+
+  test('a VALID token for a DIFFERENT order cannot move this ticket', async () => {
+    seedTicket()
+    h.world!.user = null
+    // Correctly signed, genuinely theirs, and for the wrong order. The Node
+    // check passes; the SQL refuses because the ticket is not on that order.
+    const res = await transferTicket('tkt-1', 'gift@example.com', 'Gift Holder', {
+      orderId: OTHER_ORDER,
+      accessToken: mintOrderAccessToken(OTHER_ORDER),
+    })
+    expect('error' in res && res.error).toMatch(/only transfer your own ticket/i)
+    expect(h.world!.tickets[0].holder_email).toBe('buyer@example.com')
+    expect(h.world!.tickets[0].secret).toBe(ORIGINAL_SECRET)
+  })
+
+  test('a guest cannot transfer a ticket that has already been scanned', async () => {
+    seedTicket()
+    h.world!.user = null
+    h.world!.tickets[0].status = 'scanned'
+    const res = await transferTicket('tkt-1', 'gift@example.com', 'Gift Holder', {
+      orderId: ORDER,
+      accessToken: mintOrderAccessToken(ORDER),
+    })
+    expect('error' in res && res.error).toMatch(/cannot be transferred/i)
+    expect(h.world!.tickets[0].holder_email).toBe('buyer@example.com')
   })
 
   test('the current holder (by account email) can transfer onward', async () => {

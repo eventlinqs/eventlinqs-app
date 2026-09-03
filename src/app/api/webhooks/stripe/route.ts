@@ -9,7 +9,8 @@ import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 // replaces two hardcoded address literals so every sender in the codebase
 // derives from src/lib/email/sender.ts (founder ruling 2026-08-03).
 import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
-import { sendEmail } from '@/lib/email/send'
+import { sendEmail, printConsoleEmail } from '@/lib/email/send'
+import { mailTransportReady, resolveMailTransport } from '@/lib/email/transport-ready'
 import { alertDestination } from '@/lib/env/destinations'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { promoteWaitlist } from '@/lib/waitlist/promote'
@@ -35,6 +36,7 @@ import {
 import { sendPayoutEmail, type PayoutEmailKind } from '@/lib/payouts/email'
 import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
+import { recordDiscountUse } from '@/lib/payments/discount-usage'
 
 export const dynamic = 'force-dynamic'
 
@@ -318,6 +320,47 @@ async function handlePaymentSucceeded(
   // Each is independently idempotent or fire-and-forget and MUST NOT throw
   // out of the handler: re-running the whole webhook to retry, say, a Redis
   // refresh would resend the confirmation email. Faults are captured.
+
+  /*
+   * DISCOUNT USAGE ON THE PAID PATH.
+   *
+   * This did not exist. Usage was recorded ONLY in the free-order branch of
+   * processCheckout, so a PAID order carrying a discount code never wrote a
+   * usage row and never advanced current_uses. max_uses and max_uses_per_user
+   * were therefore unenforced on exactly the orders that take money, and a code
+   * capped at N could be redeemed without limit. Found 29 August 2026.
+   *
+   * Idempotent on discount_usages_unique_order (discount_code_id, order_id), so
+   * a Stripe redelivery cannot burn a second use. Never throws: the buyer has
+   * paid and holds a valid ticket.
+   */
+  try {
+    const { data: discountedOrder } = await adminClient
+      .from('orders')
+      .select('discount_code_id, user_id, guest_email, discount_cents, reservation_id')
+      .eq('id', order_id)
+      .maybeSingle()
+
+    if (discountedOrder?.discount_code_id) {
+      await recordDiscountUse({
+        adminClient,
+        discount_code_id: discountedOrder.discount_code_id,
+        order_id,
+        user_id: discountedOrder.user_id ?? null,
+        guest_email: discountedOrder.guest_email ?? null,
+        reservation_id: discountedOrder.reservation_id ?? null,
+        discount_cents: discountedOrder.discount_cents ?? 0,
+      })
+    }
+  } catch (discountErr) {
+    captureException(discountErr, {
+      scope: 'stripe-webhook',
+      handler: 'discount-usage',
+      order_id,
+      payment_intent_id: intent.id,
+    })
+    console.error('[webhook] discount usage write threw (non-fatal, continuing):', discountErr)
+  }
 
   // M6 Phase 3: destination-charge ledger entries (organiser credit, reserve
   // hold, mirror debit, org counters). Idempotent on the ledger table.
@@ -1556,8 +1599,9 @@ async function sendRefundConfirmationEmail(
   charge: Stripe.Charge,
   override?: { amountCents?: number; ticketCount?: number },
 ) {
-  const resendKey = process.env.RESEND_API_KEY
-  if (!resendKey) return
+  // Was a silent `if (!RESEND_API_KEY) return`, above every transport: a buyer
+  // whose refund landed was told nothing, and nothing recorded that either.
+  if (!mailTransportReady(`the refund confirmation for order ${order_id}`)) return
 
   const { data: order } = await db
     .from('orders')
@@ -1623,24 +1667,32 @@ async function sendRefundConfirmationEmail(
   const refundAmountCents = override?.amountCents ?? charge.amount_refunded ?? order.total_cents
   const currency = (charge.currency ?? order.currency ?? 'AUD').toUpperCase()
 
-  const resend = new Resend(resendKey)
+  const refundSubject = buildRefundConfirmationSubject(event.title)
+  const refundHtml = buildRefundConfirmationHtml({
+    buyerName,
+    orderNumber: order.order_number,
+    eventTitle: event.title,
+    ticketCount,
+    refundAmountCents,
+    currency,
+    customMessage: null,
+    organiserName,
+    organiserContactEmail,
+  })
+
+  if (resolveMailTransport() === 'console') {
+    printConsoleEmail({ to: buyerEmail, subject: refundSubject, html: refundHtml })
+    return
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY as string)
   try {
     await resend.emails.send({
       from: getNoReplyFrom(),
       to: buyerEmail,
       replyTo: getReplyToAddress(),
-      subject: buildRefundConfirmationSubject(event.title),
-      html: buildRefundConfirmationHtml({
-        buyerName,
-        orderNumber: order.order_number,
-        eventTitle: event.title,
-        ticketCount,
-        refundAmountCents,
-        currency,
-        customMessage: null,
-        organiserName,
-        organiserContactEmail,
-      }),
+      subject: refundSubject,
+      html: refundHtml,
       text: buildRefundConfirmationText({
         buyerName,
         orderNumber: order.order_number,

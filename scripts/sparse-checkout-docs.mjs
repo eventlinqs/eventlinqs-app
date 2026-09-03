@@ -43,10 +43,26 @@ const RESTORE = args.includes('--restore')
 const FORCE = args.includes('--force')
 const GET = args.includes('--get') ? args[args.indexOf('--get') + 1] : null
 
-/** Paths a working tree needs to build, test and run. docs/ is not one. */
+/**
+ * Paths a working tree needs to build, test and run. docs/ is not one.
+ *
+ * `.githooks` IS one, and its absence from this list was a silent hole in Law
+ * 8. `.githooks/commit-msg` is the first of the two layers that stop an AI
+ * authorship trailer entering the history, and it is the only layer that acts
+ * before the commit exists. `core.hooksPath` is local config that lives in the
+ * shared .git, so it survives thinning; the hook FILE does not. Thinning a
+ * worktree therefore left `core.hooksPath` pointing at a directory that was no
+ * longer on disk, and git runs no hook and reports no error when the file is
+ * missing. Enforcement disappeared with nothing to notice, which is the exact
+ * failure mode the second layer exists to catch and the second layer is
+ * bounded by date and skippable with --no-verify.
+ *
+ * The rule this encodes: a path that ENFORCES something is not evidence and is
+ * never thinned, however rarely it is read.
+ */
 const KEEP = [
   'src', 'scripts', 'supabase', 'tests', 'public', 'types',
-  'design-assets', '.github', '.husky',
+  'design-assets', '.github', '.husky', '.githooks',
 ]
 
 const git = (...a) =>

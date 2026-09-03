@@ -8,6 +8,7 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
 import type { EventCategory } from '@/types/database'
+import { ORG_SALE_FIELDS_SELECT, isOrganiserSellable, verifyOrgSaleFields } from '@/lib/payments/sale-status'
 
 export default async function CreateEventPage({
   searchParams,
@@ -53,6 +54,45 @@ export default async function CreateEventPage({
       </div>
     )
   }
+
+  /*
+   * Can this organisation take money today? Read here so the Publish button can
+   * look as blocked as it actually is, instead of inviting a press that the
+   * server is going to refuse. The server gate (checkPublishGate) is still the
+   * only thing that decides, and it re-reads Stripe before refusing.
+   */
+  const { data: saleOrg, error: saleOrgError } = await supabase
+    .from('organisations')
+    .select(ORG_SALE_FIELDS_SELECT)
+    .eq('id', org.id)
+    .maybeSingle()
+  /*
+   * verifyOrgSaleFields, not a cast. The branded type exists so nobody can hand
+   * the sale gate a row that is missing a column, and a cast here would defeat
+   * exactly the safeguard it was added for. If the row is incomplete this
+   * resolves to false, which only ever makes the button MORE conservative: the
+   * server gate still decides.
+   */
+  /*
+   * A FAILED READ MUST NOT LOOK LIKE A REFUSAL.
+   *
+   * Destructuring only `data` would turn a transient read failure into a null
+   * row, and a null row into "connect Stripe before publishing" shown to an
+   * organiser whose Stripe is perfectly fine. That is the exact shape that
+   * refused every paid event in production on 18 August 2026, and
+   * one-sellability-source caught this line for it.
+   *
+   * So when the read fails we do NOT block. The button behaves as it always did
+   * and the server gate decides, which is the only thing that ever decided
+   * anyway. Presentation may make a refusal visible earlier; it may never
+   * invent one.
+   */
+  const saleVerdict = verifyOrgSaleFields(saleOrg)
+  const canSellPaid = saleOrgError
+    ? true
+    : saleVerdict.complete
+      ? isOrganiserSellable(saleVerdict.org)
+      : false
 
   const { data: categories } = await supabase
     .from('event_categories')
@@ -101,6 +141,7 @@ export default async function CreateEventPage({
         launchKitEnabled={await isFlagEnabled('launch_kit')}
         lineupEnabled={await isFeatureEnabled('broadcast_artists')}
         magicStartEnabled={await isFlagEnabled('magic_start')}
+        canSellPaid={canSellPaid}
       />
     </div>
   )

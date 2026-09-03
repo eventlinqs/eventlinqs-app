@@ -1,0 +1,20 @@
+Break attempts: is every refusal true about its cause?
+======================================================
+01. Signed up and confirmed
+      dupe.136112@example.com -> /dashboard
+02. REFUSED-TRUE   signup with an email that already exists
+      landed /signup :: That email address already has an EventLinqs account. Sign in instead, or reset your password if you have forgotten it.Sign inReset your password
+03. Signup did not ask for confirmation
+      /signup :: Too many attempts from this connection. Please wait about 4 minutes and try again.
+04. SKIPPED        publish gate checks
+      could not create an account
+05. REFUSED-TRUE   open an event that does not exist
+      HTTP 404 :: Skip to main content EVENTLINQS . About Us Browse Events Cities Event Organisers What are you in the mood for? / Melbourne Sign in Get Start
+06. REFUSED-TRUE   drive the quantity below zero
+      the CTA reads "Select tickets to continue" disabled=true
+07. REFUSED-TRUE   inject a script through the search query
+      dialog fired: false; injected img[onerror]: 0; injected script: 0; payload echoed back as plain text: true
+08. REFUSED-TRUE   reach the organiser dashboard while signed out
+      HTTP 200 landed /login
+09. REFUSED-TRUE   browser Back after paying
+      paid at /orders/da14c6fa-8485-4d65-a98a-1726601a68c1/confirmation?pa; Back landed on /events?error=reservation_not_found; an enabled Pay button is offered again: false; shown: That reservation is no longer availableWe could not find the seats you were holding, so nothing has been charged. Choose your tickets again below.

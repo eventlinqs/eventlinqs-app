@@ -1,0 +1,28 @@
+Journey 5: passing a ticket to a friend
+=======================================
+01. Bought a ticket
+      guest.transfer.902522@example.com -> /orders/dcdd2984-ebdb-41b5-94cb-3cecd7979c88/confirmation?payment_intent=pi_3U9K
+02. A guest looks at their order for a way to pass the ticket on
+      URL     /orders/dcdd2984-ebdb-41b5-94cb-3cecd7979c88/confirmation
+      heading "You're going"
+      fields  (none)
+      buttons Request a refund | Add to Calendar | Share Event
+03. A transfer control on the order itself
+      NONE
+04. The guest tries /tickets
+      landed /login; reached the list: false; 
+05. Signed up and confirmed
+      member.transfer.902522@example.com -> /dashboard
+06. Bought a ticket
+      member.transfer.902522@example.com -> /orders/08492ae0-943b-4af4-be95-0c13ee633588/confirmation?payment_intent=pi_3U9K
+07. The signed-in buyer has an order
+      08492ae0-943b-4af4-be95-0c13ee633588
+08. The tickets screen (signed in)
+      URL     /tickets
+      heading "My tickets"
+      fields  (none)
+      buttons Transfer or gift this ticket
+09. The signed-in buyer tries to transfer
+      landed /tickets; control: Transfer or gift this ticket; Sent to friend.902522@example.com. Their new QR is on the way and your old code no longer works.
+10. The ticket moved
+      Sent to friend.902522@example.com. Their new QR is on the way and your old code no longer works.

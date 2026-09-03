@@ -43,9 +43,9 @@
 # tests/, so a local `next build` does not catch what CI catches; `tsc --noEmit`
 # against the repo tsconfig does.
 
-echo "[pre-push] running the typecheck and the test suite before this leaves the machine"
+echo "[pre-push] running the typecheck, lint and the test suite before this leaves the machine"
 
-# TYPECHECK FIRST. It is the faster of the two, so a type error fails in seconds
+# TYPECHECK FIRST. It is the fastest of the three, so a type error fails in seconds
 # rather than after a minute of tests.
 npx tsc --noEmit
 tsc_status=$?
@@ -59,6 +59,53 @@ if [ $tsc_status -ne 0 ]; then
 fi
 
 echo "[pre-push] typecheck clean"
+
+# LINT, ADDED 29 AUGUST 2026, because the hook and CI did not agree.
+#
+# `eslint --max-warnings=0` is the CI lint job. This hook ran the typecheck and
+# the suite and NOT lint, so a push that satisfied the hook could still turn CI
+# red, and every push looked clean from this machine while the job it maps to
+# failed. On 28 August the integration branch was found with eight
+# unused-variable warnings that had been red on CI since before that session
+# began, and nobody saw them here.
+#
+# It is a WARNING-level failure that matters, which is exactly the kind a human
+# scrolls past: --max-warnings=0 makes a warning a failure in CI, so the local
+# gate has to use the same flag or it is measuring something softer than the
+# thing it stands in for.
+#
+# It runs AFTER the typecheck and BEFORE the suite on purpose: slower than tsc,
+# far faster than fifty seconds of tests, so the cheapest failures still come
+# first.
+# --cache IS NOT OPTIONAL HERE, and the reason is measured rather than assumed.
+#
+# The first version of this step ran a bare `eslint --max-warnings=0` and took
+# OVER TWENTY MINUTES from the hook, on a tree where the same command run by
+# hand finishes in a few. Two things make the hook's run the slow one: it uses
+# whatever node is on PATH, which here is the system install rather than the
+# pinned runtime, and it competes with whatever else the machine is doing at
+# push time.
+#
+# A gate that turns every push into a twenty minute wait is a gate somebody
+# starts passing --no-verify to, which is worse than not having it. The cache
+# makes a repeat run proportional to what CHANGED rather than to the tree, so
+# the first push after a cold checkout pays once and the rest are quick.
+#
+# .eslintcache is gitignored. It is a cache: deleting it costs one slow run and
+# nothing else, and eslint invalidates entries by content hash, so a stale cache
+# cannot hide a new warning.
+npx eslint --max-warnings=0 --cache --cache-location .eslintcache
+lint_status=$?
+
+if [ $lint_status -ne 0 ]; then
+  echo ""
+  echo "[pre-push] BLOCKED: eslint --max-warnings=0 failed, so nothing was pushed."
+  echo "[pre-push] This is the same command the CI lint job runs, so a push now"
+  echo "[pre-push] would go red there. Warnings count: CI uses --max-warnings=0."
+  exit $lint_status
+fi
+
+echo "[pre-push] lint clean"
 
 # The CANARY runs the suite AND checks that nothing stopped running.
 #
@@ -82,5 +129,5 @@ if [ $status -ne 0 ]; then
   exit $status
 fi
 
-echo "[pre-push] typecheck clean, suite green, pushing"
+echo "[pre-push] typecheck clean, lint clean, suite green, pushing"
 exit 0

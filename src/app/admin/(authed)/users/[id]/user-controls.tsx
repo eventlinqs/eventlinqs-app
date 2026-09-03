@@ -45,6 +45,7 @@ export function RoleControl({ userId, currentRole }: { userId: string; currentRo
       {done ? <p role="status" className="mt-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">Role updated.</p> : null}
       <div className="mt-3 flex items-center gap-2">
         <select
+          aria-label="Role"
           value={role}
           onChange={e => { setRole(e.target.value); setDone(false) }}
           className="min-h-[44px] rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"

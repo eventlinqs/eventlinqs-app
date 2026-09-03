@@ -166,7 +166,7 @@ export default async function AdminStaffDetailPage({
                         </td>
                         <td className="px-4 py-2.5 text-white/60">{baseline ? 'Allowed' : 'Not allowed'}</td>
                         <td className="px-4 py-2.5">
-                          <select name={`cap.${cap}`} defaultValue={mode}
+                          <select name={`cap.${cap}`} defaultValue={mode} aria-label={`${CAPABILITY_LABELS[cap]} permission`}
                             className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white focus:border-white/40 focus:outline-none">
                             <option value="inherit">Inherit</option>
                             <option value="grant">Grant</option>

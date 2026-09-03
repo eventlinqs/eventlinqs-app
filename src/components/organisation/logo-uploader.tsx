@@ -133,6 +133,11 @@ export function LogoUploader({
               id="organisation-logo"
               name="organisation-logo"
               type="file"
+              // sr-only keeps this in the tab order, so a keyboard user reaches
+              // it directly rather than through the button above it and needs
+              // it to say what it is. Nothing visible carries that text: the
+              // button is a separate element that clicks this one.
+              aria-label="Upload your organisation logo"
               accept={IMAGE_ACCEPT_ATTR}
               className="sr-only"
               onChange={e => {

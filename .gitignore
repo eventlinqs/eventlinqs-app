@@ -95,6 +95,26 @@ next-env.d.ts
 !docs/baseline/**/*.png
 !docs/baseline/**/*.jpg
 
+# Allowlist THIRD-PARTY competitor captures, anywhere under docs/benchmark.
+# These are the ONLY images in the tree that cannot be regenerated. Our own
+# surfaces can be recaptured from any commit; the August 2026 Eventbrite is
+# gone the moment they redeploy, and no re-run brings it back.
+#
+# CLAUDE.md Law 2 and the competitor-benchmark skill cite this evidence BY PATH
+# (docs/benchmark/competitor-2026/INDEX.md, docs/benchmark/rail-controls/
+# CATALOGUE.md). Until 28 August 2026 those index files were tracked while
+# every image they index was hidden by the *.png rule above, so the law pointed
+# at proof that lived on exactly one laptop. Same failure as the seating proof
+# recorded at line 61; this rule is keyed on the CAPTURED BRAND so a future
+# capture in a new directory is protected the day it lands, not after it is
+# lost. Our own screenshots stay ignored: they are regenerable, and they are
+# what makes the evidence tree gigabytes rather than megabytes.
+!docs/benchmark/**/airbnb*.png
+!docs/benchmark/**/dice*.png
+!docs/benchmark/**/eventbrite*.png
+!docs/benchmark/**/humanitix*.png
+!docs/benchmark/**/ticketmaster*.png
+
 # playwright test runner artifacts — local only
 /test-results/
 /playwright-report/
@@ -170,3 +190,12 @@ tmp-repro.mjs
 
 # Scratch credential notes are never committed. Keep on disk, out of git.
 .secret-tmp.txt
+
+# ESLint cache: makes the pre-push lint proportional to what changed.
+.eslintcache
+
+# Local Lighthouse harness output (scripts/perf/lh-local-median.mjs). Per-run
+# numbers for a human to read, regenerated on every run. The tree must not go
+# dirty because somebody measured something, which is the same rule the test
+# suite now follows via WRITE_PROOF_ARTEFACTS.
+docs/verification/lh-local/

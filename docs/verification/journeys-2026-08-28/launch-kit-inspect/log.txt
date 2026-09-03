@@ -1,0 +1,60 @@
+Launch Kit: open and inspect every artefact
+===========================================
+01. Signed up and confirmed
+      kit.244923@example.com -> /dashboard
+02. PASS   a published event to make a kit for
+      Kit Inspection Night 244923 (3792702c-ffd7-43e0-9134-f9cc5f5a8447), cover present
+03. PASS   the kit screen renders with no broken image and no empty panel
+      HTTP 200, heading "Kit Inspection Night 244923 is live.", 2 image(s), 0 broken (none), 0 empty section(s), poster link present
+04. PASS   the poster is a real, single-page A4 PDF
+      HTTP 200, 226208 bytes, 1 page(s) at 595 x 842pt (A4 is 595 x 842pt)
+05. PASS   THE QR ON THE POSTER ACTUALLY SCANS, and to the right address
+      decoded "http://localhost:3312/e/kit-inspection-13oct-qr-5"; the qr-channel share link in the database is code kit-inspection-13oct-qr-5 (http://localhost:3312/e/kit-inspection-13oct-qr-5). They match.
+06. FAIL   Story 9:16 for instagram
+      HTTP 500, UNREADABLE (spec 1080 x 1920), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+07. FAIL   Story 9:16 for facebook
+      HTTP 500, UNREADABLE (spec 1080 x 1920), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+08. FAIL   Story 9:16 for whatsapp
+      HTTP 500, UNREADABLE (spec 1080 x 1920), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+09. FAIL   Story 9:16 for x
+      HTTP 500, UNREADABLE (spec 1080 x 1920), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+10. FAIL   Story 9:16 for linkedin
+      HTTP 500, UNREADABLE (spec 1080 x 1920), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+11. FAIL   Story 9:16 for email
+      HTTP 500, UNREADABLE (spec 1080 x 1920), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+12. FAIL   the Story 9:16 card renders at its published size and is not blank
+      HTTP 500, UNREADABLE (spec 1080 x 1920), 0 KB under the 5 MB channel ceiling, ink stdev 0.0 (FLAT - this card is empty)
+13. FAIL   Square post 1:1 for instagram
+      HTTP 500, UNREADABLE (spec 1080 x 1080), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+14. FAIL   Square post 1:1 for facebook
+      HTTP 500, UNREADABLE (spec 1080 x 1080), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+15. FAIL   Square post 1:1 for whatsapp
+      HTTP 500, UNREADABLE (spec 1080 x 1080), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+16. FAIL   Square post 1:1 for x
+      HTTP 500, UNREADABLE (spec 1080 x 1080), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+17. FAIL   Square post 1:1 for linkedin
+      HTTP 500, UNREADABLE (spec 1080 x 1080), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+18. FAIL   Square post 1:1 for email
+      HTTP 500, UNREADABLE (spec 1080 x 1080), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+19. FAIL   the Square post 1:1 card renders at its published size and is not blank
+      HTTP 500, UNREADABLE (spec 1080 x 1080), 0 KB under the 5 MB channel ceiling, ink stdev 0.0 (FLAT - this card is empty)
+20. FAIL   Tall post 4:5 for instagram
+      HTTP 500, UNREADABLE (spec 1440 x 1800), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+21. FAIL   Tall post 4:5 for facebook
+      HTTP 500, UNREADABLE (spec 1440 x 1800), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+22. FAIL   Tall post 4:5 for whatsapp
+      HTTP 500, UNREADABLE (spec 1440 x 1800), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+23. FAIL   Tall post 4:5 for x
+      HTTP 500, UNREADABLE (spec 1440 x 1800), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+24. FAIL   Tall post 4:5 for linkedin
+      HTTP 500, UNREADABLE (spec 1440 x 1800), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+25. FAIL   Tall post 4:5 for email
+      HTTP 500, UNREADABLE (spec 1440 x 1800), 0 KB, ink stdev 0.0 - FLAT, this card is empty
+26. FAIL   the Tall post 4:5 card renders at its published size and is not blank
+      HTTP 500, UNREADABLE (spec 1440 x 1800), 0 KB under the 5 MB channel ceiling, ink stdev 0.0 (FLAT - this card is empty)
+27. PASS   the live event page every artefact points at actually works
+      HTTP 200 at http://localhost:3312/events/kit-inspection-night-244923, heading "Kit Inspection Night 244923", ticket surface present, error boundary absent
+28. PASS   every tracked share link resolves and lands on this event
+      9 link(s) minted: linkedin=200, whatsapp=200, email=200, x=200, copy=200, facebook=200, qr=200, instagram=200, native=200
+29. PASS   the reach panel renders a real state rather than a blank
+      "reach below, attributed to the exact channel. Shared links unfurl as your designed invitation card. WhatsApp Instagram Facebook X LinkedIn Email Copy link IN THE KIT · YOUR POST PACK Ready to post, channel by channel Eve"

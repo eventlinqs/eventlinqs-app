@@ -13,7 +13,19 @@ interface Props {
   triggerRef?: React.RefObject<HTMLElement | null>
 }
 
-const TRIGGER_DOM_ID = 'header-search-trigger'
+/**
+ * The trigger renders one id per variant (desktop pill, mobile icon), because a
+ * shared id duplicated on every page. The level-3 fallback below therefore has
+ * to pick the trigger that is actually SHOWING at this viewport rather than
+ * whichever the document happens to list first.
+ */
+const TRIGGER_DOM_ID_PREFIX = 'header-search-trigger'
+function findVisibleTrigger(): HTMLElement | null {
+  const all = Array.from(
+    document.querySelectorAll<HTMLElement>(`[id^="${TRIGGER_DOM_ID_PREFIX}-"]`),
+  )
+  return all.find(el => el.offsetParent !== null) ?? all[0] ?? null
+}
 
 /**
  * Header search overlay (Batch 9.1, a11y hardened in 9.1.1).
@@ -90,7 +102,7 @@ export function HeaderSearchOverlay({ open, onClose, triggerRef }: Props) {
    *  3-level fallback chain (Batch 9.2.1):
    *    1. explicit triggerRef from props (preferred)
    *    2. document.activeElement at open time
-   *    3. document.getElementById('header-search-trigger') as last resort */
+   *    3. the visible header-search-trigger-* button as last resort */
   const focusRestoreTarget = useRef<HTMLElement | null>(null)
   /** Suggestion link refs for programmatic activation on Enter. */
   const suggestionRefs = useRef<(HTMLAnchorElement | null)[]>([])
@@ -113,7 +125,7 @@ export function HeaderSearchOverlay({ open, onClose, triggerRef }: Props) {
       // Level 3: ID-based fallback to the search button. Used when the
       // overlay is opened programmatically and document.activeElement is
       // body or null.
-      focusRestoreTarget.current = document.getElementById(TRIGGER_DOM_ID)
+      focusRestoreTarget.current = findVisibleTrigger()
     }
     trackEvent('search_overlay_opened')
     const prev = document.body.style.overflow

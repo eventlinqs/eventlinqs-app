@@ -69,6 +69,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `/events/browse/${city.slug}`,
       type: 'website',
+      // WITHOUT THIS THE PAGE SHARES WITH NO PREVIEW CARD AT ALL.
+      //
+      // Declaring an openGraph object here and omitting images does not fall
+      // back to the root opengraph-image.tsx: it suppresses it. Measured on
+      // 2 September 2026, /events/browse/melbourne was the only public surface
+      // of six with NO og:image tag, while /city/[slug], /community/[community]
+      // and the homepage all carried one. Those two both spell this line out
+      // (city page line 52, community page line 52) and that is why they work.
+      //
+      // It matters more here than the count suggests: there are 22 of these city
+      // browse pages in the production sitemap, and every one of them was
+      // sharing to Facebook, LinkedIn and X as a bare link.
+      images: ['/opengraph-image'],
     },
   }
 }

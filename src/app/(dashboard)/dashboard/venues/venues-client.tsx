@@ -75,10 +75,10 @@ function VenueForm({
     <div className="rounded-xl border border-ink-200 bg-white p-6 space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-ink-600 mb-1">
+          <label htmlFor="venues-venue-name" className="block text-sm font-medium text-ink-600 mb-1">
             Venue Name <span className="text-red-500">*</span>
           </label>
-          <input
+          <input id="venues-venue-name"
             type="text"
             value={form.name}
             onChange={e => set('name', e.target.value)}
@@ -88,8 +88,8 @@ function VenueForm({
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-ink-600 mb-1">Street Address</label>
-          <input
+          <label htmlFor="venues-street-address" className="block text-sm font-medium text-ink-600 mb-1">Street Address</label>
+          <input id="venues-street-address"
             type="text"
             value={form.address ?? ''}
             onChange={e => set('address', e.target.value || null)}
@@ -99,8 +99,8 @@ function VenueForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">City</label>
-          <input
+          <label htmlFor="venues-city" className="block text-sm font-medium text-ink-600 mb-1">City</label>
+          <input id="venues-city"
             type="text"
             value={form.city ?? ''}
             onChange={e => set('city', e.target.value || null)}
@@ -109,8 +109,8 @@ function VenueForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">State / Province</label>
-          <input
+          <label htmlFor="venues-state-province" className="block text-sm font-medium text-ink-600 mb-1">State / Province</label>
+          <input id="venues-state-province"
             type="text"
             value={form.state ?? ''}
             onChange={e => set('state', e.target.value || null)}
@@ -119,8 +119,8 @@ function VenueForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">Country</label>
-          <input
+          <label htmlFor="venues-country" className="block text-sm font-medium text-ink-600 mb-1">Country</label>
+          <input id="venues-country"
             type="text"
             value={form.country ?? ''}
             onChange={e => set('country', e.target.value || null)}
@@ -129,8 +129,8 @@ function VenueForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">Postal Code</label>
-          <input
+          <label htmlFor="venues-postal-code" className="block text-sm font-medium text-ink-600 mb-1">Postal Code</label>
+          <input id="venues-postal-code"
             type="text"
             value={form.postal_code ?? ''}
             onChange={e => set('postal_code', e.target.value || null)}
@@ -139,11 +139,11 @@ function VenueForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">
+          <label htmlFor="venues-total-capacity-optional" className="block text-sm font-medium text-ink-600 mb-1">
             Total Capacity
             <span className="ml-1 text-xs text-ink-400">Optional</span>
           </label>
-          <input
+          <input id="venues-total-capacity-optional"
             type="number"
             min="1"
             value={form.capacity ?? ''}
@@ -154,8 +154,8 @@ function VenueForm({
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-ink-600 mb-1">Description</label>
-          <textarea
+          <label htmlFor="venues-description" className="block text-sm font-medium text-ink-600 mb-1">Description</label>
+          <textarea id="venues-description"
             rows={3}
             value={form.description ?? ''}
             onChange={e => set('description', e.target.value || null)}
@@ -195,18 +195,28 @@ export function VenuesClient({ venues: initialVenues }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  /*
+   * A refused create or update used to fall through `if (!result.error)` and
+   * change nothing: the form stayed open, no row appeared, and the organiser
+   * was told nothing at all. Same shape as the discount panel, journey 8.
+   */
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
   function handleCreate(input: VenueInput): Promise<void> {
     return new Promise(resolve => {
+      setSaveError(null)
       startTransition(async () => {
         const result = await createVenue(input)
-        if (!result.error && result.venue) {
-          const newVenue: Venue = { ...result.venue as VenueRow, _seat_map_count: 0 }
-          setVenues(prev => [...prev, newVenue])
-          setShowCreate(false)
-          router.refresh()
+        if (result.error || !result.venue) {
+          setSaveError(result.error ?? 'The venue could not be created.')
+          resolve()
+          return
         }
+        const newVenue: Venue = { ...result.venue as VenueRow, _seat_map_count: 0 }
+        setVenues(prev => [...prev, newVenue])
+        setShowCreate(false)
+        router.refresh()
         resolve()
       })
     })
@@ -214,17 +224,21 @@ export function VenuesClient({ venues: initialVenues }: Props) {
 
   function handleUpdate(venueId: string, input: VenueInput): Promise<void> {
     return new Promise(resolve => {
+      setSaveError(null)
       startTransition(async () => {
         const result = await updateVenue(venueId, input)
-        if (!result.error) {
-          setVenues(prev =>
-            prev.map(v =>
-              v.id === venueId ? { ...v, ...input } : v
-            )
-          )
-          setEditingId(null)
-          router.refresh()
+        if (result.error) {
+          setSaveError(result.error)
+          resolve()
+          return
         }
+        setVenues(prev =>
+          prev.map(v =>
+            v.id === venueId ? { ...v, ...input } : v
+          )
+        )
+        setEditingId(null)
+        router.refresh()
         resolve()
       })
     })
@@ -263,6 +277,12 @@ export function VenuesClient({ venues: initialVenues }: Props) {
           </button>
         )}
       </div>
+
+      {saveError && (
+        <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {saveError}
+        </div>
+      )}
 
       {showCreate && (
         <VenueForm

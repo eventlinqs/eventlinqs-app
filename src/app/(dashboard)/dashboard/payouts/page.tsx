@@ -30,6 +30,7 @@ import { outstandingFrom } from '@/lib/stripe/reconcile-connect'
 import { RefundsList } from '@/components/payouts/refunds-list'
 import type { Organisation } from '@/types/database'
 import { jsonAsRecord } from '@/lib/json-narrow'
+import { payoutScheduleDays } from '@/lib/guides/live-values'
 
 export const metadata = {
   title: 'Payouts | EventLinqs Dashboard',
@@ -216,12 +217,14 @@ export default async function PayoutsPage({
     )
   }
 
-  const [summary, terms, schedule, payouts, refunds] = await Promise.all([
+  const [summary, terms, schedule, payouts, refunds, payoutDays] = await Promise.all([
     getOrganiserPayoutSummary(org.id),
     getOrganiserPayoutTerms(org.id),
     getReserveReleaseSchedule(org.id, 30),
     getOrganiserPayouts(org.id, { limit: 20, offset: 0 }),
     getRefundImpact(org.id, { limit: 10, offset: 0 }),
+    // Read live from the one pricing rule, never written down on this page.
+    payoutScheduleDays(),
   ])
 
   return (
@@ -231,6 +234,20 @@ export default async function PayoutsPage({
           <h1 className="text-2xl font-bold text-ink-900">Payouts</h1>
           <p className="mt-1 text-sm text-ink-600">
             Track every payout, reserve release, and refund for {org.name}.
+          </p>
+          {/*
+            WHEN THE MONEY ARRIVES, on the screen, because an organiser who
+            cannot see it assumes it is not coming. Journey 10 found this screen
+            named the organisation, showed Stripe status and linked the Stripe
+            dashboard, and never once said when. The number is READ LIVE from the
+            same pricing rule the payout path and the guides use, never written
+            down here: two screens disagreeing about somebody's money is worse
+            than neither saying anything.
+          */}
+          <p className="mt-1 text-sm text-ink-600">
+            Money for a paid event is released {payoutDays} day{payoutDays === 1 ? '' : 's'} after the event
+            ends, then paid out by Stripe on your account schedule. That window absorbs late refunds and card
+            disputes, so funds are not sent and then clawed back.
           </p>
         </div>
         <StripeDashboardButton

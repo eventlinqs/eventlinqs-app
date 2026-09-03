@@ -1,0 +1,39 @@
+Journey 7: a stranger buys a reserved seat
+==========================================
+01. A stranger opens the seated event
+      HTTP 200 grand-hall-proof-the-full-house
+02. The seated event page
+      URL     /events/grand-hall-proof-the-full-house
+      heading "Grand Hall Proof: The Full House"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Follow | Share | Copy link
+03. Entered the seat map
+      Get tickets
+04. The map is reachable without a mouse
+      role=application tabindex=0 :: Seat map. Arrow keys move seat to seat, Enter selects, plus and minus zoom, Escape rests. 
+05. Walked the first-run coach
+      Next -> Next -> Got it
+06. Took a seat with the keyboard
+      a seat is selected and the CTA is live
+07. The seat the buyer chose
+      Premium Stalls: Row A, Seat 17
+08. Moving to checkout
+      Reserve 1 seat · AUD 149.00
+09. Checkout, holding a seat
+      URL     /checkout/5e3caf8a-10aa-4d2a-a9be-d6f2bb7e92f6?seat=1
+      heading "Order summary"
+      fields  Full name* | Email* | Enter code | Keep me updated by Harbour L | Keep me posted on events in 
+      buttons Apply | Continue to payment - AUD 155.21
+10. Submitted buyer details
+      Continue to payment - AUD 155.21
+11. Payment step, holding a seat
+      URL     /checkout/5e3caf8a-10aa-4d2a-a9be-d6f2bb7e92f6?seat=1
+      heading "Order summary"
+      fields  (none)
+      buttons Pay AUD 155.21
+12. Card entered
+      test card 4242 into the Stripe frame
+13. After paying
+      http://localhost:3311/orders/cdfbf4ff-8216-4c24-96b6-de41a43988d2/confirmation?payment_intent=pi_3U9aCkGqHIQtgS8t01jroO4L&payment_intent_client_secret=pi_3U9aCkGqHIQtgS8t01jroO4L_secret_CS1guGlB9xQfYbnotadPgn3n8&redirect_status=succeeded
+14. THE DATABASE: what the buyer actually owns
+      order confirmed; ticket EL-YSWW-T38A (valid); seat A17

@@ -1,0 +1,4 @@
+Break attempt: an image far over the size limit
+===============================================
+01. Signed up and confirmed
+      oversize.737499@example.com -> /dashboard

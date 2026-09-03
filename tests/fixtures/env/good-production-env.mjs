@@ -53,6 +53,7 @@ export function goodProductionEnv() {
     STRIPE_WEBHOOK_SECRETS: `whsec_${rep('w', 32)},whsec_${rep('x', 32)}`,
 
     CRON_SECRET: rep('c', 64),
+    ORDER_ACCESS_SECRET: rep('o', 64),
     QUEUE_SECRET: rep('q', 64),
 
     RESEND_API_KEY: `re_${rep('r', 24)}`,

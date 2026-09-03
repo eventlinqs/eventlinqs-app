@@ -1,4 +1,6 @@
 import { Resend } from 'resend'
+import { mailTransportReady, resolveMailTransport } from '@/lib/email/transport-ready'
+import { printConsoleEmail } from '@/lib/email/send'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAppUrl } from '@/lib/site-url'
 import { getNoReplyFrom } from '@/lib/email/sender'
@@ -50,16 +52,23 @@ export async function sendPayoutEmail(
   kind: PayoutEmailKind,
   payload: PayoutEmailPayload
 ): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return
+  if (!mailTransportReady(`the ${kind} payout notice for organisation ${organisationId}`)) return
 
   const recipient = await resolveOwnerEmail(adminClient, organisationId)
   if (!recipient) return
 
   const { subject, html } = buildEmail(kind, recipient.organisationName, payload)
 
+  // The console transport, so this path is drivable locally like every other.
+  // The from-address stays getNoReplyFrom(): a payout notice is unattended and
+  // sends as no-reply, which is not the address sendEmail resolves.
+  if (resolveMailTransport() === 'console') {
+    printConsoleEmail({ to: recipient.email, subject, html })
+    return
+  }
+
   try {
-    const resend = new Resend(apiKey)
+    const resend = new Resend(process.env.RESEND_API_KEY as string)
     await resend.emails.send({
       from: getNoReplyFrom(),
       to: recipient.email,

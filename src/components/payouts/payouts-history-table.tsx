@@ -115,7 +115,7 @@ export function PayoutsHistoryTable({ initialPage, organisationId }: PayoutsHist
       </header>
 
       {error && (
-        <p className="mt-4 rounded-lg bg-error/10 px-3 py-2 text-sm text-error" role="alert">
+        <p className="mt-4 rounded-lg bg-error/10 px-3 py-2 text-sm text-error-strong" role="alert">
           {error}
         </p>
       )}
@@ -194,10 +194,10 @@ function PayoutRow({ row }: { row: PayoutListRow }) {
 
 function StatusPill({ status }: { status: PayoutRecordStatus }) {
   const map: Record<PayoutRecordStatus, { label: string; cls: string }> = {
-    pending: { label: 'Pending', cls: 'bg-warning/10 text-warning' },
-    in_transit: { label: 'In transit', cls: 'bg-info/10 text-info' },
-    paid: { label: 'Paid', cls: 'bg-success/10 text-success' },
-    failed: { label: 'Failed', cls: 'bg-error/10 text-error' },
+    pending: { label: 'Pending', cls: 'bg-warning/10 text-ink-900' },
+    in_transit: { label: 'In transit', cls: 'bg-info/10 text-ink-900' },
+    paid: { label: 'Paid', cls: 'bg-success/10 text-ink-900' },
+    failed: { label: 'Failed', cls: 'bg-error/10 text-ink-900' },
     canceled: { label: 'Cancelled', cls: 'bg-ink-100 text-ink-600' },
   }
   const m = map[status]

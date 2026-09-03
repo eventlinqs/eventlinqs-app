@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { checkPublishGate } from '@/lib/events/publish-gate'
 import { isOrganiserSellable, verifyOrgSaleFields } from '@/lib/payments/sale-status'
 
+/** A future end and a real venue, so the date and venue rules never mask the subject of a test. */
+const FUTURE_END = new Date(Date.now() + 7 * 864e5).toISOString()
+
+
 /**
  * PUBLISHING A PAID EVENT AND SELLING A TICKET MUST AGREE.
  *
@@ -23,7 +27,7 @@ import { isOrganiserSellable, verifyOrgSaleFields } from '@/lib/payments/sale-st
  * two predicates agreeing.
  */
 
-const PAID = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: 'https://x/y.jpg' }
+const PAID = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong' }
 
 function clientReturning(row: Record<string, unknown> | null) {
   return {
@@ -101,7 +105,7 @@ describe('the publish gate agrees with the sale gate on every column combination
       stripe_account_country: null,
       payout_status: 'restricted',
     }
-    const free = { organisationId: 'org_1', tiersHavePaid: false, coverImageUrl: 'https://x/y.jpg' }
+    const free = { organisationId: 'org_1', tiersHavePaid: false, coverImageUrl: 'https://x/y.jpg', endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong' }
     const result = await checkPublishGate(clientReturning(worst), free, null)
     expect(result.ok).toBe(true)
   })
@@ -115,7 +119,7 @@ describe('the publish gate agrees with the sale gate on every column combination
       stripe_account_country: 'AU',
       payout_status: 'active',
     }
-    const noCover = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: null }
+    const noCover = { organisationId: 'org_1', tiersHavePaid: true, coverImageUrl: null, endsAt: FUTURE_END, isPhysical: true, venueName: 'The Wool Exchange', venueAddress: '44 Moorabool St, Geelong' }
     const result = await checkPublishGate(clientReturning(sellable), noCover, null)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.reason).toBe('cover_image_required')

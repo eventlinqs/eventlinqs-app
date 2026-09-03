@@ -75,6 +75,7 @@ export function ReportControl({
             ))}
           </select>
           <textarea
+            aria-label="Anything that helps us act, optional"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={2}

@@ -44,8 +44,11 @@ console.error(
   `\n[disk] BUILD BLOCKED: only ${freeGb.toFixed(1)} GB free, below the ${MIN_FREE_GB} GB floor.\n\n` +
     `  A build under this will fail mid-compile ("not enough space", os error 112) and leave\n` +
     `  broken routes that look like code bugs. Reclaim regenerable space first:\n\n` +
-    `      npm run reclaim          (clears build caches + package caches)\n` +
-    `      npm run reclaim -- --deep  (also clears sibling worktrees' node_modules)\n\n` +
+    `      npm run reclaim          (this worktree's build caches + package caches)\n` +
+    `      npm run reclaim -- --deep  (also THIS worktree's node_modules, costs one npm ci)\n\n` +
+    `  Neither touches another worktree. If reclaim frees little, the space is not\n` +
+    `  build output: check docs/ (sparse-checkout it out of worktrees that do not\n` +
+    `  read it) and the Windows Update cache, which needs an elevated shell.\n\n` +
     `  Then re-run the build. Emergency bypass (not recommended): ALLOW_LOW_DISK=1.\n`,
 )
 process.exit(1)

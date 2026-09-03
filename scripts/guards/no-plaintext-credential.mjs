@@ -70,6 +70,14 @@ const JWT = /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g
  * every entry carries a reason.
  */
 export const REVIEWED = {
+  'src/lib/orders/order-access.ts':
+    'DEV_FALLBACK_SECRET is a deliberate dev-only constant, the same shape as the one ' +
+    'in src/lib/queue/tokens.ts and reviewed the same way. resolveSecret() returns null ' +
+    'in production when ORDER_ACCESS_SECRET is absent, so the fallback is unreachable ' +
+    'there, and the module both refuses to MINT and refuses to HONOUR a token in that ' +
+    'state. The attack it would otherwise enable is written into the file: with this ' +
+    'constant reachable in production anyone could mint a token for any order id and ' +
+    'read that buyer tickets. Verified by reading resolveSecret, not assumed.',
   'src/lib/queue/tokens.ts':
     'DEV_FALLBACK_SECRET is a deliberate dev-only constant. resolveSecret() returns ' +
     'null in production when QUEUE_SECRET is absent, so the fallback is unreachable ' +

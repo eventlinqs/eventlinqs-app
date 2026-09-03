@@ -70,7 +70,7 @@ export default async function PerformerDirectoryPage({
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
-      <main id="main-content" className="flex-1">
+      <main className="flex-1">
         <MarketplaceHero
           eyebrow="Performers"
           title="Talent with the numbers to prove it"

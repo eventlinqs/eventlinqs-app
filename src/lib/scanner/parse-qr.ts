@@ -1,8 +1,31 @@
 export type ParsedScan = { ticketCode: string; secret: string }
 
-// Ticket codes are EL-XXXX-XXXX over a Crockford-ish alphabet (no I/O/0/1),
-// matching gen_ticket_code() in the ticketing migration.
-const TICKET_CODE_RE = /^EL-[ABCDEFGHJKLMNPQRSTVWXYZ23456789]{4}-[ABCDEFGHJKLMNPQRSTVWXYZ23456789]{4}$/
+/*
+ * THE DOOR MUST ACCEPT EVERY CODE THE DATABASE CAN ISSUE.
+ *
+ * This alphabet is a COPY of gen_ticket_code() in
+ * supabase/migrations/20260517000001_ticketing_system_v1.sql:170:
+ *
+ *     alphabet CONSTANT TEXT := '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+ *
+ * FOUND 3 September 2026 by driving journey 6. The two had DRIFTED. The
+ * generator emits U; this regex did not accept it, and it accepted L, which the
+ * generator never emits. The consequence was not cosmetic:
+ *
+ *   measured on 128 real tickets, 30 of them, 23.4 percent, could not be
+ *   admitted at the door AT ALL. The only offending character was U.
+ *
+ * It failed on BOTH paths, because parseScan and parseManual share isValidPair,
+ * so scanning the QR was refused exactly like typing the code by hand. Roughly
+ * one ticket holder in four would have been turned away holding a valid ticket,
+ * and the door would have told them their code was invalid.
+ *
+ * The generator is authoritative because codes are already issued and cannot be
+ * reissued, so this side is the side that moves. If the alphabet ever changes,
+ * change it there and here together: tests/unit/scanner/ticket-code-alphabet.test.ts
+ * fails when they disagree.
+ */
+const TICKET_CODE_RE = /^EL-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}$/
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function normaliseCode(code: string): string {

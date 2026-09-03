@@ -124,7 +124,33 @@ async function readCache(key: string): Promise<boolean | null> {
     const raw = await redis.get<boolean | string>(key)
     if (raw === null || raw === undefined) return null
     if (typeof raw === 'boolean') return raw
-    return raw === 'true'
+    if (raw === 'true') return true
+    if (raw === 'false') return false
+    /*
+     * A VALUE THIS READER DOES NOT RECOGNISE MEANS "I DO NOT KNOW", NOT "OFF".
+     *
+     * This line used to be `return raw === 'true'`, which collapsed EVERY
+     * unrecognised value to false and returned it as a decision, without ever
+     * asking the database. So the cache could switch a feature OFF on its own,
+     * silently, with nothing logged and the row in feature_flags still saying
+     * ON.
+     *
+     * That is not theoretical. On 29 August 2026, driving the Launch Kit,
+     * /api/organiser/events/[id]/poster answered 404 feature_off on three runs
+     * out of four while both the database row AND the cached value read as
+     * true. Deleting the cache key before each request made it 200 four times
+     * out of four. The organiser's printable A4 poster, which is the artefact
+     * this platform is sold on, was being switched off by its own cache.
+     *
+     * Note the asymmetry this removes. A database ERROR already falls back to
+     * BROADCAST_FLAG_DEFAULTS, which for broadcast_share is ON. So the two
+     * failure paths for the same question had OPPOSITE postures: an unreachable
+     * database left the feature on, and an unrecognised cache value turned it
+     * off. Returning null here routes an unknown cache value down the same path
+     * as a cache miss, which is the only honest answer: the cache is an
+     * optimisation and must never be able to decide a feature is off.
+     */
+    return null
   } catch {
     return null
   }

@@ -98,7 +98,7 @@ const ORGS = {
     id: '22222222-2222-4222-8222-222222222208',
     name: 'Auckland Community Alliance',
     slug: 'auckland-community-alliance',
-    description: 'Multicommunity collective producing community festivals, art exhibitions, and community events across Aotearoa.',
+    description: 'Community-led collective producing community festivals, art exhibitions, and community events across Aotearoa.',
   },
 }
 

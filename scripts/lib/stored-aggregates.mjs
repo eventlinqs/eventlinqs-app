@@ -93,6 +93,18 @@ export const STORED_AGGREGATES = [
    * TRIGGER ON THE RELEASE PATH, DB FUNCTION ON THE ACQUIRE PATH.
    * ------------------------------------------------------------------ */
   {
+    column: 'discount_codes.reserved_uses',
+    summarises: 'public.discount_code_claims',
+    maintenance: 'application',
+    maintainedBy:
+      'claim_discount_use increments it under the discount row lock; release_discount_claim and convert_discount_claim each decrement it, and BOTH are gated on a DELETE ... RETURNING from discount_code_claims so a release with nothing held is a no-op; release_expired_discount_claims sweeps holds whose reservation is no longer active, called by the reservation-expire cron beside release_expired_seat_reservations (migration 20260829000003).',
+    reconciled: true,
+    caveat:
+      'It is derivable exactly: reserved_uses must equal the number of discount_code_claims rows for that code. The claims table is the source and the counter is the cache, so a drift is always the counter being wrong, never the table.',
+    decision:
+      'Added 29 August 2026 to close a money hole that 20260829000001 did not: current_uses only moves after an order is CONFIRMED, so two buyers who both read it as available were both GRANTED the discount and only one advanced the counter. The counter was bounded; the money was not, and for guests it was unbounded entirely because there is no user_id to count against. reserved_uses makes the cap current_uses + reserved_uses, which is the same sold_count + reserved_count shape the seat inventory already uses, so the hold refuses the next buyer BEFORE anybody has paid. Driven by scripts/verify/discount-claim-drive.mjs: eight simultaneous buyers at one remaining use, one winner.',
+  },
+  {
     column: 'ticket_tiers.reserved_count',
     summarises: 'public.reservations',
     maintenance: 'application',

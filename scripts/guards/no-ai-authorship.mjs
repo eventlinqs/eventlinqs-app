@@ -68,7 +68,23 @@ const EFFECTIVE_FROM = '579e3a6011f5cb27ccaa9da37f7134959b2dca83'
  * silently stops examining its own oldest commits. That is enforcement which is
  * not happening, reported as enforcement which is.
  */
-const WINDOW = 200
+/*
+ * RAISED from 200 to 400 on 2 September 2026, because the scope reached 201 and
+ * the guard did exactly what the paragraph above promises: it FAILED rather than
+ * quietly inspecting the newest 200 and reporting a pass it had not earned. The
+ * build went red on a launch branch and named its own reason, which is the design
+ * working, not a defect in it.
+ *
+ * The number is a BOUND on how far back the guard must be able to see, not a
+ * threshold with any meaning of its own, so the correct response to outgrowing it
+ * is to raise it rather than to narrow what is checked. 400 is roughly double the
+ * present scope, which buys headroom without pretending the ceiling is gone: this
+ * WILL need raising again, and when it does the failure will say so in one line.
+ *
+ * It disappears entirely with EFFECTIVE_FROM on the day the authorship history
+ * rewrite lands (docs/roast/AUTHORSHIP-HISTORY-REWRITE.md).
+ */
+const WINDOW = 400
 
 /**
  * Commits that carry a trailer, were INHERITED from another branch rather than
@@ -86,6 +102,22 @@ const WINDOW = 200
  * the ledger stays visible until the authorised rewrite clears it.
  */
 const INHERITED_DEFERRED = new Map([
+  [
+    '9cf7d3651f0d3b24ea4750d35f4eb378210a9d22',
+    'origin/main tip: "Integration/launch (#121)", squash-merged by GitHub on\n' +
+      '      28 August 2026 and CURRENTLY DEPLOYED TO PRODUCTION. Same shape and same\n' +
+      '      ruling as the two below: the committer is GitHub, the trailer was\n' +
+      "      aggregated by the squash from constituent commits, and it is main's\n" +
+      '      history rather than work written on this branch. It entered here by\n' +
+      '      merging main on 29 August.\n' +
+      '      REMOVING IT WOULD REWRITE MAIN, which is not authorised and which would\n' +
+      '      invalidate the sha production is running.\n' +
+      '      THIS IS THE FOURTH SQUASH TO DO THIS. The previous entry predicted the\n' +
+      '      third would be the last because the branch would be recreated from main;\n' +
+      '      it was not recreated, and the debt recurred exactly as written. The cut\n' +
+      '      is now a standing item in docs/roast/AUTHORSHIP-HISTORY-REWRITE.md.\n' +
+      '      Founder ruling 2026-08-12 (R-LAW8-DEBT). Clears with the rewrite.',
+  ],
   [
     '8663a4ded01a83b7eff002884604a96ae00d2a0a',
     'origin/main tip: "Refund result, the lockdown 404, and the types drift (#120)",\n' +

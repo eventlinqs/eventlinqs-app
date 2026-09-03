@@ -56,6 +56,8 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { normaliseEol } from './lib/source.mjs'
+
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
 
@@ -73,7 +75,10 @@ function read(rel) {
     fail(`${rel} does not exist; this guard cannot check a file that is not there`)
     return ''
   }
-  return readFileSync(p, 'utf8')
+  // normaliseEol, not a bare read: this guard's structural patterns carry a
+  // literal `\{\n`, which matches nothing on a CRLF working tree. See the note
+  // on normaliseEol in lib/source.mjs.
+  return normaliseEol(readFileSync(p, 'utf8'))
 }
 
 /**

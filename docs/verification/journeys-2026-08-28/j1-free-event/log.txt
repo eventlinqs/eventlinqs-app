@@ -1,0 +1,81 @@
+Journey 1: solo organiser, free event, no Stripe
+================================================
+01. Signed up
+      jo.free.629351@example.com -> /verify-email-sent
+02. Confirmed, signed in
+      URL     /dashboard
+      heading "Good afternoon, Jo"
+      fields  Search
+      buttons JHJo | Collapse
+03. Organisation step
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Organisation Name ** | URL Slug ** | Description | Website | Contact Email | Phone
+      buttons JHJo | Collapse | Continue to event details
+04. Category options offered
+      23 options; chose "Arts"
+05. Wizard step 3
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Venue Name | Address | City | State / Region | Country | Postal Code
+      buttons JHJo | Collapse | in person | virtual | hybrid | Back | Continue
+06. Wizard step 4
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Event videoOptional. One lin
+      buttons JHJo | Collapse | Make a cover | Back | Continue
+07. Made a cover through the platform
+      images on the step: 1 after 3s
+      requests: 200 POST /api/auth/signup
+      shown to the person: NOTHING AT ALL
+08. After making a cover
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Event videoOptional. One lin
+      buttons JHJo | Collapse | Make another | Use this cover | Keep what I have | Back | Continue
+09. Accepted the cover
+      clicked Use this cover
+10. Wizard step 5
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Name | Type | Price | Ticket price for tier 1 | Total Capacity | Sale Starts | Sale Ends | Min per Order | Max per Order
+      buttons JHJo | Collapse | Add Ticket Tier | Back | Continue
+11. Set the ticket type
+      Free
+12. Wizard step 6
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | PublicListed on EventLinqs a | PrivateOnly visible to invit | UnlistedAccessible via direc | Age restriction applies | Max Event CapacityOptional -
+      buttons JHJo | Collapse | Back | Continue
+13. Wizard step 7
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search
+      buttons JHJo | Collapse | Save as Draft | Publish and get your launch kit | Back
+14. Wizard step 8
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search
+      buttons JHJo | Collapse | Save as Draft | Publish and get your launch kit | Back
+15. The wizard stopped advancing here
+      no Continue button found
+      browser says invalid: (nothing)
+      shown to the person : NOTHING AT ALL
+      aria-invalid marked : (none)
+      fields on this step : search|req=false|value=
+      the step, in words  : ← My Events Create Event Step 7 of 7 Review & Publish Review & Publish BASIC DETAILS Geelong Community Night 629351 A free community night, everyone welcome. DATE & TIME 18 Sept 2026, 5:07 am → 18 Sept 2026, 8:07 am Australia/Melbourne LOCATION In Person TICKETS 1 tier · 100 total capacity Free event MEDIA Cover set SETTINGS Public Publishing delivers your launch kit: your live page link, a print-ready QR poster, share cards and captions for every channel, and the tickets each channel sold you, all on one screen. Playing with other acts? Tag them on your lineup on the next screen. Each act gets their own tracked share link and their own spot on your event page, so they sell to their following and you see exactly how many tickets each one brought. Save as Draft Publish and get your launch kit Back
+16. The Publish button
+      disabled=false  cover made=true
+17. After Publish
+      URL     /dashboard/events/fe98b109-e018-4b3d-a425-ddc07e19186b/launch-kit?published=1
+      heading "Geelong Community Night 629351 is live."
+      fields  Search | Add an act
+      buttons JHJo | Collapse | Copy link | InstagramInstagram | Copy link | Copy caption | Copy caption | Copy caption | Copy caption
+18. What Publish actually did
+      landed on /dashboard/events/fe98b109-e018-4b3d-a425-ddc07e19186b/launch-kit?published=1
+      API calls it made: NONE AT ALL
+      shown to the person: NOTHING AT ALL
+19. The event is live
+      /dashboard/events/fe98b109-e018-4b3d-a425-ddc07e19186b/launch-kit?published=1
+20. A signed-out stranger searches for the event
+      HTTP 200  found on /events: true

@@ -2,7 +2,7 @@
    itself inside an ImageResponse; next/image is a browser-side component and
    has no meaning here. The shipped link card at
    src/app/events/[slug]/opengraph-image.tsx carries the same exemption. */
-import { ImageResponse } from 'next/og'
+import { renderCardPng } from '@/lib/broadcast/card-raster'
 import { BODY_FAMILY, DISPLAY_FAMILY, loadCardFonts } from '@/lib/broadcast/card-fonts'
 import { bodyTextMeasurer, displayTextMeasurer } from '@/lib/broadcast/card-metrics'
 import { printableHost } from '@/lib/site-url'
@@ -879,12 +879,19 @@ function BandedCard({ input, format }: { input: SocialCardInput; format: SocialC
  * publish, and it is what an organiser on a phone can actually upload at
  * eleven at night.
  */
-export async function renderSocialCard(
+/**
+ * The composition, as a tree, before anything rasterises it.
+ *
+ * EXTRACTED so the parity check can render the SAME element through both
+ * rasterisers. Rebuilding the tree in the test would compare the new path
+ * against a COPY of the composition, and a copy that drifted would let a real
+ * layout change pass as identical, which is precisely what the check exists to
+ * prevent.
+ */
+export async function buildCardElement(
   format: SocialCardFormat,
   input: SocialCardInput,
-): Promise<Uint8Array> {
-  const spec = SOCIAL_CARD_FORMATS[format]
-  const fonts = await loadCardFonts()
+): Promise<React.ReactElement> {
   // Warm both measurers before the (synchronous) tree is built, so the ticket
   // bar and the fitted headline are measured against real glyph widths rather
   // than an average. The display face is only needed by the artwork-free
@@ -892,24 +899,48 @@ export async function renderSocialCard(
   const [body, display] = await Promise.all([bodyTextMeasurer(), displayTextMeasurer()])
   measureBody = body
 
-  const element = !input.cover
+  return !input.cover
     ? TypographicCard({ input, format, measureDisplay: display })
     : format === 'story'
       ? StoryCard({ input })
       : BandedCard({ input, format })
+}
 
-  const response = new ImageResponse(element, {
-    width: spec.width,
-    height: spec.height,
-    fonts: fonts.map(font => ({
-      name: font.name,
-      data: font.data,
-      weight: font.weight,
-      style: font.style,
-    })),
-  })
+export async function renderSocialCard(
+  format: SocialCardFormat,
+  input: SocialCardInput,
+): Promise<Uint8Array> {
+  const spec = SOCIAL_CARD_FORMATS[format]
+  const fonts = await loadCardFonts()
+  const element = await buildCardElement(format, input)
 
-  const png = Buffer.from(await response.arrayBuffer())
+  /*
+   * RASTERISED BY US, THROUGH resvg, SINCE 29 AUGUST 2026.
+   *
+   * This was `new ImageResponse(...)` from next/og. ImageResponse rasterises by
+   * handing satori's SVG to SHARP, and inside the Next server runtime that sharp
+   * cannot decode SVG at all while its own format table reports that it can. All
+   * eighteen card downloads answered 500 with a zero-byte body because of it.
+   *
+   * The composition above is UNCHANGED: same element, same fonts, same sizes.
+   * Only the step that turns the SVG into pixels moved, to WebAssembly, which
+   * has no native decoder to be missing in one runtime and present in another.
+   * The full diagnosis is docs/verification/SOCIAL-CARD-500-ROOT-CAUSE.md, and
+   * scripts/verify/card-raster-parity.mjs proves the two paths agree pixel for
+   * pixel.
+   */
+  const png = Buffer.from(
+    await renderCardPng(element, {
+      width: spec.width,
+      height: spec.height,
+      fonts: fonts.map(font => ({
+        name: font.name,
+        data: font.data,
+        weight: font.weight,
+        style: font.style,
+      })),
+    }),
+  )
   const { default: sharp } = await import('sharp')
   const jpeg = await sharp(png).jpeg({ quality: 90, chromaSubsampling: '4:4:4' }).toBuffer()
 

@@ -9,6 +9,7 @@ import { senderDomainsInUse } from '@/lib/email/send'
 import { CRITICAL_ENV_RULES, evalEnvRule } from '@/lib/health/critical-env.mjs'
 import { evaluateProcessEnv, evaluateStores } from '@/lib/env/manifest-checks.mjs'
 import { githubActionsNames } from '@/lib/env/manifest.mjs'
+import { mintOrderAccessToken, verifyOrderAccessToken } from '@/lib/orders/order-access'
 
 /**
  * PLATFORM HEALTH SENTINEL - the check library.
@@ -349,6 +350,187 @@ async function checkSslDomain(origin: string): Promise<HealthResult> {
 // var that EXISTS but is EMPTY (or malformed), which passes naive presence
 // checks and errors nowhere - the empty NEXT_PUBLIC_GOOGLE_MAPS_API_KEY that
 // silently killed every map. Uses the same rules as the build-time guard.
+/**
+ * GUEST ORDER LINKS: can this deployment actually issue one?
+ *
+ * NOT a config read. Reading that ORDER_ACCESS_SECRET is "set" proves nothing
+ * about whether a link gets minted: an empty string, a stray quote or a value
+ * on the wrong scope all read as present and all mint nothing. So this does the
+ * real round trip through the real module - mint a token, verify it, and verify
+ * that a token minted for a DIFFERENT order is rejected - and reports the
+ * outcome. A guest who never receives a working link cannot reach their own
+ * tickets, their transfer, or their refund.
+ *
+ * IT DISCLOSES NOTHING. The two order ids are fixed, non-existent probe
+ * constants, so a token for them opens no order that exists, and the token
+ * itself is never put in the result.
+ */
+const ORDER_ACCESS_PROBE_A = '00000000-0000-4000-8000-00000000feed'
+const ORDER_ACCESS_PROBE_B = '00000000-0000-4000-8000-00000000beef'
+
+/**
+ * CAN THIS DEPLOYMENT ACTUALLY TURN A CARD INTO PIXELS? Probed, never read.
+ *
+ * WHY THIS EXISTS, 29 August 2026. Every social card download answered 500 with
+ * a zero-byte body, because next/og rasterises by handing satori's SVG to sharp
+ * and sharp inside the Next server runtime CANNOT DECODE SVG. The decisive
+ * measurement, taken from inside the running server:
+ *
+ *     svgInput:      {"file":true,"buffer":true,...}   <- sharp SAYS it can
+ *     svgRoundTrip:  FAILED: Input buffer contains unsupported image format
+ *
+ * on an 8x8 red rectangle. sharp.format.svg.input is STATIC METADATA compiled
+ * into the package, not a live probe of the loaded libvips, and in that runtime
+ * it was simply lying. Every proof we had that the image pipeline worked came
+ * from vitest, which is a different process with a different module resolution,
+ * so nothing anywhere would have caught it.
+ *
+ * THAT IS THE CLASS, and it is why this check reads nothing and proves
+ * everything: it round-trips REAL BYTES through the REAL library in the REAL
+ * runtime, on every sentinel run.
+ *
+ *   PNG decode   the organiser upload path and the card JPEG step both need it
+ *   JPEG encode  every card and every processed cover is written as one
+ *   card raster  satori plus resvg, the actual artefact path, end to end
+ *
+ * A declared capability is a promise. A round trip is evidence. Where the two
+ * disagree, only one of them is visible to an organiser.
+ */
+async function checkImagePipeline(): Promise<HealthResult> {
+  const base = {
+    id: 'image_pipeline',
+    label: 'Image pipeline (decode, encode, card raster)',
+    severity: 'critical' as Severity,
+  }
+
+  try {
+    const { default: sharp } = await import('sharp')
+
+    // A real 1x1 PNG, decoded and re-encoded as JPEG. Not a capability flag.
+    const png = await sharp({
+      create: { width: 8, height: 8, channels: 3, background: { r: 220, g: 180, b: 60 } },
+    })
+      .png()
+      .toBuffer()
+    const meta = await sharp(png).metadata()
+    if (meta.format !== 'png' || meta.width !== 8) {
+      return {
+        ...base,
+        ok: false,
+        detail: `sharp did not read back a PNG it had just written (got ${meta.format} ${meta.width}x${meta.height}).`,
+        probableCause: 'The native libvips in this runtime is not the one the package expects.',
+        action: 'Redeploy. If it persists, the sharp binary for this platform is broken and organiser uploads are also affected.',
+      }
+    }
+    const jpeg = await sharp(png).jpeg({ quality: 90 }).toBuffer()
+    if (jpeg.byteLength === 0) {
+      return {
+        ...base,
+        ok: false,
+        detail: 'sharp produced a zero-byte JPEG, so no card and no processed cover can be written.',
+        action: 'Redeploy and re-run this check.',
+      }
+    }
+
+    // The artefact path itself: satori composes, resvg rasterises. This is the
+    // exact call the card routes make, so a failure here IS the card failing.
+    //
+    // THE FONTS ARE NOT OPTIONAL. This probe passed `fonts: []` until
+    // 2026-09-02, and satori refuses to lay out anything without at least one
+    // face, so this CRITICAL check reported "The image pipeline threw in this
+    // runtime: No fonts are loaded" on every single run, in every environment,
+    // and could never once have gone green. A check that is permanently red is
+    // worse than no check: it trains the reader to ignore the one alert that
+    // would have told them the social cards were genuinely down.
+    const { renderCardPng } = await import('@/lib/broadcast/card-raster')
+    const { loadCardFonts } = await import('@/lib/broadcast/card-fonts')
+    const probeFonts = await loadCardFonts()
+    const probe = await renderCardPng(
+      {
+        type: 'div',
+        props: {
+          style: { display: 'flex', width: 32, height: 32, background: '#0A1628' },
+          children: '',
+        },
+      } as unknown as React.ReactNode,
+      {
+        width: 32,
+        height: 32,
+        fonts: probeFonts.map(font => ({
+          name: font.name,
+          data: font.data,
+          weight: font.weight,
+          style: font.style,
+        })),
+      },
+    )
+    if (!probe || probe.byteLength === 0) {
+      return {
+        ...base,
+        ok: false,
+        detail: 'The card rasteriser produced no bytes, so every social card download would answer 500.',
+        probableCause: 'resvg-wasm failed to initialise in this runtime.',
+        action: 'Check the deployment logs for a wasm initialisation error and redeploy.',
+      }
+    }
+
+    return {
+      ...base,
+      ok: true,
+      detail: `Proved by round trip, not by a capability flag: PNG decoded (${meta.width}x${meta.height}), JPEG encoded (${jpeg.byteLength} bytes), card rasterised (${probe.byteLength} bytes).`,
+    }
+  } catch (error) {
+    return {
+      ...base,
+      ok: false,
+      detail: `The image pipeline threw in this runtime: ${error instanceof Error ? error.message : String(error)}`,
+      probableCause:
+        'A native decoder is unavailable here even if the package reports otherwise. This is the shape that broke every social card download on 29 August 2026.',
+      action: 'Read docs/verification/SOCIAL-CARD-500-ROOT-CAUSE.md, then redeploy.',
+    }
+  }
+}
+
+async function checkOrderAccess(): Promise<HealthResult> {
+  const base = {
+    id: 'order_access',
+    label: 'Guest order links',
+    severity: 'critical' as Severity,
+  }
+
+  const token = mintOrderAccessToken(ORDER_ACCESS_PROBE_A)
+  if (!token) {
+    return {
+      ...base,
+      ok: false,
+      detail: 'This deployment cannot issue a guest order link. A buyer who checks out without an account gets a confirmation email with no way back to their tickets, transfer, or refund.',
+      probableCause: 'ORDER_ACCESS_SECRET is missing or empty on this scope. It fails closed on purpose rather than falling back to the public dev constant, which would let anyone open any order by guessing an id.',
+      action: 'Set ORDER_ACCESS_SECRET on Production in Vercel (32+ chars, sensitive), then redeploy so the running functions pick it up.',
+    }
+  }
+
+  const honoursItsOwn = verifyOrderAccessToken(ORDER_ACCESS_PROBE_A, token)
+  const rejectsAnother = !verifyOrderAccessToken(ORDER_ACCESS_PROBE_B, token)
+
+  if (!honoursItsOwn || !rejectsAnother) {
+    return {
+      ...base,
+      ok: false,
+      detail: !honoursItsOwn
+        ? 'A link this deployment mints is not honoured by the same deployment, so every guest link would dead-end.'
+        : 'A link minted for one order opened a different order. Guest links are not scoped and must be treated as a live exposure.',
+      probableCause: 'The signing secret changed between minting and verifying, or the token scope binding is broken.',
+      action: 'Stop issuing guest links and page the founder: rotate ORDER_ACCESS_SECRET, which invalidates every outstanding link at once.',
+    }
+  }
+
+  return {
+    ...base,
+    ok: true,
+    detail: `Guest order links are issuable and honoured: a minted token verified against its own order and was refused for another (token length ${token.length}).`,
+  }
+}
+
 async function checkEnvVars(): Promise<HealthResult> {
   const results = CRITICAL_ENV_RULES.map(r => evalEnvRule(r, process.env as Record<string, string | undefined>))
   const bad = results.filter(r => !r.ok)
@@ -501,7 +683,7 @@ async function checkManifestAgainstStore(): Promise<{ mode: string; findings: st
   }
 }
 
-export const CHECK_IDS = ['payment', 'connect_profile', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest'] as const
+export const CHECK_IDS = ['payment', 'connect_profile', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest', 'order_access'] as const
 export type CheckId = (typeof CHECK_IDS)[number]
 
 /**
@@ -526,6 +708,8 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
     timed('ssl', () => checkSslDomain(origin)),
     timed('env', () => checkEnvVars()),
     timed('manifest', () => checkEnvManifest()),
+    timed('order_access', () => checkOrderAccess()),
+    timed('image_pipeline', () => checkImagePipeline()),
   ])
 
   if (!drill) return results

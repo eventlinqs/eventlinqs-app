@@ -170,6 +170,28 @@ function consoleTransportRefusalReason(): string | null {
   return null
 }
 
+
+/**
+ * The console transport's output, exported so the two senders that build their
+ * own Resend client (the ticket confirmation, which attaches inline QR images,
+ * and the payout notice, which sends as a different from-address) can be driven
+ * locally through the SAME format rather than each growing its own.
+ *
+ * Extracted 29 August 2026: those two senders returned early on a missing
+ * RESEND_API_KEY, above this transport, which is why the buyer's ticket email
+ * had never once been observed.
+ */
+export function printConsoleEmail(input: { to: string; subject: string; html?: string }): void {
+  const links = [...String(input.html ?? '').matchAll(/https?:\/\/[^"'\s<>]+/g)]
+    .map((m) => m[0])
+    .filter((u) => /confirm|token|ticket|order|verify|reset/i.test(u))
+  console.log('[email:console] ---------------------------------------------')
+  console.log(`[email:console] to      ${input.to}`)
+  console.log(`[email:console] subject ${input.subject}`)
+  for (const l of links.slice(0, 5)) console.log(`[email:console] link    ${l}`)
+  console.log('[email:console] ---------------------------------------------')
+}
+
 export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> {
   // Single source: resolveFrom() delegates to sender.ts, so the health check
   // and the sender can never disagree about who this platform sends as.
@@ -184,14 +206,7 @@ export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> 
           'anywhere near production would swallow real mail.',
       )
     }
-    const links = [...String(input.html ?? '').matchAll(/https?:\/\/[^"'\s<>]+/g)]
-      .map((m) => m[0])
-      .filter((u) => /confirm|token|ticket|order|verify|reset/i.test(u))
-    console.log('[email:console] ---------------------------------------------')
-    console.log(`[email:console] to      ${input.to}`)
-    console.log(`[email:console] subject ${input.subject}`)
-    for (const l of links.slice(0, 5)) console.log(`[email:console] link    ${l}`)
-    console.log('[email:console] ---------------------------------------------')
+    printConsoleEmail({ to: input.to, subject: input.subject, html: input.html })
     return { id: `console-${Date.now()}` }
   }
 

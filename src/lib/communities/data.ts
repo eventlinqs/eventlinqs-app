@@ -442,7 +442,7 @@ const COMMUNITIES: Record<CommunitySlug, CommunityContent> = {
     tagline: 'Sagra, festa, opera: la dolce vita.',
     heroHeadline: 'Italian community, every season.',
     heroBody:
-      'Sagra food festivals, festa saint-day celebrations, opera nights, Italian film, regional clubs and long-table dinners. A founding thread of multicommunity Australia.',
+      'Sagra food festivals, festa saint-day celebrations, opera nights, Italian film, regional clubs and long-table dinners. A founding thread of modern Australia.',
     storyParagraphs: [
       "Where Palermo meets Carlton under the same long table. Where the sagra runs three days, the band starts after the pasta, and someone's nonna is still bringing out more food at midnight. Italian events are saint-day feste with food that takes a year to plan, sagra food festivals, opera and tarantella nights, Italian film seasons, and regional club dinners. Italian is one of Australia largest ancestries and oldest community calendars.",
       'EventLinqs supports long-table communal dinners with set seating, festival multi-day passes, family bundles, and transparent fees.',

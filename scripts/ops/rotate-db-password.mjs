@@ -38,6 +38,8 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const VAR = 'SUPABASE_DB_PASSWORD_SYDNEY'
 const DRY_RUN = process.argv.includes('--dry-run')
@@ -183,7 +185,20 @@ if (DRY_RUN) {
  */
 console.log('')
 console.log('verifying from each checkout:')
-const verifier = 'scripts/verify/db-password-rotation.mjs'
+/*
+ * THE VERIFIER IS RESOLVED ABSOLUTELY, from this checkout.
+ *
+ * It used to be the relative path 'scripts/verify/db-password-rotation.mjs',
+ * looked for inside each target checkout. Three of the four do not carry it, so
+ * all four were SKIPPED, `verified` stayed 0, and the script printed
+ * "PASS: 0 checkout(s) authenticate". Zero verifications reported as a pass is
+ * the exact class this repository has spent the week removing, and it appeared
+ * inside the script written to close it.
+ *
+ * One verifier, run with its cwd set to each checkout, so credential resolution
+ * still happens from that directory while the code comes from here.
+ */
+const verifier = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'verify', 'db-password-rotation.mjs')
 let verified = 0
 const failedAt = []
 
@@ -191,8 +206,9 @@ for (const file of TARGETS) {
   const cwd = file.replace(/\/\.env\.local$/, '')
   const label = cwd.replace('C:/Users/61416/OneDrive/Desktop/EventLinqs/', '')
 
-  if (!existsSync(`${cwd}/${verifier}`)) {
-    console.log(`  skip     ${label}  no ${verifier} in this checkout`)
+  if (!existsSync(cwd)) {
+    console.log(`  MISSING  ${label}  the checkout directory does not exist`)
+    failedAt.push(label)
     continue
   }
 
@@ -218,6 +234,23 @@ for (const file of TARGETS) {
 }
 
 console.log('')
+console.log(`did ${verified + failedAt.length} checkout(s) verified, ${verified} authenticated`)
+
+/*
+ * ZERO IS A FAILURE. A rotation that verified nothing has proved nothing, and
+ * saying PASS for it is worse than saying nothing at all: it ends the job.
+ */
+if (verified === 0) {
+  console.error('FAIL: NOT ONE checkout was verified. The rotation is unproven.')
+  console.error('A run that verifies nothing has not passed; it has not looked.')
+  process.exit(1)
+}
+
+if (verified !== TARGETS.length) {
+  console.error(`FAIL: ${verified} of ${TARGETS.length} checkouts verified. Every copy must be proven.`)
+  process.exit(1)
+}
+
 if (failedAt.length > 0) {
   console.error(`FAIL: ${failedAt.length} checkout(s) do not authenticate: ${failedAt.join(', ')}`)
   console.error('The rotation is INCOMPLETE. A stale copy produces 28P01 from a script')

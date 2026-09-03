@@ -11,7 +11,16 @@ interface Props {
   className?: string
 }
 
-const TRIGGER_DOM_ID = 'header-search-trigger'
+/**
+ * Both variants render on every page (the desktop pill is hidden until State B,
+ * the mobile icon is hidden above the breakpoint), so a single shared id put a
+ * DUPLICATE id in the document on every page of the platform, and made the
+ * overlay's level-3 focus-restore fallback resolve to whichever came first in
+ * the DOM rather than to the one the user actually pressed. One id per variant.
+ */
+const TRIGGER_DOM_ID_PREFIX = 'header-search-trigger'
+const triggerDomId = (variant: Props['variant']) =>
+  `${TRIGGER_DOM_ID_PREFIX}-${variant === 'desktop-pill' ? 'desktop' : 'mobile'}`
 
 /**
  * HeaderSearchTrigger - opens the global search overlay (Batch 9.1).
@@ -55,7 +64,7 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
       <>
         <button
           ref={triggerRef}
-          id={TRIGGER_DOM_ID}
+          id={triggerDomId(variant)}
           type="button"
           onClick={() => setOpen(true)}
           className={[
@@ -80,7 +89,7 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
     <>
       <button
         ref={triggerRef}
-        id={TRIGGER_DOM_ID}
+        id={triggerDomId(variant)}
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open search"

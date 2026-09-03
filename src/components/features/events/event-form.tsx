@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
 import { EventMediaStep, type MediaImage } from './event-media-step'
 import { parseGallery } from '@/lib/media/event-media-model'
+import { isPaidPublishBlocked } from '@/lib/events/paid-publish-blocked'
 import { AssistantPanel, type PanelSuggestion } from '@/components/ai/assistant-panel'
 import { MagicStart } from './magic-start'
 import type { MagicStartDraft } from '@/lib/ai/magic-start'
@@ -431,6 +432,13 @@ type Props = {
   lineupEnabled?: boolean
   /** Magic Start flag (read server-side): AI describe-your-event prefill. */
   magicStartEnabled?: boolean
+  /**
+   * Whether this organisation can currently sell a PAID ticket, resolved on the
+   * server with isOrganiserSellable. Used only to make the Publish button look
+   * as blocked as it actually is. The real guard stays server-side in
+   * checkPublishGate; this never decides anything on its own.
+   */
+  canSellPaid?: boolean
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -448,6 +456,7 @@ export function EventForm({
   launchKitEnabled = false,
   lineupEnabled = false,
   magicStartEnabled = false,
+  canSellPaid = true,
 }: Props) {
   const router = useRouter()
   // A stable event id, generated once. useState (not useRef) so it can be read
@@ -462,7 +471,28 @@ export function EventForm({
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Where the publish gate says to go next, when it says anything. */
+  const [errorAction, setErrorAction] = useState<{ label: string; href: string } | null>(null)
   const [stepError, setStepError] = useState<string | null>(null)
+
+  /*
+   * Does this event want to charge, and can this organisation take money?
+   *
+   * eventIsPaid is the SAME predicate the sale gate uses, imported rather than
+   * re-derived, so the button and the gate cannot come to different answers
+   * about what counts as a paid event. Prices are strings here for input
+   * binding, so they are parsed before the shared predicate sees them.
+   *
+   * It comes from sale-status and NOT from publish-gate, which is the obvious
+   * home: publish-gate transitively pulls in `server-only` through the Stripe
+   * reconciler, and importing it here failed the build with "'server-only'
+   * cannot be imported from a Client Component module". sale-status is already
+   * imported by the checkout client component, so it is known client-safe.
+   */
+  const paidPublishBlocked = useMemo(
+    () => isPaidPublishBlocked({ canSellPaid, editMode, tierPrices: formData.ticket_tiers }),
+    [canSellPaid, editMode, formData.ticket_tiers],
+  )
 
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setFormData(d => ({ ...d, [key]: value }))
@@ -601,7 +631,7 @@ export function EventForm({
     setError(null)
     try {
       const payload = buildPayload(status)
-      let result: { error?: string }
+      let result: { error?: string; nextAction?: { label: string; href: string } }
       if (editMode && existingEventId) {
         result = await updateEvent({ ...payload, eventId: existingEventId })
       } else {
@@ -609,6 +639,7 @@ export function EventForm({
       }
       if (result.error) {
         setError(result.error)
+        setErrorAction(result.nextAction ?? null)
         // Only re-enable the buttons on a FAILED submit. On success the
         // component is navigating away, so we deliberately keep isSubmitting
         // true through the navigation: this closes the brief window where a
@@ -784,10 +815,10 @@ export function EventForm({
       </details>
 
       <div>
-        <label className="block text-sm font-medium text-ink-600 mb-1">
+        <label htmlFor="event-title-1" className="block text-sm font-medium text-ink-600 mb-1">
           Event Title <span className="text-red-500">*</span>
         </label>
-        <input
+        <input id="event-title-1"
           type="text"
           value={formData.title}
           onChange={e => {
@@ -800,11 +831,11 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-ink-600 mb-1">
+        <label htmlFor="short-summary-200-2" className="block text-sm font-medium text-ink-600 mb-1">
           Short Summary
           <span className="ml-2 text-xs text-ink-400">({formData.summary.length}/200)</span>
         </label>
-        <input
+        <input id="short-summary-200-2"
           type="text"
           value={formData.summary}
           onChange={e => e.target.value.length <= 200 && set('summary', e.target.value)}
@@ -815,12 +846,12 @@ export function EventForm({
 
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="block text-sm font-medium text-ink-600">Description</label>
+          <label htmlFor="description-3" className="block text-sm font-medium text-ink-600">Description</label>
           <span className={`text-xs ${formData.description.length > 4900 ? 'text-amber-500' : 'text-ink-400'}`}>
             {formData.description.length}/5000
           </span>
         </div>
-        <textarea
+        <textarea id="description-3"
           rows={6}
           value={formData.description}
           onChange={e => e.target.value.length <= 5000 && set('description', e.target.value)}
@@ -830,8 +861,8 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-ink-600 mb-1">Category</label>
-        <select
+        <label htmlFor="category-4" className="block text-sm font-medium text-ink-600 mb-1">Category</label>
+        <select id="category-4"
           value={formData.category_id}
           onChange={e => set('category_id', e.target.value)}
           className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
@@ -844,11 +875,11 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-ink-600 mb-1">
+        <label htmlFor="tags-comma-separated-5" className="block text-sm font-medium text-ink-600 mb-1">
           Tags
           <span className="ml-2 text-xs text-ink-400">Comma-separated</span>
         </label>
-        <input
+        <input id="tags-comma-separated-5"
           type="text"
           value={formData.tags}
           onChange={e => set('tags', e.target.value)}
@@ -893,10 +924,10 @@ export function EventForm({
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">
+          <label htmlFor="start-date-time-7" className="block text-sm font-medium text-ink-600 mb-1">
             Start Date & Time <span className="text-red-500">*</span>
           </label>
-          <input
+          <input id="start-date-time-7"
             type="datetime-local"
             value={formData.start_date}
             onChange={e => set('start_date', e.target.value)}
@@ -904,10 +935,10 @@ export function EventForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">
+          <label htmlFor="end-date-time-8" className="block text-sm font-medium text-ink-600 mb-1">
             End Date & Time <span className="text-red-500">*</span>
           </label>
-          <input
+          <input id="end-date-time-8"
             type="datetime-local"
             value={formData.end_date}
             onChange={e => set('end_date', e.target.value)}
@@ -917,8 +948,8 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-ink-600 mb-1">Timezone</label>
-        <select
+        <label htmlFor="timezone-9" className="block text-sm font-medium text-ink-600 mb-1">Timezone</label>
+        <select id="timezone-9"
           value={formData.timezone}
           onChange={e => {
             // The organiser has overridden the venue-derived zone. Record it, so
@@ -937,8 +968,8 @@ export function EventForm({
         </select>
       </div>
 
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input
+      <label htmlFor="this-is-a-multi-day-event-10" className="flex items-center gap-3 cursor-pointer">
+        <input id="this-is-a-multi-day-event-10"
           type="checkbox"
           checked={formData.is_multi_day}
           onChange={e => set('is_multi_day', e.target.checked)}
@@ -947,8 +978,8 @@ export function EventForm({
         <span className="text-sm font-medium text-ink-600">This is a multi-day event</span>
       </label>
 
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input
+      <label htmlFor="this-is-a-recurring-event-11" className="flex items-center gap-3 cursor-pointer">
+        <input id="this-is-a-recurring-event-11"
           type="checkbox"
           checked={formData.is_recurring}
           onChange={e => set('is_recurring', e.target.checked)}
@@ -959,8 +990,8 @@ export function EventForm({
 
       {formData.is_recurring && (
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">Recurrence</label>
-          <select
+          <label htmlFor="recurrence-12" className="block text-sm font-medium text-ink-600 mb-1">Recurrence</label>
+          <select id="recurrence-12"
             value={formData.recurrence_rule}
             onChange={e => set('recurrence_rule', e.target.value)}
             className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
@@ -999,8 +1030,8 @@ export function EventForm({
       {(formData.event_type === 'in_person' || formData.event_type === 'hybrid') && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-ink-600 mb-1">Venue Name</label>
-            <input
+            <label htmlFor="venue-name-13" className="block text-sm font-medium text-ink-600 mb-1">Venue Name</label>
+            <input id="venue-name-13"
               type="text"
               value={formData.venue_name}
               onChange={e => set('venue_name', e.target.value)}
@@ -1009,8 +1040,8 @@ export function EventForm({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-ink-600 mb-1">Address</label>
-            <input
+            <label htmlFor="address-14" className="block text-sm font-medium text-ink-600 mb-1">Address</label>
+            <input id="address-14"
               type="text"
               value={formData.venue_address}
               onChange={e => set('venue_address', e.target.value)}
@@ -1020,8 +1051,8 @@ export function EventForm({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-ink-600 mb-1">City</label>
-              <input
+              <label htmlFor="city-15" className="block text-sm font-medium text-ink-600 mb-1">City</label>
+              <input id="city-15"
                 type="text"
                 value={formData.venue_city}
                 onChange={e => set('venue_city', e.target.value)}
@@ -1029,8 +1060,8 @@ export function EventForm({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-ink-600 mb-1">State / Region</label>
-              <input
+              <label htmlFor="state-region-16" className="block text-sm font-medium text-ink-600 mb-1">State / Region</label>
+              <input id="state-region-16"
                 type="text"
                 value={formData.venue_state}
                 onChange={e => set('venue_state', e.target.value)}
@@ -1040,8 +1071,8 @@ export function EventForm({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-ink-600 mb-1">Country</label>
-              <input
+              <label htmlFor="country-17" className="block text-sm font-medium text-ink-600 mb-1">Country</label>
+              <input id="country-17"
                 type="text"
                 value={formData.venue_country}
                 onChange={e => set('venue_country', e.target.value)}
@@ -1049,8 +1080,8 @@ export function EventForm({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-ink-600 mb-1">Postal Code</label>
-              <input
+              <label htmlFor="postal-code-18" className="block text-sm font-medium text-ink-600 mb-1">Postal Code</label>
+              <input id="postal-code-18"
                 type="text"
                 value={formData.venue_postal_code}
                 onChange={e => set('venue_postal_code', e.target.value)}
@@ -1063,11 +1094,11 @@ export function EventForm({
 
       {(formData.event_type === 'virtual' || formData.event_type === 'hybrid') && (
         <div>
-          <label className="block text-sm font-medium text-ink-600 mb-1">
+          <label htmlFor="virtual-streaming-url-hidden-from-attend-19" className="block text-sm font-medium text-ink-600 mb-1">
             Virtual / Streaming URL
             <span className="ml-2 text-xs text-ink-400">Hidden from attendees until after purchase</span>
           </label>
-          <input
+          <input id="virtual-streaming-url-hidden-from-attend-19"
             type="url"
             value={formData.virtual_url}
             onChange={e => set('virtual_url', e.target.value)}
@@ -1120,8 +1151,8 @@ export function EventForm({
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-ink-600 mb-1">Name</label>
-              <input
+              <label htmlFor={`tier-name-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Name</label>
+              <input id={`tier-name-${idx}`}
                 type="text"
                 value={tier.name}
                 onChange={e => {
@@ -1135,8 +1166,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-ink-600 mb-1">Type</label>
-              <select
+              <label htmlFor="type-21" className="block text-xs font-medium text-ink-600 mb-1">Type</label>
+              <select id="type-21"
                 value={tier.tier_type}
                 onChange={e => {
                   const tiers = [...formData.ticket_tiers]
@@ -1152,9 +1183,16 @@ export function EventForm({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-ink-600 mb-1">Price</label>
+              <label htmlFor={`tier-price-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Price</label>
               <div className="flex gap-2">
+                {/* The "Price" label used to point HERE, at the currency
+                    dropdown, so pressing it focused the currency and the price
+                    field itself was reachable only through its aria-label. The
+                    label now points at the price input; the currency carries its
+                    own name. Found by journey 2 on 2026-08-28: filling the field
+                    the label named produced a $0 ticket on a paid event. */}
                 <select
+                  aria-label="Currency"
                   value={tier.currency}
                   onChange={e => {
                     const tiers = [...formData.ticket_tiers]
@@ -1168,9 +1206,11 @@ export function EventForm({
                   ))}
                 </select>
                 <input
+                  id={`tier-price-${idx}`}
                   type="number"
                   min="0"
                   step="0.01"
+                  aria-label={`Ticket price for tier ${idx + 1}`}
                   value={tier.price}
                   onChange={e => {
                     const tiers = [...formData.ticket_tiers]
@@ -1184,8 +1224,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-ink-600 mb-1">Total Capacity</label>
-              <input
+              <label htmlFor={`tier-capacity-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Total Capacity</label>
+              <input id={`tier-capacity-${idx}`}
                 type="number"
                 min="1"
                 value={tier.total_capacity}
@@ -1200,8 +1240,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-ink-600 mb-1">Sale Starts</label>
-              <input
+              <label htmlFor="sale-starts-24" className="block text-xs font-medium text-ink-600 mb-1">Sale Starts</label>
+              <input id="sale-starts-24"
                 type="datetime-local"
                 value={tier.sale_start}
                 onChange={e => {
@@ -1214,8 +1254,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-ink-600 mb-1">Sale Ends</label>
-              <input
+              <label htmlFor="sale-ends-25" className="block text-xs font-medium text-ink-600 mb-1">Sale Ends</label>
+              <input id="sale-ends-25"
                 type="datetime-local"
                 value={tier.sale_end}
                 onChange={e => {
@@ -1228,8 +1268,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-ink-600 mb-1">Min per Order</label>
-              <input
+              <label htmlFor="min-per-order-26" className="block text-xs font-medium text-ink-600 mb-1">Min per Order</label>
+              <input id="min-per-order-26"
                 type="number"
                 min="1"
                 value={tier.min_per_order}
@@ -1243,8 +1283,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-ink-600 mb-1">Max per Order</label>
-              <input
+              <label htmlFor="max-per-order-27" className="block text-xs font-medium text-ink-600 mb-1">Max per Order</label>
+              <input id="max-per-order-27"
                 type="number"
                 min="1"
                 value={tier.max_per_order}
@@ -1258,8 +1298,8 @@ export function EventForm({
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-ink-600 mb-1">Description (optional)</label>
-              <input
+              <label htmlFor="description-optional-28" className="block text-xs font-medium text-ink-600 mb-1">Description (optional)</label>
+              <input id="description-optional-28"
                 type="text"
                 value={tier.description}
                 onChange={e => {
@@ -1318,11 +1358,11 @@ export function EventForm({
 
         {formData.squad_booking_enabled && (
           <div className="mt-4 border-t border-ink-100 pt-4">
-            <label className="block text-xs font-medium text-ink-600 mb-1.5">
+            <label htmlFor="squad-fill-window-hours-1-72-29" className="block text-xs font-medium text-ink-600 mb-1.5">
               Squad fill window
               <span className="ml-1.5 font-normal text-ink-400">(hours, 1-72)</span>
             </label>
-            <input
+            <input id="squad-fill-window-hours-1-72-29"
               type="number"
               min="1"
               max="72"
@@ -1377,11 +1417,11 @@ export function EventForm({
         {formData.is_high_demand && (
           <div className="mt-4 border-t border-ink-100 pt-4">
             <div>
-              <label className="block text-xs font-medium text-ink-600 mb-1.5">
+              <label htmlFor="checkout-window-mins-5-60-30" className="block text-xs font-medium text-ink-600 mb-1.5">
                 Checkout window
                 <span className="ml-1 font-normal text-ink-400">(mins, 5-60)</span>
               </label>
-              <input
+              <input id="checkout-window-mins-5-60-30"
                 type="number"
                 min="5"
                 max="60"
@@ -1513,8 +1553,8 @@ export function EventForm({
                   : `Buyers can ask until ${formData.refund_policy_days} day${formData.refund_policy_days === 1 ? '' : 's'} before the event. A SMALLER number is more generous, because it lets people ask later.`}
               </p>
 
-              <label className="mt-4 flex cursor-pointer items-start gap-3">
-                <input
+              <label htmlFor="refund-qualifying-requests-automatically-33" className="mt-4 flex cursor-pointer items-start gap-3">
+                <input id="refund-qualifying-requests-automatically-33"
                   type="checkbox"
                   checked={formData.refund_policy_self_service}
                   onChange={e => set('refund_policy_self_service', e.target.checked)}
@@ -1529,8 +1569,8 @@ export function EventForm({
                 </span>
               </label>
 
-              <label className="mt-4 flex cursor-pointer items-start gap-3">
-                <input
+              <label htmlFor="cover-the-booking-fee-on-refunds-the-buy-34" className="mt-4 flex cursor-pointer items-start gap-3">
+                <input id="cover-the-booking-fee-on-refunds-the-buy-34"
                   type="checkbox"
                   checked={formData.refund_policy_absorb_fee}
                   onChange={e => set('refund_policy_absorb_fee', e.target.checked)}
@@ -1579,8 +1619,8 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
+        <label htmlFor="age-restriction-applies-36" className="flex items-center gap-3 cursor-pointer">
+          <input id="age-restriction-applies-36"
             type="checkbox"
             checked={formData.is_age_restricted}
             onChange={e => set('is_age_restricted', e.target.checked)}
@@ -1590,8 +1630,8 @@ export function EventForm({
         </label>
         {formData.is_age_restricted && (
           <div className="mt-3 ml-7">
-            <label className="block text-xs font-medium text-ink-600 mb-1">Minimum Age</label>
-            <input
+            <label htmlFor="minimum-age-37" className="block text-xs font-medium text-ink-600 mb-1">Minimum Age</label>
+            <input id="minimum-age-37"
               type="number"
               min="1"
               max="99"
@@ -1604,11 +1644,11 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-ink-600 mb-1">
+        <label htmlFor="max-event-capacity-optional-leave-blank--38" className="block text-sm font-medium text-ink-600 mb-1">
           Max Event Capacity
           <span className="ml-2 text-xs text-ink-400">Optional - leave blank if unlimited</span>
         </label>
-        <input
+        <input id="max-event-capacity-optional-leave-blank--38"
           type="number"
           min="1"
           value={formData.max_capacity}
@@ -1656,8 +1696,8 @@ export function EventForm({
             ) : (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-ink-600 mb-1">Venue</label>
-                  <select
+                  <label htmlFor="venue-39" className="block text-xs font-medium text-ink-600 mb-1">Venue</label>
+                  <select id="venue-39"
                     value={formData.venue_id}
                     onChange={e => {
                       set('venue_id', e.target.value)
@@ -1674,7 +1714,7 @@ export function EventForm({
 
                 {formData.venue_id && (
                   <div>
-                    <label className="block text-xs font-medium text-ink-600 mb-1">Seat Map</label>
+                    <label htmlFor="seat-map-40" className="block text-xs font-medium text-ink-600 mb-1">Seat Map</label>
                     {(() => {
                       const venue = venues.find(v => v.id === formData.venue_id)
                       const maps = venue?.seat_maps ?? []
@@ -1683,7 +1723,7 @@ export function EventForm({
                           This venue has no seat maps yet. Create one in <a href="/dashboard/venues" target="_blank" rel="noopener noreferrer" className="underline">Venues</a> before continuing.
                         </p>
                       ) : (
-                        <select
+                        <select id="seat-map-40"
                           value={formData.seat_map_id}
                           onChange={e => set('seat_map_id', e.target.value)}
                           className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
@@ -1738,8 +1778,8 @@ export function EventForm({
                     </div>
                   )
                 })()}
-                <label className="flex items-start gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-3">
-                  <input
+                <label htmlFor="i-apos-ll-assign-seats-myself-buyers-pur-41" className="flex items-start gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-3">
+                  <input id="i-apos-ll-assign-seats-myself-buyers-pur-41"
                     type="checkbox"
                     checked={formData.organiser_assigns_seats}
                     onChange={e => set('organiser_assigns_seats', e.target.checked)}
@@ -1753,8 +1793,8 @@ export function EventForm({
                     </span>
                   </span>
                 </label>
-                <label className="flex items-start gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-3">
-                  <input
+                <label htmlFor="let-attendees-change-their-own-seat-buye-42" className="flex items-start gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-3">
+                  <input id="let-attendees-change-their-own-seat-buye-42"
                     type="checkbox"
                     checked={formData.allow_seat_self_service}
                     onChange={e => set('allow_seat_self_service', e.target.checked)}
@@ -1858,8 +1898,23 @@ export function EventForm({
         )}
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          /*
+           * role=alert so the refusal is ANNOUNCED, not just rendered. An
+           * organiser at the bottom of a seven-step wizard pressing Publish, and
+           * anyone using a screen reader, previously got no signal at all that
+           * the press had been refused.
+           *
+           * The link is the gate's own nextAction. It already knew where to send
+           * them; the caller used to throw it away, so "Connect Stripe" was
+           * advice with no door.
+           */
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
+            {errorAction && (
+              <a href={errorAction.href} className="ml-2 font-semibold underline underline-offset-2">
+                {errorAction.label}
+              </a>
+            )}
           </div>
         )}
 
@@ -1884,6 +1939,35 @@ export function EventForm({
           </div>
         )}
 
+        {/*
+          AN HONEST DISABLED STATE.
+
+          Found 3 September 2026: this button was disabled only for isSubmitting,
+          an empty title and a missing cover. An organiser with a PAID tier and no
+          connected Stripe account saw a live, gold, clickable Publish button,
+          pressed it, and was refused by the server.
+
+          The refusal was announced and carried a link, which is good, but the
+          control still looked available right up to the press. A button that
+          cannot do the thing it names should say so before it is pressed.
+
+          THIS DOES NOT REPLACE THE GUARD. checkPublishGate on the server is
+          still the only thing that decides, and it re-reads Stripe before it
+          refuses. This is presentation catching up with a decision already made
+          server-side, which is why canSellPaid defaults to true: if the page did
+          not resolve it, the button behaves exactly as it did before and the
+          server still refuses. It can never create a refusal of its own.
+        */}
+        {paidPublishBlocked && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <span className="font-semibold">This event has a paid ticket, so it needs Stripe connected before it can go live.</span>{' '}
+            Save it as a draft now, connect Stripe, and publish when you come back.
+            <a href="/dashboard/payouts" className="ml-2 font-semibold underline underline-offset-2">
+              Connect Stripe
+            </a>
+          </div>
+        )}
+
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
@@ -1896,7 +1980,7 @@ export function EventForm({
           <button
             type="button"
             onClick={() => handleSubmit('published')}
-            disabled={isSubmitting || !formData.title.trim() || !formData.media[0]?.url || formData.media.some(m => m.uploading)}
+            disabled={isSubmitting || !formData.title.trim() || !formData.media[0]?.url || formData.media.some(m => m.uploading) || paidPublishBlocked}
             className="flex-1 rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-ink-900 hover:bg-gold-600 disabled:opacity-50 transition-colors"
           >
             {isSubmitting

@@ -1,0 +1,32 @@
+Journeys 7 to 10: seated, discount, attribution, payouts
+========================================================
+01. A stranger opens a seated event
+      URL     /events/grand-hall-proof-the-full-house
+      heading "Grand Hall Proof: The Full House"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Follow | Share | Copy link
+02. RENDERS      journey 7: a seated event
+      HTTP 200; entry control: Get tickets; canvas: 0; seat shapes: 35
+      MUSIC Grand Hall Proof: The Full House Friday 28 August 2026 at 7:30 pm AEST Grand Hall Proof Room · Melbourne Get tickets From AUD $69 Secure checkout Community organiser Refund policy THE DETAILS Ab
+03. The discounts screen
+      URL     /dashboard/events/9f6b6405-9a38-4176-b5d5-67936fa1e06c/discounts
+      heading "Discount Codes"
+      fields  Search
+      buttons TUTest | Collapse | + Create Code
+04. NOT MADE     journey 8: an organiser makes a discount code
+      code NIGHT209821; on the page afterwards: false; no message
+05. The launch kit, where the share links live
+      URL     /dashboard/events/9f6b6405-9a38-4176-b5d5-67936fa1e06c/launch-kit
+      heading "Lineup Loop Proof Night is live."
+      fields  Search | Add an act
+      buttons TUTest | Collapse | Copy link | InstagramInstagram | Copy link | Copy caption | Copy caption | Copy caption | Copy caption
+06. OFFERED      journey 9: the kit offers a shareable link
+      6 tracked link(s), one per channel, e.g. http://localhost:3311/e/6nlLzGZK0f; controls: TUTest | Collapse | Copy link | InstagramInstagram | Copy link | Copy caption
+07. The payouts screen
+      URL     /dashboard/payouts
+      heading "Payouts"
+      fields  Search | Status filter
+      buttons TUTest | Collapse | Open Stripe Dashboard | Refresh Stripe status | Open Stripe Dashboard | Previous | Next
+08. CLEAR        journey 10: an organiser looks for their money
+      HTTP 200; mentions money: true; says WHEN: true
+      Payouts Track every payout, reserve release, and refund for Baseline Capture Draft 2026-07-04. Money for a paid event is released 3 days after the event ends, then paid out by Stripe on your account schedule. That window absorbs late refunds and card disputes,

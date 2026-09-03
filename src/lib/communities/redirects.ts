@@ -24,6 +24,19 @@ export const COMMUNITY_REDIRECTS: Record<string, string> = {
   'middle-eastern': '/community/lebanese-levantine',
   european: '/community/other-european',
   latin: '/community/latin-american',
+  /*
+   * ADDED 3 September 2026. `pacific` was retired into `pacific-pasifika` by
+   * v2 and no redirect was written, so it was the ONLY retired slug in this
+   * file's scope that still 404ed. /community/pacific/<city> returned 404 on a
+   * live server, against this file's own stated contract of zero 404s, and
+   * against Law 5. The 20 hand-written editorial entries keyed `pacific/<city>`
+   * were rekeyed to `pacific-pasifika/<city>` in the same change, so this
+   * redirect now lands on a page that carries the copy written for it.
+   *
+   * This is a 1:1 RENAME, not a roll-up collapse, so unlike the entries above
+   * it moves no content onto a community it was not written about.
+   */
+  pacific: '/community/pacific-pasifika',
   wellness: '/events',
   pride: '/events',
   comedy: '/events',

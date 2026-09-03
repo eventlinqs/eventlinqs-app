@@ -19,7 +19,13 @@ import type { GuideLiveValues } from './types'
 /** Mirrors the launch fallback in src/lib/payments/event-transfer.ts. */
 const FALLBACK_PAYOUT_DAYS = 3
 
-async function payoutScheduleDays(): Promise<number> {
+/**
+ * Exported on 29 August so the PAYOUTS SCREEN can state the same number the
+ * guides and the payout path use. It is never hardcoded anywhere: an organiser
+ * reading "3 days" on one screen and a different figure on another would not
+ * know which one their money follows.
+ */
+export async function payoutScheduleDays(): Promise<number> {
   try {
     const rule = await getPricingRule(
       { ruleType: 'payout_schedule_days', countryCode: 'AU', currency: 'AUD' },

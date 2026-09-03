@@ -319,8 +319,8 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div>
-          <label className="block text-xs font-medium text-ink-400 mb-1">Status</label>
-          <select
+          <label htmlFor="seats-status" className="block text-xs font-medium text-ink-400 mb-1">Status</label>
+          <select id="seats-status"
             value={filter}
             onChange={e => setFilter(e.target.value)}
             className="rounded-lg border border-ink-200 px-3 py-1.5 text-sm focus:border-gold-400 focus:outline-none"
@@ -334,8 +334,8 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
         </div>
         {sections.length > 0 && (
           <div>
-            <label className="block text-xs font-medium text-ink-400 mb-1">Section</label>
-            <select
+            <label htmlFor="seats-section" className="block text-xs font-medium text-ink-400 mb-1">Section</label>
+            <select id="seats-section"
               value={sectionFilter}
               onChange={e => setSectionFilter(e.target.value)}
               className="rounded-lg border border-ink-200 px-3 py-1.5 text-sm focus:border-gold-400 focus:outline-none"
@@ -432,10 +432,10 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
                         {movingId === seat.id && (
                           <div className="flex flex-wrap items-end gap-2 border-t border-gold-100 bg-gold-100/40 px-4 pb-3">
                             <div className="min-w-56 flex-1">
-                              <label className="mb-1 mt-2 block text-xs font-medium text-ink-600">
+                              <label htmlFor="seats-new-seat" className="mb-1 mt-2 block text-xs font-medium text-ink-600">
                                 New seat (the ticket keeps its price; the holder is emailed)
                               </label>
-                              <select
+                              <select id="seats-new-seat"
                                 value={moveTargetId}
                                 onChange={e => setMoveTargetId(e.target.value)}
                                 className="w-full rounded-lg border border-ink-200 px-2 py-1.5 text-xs focus:border-gold-400 focus:outline-none"
@@ -469,8 +469,8 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
                         {isHolding && (
                           <div className="px-4 pb-3 flex flex-wrap items-end gap-2 bg-amber-50 border-t border-amber-100">
                             <div>
-                              <label className="block text-xs font-medium text-ink-600 mb-1 mt-2">Reason</label>
-                              <select
+                              <label htmlFor="seats-reason" className="block text-xs font-medium text-ink-600 mb-1 mt-2">Reason</label>
+                              <select id="seats-reason"
                                 value={holdReason}
                                 onChange={e => setHoldReason(e.target.value)}
                                 className="rounded-lg border border-ink-200 px-2 py-1.5 text-xs focus:border-gold-400 focus:outline-none"
@@ -481,8 +481,8 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
                               </select>
                             </div>
                             <div className="flex-1 min-w-32">
-                              <label className="block text-xs font-medium text-ink-600 mb-1 mt-2">Notes (optional)</label>
-                              <input
+                              <label htmlFor="seats-notes" className="block text-xs font-medium text-ink-600 mb-1 mt-2">Notes (optional)</label>
+                              <input id="seats-notes"
                                 type="text"
                                 value={holdNotes}
                                 onChange={e => setHoldNotes(e.target.value)}
