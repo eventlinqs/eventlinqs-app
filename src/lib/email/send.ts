@@ -184,7 +184,11 @@ function consoleTransportRefusalReason(): string | null {
 export function printConsoleEmail(input: { to: string; subject: string; html?: string }): void {
   const links = [...String(input.html ?? '').matchAll(/https?:\/\/[^"'\s<>]+/g)]
     .map((m) => m[0])
-    .filter((u) => /confirm|token|ticket|order|verify|reset/i.test(u))
+    // `/t/` and `watch` were added on 3 September 2026: the bearer ticket link
+    // and the livestream watch link contain neither "ticket" nor "order", so the
+    // console inbox printed the order link and silently dropped the two links
+    // a journey most needs to read.
+    .filter((u) => /confirm|token|ticket|order|verify|reset|watch|\/t\//i.test(u))
   console.log('[email:console] ---------------------------------------------')
   console.log(`[email:console] to      ${input.to}`)
   console.log(`[email:console] subject ${input.subject}`)

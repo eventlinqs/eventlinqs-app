@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import type { Metadata } from 'next'
 import QRCode from 'qrcode'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -30,8 +31,11 @@ interface BearerTicket {
     timezone: string | null
     venue_name: string | null
     venue_city: string | null
+    event_type: 'in_person' | 'virtual' | 'hybrid'
   } | null
   order_item: { item_name: string } | null
+  /** Who this ticket admits: the door, or the livestream (Scope v5 3.11). */
+  tier: { access_mode: 'in_person' | 'virtual' } | null
   /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
   seat: {
     row_label: string
@@ -87,7 +91,7 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
   const { data } = await admin
     .from('tickets')
     .select(
-      'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, timezone, venue_name, venue_city), order_item:order_items(item_name), seat:seats!tickets_seat_id_fkey(row_label, seat_number, section:seat_map_sections(name))',
+      'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, timezone, venue_name, venue_city, event_type), order_item:order_items(item_name), tier:ticket_tiers!tickets_ticket_tier_id_fkey(access_mode), seat:seats!tickets_seat_id_fkey(row_label, seat_number, section:seat_map_sections(name))',
     )
     .eq('ticket_code', code)
     .maybeSingle()
@@ -103,6 +107,18 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
   const status = STATUS_COPY[ticket.status] ?? STATUS_COPY.valid
   const isVoided = ticket.status === 'void' || ticket.status === 'refunded'
   const ev = ticket.event
+
+  /*
+   * THE LIVESTREAM (Scope v5 3.11). A ticket on a virtual event, or a livestream
+   * tier on a hybrid one, admits to the stream. The link itself is never printed
+   * here: the watch page verifies this same bearer pair again, then the tier,
+   * then the viewer's country, and only then reads the link from the vault.
+   */
+  const admitsToStream =
+    !isVoided &&
+    (ticket.status === 'valid' || ticket.status === 'scanned') &&
+    (ev?.event_type === 'virtual' || ticket.tier?.access_mode === 'virtual')
+  const watchHref = `/t/${encodeURIComponent(code)}/watch?k=${encodeURIComponent(secret)}`
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-5 bg-canvas px-4 py-8">
@@ -151,9 +167,26 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
             />
 
             <p className="mt-4 text-center text-sm text-ink-700">
-              Show this QR code at entry. Have your screen brightness up.
+              {ticket.tier?.access_mode === 'virtual' && ev?.event_type === 'hybrid'
+                ? 'This ticket admits to the livestream, not the door.'
+                : 'Show this QR code at entry. Have your screen brightness up.'}
             </p>
           </>
+        )}
+
+        {admitsToStream && (
+          <div className="mt-6 rounded-xl border border-gold-500/40 bg-gold-100/40 p-5 text-center">
+            <p className="font-display text-xs font-bold uppercase tracking-[0.18em] text-gold-800">Livestream</p>
+            <p className="mt-1 text-sm text-ink-700">
+              Your stream, and the room to chat and ask questions, open from this ticket.
+            </p>
+            <Link
+              href={watchHref}
+              className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--color-navy-950)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-navy-900)]"
+            >
+              Join the livestream
+            </Link>
+          </div>
         )}
 
         <dl className="mt-6 space-y-2 text-sm">

@@ -319,6 +319,13 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                       * tier has an empty name and a price of 0. */}
                     <p className="text-sm font-semibold text-ink-900">
                       {tier.name?.trim() || 'Ticket'}
+                      {/* What this ticket admits, said before the buyer pays (ACCC clarity,
+                        * Scope v5 3.11): a livestream tier never gets anyone through the door. */}
+                      {tier.access_mode === 'virtual' && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-[var(--color-navy-950)] px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wider text-gold-400">
+                          Livestream
+                        </span>
+                      )}
                     </p>
                     {tier.description && (
                       <p className="mt-0.5 text-xs text-ink-600">{tier.description}</p>

@@ -946,6 +946,32 @@ export type Database = {
         }
         Relationships: []
       }
+      event_stream_links: {
+        Row: {
+          event_id: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          event_id: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          event_id?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_stream_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_types: {
         Row: {
           created_at: string
@@ -1023,6 +1049,7 @@ export type Database = {
           squad_timeout_hours: number
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
+          stream_geo_allow: string[] | null
           sub_community: string | null
           subgenre_slug: string | null
           suburb_primary: string | null
@@ -1097,6 +1124,7 @@ export type Database = {
           squad_timeout_hours?: number
           start_date: string
           status?: Database["public"]["Enums"]["event_status"]
+          stream_geo_allow?: string[] | null
           sub_community?: string | null
           subgenre_slug?: string | null
           suburb_primary?: string | null
@@ -1171,6 +1199,7 @@ export type Database = {
           squad_timeout_hours?: number
           start_date?: string
           status?: Database["public"]["Enums"]["event_status"]
+          stream_geo_allow?: string[] | null
           sub_community?: string | null
           subgenre_slug?: string | null
           suburb_primary?: string | null
@@ -3554,6 +3583,66 @@ export type Database = {
           },
         ]
       }
+      stream_messages: {
+        Row: {
+          answer_body: string | null
+          answered_at: string | null
+          answered_by: string | null
+          author_kind: string
+          author_name: string
+          body: string
+          created_at: string
+          event_id: string
+          hidden_at: string | null
+          id: string
+          kind: string
+          ticket_id: string | null
+        }
+        Insert: {
+          answer_body?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          author_kind: string
+          author_name: string
+          body: string
+          created_at?: string
+          event_id: string
+          hidden_at?: string | null
+          id?: string
+          kind: string
+          ticket_id?: string | null
+        }
+        Update: {
+          answer_body?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          author_kind?: string
+          author_name?: string
+          body?: string
+          created_at?: string
+          event_id?: string
+          hidden_at?: string | null
+          id?: string
+          kind?: string
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_messages_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stream_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subgenres: {
         Row: {
           created_at: string
@@ -3728,6 +3817,7 @@ export type Database = {
       }
       ticket_tiers: {
         Row: {
+          access_mode: Database["public"]["Enums"]["tier_access_mode"]
           created_at: string
           currency: string
           description: string | null
@@ -3757,6 +3847,7 @@ export type Database = {
           created_at?: string
           currency?: string
           description?: string | null
+          access_mode?: Database["public"]["Enums"]["tier_access_mode"]
           dynamic_pricing_enabled?: boolean
           event_id: string
           hidden_until?: string | null
@@ -3783,6 +3874,7 @@ export type Database = {
           created_at?: string
           currency?: string
           description?: string | null
+          access_mode?: Database["public"]["Enums"]["tier_access_mode"]
           dynamic_pricing_enabled?: boolean
           event_id?: string
           hidden_until?: string | null
@@ -4653,6 +4745,7 @@ export type Database = {
           squad_timeout_hours: number
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
+          stream_geo_allow: string[] | null
           sub_community: string | null
           subgenre_slug: string | null
           suburb_primary: string | null
@@ -4929,6 +5022,7 @@ export type Database = {
         | "table_booth"
         | "donation"
         | "free"
+      tier_access_mode: "in_person" | "virtual"
       user_role: "attendee" | "organiser" | "admin" | "super_admin"
       waitlist_status:
         | "waiting"
@@ -5156,6 +5250,7 @@ export const Constants = {
         "donation",
         "free",
       ],
+      tier_access_mode: ["in_person", "virtual"],
       user_role: ["attendee", "organiser", "admin", "super_admin"],
       waitlist_status: [
         "waiting",

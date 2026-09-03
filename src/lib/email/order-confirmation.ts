@@ -30,6 +30,8 @@ type EmailTicket = {
   secret: string
   holder_name: string | null
   status: string
+  /** Who this ticket admits (Scope v5 3.11): a livestream tier carries a watch link. */
+  tier?: { access_mode: 'in_person' | 'virtual' } | null
   /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
   seat: {
     row_label: string
@@ -62,6 +64,8 @@ type EmailEvent = {
   title: string
   start_date: string
   timezone: string
+  /** A virtual event admits every ticket to the stream; a hybrid one only its livestream tiers. */
+  event_type?: 'in_person' | 'virtual' | 'hybrid' | null
   venue_name?: string | null
   venue_city?: string | null
   venue_country?: string | null
@@ -77,6 +81,22 @@ type EmailEvent = {
 
 // Statuses that still admit entry and therefore carry a QR.
 const QR_STATUSES = new Set(['valid', 'scanned'])
+
+/**
+ * THE LIVESTREAM LINK IN THE EMAIL (Scope v5 3.11) is the WATCH PAGE, never the
+ * stream address itself. The watch page verifies the same bearer pair as the
+ * ticket, the tier, the ticket status and the viewer's country on every visit,
+ * so a forwarded email cannot hand the stream to somebody the organiser
+ * restricted, and a refunded ticket stops watching the moment it is refunded.
+ */
+function admitsToStream(event: EmailEvent, ticket: EmailTicket): boolean {
+  if (!QR_STATUSES.has(ticket.status)) return false
+  return event.event_type === 'virtual' || ticket.tier?.access_mode === 'virtual'
+}
+
+function watchUrl(siteUrl: string, ticket: EmailTicket): string {
+  return `${siteUrl}/t/${encodeURIComponent(ticket.ticket_code)}/watch?k=${encodeURIComponent(ticket.secret)}`
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -162,7 +182,7 @@ export async function sendConfirmationEmail(
 
   const { data: event } = await db
     .from('events')
-    .select('title, start_date, end_date, timezone, venue_name, venue_city, venue_country, is_free, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
+    .select('title, start_date, end_date, timezone, event_type, venue_name, venue_city, venue_country, is_free, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
     .eq('id', order.event_id)
     .single()
 
@@ -184,7 +204,7 @@ export async function sendConfirmationEmail(
 
   const { data: ticketRows } = await db
     .from('tickets')
-    .select('ticket_code, secret, holder_name, status, seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))')
+    .select('ticket_code, secret, holder_name, status, tier:ticket_tiers!tickets_ticket_tier_id_fkey(access_mode), seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))')
     .eq('order_id', order_id)
     .order('created_at', { ascending: true })
 
@@ -296,10 +316,17 @@ export function buildConfirmationEmailHtml(
       }
 
       const bearerUrl = `${siteUrl}/t/${encodeURIComponent(ticket.ticket_code)}?k=${encodeURIComponent(ticket.secret)}`
-      const note =
-        ticket.status === 'scanned'
+      const streams = admitsToStream(event, ticket)
+      const note = streams
+        ? 'This ticket admits to the livestream. Open the stream from the link above when the event starts.'
+        : ticket.status === 'scanned'
           ? 'This ticket has already been scanned.'
           : 'Show this QR at entry. One QR admits one person.'
+      const streamHtml = streams
+        ? `<p style="margin:0 0 12px;">
+          <a href="${escapeHtml(watchUrl(siteUrl, ticket))}" style="display:inline-block;background:#E8B738;color:#0A1628;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;">Join the livestream</a>
+        </p>`
+        : ''
       const alt = escapeHtml(
         `QR code for ${event.title} ticket ${ticket.ticket_code}, holder ${ticket.holder_name ?? 'ticket holder'}`
       )
@@ -317,6 +344,7 @@ export function buildConfirmationEmailHtml(
           <img src="cid:${qrCid(ticket.ticket_code)}" width="220" height="220" alt="${alt}" style="display:block;width:220px;height:220px;border:0;background:#FFFFFF;" />
         </div>
         <p style="margin:14px 0 4px;color:#0A1628;font-size:15px;font-family:monospace;letter-spacing:1px;">${code}</p>
+        ${streamHtml}
         <p style="margin:0 0 16px;">
           <a href="${bearerUrl}" style="display:inline-block;background:#0A1628;color:#FFFFFF;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Open ticket</a>
         </p>
@@ -434,11 +462,17 @@ export function buildConfirmationEmailText(
     const seat = seatLine(ticket)
     if (seat) lines.push(seat)
     lines.push(`Ticket code: ${ticket.ticket_code}`)
+    if (admitsToStream(event, ticket)) {
+      lines.push(`Join the livestream: ${watchUrl(siteUrl, ticket)}`)
+      lines.push('This ticket admits to the livestream. Open that link when the event starts.')
+    }
     lines.push(`Open your ticket: ${bearerUrl}`)
     lines.push(
-      ticket.status === 'scanned'
-        ? 'This ticket has already been scanned.'
-        : 'Show the QR on that page at entry. One QR admits one person.'
+      admitsToStream(event, ticket)
+        ? 'The ticket page carries the same Join the livestream button.'
+        : ticket.status === 'scanned'
+          ? 'This ticket has already been scanned.'
+          : 'Show the QR on that page at entry. One QR admits one person.'
     )
   }
   lines.push('')

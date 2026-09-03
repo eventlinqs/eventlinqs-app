@@ -75,6 +75,7 @@ import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { isVideoProvider } from '@/lib/media/video-embed'
+import { describeCountries } from '@/lib/stream/countries'
 
 import { getSiteUrl } from '@/lib/site-url'
 // Why ISR: every published event detail page is the same for all anonymous
@@ -987,6 +988,15 @@ export default async function EventDetailPage({ params }: Props) {
                     {event.event_type === 'hybrid' && (
                       <p className="mt-2 inline-flex items-center rounded-full bg-gold-500/10 px-2 py-0.5 text-[10px] font-semibold text-gold-600">
                         In-person + online
+                      </p>
+                    )}
+                    {/* The livestream's reach, stated before purchase. The link itself is
+                      * never here: it is revealed to livestream ticket holders only. */}
+                    {event.event_type !== 'in_person' && (
+                      <p className="mt-2 text-xs text-ink-600">
+                        {(event.stream_geo_allow ?? []).length > 0
+                          ? `Livestream available to viewers in ${describeCountries(event.stream_geo_allow)}. The stream link is sent to livestream ticket holders.`
+                          : 'The stream link is sent to livestream ticket holders after purchase.'}
                       </p>
                     )}
                   </div>

@@ -1,0 +1,116 @@
+A2: hybrid event, livestream ticket, the gated room
+===================================================
+01. Signed up and confirmed
+      priya.stream.156580@example.com -> /dashboard
+02. Step 2 dates
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Start Date & Time * | End Date & Time * | Timezone | This is a multi-day event | This is a recurring event
+      buttons PNPriya | Collapse | Back | Continue
+03. PASS  the organiser is offered a Stream link field on a hybrid event
+04. PASS  the organiser can restrict the stream to a region with one pick
+05. Step 3 hybrid location and stream
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Venue Name | Address | City | State / Region | Country | Postal Code | Stream link | Australia | New Zealand
+      buttons PNPriya | Collapse | in person | virtual | hybrid | Australia and New Zealand | Pacific | Asia | Africa
+06. PASS  a cover was composed for the hybrid event
+07. PASS  a hybrid event asks who each tier admits
+08. Step 5 two tiers
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Name | Type | Who this ticket admits | Currency | Price | Total Capacity | Sale Starts | Sale Ends | Min per Order
+      buttons PNPriya | Collapse | Remove | Remove | Add Ticket Tier | Back | Continue
+      ERRORS  Remove // Remove
+09. Review before publish
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search
+      buttons PNPriya | Collapse | Save as Draft | Publish and get your launch kit | Back
+10. PASS  the hybrid event published
+      /dashboard/events/95904b20-58ea-4d69-928f-4910a38bbd71/launch-kit?published=1 
+11. After publish
+      URL     /dashboard/events/95904b20-58ea-4d69-928f-4910a38bbd71/launch-kit?published=1
+      heading "Geelong Sessions Live 156580 is live."
+      fields  Search | Add an act
+      buttons PNPriya | Collapse | Copy link | Copy caption | Copy caption | Copy caption | Copy caption | Copy caption | Copy subject
+12. Public slug
+      geelong-sessions-live-156580-0zu54e (event 95904b20-58ea-4d69-928f-4910a38bbd71)
+13. Signed up and confirmed
+      tom.viewer.156580@example.com -> /dashboard
+14. Public event page as Watch the livestream buyer
+      URL     /events/geelong-sessions-live-156580-0zu54e
+      heading "Geelong Sessions Live 156580"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Follow | Share | Copy link | − | + | − | +
+15. PASS  the public page never shows the stream link
+      searched the rendered text
+16. Confirmation for Watch the livestream
+      URL     /orders/72f46e1d-0bf2-42ab-a4e8-a7ae8d0d59b1/confirmation
+      heading "You're going"
+      fields  (none)
+      buttons Transfer or gift this ticket | Add to Calendar | Share Event
+17. PASS  the viewer holds a confirmed livestream ticket
+      72f46e1d-0bf2-42ab-a4e8-a7ae8d0d59b1
+18. PASS  the confirmation email carries a Join the livestream link
+      https://www.eventlinqs.com.au/t/EL-4N9G-T5U2/watch?k=f414e9d5-e747-4556-b09a-120d27440850
+19. PASS  the confirmation page offers Join the livestream
+20. The watch page as an admitted viewer
+      URL     /t/EL-4N9G-T5U2/watch?k=f414e9d5-e747-4556-b09a-120d27440850
+      heading "Geelong Sessions Live 156580"
+      fields  Say something
+      buttons Chat | Questions | 🔥0 | ❤️0 | 👏0 | 😂0 | Send
+21. PASS  the admitted viewer sees the stream
+      YouTube embed present
+22. PASS  the room offers a chat composer
+23. PASS  the room offers a question composer
+24. FAIL  the viewer sees their own chat message
+25. The room after chatting and asking
+      URL     /t/EL-4N9G-T5U2/watch?k=f414e9d5-e747-4556-b09a-120d27440850
+      heading "Geelong Sessions Live 156580"
+      fields  Ask a question
+      buttons Chat | Questions (1) | 🔥0 | ❤️0 | 👏0 | 😂0 | Ask
+26. Organiser event overview
+      URL     /dashboard/events/95904b20-58ea-4d69-928f-4910a38bbd71
+      heading "Geelong Sessions Live 156580"
+      fields  Search | Add an act
+      buttons PNPriya | Collapse | Share | Copy link | Add to lineup
+27. PASS  the organiser dashboard offers a Stream tab
+28. Organiser stream room
+      URL     /dashboard/events/95904b20-58ea-4d69-928f-4910a38bbd71/stream
+      heading "Stream room"
+      fields  Search | Your answer* | Post as Natarajan Presents 1
+      buttons PNPriya | Collapse | Answer | Hide | Post to the room | Hide
+29. PASS  the organiser sees the question
+30. Organiser answered and hid a message
+      URL     /dashboard/events/95904b20-58ea-4d69-928f-4910a38bbd71/stream?done=hidden
+      heading "Stream room"
+      fields  Search | Post as Natarajan Presents 1
+      buttons PNPriya | Collapse | Show again | Post to the room | Hide
+31. FAIL  the viewer sees the organiser answer
+32. Viewer sees the answer
+      URL     /t/EL-4N9G-T5U2/watch?k=f414e9d5-e747-4556-b09a-120d27440850
+      heading "Geelong Sessions Live 156580"
+      fields  Ask a question
+      buttons Chat | Questions | 🔥0 | ❤️0 | 👏0 | 😂0 | Ask
+33. PASS  a wrong secret is refused with a 404
+      status 404
+34. Wrong secret
+      URL     /t/EL-4N9G-T5U2/watch?k=00000000-0000-0000-0000-000000000000
+      heading "We can't find that page"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne
+35. PASS  a viewer outside the allowed countries is refused and told why
+      Skip to main content LIVESTREAM Geelong Sessions Live 156580 This livestream is not available where you are The organiser has made it available to viewers in Au
+36. Blocked by geography
+      URL     /t/EL-4N9G-T5U2/watch?k=f414e9d5-e747-4556-b09a-120d27440850
+      heading "Geelong Sessions Live 156580"
+      fields  (none)
+      buttons (none)
+37. PASS  a viewer in New Zealand is admitted
+38. Signup did not ask for confirmation
+      /signup :: Too many attempts from this connection. Please wait about 6 minutes and try again.
+39. Verdicts
+      17 of 19 passed
+40. Evidence copied
+      C:\dev\EVIDENCE\A2\desktop-1440

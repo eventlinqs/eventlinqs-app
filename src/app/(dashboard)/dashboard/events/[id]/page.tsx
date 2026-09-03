@@ -319,6 +319,9 @@ export default async function EventViewPage({ params }: Props) {
           <TabLink href={`/dashboard/events/${event.id}/orders`}>Orders</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/attendees`}>Attendees</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/reach`}>Reach</TabLink>
+          {event.event_type !== 'in_person' && (
+            <TabLink href={`/dashboard/events/${event.id}/stream`}>Stream</TabLink>
+          )}
           {artistsOn && (
             <TabLink href={`/dashboard/events/${event.id}/lineup`}>Lineup</TabLink>
           )}

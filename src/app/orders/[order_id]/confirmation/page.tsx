@@ -41,6 +41,8 @@ type IssuedTicket = {
   holder_name: string | null
   holder_email: string | null
   order_item: { item_name: string } | null
+  /** Who this ticket admits (Scope v5 3.11): a livestream tier carries a Join link. */
+  tier: { access_mode: 'in_person' | 'virtual' } | null
   /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
   seat: {
     row_label: string
@@ -110,7 +112,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
 
   const { data: event } = await adminClient
     .from('events')
-    .select('title, start_date, end_date, timezone, venue_name, venue_city, venue_country, slug, has_reserved_seating, organiser_assigns_seats, status, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
+    .select('title, start_date, end_date, timezone, event_type, venue_name, venue_city, venue_country, slug, has_reserved_seating, organiser_assigns_seats, status, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
     .eq('id', fullOrder.event_id)
     .single()
 
@@ -207,7 +209,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   // have been generated yet (a genuine pending state while the webhook runs).
   const { data: ticketRows } = await adminClient
     .from('tickets')
-    .select('id, ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name), seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))')
+    .select('id, ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name), tier:ticket_tiers!tickets_ticket_tier_id_fkey(access_mode), seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))')
     .eq('order_id', fullOrder.id)
     .order('created_at', { ascending: true })
 
@@ -228,6 +230,10 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           status: t.status,
           ticket_code: t.ticket_code,
           href,
+          // The livestream (Scope v5 3.11): the watch page re-verifies this bearer
+          // pair, the tier and the viewer's country before revealing anything.
+          admitsToStream: event.event_type === 'virtual' || t.tier?.access_mode === 'virtual',
+          watchHref: `/t/${encodeURIComponent(t.ticket_code)}/watch?k=${encodeURIComponent(t.secret)}`,
           qrSvg,
           itemName: t.order_item?.item_name || 'Admission',
           holder: t.holder_name ?? t.holder_email ?? 'Ticket holder',
@@ -409,14 +415,24 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
                       <dd className="font-medium text-ink-900">{t.holder}</dd>
                     </div>
                   </dl>
+                  {t.admitsToStream && (
+                    <Link
+                      href={t.watchHref}
+                      className="mt-5 flex min-h-[44px] items-center justify-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
+                    >
+                      Join the livestream
+                    </Link>
+                  )}
                   <Link
                     href={t.href}
-                    className="mt-5 flex min-h-[44px] items-center justify-center rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink-800"
+                    className={`${t.admitsToStream ? 'mt-3' : 'mt-5'} flex min-h-[44px] items-center justify-center rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink-800`}
                   >
                     View ticket
                   </Link>
                   <p className="mt-2 text-center text-xs text-ink-600">
-                    Show this QR at entry. One QR admits one person.
+                    {t.admitsToStream
+                      ? 'This ticket admits to the livestream. The stream and the room open from Join the livestream.'
+                      : 'Show this QR at entry. One QR admits one person.'}
                   </p>
                   {/*
                     * TRANSFER, ON THE ONLY SURFACE A GUEST EVER REACHES.

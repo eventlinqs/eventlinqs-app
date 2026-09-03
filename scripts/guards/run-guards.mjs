@@ -69,6 +69,8 @@
  *                              RLS, so an unchecked read is a cross-tenant read)
  *   no-glassmorphism           no applied backdrop-filter anywhere in src, because the
  *                              Design system and Motion both ban it and neither had a gate
+ *   stream-link-never-public   the livestream link is unreachable from every public surface
+ *                              and the inert events.virtual_url column is read by nothing
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -598,6 +600,14 @@ const GUARDS = [
   // Translucency without a filter stays legal, so this only fails on an APPLIED
   // filter, never on a /95 badge, a comment, or an inert transition property list.
   'scripts/guards/no-glassmorphism.mjs',
+  // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
+  // organiser form, stored on the anon-readable events row, and shown to nobody.
+  // Migration 20260903000002 moved it into a vault table with no anon grant.
+  // This holds the two properties that make the reveal rule true: the inert
+  // column is read by nothing, and no public surface can import the modules
+  // that hand the link back. Proven red against `{event.virtual_url}` on the
+  // public event page and green after its removal (C:\dev\EVIDENCE\A2).
+  'scripts/guards/stream-link-never-public.mjs',
 ]
 
 /**
