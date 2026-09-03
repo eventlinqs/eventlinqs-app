@@ -33,3 +33,36 @@ production build each time; it no longer does.
 
 **Decide:** nothing for this item. The secret was replaced with a fresh one; no guest order
 link had ever been minted with the old value, so nothing was invalidated.
+
+## A2. Virtual and hybrid events: a livestream ticket now reaches the stream
+
+**What changed for a real person:** an organiser can run an event online, in the room, or
+both at once. On a hybrid event each ticket tier says who it admits: "In the room" admits at
+the door, "Watch the livestream" admits to the stream. The organiser pastes the stream link
+(YouTube Live, Zoom, StreamYard, any https page, or an rtmp address), picks who can watch
+(anywhere, or a region such as Australia and New Zealand, or a list of countries), and cannot
+publish a livestream without a link. The public event page states the reach and never the
+link. A viewer who takes a livestream ticket receives "Join the livestream" on their ticket,
+on their order confirmation and in the confirmation email; the watch page checks the ticket,
+its tier, its status and the viewer's country before it shows the stream, and every refusal
+says why in one sentence. The room under the stream has chat, questions and reactions; the
+organiser answers questions, hides messages and posts as the organiser from a Stream tab on
+the event dashboard. A wrong ticket secret is a 404, a walk-in ticket is refused with "this
+ticket admits you at the door", and a viewer outside the reach is told the reach.
+
+**Evidence:** C:\dev\EVIDENCE\A2\ (the three drives, 28 verdicts each at 1440, 768 and 390;
+axe; Lighthouse on the preview; the schema proof on TEST; the two guard proofs).
+
+**Decide:**
+- Apply the two A2 migrations to production, in this order, then verify with one command:
+  `supabase link --project-ref gndnldyfudbytbboxesk` (read the ref back), `supabase db push --linked`,
+  then `node scripts/ops/verify-production-schema.mjs` (it pulls production's public values
+  through the Vercel CLI, probes read only, prints PASS or FAIL, never prints a key).
+  Until that is done, the production build refuses itself by design (the schema-ahead-of-code
+  guard) rather than serving a ticket page that 500s, so the PR is safe to merge before or
+  after; it deploys only after.
+- The livestream ticket in the drive was FREE. A paid livestream ticket reaches the same
+  confirmed status through the Stripe webhook that journey 3 proves; the watch gate reads the
+  ticket's status and its tier's admission, not its price. If you want the paid path driven
+  through the watch page as well, say so and it is one journey leg on a Stripe-connected
+  TEST organiser.

@@ -158,3 +158,292 @@ Disk after reclaim: 6.79 GB free. Above the 6 GB continue line.
 - Rate-limit audit (C:\dev\EVIDENCE\A2\rate-limit-audit.txt): the new policy is listed keyed
   by ticket, fail-open, one call site; the three findings it prints are pre-existing.
   entrypoint-authz --check PASS with the two route methods declared as bearer.
+
+## 2026-09-04 01:10 Session resumed at A2 (the first unfinished item)
+
+- Tree was clean at 8fbf65a4 (the A2 WIP commit) apart from two untracked serve logs. Nothing to
+  commit before starting. Disk at start: 11.53 GB free (the Windows Update cache was cleared
+  since yesterday's 6.7 GB).
+- Governing laws for finishing A2: Law 0, Definition of Done, Law 1, Law 5, Law 7, Law 8, Law 10,
+  Design system, Copy and banned content, Verification and gates (Migrations: the production push
+  is the founder's), the rate-limit doctrine, plus the brief's Completion Law and DRIVEN ruling.
+- Verification plan, stated before editing: the corrected journey at desktop-1440, tablet-768 and
+  mobile-390 with every verdict PASS and zero blockers; the new guard proven red against production
+  and green against TEST; axe zero violations at every impact on the event page, the ticket page,
+  the watch page (admitted and refused), the order confirmation, the organiser edit form and the
+  organiser stream tab; Lighthouse median on the Vercel preview; the full gate set (58 guards, tsc,
+  lint, the whole suite with the canary raised, build); commit, push, PR.
+
+## 2026-09-04 01:15 A2: why the desktop drive failed, and what was actually wrong
+
+- Read C:\dev\EVIDENCE\A2\drive-desktop-1440.txt against the code. Both chat FAILs were the drive
+  script, not the room:
+  1. "the viewer sees their own chat message" read the page AFTER clicking the Questions tab, where
+     chat messages are filtered out by design. Step 25's screenshot shows "Questions (1)", so the
+     question had posted; the chat had too, on the other tab.
+  2. "the viewer sees the organiser answer": the organiser page lists Questions before Chat, so the
+     drive's "first Hide button on the page" hid the QUESTION (after answering it), and the answer
+     vanished with it. Step 30 shows "Show again" on the question and the chat still visible.
+  3. The third persona (the walk-in) was refused at signup by auth-signup (5 per address per 10
+     minutes): two drives had run from one address inside ten minutes. Three real people are on
+     three connections; the harness was not.
+- No product defect in the room. The drive is corrected rather than the product bent to it.
+
+## 2026-09-04 01:20 A2: a deploy-order hazard found, and a guard for it
+
+- The bearer ticket page and the order confirmation SELECT ticket_tiers.access_mode BY NAME, and
+  the organiser create and edit actions write access_mode and stream_geo_allow. Probed production
+  READ ONLY with its public anon key (pulled through the Vercel CLI to a temp file, deleted after):
+  all four A2 objects ABSENT (400 42703 for the two columns, 404 PGRST205 for the two tables).
+  Merging A2 before the founder's migration push would have 500'd every ticket page and every
+  confirmation on the live site, and lint, typecheck, build and the suite would all have been green
+  because none of them reads a database. The Vercel preview store points at TEST (verified from the
+  pulled preview env), where the migrations are applied.
+- Calibrated PostgREST's answers against TEST with both keys before writing a line of the guard
+  (Law 7): C:\dev\EVIDENCE\A2\schema-probe-calibration.txt. 200 present; 400 42703 column absent;
+  404 PGRST205 table absent; 401 42501 permission denied, which is proof the object exists.
+- Built scripts/guards/schema-ahead-of-code.mjs (registered, blocking on prebuild): probes the
+  build's own database read only, one GET with limit=0 per named object, refuses the build if any
+  is absent, names the migration and prints the founder's commands. SKIPs loudly on CI's placeholder
+  URL exactly as curated-categories-exist does. Manifest in scripts/guards/lib/schema-manifest.mjs,
+  probe in scripts/guards/lib/schema-probe.mjs.
+- Law 10: scripts/ops/verify-production-schema.mjs is the founder's one command after
+  `supabase db push --linked` on production. It pulls production's PUBLIC url and anon key through
+  the Vercel CLI (run as a Node program, no shell) into a temp directory removed in a finally,
+  probes, prints PASS or FAIL, never prints a key.
+- PROVEN both ways, C:\dev\EVIDENCE\A2\guard-schema-ahead-proof.txt: guard vs TEST PASS (exit 0);
+  founder script vs production FAIL exit 1 naming the four absent objects; the guard itself vs
+  production's public values FAIL exit 1. One defect found by the proof itself: a pulled Vercel
+  env file lists a sensitive variable as an EMPTY string, and `??` carried that as the credential
+  ("no database to check"). Fixed to `||` and re-proven; the test pins it.
+- tests/unit/guards/schema-ahead-of-code.test.ts: 28 tests (the calibrated interpretation, the
+  probe with a stubbed fetch, the manifest against the migrations on disk and the generated types,
+  and that the guard and the founder script share one manifest and one probe). tsc 0.
+- Journey script corrected: viewport honoured from JOURNEY_VIEWPORT (it opened 1440 for every label
+  before); one documentation-range forwarded address per persona; chat read on the Chat tab; the
+  organiser hides the CHAT message found by its text inside the Chat section; the viewer is proven
+  to see the answer AND to lose the hidden message; run.json and saved sessions written beside the
+  evidence for the axe and Lighthouse passes.
+- Local commit 597c1e3b. First background build was blocked by curated-categories-exist because my
+  background shell had no .env.local; restarted with the environment loaded.
+
+## 2026-09-04 02:05 A2: driven at 390, 768 and 1440, all green
+
+- Production build of this tree (C:\dev\EVIDENCE\A2\build-4.txt): all 59 guards PASS (the new
+  schema-ahead-of-code guard probing TEST among them), compiled, BUILD_EXIT=0. Local `next start`
+  on 3311 against TEST with the console mail transport and the local Upstash shim.
+- First desktop run stopped before ticketing: the composed cover was still uploading on the cold
+  server, the form refused Continue with "Your cover is still uploading. Give it a moment, then
+  continue." and the script's fixed 3.5 s wait read that as never reaching the step. The script
+  now does what a person does: reads the sentence, waits, presses Continue again, up to 90 s.
+- Second desktop run, then tablet and mobile, every one 28 of 28 verdicts PASS, 0 blockers,
+  0 server errors (C:\dev\EVIDENCE\A2\drive-<viewport>.txt, screenshots in
+  C:\dev\EVIDENCE\A2\<viewport>\, run.json and the saved sessions beside them). The journey,
+  end to end through the real UI: organiser signs up, creates a HYBRID event with a venue, a
+  YouTube stream link and "Australia and New Zealand" as the reach, two tiers (In the room, in
+  person; Watch the livestream, virtual), composes a cover, publishes; the public page states the
+  reach and never the link; a viewer signs up, takes the livestream ticket, receives an email with
+  Join the livestream, opens the room from the confirmation page, sees the embed, chats, asks a
+  question; the organiser answers from the Stream tab, sees the chat, hides it; the viewer sees
+  the answer and the hidden message is gone; a wrong secret is a 404; a US viewer is refused and
+  told the reach; a NZ viewer is admitted; a walk-in takes the in-person ticket, gets no Join
+  link, and forcing the watch address is refused with the in-person sentence.
+- The first run's evidence is kept beside it as drive-desktop-1440-first-run-2026-09-03.txt and
+  desktop-1440-first-run-2026-09-03\ so the two FAILs it recorded can be compared with the fix.
+
+## 2026-09-04 02:10 A2: axe found three things, two ours, one YouTube's
+
+- axe at 390 and 1440 over every address the desktop run created (C:\dev\EVIDENCE\A2\axe-run.txt):
+  event page, viewer ticket, watch page (AU), walk-in ticket, the geography refusal (US), the
+  in-person refusal, the viewer's confirmation (signed in), the organiser's edit form and Stream
+  tab (signed in). 22 scans, 20 clean.
+  1. Event page, the "In-person + online" badge: gold-600 on a gold tint fails 4.5:1. Fixed to
+     gold-800, the design system's gold-on-light token.
+  2. Organiser Stream tab: a hidden message dimmed the whole row with opacity-70, which took the
+     Hide and Show again controls below 4.5:1. Fixed: a hidden message is marked by a dashed
+     border and the word, never by fading the row.
+  3. Watch page: aria-allowed-attr and aria-prohibited-attr INSIDE YouTube's own player iframe
+     (.ytmVideoInfoVideoTitle, #movie_player). Not our markup and not fixable from this
+     repository. scripts/verify/axe-urls.mjs gained --exclude <selector>, printed on every scan
+     line so the exclusion is never quiet, and the wrapper excludes the youtube-nocookie frame.
+     Our own DOM on that page is clean.
+- FOUND ON THE WAY, platform-wide and pre-existing: ink-50, ink-300, ink-500 and ink-700 are not
+  tokens in globals.css and compile to NOTHING (checked in the built CSS: text-ink-500 0 rules,
+  text-ink-600 1 rule). 268 uses across src (text-ink-700 114, text-ink-500 85, border-ink-300 39,
+  bg-ink-50 30) are silent no-ops rendering as inherited colour. A2's code had repeated them.
+  Every A2-added line now uses a defined token (ink-600, ink-400, ink-100); the older files were
+  touched only on lines this branch added (plus one identical pre-existing line in the ticket
+  page). The platform-wide sweep is a separate item and is queued for Lawal.
+- Rebuilt (build-5) and re-driving all three viewports against the final tree so the committed
+  evidence is exactly the final run.
+
+## 2026-09-04 02:15 A1 CORRECTION: the log branch still builds
+
+- `vercel ls` showed a Preview deployment in ERROR 11 hours ago, 9 seconds long. Its metadata
+  (Vercel API, dpl_DxiBH35ibsaK9LoBVcTG8TVWtU22): githubCommitRef ops/session-log, the A1 log
+  push. So A1's vercel.json entry `git.deploymentEnabled { "ops/session-log": false }` on the
+  code branch did NOT stop the log branch from building, because Vercel reads the vercel.json of
+  the commit being deployed and the log branch has none. A1's log line "it no longer does" was
+  wrong and is corrected here; the ledger row is amended.
+- The primary source (https://vercel.com/docs/project-configuration/git-configuration, fetched
+  2026-09-04): git.deploymentEnabled is "Object of key branch identifier String and value
+  Boolean, or Boolean", with "Turning off all automatic deployments" as the Boolean case. The fix
+  is a vercel.json ON THE LOG BRANCH: `{ "git": { "deploymentEnabled": false } }`. Written into the
+  C:\dev\session-log worktree; proven when this session's log push produces no deployment.
+
+## 2026-09-04 (session resumed) A2: the tree was dirty, so it was committed and pushed first
+
+- Read the brief, the ledger and this log. Tree at 597c1e3b plus the uncommitted axe fixes and
+  the tablet and mobile evidence. Disk at start: 11 GB free.
+- Found before committing: the three drives (01:42 to 01:47) and the axe pass (01:44) predate the
+  last source edits (01:45 to 01:49) and build-5 (01:51), and the server on 3311 was started at
+  01:37 from build-4. The "re-driving all three viewports against the final tree" line in the
+  02:10 entry never completed. Every drive, the axe pass and Lighthouse are redone below against
+  the committed tree, so the evidence is exactly the final run.
+- The suite with the env parked: 256 files, 3048 passed, 1 FAILED. tests/unit/dashboard/
+  no-clock-during-render.test.ts caught src/components/stream/stream-room.tsx formatting a message
+  time with `new Intl.DateTimeFormat` and no timeZone (runtime zone: UTC on the server, the reader's
+  in the browser). Fixed by threading the event's zone from the watch page (falling back to
+  PLATFORM_TIME_ZONE from src/lib/dates/event-time.ts, the platform's own default), and
+  tests/unit/stream/room-time-label.test.ts pins Melbourne and Perth disagreeing about one instant.
+  The test wants the explicit `timeZone:` key; the shorthand form was still red.
+- Canary raised to 257 files / 3052 tests in the same commit, with the dated note naming the seven
+  A2 files. Serve logs (.tmp-serve*.log) gitignored.
+- Commit 2725197b, pushed with .env.local parked around the pre-push hook (tsc, eslint, canary).
+
+## 2026-09-04 A2: driven at 390, 768 and 1440 against the committed tree, axe clean
+
+- build-6 (C:\dev\EVIDENCE\A2\build-6.txt) of 2725197b with the env loaded: all 59 guards PASS
+  (schema-ahead-of-code probing TEST among them), compiled, BUILD_EXIT=0. Disk before: 10.4 GB.
+- The stale server from 01:37 had survived the previous session's stop because its command line
+  quotes the next binary ("...\next" start), so a literal "next start" match missed it and it kept
+  port 3311 and the log files. drive-all.ps1 now matches with a regex, stops the powershell wrapper
+  that holds the logs, and refuses to continue if 3311 is still held. Then it restarts the server on
+  build-6 (TEST vkapkibzokmfaxqogypq, console mail, local Upstash shim) and drives the three viewports.
+- Drives (C:\dev\EVIDENCE\A2\drive-<viewport>.txt, 21 screenshots and 3 saved sessions each under
+  C:\dev\EVIDENCE\A2\<viewport>\, and the same under docs/verification/journeys-2026-08-28/
+  a2-virtual-hybrid/): desktop-1440 28 of 28, tablet-768 28 of 28, mobile-390 28 of 28; 0 blockers,
+  0 server errors at every viewport. Event geelong-sessions-live-743702-rgpaxr on TEST.
+- axe (C:\dev\EVIDENCE\A2\axe-run.txt) at 390 and 1440 over every address the desktop run created:
+  event page, viewer ticket, watch page admitted (AU), watch page refused (US), in-person ticket
+  forced onto the watch page, walk-in ticket, the viewer's confirmation (signed in), the organiser's
+  edit form and Stream tab (signed in). 18 scans, 0 violations at any impact. The two findings from
+  the earlier pass (hybrid badge contrast, hidden-row opacity on the Stream tab) are gone; YouTube's
+  own player frame is excluded and the exclusion is printed on every scan line.
+- Preview eventlinqs-937hmo3jx (Ready, serves sentry-release 2725197b, reads TEST) resolves the
+  fresh event page, the viewer's ticket with Join the livestream, and the watch page with the embed.
+- Evidence commit: the three journey directories, one run each, from the final tree.
+
+## 2026-09-04 A2: Lighthouse on the preview, the merge with main, PR #124
+
+- Lighthouse (scripts/verify/lighthouse-median.mjs, median of three, mobile and desktop) on the
+  Vercel preview eventlinqs-937hmo3jx of 2725197b, over the fresh event page, the viewer's bearer
+  ticket and the watch page (C:\dev\EVIDENCE\A2\lighthouse-run.txt, 18 reports):
+    DESKTOP  event 100 / ticket 100 / watch 98; accessibility 100 on all three.
+    MOBILE   event 78 / ticket 90 / watch 91; accessibility 100 on all three.
+  Mobile is below the 95 law. Baseline on the same preview, a pre-existing non-hybrid event page
+  (cat-comedy-cellar-late-show-sydney): mobile 73, desktop 100 (lighthouse-baseline-run.txt). So the
+  event page's mobile score is the platform's standing condition and A2 did not regress it (78
+  against 73). The LCP element on the event page is the hero raster (fetchpriority high,
+  discoverable); on the ticket and watch pages it is text with 770 to 830 ms render delay. Every
+  page carries the same 438 KB of first-party script and 270 to 350 ms of blocking time: the
+  pre-load client shell named in the founder's 25 August ruling (Issue #42). Not an A2 item;
+  recorded as PARTIAL on completion law 6 rather than hidden. SEO 58 to 69 is the preview's noindex
+  by design and the bearer pages' private posture.
+- lighthouse-median.mjs judged a run by chrome-launcher's exit code, and on Windows the launcher
+  throws EPERM removing its temp profile AFTER the report is written (documented already in
+  scripts/perf-median.mjs). Every first run "FAILED" with a complete 380 KB report on disk. It now
+  judges by the report's existence and parseability and prints the exit code (9077d945).
+- PR #124 (integration/launch to main) opened; GitHub reported it CONFLICTING because #123 was
+  squash-merged, so main's copy of the canary carried A1's baseline while the branch had raised it.
+  No pull_request workflow runs on a conflicting PR (GitHub cannot build the merge ref), which is
+  why CI never appeared. Merged origin/main into the branch, kept the raised baseline (46e0506c).
+- Free disk: 10.1 GB.
+
+## 2026-09-04 A2: the preview build of the merge commit failed on a guard, and why the local build missed it
+
+- PR #124 became MERGEABLE after the merge and CI started, but Vercel's preview build of 9077d945
+  FAILED at prebuild: [no-partial-builds] flagged scripts/verify/lighthouse-median.mjs:70, my own
+  comment "removes its temporary profile", because "temporary" is one of the deferral words the
+  guard reads as an unowned marker in a shipped path. build-6 ran BEFORE that edit, so 59 of 59
+  was true of an earlier tree. The pre-push hook runs tsc, eslint and the suite but NOT the guards,
+  so the gap is: an edit to a shipped path after the last local build is unguarded until Vercel.
+  Rule for the rest of this build: `npm run guards` on the exact tree before every push, logged.
+- Reworded to "scratch profile", guard PASS, 1c10b371, pushed. The `--watch` on the PR checks was
+  restarted for the new head.
+
+## 2026-09-04 A2 CLOSED on the code side: PR #124 green
+
+- PR #124 on 1c10b371: lint · typecheck · build PASS (4m48s), test (vitest) PASS (2m49s),
+  types-drift guard PASS, Vercel preview READY. Lighthouse CI advisory still running. Merge and the
+  production migration are the founder's (REVIEW-QUEUE, A2, Decide). A2 is not started again.
+- What closes A2 for me: every completion law row is in C:\dev\BUILD-LEDGER.md; the two PARTIALs
+  (mobile Lighthouse below 95 on a platform-wide condition; production deploy waiting on the
+  reserved migration push) are named, not hidden.
+
+## 2026-09-04 A3 started: 3.1 venue geocoding. The key verification first, as the brief orders
+
+- Plan at C:\dev\A3-PLAN.md (Law 0: laws named, verification stated before the first edit).
+- KEY VERIFICATION (C:\dev\EVIDENCE\A3-google-key-probe-20260904-*.txt):
+  GOOGLE_MAPS_API_KEY in production, preview and local is the SAME VALUE as the public browser key
+  (SHA-256 fingerprint 3dcc7ad8 in all three; pulled through the Vercel CLI into the gitignored
+  .tmp/ and deleted, never printed). Geocoding API and Places HTTP with it: REQUEST_DENIED, "API
+  keys with referer restrictions cannot be used with this API". So the brief's REQUEST_DENIED
+  branch applies: BLOCKED ON FOUNDER, KEY ONLY, for the server-side geocode.
+- What the browser key CAN do (C:\dev\EVIDENCE\A3-places-js-probe-20260904.txt, Playwright on real
+  pages): from https://www.eventlinqs.com.au the Maps JS Places library returns five suggestions
+  for "Forum Melbourne", a place id, lat -37.8166 lng 144.9696, the formatted address and seven
+  address components. From http://localhost:3311 and from the Vercel preview origin: "Requests from
+  referer ... are blocked". So the organiser-form autocomplete works on production today and
+  cannot be driven from localhost or a preview until the founder adds those referers to the
+  browser key (a Cloud console step, IMPOSSIBLE for a machine without his Google credentials).
+- SCHEMA: 20260904000001_venue_geocode_provenance.sql (events.venue_geocode_source with a CHECK,
+  events.venue_geocoded_at, a partial index for the backfill's working set). Linked ref read back
+  as vkapkibzokmfaxqogypq, production not linked, `supabase db push --include-all` applied it.
+  Verified by querying back: scripts/verify/venue-geocode-schema-verify.mjs, 4 of 4 PASS
+  (C:\dev\EVIDENCE\A3-schema-verify-test.txt). Generated types extended at the three sites.
+- CODE so far: src/lib/geo/geocode.ts (the Geocoding client, injectable transport, every Google
+  status a named outcome, and decideServerGeocoding, the ONE decision, which treats a server key
+  equal to the public key as absent); src/lib/maps/address-components.ts (a Places pick to the
+  six venue fields, Australian street line, the locality as Google gives it);
+  src/lib/cities/resolve.ts gained resolveCitySlugFromCoordinates and resolveCityClaim, because a
+  Places locality is the SUBURB for an Australian address and the exact city match would file a
+  Fitzroy venue under no city; CITY_MATCH_RADIUS_KM = 30 is bounded by a test against the
+  registry's closest pair. src/lib/maps/places-autocomplete.ts (session token per typing session,
+  fetchFields ends it, Australia only, referer refusals named).
+- GUARD: scripts/guards/geocoding-key-posture.mjs (registered): a DISTINCT server key is probed
+  once per build and a refusal FAILS (the silent shape); ABSENT or BROWSER-as-server SKIPs with the
+  founder's step printed, because a gate that cannot go green until he acts is a gate somebody
+  switches off. scripts/ops/verify-google-maps-keys.mjs is his one command (Law 10).
+- Tests so far: geocode (14), address-components (7), resolve-from-coordinates (6),
+  geocoding-key-posture (9). The Bendigo case in my first draft was wrong: Bendigo is a canonical
+  city in the registry, so the far-away point is now the centre of the continent.
+
+## 2026-09-04 A3: the Referer override does not get past Google, so the pick's driven proof is the founder's
+
+- Tried the last machine-side route to a real pick from a local server: a Playwright route that
+  rewrites the Referer on every maps.googleapis.com request to https://www.eventlinqs.com.au/.
+  Google still answered "Requests from referer http://localhost:3311/ are blocked" (the check is
+  on the page origin the library reports, not the header). No spoofing, then. The real pick can
+  only be driven from www.eventlinqs.com.au, which is production and which this build never
+  writes. RECORDED: the driven proof of the Places pick against Google is BLOCKED ON FOUNDER,
+  REFERER ONLY. His step (IMPOSSIBLE for a machine without his Google credentials): Cloud console,
+  the browser key, Website restrictions, add http://localhost:3311/* and https://*.vercel.app/*.
+  After that the same journey runs unchanged with JOURNEY_PLACES_STUB unset.
+- What IS driven locally, at all three viewports, through the same UI a person sees: the finder
+  field and its one-sentence refusal on a blocked origin; the typed-address path (saves, no
+  coordinates, the reason named in the server log, the event page map still centres in the
+  browser); and, with the Maps JS replaced by a stand-in built from Google's REAL answer for
+  "Forum Melbourne" (scripts/journeys/stubs/maps-js-stub.mjs), the finder's own behaviour: the
+  listbox, the keyboard, every field filled, the map preview card, the publish, the row on TEST
+  with coordinates, source 'places', city_primary melbourne and a suburb, and the pin on
+  /city/melbourne. Every such run prints STUBBED PLACES on its log line and is not claimed as the
+  pick's proof against Google.
+- Code landed since the last entry: src/lib/geo/venue-coordinates.ts (the one save-time rule, 8
+  tests), the create and update actions call it and resolveCityClaim; the form carries
+  venue_latitude, venue_longitude, venue_place_id and venue_geocode_source through create, edit
+  and the payload, renders the VenueFinder above Venue Name and the VenueMap card as the preview
+  once a pick has coordinates; scripts/ops/backfill-venue-coordinates.ts (TEST only, dry run by
+  default, run: 20 candidates listed, nothing written, the OFF reason named,
+  C:\dev\EVIDENCE\A3-backfill-dry-run.txt). tsc 0, eslint 0 on every changed file; the four
+  tests that touch the actions and the guard registry pass (39).
