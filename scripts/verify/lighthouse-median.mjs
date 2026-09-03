@@ -67,7 +67,7 @@ for (const url of urls) {
       const res = spawnSync(process.execPath, lhArgs, { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024 })
       /*
        * JUDGED BY THE REPORT, NOT THE EXIT CODE. On Windows chrome-launcher's
-       * kill() removes its temporary profile while Chrome still holds a handle
+       * kill() removes its scratch profile while Chrome still holds a handle
        * and throws EPERM, AFTER the audit has finished and the JSON is on disk
        * (the same race is documented in scripts/perf-median.mjs). A complete
        * measurement that exits 1 is still a measurement; a missing or
