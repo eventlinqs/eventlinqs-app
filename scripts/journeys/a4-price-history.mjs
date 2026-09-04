@@ -117,9 +117,19 @@ async function advanceTo(p, selector, tries = 8) {
 /** What the page says about the price history: the block, its sentences, its note. */
 async function readHistory(p) {
   return p.evaluate(() => {
+    /*
+     * READ BY TEST ID, NOT BY POSITION. The first drive read the block's
+     * summary as `block.querySelector('h2 + p, p')`, and a selector list
+     * returns the FIRST match in document order, which is the gold eyebrow
+     * (also a <p>, rendered before the heading). The page said "No price
+     * changes since this event was listed." and the journey reported it
+     * missing. A harness defect, indicting the product.
+     */
     const block = document.querySelector('[data-testid="price-history"]')
-    const entries = block ? [...block.querySelectorAll('li')].map((li) => li.textContent.replace(/\s+/g, ' ').trim()) : []
-    const summary = block ? (block.querySelector('h2 + p, p')?.textContent ?? '').trim() : ''
+    const entries = block
+      ? [...block.querySelectorAll('[data-testid="price-history-entry"]')].map((el) => el.textContent.replace(/\s+/g, ' ').trim())
+      : []
+    const summary = block ? (block.querySelector('[data-testid="price-history-summary"]')?.textContent ?? '').replace(/\s+/g, ' ').trim() : ''
     const note = document.querySelector('[data-testid="price-history-note"]')?.textContent?.trim() ?? null
     const main = (document.querySelector('main')?.innerText ?? '').replace(/\s+/g, ' ')
     const prices = [...new Set(main.match(/AUD \d+\.\d{2}/g) ?? [])]

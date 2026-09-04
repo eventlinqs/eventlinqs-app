@@ -45,7 +45,9 @@ export function PriceHistoryPanel({ histories, timezone }: Props) {
       className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm"
     >
       <SectionHeader eyebrow="Price history" title="How the price has moved" size="sm" id="price-history-heading" />
-      <p className="mt-3 text-sm text-ink-600">{priceHistorySummary(histories)}</p>
+      <p className="mt-3 text-sm text-ink-600" data-testid="price-history-summary">
+        {priceHistorySummary(histories)}
+      </p>
 
       <div className="mt-5 space-y-5">
         {histories.map((history) => (
@@ -63,9 +65,9 @@ export function PriceHistoryPanel({ histories, timezone }: Props) {
                     <DirectionIcon direction={entry.direction} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-semibold tabular-nums text-ink-900">
+                    <span className="block font-semibold tabular-nums text-ink-900" data-testid="price-history-entry">
                       {describePriceEntry(entry, history.currency)}
-                    </span>
+                    </span>{' '}
                     <span className="block text-xs text-ink-500">{formatHistoryDate(entry.recordedAt, timezone)}</span>
                   </span>
                 </li>
