@@ -731,9 +731,16 @@ const ROOT = join(HERE, '..', '..')
  * judgements and proves it green on the tree. schema-ahead-of-code grew by 2
  * when ticket_price_history.id joined the schema manifest; guard-registry
  * counts the new guard.
+ *
+ * 2026-09-05 (A4, the drive's axe finding): 271 files / 3182 tests. One file,
+ * five tests. tests/unit/a11y/light-surface-text-tokens.test.ts pins that the
+ * ticket selector's scarcity line and the access-code refusal use the
+ * error-strong text token rather than a coral text class on the white ticket
+ * card (coral-500 measured 3.28:1 there under axe, and no coral token clears
+ * 4.5:1 on white), and that error-strong itself still clears 4.5:1.
  */
-const MIN_FILES = 270
-const MIN_TESTS = 3177
+const MIN_FILES = 271
+const MIN_TESTS = 3182
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

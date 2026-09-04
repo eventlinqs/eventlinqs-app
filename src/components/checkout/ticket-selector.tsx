@@ -342,7 +342,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                       </p>
                     )}
                     {!soldOut && !salePending && available <= 20 && (
-                      <p className="mt-1 text-xs font-medium text-coral-500">Only {available} left</p>
+                      <p className="mt-1 text-xs font-medium text-error-strong">Only {available} left</p>
                     )}
                     {!soldOut && !salePending && tier.max_per_order < 10 && (
                       <p className="mt-0.5 text-[11px] text-ink-400">Max {tier.max_per_order} per order</p>

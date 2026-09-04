@@ -59,7 +59,7 @@ export function AccessCodeInput({ eventId, onUnlocked }: Props) {
           {isPending ? '…' : 'Apply'}
         </button>
       </form>
-      {error && <p className="mt-2 text-xs text-coral-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-error-strong">{error}</p>}
       {success && <p className="mt-2 text-xs text-emerald-600">Access granted. New tiers are now visible.</p>}
     </div>
   )
