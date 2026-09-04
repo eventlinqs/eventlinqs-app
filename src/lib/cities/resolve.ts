@@ -19,6 +19,7 @@
  * it simply is not claimed by a city until the locality matches one.
  */
 import { getAllCities, type CitySlug } from './data'
+import { distanceKm } from './resolve-suburb'
 
 /**
  * Normalise a locality for comparison: strip diacritics and punctuation, fold
@@ -61,4 +62,48 @@ export function resolveCitySlug(value: string | null | undefined): CitySlug | nu
   const locality = normaliseLocality(value.split(',')[0] ?? '')
   if (!locality) return null
   return cachedIndex.get(locality) ?? null
+}
+
+/**
+ * THE CITY RADIUS, and where the number comes from. A Places pick reports the
+ * SUBURB as the locality (Fitzroy, Newtown, Fortitude Valley), which the exact
+ * match above rightly refuses to file under a city it did not name. The
+ * coordinates settle it: the nearest canonical city centre within this radius
+ * is the city claim. The radius is bounded by the registry itself: the two
+ * closest canonical cities (Melbourne and Geelong) are about 65 km apart, and
+ * tests/unit/cities/resolve-from-coordinates.test.ts asserts this constant stays
+ * below half the closest pair, so the nearest city is never ambiguous.
+ */
+export const CITY_MATCH_RADIUS_KM = 30
+
+/**
+ * The nearest canonical city to these coordinates, within CITY_MATCH_RADIUS_KM,
+ * or null. Null is the honest state for a venue in the country between cities.
+ */
+export function resolveCitySlugFromCoordinates(
+  latitude: number | null | undefined,
+  longitude: number | null | undefined,
+  maxKm: number = CITY_MATCH_RADIUS_KM,
+): CitySlug | null {
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') return null
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
+  let best: { slug: CitySlug; km: number } | null = null
+  for (const city of getAllCities()) {
+    const km = distanceKm(latitude, longitude, city.latitude, city.longitude)
+    if (km <= maxKm && (best === null || km < best.km)) best = { slug: city.slug, km }
+  }
+  return best?.slug ?? null
+}
+
+/**
+ * The city claim for a venue: the typed locality when it names a canonical
+ * city, otherwise the nearest city to the coordinates. One function, so the
+ * create and update actions cannot drift from each other.
+ */
+export function resolveCityClaim(
+  locality: string | null | undefined,
+  latitude: number | null | undefined,
+  longitude: number | null | undefined,
+): CitySlug | null {
+  return resolveCitySlug(locality) ?? resolveCitySlugFromCoordinates(latitude, longitude)
 }

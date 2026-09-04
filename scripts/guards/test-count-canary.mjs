@@ -683,9 +683,26 @@ const ROOT = join(HERE, '..', '..')
  * build whose database lacks an object the code reads by name; and
  * tests/unit/stream/room-time-label.test.ts pins that the room stamps a message
  * in the event's zone, after no-clock-during-render caught the runtime-zone form.
+ *
+ * 2026-09-04 (Scope v5 completion build, item A3): 262 files / 3100 tests. Five
+ * files, forty-eight tests, all upward, for venue geocoding. Measured by running
+ * the five files alone (5 passed, 48 passed) on top of the A2 floor.
+ * tests/unit/geo/geocode.test.ts pins the Geocoding client against a stubbed
+ * transport, every Google status a named outcome, and the ONE decision that
+ * treats a server key equal to the browser key as absent;
+ * tests/unit/geo/venue-coordinates.test.ts pins the save-time rule (a Places pick
+ * is kept and never re-geocoded, a typed address is geocoded only when the key
+ * can serve it, every other outcome is null with its reason);
+ * tests/unit/maps/address-components.test.ts pins the Places pick to the six
+ * venue fields on Google's real components for Forum Melbourne;
+ * tests/unit/cities/resolve-from-coordinates.test.ts pins that a suburb locality
+ * still files under its city by the coordinates, and that CITY_MATCH_RADIUS_KM
+ * stays below half the registry's closest pair; and
+ * tests/unit/guards/geocoding-key-posture.test.ts pins the guard's three shapes
+ * (absent SKIP, browser-as-server SKIP, distinct-and-refused FAIL).
  */
-const MIN_FILES = 257
-const MIN_TESTS = 3052
+const MIN_FILES = 262
+const MIN_TESTS = 3100
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

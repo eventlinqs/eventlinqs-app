@@ -75,6 +75,10 @@
  *                              column and table the code names, so code never deploys ahead
  *                              of its migration (read only; refuses a production build until
  *                              the founder's push lands, keeps building previews on TEST)
+ *   geocoding-key-posture      a server geocoding key that Google refuses is the silent shape
+ *                              (configured-looking, serving nothing) and fails the build; an
+ *                              absent key or the browser key standing in is a named decision
+ *                              and SKIPs with the founder's step printed
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -621,6 +625,13 @@ const GUARDS = [
   // schema is behind its code. Proven red against production and green against
   // TEST on the same day (C:\dev\EVIDENCE\A2\guard-schema-ahead-proof.txt).
   'scripts/guards/schema-ahead-of-code.mjs',
+  // 4 September 2026 (A3, venue geocoding). GOOGLE_MAPS_API_KEY was found to
+  // be the public browser key in production, preview and local, which Google
+  // refuses for the Geocoding API. That shape is a decision and SKIPs loudly;
+  // a DISTINCT server key is probed once per build and a refusal FAILS, because
+  // that is the shape every gate would otherwise miss. Proven FAIL with a bogus
+  // distinct key and SKIP with the live values (C:\dev\EVIDENCE\A3-guard-geocoding-key-posture-proof.txt).
+  'scripts/guards/geocoding-key-posture.mjs',
 ]
 
 /**

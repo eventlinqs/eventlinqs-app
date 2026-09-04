@@ -1067,6 +1067,10 @@ export type Database = {
           venue_longitude: number | null
           venue_name: string | null
           venue_place_id: string | null
+
+          venue_geocode_source: 'places' | 'geocoding' | 'manual' | null
+
+          venue_geocoded_at: string | null
           venue_postal_code: string | null
           venue_state: string | null
           video_provider: string | null
@@ -1142,6 +1146,10 @@ export type Database = {
           venue_longitude?: number | null
           venue_name?: string | null
           venue_place_id?: string | null
+
+          venue_geocode_source?: 'places' | 'geocoding' | 'manual' | null
+
+          venue_geocoded_at?: string | null
           venue_postal_code?: string | null
           venue_state?: string | null
           video_provider?: string | null
@@ -1217,6 +1225,10 @@ export type Database = {
           venue_longitude?: number | null
           venue_name?: string | null
           venue_place_id?: string | null
+
+          venue_geocode_source?: 'places' | 'geocoding' | 'manual' | null
+
+          venue_geocoded_at?: string | null
           venue_postal_code?: string | null
           venue_state?: string | null
           video_provider?: string | null

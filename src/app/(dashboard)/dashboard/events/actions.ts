@@ -16,7 +16,8 @@ import { parseVideoEmbed } from '@/lib/media/video-embed'
 import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-model'
 import { moderateEventMedia } from '@/lib/media/moderation'
 import { cleanupEventMedia } from '@/lib/upload'
-import { resolveCitySlug } from '@/lib/cities/resolve'
+import { resolveCityClaim } from '@/lib/cities/resolve'
+import { resolveVenueCoordinates, type VenueGeocodeSource } from '@/lib/geo/venue-coordinates'
 import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
 import { getSiteUrl } from '@/lib/site-url'
 import { trackEventPublishedServer } from '@/lib/analytics/plausible'
@@ -112,6 +113,10 @@ export type CreateEventInput = {
   venue_postal_code: string | null
   venue_latitude: number | null
   venue_longitude: number | null
+  /** From a Places pick in the form; kept with the coordinates so the venue can be recognised later. */
+  venue_place_id?: string | null
+  /** Who wrote the coordinates: places (the organiser picked), geocoding, manual. */
+  venue_geocode_source?: VenueGeocodeSource | null
   /** The livestream link. Written to the vault (event_stream_links), never to the events row. */
   stream_url: string | null
   /** ISO 3166-1 alpha-2 codes the livestream may be watched from; null means anywhere. */
@@ -262,6 +267,25 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
 
   const admin = createAdminClient()
 
+  // The venue's coordinates by the one save-time rule, and the city claim from
+  // the locality first and the coordinates second. A missing pair is logged by
+  // its reason, never swallowed: the organiser still saves, the event page still
+  // centres its map in the browser, and the backfill picks the row up later.
+  const venue = await resolveVenueCoordinates({
+    event_type: input.event_type,
+    venue_name: input.venue_name || null,
+    venue_address: input.venue_address || null,
+    venue_city: input.venue_city || null,
+    venue_state: input.venue_state || null,
+    venue_country: input.venue_country || null,
+    venue_postal_code: input.venue_postal_code || null,
+    venue_latitude: input.venue_latitude,
+    venue_longitude: input.venue_longitude,
+    venue_place_id: input.venue_place_id ?? null,
+    venue_geocode_source: input.venue_geocode_source ?? null,
+  })
+  if (venue.reason) console.warn(`[events] no coordinates for "${input.venue_name ?? input.venue_address ?? ''}": ${venue.reason}`)
+  const cityClaim = resolveCityClaim(input.venue_city, venue.venue_latitude, venue.venue_longitude)
   const { error: eventError } = await admin
     .from('events')
     .insert({
@@ -287,23 +311,32 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
       // The canonical city claim. city_primary is the ONE column every
       // city-scoped surface reads, including the weekly local digest, so an
       // event with a recognised locality and a null city_primary is invisible
-      // to its own city. Resolved from the typed locality at write time.
-      city_primary: resolveCitySlug(input.venue_city),
+      // to its own city. Resolved from the typed locality first; a Places pick
+      // reports the SUBURB as the locality (Fitzroy, not Melbourne), so the
+      // coordinates settle it second (src/lib/cities/resolve.ts).
+      city_primary: cityClaim,
       // The district claim, and NOT the same move as the city one: a suburb
       // cannot be derived from a city name, so this reads the venue's real
       // coordinates and takes the nearest district centroid inside the same
       // city, or null. Without it every suburb page is permanently empty of
       // organiser events.
       suburb_primary: resolveSuburbSlug({
-        citySlug: resolveCitySlug(input.venue_city),
-        latitude: input.venue_latitude,
-        longitude: input.venue_longitude,
+        citySlug: cityClaim,
+        latitude: venue.venue_latitude,
+        longitude: venue.venue_longitude,
       }),
       venue_state: input.venue_state || null,
       venue_country: input.venue_country || null,
       venue_postal_code: input.venue_postal_code || null,
-      venue_latitude: input.venue_latitude || null,
-      venue_longitude: input.venue_longitude || null,
+      // Coordinates by the one save-time rule (src/lib/geo/venue-coordinates.ts):
+      // a Places pick is kept, a typed address is geocoded on the server when
+      // the key can serve it, and every other outcome is null with its reason
+      // in the log above.
+      venue_latitude: venue.venue_latitude,
+      venue_longitude: venue.venue_longitude,
+      venue_place_id: venue.venue_place_id,
+      venue_geocode_source: venue.venue_geocode_source,
+      venue_geocoded_at: venue.venue_geocoded_at,
       // The stream link itself goes to the vault below, never to this row.
       stream_geo_allow:
         input.event_type === 'in_person' || !input.stream_geo_allow || input.stream_geo_allow.length === 0
@@ -528,6 +561,25 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
     .eq('id', input.eventId)
     .single()
 
+  // The venue's coordinates by the one save-time rule, and the city claim from
+  // the locality first and the coordinates second. A missing pair is logged by
+  // its reason, never swallowed: the organiser still saves, the event page still
+  // centres its map in the browser, and the backfill picks the row up later.
+  const venue = await resolveVenueCoordinates({
+    event_type: input.event_type,
+    venue_name: input.venue_name || null,
+    venue_address: input.venue_address || null,
+    venue_city: input.venue_city || null,
+    venue_state: input.venue_state || null,
+    venue_country: input.venue_country || null,
+    venue_postal_code: input.venue_postal_code || null,
+    venue_latitude: input.venue_latitude,
+    venue_longitude: input.venue_longitude,
+    venue_place_id: input.venue_place_id ?? null,
+    venue_geocode_source: input.venue_geocode_source ?? null,
+  })
+  if (venue.reason) console.warn(`[events] no coordinates for "${input.venue_name ?? input.venue_address ?? ''}": ${venue.reason}`)
+  const cityClaim = resolveCityClaim(input.venue_city, venue.venue_latitude, venue.venue_longitude)
   const { error: eventError } = await admin
     .from('events')
     .update({
@@ -547,21 +599,25 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       venue_address: input.venue_address || null,
       venue_city: input.venue_city || null,
       // Kept in step with venue_city on every edit, so moving an event to a
-      // new city moves its digest and city-page reach with it.
-      city_primary: resolveCitySlug(input.venue_city),
+      // new city moves its digest and city-page reach with it. Locality first,
+      // coordinates second, the same rule as creation.
+      city_primary: cityClaim,
       // Re-resolved on every edit for the same reason: moving the venue moves
       // the district, and a stale district is a wrong answer rather than a
       // missing one.
       suburb_primary: resolveSuburbSlug({
-        citySlug: resolveCitySlug(input.venue_city),
-        latitude: input.venue_latitude,
-        longitude: input.venue_longitude,
+        citySlug: cityClaim,
+        latitude: venue.venue_latitude,
+        longitude: venue.venue_longitude,
       }),
       venue_state: input.venue_state || null,
       venue_country: input.venue_country || null,
       venue_postal_code: input.venue_postal_code || null,
-      venue_latitude: input.venue_latitude || null,
-      venue_longitude: input.venue_longitude || null,
+      venue_latitude: venue.venue_latitude,
+      venue_longitude: venue.venue_longitude,
+      venue_place_id: venue.venue_place_id,
+      venue_geocode_source: venue.venue_geocode_source,
+      venue_geocoded_at: venue.venue_geocoded_at,
       // The stream link itself goes to the vault below, never to this row.
       stream_geo_allow:
         input.event_type === 'in_person' || !input.stream_geo_allow || input.stream_geo_allow.length === 0

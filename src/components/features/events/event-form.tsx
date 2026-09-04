@@ -11,6 +11,9 @@ import { isAcceptableStreamLink } from '@/lib/stream/embed'
 import { livestreamNeedsLink, coerceAccessMode, STREAM_LINK_REQUIRED_MESSAGE } from '@/lib/stream/publish-rule'
 import { AssistantPanel, type PanelSuggestion } from '@/components/ai/assistant-panel'
 import { MagicStart } from './magic-start'
+import { VenueFinder } from './venue-finder'
+import { VenueMapLazy } from './venue-map-lazy'
+import type { VenueFieldsFromPlace } from '@/lib/maps/address-components'
 import type { MagicStartDraft } from '@/lib/ai/magic-start'
 import { addHoursLocal, buildDraftPatch, summariseDraft } from '@/lib/events/magic-draft-apply'
 import { getAllCommunities, type CommunitySlug } from '@/lib/communities/data'
@@ -90,6 +93,13 @@ type FormData = {
   venue_state: string
   venue_country: string
   venue_postal_code: string
+  // From the venue finder (a Places pick): the coordinates, the place id and
+  // who wrote them. Null until a pick; an edit of an event that had them
+  // starts with them.
+  venue_latitude: number | null
+  venue_longitude: number | null
+  venue_place_id: string | null
+  venue_geocode_source: 'places' | 'geocoding' | 'manual' | null
   // The livestream link. Stored in the vault table through src/lib/stream/link.ts,
   // never on the events row, and revealed only to livestream ticket holders after
   // purchase.
@@ -251,6 +261,10 @@ function getDefaultFormData(): FormData {
     venue_state: '',
     venue_country: 'Australia',
     venue_postal_code: '',
+    venue_latitude: null,
+    venue_longitude: null,
+    venue_place_id: null,
+    venue_geocode_source: null,
     stream_url: '',
     stream_geo_allow: [],
     media: [],
@@ -327,6 +341,10 @@ function fromExistingEvent(
     venue_state: string | null
     venue_country: string | null
     venue_postal_code: string | null
+    venue_latitude?: number | null
+    venue_longitude?: number | null
+    venue_place_id?: string | null
+    venue_geocode_source?: 'places' | 'geocoding' | 'manual' | null
     stream_geo_allow?: string[] | null
     cover_image_url: string | null
     cover_image_alt?: string | null
@@ -383,6 +401,10 @@ function fromExistingEvent(
     venue_state: event.venue_state ?? '',
     venue_country: event.venue_country ?? '',
     venue_postal_code: event.venue_postal_code ?? '',
+    venue_latitude: typeof event.venue_latitude === 'number' ? event.venue_latitude : null,
+    venue_longitude: typeof event.venue_longitude === 'number' ? event.venue_longitude : null,
+    venue_place_id: event.venue_place_id ?? null,
+    venue_geocode_source: event.venue_geocode_source ?? null,
     stream_url: streamUrl ?? '',
     stream_geo_allow: normaliseCountryCodes(event.stream_geo_allow),
     media: existingMedia(event),
@@ -518,6 +540,27 @@ export function EventForm({
   }, [])
 
   /*
+   * A Places pick fills every venue field at once, with the coordinates and the
+   * place id, and marks the source as the organiser's own choice. The address
+   * fields stay editable afterwards: a corrected spelling keeps the pin.
+   */
+  const applyVenuePick = useCallback((fields: VenueFieldsFromPlace) => {
+    setFormData(d => ({
+      ...d,
+      venue_name: fields.venue_name || d.venue_name,
+      venue_address: fields.venue_address,
+      venue_city: fields.venue_city,
+      venue_state: fields.venue_state,
+      venue_country: fields.venue_country || d.venue_country,
+      venue_postal_code: fields.venue_postal_code,
+      venue_latitude: fields.venue_latitude,
+      venue_longitude: fields.venue_longitude,
+      venue_place_id: fields.venue_place_id,
+      venue_geocode_source: fields.venue_latitude !== null ? 'places' : d.venue_geocode_source,
+    }))
+  }, [])
+
+  /*
    * A livestream cannot go live without a link (src/lib/stream/publish-rule.ts).
    * The server action refuses with the same sentence; this only stops the button
    * looking available right up to that refusal. Edit mode is NOT exempt: an
@@ -617,8 +660,10 @@ export function EventForm({
     venue_state: formData.venue_state || null,
     venue_country: formData.venue_country || null,
     venue_postal_code: formData.venue_postal_code || null,
-    venue_latitude: null,
-    venue_longitude: null,
+    venue_latitude: formData.venue_latitude,
+    venue_longitude: formData.venue_longitude,
+    venue_place_id: formData.venue_place_id,
+    venue_geocode_source: formData.venue_geocode_source,
     stream_url: formData.event_type === 'in_person' ? null : formData.stream_url.trim() || null,
     stream_geo_allow:
       formData.event_type === 'in_person' || formData.stream_geo_allow.length === 0
@@ -1082,6 +1127,11 @@ export function EventForm({
 
       {(formData.event_type === 'in_person' || formData.event_type === 'hybrid') && (
         <div className="space-y-4">
+          <VenueFinder
+            key={editMode ? 'edit' : 'create'}
+            initialText={formData.venue_place_id ? formData.venue_name : ''}
+            onPick={applyVenuePick}
+          />
           <div>
             <label htmlFor="venue-name-13" className="block text-sm font-medium text-ink-600 mb-1">Venue Name</label>
             <input id="venue-name-13"
@@ -1142,6 +1192,24 @@ export function EventForm({
               />
             </div>
           </div>
+          {/* The map preview, the same card the event page shows, once a pick has
+            * given us coordinates. Not rendered for a typed address: the event page
+            * centres by the browser geocoder there, and a preview that geocodes on
+            * every keystroke would be a bill. */}
+          {formData.venue_latitude !== null && formData.venue_longitude !== null && (
+            <div data-testid="venue-map-preview">
+              <p className="mb-2 text-xs text-ink-600">Where the pin lands. This is the map attendees see on your event page.</p>
+              <VenueMapLazy
+                venueName={formData.venue_name || null}
+                address={formData.venue_address || null}
+                city={formData.venue_city || null}
+                state={formData.venue_state || null}
+                country={formData.venue_country || null}
+                latitude={formData.venue_latitude}
+                longitude={formData.venue_longitude}
+              />
+            </div>
+          )}
         </div>
       )}
 
