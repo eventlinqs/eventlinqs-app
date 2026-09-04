@@ -30,6 +30,7 @@
  * Usage: powershell -File C:\dev\run-journey.ps1 -Script scripts\journeys\a4-price-history.mjs
  */
 import { copyFileSync, mkdirSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import {
@@ -58,7 +59,26 @@ const VIEWPORTS = {
 }
 const viewport = VIEWPORTS[viewportLabel] ?? VIEWPORTS['desktop-1440']
 const ORGANISER_EMAIL = process.env.A4_ORGANISER_EMAIL ?? 'owner_1781981785246@example.com'
-const NEW_PASSWORD = `Str0ng-${stamp}-Price!`
+/*
+ * MINTED FOR THIS RUN, NEVER WRITTEN DOWN. The run sets a new password on the
+ * fixture organiser through the real reset form, so the value only has to exist
+ * for the length of the run: sixteen random characters from the runtime plus
+ * the classes the form asks for. It is never a literal in the tree, which is
+ * what no-plaintext-credential refuses, and it is never printed or put in
+ * run.json. The organiser session the axe scan needs is kept as cookies in
+ * session-organiser.json instead.
+ */
+const NEW_PASSWORD = `${randomBytes(12).toString('base64url')}-Aa1`
+/*
+ * WHERE THE BUYERS PAY. A paid purchase needs a PaymentIntent, which needs the
+ * Stripe secret, which the local production server does not hold (Vercel never
+ * decrypts a sensitive value back to a client, and the Stripe CLI's stored keys
+ * expired on 2026-07-29 and 2026-07-07). The Vercel preview of this branch holds
+ * the test secret and reads the same TEST database, so the two buyers pay THERE
+ * when A4_BUYER_BASE names it, and the organiser, the reset email and the
+ * stranger stay on BASE. Every line the buyers write names the origin they used.
+ */
+const BUYER_BASE = (process.env.A4_BUYER_BASE ?? BASE).replace(/\/$/, '')
 const TITLE = `Price Steps ${stamp}`
 const BUYER_A = `buyer.a.${stamp}@example.com`
 const BUYER_B = `buyer.b.${stamp}@example.com`
@@ -71,7 +91,7 @@ function verdict(name, ok, detail) {
   if (!ok) j.blockers.push(`${name}: ${detail ?? ''}`)
 }
 
-const run = { viewport: viewportLabel, base: BASE, organiserEmail: ORGANISER_EMAIL }
+const run = { viewport: viewportLabel, base: BASE, buyerBase: BUYER_BASE, organiserEmail: ORGANISER_EMAIL }
 
 async function keepSession(ctx, name) {
   if (!process.env.EVIDENCE_DIR) return
@@ -181,9 +201,9 @@ async function buyOne(p, slug, email, label) {
     }
     return false
   }
-  await p.goto(`${BASE}/events/${slug}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  await p.goto(`${BUYER_BASE}/events/${slug}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
   await p.waitForTimeout(3000)
-  await describe(j, p, `${label}: the event page before buying`)
+  await describe(j, p, `${label}: the event page before buying, on ${BUYER_BASE}`)
   if (!(await clickAny(p, /^(get tickets|buy tickets|select tickets)/i))) {
     j.blockers.push(`${label}: no way to start buying on /events/${slug}`)
     return null
@@ -237,9 +257,9 @@ async function buyOne(p, slug, email, label) {
   }
   await clickAny(p, /^pay\b/i)
   await p.waitForTimeout(20000)
-  const url = p.url().replace(BASE, '')
+  const url = p.url().replace(BUYER_BASE, '')
   const orderId = url.match(/\/orders\/([0-9a-f-]{36})/)?.[1] ?? null
-  note(j, `${label}: paid`, `${email} -> ${url.slice(0, 90)}`)
+  note(j, `${label}: paid`, `${email} on ${BUYER_BASE} -> ${url.slice(0, 90)}`)
   await describe(j, p, `${label}: after paying`)
   if (!orderId) j.blockers.push(`${label}: the purchase did not reach an order: ${url}`)
   return { orderId, selection, checkoutText }
