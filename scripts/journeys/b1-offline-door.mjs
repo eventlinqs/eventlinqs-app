@@ -353,7 +353,10 @@ try {
   await describe(j, doorB.p, 'Door B synced with a flag')
   await axeCheck(doorB.p, 'door-synced-with-flag')
   const online1 = await scanLink(doorB.p, t1.link)
-  verdict('Door B, online, refuses ticket 1 as already used, with how long ago', online1.label === 'REJECT' && /Already used .+ ago/.test(online1.card) && /online/i.test(online1.judged), `${online1.card} :: ${online1.judged}`)
+  // "just now" IS a time: the first drive ran the whole door sequence in under a
+  // minute (Door A admitted at 20:19:58, Door B asked at 20:20:50), so the
+  // relative words are read as the door reads them, from seconds to days.
+  verdict('Door B, online, refuses ticket 1 as already used, with how long ago', online1.label === 'REJECT' && /Already used (just now|\d+ (second|minute|hour|day)s? ago)/.test(online1.card) && /online/i.test(online1.judged), `${online1.card} :: ${online1.judged}`)
   await describe(j, doorB.p, 'Door B refuses ticket 1 online')
 
   // ── THE ROWS ON TEST ──────────────────────────────────────────────────────

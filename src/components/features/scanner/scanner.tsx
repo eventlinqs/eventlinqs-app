@@ -528,21 +528,34 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
       </section>
 
       {result && (
+        /*
+         * THE FILL IS THE SIGNAL, THE INSET IS THE TEXT. The solid green or red
+         * block is what a door reads at arm's length in a noisy venue (Scope v5
+         * 3.13: green for valid, red for used or invalid), and the big label is
+         * large text, which white clears on both fills. The detail lines are
+         * normal text and white does not clear 4.5:1 on the success green
+         * (measured 3.5:1 by axe on the B1 drive, 5 September 2026), so they
+         * sit on a white inset in ink, the same ruling the bearer ticket page
+         * records: the tint carries the status, the dark text guarantees the
+         * contrast. A /95 white without a backdrop filter is not glass.
+         */
         <div
           role="status"
           aria-live="assertive"
           data-testid="scan-result"
-          className="mt-5 rounded-2xl p-6 text-center text-white"
+          className="mt-5 rounded-2xl p-5 text-center text-white"
           style={{ background: result.decision === 'admit' ? 'var(--color-success)' : 'var(--color-error)' }}
         >
           <p className="text-3xl font-bold tracking-wide">{result.label}</p>
-          {result.holderName && <p className="mt-1 text-lg">{result.holderName}</p>}
-          {result.tierName && <p className="mt-1 text-base opacity-90">{result.tierName}</p>}
-          {result.seatLabel && <p className="mt-1 text-xl font-semibold">{result.seatLabel}</p>}
-          {result.reason && <p className="mt-1 text-base opacity-90">{result.reason}</p>}
-          <p data-testid="scan-result-judged" className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] opacity-80">
-            {result.judgedBy === 'device' ? 'Checked offline against the door list' : 'Checked online'}
-          </p>
+          <div className="mt-3 rounded-xl bg-white/95 px-4 py-3 text-ink-900">
+            {result.holderName && <p className="text-lg font-semibold">{result.holderName}</p>}
+            {result.tierName && <p className="mt-0.5 text-base text-ink-700">{result.tierName}</p>}
+            {result.seatLabel && <p className="mt-1 text-xl font-semibold">{result.seatLabel}</p>}
+            {result.reason && <p className="mt-1 text-base font-medium">{result.reason}</p>}
+            <p data-testid="scan-result-judged" className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-ink-700">
+              {result.judgedBy === 'device' ? 'Checked offline against the door list' : 'Checked online'}
+            </p>
+          </div>
         </div>
       )}
 

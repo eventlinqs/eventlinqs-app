@@ -9,7 +9,13 @@
  *
  * Usage:
  *   node scripts/verify/lighthouse-median.mjs --out C:\dev\EVIDENCE\A2\lighthouse --runs 3 \
- *     --url https://<preview>/events/<slug> --url "https://<preview>/t/<code>/watch?k=<secret>"
+ *     --url https://<preview>/events/<slug> --url "https://<preview>/t/<code>/watch?k=<secret>" \
+ *     [--header Cookie=<session cookies>]
+ *
+ * --header (5 September 2026, B1): a signed-in surface such as the door scanner
+ * or the organiser's attendees page has no public address, so a request header
+ * carrying the session is passed to lighthouse as --extra-headers. Only the
+ * header NAMES are printed; a value is never echoed.
  *
  * It REPORTS; the advisory posture of the CI gate is the founder's ruling of
  * 25 August 2026 and is not changed here. Exit 1 only when a run fails to
@@ -23,12 +29,23 @@ const args = process.argv.slice(2)
 let out = null
 let runs = 3
 const urls = []
+const headers = {}
 for (let i = 0; i < args.length; i += 1) {
   const a = args[i]
   if (a === '--out') out = args[++i]
   else if (a === '--runs') runs = Number(args[++i])
   else if (a === '--url') urls.push(args[++i])
+  else if (a === '--header') {
+    const v = args[++i] ?? ''
+    const eq = v.indexOf('=')
+    if (eq <= 0) {
+      console.error('FAIL: --header takes name=value')
+      process.exit(1)
+    }
+    headers[v.slice(0, eq)] = v.slice(eq + 1)
+  }
 }
+const headerNames = Object.keys(headers)
 if (!out || urls.length === 0) {
   console.error('FAIL: --out and at least one --url are required')
   process.exit(1)
@@ -49,6 +66,7 @@ const median = (xs) => {
 let failures = 0
 let reports = 0
 for (const url of urls) {
+  if (headerNames.length > 0) console.log(`  request header(s) sent with every run: ${headerNames.join(', ')} (values not printed)`)
   for (const form of ['mobile', 'desktop']) {
     const scores = { performance: [], accessibility: [], 'best-practices': [], seo: [] }
     for (let r = 1; r <= runs; r += 1) {
@@ -64,6 +82,9 @@ for (const url of urls) {
         '--only-categories=performance,accessibility,best-practices,seo',
       ]
       if (form === 'desktop') lhArgs.push('--preset=desktop')
+      // Passed as one argument, never through a shell, so a cookie value with
+      // semicolons and equals signs reaches lighthouse intact.
+      if (headerNames.length > 0) lhArgs.push(`--extra-headers=${JSON.stringify(headers)}`)
       const res = spawnSync(process.execPath, lhArgs, { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024 })
       /*
        * JUDGED BY THE REPORT, NOT THE EXIT CODE. On Windows chrome-launcher's
