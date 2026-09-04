@@ -740,7 +740,7 @@ const ROOT = join(HERE, '..', '..')
  * 4.5:1 on white), and that error-strong itself still clears 4.5:1.
  *
  * 2026-09-05 (B1, offline door validation, Scope v5 3.12 and 3.13): 283 files /
- * 3306 tests. Twelve files, 124 tests. tests/unit/scanner/offline-validate (19)
+ * 3307 tests. Twelve files, 125 tests. tests/unit/scanner/offline-validate (19)
  * pins the device's judgement branch by branch and the 24 hour window;
  * door-store (13) runs the IndexedDB store on fake-indexeddb, batching, the
  * carried local admission and the queue; door-sync (9) the batch, the strict
@@ -752,12 +752,13 @@ const ROOT = join(HERE, '..', '..')
  * (10) the guard's four judgements and the tree; reporting/door-review-copy (7)
  * the organiser's review words; reporting/resolve-scan-review-action (6) the
  * organiser's Mark resolved action: identity, the gate, the RPC, the note;
- * dashboard/main-column-shrinks (2) pins min-w-0 on the dashboard's main flex
+ * dashboard/main-column-shrinks (3) pins min-w-0 on the dashboard's main flex
  * item, found missing on the B1 drive at 768 where the attendees table pushed
- * Mark resolved off screen.
+ * Mark resolved off screen, and the focusable named scroll region axe then
+ * asked for.
  */
 const MIN_FILES = 283
-const MIN_TESTS = 3306
+const MIN_TESTS = 3307
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

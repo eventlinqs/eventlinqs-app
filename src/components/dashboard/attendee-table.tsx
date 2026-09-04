@@ -123,7 +123,19 @@ export function AttendeeTable({ attendees, ticketTypes }: AttendeeTableProps) {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-ink-200 bg-white">
+        /*
+          A scroll region a keyboard can reach. At 768 the table is wider than the
+          column and scrolls sideways; axe (scrollable-region-focusable, serious)
+          requires the region to take focus so arrow keys can move it, and a name
+          so a screen reader says what it is. Found on the B1 drive, 5 September
+          2026, the moment the dashboard column stopped hiding the overflow.
+        */
+        <div
+          role="region"
+          aria-label="Attendee list"
+          tabIndex={0}
+          className="overflow-x-auto rounded-xl border border-ink-200 bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ink-100 text-left text-xs font-semibold uppercase tracking-wider text-ink-600">
