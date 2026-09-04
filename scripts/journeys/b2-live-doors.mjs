@@ -284,8 +284,20 @@ try {
   await describe(j, doorA.p, 'Door A sees Door B admit ticket 2')
   const a2 = await scanLink(doorA.p, t2.link)
   verdict('Door A, online, refuses ticket 2 as already used, with how long ago', a2.label === 'REJECT' && /Already used (just now|\d+ (second|minute|hour|day)s? ago)/.test(a2.card) && /online/i.test(a2.judged), `${a2.card} :: ${a2.judged}`)
-  const feedA = await doorA.p.$$('[data-testid="door-live-entry"]')
-  verdict("Door A's feed carries only the other door's scans, never its own echo", feedA.length >= 1 && !(await text(doorA.p, '[data-testid="door-live"]')).includes(t1.guest.name), `${feedA.length} line(s)`)
+  /*
+   * "Never its own echo" means every line on Door A's strip comes from ONE
+   * other door and none is Door A's own admission of ticket 1. Door B's synced
+   * offline refusal of ticket 1 rightly appears here ("Door XXXX refused Ayesha
+   * Rahman as already used"): the first run of this verdict wrongly failed on
+   * the name alone, while the product was reporting exactly what Door B did.
+   */
+  const feedLines = await doorA.p.$$eval('[data-testid="door-live-entry"]', (els) => els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()))
+  const doorsInFeed = new Set(feedLines.map((l) => l.match(/^Door ([0-9A-F]{4})/)?.[1]).filter(Boolean))
+  verdict(
+    "Door A's feed carries only the other door's scans, never its own echo",
+    feedLines.length >= 1 && doorsInFeed.size === 1 && feedLines.every((l) => /^Door [0-9A-F]{4} /.test(l)) && !feedLines.some((l) => new RegExp(`admitted ${t1.guest.name}`).test(l)),
+    feedLines.join(' | '),
+  )
   await describe(j, doorA.p, 'Door A refuses ticket 2 online')
 
   // ── THE ROWS ON TEST ──────────────────────────────────────────────────────
