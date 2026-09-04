@@ -352,7 +352,9 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
       setLiveStatus('off')
       return
     }
-    const leave = subscribeToDoor({
+    let leave: (() => void) | null = null
+    let cancelled = false
+    void subscribeToDoor({
       client: createBrowserClient(),
       eventId,
       onStatus: (status, error) => {
@@ -376,9 +378,13 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
           await refreshCounts()
         })()
       },
+    }).then((l) => {
+      if (cancelled) l()
+      else leave = l
     })
     return () => {
-      leave()
+      cancelled = true
+      leave?.()
       setLiveStatus('off')
     }
   }, [storeReady, online, eventId, refreshCounts, downloadSet])

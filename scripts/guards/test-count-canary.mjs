@@ -760,7 +760,7 @@ const ROOT = join(HERE, '..', '..')
  * new guard.
  *
  * 2026-09-05 (B2, multi-scanner realtime sync, Scope v5 3.13): 286 files /
- * 3335 tests. Three files, 27 tests, plus 1 in guards/offline-door-integrity,
+ * 3336 tests. Three files, 28 tests, plus 1 in guards/offline-door-integrity,
  * which now holds every later re-definition of the door list to the no-secret
  * rule. tests/unit/scanner/door-live pins the channel name and filter, the
  * status words, the strict row reader, the subscribe and leave, the local
@@ -769,9 +769,13 @@ const ROOT = join(HERE, '..', '..')
  * leading with ticket_id, scan_ticket's fourth argument recorded on all three
  * audit inserts, the probe function's grants and the wss connect-src;
  * guards/door-live-published the guard's decision table and its read-only ask.
+ * door-live also pins that the session token reaches the realtime socket
+ * BEFORE the channel is joined, the first B2 drive's finding: joined before
+ * the token, the channel carried the anon key and the row policy denied every
+ * row, so both doors said live and heard nothing.
  */
 const MIN_FILES = 286
-const MIN_TESTS = 3335
+const MIN_TESTS = 3336
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

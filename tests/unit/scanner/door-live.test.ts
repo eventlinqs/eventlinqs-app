@@ -11,6 +11,7 @@ import {
   describeLiveEntry,
   checkedInLine,
   feedFor,
+  NO_SESSION_REASON,
   type DoorLiveClient,
 } from '@/lib/scanner/door-live'
 import { DoorStore } from '@/lib/scanner/door-store'
@@ -86,10 +87,21 @@ describe('subscribeToDoor', () => {
         return channel
       }),
     }
-    const client = { channel: vi.fn(() => channel), removeChannel: vi.fn(async () => 'ok') } as unknown as DoorLiveClient
+    const order: string[] = []
+    const client = {
+      auth: { getSession: vi.fn(async () => ({ data: { session: { access_token: 'jwt-for-the-socket' } } })) },
+      realtime: { setAuth: vi.fn(async (token?: string) => void order.push(`setAuth:${token}`)) },
+      channel: vi.fn(() => {
+        order.push('channel')
+        return channel
+      }),
+      removeChannel: vi.fn(async () => 'ok'),
+    } as unknown as DoorLiveClient
     const rows: unknown[] = []
     const statuses: string[] = []
-    const leave = subscribeToDoor({ client, eventId: EVENT, onRow: (r) => rows.push(r), onStatus: (s, e) => statuses.push(`${s}${e ? `:${e}` : ''}`) })
+    const leave = await subscribeToDoor({ client, eventId: EVENT, onRow: (r) => rows.push(r), onStatus: (s, e) => statuses.push(`${s}${e ? `:${e}` : ''}`) })
+    // The session token reaches the socket BEFORE the channel is joined (the first B2 drive's finding).
+    expect(order).toEqual(['setAuth:jwt-for-the-socket', 'channel'])
     expect(client.channel).toHaveBeenCalledWith(`door:${EVENT}`)
     expect(handlers.on[0]).toMatchObject({ kind: 'postgres_changes', filter: { event: 'INSERT', schema: 'public', table: 'ticket_scans', filter: `event_id=eq.${EVENT}` } })
     ;(handlers.on[0] as { cb: (p: { new: unknown }) => void }).cb({ new: row() })
@@ -99,6 +111,20 @@ describe('subscribeToDoor', () => {
     expect(statuses).toEqual(['connecting', 'live', 'reconnecting:socket closed'])
     leave()
     expect(client.removeChannel).toHaveBeenCalledWith(channel)
+  })
+
+  test('with no session, the door is told so and no channel is joined', async () => {
+    const client = {
+      auth: { getSession: vi.fn(async () => ({ data: { session: null } })) },
+      realtime: { setAuth: vi.fn() },
+      channel: vi.fn(),
+      removeChannel: vi.fn(),
+    } as unknown as DoorLiveClient
+    const statuses: string[] = []
+    const leave = await subscribeToDoor({ client, eventId: EVENT, onRow: () => {}, onStatus: (s, e) => statuses.push(`${s}${e ? `:${e}` : ''}`) })
+    expect(statuses).toEqual(['connecting', `off:${NO_SESSION_REASON}`])
+    expect(client.channel).not.toHaveBeenCalled()
+    expect(() => leave()).not.toThrow()
   })
 })
 

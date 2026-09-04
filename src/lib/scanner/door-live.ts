@@ -30,9 +30,14 @@ export type LiveStatus = 'connecting' | 'live' | 'reconnecting' | 'off'
 
 /** The minimum of the Supabase client this module touches, so the scanner and the tests can hand in either. */
 export type DoorLiveClient = {
+  auth: { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> }
+  realtime: { setAuth: (token?: string) => Promise<void> | void }
   channel: (name: string, opts?: { config?: Record<string, unknown> }) => RealtimeChannel
   removeChannel: (channel: RealtimeChannel) => Promise<unknown>
 }
+
+/** The words the strip shows when there is no session to join with. */
+export const NO_SESSION_REASON = 'No session on this phone. Sign in again to join the other doors.'
 
 /** One channel per event; the name is what the drive and the verify script look for. */
 export function doorChannelName(eventId: string): string {
@@ -95,18 +100,38 @@ export function liveEntryFrom(row: unknown, eventId: string, deviceId: string): 
 }
 
 /**
- * Subscribe to the event's admissions. Returns the function that leaves the
- * channel. `onRow` receives the raw new row; `onStatus` the door's word for
- * the channel's state, with the error text when there is one.
+ * Subscribe to the event's admissions. Resolves to the function that leaves
+ * the channel. `onRow` receives the raw new row; `onStatus` the door's word
+ * for the channel's state, with the error text when there is one.
+ *
+ * THE TOKEN GOES TO THE SOCKET FIRST, AND WHY. supabase-js hands the session's
+ * access token to the realtime socket only on SIGNED_IN and TOKEN_REFRESHED
+ * (node_modules/@supabase/supabase-js/dist/index.mjs, read 5 September 2026).
+ * A scanner page that loads with a cookie session sees INITIAL_SESSION
+ * instead, so a channel joined at that moment carries the anon key, and the
+ * table's row policy then denies every row: the door says "Live with the other
+ * doors" and hears nothing. Measured on the first B2 drive (both doors live,
+ * zero rows at every viewport) while the Node proof, which signs in and so
+ * fires SIGNED_IN, received every row. So the current session is read and
+ * applied to the socket before the join; a phone with no session is told so
+ * rather than left listening to silence.
  */
-export function subscribeToDoor(opts: {
+export async function subscribeToDoor(opts: {
   client: DoorLiveClient
   eventId: string
   onRow: (row: unknown) => void
   onStatus: (status: LiveStatus, error: string | null) => void
-}): () => void {
+}): Promise<() => void> {
   const { client, eventId, onRow, onStatus } = opts
   onStatus('connecting', null)
+  const {
+    data: { session },
+  } = await client.auth.getSession()
+  if (!session?.access_token) {
+    onStatus('off', NO_SESSION_REASON)
+    return () => {}
+  }
+  await client.realtime.setAuth(session.access_token)
   const channel = client
     .channel(doorChannelName(eventId))
     .on(
