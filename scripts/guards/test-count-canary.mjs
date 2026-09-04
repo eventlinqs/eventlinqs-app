@@ -740,22 +740,24 @@ const ROOT = join(HERE, '..', '..')
  * 4.5:1 on white), and that error-strong itself still clears 4.5:1.
  *
  * 2026-09-05 (B1, offline door validation, Scope v5 3.12 and 3.13): 283 files /
- * 3307 tests. Twelve files, 125 tests. tests/unit/scanner/offline-validate (19)
- * pins the device's judgement branch by branch and the 24 hour window;
- * door-store (13) runs the IndexedDB store on fake-indexeddb, batching, the
- * carried local admission and the queue; door-sync (9) the batch, the strict
- * answer parser and the write-back; door-copy (16) the words and the copy law;
- * scan-actions-offline (10) the two actions against a mocked session client;
- * offline-door-migration (18) the migration's shape, the hashed door list, the
- * compare-and-set and the grants; scan-service-worker (7) drives the worker's
- * routing in a fake worker global; device-id (5); guards/offline-door-integrity
- * (10) the guard's four judgements and the tree; reporting/door-review-copy (7)
- * the organiser's review words; reporting/resolve-scan-review-action (6) the
- * organiser's Mark resolved action: identity, the gate, the RPC, the note;
- * dashboard/main-column-shrinks (3) pins min-w-0 on the dashboard's main flex
- * item, found missing on the B1 drive at 768 where the attendees table pushed
- * Mark resolved off screen, and the focusable named scroll region axe then
- * asked for.
+ * 3307 tests. Twelve files, 123 tests, plus 2 in the suites that grow with the
+ * manifest and the registry. tests/unit/scanner/offline-validate pins the
+ * device's judgement branch by branch and the 24 hour window; door-store runs
+ * the IndexedDB store on fake-indexeddb (batching, the carried local admission,
+ * the queue); door-sync the batch, the strict answer parser and the write-back;
+ * door-copy the words and the copy law; scan-actions-offline the two actions
+ * against a mocked session client; offline-door-migration the migration's
+ * shape, the hashed door list, the compare-and-set and the grants;
+ * scan-service-worker drives the worker's routing in a fake worker global;
+ * device-id; guards/offline-door-integrity the guard's four judgements and the
+ * tree; reporting/door-review-copy the organiser's review words;
+ * reporting/resolve-scan-review-action the Mark resolved action (identity, the
+ * gate, the RPC, the note); dashboard/main-column-shrinks pins min-w-0 on the
+ * dashboard's main flex item, found missing on the B1 drive at 768 where the
+ * attendees table pushed Mark resolved off screen, and the focusable named
+ * scroll region axe then asked for. schema-ahead-of-code grew by 1 when
+ * ticket_scans.client_scan_id joined the manifest; guard-registry counts the
+ * new guard.
  */
 const MIN_FILES = 283
 const MIN_TESTS = 3307
