@@ -1,0 +1,79 @@
+A3: the venue finder, the coordinates, the map (STUBBED PLACES)
+===============================================================
+01. Mode
+      STUBBED PLACES
+02. Signed up and confirmed
+      dev.venue.654283@example.com -> /dashboard
+03. PASS  the location step offers a venue finder
+04. Location step with the venue finder
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Find the venue | Venue Name | Address | City | State / Region | Country | Postal Code
+      buttons DADev | Collapse | in person | virtual | hybrid | Back | Continue
+05. PASS  typing a venue opens a list of suggestions (STUBBED PLACES)
+      1 option(s)
+06. Suggestions open under the finder
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Find the venue | Venue Name | Address | City | State / Region | Country | Postal Code
+      buttons DADev | Collapse | in person | virtual | hybrid | Back | Continue
+07. PASS  the finder is a combobox with an active suggestion
+      aria-expanded=true aria-activedescendant=_r_0_-venue-options-0
+08. PASS  the pick fills the venue, address, city, state and postcode
+      Forum Melbourne | 154 Flinders Street | Melbourne | VIC | 3000
+09. PASS  the map preview card appears once the pick has coordinates
+10. Address filled from the pick, with the map preview
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Find the venue | Venue Name | Address | City | State / Region | Country | Postal Code
+      buttons DADev | Collapse | in person | virtual | hybrid | Back | Continue
+11. PASS  the pick: the event published
+      /dashboard/events/1d90719b-24df-427a-b916-505b1a0e5125/launch-kit?published=1 
+12. the pick: after publish
+      URL     /dashboard/events/1d90719b-24df-427a-b916-505b1a0e5125/launch-kit?published=1
+      heading "Forum Sessions 654283 is live."
+      fields  Search | Add an act
+      buttons DADev | Collapse | Copy link | InstagramInstagram | Copy link | Copy caption | Copy caption | Copy caption | Copy caption
+13. PASS  the row on TEST carries the coordinates, the place id and source places
+      -37.8166268, 144.9695761 ChIJ-stub-forum-melbourne places
+14. PASS  the city claim and the suburb are resolved from the pick
+      city_primary=melbourne suburb_primary=melbourne-inner-melbourne
+15. PASS  the event page resolves and carries the venue map with the stored coordinates
+      status 200
+16. Event page with the venue map
+      URL     /events/forum-sessions-654283-2oe086
+      heading "Forum Sessions 654283"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Follow | Share | Copy link | − | + | Select tickets to continue | Share
+17. PASS  the event appears on its city map (a pin with its coordinates on /city/melbourne)
+      status 200 slug=true coords=true
+18. City page carrying the pin
+      URL     /city/melbourne
+      heading "Things to do in Melbourne"
+      fields  Email address* | LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | DA | All upcoming | Tonight | This weekend | Next 7 days | Next 30 days | Subscribe
+19. Typed address, no pick
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Find the venue | Venue Name | Address | City | State / Region | Country | Postal Code
+      buttons DADev | Collapse | in person | virtual | hybrid | Back | Continue
+20. PASS  the typed address: the event published
+      /dashboard/events/3107db5f-0db1-4fd1-a457-73191c2f14fb/launch-kit?published=1 
+21. the typed address: after publish
+      URL     /dashboard/events/3107db5f-0db1-4fd1-a457-73191c2f14fb/launch-kit?published=1
+      heading "Wool Exchange Night 654283 is live."
+      fields  Search | Add an act
+      buttons DADev | Collapse | Copy link | InstagramInstagram | Copy caption | Copy caption | Copy caption | Copy caption | Copy caption
+22. PASS  the typed event saves with no coordinates, the city claim from the locality, and the reason named in the server log
+      lat=null city_primary=geelong logHasReason=true
+23. PASS  the typed event page still resolves and offers its venue
+      status 200
+24. Typed event page
+      URL     /events/wool-exchange-night-654283-psno73
+      heading "Wool Exchange Night 654283"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Follow | Share | Copy link | − | + | Select tickets to continue | Share
+25. Verdicts
+      13 of 13 passed (STUBBED PLACES)
+26. Evidence copied
+      C:\dev\EVIDENCE\A3\desktop-1440-stubbed
