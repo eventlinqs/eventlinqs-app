@@ -35,6 +35,44 @@ anything you must decide. Newest last. Plain language.
 - **Production migration for A3**, when A3 merges: 20260904000001 (events.venue_geocode_source,
   venue_geocoded_at) is on TEST only. Same procedure as the A2 pair; the schema-ahead-of-code
   guard refuses the production build until it is applied, by design.
+- **Production migration for A4**, when A4 merges: 20260904000002 (ticket_price_history, its
+  two deferred triggers, record_tier_price_history and save_dynamic_pricing, plus the backfill of
+  one listed row per existing tier) is on TEST only. Same procedure as the A2 pair and A3; the
+  schema-ahead-of-code guard names ticket_price_history.id ABSENT on production and refuses the
+  production build until it is applied, by design. Apply A2, A3 and A4 in version order in one
+  `supabase db push --linked` after reading the ref back, then
+  `node scripts/ops/verify-production-schema.mjs`.
+- **Production migration for B1**, when B1 merges: 20260905000001 (the eight ticket_scans
+  columns, door_staff_for_event, door_validation_set, sync_offline_scans, resolve_scan_review,
+  and `CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions`, which is a no-op on a
+  Supabase project because pgcrypto is already there) is on TEST only. Same procedure as A2, A3
+  and A4, in version order, one `supabase db push --linked` after reading the ref back, then
+  `node scripts/ops/verify-production-schema.mjs`. The schema-ahead-of-code guard names
+  ticket_scans.client_scan_id ABSENT on production and refuses the production build until it
+  is applied, by design.
+- **A Stripe test secret for the local server (your `stripe login`, or nothing).** Since
+  2 September no local drive can pay: Vercel will not hand a sensitive value back, and both keys
+  the Stripe CLI stores expired in July. A4's two buyers therefore paid on the Vercel preview of
+  the branch, which is a real deployed surface holding the test secret and reading TEST, and the
+  organiser and the stranger ran locally; the evidence names the origin on every buyer line. If
+  you want every leg on one origin, run `stripe login` once on this machine and
+  `node scripts/ops/after-stripe-login.mjs` proves it. Nothing in A4 waits on this.
+- **A hole in no-plaintext-credential, its own small item, not pulled into A4.** The guard's
+  regex needs at least one character before the credential word, so its own headline case
+  `const PASSWORD = '...'` is not caught, while `const NEW_PASSWORD = '...'` is. Widening it
+  catches 20 sites today: journeys 1, 2 and 8, two break-attempt scripts, three sweep scripts,
+  six verify scripts and four unit-test fixtures, every one a per-run minted value or a fixture,
+  none a real credential. The fix is one regex character plus twenty one-line edits to mint at
+  runtime and a drill test; about an hour. Decide whether it goes before or after Phase B.
+- **The event page can lag a purchase by up to five minutes, by its own design.** Found on the
+  A4 drive: the tier pill said "Only 4 left" beside a row saying "Only 2 left". The event page
+  is ISR with a five-minute revalidate (src/app/events/[slug]/page.tsx, the reason at line 85),
+  the availability pill reads the inventory cache through the static path, and a purchase
+  refreshes the cache but does not revalidate the page. So for up to five minutes after a sale
+  the pill, the price and the price history can be stale; the checkout resolves the true price
+  at reservation, which the A4 drive proved. It self-heals on the next render. Decide whether a
+  purchase should revalidate the event page (one tag call in the reservation and webhook paths,
+  small) or whether the five-minute window stands. Not changed in A4.
 
 ## A1. Production is live on main, and the log branch no longer builds
 
@@ -104,3 +142,64 @@ www.eventlinqs.com.au and this build never writes production. The same journey d
 pick, unchanged, the moment the referers above are added.
 
 **Decide:** the two Cloud console steps and the production migration listed under Needs you.
+
+## A4. Price history: a buyer can see how the price has moved
+
+**What changed for a real person:** every event page now carries a "Price history" block under
+the tickets: when the event was listed and at what price, every time the organiser raised or
+lowered it, and every time a dynamic-pricing step was crossed as tickets sold, each with its
+date and in plain words ("Lowered to AUD 28.00", "Rose to AUD 40.00 at 50% sold"). A moved
+price also says what it moved from right under the number ("Up from AUD 28.00"). The history is
+written by the database itself, so nothing an organiser or the platform does can forget a move
+or invent one: saving dynamic-pricing steps that do not change today's price records nothing,
+and editing an event keeps its history. On the organiser side, the dynamic pricing screen,
+which existed but nothing linked to, is now a Pricing tab on the event overview and a quick
+action, so an organiser can reach it with a mouse.
+
+**Evidence:** C:devEVIDENCEA4 (three drives, 20 of 20 at 1440, 768 and 390 on the final
+tree; axe 6 scans 0 violations; Lighthouse on the preview; the schema proof on TEST; three
+guard proofs; the preview purchase probe). Screenshots committed under
+docs/verification/journeys-2026-08-28/a4-price-history/.
+
+**Honest notes:** the two buyers in each drive paid on the Vercel preview of the same commit
+rather than the local server, because only the preview holds the Stripe test secret; the
+organiser and the stranger ran locally, all against one TEST database, and every buyer line
+names its origin. Mobile Lighthouse on the event page is 66, the same platform-wide figure A2
+and A3 recorded, not A4's cost. The axe scan of the first drive found the ticket selector's
+"Only 2 left" line failing contrast on the white card, a line that predates A4; it is fixed in
+this item along with the access-code refusal beside it.
+
+**Decide:** the production migration and the three items under Needs you (the migration, the
+optional `stripe login`, the credential guard's regex hole, and the event page's five-minute
+window).
+
+## B1. The door works without a signal
+
+**What changed for a real person:** a phone at the gate now downloads the door list the moment
+the scanner opens ("Offline ready. 3 tickets, downloaded 6:27 am, valid until tomorrow 6:27 am")
+and keeps scanning when the signal goes: a valid ticket is admitted, a used one is refused with
+how long ago it was used, a made-up code is refused, and every decision is queued. If the phone
+is reloaded with no signal, the scanner comes back with its list and its queue. When the signal
+returns the queue syncs by itself (or on Sync now). If two doors both admitted the same ticket
+while offline, the first to sync wins and the second is told on its screen that the ticket was
+admitted at another door first; the organiser sees the same thing on the Attendees page, in a
+Door review panel naming both doors and both times, and marks it resolved with a note. The list
+on the phone never holds a ticket's secret, only a hash of it, so a lost phone cannot forge a
+ticket. The list is valid for 24 hours and admits nobody after that until it is refreshed.
+
+**Evidence:** C:\dev\EVIDENCE\B1\ (three drives; the final one 38 of 38 at 1440, 768 and 390
+on the final tree, 0 server errors; 21 in-journey axe states and 6 static scans, 0 violations;
+Lighthouse on the preview; the schema proof on TEST with 29 checks; the guard proofs).
+Screenshots committed under docs/verification/journeys-2026-08-28/b1-offline-door/.
+
+**Honest notes:** the drive cuts the network with the harness (Playwright's offline switch on
+each door) and pastes the ticket link the email carried into the manual entry, which is the
+same string the QR encodes; headless Chromium has no camera. The offline check hashes the
+ticket's secret rather than an HMAC because the platform's tickets are secret-bearer until B4;
+the store is versioned so B4 extends it. Mobile Lighthouse is 94 on the scanner and 78 on the
+attendees page, the platform-wide shell figure A2 to A4 recorded. Two things found on the way
+and fixed here, neither B1's: at 768 every dashboard page with a wide table ran past the
+viewport (one class on the shared layout), and the attendee table's scroll region was not
+reachable by keyboard.
+
+**Decide:** the production migration under Needs you. Nothing else.

@@ -597,3 +597,439 @@ Disk after reclaim: 6.79 GB free. Above the 6 GB continue line.
   command that proves them (scripts/ops/verify-google-maps-keys.mjs).
 - Disk at the end of A3: 10G free.
 - Next: A4, 3.3 price history on the event page. Plan first (Law 0).
+
+## 2026-09-04 12:40 (session resumed) A4 started: 3.3 price history on the event page
+
+- Tree clean at d0154471 (nothing to commit before starting). Disk at start: 8.43 GB free.
+- Governing laws: Law 0, Definition of Done, Law 1, Law 5, Law 7, Law 8, Law 10, Design system,
+  Motion, Copy and banned content, Verification and gates (migrations to TEST only; the schema
+  manifest), plus the brief's Completion Law and the DRIVEN ruling.
+- Plan written first (Law 0): C:\dev\A4-PLAN.md. What the code says, verified by reading it:
+  nothing records a price anywhere, so there is nothing to show yet; every inventory change is a
+  plain UPDATE of ticket_tiers inside an RPC, so a row trigger sees every path; the organiser's
+  edit path deletes and re-inserts every tier, so the history is keyed by event and tier NAME,
+  not tier id; saveDynamicPricing writes three auto-committed statements (toggle, delete rules,
+  insert rules), so the save moves into one RPC and the history triggers are DEFERRABLE INITIALLY
+  DEFERRED constraint triggers that judge the final state at commit.
+- FOUND ON THE WAY, a Law 5 dead end: no surface links to /dashboard/events/[id]/pricing. The
+  scope audit called it "organiser UI" and an organiser cannot reach it with a mouse. A4 adds the
+  Pricing tab and a quick action on the event overview, and the drive reaches it by clicking.
+- Verified for the drive: a paid order created on the local server is confirmed on TEST within
+  seconds (orders 1b75d59a and cdfbf4ff from journeys 3 and 7, both confirmed), so Stripe's test
+  webhook reaches the TEST database and a local paid purchase can cross a price step. The
+  checkout resolves the price AFTER the reservation exists (checkout.ts, getDynamicPriceMap
+  after the reservation is loaded), so a buyer's own hold counts toward the step.
+- The organiser for the drive: the single-organisation Stripe-connected owner already on TEST
+  (owner_1781981785246@example.com, Test Org, charges and payouts enabled, country AU, payout
+  status active). No password is known, so the run takes the REAL forgot-password path through
+  the form, the console inbox and the reset page. auth-recover allows 5 per IP per 15 minutes,
+  so three viewport runs fit.
+
+## 2026-09-04 20:10 A4: schema on TEST, code, guard and tests in place; build-1 running
+
+- SCHEMA: 20260904000002_ticket_price_history.sql. First push failed on uuid_generate_v4() (the
+  extension function is not on the migration's search path on TEST; recent migrations use
+  gen_random_uuid()), fixed and pushed: linked ref read back as vkapkibzokmfaxqogypq, production not
+  linked, `supabase db push --include-all` applied it (C:\dev\EVIDENCE\A4-migration-push.txt).
+  Queried back: 243 'listed' rows for 243 tiers, no 'changed' (no seeded tier has an effective
+  price different from its base). scripts/verify/ticket-price-history-schema-verify.mjs, 13 of 13
+  PASS on TEST (C:\dev\EVIDENCE\A4-schema-verify-test.txt): the CHECK refuses a fourth reason
+  (23514); a one cent UPDATE on a seed tier records a 'changed' row carrying the previous price
+  and moving it back records the mirror row, both removed after; save_dynamic_pricing is refused
+  to anon (42501), writes two steps in one call through the service role and clears them again
+  with NO history row for either save (the deferred triggers judged one final state), and a
+  threshold of 250 is refused by the function with nothing left behind.
+- TYPES: `supabase gen types --linked` run against TEST and the three new blocks
+  (ticket_price_history, record_tier_price_history, save_dynamic_pricing) spliced into
+  src/types/database.ts at their alphabetical anchors; a diff against the generated file shows
+  zero lines mentioning them, so the hand edit matches the generator exactly. The earlier A3
+  hand edits (narrower literal unions) are left as they were.
+- CODE: src/lib/pricing/price-history.ts (pure: match by tier name, order, direction, the words,
+  the note under the price, the summary line), src/lib/pricing/read-price-history.ts (the one
+  reader, logs a failure with its code and yields no history), src/lib/pricing/steps.ts (the
+  step normaliser), src/components/features/events/price-history-panel.tsx (the block: gold
+  eyebrow, one timeline per visible tier, Lucide icons echoing the words), the ticket selector's
+  one-line note under a moved price, the event page wiring in the seated, sold out and general
+  admission branches, saveDynamicPricing rewritten onto the RPC, and the Law 5 fix: a Pricing tab
+  and a Dynamic pricing quick action on the event overview, plus an Overview link back from the
+  pricing screen.
+- A structural client type on the reader hit TS2589 at the page's call site (the same trap
+  revalidate-event.ts records); the reader takes SupabaseClient<Database> and the test casts a
+  stub. tsc 0 after (C:\dev\EVIDENCE\A4-tsc-2.txt); eslint 0 on every changed file.
+- GUARD: scripts/guards/price-history-integrity.mjs, registered (and named in the runner's header,
+  which tests/unit/guards/guard-registry.test.ts requires): no source file writes
+  ticket_price_history or dynamic_pricing_rules directly, the action reaches save_dynamic_pricing,
+  and the migration still declares both triggers DEFERRABLE INITIALLY DEFERRED. PASS standalone on
+  928 source files. schema-ahead-of-code: 6 of 6 PRESENT on TEST with ticket_price_history.id
+  added to the manifest (C:\dev\EVIDENCE\A4-guard-schema-ahead-proof.txt).
+- TESTS: six files, 98 green with the two guard suites they touch: price-history (21), the step
+  normaliser (6), the reader (4), the action against a mocked admin client (6), the migration's
+  shape (11), the guard's scanner and the tree (8). The "4 Sept 2026" assertions held: en-AU
+  short month for September is "Sept" on this Node.
+- build-1 (with-env, every prebuild guard first) is running: C:\dev\EVIDENCE\A4\build-1.txt.
+
+## 2026-09-05 00:20 (session resumed) A4: the tree was dirty, so it was committed and pushed first
+
+- Tree at 0da757d0 plus the harness fix from the previous session (the journey read the history
+  block's summary by position and got the gold eyebrow; the panel now carries test ids and the
+  journey reads those). Committed as d72899b5 and pushed with .env.local parked around the
+  pre-push hook: typecheck clean, lint clean, 270 files / 3177 tests, 0 failed
+  (C:\dev\EVIDENCE\A4-push-checkpoint-2.txt). The partial desktop-1440 journey output from the
+  run the previous session died inside is untracked and is discarded; drive-all cleans it.
+- Disk at start: 8.39 GB free.
+
+## 2026-09-05 00:35 A4: why the first drive stalled at the card, and why Vercel refused both A4 commits
+
+- THE CARD. The desktop drive of 4 September reached both checkouts and stopped at "buyer A
+  holds a confirmed ticket": no card field appeared within 60 seconds. The server's stderr names
+  it: `Stripe PaymentIntent error: Error: STRIPE_SECRET_KEY is not set`. The local production
+  server has never held the Stripe secret since 2 September (Vercel does not decrypt a sensitive
+  value back to a client on any scope; both keys the Stripe CLI stores expired on 2026-07-29 and
+  2026-07-07, `stripe config --list` read with every key masked). The 4 September log's belief
+  that journeys 3 and 7 had paid on a local server "within seconds" rested on evidence files
+  whose 3 September 12:48 mtime is the time the branch was CHECKED OUT (commit 48fe08f7 landed
+  at 12:44), not the time of the run; those journeys ran on 28 August when .env.local still
+  carried the key. A paid order is confirmed ONLY by the Stripe webhook (checkout.ts confirms
+  free orders; the confirmation page paints "Payment confirmed" off redirect_status but writes
+  nothing), so a surface that holds the secret AND a webhook that reaches TEST are both needed.
+- THE ANSWER, PROVEN BEFORE BUILDING ON IT. Deployment protection on the project is off (read
+  through the Vercel API). The branch alias of this PR reads TEST (vkapkibzokmfaxqogypq in the
+  served HTML) and the preview scope holds the test secret by manifest. The test-mode Stripe
+  endpoints point at eventlinqs-staging.vercel.app (docs/security/CONNECT-LOCKOUT-DELIVERY-2026-08-09.md),
+  which also reads TEST. One probe purchase on the branch alias against the event the failed run
+  left behind (C:\dev\EVIDENCE\A4\probe\probe-run-1.txt, four screens): Get tickets, +, Checkout
+  AUD 42.39 (40.00 at step 2 plus the one fee), Continue to payment, the card frame appears, test
+  card, Pay, lands on /orders/5b5536d3.../confirmation; the order is CONFIRMED on TEST after 1
+  second with unit 4000; the history still reads listed, changed, step (75 percent sold is still
+  step 2, so no spurious row); 0 server errors. So the two buyers pay on the preview and the
+  organiser, the reset email and the stranger stay on the local server; both read one database.
+  A4_BUYER_BASE names the origin and every buyer line prints it.
+- VERCEL. Both A4 preview builds (0da757d0, d72899b5) were ERROR. The build log names
+  `no-plaintext-credential` on scripts/journeys/a4-price-history.mjs:61: the password the run
+  sets through the real reset form was a template literal assigned to NEW_PASSWORD, and the guard
+  reads that as a credential-named identifier assigned a literal. Reproduced locally on the
+  committed tree (C:\dev\EVIDENCE\A4\guards-local-d72899b5.txt: 1 of 61 FAILED). The 4 September
+  build-1 passed because it ran before that line existed.
+- FOUND ON THE WAY, recorded rather than pulled in: journey 1 carries the identical shape
+  (`const PASSWORD = \`Str0ng-${stamp}-Pass!\``) and passes only because the guard's regex needs
+  at least one character BEFORE the credential word, so an identifier that IS the word escapes.
+  That is the guard's own headline example. Widening the regex catches 20 sites (journeys, sweep
+  and verify scripts, four test fixtures), so it is a job of its own, listed in the review queue.
+- THE FIX. The password is minted by the runtime for the length of the run (twelve random bytes,
+  base64url, plus the classes the form asks for), never printed and never in run.json; the guard
+  is green again (C:\dev\EVIDENCE\A4-guard-no-plaintext-credential-proof.txt carries the red
+  half from the committed tree and the green half after). The buyers take A4_BUYER_BASE. Lint
+  clean, syntax checked. Committed as 59497321; pushing now through the pre-push hook, and
+  build-2 of the same tree is running for the local drive (C:\dev\EVIDENCE\A4\build-2.txt).
+- Rate limits the drive will meet, read from scripts/verify/rate-limit-audit.mjs rather than
+  memory: checkout-reserve 20 per 60 s and auth-recover 5 per 900 s, both fail-closed; three
+  viewport runs make three resets and six purchases spread over about twenty minutes, inside both.
+
+## 2026-09-05 00:50 A4: the preview is READY on the fix, a local build race explained, the drive relaunched
+
+- Vercel built 59497321 READY (dpl_5znbE9vHqZvti3PjuUb84QUdbUuE, 132 s) and the branch alias
+  serves it: sentry-release 59497321, and the leftover event page renders the block with the
+  test ids, three entries and the note (read off the served HTML with curl).
+- build-2 locally reported 1 of 61 guards FAILED with no guard naming itself. Every one of the
+  61 passes on its own with the env loaded (run one by one with their exit codes). The cause is
+  a race of my own making: build-2 loaded its env at 00:39:16 and was still in prebuild when the
+  push parked .env.local for the four minutes of the pre-push hook, and
+  no-unguarded-production-write reads that file from disk (scripts/lib/db-credentials.mjs), so
+  it exited non-zero with the file absent. build-3, run with nothing else on the machine: all
+  61 guards PASS, compiled, BUILD_EXIT=0 (C:\dev\EVIDENCE\A4\build-3.txt). Lesson recorded: a
+  local build and a push must not overlap, because the push hides the env file.
+- CI on 59497321: test (vitest) PASS, types-drift PASS, Vercel PASS, Resolve Vercel preview PASS;
+  lint · typecheck · build FAILED on preview-state, which refuses a build while the branch's
+  newest SETTLED deployment is in ERROR, and at 14:43 UTC that was d72899b5 because the new
+  deployment was still BUILDING. Re-run requested at 00:46 once it was READY.
+- The drive: drive-all.ps1 now takes -BuyerBase, the organiser and the stranger on the local
+  production server (build-3), the two buyers on the branch alias. First launch was a background
+  tool call with a ten minute ceiling, stopped and relaunched as a detached process at 00:50 so
+  the three viewports (about twenty minutes) cannot be cut short. Output:
+  C:\dev\EVIDENCE\A4\drive-all-run.txt and the per-viewport drive-*.txt files.
+
+## 2026-09-05 01:10 A4: driven at 390, 768 and 1440 on build-3, all green; axe found one thing, fixed
+
+- drive-all on build-3 of 59497321 (C:\dev\EVIDENCE\A4\drive-all-run.txt and the three
+  drive-*.txt files; journey output under docs/verification/journeys-2026-08-28/a4-price-history/):
+    desktop-1440  20 of 20 passed, 0 server errors, 0 blockers
+    tablet-768    20 of 20 passed, 0 server errors, 0 blockers
+    mobile-390    20 of 20 passed, 0 server errors, 0 blockers
+  Each run: the organiser takes the real forgot-password path on the local server (the reset
+  email read from the console transport, a new password minted for the run, sign in), creates
+  a paid event through the wizard (one tier at 30.00, capacity 4, a composed cover), publishes;
+  the page shows "Listed at AUD 30.00" and "No price changes since this event was listed."; the
+  organiser edits the tier to 28.00 and the page shows "Lowered to AUD 28.00", "Down from
+  AUD 30.00" under the price, "changed once"; the organiser clicks the new Pricing tab on the
+  event overview, turns dynamic pricing on with two steps (up to 25 percent at 28.00, up to 100
+  percent at 40.00), saves, and the rows on TEST carry them while the history records no move
+  (the price a buyer pays did not change); buyer A on the branch alias pays 28.00 (25 percent,
+  step 1) and holds a confirmed ticket; buyer B is shown 40.00 at checkout before paying, pays
+  it and holds a confirmed ticket at 4000 cents; a stranger on the local server sees 40.00,
+  "Up from AUD 28.00" under the price, and the three entries "Listed at AUD 30.00", "Lowered to
+  AUD 28.00", "Rose to AUD 40.00 at 50% sold" with "changed 2 times"; the rows on TEST read
+  listed (3000), changed (3000 to 2800), step (2800 to 4000 at 50 percent). Every errors.txt is
+  0 bytes; 19 screenshots per viewport. The three events: price-steps-400386-bo6t9w,
+  price-steps-759578-me1kbf, price-steps-117756-3oygij.
+- CI on 59497321 after the re-run: lint · typecheck · build PASS, test PASS, types-drift PASS,
+  Vercel PASS, Resolve Vercel preview PASS.
+- axe (C:\dev\EVIDENCE\A4\axe-run.txt, scripts/verify/axe-urls.mjs at 390 and 1440): the event
+  overview with the Pricing tab and the dynamic pricing screen, signed in as the run's organiser:
+  4 scans, 0 violations. The public event page after the two purchases: 1 violation at each
+  viewport, color-contrast, SERIOUS: the ticket selector's "Only 2 left" line is coral-500 on the
+  white ticket card, 3.28:1. Not A4's line, but A4's drive is the first to reach two tickets left
+  under a scan, and the event page is an affected surface, so it is fixed in this item. No coral
+  token passes on white (the darkest, coral-600, is 4.13:1) and the design system admits no new
+  colour, so the line takes text-error-strong (6.47:1 on white), the token the system already
+  keeps for text on a light surface, and the badge library already keys the last-chance message
+  to the error hue. The access-code refusal beside it had the same defect (coral-600) and takes
+  the same token. tests/unit/a11y/light-surface-text-tokens.test.ts (4) pins both and the
+  token's ratio. Coral stays on the live dots and pings, where contrast does not apply.
+- Next: build-4 of the fixed tree, push, the drive again on build-4 so the evidence is of the
+  final tree, axe again, then Lighthouse on the preview with the local server stopped.
+
+## 2026-09-05 01:50 A4: the drive again on the final tree, axe clean, Lighthouse, and two things found
+
+- build-4 of the fixed tree: all 61 guards PASS, compiled, BUILD_EXIT=0 (C:\dev\EVIDENCE\A4\build-4.txt).
+  Commit 7dbd4200 pushed (typecheck clean, lint clean, 271 files / 3182 tests; C:\dev\EVIDENCE\A4-push-checkpoint-4.txt);
+  CI on it: lint · typecheck · build PASS, test PASS, types-drift PASS, Vercel PASS, Resolve
+  Vercel preview PASS. The branch alias served 7dbd4200 before the drive was launched.
+- drive-all on build-4, the buyers on the alias serving 7dbd4200 (C:\dev\EVIDENCE\A4\drive-all-run.txt):
+    desktop-1440  20 of 20, 0 server errors, 0 blockers   price-steps-195923-p990uz
+    tablet-768    20 of 20, 0 server errors, 0 blockers   price-steps-555453-418shx
+    mobile-390    20 of 20, 0 server errors, 0 blockers   price-steps-914105-sqp5q5
+  19 screenshots each, every errors.txt 0 bytes, all six buyer lines name the preview origin,
+  the rows on TEST for all three read listed (3000), changed (3000 to 2800), step (2800 to 4000
+  at 50 percent). Committed as f16a499f under docs/verification/journeys-2026-08-28/a4-price-history/.
+- axe on build-4 (C:\dev\EVIDENCE\A4\axe-run.txt): the public event page after the two purchases,
+  the event overview with the Pricing tab and the dynamic pricing screen signed in as the run's
+  organiser, at 390 and 1440: 6 scans, 0 violations at any impact, 0 non-200 loads. The build-3
+  scan that found the coral line is kept as axe-run-build-3.txt.
+- Lighthouse, median of three, mobile and desktop, on the alias serving 7dbd4200 over the desktop
+  run's event page, with the local server stopped first (C:\dev\EVIDENCE\A4\lighthouse-run.txt,
+  6 reports, 0 failed runs): DESKTOP performance 98, accessibility 100, best practices 100.
+  MOBILE performance 66, accessibility 100, best practices 100. SEO 69 is the preview's noindex by
+  design. Mobile 66 is the same figure A3 measured on the same page type on the same preview
+  (66 and 68) and is the platform-wide client shell of the founder's 25 August ruling (Issue
+  #42); the block is a server component with no script of its own. Recorded PARTIAL on law 6
+  exactly as A2 and A3 did.
+- FOUND ON THE WAY, not A4's and recorded rather than pulled in: the desktop screenshot of the
+  stranger's page shows the tier pill "Only 4 left" beside the tier row "Only 2 left" after two
+  seats sold. The pill reads the Redis inventory cache through getTierInventoryStatic inside a
+  page that is ISR with revalidate 300 (src/app/events/[slug]/page.tsx:85 and :104), while the
+  row and the price read the tier row. On the preview, the first fetch of two of the three pages
+  eleven minutes after their purchases still said 4 (X-Vercel-Cache HIT, stale while
+  revalidating) and the next fetch said 2 everywhere. So for up to five minutes after a purchase
+  the availability pill, and by the same mechanism the price and the price history, can lag the
+  checkout, which resolves the true price at reservation (the drive proved buyer B saw 40.00
+  before paying). That is the event page's existing caching design, with its reason written at
+  line 85. Listed in the review queue for the founder.
+- The evidence push (f16a499f) failed once in the hook: 3181 of 3182 tests, one failure in a run
+  I could not read back. The identical suite run straight after, with the env parked the same
+  way, passed 271 files / 3182 tests (C:\dev\EVIDENCE\A4\vitest-after-evidence.txt). The one
+  thing that differed: a scratch query script of mine sat in the repository root for a few
+  seconds during the hook's run (a TEST read of the tier counters), and several tests walk the
+  tree. Lesson recorded: nothing touches the tree while the hook runs. Pushed again.
+
+## 2026-09-05 01:55 A4 CLOSED on the code side; Phase A closed on the code side
+
+- The brief-roast self review for A4 and the Phase A close is
+  docs/roast/a4-price-history-phase-a-2026-09-05.md (24 requirements: 21 MET, 3 PARTIAL, 0 NOT
+  MET, 0 unresolved adversarial findings). The three PARTIALs are two causes: mobile Lighthouse
+  on the platform-wide client shell (founder ruling of 25 August, Issue #42), and production
+  deployment waiting on the migrations the founder applies himself (RESERVED, Law 10). The
+  ledger rows are in C:\dev\BUILD-LEDGER.md with a Phase A closing block.
+- Review queue: the A4 entry, plus four Needs-you items with verdicts: the A4 production
+  migration (RESERVED, one command), `stripe login` (IMPOSSIBLE for a machine, optional),
+  the no-plaintext-credential regex hole (a decision, sized at about an hour), and the event
+  page's five-minute ISR window after a purchase (a decision, one tag call if he wants it).
+- Disk at the end of A4: 13.29 GB free.
+- Next: Phase B, B1 (3.13 offline validation). Plan first (Law 0), then the same completion law.
+
+## 2026-09-05 (session resumed) B1 started: 3.13 offline validation
+
+- The tree was dirty with the A4 roast doc; committed as c0fb1792 and pushed first through the
+  pre-push hook (typecheck clean, lint clean, 271 files / 3182 tests, 0 failed; .env.local parked
+  and restored). Disk at start: 11.81 GB free.
+- Governing laws: Law 0, Definition of Done, Law 1, Law 5, Law 7, Law 8, Law 10, Design system,
+  Motion, Copy and banned content, Verification and gates (migrations to TEST only; the schema
+  manifest), plus the brief's Completion Law and the DRIVEN ruling.
+- Plan written first (Law 0): C:\dev\B1-PLAN.md. Verified by reading: the scanner calls the
+  scan_ticket RPC on every decode and nothing else; navigator.onLine is never read; no
+  IndexedDB, no queue; push-sw.js registers no fetch handler by design, so a reload at a
+  signal-less door loses the scanner. B4 (HMAC, rotating QR, per-event keys) comes later, so
+  the cached set carries a SHA-256 of each ticket's secret, never the secret, and the store is
+  versioned so B4 extends it rather than replacing it.
+- fake-indexeddb 6.2.5 added as a dev dependency so the IndexedDB store runs under vitest
+  (npm view: modified 2025-11-07, engines node >= 18; the newest release, Law 9).
+
+## 2026-09-05 (B1) schema on TEST, code, guard, tests and the verify script in place
+
+- SCHEMA: 20260905000001_offline_door_validation.sql. Linked ref read back as vkapkibzokmfaxqogypq
+  before every supabase command; pgcrypto probed first through `supabase db query --linked`
+  (pgcrypto 1.3 in the extensions schema, extensions.digest('abc') returns the known sha256;
+  C:\dev\EVIDENCE\B1\pgcrypto-probe.txt); `supabase db push --linked --include-all --yes` applied
+  it (C:\dev\EVIDENCE\B1\migration-push.txt); read back through the CLI: the four functions
+  (door_staff_for_event, door_validation_set, sync_offline_scans, resolve_scan_review, all
+  SECURITY DEFINER), the eight ticket_scans columns, the partial unique index on client_scan_id,
+  the needs_review partial index, the review CHECK, and the grants (authenticated true, anon
+  false on all three RPCs) (C:\dev\EVIDENCE\B1\migration-readback.txt). Types regenerated with
+  `supabase gen types --linked` and the ticket_scans block plus the four function blocks
+  spliced into src/types/database.ts; a diff against the generated file shows every line
+  naming the new objects identical.
+- THE DESIGN, in one paragraph. The door list carries sha256(secret) per ticket, computed by the
+  database, never the secret; the device hashes what it scans (WebCrypto) and compares. The sync
+  RPC admits through the SAME compare-and-set scan_ticket uses (status valid to scanned, keyed by
+  code, hash and event), so two doors syncing the same ticket serialise on the row lock and
+  exactly one records admitted; the other is recorded with the diagnosed result and
+  review_status needs_review, which is the scope's "first sync wins, the second is flagged".
+  client_scan_id is unique so a retried batch is replayed, not repeated. The set is valid for 24
+  hours (the scope's number) and an expired set admits nobody.
+- VERIFY SCRIPT: scripts/verify/offline-door-schema-verify.mjs, TEST only, drives the RPCs as
+  three throwaway GoTrue users (a manager of the event's organisation, a stranger, a buyer with
+  three issued tickets), 29 of 29 PASS: anon and the stranger refused on all three RPCs; the
+  list pages by code and carries hashes not secrets; device A syncs two admits, device B syncs
+  the same ticket 2 plus ticket 3 and gets already_scanned + needs_review for ticket 2; exactly
+  one admitted row per ticket; a replayed batch writes no rows; a device reject is never flagged;
+  an unmatched device admit is not_found and flagged; 501 scans and a non-array refused; the
+  manager resolves once (true), not twice (false), and the row reads resolved with the trimmed
+  note and the reviewer. Everything it created was removed (C:\dev\EVIDENCE\B1\schema-verify-test.txt).
+- CODE: src/lib/scanner/{door-types,offline-validate,door-store,door-sync,door-copy,device-id}.ts,
+  the scanner rewritten around them (status strip, the online-first then door-list judgement, the
+  queue and its sync, the service worker registration and the shell warm), public/scan-sw.js
+  (GET only, /scan/ navigations network-first with the kept copy as the fallback, /_next/static/
+  cache-first, nothing else touched), the two new server actions, the organiser's Door review
+  panel on the attendees page with Mark resolved through resolve_scan_review, and
+  ticket_scans.client_scan_id in the schema manifest. tsc 0, eslint 0 on every changed file.
+- GUARD: scripts/guards/offline-door-integrity.mjs, registered and in the runner header. Proven
+  green on the tree, RED with the `t.status = 'valid'` clause removed from the sync's
+  compare-and-set, RED with a `secret` field added to the device record type, green again
+  (C:\dev\EVIDENCE\B1\guard-offline-door-integrity-proof.txt).
+- TESTS: ten files, 116 tests (listed in the canary's dated note); the store and the sync run on
+  fake-indexeddb, the service worker is driven in a fake worker global. First full run found
+  four defects of mine, fixed: en-AU prints "5 Sept, 7:42 pm" with a comma (the expectation was
+  wrong, not the copy), the relative "already used N minutes ago" was computed against the real
+  clock rather than the given one, a duplicate-code generator in the store test, and the doctype's
+  exclamation mark tripping the copy sweep. The no-clock-during-render test then flagged the door
+  copy's formatters (no timeZone): correct on a server-rendered surface, and this module never
+  renders on one, so it is marked client only twice ('use client' for the rule, `client-only` for
+  Next). The production-write-preflight suite's five failures are the known .env.local effect
+  (8 of 8 pass with the file parked, as the pre-push hook runs it). Canary 271/3182 to 281/3298.
+
+## 2026-09-05 (B1) build-1 blocked by a guard, build-2 green, checkpoint pushed
+
+- build-1 (with-env, every prebuild guard first): 1 of 62 guards FAILED, entrypoint-authz:
+  the new resolveScanReview action established no caller identity in its own file (it
+  delegated to resolveEventAccess, which the audit does not read through). Fixed by asking
+  auth.getUser() first in the action, before the shared gate and the RPC, and pinned by
+  tests/unit/reporting/resolve-scan-review-action.test.ts (6). The guard passes standalone
+  (C:\dev\EVIDENCE\B1\build-1.txt carries the red line).
+- Between the two builds the no-clock-during-render test named the door copy's formatters
+  (no timeZone). The rule exempts nothing for being a client component, and rightly: a client
+  component still renders once on the server. The formatters now name the device's own zone
+  explicitly (Intl.DateTimeFormat().resolvedOptions().timeZone) with the reason written beside
+  them; the scanner never renders a time on the server because it holds no door list there.
+  build-1 was stopped in its guard phase before that edit landed, so no build ran on a tree
+  that changed under it (the A4 lesson, kept).
+- build-2 of the final app tree: all 62 guards PASS, compiled successfully, BUILD_EXIT=0
+  (C:\dev\EVIDENCE\B1\build-2.txt).
+- schema-ahead-of-code: PASS against TEST with ticket_scans.client_scan_id PRESENT (7 of 7);
+  the founder's production command names all seven objects ABSENT on gndnldyfudbytbboxesk,
+  read only, so the production build refuses itself until his push (C:\dev\EVIDENCE\B1\guard-schema-ahead-proof.txt).
+- The journey now runs axe inside itself at seven states a URL cannot reach: the scanner
+  ready online, the offline ADMIT card, the offline REJECT card, the scanner reloaded offline,
+  Door B with the flag after its sync, the attendees page with the review row, and after
+  Mark resolved. Canary 282 files / 3304 tests.
+- Committed and pushing through the pre-push hook (.env.local parked and restored around it):
+  C:\dev\EVIDENCE\B1\push-checkpoint-1.txt. The drive on build-2 follows the push.
+
+## 2026-09-05 (B1) the first drive on build-2: the door works at every viewport, and it found three things
+
+- drive-all on build-2 of 1b678cc6 (C:\dev\EVIDENCE\B1\first-drive\): desktop-1440 35 of 38,
+  tablet-768 31 of 34, mobile-390 36 of 38, 0 server errors at each. Every door verdict passed
+  at every viewport: the organiser signs up and publishes a free event through the wizard; three
+  guests take a ticket each and hold the link from the confirmation email; Door A downloads the
+  list ("Offline ready. 3 tickets"), the service worker takes control and the shell is kept, the
+  network is cut, ticket 1 ADMIT offline, ticket 1 again REJECT "Already used just now", a made-up
+  code REJECT "Not found", ticket 2 ADMIT, "4 scans waiting to sync"; the page RELOADS with no
+  signal and comes back from the service worker with its list and its queue; Door B downloads the
+  same list online, goes offline, admits ticket 2 and ticket 3; Door A reconnects, "4 scans
+  synced."; Door B reconnects, "2 scans synced, 1 needs review." and the flag names ticket 2 as
+  admitted at another door first; on TEST exactly one admitted row per ticket, one flagged row
+  for ticket 2 from an offline scan, three tickets scanned once; the Door review panel names both
+  doors and both times; Mark resolved clears it (desktop and mobile), the row reads resolved with
+  the note.
+- FOUND 1, fixed: axe on the offline result card, SERIOUS colour-contrast at every viewport
+  (white detail text on the success green measures about 3.5:1; the reason and the judged line
+  also fail on the error red at opacity-90). The big ADMIT or REJECT label is large text and
+  clears on both fills; the detail lines now sit on a white inset in ink, the same ruling the
+  bearer ticket page records (the tint carries the status, the dark text guarantees contrast).
+- FOUND 2, the journey's expectation, not the product: Door B's online refusal of ticket 1 read
+  "Already used just now". The rows on TEST show first_scanned_at = Door A's device clock
+  (20:19:58) and Door B's online scan 52 seconds later (20:20:50), so "just now" was the truthful
+  answer; the verdict wanted minutes. The verdict now accepts any stated time, seconds to days.
+- FOUND 3, fixed, and not B1's: at 768 the attendees page's main column ran past the viewport
+  (the tiles, the tinted band and the table all clipped on the right in the screenshot), so
+  Mark resolved sat off screen and the click timed out. The dashboard layout's main is a flex
+  item with no min-w-0, so the attendees table's intrinsic width stretched it. One class on the
+  shared dashboard main fixes every dashboard surface; pinned by
+  tests/unit/dashboard/main-column-shrinks.test.ts (2). Canary 283 / 3306.
+- build-3 of the fixed tree is running; then the push, and the drive again on build-3 so the
+  evidence is of the final tree.
+
+## 2026-09-05 (B1) the second drive on build-3: 38 of 38 at desktop, and the 768 fix uncovered the defect under it
+
+- 63c52959 pushed (typecheck, lint, 283 files / 3306 tests green); CI on it: lint · typecheck ·
+  build, test, types-drift, Vercel and the preview resolution all PASS; the branch alias serves
+  63c52959. A preview session was minted for the desktop run's own throwaway organiser (password
+  set through the admin API on TEST, the real login form on the preview, one Supabase session
+  cookie kept only in C:\dev\EVIDENCE\B1) so Lighthouse can measure the two signed-in surfaces.
+- drive-all on build-3: desktop-1440 38 of 38, 0 blockers, 0 server errors, every axe state
+  clean, including the two card states that failed on build-2. Static axe over the desktop run
+  (the public event page, the scanner in its ready state, the attendees page) at 390 and 1440:
+  6 scans, 0 violations, 0 non-200 loads (C:\dev\EVIDENCE\B1\axe-run.txt).
+- tablet-768: 36 of 38. Mark resolved now works at 768 (the min-w-0 fix proved by clicking), and
+  the moment the attendees table began scrolling inside its wrapper instead of blowing out the
+  column, axe named the wrapper: scrollable-region-focusable, SERIOUS, a scroll region a keyboard
+  cannot reach. The first defect had hidden the second. The wrapper is now a named region
+  ("Attendee list") with tabIndex 0 and the house focus ring, pinned by the third test in
+  tests/unit/dashboard/main-column-shrinks.test.ts. Canary 283 / 3307. The mobile leg of this
+  drive is finishing; build-4 of the fixed tree, the push and a third full drive follow, so the
+  evidence is of the final tree.
+
+## 2026-09-05 (B1) the third drive on build-4, the proofs, and B1 CLOSED on the code side
+
+- c3d396a5 pushed (typecheck, lint, 283 files / 3307 tests green); CI on it: lint · typecheck ·
+  build, test, types-drift, Vercel and the preview resolution all PASS; the branch alias serves
+  c3d396a5.
+- drive-all on build-4 of c3d396a5 (C:\dev\EVIDENCE\B1\drive-all-run.txt):
+    desktop-1440  38 of 38, 0 server errors, 0 blockers   event 141bc806-8cc6-4c44-98a3-f7920d6cd4e5
+    tablet-768    38 of 38, 0 server errors, 0 blockers   event b489bca1-e49f-4e61-a10f-d154ba15a883
+    mobile-390    38 of 38, 0 server errors, 0 blockers   event 3178d087-a0b3-4afd-8215-141382accc43
+  18 screenshots and 7 in-journey axe states per viewport (the scanner ready online, the offline
+  ADMIT card, the offline REJECT card, the scanner reloaded offline, Door B with the flag, the
+  attendees page with the review row, and after Mark resolved), all 0 violations at any impact;
+  every errors.txt 0 bytes. Static axe over the desktop run (the public event page, the scanner,
+  the attendees page) at 390 and 1440: 6 scans, 0 violations, 0 non-200 loads
+  (C:\dev\EVIDENCE\B1\axe-run.txt).
+- Lighthouse, median of three on the preview of c3d396a5, signed in as the desktop run's own
+  organiser (a session minted on the preview through the real login form after an admin
+  password set on TEST; the cookie lives only in C:\dev\EVIDENCE\B1), local server stopped:
+  SCANNER desktop 100, mobile 94; ATTENDEES desktop 99, mobile 78; accessibility 100 and best
+  practices 100 on all four; SEO 66 is the preview's noindex and the pages' private posture
+  (C:\dev\EVIDENCE\B1\lighthouse-run.txt, 12 reports, 0 failed runs). Mobile is below the 95 law
+  on the platform-wide client shell (Issue #42, the founder's 25 August ruling), recorded PARTIAL
+  on law 6 exactly as A2, A3 and A4 did. scripts/verify/lighthouse-median.mjs gained --header for
+  a signed-in surface; header names are printed, values never.
+- The roast is docs/roast/b1-offline-door-2026-09-05.md: 29 requirements, 27 MET, 2 PARTIAL
+  (mobile Lighthouse on the shell; production deployment waiting on the founder's migration),
+  0 NOT MET, 0 unresolved adversarial findings. Ledger rows in C:\dev\BUILD-LEDGER.md.
+- Review queue: the B1 entry and the production migration under Needs you (RESERVED, one command).
+- Disk at the end of B1: about 12 GB free.
+- Next: B2, multi-scanner realtime sync over Supabase Realtime. Plan first (Law 0). Noted for it:
+  the TEST project's supabase_realtime publication carries no tables today (probed 5 September).
+- Evidence committed as ad9d3c30 (54 screenshots and 21 in-journey axe states under
+  docs/verification/journeys-2026-08-28/b1-offline-door/, the roast) and pushed through the hook
+  (typecheck, lint, 283 files / 3307 tests). B1 is CLOSED on the code side; the two PARTIALs
+  (mobile Lighthouse on the shell; the founder's production migration) are the same two every
+  Phase A item carried and are not finishable inside the item.
