@@ -21,6 +21,21 @@ anything you must decide. Newest last. Plain language.
   the code and the schema deploys first: the second migration keeps events.virtual_url inert
   either way.
 
+- **Google Maps keys for A3 (two Cloud console steps, both IMPOSSIBLE for a machine without
+  your Google credentials).** (1) The browser key is referer restricted to www.eventlinqs.com.au,
+  so the venue finder works on the live site and nowhere else: add http://localhost:3311/* and
+  https://*.vercel.app/* under its Website restrictions so the pick can be driven off production.
+  (2) GOOGLE_MAPS_API_KEY on production, preview and local is the SAME value as the browser key,
+  and a referer-restricted key cannot serve the Geocoding API, so a typed address is saved with
+  no coordinates today. Mint a separate server key (Geocoding API enabled, no website
+  restriction) and set it as GOOGLE_MAPS_API_KEY on production and preview. Then one command
+  proves both: `node --env-file=.env.local scripts/ops/verify-google-maps-keys.mjs`. The
+  build guard geocoding-key-posture goes from SKIP to PASS on its own once the key is distinct
+  and Google answers OK.
+- **Production migration for A3**, when A3 merges: 20260904000001 (events.venue_geocode_source,
+  venue_geocoded_at) is on TEST only. Same procedure as the A2 pair; the schema-ahead-of-code
+  guard refuses the production build until it is applied, by design.
+
 ## A1. Production is live on main, and the log branch no longer builds
 
 **What changed for a real person:** nothing they can see yet, and that is the point. The live
@@ -66,3 +81,26 @@ axe; Lighthouse on the preview; the schema proof on TEST; the two guard proofs).
   ticket's status and its tier's admission, not its price. If you want the paid path driven
   through the watch page as well, say so and it is one journey leg on a Stripe-connected
   TEST organiser.
+
+## A3. Venue geocoding: find the venue, and the event lands on its city map
+
+**What changed for a real person:** on the Location step of the event form an organiser now
+types a venue or an address into "Find the venue" and picks it from a list; the venue name,
+street, suburb, state and postcode fill themselves, the map card under the fields shows where
+the pin lands, and the event page and the city map carry that pin from the stored coordinates.
+Nothing is typed twice and nothing is guessed. If the organiser prefers to type the address by
+hand, that still works exactly as before. On a browser the key does not allow, the finder says
+so in one sentence and gets out of the way. Every event now records where its coordinates came
+from (a pick, the server, or nothing yet), and a TEST-only backfill is ready to geocode the
+existing events the day a server key exists.
+
+**Evidence:** C:devEVIDENCEA3 (the six drives, 7 of 7 REAL and 13 of 13 STUBBED at 1440,
+768 and 390; axe 10 scans 0 violations; Lighthouse on the preview; the schema proof on TEST; the
+guard proofs; the key probes).
+
+**Honest limit:** the pick against Google itself was driven with a stand-in built from Google's
+real answer for Forum Melbourne, because the browser key refuses every origin except
+www.eventlinqs.com.au and this build never writes production. The same journey drives the real
+pick, unchanged, the moment the referers above are added.
+
+**Decide:** the two Cloud console steps and the production migration listed under Needs you.

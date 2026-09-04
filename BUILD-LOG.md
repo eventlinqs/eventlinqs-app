@@ -447,3 +447,153 @@ Disk after reclaim: 6.79 GB free. Above the 6 GB continue line.
   default, run: 20 candidates listed, nothing written, the OFF reason named,
   C:\dev\EVIDENCE\A3-backfill-dry-run.txt). tsc 0, eslint 0 on every changed file; the four
   tests that touch the actions and the guard registry pass (39).
+
+## 2026-09-04 10:20 (session resumed) A3: the tree was dirty, so it was committed and pushed first
+
+- Read the brief, the ledger and this log to the end. Tree at 1c10b371 plus the whole of A3's
+  uncommitted code (five modified files, nineteen new). Disk at start: 11 GB free.
+- Before committing, the checks on the exact tree: tsc 0, eslint 0 on every changed and new file,
+  and `node --env-file=.env.local scripts/guards/run-guards.mjs` 60 of 60 PASS
+  (C:\dev\EVIDENCE\A3-guards-run-2.txt). The two failures build-1 had recorded (no-plaintext-
+  credential on the two AIz fixtures in the guard test, and the guard announcing a pass without a
+  tally) were already fixed in the working tree; the guard now prints its declareWork lines.
+- One defect found on the way: the guard registry's comment had lost the backslashes of its
+  evidence path (a sed on the way in). Repaired to C:\dev\EVIDENCE\A3-guard-geocoding-key-posture-proof.txt.
+- The five new test files measured alone: 5 files, 48 tests. Canary raised 257/3052 to 262/3100
+  in the same commit, with the dated note naming the five files.
+- Commit 5928c58c, pushed with .env.local parked around the pre-push hook: typecheck clean, lint
+  clean, canary 262 files / 3100 tests, 0 failed, 0 skipped (C:\dev\EVIDENCE\A3-push-checkpoint.txt).
+
+## 2026-09-04 10:40 A3: the first drive found one defect of mine and two of the harness, all fixed before the re-drive
+
+- build-3 of 5928c58c with the env loaded (C:\dev\EVIDENCE\A3\build-3.txt): 60 of 60 guards PASS,
+  compiled, BUILD_EXIT=0. The schema manifest gained events.venue_geocode_source (migration
+  20260904000001) so the schema-ahead-of-code guard protects the A3 column too: PASS vs TEST
+  (5 objects present), and the founder's command vs production now names 5 ABSENT objects with
+  the A3 migration among them (C:\dev\EVIDENCE\A3-guard-schema-ahead-proof.txt).
+- drive-all at desktop-1440, REAL PLACES, 4 of 7 (C:\dev\EVIDENCE\A3\drive-desktop-1440-first-run-2026-09-04.txt):
+  1. PRODUCT DEFECT. On the blocked origin the finder said "Venue search did not answer" instead of
+     the one sentence naming the blocked origin. Google's Maps JS throws its own RpcError
+     ("Requests from referer http://localhost:3311/ are blocked."), which is NOT an instanceof
+     Error, and isRefererBlocked read the message only off a real Error. Fixed: the classifier
+     reads the message off whatever was thrown (Error, object with a message, string).
+     tests/unit/maps/places-autocomplete.test.ts (6) pins it, red before the fix, green after.
+  2. HARNESS DEFECT. `next start` writes console.warn to stderr, and serve.ps1 redirects stderr to
+     .tmp-serve.err.log; the journey read only .tmp-serve.log and reported the geocoding reason
+     missing when it was in the other file (both events had it). The journey now reads both.
+- drive-all at desktop-1440, STUBBED PLACES, FAIL on "typing a venue opens a list of suggestions"
+  with 0 options: the stand-in never handed control back to the loader. @googlemaps/js-api-loader
+  v2 names a DOTTED callback (google.maps.__ib__) and the stand-in looked it up as window[cb], so
+  the bootstrap promise never resolved and the finder sat on "Searching venues.". Fixed: the
+  stand-in resolves the dotted path. tests/unit/journeys/maps-js-stub.test.ts (3) runs the
+  stand-in in a vm and pins the handshake and the Forum Melbourne answer, red before, green after.
+- The drive was stopped there (every remaining run would have failed on the same three) and its
+  evidence kept under *-first-run-2026-09-04*. tsc 0, eslint 0. build-4 of the fixed tree started;
+  the six runs are redone against it below.
+
+## 2026-09-04 10:52 A3: second drive on build-4. The stubbed finder is 13 of 13 at desktop and tablet; the real-mode sentence was the harness's fault, and a CSP gap was found on the way
+
+- build-4 (C:\dev\EVIDENCE\A3\build-4.txt): 60 of 60 guards PASS, compiled, BUILD_EXIT=0, 146 client
+  chunks rewritten, the classifier fix in the served chunk (checked in the minified source).
+- STUBBED PLACES, desktop-1440 and tablet-768: 13 of 13 each, 0 blockers, 0 server errors. The
+  listbox opens, the combobox carries aria-expanded and aria-activedescendant, ArrowDown, ArrowUp,
+  Enter picks, the five address fields fill from the pick, the map preview card appears, the event
+  publishes, the row on TEST carries the coordinates, the place id and source 'places', the city
+  claim is melbourne with a suburb, the event page carries the map with the stored coordinates,
+  and /city/melbourne carries the pin. The typed event saves with no coordinates, city_primary
+  geelong, and the reason named in the server log (read from both streams now).
+- REAL PLACES, desktop-1440 and tablet-768: 6 of 7, the one FAIL still "no sentence" on the blocked
+  origin, with the fixed classifier in the build. Two probes settled it
+  (C:\dev\EVIDENCE\A3-finder-create-path-probe.txt and ...-probe-xff.txt): with the organiser's
+  own session on the create wizard the finder says "Venue search is not available from this
+  address" 1.9 s after typing, and Google answers 403 with the referer refusal; with the journey's
+  `extraHTTPHeaders: { x-forwarded-for }` added, and nothing else changed, Chromium sends that header
+  to EVERY origin, the Places XHR to places.googleapis.com grows a CORS preflight that Google
+  refuses, the library throws a network error instead of the referer refusal, and the finder says
+  "did not answer". The product was right on both drives; the header was copied from A2, where it
+  fed the country gate, and nothing in A3 reads it. Removed from the A3 journey.
+- FOUND ON THE WAY, a real gap: the Places (New) library calls
+  https://places.googleapis.com/$rpc/google.maps.places.v1.Places/AutocompletePlaces by XHR, and
+  the report-only CSP's connect-src did not list it (Chromium reported the violation on every
+  search). Report-only blocks nothing today, but the day the founder enforces that policy the
+  finder dies quietly on every organiser. Added https://places.googleapis.com to connect-src in
+  next.config.ts; tests/unit/security/security-headers.test.ts gained 3 tests pinning the finder's
+  origins in connect-src and script-src (16 in the file now).
+- tsc 0, eslint 0 on every changed file. next.config.ts is shipped code, so the final evidence is
+  build-5 of this tree and a third six-run drive, below.
+
+## 2026-09-04 11:10 (session resumed) A3: the third drive had died after its second step; the tree was committed and pushed first
+
+- The previous session ended inside the third six-run drive (desktop-1440 REAL had reached
+  "Signed up and confirmed" and stopped). Its partial journey log was untracked and is discarded;
+  drive-all cleans the folders before it runs.
+- Tree at 5928c58c plus the drive's fixes (seven modified, three new files). Committed as
+  72e89992 and pushed with .env.local parked around the pre-push hook: typecheck clean, lint
+  clean, canary 264 files / 3114 tests, 0 failed, 0 skipped (C:\dev\EVIDENCE\A3-push-checkpoint-2.txt).
+- Disk at start: 9.9 GB free.
+- .next on disk is build-5 (BUILD_ID written 10:54:12, no source edit since), which is the tree of
+  72e89992, so the drive serves it without a rebuild. The Redis shim on 8079 is up.
+- drive-all.ps1 restarted: three viewports, REAL and STUBBED, output to
+  C:\dev\EVIDENCE\A3\drive-all-run.txt and the per-run drive-*.txt files.
+
+## 2026-09-04 11:40 A3: the third drive, on the committed tree, is green at every viewport; axe clean
+
+- drive-all on build-5 of 72e89992 (C:\dev\EVIDENCE\A3\drive-all-run.txt, the six drive-*.txt
+  files and the six screenshot folders; committed under docs/verification/journeys-2026-08-28/
+  a3-venue-geocoding/ and a3-venue-geocoding-stubbed/ as d0154471):
+    REAL PLACES     desktop-1440 7 of 7, tablet-768 7 of 7, mobile-390 7 of 7
+    STUBBED PLACES  desktop-1440 13 of 13, tablet-768 13 of 13, mobile-390 13 of 13
+  0 blockers and 0 server errors in every run (every errors.txt is 0 bytes). Each run signs up
+  its own organiser through the real wizard on the local production server against TEST.
+- What a person sees, read off the screenshots: the finder sits above Venue Name with the one
+  sentence under it; on the blocked origin it says "Venue search is not available from this
+  address." and the address fields stay usable; with the stand-in the listbox opens under the
+  field as a gold-tinted option (Forum Melbourne, 154 Flinders St), the pick fills the six fields
+  and the sentence changes to "Venue set: Forum Melbourne, Melbourne. The address below was
+  filled from it; edit anything that is not right.", and the map card appears under the fields
+  with the pin. At 390 the whole step reads in one column with 44px rows.
+- The rows on TEST from the stubbed desktop run: forum-sessions-654283-2oe086 carries
+  -37.8166268, 144.9695761, place id ChIJ-stub-forum-melbourne, source places, city_primary
+  melbourne, suburb melbourne-inner-melbourne; wool-exchange-night-654283-psno73 carries no
+  coordinates, city_primary geelong, and the server log names "server geocoding is off".
+- axe (C:\dev\EVIDENCE\A3\axe-run.txt, scripts/verify/axe-urls.mjs at 390 and 1440): the picked
+  event page, the typed event page, /city/melbourne, and both organiser edit forms signed in as
+  the run's organiser (the finder with a pick and the map card; the finder with no pick).
+  10 scans, 0 violations at any impact, 0 non-200 loads.
+- The Vercel preview of 72e89992 (eventlinqs-7m2pqyfjz, READY, reads TEST) resolves the picked
+  event page, the typed event page and /city/melbourne with the pin (all 200). Lighthouse,
+  median of three, mobile and desktop, is running against it over the picked event page and
+  /city/melbourne; the local server was stopped first so nothing on this machine competes with
+  the measurement.
+
+## 2026-09-04 12:05 A3: Lighthouse on the preview, and the same-build comparison
+
+- Lighthouse (scripts/verify/lighthouse-median.mjs, median of three, mobile and desktop) on the
+  Vercel preview eventlinqs-7m2pqyfjz of 72e89992 (READY, reads TEST), with the local server
+  stopped first (C:\dev\EVIDENCE\A3\lighthouse-run.txt, 12 reports):
+    DESKTOP  picked event page 98 / city/melbourne 98; accessibility 100 on both.
+    MOBILE   picked event page 66 / city/melbourne 68; accessibility 100 on both.
+  Same-build comparison (lighthouse-baseline-run.txt, 6 reports): the typed event page, whose
+  map centres in the browser with no stored coordinates, scores 63 mobile and 98 desktop. So the
+  page that carries A3's stored coordinates is not slower than the page that does not; both pay
+  the same 439 KB of first-party script and 600 to 1300 ms of blocking time, with zero Google
+  requests inside the LCP window because the map is lazy. That is the pre-load client shell of
+  the founder's 25 August ruling (Issue #42), recorded as PARTIAL on completion law 6 exactly as
+  A2 did. SEO 69 is the preview's noindex by design.
+- PR #124 on 72e89992: lint · typecheck · build PASS, test (vitest) PASS, types-drift PASS,
+  Vercel preview PASS; the advisory Lighthouse mobile gate was still running.
+
+## 2026-09-04 12:15 A3 CLOSED on the code side
+
+- Evidence commit d0154471 pushed (pre-push: typecheck clean, lint clean, 264 files / 3114 tests,
+  0 failed, 0 skipped; C:\dev\EVIDENCE\A3-push-evidence.txt). PR #124 now carries 5928c58c,
+  72e89992 and d0154471.
+- Every completion law row for A3 is in C:\dev\BUILD-LEDGER.md. The two PARTIALs are the same two
+  A2 carries and are named, not hidden: mobile Lighthouse below 95 on the platform-wide client
+  shell (proven not to be A3's cost by the same-build comparison), and production unable to
+  deploy until the founder applies the A3 migration. BLOCKED ON FOUNDER, KEY ONLY stands for the
+  server geocode; BLOCKED ON FOUNDER, REFERER ONLY stands for driving the real pick.
+- The review queue carries the A3 entry and the two Cloud console steps, each with the one
+  command that proves them (scripts/ops/verify-google-maps-keys.mjs).
+- Disk at the end of A3: 10G free.
+- Next: A4, 3.3 price history on the event page. Plan first (Law 0).
