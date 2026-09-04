@@ -16,6 +16,17 @@ import {
   describeDoorOutcome,
 } from '@/lib/scanner/door-copy'
 import { getDeviceId } from '@/lib/scanner/device-id'
+import { createClient as createBrowserClient } from '@/lib/supabase/client'
+import {
+  subscribeToDoor,
+  liveEntryFrom,
+  applyLiveEntry,
+  describeLiveEntry,
+  describeLiveStatus,
+  checkedInLine,
+  feedFor,
+  type LiveStatus,
+} from '@/lib/scanner/door-live'
 import {
   DOOR_SERVICE_WORKER_SCOPE,
   DOOR_SERVICE_WORKER_URL,
@@ -24,6 +35,7 @@ import {
   type DoorOutcome,
   type DoorSetMeta,
   type DoorTicketRecord,
+  type LiveEntry,
   type SyncOutcome,
 } from '@/lib/scanner/door-types'
 
@@ -87,6 +99,12 @@ function errorText(error: unknown): string {
  * signal returns; if another door admitted the same ticket first, this one is
  * flagged for the organiser. A service worker keeps the page itself so a
  * reload at a signal-less gate does not lose the door.
+ *
+ * LIVE (Scope v5 3.13, B2), every door subscribes to its event's admissions
+ * on Supabase Realtime. Another door's admitted row moves this phone's local
+ * record to scanned the moment it lands, so a ticket admitted at Door A is
+ * refused at Door B even if Door B loses its signal a minute later, with no
+ * sync in between; the strip shows who admitted whom and the running count.
  */
 export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -100,6 +118,15 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
   const deviceIdRef = useRef<string>('')
   const downloadingRef = useRef(false)
   const syncingRef = useRef(false)
+  /**
+   * THE WARM-UP WINDOW. Measured on TEST on 5 September 2026: a row inserted
+   * straight after the channel said SUBSCRIBED did not arrive, and one inserted
+   * ten seconds later did. So the door list is downloaded again the first time
+   * the channel goes live in a session: anything admitted between the first
+   * download and the moment the feed was truly listening lands in that refresh,
+   * and everything after it arrives live. One extra download per session.
+   */
+  const refreshedOnLiveRef = useRef(false)
 
   const [cameraSupported, setCameraSupported] = useState(false)
   const [cameraOn, setCameraOn] = useState(false)
@@ -121,6 +148,10 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
   const [syncError, setSyncError] = useState<string | null>(null)
   const [lastSync, setLastSync] = useState<{ summary: SyncSummary; flags: string[] } | null>(null)
   const [shell, setShell] = useState<ShellStatus>('pending')
+  const [liveStatus, setLiveStatus] = useState<LiveStatus>('off')
+  const [liveError, setLiveError] = useState<string | null>(null)
+  const [liveFeed, setLiveFeed] = useState<{ entry: LiveEntry; text: string }[]>([])
+  const [checkedIn, setCheckedIn] = useState(0)
 
   const setReady = setStatus === 'ready'
 
@@ -129,6 +160,7 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
     if (!store) return
     setPendingCount(await store.countPending(eventId))
     setTicketCount(await store.countTickets(eventId))
+    setCheckedIn(await store.countCheckedIn(eventId))
   }, [eventId])
 
   /* ── the shell: the page itself, kept for an offline reload ───────────── */
@@ -312,6 +344,45 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
     return () => window.clearInterval(timer)
   }, [online, pendingCount, syncQueue])
 
+  // The other doors: one channel on the event's admissions while the phone is
+  // online. A row from another door moves the local record and joins the feed;
+  // this phone's own rows echo back and only refresh the count.
+  useEffect(() => {
+    if (!storeReady || !online) {
+      setLiveStatus('off')
+      return
+    }
+    const leave = subscribeToDoor({
+      client: createBrowserClient(),
+      eventId,
+      onStatus: (status, error) => {
+        setLiveStatus(status)
+        setLiveError(error)
+        if (status === 'live' && !refreshedOnLiveRef.current) {
+          refreshedOnLiveRef.current = true
+          void downloadSet()
+        }
+      },
+      onRow: (row) => {
+        const entry = liveEntryFrom(row, eventId, deviceIdRef.current)
+        if (!entry) return
+        void (async () => {
+          const store = storeRef.current
+          const applied = store ? await applyLiveEntry(store, eventId, entry) : { record: null, changed: false }
+          if (!entry.mine) {
+            const text = describeLiveEntry(entry, applied.record)
+            setLiveFeed((prev) => feedFor([entry, ...prev.map((p) => p.entry)]).map((e) => ({ entry: e, text: e.scanId === entry.scanId ? text : (prev.find((p) => p.entry.scanId === e.scanId)?.text ?? describeLiveEntry(e, null)) })))
+          }
+          await refreshCounts()
+        })()
+      },
+    })
+    return () => {
+      leave()
+      setLiveStatus('off')
+    }
+  }, [storeReady, online, eventId, refreshCounts, downloadSet])
+
   /* ── judging a scan ────────────────────────────────────────────────────── */
 
   const judgeOffline = useCallback(
@@ -342,13 +413,14 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
 
   const judgeOnline = useCallback(
     async (parsed: ParsedScan): Promise<DoorOutcome> => {
-      const outcome = await withTimeout(scanTicket(eventId, parsed.ticketCode, parsed.secret), SERVER_ANSWER_MS, 'The server')
+      const outcome = await withTimeout(scanTicket(eventId, parsed.ticketCode, parsed.secret, deviceIdRef.current), SERVER_ANSWER_MS, 'The server')
       if (outcome.result === 'error') throw new Error(outcome.error ?? 'Scan failed. Try again.')
       const store = storeRef.current
       const record = store ? await store.getTicket(eventId, parsed.ticketCode) : null
       const status = statusFromResult(outcome.result)
       if (store && record && status) {
         await store.applyServerTruth(eventId, parsed.ticketCode, { status, firstScannedAt: outcome.firstScannedAt })
+        await refreshCounts()
       }
       return {
         result: outcome.result as DoorOutcome['result'],
@@ -359,7 +431,7 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
         judgedBy: 'server',
       }
     },
-    [eventId],
+    [eventId, refreshCounts],
   )
 
   const submit = useCallback(
@@ -500,6 +572,27 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
         {(shell === 'failed' || shell === 'unsupported') && (
           <p className="mt-2 text-sm text-ink-700">Keep this page open. This browser cannot reopen the scanner without a signal.</p>
         )}
+        <div data-testid="door-live" className="mt-3 border-t border-ink-100 pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span data-testid="door-live-status" className="inline-flex items-center gap-2 text-sm font-semibold text-ink-900">
+              <span aria-hidden className={`h-2.5 w-2.5 rounded-full ${liveStatus === 'live' ? 'bg-success' : 'bg-ink-300'}`} />
+              {online ? describeLiveStatus(liveStatus) : 'Live feed paused while offline'}
+            </span>
+            <span data-testid="door-checked-in" className="text-sm font-semibold tabular-nums text-ink-900">
+              {checkedInLine(checkedIn, ticketCount)}
+            </span>
+          </div>
+          {liveError && liveStatus !== 'live' && <p className="mt-1 text-xs text-ink-700">{liveError}</p>}
+          {liveFeed.length > 0 && (
+            <ul aria-label="Scans at the other doors" className="mt-2 space-y-1">
+              {liveFeed.map(({ entry, text }) => (
+                <li key={entry.scanId} data-testid="door-live-entry" className="text-sm text-ink-700">
+                  {text}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         {lastSync && lastSync.summary.synced > 0 && (
           <p data-testid="door-sync" role="status" className="mt-2 text-sm text-ink-700">
             {describeSyncSummary(lastSync.summary)}

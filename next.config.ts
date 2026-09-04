@@ -27,7 +27,11 @@ const CSP_REPORT_ONLY = [
   // https://places.googleapis.com/$rpc/google.maps.places.v1.Places/AutocompletePlaces,
   // reported as a connect-src violation by this policy). Without it, the day
   // this policy is enforced the finder dies quietly on every organiser.
-  "connect-src 'self' https://*.supabase.co https://api.stripe.com https://plausible.io https://*.upstash.io https://maps.googleapis.com https://places.googleapis.com",
+  // wss://*.supabase.co is the Realtime socket the door scanner opens for the
+  // other doors' scans (B2, 5 September 2026): observed on the drive as
+  // wss://<ref>.supabase.co/realtime/v1/websocket. Without it, the day this
+  // policy is enforced every door goes quiet.
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://plausible.io https://*.upstash.io https://maps.googleapis.com https://places.googleapis.com",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.instagram.com https://www.tiktok.com",
   "worker-src 'self' blob:",
 ].join('; ')

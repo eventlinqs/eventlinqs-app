@@ -45,6 +45,13 @@ const ROOT = join(HERE, '..', '..')
 
 export const SCANS_TABLE = 'ticket_scans'
 export const MIGRATION_FILE = 'supabase/migrations/20260905000001_offline_door_validation.sql'
+/**
+ * Every later migration that re-creates door_validation_set. Each is held to
+ * the same rule as the first: the RETURNS TABLE carries secret_hash and never
+ * a column called secret. B2 (20260905000002) re-created it to lead with
+ * ticket_id; the next one is added here the day it is written.
+ */
+export const DOOR_LIST_REDEFINITIONS = ['supabase/migrations/20260905000002_door_realtime.sql']
 export const TYPES_FILE = 'src/lib/scanner/door-types.ts'
 export const STORE_FILE = 'src/lib/scanner/door-store.ts'
 export const WORKER_FILE = 'public/scan-sw.js'
@@ -70,26 +77,32 @@ export function findDirectWrites(text, table = SCANS_TABLE) {
   return findings
 }
 
-/** The body of one CREATE OR REPLACE FUNCTION public.<name>( ... ) up to its closing $$; */
+/** The body of one CREATE [OR REPLACE] FUNCTION public.<name>( ... ) up to its closing $$; */
 function functionBlock(sql, name) {
-  const start = sql.search(new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\(`))
+  const start = sql.search(new RegExp(`CREATE (OR REPLACE )?FUNCTION public\\.${name}\\(`))
   if (start === -1) return null
   const end = sql.indexOf('\n$$;', start)
   return end === -1 ? sql.slice(start) : sql.slice(start, end + 4)
 }
 
-/** Findings about the migration text. */
-export function checkMigration(sql) {
+/** The door list's definition, wherever it is (re)created: a hash, never the secret. */
+export function checkDoorList(sql) {
   const failures = []
   const set = functionBlock(sql, 'door_validation_set')
   if (!set) {
     failures.push('door_validation_set is not defined')
-  } else {
-    const returns = /RETURNS TABLE \(([\s\S]*?)\)\s*LANGUAGE/.exec(set)?.[1] ?? ''
-    if (!/\bsecret_hash\s+text\b/.test(returns)) failures.push('door_validation_set no longer returns secret_hash')
-    if (/\bsecret\s+(text|uuid)\b/.test(returns)) failures.push('door_validation_set returns a column called secret: the door list must carry the hash only')
-    if (!/digest\(t\.secret::text, 'sha256'\)/.test(set)) failures.push('door_validation_set no longer hashes the secret with sha256')
+    return failures
   }
+  const returns = /RETURNS TABLE \(([\s\S]*?)\)\s*LANGUAGE/.exec(set)?.[1] ?? ''
+  if (!/\bsecret_hash\s+text\b/.test(returns)) failures.push('door_validation_set no longer returns secret_hash')
+  if (/\bsecret\s+(text|uuid)\b/.test(returns)) failures.push('door_validation_set returns a column called secret: the door list must carry the hash only')
+  if (!/digest\(t\.secret::text, 'sha256'\)/.test(set)) failures.push('door_validation_set no longer hashes the secret with sha256')
+  return failures
+}
+
+/** Findings about the migration text. */
+export function checkMigration(sql) {
+  const failures = [...checkDoorList(sql)]
   const sync = functionBlock(sql, 'sync_offline_scans')
   if (!sync) {
     failures.push('sync_offline_scans is not defined')
@@ -166,6 +179,11 @@ export function runGuard(root = ROOT) {
   const migration = read(MIGRATION_FILE)
   if (migration === null) failures.push(`${MIGRATION_FILE} is missing`)
   else failures.push(...checkMigration(migration).map((f) => `${MIGRATION_FILE}: ${f}`))
+  for (const rel of DOOR_LIST_REDEFINITIONS) {
+    const later = read(rel)
+    if (later === null) failures.push(`${rel} is missing`)
+    else failures.push(...checkDoorList(later).map((f) => `${rel}: ${f}`))
+  }
 
   const types = read(TYPES_FILE)
   const store = read(STORE_FILE)

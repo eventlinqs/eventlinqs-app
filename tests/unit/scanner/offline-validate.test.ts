@@ -18,6 +18,7 @@ function meta(downloadedAt = DOWNLOADED): DoorSetMeta {
 
 function record(over: Partial<DoorTicketRecord> = {}): DoorTicketRecord {
   return {
+    ticketId: '44444444-4444-4444-8444-444444444444',
     ticketCode: 'EL-2345-6789',
     secretHash: HASH,
     status: 'valid',

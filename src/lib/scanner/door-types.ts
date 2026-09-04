@@ -36,6 +36,8 @@ export type ScanResultCode =
 
 /** One ticket in the downloaded door list. */
 export type DoorTicketRecord = {
+  /** The database id, so a live ticket_scans row (which carries ticket_id) can be matched. Null on a list downloaded before B2. */
+  ticketId: string | null
   ticketCode: string
   /** SHA-256 hex of the bearer secret, computed by the database. Never the secret. */
   secretHash: string
@@ -103,6 +105,25 @@ export type DoorOutcome = {
   firstScannedAt: string | null
   judgedBy: 'server' | 'device'
 }
+
+/**
+ * One ticket_scans row as it arrives on the live channel (B2), reduced to what
+ * a door needs: which door, which ticket, what happened, when, and whether it
+ * was this phone's own scan echoing back.
+ */
+export type LiveEntry = {
+  scanId: string
+  ticketId: string | null
+  result: string
+  deviceId: string | null
+  /** The device clock when the scan happened, else the server's record of it, ISO. */
+  at: string
+  mine: boolean
+  offline: boolean
+}
+
+/** How many other doors' scans the strip shows. */
+export const DOOR_LIVE_FEED_LENGTH = 3
 
 /** Scope v5 3.13: "Cache is valid for 24 hours from download." */
 export const DOOR_SET_VALID_FOR_MS = 24 * 60 * 60 * 1000

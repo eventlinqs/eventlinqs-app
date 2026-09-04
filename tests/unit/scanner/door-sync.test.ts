@@ -100,8 +100,8 @@ describe('applySyncOutcomes', () => {
   test('marks the queue synced and moves the local records to what the server said', async () => {
     const store = await DoorStore.open(new IDBFactory())
     await store.replaceTickets(EVENT, [
-      { ticketCode: 'EL-2345-6790', secretHash: 'hash-1', status: 'valid', holderName: 'Guest 1', tierName: null, seatLabel: null, firstScannedAt: null, admittedLocallyAt: '2026-09-05T09:00:01.000Z' },
-      { ticketCode: 'EL-2345-6791', secretHash: 'hash-2', status: 'valid', holderName: 'Guest 2', tierName: null, seatLabel: null, firstScannedAt: null, admittedLocallyAt: '2026-09-05T09:00:02.000Z' },
+      { ticketId: null, ticketCode: 'EL-2345-6790', secretHash: 'hash-1', status: 'valid', holderName: 'Guest 1', tierName: null, seatLabel: null, firstScannedAt: null, admittedLocallyAt: '2026-09-05T09:00:01.000Z' },
+      { ticketId: null, ticketCode: 'EL-2345-6791', secretHash: 'hash-2', status: 'valid', holderName: 'Guest 2', tierName: null, seatLabel: null, firstScannedAt: null, admittedLocallyAt: '2026-09-05T09:00:02.000Z' },
     ])
     await store.enqueue(queued(1))
     await store.enqueue(queued(2))

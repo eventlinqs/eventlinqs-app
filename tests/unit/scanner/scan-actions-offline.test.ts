@@ -22,6 +22,7 @@ const EVENT = '22222222-2222-4222-8222-222222222222'
 
 function row(i: number, over: Record<string, unknown> = {}) {
   return {
+    ticket_id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     ticket_code: `EL-2345-${6789 + i}`,
     secret_hash: 'a'.repeat(64),
     status: 'valid',
@@ -47,6 +48,7 @@ describe('downloadValidationPage', () => {
     if (!page.ok) return
     expect(page.done).toBe(true)
     expect(page.rows[0]).toEqual({
+      ticketId: '00000000-0000-4000-8000-000000000001',
       ticketCode: 'EL-2345-6790',
       secretHash: 'a'.repeat(64),
       status: 'valid',

@@ -758,9 +758,20 @@ const ROOT = join(HERE, '..', '..')
  * scroll region axe then asked for. schema-ahead-of-code grew by 1 when
  * ticket_scans.client_scan_id joined the manifest; guard-registry counts the
  * new guard.
+ *
+ * 2026-09-05 (B2, multi-scanner realtime sync, Scope v5 3.13): 286 files /
+ * 3335 tests. Three files, 27 tests, plus 1 in guards/offline-door-integrity,
+ * which now holds every later re-definition of the door list to the no-secret
+ * rule. tests/unit/scanner/door-live pins the channel name and filter, the
+ * status words, the strict row reader, the subscribe and leave, the local
+ * move a live row makes (on fake-indexeddb), the feed of other doors and the
+ * count line; scanner/door-realtime-migration the publication, the door list
+ * leading with ticket_id, scan_ticket's fourth argument recorded on all three
+ * audit inserts, the probe function's grants and the wss connect-src;
+ * guards/door-live-published the guard's decision table and its read-only ask.
  */
-const MIN_FILES = 283
-const MIN_TESTS = 3307
+const MIN_FILES = 286
+const MIN_TESTS = 3335
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

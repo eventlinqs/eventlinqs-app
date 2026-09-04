@@ -15,6 +15,7 @@ const OTHER = 'event-2'
 
 function record(i: number, over: Partial<DoorTicketRecord> = {}): DoorTicketRecord {
   return {
+    ticketId: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     ticketCode: `EL-${String(i).padStart(4, '0')}-${String(i).padStart(4, '0')}`,
     secretHash: `hash-${i}`,
     status: 'valid',

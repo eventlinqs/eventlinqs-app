@@ -31,13 +31,20 @@ import type { DoorSetMeta, DoorTicketRecord, DoorTicketStatus, QueuedScan, SyncO
  */
 
 export const DOOR_DB_NAME = 'eventlinqs-door'
-export const DOOR_DB_VERSION = 1
+/**
+ * 2 since B2 (5 September 2026): the tickets store gained the byTicketId
+ * index so a live ticket_scans row, which carries ticket_id, can move the
+ * right local record. A phone still on version 1 upgrades in place: the
+ * index is added to the existing store and fills as the next download lands.
+ */
+export const DOOR_DB_VERSION = 2
 export const DOOR_WRITE_BATCH = 1000
 
 const TICKETS = 'tickets'
 const META = 'meta'
 const QUEUE = 'queue'
 const BY_EVENT = 'byEvent'
+const BY_TICKET_ID = 'byTicketId'
 
 type StoredTicket = DoorTicketRecord & { key: string; eventId: string }
 
@@ -82,10 +89,17 @@ export function openDoorDatabase(factory: IDBFactory = indexedDB): Promise<IDBDa
     const open = factory.open(DOOR_DB_NAME, DOOR_DB_VERSION)
     open.onupgradeneeded = () => {
       const db = open.result
+      const upgrade = open.transaction
+      let tickets: IDBObjectStore
       if (!db.objectStoreNames.contains(TICKETS)) {
-        const tickets = db.createObjectStore(TICKETS, { keyPath: 'key' })
+        tickets = db.createObjectStore(TICKETS, { keyPath: 'key' })
         tickets.createIndex(BY_EVENT, 'eventId', { unique: false })
+      } else {
+        if (!upgrade) throw new Error('the door database upgrade has no transaction')
+        tickets = upgrade.objectStore(TICKETS)
       }
+      // Records with a null ticketId (a list from before B2) are simply absent from this index.
+      if (!tickets.indexNames.contains(BY_TICKET_ID)) tickets.createIndex(BY_TICKET_ID, 'ticketId', { unique: false })
       if (!db.objectStoreNames.contains(META)) {
         db.createObjectStore(META, { keyPath: 'eventId' })
       }
@@ -151,6 +165,28 @@ export class DoorStore {
     if (!row) return null
     const { key: _key, eventId: _eventId, ...record } = row
     return record
+  }
+
+  /** A ticket by its database id, the key a live ticket_scans row carries. */
+  async getTicketById(eventId: string, ticketId: string): Promise<DoorTicketRecord | null> {
+    const tx = this.db.transaction(TICKETS, 'readonly')
+    const rows: StoredTicket[] = []
+    await eachInIndex<StoredTicket>(tx.objectStore(TICKETS), BY_TICKET_ID, ticketId, (row) => {
+      if (row.eventId === eventId) rows.push(row)
+    })
+    if (rows.length === 0) return null
+    const { key: _key, eventId: _eventId, ...record } = rows[0]
+    return record
+  }
+
+  /** How many of the event's tickets are through the door, by the server's word or this phone's own admission. */
+  async countCheckedIn(eventId: string): Promise<number> {
+    let n = 0
+    const tx = this.db.transaction(TICKETS, 'readonly')
+    await eachInIndex<StoredTicket>(tx.objectStore(TICKETS), BY_EVENT, eventId, (row) => {
+      if (row.status === 'scanned' || row.admittedLocallyAt) n += 1
+    })
+    return n
   }
 
   async countTickets(eventId: string): Promise<number> {

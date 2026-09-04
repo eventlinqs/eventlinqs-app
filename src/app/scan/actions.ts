@@ -26,6 +26,8 @@ export async function scanTicket(
   eventId: string,
   ticketCode: string,
   secret: string,
+  /** Which phone scanned (B2), so the other doors' live feed can say so. Never a credential. */
+  deviceId: string | null = null,
 ): Promise<ScanOutcome> {
   const supabase = await createClient()
   const {
@@ -39,6 +41,7 @@ export async function scanTicket(
     p_ticket_code: ticketCode,
     p_secret: secret,
     p_event_id: eventId,
+    p_device_id: deviceId ? deviceId.slice(0, 80) : undefined,
   })
 
   if (error) {
@@ -68,6 +71,7 @@ const TICKET_STATUSES: ReadonlySet<string> = new Set(['valid', 'scanned', 'refun
 
 /** One row of door_validation_set, as the migration declares it. */
 type ValidationRow = {
+  ticket_id: string | null
   ticket_code: string
   secret_hash: string
   status: string
@@ -106,6 +110,7 @@ export async function downloadValidationPage(eventId: string, afterCode: string 
   if (error) return { ok: false, error: refusal(error, 'The door list could not be downloaded') }
 
   const rows: DoorTicketRecord[] = ((data ?? []) as ValidationRow[]).map((r) => ({
+    ticketId: r.ticket_id ?? null,
     ticketCode: r.ticket_code,
     secretHash: r.secret_hash,
     status: (TICKET_STATUSES.has(r.status) ? r.status : 'void') as DoorTicketStatus,

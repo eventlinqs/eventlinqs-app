@@ -20,6 +20,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      door_realtime_enabled: { Args: never; Returns: boolean }
       door_staff_for_event: { Args: { p_event_id: string }; Returns: boolean }
       door_validation_set: {
         Args: { p_after_code?: string; p_event_id: string; p_limit?: number }
@@ -30,6 +31,7 @@ export type Database = {
           secret_hash: string
           status: string
           ticket_code: string
+          ticket_id: string
           tier_name: string
         }[]
       }
@@ -45,6 +47,20 @@ export type Database = {
       resolve_scan_review: {
         Args: { p_note?: string; p_scan_id: string }
         Returns: boolean
+      }
+      scan_ticket: {
+        Args: {
+          p_device_id?: string
+          p_event_id: string
+          p_secret: string
+          p_ticket_code: string
+        }
+        Returns: {
+          first_scanned_at: string
+          holder_name: string
+          result: string
+          seat_label: string
+        }[]
       }
       sync_offline_scans: {
         Args: { p_event_id: string; p_scans: Json }

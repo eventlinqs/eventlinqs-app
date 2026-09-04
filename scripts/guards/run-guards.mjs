@@ -86,6 +86,9 @@
  *                              through the same compare-and-set as scan_ticket, ticket_scans is
  *                              written by the RPCs only, and the door service worker is GET only
  *                              on /scan/ navigations and /_next/static/ assets
+ *   door-live-published       the door's live feed is published on the build's own database
+ *                              (ticket_scans in supabase_realtime), asked through one read-only
+ *                              RPC, so two doors never go silently deaf to each other
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -659,6 +662,15 @@ const GUARDS = [
   // Proven red by removing the status clause from the migration and green after
   // (C:\dev\EVIDENCE\B1\guard-offline-door-integrity-proof.txt).
   'scripts/guards/offline-door-integrity.mjs',
+  // 5 September 2026 (B2, multi-scanner realtime, Scope v5 3.13). Two doors see
+  // each other's admissions because ticket_scans is in the supabase_realtime
+  // publication, and no other gate can see a publication: a project where the
+  // migration was never applied subscribes, says SUBSCRIBED, and never receives
+  // a row. This asks door_realtime_enabled() on the build's own database, read
+  // only, and refuses a build whose doors would be silently deaf. SKIPs by name
+  // on CI's placeholder URL. Proven red on TEST by dropping the table from the
+  // publication and green by adding it back (C:\dev\EVIDENCE\B2\guard-door-live-published-proof.txt).
+  'scripts/guards/door-live-published.mjs',
 ]
 
 /**

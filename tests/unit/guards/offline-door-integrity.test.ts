@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { findDirectWrites, checkMigration, checkDeviceShapes, checkWorker, runGuard, MIGRATION_FILE, TYPES_FILE, STORE_FILE, WORKER_FILE } from '../../../scripts/guards/offline-door-integrity.mjs'
+import { findDirectWrites, checkMigration, checkDoorList, checkDeviceShapes, checkWorker, runGuard, MIGRATION_FILE, DOOR_LIST_REDEFINITIONS, TYPES_FILE, STORE_FILE, WORKER_FILE } from '../../../scripts/guards/offline-door-integrity.mjs'
 
 const ROOT = join(__dirname, '..', '..', '..')
 const read = (rel: string) => readFileSync(join(ROOT, rel), 'utf8')
@@ -30,6 +30,17 @@ describe('checkMigration', () => {
   test('widening a grant to anon is named', () => {
     const broken = sql.replace('REVOKE ALL ON FUNCTION public.sync_offline_scans(uuid, jsonb) FROM PUBLIC, anon;', '')
     expect(checkMigration(broken).join('\n')).toMatch(/sync_offline_scans is not revoked from anon/)
+  })
+})
+
+describe('checkDoorList on every later re-definition', () => {
+  test('the B2 re-definition (ticket_id first) still carries the hash and never the secret', () => {
+    expect(DOOR_LIST_REDEFINITIONS).toContain('supabase/migrations/20260905000002_door_realtime.sql')
+    for (const rel of DOOR_LIST_REDEFINITIONS) {
+      const sql = read(rel)
+      expect(checkDoorList(sql), rel).toEqual([])
+      expect(checkDoorList(sql.replace('secret_hash      text,', 'secret_hash      text,\n  secret           uuid,')).join('\n')).toMatch(/column called secret/)
+    }
   })
 })
 
