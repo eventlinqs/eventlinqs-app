@@ -1,3 +1,6 @@
+'use client'
+
+import 'client-only'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { DoorTicketRecord, LiveEntry } from './door-types'
 import { DOOR_LIVE_FEED_LENGTH } from './door-types'
@@ -24,6 +27,12 @@ import { shortDevice } from './device-id'
  * minute later and someone presents the same ticket, the door list already
  * knows and refuses it, with no sync in between. That is the point of the
  * feature: the door list stops being a snapshot.
+ *
+ * CLIENT ONLY, and marked twice: this module opens the browser's realtime
+ * socket and reads the session only to hand its token to that socket, never
+ * to authorise anything (the database's row policy does that). A server
+ * component may never import it, which `client-only` enforces, and the
+ * no-server-side-getSession rule reads the marker.
  */
 
 export type LiveStatus = 'connecting' | 'live' | 'reconnecting' | 'off'
