@@ -20,6 +20,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      door_staff_for_event: { Args: { p_event_id: string }; Returns: boolean }
+      door_validation_set: {
+        Args: { p_after_code?: string; p_event_id: string; p_limit?: number }
+        Returns: {
+          first_scanned_at: string
+          holder_name: string
+          seat_label: string
+          secret_hash: string
+          status: string
+          ticket_code: string
+          tier_name: string
+        }[]
+      }
       graphql: {
         Args: {
           extensions?: Json
@@ -27,6 +40,14 @@ export type Database = {
           query?: string
           variables?: Json
         }
+        Returns: Json
+      }
+      resolve_scan_review: {
+        Args: { p_note?: string; p_scan_id: string }
+        Returns: boolean
+      }
+      sync_offline_scans: {
+        Args: { p_event_id: string; p_scans: Json }
         Returns: Json
       }
     }
@@ -3838,30 +3859,54 @@ export type Database = {
       }
       ticket_scans: {
         Row: {
+          client_scan_id: string | null
+          device_id: string | null
           device_info: Json
+          device_scanned_at: string | null
           event_id: string
           id: string
           result: string
+          review_note: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           scanned_at: string
           scanned_by: string | null
+          scanned_offline: boolean
           ticket_id: string | null
         }
         Insert: {
+          client_scan_id?: string | null
+          device_id?: string | null
           device_info?: Json
+          device_scanned_at?: string | null
           event_id: string
           id?: string
           result: string
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scanned_at?: string
           scanned_by?: string | null
+          scanned_offline?: boolean
           ticket_id?: string | null
         }
         Update: {
+          client_scan_id?: string | null
+          device_id?: string | null
           device_info?: Json
+          device_scanned_at?: string | null
           event_id?: string
           id?: string
           result?: string
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scanned_at?: string
           scanned_by?: string | null
+          scanned_offline?: boolean
           ticket_id?: string | null
         }
         Relationships: [

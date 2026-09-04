@@ -82,6 +82,10 @@
  *   price-history-integrity    ticket_price_history is written by the database triggers only
  *                              and dynamic pricing is saved through save_dynamic_pricing in one
  *                              transaction, so the record a buyer reads is what was charged
+ *   offline-door-integrity    the door list carries a hash and never a secret, the sync admits
+ *                              through the same compare-and-set as scan_ticket, ticket_scans is
+ *                              written by the RPCs only, and the door service worker is GET only
+ *                              on /scan/ navigations and /_next/static/ assets
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -645,6 +649,16 @@ const GUARDS = [
   // declares both triggers deferred. Proven red by restoring the old delete
   // call in the action and green after (C:\dev\EVIDENCE\A4-guard-price-history-integrity-proof.txt).
   'scripts/guards/price-history-integrity.mjs',
+  // 5 September 2026 (B1, offline door validation, Scope v5 3.12 and 3.13). The
+  // phone at the gate downloads every ticket and judges scans against it with no
+  // signal, then syncs its queue. Four edits would break that while passing every
+  // other gate: returning the secret in the door list, dropping the
+  // `status = 'valid'` clause from the sync's compare-and-set (two doors both
+  // record admitted), an application insert into ticket_scans, and a service
+  // worker that answers more than /scan/ navigations and /_next/static/ assets.
+  // Proven red by removing the status clause from the migration and green after
+  // (C:\dev\EVIDENCE\B1\guard-offline-door-integrity-proof.txt).
+  'scripts/guards/offline-door-integrity.mjs',
 ]
 
 /**

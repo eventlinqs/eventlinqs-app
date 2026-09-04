@@ -738,9 +738,23 @@ const ROOT = join(HERE, '..', '..')
  * error-strong text token rather than a coral text class on the white ticket
  * card (coral-500 measured 3.28:1 there under axe, and no coral token clears
  * 4.5:1 on white), and that error-strong itself still clears 4.5:1.
+ *
+ * 2026-09-05 (B1, offline door validation, Scope v5 3.12 and 3.13): 282 files /
+ * 3304 tests. Eleven files, 122 tests. tests/unit/scanner/offline-validate (19)
+ * pins the device's judgement branch by branch and the 24 hour window;
+ * door-store (13) runs the IndexedDB store on fake-indexeddb, batching, the
+ * carried local admission and the queue; door-sync (9) the batch, the strict
+ * answer parser and the write-back; door-copy (16) the words and the copy law;
+ * scan-actions-offline (10) the two actions against a mocked session client;
+ * offline-door-migration (18) the migration's shape, the hashed door list, the
+ * compare-and-set and the grants; scan-service-worker (7) drives the worker's
+ * routing in a fake worker global; device-id (5); guards/offline-door-integrity
+ * (10) the guard's four judgements and the tree; reporting/door-review-copy (7)
+ * the organiser's review words; reporting/resolve-scan-review-action (6) the
+ * organiser's Mark resolved action: identity, the gate, the RPC, the note.
  */
-const MIN_FILES = 271
-const MIN_TESTS = 3182
+const MIN_FILES = 282
+const MIN_TESTS = 3304
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

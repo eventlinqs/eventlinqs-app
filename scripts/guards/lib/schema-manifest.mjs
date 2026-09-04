@@ -50,4 +50,10 @@ export const SCHEMA_THE_CODE_NAMES = [
     migration: '20260904000002_ticket_price_history.sql',
     readBy: 'src/lib/pricing/read-price-history.ts (the public event page), and saveDynamicPricing calls save_dynamic_pricing from the same migration',
   },
+  {
+    table: 'ticket_scans',
+    column: 'client_scan_id',
+    migration: '20260905000001_offline_door_validation.sql',
+    readBy: 'src/lib/reporting/door-review.ts (the organiser review list), and the scanner calls door_validation_set and sync_offline_scans from the same migration',
+  },
 ]

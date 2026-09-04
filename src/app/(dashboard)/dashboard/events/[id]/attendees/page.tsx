@@ -3,6 +3,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getOrganiserEvent, fetchEventAttendees } from '@/lib/reporting/attendees'
 import { AttendeeTable } from '@/components/dashboard/attendee-table'
+import { fetchDoorReview } from '@/lib/reporting/door-review'
+import { DoorReviewPanel } from '@/components/dashboard/door-review-panel'
 
 export const metadata: Metadata = {
   title: 'Attendees | EventLinqs',
@@ -17,7 +19,7 @@ export default async function AttendeesPage({ params }: Props) {
   const event = await getOrganiserEvent(id)
   if (!event) notFound()
 
-  const attendees = await fetchEventAttendees(id)
+  const [attendees, doorReview] = await Promise.all([fetchEventAttendees(id), fetchDoorReview(id)])
   const checkedIn = attendees.filter(a => a.checkedIn).length
   const notCheckedIn = attendees.length - checkedIn
   const ticketTypes = [...new Set(attendees.map(a => a.ticketType))].sort((a, b) => a.localeCompare(b))
@@ -95,6 +97,9 @@ export default async function AttendeesPage({ params }: Props) {
           must include in your emails and honour.
         </p>
       </div>
+
+      {/* Door review (Scope v5 3.12): scans a door admitted offline that the server could not admit at sync */}
+      <DoorReviewPanel eventId={id} rows={doorReview} timeZone={event.timezone} />
 
       <AttendeeTable attendees={attendees} ticketTypes={ticketTypes} />
     </div>
