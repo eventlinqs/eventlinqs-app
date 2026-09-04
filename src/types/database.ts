@@ -3782,6 +3782,60 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_price_history: {
+        Row: {
+          currency: string
+          event_id: string
+          id: string
+          percent_sold: number | null
+          previous_price_cents: number | null
+          price_cents: number
+          reason: string
+          recorded_at: string
+          ticket_tier_id: string | null
+          tier_name: string
+        }
+        Insert: {
+          currency?: string
+          event_id: string
+          id?: string
+          percent_sold?: number | null
+          previous_price_cents?: number | null
+          price_cents: number
+          reason: string
+          recorded_at?: string
+          ticket_tier_id?: string | null
+          tier_name: string
+        }
+        Update: {
+          currency?: string
+          event_id?: string
+          id?: string
+          percent_sold?: number | null
+          previous_price_cents?: number | null
+          price_cents?: number
+          reason?: string
+          recorded_at?: string
+          ticket_tier_id?: string | null
+          tier_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_price_history_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_price_history_ticket_tier_id_fkey"
+            columns: ["ticket_tier_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_scans: {
         Row: {
           device_info: Json
@@ -4867,6 +4921,10 @@ export type Database = {
         }
         Returns: string
       }
+      record_tier_price_history: {
+        Args: { p_hint: string; p_tier_id: string }
+        Returns: undefined
+      }
       redeem_tier_access_codes: {
         Args: { p_code: string; p_tier_ids: string[] }
         Returns: {
@@ -4900,6 +4958,10 @@ export type Database = {
       resolve_chargeback: {
         Args: { p_dispute_id: string; p_outcome: string }
         Returns: Json
+      }
+      save_dynamic_pricing: {
+        Args: { p_enabled: boolean; p_steps: Json; p_tier_id: string }
+        Returns: number
       }
       scan_ticket: {
         Args: { p_event_id: string; p_secret: string; p_ticket_code: string }

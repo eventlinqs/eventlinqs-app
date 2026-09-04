@@ -318,6 +318,10 @@ export default async function EventViewPage({ params }: Props) {
           <TabLink href={`/dashboard/events/${event.id}`} active>Overview</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/orders`}>Orders</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/attendees`}>Attendees</TabLink>
+          {/* Dynamic pricing (Scope v5 3.3). The screen existed since the baseline
+              and nothing linked to it: an organiser could not reach it with a
+              mouse (found 4 September 2026, Law 5). This is the way in. */}
+          <TabLink href={`/dashboard/events/${event.id}/pricing`}>Pricing</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/reach`}>Reach</TabLink>
           {event.event_type !== 'in_person' && (
             <TabLink href={`/dashboard/events/${event.id}/stream`}>Stream</TabLink>
@@ -439,6 +443,12 @@ export default async function EventViewPage({ params }: Props) {
                 className="inline-flex h-9 items-center justify-center rounded-lg border border-ink-200 bg-white text-sm font-medium text-ink-900 transition-colors hover:bg-ink-100"
               >
                 Discount codes
+              </Link>
+              <Link
+                href={`/dashboard/events/${event.id}/pricing`}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-ink-200 bg-white text-sm font-medium text-ink-900 transition-colors hover:bg-ink-100"
+              >
+                Dynamic pricing
               </Link>
               <Link
                 href={`/scan/${event.id}`}

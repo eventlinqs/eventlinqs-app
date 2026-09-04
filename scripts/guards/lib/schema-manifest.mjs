@@ -44,4 +44,10 @@ export const SCHEMA_THE_CODE_NAMES = [
     migration: '20260904000001_venue_geocode_provenance.sql',
     readBy: 'dashboard events actions (create and edit write it with venue_geocoded_at), the organiser form (edit mode), the venue backfill',
   },
+  {
+    table: 'ticket_price_history',
+    column: 'id',
+    migration: '20260904000002_ticket_price_history.sql',
+    readBy: 'src/lib/pricing/read-price-history.ts (the public event page), and saveDynamicPricing calls save_dynamic_pricing from the same migration',
+  },
 ]

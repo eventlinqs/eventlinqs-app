@@ -713,9 +713,27 @@ const ROOT = join(HERE, '..', '..')
  * pinning places.googleapis.com and maps.googleapis.com in the report-only CSP
  * connect-src and script-src; and tests/unit/guards/schema-ahead-of-code.test.ts
  * grew by 2 when events.venue_geocode_source joined the schema manifest.
+ *
+ * 2026-09-04 (A4, price history, Scope v5 3.3): 270 files / 3177 tests, measured
+ * by the canary itself with the env parked (C:\dev\EVIDENCE\A4-canary-measure.txt).
+ * Six files and sixty-three tests, all upward. tests/unit/pricing/price-history.test.ts
+ * (21) pins the summariser: matching by tier NAME because an edit re-creates
+ * every tier, the direction and previous price of each move, the words a buyer
+ * reads (Listed at, Lowered to, Rose to at N% sold), the note under the price
+ * and which tiers keep their history to themselves; dynamic-pricing-steps (6)
+ * pins the step normaliser; read-price-history (4) pins the one reader, which
+ * logs a failure with its code and yields no history; save-dynamic-pricing-
+ * action (6) proves the action reaches save_dynamic_pricing in ONE call with
+ * the steps normalised and refuses before any write without a session or
+ * access; ticket-price-history-migration (11) pins the migration's shape, the
+ * two DEFERRABLE INITIALLY DEFERRED triggers and the grants; and
+ * tests/unit/guards/price-history-integrity.test.ts (8) pins the guard's three
+ * judgements and proves it green on the tree. schema-ahead-of-code grew by 2
+ * when ticket_price_history.id joined the schema manifest; guard-registry
+ * counts the new guard.
  */
-const MIN_FILES = 264
-const MIN_TESTS = 3114
+const MIN_FILES = 270
+const MIN_TESTS = 3177
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

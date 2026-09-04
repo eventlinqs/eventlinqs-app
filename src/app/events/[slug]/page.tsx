@@ -23,6 +23,9 @@ import { TicketPanelClient } from '@/components/features/events/ticket-panel-cli
 import { GetTicketsCta } from '@/components/features/events/get-tickets-cta'
 import { getEventInventoryStatic, getTierInventoryStatic } from '@/lib/redis/inventory-cache'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
+import { readPriceHistory } from '@/lib/pricing/read-price-history'
+import { priceMoveNotesByTier, summarisePriceHistory } from '@/lib/pricing/price-history'
+import { PriceHistoryPanel } from '@/components/features/events/price-history-panel'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media'
@@ -114,6 +117,8 @@ type FullEvent = Event & {
 type EnrichedTier = TicketTier & {
   display_price_cents: number
   sale_pending: boolean
+  // The last price move in words, from ticket_price_history (Scope v5 3.3).
+  price_history_note: string | null
 }
 
 async function fetchEvent(slug: string): Promise<FullEvent | null> {
@@ -529,6 +534,7 @@ export default async function EventDetailPage({ params }: Props) {
     feeRates,
     seatedFlagEnabled,
     surpassEdgesEnabled,
+    priceHistoryRows,
   ] = await Promise.all([
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventoryStatic(event.id),
@@ -551,8 +557,17 @@ export default async function EventDetailPage({ params }: Props) {
     }),
     isFlagEnabled('seated_events'),
     isFlagEnabled('surpass_edges'),
+    // How each ticket's price has moved (Scope v5 3.3), written by the database
+    // and read with the anon client like the event itself. A read failure is
+    // logged inside and yields no history, never a broken ticket panel.
+    readPriceHistory(createPublicClient(), event.id),
   ])
   const eventFeePassType = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
+
+  // One timeline per ticket the visitor may see, and the one-line note under
+  // a moved price ("Up from AUD 28.00") keyed by tier id for the ticket panel.
+  const priceHistories = summarisePriceHistory(priceHistoryRows, allTiers, now)
+  const priceHistoryNotes = priceMoveNotesByTier(priceHistories)
 
   // Event Media Standard: the gallery (below the hero, lazy) and the one optional
   // allowlisted video embed. The cover raster (media.image) is the video poster so
@@ -574,6 +589,7 @@ export default async function EventDetailPage({ params }: Props) {
     ...t,
     sale_pending: !!(t.sale_start && new Date(t.sale_start) > now),
     display_price_cents: resolvePrice(t),
+    price_history_note: priceHistoryNotes[t.id] ?? null,
   }))
 
   /**
@@ -1220,14 +1236,18 @@ export default async function EventDetailPage({ params }: Props) {
                         />
                       </div>
                     )}
+                    <PriceHistoryPanel histories={priceHistories} timezone={event.timezone ?? null} />
                   </div>
                 ) : isSoldOut && !saleBlocked ? (
-                  <div className="sticky top-20">
+                  <div className="sticky top-20 space-y-5">
                     <EventSoldOut
                       event={{ id: event.id, slug: event.slug, title: event.title }}
                       primaryTierId={allTiers[0]?.id ?? null}
                       relatedEvents={[]}
                     />
+                    {/* A sold out ticket's price history still tells the truth
+                        about what it cost, and when. */}
+                    <PriceHistoryPanel histories={priceHistories} timezone={event.timezone ?? null} />
                   </div>
                 ) : (
                   <div className="sticky top-20 space-y-5">
@@ -1258,6 +1278,11 @@ export default async function EventDetailPage({ params }: Props) {
                         feePassType={eventFeePassType}
                       />
                     </div>
+
+                    {/* How the price has moved, under the tickets it describes
+                        (Scope v5 3.3). Renders nothing for an event with no
+                        recorded history. */}
+                    <PriceHistoryPanel histories={priceHistories} timezone={event.timezone ?? null} />
 
                     {/* The acquisition loop at the decision point: the share
                         card rides with the sticky panel so the ticket column

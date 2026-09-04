@@ -79,6 +79,9 @@
  *                              (configured-looking, serving nothing) and fails the build; an
  *                              absent key or the browser key standing in is a named decision
  *                              and SKIPs with the founder's step printed
+ *   price-history-integrity    ticket_price_history is written by the database triggers only
+ *                              and dynamic pricing is saved through save_dynamic_pricing in one
+ *                              transaction, so the record a buyer reads is what was charged
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -632,6 +635,16 @@ const GUARDS = [
   // that is the shape every gate would otherwise miss. Proven FAIL with a bogus
   // distinct key and SKIP with the live values (C:\dev\EVIDENCE\A3-guard-geocoding-key-posture-proof.txt).
   'scripts/guards/geocoding-key-posture.mjs',
+  // 4 September 2026 (A4, price history, Scope v5 3.3). ticket_price_history is
+  // what a buyer reads on the event page about how a price has moved, and it is
+  // written by two DEFERRED constraint triggers that judge the effective price
+  // at commit. Two edits would corrupt it while passing every other gate: an
+  // application insert into the history, and a return to writing
+  // dynamic_pricing_rules as three auto-committed statements instead of through
+  // save_dynamic_pricing. This refuses both, and checks the migration still
+  // declares both triggers deferred. Proven red by restoring the old delete
+  // call in the action and green after (C:\dev\EVIDENCE\A4-guard-price-history-integrity-proof.txt).
+  'scripts/guards/price-history-integrity.mjs',
 ]
 
 /**

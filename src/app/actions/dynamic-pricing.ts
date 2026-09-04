@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { revalidateEventSurfacesById } from '@/lib/events/revalidate-event'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
+import { normaliseDynamicPricingSteps } from '@/lib/pricing/steps'
+import type { Json } from '@/types/database'
 
 const StepSchema = z.object({
   id: z.string().uuid().optional(),
@@ -83,44 +85,38 @@ export async function saveDynamicPricing(
   // All writes use adminClient (Principle 1)
   const adminClient = createAdminClient()
 
-  // Toggle dynamic_pricing_enabled on the tier
-  const { error: toggleError } = await adminClient
-    .from('ticket_tiers')
-    .update({ dynamic_pricing_enabled: enabled })
-    .eq('id', tier_id)
+  /*
+   * ONE TRANSACTION, NOT THREE STATEMENTS (Scope v5 3.3, 4 September 2026).
+   *
+   * This used to toggle dynamic_pricing_enabled, delete every rule and insert
+   * the new rules as three auto-committed writes. The price history triggers
+   * (migration 20260904000002) judge a tier's effective price at commit, so
+   * three commits would have recorded a flip to the base price between the
+   * delete and the insert, a move no buyer ever saw. save_dynamic_pricing does
+   * the same three writes inside one transaction, and the deferred triggers see
+   * only the final state. The steps are normalised first (sorted by threshold,
+   * renumbered, clamped) so what is stored says what the database will do.
+   * scripts/guards/price-history-integrity.mjs refuses a return to direct
+   * writes on dynamic_pricing_rules from application code.
+   */
+  const normalised = enabled ? normaliseDynamicPricingSteps(steps) : []
+  const { error: saveError } = await adminClient.rpc('save_dynamic_pricing', {
+    p_tier_id: tier_id,
+    p_enabled: enabled,
+    p_steps: normalised.map((s) => ({ ...s })) as unknown as Json,
+  })
 
-  if (toggleError) {
-    console.error('[dynamic-pricing] Failed to toggle dynamic_pricing_enabled:', toggleError)
-    return { success: false, error: 'Failed to update tier' }
-  }
-
-  // Delete all existing steps and replace (simplest correct approach)
-  const { error: deleteError } = await adminClient
-    .from('dynamic_pricing_rules')
-    .delete()
-    .eq('ticket_tier_id', tier_id)
-
-  if (deleteError) {
-    console.error('[dynamic-pricing] Failed to delete existing rules:', deleteError)
-    return { success: false, error: 'Failed to update pricing steps' }
-  }
-
-  if (enabled && steps.length > 0) {
-    const rows = steps.map((s, i) => ({
-      ticket_tier_id: tier_id,
-      step_order: i + 1,
-      capacity_threshold_percent: s.capacity_threshold_percent,
-      price_cents: s.price_cents,
-    }))
-
-    const { error: insertError } = await adminClient
-      .from('dynamic_pricing_rules')
-      .insert(rows)
-
-    if (insertError) {
-      console.error('[dynamic-pricing] Failed to insert pricing rules:', insertError)
-      return { success: false, error: 'Failed to save pricing steps' }
-    }
+  if (saveError) {
+    console.error('[dynamic-pricing] save_dynamic_pricing failed:', {
+      tier_id,
+      code: saveError.code,
+      message: saveError.message,
+      hint:
+        saveError.code === 'PGRST202'
+          ? 'The function does not exist on this database. Apply migration 20260904000002_ticket_price_history.sql.'
+          : undefined,
+    })
+    return { success: false, error: 'Failed to save pricing steps' }
   }
 
   revalidatePath(`/dashboard/events/${event_id}/pricing`)
