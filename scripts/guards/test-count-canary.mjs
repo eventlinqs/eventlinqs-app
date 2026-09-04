@@ -700,9 +700,22 @@ const ROOT = join(HERE, '..', '..')
  * stays below half the registry's closest pair; and
  * tests/unit/guards/geocoding-key-posture.test.ts pins the guard's three shapes
  * (absent SKIP, browser-as-server SKIP, distinct-and-refused FAIL).
+ *
+ * 2026-09-04 (A3, later the same day): 264 files / 3114 tests, measured by the
+ * canary itself with the env parked (C:devEVIDENCEA3-canary-measure.txt).
+ * Two files and fourteen tests, all upward, every one from a defect the drive
+ * found. tests/unit/maps/places-autocomplete.test.ts (6) pins that the referer
+ * refusal is read off the thrown message and never off the class, after Google's
+ * RpcError (not an instanceof Error) made the finder say "did not answer";
+ * tests/unit/journeys/maps-js-stub.test.ts (3) runs the Maps JS stand-in in a vm
+ * and pins the loader handshake (the dotted google.maps.__ib__ callback) and the
+ * Forum Melbourne answer; tests/unit/security/security-headers.test.ts gained 3,
+ * pinning places.googleapis.com and maps.googleapis.com in the report-only CSP
+ * connect-src and script-src; and tests/unit/guards/schema-ahead-of-code.test.ts
+ * grew by 2 when events.venue_geocode_source joined the schema manifest.
  */
-const MIN_FILES = 262
-const MIN_TESTS = 3100
+const MIN_FILES = 264
+const MIN_TESTS = 3114
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

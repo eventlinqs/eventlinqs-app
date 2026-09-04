@@ -54,7 +54,9 @@ import { MAPS_JS_STUB } from './stubs/maps-js-stub.mjs'
 
 const STUB = process.env.JOURNEY_PLACES_STUB === '1'
 const MODE = STUB ? 'STUBBED PLACES' : 'REAL PLACES'
-const j = makeJourney('a3-venue-geocoding', `A3: the venue finder, the coordinates, the map (${MODE})`)
+// The committed copy under docs/verification keeps the two modes apart, so a
+// stubbed screenshot can never sit in the folder that claims the real library.
+const j = makeJourney(STUB ? 'a3-venue-geocoding-stubbed' : 'a3-venue-geocoding', `A3: the venue finder, the coordinates, the map (${MODE})`)
 const stamp = process.env.RUN_STAMP ?? String(Date.now()).slice(-6)
 const viewportLabel = process.env.JOURNEY_VIEWPORT ?? 'desktop-1440'
 const VIEWPORTS = {
@@ -68,6 +70,17 @@ const TITLE_PICK = `Forum Sessions ${stamp}`
 const TITLE_TYPED = `Wool Exchange Night ${stamp}`
 const SERVER_LOG = process.env.SERVER_LOG ?? '.tmp-serve.log'
 
+/**
+ * What the server has said, on stdout AND stderr. `next start` writes console.warn
+ * to stderr, and the serve script redirects the two streams to sibling files
+ * (.tmp-serve.log and .tmp-serve.err.log). The first desktop run read only the
+ * stdout file and reported the geocoding reason missing when it was in the other.
+ */
+function serverLogText() {
+  const siblings = [SERVER_LOG, SERVER_LOG.replace(/\.log$/, '.err.log')]
+  return siblings.filter((f) => existsSync(f)).map((f) => readFileSync(f, 'utf8')).join('\n')
+}
+
 const browser = await chromium.launch()
 const results = []
 function verdict(name, ok, detail) {
@@ -77,6 +90,14 @@ function verdict(name, ok, detail) {
 }
 
 const run = { viewport: viewportLabel, base: BASE, mode: MODE }
+
+/** The organiser session, written beside the evidence so the axe pass can open the edit form signed in. */
+async function keepSession(ctx, name) {
+  if (!process.env.EVIDENCE_DIR) return
+  const dest = join(process.env.EVIDENCE_DIR, `${viewportLabel}${STUB ? '-stubbed' : ''}`)
+  mkdirSync(dest, { recursive: true })
+  await ctx.storageState({ path: join(dest, `session-${name}.json`) })
+}
 
 const db = (() => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -202,7 +223,14 @@ async function rowFor(eventId) {
 }
 
 try {
-  const ctx = await browser.newContext({ viewport, locale: 'en-AU', extraHTTPHeaders: { 'x-forwarded-for': '203.0.113.31' } })
+  // NO extraHTTPHeaders here. A2 sent x-forwarded-for for its country gate, and
+  // Playwright sends extra headers to EVERY origin, so the Places XHR to
+  // places.googleapis.com grew a CORS preflight that Google refuses, the
+  // library threw a network error instead of the referer refusal, and the
+  // finder said "did not answer" on two drives while the product was right
+  // (C:devEVIDENCEA3-finder-create-path-probe-xff.txt against the same run
+  // without the header). Nothing in A3 reads the viewer country.
+  const ctx = await browser.newContext({ viewport, locale: 'en-AU' })
   if (STUB) {
     await ctx.route('https://maps.googleapis.com/maps/api/js**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/javascript', body: MAPS_JS_STUB }),
@@ -213,6 +241,7 @@ try {
   note(j, 'Mode', MODE)
 
   await signUpAndConfirm(j, p, ORGANISER)
+  await keepSession(ctx, 'organiser')
 
   // ── Event 1: the pick ──────────────────────────────────────────────────────
   await wizardToLocation(p, TITLE_PICK, 'A night at the Forum.')
@@ -272,6 +301,7 @@ try {
   const one = await finishAndPublish(p, 'the pick')
   run.slugPick = one?.slug ?? null
   run.eventIdPick = one?.eventId ?? null
+  run.organiserEditUrlPick = one?.eventId ? `/dashboard/events/${one.eventId}/edit` : null
   const rowOne = await rowFor(one?.eventId)
   if (picked) {
     verdict(
@@ -298,7 +328,7 @@ try {
       await describe(j, p, 'City page carrying the pin')
     }
   } else {
-    verdict('a typed address with the server key off saves with no coordinates and the reason is named in the server log', rowOne?.venue_latitude === null && readFileSync(SERVER_LOG, 'utf8').includes('server geocoding is off'), rowOne ? `lat=${rowOne.venue_latitude} source=${rowOne.venue_geocode_source}` : 'no row')
+    verdict('a typed address with the server key off saves with no coordinates and the reason is named in the server log', rowOne?.venue_latitude === null && serverLogText().includes('server geocoding is off'), rowOne ? `lat=${rowOne.venue_latitude} source=${rowOne.venue_geocode_source}` : 'no row')
   }
 
   // ── Event 2: the typed address, no pick ────────────────────────────────────
@@ -311,8 +341,9 @@ try {
   await describe(j, p, 'Typed address, no pick')
   const two = await finishAndPublish(p, 'the typed address')
   run.slugTyped = two?.slug ?? null
+  run.organiserEditUrlTyped = two?.eventId ? `/dashboard/events/${two.eventId}/edit` : null
   const rowTwo = await rowFor(two?.eventId)
-  const logHasReason = existsSync(SERVER_LOG) && readFileSync(SERVER_LOG, 'utf8').includes('server geocoding is off')
+  const logHasReason = existsSync(SERVER_LOG) && serverLogText().includes('server geocoding is off')
   verdict(
     'the typed event saves with no coordinates, the city claim from the locality, and the reason named in the server log',
     Boolean(rowTwo) && rowTwo.venue_latitude === null && rowTwo.city_primary === 'geelong' && logHasReason,

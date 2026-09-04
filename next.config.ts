@@ -22,7 +22,12 @@ const CSP_REPORT_ONLY = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://plausible.io https://maps.googleapis.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co https://api.stripe.com https://plausible.io https://*.upstash.io https://maps.googleapis.com",
+  // places.googleapis.com is the Places (New) RPC endpoint the venue finder's
+  // AutocompleteSuggestion calls from the browser (observed 4 September 2026:
+  // https://places.googleapis.com/$rpc/google.maps.places.v1.Places/AutocompletePlaces,
+  // reported as a connect-src violation by this policy). Without it, the day
+  // this policy is enforced the finder dies quietly on every organiser.
+  "connect-src 'self' https://*.supabase.co https://api.stripe.com https://plausible.io https://*.upstash.io https://maps.googleapis.com https://places.googleapis.com",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.instagram.com https://www.tiktok.com",
   "worker-src 'self' blob:",
 ].join('; ')

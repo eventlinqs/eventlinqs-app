@@ -121,7 +121,10 @@ export const MAPS_JS_STUB = `
     event: libs.maps.event,
     __stub: 'STUBBED PLACES',
   })
+  // The loader names a DOTTED callback (google.maps.__ib__) and stores the
+  // bootstrap's resolve there; Google's script resolves the path and calls it.
   const cb = new URL(document.currentScript.src).searchParams.get('callback')
-  if (cb && typeof window[cb] === 'function') window[cb]()
+  const fn = cb ? cb.split('.').reduce((o, k) => (o == null ? undefined : o[k]), window) : undefined
+  if (typeof fn === 'function') fn()
 })()
 `

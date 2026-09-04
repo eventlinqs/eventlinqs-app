@@ -38,4 +38,10 @@ export const SCHEMA_THE_CODE_NAMES = [
     migration: '20260903000002_stream_link_vault.sql',
     readBy: 'src/lib/stream/link.ts (the vault every stream read and write goes through)',
   },
+  {
+    table: 'events',
+    column: 'venue_geocode_source',
+    migration: '20260904000001_venue_geocode_provenance.sql',
+    readBy: 'dashboard events actions (create and edit write it with venue_geocoded_at), the organiser form (edit mode), the venue backfill',
+  },
 ]

@@ -73,10 +73,24 @@ async function loadPlaces(): Promise<google.maps.PlacesLibrary> {
   return placesLibrary
 }
 
-/** Google's answer for a referer the key does not allow, read off the error text. */
+/**
+ * Google's answer for a referer the key does not allow, read off the error's
+ * MESSAGE and never off its class. The Maps JS library throws its own RpcError
+ * ("Requests from referer http://localhost:3311/ are blocked."), which is not an
+ * `instanceof Error`; the first cut read the message only from a real Error and
+ * told the organiser the search "did not answer" when it had answered with the
+ * reason (desktop drive, 4 September 2026). tests/unit/maps/places-autocomplete.test.ts.
+ */
 export function isRefererBlocked(err: unknown): boolean {
-  const text = err instanceof Error ? err.message : String(err)
+  const text = errorText(err)
   return /referer/i.test(text) && /block/i.test(text)
+}
+
+/** The message of whatever was thrown: an Error, an object with a message, or a string. */
+function errorText(err: unknown): string {
+  if (typeof err === 'string') return err
+  if (err && typeof err === 'object' && 'message' in err) return String((err as { message?: unknown }).message ?? '')
+  return err == null ? '' : String(err)
 }
 
 /**
