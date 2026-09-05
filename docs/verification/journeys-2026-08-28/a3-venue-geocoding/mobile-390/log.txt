@@ -1,0 +1,53 @@
+A3: the venue finder, the coordinates, the map (REAL PLACES)
+============================================================
+01. Mode
+      REAL PLACES
+02. Signed up and confirmed
+      dev.venue.032439@example.com -> /dashboard
+03. PASS  the location step offers a venue finder
+04. Location step with the venue finder
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Find the venue | Venue Name | Address | City | State / Region | Country | Postal Code
+      buttons DADev | in person | virtual | hybrid | Back | Continue
+05. PASS  on a blocked origin the finder says so in one sentence and the manual fields stay (REAL PLACES)
+      Venue search is not available from this address.
+06. The finder on a blocked origin
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Find the venue | Venue Name | Address | City | State / Region | Country | Postal Code
+      buttons DADev | in person | virtual | hybrid | Back | Continue
+07. PASS  the pick: the event published
+      /dashboard/events/ab3b780a-b8e7-4514-8f4a-ba619823753b/launch-kit?published=1 
+08. the pick: after publish
+      URL     /dashboard/events/ab3b780a-b8e7-4514-8f4a-ba619823753b/launch-kit?published=1
+      heading "Forum Sessions 032439 is live."
+      fields  Add an act
+      buttons DADev | Copy link | InstagramInstagram | Copy link | Copy caption | Copy caption | Copy caption | Copy caption | Copy caption
+09. PASS  a typed address with the server key off saves with no coordinates and the reason is named in the server log
+      lat=null source=null
+10. Typed address, no pick
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Find the venue | Venue Name | Address | City | State / Region | Country | Postal Code
+      buttons DADev | in person | virtual | hybrid | Back | Continue
+11. PASS  the typed address: the event published
+      /dashboard/events/bf3646bc-ce01-4fc3-90b4-8daa6e3485e9/launch-kit?published=1 
+12. the typed address: after publish
+      URL     /dashboard/events/bf3646bc-ce01-4fc3-90b4-8daa6e3485e9/launch-kit?published=1
+      heading "Wool Exchange Night 032439 is live."
+      fields  Add an act
+      buttons DADev | Copy link | InstagramInstagram | Copy link | Copy caption | Copy caption | Copy caption | Copy caption | Copy caption
+13. PASS  the typed event saves with no coordinates, the city claim from the locality, and the reason named in the server log
+      lat=null city_primary=geelong logHasReason=true
+14. PASS  the typed event page still resolves and offers its venue
+      status 200
+15. Typed event page
+      URL     /events/wool-exchange-night-032439-z72x02
+      heading "Wool Exchange Night 032439"
+      fields  LanguageEnglish (AU)
+      buttons Open menu | Melbourne | Follow | Share | Copy link | − | + | Select tickets to continue | Discover
+16. Verdicts
+      7 of 7 passed (REAL PLACES)
+17. Evidence copied
+      C:\dev\EVIDENCE\A3\mobile-390

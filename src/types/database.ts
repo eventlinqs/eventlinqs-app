@@ -20,6 +20,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      door_realtime_enabled: { Args: never; Returns: boolean }
+      door_staff_for_event: { Args: { p_event_id: string }; Returns: boolean }
+      door_validation_set: {
+        Args: { p_after_code?: string; p_event_id: string; p_limit?: number }
+        Returns: {
+          first_scanned_at: string
+          holder_name: string
+          seat_label: string
+          secret_hash: string
+          status: string
+          ticket_code: string
+          ticket_id: string
+          tier_name: string
+        }[]
+      }
       graphql: {
         Args: {
           extensions?: Json
@@ -27,6 +42,28 @@ export type Database = {
           query?: string
           variables?: Json
         }
+        Returns: Json
+      }
+      resolve_scan_review: {
+        Args: { p_note?: string; p_scan_id: string }
+        Returns: boolean
+      }
+      scan_ticket: {
+        Args: {
+          p_device_id?: string
+          p_event_id: string
+          p_secret: string
+          p_ticket_code: string
+        }
+        Returns: {
+          first_scanned_at: string
+          holder_name: string
+          result: string
+          seat_label: string
+        }[]
+      }
+      sync_offline_scans: {
+        Args: { p_event_id: string; p_scans: Json }
         Returns: Json
       }
     }
@@ -946,6 +983,32 @@ export type Database = {
         }
         Relationships: []
       }
+      event_stream_links: {
+        Row: {
+          event_id: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          event_id: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          event_id?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_stream_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_types: {
         Row: {
           created_at: string
@@ -1023,6 +1086,7 @@ export type Database = {
           squad_timeout_hours: number
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
+          stream_geo_allow: string[] | null
           sub_community: string | null
           subgenre_slug: string | null
           suburb_primary: string | null
@@ -1040,6 +1104,10 @@ export type Database = {
           venue_longitude: number | null
           venue_name: string | null
           venue_place_id: string | null
+
+          venue_geocode_source: 'places' | 'geocoding' | 'manual' | null
+
+          venue_geocoded_at: string | null
           venue_postal_code: string | null
           venue_state: string | null
           video_provider: string | null
@@ -1097,6 +1165,7 @@ export type Database = {
           squad_timeout_hours?: number
           start_date: string
           status?: Database["public"]["Enums"]["event_status"]
+          stream_geo_allow?: string[] | null
           sub_community?: string | null
           subgenre_slug?: string | null
           suburb_primary?: string | null
@@ -1114,6 +1183,10 @@ export type Database = {
           venue_longitude?: number | null
           venue_name?: string | null
           venue_place_id?: string | null
+
+          venue_geocode_source?: 'places' | 'geocoding' | 'manual' | null
+
+          venue_geocoded_at?: string | null
           venue_postal_code?: string | null
           venue_state?: string | null
           video_provider?: string | null
@@ -1171,6 +1244,7 @@ export type Database = {
           squad_timeout_hours?: number
           start_date?: string
           status?: Database["public"]["Enums"]["event_status"]
+          stream_geo_allow?: string[] | null
           sub_community?: string | null
           subgenre_slug?: string | null
           suburb_primary?: string | null
@@ -1188,6 +1262,10 @@ export type Database = {
           venue_longitude?: number | null
           venue_name?: string | null
           venue_place_id?: string | null
+
+          venue_geocode_source?: 'places' | 'geocoding' | 'manual' | null
+
+          venue_geocoded_at?: string | null
           venue_postal_code?: string | null
           venue_state?: string | null
           video_provider?: string | null
@@ -3554,6 +3632,66 @@ export type Database = {
           },
         ]
       }
+      stream_messages: {
+        Row: {
+          answer_body: string | null
+          answered_at: string | null
+          answered_by: string | null
+          author_kind: string
+          author_name: string
+          body: string
+          created_at: string
+          event_id: string
+          hidden_at: string | null
+          id: string
+          kind: string
+          ticket_id: string | null
+        }
+        Insert: {
+          answer_body?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          author_kind: string
+          author_name: string
+          body: string
+          created_at?: string
+          event_id: string
+          hidden_at?: string | null
+          id?: string
+          kind: string
+          ticket_id?: string | null
+        }
+        Update: {
+          answer_body?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          author_kind?: string
+          author_name?: string
+          body?: string
+          created_at?: string
+          event_id?: string
+          hidden_at?: string | null
+          id?: string
+          kind?: string
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_messages_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stream_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subgenres: {
         Row: {
           created_at: string
@@ -3681,32 +3819,110 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_price_history: {
+        Row: {
+          currency: string
+          event_id: string
+          id: string
+          percent_sold: number | null
+          previous_price_cents: number | null
+          price_cents: number
+          reason: string
+          recorded_at: string
+          ticket_tier_id: string | null
+          tier_name: string
+        }
+        Insert: {
+          currency?: string
+          event_id: string
+          id?: string
+          percent_sold?: number | null
+          previous_price_cents?: number | null
+          price_cents: number
+          reason: string
+          recorded_at?: string
+          ticket_tier_id?: string | null
+          tier_name: string
+        }
+        Update: {
+          currency?: string
+          event_id?: string
+          id?: string
+          percent_sold?: number | null
+          previous_price_cents?: number | null
+          price_cents?: number
+          reason?: string
+          recorded_at?: string
+          ticket_tier_id?: string | null
+          tier_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_price_history_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_price_history_ticket_tier_id_fkey"
+            columns: ["ticket_tier_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_scans: {
         Row: {
+          client_scan_id: string | null
+          device_id: string | null
           device_info: Json
+          device_scanned_at: string | null
           event_id: string
           id: string
           result: string
+          review_note: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           scanned_at: string
           scanned_by: string | null
+          scanned_offline: boolean
           ticket_id: string | null
         }
         Insert: {
+          client_scan_id?: string | null
+          device_id?: string | null
           device_info?: Json
+          device_scanned_at?: string | null
           event_id: string
           id?: string
           result: string
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scanned_at?: string
           scanned_by?: string | null
+          scanned_offline?: boolean
           ticket_id?: string | null
         }
         Update: {
+          client_scan_id?: string | null
+          device_id?: string | null
           device_info?: Json
+          device_scanned_at?: string | null
           event_id?: string
           id?: string
           result?: string
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scanned_at?: string
           scanned_by?: string | null
+          scanned_offline?: boolean
           ticket_id?: string | null
         }
         Relationships: [
@@ -3728,6 +3944,7 @@ export type Database = {
       }
       ticket_tiers: {
         Row: {
+          access_mode: Database["public"]["Enums"]["tier_access_mode"]
           created_at: string
           currency: string
           description: string | null
@@ -3757,6 +3974,7 @@ export type Database = {
           created_at?: string
           currency?: string
           description?: string | null
+          access_mode?: Database["public"]["Enums"]["tier_access_mode"]
           dynamic_pricing_enabled?: boolean
           event_id: string
           hidden_until?: string | null
@@ -3783,6 +4001,7 @@ export type Database = {
           created_at?: string
           currency?: string
           description?: string | null
+          access_mode?: Database["public"]["Enums"]["tier_access_mode"]
           dynamic_pricing_enabled?: boolean
           event_id?: string
           hidden_until?: string | null
@@ -4653,6 +4872,7 @@ export type Database = {
           squad_timeout_hours: number
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
+          stream_geo_allow: string[] | null
           sub_community: string | null
           subgenre_slug: string | null
           suburb_primary: string | null
@@ -4762,6 +4982,10 @@ export type Database = {
         }
         Returns: string
       }
+      record_tier_price_history: {
+        Args: { p_hint: string; p_tier_id: string }
+        Returns: undefined
+      }
       redeem_tier_access_codes: {
         Args: { p_code: string; p_tier_ids: string[] }
         Returns: {
@@ -4795,6 +5019,10 @@ export type Database = {
       resolve_chargeback: {
         Args: { p_dispute_id: string; p_outcome: string }
         Returns: Json
+      }
+      save_dynamic_pricing: {
+        Args: { p_enabled: boolean; p_steps: Json; p_tier_id: string }
+        Returns: number
       }
       scan_ticket: {
         Args: { p_event_id: string; p_secret: string; p_ticket_code: string }
@@ -4929,6 +5157,7 @@ export type Database = {
         | "table_booth"
         | "donation"
         | "free"
+      tier_access_mode: "in_person" | "virtual"
       user_role: "attendee" | "organiser" | "admin" | "super_admin"
       waitlist_status:
         | "waiting"
@@ -5156,6 +5385,7 @@ export const Constants = {
         "donation",
         "free",
       ],
+      tier_access_mode: ["in_person", "virtual"],
       user_role: ["attendee", "organiser", "admin", "super_admin"],
       waitlist_status: [
         "waiting",

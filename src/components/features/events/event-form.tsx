@@ -6,8 +6,14 @@ import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/act
 import { EventMediaStep, type MediaImage } from './event-media-step'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { isPaidPublishBlocked } from '@/lib/events/paid-publish-blocked'
+import { STREAM_COUNTRIES, STREAM_REGIONS, normaliseCountryCodes, describeCountries } from '@/lib/stream/countries'
+import { isAcceptableStreamLink } from '@/lib/stream/embed'
+import { livestreamNeedsLink, coerceAccessMode, STREAM_LINK_REQUIRED_MESSAGE } from '@/lib/stream/publish-rule'
 import { AssistantPanel, type PanelSuggestion } from '@/components/ai/assistant-panel'
 import { MagicStart } from './magic-start'
+import { VenueFinder } from './venue-finder'
+import { VenueMapLazy } from './venue-map-lazy'
+import type { VenueFieldsFromPlace } from '@/lib/maps/address-components'
 import type { MagicStartDraft } from '@/lib/ai/magic-start'
 import { addHoursLocal, buildDraftPatch, summariseDraft } from '@/lib/events/magic-draft-apply'
 import { getAllCommunities, type CommunitySlug } from '@/lib/communities/data'
@@ -48,6 +54,8 @@ export type TicketTierInput = {
   name: string
   description: string
   tier_type: TicketTierType
+  /** Who this tier admits: the door, or the livestream (Scope v5 3.11). */
+  access_mode: 'in_person' | 'virtual'
   price: string // string for input binding
   currency: string
   total_capacity: string
@@ -85,7 +93,19 @@ type FormData = {
   venue_state: string
   venue_country: string
   venue_postal_code: string
-  virtual_url: string
+  // From the venue finder (a Places pick): the coordinates, the place id and
+  // who wrote them. Null until a pick; an edit of an event that had them
+  // starts with them.
+  venue_latitude: number | null
+  venue_longitude: number | null
+  venue_place_id: string | null
+  venue_geocode_source: 'places' | 'geocoding' | 'manual' | null
+  // The livestream link. Stored in the vault table through src/lib/stream/link.ts,
+  // never on the events row, and revealed only to livestream ticket holders after
+  // purchase.
+  stream_url: string
+  // ISO 3166-1 alpha-2 codes the livestream may be watched from; empty = anywhere.
+  stream_geo_allow: string[]
   // Step 4 - Event Media Standard: one ordered list (index 0 = cover, 1..9 =
   // gallery) plus one optional video link (raw provider URL; parsed server-side).
   media: MediaImage[]
@@ -201,6 +221,7 @@ function newTier(sort_order: number): TicketTierInput {
     name: '',
     description: '',
     tier_type: 'general_admission',
+    access_mode: 'in_person',
     price: '0',
     currency: 'AUD',
     total_capacity: '',
@@ -240,7 +261,12 @@ function getDefaultFormData(): FormData {
     venue_state: '',
     venue_country: 'Australia',
     venue_postal_code: '',
-    virtual_url: '',
+    venue_latitude: null,
+    venue_longitude: null,
+    venue_place_id: null,
+    venue_geocode_source: null,
+    stream_url: '',
+    stream_geo_allow: [],
     media: [],
     video_url: '',
     ticket_tiers: [newTier(0)],
@@ -315,7 +341,11 @@ function fromExistingEvent(
     venue_state: string | null
     venue_country: string | null
     venue_postal_code: string | null
-    virtual_url: string | null
+    venue_latitude?: number | null
+    venue_longitude?: number | null
+    venue_place_id?: string | null
+    venue_geocode_source?: 'places' | 'geocoding' | 'manual' | null
+    stream_geo_allow?: string[] | null
     cover_image_url: string | null
     cover_image_alt?: string | null
     cover_image_blur?: string | null
@@ -340,7 +370,9 @@ function fromExistingEvent(
     refund_policy_absorb_fee?: boolean | null
     refund_policy_self_service?: boolean | null
   },
-  tiers: TicketTier[]
+  tiers: TicketTier[],
+  /** Read from the vault by the edit page with the organiser's own session. */
+  streamUrl: string | null = null,
 ): FormData {
   // THE EDIT ROUND TRIP, which is where the shift accumulated. The stored value
   // is a UTC instant; the input must show it as a wall clock in the EVENT's own
@@ -369,7 +401,12 @@ function fromExistingEvent(
     venue_state: event.venue_state ?? '',
     venue_country: event.venue_country ?? '',
     venue_postal_code: event.venue_postal_code ?? '',
-    virtual_url: event.virtual_url ?? '',
+    venue_latitude: typeof event.venue_latitude === 'number' ? event.venue_latitude : null,
+    venue_longitude: typeof event.venue_longitude === 'number' ? event.venue_longitude : null,
+    venue_place_id: event.venue_place_id ?? null,
+    venue_geocode_source: event.venue_geocode_source ?? null,
+    stream_url: streamUrl ?? '',
+    stream_geo_allow: normaliseCountryCodes(event.stream_geo_allow),
     media: existingMedia(event),
     video_url: event.video_url ?? '',
     ticket_tiers: tiers.map((t, i) => ({
@@ -377,6 +414,7 @@ function fromExistingEvent(
       name: t.name,
       description: t.description ?? '',
       tier_type: t.tier_type,
+      access_mode: t.access_mode === 'virtual' ? 'virtual' : 'in_person',
       price: (t.price / 100).toString(),
       currency: t.currency,
       total_capacity: t.total_capacity.toString(),
@@ -425,6 +463,8 @@ type Props = {
   existingEventId?: string
   existingEvent?: Parameters<typeof fromExistingEvent>[0]
   existingTiers?: TicketTier[]
+  /** The vault row for this event, read by the edit page under the organiser's session. */
+  existingStreamUrl?: string | null
   existingStatus?: EventStatus
   /** Launch Kit flag (read server-side): publish delivers the kit screen. */
   launchKitEnabled?: boolean
@@ -452,6 +492,7 @@ export function EventForm({
   existingEventId,
   existingEvent,
   existingTiers = [],
+  existingStreamUrl = null,
   existingStatus = 'draft',
   launchKitEnabled = false,
   lineupEnabled = false,
@@ -466,7 +507,7 @@ export function EventForm({
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState<FormData>(() =>
     editMode && existingEvent
-      ? fromExistingEvent(existingEvent, existingTiers)
+      ? fromExistingEvent(existingEvent, existingTiers, existingStreamUrl)
       : getDefaultFormData()
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -496,6 +537,56 @@ export function EventForm({
 
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setFormData(d => ({ ...d, [key]: value }))
+  }, [])
+
+  /*
+   * A Places pick fills every venue field at once, with the coordinates and the
+   * place id, and marks the source as the organiser's own choice. The address
+   * fields stay editable afterwards: a corrected spelling keeps the pin.
+   */
+  const applyVenuePick = useCallback((fields: VenueFieldsFromPlace) => {
+    setFormData(d => ({
+      ...d,
+      venue_name: fields.venue_name || d.venue_name,
+      venue_address: fields.venue_address,
+      venue_city: fields.venue_city,
+      venue_state: fields.venue_state,
+      venue_country: fields.venue_country || d.venue_country,
+      venue_postal_code: fields.venue_postal_code,
+      venue_latitude: fields.venue_latitude,
+      venue_longitude: fields.venue_longitude,
+      venue_place_id: fields.venue_place_id,
+      venue_geocode_source: fields.venue_latitude !== null ? 'places' : d.venue_geocode_source,
+    }))
+  }, [])
+
+  /*
+   * A livestream cannot go live without a link (src/lib/stream/publish-rule.ts).
+   * The server action refuses with the same sentence; this only stops the button
+   * looking available right up to that refusal. Edit mode is NOT exempt: an
+   * organiser who removes the link from a published livestream is told so.
+   */
+  const streamLinkMissing = useMemo(
+    () =>
+      livestreamNeedsLink({
+        eventType: formData.event_type,
+        tierAccessModes: formData.ticket_tiers.map(t => coerceAccessMode(formData.event_type, t.access_mode)),
+        streamUrl: formData.stream_url,
+      }),
+    [formData.event_type, formData.ticket_tiers, formData.stream_url],
+  )
+
+  /*
+   * Changing the event type moves every tier with it, exactly as the database
+   * trigger does: a virtual event admits everyone online, an in-person event
+   * admits everyone at the door, and only a hybrid event asks per tier.
+   */
+  const chooseEventType = useCallback((type: EventType) => {
+    setFormData(d => ({
+      ...d,
+      event_type: type,
+      ticket_tiers: d.ticket_tiers.map(t => ({ ...t, access_mode: coerceAccessMode(type, t.access_mode) })),
+    }))
   }, [])
 
   // Activation metric: kit_started fires once per create-mode session, on the
@@ -569,9 +660,15 @@ export function EventForm({
     venue_state: formData.venue_state || null,
     venue_country: formData.venue_country || null,
     venue_postal_code: formData.venue_postal_code || null,
-    venue_latitude: null,
-    venue_longitude: null,
-    virtual_url: formData.virtual_url || null,
+    venue_latitude: formData.venue_latitude,
+    venue_longitude: formData.venue_longitude,
+    venue_place_id: formData.venue_place_id,
+    venue_geocode_source: formData.venue_geocode_source,
+    stream_url: formData.event_type === 'in_person' ? null : formData.stream_url.trim() || null,
+    stream_geo_allow:
+      formData.event_type === 'in_person' || formData.stream_geo_allow.length === 0
+        ? null
+        : normaliseCountryCodes(formData.stream_geo_allow),
     // Index 0 of the media list is the cover; 1..9 are the gallery. Only fully
     // uploaded images (a real url) are persisted.
     cover_image_url: formData.media[0]?.url || null,
@@ -606,6 +703,7 @@ export function EventForm({
       name: t.name,
       description: t.description,
       tier_type: t.tier_type,
+      access_mode: coerceAccessMode(formData.event_type, t.access_mode),
       price: parseFloat(t.price) || 0,
       currency: t.currency,
       total_capacity: parseInt(t.total_capacity) || 0,
@@ -1014,7 +1112,7 @@ export function EventForm({
             <button
               key={type}
               type="button"
-              onClick={() => set('event_type', type)}
+              onClick={() => chooseEventType(type)}
               className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium capitalize transition-colors ${
                 formData.event_type === type
                   ? 'border-gold-500 bg-gold-100 text-gold-600'
@@ -1029,6 +1127,11 @@ export function EventForm({
 
       {(formData.event_type === 'in_person' || formData.event_type === 'hybrid') && (
         <div className="space-y-4">
+          <VenueFinder
+            key={editMode ? 'edit' : 'create'}
+            initialText={formData.venue_place_id ? formData.venue_name : ''}
+            onPick={applyVenuePick}
+          />
           <div>
             <label htmlFor="venue-name-13" className="block text-sm font-medium text-ink-600 mb-1">Venue Name</label>
             <input id="venue-name-13"
@@ -1089,22 +1192,115 @@ export function EventForm({
               />
             </div>
           </div>
+          {/* The map preview, the same card the event page shows, once a pick has
+            * given us coordinates. Not rendered for a typed address: the event page
+            * centres by the browser geocoder there, and a preview that geocodes on
+            * every keystroke would be a bill. */}
+          {formData.venue_latitude !== null && formData.venue_longitude !== null && (
+            <div data-testid="venue-map-preview">
+              <p className="mb-2 text-xs text-ink-600">Where the pin lands. This is the map attendees see on your event page.</p>
+              <VenueMapLazy
+                venueName={formData.venue_name || null}
+                address={formData.venue_address || null}
+                city={formData.venue_city || null}
+                state={formData.venue_state || null}
+                country={formData.venue_country || null}
+                latitude={formData.venue_latitude}
+                longitude={formData.venue_longitude}
+              />
+            </div>
+          )}
         </div>
       )}
 
       {(formData.event_type === 'virtual' || formData.event_type === 'hybrid') && (
-        <div>
-          <label htmlFor="virtual-streaming-url-hidden-from-attend-19" className="block text-sm font-medium text-ink-600 mb-1">
-            Virtual / Streaming URL
-            <span className="ml-2 text-xs text-ink-400">Hidden from attendees until after purchase</span>
-          </label>
-          <input id="virtual-streaming-url-hidden-from-attend-19"
-            type="url"
-            value={formData.virtual_url}
-            onChange={e => set('virtual_url', e.target.value)}
-            placeholder="https://zoom.us/j/..."
-            className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
-          />
+        <div className="space-y-5 rounded-xl border border-ink-200 bg-canvas p-5">
+          <div>
+            <label htmlFor="stream-link" className="block text-sm font-medium text-ink-600 mb-1">
+              Stream link
+            </label>
+            <input
+              id="stream-link"
+              type="url"
+              value={formData.stream_url}
+              onChange={e => set('stream_url', e.target.value)}
+              placeholder="https://www.youtube.com/live/..."
+              className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
+            />
+            <p className="mt-1.5 text-xs text-ink-600">
+              YouTube Live, Zoom, StreamYard, any https page, or an rtmp address. It is revealed only to
+              livestream ticket holders after they buy, and it never appears on your event page.
+            </p>
+            {formData.stream_url.trim() !== '' && !isAcceptableStreamLink(formData.stream_url) && (
+              <p role="alert" className="mt-1.5 text-xs font-medium text-error-strong">
+                That does not look like a link viewers can open. It needs to start with https:// or rtmp://.
+              </p>
+            )}
+          </div>
+
+          <fieldset>
+            <legend className="block text-sm font-medium text-ink-600 mb-1">Who can watch</legend>
+            <p className="mb-3 text-xs text-ink-600">
+              Leave every box clear to stream anywhere. Tick countries to restrict the livestream to viewers there.
+            </p>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {STREAM_REGIONS.map(region => (
+                <button
+                  key={region.name}
+                  type="button"
+                  onClick={() =>
+                    set('stream_geo_allow', normaliseCountryCodes([...formData.stream_geo_allow, ...region.codes]))
+                  }
+                  className="min-h-[36px] rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-600 hover:border-gold-500 hover:text-ink-900"
+                >
+                  {region.name}
+                </button>
+              ))}
+              {formData.stream_geo_allow.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => set('stream_geo_allow', [])}
+                  className="min-h-[36px] rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-600 hover:border-gold-500 hover:text-ink-900"
+                >
+                  Anywhere
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 sm:grid-cols-3">
+              {STREAM_COUNTRIES.map(c => (
+                <div key={c.code} className="flex min-h-[40px] items-center gap-2">
+                  <input
+                    id={`geo-${c.code}`}
+                    type="checkbox"
+                    checked={formData.stream_geo_allow.includes(c.code)}
+                    onChange={e =>
+                      set(
+                        'stream_geo_allow',
+                        e.target.checked
+                          ? normaliseCountryCodes([...formData.stream_geo_allow, c.code])
+                          : formData.stream_geo_allow.filter(code => code !== c.code),
+                      )
+                    }
+                    className="h-4 w-4 rounded border-ink-200 text-gold-600 focus:ring-gold-500"
+                  />
+                  <label htmlFor={`geo-${c.code}`} className="text-sm text-ink-600">
+                    {c.name}
+                  </label>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-ink-600">
+              {formData.stream_geo_allow.length === 0
+                ? 'Streams anywhere.'
+                : `Streams to viewers in ${describeCountries(formData.stream_geo_allow)}.`}
+            </p>
+          </fieldset>
+
+          {formData.event_type === 'hybrid' && (
+            <p className="text-xs text-ink-600">
+              On the tickets step, choose which tiers admit at the door and which admit to the livestream.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -1181,6 +1377,30 @@ export function EventForm({
                 ))}
               </select>
             </div>
+
+            {formData.event_type === 'hybrid' && (
+              <div>
+                <label htmlFor={`tier-admits-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Who this ticket admits</label>
+                <select
+                  id={`tier-admits-${idx}`}
+                  value={tier.access_mode}
+                  onChange={e => {
+                    const tiers = [...formData.ticket_tiers]
+                    tiers[idx] = { ...tiers[idx], access_mode: e.target.value === 'virtual' ? 'virtual' : 'in_person' }
+                    set('ticket_tiers', tiers)
+                  }}
+                  className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
+                >
+                  <option value="in_person">In person, at the door</option>
+                  <option value="virtual">Livestream viewers</option>
+                </select>
+              </div>
+            )}
+            {formData.event_type === 'virtual' && (
+              <p className="self-end rounded-lg border border-ink-200 bg-ink-100 px-3 py-2 text-xs text-ink-600">
+                Admits livestream viewers. A virtual event admits everyone online.
+              </p>
+            )}
 
             <div>
               <label htmlFor={`tier-price-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Price</label>
@@ -1968,6 +2188,13 @@ export function EventForm({
           </div>
         )}
 
+        {streamLinkMissing && (
+          <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <span className="font-semibold">{STREAM_LINK_REQUIRED_MESSAGE}</span>{' '}
+            Save as a draft, add the link on the location step, and publish when it is there.
+          </div>
+        )}
+
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
@@ -1980,7 +2207,7 @@ export function EventForm({
           <button
             type="button"
             onClick={() => handleSubmit('published')}
-            disabled={isSubmitting || !formData.title.trim() || !formData.media[0]?.url || formData.media.some(m => m.uploading) || paidPublishBlocked}
+            disabled={isSubmitting || !formData.title.trim() || !formData.media[0]?.url || formData.media.some(m => m.uploading) || paidPublishBlocked || streamLinkMissing}
             className="flex-1 rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-ink-900 hover:bg-gold-600 disabled:opacity-50 transition-colors"
           >
             {isSubmitting

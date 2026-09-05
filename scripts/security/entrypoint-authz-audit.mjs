@@ -112,6 +112,7 @@ const AUTHZ = [
   { re: /ByToken\s*\(|\.eq\(\s*['"](share_token|unsubscribe_token|invite_token|position_token)['"]/, how: 'the token is the credential' },
   { re: /fetchArtistForOwner\s*\(/, how: 'fetchArtistForOwner: resolves only the artist profile owned by the caller' },
   { re: /requireActiveOrganisation\s*\(/, how: 'requireActiveOrganisation: eq(owner_id, callerId)' },
+  { re: /resolveEventAccess\s*\(/, how: 'resolveEventAccess: owner, or a member holding owner, admin or manager (the gate getOrganiserEvent delegates to)' },
 ]
 
 const VALIDATION = [
@@ -161,6 +162,10 @@ const PUBLIC_BY_DESIGN = {
   'api/ai/status/GET': 'reports whether the assistant is configured',
   'api/broadcast/track/POST': 'anonymous view beacon, deduped server-side',
   'api/tickets/[code]/qr/GET': 'BEARER auth: (ticket_code, secret) pair is the credential',
+  'api/stream/[code]/messages/GET':
+    'BEARER auth: the (ticket_code, secret) pair is the credential, verified by resolveStreamAccess together with the ticket status, the tier access mode and the viewer country before the service role reads the room (Scope v5 3.11)',
+  'api/stream/[code]/messages/POST':
+    'BEARER auth as the GET, then rate limited per ticket (stream-message) before the service role writes one bounded row',
   'api/og/event/[slug]/GET': 'public Open Graph image for a published event',
   'api/events/[id]/seats/GET':
     'the seat chart a buyer picks from, which must be readable without an account. It is NOT open: the event is resolved through PUBLIC_EVENT_MATCH, the one shared visibility rule, so a draft, private or cancelled event answers 404 exactly as its page does, and the read goes through the ANON client so RLS enforces the same rule a second time. It exists because passing the seats as a prop serialised 1,200 rows into the document of every seated event, 571KB of HTML with 85 percent of it inline script',

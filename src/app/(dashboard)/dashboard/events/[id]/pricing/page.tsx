@@ -86,6 +86,14 @@ export default async function DynamicPricingPage({ params }: Props) {
           >
             ← Events
           </Link>
+          {/* The way back to the event this pricing belongs to, since the event
+              overview is now the way in (its Pricing tab). */}
+          <Link
+            href={`/dashboard/events/${eventId}`}
+            className="text-sm text-ink-400 hover:text-ink-600"
+          >
+            Overview
+          </Link>
           <Link
             href={`/dashboard/events/${eventId}/edit`}
             className="text-sm text-ink-400 hover:text-ink-600"

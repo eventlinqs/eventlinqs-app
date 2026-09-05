@@ -38,6 +38,7 @@ export type PolicyName =
   | 'launch-artefact'
   | 'launch-email'
   | 'launch-upload'
+  | 'stream-message'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -274,5 +275,12 @@ export const POLICIES: Record<PolicyName, Policy> = {
     rationale:
       'Anonymous cover artwork uploads per IP per hour. FAIL-CLOSED, taking the posture of launch-email rather than of its compose neighbours, because this is the SECOND action on this surface that costs real money: it writes bytes we then store and serve, and unlike a render it does not evaporate when the response ends. A Redis blip must not become an open write endpoint on our own storage domain. Ten is generous for the real behaviour, which is uploading one photo and possibly replacing it a few times after seeing it on the poster, and it is useless for filling a bucket. It is bounded further by three things a limit cannot express: the caller must already own a draft (so a cookie and a composed kit come first), the object path is the draft code so one draft can only ever hold ONE object no matter how often it is replaced, and every accepted byte is re-encoded rather than stored as supplied.',
     failClosed: true,
+  },
+  'stream-message': {
+    keyPrefix: 'strm-m',
+    limit: 20,
+    windowSec: 60,
+    rationale:
+      'Livestream room posts (chat, questions, reactions) on /api/stream/[code]/messages, 20 per minute PER TICKET. KEYED BY the ticket id, passed explicitly, never the IP: a household watching one stream on one connection holds several tickets and must not share a bucket, and this platform has met the carrier-NAT bucket twice before (launch-artefact, launch-compose-daily). The bucket cannot be named until the bearer gate has resolved the ticket, so the limiter sits AFTER resolveStreamAccess, and a stranger with the wrong secret is refused as not found before ever reaching it. Twenty a minute is a fast typist in a busy room and is useless for flooding it: the organiser can hide any message, and every row is bounded to 500 characters by the schema. FAIL-OPEN: the write is a 500 character row in our own database, the same posture as share-track and newsletter-subscribe. The audit (scripts/verify/rate-limit-audit.mjs) will note a Sentry capture behind this route; it fires only on a database error, never per request, so volume cannot reach it.',
   },
 }

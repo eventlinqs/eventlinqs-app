@@ -1,0 +1,154 @@
+A4: the price history on the event page
+=======================================
+01. Forgot password
+      URL     /forgot-password
+      heading "Every community. Every event. One platform."
+      fields  Email*
+      buttons Send reset link
+02. Asked for a reset link
+      Skip to main content EVENTLINQS . Every community. Every event. One platform. The ticketing platform built for every community. Discover events, sell tickets, a
+03. PASS  the reset email reached the inbox with a recovery link
+      link read from the console transport
+04. Set a new password
+      URL     /auth/reset-password
+      heading "Every community. Every event. One platform."
+      fields  New password* | Confirm new password*
+      buttons Update password
+05. After setting the password
+      /login :: no message
+06. Signed in
+      owner_1781981785246@example.com -> /dashboard
+07. PASS  the organiser reset the password through the real path and is signed in
+      /dashboard
+08. Made a cover
+      the platform composed one
+09. Review, paid event
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search
+      buttons TOTest | Collapse | Save as Draft | Publish and get your launch kit | Back
+10. PASS  a Stripe-connected organiser can publish a paid event
+      Publish enabled
+11. PASS  the event published
+      /dashboard/events/eb7f0fc7-dcc4-48d9-b525-735bfaddc179/launch-kit?published=1 
+12. After publish
+      URL     /dashboard/events/eb7f0fc7-dcc4-48d9-b525-735bfaddc179/launch-kit?published=1
+      heading "Price Steps 195923 is live."
+      fields  Search | Add an act
+      buttons TOTest | Collapse | Copy link | Copy caption | Copy caption | Copy caption | Copy caption | Copy caption | Copy subject
+13. Public slug
+      price-steps-195923-p990uz (event eb7f0fc7-dcc4-48d9-b525-735bfaddc179)
+14. PASS  the event page carries the price history block with the listing price
+      Listed at AUD 30.00 :: No price changes since this event was listed.
+15. Price history, freshly listed
+      URL     /events/price-steps-195923-p990uz
+      heading "Price Steps 195923"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Share | Copy link | − | + | Select tickets to continue | Share | Copy link
+16. PASS  the edit form reaches the ticket tier
+17. Editing the tier price to 28.00
+      URL     /dashboard/events/eb7f0fc7-dcc4-48d9-b525-735bfaddc179/edit
+      heading "Edit Event"
+      fields  Search | Name | Type | Currency | Price | Total Capacity | Sale Starts | Sale Ends | Min per Order | Max per Order
+      buttons TOTest | Collapse | Add Ticket Tier | Back | Continue
+18. PASS  the edit form reaches Save Changes
+19. After Save Changes
+      /dashboard/events/eb7f0fc7-dcc4-48d9-b525-735bfaddc179/edit :: This event is live. Changes will be visible to the public as soon as you save. // This event is live. Changes you save will be visible to the public immediately.
+20. PASS  the page shows the organiser change: lowered to 28.00, down from 30.00, changed once
+      Listed at AUD 30.00 | Lowered to AUD 28.00 :: note=Down from AUD 30.00 :: The price has changed once since this event was listed.
+21. Price history after the organiser lowered the price
+      URL     /events/price-steps-195923-p990uz
+      heading "Price Steps 195923"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Share | Copy link | − | + | Select tickets to continue | Share | Copy link
+22. Event overview with the Pricing tab
+      URL     /dashboard/events/eb7f0fc7-dcc4-48d9-b525-735bfaddc179
+      heading "Price Steps 195923"
+      fields  Search | Add an act
+      buttons TOTest | Collapse | Share | Copy link | Add to lineup
+23. PASS  the event overview offers a Pricing tab
+24. PASS  clicking it opens the dynamic pricing screen
+      /dashboard/events/eb7f0fc7-dcc4-48d9-b525-735bfaddc179/pricing
+25. Dynamic pricing, off
+      URL     /dashboard/events/eb7f0fc7-dcc4-48d9-b525-735bfaddc179/pricing
+      heading "Dynamic Pricing"
+      fields  Search
+      buttons TOTest | Collapse | Save
+26. Two steps: up to 25 percent at 28.00, up to 100 percent at 40.00
+      URL     /dashboard/events/eb7f0fc7-dcc4-48d9-b525-735bfaddc179/pricing
+      heading "Dynamic Pricing"
+      fields  Search | Up to percent sold, step 1 | Price at step 1 | Up to percent sold, step 2 | Price at step 2
+      buttons TOTest | Collapse | Add step | Save
+27. PASS  the steps save
+      Pricing saved.
+28. Dynamic pricing saved
+      URL     /dashboard/events/eb7f0fc7-dcc4-48d9-b525-735bfaddc179/pricing
+      heading "Dynamic Pricing"
+      fields  Search | Up to percent sold, step 1 | Price at step 1 | Up to percent sold, step 2 | Price at step 2
+      buttons TOTest | Collapse | Add step | Save
+29. PASS  the rows on TEST carry the two steps and the switch
+      [[25,2800],[100,4000]]
+30. PASS  saving the steps recorded no move, because the price a buyer pays did not change
+      2 entries :: prices AUD 28.00, AUD 30.00
+31. Buyer A: the event page before buying, on https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app
+      URL     https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/price-steps-195923-p990uz
+      heading "Price Steps 195923"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Share | Copy link | − | + | Select tickets to continue | Share | Copy link
+32. Buyer A: checkout
+      URL     https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/checkout/f82b96ac-08ae-4e4d-9061-70f18dd6c8b5
+      heading "Order summary"
+      fields  Full name* | Email* | First name* | Last name* | Email* | Enter code | Keep me updated by Test Org  | Keep me posted on events in 
+      buttons Apply | Continue to payment - AUD 29.97
+33. Buyer A: paid
+      buyer.a.195923@example.com on https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app -> /orders/039a225f-323b-4bc9-8628-6bbf39ea107d/confirmation?payment_intent=pi_3UByxJGqHIQtgS
+34. Buyer A: after paying
+      URL     https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/orders/039a225f-323b-4bc9-8628-6bbf39ea107d/confirmation?payment_intent=pi_3UByxJGqHIQtgS8t07qS4SIh&payment_intent_client_secret=pi_3UByxJGqHIQtgS8t07qS4SIh_secret_LfP2B9Qkiaqtapbc24Wt7eAe0&redirect_status=succeeded
+      heading "You're going"
+      fields  (none)
+      buttons Add to Calendar | Share Event
+35. PASS  buyer A holds a confirmed ticket at 28.00
+      confirmed, unit 2800
+36. Buyer B: the event page before buying, on https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app
+      URL     https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/price-steps-195923-p990uz
+      heading "Price Steps 195923"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Share | Copy link | − | + | Select tickets to continue | Share | Copy link
+37. Buyer B: checkout
+      URL     https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/checkout/6ae6dc47-fc14-43a3-bab8-1b082d17a5af
+      heading "Order summary"
+      fields  Full name* | Email* | First name* | Last name* | Email* | Enter code | Keep me updated by Test Org  | Keep me posted on events in 
+      buttons Apply | Continue to payment - AUD 42.39
+38. Buyer B: paid
+      buyer.b.195923@example.com on https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app -> /orders/35a70ec2-567d-4fd5-b116-c0ea86212337/confirmation?payment_intent=pi_3UByyzGqHIQtgS
+39. Buyer B: after paying
+      URL     https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/orders/35a70ec2-567d-4fd5-b116-c0ea86212337/confirmation?payment_intent=pi_3UByyzGqHIQtgS8t1Ho8yHK2&payment_intent_client_secret=pi_3UByyzGqHIQtgS8t1Ho8yHK2_secret_y7RIGWLGt2KdfAPgBVNEZIzAk&redirect_status=succeeded
+      heading "You're going"
+      fields  (none)
+      buttons Add to Calendar | Share Event
+40. PASS  buyer B was shown 40.00 at checkout, the second step, before paying
+      AUD 42.39, AUD 40.00, AUD 40.00, AUD 2.39
+41. PASS  buyer B holds a confirmed ticket at 40.00
+      confirmed, unit 4000
+42. PASS  the current price on the page is 40.00
+      AUD 40.00, AUD 28.00, AUD 30.00
+43. PASS  the note under the price says what it moved from
+      Up from AUD 28.00
+44. PASS  the history reads listed, lowered, rose at 50 percent sold
+      Listed at AUD 30.00 | Lowered to AUD 28.00 | Rose to AUD 40.00 at 50% sold :: The price has changed 2 times since this event was listed.
+45. A stranger sees the current price and the note
+      URL     /events/price-steps-195923-p990uz
+      heading "Price Steps 195923"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Share | Copy link | − | + | Select tickets to continue | Share | Copy link
+46. A stranger reads the price history
+      URL     /events/price-steps-195923-p990uz
+      heading "Price Steps 195923"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Share | Copy link | − | + | Select tickets to continue | Share | Copy link
+47. PASS  the rows on TEST read listed, changed, step, with the previous price and the percent on the step
+      [["listed",null,3000,null],["changed",3000,2800,null],["step",2800,4000,50]]
+48. Verdicts
+      20 of 20 passed
+49. Evidence copied
+      C:\dev\EVIDENCE\A4\desktop-1440

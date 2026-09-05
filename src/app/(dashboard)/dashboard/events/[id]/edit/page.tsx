@@ -7,6 +7,7 @@ import type { Event, TicketTier, EventCategory } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
+import { readStreamLink } from '@/lib/stream/link'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -75,6 +76,10 @@ export default async function EditEventPage({ params }: Props) {
   const processingFeeCents = revenue.reduce((s: number, o: { processing_fee_cents: number }) => s + o.processing_fee_cents, 0)
   const revCurrency = revenue[0]?.currency ?? event.ticket_tiers?.[0]?.currency ?? 'AUD'
 
+  // The stream link lives in the vault, not on the events row. Read under the
+  // organiser's own session so RLS scopes it to their events.
+  const existingStreamUrl = await readStreamLink(supabase, id)
+
   const { ticket_tiers, ...restEvent } = event
   // events.tags is jsonb in the live schema; narrow to the string[] shape
   // EventForm.fromExistingEvent expects. Non-string array elements are
@@ -106,6 +111,7 @@ export default async function EditEventPage({ params }: Props) {
           existingEventId={event.id}
           existingEvent={eventData}
           existingTiers={ticket_tiers ?? []}
+          existingStreamUrl={existingStreamUrl}
           existingStatus={event.status}
           lineupEnabled={await isFeatureEnabled('broadcast_artists')}
         />

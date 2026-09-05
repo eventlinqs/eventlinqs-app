@@ -110,3 +110,21 @@ describe('the known gap is recorded, not quietly tolerated', () => {
     expect(config).toMatch(/nonce/i)
   })
 })
+
+describe('the report-only policy names every origin the venue finder talks to', () => {
+  // The Places (New) library calls places.googleapis.com by XHR from the
+  // organiser's browser (observed 4 September 2026 as a connect-src violation
+  // of this very policy, C:\dev\EVIDENCE\A3-finder-create-path-probe.txt). A
+  // report-only policy that omits it is a finder that dies quietly on every
+  // organiser the day the policy is enforced.
+  const reportOnly = headerValue('Content-Security-Policy-Report-Only') ?? ''
+  const connectSrc = reportOnly.match(/"connect-src[^"]*"/)?.[0] ?? ''
+
+  it.each(['https://maps.googleapis.com', 'https://places.googleapis.com'])('connect-src allows %s', (origin) => {
+    expect(connectSrc).toContain(origin)
+  })
+
+  it('script-src allows the Maps JavaScript API itself', () => {
+    expect(reportOnly.match(/"script-src[^"]*"/)?.[0] ?? '').toContain('https://maps.googleapis.com')
+  })
+})

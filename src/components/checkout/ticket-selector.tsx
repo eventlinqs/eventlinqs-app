@@ -20,7 +20,13 @@ import {
 } from '@/lib/payments/fee-math'
 import { formatEventDateTimeCompact } from '@/lib/dates/event-time'
 
-type TierWithDisplayPrice = TicketTier & { display_price_cents?: number }
+type TierWithDisplayPrice = TicketTier & {
+  display_price_cents?: number
+  // What the price was before its latest move ("Up from AUD 28.00"), composed
+  // on the server from ticket_price_history (Scope v5 3.3). Absent or null for
+  // a ticket whose price has never changed, so nothing renders for it.
+  price_history_note?: string | null
+}
 
 interface TicketSelectorProps {
   eventId: string
@@ -319,6 +325,13 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                       * tier has an empty name and a price of 0. */}
                     <p className="text-sm font-semibold text-ink-900">
                       {tier.name?.trim() || 'Ticket'}
+                      {/* What this ticket admits, said before the buyer pays (ACCC clarity,
+                        * Scope v5 3.11): a livestream tier never gets anyone through the door. */}
+                      {tier.access_mode === 'virtual' && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-[var(--color-navy-950)] px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wider text-gold-400">
+                          Livestream
+                        </span>
+                      )}
                     </p>
                     {tier.description && (
                       <p className="mt-0.5 text-xs text-ink-600">{tier.description}</p>
@@ -329,12 +342,20 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                       </p>
                     )}
                     {!soldOut && !salePending && available <= 20 && (
-                      <p className="mt-1 text-xs font-medium text-coral-500">Only {available} left</p>
+                      <p className="mt-1 text-xs font-medium text-error-strong">Only {available} left</p>
                     )}
                     {!soldOut && !salePending && tier.max_per_order < 10 && (
                       <p className="mt-0.5 text-[11px] text-ink-400">Max {tier.max_per_order} per order</p>
                     )}
                     <p className="mt-1 text-sm font-bold text-ink-900">{formatPrice(tier.display_price_cents ?? tier.price, currency)}</p>
+                    {/* The price's last move, in words, beside the number it moved to
+                      * (Scope v5 3.3). The full timeline sits in the price history
+                      * block under this panel. */}
+                    {tier.price_history_note && (
+                      <p className="mt-0.5 text-[11px] text-ink-500" data-testid="price-history-note">
+                        {tier.price_history_note}
+                      </p>
+                    )}
                   </div>
 
                   {soldOut ? (

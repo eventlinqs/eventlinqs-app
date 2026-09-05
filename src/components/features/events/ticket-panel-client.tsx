@@ -19,6 +19,9 @@ import type { SaleRefusalReason } from '@/lib/payments/sale-status'
 export type EnrichedTier = TicketTier & {
   display_price_cents: number
   sale_pending: boolean
+  // The last price move in words ("Up from AUD 28.00"), from ticket_price_history;
+  // null when the price has never changed. Rendered under the price by TicketSelector.
+  price_history_note?: string | null
 }
 
 interface Props {

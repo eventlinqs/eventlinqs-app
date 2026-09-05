@@ -1,0 +1,182 @@
+B1: the door without a signal
+=============================
+01. Signed up and confirmed
+      tomasz.door.443924@example.com -> /dashboard
+02. Made a cover
+      the platform composed one
+03. PASS  the organiser reached Review with Publish enabled
+      ← My Events Create Event Step 7 of 7 Review & Publish Review & Publish BASIC DETAILS Door Night 443924 A free night whos
+04. PASS  the free event published
+      /dashboard/events/3178d087-a0b3-4afd-8215-141382accc43/launch-kit?published=1 slug=door-night-443924-7yshqi
+05. After publish
+      URL     /dashboard/events/3178d087-a0b3-4afd-8215-141382accc43/launch-kit?published=1
+      heading "Door Night 443924 is live."
+      fields  Add an act
+      buttons TNTomasz | Copy link | Copy caption | Copy caption | Copy caption | Copy caption | Copy caption | Copy subject | Copy caption
+06. Signed up and confirmed
+      ayesha.door.443924@example.com -> /dashboard
+07. Ayesha Rahman picks one ticket
+      URL     /events/door-night-443924-7yshqi
+      heading "Door Night 443924"
+      fields  LanguageEnglish (AU)
+      buttons Open menu | Melbourne | Follow | Share | Copy link | − | + | Register 1 ticket | Discover
+08. Ayesha Rahman holds a ticket
+      URL     /orders/165fb5b9-ffd6-4b10-8a6b-d3efc391472f/confirmation
+      heading "You're going"
+      fields  (none)
+      buttons Transfer or gift this ticket | Add to Calendar | Share Event
+09. PASS  Ayesha Rahman holds a ticket and its link from the confirmation email
+      https://www.eventlinqs.com.au/t/EL-BQWN-PU9R?k=3fd3ced4-c916-4152-96ee-9d65c82f4cc0
+10. Signed up and confirmed
+      liam.door.443924@example.com -> /dashboard
+11. Liam Kealoha picks one ticket
+      URL     /events/door-night-443924-7yshqi
+      heading "Door Night 443924"
+      fields  LanguageEnglish (AU)
+      buttons Open menu | Melbourne | Follow | Share | Copy link | − | + | Register 1 ticket | Discover
+12. Liam Kealoha holds a ticket
+      URL     /orders/56d05530-aaf4-4689-aea1-bd8f1f2daedf/confirmation
+      heading "You're going"
+      fields  (none)
+      buttons Transfer or gift this ticket | Add to Calendar | Share Event
+13. PASS  Liam Kealoha holds a ticket and its link from the confirmation email
+      https://www.eventlinqs.com.au/t/EL-ENG8-SARB?k=40b12b94-b632-493c-a1fb-50c9642fd6c2
+14. Signed up and confirmed
+      meilin.door.443924@example.com -> /dashboard
+15. Mei Lin Chen picks one ticket
+      URL     /events/door-night-443924-7yshqi
+      heading "Door Night 443924"
+      fields  LanguageEnglish (AU)
+      buttons Open menu | Melbourne | Follow | Share | Copy link | − | + | Register 1 ticket | Discover
+16. Mei Lin Chen holds a ticket
+      URL     /orders/d7ad1618-dc17-4b39-9b88-b89adc100205/confirmation
+      heading "You're going"
+      fields  (none)
+      buttons Transfer or gift this ticket | Add to Calendar | Share Event
+17. PASS  Mei Lin Chen holds a ticket and its link from the confirmation email
+      https://www.eventlinqs.com.au/t/EL-R5KG-MD4T?k=a66f716d-d6a5-4cbc-9084-bfdf11cb9dc5
+18. Signed in
+      tomasz.door.443924@example.com -> /dashboard
+19. PASS  Door A downloaded the door list: 3 tickets
+      Offline ready. 3 tickets, downloaded 6:59 am, valid until tomorrow 6:59 am.
+20. PASS  Door A: the service worker controls the scanner and the shell is kept
+21. Door A ready
+      URL     /scan/3178d087-a0b3-4afd-8215-141382accc43
+      heading "Door Night 443924"
+      fields  Ticket code or ticket link | Ticket key
+      buttons Refresh door list | Check in
+22. PASS  axe, door-ready-online: 0 violations at any impact
+      clean
+23. PASS  Door A knows the signal is gone
+      Offline, scanning against the door list
+24. PASS  axe, door-offline-admit: 0 violations at any impact
+      clean
+25. PASS  ticket 1 (Ayesha Rahman) is ADMITTED offline
+      ADMIT Ayesha Rahman General admission CHECKED OFFLINE AGAINST THE DOOR LIST :: CHECKED OFFLINE AGAINST THE DOOR LIST
+26. Door A admits ticket 1 offline
+      URL     /scan/3178d087-a0b3-4afd-8215-141382accc43
+      heading "Door Night 443924"
+      fields  Ticket code or ticket link | Ticket key
+      buttons Refresh door list | Sync now | Check in
+27. PASS  axe, door-offline-reject: 0 violations at any impact
+      clean
+28. PASS  ticket 1 again is REJECTED as already used just now
+      REJECT Ayesha Rahman General admission Already used just now CHECKED OFFLINE AGAINST THE DOOR LIST
+29. Door A refuses ticket 1 a second time
+      URL     /scan/3178d087-a0b3-4afd-8215-141382accc43
+      heading "Door Night 443924"
+      fields  Ticket code or ticket link | Ticket key
+      buttons Refresh door list | Sync now | Check in
+30. PASS  a made-up code is REJECTED as not found offline
+      REJECT Not found CHECKED OFFLINE AGAINST THE DOOR LIST
+31. PASS  ticket 2 (Liam Kealoha) is ADMITTED offline
+      ADMIT Liam Kealoha General admission CHECKED OFFLINE AGAINST THE DOOR LIST :: CHECKED OFFLINE AGAINST THE DOOR LIST
+32. PASS  Door A shows 4 scans waiting to sync
+      4 scans waiting to sync
+33. Door A with four scans waiting
+      URL     /scan/3178d087-a0b3-4afd-8215-141382accc43
+      heading "Door Night 443924"
+      fields  Ticket code or ticket link | Ticket key
+      buttons Refresh door list | Sync now | Check in
+34. PASS  the scanner reopens with no signal, from the service worker, with its door list
+      Offline, scanning against the door list :: Offline ready. 3 tickets, downloaded 6:59 am, valid until tomorrow 6:59 am.
+35. PASS  the queue survives the reload
+      4 scans waiting to sync
+36. Door A reloaded offline
+      URL     /scan/3178d087-a0b3-4afd-8215-141382accc43
+      heading "Door Night 443924"
+      fields  Ticket code or ticket link | Ticket key
+      buttons Refresh door list | Sync now | Check in
+37. PASS  axe, door-reloaded-offline: 0 violations at any impact
+      clean
+38. Signed in
+      tomasz.door.443924@example.com -> /dashboard
+39. PASS  Door B downloaded the door list: 3 tickets
+      Offline ready. 3 tickets, downloaded 7:00 am, valid until tomorrow 7:00 am.
+40. PASS  Door B: the service worker controls the scanner and the shell is kept
+41. PASS  Door B, also offline, admits ticket 2 as well (the conflict)
+      ADMIT Liam Kealoha General admission CHECKED OFFLINE AGAINST THE DOOR LIST :: CHECKED OFFLINE AGAINST THE DOOR LIST
+42. PASS  Door B admits ticket 3 (Mei Lin Chen) offline
+      ADMIT Mei Lin Chen General admission CHECKED OFFLINE AGAINST THE DOOR LIST :: CHECKED OFFLINE AGAINST THE DOOR LIST
+43. Door B offline with two admissions
+      URL     /scan/3178d087-a0b3-4afd-8215-141382accc43
+      heading "Door Night 443924"
+      fields  Ticket code or ticket link | Ticket key
+      buttons Refresh door list | Sync now | Check in
+44. PASS  Door A synced its four scans with nothing to review
+      4 scans synced. (0 flags)
+45. PASS  Door A is online again with an empty queue
+      Online
+46. Door A synced
+      URL     /scan/3178d087-a0b3-4afd-8215-141382accc43
+      heading "Door Night 443924"
+      fields  Ticket code or ticket link | Ticket key
+      buttons Refresh door list | Check in
+47. PASS  Door B synced two scans and one needs review
+      2 scans synced, 1 needs review.
+48. PASS  Door B is told ticket 2 was admitted at another door first
+      EL-ENG8-SARB (Liam Kealoha) was admitted at another door first. The organiser can review it under Attendees.
+49. Door B synced with a flag
+      URL     /scan/3178d087-a0b3-4afd-8215-141382accc43
+      heading "Door Night 443924"
+      fields  Ticket code or ticket link | Ticket key
+      buttons Refresh door list | Check in
+50. PASS  axe, door-synced-with-flag: 0 violations at any impact
+      clean
+51. PASS  Door B, online, refuses ticket 1 as already used, with how long ago
+      REJECT Ayesha Rahman General admission Already used just now CHECKED ONLINE :: CHECKED ONLINE
+52. Door B refuses ticket 1 online
+      URL     /scan/3178d087-a0b3-4afd-8215-141382accc43
+      heading "Door Night 443924"
+      fields  Ticket code or ticket link | Ticket key
+      buttons Refresh door list | Check in
+53. PASS  exactly one admitted row per ticket on TEST
+      1, 1, 1
+54. PASS  one flagged row, for ticket 2, from an offline scan
+      [["already_scanned",true]]
+55. PASS  all three tickets are scanned once
+      [["EL-BQWN-PU9R","scanned",1],["EL-ENG8-SARB","scanned",1],["EL-R5KG-MD4T","scanned",1]]
+56. PASS  the Door review panel lists the one flagged scan with both doors
+      DOOR REVIEW Scans that need a look EL-ENG8-SARB, Liam Kealoha Door 192E admitted this ticket at 5 Sept, 7:00 am while offline, but on sync the ticket had already been admitted. Door E753 had admitted it offline at 5 Sept, 6:59 am. What happened (optional) Mark
+57. Door review before resolving
+      URL     /dashboard/events/3178d087-a0b3-4afd-8215-141382accc43/attendees
+      heading "Attendees"
+      fields  What happened (optional) | Search attendees by name or  | Filter by ticket type | Filter by check-in status
+      buttons TNTomasz | Mark resolved
+58. PASS  axe, attendees-review-row: 0 violations at any impact
+      clean
+59. PASS  Mark resolved clears the panel
+60. Door review resolved
+      URL     /dashboard/events/3178d087-a0b3-4afd-8215-141382accc43/attendees
+      heading "Attendees"
+      fields  Search attendees by name or  | Filter by ticket type | Filter by check-in status
+      buttons TNTomasz
+61. PASS  axe, attendees-review-empty: 0 violations at any impact
+      clean
+62. PASS  the panel stays empty after a reload
+63. PASS  the row on TEST reads resolved with the note
+      ["Same guest came back through the second door"]
+64. Verdicts
+      38 of 38 passed
+65. Evidence copied
+      C:\dev\EVIDENCE\B1\mobile-390

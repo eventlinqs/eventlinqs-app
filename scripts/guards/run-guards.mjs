@@ -69,6 +69,26 @@
  *                              RLS, so an unchecked read is a cross-tenant read)
  *   no-glassmorphism           no applied backdrop-filter anywhere in src, because the
  *                              Design system and Motion both ban it and neither had a gate
+ *   stream-link-never-public   the livestream link is unreachable from every public surface
+ *                              and the inert events.virtual_url column is read by nothing
+ *   schema-ahead-of-code       the database this build runs against already carries every
+ *                              column and table the code names, so code never deploys ahead
+ *                              of its migration (read only; refuses a production build until
+ *                              the founder's push lands, keeps building previews on TEST)
+ *   geocoding-key-posture      a server geocoding key that Google refuses is the silent shape
+ *                              (configured-looking, serving nothing) and fails the build; an
+ *                              absent key or the browser key standing in is a named decision
+ *                              and SKIPs with the founder's step printed
+ *   price-history-integrity    ticket_price_history is written by the database triggers only
+ *                              and dynamic pricing is saved through save_dynamic_pricing in one
+ *                              transaction, so the record a buyer reads is what was charged
+ *   offline-door-integrity    the door list carries a hash and never a secret, the sync admits
+ *                              through the same compare-and-set as scan_ticket, ticket_scans is
+ *                              written by the RPCs only, and the door service worker is GET only
+ *                              on /scan/ navigations and /_next/static/ assets
+ *   door-live-published       the door's live feed is published on the build's own database
+ *                              (ticket_scans in supabase_realtime), asked through one read-only
+ *                              RPC, so two doors never go silently deaf to each other
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -598,6 +618,59 @@ const GUARDS = [
   // Translucency without a filter stays legal, so this only fails on an APPLIED
   // filter, never on a /95 badge, a comment, or an inert transition property list.
   'scripts/guards/no-glassmorphism.mjs',
+  // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
+  // organiser form, stored on the anon-readable events row, and shown to nobody.
+  // Migration 20260903000002 moved it into a vault table with no anon grant.
+  // This holds the two properties that make the reveal rule true: the inert
+  // column is read by nothing, and no public surface can import the modules
+  // that hand the link back. Proven red against `{event.virtual_url}` on the
+  // public event page and green after its removal (C:\dev\EVIDENCE\A2).
+  'scripts/guards/stream-link-never-public.mjs',
+  // 4 September 2026. The A2 code SELECTS ticket_tiers.access_mode by name on
+  // the bearer ticket page and the order confirmation, and production did not
+  // have the column (the migration is the founder's push). None of lint,
+  // typecheck, build or the suite reads a database, so a merge before the push
+  // would have passed every gate and 500'd every ticket page on the live site.
+  // This probes the build's own database, read only, and refuses a build whose
+  // schema is behind its code. Proven red against production and green against
+  // TEST on the same day (C:\dev\EVIDENCE\A2\guard-schema-ahead-proof.txt).
+  'scripts/guards/schema-ahead-of-code.mjs',
+  // 4 September 2026 (A3, venue geocoding). GOOGLE_MAPS_API_KEY was found to
+  // be the public browser key in production, preview and local, which Google
+  // refuses for the Geocoding API. That shape is a decision and SKIPs loudly;
+  // a DISTINCT server key is probed once per build and a refusal FAILS, because
+  // that is the shape every gate would otherwise miss. Proven FAIL with a bogus
+  // distinct key and SKIP with the live values (C:\dev\EVIDENCE\A3-guard-geocoding-key-posture-proof.txt).
+  'scripts/guards/geocoding-key-posture.mjs',
+  // 4 September 2026 (A4, price history, Scope v5 3.3). ticket_price_history is
+  // what a buyer reads on the event page about how a price has moved, and it is
+  // written by two DEFERRED constraint triggers that judge the effective price
+  // at commit. Two edits would corrupt it while passing every other gate: an
+  // application insert into the history, and a return to writing
+  // dynamic_pricing_rules as three auto-committed statements instead of through
+  // save_dynamic_pricing. This refuses both, and checks the migration still
+  // declares both triggers deferred. Proven red by restoring the old delete
+  // call in the action and green after (C:\dev\EVIDENCE\A4-guard-price-history-integrity-proof.txt).
+  'scripts/guards/price-history-integrity.mjs',
+  // 5 September 2026 (B1, offline door validation, Scope v5 3.12 and 3.13). The
+  // phone at the gate downloads every ticket and judges scans against it with no
+  // signal, then syncs its queue. Four edits would break that while passing every
+  // other gate: returning the secret in the door list, dropping the
+  // `status = 'valid'` clause from the sync's compare-and-set (two doors both
+  // record admitted), an application insert into ticket_scans, and a service
+  // worker that answers more than /scan/ navigations and /_next/static/ assets.
+  // Proven red by removing the status clause from the migration and green after
+  // (C:\dev\EVIDENCE\B1\guard-offline-door-integrity-proof.txt).
+  'scripts/guards/offline-door-integrity.mjs',
+  // 5 September 2026 (B2, multi-scanner realtime, Scope v5 3.13). Two doors see
+  // each other's admissions because ticket_scans is in the supabase_realtime
+  // publication, and no other gate can see a publication: a project where the
+  // migration was never applied subscribes, says SUBSCRIBED, and never receives
+  // a row. This asks door_realtime_enabled() on the build's own database, read
+  // only, and refuses a build whose doors would be silently deaf. SKIPs by name
+  // on CI's placeholder URL. Proven red on TEST by dropping the table from the
+  // publication and green by adding it back (C:\dev\EVIDENCE\B2\guard-door-live-published-proof.txt).
+  'scripts/guards/door-live-published.mjs',
 ]
 
 /**

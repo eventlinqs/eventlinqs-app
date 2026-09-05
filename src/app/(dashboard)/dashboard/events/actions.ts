@@ -16,12 +16,16 @@ import { parseVideoEmbed } from '@/lib/media/video-embed'
 import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-model'
 import { moderateEventMedia } from '@/lib/media/moderation'
 import { cleanupEventMedia } from '@/lib/upload'
-import { resolveCitySlug } from '@/lib/cities/resolve'
+import { resolveCityClaim } from '@/lib/cities/resolve'
+import { resolveVenueCoordinates, type VenueGeocodeSource } from '@/lib/geo/venue-coordinates'
 import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
 import { getSiteUrl } from '@/lib/site-url'
 import { trackEventPublishedServer } from '@/lib/analytics/plausible'
 import type { EventStatus, EventVisibility, EventType, TicketTierType, FeePassType, Json } from '@/types/database'
 import { actionRateLimit } from '@/lib/rate-limit/action'
+import { readStreamLink, writeStreamLink } from '@/lib/stream/link'
+import { livestreamNeedsLink, coerceAccessMode, STREAM_LINK_REQUIRED_MESSAGE } from '@/lib/stream/publish-rule'
+import { normaliseCountryCodes } from '@/lib/stream/countries'
 
 // Resolve the organiser media fields from a create/update input into the columns
 // the events table stores. Validates the video URL against the provider allowlist
@@ -74,6 +78,8 @@ export type TicketTierInput = {
   name: string
   description: string
   tier_type: TicketTierType
+  /** Who the tier admits (Scope v5 3.11). Coerced to the event type on save, as the trigger does. */
+  access_mode?: 'in_person' | 'virtual'
   price: number // dollars - converted to cents on insert
   currency: string
   total_capacity: number
@@ -107,7 +113,14 @@ export type CreateEventInput = {
   venue_postal_code: string | null
   venue_latitude: number | null
   venue_longitude: number | null
-  virtual_url: string | null
+  /** From a Places pick in the form; kept with the coordinates so the venue can be recognised later. */
+  venue_place_id?: string | null
+  /** Who wrote the coordinates: places (the organiser picked), geocoding, manual. */
+  venue_geocode_source?: VenueGeocodeSource | null
+  /** The livestream link. Written to the vault (event_stream_links), never to the events row. */
+  stream_url: string | null
+  /** ISO 3166-1 alpha-2 codes the livestream may be watched from; null means anywhere. */
+  stream_geo_allow: string[] | null
   cover_image_url: string | null
   // Event Media Standard: cover alt/blur, the gallery (up to 9), and one optional
   // video link (raw provider URL; parsed + allowlisted server-side on save).
@@ -209,6 +222,17 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
   if (!media.ok) return { error: media.error }
 
   if (input.status === 'published' || input.status === 'scheduled') {
+    // A livestream cannot go live without a link (one rule, shared with the form).
+    if (
+      livestreamNeedsLink({
+        eventType: input.event_type,
+        tierAccessModes: (input.ticket_tiers ?? []).map(t => coerceAccessMode(input.event_type, t.access_mode)),
+        streamUrl: input.stream_url,
+      })
+    ) {
+      return { error: STREAM_LINK_REQUIRED_MESSAGE }
+    }
+
     const gate = await checkPublishGate(createAdminClient(), {
       organisationId: input.organisationId,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
@@ -243,6 +267,25 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
 
   const admin = createAdminClient()
 
+  // The venue's coordinates by the one save-time rule, and the city claim from
+  // the locality first and the coordinates second. A missing pair is logged by
+  // its reason, never swallowed: the organiser still saves, the event page still
+  // centres its map in the browser, and the backfill picks the row up later.
+  const venue = await resolveVenueCoordinates({
+    event_type: input.event_type,
+    venue_name: input.venue_name || null,
+    venue_address: input.venue_address || null,
+    venue_city: input.venue_city || null,
+    venue_state: input.venue_state || null,
+    venue_country: input.venue_country || null,
+    venue_postal_code: input.venue_postal_code || null,
+    venue_latitude: input.venue_latitude,
+    venue_longitude: input.venue_longitude,
+    venue_place_id: input.venue_place_id ?? null,
+    venue_geocode_source: input.venue_geocode_source ?? null,
+  })
+  if (venue.reason) console.warn(`[events] no coordinates for "${input.venue_name ?? input.venue_address ?? ''}": ${venue.reason}`)
+  const cityClaim = resolveCityClaim(input.venue_city, venue.venue_latitude, venue.venue_longitude)
   const { error: eventError } = await admin
     .from('events')
     .insert({
@@ -268,24 +311,37 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
       // The canonical city claim. city_primary is the ONE column every
       // city-scoped surface reads, including the weekly local digest, so an
       // event with a recognised locality and a null city_primary is invisible
-      // to its own city. Resolved from the typed locality at write time.
-      city_primary: resolveCitySlug(input.venue_city),
+      // to its own city. Resolved from the typed locality first; a Places pick
+      // reports the SUBURB as the locality (Fitzroy, not Melbourne), so the
+      // coordinates settle it second (src/lib/cities/resolve.ts).
+      city_primary: cityClaim,
       // The district claim, and NOT the same move as the city one: a suburb
       // cannot be derived from a city name, so this reads the venue's real
       // coordinates and takes the nearest district centroid inside the same
       // city, or null. Without it every suburb page is permanently empty of
       // organiser events.
       suburb_primary: resolveSuburbSlug({
-        citySlug: resolveCitySlug(input.venue_city),
-        latitude: input.venue_latitude,
-        longitude: input.venue_longitude,
+        citySlug: cityClaim,
+        latitude: venue.venue_latitude,
+        longitude: venue.venue_longitude,
       }),
       venue_state: input.venue_state || null,
       venue_country: input.venue_country || null,
       venue_postal_code: input.venue_postal_code || null,
-      venue_latitude: input.venue_latitude || null,
-      venue_longitude: input.venue_longitude || null,
-      virtual_url: input.virtual_url || null,
+      // Coordinates by the one save-time rule (src/lib/geo/venue-coordinates.ts):
+      // a Places pick is kept, a typed address is geocoded on the server when
+      // the key can serve it, and every other outcome is null with its reason
+      // in the log above.
+      venue_latitude: venue.venue_latitude,
+      venue_longitude: venue.venue_longitude,
+      venue_place_id: venue.venue_place_id,
+      venue_geocode_source: venue.venue_geocode_source,
+      venue_geocoded_at: venue.venue_geocoded_at,
+      // The stream link itself goes to the vault below, never to this row.
+      stream_geo_allow:
+        input.event_type === 'in_person' || !input.stream_geo_allow || input.stream_geo_allow.length === 0
+          ? null
+          : normaliseCountryCodes(input.stream_geo_allow),
       cover_image_url: media.columns.cover_image_url,
       cover_image_alt: media.columns.cover_image_alt,
       cover_image_blur: media.columns.cover_image_blur,
@@ -319,12 +375,18 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
     return { error: `Failed to create event: ${eventError.message}` }
   }
 
+  // The stream link goes to the vault, where anon has no grant. An in-person
+  // event clears any link left over from a previous type.
+  const vault = await writeStreamLink(admin, input.eventId, input.event_type === 'in_person' ? null : input.stream_url)
+  if (!vault.ok) return { error: vault.error }
+
   if (input.ticket_tiers.length > 0) {
     const tiers = input.ticket_tiers.map((tier, i) => ({
       event_id: input.eventId,
       name: tier.name,
       description: tier.description || null,
       tier_type: tier.tier_type,
+      access_mode: coerceAccessMode(input.event_type, tier.access_mode),
       price: Math.round(tier.price * 100), // convert dollars to cents
       currency: tier.currency,
       total_capacity: tier.total_capacity,
@@ -450,6 +512,17 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
   if (!media.ok) return { error: media.error }
 
   if (input.status === 'published' || input.status === 'scheduled') {
+    // A livestream cannot go live without a link (one rule, shared with the form).
+    if (
+      livestreamNeedsLink({
+        eventType: input.event_type,
+        tierAccessModes: (input.ticket_tiers ?? []).map(t => coerceAccessMode(input.event_type, t.access_mode)),
+        streamUrl: input.stream_url,
+      })
+    ) {
+      return { error: STREAM_LINK_REQUIRED_MESSAGE }
+    }
+
     const gate = await checkPublishGate(createAdminClient(), {
       organisationId: event.organisation_id,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
@@ -488,6 +561,25 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
     .eq('id', input.eventId)
     .single()
 
+  // The venue's coordinates by the one save-time rule, and the city claim from
+  // the locality first and the coordinates second. A missing pair is logged by
+  // its reason, never swallowed: the organiser still saves, the event page still
+  // centres its map in the browser, and the backfill picks the row up later.
+  const venue = await resolveVenueCoordinates({
+    event_type: input.event_type,
+    venue_name: input.venue_name || null,
+    venue_address: input.venue_address || null,
+    venue_city: input.venue_city || null,
+    venue_state: input.venue_state || null,
+    venue_country: input.venue_country || null,
+    venue_postal_code: input.venue_postal_code || null,
+    venue_latitude: input.venue_latitude,
+    venue_longitude: input.venue_longitude,
+    venue_place_id: input.venue_place_id ?? null,
+    venue_geocode_source: input.venue_geocode_source ?? null,
+  })
+  if (venue.reason) console.warn(`[events] no coordinates for "${input.venue_name ?? input.venue_address ?? ''}": ${venue.reason}`)
+  const cityClaim = resolveCityClaim(input.venue_city, venue.venue_latitude, venue.venue_longitude)
   const { error: eventError } = await admin
     .from('events')
     .update({
@@ -507,22 +599,30 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       venue_address: input.venue_address || null,
       venue_city: input.venue_city || null,
       // Kept in step with venue_city on every edit, so moving an event to a
-      // new city moves its digest and city-page reach with it.
-      city_primary: resolveCitySlug(input.venue_city),
+      // new city moves its digest and city-page reach with it. Locality first,
+      // coordinates second, the same rule as creation.
+      city_primary: cityClaim,
       // Re-resolved on every edit for the same reason: moving the venue moves
       // the district, and a stale district is a wrong answer rather than a
       // missing one.
       suburb_primary: resolveSuburbSlug({
-        citySlug: resolveCitySlug(input.venue_city),
-        latitude: input.venue_latitude,
-        longitude: input.venue_longitude,
+        citySlug: cityClaim,
+        latitude: venue.venue_latitude,
+        longitude: venue.venue_longitude,
       }),
       venue_state: input.venue_state || null,
       venue_country: input.venue_country || null,
       venue_postal_code: input.venue_postal_code || null,
-      venue_latitude: input.venue_latitude || null,
-      venue_longitude: input.venue_longitude || null,
-      virtual_url: input.virtual_url || null,
+      venue_latitude: venue.venue_latitude,
+      venue_longitude: venue.venue_longitude,
+      venue_place_id: venue.venue_place_id,
+      venue_geocode_source: venue.venue_geocode_source,
+      venue_geocoded_at: venue.venue_geocoded_at,
+      // The stream link itself goes to the vault below, never to this row.
+      stream_geo_allow:
+        input.event_type === 'in_person' || !input.stream_geo_allow || input.stream_geo_allow.length === 0
+          ? null
+          : normaliseCountryCodes(input.stream_geo_allow),
       cover_image_url: media.columns.cover_image_url,
       cover_image_alt: media.columns.cover_image_alt,
       cover_image_blur: media.columns.cover_image_blur,
@@ -554,6 +654,11 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
 
   if (eventError) return { error: `Failed to update event: ${eventError.message}` }
 
+  // The stream link goes to the vault, where anon has no grant. Moving the
+  // event to in-person clears it.
+  const vault = await writeStreamLink(admin, input.eventId, input.event_type === 'in_person' ? null : input.stream_url)
+  if (!vault.ok) return { error: vault.error }
+
   // Replace ticket tiers: delete existing, re-insert
   await admin.from('ticket_tiers').delete().eq('event_id', input.eventId)
 
@@ -563,6 +668,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       name: tier.name,
       description: tier.description || null,
       tier_type: tier.tier_type,
+      access_mode: coerceAccessMode(input.event_type, tier.access_mode),
       price: Math.round(tier.price * 100),
       currency: tier.currency,
       total_capacity: tier.total_capacity,
@@ -786,6 +892,14 @@ export async function duplicateEvent(eventId: string): Promise<{ error?: string;
     .single()
 
   if (insertError || !newEvent) return { error: 'Failed to duplicate event' }
+
+  // The stream link lives in the vault, so the row spread above did not carry
+  // it. Copy it under the organiser's own session (RLS scopes both events).
+  const existingLink = await readStreamLink(supabase, eventId)
+  if (existingLink) {
+    const copied = await writeStreamLink(supabase, newEvent.id, existingLink)
+    if (!copied.ok) return { error: copied.error }
+  }
 
   if (ticket_tiers && ticket_tiers.length > 0) {
     const newTiers = ticket_tiers.map(

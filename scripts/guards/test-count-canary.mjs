@@ -672,9 +672,110 @@ const ROOT = join(HERE, '..', '..')
  * pins the repair script that unblocked production on 3 September: the value it
  * mints is judged by the manifest's own shape object, its refusals stay in the
  * source, and the secret is never interpolated into anything printed.
+ *
+ * 2026-09-04 (Scope v5 completion build, item A2): 257 files / 3052 tests. Seven
+ * files, sixty-eight tests, all upward, for virtual and hybrid delivery.
+ * tests/unit/stream/{access,embed,countries,publish-rule}.test.ts pin the bearer
+ * gate, the stream link classifier, the reach and the publish refusal;
+ * tests/unit/email/virtual-confirmation.test.ts pins that the confirmation mail
+ * carries a watch link and never a stream address;
+ * tests/unit/guards/schema-ahead-of-code.test.ts pins the guard that refuses a
+ * build whose database lacks an object the code reads by name; and
+ * tests/unit/stream/room-time-label.test.ts pins that the room stamps a message
+ * in the event's zone, after no-clock-during-render caught the runtime-zone form.
+ *
+ * 2026-09-04 (Scope v5 completion build, item A3): 262 files / 3100 tests. Five
+ * files, forty-eight tests, all upward, for venue geocoding. Measured by running
+ * the five files alone (5 passed, 48 passed) on top of the A2 floor.
+ * tests/unit/geo/geocode.test.ts pins the Geocoding client against a stubbed
+ * transport, every Google status a named outcome, and the ONE decision that
+ * treats a server key equal to the browser key as absent;
+ * tests/unit/geo/venue-coordinates.test.ts pins the save-time rule (a Places pick
+ * is kept and never re-geocoded, a typed address is geocoded only when the key
+ * can serve it, every other outcome is null with its reason);
+ * tests/unit/maps/address-components.test.ts pins the Places pick to the six
+ * venue fields on Google's real components for Forum Melbourne;
+ * tests/unit/cities/resolve-from-coordinates.test.ts pins that a suburb locality
+ * still files under its city by the coordinates, and that CITY_MATCH_RADIUS_KM
+ * stays below half the registry's closest pair; and
+ * tests/unit/guards/geocoding-key-posture.test.ts pins the guard's three shapes
+ * (absent SKIP, browser-as-server SKIP, distinct-and-refused FAIL).
+ *
+ * 2026-09-04 (A3, later the same day): 264 files / 3114 tests, measured by the
+ * canary itself with the env parked (C:devEVIDENCEA3-canary-measure.txt).
+ * Two files and fourteen tests, all upward, every one from a defect the drive
+ * found. tests/unit/maps/places-autocomplete.test.ts (6) pins that the referer
+ * refusal is read off the thrown message and never off the class, after Google's
+ * RpcError (not an instanceof Error) made the finder say "did not answer";
+ * tests/unit/journeys/maps-js-stub.test.ts (3) runs the Maps JS stand-in in a vm
+ * and pins the loader handshake (the dotted google.maps.__ib__ callback) and the
+ * Forum Melbourne answer; tests/unit/security/security-headers.test.ts gained 3,
+ * pinning places.googleapis.com and maps.googleapis.com in the report-only CSP
+ * connect-src and script-src; and tests/unit/guards/schema-ahead-of-code.test.ts
+ * grew by 2 when events.venue_geocode_source joined the schema manifest.
+ *
+ * 2026-09-04 (A4, price history, Scope v5 3.3): 270 files / 3177 tests, measured
+ * by the canary itself with the env parked (C:\dev\EVIDENCE\A4-canary-measure.txt).
+ * Six files and sixty-three tests, all upward. tests/unit/pricing/price-history.test.ts
+ * (21) pins the summariser: matching by tier NAME because an edit re-creates
+ * every tier, the direction and previous price of each move, the words a buyer
+ * reads (Listed at, Lowered to, Rose to at N% sold), the note under the price
+ * and which tiers keep their history to themselves; dynamic-pricing-steps (6)
+ * pins the step normaliser; read-price-history (4) pins the one reader, which
+ * logs a failure with its code and yields no history; save-dynamic-pricing-
+ * action (6) proves the action reaches save_dynamic_pricing in ONE call with
+ * the steps normalised and refuses before any write without a session or
+ * access; ticket-price-history-migration (11) pins the migration's shape, the
+ * two DEFERRABLE INITIALLY DEFERRED triggers and the grants; and
+ * tests/unit/guards/price-history-integrity.test.ts (8) pins the guard's three
+ * judgements and proves it green on the tree. schema-ahead-of-code grew by 2
+ * when ticket_price_history.id joined the schema manifest; guard-registry
+ * counts the new guard.
+ *
+ * 2026-09-05 (A4, the drive's axe finding): 271 files / 3182 tests. One file,
+ * five tests. tests/unit/a11y/light-surface-text-tokens.test.ts pins that the
+ * ticket selector's scarcity line and the access-code refusal use the
+ * error-strong text token rather than a coral text class on the white ticket
+ * card (coral-500 measured 3.28:1 there under axe, and no coral token clears
+ * 4.5:1 on white), and that error-strong itself still clears 4.5:1.
+ *
+ * 2026-09-05 (B1, offline door validation, Scope v5 3.12 and 3.13): 283 files /
+ * 3307 tests. Twelve files, 123 tests, plus 2 in the suites that grow with the
+ * manifest and the registry. tests/unit/scanner/offline-validate pins the
+ * device's judgement branch by branch and the 24 hour window; door-store runs
+ * the IndexedDB store on fake-indexeddb (batching, the carried local admission,
+ * the queue); door-sync the batch, the strict answer parser and the write-back;
+ * door-copy the words and the copy law; scan-actions-offline the two actions
+ * against a mocked session client; offline-door-migration the migration's
+ * shape, the hashed door list, the compare-and-set and the grants;
+ * scan-service-worker drives the worker's routing in a fake worker global;
+ * device-id; guards/offline-door-integrity the guard's four judgements and the
+ * tree; reporting/door-review-copy the organiser's review words;
+ * reporting/resolve-scan-review-action the Mark resolved action (identity, the
+ * gate, the RPC, the note); dashboard/main-column-shrinks pins min-w-0 on the
+ * dashboard's main flex item, found missing on the B1 drive at 768 where the
+ * attendees table pushed Mark resolved off screen, and the focusable named
+ * scroll region axe then asked for. schema-ahead-of-code grew by 1 when
+ * ticket_scans.client_scan_id joined the manifest; guard-registry counts the
+ * new guard.
+ *
+ * 2026-09-05 (B2, multi-scanner realtime sync, Scope v5 3.13): 286 files /
+ * 3336 tests. Three files, 28 tests, plus 1 in guards/offline-door-integrity,
+ * which now holds every later re-definition of the door list to the no-secret
+ * rule. tests/unit/scanner/door-live pins the channel name and filter, the
+ * status words, the strict row reader, the subscribe and leave, the local
+ * move a live row makes (on fake-indexeddb), the feed of other doors and the
+ * count line; scanner/door-realtime-migration the publication, the door list
+ * leading with ticket_id, scan_ticket's fourth argument recorded on all three
+ * audit inserts, the probe function's grants and the wss connect-src;
+ * guards/door-live-published the guard's decision table and its read-only ask.
+ * door-live also pins that the session token reaches the realtime socket
+ * BEFORE the channel is joined, the first B2 drive's finding: joined before
+ * the token, the channel carried the anon key and the row policy denied every
+ * row, so both doors said live and heard nothing.
  */
-const MIN_FILES = 250
-const MIN_TESTS = 2984
+const MIN_FILES = 286
+const MIN_TESTS = 3336
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
