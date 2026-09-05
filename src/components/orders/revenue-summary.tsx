@@ -14,7 +14,16 @@ function formatCents(cents: number, currency: string) {
 }
 
 export function RevenueSummary({ grossCents, platformFeeCents, processingFeeCents, refundedCents = 0, currency }: RevenueSummaryProps) {
-  const netCents = grossCents - platformFeeCents - processingFeeCents - refundedCents
+  // ONE FEE (founder ruling, 15 August 2026). Every order since then carries
+  // processing_fee_cents = 0; orders before it carry a non-zero
+  // processing_fee_cents that was part of the platform's take at the time.
+  // Both are the platform's fee, so they are ONE line here: the arithmetic for
+  // the older orders is unchanged and the panel shows one fee, as every
+  // organiser surface must. Until the C1 drive of 5 September 2026 this panel
+  // carried a separate line for processing_fee_cents, and its plural wording
+  // had slipped past the one-fee-copy guard.
+  const feeCents = platformFeeCents + processingFeeCents
+  const netCents = grossCents - feeCents - refundedCents
 
   return (
     <div className="rounded-xl border border-ink-200 bg-white p-5">
@@ -25,12 +34,8 @@ export function RevenueSummary({ grossCents, platformFeeCents, processingFeeCent
           <span className="text-sm font-semibold text-ink-900">{formatCents(grossCents, currency)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-sm text-ink-400">Platform fees</span>
-          <span className="text-sm text-ink-400">−{formatCents(platformFeeCents, currency)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-sm text-ink-400">Processing fees</span>
-          <span className="text-sm text-ink-400">−{formatCents(processingFeeCents, currency)}</span>
+          <span className="text-sm text-ink-400">Platform fee</span>
+          <span className="text-sm text-ink-400">−{formatCents(feeCents, currency)}</span>
         </div>
         {refundedCents > 0 && (
           <div className="flex justify-between">

@@ -18,8 +18,13 @@
  * A virtual event has no venue and gets nothing.
  */
 import { composeGeocodeQuery, geocodeAddress, serverGeocodingAvailable, type GeocodeResult } from '@/lib/geo/geocode'
+import type { VenueGeocodeSource } from '@/types/database'
 
-export type VenueGeocodeSource = 'places' | 'geocoding' | 'manual'
+// The three sources are a Postgres enum (public.venue_geocode_source, since
+// 20260905000003) and the generated types carry them. This module used to
+// declare the union itself, and the same union was hand-written into the
+// generated types as well; the database owns it now and this is a re-export.
+export type { VenueGeocodeSource }
 
 export interface VenueCoordinateInput {
   event_type: 'in_person' | 'virtual' | 'hybrid'

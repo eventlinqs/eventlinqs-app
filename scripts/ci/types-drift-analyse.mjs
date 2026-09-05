@@ -126,7 +126,26 @@ export function parseGeneratedTypes(text) {
 
     // `key: value` or `key?: value`, with the value possibly continued on
     // following lines that begin with `|` (long enum unions wrap).
-    const leaf = line.match(/^("?[A-Za-z_$][\w$]*"?)(\?)?:\s*(.+?)$/)
+    //
+    // THE VALUE MAY ALSO BE ENTIRELY ON THE FOLLOWING LINES. When a key and its
+    // type would run past the generator's line width it leaves a bare `key:`
+    // behind and starts the union on the next line:
+    //
+    //   venue_geocode_source:
+    //     | Database["public"]["Enums"]["venue_geocode_source"]
+    //     | null
+    //
+    // The first version of this match required at least one character after
+    // the colon, so every leaf written that way was dropped from BOTH sides
+    // and never compared at all. On 5 September 2026 that was hiding ten
+    // wrapped enums in public.Enums (event_status, order_status,
+    // payment_status, squad_member_status and six more: a value added to any
+    // of them in the live database would never have been reported), and it
+    // reported the enum column that 20260905000003 introduces as "removed",
+    // because the live side still fitted on one line and the committed side
+    // did not. Both spellings parse now, and the leading `|` is stripped so
+    // the wrapped and single-line forms of one type compare equal.
+    const leaf = line.match(/^("?[A-Za-z_$][\w$]*"?)(\?)?:\s*(.*)$/)
     if (leaf) {
       let value = leaf[3]
       while (i + 1 < lines.length && /^\s*\|/.test(lines[i + 1])) {
@@ -136,7 +155,7 @@ export function parseGeneratedTypes(text) {
       const path = [...stack.map((s) => s.key), unquote(leaf[1])].join('.')
       leaves.set(path, {
         optional: Boolean(leaf[2]),
-        type: value.replace(/,$/, '').replace(/\s+/g, ' ').trim(),
+        type: value.replace(/\s+/g, ' ').trim().replace(/^\|\s*/, '').replace(/,$/, '').trim(),
       })
     }
   }
@@ -558,14 +577,6 @@ export function ddlExplainsDelta(delta, ddl, setofMap = new Map()) {
 /* 5. The verdict                                                             */
 /* -------------------------------------------------------------------------- */
 
-/**
- * @param {object} input
- * @param {string} input.committedText  committed types, appendix already stripped
- * @param {string} input.liveText       types regenerated from the target database
- * @param {Array<{version:string,file:string,sql:string}>} input.pending
- *        migrations present in the repository and NOT applied to the target
- * @returns {{status:'in-sync'|'pending-migrations'|'drift', deltas:Array, explained:Array, unexplained:Array, migrations:Array<string>}}
- */
 /*
  * NOT SCHEMA, AND THEREFORE NOT DRIFT.
  *
@@ -584,6 +595,16 @@ export function ddlExplainsDelta(delta, ddl, setofMap = new Map()) {
  */
 const IGNORED_PATHS = new Set(['__InternalSupabase.PostgrestVersion'])
 
+/**
+ * @param {object} input
+ * @param {string} input.committedText  committed types, appendix already stripped
+ * @param {string} input.liveText       types regenerated from the target database
+ * @param {Array<{version:string,file:string,sql:string}>} input.pending
+ *        migrations present in the repository and NOT applied to the target
+ * @param {string[]} [input.corpus]  the SQL of EVERY migration in the repository,
+ *        pending or not, for the SETOF map (see below); the guard passes all of them
+ * @returns {{status:'in-sync'|'pending-migrations'|'drift', deltas:Array, explained:Array, unexplained:Array, migrations:Array<string>}}
+ */
 export function analyse({ committedText, liveText, pending, corpus = [] }) {
   const committed = parseGeneratedTypes(committedText)
   const live = parseGeneratedTypes(liveText)

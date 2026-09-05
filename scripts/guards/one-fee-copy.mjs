@@ -91,7 +91,11 @@ const RULES = [
     id: 'processing-fee-named',
     // A processing fee named as a thing that is charged. Excludes the denial
     // forms ("no ... processing fee", "not a processing fee") which are correct.
-    re: /(?<![_a-z0-9])(payment[ -]processing fee|processing fee)(?![_a-z0-9])/i,
+    // Singular OR plural. The first version matched only "processing fee", and
+    // the organiser's revenue summary said "Processing fees" (found on the C1
+    // drive, 5 September 2026): the trailing s satisfied the word-boundary
+    // lookahead and the second fee sat on a product surface for three weeks.
+    re: /(?<![_a-z0-9])(payment[ -]processing fees?|processing fees?)(?![_a-z0-9])/i,
     why: 'names a payment processing fee, which the platform does not charge',
     // Lines that DENY the fee are correct copy and must pass.
     unless: /\b(no|not|never|nor|without|there is no|deleted|removed|used to|no longer|instead of|rather than)\b[^.]{0,80}?processing fee|processing fee[^.]{0,60}?\b(deleted|removed|no longer|does not exist|never charged)\b/i,
