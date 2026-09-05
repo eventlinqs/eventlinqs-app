@@ -50,6 +50,13 @@ anything you must decide. Newest last. Plain language.
   `node scripts/ops/verify-production-schema.mjs`. The schema-ahead-of-code guard names
   ticket_scans.client_scan_id ABSENT on production and refuses the production build until it
   is applied, by design.
+- **Production migration for B2**, when B2 merges: 20260905000002 (ticket_scans joins the
+  supabase_realtime publication, the door list leads with ticket_id, scan_ticket takes an
+  optional device id, door_realtime_enabled() for the build guard) is on TEST only. Same
+  procedure, in version order after 20260905000001. Until it is applied the door-live-published
+  guard FAILS a production build by name ("ticket_scans is NOT in the supabase_realtime
+  publication"), because a door on a project without the publication would subscribe, say it
+  is live, and never hear another door; refusing the build is the honest state.
 - **A Stripe test secret for the local server (your `stripe login`, or nothing).** Since
   2 September no local drive can pay: Vercel will not hand a sensitive value back, and both keys
   the Stripe CLI stores expired in July. A4's two buyers therefore paid on the Vercel preview of
@@ -203,3 +210,47 @@ viewport (one class on the shared layout), and the attendee table's scroll regio
 reachable by keyboard.
 
 **Decide:** the production migration under Needs you. Nothing else.
+
+## C1 (5 September 2026): the red main is repaired, and the venue source is a real database type
+
+**What changed for a real user:** nothing an attendee sees. An organiser who opens an event's
+edit page now sees one fee line on the revenue summary instead of two: "Platform fee", with
+any old processing amount from before 15 August folded into it, so the net is unchanged. That
+second line had been there since the one-fee decision and the guard that polices fee copy had
+missed it because it only knew the singular.
+
+**What changed under the floor:** the types file CI compares with production is once again
+exactly what the generator writes, and the three hand edits that turned main red are gone. The
+"who wrote these coordinates" column on events is now a proper Postgres type that only accepts
+places, geocoding or manual, so nobody has to hand-write that list into a generated file
+again. The guard that compares types with the live schema had a blind spot (it skipped every
+value the generator wraps onto more than one line, which included ten of our enums); it is
+fixed and tested. The guard can now be run on this machine in both directions, using the login
+the Supabase CLI already holds, so a push never goes out with that check unproven.
+
+**Evidence:** C:\dev\EVIDENCE\C1\ (the before and after readings of TEST, the guard passing and
+failing against production, the five drills, the three drives at 1440, 768 and 390 each 13 of
+13 with 0 errors, the guard proofs for the fee line, the builds and the suite). Screenshots
+committed under docs/verification/journeys-2026-08-28/c1-geocode-source-roundtrip/.
+
+**Decide, or do:**
+- **Apply 20260905000003 to production.** RESERVED for you under Law 10. It converts
+  events.venue_geocode_source to the enum after checking that no row holds another value
+  (production has 4 rows, all null). Until you do, the types-drift guard on main reports
+  "MIGRATIONS PENDING" by name and passes; after you do, it reports in sync. One command after
+  linking to gndnldyfudbytbboxesk and reading the ref back: `supabase db push --linked`, then
+  `node scripts/ops/verify-production-schema.mjs`.
+- **Disk, 5.07 GB free.** The one large thing I could not touch: Logitech Options+ keeps
+  nine full update payloads in C:\ProgramData\LogiOptionsPlus\depots (7.1 GB, August 2025 to
+  April 2026). Deleting all but the newest two needs an admin PowerShell:
+  `Get-ChildItem C:\ProgramData\LogiOptionsPlus\depots -Directory | Sort-Object LastWriteTime | Select-Object -SkipLast 2 | Remove-Item -Recurse -Force`.
+  Downloads (15.4 GB), Desktop (8.7 GB), Music (18.7 GB) and OneDrive (41.8 GB) are yours and I
+  did not touch them. A Next build needs 5 GB free to start, and every build now lands within
+  a few hundred megabytes of that line.
+- **B2 was never closed on paper.** The session that built it wrote no ledger rows and no entry
+  here, and its log ends with the third drive running. The code merged in PR #124. I have
+  recorded the gap in the ledger rather than write verdicts for work I did not see.
+
+**Closed 6 September 2026:** PR #125 merged as 4587489f, every run on main is green (CI,
+post-deploy smoke, env locks), and the live site serves that commit. Nothing further for you on
+C1 except the migration above, which stays yours.

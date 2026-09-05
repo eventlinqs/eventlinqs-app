@@ -1033,3 +1033,259 @@ Disk after reclaim: 6.79 GB free. Above the 6 GB continue line.
   (typecheck, lint, 283 files / 3307 tests). B1 is CLOSED on the code side; the two PARTIALs
   (mobile Lighthouse on the shell; the founder's production migration) are the same two every
   Phase A item carried and are not finishable inside the item.
+
+## 2026-09-05 (session continues) B2 started: 3.13 multi-scanner realtime sync
+
+- Tree clean at ad9d3c30 (nothing to commit before starting). Disk at start: 12 GB free.
+- Governing laws: Law 0, Definition of Done, Law 1, Law 5, Law 7 (Supabase's own Realtime
+  page fetched and cited before any claim about publications, filters or RLS), Law 8, Law 10,
+  Design system, Motion, Copy and banned content, Verification and gates (migrations to TEST
+  only; the schema manifest), plus the brief's Completion Law and the DRIVEN ruling.
+- What the code says, verified by reading it: no channel, no postgres_changes and no realtime
+  word anywhere in src; the browser client is @supabase/ssr's createBrowserClient over
+  supabase-js 2.101, which carries the Realtime client; the supabase_realtime publication on
+  TEST carries no tables (probed on 5 September); ticket_scans is appended by exactly two
+  database functions (scan_ticket online, sync_offline_scans on reconnect), so every admission
+  on every path is one INSERT on one table, which is the event a second door needs; the
+  ticket_scans SELECT policy admits owners and members through el_owned_organisation_ids and
+  el_member_organisation_ids; the report-only CSP's connect-src names https://*.supabase.co
+  and not wss://.
+
+## 2026-09-05 (B2) schema on TEST, the live feed, the guard proven, the realtime proof
+
+- Plan written first (Law 0): C:\dev\B2-PLAN.md.
+- SCHEMA: 20260905000002_door_realtime.sql. Probed first through `supabase db query --linked`
+  (the supabase_realtime publication existed with no tables; ticket_scans replica identity
+  default, enough for INSERT events; authenticated holds SELECT; C:\dev\EVIDENCE\B2-realtime-probe.sql).
+  Linked ref read back, `supabase db push --linked --include-all --yes` applied it; read back:
+  public.ticket_scans is published (C:\dev\EVIDENCE\B2-migration-push.txt, B2-migration-readback.txt).
+  The migration adds ticket_scans to the publication inside a DO block (a re-run is a no-op),
+  re-creates door_validation_set leading with ticket_id (a live row carries ticket_id and the
+  door list was keyed by code), gives scan_ticket a fourth argument p_device_id DEFAULT NULL
+  recorded on all three audit inserts (the proven body verbatim; the three-argument call still
+  resolves), and adds door_realtime_enabled(), the one read-only fact the build guard asks for.
+  Supabase's own Postgres Changes page is cited in the migration header for the publication SQL
+  and the RLS rule ("Postgres Changes authorizes every event against each subscriber"). Types
+  regenerated and spliced.
+- CODE: src/lib/scanner/door-live.ts (the channel, the strict row reader, the local move a live
+  row makes, the feed words, the count line), the store at version 2 with a byTicketId index and
+  getTicketById plus countCheckedIn, scan_ticket called with the device id, the scanner's live
+  line on the strip ("Live with the other doors", "Checked in N of M", the last three scans from
+  OTHER doors), and wss://*.supabase.co in the report-only connect-src. supabase-js 2.101 applies
+  the session token to the realtime socket itself (realtime.setAuth in its own dist, read).
+- GUARD: scripts/guards/door-live-published.mjs, registered and in the runner header: asks the
+  build's own database door_realtime_enabled(), SKIPs by name on CI's placeholder URL or with no
+  service key, FAILs when the table is not published. Proven on TEST through the CLI: PASS, then
+  `alter publication supabase_realtime drop table public.ticket_scans` and FAIL naming the
+  migration, then added back and PASS (C:\dev\EVIDENCE\B2\guard-door-live-published-proof.txt).
+  On Windows a hard process.exit(1) with the fetch socket open reported a crash code; the guard
+  now sets process.exitCode. offline-door-integrity holds every later re-definition of the door
+  list to the no-secret rule (the B2 file added to its list, pinned by its test).
+- REALTIME PROOF on TEST (scripts/verify/door-realtime-verify.mjs, real sessions on a real
+  socket): the probe answers true to staff and is refused to anon; a staff session subscribes
+  to the event's channel with the scanner's own filter; another staff session admits through
+  scan_ticket with its device id and the row arrives over the socket carrying result, event and
+  device id; the door list returns ticket_id for it; a scan on another event does not arrive;
+  a stranger subscribed to the same channel receives nothing while staff receives the next row;
+  the three-argument scan_ticket still resolves; the audit rows carry the device id where given.
+  FOUND on the first run: the very first row after SUBSCRIBED did not arrive and one ten seconds
+  later did; two later runs delivered the first row in 759 ms and 257 ms (the second with no
+  settle), so it is the realtime tenant's cold start, not every subscription's. The scanner
+  therefore re-downloads the door list once the channel first goes live in a session, so
+  nothing admitted in that window is missed; 13 of 13 on the later runs
+  (C:\dev\EVIDENCE\B2\realtime-verify-test.txt records the first run).
+- TESTS: door-live (13), door-realtime-migration (9), guards/door-live-published (5), and one
+  more in guards/offline-door-integrity; every earlier scanner fixture carries ticketId. Full
+  suite 286 files / 3335 tests with only the known preflight five; tsc 0, eslint 0. Canary 283/3307
+  to 286/3335.
+- build-1 of the tree is running; then the push and the two-door drive.
+
+## 2026-09-05 (B2) build-1 blocked by two guards, build-2 green, the first drive found the socket unauthenticated
+
+- build-1: 2 of 63 guards FAILED, both naming the new guard file. steps-declare-work: a PASS line
+  must print how much it scanned; the guard now declares its work through the shared
+  work-report (1 project URL read, 1 publication probe sent, 1 published table found).
+  no-unguarded-production-write: an admin credential beside a write verb (the probe was a POST
+  to the RPC) needs the production-write preflight, which a guard that runs inside every
+  production build cannot take; the function is STABLE, so PostgREST serves it on GET, and the
+  probe is now a GET with no body. Both guards pass standalone; build-2: all 63 guards PASS,
+  compiled. Pushed as b172a0f9 (typecheck, lint, 286 files / 3335 tests).
+- THE FIRST B2 DRIVE on build-2 (desktop-1440, 22 of 28, 0 server errors; the tablet and mobile
+  legs were stopped because they could only repeat it): both doors said "Live with the other
+  doors" and neither received a row, while the Node proof on TEST had received every row.
+  The cause, read in supabase-js's own dist: the session token is handed to the realtime socket
+  only on SIGNED_IN and TOKEN_REFRESHED; a scanner page that loads with a cookie session sees
+  INITIAL_SESSION, so the channel joined with the anon key and the ticket_scans row policy
+  denied every row. The Node proof signs in with a password, which fires SIGNED_IN, which is
+  why it never saw the gap. Fixed: subscribeToDoor reads the session and applies its access
+  token to the socket BEFORE joining, and a phone with no session is told so; the scanner
+  awaits it with a cancellation flag. Pinned by two tests (the order setAuth then channel; the
+  no-session case). Canary 286 / 3336. First-drive evidence archived under
+  C:\dev\EVIDENCE\B2\first-drive\. build-3 is running.
+
+## 2026-09-05 (B2) build-3 and build-4 green, the second drive proved the feed, the third is running
+
+- build-3 (the token-first fix): 63 of 63, compiled. The push was BLOCKED by the hook on one
+  test: no-server-side-getSession, because door-live.ts reads the session (for the socket
+  token, not for authorisation) and was not marked a client module. It only ever runs in the
+  browser, so it now carries 'use client' and `client-only`, the same two markers as the door
+  copy; the rule's test and the live tests pass. Pushed as ccc4e542 (286 files / 3336 tests).
+  build-4 of the pushed tree: 63 of 63, compiled.
+- THE SECOND B2 DRIVE on build-4 (C:\dev\EVIDENCE\B2\second-drive\): desktop-1440 27 of 28,
+  tablet-768 27 of 28, mobile-390 28 of 28, 0 server errors at each. Every live verdict passed
+  at every viewport: both doors "Live with the other doors" and "Checked in 0 of 3"; Door A
+  admits ticket 1 online and within seconds Door B's strip reads "Door 9D2E admitted Ayesha
+  Rahman just now" and "Checked in 1 of 3" having synced nothing; Door B cut off refuses
+  ticket 1 as already used from what it learned live; Door B back online rejoins and admits
+  ticket 2; Door A's strip names it and reads "Checked in 2 of 3"; Door A refuses ticket 2 as
+  already used online; exactly one admitted row per ticket on TEST, two different door ids;
+  the attendees page counts 2 checked in; axe on the live strip clean at every viewport.
+  The one desktop and tablet failure was the journey's own: "never its own echo" was tested
+  by the holder's name, and Door A's strip rightly carried "Door A68C refused Ayesha Rahman as
+  already used" (Door B's synced offline refusal). The verdict now reads the feed the way the
+  door writes it: every line from one other door, none Door A's own admission. The mobile leg,
+  which loaded the corrected file, passed 28 of 28. Pushed as 33068221 (harness only; the app
+  tree is build-4's). The third drive, of the committed journey on build-4, is running.
+
+## 2026-09-05 (C1) origin/main red at dc71374e: the types-drift repair, the enum behind venue_geocode_source, and two defects the repair exposed
+
+- START. Read C:\dev\CLOSE-OUT.md and BUILD-BRIEF.md. Branch fix/c1-types-drift, cut from
+  main at dc71374e by the previous session, carried an uncommitted regeneration of
+  src/types/database.ts and a drafted migration; nothing applied, nothing proven, nothing
+  committed. Disk 5.1 GB free at the start (C:\dev\EVIDENCE\C1\disk-start-c1.txt).
+- DISK, before any build. A `du` walk of the profile timed out; free fell to 4.15 GB while it
+  ran. Reclaimed what is mine: the npm cache and its _npx tree, temp files older than a day,
+  two superseded Supabase CLI versions and scoop's download cache (128 MB), and a `git gc`
+  (6 packs to 3). Free 4.6 to 5.07 GB, above the 5 GB build floor by a hair. What I could not
+  touch, for Lawal under REVIEW-QUEUE: C:\ProgramData\LogiOptionsPlus\depots holds nine full
+  Logitech update payloads, 7.1 GB, from August 2025 to April 2026 (deleting all but the newest
+  two was refused, Access denied, it needs an admin shell); Downloads 15.4 GB, Desktop 8.7 GB,
+  Music 18.7 GB, OneDrive 41.8 GB are his. One node_modules on the machine, no .next left
+  behind (deleted after the drive and again after the final build).
+- C1.1. The Supabase CLI is 2.116.0 (scoop), the same as npm's latest, which is what CI's
+  `npx --yes supabase` resolves to, and the same version the guard printed on the failing run.
+- C1.2. Regenerated from production myself (a READ) with 2.116.0: 5386 lines, and the diff
+  against the committed section at HEAD is exactly the three faults the close-out names, plus
+  one more hand edit of the same kind (ticket_tiers.Insert and Update carried access_mode out
+  of the generator's alphabetical order): C:\dev\EVIDENCE\C1\diff-head-vs-prod-c1.txt. The
+  previous session's working copy was byte for byte the production output, verified.
+- C1.3. Read the migration, then read TEST back before writing: column text, CHECK
+  events_venue_geocode_source_check, 6 rows 'places' and 201 null, no other value, 113
+  applied, events_within_distance RETURNS SETOF events (test-column-state-before-c1.txt).
+  Linked ref read back as vkapkibzokmfaxqogypq, `supabase db push --linked` applied
+  20260905000003 (migration-push-test.txt). Read back: the column is now the enum
+  venue_geocode_source, the CHECK is gone, the enum lists places, geocoding, manual in that
+  order, 6 places and 201 null survived the cast, 114 applied
+  (test-column-state-after-c1.txt). `select 'bogus'::public.venue_geocode_source` is refused
+  with 22P02 and 'manual' is accepted (test-enum-reject.txt, test-enum-accept.txt). Production
+  is untouched: 113 applied, newest 20260905000002, read through the Management API.
+- THE COMMITTED SHAPE. Regenerated from TEST after the migration: the diff against
+  production's output is the enum and nothing else (diff-prod-vs-test-after-enum.txt: the
+  Enums entry, the Constants entry, and the column on Row, Insert, Update and the
+  events_within_distance return). That post-migration output is what is committed above the
+  marker, because the guard's own design (scripts/ci/types-drift-analyse.mjs, header) makes
+  MIGRATIONS PENDING the green state for a tree that ships a migration, and committing the
+  production shape instead would go red the moment Lawal applies the migration. The appendix
+  below the marker gains VenueGeocodeSource = Database['public']['Enums']['venue_geocode_source'];
+  src/lib/geo/venue-coordinates.ts re-exports it and the event form's two inline unions use it.
+- FOUND: THE GUARD'S PARSER DROPPED WRAPPED LEAVES. Driving the real `analyse` offline over the
+  two generated files reported the enum column as REMOVED on Row, Insert, Update and the
+  function return, 4 of 5 unexplained (analyse-offline-enum-pending.txt). Cause: the generator
+  writes a long value as a bare `key:` with the union on the following `|` lines, and the leaf
+  match required a character after the colon, so those leaves were absent from BOTH sides.
+  That is why it had never shown: production's ten wrapped enums (event_status, order_status,
+  payment_status, squad_member_status and six more) were simply never compared, and a value
+  added to any of them in production would not have been reported. Fixed in the parser, with
+  the leading `|` stripped so the wrapped and single-line spellings compare equal; a first
+  attempt stripped before trimming and left the pipe, caught by the same offline run. After the
+  fix: 5 of 5 explained, MIGRATIONS PENDING, naming the file
+  (analyse-offline-enum-pending-after-parser-fix.txt). The stale dc71374e section against
+  production, no pending: drift, 48 of 48 unexplained (analyse-offline-stale-dc71374e.txt).
+- C1.4. tsc was red on one call site with the production shape (the edit page hands the row
+  to the form); with the enum shape and the derived alias it is clean, nothing widened. A second
+  red was the analyser's own JSDoc: it sat on the IGNORED_PATHS constant rather than on
+  `analyse`, so TypeScript inferred `corpus = []` as never[]; the block now sits on the function
+  and declares corpus (tsc-after-c1.txt, tsc-final.txt, both exit 0).
+- C1.5, BOTH WAYS WITH THE REAL GUARD AGAINST PRODUCTION. Nothing on this machine exports
+  SUPABASE_ACCESS_TOKEN, which the guard needs to list applied migrations, so every local run
+  that found any difference had failed with "token is not set" and the guard was only ever
+  judged by CI, which the close-out forbids. `supabase login` stores the token in Windows
+  Credential Manager under "Supabase CLI:supabase"; scripts/ops/with-supabase-token.ps1 reads
+  it, proves it against /v1/projects (HTTP 200), sets it for the child only and never prints it
+  (Law 10). PASS: exit 0, MIGRATIONS PENDING, 5 explained by 20260905000003
+  (guard-pass-pending-production.txt). FAIL: the dc71374e types swapped in, exit 1, 45 of 48
+  unexplained (the three hand-union rows are now explained as type changes by the pending
+  migration, and the file still fails on the other 45), restored and the sha1 compared
+  (guard-fail-stale-dc71374e.txt). The drill gains enum-pending (exit 0) and enum-invented
+  (exit 1): 5 of 5 scenarios match (drill-*.txt). Found on the way: PowerShell 5.1 under
+  `$ErrorActionPreference = 'Stop'` turns a Node deprecation warning on stderr into a
+  terminating error, so the helper runs the child under Continue and judges its exit code.
+- TESTS. tests/unit/ci/types-drift-wrapped-leaves (6): the wrapped spelling, the ? marker on a
+  wrapped Insert leaf, a wrapped enum in public.Enums, equality with the single-line form, and
+  two negatives. tests/unit/ci/types-drift-enum-conversion (8): reads 20260905000003 from disk,
+  pins create-type from inside the DO block and set-type, and drives the real classifier over
+  the real pre- and post-migration shapes: pending with the migration, in sync once applied,
+  drift without it, drift with only the ADD COLUMN migration, drift for the hand-written union.
+  46 of 46 across the four drift files.
+- REGRESSION 1. 63 of 63 guards with the env loaded (guards-run-2.txt; two of them need the
+  Supabase URL and key and fail without it, as designed), eslint on the tree 0, canary 288
+  files / 3350 tests, 0 failed (canary-run-1.txt), build-1 compiled with 63 guards
+  (build-1.txt). Disk 5.08 GB at the build's start.
+- DRIVEN, 13 of 13 at desktop-1440, tablet-768 and mobile-390, 0 server errors, 0 blockers at
+  each, on build-1 against TEST (scripts/journeys/c1-geocode-source-roundtrip.mjs,
+  C:\dev\EVIDENCE\C1\drive-all-run.txt, the three drive-*-stubbed.txt files and the three
+  screenshot folders; committed under docs/verification/journeys-2026-08-28/
+  c1-geocode-source-roundtrip/). The organiser signs up through the real wizard, picks Forum
+  Melbourne in the finder (the Maps JS stubbed from Google's real answer, because the browser
+  key is referer restricted to www.eventlinqs.com.au) and publishes; the row carries places (the
+  enum) and a geocoded time; a service-role update to 'bogus' is refused by Postgres with 22P02
+  and the row still reads places; the edit page resolves, two Continues reach Location, and the
+  form carries Forum Melbourne, 154 Flinders Street and the map preview; Save Changes from the
+  Review step writes places and the same coordinates back unchanged; the public event page
+  still resolves with the venue.
+- FOUND ON THE DRIVE, FIXED HERE: the organiser's revenue summary on the edit page carried
+  "Processing fees" as its own line, under the one-fee ruling of 15 August. The one-fee-copy
+  guard matched only the singular, so the plural had sat on a product surface for three weeks
+  (baseline: the guard PASSED with it present, one-fee-copy-baseline-plural-blind.txt). The
+  guard now matches the plural: RED on the unchanged copy, naming revenue-summary.tsx:32
+  (one-fee-copy-red-plural.txt); the panel shows ONE fee line, folding a pre-15-August
+  processing_fee_cents into it so the older orders' arithmetic is unchanged (the export keeps
+  its reasoned exemption for the same rows); two prose comments that named the old line are
+  reworded to the column name; GREEN after (one-fee-copy-green-after-fix.txt). A drill is
+  registered (the plural planted, FAILS AS EXPECTED) and the whole drill set runs 72 of 72 with
+  the env loaded (guard-failure-drills-with-env.txt, DRILLS_EXIT=0).
+  tests/component/revenue-summary (3) pins one fee line, the fold, the refunds line.
+- REGRESSION 2, the final tree: tsc 0, eslint 0 on every changed file, canary 289 files /
+  3353 tests, 0 failed (canary-run-2.txt), floor raised to 289/3353 in the same commit; the
+  final build is build-2.txt.
+- NOT CLOSED BY THE PREVIOUS SESSION, recorded rather than hidden: B2's BUILD-LEDGER rows and
+  its REVIEW-QUEUE entry were never written, the third B2 drive's result was never logged (the
+  log ends with it running), and the ops/session-log push did not happen (the worktree at
+  C:\dev\session-log holds staged deletions of the three files; the C:\dev copies are the
+  authoritative ones and are what this session publishes).
+
+## 2026-09-06 (session resumed) C1 CLOSED: origin/main is green at 4587489f and production serves it
+
+- START. Read C:\dev\CLOSE-OUT.md and BUILD-BRIEF.md again. Branch fix/c1-types-drift at
+  f9377037, tree clean; PR #125 was squash-merged at 2026-09-05T10:31:10Z as 4587489f and the
+  tree of f9377037 is byte for byte the tree of origin/main (git diff --stat empty). Disk 9.49 GB
+  free, one node_modules, no .next. Supabase CLI 2.116.0, linked ref read back as
+  vkapkibzokmfaxqogypq.
+- C1.6 MET. On 4587489f: CI run 33960875659 success, post-deploy smoke 33961096614 success,
+  env locks 33961258234 success. www.eventlinqs.com.au answers 200 with
+  sentry-release=4587489f3dd7f48cfc154071964e001dea3e0298 in the served HTML, so the repaired
+  types and the one-fee panel are what production runs (C:\dev\EVIDENCE\C1\main-green-4587489f.txt).
+- The types-drift guard re-run on the merged tree, against production, through the CLI's own
+  token: exit 0, MIGRATIONS PENDING, the 5 differences all explained by 20260905000003, 113
+  applied on production (guard-pass-on-merged-main-4587489f.txt). The enum migration is still
+  Lawal's to apply; the guard turns IN SYNC by itself once he does.
+- The ledger rows C1.6 and completion law 7 move from PENDING to MET. The three files are
+  published to ops/session-log below, which also carries the B2 and C1 entries the previous
+  sessions never pushed.
+- FOUND, for C2: the suite with .env.local present fails ONE file, not two:
+  tests/unit/security/production-write-preflight-approval.test.ts, 5 of 8, because the drill
+  harness it spawns sees the TEST ref from .env.local instead of the production ref in the
+  temp --env-file it is handed (C:\dev\EVIDENCE\C2\vitest-with-env-local-present.txt). Every
+  other file passes with the env present (288 of 289 files, 3348 of 3353 tests). That is the
+  reason the brief's "park .env.local around every push" rule exists, and C2 fixes the cause
+  rather than scripting the parking.
