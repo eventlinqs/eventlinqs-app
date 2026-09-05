@@ -787,9 +787,20 @@ const ROOT = join(HERE, '..', '..')
  * (3): the organiser's revenue panel shows ONE fee line, folds a pre-15-August
  * processing_fee_cents into it, and never names a processing line (found on
  * the C1 drive; the plural had slipped past one-fee-copy). 289 files / 3353.
+ *
+ * 6 September 2026 (close-out C2, CI hygiene): 293 files / 3398, four files,
+ * 45 tests. tests/unit/guards/workflows-skip-drafts pins the line reader and
+ * the two halves of the draft rule on fixtures and on every real workflow;
+ * tests/unit/guards/pre-push-gate-wired pins the hook reader on each way the
+ * wiring dies quietly; tests/unit/ops/pre-push-gate pins which pushes are
+ * judged and derives CI's command list from ci.yml so a check with no local
+ * twin goes red; tests/unit/security/production-write-preflight-layers pins
+ * that a lower env source cannot re-point the target (the reason .env.local
+ * had to be parked around every push). This floor was measured WITH
+ * .env.local present: 0 failed.
  */
-const MIN_FILES = 289
-const MIN_TESTS = 3353
+const MIN_FILES = 293
+const MIN_TESTS = 3398
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

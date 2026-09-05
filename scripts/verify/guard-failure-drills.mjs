@@ -274,6 +274,45 @@ const DRILLS = [
     expect: 'describe a fee the platform does not charge',
   },
   /*
+   * workflows-skip-drafts and pre-push-gate-wired (close-out C2.3, 6 September
+   * 2026): the four quiet ways "CI runs once, after the local gate" dies. A job
+   * that loses its draft condition runs on every push again; a trigger that
+   * loses ready_for_review never runs at all; a hook that stops invoking the
+   * gate, or invokes a third of it, pushes unchecked code that looks gated.
+   */
+  {
+    name: 'a workflow job loses its draft condition',
+    guard: `${GUARDS}/workflows-skip-drafts.mjs`,
+    file: '.github/workflows/ci.yml',
+    find: "    name: lint · typecheck · build\n    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}",
+    replace: '    name: lint · typecheck · build',
+    expect: 'would run on a draft pull request',
+  },
+  {
+    name: 'a pull_request trigger stops listing ready_for_review',
+    guard: `${GUARDS}/workflows-skip-drafts.mjs`,
+    file: '.github/workflows/ci.yml',
+    find: 'types: [opened, synchronize, reopened, ready_for_review]',
+    replace: 'types: [opened, synchronize, reopened]',
+    expect: 'never runs this workflow',
+  },
+  {
+    name: 'the pre-push hook stops invoking the gate',
+    guard: `${GUARDS}/pre-push-gate-wired.mjs`,
+    file: '.githooks/pre-push',
+    find: 'node scripts/ops/pre-push-gate.mjs\nstatus=$?',
+    replace: 'status=0',
+    expect: 'never invokes scripts/ops/pre-push-gate.mjs',
+  },
+  {
+    name: 'the pre-push hook runs a subset of the gate',
+    guard: `${GUARDS}/pre-push-gate-wired.mjs`,
+    file: '.githooks/pre-push',
+    find: 'node scripts/ops/pre-push-gate.mjs\nstatus=$?',
+    replace: 'node scripts/ops/pre-push-gate.mjs --only typecheck\nstatus=$?',
+    expect: 'step selection',
+  },
+  /*
    * no-banned-word-anywhere, two drills, one per blind spot the copy gate had.
    */
   {

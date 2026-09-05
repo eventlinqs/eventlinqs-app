@@ -132,13 +132,15 @@ const REPO_ROOT = resolve(HERE, '..', '..')
  * this module is deliberately stricter than the build guard. The remedy is the
  * one we want anyway: take the approval out of the file and give it in the shell.
  */
-const RELEVANT = [
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_URL_PREVIEW',
-  'SUPABASE_URL',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY_PREVIEW',
-]
+/*
+ * THE PAIRS, in the order the rule resolves them: inside a pair the _PREVIEW
+ * name wins over the base name, which is how src/lib/supabase/env.ts and the
+ * isolation rule both read them. collectEnv() takes each pair WHOLE from one
+ * source (see its header for the incident), so the pairs are the unit here,
+ * not the individual names.
+ */
+const URL_PAIR = ['NEXT_PUBLIC_SUPABASE_URL_PREVIEW', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_URL']
+const KEY_PAIR = ['SUPABASE_SERVICE_ROLE_KEY_PREVIEW', 'SUPABASE_SERVICE_ROLE_KEY']
 
 const nonEmpty = v => typeof v === 'string' && v.trim().length > 0
 
@@ -242,6 +244,28 @@ function parkedApprovalLines() {
  *
  * Precedence, highest first, matching how Node's --env-file and Next's loader
  * both behave: a variable already in the real environment wins over any file.
+ *
+ * RESOLVED BY SOURCE, NOT BY VARIABLE, since 6 September 2026. The first
+ * version filled each name from the highest source that had it, one name at a
+ * time, and that let a LOWER source re-point the target. A shell, or a
+ * --env-file, naming the production URL, plus the repository's own .env.local
+ * carrying NEXT_PUBLIC_SUPABASE_URL_PREVIEW for TEST, produced a bag in which
+ * the PREVIEW name came from the file, the rule preferred it, and the verdict
+ * read "TEST, proceeding" for a process whose own process.env said production.
+ * A script behind that preflight resolves from process.env alone, so it would
+ * have written to production behind a green preflight, which is the one thing
+ * this module exists to make impossible.
+ *
+ * It surfaced as tests/unit/security/production-write-preflight-approval.test.ts
+ * failing on any machine whose .env.local carries the PREVIEW pair, which is
+ * every machine that has built a preview locally, and the standing workaround
+ * was to park .env.local around every push.
+ *
+ * Now each PAIR (the URL names, the key names) is taken whole from the highest
+ * source that defines ANY name in it, and lower sources cannot contribute to
+ * that pair at all. PREVIEW-over-base still applies INSIDE a source, which is
+ * what Next does with one .env.local, so a single file that resolved TEST
+ * before resolves TEST now. Stricter, never looser.
  */
 function collectEnv(envFileHint) {
   const candidates = []
@@ -252,25 +276,23 @@ function collectEnv(envFileHint) {
     if (!candidates.includes(c)) candidates.push(c)
   }
 
-  const bag = {}
-  const origin = {}
-
-  for (const name of RELEVANT) {
-    if (nonEmpty(process.env[name])) {
-      bag[name] = process.env[name]
-      origin[name] = 'the process environment'
-    }
-  }
-
+  const sources = [{ label: 'the process environment', values: process.env }]
   for (const file of candidates) {
     const parsed = parseEnvFile(file)
     if (!parsed) continue
-    const shown = relative(REPO_ROOT, file).split('\\').join('/') || file
-    for (const name of RELEVANT) {
-      if (bag[name] !== undefined) continue
-      if (!nonEmpty(parsed[name])) continue
-      bag[name] = parsed[name]
-      origin[name] = shown
+    sources.push({ label: relative(REPO_ROOT, file).split('\\').join('/') || file, values: parsed })
+  }
+
+  const bag = {}
+  const origin = {}
+
+  for (const pair of [URL_PAIR, KEY_PAIR]) {
+    const source = sources.find(s => pair.some(name => nonEmpty(s.values[name])))
+    if (!source) continue
+    for (const name of pair) {
+      if (!nonEmpty(source.values[name])) continue
+      bag[name] = source.values[name]
+      origin[name] = source.label
     }
   }
 
@@ -282,7 +304,7 @@ function collectEnv(envFileHint) {
   }
 
   // The approval, and ONLY when it did not come out of a --env-file. See the
-  // RELEVANT note above for why keeping it off the file-reader list was never
+  // note above the pairs for why keeping it off the file-reader list was never
   // enough on its own.
   if (approvalGiven()) {
     bag[APPROVAL] = process.env[APPROVAL]
