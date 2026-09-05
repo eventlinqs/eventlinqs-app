@@ -797,10 +797,16 @@ const ROOT = join(HERE, '..', '..')
  * twin goes red; tests/unit/security/production-write-preflight-layers pins
  * that a lower env source cannot re-point the target (the reason .env.local
  * had to be parked around every push). This floor was measured WITH
- * .env.local present: 0 failed.
+ * .env.local present: 0 failed. Plus five in pre-push-gate for
+ * judgeLighthouseRun, the narrow tolerance for the Windows profile-cleanup
+ * race that failed every run of the first push: 293 files / 3403. Plus
+ * tests/unit/ci/seo-audits-indexability (4): a loopback host is asserted as
+ * production (crawlable, minus the auth routes the app noindexes), a preview
+ * still fails when indexable, an unknown host is still only noted, driven as
+ * a child over synthetic reports: 294 files / 3407.
  */
-const MIN_FILES = 293
-const MIN_TESTS = 3398
+const MIN_FILES = 294
+const MIN_TESTS = 3407
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

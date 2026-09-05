@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { STEPS, classifyPush, parseEnvFile } from '../../../scripts/ops/pre-push-gate.mjs'
+import { STEPS, classifyPush, judgeLighthouseRun, parseEnvFile } from '../../../scripts/ops/pre-push-gate.mjs'
 
 /**
  * THE GATE RUNS WHAT CI RUNS, AND SKIPS ONLY WHAT SENDS NOTHING.
@@ -48,6 +48,45 @@ describe('classifyPush', () => {
     const r = classifyPush(mixed, (sha: string) => sha === SHA_B)
     expect(r.verdict).toBe('run')
     expect(r.reason).toContain('refs/heads/code')
+  })
+})
+
+describe('judgeLighthouseRun', () => {
+  /**
+   * The Windows profile-cleanup race: Lighthouse finishes the audit, writes
+   * the report, then chrome-launcher's rmSync throws EPERM and the process
+   * exits 1. The first push through the gate (5 September 2026) lost every run
+   * to it with a complete report on disk each time. The tolerance is narrow:
+   * a finished audit on Windows, and nothing else.
+   */
+  const report = { lighthouseVersion: '12.1.0', categories: { performance: { score: 0.9 } } }
+  const finished = 'LH:status Generating results...\nRuntime error encountered: EPERM, Permission denied'
+
+  test('exit 0 with a report is a measurement', () => {
+    expect(judgeLighthouseRun({ code: 0, platform: 'linux', stderr: '', report }).ok).toBe(true)
+  })
+
+  test('the Windows cleanup race after a finished audit is a measurement', () => {
+    const v = judgeLighthouseRun({ code: 1, platform: 'win32', stderr: finished, report })
+    expect(v.ok).toBe(true)
+    expect(v.why).toContain('after the audit finished')
+  })
+
+  test('exit 1 without the audit finishing is not, even on Windows', () => {
+    expect(judgeLighthouseRun({ code: 1, platform: 'win32', stderr: 'Unable to connect to Chrome', report }).ok).toBe(false)
+  })
+
+  test('the same race on another platform is not tolerated', () => {
+    expect(judgeLighthouseRun({ code: 1, platform: 'linux', stderr: finished, report }).ok).toBe(false)
+  })
+
+  test('no report, a report without a version, or a runtime error all fail regardless of exit', () => {
+    expect(judgeLighthouseRun({ code: 0, platform: 'win32', stderr: finished, report: null }).ok).toBe(false)
+    expect(judgeLighthouseRun({ code: 0, platform: 'win32', stderr: finished, report: { audits: {} } }).ok).toBe(false)
+    const errored = { ...report, runtimeError: { code: 'NO_FCP', message: 'nothing painted' } }
+    const v = judgeLighthouseRun({ code: 0, platform: 'win32', stderr: finished, report: errored })
+    expect(v.ok).toBe(false)
+    expect(v.why).toContain('NO_FCP')
   })
 })
 

@@ -34,14 +34,18 @@
  * THE LIGHTHOUSE STEP IS THE SAME GATE, NOT A LOOKALIKE. It starts the
  * production build with `next start`, resolves the PINNED url set through
  * scripts/ci/resolve-gate-urls.mjs, warms pages and the image optimiser with
- * scripts/ci/warm-preview.mjs, collects with the same @lhci/cli spec the
- * workflow runs, runs the same aggregation report and SEO assertion, and
- * asserts with the same lighthouserc.json. No threshold lives here. What
+ * scripts/ci/warm-preview.mjs, collects with the Lighthouse that the same
+ * @lhci/cli spec bundles and the same settings from lighthouserc.json, runs
+ * the same aggregation report and SEO assertion, and asserts with
+ * `lhci assert` on the same lighthouserc.json. No threshold lives here. What
  * differs is the host: a warmed local server instead of a Vercel preview, so
  * the number is the product rather than the runner (the founder ruling of
  * 25 August 2026 on the CI gate rests on that distinction). The step BLOCKS:
  * that is what the close-out asked for, and the standing 95+ law is what the
- * product should achieve.
+ * product should achieve. The collection is driven by the gate rather than by
+ * `lhci collect` for one reason, stated at judgeLighthouseRun: on Windows the
+ * launcher's profile cleanup races Chrome's exit and LHCI's runner counts a
+ * finished audit as a failed run.
  *
  * WHAT IT REFUSES TO MEASURE. A working tree with uncommitted changes to
  * tracked files is not the commit being pushed, and a measurement of one
@@ -212,6 +216,151 @@ function tailOf(file, lines = 40) {
 }
 
 /**
+ * One Lighthouse run, judged. Exported for the unit test.
+ *
+ * WHY THE GATE JUDGES A RUN ITSELF instead of leaving it to `lhci collect`.
+ * On Windows, chrome-launcher removes Chrome's scratch profile in the same
+ * breath as killing Chrome, and Chrome (or the antivirus reading the new
+ * profile) still holds a handle: `rmSync` throws EPERM, AFTER the audit has
+ * finished and the report has been written to disk. Lighthouse then exits 1.
+ * LHCI's runner carries a tolerance for the Windows kill race, but it requires
+ * the words "Chrome could not be killed" on stderr, and this variant kills
+ * Chrome cleanly and dies on the delete, so on 5 September 2026 every run of
+ * the first push through this gate "failed" three times with a complete
+ * report on disk each time. scripts/verify/lighthouse-median.mjs documents
+ * the identical race and judges by the report; so does this. A missing,
+ * unparseable or runtime-errored report is the failure. An exit code with a
+ * finished audit behind it is not.
+ */
+export function judgeLighthouseRun({ code, platform, stderr, report }) {
+  if (!report) return { ok: false, why: `no report was written (exit ${code})` }
+  if (typeof report.lighthouseVersion !== 'string') return { ok: false, why: 'the report carries no lighthouseVersion' }
+  if (report.runtimeError) {
+    return { ok: false, why: `runtime error ${report.runtimeError.code}: ${report.runtimeError.message}` }
+  }
+  if (code === 0) return { ok: true, why: 'exit 0' }
+  if (platform === 'win32' && (stderr ?? '').includes('Generating results...')) {
+    return {
+      ok: true,
+      why: `exit ${code} after the audit finished and the report was written (the Windows profile-cleanup race, tolerated the way LHCI and lighthouse-median do)`,
+    }
+  }
+  return { ok: false, why: `exit ${code} and the audit did not report finishing` }
+}
+
+/**
+ * The Lighthouse CLI that LHCI bundles, so the local measurement is taken by
+ * the SAME Lighthouse version CI uses (12.1.0 under @lhci/cli 0.14), not by the
+ * newer one this repository installs for its own scripts. Resolved by asking
+ * npx for the package tree, never by guessing a cache path.
+ */
+function bundledLighthouseCli(env) {
+  mkdirSync(TMP, { recursive: true })
+  const probe = join(TMP, 'lhci-lighthouse-path.cjs')
+  writeFileSync(
+    probe,
+    [
+      "const path = require('node:path')",
+      "const bins = (process.env.PATH || '').split(path.delimiter).filter((p) => /_npx/.test(p))",
+      'for (const bin of bins) {',
+      "  try { console.log(require.resolve('lighthouse/cli/index.js', { paths: [bin] })); process.exit(0) } catch (error) { void error }",
+      '}',
+      "console.error('no bundled lighthouse under an _npx bin dir on PATH: ' + bins.join(' | '))",
+      'process.exit(1)',
+      '',
+    ].join('\n'),
+  )
+  const r = spawnSync(NODE, [NPX_CLI, '--yes', '-p', LHCI_SPEC, '--', 'node', probe], { cwd: ROOT, env, encoding: 'utf8' })
+  rmSync(probe, { force: true })
+  const cli = (r.stdout ?? '').trim().split(/\r?\n/).pop() ?? ''
+  if (r.status !== 0 || !cli || !existsSync(cli)) {
+    console.error(`[gate] could not locate the Lighthouse CLI bundled with ${LHCI_SPEC}: ${(r.stderr ?? '').trim() || `exit ${r.status}`}`)
+    return null
+  }
+  return cli
+}
+
+/**
+ * What `lhci collect` does, run by the gate: the pinned settings from
+ * lighthouserc.json handed to Lighthouse through --cli-flags-path exactly as
+ * LHCI's runner hands them (headless appended, the runner-only keys removed),
+ * numberOfRuns per URL, three attempts per run, each report saved as
+ * .lighthouseci/lhr-<stamp>.json where `lhci assert`, the aggregation report
+ * and the SEO assertion all read it. No threshold lives here.
+ */
+function collectLikeLhci(urls, env) {
+  const rc = JSON.parse(readFileSync(join(ROOT, 'lighthouserc.json'), 'utf8'))
+  const collect = rc?.ci?.collect ?? {}
+  const runs = Number(collect.numberOfRuns ?? 1)
+  const settings = { ...(collect.settings ?? {}) }
+  settings.chromeFlags = `${settings.chromeFlags ?? ''} --headless=new`.trim()
+  for (const k of ['auditMode', 'gatherMode', 'output', 'outputPath', 'channel', 'listAllAudits', 'listAllCategories', 'printConfig']) {
+    delete settings[k]
+  }
+  const cli = bundledLighthouseCli(env)
+  if (!cli) return 1
+  let version = 'unknown'
+  try {
+    version = JSON.parse(readFileSync(join(dirname(cli), '..', 'package.json'), 'utf8')).version
+  } catch (error) {
+    console.warn(`[gate] could not read the bundled Lighthouse version: ${error.message}`)
+  }
+  console.log(`[gate] collecting with Lighthouse ${version}, the version ${LHCI_SPEC} bundles, ${runs} run(s) per URL, settings from lighthouserc.json`)
+
+  rmSync(LHCI_DIR, { recursive: true, force: true })
+  mkdirSync(LHCI_DIR, { recursive: true })
+  const flagsFile = join(LHCI_DIR, 'flags-gate.json')
+  writeFileSync(flagsFile, JSON.stringify(settings))
+  let stamp = Date.now()
+  try {
+    for (const url of urls) {
+      console.log(`Running Lighthouse ${runs} time(s) on ${url}`)
+      for (let i = 0; i < runs; i += 1) {
+        let done = false
+        const whys = []
+        for (let attempt = 1; attempt <= 3 && !done; attempt += 1) {
+          stamp = Math.max(stamp + 1, Date.now())
+          const file = join(LHCI_DIR, `lhr-${stamp}.json`)
+          const r = spawnSync(NODE, [cli, url, '--output', 'json', '--output-path', file, '--cli-flags-path', flagsFile], {
+            cwd: ROOT,
+            env,
+            encoding: 'utf8',
+            maxBuffer: 64 * 1024 * 1024,
+            windowsHide: true,
+          })
+          let report = null
+          if (existsSync(file)) {
+            try {
+              report = JSON.parse(readFileSync(file, 'utf8'))
+            } catch (error) {
+              whys.push(`unparseable report: ${error.message}`)
+            }
+          }
+          const verdict = judgeLighthouseRun({ code: r.status, platform: process.platform, stderr: r.stderr ?? '', report })
+          if (verdict.ok) {
+            done = true
+            const perf = report?.categories?.performance?.score
+            console.log(`Run #${i + 1}...done, performance ${perf == null ? 'n/a' : perf.toFixed(2)} (${verdict.why})`)
+            continue
+          }
+          whys.push(verdict.why)
+          rmSync(file, { force: true })
+          console.log(`Run #${i + 1} attempt ${attempt}...failed: ${verdict.why}`)
+          if (attempt === 3) console.error((r.stderr ?? '').split(/\r?\n/).filter(Boolean).slice(-12).join('\n'))
+        }
+        if (!done) {
+          console.error(`[gate] Lighthouse could not measure ${url}: ${whys.join('; ')}`)
+          return 1
+        }
+      }
+    }
+    return 0
+  } finally {
+    rmSync(flagsFile, { force: true })
+  }
+}
+
+/**
  * The Lighthouse mobile gate, on this tree's production build, served locally.
  * Every script here is the one the workflow runs; the only substitution is the
  * host.
@@ -273,12 +422,7 @@ async function runLighthouse(env) {
 
     if (exec(NODE, ['scripts/ci/warm-preview.mjs', GATE_URLS], env) !== 0) return 1
 
-    rmSync(LHCI_DIR, { recursive: true, force: true })
-    const collected = exec(
-      NODE,
-      [NPX_CLI, '--yes', LHCI_SPEC, 'collect', '--config=./lighthouserc.json', ...urls.map((u) => `--url=${u}`)],
-      env,
-    )
+    const collected = collectLikeLhci(urls, env)
     if (collected !== 0) return collected
     // A reporter, never a verdict: prints every run value and the aggregation.
     exec(NODE, ['scripts/ci/lighthouse-aggregation-report.mjs', '.lighthouseci'], env)
