@@ -1,0 +1,65 @@
+C1: the geocode source round trip through the edit page (STUBBED PLACES)
+========================================================================
+01. Mode
+      STUBBED PLACES
+02. Signed up and confirmed
+      priya.source.321953@example.com -> /dashboard
+03. PASS  the location step offers a venue finder
+04. PASS  typing a venue opens a list of suggestions (STUBBED PLACES)
+      1 option(s)
+05. PASS  the pick fills the venue and the address
+      Forum Melbourne | 154 Flinders Street
+06. PASS  the map preview card appears once the pick has coordinates
+07. Create: address filled from the pick, with the map preview
+      URL     /dashboard/events/create
+      heading "Create Event"
+      fields  Search | Find the venue | Venue Name | Address | City | State / Region | Country | Postal Code
+      buttons PNPriya | Collapse | in person | virtual | hybrid | Back | Continue
+08. PASS  the pick: the event published
+      /dashboard/events/47cf5546-ee5d-4e2a-bafb-c19b995a7e43/launch-kit?published=1 
+09. the pick: after publish
+      URL     /dashboard/events/47cf5546-ee5d-4e2a-bafb-c19b995a7e43/launch-kit?published=1
+      heading "Forum Round Trip 321953 is live."
+      fields  Search | Add an act
+      buttons PNPriya | Collapse | Copy link | Copy caption | Copy caption | Copy caption | Copy caption | Copy caption | Copy subject
+10. PASS  the row on TEST carries source places (the enum) and a geocoded time
+      places at 2026-09-05T09:42:52.217+00:00 (-37.8166268, 144.9695761)
+11. PASS  Postgres refuses a value outside places, geocoding and manual (22P02) and the row still reads places
+      22P02 invalid input value for enum venue_geocode_source: "bogus"
+12. PASS  the edit page resolves for the organiser
+      status 200
+13. Edit: the first step of the event
+      URL     /dashboard/events/47cf5546-ee5d-4e2a-bafb-c19b995a7e43/edit
+      heading "Edit Event"
+      fields  Search | Message the assistant | Event Title * | Short Summary(35/200) | Description | Category | TagsComma-separated | Aboriginal & Torres Strait I | African | Caribbean
+      buttons PNPriya | Collapse | Suggest three titles for my even | Write my event description | Which category fits my event? | Continue
+14. PASS  walking Continue twice reaches the Location step in edit mode
+      Location
+15. PASS  the edit form carries the picked venue, its address and the map preview (the enum value came back through the form)
+      Forum Melbourne | 154 Flinders Street | preview=1
+16. Edit: the Location step with the pick and the map preview
+      URL     /dashboard/events/47cf5546-ee5d-4e2a-bafb-c19b995a7e43/edit
+      heading "Edit Event"
+      fields  Search | Find the venue | Venue Name | Address | City | State / Region | Country | Postal Code
+      buttons PNPriya | Collapse | in person | virtual | hybrid | Back | Continue
+17. PASS  the Review step offers Save Changes
+      Review & Publish
+18. Edit: after Save Changes
+      URL     /dashboard/events?saved=1
+      heading "My Events"
+      fields  Search
+      buttons PNPriya | Collapse | Duplicate | Pause | Cancel
+      ERRORS  Cancel
+19. PASS  after the save the row still carries places and the same coordinates
+      places (-37.8166268, 144.9695761) Cancel
+20. PASS  the public event page still resolves with the venue
+      status 200
+21. The public event page after the edit
+      URL     /events/forum-round-trip-321953-56ssk0
+      heading "Forum Round Trip 321953"
+      fields  LanguageEnglish (AU)
+      buttons What are you in the mood for?/ | Melbourne | Follow | Share | Copy link | − | + | Select tickets to continue
+22. Verdicts
+      13 of 13 passed (STUBBED PLACES)
+23. Evidence copied
+      C:\dev\EVIDENCE\C1\tablet-768-stubbed

@@ -20,21 +20,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      door_realtime_enabled: { Args: never; Returns: boolean }
-      door_staff_for_event: { Args: { p_event_id: string }; Returns: boolean }
-      door_validation_set: {
-        Args: { p_after_code?: string; p_event_id: string; p_limit?: number }
-        Returns: {
-          first_scanned_at: string
-          holder_name: string
-          seat_label: string
-          secret_hash: string
-          status: string
-          ticket_code: string
-          ticket_id: string
-          tier_name: string
-        }[]
-      }
       graphql: {
         Args: {
           extensions?: Json
@@ -42,28 +27,6 @@ export type Database = {
           query?: string
           variables?: Json
         }
-        Returns: Json
-      }
-      resolve_scan_review: {
-        Args: { p_note?: string; p_scan_id: string }
-        Returns: boolean
-      }
-      scan_ticket: {
-        Args: {
-          p_device_id?: string
-          p_event_id: string
-          p_secret: string
-          p_ticket_code: string
-        }
-        Returns: {
-          first_scanned_at: string
-          holder_name: string
-          result: string
-          seat_label: string
-        }[]
-      }
-      sync_offline_scans: {
-        Args: { p_event_id: string; p_scans: Json }
         Returns: Json
       }
     }
@@ -1099,15 +1062,15 @@ export type Database = {
           venue_address: string | null
           venue_city: string | null
           venue_country: string | null
+          venue_geocode_source:
+            | Database["public"]["Enums"]["venue_geocode_source"]
+            | null
+          venue_geocoded_at: string | null
           venue_id: string | null
           venue_latitude: number | null
           venue_longitude: number | null
           venue_name: string | null
           venue_place_id: string | null
-
-          venue_geocode_source: 'places' | 'geocoding' | 'manual' | null
-
-          venue_geocoded_at: string | null
           venue_postal_code: string | null
           venue_state: string | null
           video_provider: string | null
@@ -1178,15 +1141,15 @@ export type Database = {
           venue_address?: string | null
           venue_city?: string | null
           venue_country?: string | null
+          venue_geocode_source?:
+            | Database["public"]["Enums"]["venue_geocode_source"]
+            | null
+          venue_geocoded_at?: string | null
           venue_id?: string | null
           venue_latitude?: number | null
           venue_longitude?: number | null
           venue_name?: string | null
           venue_place_id?: string | null
-
-          venue_geocode_source?: 'places' | 'geocoding' | 'manual' | null
-
-          venue_geocoded_at?: string | null
           venue_postal_code?: string | null
           venue_state?: string | null
           video_provider?: string | null
@@ -1257,15 +1220,15 @@ export type Database = {
           venue_address?: string | null
           venue_city?: string | null
           venue_country?: string | null
+          venue_geocode_source?:
+            | Database["public"]["Enums"]["venue_geocode_source"]
+            | null
+          venue_geocoded_at?: string | null
           venue_id?: string | null
           venue_latitude?: number | null
           venue_longitude?: number | null
           venue_name?: string | null
           venue_place_id?: string | null
-
-          venue_geocode_source?: 'places' | 'geocoding' | 'manual' | null
-
-          venue_geocoded_at?: string | null
           venue_postal_code?: string | null
           venue_state?: string | null
           video_provider?: string | null
@@ -3971,10 +3934,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_mode?: Database["public"]["Enums"]["tier_access_mode"]
           created_at?: string
           currency?: string
           description?: string | null
-          access_mode?: Database["public"]["Enums"]["tier_access_mode"]
           dynamic_pricing_enabled?: boolean
           event_id: string
           hidden_until?: string | null
@@ -3998,10 +3961,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_mode?: Database["public"]["Enums"]["tier_access_mode"]
           created_at?: string
           currency?: string
           description?: string | null
-          access_mode?: Database["public"]["Enums"]["tier_access_mode"]
           dynamic_pricing_enabled?: boolean
           event_id?: string
           hidden_until?: string | null
@@ -4808,6 +4771,21 @@ export type Database = {
         }
         Returns: Json
       }
+      door_realtime_enabled: { Args: never; Returns: boolean }
+      door_staff_for_event: { Args: { p_event_id: string }; Returns: boolean }
+      door_validation_set: {
+        Args: { p_after_code?: string; p_event_id: string; p_limit?: number }
+        Returns: {
+          first_scanned_at: string
+          holder_name: string
+          seat_label: string
+          secret_hash: string
+          status: string
+          ticket_code: string
+          ticket_id: string
+          tier_name: string
+        }[]
+      }
       el_any_member_organisation_ids: { Args: never; Returns: string[] }
       el_member_organisation_ids: { Args: never; Returns: string[] }
       el_owned_organisation_ids: { Args: never; Returns: string[] }
@@ -4885,6 +4863,10 @@ export type Database = {
           venue_address: string | null
           venue_city: string | null
           venue_country: string | null
+          venue_geocode_source:
+            | Database["public"]["Enums"]["venue_geocode_source"]
+            | null
+          venue_geocoded_at: string | null
           venue_id: string | null
           venue_latitude: number | null
           venue_longitude: number | null
@@ -5020,18 +5002,31 @@ export type Database = {
         Args: { p_dispute_id: string; p_outcome: string }
         Returns: Json
       }
+      resolve_scan_review: {
+        Args: { p_note?: string; p_scan_id: string }
+        Returns: boolean
+      }
       save_dynamic_pricing: {
         Args: { p_enabled: boolean; p_steps: Json; p_tier_id: string }
         Returns: number
       }
       scan_ticket: {
-        Args: { p_event_id: string; p_secret: string; p_ticket_code: string }
+        Args: {
+          p_device_id?: string
+          p_event_id: string
+          p_secret: string
+          p_ticket_code: string
+        }
         Returns: {
           first_scanned_at: string
           holder_name: string
           result: string
           seat_label: string
         }[]
+      }
+      sync_offline_scans: {
+        Args: { p_event_id: string; p_scans: Json }
+        Returns: Json
       }
       transfer_ticket: {
         Args: { p_ticket_id: string; p_to_email: string; p_to_name: string }
@@ -5159,6 +5154,7 @@ export type Database = {
         | "free"
       tier_access_mode: "in_person" | "virtual"
       user_role: "attendee" | "organiser" | "admin" | "super_admin"
+      venue_geocode_source: "places" | "geocoding" | "manual"
       waitlist_status:
         | "waiting"
         | "notified"
@@ -5387,6 +5383,7 @@ export const Constants = {
       ],
       tier_access_mode: ["in_person", "virtual"],
       user_role: ["attendee", "organiser", "admin", "super_admin"],
+      venue_geocode_source: ["places", "geocoding", "manual"],
       waitlist_status: [
         "waiting",
         "notified",
@@ -5449,6 +5446,12 @@ export type FeePassType        = Database['public']['Enums']['fee_pass_type']
 export type TicketTierType     = Database['public']['Enums']['ticket_tier_type']
 export type SquadStatus        = Database['public']['Enums']['squad_status']
 export type SquadMemberStatus  = Database['public']['Enums']['squad_member_status']
+// public.venue_geocode_source, a real enum since 20260905000003. It was a TEXT
+// column under a CHECK before that, and its union was hand-written INSIDE the
+// generated section, which the types-drift guard rightly reported as drift on
+// 5 September 2026. The database enforces the three values now, the generator
+// emits them, and this alias is the one name the code imports.
+export type VenueGeocodeSource = Database['public']['Enums']['venue_geocode_source']
 
 // --- TEXT + CHECK column aliases (manually pinned, see header rule 3) ------
 

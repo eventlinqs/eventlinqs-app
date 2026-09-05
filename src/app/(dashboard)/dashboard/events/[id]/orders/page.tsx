@@ -97,7 +97,7 @@ export default async function EventOrdersPage({ params }: Props) {
    * FULL orders row. The select asked for nine columns, so the cast asserted the
    * presence of every column it did not fetch. That is why reading
    * `o.platform_fee_cents` compiled cleanly and arrived `undefined`, and why the
-   * revenue card rendered "AUD NaN" for platform fees, processing fees and net
+   * revenue card rendered "AUD NaN" for platform_fee_cents, processing_fee_cents and net
    * revenue while gross sales, which reads the selected `total_cents`, was right.
    * Found on production on 21 August by an organiser refunding a real order.
    *

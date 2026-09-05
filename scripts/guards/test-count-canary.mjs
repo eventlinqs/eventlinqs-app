@@ -773,9 +773,23 @@ const ROOT = join(HERE, '..', '..')
  * BEFORE the channel is joined, the first B2 drive's finding: joined before
  * the token, the channel carried the anon key and the row policy denied every
  * row, so both doors said live and heard nothing.
+ *
+ * 2026-09-05 (C1, the types-drift repair on origin/main): 288 files / 3350
+ * tests. Two files, 14 tests. tests/unit/ci/types-drift-wrapped-leaves pins
+ * the generated file's wrapped spelling (a bare `key:` with the union on the
+ * following | lines), which the parser used to drop from BOTH sides: ten
+ * enums in public.Enums were never compared, and the enum column
+ * 20260905000003 introduces read as removed. types-drift-enum-conversion
+ * reads that migration from disk and drives the real classifier over the real
+ * pre- and post-migration shapes: pending with the migration in the tree,
+ * in sync once applied, drift without it, drift for the hand-written union
+ * that put origin/main red at dc71374e. Plus tests/component/revenue-summary
+ * (3): the organiser's revenue panel shows ONE fee line, folds a pre-15-August
+ * processing_fee_cents into it, and never names a processing line (found on
+ * the C1 drive; the plural had slipped past one-fee-copy). 289 files / 3353.
  */
-const MIN_FILES = 286
-const MIN_TESTS = 3336
+const MIN_FILES = 289
+const MIN_TESTS = 3353
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

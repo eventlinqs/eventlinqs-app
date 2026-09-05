@@ -1,11 +1,11 @@
 // No shebang on this file. Vite does not strip one when a test imports the module.
-// Run as: node scripts/verify/types-drift-drill.mjs <pending|stale|invented>
+// Run as: node scripts/verify/types-drift-drill.mjs <pending|stale|invented|enum-pending|enum-invented>
 /**
  * THE TYPES-DRIFT DRILL - prove the guard both ways.
  *
  * A guard that has only ever been seen to PASS is not known to work. This drives
  * the real decision function and the real reporting path from
- * scripts/ci/types-drift-analyse.mjs through three scenarios, two of which must
+ * scripts/ci/types-drift-analyse.mjs through five scenarios, three of which must
  * FAIL. Nothing here is a re-implementation: `analyse` and `renderVerdict` are
  * the same functions scripts/ci/types-drift-guard.mjs calls in CI.
  *
@@ -24,6 +24,8 @@
  *   pending   every difference is explained by a pending migration  -> exit 0
  *   stale     the live DB has a column the committed types lack     -> exit 1
  *   invented  the committed types carry a column no migration makes -> exit 1
+ *   enum-pending   a TEXT column became an enum, and the migration is pending  -> exit 0
+ *   enum-invented  the same enum column with no migration behind it            -> exit 1
  *
  * Exit 2 means the DRILL is broken: the guard did something other than what the
  * scenario expects, which is the one outcome that invalidates the drill itself.
@@ -33,6 +35,69 @@ import { readFileSync } from 'node:fs'
 import { analyse, renderVerdict } from '../ci/types-drift-analyse.mjs'
 
 const MIGRATION = 'supabase/migrations/20260815000001_external_ticketing.sql'
+const ENUM_MIGRATION = 'supabase/migrations/20260905000003_venue_geocode_source_enum.sql'
+
+/*
+ * THE 5 SEPTEMBER 2026 SHAPE: a TEXT column becomes a Postgres enum. The
+ * committed side is what the generator emits after 20260905000003 (the enum
+ * reference, wrapped onto | lines the way the generator writes it), the live
+ * side is what production answers before the migration is applied.
+ */
+const COMMITTED_ENUM_COLUMN = `export type Database = {
+  public: {
+    Tables: {
+      events: {
+        Row: {
+          id: string
+          venue_geocode_source:
+            | Database["public"]["Enums"]["venue_geocode_source"]
+            | null
+        }
+        Insert: {
+          id?: string
+          venue_geocode_source?:
+            | Database["public"]["Enums"]["venue_geocode_source"]
+            | null
+        }
+        Update: {
+          id?: string
+          venue_geocode_source?:
+            | Database["public"]["Enums"]["venue_geocode_source"]
+            | null
+        }
+      }
+    }
+    Enums: {
+      venue_geocode_source: "places" | "geocoding" | "manual"
+    }
+  }
+}
+`
+
+const LIVE_TEXT_COLUMN = `export type Database = {
+  public: {
+    Tables: {
+      events: {
+        Row: {
+          id: string
+          venue_geocode_source: string | null
+        }
+        Insert: {
+          id?: string
+          venue_geocode_source?: string | null
+        }
+        Update: {
+          id?: string
+          venue_geocode_source?: string | null
+        }
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+  }
+}
+`
 
 /** The post-migration shape: what the committed types say today. */
 const COMMITTED_POST_MIGRATION = `export type Database = {
@@ -167,6 +232,35 @@ const SCENARIOS = {
     pending: [{ version: '20260815000001', file: '20260815000001_external_ticketing.sql', sql: readFileSync(MIGRATION, 'utf8') }],
     expect: { status: 'drift', exitCode: 1 },
     why: 'events.invented_column is in the committed types and no migration in the tree creates it',
+  }),
+
+  /*
+   * A COLUMN CHANGES TYPE. 20260905000003 converts events.venue_geocode_source
+   * from TEXT under a CHECK to a real enum, so the committed types carry an
+   * Enums entry and an enum-typed column that production does not have yet.
+   * The set-type and the create-type inside the migration's DO block explain
+   * all four deltas; the guard must PASS and name the migration.
+   */
+  'enum-pending': () => ({
+    committedText: COMMITTED_ENUM_COLUMN,
+    liveText: LIVE_TEXT_COLUMN,
+    pending: [{ version: '20260905000003', file: '20260905000003_venue_geocode_source_enum.sql', sql: readFileSync(ENUM_MIGRATION, 'utf8') }],
+    expect: { status: 'pending-migrations', exitCode: 0 },
+    why: 'the committed types carry the enum that 20260905000003 creates, and the migration is in the tree, unapplied',
+  }),
+
+  /*
+   * THE SAME TYPES WITH NO MIGRATION BEHIND THEM. This is dc71374e in its
+   * essence: a narrowing the database does not enforce, written where the
+   * generator writes. Nothing in the pending list creates the enum or changes
+   * the column's type, so every delta is unexplained and the guard must FAIL.
+   */
+  'enum-invented': () => ({
+    committedText: COMMITTED_ENUM_COLUMN,
+    liveText: LIVE_TEXT_COLUMN,
+    pending: [],
+    expect: { status: 'drift', exitCode: 1 },
+    why: 'the committed types carry an enum column and no pending migration converts it',
   }),
 }
 

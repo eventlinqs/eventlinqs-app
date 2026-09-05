@@ -45,6 +45,7 @@ import type {
   TicketTierType,
   TicketTier,
   FeePassType,
+  VenueGeocodeSource,
 } from '@/types/database'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -99,7 +100,7 @@ type FormData = {
   venue_latitude: number | null
   venue_longitude: number | null
   venue_place_id: string | null
-  venue_geocode_source: 'places' | 'geocoding' | 'manual' | null
+  venue_geocode_source: VenueGeocodeSource | null
   // The livestream link. Stored in the vault table through src/lib/stream/link.ts,
   // never on the events row, and revealed only to livestream ticket holders after
   // purchase.
@@ -344,7 +345,7 @@ function fromExistingEvent(
     venue_latitude?: number | null
     venue_longitude?: number | null
     venue_place_id?: string | null
-    venue_geocode_source?: 'places' | 'geocoding' | 'manual' | null
+    venue_geocode_source?: VenueGeocodeSource | null
     stream_geo_allow?: string[] | null
     cover_image_url: string | null
     cover_image_alt?: string | null

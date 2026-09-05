@@ -260,6 +260,20 @@ const DRILLS = [
     expect: 'no CI step invokes any more',
   },
   /*
+   * one-fee-copy: the PLURAL. The rule matched "processing fee" and the
+   * organiser's revenue summary said "Processing fees"; the trailing s satisfied
+   * the word-boundary lookahead and a second fee sat on a product surface for
+   * three weeks (found on the C1 drive, 5 September 2026).
+   */
+  {
+    name: 'a second fee is named in the plural on an organiser surface',
+    guard: `${GUARDS}/one-fee-copy.mjs`,
+    file: 'src/components/orders/revenue-summary.tsx',
+    find: '<span className="text-sm text-ink-400">Platform fee</span>',
+    replace: '<span className="text-sm text-ink-400">Processing fees</span>',
+    expect: 'describe a fee the platform does not charge',
+  },
+  /*
    * no-banned-word-anywhere, two drills, one per blind spot the copy gate had.
    */
   {
