@@ -72,12 +72,18 @@ name: Lighthouse CI
 on:
   pull_request:
     branches: [main]
+    # ready_for_review is not a default type; without it a draft marked ready
+    # would never be audited. scripts/guards/workflows-skip-drafts.mjs.
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 concurrency:
   group: lighthouse-${{ github.ref }}
   cancel-in-progress: true
 
+# DRAFTS ARE NOT AUDITED (close-out C2.2, 5 September 2026). The same gate runs
+# locally on every push through scripts/ops/pre-push-gate.mjs; the preview is
+# audited once, when the pull request is marked ready.
 jobs:
   # ---------------------------------------------------------------------------
   # Resolve the Vercel preview URL for this commit. Vercel's GitHub integration
@@ -87,6 +93,7 @@ jobs:
   # ---------------------------------------------------------------------------
   preview:
     name: Resolve Vercel preview
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -133,6 +140,7 @@ jobs:
   lighthouse:
     name: Lighthouse mobile gate
     needs: preview
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:

@@ -29,13 +29,16 @@ name: Purchase E2E
 on:
   pull_request:
     branches: [main]
+    # ready_for_review is not a default type (scripts/guards/workflows-skip-drafts.mjs).
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 jobs:
   purchase-e2e:
     name: Buyer purchase journey
     runs-on: ubuntu-latest
-    if: ${{ vars.PURCHASE_E2E_ENABLED == 'true' }}
+    # Drafts do not run it (close-out C2.2): CI runs once, when the pull request is marked ready.
+    if: ${{ vars.PURCHASE_E2E_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
     timeout-minutes: 20
     steps:
       - name: Checkout

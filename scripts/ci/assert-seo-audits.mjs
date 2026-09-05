@@ -56,6 +56,8 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
+// A loopback host (the pre-push gate's local production build) is asserted
+// like production: see LOCAL_HOSTS below.
 
 /**
  * The SEO category as Lighthouse 12.1.0 reports it (the version @lhci/cli
@@ -90,6 +92,43 @@ const MUST_BE_ASSERTED = SEO_AUDIT_BASELINE.filter((id) => !(id in NOT_ASSERTED)
 // src/lib/site-url.ts as CANONICAL_HOST.
 const CANONICAL_HOST = 'www.eventlinqs.com.au'
 const PRODUCTION_HOSTS = new Set([CANONICAL_HOST, 'eventlinqs.com.au'])
+/*
+ * A LOOPBACK HOST IS A LOCAL PRODUCTION BUILD, AND IT IS ASSERTED LIKE ONE.
+ *
+ * Added 6 September 2026 with the pre-push gate (scripts/ops/pre-push-gate.mjs),
+ * which runs this script against `next start` on 127.0.0.1. next.config.ts
+ * sends `index, follow` whenever VERCEL_ENV is absent, which is every local
+ * build, and says so in its own comment: the local build carries PRODUCTION's
+ * robots posture. Until this branch existed, production's crawlability was
+ * asserted by nothing at all (no workflow audits www.eventlinqs.com.au), and a
+ * local host was "skipped", which declared zero indexability work and failed
+ * the gate under the zero-is-failure contract. So a loopback host is held to
+ * the production rule: every page must be crawlable, except the routes the app
+ * itself declares noindex.
+ */
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1'])
+
+/*
+ * THE ROUTES THE APP DELIBERATELY NOINDEXES, read from the app rather than
+ * written here. src/app/(auth)/layout.tsx sets `robots: { index: false }` for
+ * every route in that group (login, signup, forgot-password, verify-email-sent
+ * as of 6 September 2026), so on production and on a local build those pages
+ * are correctly blocked, and a rule that flagged them would be crying wolf.
+ * Derived from the directory listing so a new auth route is covered the day it
+ * is added and a route moved out of the group loses its exemption the same day.
+ */
+function deliberatelyNoindexedPaths() {
+  const group = join(process.cwd(), 'src', 'app', '(auth)')
+  const layout = join(group, 'layout.tsx')
+  if (!existsSync(layout)) return new Set()
+  if (!/index:\s*false/.test(readFileSync(layout, 'utf8'))) return new Set()
+  return new Set(
+    readdirSync(group, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `/${entry.name}`),
+  )
+}
+const NOINDEXED = deliberatelyNoindexedPaths()
 
 const dir = process.argv[2] || '.lighthouseci'
 const failures = []
@@ -191,7 +230,14 @@ for (const lhr of reports) {
   }
 
   const isPreview = host.endsWith('.vercel.app')
-  const isProduction = PRODUCTION_HOSTS.has(host)
+  const isLocal = LOCAL_HOSTS.has(host)
+  const isProduction = PRODUCTION_HOSTS.has(host) || isLocal
+  const pathname = new URL(lhr.requestedUrl).pathname.replace(/\/$/, '') || '/'
+  if (isProduction && NOINDEXED.has(pathname)) {
+    skipped++
+    notes.push(`${pathname} is noindex by src/app/(auth)/layout.tsx, so its being blocked is correct and was not asserted`)
+    continue
+  }
 
   if (isPreview) {
     checked++
@@ -210,12 +256,16 @@ for (const lhr of reports) {
   } else if (isProduction) {
     checked++
     // Production MUST be crawlable. This is the half the old category floor
-    // was actually trying to express, and it belongs here.
+    // was actually trying to express, and it belongs here. A local build is
+    // held to the same rule because next.config.ts gives it the same header.
     if (audit.score !== 1) {
       failures.push(
-        `PRODUCTION IS BLOCKED FROM INDEXING: ${lhr.requestedUrl}\n` +
+        `${isLocal ? 'THE LOCAL PRODUCTION BUILD' : 'PRODUCTION'} IS BLOCKED FROM INDEXING: ${lhr.requestedUrl}\n` +
           `        is-crawlable scored ${audit.score}. SEO is one of the two compounding growth\n` +
-          '        engines; a noindexed production page earns nothing.',
+          '        engines; a noindexed production page earns nothing.' +
+          (isLocal
+            ? '\n        A local build has no VERCEL_ENV and so carries the production header; what is blocked here is blocked on production.'
+            : ''),
       )
     }
   } else {

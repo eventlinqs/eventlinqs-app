@@ -89,6 +89,10 @@
  *   door-live-published       the door's live feed is published on the build's own database
  *                              (ticket_scans in supabase_realtime), asked through one read-only
  *                              RPC, so two doors never go silently deaf to each other
+ *   workflows-skip-drafts     every pull-request workflow skips a draft on every job and wakes
+ *                              on ready_for_review, so CI runs once, after the local gate
+ *   pre-push-gate-wired       .githooks/pre-push runs the whole of scripts/ops/pre-push-gate.mjs,
+ *                              npm run gate:push is the same command, and git is pointed at it
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -671,6 +675,19 @@ const GUARDS = [
   // on CI's placeholder URL. Proven red on TEST by dropping the table from the
   // publication and green by adding it back (C:\dev\EVIDENCE\B2\guard-door-live-published-proof.txt).
   'scripts/guards/door-live-published.mjs',
+  // 6 September 2026 (close-out C2, CI hygiene). Six failed-run emails for one
+  // pull request, because CI was the first place four of its checks ever ran.
+  // The rule is now: nothing is pushed until the same checks pass locally, as
+  // one command, and CI runs once, when the draft is marked ready. Two guards
+  // hold the two halves that die quietly. The first reads every workflow and
+  // requires each job to skip a draft and each trigger to wake on
+  // ready_for_review. The second requires the pre-push hook to exist, to run
+  // the WHOLE gate with no step selection, to exit with its verdict, to be
+  // executable in the index, and (off CI) for core.hooksPath to point at it,
+  // because that setting is local config no clone inherits. Both proven red by
+  // the drills in scripts/verify/guard-failure-drills.mjs and green after.
+  'scripts/guards/workflows-skip-drafts.mjs',
+  'scripts/guards/pre-push-gate-wired.mjs',
 ]
 
 /**

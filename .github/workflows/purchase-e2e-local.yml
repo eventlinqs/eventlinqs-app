@@ -22,6 +22,8 @@ name: Purchase E2E (self-contained)
 on:
   pull_request:
     branches: [main]
+    # ready_for_review is not a default type (scripts/guards/workflows-skip-drafts.mjs).
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 jobs:
@@ -31,7 +33,8 @@ jobs:
     # Parked for post-launch verification. Only runs once the repo variable
     # PURCHASE_E2E_LOCAL_ENABLED is set to 'true', so it adds no red or pending
     # check to the launch PR (mirrors purchase-e2e.yml / PURCHASE_E2E_ENABLED).
-    if: ${{ vars.PURCHASE_E2E_LOCAL_ENABLED == 'true' }}
+    # Drafts do not run it either (close-out C2.2): CI runs once, on ready.
+    if: ${{ vars.PURCHASE_E2E_LOCAL_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
     timeout-minutes: 25
     env:
       NEXT_TELEMETRY_DISABLED: '1'

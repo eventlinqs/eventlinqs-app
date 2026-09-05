@@ -1118,6 +1118,18 @@ The executable form of this law is `tests/unit/security/image-pipeline-format.te
 
 - CI gates are the merge authority. No `--admin`, no skipping gates, never lower
   a threshold or mark a check optional to go green.
+- **Nothing is pushed until the same checks pass locally (close-out ruling,
+  5 September 2026).** Six failed-run emails arrived for one pull request
+  because CI was used as the test runner. The one command is
+  `npm run gate:push` (`scripts/ops/pre-push-gate.mjs`): typecheck, lint, the
+  copy gate, the critical-path guard, the exemption clock, every registered
+  guard, the types-drift guard against production, the suite through the
+  canary, the build, and the Lighthouse mobile gate on that build served
+  locally. `.githooks/pre-push` runs the whole of it on every push and nothing
+  else. Pull requests are opened as DRAFTS: every pull-request workflow skips a
+  draft on every job and wakes on `ready_for_review`, so CI runs exactly once,
+  after the local gate is green. `workflows-skip-drafts` and
+  `pre-push-gate-wired` fail the build if either half is lost.
 - Commit per unit with a clear message, push, hand back the Vercel preview URL
   with the benchmark verdict. Never merge without approval.
 - Disk guard: check free space before any build or deploy step. Under 5 GB
@@ -1136,7 +1148,8 @@ named and routed, never hidden.
 
 | Gate | File | Enforces | State |
 |---|---|---|---|
-| CI: lint / typecheck / build / test | `.github/workflows/ci.yml` | code correctness, type safety, build integrity, unit tests (vitest) | Blocking on PRs to main. (`types-drift guard` is non-blocking until `SUPABASE_ACCESS_TOKEN` is set.) |
+| CI: lint / typecheck / build / test | `.github/workflows/ci.yml` | code correctness, type safety, build integrity, unit tests (vitest) | Blocking on PRs to main; skipped on drafts, runs on `ready_for_review`. The `types-drift guard` job has run with the configured `SUPABASE_ACCESS_TOKEN` since 2026-06-07 and went red on real drift on 2026-09-05; it is not in the required-status list on main. |
+| Pre-push gate | `.githooks/pre-push` runs `scripts/ops/pre-push-gate.mjs` (`npm run gate:push`) | every CI check, locally, before a push: typecheck, lint, copy gate, critical-path guard, exemption clock, every registered guard, types-drift guard, the suite through the canary, the build, the Lighthouse mobile gate on the local production build | Blocking on every push since 2026-09-06 (close-out C2). Held by `workflows-skip-drafts` and `pre-push-gate-wired` (C2.3), both drilled red and green. |
 | Lighthouse CI | `.github/workflows/lighthouse.yml` + `lighthouserc.json` | performance, accessibility (category), best-practices, SEO, CLS on the public URL set | ADVISORY since 2026-08-25 (founder ruling). Runs on every PR, asserts every threshold, fails loudly, emails. It does NOT block a merge. `docs/perf/LIGHTHOUSE-GATE-ADVISORY-RULING-2026-08-25.md` |
 | axe-core | `scripts/axe-*.mjs` (incl `axe-marketing-scan.mjs`) | accessibility 0 violations (WCAG 2 A/AA) | NOT a CI job yet - run by hand per surface. |
 | Link-integrity crawler | `scripts/link-integrity-crawl.mjs` | Law 5, zero dead links | NOT a CI job yet - run by hand vs preview/local. |
