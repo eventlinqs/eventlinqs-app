@@ -5,8 +5,12 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
-Last re-verified 7 September 2026 at 05:05 (session 32): still the same three migrations behind,
-the same two failed production deployments, main still red. Nothing has moved. Session 12 found and
+Last re-verified 7 September 2026 at 05:12 (session 33): still the same three migrations behind,
+the same two failed production deployments, main still red. Nothing has moved. Session 33 also
+confirmed your command needs no preparation on your side: in a fresh PowerShell, without the Node
+PATH prefix the brief mentions, `npm run migrate:production -- --dry-run` ran clean, listed the
+three files and touched nothing (C:\dev\EVIDENCE\C16\migrate-production-dry-run-fresh-path-session33.txt).
+So it is exactly the one command, in any PowerShell opened at the repo. Session 12 found and
 fixed a hang in your one command (see the 03:25 entry at the end of this file): it is the same
 command, and it now gets past its own confirmation. Session 13 ran the command's own first proof
 by hand, read only: it correctly reports the two C13 objects still absent on production. Session 15

@@ -3443,3 +3443,46 @@ changed, and nothing was deleted.
   moment the founder's command has run; the sequence after it is unchanged (02:39 entry). Nothing
   read-only remains to drive under the halt. The ledger's section widened to cover session 32; the
   "Last re-verified" line in REVIEW-QUEUE.md updated. The sentinel was not written.
+
+## 2026-09-07 05:06 to 05:12 (C16, continued, session 33) the halt re-verified on relaunch; nothing has moved; the founder's command proven to resolve in a fresh PowerShell without the brief's PATH prefix
+
+- Governing laws: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder applies), the
+  C16.0 halt rule, Definition of Done clause 6. No code changed, nothing merged, nothing started,
+  nothing written to production; the CLI rests on TEST (project-ref read back before and after the
+  parity step and again after the dry run: vkapkibzokmfaxqogypq). No MERGE_HEAD, tree clean at
+  100be967, six commits ahead of origin/main and zero behind after a fetch. Disk 22 GB free at start
+  and end; no build output; one node_modules (this worktree's) and no .next under C:\dev or C:\elrel;
+  the two fetched homepage files deleted after their release was read.
+- Re-verified read only at 05:07, through the clean-env wrapper, and every reading is identical to
+  session 32: parity FAIL on the schema half (116 in the tree, 113 applied, the same 3 pending:
+  20260905000003, 20260906000001, 20260906000002), environment half 0 faults across 34 records and
+  43 manifest entries, exit 1, "BLOCKED at production-parity after 4s. Nothing was pushed."; Vercel
+  production by sha 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY (still the newest READY,
+  dpl_9SkwNKZ7tYnfw3EgZs1oKx8jf7uu); the live site serves sentry-release b4255a96 (HTTP 200, 396472
+  then 396430 bytes), the apex 301 to www; CI on main still red at 2d558d2a (run 34031455414), no
+  new run since 11:52Z on 6 September (the only later run on main is the scheduled env-locks
+  workflow, green at 15:30Z); origin/main unchanged after a fetch; PR 130 still BLOCKED by
+  protection, not a draft, MERGEABLE, head 2ed39584. The founder has not run
+  `npm run migrate:production`. Evidence: C:\dev\EVIDENCE\C16\production-parity-recheck-session33.txt,
+  deployments-recheck-session33.txt.
+- ONE NEW FACT, read so the founder's step has no hidden environment obstacle. BUILD-BRIEF.md tells
+  every PowerShell session to prefix its PATH with C:\node24\node-v24.19.0-win-x64, so a question
+  nobody had asked was whether `npm run migrate:production` resolves at all in the PowerShell the
+  founder actually opens, without that prefix. Checked against the registry PATH a fresh shell is
+  built from (Machine plus User), not the inherited PATH of this session, which a child PowerShell
+  had at first quietly reused and which would have proven nothing: the machine PATH carries
+  C:\Program Files\nodejs, which holds Node 24.14.0, and package.json engines is 24.x, so both node
+  and npm resolve there. The founder's command was then run in DRY RUN under exactly that PATH: the
+  token accepted (HTTP 200), 116 in the tree, 113 applied on production, the same three files
+  listed, dry run so nothing linked and nothing pushed, exit 0, and the CLI read back on TEST
+  afterwards. So the command works from a fresh PowerShell with no prefix, and nothing on the
+  founder's side needs preparing. Evidence:
+  C:\dev\EVIDENCE\C16\migrate-production-dry-run-fresh-path-session33.txt.
+- Also read: the ops/session-log worktree at 9e24ffb5 is on origin and clean, and its three files
+  are byte-identical to the C:\dev copies once CRLF is ignored (that worktree runs core.autocrlf
+  true), so nothing was lost between sessions.
+- THE HALT STANDS. The six C16 commits wait on ci/c16-production-parity and leave the machine the
+  moment the founder's command has run; the sequence after it is unchanged (02:39 entry). Nothing
+  read-only remains to drive under the halt. The ledger's section widened to cover session 33 and
+  gained the fresh-PATH row; the "Last re-verified" line in REVIEW-QUEUE.md updated. The sentinel
+  was not written.
