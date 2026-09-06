@@ -1289,3 +1289,440 @@ Disk after reclaim: 6.79 GB free. Above the 6 GB continue line.
   other file passes with the env present (288 of 289 files, 3348 of 3353 tests). That is the
   reason the brief's "park .env.local around every push" rule exists, and C2 fixes the cause
   rather than scripting the parking.
+
+## 2026-09-06 (C2) CI hygiene: the one-command pre-push gate, drafts do not run CI, two guards, and the preflight defect behind the parking rule
+
+- Branch ci/c2-pre-push-gate cut from origin/main at 4587489f. Disk 9.26 GB free after the
+  npx cache took the @lhci/cli spec CI uses (253 MB; it is reused by every gate run).
+- THE CAUSE OF THE PARKING RULE. The failing file was
+  tests/unit/security/production-write-preflight-approval.test.ts, and the fault was in the
+  control it tests, not the test. scripts/lib/production-write-preflight.mjs filled its view
+  of the environment one VARIABLE at a time from the highest source that had it. The isolation
+  rule prefers NEXT_PUBLIC_SUPABASE_URL_PREVIEW over NEXT_PUBLIC_SUPABASE_URL, so a process
+  whose own environment named the PRODUCTION url, run where .env.local carried the PREVIEW url
+  for TEST, was judged "TEST, proceeding", while a script behind that preflight resolves from
+  process.env and would have written to production. Fixed: each pair (the url names, the key
+  names) is taken whole from the highest source that defines any of it; PREVIEW still wins
+  inside one source, as it does for Next with one .env.local. Stricter, never looser. Pinned by
+  tests/unit/security/production-write-preflight-layers.test.ts (4): a --env-file naming
+  production refused despite a planted .env.local PREVIEW, a shell url likewise, PREVIEW winning
+  inside one file, and the single-file control. The approval file now passes with .env.local
+  present; the whole suite does: 293 files / 3398 tests, 0 failed, measured with the file in
+  place (C:\dev\EVIDENCE\C2\canary-run-1-env-local-present.txt). The brief's parking law is
+  therefore obsolete on the code side and REVIEW-QUEUE says so.
+- C2.1, THE ONE COMMAND. scripts/ops/pre-push-gate.mjs, also `npm run gate:push`, twelve
+  steps cheapest failure first: disk floor, tsc, eslint --max-warnings=0, the copy gate, the
+  critical-path guard, the exemption clock, every registered guard with the TEST project from
+  .env.local, the types-drift guard against production through the CLI token
+  (with-supabase-token.ps1), the seeded fixture, the suite through the canary, npm run build,
+  and the Lighthouse mobile gate on that build served locally (next start on a free port with
+  the Upstash stub and console mail, resolve-gate-urls against it, warm-preview, @lhci/cli
+  0.14.x collect, the aggregation report, assert-seo-audits, lhci assert with the same
+  lighthouserc.json; no threshold lives in the gate). Each step names the CI step it stands in
+  for, and tests/unit/ops/pre-push-gate.test.ts derives CI's single-line commands from ci.yml
+  and fails if one has no twin. .githooks/pre-push hands it git's ref list and returns its
+  verdict, nothing else.
+  - What it skips, on evidence rather than a name: deletions (nothing leaves), and a pushed
+    tree with no package.json (the log branch), decided by `git ls-tree` on the pushed sha.
+    Proven: --only with a ref list REFUSED (exit 1), a deletion SKIPPED, the ops/session-log
+    sha SKIPPED naming the ref (C:\dev\EVIDENCE\C2\gate-skip-log-branch.txt).
+  - A dirty tracked tree BLOCKS a push (the commit and the measured tree must be the same
+    tree) and is only announced on a hand run, because a fix in progress is uncommitted by
+    definition. Found on the first hand run and corrected: the first cut blocked hand runs too,
+    which made --only useless mid-fix.
+  - Found on the first skip test and corrected: `git cat-file -e sha:package.json` exits 128
+    for a missing path, not 1, so the log branch read as "carries the application". It is
+    `git ls-tree --name-only` now, which answers with the entry or nothing.
+  - FAILS AS WELL AS PASSES: a planted src/lib/gate-drill-planted.ts with a type error, hand
+    run: disk PASS, typecheck FAIL in 35s, lint and the rest not run, BLOCKED at typecheck,
+    exit 1 (C:\dev\EVIDENCE\C2\gate-fail-planted-type-error.txt); the plant removed.
+- C2.2, DRAFTS DO NOT RUN CI. ci.yml (verify, types-drift-guard, test), lighthouse.yml
+  (preview, lighthouse), purchase-e2e.yml and purchase-e2e-local.yml: every job gated on
+  `github.event_name != 'pull_request' || github.event.pull_request.draft == false` (the
+  event-name test first, because the draft expression is empty on a push and main must keep
+  building), and every pull_request trigger lists ready_for_review, which GitHub's default
+  types omit and without which a draft marked ready would never run CI at all.
+- C2.3, TWO GUARDS, registered in run-guards.mjs. workflows-skip-drafts reads every workflow
+  by line with no YAML dependency and fails if a pull-request job lacks the condition or a
+  trigger lacks ready_for_review (4 pull-request workflows, 7 jobs checked; env-locks and
+  post-deploy-smoke named as out of scope). pre-push-gate-wired fails if the hook is missing,
+  does not start with #!/bin/sh, never invokes the gate, selects a subset, swallows the
+  verdict, is not 100755 in the index, or (off CI and Vercel) core.hooksPath is not .githooks,
+  the local config no clone inherits. Both green on the tree
+  (guard-workflows-skip-drafts-green.txt, guard-pre-push-gate-wired-green.txt). Red: four
+  drills (the condition removed from verify, ready_for_review removed, the hook's invocation
+  removed, the hook given --only typecheck), all FAILS AS EXPECTED, 81 of 81 drills with the
+  env loaded, all guards PASS on the restored tree (guard-failure-drills-with-env.txt); and
+  core.hooksPath unset by hand: FAIL naming the one command, restored
+  (guard-pre-push-gate-wired-red-hookspath-unset.txt).
+- TESTS: four files, 45 tests (workflows-skip-drafts 15, pre-push-gate-wired 10,
+  pre-push-gate 18, preflight-layers 4 less the overlap the canary counts); canary floor
+  289/3353 to 293/3398 in the same commit. tsc 0 (tsc-2.txt), eslint 0 on every changed file.
+- CLAUDE.md: the gate joins the coverage table, the push rule and the draft rule join
+  Delivery, and the stale note that the types-drift job was "non-blocking until the token is
+  set" is corrected (the token has been configured since 7 June and the job went red on real
+  drift on 5 September).
+- Committed as 4f87a933 (no trailer). PUSHING through the new hook: the push itself is the
+  full pass-direction run of the gate, captured to C:\dev\EVIDENCE\C2\gate-pass-on-push.txt.
+- THE FIRST PUSH WAS BLOCKED BY THE GATE, at step 12 of 12, and not by a score. Eleven steps
+  green in 416s (disk 0, typecheck 8, lint 117 cold, copy 1, critical-path 0, exemptions 0,
+  guards 61 with 65 of 65, types-drift 18 PENDING, fixture 0, suite 45 at 293/3398, build 166).
+  The Lighthouse step started the build on a free port, resolved all 13 pinned paths at 200
+  (the TEST catalogue publishes 186 event pages; the three pinned ones exist with covers,
+  checked on TEST beforehand), warmed pages and up to 80 image variants each, then
+  `lhci collect` reported Run #1 failed three times on the homepage. Each attempt had FINISHED
+  the audit ("Generating results...") and written the report; the exit 1 came from
+  chrome-launcher's rmSync of Chrome's scratch profile throwing EPERM on Windows after the
+  kill. LHCI's runner tolerates the Windows kill race only when stderr says "Chrome could not
+  be killed", and here Chrome died cleanly and the delete failed instead.
+  scripts/verify/lighthouse-median.mjs documents the identical race and judges by the report.
+  The gate now does the same: it locates the Lighthouse CLI that @lhci/cli 0.14.x bundles
+  (12.1.0, the version CI measures with, resolved by asking npx for the package tree), hands it
+  the lighthouserc.json settings through --cli-flags-path exactly as LHCI's runner does, runs
+  numberOfRuns per URL with three attempts each, saves each report as .lighthouseci/lhr-<stamp>.json
+  where `lhci assert`, the aggregation report and the SEO assertion read it, and judges a run
+  by its report: missing, unparseable or runtime-errored fails; exit 1 after "Generating
+  results..." on win32 passes. `lhci assert` on the same lighthouserc.json remains the verdict.
+  judgeLighthouseRun is exported and pinned by five tests (canary to 293/3403). The
+  Lighthouse-only hand run against the build the blocked push left is in
+  C:\dev\EVIDENCE\C2\gate-lighthouse-hand-run-1.txt.
+- THE HAND RUN MEASURED EVERYTHING AND WAS THEN BLOCKED BY THE SEO ASSERTION, correctly. 39
+  reports in 937s, all 13 pinned pages, every one above its floor (optimistic aggregation, the
+  gate's own rule): homepage 0.82 (warn-level floor until November), /events 0.90, Melbourne
+  0.89, the community landing 0.92, the arena chart 0.89, the Enmore event 0.87, the Geelong
+  event 0.87, organisers 0.91, pricing 0.93, help 0.93, terms 0.93, login 0.91, signup 0.89;
+  accessibility and best-practices 1.00 everywhere; the SEO audit set matched the 12.1.0
+  baseline. Then scripts/ci/assert-seo-audits.mjs declared "0 reports checked for
+  indexability" because 127.0.0.1 is neither a *.vercel.app preview nor the canonical host, and
+  the zero-is-failure contract stopped the gate. That exposed something real: next.config.ts
+  sends `index, follow` whenever VERCEL_ENV is absent (its own comment says so), so a local
+  build carries PRODUCTION's robots header, and production's crawlability was asserted by
+  nothing anywhere (no workflow audits www.eventlinqs.com.au). A loopback host is now held to
+  the production rule, minus the routes src/app/(auth)/layout.tsx declares noindex (login,
+  signup, forgot-password, verify-email-sent, read from the directory so a new auth route is
+  covered the day it lands), which also removes a latent false positive for the auth pages on
+  production itself. tests/unit/ci/seo-audits-indexability (4) drives the script as a child
+  over synthetic reports: local crawlable passes with work counted, local blocked fails naming
+  what production would lose, the auth routes are skipped by name on local and production, a
+  crawlable preview still fails and an unknown host is still only noted. Canary 294/3407.
+- Committed as the second commit on the branch and PUSHING again: the second full gate run is
+  C:\dev\EVIDENCE\C2\gate-pass-on-push-2.txt.
+
+## 2026-09-06 (session resumed) C2: the second push was cut off mid-Lighthouse; the third run is the push
+
+- START. Read C:\dev\CLOSE-OUT.md and BUILD-BRIEF.md again. Branch ci/c2-pre-push-gate at
+  e326f03f, two commits ahead of origin/main (4587489f), tree clean, NOT on the remote
+  (git ls-remote lists fix/c1-types-drift, integration/launch and ops/session-log only).
+  C:\dev\EVIDENCE\C2\gate-pass-on-push-2.txt ends at Lighthouse run 2 of 3 on the seventh of
+  thirteen pages (Geelong event) with no PUSH_EXIT line and no gate process alive: the session
+  ended under it, so nothing was pushed. Eleven steps had passed before the collection began.
+  The build it left is in .next (148 MB) and 21 of the 39 reports sat in .lighthouseci.
+- Disk 6.12 GB free at the start (above the 5 GB floor; TEMP holds no Chrome scratch
+  profiles, 183 MB in all). One node_modules, one .next, both this worktree's. Supabase CLI
+  2.116.0, ref read back as vkapkibzokmfaxqogypq. Leftover processes: the dev Upstash shim on
+  8079 from 4 September (the gate starts its own on a free port) and Lawal's own shells;
+  nothing of the gate's.
+- The push is re-run detached (C:\dev\EVIDENCE\C2\push-3.sh) so it survives the session,
+  output to C:\dev\EVIDENCE\C2\gate-pass-on-push-3.txt; the -2 file is kept as the record of
+  the interrupted run. Steps 1 and 2 (disk 6.1 GB, typecheck) green at 19:23Z.
+- THE THIRD RUN WAS THE PUSH. C:\dev\EVIDENCE\C2\gate-pass-on-push-3.txt: 12 of 12 steps
+  GREEN in 1779s (disk 0, typecheck 48, lint 59, copy 1, critical-path 0, exemptions 0, guards
+  81 with 65 of 65, types-drift 21 PENDING as expected, fixture 0, suite 71 at 294/3407, build
+  203, Lighthouse 1294: 13 pages x 3 runs, 39 reports, the SEO assertion on 33 with the 6 auth
+  reports skipped by name, lhci assert green), then `[new branch] ci/c2-pre-push-gate` and
+  PUSH_EXIT=0 at 19:52:51Z. The branch is on origin at e326f03f.
+- PR #126 opened as a DRAFT (19:53Z). On the draft every pull-request workflow was recorded
+  and every job SKIPPED: CI, Lighthouse CI, Purchase E2E and Purchase E2E (self-contained) all
+  "completed skipped" at 19:53:21Z, nothing ran. Marked ready at 19:54Z: CI and Lighthouse CI
+  went in_progress once (19:54:10Z); the two purchase workflows skipped again, by their own
+  `vars.PURCHASE_E2E_ENABLED == 'true'` condition, which is not set, so that is by design and
+  not the draft rule. Vercel deployed the preview of e326f03f at 19:55:14Z
+  (https://eventlinqs-k2txipide-lawals-projects-c20c0be8.vercel.app). The remaining checks are
+  watched below; the merge follows their green.
+
+## 2026-09-06 (C3) the eighteen social cards: proof from source, and a lambda trace gap the proof exposed
+
+- Governing laws stated: Law 0; Definition of Done; Law 5; Law 6 (the cards render the
+  organiser's OWN uploaded photograph); Law 7 (the sizes are cited in social-card-spec.ts and
+  the proof imports them); Law 8; Law 10 (one command); Verification and gates. CLOSE-OUT rules:
+  enumerate, never type; nothing pushed until the gate is green here. Plan: C:\dev\C3-PLAN.md.
+- FOUND BEFORE WRITING A LINE, in the previous proof (scripts/verify/launch-kit-inspect.mjs):
+  (1) it hand-typed the card sizes (CARD_SPEC) and the six channels (CHANNELS), a copy of a copy;
+  (2) its import of the real layout functions failed on the "@/" alias with ERR_MODULE_NOT_FOUND
+  on every run and `.catch(() => null)` turned that into "skip", so its three "type fits"
+  verdicts never once ran (and called fitDisplayTitle with the wrong signature, so they could
+  not have): the recorded "28 of 28" was 28 verdicts with those three silently absent; (3) the
+  organisation, the event and the tier were INSERTED with the service role, not created through
+  the wizard. The six channels were typed by hand in FOUR product files as well: the two card
+  routes (a private CHANNELS each, with a silent fallback to Instagram), captions.ts
+  (CaptionPlatform and CAPTION_ORDER) and kit-artefacts.ts (ARTEFACT_CHANNELS, plus a fifth copy
+  inside loadArtefactContext that the new test caught).
+- Branch fix/c3-social-cards-proof cut from e326f03f (rebased onto main after #126 merges).
+- CODE. src/lib/broadcast/artefact-channels.ts is the ONE list (pure, no imports, so a script
+  outside the bundle can load it): ARTEFACT_CHANNELS, isArtefactChannel, artefactChannelFrom.
+  captions.ts derives CaptionPlatform and CAPTION_ORDER from it; kit-artefacts.ts re-exports it
+  and mints [...ARTEFACT_CHANNELS, 'qr']; both card routes read the channel through
+  artefactChannelFrom and declare no list. scripts/lib/src-alias-loader.mjs is a resolve hook
+  (node --import) mapping "@/" onto src/ and completing the omitted .ts, so Node's own type
+  stripping loads the pure modules with named exports intact (tsx was tried first: under this
+  CommonJS package it hands back only a default export). The inspection now imports
+  SOCIAL_CARD_FORMATS, SOCIAL_CARD_ORDER, SOCIAL_CARD_MAX_BYTES, SOCIAL_CARD_MIME,
+  SOCIAL_CARD_EXTENSION, ARTEFACT_CHANNELS and cardFilename, and a failed import fails the run.
+  It signs up through the form, creates the organisation and publishes a FREE event through the
+  wizard with public/images/hero/comedy.jpg uploaded as the cover, lands on the kit by pressing
+  Publish, screenshots and axes the kit screen at the run's viewport, HARVESTS every card
+  download anchor from the page and requires the set to equal formats x channels (18), fetches
+  each with the organiser's own session (what the click does) and judges it (200, image/jpeg,
+  decodes as jpeg at the spec's width x height, ink stdev > 6, under SOCIAL_CARD_MAX_BYTES,
+  attachment with cardFilename()), decodes the poster's QR against the qr share link, opens the
+  REAL event page as a stranger and reads og:image with its declared width and height out of
+  the head, fetches that card and judges it (per-event route, decodes at the declared size,
+  ink), axes the event page, checks every tracked link and the reach panel, and writes a contact
+  sheet plus results.json. KIT_ACCOUNT=admin lets the same script run against a Vercel preview
+  (organiser created confirmed on TEST through the admin API, signed in through the real login
+  form, because a preview has no inbox to read). One command: npm run verify:launch-kit.
+- THE GUARD, and what it found. scripts/guards/card-raster-traced.mjs walks the RUNTIME import
+  graph of src (type-only imports elided; dynamic import() and require() included) backwards
+  from card-raster.ts and card-fonts.ts, derives every Next route entry that reaches them, and
+  judges each against outputFileTracingIncludes with Next's own normaliser
+  (normalizeAppPath) and Next's own picomatch call (dot and contains, from
+  collect-build-traces.js), requiring the wasm path card-raster.ts itself joins and, where the
+  route draws type, a pattern under the font directory card-fonts.ts itself names; it also
+  checks both exist on disk. FIRST RUN ON THE TREE, RED, 6 faults
+  (C:\dev\EVIDENCE\C3\guard-card-raster-traced-red-before-config.txt): EIGHT routes reach the
+  rasteriser, not the three next.config.ts listed. /dashboard/events/create and
+  /dashboard/events/[id]/edit host the cover composer's server action (src/lib/upload.ts, a
+  'use server' module, dynamic-imports generated-cover -> renderSocialCard) and /dashboard/events
+  imports the same module through its actions; the two health crons run the same satori+resvg
+  probe the admin page runs; none of those five had an entry, and /admin/health pinned the
+  binary without the fonts. A local next start reads node_modules directly, so nothing local
+  could ever have shown this. Fixed in next.config.ts with the reason written beside each key
+  (one '/dashboard/events' key covers the three, because Next matches keys with contains: true);
+  GREEN after, 8 of 8 routes ok (guard-card-raster-traced-green-after-config.txt). Registered
+  in run-guards.mjs with its header line; a drill removes the binary from the public composer
+  route's entry.
+- TESTS, 36 in three files: artefact-channels (the six, distinct, in order; CAPTION_ORDER and
+  DRAFT_CHANNELS are the same array; 3 x 6 = 18; isArtefactChannel and the default; neither
+  route declares a list; the modules that carried a copy import the one source; the inspection
+  script imports from source and has no literal spec, no literal list and no swallowed import;
+  the source itself has no imports), card-raster-traced (runtime import parsing incl. type-only
+  elision and multi-line braces; alias and relative resolution; the reverse walk through a
+  dynamic hop; route entry names and subtree entries; the config parser with comments and
+  quoting; the module readers against the real tree and their loud failures; coversFonts; the
+  judge with Next's real matcher on bracketed, grouped, unmatched, fonts-missing and layout
+  cases; the committed config parses), src-alias-loader (alias, relative-inside-src-only,
+  packages and builtins untouched, completion order, the real tree). First run found two
+  mistakes of mine (a relative-path expectation counted one level short; the config parser's
+  backslash normalisation collapsed an escaped run to a double slash) and one product copy (the
+  channels list inside loadArtefactContext); all three fixed; 36 of 36
+  (C:\dev\EVIDENCE\C3\vitest-new-files-1.txt, -2.txt). tsc 0 (tsc-1.txt), eslint 0 on every
+  changed source file (eslint-1.txt).
+- CORRECTION, before anything above is believed. The guard's first premise, "a local server
+  cannot see a lost tracing entry and the lambda ships without the file", was next.config.ts's
+  own claim, and it was MEASURED FALSE within the hour. Two measurements:
+  (1) the cover composer probe on the Vercel preview of e326f03f, whose create page had NO pin,
+  pressed Make a cover through the real wizard and got a cover ("the platform composed one",
+  madeCover=true, C:\dev\EVIDENCE\C3\preview-composer-before.txt and
+  preview-composer-before\after-wizard.png); (2) the trace files that build wrote:
+  .next/server/app/(dashboard)/dashboard/events/create/page.js.nft.json, the events list page,
+  the admin health page and the health-heartbeat cron each already list
+  node_modules/@resvg/resvg-wasm/index_bg.wasm and all four TTFs, pin or no pin. Next's tracer
+  follows the resvg glue's own `new URL('index_bg.wasm', ...)` and the font loader's
+  readFile(join(process.cwd(), ...)) as a directory wildcard. So the six "faults" the first run
+  reported were pins missing from a promise, not files missing from a lambda, and the words
+  "five routes shipped without the binary" in the entry above are withdrawn.
+- WHAT THE GUARD IS NOW, on the measured truth. The pins stay and stay COMPLETE, because they
+  are the one guarantee this repository holds in its own hands (both tracer heuristics belong
+  to @vercel/nft and the package glue and can change in an upgrade with nothing here going
+  red); the prebuild mode keeps every reaching route pinned. The PROOF is a second mode,
+  `--built`, wired as npm's postbuild (Vercel's build command is the plain `npm run build`
+  lifecycle, vercel.json overrides nothing, and the gate's build step is the same command): it
+  opens the .nft.json Next wrote for each reaching route and fails if the binary or a font is
+  not in it. Green on the e326f03f build, 8 of 8 routes
+  (C:\dev\EVIDENCE\C3\guard-card-raster-traced-built-green-e326f03f-build.txt); red proven
+  through the same judge on a synthetic trace without the binary, without one font, and with
+  no trace file at all (tests/unit/guards/card-raster-traced.test.ts, judgeTraces). The header
+  of the guard, the comment in next.config.ts, the registration paragraph and this log all now
+  say what was measured. Drills: 82 of 82 fired correctly with the env loaded, the new one
+  FAILS AS EXPECTED naming the route whose pin lost the binary, all guards PASS on the restored
+  tree (C:\dev\EVIDENCE\C3\guard-failure-drills-with-env.txt).
+
+## C3, 2026-09-06 (close-out): the share cards, the rasteriser that killed them, and the scrim that had never drawn
+
+DISK. Session opened at 6.17 GB free, BELOW the 8 GB floor in the brief, so work stopped and
+space was reclaimed first, per the standing rule. Measured rather than guessed: Logitech update
+payloads C:\ProgramData\LogiOptionsPlus\depots 7,312 MB (9 payloads, Aug 2025 to Apr 2026),
+node_modules 941 MB, ms-playwright 675 MB, EVIDENCE 231 MB, Temp 175 MB. Reclaimed: a stale
+NON-GIT copy of the app at C:\elb from 8 August, whose node_modules was 796 MB (the second
+node_modules the brief forbids; the copy itself is not a git repo and was left in place minus
+that folder). REFUSED, needs an elevated shell: the Logitech depots and C:\$WinREAgent
+(1,553 MB), both "Access to the path is denied". Reported to Lawal with the exact admin command.
+Later in the session free space rose to 21.4 GB by other means; it never went below 5.72 GB
+during the three builds. One self-inflicted note: clearing %TEMP% wholesale deleted this
+harness's own output directory under %TEMP%\claude, so that directory is excluded from now on.
+
+STATE ON ENTRY. C1 and C2 MET and merged (4587489f, 9f530a4d). C3 mid-flight on
+fix/c3-social-cards-proof: the one channel list, the src alias loader, the rewritten
+inspection, the card-raster-traced guard and 36 tests were all in the working tree uncommitted,
+and the previous session's drive had gone 32/32 at desktop-1440 and tablet-768 and then failed
+at mobile-390 with "socket hang up" fetching the per-event og:image. That hang-up was the thread
+this session pulled.
+
+### 1. The defect, found by driving rather than by reading
+
+Reproduced on a local production build, 100 percent, unrelated to anything the previous session
+had suspected:
+
+    GET /events/<slug>/opengraph-image   code=000  bytes=0   (five attempts, five drops)
+    GET /api/og/event/<slug>             code=000  bytes=0
+
+with the server saying, once per request:
+
+    Error: failed to pipe response
+      [cause]: Error: Input buffer contains unsupported image format
+
+Every ImageResponse route was then enumerated from source and driven, so the boundary is
+measured and not assumed: the four STATIC metadata images (site og, twitter, icon, apple-icon)
+answered 200 in about 9 ms because the build prerenders them to files; the two DYNAMIC
+per-event cards both dropped the connection.
+
+HYPOTHESES, IN ORDER, AND WHAT KILLED EACH.
+  1. "The image optimiser loads sharp and poisons the og renderer." REFUTED twice: in plain
+     Node, sharp loads, reports SVG support, round-trips an SVG and the renderer works before
+     and after (og-root-cause/repro-sharp-first.txt); and against the real server the event card
+     failed on the FIRST request, before any optimiser call, and the site card kept working
+     after one.
+  2. The real cause, which the repository had already written down on 29 August in
+     card-raster.ts: next/og rasterises by handing satori's SVG to SHARP; getSharp() is
+     unconditional; the resvg fallback is reached only when the sharp IMPORT throws; sharp is a
+     real dependency of the upload pipeline so it always imports; and inside the Next server
+     runtime that sharp's libvips has no librsvg and cannot decode SVG while reporting that it
+     can. Because ImageResponse STREAMS, the throw lands after the headers are on the wire, so
+     the only thing left is to hang up. That is why it presented as a dropped socket rather than
+     a 500.
+
+WHY IT SURVIVED THE 29 AUGUST FIX. That fix moved the eighteen Launch Kit cards onto this
+repository's own satori + resvg-wasm rasteriser. The metadata images were not moved, because
+nothing had ever driven one. The repair was applied to the routes somebody was looking at
+rather than to the rule.
+
+PRODUCTION, DRIVEN NOT ASSUMED. Six requests with unique query strings, every one
+x-vercel-cache: MISS across four distinct instances (rpglt, k7n2z, 5zzdb, r5xkh, hz8j2, and
+5zzdb again, so instance reuse happened and still worked), all 200 with 914992 bytes. Production
+is fine, and it is fine only because sharp is not resolvable in that lambda, which is precisely
+the runtime-dependent fragility the 29 August ruling exists to end.
+
+### 2. The repair
+
+src/lib/broadcast/og-response.ts, renderOgResponse(element, { width, height, where, headers,
+fallback }). Renders through renderCardPng (the same rasteriser as the eighteen cards), with two
+properties written into the file as law:
+  - THE BYTES ARE BUFFERED, not streamed, so every failure happens BEFORE a byte of response is
+    committed and is therefore a real status code with a real body. A dropped socket carries no
+    status, no body and no message, which is why this defect was unreadable.
+  - A designed FALLBACK may be handed in, so a card that cannot be drawn degrades to a branded
+    card rather than to nothing. The event card passes its own composition with the cover
+    removed, so the fallback cannot drift from the thing it stands in for.
+
+All nine routes ported: events/[slug]/opengraph-image, api/og/event/[slug], opengraph-image,
+twitter-image, icon, icon1, icon2, icon3, apple-icon. The artist route also stopped handing
+satori a raw cover URL (it now uses fetchImageDataUri), which is the fault its sibling had
+already recorded and repaired on 28 August and which this route still carried.
+
+AFTER, DRIVEN: every route that returned code 000 returns 200 with real pixels, five times
+running with the optimiser interleaved. Event card 1200x630, ink stdev 117.5.
+
+### 3. The guard, and the two bugs it shipped with
+
+scripts/guards/og-single-rasteriser.mjs, registered, blocking on prebuild. No next/og, no
+ImageResponse, no compiled @vercel/og, no direct satori or resvg import anywhere under src
+except card-raster.ts. It bans the four static metadata images too, which were green through
+both incidents, because an invariant with an exception list decays into the exception list.
+
+ITS FIRST RUN REPORTED A CLEAN TREE while both routes imported next/og on line 1, and it was
+believed for about five minutes. Two bugs, both now pinned by tests:
+  1. The module-specifier rules were matched against stripNonCode output, which blanks string
+     CONTENTS, so 'next/og' had been blanked out from under the pattern before it ran. Rules now
+     declare their own stripping: 'specifier' (comments only) or 'code' (comments and strings).
+  2. judgeSource was handed readSource()'s { raw, withStrings, code } object where it expected
+     raw text, so it stripped an object and matched nothing. It now throws on the wrong shape.
+Only after both were fixed did it go RED, naming
+src/app/api/og/event/[slug]/route.tsx:1 and :46 and :139, events/[slug]/opengraph-image.tsx:1
+and :93, icon.tsx:1 and :10. A guard green for the wrong reason is worse than no guard.
+
+### 4. The second defect: the navy scrim had NEVER drawn, anywhere
+
+While looking at the repaired card, the bottom-right line read faint. Production's own card was
+fetched for comparison and had the same problem, so it was not something introduced here.
+
+MEASURED, not guessed: two identical scrims rendered side by side through the real rasteriser,
+one positioned with `inset: 0` and one with top/right/bottom/left. The inset one left the pixel
+under it untouched; the longhand one painted it. SATORI IGNORES THE `inset` SHORTHAND.
+
+All TEN absolutely positioned scrims and gradient layers across the two share cards and
+social-cards.tsx (the eighteen Launch Kit cards) used `inset`. So not one of them had ever
+drawn, on production or anywhere else, for as long as the cards have existed: white type sat
+straight on the organiser's photograph, "Tickets at www.eventlinqs.com.au" was effectively
+unreadable on a bright cover, and the branded no-cover fallback lost its gold radial the same
+way. Nothing threw and nothing logged, and the code read exactly as though it worked.
+
+Fixed in all ten places. Documented once, at the rasteriser. Guarded by a second rule in the
+same guard, scoped to files that draw through the rasteriser (a `drawsThroughRasteriser` test on
+the imports), because `inset` is perfectly valid CSS everywhere else in the application and a
+global ban would be the kind of guard people switch off. Drilled red and green. Before and after
+rasters are in evidence.
+
+### 5. The third and fourth defects
+
+TYPE. Every share card and every icon drew in whatever face satori fell back to. card-fonts.ts
+already calls that "the single loudest 'made by a template' signal on an artefact a promoter
+puts in front of their audience" and was describing this exact set of images. They now draw in
+Archivo and Hanken Grotesk, the same buffers the Launch Kit cards use. The family names are
+re-exported from the module that reads the font files rather than restated, because a family
+name written twice can disagree with the font actually loaded and satori answers that
+disagreement in silence.
+
+THE SIBLING GUARD WAS BLIND. card-raster-traced matched route entries against an exact-name set,
+so src/app/icon1.tsx, icon2.tsx and icon3.tsx were invisible to it (icon3 is the maskable icon
+the installed PWA uses). The number-suffix convention is real and was confirmed from the
+INSTALLED Next documentation before changing anything
+(node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/01-metadata/app-icons.md:64).
+It also looked for traces at `<entry>.js.nft.json` only, while a metadata image is compiled into
+a route handler of its own and gets `<entry>/route.js.nft.json`. That made seven real traces
+look like seven absences, and a "prerendered instead of traced" pass-path was briefly written to
+accommodate them. Once the lookup was corrected every reaching route had a trace, so that
+pass-path was DELETED rather than kept: a guard must not carry a pass a real tree never
+exercises. The guard now judges 17 reaching routes where it judged 8.
+
+### 6. The fifth defect: the proof could not be run twice
+
+The first re-run of the three-viewport drive failed at all three viewports with faults entirely
+its own: the signup email, the organisation name and the event title were all derived from a
+caller-pinned RUN_STAMP, so the platform correctly refused with "that email address already has
+an EventLinqs account" and then "This slug is already taken". Everything the platform makes
+unique now carries a per-run account stamp; only the output folder carries the caller's stamp.
+
+Separately, mobile-390 hit "Too many attempts from this connection", which is the signup limiter
+working: three viewports driven back to back from one machine are three sign-ups from one
+connection inside three minutes, where three real organisers at three devices are three
+connections. The local in-memory limiter shim is now restarted between viewports so each stands
+in for its own connection. The limiter is untouched and every run still takes the same code
+path; the reason is written into drive-all.sh so it cannot be mistaken for a bypass.
+
+### 7. Regression
+
+tsc 0. eslint 0 on every changed file. Three production builds, the last green with the
+postbuild trace check at 17 of 17 routes. Suite 298 files / 3476 tests, 0 failed, 0 skipped;
+canary raised 297/3449 to 298/3476 in the same commit. Guard drills 84 of 84 fired correctly
+with the env loaded, including both new drills, and every guard passes on the restored tree.
+axe 0 violations at any impact on the kit screen and the event page at all three viewports.
+Driven 32 of 32 at 1440, 768 and 390, 0 server errors, 0 blockers.
+
+FOUND IN THE TREE, NOT MINE TO DECIDE. scripts/ops/purge-test-events.mjs was UNTRACKED,
+referenced by nothing and never committed, so git was not preserving it. It blocked the build
+(no-silent-catch fails on line 61, where a failed read is swallowed and returned as "n/a") and
+it DELETES ROWS FROM PRODUCTION: it is the only script here that refuses to run unless the
+target IS gndnldyfudbytbboxesk, reading the service role key from a plaintext C:\dev\prod.env,
+while every other ops script calls assertNotProduction and refuses the opposite way. Moved
+intact to C:\dev\quarantine\ with a note setting out three ways forward. Nothing it does was
+changed, and nothing was deleted.

@@ -254,3 +254,120 @@ committed under docs/verification/journeys-2026-08-28/c1-geocode-source-roundtri
 **Closed 6 September 2026:** PR #125 merged as 4587489f, every run on main is green (CI,
 post-deploy smoke, env locks), and the live site serves that commit. Nothing further for you on
 C1 except the migration above, which stays yours.
+
+## C2 (6 September 2026): a push cannot leave this machine until every CI check has passed here
+
+**What changed for a real user:** nothing on the site. This item is about how work reaches the
+site: the six failed-run emails you got for one pull request cannot happen again, because CI is
+no longer the first place anything is checked.
+
+**What changed for you and for anyone pushing:** `git push` now runs the whole gate first, as one
+command (`npm run gate:push`): the typecheck, lint, the copy laws, the critical-path guard, the
+exemption clock, all 65 build guards, the types-drift check against production, the full test
+suite, a production build, and the Lighthouse mobile gate on that build served locally with the
+same Lighthouse version and the same floors as CI. If any step is red, nothing is pushed and the
+output names the step and the one command to re-run it. Pull requests are now opened as drafts;
+CI stays silent on a draft and runs exactly once when the pull request is marked ready. Two new
+build guards make sure neither half of that can quietly disappear.
+
+**Two things found and fixed on the way:**
+- The reason `.env.local` had to be moved out of the way around every push was a fault in the
+  production-write safety check itself: the file's "preview" project name could re-point a script
+  that was aimed at production to "TEST, proceeding". Fixed and pinned. The suite now passes with
+  the file in place, so that manual step is gone.
+- Production's pages being indexable by Google was checked by nothing. The gate's local run now
+  asserts it before every push, using the same robots header production serves.
+
+**Evidence:** C:\dev\EVIDENCE\C2\ (the gate blocking on a planted type error, the two full push
+runs, the Lighthouse hand run with all 13 pages and their scores, the guard proofs red and green,
+the drills, the suite with `.env.local` present).
+
+**Decide, or know:**
+- **A push now takes about half an hour**, most of it the build (about 3 minutes) and Lighthouse
+  (about 16 minutes for 13 pages, three runs each). That is the cost of the rule you set on
+  5 September; it is measured, not estimated, and it is the same measurement CI takes. If you
+  want it cheaper, the honest levers are fewer runs or fewer pages, and both are threshold changes
+  I have not made.
+- **The "park .env.local around every push" law in BUILD-BRIEF.md is obsolete** on the code
+  side, for the reason above. Nothing in the repository still needs it.
+
+**Closed 6 September 2026:** the push went through the gate (12 of 12, about 30 minutes), PR
+#126 was opened as a draft (every workflow recorded as skipped, nothing ran), marked ready (CI
+ran once and passed), squash-merged as 9f530a4d, and production serves it with the post-deploy
+smoke green. One thing to know: the advisory Lighthouse run on the pull request failed on the
+Vercel preview by 13 milliseconds of LCP on one event page, the runner gap your 25 August ruling
+describes; the same page passed on the local build inside the gate. It emailed you; it is not a
+regression in the product and nothing was relaxed.
+
+## C3 (6 September 2026): the picture every shared link shows was dead on a real server, and the navy wash on every card had never existed
+
+**The item you set:** prove the eighteen social cards from a running server, three formats
+across six channels, each a real image at its published size with actual ink, plus a contact
+sheet and a per-event card driven against a real event page.
+
+**Done, and here is the number:** 32 of 32 checks passed at 1440, 768 and 390, with zero
+server errors and zero blockers, as a real organiser who signed up on the form, made their
+organisation, uploaded a real photograph and published a free event through the wizard. All
+eighteen cards download, decode at their published sizes and carry ink. The poster's QR was
+pulled back out of the PDF and scanned with a real scanner, and it points at the right
+address. All fourteen tracked share links resolve.
+
+**But the item found something much worse, and that is the real story.**
+
+**Every shared event link was serving nothing on a real server.** Not a broken picture, which
+you would see. The connection was dropped mid-answer: no status code, no image, no error a
+person could read. It happened on every single request, every time, on both the event card and
+the artist card.
+
+**Why:** the library Next gives you for drawing these images hands the finished artwork to a
+photo tool that cannot read it inside a running server. That is the identical fault that killed
+all eighteen Launch Kit cards on 29 August. It came back nine days later because the fix was
+applied to the cards somebody was looking at, and the share cards were left on the old library,
+because nobody had ever driven one. All nine image routes are now on the platform's own
+renderer, and a build guard fails if the old library ever comes back anywhere.
+
+**Your live site was not affected, and I proved that rather than assumed it:** I called
+production six times, forcing a real render each time and landing on four different machines,
+and every one returned a good card. It works there by luck: the photo tool that breaks it is
+not installed in that particular slot. That is exactly the fragility the 29 August ruling
+exists to remove, so it is now removed.
+
+**The second thing I found is the one you will actually see.** Every share card and every
+Launch Kit card is designed with a navy wash rising from the bottom, so white type stays
+readable over whatever photograph the organiser uploads. **That wash has never once drawn.** Not
+on your live site, not anywhere, for as long as the cards have existed. The drawing engine
+silently ignores the one shorthand the code used to position it, so the layer collapsed to
+nothing and no error was ever raised. Look at C:\dev\EVIDENCE\C3\prod-og-card.png, which is
+your live card today: the title and "Tickets at www.eventlinqs.com.au" are sitting straight on
+a bright photo and the last line is barely readable. Then look at
+C:\dev\EVIDENCE\C3\og-root-cause\scrim-event-card.png, which is the same card now. All ten
+places were fixed and a guard stops it returning.
+
+**The third thing:** those cards were drawing in a default system typeface rather than
+EventLinqs' own. Your own code calls that "the single loudest 'made by a template' signal on an
+artefact a promoter puts in front of their audience". They now use the real brand fonts, the
+same ones the Launch Kit cards already used.
+
+**Two more, quieter, both fixed:** a guard was blind to three of your icon files, including the
+Android one, and the proof itself could only ever be run once, because it reused the same
+signup email and event name every time.
+
+**Evidence:** C:\dev\EVIDENCE\C3\ - the three viewport folders with all eighteen cards and the
+contact sheets, and og-root-cause\ with the failure captured before, the same routes working
+after, and the guard proven both failing and passing.
+
+**One thing for you to decide, and I have not touched it:**
+
+- **A script that deletes events from your PRODUCTION database was sitting loose in the repo.**
+  `scripts/ops/purge-test-events.mjs`, never committed to git, referenced by nothing, reading
+  your production service key from a plain text file. Every other tool in the repo refuses to
+  run against production; this one refuses unless it IS production. It was also stopping the
+  build. I moved it, unchanged, to `C:\dev\quarantine\` with a note listing three options
+  (delete it, adopt it properly with a confirmation step, or keep it as a personal tool outside
+  the repo). It is your call and nothing was lost.
+
+**Also worth knowing: disk.** I started at 6.17 GB free, below the 8 GB floor you set. I
+reclaimed what I could reach and reported the rest; it now sits above 20 GB. The one thing I
+still cannot touch is 7.3 GB of old Logitech update payloads in
+`C:\ProgramData\LogiOptionsPlus\depots`, which needs an admin PowerShell:
+`Get-ChildItem C:\ProgramData\LogiOptionsPlus\depots -Directory | Sort-Object LastWriteTime | Select-Object -SkipLast 2 | Remove-Item -Recurse -Force`
