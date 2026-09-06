@@ -186,12 +186,10 @@ async function schemaParity() {
   }
   fail(`FAIL schema: production ${project} is BEHIND this tree by ${pending.length} migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:`)
   for (const p of pending) fail(`    ${p.file}`)
-  fail('  Applying a migration to production is the founder\'s step (CLAUDE.md, Verification and gates, Migrations). In PowerShell, from the repo:')
-  fail(`    supabase link --project-ref ${project}`)
-  fail('    Get-Content supabase\\.temp\\project-ref     # read the ref back before pushing')
-  fail('    supabase db push --linked')
-  fail('    node scripts/ops/verify-production-schema.mjs  # proves the push landed, read only')
-  fail('    supabase link --project-ref vkapkibzokmfaxqogypq   # rest linked to TEST again')
+  fail('  Applying a migration to production is the founder\'s step (CLAUDE.md, Verification and gates, Migrations). One command, in PowerShell from the repo:')
+  fail('    npm run migrate:production')
+  fail('  It lists these files, asks for the production ref typed back, hands over the CLI\'s own prompts, proves the result and rests the CLI on TEST')
+  fail('  (scripts/ops/apply-production-migrations.mjs; add `-- --dry-run` to list only).')
   fail('  Until then this tree cannot reach production, so it does not reach main.')
   return false
 }
