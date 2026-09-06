@@ -2714,3 +2714,77 @@ changed, and nothing was deleted.
   the founder's command has run. The sequence after it is unchanged and recorded in the 02:39 entry.
   The ledger's sessions 9 to 11 section widened to cover this relaunch; the "Last re-verified" line
   at the top of REVIEW-QUEUE.md's "Needs you" block updated.
+
+## 2026-09-07 02:50 to 03:25 (C16, continued, session 12) the halt re-verified; the founder's command driven past its confirmation for the first time, and it would have hung
+
+- Governing laws, stated first: Law 0, Law 8, Law 10 (rule 3, the script proves itself), Verification and
+  gates (Migrations: the founder applies), the C16.0 halt rule, Definition of Done clause 6, and the
+  completion law (never claim something works without driving it). Nothing merged, nothing started,
+  nothing written to production; the CLI rests on TEST (supabase/.temp/project-ref read back:
+  vkapkibzokmfaxqogypq). Disk 23 GB free at start.
+- THE HALT RE-VERIFIED (C16.0), 02:50 to 02:52, read only, through the clean-env wrapper. The parity step
+  on the clean tree at 8161cfe2: 116 migrations in the tree, 113 applied on gndnldyfudbytbboxesk, the same
+  3 pending (20260905000003, 20260906000001, 20260906000002); the environment half read the production
+  store through the Vercel CLI login: 34 records, 43 manifest entries, 0 faults; FAIL on the schema half,
+  exit 1. Vercel's newest production deployments: 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY. The live
+  site serves sentry-release b4255a96 (HTTP 200, 392264 bytes). CI on main still red at 2d558d2a (run
+  34031455414), no new run. origin/main unchanged after a fetch (2d558d2a). Protection reads back the three
+  required contexts, strict, admins enforced. PR 130 still BLOCKED. The founder has not run
+  `npm run migrate:production`. Evidence: production-parity-recheck-session12.txt,
+  deployments-recheck-session12.txt.
+- WHAT THE HALT PERMITS, and why this session did more than re-verify: only the founder's step itself may
+  be worked on. Its apply path had never been driven past the confirmation, because the only path that
+  continues writes to production, and the refusing paths (session 3) were driven with a piped stdin, which
+  never reaches the joint where Node hands the console to the Supabase CLI. Law 10 rule 3 and the
+  completion law both require that joint to be driven. It was, against TEST only, with nothing written
+  anywhere: linking the CLI to TEST is what the script does on exit in any case.
+- HOW IT WAS DRIVEN: a pseudo console. Git's winpty first (it types into readline, but asserts and dies
+  the moment a child resizes the console, so it gave no verdict), then pywinpty 2.0.15 (Windows ConPTY)
+  through the small driver pty-drive.py, which answers prompts by pattern and prints the transcript and
+  the exit status. What stood in for the CLI prompt: the real `supabase link --project-ref <TEST>` (the
+  real binary, 2.116.0 on PATH, but in this version link asks nothing and prints a JSON line; `supabase
+  init` asks nothing either, even with --interactive; the CLI's own yes/no prompt, read from its source at
+  apps/cli-go/internal/utils/console.go, is a bufio.Scanner on os.Stdin, which on a console handle is
+  ReadConsole in line mode), so cmd's `set /p` and PowerShell's Read-Host, both line-mode console reads,
+  stood in for the Y/n the founder answers on `db push`.
+- THE DEFECT: after readline took the typed ref on a real console and closed, the child saw its keystrokes
+  echo and never received the Enter; it timed out (SIGTERM at 20 s). The diagnostic shows why:
+  stdin._handle.reading was TRUE after rl.close(). Node's pause() on a TTY stream does not stop the
+  underlying read (net.Socket.pause only calls readStop when an onread buffer is in use), and restoring
+  cooked mode restarts that read in line mode, so the parent held a pending line read on the console that
+  took the founder's line. His `supabase db push` would have hung at its own Y/n after he typed y, for
+  ever. Evidence: conpty-drive-4-cmd-child.txt, conpty-drive-3-powershell-child.txt,
+  conpty-drive-4-through-wrapper.txt (through the token wrapper, the real chain minus npm),
+  conpty-diag-handle-reading.txt (handle.reading=true after close, child timed out).
+- THE FIX (100be967): askLine reads the confirmation with fs.readSync on fd 0, one ReadFile on the console
+  that returns when the line ends and leaves nothing pending; readline is gone from the script and a test
+  pins it out. Driven with the REAL exported function through the real wrapper chain under ConPTY:
+  handle.reading=false before and after; the cmd child got its line and exited 0
+  (conpty-real-askline-cmd-child-through-wrapper.txt); the real CLI link to TEST completed and the ref
+  read back TEST (conpty-real-askline-supabase-link-TEST.txt). The real command's refusing paths re-driven
+  on the fixed script: a piped wrong ref REFUSED, exit 1; a closed stdin REFUSED, exit 1; --dry-run lists
+  the three files and exits 0; the CLI rests on TEST each time (migrate-production-refused-after-fix.txt,
+  migrate-production-dry-run-after-fix.txt). The founder's command is unchanged:
+  `npm run migrate:production`.
+- COMPLETION LAW. Tests: four on askLine (the first line only, CRLF or LF; a closed stdin is a refusal; the
+  prompt precedes the read; never readline), RED against the previous script (4 failed, 8 passed:
+  vitest-apply-production-migrations-RED-old-script.txt) and GREEN on this one (12 of 12:
+  vitest-apply-production-migrations-after-fix.txt); the canary raised 3588 to 3592 in the same commit and
+  the full suite run through it: 311 files / 3592 tests, 0 failed, 0 skipped, 64 s (suite-session12.txt).
+  Guards: 71 of 71 PASS (guards-session12.txt). tsc 0; eslint 0 on both files. The push of 100be967
+  through the gate: disk, typecheck (7 s), lint (55 s), copy, critical-path, lighthouse-exemptions,
+  71 guards (70 s) and types-drift (20 s) all PASS, then BLOCKED at production-parity after 4 s, nothing
+  pushed (gate-refused-on-push-session12.txt). Six commits now wait on ci/c16-production-parity.
+- TWO THINGS GOT WRONG ON THE WAY, BOTH CORRECTED: (1) a drive using `supabase init` printed PASS on a
+  criterion that did not require a prompt to have run (init asks nothing in 2.116); that harness and its
+  transcript were deleted and the drive redone with a child that cannot pass without the keystroke. (2) The
+  session's shell harness unescapes backslash sequences inside command text, so two heredoc edits wrote
+  real line breaks into string literals (a SyntaxError in the script, three failing tests); repaired by
+  building the backslash from its character code, and recorded in memory so it is not repeated.
+- DISK: 23 GB at start, 22 GB at end; no .next produced (the gate refuses before the build); the evidence
+  is small text files and the harness scripts under C:\dev\EVIDENCE\C16\; the three winpty transcripts superseded by
+  the ConPTY ones were deleted; the temporary directories the drives created were removed.
+- THE HALT STANDS. Six commits wait on ci/c16-production-parity (5ca9d984, eaf7deeb, 2f0545c1, 7c9101fe,
+  8161cfe2, 100be967) and leave the machine the moment `npm run migrate:production` has run. The sequence
+  after it is unchanged and recorded in the 02:39 entry. What this session changed is that the command
+  will now get past its own confirmation when he presses it.

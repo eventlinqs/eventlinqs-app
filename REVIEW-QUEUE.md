@@ -5,9 +5,10 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
-Last re-verified 7 September 2026 at 02:46 (session 11): still the same three migrations behind,
-the same two failed production deployments, main still red. Nothing has moved and nothing else
-is left for me to do until the command in the first item has run.
+Last re-verified 7 September 2026 at 02:52 (session 12): still the same three migrations behind,
+the same two failed production deployments, main still red. Nothing has moved. This session found
+and fixed a hang in your one command (see the 03:25 entry at the end of this file): it is the same
+command, and it now gets past its own confirmation.
 
 Rewritten 7 September 2026 at 01:10. Everything below the first item is unchanged in
 substance; what was already done (the A2, A3, A4, B1 and B2 migrations are on production,
@@ -648,3 +649,39 @@ wrapper, is the one the evidence cites.
 **Evidence:** C:\dev\EVIDENCE\C16\ (gate-refused-on-push-env-fault.txt,
 guard-failure-drills-session7.txt, production-parity-recheck-session7.txt,
 deployments-recheck-session7.txt).
+
+## C16, continued (7 September 2026, 03:25): your one command would have hung after you typed y; found and fixed before you pressed it
+
+**Where things stand.** Unchanged: production still serves the C3 build, the two later
+production deployments are still failed, main is still red, and production is still three
+migrations behind the tree. Your one command is still the only thing that unblocks it, and it
+is the same command:
+```
+npm run migrate:production
+```
+
+**What was found.** The command had only ever been tested on the paths where it refuses. The
+path that continues, where it asks you to type the production ref and then hands the terminal
+to the Supabase CLI for its own questions, had never been driven, because the real thing writes
+to production. Tonight it was driven on a simulated terminal against the test project, with a
+stand-in for the CLI's question. After you typed the ref, the next question would have shown
+your keystrokes but never accepted the Enter: the CLI's "push these migrations? Y/n" would have
+sat there for ever after you typed y, and you would have had to press Ctrl-C. The cause is a
+quirk of how Node hands a terminal over after asking a question; the fix is to ask the question
+a different way, one that leaves the terminal clean.
+
+**What is fixed.** The confirmation is now read in that clean way. Driven again the same way with
+the real code: the stand-in question received its answer and finished, and the real CLI took the
+terminal and linked to the test project without trouble. The three refusing paths still refuse.
+Four tests pin it, all other checks are green on the tree, and the push gate holds the commit at
+production parity as before. Nothing else changed: the parity gate, the CI job and the branch
+protection are as they were.
+
+**Nothing changes for you.** The command above is the step. After it, the sequence in the
+"Needs you" item at the top runs without you.
+
+**Evidence:** C:\dev\EVIDENCE\C16\ (conpty-real-askline-cmd-child-through-wrapper.txt,
+conpty-real-askline-supabase-link-TEST.txt, conpty-diag-handle-reading.txt,
+conpty-drive-4-through-wrapper.txt, migrate-production-refused-after-fix.txt,
+migrate-production-dry-run-after-fix.txt, suite-session12.txt, guards-session12.txt,
+gate-refused-on-push-session12.txt, production-parity-recheck-session12.txt).
