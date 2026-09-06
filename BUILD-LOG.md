@@ -2788,3 +2788,33 @@ changed, and nothing was deleted.
   8161cfe2, 100be967) and leave the machine the moment `npm run migrate:production` has run. The sequence
   after it is unchanged and recorded in the 02:39 entry. What this session changed is that the command
   will now get past its own confirmation when he presses it.
+
+## 2026-09-07 03:28 to 03:31 (C16, continued, session 13) the halt re-verified on relaunch; nothing has moved; nothing started
+
+- Governing laws, stated first: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder
+  applies), the C16.0 halt rule, Definition of Done clause 6. No code changed. Nothing merged, nothing
+  started, nothing written to production; the CLI rests on TEST (supabase/.temp/project-ref read back:
+  vkapkibzokmfaxqogypq). Disk 23 GB free at start and end (df); no build output produced.
+- THE HALT RE-VERIFIED (C16.0), 03:28 to 03:31, read only, through the clean-env wrapper. The parity step
+  on the clean C16 tree at 100be967: 116 migrations in the tree, 113 applied on gndnldyfudbytbboxesk, the
+  same 3 pending (20260905000003, 20260906000001, 20260906000002); the environment half read the
+  production store through the Vercel CLI login: 34 records, 43 manifest entries, 0 faults; FAIL on the
+  schema half, exit 1, "BLOCKED at production-parity after 4s. Nothing was pushed." Vercel's newest
+  production deployments: 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY. The live site serves
+  sentry-release b4255a96 (HTTP 200, 396472 bytes). CI on main: still red at 2d558d2a (run 34031455414),
+  no new run since 11:52Z on 6 September. origin/main unchanged after a fetch (2d558d2a). PR 130 (C8)
+  still BLOCKED by protection. The founder has not run `npm run migrate:production`. Evidence:
+  production-parity-recheck-session13.txt, deployments-recheck-session13.txt.
+- ONE MORE JOINT OF THE FOUNDER'S COMMAND DRIVEN READ ONLY, because that command is the only work the halt
+  permits and session 12 found a defect in it by driving: proof 1 of 2 inside it,
+  scripts/ops/verify-production-schema.mjs, run by hand against production through the wrapper. It pulled
+  the production public record through the Vercel CLI login, probed the nine objects the shipped code
+  names, and reported seven PRESENT and two ABSENT (events.archived_at, 400 42703; event_tombstones.slug,
+  404 PGRST205), each naming 20260906000002_event_lifecycle_archive_delete.sql as the file that supplies
+  it; FAIL, exit 1. That is the correct verdict before his command and the one that must flip to PASS
+  after it. It had not been run on this machine since the script was written into the command's apply
+  path. Evidence: verify-production-schema-session13.txt.
+- THE HALT STANDS. Six commits wait on ci/c16-production-parity (5ca9d984, eaf7deeb, 2f0545c1, 7c9101fe,
+  8161cfe2, 100be967) and leave the machine the moment the founder's command has run. The sequence after
+  it is unchanged and recorded in the 02:39 entry. The ledger gains one section for session 13 that later
+  relaunches widen; the "Last re-verified" line at the top of REVIEW-QUEUE.md's "Needs you" block updated.

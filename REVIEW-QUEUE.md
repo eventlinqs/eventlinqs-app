@@ -5,10 +5,11 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
-Last re-verified 7 September 2026 at 02:52 (session 12): still the same three migrations behind,
-the same two failed production deployments, main still red. Nothing has moved. This session found
-and fixed a hang in your one command (see the 03:25 entry at the end of this file): it is the same
-command, and it now gets past its own confirmation.
+Last re-verified 7 September 2026 at 03:31 (session 13): still the same three migrations behind,
+the same two failed production deployments, main still red. Nothing has moved. Session 12 found and
+fixed a hang in your one command (see the 03:25 entry at the end of this file): it is the same
+command, and it now gets past its own confirmation. Session 13 also ran the command's own first
+proof by hand, read only: it correctly reports the two C13 objects still absent on production.
 
 Rewritten 7 September 2026 at 01:10. Everything below the first item is unchanged in
 substance; what was already done (the A2, A3, A4, B1 and B2 migrations are on production,
