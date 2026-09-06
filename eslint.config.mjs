@@ -145,6 +145,15 @@ const eslintConfig = defineConfig([
     // `npm run lint` red for work that is about to be deleted.
     "tmp-*.mjs",
     "tmp-*.json",
+    // The gitignored scratch directory, same argument again, and it has already
+    // cost a push. The pre-push gate writes .tmp/lhci-lighthouse-path.cjs for
+    // its Lighthouse step and removes it when the step ends. A gate that is
+    // INTERRUPTED leaves the file behind, and because it is CommonJS by
+    // necessity (lighthouserc loads it with require) the very next run of the
+    // gate failed at lint on "A `require()` style import is forbidden", in a
+    // file the gate itself had written, about a rule that does not apply to it.
+    // Nothing under a gitignored scratch directory is project source.
+    ".tmp/**",
     // Gitignored nested git worktrees (a full second checkout with its own
     // generated files). Never project source; linting them makes `npm run lint`
     // noisily red locally while CI - which has no nested worktree - is green.

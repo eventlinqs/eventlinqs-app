@@ -149,7 +149,15 @@ const nextConfig: NextConfig = {
     // (one source of truth with the homepage), so its lambda needs the fixture
     // file too or a fixture card would 404 on the Preview. No-op when the file
     // is absent (normal/production builds).
-    '/events/[slug]': ['./src/lib/dev/home-seed-fixture.json'],
+    // Next matches these keys with picomatch and `contains: true`, so this key
+    // also covers /events/[slug]/opengraph-image, which renders the per-event
+    // share card through the resvg rasteriser and therefore needs the binary and
+    // the brand fonts. Both are listed here rather than under a second key.
+    '/events/[slug]': [
+      './src/lib/dev/home-seed-fixture.json',
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     // The social cards draw brand type. satori is handed real font buffers
     // read from disk at render time, so the TTFs have to be traced into the
     // card lambda or every card would silently fall back to a system face.
@@ -171,8 +179,101 @@ const nextConfig: NextConfig = {
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',
     ],
     // The admin health page runs the card raster check end to end, which is the
-    // second entry point into the same module.
-    '/admin/health': ['./node_modules/@resvg/resvg-wasm/index_bg.wasm'],
+    // second entry point into the same module. The probe draws with the brand
+    // fonts too (a probe with no font could never go green, see checks.ts), so
+    // the fonts are pinned beside the binary.
+    '/admin/health': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    /*
+     * WHAT THESE PINS ARE, measured on 6 September 2026 (close-out C3) rather
+     * than believed. The comment above says that without the pin "the lambda
+     * ships without the one file the rasteriser cannot work without". The build
+     * output says otherwise: every route that reaches the rasteriser already
+     * lists the binary and all four fonts in its .nft.json with no pin at all,
+     * and the cover composer produced a cover inside a Vercel preview lambda of
+     * a tree that pinned nothing for its page. Next's tracer follows the resvg
+     * glue's own `new URL('index_bg.wasm', ...)` and the font loader's
+     * readFile(join(process.cwd(), ...)) as a directory wildcard. So the pins
+     * are not what puts the files there today.
+     *
+     * They are kept, and kept COMPLETE, because they are the one guarantee this
+     * repository holds in its own hands: both tracer heuristics belong to
+     * @vercel/nft and to the package's glue and can change in an upgrade with
+     * nothing here going red. scripts/guards/card-raster-traced.mjs derives
+     * every route that reaches the rasteriser from the import graph, requires
+     * a pin for each (prebuild), and after every build reads the trace Next
+     * actually wrote for each and fails if the binary or a font is not in it
+     * (postbuild). That second check is the proof; these entries are the
+     * promise it is checked against.
+     *
+     * THE ROUTES BELOW were found by the guard, not by memory, which had three
+     * of the eight. The cover composer ("Make a cover", Law 6's typographic
+     * cover) is a server action in src/lib/upload.ts that reaches
+     * renderSocialCard through a dynamic import; a 'use server' module is
+     * bundled into every route that imports it, so the composer runs in the
+     * wizard pages' lambdas (create, edit) and in the events list page's,
+     * whose actions import the same module. Next matches these keys with
+     * picomatch and `contains: true` (next/dist/build/collect-build-traces.js),
+     * so the one key below applies to every route whose path contains it,
+     * which is those three and their siblings. The two health crons run the
+     * same image_pipeline probe the admin page runs, satori and resvg end to end.
+     */
+    '/dashboard/events': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    '/api/cron/health-heartbeat': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    '/api/cron/health-sentinel': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    /*
+     * THE METADATA IMAGES, added 6 September 2026 (close-out C3) when every one
+     * of them moved off next/og and onto this repository's own rasteriser.
+     *
+     * They moved because the per-event share card, driven on a local production
+     * server, did not render badly, it DROPPED THE CONNECTION: code 000, zero
+     * bytes, "failed to pipe response" with sharp refusing satori's SVG
+     * underneath it. That is the same fault that cost eighteen Launch Kit
+     * artefacts on 29 August, surviving in the routes nobody had driven. The
+     * account is in src/lib/broadcast/og-response.ts and the rule is now a
+     * build guard, scripts/guards/og-single-rasteriser.mjs.
+     *
+     * Four of these are prerendered by the build and served as files, so they
+     * never read the binary at run time. They are pinned anyway: the pin follows
+     * the IMPORT GRAPH, not today's rendering mode, because a route that gains a
+     * dynamic segment tomorrow must not also silently lose its binary. The two
+     * that genuinely render per request are the event card and the artist card.
+     *
+     * Next matches these keys with picomatch and `contains: true`, so
+     * '/events/[slug]' below already covers /events/[slug]/opengraph-image and
+     * needs no separate key; it is the key that carries the home-seed fixture.
+     */
+    '/opengraph-image': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    '/twitter-image': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    '/icon': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    '/apple-icon': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
+    '/api/og/event': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
   },
   async redirects() {
     // THE TABLE ITSELF MOVED to src/lib/seo/permanent-redirects.ts, unchanged,

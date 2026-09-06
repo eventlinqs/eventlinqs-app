@@ -313,6 +313,47 @@ const DRILLS = [
     expect: 'step selection',
   },
   /*
+   * card-raster-traced (close-out C3, 6 September 2026): the resvg binary is
+   * pinned into each rasterising route's lambda trace by hand, and the only
+   * environment that shows a lost entry is Vercel. The drill removes the binary
+   * from the public composer's card route and expects the guard to name it.
+   */
+  {
+    name: 'a card route loses the resvg binary from its lambda trace',
+    guard: `${GUARDS}/card-raster-traced.mjs`,
+    file: 'next.config.ts',
+    find: "    '/api/launch/[code]/card/[format]': [\n      './src/assets/fonts/*.ttf',\n      './node_modules/@resvg/resvg-wasm/index_bg.wasm',\n    ],",
+    replace: "    '/api/launch/[code]/card/[format]': [\n      './src/assets/fonts/*.ttf',\n    ],",
+    expect: "lacks './node_modules/@resvg/resvg-wasm/index_bg.wasm'",
+  },
+  /*
+   * og-single-rasteriser (close-out C3, 6 September 2026). The share card that
+   * dropped the connection did so because next/og came back into a route nobody
+   * had driven. The drill puts it back into the one route whose failure is least
+   * visible, the site-level card, and expects the guard to name the import.
+   */
+  {
+    name: 'a metadata image goes back to next/og',
+    guard: `${GUARDS}/og-single-rasteriser.mjs`,
+    file: 'src/app/opengraph-image.tsx',
+    find: "import { renderOgResponse, OG_DISPLAY_FAMILY, OG_BODY_FAMILY } from '@/lib/broadcast/og-response'",
+    replace: "import { ImageResponse } from 'next/og'\nimport { OG_DISPLAY_FAMILY, OG_BODY_FAMILY } from '@/lib/broadcast/og-response'",
+    expect: "imports from 'next/og'",
+  },
+  /*
+   * og-single-rasteriser, the CSS half. satori ignores `inset`, so the scrim it
+   * positions never draws and nothing anywhere reports a problem. Every scrim on
+   * every share card had it. The drill puts it back on the event card's scrim.
+   */
+  {
+    name: 'a share card positions its scrim with the inset shorthand satori ignores',
+    guard: `${GUARDS}/og-single-rasteriser.mjs`,
+    file: 'src/app/events/[slug]/opengraph-image.tsx',
+    find: "          position: 'absolute',\n          top: 0,\n          right: 0,\n          bottom: 0,\n          left: 0,\n          display: 'flex',\n          background:\n            'linear-gradient(to top,",
+    replace: "          position: 'absolute',\n          inset: 0,\n          display: 'flex',\n          background:\n            'linear-gradient(to top,",
+    expect: 'uses the `inset` shorthand',
+  },
+  /*
    * no-banned-word-anywhere, two drills, one per blind spot the copy gate had.
    */
   {

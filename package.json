@@ -9,6 +9,7 @@
     "dev": "next dev",
     "prebuild": "node scripts/check-disk-space.mjs && node scripts/check-public-env.mjs && node scripts/check-pricing-lock.mjs && node scripts/guards/run-guards.mjs && node scripts/prebuild-fixture.mjs",
     "build": "next build",
+    "postbuild": "node scripts/guards/card-raster-traced.mjs --built",
     "start": "next start",
     "reclaim": "node scripts/reclaim-space.mjs",
     "lint": "eslint --max-warnings=0",
@@ -25,7 +26,8 @@
     "verify:provider-cost": "node scripts/verify/auth-provider-cache-cost.mjs",
     "gates": "node scripts/guards/run-guards.mjs && node scripts/guards/preview-deployment-state.mjs && tsc --noEmit && eslint && vitest run && npm run build",
     "gates:preview-state": "node scripts/guards/preview-deployment-state.mjs",
-    "gate:push": "node scripts/ops/pre-push-gate.mjs"
+    "gate:push": "node scripts/ops/pre-push-gate.mjs",
+    "verify:launch-kit": "node --env-file=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/lib/src-alias-loader.mjs scripts/verify/launch-kit-inspect.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ARTEFACT_CHANNELS } from '@/lib/broadcast/artefact-channels'
 import { priceLabel } from '@/lib/events/price-label'
 import { buildShortUrl, getOrCreateShareLink, type ShareChannel } from '@/lib/broadcast/share-links'
 import type { CaptionInput, CaptionPlatform } from '@/lib/broadcast/captions'
@@ -38,15 +39,13 @@ export type ArtefactContext = {
   links: Record<CaptionPlatform, string> & { fallback: string; qr: string }
 }
 
-/** The channels an artefact can be minted for, and their caption platform. */
-export const ARTEFACT_CHANNELS: readonly CaptionPlatform[] = [
-  'instagram',
-  'facebook',
-  'whatsapp',
-  'x',
-  'linkedin',
-  'email',
-]
+/**
+ * The channels an artefact can be minted for. ONE list, defined in
+ * src/lib/broadcast/artefact-channels.ts (pure, so a script outside the bundle
+ * can read it) and re-exported here so every existing import keeps reading the
+ * same array.
+ */
+export { ARTEFACT_CHANNELS }
 
 function formatParts(iso: string | null, timezone: string | null) {
   if (!iso) return { dateLabel: '', shortDateLabel: '', timeLabel: '' }
@@ -125,15 +124,9 @@ export async function loadArtefactContext(
   links.qr = eventUrl
 
   if (mintLinks) {
-    const channels: ShareChannel[] = [
-      'instagram',
-      'facebook',
-      'whatsapp',
-      'x',
-      'linkedin',
-      'email',
-      'qr',
-    ]
+    // Every artefact channel, plus the QR the poster carries. The six are the
+    // one list; this used to be a fourth hand-typed copy of it.
+    const channels: ShareChannel[] = [...ARTEFACT_CHANNELS, 'qr']
     // Minted in parallel and reused, so the same channel always resolves to the
     // same code and the reach panel stays one row per channel.
     const minted = await Promise.all(

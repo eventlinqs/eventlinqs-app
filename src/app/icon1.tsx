@@ -1,4 +1,4 @@
-import { ImageResponse } from 'next/og'
+import { renderOgResponse, OG_DISPLAY_FAMILY } from '@/lib/broadcast/og-response'
 
 export const size = { width: 192, height: 192 }
 export const contentType = 'image/png'
@@ -7,7 +7,7 @@ const NAVY = '#0A1628'
 const GOLD = '#D4A017'
 
 export default function Icon192() {
-  return new ImageResponse(
+  return renderOgResponse(
     (
       <div
         style={{
@@ -18,7 +18,7 @@ export default function Icon192() {
           justifyContent: 'center',
           background: NAVY,
           borderRadius: 38,
-          fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
+          fontFamily: OG_DISPLAY_FAMILY,
         }}
       >
         <div
@@ -37,6 +37,6 @@ export default function Icon192() {
         </div>
       </div>
     ),
-    { ...size }
+    { ...size, where: 'app/icon1' }
   )
 }

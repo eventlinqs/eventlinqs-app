@@ -1,4 +1,4 @@
-import { ImageResponse } from 'next/og'
+import { renderOgResponse, OG_DISPLAY_FAMILY } from '@/lib/broadcast/og-response'
 
 export const size = { width: 512, height: 512 }
 export const contentType = 'image/png'
@@ -12,7 +12,7 @@ const GOLD = '#D4A017'
 // so it is never clipped by any mask. Referenced from manifest.ts with
 // purpose: 'maskable' so the installed PWA icon renders correctly on Android.
 export default function IconMaskable() {
-  return new ImageResponse(
+  return renderOgResponse(
     (
       <div
         style={{
@@ -22,7 +22,7 @@ export default function IconMaskable() {
           alignItems: 'center',
           justifyContent: 'center',
           background: NAVY,
-          fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
+          fontFamily: OG_DISPLAY_FAMILY,
         }}
       >
         <div
@@ -41,6 +41,6 @@ export default function IconMaskable() {
         </div>
       </div>
     ),
-    { ...size }
+    { ...size, where: 'app/icon3' }
   )
 }

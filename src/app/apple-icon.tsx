@@ -1,4 +1,4 @@
-import { ImageResponse } from 'next/og'
+import { renderOgResponse, OG_DISPLAY_FAMILY } from '@/lib/broadcast/og-response'
 
 export const size = { width: 180, height: 180 }
 export const contentType = 'image/png'
@@ -7,7 +7,7 @@ const NAVY = '#0A1628'
 const GOLD = '#D4A017'
 
 export default function AppleIcon() {
-  return new ImageResponse(
+  return renderOgResponse(
     (
       <div
         style={{
@@ -18,7 +18,7 @@ export default function AppleIcon() {
           justifyContent: 'center',
           background: NAVY,
           borderRadius: 36,
-          fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
+          fontFamily: OG_DISPLAY_FAMILY,
         }}
       >
         <div
@@ -37,6 +37,6 @@ export default function AppleIcon() {
         </div>
       </div>
     ),
-    { ...size }
+    { ...size, where: 'app/apple-icon' }
   )
 }

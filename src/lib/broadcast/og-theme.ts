@@ -9,6 +9,8 @@
  * live brand tokens from globals.css and the root opengraph-image.
  */
 
+import { DISPLAY_FAMILY, BODY_FAMILY } from '@/lib/broadcast/card-fonts'
+
 export const OG_THEME = {
   /** ink-900 / brand navy, the card canvas. */
   navy: '#0A1628',
@@ -22,8 +24,17 @@ export const OG_THEME = {
   textMuted: 'rgba(255,255,255,0.85)',
   /** Tertiary text (the footer strip). */
   textFaint: 'rgba(255,255,255,0.6)',
-  /** ImageResponse renders with system fonts; matches the root brand card. */
-  fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
+  /*
+   * The brand type stack, the same buffers the Launch Kit cards draw with.
+   *
+   * These used to read 'system-ui, -apple-system, Segoe UI, sans-serif', with a
+   * comment saying ImageResponse renders with system fonts. It did, and that was
+   * the defect: card-fonts.ts calls a system face on a promoter's share artefact
+   * "the single loudest 'made by a template' signal", and it was describing this
+   * card. The names come from the module that reads the files, never restated.
+   */
+  fontDisplay: DISPLAY_FAMILY,
+  fontBody: BODY_FAMILY,
   /** Card geometry: the OG standard every platform crops least. */
   width: 1200,
   height: 630,

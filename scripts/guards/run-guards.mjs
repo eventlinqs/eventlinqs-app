@@ -93,6 +93,15 @@
  *                              on ready_for_review, so CI runs once, after the local gate
  *   pre-push-gate-wired       .githooks/pre-push runs the whole of scripts/ops/pre-push-gate.mjs,
  *                              npm run gate:push is the same command, and git is pointed at it
+ *   card-raster-traced        every route that reaches the card rasteriser (derived from the
+ *                              import graph, never listed) pins the resvg binary and the brand
+ *                              fonts in next.config.ts, judged with Next's own matcher; and as
+ *                              npm's postbuild (--built) the trace Next wrote for each route is
+ *                              read and must carry both, which is the proof the pin promises
+ *   og-single-rasteriser      one rasteriser draws every image: no next/og, no ImageResponse,
+ *                              and no direct satori or resvg import anywhere under src except
+ *                              card-raster.ts, because next/og rasterises through a sharp that
+ *                              cannot decode SVG inside the Next server runtime
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -688,6 +697,43 @@ const GUARDS = [
   // the drills in scripts/verify/guard-failure-drills.mjs and green after.
   'scripts/guards/workflows-skip-drafts.mjs',
   'scripts/guards/pre-push-gate-wired.mjs',
+  // 6 September 2026 (close-out C3, the eighteen social cards). The rasteriser
+  // reads the resvg WebAssembly binary and the brand fonts from disk at run
+  // time, and next.config.ts pins them per route in outputFileTracingIncludes
+  // with a comment saying the lambda ships without them otherwise. Measured,
+  // that is not so today: every reaching route's .nft.json already carries
+  // both, pin or no pin, and the composer drew a cover in a preview lambda
+  // with no pin for its page. The pins are kept as the one guarantee held in
+  // this repository's own hands, and this guard keeps them COMPLETE: it derives
+  // every route that reaches the rasteriser from the runtime import graph
+  // (eight, where the config had three: the two card routes, the three
+  // dashboard event pages that host the cover composer's server action, the
+  // admin health page and the two health crons) and judges each pin with
+  // Next's own normaliser and picomatch call. The same file runs again as
+  // npm's postbuild with --built and reads the trace Next actually wrote for
+  // each route, which is the proof the pins are a promise of. Proven red by
+  // the drill that removes the binary from a card route's pin, and by the
+  // judge on a synthetic trace without the binary; green on the tree and on
+  // the real build (C:\dev\EVIDENCE\C3\guard-card-raster-traced-*.txt).
+  'scripts/guards/card-raster-traced.mjs',
+  // og-single-rasteriser (close-out C3, 6 September 2026). ONE rasteriser draws
+  // every image this platform renders, and it is ours. next/og hands satori's
+  // SVG to sharp, its getSharp() is unconditional, and inside the Next server
+  // runtime that sharp cannot decode SVG. It cost eighteen Launch Kit artefacts
+  // on 29 August; the cards were moved onto satori plus resvg-wasm and the
+  // METADATA IMAGES WERE NOT, because nothing had driven one. Driven on 6
+  // September the per-event share card dropped the connection outright (code
+  // 000, "failed to pipe response"), seven days after the fix that was supposed
+  // to have ended it, because that fix was applied to the routes somebody was
+  // looking at rather than to the rule. This guard is the rule: no next/og, no
+  // ImageResponse, and no direct satori or resvg import anywhere under src
+  // except card-raster.ts itself. It bans the four STATIC metadata images too,
+  // which are prerendered by the build and were green through both incidents,
+  // because an invariant with an exception list decays into the exception list.
+  // Proven red against the two pre-fix routes with their line numbers, and by
+  // the drill below; green on the repaired tree
+  // (C:\dev\EVIDENCE\C3\guard-og-single-rasteriser-{RED,GREEN}.txt).
+  'scripts/guards/og-single-rasteriser.mjs',
 ]
 
 /**

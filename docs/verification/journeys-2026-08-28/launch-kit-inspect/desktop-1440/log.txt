@@ -1,0 +1,70 @@
+Launch Kit: open and inspect every artefact (desktop-1440)
+==========================================================
+01. Signed up and confirmed
+      kit.c3-desktop-1440-7zqc3@example.com -> /dashboard
+02. Uploaded a cover
+      it appeared immediately
+03. PASS   the event publishes from the wizard and lands the organiser on their kit
+      /dashboard/events/74c4ec91-01fa-4ce5-be49-efedbd5bebd9/launch-kit?published=1
+04. PASS   the kit screen renders with no broken image and no empty panel
+      HTTP 200, heading "Kit Inspection Night c3-desktop-1440-7zqc3 is live.", 2 image(s), 0 broken (none), 0 empty section(s)
+05. PASS   axe on kit-screen: 0 violations at any impact
+      clean (27 rules passed)
+06. PASS   the kit names the live event page it points at
+      /events/kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs
+07. PASS   the kit offers exactly 3 formats x 6 channels = 18 card downloads
+      18 download link(s) on the page; formats story, square, feed; channels instagram, facebook, whatsapp, x, linkedin, email
+08. PASS   the kit offers the poster
+      /api/organiser/events/74c4ec91-01fa-4ce5-be49-efedbd5bebd9/poster
+09. PASS   the poster is a real, single-page A4 PDF
+      HTTP 200, 262795 bytes, 1 page(s) at 595 x 842pt (A4 is 595 x 842pt)
+10. PASS   THE QR ON THE POSTER ACTUALLY SCANS, and to the right address
+      decoded "http://localhost:3311/e/kit-inspection-27sep-qr-2"; the qr-channel share link in the database is code kit-inspection-27sep-qr-2. They match.
+11. PASS   Story (1080 x 1920) for instagram
+      HTTP 200 image/jpeg, 1080 x 1920 jpeg (spec 1080 x 1920), 350 KB of 5 MB, ink stdev 82.8, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg)
+12. PASS   Story (1080 x 1920) for facebook
+      HTTP 200 image/jpeg, 1080 x 1920 jpeg (spec 1080 x 1920), 350 KB of 5 MB, ink stdev 82.8, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg)
+13. PASS   Story (1080 x 1920) for whatsapp
+      HTTP 200 image/jpeg, 1080 x 1920 jpeg (spec 1080 x 1920), 350 KB of 5 MB, ink stdev 82.8, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg)
+14. PASS   Story (1080 x 1920) for x
+      HTTP 200 image/jpeg, 1080 x 1920 jpeg (spec 1080 x 1920), 350 KB of 5 MB, ink stdev 82.8, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg)
+15. PASS   Story (1080 x 1920) for linkedin
+      HTTP 200 image/jpeg, 1080 x 1920 jpeg (spec 1080 x 1920), 350 KB of 5 MB, ink stdev 82.8, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg)
+16. PASS   Story (1080 x 1920) for email
+      HTTP 200 image/jpeg, 1080 x 1920 jpeg (spec 1080 x 1920), 350 KB of 5 MB, ink stdev 82.8, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-story.jpg)
+17. PASS   Square post (1080 x 1080) for instagram
+      HTTP 200 image/jpeg, 1080 x 1080 jpeg (spec 1080 x 1080), 264 KB of 5 MB, ink stdev 82.5, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg)
+18. PASS   Square post (1080 x 1080) for facebook
+      HTTP 200 image/jpeg, 1080 x 1080 jpeg (spec 1080 x 1080), 264 KB of 5 MB, ink stdev 82.5, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg)
+19. PASS   Square post (1080 x 1080) for whatsapp
+      HTTP 200 image/jpeg, 1080 x 1080 jpeg (spec 1080 x 1080), 264 KB of 5 MB, ink stdev 82.5, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg)
+20. PASS   Square post (1080 x 1080) for x
+      HTTP 200 image/jpeg, 1080 x 1080 jpeg (spec 1080 x 1080), 263 KB of 5 MB, ink stdev 82.5, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg)
+21. PASS   Square post (1080 x 1080) for linkedin
+      HTTP 200 image/jpeg, 1080 x 1080 jpeg (spec 1080 x 1080), 263 KB of 5 MB, ink stdev 82.5, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg)
+22. PASS   Square post (1080 x 1080) for email
+      HTTP 200 image/jpeg, 1080 x 1080 jpeg (spec 1080 x 1080), 264 KB of 5 MB, ink stdev 82.5, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-square.jpg)
+23. PASS   Tall post (1440 x 1800) for instagram
+      HTTP 200 image/jpeg, 1440 x 1800 jpeg (spec 1440 x 1800), 474 KB of 5 MB, ink stdev 83.6, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg)
+24. PASS   Tall post (1440 x 1800) for facebook
+      HTTP 200 image/jpeg, 1440 x 1800 jpeg (spec 1440 x 1800), 473 KB of 5 MB, ink stdev 83.6, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg)
+25. PASS   Tall post (1440 x 1800) for whatsapp
+      HTTP 200 image/jpeg, 1440 x 1800 jpeg (spec 1440 x 1800), 474 KB of 5 MB, ink stdev 83.6, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg)
+26. PASS   Tall post (1440 x 1800) for x
+      HTTP 200 image/jpeg, 1440 x 1800 jpeg (spec 1440 x 1800), 473 KB of 5 MB, ink stdev 83.6, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg)
+27. PASS   Tall post (1440 x 1800) for linkedin
+      HTTP 200 image/jpeg, 1440 x 1800 jpeg (spec 1440 x 1800), 473 KB of 5 MB, ink stdev 83.6, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg)
+28. PASS   Tall post (1440 x 1800) for email
+      HTTP 200 image/jpeg, 1440 x 1800 jpeg (spec 1440 x 1800), 474 KB of 5 MB, ink stdev 83.6, disposition "attachment; filename="kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg"" (expects kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs-feed.jpg)
+29. PASS   the live event page every artefact points at actually works
+      HTTP 200 at /events/kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs, heading "Kit Inspection Night c3-desktop-1440-7zqc3", ticket surface present, error boundary absent
+30. PASS   axe on event-page: 0 violations at any impact
+      clean (31 rules passed)
+31. PASS   the event page declares its OWN card as og:image, not the site card
+      og:image https://www.eventlinqs.com.au/events/kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs/opengraph-image?01e1cdf155d95960 (1200 x 630, image/png); twitter:image present; the kit's "Preview your card" link is /events/kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs/opengraph-image
+32. PASS   the per-event card decodes at the declared size, carries ink, and is THIS event's card rather than the fallback
+      fetched /events/kit-inspection-night-c3-desktop-1440-7zqc3-idvnvs/opengraph-image?01e1cdf155d95960 on the server under test: HTTP 200 image/png, 1200 x 630 png (declared 1200 x 630), 1085 KB, ink stdev 63.7; the fallback for a missing slug is 45 KB and the mean pixel difference between them is 51.4 (must exceed 10)
+33. PASS   every tracked share link resolves and lands on this event, one per channel plus the QR
+      14 link(s) minted: whatsapp=200, facebook=200, x=200, email=200, copy=200, native=200, whatsapp=200, linkedin=200, instagram=200, qr=200, facebook=200, copy=200, x=200, email=200
+34. PASS   the reach panel renders a real state rather than a blank
+      "reach below, attributed to the exact channel. Shared links unfurl as your designed invitation card. WhatsApp Instagram Facebook X LinkedIn Email Copy link IN THE KIT · YOUR POST PACK Ready to post, channel by channel Eve"

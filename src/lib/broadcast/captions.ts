@@ -1,5 +1,6 @@
 import { enforceCopyLaws } from '@/lib/ai/sanitise'
 import { findCopyTells } from '@/lib/ai/copy-tells'
+import { ARTEFACT_CHANNELS, type ArtefactChannel } from '@/lib/broadcast/artefact-channels'
 
 /**
  * THE CAPTION ENGINE.
@@ -29,13 +30,12 @@ import { findCopyTells } from '@/lib/ai/copy-tells'
  *    characters. WhatsApp is one line, the way a promoter texts a group.
  */
 
-export type CaptionPlatform =
-  | 'instagram'
-  | 'facebook'
-  | 'x'
-  | 'linkedin'
-  | 'whatsapp'
-  | 'email'
+/**
+ * The platforms a caption is written for ARE the artefact channels: one list,
+ * in src/lib/broadcast/artefact-channels.ts, so the captions, the cards, the
+ * routes and the kit screen can never disagree about how many there are.
+ */
+export type CaptionPlatform = ArtefactChannel
 
 export type CaptionInput = {
   title: string
@@ -447,14 +447,7 @@ function emailCaption(input: CaptionInput): Caption {
   }
 }
 
-export const CAPTION_ORDER: readonly CaptionPlatform[] = [
-  'instagram',
-  'facebook',
-  'whatsapp',
-  'x',
-  'linkedin',
-  'email',
-]
+export const CAPTION_ORDER: readonly CaptionPlatform[] = ARTEFACT_CHANNELS
 
 /** Every caption for one event, in the order the kit presents them. */
 export function buildCaptions(input: CaptionInput): Caption[] {
