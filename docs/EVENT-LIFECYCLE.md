@@ -238,6 +238,19 @@ costs the same one query it always did. Anonymous callers may read `slug` and `d
 from the tombstone table and nothing else (column privilege), so a deleted draft's title never
 leaks through the REST surface.
 
+THE EDGE CACHE, because it nearly undid the holder rule. `next.config.ts` caches
+`/events/:slug` publicly at Vercel's edge for 300 seconds on the assumption that the render is
+anonymous. An archived event's answer is per viewer, and measured on the pull request preview
+the edge cached a stranger's 404 (`x-vercel-cache: HIT`) even with the proxy setting
+`Vercel-CDN-Cache-Control: private, no-store` on the response: a header the proxy adds does not
+reach the cache decision. So the rule is made on the request instead. The session middleware
+sets a marker cookie, `el-signed-in`, on every response that has a user and clears it on every
+response that does not; the public CDN header rule applies only when that cookie is MISSING
+(`src/lib/auth/signed-in-marker.ts`); and the holder view renders only when it is PRESENT. A
+signed-in viewer's responses are never shared at the edge, an anonymous viewer's 404 may be,
+and a session that predates the marker gets one anonymous 404 (the response that sets it) and
+then the page.
+
 ## Audit
 
 Every archive, restore and delete writes one row to `audit_log`: who (actor id, email

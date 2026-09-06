@@ -835,10 +835,15 @@ const ROOT = join(HERE, '..', '..')
  * fifth decision the proxy makes since C13: a deleted event's tombstone answers
  * 410 without touching the session, a slug with no live row is marked private
  * to the edge cache because its answer is per viewer, and a live event stays
- * publicly cacheable: 304 files / 3530.
+ * publicly cacheable: 304 files / 3530. Plus tests/unit/security/signed-in-marker
+ * (7): the marker cookie the routing layer reads before any function runs,
+ * set and cleared by the session middleware, required by the archived view,
+ * and the condition on the event page's public edge cache rule, after the
+ * preview showed a proxy-set cache header does not reach Vercel's decision:
+ * 305 files / 3537.
  */
-const MIN_FILES = 304
-const MIN_TESTS = 3530
+const MIN_FILES = 305
+const MIN_TESTS = 3537
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

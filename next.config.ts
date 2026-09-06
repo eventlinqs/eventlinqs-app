@@ -366,7 +366,20 @@ const nextConfig: NextConfig = {
         // Event detail is ISR (revalidate 300) and already edge-cached on
         // Vercel; this makes the edge policy explicit and serves stale for up
         // to a day while revalidating.
+        //
+        // ANONYMOUS REQUESTS ONLY (close-out C13, 6 September 2026). An archived
+        // event answers 404 to a stranger and the page to a ticket holder on the
+        // same URL, so a signed-in viewer's response must never be shared at the
+        // edge. The proxy setting Vercel-CDN-Cache-Control on the response did
+        // not reach the cache decision (measured on the PR preview: HIT, age 20),
+        // but a header rule's own condition is evaluated before any function
+        // runs: "all missing items must not match for the header to be applied"
+        // (node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/headers.md).
+        // The session middleware sets el-signed-in on every response with a
+        // user (src/lib/auth/signed-in-marker.ts), so a request that carries it
+        // gets the page's own private, no-store and the edge never keeps it.
         source: '/events/:slug',
+        missing: [{ type: 'cookie', key: 'el-signed-in' }],
         headers: [
           { key: 'CDN-Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=86400' },
         ],

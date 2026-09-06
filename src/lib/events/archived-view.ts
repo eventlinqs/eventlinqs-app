@@ -1,7 +1,9 @@
 import 'server-only'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ARCHIVED_STATUS } from '@/lib/event-lifecycle'
+import { SIGNED_IN_MARKER_COOKIE } from '@/lib/auth/signed-in-marker'
 
 /**
  * AN ARCHIVED EVENT'S PAGE, FOR THE PEOPLE WHO HOLD A TICKET TO IT.
@@ -41,6 +43,18 @@ async function archivedEventForViewer(slug: string): Promise<{ id: string } | nu
     return null
   }
   if (!archived) return null
+
+  /*
+   * ONLY A REQUEST THE EDGE WILL NOT CACHE MAY SEE THE HOLDER'S PAGE. The
+   * public CDN rule for /events/:slug applies to requests WITHOUT the signed-in
+   * marker cookie (next.config.ts). A holder's request without it would be
+   * served the page AND cached for every stranger for 300s, so it is refused
+   * here, gets the anonymous 404, and the session middleware sets the marker
+   * on that very response; the next request carries it and sees the page.
+   * See src/lib/auth/signed-in-marker.ts.
+   */
+  const jar = await cookies()
+  if (!jar.has(SIGNED_IN_MARKER_COOKIE)) return null
 
   const supabase = await createClient()
   const {
