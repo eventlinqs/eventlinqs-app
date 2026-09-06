@@ -432,3 +432,20 @@ at 87 of 87, five builds, the drive logs).
   build, and failed two tests until I scrubbed it for every command. Whether that plugin should
   load production values into a development shell at all is your call.
 - **Not built, deliberately:** bulk archive or bulk delete, per the close-out.
+
+**Closed on the code side, 6 September 2026, 18:45:** three pushes through the gate, PR #128
+merged as b7798b76. One more thing was found on your Vercel preview and fixed before merging: a
+ticket holder opening an archived event was being served the stranger's cached "not found" page
+by the edge cache, because the edge serves a cached page by address to anyone. It now sends a
+signed-in viewer to the same page by an address the cache never keeps, and I drove it on the
+preview with a real login: the holder sees the page every time, the stranger never does.
+
+**Production is waiting on you, and only you (two commands, then one to rebuild):** the build
+refuses itself on production until the two migrations are there, which is the schema guard doing
+its job, so your live site still serves the previous release. In PowerShell, from the repo:
+`supabase link --project-ref gndnldyfudbytbboxesk`, read the ref back, `supabase db push --linked`,
+`node scripts/ops/verify-production-schema.mjs`, then
+`npx vercel redeploy https://eventlinqs-n8zbkb8e2-lawals-projects-c20c0be8.vercel.app --target=production`,
+and relink to TEST with `supabase link --project-ref vkapkibzokmfaxqogypq`. Until then CI on main
+shows red for that one reason. Next time an item carries a migration the code depends on, I will
+hand you the migration before merging so main never sits red.

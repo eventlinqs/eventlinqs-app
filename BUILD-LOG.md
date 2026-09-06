@@ -1850,3 +1850,56 @@ changed, and nothing was deleted.
 - FINAL. build-5 green; drive 42 of 42 at desktop-1440, tablet-768 and mobile-390, 0 server
   errors, 0 blockers, axe 0 at every state; suite 304 files / 3530 tests; canary raised;
   committed as 91c7e364 (49 files, +4635/-171) and pushed through the pre-push gate.
+
+## 2026-09-06 17:10 (C13) the edge cache would have undone the holder rule; found on the preview, fixed on the request side
+
+- PR #128 opened as a draft, marked ready once; CI, vitest and the types-drift guard green in
+  under five minutes; the preview deployed. Before merging, the archived and deleted slugs
+  from the drives were probed ON THE PREVIEW: the deleted slug answers 410 with the branded
+  body from the proxy every time; the archived slug answers 404 to a stranger, and on the
+  second identical request came back x-vercel-cache: HIT, age 20. The proxy had set
+  Vercel-CDN-Cache-Control: private, no-store on that response; the edge cached it anyway.
+  A header the proxy adds does not reach Vercel's cache decision the way a function's own
+  header does, whatever the precedence table says about function responses.
+- Why it matters: /events/:slug is cached publicly for 300s by next.config.ts on the assumption
+  the render is anonymous. An archived event's answer is per viewer, so a holder's page could
+  have been cached for every stranger, or a stranger's 404 for the holder.
+- The fix is made where the edge CAN decide before any function runs: a header rule's
+  `missing` condition on the request's cookies (the installed Next docs). The session
+  middleware now sets a marker cookie, el-signed-in, carrying nothing, on every response with a
+  user and clears it on every response without one; the public CDN rule applies only when it is
+  absent; and the archived view refuses a request without it, so a session that predates the
+  marker gets one anonymous 404 (safe to cache, and the response that sets the marker) and then
+  the page. Seven tests pin the three halves together; canary to 305 files / 3537.
+- The proxy's private header stays as belt and braces. The claim in the earlier log entry
+  that it "outranks the config header" was the vendor's precedence table read for a function
+  response and is withdrawn for a proxy response: measured, not.
+
+## 2026-09-06 18:45 (C13) merged as b7798b76; production refuses the build by design until the founder's migration
+
+- The preview of 325c62ba, driven with a real signed-in holder, showed the marker cookie was
+  not enough: the edge looks a URL up before any function runs and cookies are not part of its
+  key, so the holder was served the stranger's cached 404 (preview-holder-probe.txt). The vendor's
+  page on Routing Middleware says it "runs globally before the cache" and rewrites are the way to
+  personalise cached content, so d58dbab1 rewrites a request carrying the marker, for a slug with
+  no live row and no tombstone, to /events/[slug]/holder (the page re-exported under the same
+  layout guard, at a path no public cache rule matches). Driven on the preview of d58dbab1:
+  holder 200 with the banner, MISS on both requests; stranger 404 before and after, HIT allowed;
+  deleted slug 410; live event HIT on the second request (preview-holder-probe-2.txt,
+  preview-edge-cache-probe-2.txt, 6 of 6). Locally, drive 42 of 42 at every viewport on build-8.
+- Three pushes, three green gates (1591s, 1258s, 1268s), CI green on every push, PR #128
+  squash-merged as b7798b76 at 08:36 UTC. The advisory Lighthouse run on the last push was still
+  in progress at merge and is not a merge condition (ruling of 25 August).
+- PRODUCTION, driven not assumed: the deployment of b7798b76 is in ERROR, and its build log says
+  exactly why: schema-ahead-of-code names events.archived_at (42703) and event_tombstones.slug
+  (PGRST205) ABSENT on gndnldyfudbytbboxesk, and event-lifecycle-installed cannot find
+  event_lifecycle_guards() there. Production keeps serving b4255a96 (sentry-release read off the
+  live page). CI on main is red only through preview-state, which refuses a build while the
+  branch's newest settled deployment is in ERROR, the same shape A4 recorded on 5 September. The
+  unblock is the founder's reserved step, printed by the guard itself and in the ledger with the
+  redeploy command from the vendor's own page. ORDER LESSON, recorded in memory: for an item whose
+  code names a new column, hand the founder the migration BEFORE merging, or main goes red on
+  preview-state until he applies it.
+- C13 is MET on every requirement row; completion law 7 is BLOCKED ON FOUNDER, MIGRATION ONLY.
+  Per the brief's standing instruction on founder-only steps, this does not stall the build: C14
+  begins next, and production is re-verified the moment the migration lands.
