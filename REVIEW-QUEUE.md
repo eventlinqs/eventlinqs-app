@@ -5,7 +5,7 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
-Last re-verified 7 September 2026 at 04:49 (session 28): still the same three migrations behind,
+Last re-verified 7 September 2026 at 04:54 (session 29): still the same three migrations behind,
 the same two failed production deployments, main still red. Nothing has moved. Session 12 found and
 fixed a hang in your one command (see the 03:25 entry at the end of this file): it is the same
 command, and it now gets past its own confirmation. Session 13 ran the command's own first proof
