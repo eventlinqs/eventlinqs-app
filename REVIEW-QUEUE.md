@@ -5,6 +5,10 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
+Last re-verified 7 September 2026 at 02:39 (session 9): still the same three migrations behind,
+the same two failed production deployments, main still red. Nothing has moved and nothing else
+is left for me to do until the command in the first item has run.
+
 Rewritten 7 September 2026 at 01:10. Everything below the first item is unchanged in
 substance; what was already done (the A2, A3, A4, B1 and B2 migrations are on production,
 disk is at 22 GB, the Vercel token is no longer needed) has been removed so the one thing

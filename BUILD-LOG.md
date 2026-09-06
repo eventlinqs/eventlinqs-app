@@ -2642,3 +2642,33 @@ changed, and nothing was deleted.
   served release, drive the ten routes, C16.4 and C2 close, PR 130 (C8) brought up to date and merged
   the same way, then C9, C17, C18. A relaunched session re-runs the parity step first and, if
   production is still behind, stops here again.
+
+## 2026-09-07 02:39 (C16, continued) the halt re-verified on relaunch; nothing has moved; nothing started
+
+- Governing laws, stated first: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder
+  applies), the C16.0 halt rule, Definition of Done clause 6. No code changed. Nothing merged, nothing
+  started, nothing written to production; the CLI rests on TEST (supabase/.temp/project-ref read back:
+  vkapkibzokmfaxqogypq). Disk 23 GB free at start and end; no build output produced.
+- THE HALT RE-VERIFIED (C16.0), 02:37 to 02:39, read only, through the clean-env wrapper. The parity
+  step on the clean C16 tree at 8161cfe2: 116 migrations in the tree, 113 applied on
+  gndnldyfudbytbboxesk, the same 3 pending (20260905000003, 20260906000001, 20260906000002); the
+  environment half read the production store through the Vercel CLI login: 34 records, 43 manifest
+  entries, 0 faults; FAIL on the schema half, exit 1, "BLOCKED at production-parity after 4s. Nothing
+  was pushed." Vercel's newest production deployments: 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY.
+  The live site serves sentry-release b4255a96 (HTTP 200, 396472 bytes). CI on main: still red at
+  2d558d2a (run 34031455414), no new run. origin/main unchanged after a fetch (2d558d2a). Branch
+  protection reads back the three required contexts (lint · typecheck · build, test (vitest),
+  production parity), strict, admins enforced. PR 130 (C8) still BLOCKED by protection. The founder
+  has not run `npm run migrate:production`. Evidence: production-parity-recheck-session9.txt,
+  deployments-recheck-session9.txt.
+- WHAT WAS CHECKED BEFORE STOPPING, so the stop is a finding and not an assumption: every C16
+  sub-item in the ledger other than C16.4 reads MET (C16.1, C16.2.1 to C16.2.4, C16.3, C16.5), and
+  C16.4 is OWNER BLOCKED, MIGRATION ONLY; the ops/session-log worktree is byte-identical to the three
+  C:\dev files and its head (6f6979c3) is on origin; the ci.yml job is named "production parity",
+  matching the required context. There is no work the halt permits that is not already done.
+- THE HALT STANDS. Five commits wait on ci/c16-production-parity (5ca9d984, eaf7deeb, 2f0545c1,
+  7c9101fe, 8161cfe2) and leave the machine the moment `npm run migrate:production` has run. The
+  sequence after it is unchanged: push the branch, draft pull request, mark ready, "production parity"
+  reports, merge, watch production to Ready and confirm the served release, drive the ten routes,
+  C16.4 and C2 close, PR 130 (C8) brought up to date and merged the same way, then C9, C17, C18. A
+  relaunched session re-runs the parity step first and, if production is still behind, stops here.
