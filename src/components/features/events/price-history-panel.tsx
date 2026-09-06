@@ -42,7 +42,7 @@ export function PriceHistoryPanel({ histories, timezone }: Props) {
     <section
       aria-labelledby="price-history-heading"
       data-testid="price-history"
-      className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm"
+      className="rounded-2xl border border-ink-200 bg-white p-6 shadow-[var(--shadow-card)]"
     >
       <SectionHeader eyebrow="Price history" title="How the price has moved" size="sm" id="price-history-heading" />
       <p className="mt-3 text-sm text-ink-600" data-testid="price-history-summary">

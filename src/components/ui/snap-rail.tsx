@@ -249,10 +249,10 @@ function useScrollState() {
 const ARROW_BTN =
   'flex h-11 w-11 items-center justify-center rounded-full ' +
   'bg-[var(--color-ink-900)] text-white ' +
-  'shadow-[0_2px_8px_rgba(10,22,40,0.18)] ' +
+  'shadow-[var(--shadow-card)] ' +
   'transition-[transform,background-color,box-shadow,color] duration-200 ease-out ' +
   'hover:-translate-y-0.5 hover:bg-[var(--color-navy-950)] hover:text-[var(--color-gold-400)] ' +
-  'hover:shadow-[0_8px_18px_rgba(10,22,40,0.30)] ' +
+  'hover:shadow-[var(--shadow-card-hover)] ' +
   'active:translate-y-0 active:scale-95 active:duration-75 ' +
   'disabled:cursor-not-allowed disabled:bg-[var(--surface-2)] disabled:text-[var(--text-muted)] ' +
   'disabled:shadow-none disabled:translate-y-0 ' +
@@ -415,7 +415,7 @@ export function SnapRailScroller({
             {header.headerLink ? (
               <Link
                 href={header.headerLink.href}
-                className="hidden whitespace-nowrap text-sm font-medium text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)] sm:block"
+                className="hidden min-h-11 items-center whitespace-nowrap text-sm font-medium text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:inline-flex"
               >
                 {header.headerLink.label} &rsaquo;
               </Link>
@@ -477,7 +477,9 @@ export function SnapRail({
           {headerLink && (
             <Link
               href={headerLink.href}
-              className="hidden whitespace-nowrap text-sm font-medium text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:inline"
+              // min-h-11 + inline-flex: the 44px hit area the touch-target law
+              // asks for; the text line alone was 20px tall.
+              className="hidden min-h-11 items-center whitespace-nowrap text-sm font-medium text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:inline-flex"
             >
               {headerLink.label} &rsaquo;
             </Link>

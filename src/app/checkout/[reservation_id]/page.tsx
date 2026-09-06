@@ -286,7 +286,7 @@ export default async function CheckoutPage({ params }: Props) {
   if (feesError !== null || initialFees === null) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="rounded-xl border border-error/30 bg-error/5 p-8 text-center">
+        <div className="rounded-2xl border border-error/30 bg-error/5 p-8 text-center">
           <h1 className="text-xl font-bold text-ink-900">We could not load checkout</h1>
           <p className="mt-3 text-sm text-ink-700">
             Your reservation is safe and your tickets are still held until it
@@ -311,9 +311,15 @@ export default async function CheckoutPage({ params }: Props) {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_320px] lg:gap-12 lg:px-8 lg:py-12">
-      <div className="min-w-0">
-        <CheckoutForm
+    /*
+     * Close-out C14.9, "trust near payment form" (6 September 2026). The trust
+     * panel used to be a third column at the far right of a 1400px grid, a
+     * screen-width away from the card fields at 1440 and below everything on
+     * mobile. It is now handed to the form, which renders it under the order
+     * total on the details step and directly under the Pay button on the
+     * payment step, on every viewport.
+     */
+    <CheckoutForm
           reservationId={reservation_id}
           expiresAt={reservation.expires_at}
           eventId={event.id}
@@ -331,14 +337,7 @@ export default async function CheckoutPage({ params }: Props) {
           userEmail={userEmail}
           currency={currency}
           organiserName={organiserName}
+          trustSlot={<CheckoutTrustSignals />}
         />
-      </div>
-      {/* Batch 11.0 - Trust signals sidebar at the payment-decision
-       *  moment, 2026 contextual-trust pattern. Stacks below the form
-       *  on mobile, sits to the right on desktop. */}
-      <aside className="order-2 lg:order-1">
-        <CheckoutTrustSignals />
-      </aside>
-    </div>
   )
 }

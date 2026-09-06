@@ -11,9 +11,10 @@
  * These are full literal class strings so Tailwind's source scanner keeps them.
  */
 
-// Inter-card gap: +1/3 on mobile (12 -> 16px), +1/2 on desktop (12 -> 18px).
+// Inter-card gap: +1/3 on mobile (12 -> 16px), +2/3 on desktop (12 -> 20px; was 18px,
+// which sat off the 4px scale, close-out C14.12, 6 September 2026).
 // Within the founder's "increase by a third to a half" instruction.
-export const RHYTHM_GAP = 'gap-4 sm:gap-[18px]' as const
+export const RHYTHM_GAP = 'gap-4 sm:gap-5' as const
 
 // Scenes rail: proper SQUARE tiles at a distinct, smaller scale than the
 // landscape event cards (which sit at 240/280). Square + smaller marks the

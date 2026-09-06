@@ -211,7 +211,7 @@ export async function EventBentoTile({
       <div className="flex-1" />
 
       <div className="relative z-10 p-4 md:p-5 text-white transition-transform duration-300 group-hover:-translate-y-1">
-        <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-400">
+        <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-400">
           {formatDate(event.start_date)}
         </p>
         <h3 className={`mt-1 font-display font-extrabold leading-tight ${titleSize(size)} line-clamp-2`}>

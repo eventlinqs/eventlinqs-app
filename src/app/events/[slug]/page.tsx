@@ -860,7 +860,7 @@ export default async function EventDetailPage({ params }: Props) {
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
             <div className="max-w-3xl animate-fade-rise">
               {event.category && (
-                <span className="inline-flex rounded-full border border-gold-500/40 bg-ink-900/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-gold-400 shadow-sm">
+                <span className="inline-flex rounded-full border border-gold-500/40 bg-ink-900/85 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-gold-400 shadow-[var(--shadow-card)]">
                   {event.category.name}
                 </span>
               )}
@@ -907,12 +907,12 @@ export default async function EventDetailPage({ params }: Props) {
                 {eventBannerState === 'cancelled' || eventBannerState === 'past' || eventBannerState === 'archived' ? (
                   <Link
                     href="/events"
-                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600"
+                    className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
                   >
                     Browse upcoming events
                   </Link>
                 ) : (
-                  <GetTicketsCta className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600">
+                  <GetTicketsCta className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]">
                     Get tickets
                   </GetTicketsCta>
                 )}
@@ -986,7 +986,7 @@ export default async function EventDetailPage({ params }: Props) {
                       // sanitised HTML. Render it as escaped text (React-escaped) with
                       // line breaks preserved, never via dangerouslySetInnerHTML, so an
                       // organiser cannot inject stored XSS into the public event page.
-                      <div className="mt-5 max-w-none whitespace-pre-line text-base leading-relaxed text-ink-600">
+                      <div className="type-measure mt-5 text-pretty whitespace-pre-line text-base leading-relaxed text-ink-600">
                         {event.description}
                       </div>
                     )}
@@ -997,7 +997,7 @@ export default async function EventDetailPage({ params }: Props) {
                     no reflow) so the sticky ticket panel is untouched. */}
                 <Reveal as="div" className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="rounded-2xl border border-ink-200 bg-white p-5">
-                    <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+                    <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
                       When
                     </p>
                     <p className="mt-2 text-sm font-semibold text-ink-900">
@@ -1006,11 +1006,11 @@ export default async function EventDetailPage({ params }: Props) {
                     <p className="mt-1 text-xs text-ink-600">
                       Ends {formatDateTime(event.end_date, event.timezone)}
                     </p>
-                    <p className="mt-2 text-[11px] text-ink-400">Timezone: {event.timezone}</p>
+                    <p className="mt-2 text-xs text-ink-400">Timezone: {event.timezone}</p>
                   </div>
 
                   <div className="rounded-2xl border border-ink-200 bg-white p-5">
-                    <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+                    <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
                       Where
                     </p>
                     {event.event_type === 'virtual' ? (
@@ -1024,7 +1024,7 @@ export default async function EventDetailPage({ params }: Props) {
                       </>
                     )}
                     {event.event_type === 'hybrid' && (
-                      <p className="mt-2 inline-flex items-center rounded-full bg-gold-500/10 px-2 py-0.5 text-[10px] font-semibold text-gold-800">
+                      <p className="mt-2 inline-flex items-center rounded-full bg-gold-500/10 px-2 py-0.5 text-xs font-semibold text-gold-800">
                         In-person + online
                       </p>
                     )}
@@ -1112,7 +1112,7 @@ export default async function EventDetailPage({ params }: Props) {
                     <span className="inline-flex items-center rounded-full bg-ink-900 px-3 py-1 text-xs font-semibold text-gold-400">
                       {refundPolicyBadge(policyFromEvent(event), event.is_free ?? false)}
                     </span>
-                    <p className="mt-3 text-sm leading-relaxed text-ink-600">
+                    <p className="type-measure mt-3 text-pretty text-sm leading-relaxed text-ink-600">
                       {describeRefundPolicy(policyFromEvent(event), event.is_free ?? false)}
                     </p>
                   </div>
@@ -1123,7 +1123,7 @@ export default async function EventDetailPage({ params }: Props) {
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
                     <div className="flex flex-wrap items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-sm font-bold text-gold-400">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-ink-900 text-sm font-bold text-gold-400">
                         {event.organisation.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1159,7 +1159,7 @@ export default async function EventDetailPage({ params }: Props) {
                       <Link
                         key={tag}
                         href={`/events?q=${encodeURIComponent(tag)}`}
-                        className="rounded-full border border-ink-200 bg-white px-3 py-1 text-xs text-ink-600 transition-colors hover:border-gold-400 hover:text-gold-600"
+                        className="inline-flex min-h-11 items-center rounded-full border border-ink-200 bg-white px-3 text-xs text-ink-600 transition-colors hover:border-gold-400 hover:text-[var(--brand-accent-strong)]"
                       >
                         #{tag}
                       </Link>
@@ -1203,7 +1203,7 @@ export default async function EventDetailPage({ params }: Props) {
                   />
                 ) : seatedActive ? (
                   <div className="space-y-6">
-                    <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+                    <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-[var(--shadow-card)]">
                       <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />
                       {isTicketingSuspended ? (
                         <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
@@ -1238,7 +1238,7 @@ export default async function EventDetailPage({ params }: Props) {
                         balconies) sell through the standard panel beside the
                         chart. Seat-bound tiers never appear here. */}
                     {gaTiersAlongsideSeats.length > 0 && !saleBlocked && !isTicketingSuspended && (
-                      <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm lg:max-w-md">
+                      <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-[var(--shadow-card)] lg:max-w-md">
                         <SectionHeader eyebrow="No seat needed" title="General admission" size="sm" className="mb-5" />
                         <TicketPanelClient
                           eventId={event.id}
@@ -1273,7 +1273,7 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 ) : (
                   <div className="sticky top-20 space-y-5">
-                    <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+                    <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-[var(--shadow-card)]">
                       <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
 
                       {event.has_reserved_seating && organiserAssigns && (
@@ -1310,8 +1310,8 @@ export default async function EventDetailPage({ params }: Props) {
                         card rides with the sticky panel so the ticket column
                         never runs empty on a long page (desktop), and every
                         share link is attributed (share-a-ticket). */}
-                    <div className="hidden rounded-2xl border border-gold-500/30 bg-white p-6 shadow-sm lg:block">
-                      <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+                    <div className="hidden rounded-2xl border border-gold-500/30 bg-white p-6 shadow-[var(--shadow-card)] lg:block">
+                      <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
                         Bring your people
                       </p>
                       <p className="mt-2 text-sm text-ink-600">

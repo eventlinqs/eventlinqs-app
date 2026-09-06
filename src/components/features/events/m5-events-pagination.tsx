@@ -28,12 +28,12 @@ export function EventsPagination({ params, page, totalPages, basePath = '/events
         <Link
           href={prev}
           rel="prev"
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-ink-200 bg-white px-3 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-100"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-ink-200 bg-white px-3 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-100"
         >
           Previous
         </Link>
       ) : (
-        <span className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-ink-100 px-3 text-sm font-medium text-ink-400">
+        <span className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-ink-100 px-3 text-sm font-medium text-ink-400">
           Previous
         </span>
       )}
@@ -51,7 +51,7 @@ export function EventsPagination({ params, page, totalPages, basePath = '/events
           <span
             key={p}
             aria-current="page"
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-ink-900 px-3 text-sm font-semibold text-white"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-ink-900 px-3 text-sm font-semibold text-white"
           >
             {p}
           </span>
@@ -59,7 +59,7 @@ export function EventsPagination({ params, page, totalPages, basePath = '/events
           <Link
             key={p}
             href={buildEventsUrl(params, { page: p === 1 ? undefined : String(p) }, basePath)}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-ink-200 bg-white px-3 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-100"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-ink-200 bg-white px-3 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-100"
           >
             {p}
           </Link>
@@ -70,12 +70,12 @@ export function EventsPagination({ params, page, totalPages, basePath = '/events
         <Link
           href={next}
           rel="next"
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-ink-200 bg-white px-3 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-100"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-ink-200 bg-white px-3 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-100"
         >
           Next
         </Link>
       ) : (
-        <span className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-ink-100 px-3 text-sm font-medium text-ink-400">
+        <span className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-ink-100 px-3 text-sm font-medium text-ink-400">
           Next
         </span>
       )}

@@ -42,9 +42,12 @@ interface Props {
   afterDelete?: 'refresh' | 'list'
 }
 
-const ROW_LINK = 'text-xs disabled:opacity-40'
+// px-2 with no flex gap: every action carries the same 8px either side, so the
+// rhythm between eight words is even whether the word is Edit or Launch Kit
+// (min-w-11 alone centred the short ones in 44px boxes and left the long ones bare).
+const ROW_LINK = 'inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs disabled:opacity-40'
 const PANEL_BUTTON =
-  'inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 disabled:opacity-40'
+  'inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-[transform,box-shadow,background-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 disabled:opacity-40'
 
 export function EventLifecycleActions({ event, eligibility, variant, afterDelete = 'refresh' }: Props) {
   const router = useRouter()

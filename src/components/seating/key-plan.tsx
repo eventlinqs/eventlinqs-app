@@ -47,7 +47,7 @@ export function KeyPlan({ scene, camera, viewWidth, viewHeight, width, height, o
 
   return (
     <div
-      className={`overflow-hidden rounded-sm border border-ink-900/25 bg-white shadow-sm ${className ?? ''}`}
+      className={`overflow-hidden rounded-lg border border-ink-900/25 bg-white shadow-[var(--shadow-card)] ${className ?? ''}`}
       aria-hidden="true"
     >
       <canvas

@@ -87,7 +87,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             onClick={() => reset()}
             style={{
               display: 'inline-block',
-              padding: '14px 28px',
+              padding: '12px 28px',
               backgroundColor: '#0A1628',
               color: '#FFFFFF',
               border: 'none',

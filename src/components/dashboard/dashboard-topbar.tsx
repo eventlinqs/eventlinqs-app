@@ -73,7 +73,7 @@ export function DashboardTopbar({ user, profile }: Props) {
               id="dashboard-search"
               type="search"
               placeholder="Search events, orders, tickets"
-              className="h-9 w-full rounded-lg border border-ink-100 bg-canvas pl-9 pr-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-400/20"
+              className="h-11 w-full rounded-lg border border-ink-100 bg-canvas pl-9 pr-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-400/20"
             />
           </div>
         </div>
@@ -82,7 +82,7 @@ export function DashboardTopbar({ user, profile }: Props) {
           <button
             type="button"
             aria-label="Notifications"
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+            className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
           >
             <Bell className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -94,7 +94,7 @@ export function DashboardTopbar({ user, profile }: Props) {
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-label={`Account menu for ${displayName}`}
-              className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 transition-colors hover:bg-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+              className="flex min-h-11 items-center gap-2 rounded-full pl-1 pr-3 py-1 transition-colors hover:bg-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
             >
               {avatar ? (
                 <OrganiserAvatar
@@ -120,7 +120,7 @@ export function DashboardTopbar({ user, profile }: Props) {
             {menuOpen && (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-xl border border-ink-100 bg-white shadow-lg"
+                className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[var(--shadow-modal)]"
               >
                 <div className="border-b border-ink-100 p-4">
                   <p className="truncate text-sm font-semibold text-ink-900">{profile?.full_name ?? displayName}</p>

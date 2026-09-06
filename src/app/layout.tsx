@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Manrope, Archivo, Hanken_Grotesk } from 'next/font/google'
+import { Manrope, Archivo } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
@@ -9,13 +9,27 @@ import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { ReferralCapture } from '@/components/growth/referral-capture'
 import { getSiteUrl } from '@/lib/site-url'
 
-// Body face: refined neutral grotesque (replaces Inter). Manrope stays for UI.
-const hanken = Hanken_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-hanken',
-  display: 'optional',
-  weight: ['400', '500', '600', '700'],
-})
+/*
+ * TWO FAMILIES (close-out C14.12, 6 September 2026): Archivo for headlines,
+ * Manrope for everything else.
+ *
+ * A third face, Hanken Grotesk, was loaded here as the body font from the day
+ * the Archivo pass landed, and it never rendered once. Its variable was set on
+ * <body>, but the token that referenced it (`--font-body` in the theme block)
+ * is declared on :root, where the variable does not exist, so the token
+ * computed to nothing and `body { font-family: var(--font-body) }` fell
+ * through to Tailwind's preflight stack. Every body line on the platform was
+ * the visitor's system font, and four font files were fetched for it. Measured
+ * on the C14 before-capture: families rendered = ui-sans-serif, Manrope,
+ * Archivo; `--font-body` on body = "".
+ *
+ * The variables now sit on <html>, so a :root token can reference them, and
+ * the body token points at Manrope (the face every label, price and eyebrow
+ * already used), which meets the rubric's two-family line with no visual
+ * change to any UI text. The constitution's Type line still names Hanken; the
+ * discrepancy is recorded in REVIEW-QUEUE.md for the founder. Flipping the
+ * platform to Hanken is one token (`--font-body`) plus this import.
+ */
 
 // Headline face: bold, characterful display grotesque for display-tier
 // headings and card titles. Broad, high-energy, mainstream.
@@ -127,8 +141,8 @@ export default function RootLayout({
   // data-headless on <html> before React hydrates, which is a legitimate
   // mismatch (React 19 logs it as a console error in dev otherwise).
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${hanken.variable} ${archivo.variable} ${manrope.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${archivo.variable} ${manrope.variable}`}>
+      <body>
         <Script id="el-headless-flag" strategy="beforeInteractive">
           {HEAD_HEADLESS_FLAG}
         </Script>

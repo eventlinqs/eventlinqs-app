@@ -156,10 +156,10 @@ export default async function MyEventsPage({ searchParams }: Props) {
         </div>
       )}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-ink-900">My Events</h1>
+        <h1 className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">My Events</h1>
         <Link
           href={withOrganisation('/dashboard/events/create', org.id, organisationCount)}
-          className="rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
+          className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-4 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
         >
           + Create Event
         </Link>
@@ -180,7 +180,7 @@ export default async function MyEventsPage({ searchParams }: Props) {
           <Link
             key={t.key}
             href={withOrganisation(`/dashboard/events?tab=${t.key}`, org.id, organisationCount)}
-            className={`whitespace-nowrap px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`inline-flex min-h-11 items-center whitespace-nowrap px-4 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeTab === t.key
                 // Gold TEXT on a light surface is the strong tier (gold-800), never
                 // gold-500: axe measured the old class at a serious contrast failure.

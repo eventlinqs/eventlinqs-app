@@ -233,7 +233,7 @@ export function VenueMap({
           href={mapsLink}
           target="_blank"
           rel="noreferrer noopener"
-          className="shrink-0 rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs font-semibold text-ink-700 transition-colors hover:border-gold-400 hover:text-gold-600"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-700 transition-colors hover:border-gold-400 hover:text-[var(--brand-accent-strong)]"
         >
           Open in Maps
         </Link>

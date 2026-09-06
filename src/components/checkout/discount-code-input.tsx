@@ -53,7 +53,7 @@ export function DiscountCodeInput({
 
   if (appliedCode) {
     return (
-      <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+      <div className="rounded-2xl border border-green-200 bg-green-50 p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-green-800">
@@ -76,7 +76,7 @@ export function DiscountCodeInput({
   }
 
   return (
-    <div className="rounded-xl border border-ink-200 bg-white p-6">
+    <div className="rounded-2xl border border-ink-200 bg-white p-6">
       <h3 id="discount-code-label" className="text-base font-semibold text-ink-900 mb-3">Discount Code</h3>
       <div className="flex gap-2">
         <input

@@ -226,7 +226,7 @@ export default async function HomePage() {
             <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
               <div className="flex items-center justify-center rounded-2xl border border-ink-200 bg-white py-16 text-center">
                 <div>
-                  <p className="font-headline tracking-tight text-xl font-bold text-ink-900">
+                  <p className="font-headline tracking-tight text-lg font-bold text-ink-900">
                     Events loading soon
                   </p>
                   <p className="mt-2 text-sm text-ink-400">
@@ -235,7 +235,7 @@ export default async function HomePage() {
                   <Link
                     href="/organisers/signup"
                     prefetch={false}
-                    className="mt-5 inline-flex items-center rounded-lg bg-[var(--color-navy-950)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-ink-900)]"
+                    className="mt-5 inline-flex min-h-11 items-center rounded-full bg-[var(--color-navy-950)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-ink-900)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
                   >
                     List your event
                   </Link>

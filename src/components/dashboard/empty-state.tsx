@@ -18,13 +18,13 @@ export function DashboardEmptyState({ icon, title, description, primary, seconda
         {icon}
       </div>
       <h2 className="mt-5 font-display text-lg font-semibold text-ink-900">{title}</h2>
-      <p className="mt-1 max-w-md text-sm text-ink-600">{description}</p>
+      <p className="mt-1 max-w-md text-pretty text-sm text-ink-600">{description}</p>
       {(primary || secondary) && (
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           {primary && (
             <Link
               href={primary.href}
-              className="inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+              className="inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
             >
               {primary.label}
             </Link>

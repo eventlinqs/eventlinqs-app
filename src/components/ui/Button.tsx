@@ -24,15 +24,18 @@ const base = [
 // (never the grey Tailwind defaults), and the primary hover blooms GOLD -
 // the same light the FeaturedHero CTA already carries, made systemic.
 const variants: Record<Variant, string> = {
+  // Close-out C14.12 (6 September 2026): the two card elevation tokens are the
+  // whole elevation system for controls too. Each inline rgba here was its own
+  // elevation, six of them on one button family.
   primary: [
-    'bg-[var(--brand-accent)] text-[var(--text-primary)] shadow-[0_2px_8px_rgba(10,22,40,0.14)]',
-    'hover:bg-[var(--brand-accent-hover)] hover:shadow-[0_10px_28px_rgba(212,160,23,0.30)] hover:-translate-y-0.5',
-    'active:bg-[var(--brand-accent-active)] active:shadow-[0_2px_6px_rgba(10,22,40,0.14)] active:translate-y-0',
+    'bg-[var(--brand-accent)] text-[var(--text-primary)] shadow-[var(--shadow-card)]',
+    'hover:bg-[var(--brand-accent-hover)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-0.5',
+    'active:bg-[var(--brand-accent-active)] active:shadow-[var(--shadow-card)] active:translate-y-0',
   ].join(' '),
   secondary: [
-    'bg-[var(--surface-2)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(10,22,40,0.08)]',
-    'hover:bg-[var(--surface-1)] hover:shadow-[0_6px_16px_rgba(10,22,40,0.12)] hover:-translate-y-0.5',
-    'active:bg-[var(--surface-2)] active:shadow-[0_1px_3px_rgba(10,22,40,0.08)] active:translate-y-0',
+    'bg-[var(--surface-2)] text-[var(--text-primary)] shadow-[var(--shadow-card)]',
+    'hover:bg-[var(--surface-1)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-0.5',
+    'active:bg-[var(--surface-2)] active:shadow-[var(--shadow-card)] active:translate-y-0',
   ].join(' '),
   ghost: [
     'bg-transparent text-[var(--text-primary)]',
@@ -60,7 +63,9 @@ const darkSurface: Partial<Record<Variant, string>> = {
 }
 
 const sizes: Record<Size, string> = {
-  sm: 'h-9 px-3 text-sm',
+  // 44px tall at every size (the touch-target law); sm keeps the small type
+  // and tighter padding, not a smaller target.
+  sm: 'h-11 px-3 text-sm',
   md: 'h-11 px-4 text-base',
   lg: 'h-12 px-6 text-base',
 }

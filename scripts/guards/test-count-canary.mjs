@@ -845,10 +845,14 @@ const ROOT = join(HERE, '..', '..')
  * /events/[slug]/holder (the edge looks a URL up before any function runs and
  * cookies are not part of its key, so the holder had been served the
  * stranger's cached 404), the session cookie alone never triggers it, and a
- * live or deleted event is never rewritten: 305 files / 3540.
+ * live or deleted event is never rewritten: 305 files / 3540. Close-out C14
+ * (6 September 2026), one file and ten tests: tests/unit/guards/no-hardcoded-spacing
+ * (the 4px scale, tokens and relationships pass, every term of a shorthand is
+ * judged, widths and heights are not spacing, and the live tree is clean):
+ * 306 files / 3550.
  */
-const MIN_FILES = 305
-const MIN_TESTS = 3540
+const MIN_FILES = 306
+const MIN_TESTS = 3550
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

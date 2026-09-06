@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
+import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 import { useRouter } from 'next/navigation'
 import { loadStripe } from '@stripe/stripe-js'
 import {
@@ -44,6 +45,8 @@ interface CheckoutFormProps {
   userEmail: string
   currency: string
   organiserName: string
+  /** The trust panel, rendered beside the money on the details step and under the Pay button on the payment step. */
+  trustSlot?: ReactNode
 }
 
 function PaymentForm({
@@ -51,11 +54,13 @@ function PaymentForm({
   orderId,
   totalCents,
   currency,
+  trustSlot,
 }: {
   clientSecret: string
   orderId: string
   totalCents: number
   currency: string
+  trustSlot?: ReactNode
 }) {
   const stripe = useStripe()
   const elements = useElements()
@@ -84,28 +89,34 @@ function PaymentForm({
   }
 
   return (
-    <form method="post" onSubmit={handlePay} className="rounded-xl border border-ink-200 bg-white p-6">
-      <h3 className="text-base font-semibold text-ink-900 mb-4">Payment</h3>
-      <PaymentElement options={{ layout: 'tabs' }} />
+    <div className="space-y-6">
+      <form method="post" onSubmit={handlePay} className="rounded-2xl border border-ink-200 bg-white p-6">
+        <h3 className="text-base font-semibold text-ink-900 mb-4">Payment</h3>
+        <PaymentElement options={{ layout: 'tabs' }} />
 
-      {payError && (
-        <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          {payError}
-        </div>
-      )}
+        {payError && (
+          <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {payError}
+          </div>
+        )}
 
-      {/* Disable until Elements is mounted too: handlePay bails on !elements,
-          so an enabled button before that is a silent no-op click. */}
-      <Button type="submit" size="lg" disabled={paying || !stripe || !elements} className="mt-6 w-full">
-        {paying
-          ? 'Processing…'
-          : `Pay ${currency.toUpperCase()} ${(totalCents / 100).toFixed(2)}`}
-      </Button>
+        {/* Disable until Elements is mounted too: handlePay bails on !elements,
+            so an enabled button before that is a silent no-op click. */}
+        <Button type="submit" size="lg" disabled={paying || !stripe || !elements} className="mt-6 w-full">
+          {paying
+            ? 'Processing…'
+            : `Pay ${currency.toUpperCase()} ${(totalCents / 100).toFixed(2)}`}
+        </Button>
+      </form>
 
-      <p className="mt-3 text-center text-xs text-ink-400">
-        Secured by Stripe. Your payment info is never stored on our servers.
-      </p>
-    </form>
+      {/* Close-out C14.9, "trust near payment form": the trust panel sits
+          directly under the Pay button, in the same column as the card
+          fields, on every viewport. It used to be a third column at the far
+          right of the page at 1440 and below everything on mobile, and the
+          one-line "Secured by Stripe" note under the button said less than
+          the panel does. */}
+      {trustSlot}
+    </div>
   )
 }
 
@@ -127,6 +138,7 @@ export function CheckoutForm({
   userEmail,
   currency,
   organiserName,
+  trustSlot,
 }: CheckoutFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -246,7 +258,7 @@ export function CheckoutForm({
   if (expired) {
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-2xl border border-ink-200 bg-white p-8 text-center shadow-sm">
+        <div className="w-full max-w-md rounded-2xl border border-ink-200 bg-white p-8 text-center shadow-[var(--shadow-card)]">
           <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-error/10">
             <svg className="h-8 w-8 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -268,7 +280,7 @@ export function CheckoutForm({
       <div className="min-h-screen bg-canvas">
         <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl flex items-center justify-between">
-            <span className="text-xl font-bold text-ink-900">EVENTLINQS</span>
+            <EventlinqsLogo size="md" />
             <CartTimer expiresAt={expiresAt} onExpired={handleExpired} />
           </div>
         </nav>
@@ -290,6 +302,7 @@ export function CheckoutForm({
                 orderId={orderId}
                 totalCents={fees.total_cents}
                 currency={currency}
+                trustSlot={trustSlot}
               />
             </Elements>
 
@@ -309,7 +322,7 @@ export function CheckoutForm({
     <div className="min-h-screen bg-canvas">
       <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl flex items-center justify-between">
-          <span className="text-xl font-bold text-ink-900">EVENTLINQS</span>
+          <EventlinqsLogo size="md" />
           <CartTimer expiresAt={expiresAt} onExpired={handleExpired} />
         </div>
       </nav>
@@ -319,7 +332,7 @@ export function CheckoutForm({
             surface must meet 4.5:1 (Design system, gold tiers). */}
         {!userId && (
           <div className="mb-6 rounded-lg bg-gold-100 border border-gold-200 px-4 py-3 text-sm text-gold-800">
-            <a href="/login" className="font-semibold underline">Log in</a> for a faster checkout. Or continue as guest below.
+            <a href="/login" className="inline-flex min-h-11 min-w-11 items-center font-semibold underline">Log in</a> for a faster checkout. Or continue as guest below.
           </div>
         )}
 
@@ -327,7 +340,7 @@ export function CheckoutForm({
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             <div className="space-y-6">
               {/* Buyer info */}
-              <div className="rounded-xl border border-ink-200 bg-white p-6">
+              <div className="rounded-2xl border border-ink-200 bg-white p-6">
                 <h3 className="text-base font-semibold text-ink-900 mb-4">Your Details</h3>
                 <div className="space-y-3">
                   <div>
@@ -364,7 +377,7 @@ export function CheckoutForm({
 
               {/* Seat slots (seat mode only) */}
               {seatMode && seatSlots && seatSlots.length > 0 && (
-                <div className="rounded-xl border border-ink-200 bg-white p-6">
+                <div className="rounded-2xl border border-ink-200 bg-white p-6">
                   <h3 className="text-base font-semibold text-ink-900 mb-4">Your Seats</h3>
                   <ul className="divide-y divide-ink-100">
                     {seatSlots.map(slot => (
@@ -437,7 +450,7 @@ export function CheckoutForm({
               {/* The terms the buyer is accepting at the point of commitment.
                   The all-in total is already shown above and on the event page
                   before this step (ACCC all-in display). */}
-              <p className="mt-3 text-center text-xs text-ink-400">
+              <p className="type-measure mx-auto mt-3 text-pretty text-center text-xs text-ink-400">
                 By completing this order you agree to our{' '}
                 <a href="/legal/terms" className="underline hover:text-gold-600">Terms</a>
                 {', '}
@@ -447,14 +460,17 @@ export function CheckoutForm({
               </p>
             </div>
 
-            {/* Sidebar: order summary */}
-            <div>
+            {/* Sidebar: order summary, with the trust panel directly under
+                the total (close-out C14.9), beside the Continue button on
+                desktop and right after it on mobile. */}
+            <div className="space-y-6">
               <CheckoutSummary
                 fees={fees}
                 eventTitle={eventTitle}
                 eventDate={eventDate}
                 venue={venue}
               />
+              {trustSlot}
             </div>
           </div>
         </form>

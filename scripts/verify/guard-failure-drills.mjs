@@ -74,6 +74,36 @@ console.log(`[drills] effective create_reservation: ${NEW_EFFECTIVE_RESERVATION}
 
 const DRILLS = [
   /*
+   * no-hardcoded-spacing (close-out C14.12), three drills: an arbitrary
+   * utility off the 4px grid, an inline style off it, and a CSS declaration
+   * off it. A token or a multiple of 4px passes, so the guard only fires on a
+   * value somebody typed by hand.
+   */
+  {
+    name: 'a card body padded with an arbitrary 13px utility',
+    guard: `${GUARDS}/no-hardcoded-spacing.mjs`,
+    file: 'src/components/features/home/cards.tsx',
+    find: '      <div className="flex flex-1 flex-col p-4">',
+    replace: '      <div className="flex flex-1 flex-col p-[13px]">',
+    expect: 'off the spacing scale',
+  },
+  {
+    name: 'a card body padded with an inline 17px instead of the token',
+    guard: `${GUARDS}/no-hardcoded-spacing.mjs`,
+    file: 'src/components/features/events/event-card.tsx',
+    find: "          paddingTop: 'var(--space-card-padding-y)',",
+    replace: "          paddingTop: '17px',",
+    expect: 'off the spacing scale',
+  },
+  {
+    name: 'a stylesheet declaration steps off the grid by a pixel',
+    guard: `${GUARDS}/no-hardcoded-spacing.mjs`,
+    file: 'src/app/globals.css',
+    find: '  outline-offset: 2px;',
+    replace: '  outline-offset: 2px;\n  margin-top: 5px;',
+    expect: 'off the spacing scale',
+  },
+  /*
    * maintained-aggregates, three drills.
    *
    * The class: a number written down in a second place with nothing keeping it

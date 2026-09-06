@@ -98,7 +98,7 @@ export function AttendeeForm({
   if (slots.length === 0) return null
 
   return (
-    <div className="rounded-xl border border-ink-200 bg-white p-6">
+    <div className="rounded-2xl border border-ink-200 bg-white p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-semibold text-ink-900">Attendee Details</h3>
         {buyerEmail && (

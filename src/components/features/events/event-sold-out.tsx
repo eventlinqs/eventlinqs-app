@@ -105,9 +105,9 @@ export function EventSoldOut({ event, primaryTierId, relatedEvents }: EventSoldO
   return (
     <section aria-labelledby="sold-out-heading" className="space-y-10">
       {/* Primary sold-out panel */}
-      <div className="rounded-2xl border border-ink-200 bg-white p-6 md:p-8 shadow-sm">
+      <div className="rounded-2xl border border-ink-200 bg-white p-6 md:p-8 shadow-[var(--shadow-card)]">
         <div className="flex flex-col items-start gap-4">
-          <span className="inline-flex items-center rounded-md bg-gold-500 px-3 py-1.5 text-xs md:text-sm font-extrabold uppercase tracking-widest text-ink-900">
+          <span className="inline-flex items-center rounded-lg bg-gold-500 px-3 py-1.5 text-xs md:text-sm font-extrabold uppercase tracking-widest text-ink-900">
             Sold out
           </span>
 
@@ -120,7 +120,7 @@ export function EventSoldOut({ event, primaryTierId, relatedEvents }: EventSoldO
           </p>
 
           {state.kind === 'ok' ? (
-            <div className="w-full rounded-xl border border-gold-500/30 bg-gold-100 px-4 py-4 text-sm text-ink-900">
+            <div className="w-full rounded-2xl border border-gold-500/30 bg-gold-100 px-4 py-4 text-sm text-ink-900">
               <p className="font-semibold">You are on the waitlist.</p>
               <p className="mt-1 text-ink-600">
                 {state.position > 0
@@ -146,7 +146,7 @@ export function EventSoldOut({ event, primaryTierId, relatedEvents }: EventSoldO
               <button
                 type="submit"
                 disabled={isPending}
-                className="shrink-0 rounded-lg bg-gold-500 hover:bg-gold-600 px-5 py-3 text-sm font-semibold text-ink-900 disabled:bg-ink-200 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
+                className="shrink-0 rounded-lg bg-gold-500 hover:bg-gold-600 px-5 py-3 text-sm font-semibold text-ink-900 disabled:bg-ink-200 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]"
               >
                 {isPending ? 'Joining…' : 'Join waitlist'}
               </button>
@@ -207,7 +207,7 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
   return (
     <Link
       href={`/events/${event.slug}`}
-      className="group block overflow-hidden rounded-xl border border-ink-200 bg-white transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-gold-500/40"
+      className="group block overflow-hidden rounded-2xl border border-ink-200 bg-white transition-[transform,box-shadow,border-color,background-color] hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] hover:border-gold-500/40"
     >
       <div className="relative aspect-[16/10] bg-ink-100 overflow-hidden">
         {event.cover_image_url ? (
@@ -223,13 +223,13 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
           </div>
         )}
         {event.category_name && (
-          <span className="absolute left-2 top-2 rounded-md bg-ink-900/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+          <span className="absolute left-2 top-2 rounded-lg bg-ink-900/95 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
             {event.category_name}
           </span>
         )}
       </div>
       <div className="p-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-gold-600">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gold-600">
           {dateLabel}
         </p>
         <h4 className="mt-1 text-sm font-bold text-ink-900 line-clamp-2 leading-snug">

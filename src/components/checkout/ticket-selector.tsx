@@ -260,7 +260,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
     const refusal = describeSaleRefusal(refusalReason, 'buyer')
     return (
       <div
-        className="rounded-xl border border-ink-200 bg-ink-100/40 px-4 py-5 text-center"
+        className="rounded-2xl border border-ink-200 bg-ink-100/40 px-4 py-5 text-center"
         data-sale-refused={refusalReason}
         role="status"
       >
@@ -309,11 +309,11 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                * amber-50) are 6.84:1 - it was only ever the wrapper. */
               <div
                 key={tier.id}
-                className={`rounded-xl border p-4 transition-colors ${
+                className={`rounded-2xl border p-4 transition-colors ${
                   soldOut || salePending
                     ? 'border-ink-200/50 bg-ink-100/50'
                     : isSelected
-                    ? 'border-gold-500 bg-gold-100/30 shadow-sm'
+                    ? 'border-gold-500 bg-gold-100/30 shadow-[var(--shadow-card)]'
                     : 'border-ink-200 bg-white hover:border-ink-400'
                 }`}
               >
@@ -528,7 +528,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
           // return is one edit away from being moved, and the failure mode of
           // losing it is a live checkout button beside a refusal.
           disabled={totalTickets === 0 || isPending || refusalReason !== null}
-          className="w-full rounded-xl bg-gold-500 hover:bg-gold-600 px-4 py-3.5 text-sm font-semibold text-ink-900 disabled:bg-ink-200 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
+          className="w-full rounded-2xl bg-gold-500 hover:bg-gold-600 px-4 py-3.5 text-sm font-semibold text-ink-900 disabled:bg-ink-200 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]"
         >
           {isPending
             ? 'Reserving…'

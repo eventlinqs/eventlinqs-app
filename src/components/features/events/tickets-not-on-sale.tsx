@@ -15,7 +15,7 @@ import {
  */
 export function TicketsNotOnSale({ embedded = false }: { embedded?: boolean }) {
   const message = (
-    <div className="rounded-xl border border-ink-200 bg-ink-100/40 px-4 py-5 text-center">
+    <div className="rounded-2xl border border-ink-200 bg-ink-100/40 px-4 py-5 text-center">
       <p className="font-display text-base font-bold text-ink-900">
         {TICKETS_NOT_ON_SALE_HEADING}
       </p>
@@ -26,7 +26,7 @@ export function TicketsNotOnSale({ embedded = false }: { embedded?: boolean }) {
   if (embedded) return message
 
   return (
-    <div className="sticky top-20 rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+    <div className="sticky top-20 rounded-2xl border border-ink-200 bg-white p-6 shadow-[var(--shadow-card)]">
       <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
       {message}
     </div>

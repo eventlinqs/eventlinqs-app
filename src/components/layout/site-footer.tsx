@@ -161,7 +161,7 @@ function SocialRow() {
 // platform. The id is passed in by each call site instead.
 function LanguagePicker({ id }: { id: string }) {
   return (
-    <label className="flex items-center gap-2 text-xs text-white/60">
+    <label className="flex min-h-11 items-center gap-2 text-xs text-white/60">
       <span className="sr-only">Language</span>
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" />
@@ -172,7 +172,7 @@ function LanguagePicker({ id }: { id: string }) {
         id={id}
         name="language"
         defaultValue="en-AU"
-        className="bg-transparent text-xs text-white/70 outline-none focus:text-white"
+        className="h-11 bg-transparent text-xs text-white/70 outline-none focus:text-white"
         aria-label="Language"
       >
         <option value="en-AU" className="bg-ink-950">English (AU)</option>
@@ -228,7 +228,7 @@ export function SiteFooter() {
           <div className="flex flex-wrap items-center justify-between gap-6 border-b border-white/10 pb-6">
             <div className="flex items-center gap-5">
               <EventlinqsLogo size="md" variant="inverted" />
-              <p className="max-w-xs text-sm leading-6 text-white/70">
+              <p className="max-w-xs text-pretty text-sm leading-6 text-white/70">
                 The ticketing platform built for every community.
               </p>
             </div>
@@ -283,10 +283,12 @@ export function SiteFooter() {
             {/* Light wrapper so the flags remain legible against the
              *  ink-950 footer background (the Aboriginal flag's black
              *  top half would otherwise blend with the surface). */}
-            <span className="inline-flex items-center rounded-md bg-white/5 px-2 py-1.5 ring-1 ring-white/10">
+            <span className="inline-flex items-center rounded-lg border border-white/10 bg-white/5 px-2 py-1.5">
               <FirstNationsFlags />
             </span>
-            <p className="max-w-3xl text-xs leading-relaxed text-white/70 sm:text-sm">
+            {/* type-measure: 52ch, about 72 characters of Manrope (C14.12). max-w-3xl ran the
+                acknowledgement to 103 characters a line at 1440. */}
+            <p className="type-measure text-pretty text-xs leading-relaxed text-white/70 sm:text-sm">
               EventLinqs acknowledges the Traditional Custodians of Country
               throughout Australia and recognises their continuing connection
               to land, waters, and community. We pay our respects to Elders
@@ -304,7 +306,7 @@ export function SiteFooter() {
             <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
               {LEGAL.map(link => (
                 <li key={link.href}>
-                  <a href={link.href} className="text-xs text-white/70 transition-colors hover:text-white">
+                  <a href={link.href} className="inline-flex min-h-11 min-w-11 items-center justify-center text-xs text-white/70 transition-colors hover:text-white">
                     {link.label}
                   </a>
                 </li>
@@ -317,7 +319,7 @@ export function SiteFooter() {
             <span aria-hidden className="hidden sm:inline">·</span>
             <span>Geelong VIC, Australia</span>
             <span aria-hidden className="hidden sm:inline">·</span>
-            <a href="mailto:hello@eventlinqs.com" className="transition-colors hover:text-white/80">
+            <a href="mailto:hello@eventlinqs.com" className="inline-flex min-h-11 items-center transition-colors hover:text-white/80">
               hello@eventlinqs.com
             </a>
             <span aria-hidden className="hidden sm:inline">·</span>

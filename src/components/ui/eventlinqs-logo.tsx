@@ -12,9 +12,9 @@ type Props = {
 }
 
 const SIZE_CLASS: Record<Size, string> = {
-  sm: 'text-[16px] leading-none',
-  md: 'text-[20px] leading-none',
-  lg: 'text-[30px] leading-none',
+  sm: 'text-base leading-none',
+  md: 'text-lg leading-none',
+  lg: 'text-3xl leading-none',
 }
 
 /**
@@ -44,11 +44,7 @@ export function EventlinqsLogo({
   // applied. */
   const invertedChipStyle =
     variant === 'inverted'
-      ? {
-          backgroundColor: 'rgba(10, 22, 40, 0.95)',
-          padding: '0.125rem 0.375rem',
-          borderRadius: '0.375rem',
-        }
+      ? { backgroundColor: 'rgba(10, 22, 40, 0.95)' }
       : undefined
 
   const content = (
@@ -56,6 +52,10 @@ export function EventlinqsLogo({
       style={invertedChipStyle}
       className={[
         'inline-flex items-baseline font-display font-extrabold tracking-tight',
+        // The chip's padding and radius are utilities on the scale: 2px 6px as
+        // before, and rounded-lg (the control radius) where an inline 6px
+        // radius used to be the one of its kind on the page.
+        variant === 'inverted' ? 'rounded-lg px-1.5 py-0.5' : '',
         SIZE_CLASS[size],
         wordmarkColour,
         className ?? '',
@@ -71,7 +71,7 @@ export function EventlinqsLogo({
       <Link
         href="/"
         aria-label={ariaLabel}
-        className="inline-flex items-baseline transition-colors hover:text-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 rounded-sm"
+        className="inline-flex min-h-11 items-center transition-colors hover:text-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 rounded-lg"
       >
         {content}
       </Link>

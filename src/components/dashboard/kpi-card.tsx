@@ -64,7 +64,7 @@ export function KpiCard({ label, value, delta, sparkline, emptyHint }: Props) {
   const hasData = value !== '0' || hasSparkline
 
   return (
-    <div className="panel-elevated rounded-xl border border-ink-100 bg-white p-5 transition-colors hover:border-ink-200">
+    <div className="panel-elevated rounded-2xl border border-ink-100 bg-white p-5 transition-colors hover:border-ink-200">
       <p className="type-eyebrow text-ink-400">{label}</p>
       <div className="mt-2 flex items-baseline gap-2">
         <p className="font-headline text-2xl font-extrabold tabular-nums tracking-tight text-ink-900 sm:text-3xl">

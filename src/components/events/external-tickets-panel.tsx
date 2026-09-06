@@ -35,7 +35,7 @@ export function ExternalTicketsPanel({
 }) {
   return (
     <div className="sticky top-20 space-y-5">
-      <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-[var(--shadow-card)]">
         <SectionHeader eyebrow="Tickets" title={TICKETS_SOLD_ELSEWHERE_HEADING} size="sm" className="mb-4" />
 
         <p className="text-sm leading-relaxed text-ink-600">{TICKETS_SOLD_ELSEWHERE_BODY}</p>

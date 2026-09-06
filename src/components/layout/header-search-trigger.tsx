@@ -68,7 +68,7 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
           type="button"
           onClick={() => setOpen(true)}
           className={[
-            'group inline-flex h-10 w-[360px] items-center gap-3 rounded-full border border-white/15 bg-white/10 px-5 text-sm text-white/80 transition hover:border-white/30 hover:bg-white/15',
+            'group inline-flex h-11 w-[360px] items-center gap-3 rounded-full border border-white/15 bg-white/10 px-5 text-sm text-white/80 transition hover:border-white/30 hover:bg-white/15',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]',
             className,
           ].join(' ')}
@@ -76,7 +76,10 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
         >
           <Search className="h-4 w-4 text-white/65 group-hover:text-white" aria-hidden />
           <span className="flex-1 text-left">What are you in the mood for?</span>
-          <kbd className="hidden h-6 items-center rounded border border-white/20 px-1.5 text-[10px] font-medium text-white/60 lg:inline-flex">
+          {/* font-display: the kbd element inherits the mono stack from the
+              preflight, which put a third family on the page for one glyph.
+              text-xs and rounded-lg keep it on the type scale and radius set. */}
+          <kbd className="hidden h-6 items-center rounded-lg border border-white/20 px-1.5 font-display text-xs font-medium text-white/60 lg:inline-flex">
             /
           </kbd>
         </button>

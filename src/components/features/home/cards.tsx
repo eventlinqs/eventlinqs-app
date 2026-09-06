@@ -60,10 +60,15 @@ export interface CityTileData {
 // it. With it, every card's footer baseline lines up and the rail reads as one
 // symmetrical grid (founder rail-symmetry law). Body uses flex-1 + mt-auto so
 // the extra height opens above the footer, never below the card.
+// Elevation comes from the two card tokens in globals.css (--shadow-card at
+// rest, --shadow-card-hover lifted), never an inline rgba: the rubric allows
+// three elevations platform-wide and every inline value was a fourth.
+// transition-[transform,box-shadow,color]: `transition-all` animates every
+// property including layout ones (the M5 spec forbids it).
 const SURFACE =
   'group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] ' +
-  'shadow-[0_1px_3px_rgba(10,22,40,0.05)] transition-all duration-200 ease-out ' +
-  'hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(10,22,40,0.13)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ' +
+  'shadow-[var(--shadow-card)] transition-[transform,box-shadow,color] duration-200 ease-out ' +
+  'hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2'
 const IMG_WRAP = 'relative overflow-hidden bg-[var(--surface-1)]'
 // Inner-media zoom tuned to the raised Motion bar: 1.03 scale at ~200ms ease-out
@@ -71,8 +76,9 @@ const IMG_WRAP = 'relative overflow-hidden bg-[var(--surface-1)]'
 // gesture rather than a slow drift. Reduced-motion holds the image still.
 const IMG_MOTION =
   'transition-transform duration-200 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100'
+// text-xs (12px) is the micro step of the one scale; 11px was off it.
 const LABEL =
-  'font-display text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]'
+  'font-display text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]'
 const TITLE =
   'font-headline font-bold leading-snug tracking-tight text-[var(--text-primary)] transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]'
 const DATE = 'font-semibold uppercase tracking-wide text-[var(--brand-accent-strong)]'
@@ -129,7 +135,10 @@ export function EventCardFeature({ event, blurb }: { event: HomeCardEvent; blurb
       </div>
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <p className={LABEL}>{event.label}</p>
-        <h3 className={`mt-2 line-clamp-2 text-2xl sm:text-3xl ${TITLE}`}>{event.title}</h3>
+        {/* The card title never outranks the rail heading it sits under
+            (24px): text-2xl on sm+, the card step (18px) on mobile. 30px here
+            was the largest type on the page after the hero. */}
+        <h3 className={`mt-2 line-clamp-2 text-lg lg:text-2xl ${TITLE}`}>{event.title}</h3>
         {blurb ? (
           <p className="mt-2 line-clamp-2 text-sm text-[var(--text-secondary)] sm:text-base">{blurb}</p>
         ) : null}

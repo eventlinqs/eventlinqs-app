@@ -94,7 +94,7 @@ export function FollowButton({
 
   const base =
     'inline-flex h-11 min-w-[7.5rem] items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold ' +
-    'transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 ' +
+    'transition-[transform,box-shadow,background-color,border-color,color] duration-200 focus-visible:outline-none focus-visible:ring-2 ' +
     'focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed'
 
   // Following = solid gold confirmation; not-following = navy solid or outline.

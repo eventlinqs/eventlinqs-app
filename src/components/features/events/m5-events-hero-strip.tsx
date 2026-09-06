@@ -58,12 +58,12 @@ export function EventsHeroStrip({
                 defaultValue={params.q ?? ''}
                 placeholder="Search events, artists, venues…"
                 aria-label="Search events"
-                className="w-full rounded-lg border border-ink-200 bg-white py-2.5 pl-10 pr-4 text-sm text-ink-900 placeholder:text-ink-400 transition-colors focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-400"
+                className="h-11 w-full rounded-lg border border-ink-200 bg-white pl-10 pr-4 text-sm text-ink-900 placeholder:text-ink-400 transition-colors focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-400"
               />
             </div>
             <button
               type="submit"
-              className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+              className="h-11 rounded-lg bg-gold-500 px-5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
             >
               Search
             </button>
