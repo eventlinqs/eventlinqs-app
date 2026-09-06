@@ -1742,3 +1742,111 @@ changed, and nothing was deleted.
   sentry-release=b4255a96fa70af2a10965f106eb3d93f3145b1a8. C3 completion law 7 moves to MET.
 - ORDER FROM HERE, per the owner decision of 6 September in CLOSE-OUT.md: C13 (delete and
   archive), then C14 (design uplift, the five screens first), then C4, C5, C6, C7, C8, C9, C10.
+
+## 2026-09-06 15:25 (C13) delete and archive: the state machine, the database rules, and two defects the proofs found
+
+- ORDER. C13 first per the owner decision of 6 September in CLOSE-OUT.md. Branch
+  feat/c13-archive-delete cut from b4255a96 (the C3 merge). Plan written before the first
+  edit at C:\dev\C13-PLAN.md; every fact in it enumerated from source or from TEST
+  (C:\dev\EVIDENCE\C13\probe-*.txt), never typed from memory.
+- THE STATE MACHINE FIRST (C13.1). docs/EVENT-LIFECYCLE.md: every status the enum carries
+  (draft, scheduled, published, paused, postponed, cancelled, completed, and the new archived),
+  every legal and illegal transition, a Mermaid diagram, the money-records delete rule, the
+  foreign-key delete table (33 keys read off pg_constraint on TEST), the storage prefixes, the
+  410 and 404 rules, the audit shape, and the three competitors quoted from their own pages
+  (C:\dev\EVIDENCE\C13\competitor-sources-2026-09-06.md; Humanitix's archive page answers 401
+  so its restore behaviour is marked UNSOURCED). ARCHIVED IS A STATUS VALUE rather than a
+  flag: every public surface, RLS policy, cron and share-card route already filters on
+  published, so a new value is excluded from all of them by construction, and
+  archived_from_status makes restore exact.
+- SCHEMA, TEST ONLY, queried back. 20260906000001 adds the enum value (alone in its file:
+  ALTER TYPE ADD VALUE cannot be used in the transaction that adds it). 20260906000002 adds
+  archived_at, archived_from_status, archived_by and a CHECK holding the pair honest;
+  event_tombstones (anon may read slug and deleted_at only, by column privilege); parent_event_id
+  NO ACTION to SET NULL (the one foreign key with no rule); event_money_record_counts() and its
+  _many form (ONE definition of a money record, read by the trigger and the interface alike);
+  refuse_event_delete_with_money() BEFORE DELETE, every role, no override; the tombstone
+  trigger; the owner-any-status delete policy; a status gate in create_reservation AND
+  create_seat_reservation; and two STABLE probes, event_lifecycle_guards() and
+  event_referencing_tables(). Applied with db push to vkapkibzokmfaxqogypq, every flag read back
+  true (guards-after-fix-TEST.json); types regenerated with CLI 2.116.0 and spliced above the
+  legacy-alias marker.
+- FOUND BY THE MIGRATION, NOT BY THE INTERFACE: neither create_reservation nor
+  create_seat_reservation read events.status. A paused or cancelled event could be reserved
+  through the server action while the page merely hid the panel. Closed in the same migration;
+  the proof shows "This event is not on sale." for an archived event.
+- FOUND BY THE DATABASE PROOF, on its first run: deleting a zero-sales event that had a share
+  link was refused by share_links_target_exactly_one. 20260808000006 decided a share link
+  outlives its event (event_id NULL, retired_at stamped); 20260815000001 then required EXACTLY
+  one of event_id and destination_url, and nothing tested the two together. Every event that had
+  ever opened its Launch Kit was undeletable, with a raw constraint message. The constraint now
+  admits the retired state; a fifteenth guard flag pins it (db-proof-run-2.txt before,
+  db-proof-run-3.txt after: 19 of 19).
+- THE SHELL. This session's shell carries a full PRODUCTION Vercel environment
+  (VERCEL_ENV=production, the live Stripe publishable key, the production app URLs, the
+  production Supabase URL and anon key), injected by the Vercel plugin at session start. Node's
+  --env-file never overrides a set variable, so every database guard answered "project
+  gndnldyfudbytbboxesk: 401 Invalid API key" (TEST service key against the production URL), the
+  first build was refused by check-public-env as the production scope, and two host-resolver
+  tests answered the production host. Nothing was written to production: every write script
+  refuses it by ref. Everything now runs through C:\dev\EVIDENCE\C13\clean-env.sh and
+  build-with-env.ps1 removes the same names; recorded in memory for the next session.
+- CODE. src/lib/event-lifecycle.ts (archived, canArchive, restoreTarget, totality helpers,
+  cancelled and completed no longer dead ends); delete-eligibility.ts (reads the ONE SQL count,
+  never restates the rule; a missing key throws rather than reading as zero); lifecycle-audit.ts
+  (who, what, when, from where, the state at the time, into audit_log, visible in /admin/audit);
+  delete-event-core.ts (row first because the trigger may refuse, then the storage sweep with
+  pagination and a re-listing, then the audit row, then every cached surface); the organiser
+  list with an Archived tab and per-row Archive, Restore and Delete through one client
+  component the event overview also renders; a designed confirmation dialog with the typed
+  event name (window.confirm cannot say what happens or ask for a name); the admin console with
+  archive, restore and a typed delete under the same trigger; the event page's archived branch
+  (404 unless the viewer holds a ticket, then the archived banner and no sale); /tickets filling
+  an archived event's details for its holder; the proxy answering 410 from the tombstone with a
+  branded body, asked only when the live read finds nothing.
+- GUARDS. event-lifecycle-total (static: no dead end, archived leaves only by restore, the
+  public rule pins published, both organiser surfaces render the controls, the door SQL never
+  reads event status; three drills RED and GREEN) and event-lifecycle-installed (the build's
+  own database, through event_lifecycle_guards(); RED by dropping the delete trigger on TEST,
+  GREEN after restoring it: guard-event-lifecycle-installed-RED.txt, -GREEN.txt). Registered,
+  described, 69 guards then 70 pass on the tree.
+- THE DRILL HARNESS'S OWN FAULT, again: three inventory drills mutated 20260704000005 while the
+  effective create_reservation had moved to 20260906000002, and reported DID NOT FAIL. The
+  harness derives confirm_order and reconcile_refund but had create_reservation pinned; it is
+  derived now.
+- THE OWNERSHIP TEST'S PROXY. tests/unit/security/publish-gate-ownership.test.ts required one
+  ownership call per gate call file-wide; archive, restore and delete each prove ownership
+  without publishing, so the counts diverged. The contract is now per function (the proof must
+  sit between the function's start and its gate call) and delete is pinned owner-only like
+  create, which is the stronger statement of what it was checking.
+
+## 2026-09-06 16:30 (C13) driven 42 of 42 at every viewport, pushed through the gate
+
+- THE FIRST DRIVE found four things, none visible from the interface, each fixed before the
+  next: the share-link constraint refusing every delete (above); the events list's own
+  palette failing axe contrast at serious on the active tab, the table headers and every row
+  control (gold-500 and ink-400 text at 12px on white, red-600 on a hovered row), all moved to
+  the AA tiers the design system already names; the event route's LAYOUT answering 404 for an
+  archived slug before the page's holder branch could run (docs say why the layout exists: its
+  notFound() is a real 404 where the page's would stream a 200), so the holder decision moved
+  into the layout through one shared function; and the old draft-only delete policy reading
+  organisations.owner_id inline, which the column lockdown of 8 August turned into 42501
+  "permission denied for table organisations" for every organiser. The policy now goes
+  through el_owned_organisation_ids() like the update policy has since 19 August.
+- THE EDGE CACHE. next.config.ts caches /events/:slug publicly at Vercel's edge for 300s on
+  the assumption the render is anonymous. An archived event's answer is per viewer. The proxy
+  now marks such a slug's response Vercel-CDN-Cache-Control: private, no-store, which the
+  vendor's own page says outranks the config header (https://vercel.com/docs/caching/cache-control-headers,
+  last updated 2026-08-11, fetched today). Pinned in tests/unit/security/proxy-decisions.
+- THE JOURNEY'S OWN THREE FAULTS, fixed and named so they are not mistaken for product
+  defects: the confirmation email carries the canonical host, so only the path is kept for
+  navigation; a listing is judged by the LINK to the event, never by its title in the body
+  (the search page echoes the query); innerText applies text-transform, so the dialog prompt
+  is matched case-insensitively.
+- THE INVENTORY GUARD read the whole migration FILE for FOR UPDATE, and my migration defines
+  two functions in one file, so the drill that removes create_reservation's lock went green on
+  the seat function's lock. It now slices the function's own body; proven red and green by
+  hand (guard-inventory-lock-RED.txt, -GREEN.txt) and the harness went 84, 86, then 87 of 87.
+- FINAL. build-5 green; drive 42 of 42 at desktop-1440, tablet-768 and mobile-390, 0 server
+  errors, 0 blockers, axe 0 at every state; suite 304 files / 3530 tests; canary raised;
+  committed as 91c7e364 (49 files, +4635/-171) and pushed through the pre-push gate.

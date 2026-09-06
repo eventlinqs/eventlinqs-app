@@ -377,3 +377,58 @@ marked ready once (CI, tests, the types check and the advisory Lighthouse run al
 squash-merged as b4255a96, and your live site serves it: both post-deploy smoke runs passed and
 the served page carries that release. Every shared link on production now draws its card
 through the platform's own renderer, with the navy wash and the brand fonts.
+
+## C13 (6 September 2026): an organiser can now archive, restore and delete an event, and a cancelled event is no longer a dead end
+
+**The item you set:** you found on production that the events list offered no delete and no
+archive, and that a cancelled event could only be edited, viewed or duplicated for ever.
+
+**What a real organiser can do now, driven at 1440, 768 and 390, 42 of 42 checks at each:**
+- **Archive** any event from the list or its overview. It leaves every public page, search, the
+  city pages and the sitemap at once, sales stop, and every record stays. It sits under a new
+  Archived tab with Restore, which puts it back exactly as it was (a cancelled event comes back
+  cancelled; a live one comes back live, after the same checks publishing runs).
+- **Delete** an event that has never had an order, a ticket, a squad purchase, a discount
+  redemption or a refund. A free ticket counts, as Humanitix treats it. The organiser types the
+  event's name; the dialog says permanent, no undo. The event, its tiers, codes, lineup, seats and
+  artwork go, and its address answers "gone" (410) from then on with a branded page.
+- **A cancelled event keeps Archive**, so nothing is stuck in the list any more.
+- **Nobody with a ticket loses anything.** I drove a guest who took a free ticket, then archived
+  the event: the ticket is still in their wallet with a note, the bearer page opens, the scanner
+  admits it, and the event page still opens for them (and only them; a stranger gets 404).
+
+**The database decides, not the buttons.** Deleting an event with an order is refused by a
+trigger that fires for every role, the admin console included. I proved it by asking the
+database directly with the highest credential and watching it refuse, naming the records.
+
+**Four things I found underneath, all fixed in the same change:**
+- The checkout never asked whether an event was still published. A paused or cancelled event
+  could be reserved through the server action while the page merely hid the panel. It now
+  refuses anything that is not live.
+- Every event that had ever opened its Launch Kit was undeletable: a constraint added on
+  15 August contradicted the share-link rule of 8 August, and nothing tested the two together.
+- The old draft-only delete had been broken for every organiser since the column lockdown of
+  8 August (a permission error nobody had driven).
+- The event page's own layout answered 404 before the ticket-holder check could run.
+
+**Admin parity.** /admin/events has archive and restore on every row and a typed delete on
+the event page, under the same database rule, with no override. Every archive, restore and
+delete writes an audit row (who, what, when, from where, the state at the time) that shows in
+the audit log.
+
+**Evidence:** C:\dev\EVIDENCE\C13\ (the three viewport folders with numbered screenshots and
+results.json, db-proof\results.json with 19 of 19, the guard proofs red and green, the drills
+at 87 of 87, five builds, the drive logs).
+
+**Decide, or know:**
+- **Two migrations are yours to apply to production**, as ever: in PowerShell, linked to
+  production, `npx supabase db push --linked`, then `node scripts/ops/verify-production-schema.mjs`.
+  Until you do, the production build is refused by the schema guard on purpose and the current
+  deployment keeps serving.
+- **This session's terminal came with your PRODUCTION environment loaded** (VERCEL_ENV set to
+  production, the live Stripe publishable key, the production Supabase address), injected by the
+  Vercel plugin when the session started. Nothing was written to production: every write script
+  refuses it by project ref. But it made every database guard report production, blocked the first
+  build, and failed two tests until I scrubbed it for every command. Whether that plugin should
+  load production values into a development shell at all is your call.
+- **Not built, deliberately:** bulk archive or bulk delete, per the close-out.
