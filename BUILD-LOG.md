@@ -2425,3 +2425,25 @@ changed, and nothing was deleted.
   the Sentry ruling and by server render time at density, and production cannot be re-measured
   until the founder's redeploy. Recorded in BUILD-LEDGER.md as MET for the shell and NOT MET for
   the 95, with the founder steps named.
+
+## 2026-09-07 02:40 (C16) the gate refuses the push, Lighthouse CI clears on the C8 branch, and everything now waits on one founder step
+
+- The push of 5ca9d984 (ci/c16-production-parity, cut from origin/main at 2d558d2a) was REFUSED by
+  the pre-push gate at step 9 of 13, production-parity, after typecheck, lint, the copy laws, the
+  critical path, the exemption clock, 72 guards and the types-drift guard had all passed: "BLOCKED
+  at production-parity (exit 1) after 4s. Nothing was pushed." Production is behind the tree by
+  three migrations (C:\dev\EVIDENCE\C16\gate-refused-on-push.txt). This is C16.2.1 proven on the
+  real condition rather than a planted one: the state that produced two red merges is now caught
+  on this machine before anything leaves it. The branch, the CI job and the guard exist locally and
+  reach GitHub the moment the founder's migrations land.
+- Lighthouse CI on the C8 branch (run 34037708436), the same workflow and runner that failed twice
+  on the C13 pull request: PASSED, every page above its floor, the two event pages that read 0.77
+  and 0.75 now at gate values 0.86 and 0.88, with no threshold touched. C16.3 is answered by the
+  C8 code change (C:\dev\EVIDENCE\C16\lighthouse-ci-c8-branch-green.txt).
+- The session stops here, by the halt rule and by the standing rule that a production migration is
+  the founder's: C16.4 (production Ready on origin/main, the live routes driven, the smoke passing)
+  cannot begin until he applies 20260905000003, 20260906000001 and 20260906000002 to
+  gndnldyfudbytbboxesk and redeploys. The commands are in REVIEW-QUEUE.md and printed by the parity
+  step itself. After that, in order: push this branch (the gate passes), its pull request reports
+  "production parity", merge, watch production to Ready, drive the ten routes, C16.4 closes, C2
+  closes again, then PR #130 (C8) merges the same way, then C9.
