@@ -3060,3 +3060,40 @@ changed, and nothing was deleted.
   and production's own preconditions for the three files are all already recorded). The ledger's
   section for sessions 13 to 19 widened to cover 20; the "Last re-verified" line at the top of
   REVIEW-QUEUE.md's "Needs you" block updated.
+
+## 2026-09-07 04:20 to 04:24 (C16, continued, session 21) the halt re-verified on relaunch; nothing has moved; nothing started
+
+- Governing laws, stated first: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder
+  applies), the C16.0 halt rule, Definition of Done clause 6. No code changed. Nothing merged, nothing
+  started, nothing written to production; the CLI rests on TEST (supabase/.temp/project-ref read back:
+  vkapkibzokmfaxqogypq). Disk 23 GB free at start (df: 215 GB used of 237 GB); no build output produced;
+  no .next under C:\dev\EventLinqs or C:\elrel and one node_modules (this worktree's). The first check
+  on relaunch, per the session-16 note: no .git/MERGE_HEAD, `git status --porcelain` empty, the C16
+  branch at 100be967, six commits ahead of origin/main after a fetch.
+- THE HALT RE-VERIFIED (C16.0), 04:20 to 04:21, read only, through the clean-env wrapper. The parity
+  step on the C16 tree: 116 migrations in the tree, 113 applied on gndnldyfudbytbboxesk, the same 3
+  pending (20260905000003_venue_geocode_source_enum, 20260906000001_event_status_archived,
+  20260906000002_event_lifecycle_archive_delete); the environment half read the production store
+  through the Vercel CLI login: 34 records, 43 manifest entries, 0 faults; FAIL on the schema half,
+  exit 1, "BLOCKED at production-parity after 6s. Nothing was pushed." Vercel's production
+  deployments, newest three by sha: 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY, and the newest
+  READY on production is still b4255a96 (dpl_9SkwNKZ7tYnfw3EgZs1oKx8jf7uu, ready 04:36:59Z on
+  6 September). The live site serves sentry-release b4255a96 (HTTP 200, 396473 bytes); the apex
+  answers 301. CI on main: still red at 2d558d2a (run 34031455414), no new run since 11:52Z on
+  6 September (the only later run on main is the scheduled env-locks workflow, green). origin/main
+  unchanged after a fetch (2d558d2a). PR 130 (C8) still BLOCKED by protection, head 2ed39584. The
+  protection reads back the three required contexts ("lint · typecheck · build", "test (vitest)",
+  "production parity"), strict, admins enforced, pull requests required, force pushes and deletions
+  refused. The founder has not run `npm run migrate:production`. Evidence:
+  C:\dev\EVIDENCE\C16\production-parity-recheck-session21.txt, deployments-recheck-session21.txt.
+- A wrong turn, corrected: the first run of the deployments probe this session printed only its
+  token line, because it was invoked with no query argument (the probe takes its query strings on
+  the command line, as its header says). Re-run with `target=production&limit=3` and
+  `target=production&state=READY&limit=1`; that is the file cited above. Not a defect in the probe.
+- THE HALT STANDS. Six commits wait on ci/c16-production-parity (5ca9d984, eaf7deeb, 2f0545c1,
+  7c9101fe, 8161cfe2, 100be967) and leave the machine the moment the founder's command has run. The
+  sequence after it is unchanged and recorded in the 02:39 entry. Nothing read-only remains to drive
+  under the halt. The ledger's section for sessions 13 to 20 widened to cover 21; the "Last
+  re-verified" line at the top of REVIEW-QUEUE.md's "Needs you" block updated. The ops/session-log
+  worktree (C:\dev\session-log, autocrlf on, so its checkout carries CRLF while the committed blobs
+  and C:\dev are LF) was byte-identical to the three files apart from line endings before this entry.
