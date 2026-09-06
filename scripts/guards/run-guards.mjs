@@ -232,13 +232,17 @@
  * would have stayed green while an entire class of regression stopped being
  * checked. That is the failure mode this comment exists to prevent recurring.
  *
- * preview-deployment-state: fails when the newest deployment for the current
- * branch is in ERROR. Added 9 August 2026 after feat/public-composer was found
- * with SIX consecutive preview builds in ERROR while tsc, eslint, 1839 tests
- * and nine guards all reported green, because none of them can see a bundler
- * failure. Skips loudly without a VERCEL_TOKEN rather than failing on every
- * machine without credentials, because a guard everyone disables protects
- * nothing. A skip is the honest state, not a pass.
+ * preview-deployment-state: fails when the deployment of the COMMIT UNDER TEST
+ * is in ERROR, and in CI waits for that deployment to settle first. Added
+ * 9 August 2026 after feat/public-composer was found with SIX consecutive
+ * preview builds in ERROR while tsc, eslint, 1839 tests and nine guards all
+ * reported green, because none of them can see a bundler failure. Rewritten
+ * 7 September 2026 (close-out C16) when it was found judging the PREVIOUS
+ * commit's deployment whenever the current one was still building, which is
+ * every successful merge. Skips loudly without a VERCEL_TOKEN or a Vercel CLI
+ * login rather than failing on every machine without credentials, because a
+ * guard everyone disables protects nothing. A skip is the honest state, not a
+ * pass.
  *
  * The resolution is deliberately structural rather than a longer `&&` chain.
  * `prebuild` now names ONE runner, and the list below is the single place a

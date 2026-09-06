@@ -867,9 +867,16 @@ const ROOT = join(HERE, '..', '..')
  * records what process inherits as an EventEmitter, after process.on was
  * reported as an API Node 24 lacks): 310 files / 3570, as the canary measured
  * (the 3559 floor above had been set one below the suite's own count).
+ * Close-out C16, the deployment-state guard (7 September 2026), one file and
+ * eighteen tests: tests/unit/guards/preview-deployment-state (the commit under
+ * test on a push, on a pull request from the payload head and locally from
+ * git; READY, ERROR, BLOCKED, CANCELED, DELETED and the unsettled states; the
+ * race and the false green that the first version of the guard had, proven
+ * with a fake clock; the timeout; the creation grace; no wait outside CI; the
+ * v7 sha filter): 311 files / 3588, as the canary measured.
  */
-const MIN_FILES = 310
-const MIN_TESTS = 3570
+const MIN_FILES = 311
+const MIN_TESTS = 3588
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
