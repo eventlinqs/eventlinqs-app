@@ -5,7 +5,7 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
-Last re-verified 7 September 2026 at 03:58 (session 18): still the same three migrations behind,
+Last re-verified 7 September 2026 at 04:14 (session 19): still the same three migrations behind,
 the same two failed production deployments, main still red. Nothing has moved. Session 12 found and
 fixed a hang in your one command (see the 03:25 entry at the end of this file): it is the same
 command, and it now gets past its own confirmation. Session 13 ran the command's own first proof
@@ -13,7 +13,10 @@ by hand, read only: it correctly reports the two C13 objects still absent on pro
 tried the C8 pull request's merge against the C16 branch in advance (three small conflicts, all
 resolved and saved; every check green except the drill run, which the session died under, so that
 one is not counted); session 16 put that trial back in its box, so the C16 branch is clean and
-ready to push the moment your command has run.
+ready to push the moment your command has run. Session 19 read production's own data against every
+assumption the three files make, and read how the tool applies them from its source code rather
+than assuming: every assumption holds, so your command will run clean (the 04:20 entry at the end
+of this file).
 
 Rewritten 7 September 2026 at 01:10. Everything below the first item is unchanged in
 substance; what was already done (the A2, A3, A4, B1 and B2 migrations are on production,
@@ -690,3 +693,29 @@ conpty-real-askline-supabase-link-TEST.txt, conpty-diag-handle-reading.txt,
 conpty-drive-4-through-wrapper.txt, migrate-production-refused-after-fix.txt,
 migrate-production-dry-run-after-fix.txt, suite-session12.txt, guards-session12.txt,
 gate-refused-on-push-session12.txt, production-parity-recheck-session12.txt).
+
+## C16, continued (7 September 2026, 04:20): nothing has moved; your one command checked against production's own data, read only, and it will run clean
+
+**Where things stand.** Unchanged: production still serves the C3 build, the two later
+production deployments are still failed, main is still red, and production is still three
+migrations behind the tree. Your one command is still the only thing that unblocks it:
+```
+npm run migrate:production
+```
+
+**What was done.** Until tonight nobody had asked production itself whether the three files would
+run to the end on it. Each file assumes things about what is already there: that no event carries
+an unexpected geocode source, that no share link is in a shape the new rule refuses, and that every
+column, function and constraint the files name exists under the name they expect. Each assumption
+was checked by reading production, never writing to it, and every one holds. Both databases run the
+same Postgres version. How the tool applies the files was read from its own source code rather than
+assumed: each file is committed before the next starts, which is exactly what the second file relies
+on. One of the three files runs in three parts rather than one, but every step in it can be repeated
+safely, so if anything stopped partway the same command would finish it.
+
+**Nothing changes for you.** The command above is the step; after it, the sequence in the
+"Needs you" item at the top runs without you.
+
+**Evidence:** C:\dev\EVIDENCE\C16\ (migration-preconditions-production-session19.txt,
+probe-migration-preconditions.mjs, production-parity-recheck-session19.txt,
+deployments-recheck-session19.txt).

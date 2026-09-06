@@ -2947,3 +2947,84 @@ changed, and nothing was deleted.
   (both proofs inside the founder's command, the gate's refusal on a real push, and the C8 merge
   resolution are all already recorded). The ledger's section for sessions 13 to 17 widened to cover 18;
   the "Last re-verified" line at the top of REVIEW-QUEUE.md's "Needs you" block updated.
+
+## 2026-09-07 04:03 to 04:20 (C16, continued, session 19) the halt re-verified on relaunch; nothing has moved; the founder's command checked against production's own data and against the CLI's transaction rules, read only, and every precondition holds
+
+- Governing laws, stated first: Law 0, Law 7 (the CLI's behaviour cited from its source, not remembered),
+  Law 8, Law 10 rule 3 (the script proves itself), Verification and gates (Migrations: the founder
+  applies), the C16.0 halt rule, Definition of Done clause 6. No code changed. Nothing merged, nothing
+  started, nothing written to production: every production read this session was a SELECT. The CLI rests
+  on TEST (supabase/.temp/project-ref read back before and after every command: vkapkibzokmfaxqogypq).
+  Disk 23 GB free at start and 22 GB at end (df); no build output produced; no .next anywhere and one
+  node_modules. First check on relaunch, per the session-16 note: no .git/MERGE_HEAD,
+  `git status --porcelain` empty, the C16 branch at 100be967, six commits ahead of origin/main.
+- THE HALT RE-VERIFIED (C16.0), 04:04 to 04:06 and again at 04:14 for the record, read only, through the
+  clean-env wrapper. The parity step on the C16 tree: 116 migrations in the tree, 113 applied on
+  gndnldyfudbytbboxesk, the same 3 pending (20260905000003, 20260906000001, 20260906000002); the
+  environment half read the production store through the Vercel CLI login: 34 records, 43 manifest
+  entries, 0 faults; FAIL on the schema half, exit 1, "BLOCKED at production-parity after 4s. Nothing was
+  pushed." Vercel's newest production deployments by sha: 2d558d2a ERROR, b7798b76 ERROR, b4255a96
+  READY. The live site serves sentry-release b4255a96 (HTTP 200, 396473 to 396500 bytes across the two reads); the apex answers 301.
+  CI on main: still red at 2d558d2a (run 34031455414), no new run since 11:52Z on 6 September.
+  origin/main unchanged after a fetch (2d558d2a). PR 130 (C8) still BLOCKED by protection, MERGEABLE,
+  head 2ed39584. The founder has not run `npm run migrate:production`. Evidence:
+  C:\dev\EVIDENCE\C16\production-parity-recheck-session19.txt, deployments-recheck-session19.txt.
+- WHAT WAS NEW THIS SESSION, AND WHY THE HALT PERMITS IT. The halt permits only fixing main and
+  production, and the one act that fixes them is the founder's command. Law 10 rule 3 says the script
+  proves itself, and until tonight nobody had asked production's own data whether the three files would
+  run to the end on it. File 1 refuses if any events row holds a geocode source outside its three; file
+  2's second half swaps a CHECK on share_links that fails on any row the new shape refuses; and the whole
+  of file 2 names columns, functions, constraints and a function signature it assumes production already
+  carries. Each of those is a way the founder's single press could stop halfway. So they were read,
+  SELECT only, from production through the Management API's query endpoint with read_only set, using
+  the token the parity step already uses (never printed) and without relinking the CLI
+  (`supabase db query --project-ref` refuses an unlinked project, so no relink was possible or made).
+  The answers: PostgreSQL 17.6, the same as TEST; 113 applied, newest 20260905000002.
+  events.venue_geocode_source holds 4 NULL and 0 rows outside the three, is text, under CHECK
+  events_venue_geocode_source_check with the expected definition, and no enum of that name exists yet.
+  event_status carries draft, scheduled, published, paused, postponed, cancelled, completed and not yet
+  archived. None of archived_at, archived_from_status, archived_by exists; event_tombstones does not
+  exist; events_parent_event_id_fkey exists as NO ACTION and 0 rows orphan it. share_links carries
+  event_id, destination_url and retired_at, its current constraint is the two-way one from
+  20260815000001, and 0 of its 40 rows would be refused by the three-way one (all 40 hold an event and
+  nothing else; because the current CHECK already forbids the both-null shape, no row can arrive in it
+  before the push). el_owned_organisation_ids, create_reservation and create_seat_reservation exist,
+  the last with exactly the signature the DROP names, and none of the lifecycle functions exists yet.
+  Every table and column the count function and the two reservation functions read exists. The
+  draft-only delete policy the file drops is present. Six triggers on events, none with a name the file
+  creates. 33 foreign keys onto events, the same set C13 read off TEST. Four events on production
+  (2 published, 1 paused, 1 cancelled). EVERY PRECONDITION HOLDS. Evidence:
+  C:\dev\EVIDENCE\C16\migration-preconditions-production-session19.txt, produced by
+  probe-migration-preconditions.mjs beside it (25 statements, every one a SELECT).
+- THE TRANSACTION SHAPE OF THE PUSH, FROM THE CLI'S OWN SOURCE (Law 7). 20260906000002 uses the enum
+  label 20260906000001 adds, and Postgres refuses a new label inside the transaction that added it, so
+  the push is correct only if each file commits before the next begins. The header of 20260906000001
+  asserts that; tonight it was checked against the source rather than trusted.
+  apps/cli-go/pkg/migration/apply.go on supabase/cli develop (latest release v2.116.0, 26 August 2026,
+  the version installed here): ApplyMigrations loops the pending files, runs RESET ALL, then ExecBatch
+  per file, with no BEGIN or COMMIT spanning files. file.go: ExecBatch queues the file's statements into
+  one pgconn.Batch with the schema_migrations insert last and flushes it through PgConn().ExecBatch,
+  which pgx documents as "implicitly transactional unless a transaction is already in progress or SQL
+  contains transaction control statements" (pkg.go.dev, jackc/pgx/v5/pgconn, PgConn.ExecBatch). So the
+  enum file and the label file each run as one transaction, and the label is committed before the file
+  that uses it starts. ONE NUANCE, RECORDED SO IT IS NEVER A SURPRISE: isPipelineIncompatible flushes
+  the batch and runs the statement alone for CREATE INDEX, DROP INDEX, REINDEX, VACUUM, ALTER SYSTEM and
+  CLUSTER. 20260906000002 carries CREATE INDEX IF NOT EXISTS idx_events_archived_org, so on production it
+  runs as three parts: the archive columns and their CHECK; the index; then everything from the
+  tombstones onward together with the version row. It is therefore NOT atomic, but it is re-runnable:
+  every statement in it is guarded (IF NOT EXISTS, IF EXISTS, CREATE OR REPLACE, a DROP before each
+  CREATE) and the version row lands only with the last part, so if the last part failed the parity step
+  would still list the file pending and the same command would finish the job. The same three-part
+  shape already ran on TEST with the same CLI version (116 applied there, archived in its enum, read
+  back tonight through the linked CLI; PostgreSQL 17.6 on both).
+- WHAT THIS CHANGES FOR THE FOUNDER: nothing. The command is the same, and it is now proven from every
+  side that can be reached without pressing it: both proofs inside it driven (sessions 13 and 14), its
+  confirmation hang found and fixed (session 12), the gate's refusal on a real push (sessions 7 and 12),
+  production's own data and catalogue checked against every assumption the three files make, and the
+  CLI's transaction rules read from its source. No code changed because no precondition failed; had one
+  failed, the repair would have gone into the migration before his press, not after it.
+- THE HALT STANDS. Six commits wait on ci/c16-production-parity (5ca9d984, eaf7deeb, 2f0545c1, 7c9101fe,
+  8161cfe2, 100be967) and leave the machine the moment the founder's command has run. The sequence after
+  it is unchanged and recorded in the 02:39 entry. The ledger's section for sessions 13 to 18 widened to
+  cover 19 with two new rows; the "Last re-verified" line at the top of REVIEW-QUEUE.md's "Needs you"
+  block updated and one plain-language entry added at the end.
