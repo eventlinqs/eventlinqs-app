@@ -166,7 +166,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
                 onClick={() => handleViewChange('grid')}
                 aria-pressed={view === 'grid'}
                 className={
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
+                  'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                   (view === 'grid' ? 'bg-ink-900 text-white' : 'text-ink-700 hover:bg-ink-100')
                 }
               >
@@ -178,7 +178,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
                 onClick={() => handleViewChange('map')}
                 aria-pressed={view === 'map'}
                 className={
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
+                  'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                   (view === 'map' ? 'bg-ink-900 text-white' : 'text-ink-700 hover:bg-ink-100')
                 }
               >
@@ -202,7 +202,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
               More filters
               {moreFiltersActiveCount > 0 && (
-                <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold-500 px-1 text-[10px] font-bold text-ink-900">
+                <span className="ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold-500 px-1 text-xs font-bold text-ink-900">
                   {moreFiltersActiveCount}
                 </span>
               )}

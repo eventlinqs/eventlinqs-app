@@ -42,10 +42,12 @@ const SOUNDS: Sound[] = [
   { slug: 'metal', label: 'Metal & Hardcore', href: ev('metal hardcore') },
 ]
 
+// The same finish as the home card family (cards.tsx SURFACE): the two card
+// elevation tokens, explicit transition properties, never transition-all.
 const SURFACE =
   'group flex w-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] ' +
-  'shadow-[0_1px_3px_rgba(10,22,40,0.05)] transition-all duration-200 ease-out ' +
-  'hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(10,22,40,0.13)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ' +
+  'shadow-[var(--shadow-card)] transition-[transform,box-shadow,color] duration-200 ease-out ' +
+  'hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2'
 
 const IMG_MOTION =

@@ -106,7 +106,7 @@ export function DashboardSidebar({ profile, initialCollapsed = false }: Props) {
               const isGold = item.emphasis === 'gold'
 
               const base = [
-                'group relative flex items-center gap-3 rounded-lg px-3 h-10 text-sm font-medium transition-colors',
+                'group relative flex items-center gap-3 rounded-lg px-3 h-11 text-sm font-medium transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2',
                 collapsed ? 'justify-center px-0' : '',
               ].filter(Boolean).join(' ')
@@ -138,7 +138,7 @@ export function DashboardSidebar({ profile, initialCollapsed = false }: Props) {
                       <span className="flex flex-1 items-center justify-between gap-2">
                         <span className="truncate">{item.label}</span>
                         {item.badge && (
-                          <span className="rounded-full bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-600 group-hover:bg-white">
+                          <span className="rounded-full bg-ink-100 px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-ink-600 group-hover:bg-white">
                             {item.badge}
                           </span>
                         )}
@@ -158,7 +158,7 @@ export function DashboardSidebar({ profile, initialCollapsed = false }: Props) {
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-pressed={collapsed}
             className={[
-              'flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2',
+              'flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2',
               collapsed ? 'justify-center px-0' : '',
             ].join(' ')}
           >

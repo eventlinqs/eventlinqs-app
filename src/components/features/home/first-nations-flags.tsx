@@ -84,8 +84,8 @@ function TorresStraitIslanderFlag({ className }: { className?: string }) {
 function FirstNationsFlags({ className }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2 ${className ?? ''}`}>
-      <AboriginalFlag className="h-7 w-auto rounded-[2px] ring-1 ring-black/10" />
-      <TorresStraitIslanderFlag className="h-7 w-auto rounded-[2px] ring-1 ring-black/10" />
+      <AboriginalFlag className="h-7 w-auto" />
+      <TorresStraitIslanderFlag className="h-7 w-auto" />
     </span>
   )
 }

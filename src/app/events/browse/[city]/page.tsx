@@ -256,10 +256,10 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 function EmptyCityState({ city }: { city: PickerCity }) {
   return (
     <div className="mx-auto max-w-xl rounded-2xl border border-ink-100 bg-white px-6 py-10 text-center">
-      <h2 className="font-display text-xl font-bold text-ink-900">
+      <h2 className="font-display text-lg font-bold text-ink-900">
         No events in {city.city} yet
       </h2>
-      <p className="mt-2 text-sm text-ink-600">
+      <p className="mt-2 text-pretty text-sm text-ink-600">
         EventLinqs is open in {city.city} today, so the first one here could be
         yours. Put your event on free, or browse what is on across{' '}
         {city.country}.
@@ -267,13 +267,13 @@ function EmptyCityState({ city }: { city: PickerCity }) {
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <Link
           href="/organisers"
-          className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
+          className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-4 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
         >
           Put on an event
         </Link>
         <Link
           href="/events"
-          className="rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-semibold text-ink-900 transition-colors hover:border-ink-300"
+          className="inline-flex min-h-11 items-center rounded-lg border border-ink-200 bg-white px-4 text-sm font-semibold text-ink-900 transition-colors hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
         >
           Browse all events
         </Link>

@@ -62,7 +62,7 @@ export function EventVideo({ embedUrl, provider, poster, posterBlur, title }: Pr
             className="opacity-90 transition-opacity group-hover:opacity-100"
           />
           <span className="absolute inset-0 bg-ink-900/30" aria-hidden />
-          <span className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 shadow-lg transition-transform group-hover:scale-105">
+          <span className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 shadow-[var(--shadow-card-hover)] transition-transform group-hover:scale-105">
             <svg className="ml-1 h-7 w-7 text-ink-900" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path d="M8 5v14l11-7z" />
             </svg>

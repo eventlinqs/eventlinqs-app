@@ -54,7 +54,7 @@ function issuedOn(date: Date) {
 export function TaxInvoicePanel({ invoice }: { invoice: TaxInvoice }) {
   return (
     <section
-      className="mb-4 rounded-xl border border-ink-200 bg-white p-6"
+      className="mb-4 rounded-2xl border border-ink-200 bg-white p-6"
       aria-label={invoice.documentTitle}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">

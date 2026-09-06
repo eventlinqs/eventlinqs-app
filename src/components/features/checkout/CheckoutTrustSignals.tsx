@@ -22,7 +22,7 @@ export function CheckoutTrustSignals() {
   return (
     <aside
       aria-label="Payment security"
-      className="rounded-2xl border border-ink-100 bg-[var(--surface-0)] p-5 shadow-sm"
+      className="rounded-2xl border border-ink-100 bg-[var(--surface-0)] p-5 shadow-[var(--shadow-card)]"
     >
       <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-accent-strong)]">
         Secure payment
@@ -43,13 +43,13 @@ export function CheckoutTrustSignals() {
         </li>
       </ul>
 
-      <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-400">
+      <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-ink-400">
         We accept
       </p>
       <ul
         role="list"
         aria-label="Accepted payment methods"
-        className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-600"
+        className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-600"
       >
         <li>Visa</li>
         <li aria-hidden className="text-ink-200">·</li>

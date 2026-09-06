@@ -237,7 +237,10 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] rounded-sm"
+                // min-h-11: a 44px hit area inside the 64px bar (the link box
+                // was the 20px text line). rounded-lg: the control radius, so
+                // the focus ring does not add a fourth radius to the page.
+                className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] rounded-lg"
               >
                 {link.label}
               </Link>
@@ -280,7 +283,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
                 <Link
                   href="/login"
                   prefetch={false}
-                  className="hidden md:inline-flex items-center h-9 px-3 text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
+                  className="hidden md:inline-flex items-center h-11 px-3 text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
                 >
                   Sign in
                 </Link>
@@ -356,7 +359,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
         aria-label="Navigation menu"
         onKeyDown={handleSheetKeyDown}
         className={[
-          'pointer-events-auto absolute inset-y-0 right-0 w-full max-w-sm bg-white shadow-2xl',
+          'pointer-events-auto absolute inset-y-0 right-0 w-full max-w-sm bg-white shadow-[var(--shadow-modal)]',
           'flex flex-col transition-transform duration-300 ease-out',
           isOpen ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
@@ -365,7 +368,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
           <Link
             href="/"
             aria-label="EventLinqs home"
-            className="inline-flex items-baseline rounded-sm transition-colors hover:text-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center rounded-lg transition-colors hover:text-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
             onClick={closeSheet}
           >
             <EventlinqsLogo size="md" />

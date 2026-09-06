@@ -61,7 +61,7 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
             {eventCount} upcoming {eventCount === 1 ? 'event' : 'events'}
           </p>
         ) : (
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
             Be the first
           </p>
         )}

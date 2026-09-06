@@ -128,7 +128,11 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
       //   .card-hover-transition utility. Aspect ratio (1:1 per spec) is
       //   deferred to a follow-up because event-card.tsx ships site-wide;
       //   see SUMMARY.md.
-      className="group card-hover-transition flex flex-col rounded-lg overflow-hidden bg-[var(--surface-0)] border border-[var(--surface-2)] hover:-translate-y-[3px] hover:border-[var(--surface-2)] hover:shadow-[0_18px_36px_-20px_rgba(10,22,40,0.40)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      // Close-out C14.12 (6 September 2026): the card radius (16px, the same
+      // as every homepage card; this one was the 8px control radius), the two
+      // elevation tokens, and a 4px lift, so the browse card and the rail card
+      // are one object at two widths.
+      className="group card-hover-transition flex flex-col rounded-2xl overflow-hidden bg-[var(--surface-0)] border border-[var(--surface-2)] shadow-[var(--shadow-card)] hover:-translate-y-1 hover:border-[var(--surface-2)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
       <div className="relative aspect-video md:aspect-[4/3] overflow-hidden bg-[var(--surface-1)]">
         {cover_image_url ? (
@@ -154,13 +158,13 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           ? badge && (
               <span
                 data-m5-badge={badge}
-                className={`absolute left-3 top-3 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest shadow-sm ${BADGE_STYLES[badge]}`}
+                className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest shadow-[var(--shadow-card)] ${BADGE_STYLES[badge]}`}
               >
                 {BADGE_LABELS[badge]}
               </span>
             )
           : category && (
-              <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-[var(--surface-0)]/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--text-primary)] shadow-sm">
+              <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-[var(--surface-0)]/95 px-2.5 py-1 text-xs font-bold uppercase tracking-widest text-[var(--text-primary)] shadow-[var(--shadow-card)]">
                 {category.name}
               </span>
             )}
@@ -169,7 +173,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           eventId={id}
           initiallySaved={initiallySaved}
           variant="light"
-          className="absolute right-3 top-3 shadow-sm"
+          className="absolute right-3 top-3 shadow-[var(--shadow-card)]"
         />
       </div>
 
@@ -198,10 +202,13 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           </p>
         )}
 
-        {/* Title - --type-h4 (22/600/1.3 desktop, 18/600/1.35 mobile).
+        {/* Title at the card step of the one scale, 18px on every viewport
+         *  (Design system: "Card titles 18px"; the homepage rail card is the
+         *  same). It ran at --type-h4, 22px on desktop, which outranked the
+         *  24px section heading above the grid in weight and nearly in size.
          *  Hover: navy stays, gold underline added (spec). */}
         <h3
-          className="type-h4 font-headline tracking-[-0.01em] mt-1 text-[var(--text-primary)] line-clamp-2 underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline"
+          className="font-headline text-lg font-bold leading-snug tracking-[-0.01em] mt-1 text-[var(--text-primary)] line-clamp-2 underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline"
           style={{ transition: 'text-decoration-color var(--motion-quick)' }}
         >
           {title}

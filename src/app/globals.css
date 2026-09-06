@@ -118,7 +118,11 @@
   /* ── Typography - font families ── */
   --font-display:  var(--font-manrope), system-ui, -apple-system, sans-serif;
   --font-headline: var(--font-archivo), var(--font-manrope), system-ui, -apple-system, sans-serif;
-  --font-body:     var(--font-hanken),  system-ui, -apple-system, sans-serif;
+  /* Two families (close-out C14.12): the body face IS the UI face. The
+     variables these reference are set on <html> in src/app/layout.tsx, which
+     is what lets a :root token resolve them; on <body> they were invisible
+     here and --font-body computed to nothing (see the note in layout.tsx). */
+  --font-body:     var(--font-manrope), system-ui, -apple-system, sans-serif;
   --font-mono:     'JetBrains Mono', ui-monospace, monospace;
 
   /* ── Fluid type scale - clamp(mobile, fluid, desktop) ── */
@@ -199,7 +203,10 @@
   --type-rail-mobile:          22px;
   --type-h4:                   22px;
   --type-h4-mobile:            18px;
-  --type-body:                 17px;
+  /* 16 on every viewport (close-out C14.12, one scale). This was 17 while
+     Tailwind's text-base is 16, so two body sizes rendered side by side on
+     the same screen: the hero CTA at 17, every paragraph beside it at 16. */
+  --type-body:                 16px;
   --type-body-mobile:          16px;
   --type-small:                14px;
   --type-micro:                12px;
@@ -334,10 +341,15 @@ body {
 }
 
 /* ─── WCAG 2.2 AA focus indicator - gold, keyboard-only ─────────────────── */
+/* No border-radius here (close-out C14.12, 6 September 2026). This rule used
+   to set 4px, and because it sits outside every layer it beat the element's
+   own utility: a pill button, a 16px card and the help dialog all snapped to
+   4px corners the moment they took keyboard focus, which was a fourth radius
+   on the page and a visible jump. The outline takes the element's own
+   corners, so the ring reads as the control it surrounds. */
 :focus-visible {
   outline: 2px solid var(--color-gold-400);
   outline-offset: 2px;
-  border-radius: 4px;
 }
 
 /* ─── Safe-area utilities for notch / Dynamic Island ────────────────────── */
@@ -706,7 +718,9 @@ html[data-motion="1"] .group:hover .card-media-img {
 .type-h1           { letter-spacing: -0.015em; }
 .type-h2           { letter-spacing: -0.01em; }
 .type-eyebrow {
-  font-size: 11px;
+  /* 12px, the micro step (close-out C14.12): 11 was a seventh size that
+     existed only here and in card labels, one pixel off the scale. */
+  font-size: 12px;
   line-height: 1.2;
   font-weight: 600;
   letter-spacing: 0.18em;
@@ -714,10 +728,18 @@ html[data-motion="1"] .group:hover .card-media-img {
 }
 .nums-tabular { font-variant-numeric: tabular-nums; }
 
+/* 3b. THE MEASURE (close-out C14.12): body copy holds 45 to 75 characters a
+ * line at every viewport. Tailwind's max-w-prose is 65ch, and ch is the width
+ * of the digit zero, which in Manrope is 0.642em against an average advance of
+ * 0.46em for running text (measured on the C14 after-capture: a 65ch paragraph
+ * at 14px was 584px wide and held 90 characters a line). 75 characters at
+ * 0.46em is 34.5em, which is 53.7ch in Manrope; 52ch keeps a margin for lines
+ * heavy with capitals and numerals. One utility, so the bound is written once. */
+.type-measure { max-width: 52ch; }
+
 /* 4. PANEL DEPTH for the organiser surfaces: quieter than a card, present
  * enough to lift the panel off the canvas. */
-:root { --shadow-panel: 0 1px 2px rgba(10, 22, 40, 0.04), 0 6px 20px -8px rgba(10, 22, 40, 0.08); }
-.panel-elevated { box-shadow: var(--shadow-panel); }
+.panel-elevated { box-shadow: var(--shadow-card); } /* the card elevation: one shadow family, three tokens (close-out C14.12) */
 
 /* 5. MICRO-INTERACTIONS, gated and quiet. Buttons acknowledge the press
  * (a transform-only snap: no transition override, so every button keeps
@@ -858,7 +880,9 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
    * subtle banding effect). */
   background-image: none;
   border-bottom-color: rgba(212, 160, 23, 0.30); /* gold-500 at 30% */
-  box-shadow: 0 10px 30px -18px rgba(10, 22, 40, 0.55);
+  /* The lifted-card elevation token: the one shadow family (close-out
+     C14.12), not a fourth inline value. */
+  box-shadow: var(--shadow-card-hover);
 }
 
 /* Skip-to-content link (Batch 9.1).
@@ -869,7 +893,7 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
   top: 0.5rem;
   left: 0.5rem;
   z-index: 100;
-  padding: 0.625rem 1rem;
+  padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   background-color: var(--color-navy-950);
   color: var(--color-white);

@@ -42,7 +42,7 @@ export function ReservationNotice({ backHref, backLabel }: { backHref?: string; 
   return (
     <div
       role="status"
-      className="mb-6 rounded-xl border border-gold-500/40 bg-gold-100/40 px-4 py-4 sm:px-5"
+      className="mb-6 rounded-2xl border border-gold-500/40 bg-gold-100/40 px-4 py-4 sm:px-5"
     >
       <p className="text-sm font-semibold text-ink-900">{notice.title}</p>
       <p className="mt-1 text-sm text-ink-700">{notice.body}</p>

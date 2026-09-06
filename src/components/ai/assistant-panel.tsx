@@ -126,7 +126,7 @@ export function AssistantPanel({
 
   return (
     <section
-      className={`flex flex-col overflow-hidden rounded-xl border border-ink-100 bg-white ${className}`}
+      className={`flex flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white ${className}`}
       aria-label={title}
     >
       <header className="flex items-center gap-3 border-b border-ink-100 bg-ink-900 px-5 py-4">

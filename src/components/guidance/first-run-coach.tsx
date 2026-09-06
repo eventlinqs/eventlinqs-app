@@ -60,17 +60,17 @@ export function FirstRunCoach({
           close()
         }
       }}
-      className="guidance-rise pointer-events-auto w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-ink-200 bg-white p-4 shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+      className="guidance-rise pointer-events-auto w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-ink-200 bg-white p-4 shadow-[var(--shadow-modal)] focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-800">
+        <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-800">
           {surface.label}
         </p>
         <button
           type="button"
           onClick={close}
           aria-label="Close this guide and do not show it again"
-          className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+          className="-mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -111,7 +111,7 @@ export function FirstRunCoach({
             <button
               type="button"
               onClick={() => setIndex(i => i - 1)}
-              className="inline-flex h-9 items-center rounded-full px-3 text-xs font-semibold text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+              className="inline-flex h-11 items-center rounded-full px-3 text-xs font-semibold text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
             >
               Back
             </button>
@@ -120,7 +120,7 @@ export function FirstRunCoach({
             <button
               type="button"
               onClick={close}
-              className="inline-flex h-9 items-center rounded-full bg-gold-500 px-4 text-xs font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900"
+              className="inline-flex h-11 items-center rounded-full bg-gold-500 px-4 text-xs font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900"
             >
               Got it
             </button>
@@ -128,7 +128,7 @@ export function FirstRunCoach({
             <button
               type="button"
               onClick={() => setIndex(i => i + 1)}
-              className="inline-flex h-9 items-center gap-1 rounded-full bg-gold-500 px-4 text-xs font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900"
+              className="inline-flex h-11 items-center gap-1 rounded-full bg-gold-500 px-4 text-xs font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900"
             >
               Next
               <ArrowRight className="h-3 w-3" aria-hidden="true" />

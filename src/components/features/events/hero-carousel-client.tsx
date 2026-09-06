@@ -261,7 +261,7 @@ export function HeroCarouselClient({
               type="button"
               onClick={goPrev}
               aria-label="Previous slide"
-              className="absolute left-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--color-ink-900)] text-white shadow-[0_2px_8px_rgba(10,22,40,0.18)] opacity-0 transition-all duration-200 group-hover/hero:opacity-100 hover:bg-[var(--color-navy-950)] hover:text-[var(--color-gold-400)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 md:flex lg:left-6"
+              className="absolute left-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--color-ink-900)] text-white shadow-[var(--shadow-card)] opacity-0 transition-all duration-200 group-hover/hero:opacity-100 hover:bg-[var(--color-navy-950)] hover:text-[var(--color-gold-400)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 md:flex lg:left-6"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -271,7 +271,7 @@ export function HeroCarouselClient({
               type="button"
               onClick={goNext}
               aria-label="Next slide"
-              className="absolute right-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--color-ink-900)] text-white shadow-[0_2px_8px_rgba(10,22,40,0.18)] opacity-0 transition-all duration-200 group-hover/hero:opacity-100 hover:bg-[var(--color-navy-950)] hover:text-[var(--color-gold-400)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 md:flex lg:right-6"
+              className="absolute right-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--color-ink-900)] text-white shadow-[var(--shadow-card)] opacity-0 transition-all duration-200 group-hover/hero:opacity-100 hover:bg-[var(--color-navy-950)] hover:text-[var(--color-gold-400)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 md:flex lg:right-6"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

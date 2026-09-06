@@ -43,10 +43,14 @@ export async function CommunityValueBand() {
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
           Made for every community
         </p>
-        <h2 className="font-display text-2xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-3xl lg:text-4xl">
+        {/* The section step of the one scale (24px, 22px on mobile), the same
+            step every rail heading sits on; this ran to 36px, a size nothing
+            else on the page used. max-w-prose holds the line at 65 characters
+            (the measure ran to 76 at 1440). */}
+        <h2 className="type-rail-heading font-display tracking-tight text-[var(--text-primary)]">
           Every community. Every event. One platform.
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)] sm:text-base">
+        <p className="mx-auto mt-3 max-w-lg text-pretty text-sm leading-relaxed text-[var(--text-secondary)] sm:text-base">
           The events your community actually shows up for, led by Aboriginal and
           Torres Strait Islander peoples, with a home for every heritage across
           Australia.

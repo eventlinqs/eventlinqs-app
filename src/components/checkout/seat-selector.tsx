@@ -712,7 +712,7 @@ export function SeatSelector({
             // remaining height reads as dead space under the plan. Bringing
             // the frame closer to the room's own proportion removes about
             // 85px of that band at 390 without changing the drawn scale.
-            className="h-[52vh] min-h-[340px] w-full rounded-xl bg-canvas lg:absolute lg:inset-0 lg:h-full"
+            className="h-[52vh] min-h-[340px] w-full rounded-2xl bg-canvas lg:absolute lg:inset-0 lg:h-full"
             reservedBottomPx={112}
           >
             {/* The floating tooltip (item 6): price, type, exact place. */}
@@ -720,7 +720,7 @@ export function SeatSelector({
               <div
                 ref={tooltipRef}
                 role="status"
-                className="pointer-events-none absolute z-20 hidden min-w-40 rounded-lg border border-ink-200 bg-white px-3 py-2 shadow-lg sm:block"
+                className="pointer-events-none absolute z-20 hidden min-w-40 rounded-lg border border-ink-200 bg-white px-3 py-2 shadow-[var(--shadow-card-hover)] sm:block"
               >
                 <p className="font-display text-sm font-bold text-ink-900" style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {hoverSeat.status === 'available' ? formatPrice(getSeatPrice(hoverSeat)) : 'Unavailable'}
@@ -735,7 +735,7 @@ export function SeatSelector({
                 )}
                 <p className="text-xs text-ink-600">{seatInfoLine(hoverSeat)}</p>
                 {selectedIds.has(hoverSeat.id) && (
-                  <p className="mt-1 inline-block rounded-full bg-gold-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-900">
+                  <p className="mt-1 inline-block rounded-full bg-gold-500 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-ink-900">
                     Selected
                   </p>
                 )}
@@ -804,7 +804,7 @@ export function SeatSelector({
                     </span>
                     <span className="ml-1.5 text-ink-600">{seatInfoLine(stripSeat)}</span>
                     {selectedIds.has(stripSeat.id) && (
-                      <span className="ml-1.5 rounded-full bg-gold-500 px-1.5 py-0.5 text-[10px] font-bold uppercase text-ink-900">
+                      <span className="ml-1.5 rounded-full bg-gold-500 px-1.5 py-0.5 text-xs font-bold uppercase text-ink-900">
                         Selected
                       </span>
                     )}
@@ -820,7 +820,7 @@ export function SeatSelector({
                 )}
               </div>
 
-              <div className="flex items-center gap-1 rounded-lg border border-ink-200 bg-white shadow-sm">
+              <div className="flex items-center gap-1 rounded-lg border border-ink-200 bg-white shadow-[var(--shadow-card)]">
               <button
                 type="button"
                 onClick={() => canvasRef.current?.zoomOut()}
@@ -854,19 +854,19 @@ export function SeatSelector({
         {/* ── The schedule rail ── */}
         <div className="min-w-0 space-y-3">
           {/* The schedule: ticket types as selectable rows (item 9). */}
-          <div className="rounded-xl border border-ink-200 bg-white p-3">
+          <div className="rounded-2xl border border-ink-200 bg-white p-3">
             {/* The counter sits UNDER the label on mobile, not out at the
                 right edge. The floating help control is pinned bottom-right of
                 the viewport, and at 390 it landed on top of the count, which
                 read "361 OF 506 OPE" with the button covering the N. Stacking
                 moves the count out of that corner entirely. */}
             <div className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
-              <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-800">
+              <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-800">
                 Tickets on this chart
               </p>
               <span
                 aria-live="polite"
-                className="font-display text-[11px] font-bold uppercase tracking-[0.08em] text-ink-900"
+                className="font-display text-xs font-bold uppercase tracking-[0.08em] text-ink-900"
                 style={{ fontVariantNumeric: 'tabular-nums' }}
               >
                 {openCount} of {seats.length} open
@@ -893,7 +893,7 @@ export function SeatSelector({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-semibold text-ink-900">{row.tier.name}</span>
                       {group && (
-                        <span className="block text-[11px] text-ink-600">
+                        <span className="block text-xs text-ink-600">
                           {row.tier.min_per_order} seats together
                         </span>
                       )}
@@ -902,7 +902,7 @@ export function SeatSelector({
                       <span className="block text-xs font-bold text-ink-900" style={{ fontVariantNumeric: 'tabular-nums' }}>
                         {formatPrice(row.tier.price_cents)}
                       </span>
-                      <span className="block text-[11px] text-ink-600" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      <span className="block text-xs text-ink-600" style={{ fontVariantNumeric: 'tabular-nums' }}>
                         {row.open} open
                       </span>
                     </span>
@@ -922,7 +922,7 @@ export function SeatSelector({
                 aria-haspopup="menu"
                 aria-expanded={paletteMenuOpen}
                 onClick={() => setPaletteMenuOpen(open => !open)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-xs font-semibold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 text-xs font-semibold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
               >
                 <span aria-hidden className="flex items-center">
                   {SEAT_PALETTE_SETS[paletteSet].slice(0, 3).map((tone, i) => (
@@ -939,7 +939,7 @@ export function SeatSelector({
                 <div
                   role="menu"
                   aria-label="Seat colour sets"
-                  className="absolute left-0 top-full z-20 mt-1.5 w-64 rounded-xl border border-ink-200 bg-white p-1.5 shadow-lg"
+                  className="absolute left-0 top-full z-20 mt-1.5 w-64 rounded-2xl border border-ink-200 bg-white p-1.5 shadow-[var(--shadow-card-hover)]"
                 >
                   {SEAT_PALETTE_SET_META.map(meta => (
                     <button
@@ -965,7 +965,7 @@ export function SeatSelector({
                       </span>
                       <span className="min-w-0">
                         <span className="block text-xs font-semibold text-ink-900">{meta.label}</span>
-                        <span className="block text-[11px] text-ink-600">{meta.hint}</span>
+                        <span className="block text-xs text-ink-600">{meta.hint}</span>
                       </span>
                     </button>
                   ))}
@@ -975,8 +975,8 @@ export function SeatSelector({
           </div>
 
           {/* The ONE control: party size, price band, one action (kept). */}
-          <div role="group" aria-label="Find seats together under your price" className="rounded-xl border border-ink-200 bg-white p-3">
-            <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-800">
+          <div role="group" aria-label="Find seats together under your price" className="rounded-2xl border border-ink-200 bg-white p-3">
+            <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-800">
               Seats together
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -986,7 +986,7 @@ export function SeatSelector({
                   aria-label="One fewer person"
                   disabled={partySize <= 1}
                   onClick={() => setPartySize(n => Math.max(1, n - 1))}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 text-sm font-bold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-ink-200 text-sm font-bold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
                 >
                   −
                 </button>
@@ -1002,7 +1002,7 @@ export function SeatSelector({
                   aria-label="One more person"
                   disabled={partySize >= maxPerOrder}
                   onClick={() => setPartySize(n => Math.min(maxPerOrder, n + 1))}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 text-sm font-bold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-ink-200 text-sm font-bold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
                 >
                   +
                 </button>
@@ -1051,7 +1051,7 @@ export function SeatSelector({
                 setGroupUnits([])
                 void pickBestAvailable(partySize)
               }}
-              className="mt-2.5 w-full rounded-full bg-gold-500 px-4 py-2 text-xs font-semibold text-ink-900 shadow-sm transition-colors hover:bg-gold-600 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900"
+              className="mt-2.5 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-gold-500 px-4 text-xs font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-colors hover:bg-gold-600 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900"
             >
               {pickPending ? 'Finding your seats…' : partySize === 1 ? 'Find my seat' : 'Find our seats'}
             </button>
@@ -1064,8 +1064,8 @@ export function SeatSelector({
 
           {/* Whole-table booking (kept). */}
           {tableGroups.length > 0 && (
-            <div className="rounded-xl border border-gold-500/30 bg-white p-3">
-              <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-800">
+            <div className="rounded-2xl border border-gold-500/30 bg-white p-3">
+              <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-800">
                 Book a whole table
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1086,7 +1086,7 @@ export function SeatSelector({
                       disabled={soldOut}
                       aria-pressed={fullTableSelected}
                       onClick={() => toggleTable(group)}
-                      className={`inline-flex h-9 items-center rounded-full border px-3 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
+                      className={`inline-flex h-11 items-center rounded-full border px-3 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
                         fullTableSelected
                           ? 'border-ink-900 bg-gold-500 text-ink-900'
                           : 'border-ink-200 bg-white text-ink-900 hover:border-gold-500'
@@ -1102,7 +1102,7 @@ export function SeatSelector({
 
           {/* The orphan nudge (kept): advisory, never a wall. */}
           {strandedBySelection.length > 0 && (
-            <div role="status" className="rounded-xl border border-gold-500/40 bg-gold-500/10 px-3 py-2.5">
+            <div role="status" className="rounded-2xl border border-gold-500/40 bg-gold-500/10 px-3 py-2.5">
               <p className="text-xs text-ink-900">
                 <span className="font-semibold">
                   Your picks leave{' '}
@@ -1128,8 +1128,8 @@ export function SeatSelector({
               lightbox. The photo card lives in the rail (desktop) or
               inline under the sheet (mobile); the section's polygon
               lights up on the sheet while it is open. */}
-          <div className="rounded-xl border border-ink-200 bg-white p-3">
-            <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-800">
+          <div className="rounded-2xl border border-ink-200 bg-white p-3">
+            <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-800">
               The view from your section
             </p>
             {Object.keys(sectionViews).length === 0 ? (
@@ -1148,7 +1148,7 @@ export function SeatSelector({
                         type="button"
                         aria-pressed={active}
                         onClick={() => setViewingSection(active ? null : s.name)}
-                        className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
+                        className={`inline-flex h-11 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
                           active
                             ? 'border-ink-900 bg-ink-900 text-white'
                             : 'border-ink-200 bg-white text-ink-900 hover:border-gold-500'
@@ -1172,7 +1172,7 @@ export function SeatSelector({
                     type="button"
                     aria-label="Close the view photo"
                     onClick={() => setViewingSection(null)}
-                    className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-ink-900 shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                    className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-ink-900 shadow-[var(--shadow-card)] transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden />
                   </button>
@@ -1181,7 +1181,7 @@ export function SeatSelector({
                   <span className="block text-xs font-bold uppercase tracking-[0.08em] text-ink-900">
                     The view from {viewingSection}
                   </span>
-                  <span className="block text-[11px] text-ink-600">
+                  <span className="block text-xs text-ink-600">
                     Photographed from this section, not a render. Its area is lit on the plan.
                   </span>
                 </figcaption>
@@ -1190,7 +1190,7 @@ export function SeatSelector({
           </div>
 
           {/* Selection summary + proceed (kept flow). */}
-          <div className="rounded-xl border border-ink-200 bg-white p-3">
+          <div className="rounded-2xl border border-ink-200 bg-white p-3">
             {selectedIds.size === 0 ? (
               <p className="py-1 text-center text-xs text-ink-400">
                 Tap seats on the plan to select them
@@ -1219,7 +1219,7 @@ export function SeatSelector({
                 </div>
                 <div className="flex items-center justify-between border-t border-ink-100 pt-2">
                   <div>
-                    <p className="text-[11px] text-ink-400" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    <p className="text-xs text-ink-400" style={{ fontVariantNumeric: 'tabular-nums' }}>
                       {selectedIds.size} seat{selectedIds.size !== 1 ? 's' : ''}
                     </p>
                     <p className="font-display text-base font-bold text-ink-900" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -1248,7 +1248,7 @@ export function SeatSelector({
               type="button"
               onClick={handleProceed}
               disabled={selectedIds.size === 0 || isPending}
-              className="mt-3 w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-ink-900 shadow-sm transition-colors hover:bg-gold-600 hover:shadow-md disabled:cursor-not-allowed disabled:bg-ink-200 disabled:text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900 focus-visible:ring-offset-2"
+              className="mt-3 w-full rounded-2xl bg-gold-500 py-3 text-sm font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-colors hover:bg-gold-600 hover:shadow-[var(--shadow-card-hover)] disabled:cursor-not-allowed disabled:bg-ink-200 disabled:text-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900 focus-visible:ring-offset-2"
             >
               {isPending
                 ? 'Reserving seats…'

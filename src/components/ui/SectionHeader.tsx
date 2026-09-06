@@ -11,9 +11,10 @@ type Props = {
 // Rail/section headings are law-bound to the measured competitor scale:
 // 24px at desktop, 22px at mobile (.type-rail-heading, globals.css). The old
 // md/lg presets (text-2xl / sm:text-3xl) ran up to 30px - above the law.
-// 'sm' remains a compact 20px tier for sidebar/aside headings only.
+// 'sm' used to be a compact 20px tier for asides; close-out C14.12 puts every
+// section heading on the one 24/22 step, so all three presets are the rail step.
 const titleSizes = {
-  sm: 'text-xl font-bold',
+  sm: 'type-rail-heading',
   md: 'type-rail-heading',
   lg: 'type-rail-heading',
 } as const

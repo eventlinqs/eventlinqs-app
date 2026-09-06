@@ -88,7 +88,7 @@ export function MobileBottomNav() {
       aria-label="Primary"
       className={[
         'fixed inset-x-0 bottom-0 z-40 md:hidden',
-        'border-t border-white/10 bg-[var(--color-navy-950)] shadow-[0_-4px_16px_rgba(10,22,40,0.24)]',
+        'border-t border-white/10 bg-[var(--color-navy-950)]',
         'transition-transform duration-300 ease-out',
         hidden ? 'translate-y-full' : 'translate-y-0',
       ].join(' ')}
@@ -119,7 +119,7 @@ export function MobileBottomNav() {
                   strokeWidth={active ? 0 : 2}
                   aria-hidden
                 />
-                <span className="text-[10px] font-semibold tracking-tight">
+                <span className="text-xs font-semibold tracking-tight">
                   {label}
                 </span>
                 {active ? (

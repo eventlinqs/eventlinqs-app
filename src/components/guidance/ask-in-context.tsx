@@ -104,7 +104,7 @@ export function AskInContext({ surface }: { surface: GuidanceSurface }) {
     <div className="border-t border-ink-100 pt-3">
       {enabled === true && (
         <>
-          <p className="flex items-center gap-1.5 font-display text-[11px] font-semibold uppercase tracking-widest text-gold-800">
+          <p className="flex items-center gap-1.5 font-display text-xs font-semibold uppercase tracking-widest text-gold-800">
             <Sparkles className="h-3 w-3" aria-hidden="true" />
             Ask about this screen
           </p>
@@ -146,7 +146,7 @@ export function AskInContext({ surface }: { surface: GuidanceSurface }) {
                   key={s}
                   type="button"
                   onClick={() => void ask(s)}
-                  className="rounded-full border border-ink-200 bg-white px-2.5 py-1 text-left text-[11px] font-medium text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                  className="rounded-full border border-ink-200 bg-white px-2.5 py-1 text-left text-xs font-medium text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
                 >
                   {s}
                 </button>
@@ -159,12 +159,12 @@ export function AskInContext({ surface }: { surface: GuidanceSurface }) {
               <p className="mt-2 text-xs text-ink-400">Thinking about that.</p>
             )}
             {answer && (
-              <div className="mt-2 rounded-xl border border-ink-100 bg-canvas px-3 py-2.5">
+              <div className="mt-2 rounded-2xl border border-ink-100 bg-canvas px-3 py-2.5">
                 <p className="whitespace-pre-wrap text-xs leading-relaxed text-ink-900">{answer}</p>
               </div>
             )}
             {error && (
-              <p className="mt-2 rounded-xl border border-ink-200 bg-canvas px-3 py-2 text-xs text-ink-600">
+              <p className="mt-2 rounded-2xl border border-ink-200 bg-canvas px-3 py-2 text-xs text-ink-600">
                 {error}
               </p>
             )}
@@ -181,7 +181,7 @@ export function AskInContext({ surface }: { surface: GuidanceSurface }) {
       {/* The guide links are always here, whatever the assistant is doing.
           Deterministic, from the registry: never a link the model invented. */}
       <div className="mt-3">
-        <p className="flex items-center gap-1.5 font-display text-[11px] font-semibold uppercase tracking-widest text-ink-400">
+        <p className="flex items-center gap-1.5 font-display text-xs font-semibold uppercase tracking-widest text-ink-400">
           <BookOpen className="h-3 w-3" aria-hidden="true" />
           Read the guide
         </p>

@@ -71,7 +71,7 @@ export function StickyActionBar({
   return (
     <>
       <div
-        className={`hidden md:block fixed inset-x-0 top-0 z-40 transition-all duration-300 motion-reduce:transition-none ${
+        className={`hidden md:block fixed inset-x-0 top-0 z-40 transition-[transform,opacity] duration-300 motion-reduce:transition-none ${
           visible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 motion-reduce:translate-y-0'
         }`}
         // `inert` on the hidden state removes the subtree from focus + AT
@@ -79,13 +79,13 @@ export function StickyActionBar({
         // aria-hidden because the bar contains focusable CTAs.
         inert={!visible || undefined}
       >
-        <div className="border-b border-ink-200 bg-white shadow-sm">
+        <div className="border-b border-ink-200 bg-white shadow-[var(--shadow-card)]">
           <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
             <div className="min-w-0 flex-1">
               <p className="font-display text-sm font-bold leading-tight text-ink-900 line-clamp-1">
                 {title}
               </p>
-              <p className="mt-0.5 text-[11px] text-ink-400 line-clamp-1">
+              <p className="mt-0.5 text-xs text-ink-400 line-clamp-1">
                 {dateLabel}
                 {venueLabel ? ` · ${venueLabel}` : ''}
               </p>
@@ -102,7 +102,7 @@ export function StickyActionBar({
                 type="button"
                 onClick={handleShare}
                 aria-label="Share event"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-600 transition-colors hover:border-gold-400 hover:text-gold-600"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-600 transition-colors hover:border-gold-400 hover:text-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
               >
                 <Share2 className="h-4 w-4" />
               </button>
@@ -110,7 +110,7 @@ export function StickyActionBar({
                 type="button"
                 onClick={() => setSaved(s => !s)}
                 aria-label={saved ? 'Remove from saved' : 'Save event'}
-                className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${
+                className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 ${
                   saved
                     ? 'border-gold-500 bg-gold-500/15 text-gold-600'
                     : 'border-ink-200 bg-white text-ink-600 hover:border-gold-400 hover:text-gold-600'
@@ -121,14 +121,14 @@ export function StickyActionBar({
               <Link
                 href={ticketAnchor}
                 onClick={handleTicketsClick}
-                className="inline-flex items-center rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-ink-900 shadow-sm transition-all duration-200 hover:bg-gold-600 hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-4 text-sm font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 hover:bg-gold-600 hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
                 Get tickets
               </Link>
             </div>
           </div>
           {shared && (
-            <p className="mx-auto max-w-7xl px-4 pb-1 text-[11px] text-gold-600 sm:px-6 lg:px-8">
+            <p className="mx-auto max-w-7xl px-4 pb-1 text-xs text-gold-600 sm:px-6 lg:px-8">
               Link copied to clipboard
             </p>
           )}
@@ -136,26 +136,26 @@ export function StickyActionBar({
       </div>
 
       <div
-        className={`fixed bottom-0 inset-x-0 z-40 md:hidden transition-all duration-300 motion-reduce:transition-none ${
+        className={`fixed bottom-0 inset-x-0 z-40 md:hidden transition-[transform,opacity] duration-300 motion-reduce:transition-none ${
           visible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 motion-reduce:translate-y-0'
         }`}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         inert={!visible || undefined}
       >
-        <div className="bg-white border-t border-ink-100 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+        <div className="bg-white border-t border-ink-100">
           <div className="flex items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
               <p className="font-display text-sm font-bold leading-tight text-ink-900 truncate">
                 {title}
               </p>
               {priceLabel && (
-                <p className="mt-0.5 text-[11px] font-semibold text-gold-600">{priceLabel}</p>
+                <p className="mt-0.5 text-xs font-semibold text-gold-600">{priceLabel}</p>
               )}
             </div>
             <Link
               href={ticketAnchor}
               onClick={handleTicketsClick}
-              className="inline-flex flex-1 items-center justify-center rounded-lg bg-gold-500 px-4 py-3 text-sm font-semibold text-ink-900 shadow-sm transition-colors duration-200 hover:bg-gold-600 motion-reduce:transition-none"
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-gold-500 px-4 py-3 text-sm font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 hover:bg-gold-600 motion-reduce:transition-none"
             >
               Get tickets
             </Link>

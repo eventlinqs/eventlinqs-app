@@ -59,7 +59,7 @@ export function FooterAccordion({
             <li key={link.href}>
               <a
                 href={link.href}
-                className={`block py-2 text-sm text-white/70 transition-colors hover:text-white ${i === links.length - 1 ? 'pb-4' : ''}`}
+                className={`flex min-h-11 items-center text-sm text-white/70 transition-colors hover:text-white ${i === links.length - 1 ? 'mb-2' : ''}`}
               >
                 {link.label}
               </a>

@@ -64,12 +64,12 @@ function RowActions({
   const archived = event.status === 'archived'
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center">
       {error && <span className="text-xs text-red-600">{error}</span>}
 
       <Link
         href={`/dashboard/events/${event.id}/edit`}
-        className="text-xs text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
+        className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
       >
         Edit
       </Link>
@@ -80,7 +80,7 @@ function RowActions({
         <Link
           href={`/events/${event.slug}`}
           target="_blank"
-          className="text-xs text-ink-600 hover:text-ink-900"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs text-ink-600 hover:text-ink-900"
         >
           View
         </Link>
@@ -89,7 +89,7 @@ function RowActions({
       {event.status === 'published' && (
         <Link
           href={`/dashboard/events/${event.id}/launch-kit`}
-          className="text-xs font-semibold text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs font-semibold text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
         >
           Launch Kit
         </Link>
@@ -98,7 +98,7 @@ function RowActions({
       <button
         disabled={isPending}
         onClick={() => run(() => duplicateEvent(event.id))}
-        className="text-xs text-ink-600 hover:text-ink-900 disabled:opacity-40"
+        className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs text-ink-600 hover:text-ink-900 disabled:opacity-40"
       >
         Duplicate
       </button>
@@ -107,7 +107,7 @@ function RowActions({
         <button
           disabled={isPending}
           onClick={() => run(() => publishEvent(event.id))}
-          className="text-xs text-green-800 hover:text-green-900 disabled:opacity-40"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs text-green-800 hover:text-green-900 disabled:opacity-40"
         >
           Publish
         </button>
@@ -117,7 +117,7 @@ function RowActions({
         <button
           disabled={isPending}
           onClick={() => run(() => pauseEvent(event.id))}
-          className="text-xs text-amber-800 hover:text-amber-900 disabled:opacity-40"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs text-amber-800 hover:text-amber-900 disabled:opacity-40"
         >
           Pause
         </button>
@@ -131,7 +131,7 @@ function RowActions({
               run(() => cancelEvent(event.id))
             }
           }}
-          className="text-xs text-red-700 hover:text-red-900 disabled:opacity-40"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs text-red-700 hover:text-red-900 disabled:opacity-40"
         >
           Cancel
         </button>
@@ -199,7 +199,7 @@ export function EventsTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-ink-200 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-ink-200 bg-white">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-ink-100 bg-ink-100 text-left">

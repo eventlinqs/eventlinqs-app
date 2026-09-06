@@ -143,11 +143,11 @@ export function KnowBeforeYouGo({
               >
                 <row.icon className="h-4.5 w-4.5" />
               </span>
-              <span className="font-display text-[13px] font-bold uppercase tracking-[0.12em] text-ink-900">
+              <span className="font-display text-sm font-bold uppercase tracking-[0.12em] text-ink-900">
                 {row.label}
               </span>
             </dt>
-            <dd className="mt-1 pl-[3.25rem] text-sm leading-relaxed text-ink-600">{row.value}</dd>
+            <dd className="type-measure mt-1 text-pretty pl-[3.25rem] text-sm leading-relaxed text-ink-600">{row.value}</dd>
           </div>
         ))}
       </dl>

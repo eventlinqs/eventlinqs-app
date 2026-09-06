@@ -40,9 +40,9 @@ export function TeachingEmptyState({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-ink-200 bg-white p-6 text-center shadow-sm ${className}`}
+      className={`rounded-2xl border border-ink-200 bg-white p-6 text-center shadow-[var(--shadow-card)] ${className}`}
     >
-      <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-800">
+      <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-800">
         {eyebrow}
       </p>
       <h3 className="mt-1 font-display text-lg font-bold text-ink-900">{title}</h3>

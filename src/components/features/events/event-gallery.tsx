@@ -35,7 +35,7 @@ export function EventGallery({ images, eventTitle }: Props) {
               type="button"
               onClick={() => setOpenIndex(i)}
               aria-label={`View image ${i + 1}${img.alt ? `: ${img.alt}` : ''}`}
-              className="group relative block aspect-[4/3] w-full overflow-hidden rounded-xl border border-ink-200 bg-ink-100 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="group relative block aspect-[4/3] w-full overflow-hidden rounded-2xl border border-ink-200 bg-ink-100 transition-shadow hover:shadow-[var(--shadow-card-hover)] focus:outline-none focus:ring-2 focus:ring-gold-500"
             >
               <GalleryImage
                 src={img.url}

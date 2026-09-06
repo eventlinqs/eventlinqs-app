@@ -227,7 +227,7 @@ export function EventsFilterStrip({
         aria-modal="true"
         aria-label="Filters"
         aria-hidden={!drawerOpen}
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[85vh] overflow-y-auto lg:hidden transform transition-transform duration-300 ease-out ${
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-[var(--shadow-modal)] max-h-[85vh] overflow-y-auto lg:hidden transform transition-transform duration-300 ease-out ${
           drawerOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
       >

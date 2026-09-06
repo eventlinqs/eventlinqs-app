@@ -110,6 +110,9 @@
  *                              writes a tombstone, carries the archived enum value, gates
  *                              checkout on published and gates every anon read of events,
  *                              asked through one read-only RPC
+ *   no-hardcoded-spacing      one spacing scale: no arbitrary padding, margin, gap or inset
+ *                              off the 4px grid, in a utility, an inline style or a
+ *                              stylesheet (close-out C14.12)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -759,6 +762,13 @@ const GUARDS = [
   // (C:\dev\EVIDENCE\C13\guard-event-lifecycle-*.txt).
   'scripts/guards/event-lifecycle-total.mjs',
   'scripts/guards/event-lifecycle-installed.mjs',
+  // Close-out C14.12 (6 September 2026): one spacing scale, and a guard that
+  // fails the build on any hardcoded spacing value. An arbitrary spacing
+  // utility or an inline padding/margin/gap whose length is not a multiple of
+  // 4px and not a --space token is a step off the grid the design system
+  // declares, and nothing else in the gate set could see one. Drilled red and
+  // green in scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/no-hardcoded-spacing.mjs',
 ]
 
 /**

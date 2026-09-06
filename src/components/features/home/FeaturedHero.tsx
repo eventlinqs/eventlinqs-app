@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
+import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { FeaturedHeroClient, type FeaturedHeroSlide } from './FeaturedHeroClient'
 
@@ -42,13 +43,26 @@ function detailLine(event: BentoEvent): string {
   return parts.join('  |  ')
 }
 
+/**
+ * A composed typographic cover (Law 6's no-photo fallback) carries the event's
+ * own title as its artwork. Behind the hero headline that is the same title
+ * twice, at display size, one on top of the other: measured on the C14
+ * before-capture, where every slide on a launch-stage homepage was one. The
+ * hero paints the category raster for those and the composed cover stays
+ * where it was designed for, on the card.
+ */
+function isComposedCover(url: string | null | undefined): boolean {
+  return typeof url === 'string' && url.includes(`/${GENERATED_COVER_PREFIX}/`)
+}
+
 async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
   // getFeaturedHeroBackground guarantees a raster image (real event cover when
   // present, else a bundled category hero raster) - never an SVG. This is the
   // same raster-safe resolver the event-detail hero uses, so every featured
   // slide always paints a valid LCP-eligible photo, even for events that have
   // no uploaded cover yet.
-  const media = await getFeaturedHeroBackground(event)
+  const source = isComposedCover(event.cover_image_url) ? { ...event, cover_image_url: null } : event
+  const media = await getFeaturedHeroBackground(source)
 
   return {
     id: event.id,
@@ -62,7 +76,11 @@ async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
 }
 
 export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
-  const featured = events.slice(0, MAX_SLIDES)
+  // Photographic covers lead the carousel; events on a composed cover or no
+  // cover follow in their own order, so a real photo is the first paint
+  // whenever the catalogue has one. Stable sort: soonest-first within a group.
+  const photographic = (e: BentoEvent) => Boolean(e.cover_image_url) && !isComposedCover(e.cover_image_url)
+  const featured = [...events].sort((a, b) => Number(photographic(b)) - Number(photographic(a))).slice(0, MAX_SLIDES)
 
   // Empty state: no live events yet. Render a calm, branded banner so the
   // top of the page never collapses - still the only place text sits on a
@@ -98,7 +116,7 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
               <Link
                 href="/events"
                 prefetch={false}
-                className="inline-flex h-12 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-[var(--color-navy-950)] shadow-lg shadow-black/30 hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(212,164,55,0.32)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
+                className="inline-flex h-12 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-[var(--color-navy-950)] shadow-[var(--shadow-card)] hover:scale-[1.02] hover:shadow-[var(--shadow-card-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
                 style={{ fontSize: 'var(--type-body)', fontWeight: 600, transition: 'transform var(--motion-quick), box-shadow var(--motion-quick)' }}
               >
                 Browse all events

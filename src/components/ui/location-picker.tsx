@@ -311,7 +311,7 @@ export function LocationPicker({
   const triggerClasses =
     variant === 'pill'
       ? [
-          'inline-flex items-center gap-1.5 h-9 px-3 rounded-full',
+          'inline-flex items-center gap-1.5 h-11 px-3 rounded-full',
           'text-sm font-medium text-ink-700 bg-transparent',
           'border border-ink-200',
           'hover:border-gold-500 hover:text-gold-600 transition-colors',
@@ -319,7 +319,7 @@ export function LocationPicker({
         ].join(' ')
       : variant === 'onDark'
       ? [
-          'inline-flex items-center gap-1.5 h-9 px-3 rounded-full',
+          'inline-flex items-center gap-1.5 h-11 px-3 rounded-full',
           'text-sm font-medium text-white/90 bg-white/10',
           'border border-white/15',
           'hover:bg-white/15 hover:border-[var(--brand-accent)]/60 hover:text-white transition-colors',

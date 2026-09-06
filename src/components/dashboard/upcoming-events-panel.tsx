@@ -27,13 +27,13 @@ function formatDate(iso: string, timezone: string) {
 
 export function UpcomingEventsPanel({ events }: { events: UpcomingEvent[] }) {
   return (
-    <section className="panel-elevated rounded-xl border border-ink-100 bg-white">
+    <section className="panel-elevated rounded-2xl border border-ink-100 bg-white">
       <header className="flex items-center justify-between border-b border-ink-100 px-5 py-4">
         <h2 className="text-base font-semibold text-ink-900">Upcoming events</h2>
         {events.length > 0 && (
           <Link
             href="/dashboard/events"
-            className="text-sm font-medium text-ink-600 transition-colors hover:text-gold-600"
+            className="inline-flex min-h-11 items-center text-sm font-medium text-ink-600 transition-colors hover:text-[var(--brand-accent-strong)]"
           >
             View all
           </Link>
@@ -126,7 +126,7 @@ function EmptyState() {
       </p>
       <Link
         href="/dashboard/events/create"
-        className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-sm transition-colors hover:bg-gold-500"
+        className="mt-4 inline-flex h-11 items-center gap-2 rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-colors hover:bg-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
       >
         <PlusCircle className="h-4 w-4" aria-hidden="true" />
         Create event

@@ -54,7 +54,7 @@ export function GetStartedChecklist({ status }: { status: ChecklistStatus }) {
   const nextStep = STEPS.find((s) => !status[s.key])
 
   return (
-    <section className="panel-elevated rounded-xl border border-ink-100 bg-white">
+    <section className="panel-elevated rounded-2xl border border-ink-100 bg-white">
       <header className="border-b border-ink-100 px-5 py-4">
         <h2 className="text-base font-semibold text-ink-900">Set up your account</h2>
         <p className="mt-1 text-xs text-ink-600">
@@ -70,6 +70,7 @@ export function GetStartedChecklist({ status }: { status: ChecklistStatus }) {
             aria-valuenow={completed}
             aria-valuemin={0}
             aria-valuemax={total}
+            aria-label={`${completed} of ${total} setup steps complete`}
           />
         </div>
       </header>
@@ -104,7 +105,10 @@ export function GetStartedChecklist({ status }: { status: ChecklistStatus }) {
                   {isNext && (
                     <Link
                       href={step.href}
-                      className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gold-600 transition-colors hover:text-gold-500"
+                      // gold-800 (brand-accent-strong): gold text on a light
+                      // surface must meet 4.5:1; axe measured gold-600 here as
+                      // a serious contrast failure on the C14 before-capture.
+                      className="mt-2 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--brand-accent-strong-hover)]"
                     >
                       {step.cta}
                       <ArrowRight className="h-3 w-3" aria-hidden="true" />
