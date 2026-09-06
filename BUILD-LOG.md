@@ -2843,3 +2843,50 @@ changed, and nothing was deleted.
   read the parity step makes on every relaunch), so there is no joint of that command left to drive
   without writing to production. The ledger's session-13 section widened to cover this relaunch; the
   "Last re-verified" line at the top of REVIEW-QUEUE.md's "Needs you" block updated.
+
+## 2026-09-07 03:37 to 03:52 (C16, continued, sessions 15 and 16) the halt re-verified twice; session 15's unlogged trial merge of C8 into the C16 tree recorded and backed out; nothing has moved; nothing started
+
+- Governing laws, stated first: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder
+  applies), the C16.0 halt rule, Definition of Done clause 6. No code changed on any branch. Nothing
+  merged, nothing started, nothing written to production; the CLI rests on TEST (supabase/.temp/project-ref
+  read back: vkapkibzokmfaxqogypq). Disk 22.2 GB free at start (Get-PSDrive) and 22 GB at end; no build
+  output produced; no .next anywhere on the machine and one node_modules.
+- THE HALT RE-VERIFIED (C16.0), session 15 at 03:37 and session 16 at 03:47 to 03:49, read only, through
+  the clean-env wrapper. The parity step on the C16 tree at 100be967: 116 migrations in the tree, 113
+  applied on gndnldyfudbytbboxesk, the same 3 pending (20260905000003, 20260906000001, 20260906000002);
+  the environment half read the production store through the Vercel CLI login: 34 records, 43 manifest
+  entries, 0 faults; FAIL on the schema half, exit 1, "BLOCKED at production-parity". Vercel's newest
+  production deployments by sha: 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY. The live site serves
+  sentry-release b4255a96 (HTTP 200, 396472 bytes); the apex answers 301. CI on main: still red at
+  2d558d2a (run 34031455414), no new run. origin/main unchanged after a fetch (2d558d2a). PR 130 (C8)
+  still BLOCKED by protection, MERGEABLE. The founder has not run `npm run migrate:production`.
+  Evidence: production-parity-recheck-session15.txt, deployments-recheck-session15.txt,
+  production-parity-recheck-session16.txt, deployments-recheck-session16.txt.
+- SESSION 15 WAS CUT OFF BEFORE IT WROTE A LINE, so its work is recorded here from its evidence. Between
+  03:40 and 03:45 it trial-merged perf/c8-mobile-95 (2ed39584, PR 130) into the C16 tree to learn what
+  bringing PR 130 up to date after the C16 merge will cost. Three files conflicted, all three registries
+  that C16 and C8 both extend: scripts/guards/run-guards.mjs and scripts/verify/guard-failure-drills.mjs
+  resolved as the union (branch-protection-required and one-priority-image both registered; the two C8
+  drills placed after the C16 drill), scripts/guards/test-count-canary.mjs resolved as the C16 text plus
+  the C8 paragraph with the floor raised to 312 files / 3598 tests. On that union: tsc 0; eslint 0 on the
+  three files; the suite through the canary 312 files / 3598 tests, 0 failed, 0 skipped (47 s); every
+  registered guard PASS (76 s). The drill harness fired 81 of 94 drills correctly and then the session
+  died under it at 03:45: the last 13 report "guard failed, but not for the expected reason" with an
+  EMPTY output, and the final all-guards pass reports the tree dirty, which is the orphaned-run artefact
+  already recorded on 7 September (session 5), not a verdict. The union's drills are therefore UNPROVEN
+  and are re-run for real when PR 130 is brought up to date. Evidence:
+  C:\dev\EVIDENCE\C16\c8-merge-resolution\ (trial-merge.txt, suite-merged.txt, guards-merged.txt,
+  eslint-merged.txt, drills-merged.txt, and the three resolved files run-guards.mjs,
+  test-count-canary.mjs, guard-failure-drills.mjs).
+- WHAT SESSION 16 DID WITH IT: backed it out. The trial merge had been left half-done on the C16 branch
+  itself (.git/MERGE_HEAD at 2ed39584 with the thirteen C8 files staged), which would have put C8 inside
+  the C16 pull request and blocked the C16 push on a dirty tree the moment parity flips. The three
+  resolved files were confirmed byte-identical to the saved copies, then `git merge --abort` restored the
+  tree to 100be967 with nothing staged and nothing lost: the other ten staged files were C8's own
+  versions and live on 2ed39584. The recorded sequence is unchanged: C16 merges first, then PR 130 is
+  brought up to date against main, where the same three conflicts resolve from the saved copies in
+  minutes and the drills run to a real verdict.
+- THE HALT STANDS. Six commits wait on ci/c16-production-parity (5ca9d984, eaf7deeb, 2f0545c1, 7c9101fe,
+  8161cfe2, 100be967) and leave the machine the moment the founder's command has run. The sequence after
+  it is unchanged and recorded in the 02:39 entry. The ledger's section for sessions 13 and 14 widened to
+  cover 15 and 16; the "Last re-verified" line at the top of REVIEW-QUEUE.md's "Needs you" block updated.

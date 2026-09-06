@@ -5,11 +5,15 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
-Last re-verified 7 September 2026 at 03:34 (session 14): still the same three migrations behind,
+Last re-verified 7 September 2026 at 03:49 (session 16): still the same three migrations behind,
 the same two failed production deployments, main still red. Nothing has moved. Session 12 found and
 fixed a hang in your one command (see the 03:25 entry at the end of this file): it is the same
-command, and it now gets past its own confirmation. Session 13 also ran the command's own first
-proof by hand, read only: it correctly reports the two C13 objects still absent on production.
+command, and it now gets past its own confirmation. Session 13 ran the command's own first proof
+by hand, read only: it correctly reports the two C13 objects still absent on production. Session 15
+tried the C8 pull request's merge against the C16 branch in advance (three small conflicts, all
+resolved and saved; every check green except the drill run, which the session died under, so that
+one is not counted); session 16 put that trial back in its box, so the C16 branch is clean and
+ready to push the moment your command has run.
 
 Rewritten 7 September 2026 at 01:10. Everything below the first item is unchanged in
 substance; what was already done (the A2, A3, A4, B1 and B2 migrations are on production,
