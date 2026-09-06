@@ -107,6 +107,25 @@ async function newestErrorDeployment() {
 const AIM = await newestErrorDeployment()
 console.log(`[drills] ERROR deployment for preview-deployment-state to judge: ${AIM.sha ? `${AIM.sha.slice(0, 7)} on ${AIM.ref} (${AIM.url})` : `NONE (${AIM.error})`}`)
 
+/*
+ * THE STORE FOR production-parity TO JUDGE. The environment half of
+ * scripts/ops/production-parity.mjs (close-out C16.2.1, 7 September 2026)
+ * reads the production scope of the Vercel store and judges it against
+ * src/lib/env/manifest.mjs. The close-out asks for the gate to be watched
+ * refusing a deliberately broken production-only value. Breaking one ON
+ * VERCEL is a write to production, which no session holds approval for and
+ * which would break the live site for real, so the fault is planted on the
+ * other side of the comparison: the store is read for real, and the contract
+ * it is judged against is what moves. From the judge's side the two are one
+ * finding ('missing', 'forbidden-present'): the same lines a broken store
+ * produces, from the same function, on the same live listing. Needs the
+ * Vercel login, as the step does; without one the drills cannot aim and
+ * report STALE with the reason.
+ */
+const PARITY_LOGIN = resolveVercelToken()
+const PARITY_STALE = PARITY_LOGIN.token ? null : `${PARITY_LOGIN.reason}, so the production store cannot be read`
+console.log(`[drills] production store for production-parity to judge: ${PARITY_STALE ? `NONE (${PARITY_STALE})` : `read with ${PARITY_LOGIN.source}`}`)
+
 const DRILLS = [
   /*
    * preview-deployment-state (close-out C16, 7 September 2026), one drill: the
@@ -121,6 +140,34 @@ const DRILLS = [
     env: AIM.sha ? { GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF_NAME: AIM.ref, GITHUB_SHA: AIM.sha, PREVIEW_STATE_WAIT_SECONDS: '60' } : null,
     stale: AIM.error ?? null,
     expect: 'FAILED: the deployment of',
+  },
+  /*
+   * production-parity (close-out C16.2.1), two drills on the environment half,
+   * each run against the REAL production store: a variable the manifest
+   * requires on production that the store does not hold, and a variable the
+   * store holds that the manifest forbids there. The finding must name the
+   * record and its state; a bare "FAIL" would pass on the schema half alone,
+   * which refuses whenever production is behind the tree.
+   */
+  {
+    name: 'production parity: a variable REQUIRED on production that the store does not hold',
+    guard: 'scripts/ops/production-parity.mjs',
+    file: 'src/lib/env/manifest.mjs',
+    find: 'export const ENV_MANIFEST = [\n',
+    replace:
+      'export const ENV_MANIFEST = [\n' +
+      "  { name: 'A_RECORD_THE_DRILL_REQUIRES', describe: 'a record the drill requires on production and the store does not hold', requiredOn: ['production'], forbiddenOn: [], mustBeSensitive: false, previewBranchScoping: 'allowed', shape: SHAPES.anyNonEmpty, paymentCritical: false, githubActions: false, publicVar: false },\n",
+    stale: PARITY_STALE,
+    expect: 'A_RECORD_THE_DRILL_REQUIRES [missing]',
+  },
+  {
+    name: 'production parity: a variable the store holds that the manifest FORBIDS on production',
+    guard: 'scripts/ops/production-parity.mjs',
+    file: 'src/lib/env/manifest.mjs',
+    find: "    forbiddenOn: [],\n    optionalReason:\n      'getSiteUrl() resolves a correct branded origin",
+    replace: "    forbiddenOn: ['production'],\n    optionalReason:\n      'getSiteUrl() resolves a correct branded origin",
+    stale: PARITY_STALE,
+    expect: 'NEXT_PUBLIC_SITE_URL [forbidden-present]',
   },
   /*
    * branch-protection-required (close-out C16.2.4), one drill: the guard is told
