@@ -613,3 +613,34 @@ alone and passed, 92 of 92 drills fired correctly and all 71 guards green on the
 **Evidence:** C:\dev\EVIDENCE\C16\ (guard-preview-state-driven-both-ways.txt,
 probe-deployments-by-sha.txt, guard-failure-drills-session5.txt, guards-session5.txt,
 suite-session5.txt, canary-session5.txt, production-parity-recheck-session5.txt).
+
+## C16, continued (7 September 2026, 02:30): nothing has moved, and the last proof the close-out asked for on the gate is done
+
+**Where things stand.** Unchanged: production still serves the C3 build, the two later
+production deployments are still failed, main is still red, and production is still three
+migrations behind the tree. Your one command is still the only thing that unblocks it:
+```
+npm run migrate:production
+```
+
+**What was finished.** The close-out asked to watch the push gate refuse a push when a
+production-only environment value is broken. Breaking one on Vercel would break the live site,
+so the fault was planted on the other side of the comparison: the checklist the gate judges the
+real store against. A throwaway branch carrying that fault was pushed for real; the gate ran
+eight checks green, then refused at the parity step naming the record, and nothing reached
+GitHub. The throwaway branch is deleted. The two matching drills the previous session added are
+now proven in the drill harness, which fired 94 of 94 and left every guard green. No code
+changed.
+
+**One thing I got wrong and corrected.** The first push attempt was refused two steps early,
+because I ran it without the wrapper that strips this shell's production variables, and four
+database checks answered against production with the test key. That is a known fault of this
+machine's shell, recorded on 6 September, not of the gate. The second attempt, through the
+wrapper, is the one the evidence cites.
+
+**Nothing changes for you.** The command above is the step; after it, the sequence in the
+"Needs you" item at the top runs without you.
+
+**Evidence:** C:\dev\EVIDENCE\C16\ (gate-refused-on-push-env-fault.txt,
+guard-failure-drills-session7.txt, production-parity-recheck-session7.txt,
+deployments-recheck-session7.txt).

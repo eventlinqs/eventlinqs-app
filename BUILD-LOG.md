@@ -2535,3 +2535,68 @@ changed, and nothing was deleted.
   three migrations, the gate refuses the push at production parity, and the C16 branch
   cannot reach GitHub until `npm run migrate:production` has run. What changed is that the
   first merge after it will now be judged on its own build.
+
+## 2026-09-07 02:30 (C16, continued) the environment half of the parity gate watched refusing a real push, and the previous session's unrecorded work closed
+
+- Governing laws, stated first: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder
+  applies), the C16.0 halt rule, Definition of Done clause 6. No code changed this session; every claim
+  below is a driven output saved under C:\dev\EVIDENCE\C16\.
+- THE HALT RE-VERIFIED FIRST (C16.0), at 02:20 to 02:28. Production parity, read only, on the clean C16
+  tree: 116 migrations in the tree, 113 applied on gndnldyfudbytbboxesk, the same 3 pending
+  (20260905000003, 20260906000001, 20260906000002); the environment half read the production store
+  through the Vercel CLI login: 34 records, 43 manifest entries, 0 faults. Vercel's newest production
+  deployments: 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY; the live site serves sentry-release
+  b4255a96 (HTTP 200, 396473 bytes). CI on main still red at 2d558d2a (run 34031455414), no new run;
+  origin/main unchanged after a fetch. The founder has not yet run `npm run migrate:production`.
+  Nothing merged, nothing started, nothing written to production; the CLI rests on TEST
+  (supabase/.temp/project-ref read back: vkapkibzokmfaxqogypq). Disk 23 GB free at start.
+  Evidence: production-parity-recheck-session7.txt, deployments-recheck-session7.txt.
+- WHAT THE PREVIOUS SESSION LEFT (02:02 to 02:16), found from the tree and the evidence directory
+  because it wrote no log entry: commit 8161cfe2 on ci/c16-production-parity (two drills in
+  scripts/verify/guard-failure-drills.mjs for the environment half of production parity); a local
+  branch drill/c16-env-fault with one throwaway commit 8f9284c2 planting, in src/lib/env/manifest.mjs,
+  a record required on production that the store does not hold; hand runs of the parity step with each
+  fault planted (gate-step-parity-env-fault-missing.txt and -forbidden.txt: the step FAILS naming
+  A_RECORD_THE_DRILL_REQUIRES [missing] and NEXT_PUBLIC_SITE_URL [forbidden-present]); and a push of
+  the drill branch cut off inside step 7 of 13 with no verdict when the watchdog relaunched the session
+  at 02:16. The harness had not been run with the two new drills.
+- WHY THE FAULT IS PLANTED IN THE MANIFEST AND NOT ON VERCEL. C16.2.1 asks for a deliberately broken
+  production-only environment value and the gate watched refusing the push. Breaking one on Vercel is
+  a write to production with the site live, which no session holds approval for. The parity step
+  compares the real store against the manifest, so moving the manifest produces the same finding
+  ('missing', 'forbidden-present') from the same function on the same live listing. The store is
+  real; the contract it is judged against is what moves.
+- THE PUSH, WATCHED TO ITS VERDICT THIS TIME. First attempt, `git push origin drill/c16-env-fault`
+  bare: the gate BLOCKED at step 7 (guards) after 72 s with four database guards answering "Invalid
+  API key" against gndnldyfudbytbboxesk. That is the harness shell's production Supabase URL meeting
+  the TEST key from .env.local, the fault recorded on 6 September under C13, and my omission of the
+  clean-env wrapper; not the drill and not the gate. Second attempt through
+  `bash C:/dev/EVIDENCE/C13/clean-env.sh git push origin drill/c16-env-fault`: disk, typecheck (7 s),
+  lint (4 s), copy, critical-path, lighthouse-exemptions, 71 guards (70 s) and types-drift (32 s) all
+  PASS, then production-parity FAIL after 4 s with BOTH halves judged: the schema half behind by the
+  three migrations, and "FAIL environment: 1 production record(s) would refuse a production build:
+  A_RECORD_THE_DRILL_REQUIRES [missing] is REQUIRED on production and the store does not hold it."
+  "[gate] BLOCKED at production-parity (exit 1) after 4s. Nothing was pushed." PUSH_EXIT=1. origin
+  holds no drill branch (git ls-remote empty). That is C16.2.1's environment half proven through the
+  hook on a real push, not a hand run. Evidence: gate-refused-on-push-env-fault.txt (1168 lines).
+- THE DRILL BRANCH DELETED, the C16 branch restored: checkout ci/c16-production-parity at 8161cfe2;
+  `git branch -D drill/c16-env-fault` (was 8f9284c2, never on origin); the tree clean;
+  src/lib/env/manifest.mjs identical to origin/main (0 diff lines).
+- THE HARNESS RUN WITH THE TWO NEW DRILLS, alone on the restored tree through the clean-env wrapper with
+  .env.local: "production store for production-parity to judge: read with the Vercel CLI login";
+  "FAILS AS EXPECTED production parity: a variable REQUIRED on production that the store does not
+  hold"; "FAILS AS EXPECTED production parity: a variable the store holds that the manifest FORBIDS on
+  production"; 94 of 94 drills fired correctly; all guards PASS on the restored tree; exit 0; about
+  two and a half minutes (02:25 to 02:27). Evidence: guard-failure-drills-session7.txt.
+- NO CODE CHANGED. 8161cfe2 touched one verify script the suite does not count, so tsc, eslint, the
+  suite and the canary stand as the 01:45 entry recorded them (311 files / 3588 tests) on the same
+  tree; the push above re-ran typecheck, lint, the copy laws, the critical-path guard, the exemption
+  clock, 71 guards and types-drift green before the parity refusal.
+- DISK. 23 GB free at start, 22 GB at end (the gate's own caches); no .next output produced, because
+  the gate refuses before the build step; the evidence is text files. Nothing to delete.
+- THE HALT STANDS. Five commits wait on ci/c16-production-parity (5ca9d984, eaf7deeb, 2f0545c1,
+  7c9101fe, 8161cfe2) and leave the machine the moment `npm run migrate:production` has run. What
+  follows is unchanged: push the branch, draft pull request, mark ready, "production parity" reports,
+  merge, watch production to Ready and confirm the served release, drive the ten routes, C16.4 and C2
+  close, PR 130 (C8) merges the same way, then C9, C17, C18. A relaunched session re-runs the parity
+  step first and, if production is still behind, stops here again with nothing to add.
