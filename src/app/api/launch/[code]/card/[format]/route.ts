@@ -17,7 +17,7 @@ import {
   isSocialCardFormat,
 } from '@/lib/broadcast/social-card-spec'
 import { cardFilename } from '@/lib/broadcast/social-card-layout'
-import type { CaptionPlatform } from '@/lib/broadcast/captions'
+import { artefactChannelFrom } from '@/lib/broadcast/artefact-channels'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
 
@@ -44,10 +44,9 @@ export const dynamic = 'force-dynamic'
  * back half verbatim: prepareCardCover, prepareLogo, QRCode, renderSocialCard.
  * Only the first two steps differ, exactly as Phase 0 predicted: a code lookup
  * instead of an organiser gate, and buildDraftContext instead of
- * loadArtefactContext.
+ * loadArtefactContext. The channel list is the one in artefact-channels.ts,
+ * read through artefactChannelFrom, never a copy kept here.
  */
-
-const CHANNELS: readonly string[] = ['instagram', 'facebook', 'whatsapp', 'x', 'linkedin', 'email']
 
 export async function GET(
   request: NextRequest,
@@ -80,8 +79,7 @@ export async function GET(
     }
   }
 
-  const requested = request.nextUrl.searchParams.get('channel') ?? ''
-  const channel = (CHANNELS.includes(requested) ? requested : 'instagram') as CaptionPlatform
+  const channel = artefactChannelFrom(request.nextUrl.searchParams.get('channel'))
 
   // See the poster route: read the tracked codes, never mint them here.
   const externalCodes = draft.payload.externalTicketUrl

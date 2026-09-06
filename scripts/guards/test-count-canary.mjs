@@ -803,10 +803,25 @@ const ROOT = join(HERE, '..', '..')
  * tests/unit/ci/seo-audits-indexability (4): a loopback host is asserted as
  * production (crawlable, minus the auth routes the app noindexes), a preview
  * still fails when indexable, an unknown host is still only noted, driven as
- * a child over synthetic reports: 294 files / 3407.
+ * a child over synthetic reports: 294 files / 3407. Close-out C3 (6 September
+ * 2026), three files, 42 tests: tests/unit/broadcast/artefact-channels (the one
+ * channel list and every module that used to carry a copy), tests/unit/guards/
+ * card-raster-traced (the import-graph walk, the config reader, the pin judge
+ * with Next's own matcher, and the postbuild trace judge red and green), and
+ * tests/unit/ops/src-alias-loader (the resolve hook a script loads src/ through):
+ * 297 files / 3449. Then the share-card repair inside the same close-out, one
+ * file and 27 tests: tests/unit/guards/og-single-rasteriser, which pins the ban
+ * on next/og anywhere under src (the library whose sharp path dropped the
+ * connection on every per-event card), the two bugs that guard shipped with
+ * (a specifier matched against string-blanked source, and the views object
+ * handed in where raw text was expected, either of which made it green over two
+ * routes that imported next/og on line 1), and the `inset` shorthand satori
+ * ignores, which is why no scrim on any share card had ever drawn. Plus the
+ * numbered metadata routes and both trace shapes in card-raster-traced:
+ * 298 files / 3476.
  */
-const MIN_FILES = 294
-const MIN_TESTS = 3407
+const MIN_FILES = 298
+const MIN_TESTS = 3476
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

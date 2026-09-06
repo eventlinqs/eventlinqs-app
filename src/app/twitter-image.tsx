@@ -1,5 +1,5 @@
 import { canonicalHost } from '@/lib/site-url'
-import { ImageResponse } from 'next/og'
+import { renderOgResponse, OG_DISPLAY_FAMILY, OG_BODY_FAMILY } from '@/lib/broadcast/og-response'
 
 export const alt = 'EventLinqs: Every community. Every event. One platform.'
 export const size = { width: 1200, height: 630 }
@@ -10,7 +10,7 @@ const GOLD = '#D4A017'
 const GOLD_BRIGHT = '#E8B738'
 
 export default function TwitterImage() {
-  return new ImageResponse(
+  return renderOgResponse(
     (
       <div
         style={{
@@ -23,12 +23,13 @@ export default function TwitterImage() {
           padding: '88px 96px',
           background: NAVY,
           backgroundImage: `radial-gradient(ellipse 70% 55% at 100% 0%, ${GOLD_BRIGHT}33 10%, transparent 55%)`,
-          fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
+          fontFamily: OG_BODY_FAMILY,
         }}
       >
         <div
           style={{
             display: 'flex',
+            fontFamily: OG_DISPLAY_FAMILY,
             color: GOLD,
             fontSize: 22,
             fontWeight: 700,
@@ -44,6 +45,7 @@ export default function TwitterImage() {
             marginTop: 40,
             display: 'flex',
             alignItems: 'baseline',
+            fontFamily: OG_DISPLAY_FAMILY,
             color: 'white',
             fontSize: 160,
             fontWeight: 800,
@@ -88,6 +90,6 @@ export default function TwitterImage() {
         </div>
       </div>
     ),
-    { ...size }
+    { ...size, where: 'app/twitter-image' }
   )
 }

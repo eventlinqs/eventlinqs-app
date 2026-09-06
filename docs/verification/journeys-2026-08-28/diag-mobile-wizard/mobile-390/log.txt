@@ -1,0 +1,4 @@
+wizard at 390, step by step
+===========================
+01. Signed up and confirmed
+      diag.809378@example.com -> /dashboard

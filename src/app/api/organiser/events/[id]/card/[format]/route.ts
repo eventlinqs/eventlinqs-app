@@ -16,7 +16,7 @@ import {
   isSocialCardFormat,
 } from '@/lib/broadcast/social-card-spec'
 import { cardFilename } from '@/lib/broadcast/social-card-layout'
-import type { CaptionPlatform } from '@/lib/broadcast/captions'
+import { artefactChannelFrom } from '@/lib/broadcast/artefact-channels'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 
 export const runtime = 'nodejs'
@@ -33,10 +33,10 @@ export const dynamic = 'force-dynamic'
  * Instagram is attributed to Instagram rather than to a general pool. That
  * attribution is the whole point of the artefact, so it is a query parameter
  * with a sane default rather than something the caller may omit into a shared
- * bucket.
+ * bucket. The channels themselves are the one list in artefact-channels.ts,
+ * never a copy kept here: a copy is how a channel the kit screen offered could
+ * be silently re-pointed to the default link by this route.
  */
-
-const CHANNELS: readonly string[] = ['instagram', 'facebook', 'whatsapp', 'x', 'linkedin', 'email']
 
 export async function GET(
   request: NextRequest,
@@ -52,8 +52,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 })
   }
 
-  const requested = request.nextUrl.searchParams.get('channel') ?? ''
-  const channel = (CHANNELS.includes(requested) ? requested : 'instagram') as CaptionPlatform
+  const channel = artefactChannelFrom(request.nextUrl.searchParams.get('channel'))
 
   // The share tooling being off never breaks the artefact: the card falls back
   // to the plain event URL, which still resolves and still sells a ticket. It

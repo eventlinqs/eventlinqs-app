@@ -1,8 +1,10 @@
-import { ImageResponse } from 'next/og'
+import type { ReactNode } from 'react'
 import type { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { canonicalHost } from '@/lib/site-url'
 import { OG_THEME as T } from '@/lib/broadcast/og-theme'
+import { fetchImageDataUri } from '@/lib/media/fetch-image'
+import { renderOgResponse } from '@/lib/broadcast/og-response'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,6 +24,13 @@ export const dynamic = 'force-dynamic'
  * stale-while-revalidate, so preview crawlers hit the edge, not the
  * database. The visual template reads every token from
  * src/lib/broadcast/og-theme.ts (the Tab 4 swap point).
+ *
+ * RASTERISED THROUGH renderOgResponse, NOT next/og. Until 6 September 2026 this
+ * route built an ImageResponse and, driven on a local production server, dropped
+ * the connection outright: code 000, zero bytes, "failed to pipe response" with
+ * sharp refusing satori's SVG underneath it. The full account is in
+ * src/lib/broadcast/og-response.ts. Nothing here may import next/og again;
+ * scripts/guards/og-single-rasteriser.mjs fails the build if it does.
  */
 
 const CACHE_HEADERS = {
@@ -42,9 +51,17 @@ function formatCardDate(iso: string, timezone: string): string {
   }
 }
 
-function brandFallbackCard() {
-  return new ImageResponse(
-    (
+/**
+ * The branded card that an unknown slug, an unpublished event and a failed
+ * render all degrade to.
+ *
+ * An ELEMENT rather than a finished response, so the very same composition can
+ * be both the answer this route gives and the fallback the renderer draws when
+ * the photographic card cannot be drawn. Two copies of one design is how a
+ * fallback quietly stops matching the thing it stands in for.
+ */
+function brandFallbackElement(): ReactNode {
+  return (
       <div
         style={{
           width: '100%',
@@ -56,12 +73,13 @@ function brandFallbackCard() {
           padding: '88px 96px',
           background: T.navy,
           backgroundImage: `radial-gradient(ellipse 70% 55% at 100% 0%, ${T.goldBright}33 10%, transparent 55%)`,
-          fontFamily: T.fontFamily,
+          fontFamily: T.fontBody,
         }}
       >
         <div
           style={{
             display: 'flex',
+            fontFamily: T.fontDisplay,
             color: T.gold,
             fontSize: 22,
             fontWeight: 700,
@@ -76,6 +94,7 @@ function brandFallbackCard() {
             marginTop: 40,
             display: 'flex',
             alignItems: 'baseline',
+            fontFamily: T.fontDisplay,
             color: T.text,
             fontSize: 140,
             fontWeight: 800,
@@ -98,15 +117,22 @@ function brandFallbackCard() {
           Every community. Every event. One platform.
         </div>
       </div>
-    ),
-    { width: T.width, height: T.height, headers: CACHE_HEADERS },
   )
+}
+
+function brandFallbackCard(): Promise<Response> {
+  return renderOgResponse(brandFallbackElement(), {
+    width: T.width,
+    height: T.height,
+    headers: CACHE_HEADERS,
+    where: 'app/api/og/event/[slug]:brand-fallback',
+  })
 }
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
-): Promise<ImageResponse> {
+): Promise<Response> {
   const { slug } = await params
   if (!/^[a-z0-9-]{1,200}$/i.test(slug)) return brandFallbackCard()
 
@@ -136,7 +162,21 @@ export async function GET(
   const headline = artistName ? `${artistName} live at ${event.title}` : event.title
   const eyebrow = artistName ? 'Live on stage' : 'You are invited'
 
-  return new ImageResponse(
+  /*
+   * EMBED the cover, never hand satori a URL to fetch.
+   *
+   * This route passed event.cover_image_url straight through until 6 September
+   * 2026, which is the fault its sibling at src/app/events/[slug]/opengraph-image
+   * had already recorded and repaired on 28 August: satori fetching the URL
+   * itself means one unreachable object, one error body or one format the
+   * decoder does not know takes the WHOLE render down, and the branded fallback
+   * this file documents sits unused because the failure happens inside the
+   * renderer rather than before it. Sniffed by magic number, so a lying
+   * content-type cannot get through, and null on anything unusable.
+   */
+  const cover = await fetchImageDataUri(event.cover_image_url)
+
+  return renderOgResponse(
     (
       <div
         style={{
@@ -145,19 +185,22 @@ export async function GET(
           display: 'flex',
           flexDirection: 'column',
           background: T.navy,
-          fontFamily: T.fontFamily,
+          fontFamily: T.fontBody,
           position: 'relative',
         }}
       >
-        {event.cover_image_url ? (
+        {cover ? (
           <img
-            src={event.cover_image_url}
+            src={cover}
             alt=""
             width={T.width}
             height={T.height}
             style={{
               position: 'absolute',
-              inset: 0,
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
               width: '100%',
               height: '100%',
               objectFit: 'cover',
@@ -167,7 +210,10 @@ export async function GET(
           <div
             style={{
               position: 'absolute',
-              inset: 0,
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
               display: 'flex',
               background: T.navy,
               backgroundImage: `radial-gradient(ellipse 70% 55% at 100% 0%, ${T.goldBright}33 10%, transparent 55%)`,
@@ -180,7 +226,10 @@ export async function GET(
         <div
           style={{
             position: 'absolute',
-            inset: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
             display: 'flex',
             background: `linear-gradient(to top, ${T.navy}F2 0%, ${T.navy}B3 38%, ${T.navy}26 70%, transparent 100%)`,
           }}
@@ -199,6 +248,7 @@ export async function GET(
           <div
             style={{
               display: 'flex',
+              fontFamily: T.fontDisplay,
               color: T.gold,
               fontSize: 24,
               fontWeight: 700,
@@ -212,6 +262,7 @@ export async function GET(
             style={{
               marginTop: 18,
               display: 'flex',
+              fontFamily: T.fontDisplay,
               color: T.text,
               fontSize: headline.length > 55 ? 52 : 64,
               fontWeight: 800,
@@ -246,6 +297,7 @@ export async function GET(
               style={{
                 display: 'flex',
                 alignItems: 'baseline',
+                fontFamily: T.fontDisplay,
                 color: T.text,
                 fontSize: 34,
                 fontWeight: 800,
@@ -262,6 +314,14 @@ export async function GET(
         </div>
       </div>
     ),
-    { width: T.width, height: T.height, headers: CACHE_HEADERS },
+    {
+      width: T.width,
+      height: T.height,
+      headers: CACHE_HEADERS,
+      where: 'app/api/og/event/[slug]',
+      // A cover satori cannot draw degrades to the branded card this file
+      // already documents, rather than to a dead preview.
+      fallback: brandFallbackElement(),
+    },
   )
 }

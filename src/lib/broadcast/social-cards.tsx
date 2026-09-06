@@ -694,7 +694,7 @@ function StoryCard({ input }: { input: SocialCardInput }) {
           alt=""
           width={spec.width}
           height={spec.height}
-          style={{ position: 'absolute', inset: 0, width: spec.width, height: spec.height }}
+          style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: spec.width, height: spec.height }}
         />
         <img
           src={panel.image}
@@ -750,12 +750,12 @@ function StoryCard({ input }: { input: SocialCardInput }) {
         alt=""
         width={spec.width}
         height={spec.height}
-        style={{ position: 'absolute', inset: 0, width: spec.width, height: spec.height }}
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: spec.width, height: spec.height }}
       />
       <div
         style={{
           position: 'absolute',
-          inset: 0,
+          top: 0, right: 0, bottom: 0, left: 0,
           display: 'flex',
           background:
             'linear-gradient(to top, rgba(10,22,40,0.98) 0%, rgba(10,22,40,0.96) 44%, rgba(10,22,40,0.62) 68%, rgba(10,22,40,0.14) 100%)',
@@ -826,7 +826,7 @@ function BandedCard({ input, format }: { input: SocialCardInput; format: SocialC
         <div
           style={{
             position: 'absolute',
-            inset: 0,
+            top: 0, right: 0, bottom: 0, left: 0,
             display: 'flex',
             background:
               'linear-gradient(to bottom, rgba(10,22,40,0.66) 0%, rgba(10,22,40,0.18) 24%, rgba(10,22,40,0) 46%)',

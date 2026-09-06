@@ -265,6 +265,29 @@ const loadAdditionalAsset: NonNullable<SatoriOptions['loadAdditionalAsset']> = a
  * The render itself.
  * ------------------------------------------------------------------ */
 
+/**
+ * SATORI IGNORES THE `inset` SHORTHAND. Use top, right, bottom and left.
+ *
+ * Measured on 6 September 2026 (close-out C3) with two identical scrims rendered
+ * side by side through this exact path: the one positioned with `inset: 0` left
+ * the pixel under it untouched, the one with the four longhand edges painted it.
+ *
+ * WHAT IT COST, which is why this is written down rather than remembered. Every
+ * share card and every Launch Kit card positions its navy scrim absolutely, and
+ * all ten of them used `inset: 0`. So the scrim collapsed to nothing and NEVER
+ * DREW, on production, on preview and locally, for as long as the cards have
+ * existed. The design law calls that scrim "the platform hero treatment: bottom
+ * up navy scrim for legibility on any photograph"; the cards shipped without it,
+ * with white type laid straight over whatever the organiser uploaded, and the
+ * "Tickets at" line on a bright cover was effectively unreadable. The branded
+ * no-cover fallback lost its gold radial the same way.
+ *
+ * Nothing failed, nothing logged, and the code read exactly as though it worked,
+ * which is the only reason it survived this long.
+ * scripts/guards/og-single-rasteriser.mjs now fails the build on `inset` in any
+ * file that draws through here.
+ */
+
 export interface RasterFont {
   name: string
   data: Buffer | ArrayBuffer
