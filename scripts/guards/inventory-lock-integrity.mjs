@@ -66,8 +66,19 @@ function effectiveDefinition(fnName) {
   // SQL comments are stripped before matching. The refund guard learnt this the
   // hard way: a migration that DESCRIBES a clause in its header will satisfy a
   // naive text search even after the clause itself is deleted.
-  const body = readFileSync(join(MIGRATIONS, file), 'utf8')
+  const stripped = readFileSync(join(MIGRATIONS, file), 'utf8')
     .split(/\r?\n/).map(l => l.replace(/--.*$/, '')).join('\n')
+  // THE FUNCTION'S OWN BODY, not the whole file. Close-out C13 (6 September
+  // 2026) redefined create_reservation and create_seat_reservation in ONE
+  // migration, and the drill that removes create_reservation's row lock went
+  // green: the file still said FOR UPDATE, inside the other function. The body
+  // is sliced from the last definition of the named function to its closing
+  // $$; so a neighbour can never answer for it.
+  const matches = [...stripped.matchAll(new RegExp(re.source, 'gi'))]
+  const start = matches.length > 0 ? matches[matches.length - 1].index : 0
+  const tail = stripped.slice(start)
+  const end = tail.search(/\n\$\$;/)
+  const body = end >= 0 ? tail.slice(0, end) : tail
   return { file, body, count: defining.length }
 }
 

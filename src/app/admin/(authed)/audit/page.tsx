@@ -51,6 +51,14 @@ const KNOWN_ACTIONS = [
   'admin.event.paused',
   'admin.event.resumed',
   'admin.event.cancelled',
+  'admin.event.takedown',
+  'admin.event.archived',
+  'admin.event.restored',
+  // The event lifecycle (close-out C13): organiser and admin archive, restore
+  // and delete all land here, with the actor's role snapshot.
+  'event.archived',
+  'event.restored',
+  'event.deleted',
 ]
 
 const KNOWN_TARGET_TYPES = [

@@ -235,3 +235,31 @@ describe('the matcher still excludes static assets', () => {
     }
   })
 })
+
+describe('decision 5: what a slug with no live event answers (close-out C13)', () => {
+  // The gate reads the events row first, then, and only when that finds
+  // nothing, the tombstone. The shared mock answers in that order.
+  it('answers 410 Gone from the tombstone for a deleted event, without touching the session', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: { slug: 'gone-gig' } })
+    const res = await proxy(request('https://www.eventlinqs.com.au/events/gone-gig'))
+    expect(res.status).toBe(410)
+    expect(res.headers.get('content-type')).toContain('text/html')
+    expect(res.headers.get('x-robots-tag')).toContain('noindex')
+    expect(await res.text()).toContain('This event has been removed')
+    expect(updateSession).not.toHaveBeenCalled()
+  })
+
+  it('marks an unknown or archived slug private to the edge cache, since its answer is per viewer', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: null })
+    const res = await proxy(request('https://www.eventlinqs.com.au/events/archived-gig'))
+    expect(res.status).not.toBe(410)
+    expect(res.headers.get('Vercel-CDN-Cache-Control')).toBe('private, no-store')
+    expect(updateSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves a live event publicly cacheable, as the config intends', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: { id: 'ev-1', is_high_demand: false, status: 'published' } })
+    const res = await proxy(request('https://www.eventlinqs.com.au/events/live-gig'))
+    expect(res.headers.get('Vercel-CDN-Cache-Control')).toBeNull()
+  })
+})

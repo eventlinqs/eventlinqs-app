@@ -20,6 +20,8 @@ import { POLICIES } from '@/lib/rate-limit/policies'
 //     to the caller's own user-id namespace
 //   - re-encode for DELIVERY stays with /_next/image (MEDIA-ARCHITECTURE)
 
+import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
+
 const BUCKET = 'event-images'
 
 export type UploadedImage = {
@@ -289,21 +291,85 @@ export async function cleanupEventMedia(input: {
   createdBy: string
   urls: string[]
 }): Promise<void> {
+  await sweepEventStorage(input)
+}
+
+/** What a storage sweep did, and what it could not do. Zero remaining is the pass. */
+export interface StorageSweepResult {
+  /** Every prefix that was listed and emptied. */
+  prefixes: string[]
+  removed: number
+  /** Objects still under those prefixes after the sweep. Anything but 0 is reported by the caller. */
+  remaining: number
+  errors: string[]
+}
+
+/**
+ * EVERYTHING AN EVENT OWNS IN STORAGE, REMOVED, THEN PROVEN GONE.
+ *
+ * Close-out C13.3 (6 September 2026): a delete that leaves objects behind is a
+ * partial fix. The two per-event prefixes in this bucket are the creator's
+ * uploads under `<creator>/<event>/` and the composed covers under
+ * `generated-covers/<event>/` (src/lib/events/generated-cover.ts). Share
+ * cards, the OG image and the Launch Kit artefacts are rendered on request and
+ * never stored, so there is nothing of theirs here to remove.
+ *
+ * WHY THIS REPLACES A `list(prefix, { limit: 100 })`. The old sweep read one
+ * page of a hundred and removed that. An organiser with a gallery of more than
+ * a hundred objects, or a cover replaced many times, would have kept the rest
+ * for ever with nothing logged. This pages until the listing runs dry, removes
+ * in batches, then LISTS AGAIN and reports what is still there, because the
+ * proof of a sweep is the empty listing and not the remove call returning.
+ */
+export async function sweepEventStorage(input: {
+  eventId: string
+  createdBy: string | null
+  urls?: string[]
+}): Promise<StorageSweepResult> {
   const admin = createAdminClient()
+  const bucket = admin.storage.from(BUCKET)
+  const prefixes = [
+    ...(input.createdBy ? [`${input.createdBy}/${input.eventId}`] : []),
+    `${GENERATED_COVER_PREFIX}/${input.eventId}`,
+  ]
+  const errors: string[] = []
   const paths = new Set<string>()
-  for (const u of input.urls) {
+  for (const u of input.urls ?? []) {
     const p = objectPathFromUrl(u)
     if (p) paths.add(p)
   }
-  // Sweep the creator's event prefix for anything the URL list missed.
-  try {
-    const prefix = `${input.createdBy}/${input.eventId}`
-    const { data: listed } = await admin.storage.from(BUCKET).list(prefix, { limit: 100 })
-    for (const obj of listed ?? []) paths.add(`${prefix}/${obj.name}`)
-  } catch (err) {
-    console.error('[upload] cleanup list failed:', err)
+
+  const PAGE = 1000
+  async function listAll(prefix: string): Promise<string[]> {
+    const names: string[] = []
+    for (let offset = 0; ; offset += PAGE) {
+      const { data, error } = await bucket.list(prefix, { limit: PAGE, offset })
+      if (error) {
+        errors.push(`list ${prefix}: ${error.message}`)
+        break
+      }
+      for (const obj of data ?? []) names.push(`${prefix}/${obj.name}`)
+      if (!data || data.length < PAGE) break
+    }
+    return names
   }
-  if (paths.size === 0) return
-  const { error } = await admin.storage.from(BUCKET).remove([...paths])
-  if (error) console.error('[upload] cleanup remove failed:', error)
+
+  for (const prefix of prefixes) {
+    for (const name of await listAll(prefix)) paths.add(name)
+  }
+
+  let removed = 0
+  const all = [...paths]
+  for (let i = 0; i < all.length; i += 100) {
+    const batch = all.slice(i, i + 100)
+    const { data, error } = await bucket.remove(batch)
+    if (error) errors.push(`remove: ${error.message}`)
+    else removed += data?.length ?? batch.length
+  }
+
+  let remaining = 0
+  for (const prefix of prefixes) remaining += (await listAll(prefix)).length
+
+  if (errors.length > 0) console.error('[upload] storage sweep for event', input.eventId, 'reported:', errors)
+  return { prefixes, removed, remaining, errors }
 }

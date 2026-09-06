@@ -6,7 +6,9 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { getAdminEventDetail, actionsForEventStatus, EVENT_ACTION_LABELS } from '@/lib/admin/events'
 import { getLivePublicFee } from '@/lib/pricing/live-fee'
 import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
-import { eventActionForm, eventFeatureForm } from '../actions'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { deleteRefusalSentence, judgeDeleteEligibility, readMoneyRecordCounts } from '@/lib/events/delete-eligibility'
+import { eventActionForm, eventDeleteForm, eventFeatureForm } from '../actions'
 import { updateOverridePricingAction } from '../../pricing/actions'
 
 export const dynamic = 'force-dynamic'
@@ -27,6 +29,7 @@ const STATUS_BADGE: Record<string, string> = {
   postponed: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
   cancelled: 'border-red-500/30 bg-red-500/10 text-red-200',
   completed: 'border-white/15 bg-white/[0.04] text-white/50',
+  archived: 'border-white/15 bg-white/[0.04] text-white/50',
 }
 
 function money(cents: number, currency: string): string {
@@ -51,6 +54,9 @@ export default async function AdminEventDetailPage({
 
   const fee = await getLivePublicFee({ eventId: id })
   const actions = actionsForEventStatus(event.status)
+  // The database's own count of money records decides whether Delete is
+  // offered here, exactly as it does for the organiser (close-out C13.7).
+  const eligibility = judgeDeleteEligibility(await readMoneyRecordCounts(createAdminClient(), id))
 
   return (
     <div>
@@ -81,8 +87,18 @@ export default async function AdminEventDetailPage({
       </header>
 
       {notice && (
-        <div role={notice === 'error' ? 'alert' : 'status'} className={`mb-6 rounded-md border px-4 py-3 text-sm ${notice === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>
-          {notice === 'error' ? 'Could not apply that change.' : notice === 'featured' ? 'Event featured.' : notice === 'unfeatured' ? 'Event unfeatured.' : 'Done.'}
+        <div role={notice === 'error' || notice === 'title' || notice === 'money' ? 'alert' : 'status'} className={`mb-6 rounded-md border px-4 py-3 text-sm ${notice === 'error' || notice === 'title' || notice === 'money' ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>
+          {notice === 'error'
+            ? 'Could not apply that change.'
+            : notice === 'title'
+              ? 'The title you typed does not match the event, so nothing was deleted.'
+              : notice === 'money'
+                ? 'The database refused the delete: this event has orders, tickets or refunds. Archive it instead.'
+                : notice === 'featured'
+                  ? 'Event featured.'
+                  : notice === 'unfeatured'
+                    ? 'Event unfeatured.'
+                    : 'Done.'}
         </div>
       )}
 
@@ -156,8 +172,47 @@ export default async function AdminEventDetailPage({
             </form>
           </section>
 
+          {/* Delete, under the same database rule as the organiser (C13.7) */}
+          <section className="rounded-lg border border-red-500/20 bg-[#131A2A] p-5" data-testid="admin-delete-panel">
+            <h2 className="mb-1 font-display text-lg font-semibold text-red-200">Delete</h2>
+            {eligibility.deletable ? (
+              <>
+                <p className="mb-3 text-sm text-white/60">
+                  Permanent, with no undo. The event, its tiers, codes, lineup, seats and artwork are removed and its
+                  address answers 410 Gone. Offered only because this event has never had an order, a ticket, a
+                  squad purchase, a discount redemption or a refund; the database checks again as it deletes, and
+                  there is no admin override.
+                </p>
+                <form action={eventDeleteForm} className="space-y-3">
+                  <input type="hidden" name="eventId" value={event.id} />
+                  <label className="block">
+                    <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-white/50">Type the event title to confirm</span>
+                    <input
+                      name="typedTitle"
+                      type="text"
+                      required
+                      autoComplete="off"
+                      placeholder={event.title}
+                      className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+                    />
+                  </label>
+                  <ConfirmSubmitButton
+                    confirmMessage={`Delete "${event.title}" permanently? There is no undo. Recorded in the audit log.`}
+                    className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
+                  >
+                    Delete event permanently
+                  </ConfirmSubmitButton>
+                </form>
+              </>
+            ) : (
+              <p className="text-sm text-white/60" data-testid="admin-delete-refusal">
+                {deleteRefusalSentence(eligibility)} The database refuses the delete for the same reason, for every role.
+              </p>
+            )}
+          </section>
+
           {/* Takedown (post-moderation) */}
-          {event.status !== 'cancelled' && event.status !== 'completed' ? (
+          {event.status !== 'cancelled' && event.status !== 'completed' && event.status !== 'archived' ? (
             <section className="rounded-lg border border-red-500/20 bg-[#131A2A] p-5">
               <h2 className="mb-1 font-display text-lg font-semibold text-red-200">Take down</h2>
               <p className="mb-3 text-sm text-white/60">

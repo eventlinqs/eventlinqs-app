@@ -1,0 +1,24 @@
+-- ============================================================================
+-- ARCHIVED IS A STATUS (close-out C13, 6 September 2026). Part 1 of 2.
+--
+-- This file does ONE thing, and it is alone in its file on purpose: Postgres
+-- allows ALTER TYPE ... ADD VALUE inside a transaction since version 12, but
+-- the new value cannot be USED in the same transaction that adds it. The
+-- Supabase CLI applies each migration file in its own transaction, so the
+-- columns, checks, policies and functions that name 'archived' live in the
+-- next file, 20260906000002_event_lifecycle_archive_delete.sql.
+--
+-- WHY A STATUS AND NOT A FLAG COLUMN. Every public surface, every row-level
+-- security policy on events, ticket_tiers and event_addons, every cron and
+-- every share card route already filters on status = 'published'. A new enum
+-- value is therefore excluded from all of them by construction, and
+-- scripts/guards/one-visibility-source.mjs keeps that rule in one place. A flag
+-- column would have needed twenty files edited, and any one missed would have
+-- gone on showing archived events. docs/EVENT-LIFECYCLE.md is the authority.
+--
+-- DOWN: an enum value cannot be dropped in place. Reversal means creating a
+-- new type without it and retyping the column, after moving every archived row
+-- back to its archived_from_status. Not expected to be needed.
+-- ============================================================================
+
+ALTER TYPE public.event_status ADD VALUE IF NOT EXISTS 'archived';

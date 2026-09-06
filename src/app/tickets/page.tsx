@@ -3,6 +3,7 @@ import { formatEventDate } from '@/lib/dates/event-time'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
 import { ChangeSeatControl } from '@/components/features/tickets/change-seat-control'
 import { formatSeatLabel } from '@/lib/seating/format'
@@ -22,6 +23,7 @@ interface MyTicketRow {
   status: string
   /** So the wallet can reach the order, which is where refunds live. */
   order_id: string
+  event_id: string
   event: {
     title: string
     start_date: string
@@ -31,6 +33,7 @@ interface MyTicketRow {
     venue_city: string | null
     allow_seat_self_service: boolean | null
     organiser_assigns_seats: boolean | null
+    status?: string
   } | null
   order_item: { item_name: string } | null
   /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
@@ -73,11 +76,39 @@ export default async function MyTicketsPage() {
   const { data } = await supabase
     .from('tickets')
     .select(
-      'id, ticket_code, secret, status, created_at, order_id, event:events(title, start_date, timezone, venue_name, venue_city, allow_seat_self_service, organiser_assigns_seats), order_item:order_items(item_name), seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))',
+      'id, ticket_code, secret, status, created_at, order_id, event_id, event:events(title, start_date, timezone, venue_name, venue_city, allow_seat_self_service, organiser_assigns_seats, status), order_item:order_items(item_name), seat:seats!tickets_seat_id_fkey(row_label, seat_number, note, section:seat_map_sections(name))',
     )
     .order('created_at', { ascending: false })
 
   const tickets = (data ?? []) as unknown as MyTicketRow[]
+
+  /*
+   * A TICKET TO AN ARCHIVED EVENT STILL SHOWS ITS EVENT (close-out C13.5).
+   *
+   * The embed above runs under the holder's session, and the events SELECT
+   * policy admits published events and the organiser's own. An archived event
+   * is neither, so its join comes back null and the wallet would print
+   * "Event" with no date. The holder's ticket is real and untouched, so the
+   * missing rows are read with the service role, for exactly the event ids on
+   * the holder's own tickets and nothing wider.
+   */
+  const missingEventIds = [...new Set(tickets.filter((t) => !t.event && t.event_id).map((t) => t.event_id))]
+  if (missingEventIds.length > 0) {
+    const { data: archivedEvents, error } = await createAdminClient()
+      .from('events')
+      .select('id, title, start_date, timezone, venue_name, venue_city, allow_seat_self_service, organiser_assigns_seats, status')
+      .in('id', missingEventIds)
+    if (error) {
+      console.error('[tickets] could not read the events behind', missingEventIds.length, 'tickets:', error)
+    }
+    const byId = new Map((archivedEvents ?? []).map((e) => [e.id, e]))
+    for (const t of tickets) {
+      if (!t.event) {
+        const e = byId.get(t.event_id)
+        if (e) t.event = e
+      }
+    }
+  }
 
   return (
     <main className="mx-auto min-h-screen max-w-2xl bg-canvas px-4 py-10">
@@ -134,6 +165,11 @@ export default async function MyTicketsPage() {
                       {t.event?.start_date && (
                         <p className="mt-0.5 text-sm text-ink-700">
                           {formatEventDate(t.event.start_date, t.event.timezone)}
+                        </p>
+                      )}
+                      {t.event?.status === 'archived' && (
+                        <p className="mt-0.5 text-xs font-medium text-ink-600">
+                          The organiser has archived this event. Your ticket is still valid.
                         </p>
                       )}
                       {(t.event?.venue_name || t.event?.venue_city) && (

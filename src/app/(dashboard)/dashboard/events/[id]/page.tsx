@@ -24,6 +24,13 @@ import { getRequestOrigin } from '@/lib/site-origin'
 
 import { getSiteUrl } from '@/lib/site-url'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
+import { EventLifecycleActions } from '@/components/features/dashboard/event-lifecycle-actions'
+import {
+  deleteRefusalSentence,
+  judgeDeleteEligibility,
+  readMoneyRecordCounts,
+  type DeleteEligibility,
+} from '@/lib/events/delete-eligibility'
 type Props = {
   params: Promise<{ id: string }>
 }
@@ -36,6 +43,7 @@ const STATUS_COPY: Record<EventStatus, { label: string; className: string }> = {
   postponed:  { label: 'Postponed',  className: 'bg-orange-100 text-orange-700' },
   cancelled:  { label: 'Cancelled',  className: 'bg-rose-100 text-rose-700' },
   completed:  { label: 'Completed',  className: 'bg-purple-100 text-purple-700' },
+  archived:   { label: 'Archived',   className: 'bg-ink-200 text-ink-700' },
 }
 
 function formatMoney(cents: number, currency: string) {
@@ -153,6 +161,20 @@ export default async function EventViewPage({ params }: Props) {
   ])
   const followerCount = followerCountRes.count ?? 0
   const shareSignups = shareSignupsRes.count ?? 0
+
+  /*
+   * MAY THIS EVENT BE DELETED. The database's own count of money records
+   * (docs/EVENT-LIFECYCLE.md), read under the organiser's session so the
+   * function's per-event authorisation applies. If it cannot be read, Delete
+   * is not offered and the reason is logged: an unknown never reads as
+   * "nothing sold".
+   */
+  let eligibility: DeleteEligibility | null = null
+  try {
+    eligibility = judgeDeleteEligibility(await readMoneyRecordCounts(supabase, id))
+  } catch (err) {
+    console.error('[dashboard/events/[id]] could not read money record counts; Delete is not offered:', err)
+  }
   const eventDateLabel = new Date(event.start_date).toLocaleDateString('en-AU', {
     weekday: 'short',
     day: 'numeric',
@@ -169,6 +191,14 @@ export default async function EventViewPage({ params }: Props) {
         <span aria-hidden="true">/</span>
         <span className="truncate text-ink-900">{event.title}</span>
       </div>
+
+      {event.status === 'archived' && (
+        <div role="status" className="mb-4 rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm text-ink-900">
+          <span className="font-semibold">This event is archived.</span> It is off every public page, search and the
+          sitemap, and tickets are not on sale. Anyone who already holds a ticket keeps it. Restore it below to
+          bring it back exactly as it was.
+        </div>
+      )}
 
       {/* ─── Hero strip ─────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden rounded-2xl border border-ink-100 bg-white">
@@ -462,6 +492,37 @@ export default async function EventViewPage({ params }: Props) {
               >
                 Edit event
               </Link>
+            </div>
+          </div>
+
+          {/* Archive, restore, delete: the same controls as the events list, so
+              no status is a dead end here either (docs/EVENT-LIFECYCLE.md). */}
+          <div className="rounded-xl border border-ink-100 bg-white p-5" data-testid="lifecycle-panel">
+            <h3 className="text-sm font-semibold text-ink-900">
+              {event.status === 'archived' ? 'Restore or delete' : 'Archive or delete'}
+            </h3>
+            <p className="mt-1 text-xs text-ink-600">
+              {event.status === 'archived'
+                ? `Restore returns this event to being ${event.archived_from_status ?? 'what it was'}.`
+                : 'Archiving takes the event off every public page and stops sales, keeps every record, and can be undone. Deleting is permanent.'}
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <EventLifecycleActions
+                variant="panel"
+                afterDelete="list"
+                event={{
+                  id: event.id,
+                  title: event.title,
+                  status: event.status,
+                  archived_from_status: event.archived_from_status ?? null,
+                }}
+                eligibility={eligibility ? { deletable: eligibility.deletable, reasons: eligibility.reasons } : null}
+              />
+              {eligibility && !eligibility.deletable && (
+                <p className="text-xs text-ink-600" data-testid="delete-refusal">
+                  {deleteRefusalSentence(eligibility)}
+                </p>
+              )}
             </div>
           </div>
         </aside>

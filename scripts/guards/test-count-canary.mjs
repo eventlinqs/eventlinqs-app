@@ -818,10 +818,27 @@ const ROOT = join(HERE, '..', '..')
  * routes that imported next/og on line 1), and the `inset` shorthand satori
  * ignores, which is why no scrim on any share card had ever drawn. Plus the
  * numbered metadata routes and both trace shapes in card-raster-traced:
- * 298 files / 3476.
+ * 298 files / 3476. Close-out C13 (6 September 2026), six files and 51 tests:
+ * tests/unit/events/event-lifecycle (the table is total, cancelled and completed
+ * archive, archived leaves only by restore and restore is exact),
+ * tests/unit/events/delete-eligibility (the ONE SQL count read into the
+ * interface, a missing key never reads as zero, the trigger's refusal is
+ * recognised), tests/unit/events/gone-page (the 410 body and the typed
+ * confirmation), tests/unit/admin/event-actions-lifecycle (the console has no
+ * dead end either), tests/unit/guards/event-lifecycle-installed (the database
+ * guard's decision table and the flags it requires against the migration's own
+ * keys) and tests/unit/guards/event-lifecycle-total (the static guard's
+ * judgement, the door predicate reader, and the live tree through the loader).
+ * Measured with the harness shell's production Vercel variables removed, which
+ * is the only way the two host-resolver files pass on this machine:
+ * 304 files / 3527. Plus three in tests/unit/security/proxy-decisions for the
+ * fifth decision the proxy makes since C13: a deleted event's tombstone answers
+ * 410 without touching the session, a slug with no live row is marked private
+ * to the edge cache because its answer is per viewer, and a live event stays
+ * publicly cacheable: 304 files / 3530.
  */
-const MIN_FILES = 298
-const MIN_TESTS = 3476
+const MIN_FILES = 304
+const MIN_TESTS = 3530
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

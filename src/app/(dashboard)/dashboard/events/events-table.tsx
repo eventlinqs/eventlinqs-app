@@ -3,9 +3,13 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { publishEvent, pauseEvent, cancelEvent, duplicateEvent, deleteEvent } from './actions'
+import { publishEvent, pauseEvent, cancelEvent, duplicateEvent } from './actions'
 import type { Event, EventStatus } from '@/types/database'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import {
+  EventLifecycleActions,
+  type LifecycleEligibility,
+} from '@/components/features/dashboard/event-lifecycle-actions'
 
 type EventRow = Event & {
   ticket_tiers: { sold_count: number; total_capacity: number }[]
@@ -20,6 +24,7 @@ const STATUS_BADGE: Record<EventStatus, string> = {
   postponed: 'bg-orange-100 text-orange-700',
   cancelled: 'bg-red-100 text-red-700',
   completed: 'bg-purple-100 text-purple-700',
+  archived: 'bg-ink-200 text-ink-700',
 }
 
 function formatDate(iso: string) {
@@ -29,7 +34,22 @@ function formatDate(iso: string) {
     year: 'numeric', timeZone: PLATFORM_TIME_ZONE })
 }
 
-function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) {
+/**
+ * THE ROW'S ACTIONS. Every status has a way out (docs/EVENT-LIFECYCLE.md):
+ * the sale controls here (publish, pause, cancel) plus archive, restore and
+ * delete from EventLifecycleActions, which is the same component the event
+ * overview renders. Before 6 September 2026 a cancelled event kept Edit, View
+ * and Duplicate and nothing else, for ever.
+ */
+function RowActions({
+  event,
+  eligibility,
+  onDone,
+}: {
+  event: EventRow
+  eligibility: LifecycleEligibility | null
+  onDone: () => void
+}) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -41,29 +61,35 @@ function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) 
     })
   }
 
+  const archived = event.status === 'archived'
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       {error && <span className="text-xs text-red-600">{error}</span>}
 
       <Link
         href={`/dashboard/events/${event.id}/edit`}
-        className="text-xs text-gold-500 hover:text-gold-600"
+        className="text-xs text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
       >
         Edit
       </Link>
 
-      <Link
-        href={`/events/${event.slug}`}
-        target="_blank"
-        className="text-xs text-ink-400 hover:text-ink-600"
-      >
-        View
-      </Link>
+      {/* An archived event's public address answers 404 to everyone but a
+          ticket holder, so there is nothing to view until it is restored. */}
+      {!archived && (
+        <Link
+          href={`/events/${event.slug}`}
+          target="_blank"
+          className="text-xs text-ink-600 hover:text-ink-900"
+        >
+          View
+        </Link>
+      )}
 
       {event.status === 'published' && (
         <Link
           href={`/dashboard/events/${event.id}/launch-kit`}
-          className="text-xs font-semibold text-gold-500 hover:text-gold-600"
+          className="text-xs font-semibold text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
         >
           Launch Kit
         </Link>
@@ -72,7 +98,7 @@ function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) 
       <button
         disabled={isPending}
         onClick={() => run(() => duplicateEvent(event.id))}
-        className="text-xs text-ink-400 hover:text-ink-600 disabled:opacity-40"
+        className="text-xs text-ink-600 hover:text-ink-900 disabled:opacity-40"
       >
         Duplicate
       </button>
@@ -81,7 +107,7 @@ function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) 
         <button
           disabled={isPending}
           onClick={() => run(() => publishEvent(event.id))}
-          className="text-xs text-green-600 hover:text-green-800 disabled:opacity-40"
+          className="text-xs text-green-800 hover:text-green-900 disabled:opacity-40"
         >
           Publish
         </button>
@@ -91,7 +117,7 @@ function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) 
         <button
           disabled={isPending}
           onClick={() => run(() => pauseEvent(event.id))}
-          className="text-xs text-amber-600 hover:text-amber-800 disabled:opacity-40"
+          className="text-xs text-amber-800 hover:text-amber-900 disabled:opacity-40"
         >
           Pause
         </button>
@@ -105,33 +131,52 @@ function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) 
               run(() => cancelEvent(event.id))
             }
           }}
-          className="text-xs text-red-600 hover:text-red-800 disabled:opacity-40"
+          className="text-xs text-red-700 hover:text-red-900 disabled:opacity-40"
         >
           Cancel
         </button>
       )}
 
-      {event.status === 'draft' && (
-        <button
-          disabled={isPending}
-          onClick={() => {
-            if (confirm('Delete this draft? This cannot be undone.')) {
-              run(() => deleteEvent(event.id))
-            }
-          }}
-          className="text-xs text-red-600 hover:text-red-800 disabled:opacity-40"
-        >
-          Delete
-        </button>
-      )}
+      <EventLifecycleActions
+        variant="row"
+        event={{
+          id: event.id,
+          title: event.title,
+          status: event.status,
+          archived_from_status: event.archived_from_status ?? null,
+        }}
+        eligibility={eligibility}
+      />
     </div>
   )
 }
 
-export function EventsTable({ events, seatSoldCountMap = {} }: { events: EventRow[]; seatSoldCountMap?: Record<string, number> }) {
+export function EventsTable({
+  events,
+  seatSoldCountMap = {},
+  eligibilityById = {},
+  emptyTab = 'all',
+}: {
+  events: EventRow[]
+  seatSoldCountMap?: Record<string, number>
+  /** Per event: may it be deleted, and if not, why. Absent means not offered. */
+  eligibilityById?: Record<string, LifecycleEligibility>
+  emptyTab?: string
+}) {
   const router = useRouter()
 
   if (events.length === 0) {
+    if (emptyTab === 'archived') {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-14 text-center">
+          <h2 className="font-display text-lg font-semibold text-ink-900">Nothing archived</h2>
+          <p className="mt-1 max-w-md text-sm text-ink-600">
+            Archiving takes an event off every public page and stops sales without deleting a single
+            record. Archived events appear here and can be restored at any time.
+          </p>
+        </div>
+      )
+    }
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-14 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-600">
@@ -158,11 +203,11 @@ export function EventsTable({ events, seatSoldCountMap = {} }: { events: EventRo
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-ink-100 bg-ink-100 text-left">
-            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Event</th>
-            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Date</th>
-            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Status</th>
-            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Sold</th>
-            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Actions</th>
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-600">Event</th>
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-600">Date</th>
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-600">Status</th>
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-600">Sold</th>
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-600">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-ink-100">
@@ -196,7 +241,11 @@ export function EventsTable({ events, seatSoldCountMap = {} }: { events: EventRo
                   {totalCapacity > 0 ? `${soldCount} / ${totalCapacity}` : ':'}
                 </td>
                 <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                  <RowActions event={event} onDone={() => router.refresh()} />
+                  <RowActions
+                    event={event}
+                    eligibility={eligibilityById[event.id] ?? null}
+                    onDone={() => router.refresh()}
+                  />
                 </td>
               </tr>
             )

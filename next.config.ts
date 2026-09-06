@@ -182,6 +182,17 @@ const nextConfig: NextConfig = {
     // second entry point into the same module. The probe draws with the brand
     // fonts too (a probe with no font could never go green, see checks.ts), so
     // the fonts are pinned beside the binary.
+    // The admin events console and its event page reach the rasteriser since
+    // close-out C13 (6 September 2026): the shared delete core imports the
+    // storage sweep from src/lib/upload.ts, which hosts the cover composer's
+    // server action, and that module reaches card-raster.ts. Next matches
+    // these keys with picomatch and contains: true, so '/admin/events' covers
+    // /admin/events and /admin/events/[id] alike. card-raster-traced fails the
+    // build without this pin.
+    '/admin/events': [
+      './src/assets/fonts/*.ttf',
+      './node_modules/@resvg/resvg-wasm/index_bg.wasm',
+    ],
     '/admin/health': [
       './src/assets/fonts/*.ttf',
       './node_modules/@resvg/resvg-wasm/index_bg.wasm',

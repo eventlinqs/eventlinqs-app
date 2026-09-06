@@ -13,16 +13,19 @@ import {
 } from '@/lib/organisations/scope'
 import type { Event } from '@/types/database'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { ARCHIVED_STATUS } from '@/lib/event-lifecycle'
+import { judgeDeleteEligibility, readMoneyRecordCountsMany } from '@/lib/events/delete-eligibility'
+import type { LifecycleEligibility } from '@/components/features/dashboard/event-lifecycle-actions'
 
-type FilterTab = 'all' | 'draft' | 'published' | 'past' | 'cancelled'
+type FilterTab = 'all' | 'draft' | 'published' | 'past' | 'cancelled' | 'archived'
 
 type Props = {
-  searchParams: Promise<{ tab?: string; saved?: string; org?: string }>
+  searchParams: Promise<{ tab?: string; saved?: string; deleted?: string; org?: string }>
 }
 
 export default async function MyEventsPage({ searchParams }: Props) {
   const params = await searchParams
-  const { tab, saved } = params
+  const { tab, saved, deleted } = params
   const activeTab = (tab as FilterTab) ?? 'all'
 
   const supabase = await createClient()
@@ -62,21 +65,31 @@ export default async function MyEventsPage({ searchParams }: Props) {
   let query = supabase
     .from('events')
     .select(
-      'id, slug, title, status, start_date, venue_city, has_reserved_seating, ticket_tiers(sold_count, total_capacity)',
+      'id, slug, title, status, archived_from_status, start_date, venue_city, has_reserved_seating, ticket_tiers(sold_count, total_capacity)',
     )
     .eq('organisation_id', org.id)
     .order('created_at', { ascending: false })
 
   const now = new Date().toISOString()
 
-  if (activeTab === 'draft') {
-    query = query.eq('status', 'draft')
-  } else if (activeTab === 'published') {
-    query = query.eq('status', 'published').or(listingWindowOrPredicate(new Date(now)))
-  } else if (activeTab === 'past') {
-    query = query.lt('start_date', now).in('status', ['published', 'completed'])
-  } else if (activeTab === 'cancelled') {
-    query = query.eq('status', 'cancelled')
+  /*
+   * ARCHIVED EVENTS LEAVE THE DEFAULT LIST (close-out C13.4). Every tab but the
+   * Archived one excludes them, so an organiser's working list is what they are
+   * working on, and the Archived tab is where a restore starts.
+   */
+  if (activeTab === 'archived') {
+    query = query.eq('status', ARCHIVED_STATUS)
+  } else {
+    query = query.neq('status', ARCHIVED_STATUS)
+    if (activeTab === 'draft') {
+      query = query.eq('status', 'draft')
+    } else if (activeTab === 'published') {
+      query = query.eq('status', 'published').or(listingWindowOrPredicate(new Date(now)))
+    } else if (activeTab === 'past') {
+      query = query.lt('start_date', now).in('status', ['published', 'completed'])
+    } else if (activeTab === 'cancelled') {
+      query = query.eq('status', 'cancelled')
+    }
   }
 
   const { data: events } = await query as { data: (Event & { ticket_tiers: { sold_count: number; total_capacity: number }[] })[] | null }
@@ -100,12 +113,34 @@ export default async function MyEventsPage({ searchParams }: Props) {
     }
   }
 
+  /*
+   * MAY EACH EVENT BE DELETED. One round trip through the database's own count
+   * of money records (event_money_record_counts_many), under the organiser's
+   * session so the function's per-event authorisation applies. If the count
+   * cannot be read, NO event offers Delete: an unknown must never read as
+   * "nothing sold". The failure is logged, never swallowed.
+   */
+  const eligibilityById: Record<string, LifecycleEligibility> = {}
+  const ids = (events ?? []).map((e) => e.id)
+  if (ids.length > 0) {
+    try {
+      const counts = await readMoneyRecordCountsMany(supabase, ids)
+      for (const [id, c] of counts) {
+        const judged = judgeDeleteEligibility(c)
+        eligibilityById[id] = { deletable: judged.deletable, reasons: judged.reasons }
+      }
+    } catch (err) {
+      console.error('[dashboard/events] could not read money record counts; Delete is not offered:', err)
+    }
+  }
+
   const tabs: { key: FilterTab; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'draft', label: 'Draft' },
     { key: 'published', label: 'Published' },
     { key: 'past', label: 'Past' },
     { key: 'cancelled', label: 'Cancelled' },
+    { key: 'archived', label: 'Archived' },
   ]
 
   return (
@@ -113,6 +148,11 @@ export default async function MyEventsPage({ searchParams }: Props) {
       {saved === '1' && (
         <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
           Event saved successfully.
+        </div>
+      )}
+      {deleted === '1' && (
+        <div role="status" className="mb-6 rounded-lg border border-ink-200 bg-white px-4 py-3 text-sm text-ink-900">
+          The event was deleted. Nothing of it remains.
         </div>
       )}
       <div className="mb-6 flex items-center justify-between">
@@ -135,15 +175,17 @@ export default async function MyEventsPage({ searchParams }: Props) {
 
       {/* Filter tabs. They carry the business, so a tab click cannot silently move
           an owner of several onto a different one. */}
-      <div className="mb-6 flex gap-1 border-b border-ink-200">
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-ink-200">
         {tabs.map(t => (
           <Link
             key={t.key}
             href={withOrganisation(`/dashboard/events?tab=${t.key}`, org.id, organisationCount)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`whitespace-nowrap px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeTab === t.key
-                ? 'border-gold-500 text-gold-500'
-                : 'border-transparent text-ink-400 hover:text-ink-600'
+                // Gold TEXT on a light surface is the strong tier (gold-800), never
+                // gold-500: axe measured the old class at a serious contrast failure.
+                ? 'border-gold-500 text-[var(--brand-accent-strong)]'
+                : 'border-transparent text-ink-600 hover:text-ink-900'
             }`}
           >
             {t.label}
@@ -151,7 +193,12 @@ export default async function MyEventsPage({ searchParams }: Props) {
         ))}
       </div>
 
-      <EventsTable events={events ?? []} seatSoldCountMap={seatSoldCountMap} />
+      <EventsTable
+        events={events ?? []}
+        seatSoldCountMap={seatSoldCountMap}
+        eligibilityById={eligibilityById}
+        emptyTab={activeTab}
+      />
     </div>
   )
 }

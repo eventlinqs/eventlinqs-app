@@ -56,4 +56,16 @@ export const SCHEMA_THE_CODE_NAMES = [
     migration: '20260905000001_offline_door_validation.sql',
     readBy: 'src/lib/reporting/door-review.ts (the organiser review list), and the scanner calls door_validation_set and sync_offline_scans from the same migration',
   },
+  {
+    table: 'events',
+    column: 'archived_at',
+    migration: '20260906000002_event_lifecycle_archive_delete.sql',
+    readBy: 'the organiser events list and actions (archive, restore), the admin events console, the public event page (archived branch); the enum value comes from 20260906000001_event_status_archived.sql',
+  },
+  {
+    table: 'event_tombstones',
+    column: 'slug',
+    migration: '20260906000002_event_lifecycle_archive_delete.sql',
+    readBy: 'src/proxy.ts (a deleted event answers 410 Gone from its tombstone), and the delete action calls event_money_record_counts from the same migration',
+  },
 ]

@@ -73,6 +73,7 @@ import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { KnowBeforeYouGo } from '@/components/features/events/know-before-you-go'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
+import { fetchArchivedEventForHolder } from '@/lib/events/archived-view'
 import { SaveEventButton } from '@/components/features/events/save-event-button'
 import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
@@ -139,18 +140,30 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
     // revoked from anon by column privilege (migration 20260808000010), so a
     // (*) embed would fail the whole query with "permission denied for column
     // email" and blank the event page. See docs/security/AUDIT-2026-08-08.md.
-    .select(
-      '*, ticket_tiers(*), organisation:organisations(id, name, slug, description, logo_url, website), category:event_categories(*), event_addons(*)',
-    )
+    .select(EVENT_PAGE_SELECT)
     .eq('slug', slug)
-    .single() as { data: FullEvent | null; error: unknown }
+    .maybeSingle() as { data: FullEvent | null; error: unknown }
 
   if (error) {
     console.error('[event-detail] fetchEvent failed:', error)
     return null
   }
-  return data
+  if (data) return data
+
+  /*
+   * NOTHING PUBLIC AT THIS SLUG. Row-level security keeps drafts and ARCHIVED
+   * events out of the anonymous read, which is right for a stranger. For an
+   * archived event, and only then, a viewer who holds a ticket may still see
+   * the page (docs/EVENT-LIFECYCLE.md, close-out C13.5 and C13.6), so the
+   * second look is taken here with the service role. It returns null for
+   * everyone else, and the caller's notFound() stands.
+   */
+  return fetchArchivedEventForHolder<FullEvent>(slug, EVENT_PAGE_SELECT)
 }
+
+/** The one column list the public read and the holder's archived read share. */
+const EVENT_PAGE_SELECT =
+  '*, ticket_tiers(*), organisation:organisations(id, name, slug, description, logo_url, website), category:event_categories(*), event_addons(*)'
 
 /**
  * CAN THIS EVENT'S ORGANISER ACTUALLY TAKE MONEY? Asked with a privileged client,
@@ -256,7 +269,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // organiser shares that URL by design. A sixteenth birthday at a home
   // address must never enter a search index. Anything not exactly 'public'
   // gets index:false, follow:false and noimageindex.
-  const robots = eventRobotsDirective(event.visibility)
+  //
+  // An ARCHIVED event renders only for a ticket holder and is off every public
+  // surface, so it is never indexable either, whatever its visibility says.
+  const robots = event.status === 'archived' ? eventRobotsDirective('unlisted') : eventRobotsDirective(event.visibility)
 
   return {
     title,
@@ -412,6 +428,8 @@ export default async function EventDetailPage({ params }: Props) {
     event.status === 'cancelled' ? 'cancelled' as const :
     event.status === 'postponed' ? 'postponed' as const :
     event.status === 'completed' ? 'past' as const :
+    // Only a ticket holder ever reaches an archived event's page (fetchEvent).
+    event.status === 'archived' ? 'archived' as const :
     null
 
   if (event.visibility === 'private') {
@@ -441,7 +459,8 @@ export default async function EventDetailPage({ params }: Props) {
   }
 
   const now = new Date()
-  const isTicketingSuspended = event.status === 'paused' || event.status === 'postponed'
+  const isTicketingSuspended =
+    event.status === 'paused' || event.status === 'postponed' || event.status === 'archived'
   // Embedded joins return in arbitrary order; the organiser's tier order
   // (sort_order, then creation) is the display order everywhere.
   const allTiers = [...event.ticket_tiers].sort(
@@ -751,13 +770,16 @@ export default async function EventDetailPage({ params }: Props) {
     eventBannerState === 'past' ? 'past' as const :
     isSoldOut ? 'sold-out' as const :
     'upcoming' as const
+  // An archived page is noindex and shown to a ticket holder only; it carries
+  // no structured data because there is nothing for a search engine to list.
+  const emitSchema = Boolean(event.organisation) && eventBannerState !== 'archived'
 
   return (
     <div className="min-h-screen bg-canvas">
       {/* Organiser-dependent structured data only renders when the organiser
           record loaded. A sellable organiser excluded from the public query
           (e.g. not yet active) must never crash the page. */}
-      {event.organisation && (
+      {emitSchema && event.organisation && (
         <EventSchemaJsonLd
           event={event}
           organisation={event.organisation}
@@ -882,7 +904,7 @@ export default async function EventDetailPage({ params }: Props) {
               )}
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                {eventBannerState === 'cancelled' || eventBannerState === 'past' ? (
+                {eventBannerState === 'cancelled' || eventBannerState === 'past' || eventBannerState === 'archived' ? (
                   <Link
                     href="/events"
                     className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600"

@@ -1,8 +1,8 @@
 import { REFUND_ARRIVAL_WINDOW } from '@/lib/refunds/arrival-timeframe'
 import Link from 'next/link'
-import { AlertTriangle, XCircle, CalendarClock, Clock } from 'lucide-react'
+import { AlertTriangle, XCircle, CalendarClock, Clock, Archive } from 'lucide-react'
 
-type EventBannerState = 'cancelled' | 'postponed' | 'past'
+export type EventBannerState = 'cancelled' | 'postponed' | 'past' | 'archived'
 
 interface Props {
   state: EventBannerState
@@ -72,6 +72,28 @@ export function EventStateBanner({ state, newDate, originalDate, organiserHandle
               {originalDate ? (
                 <>{' '}Original date: <span className="line-through">{originalDate}</span>.</>
               ) : null}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Archived (close-out C13.5). Only a ticket holder ever sees this page: the
+  // organiser has taken the event off every public surface, and the holder's
+  // ticket is untouched. Same quiet tone as "ended", because nothing is wrong.
+  if (state === 'archived') {
+    return (
+      <div role="status" className="bg-[var(--surface-1)] border-b border-[var(--surface-2)]">
+        <div className="mx-auto flex max-w-7xl items-start gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <Archive className="mt-0.5 h-5 w-5 shrink-0 text-[var(--text-secondary)]" aria-hidden />
+          <div className="flex-1 text-sm">
+            <p className="font-semibold text-[var(--text-primary)]">The organiser has archived this event.</p>
+            <p className="mt-0.5 text-[var(--text-secondary)]">
+              It is no longer listed and tickets are not on sale. Your ticket is still valid and is in{' '}
+              <Link href="/tickets" className="font-medium text-[var(--brand-accent-strong)] underline hover:no-underline">
+                your tickets
+              </Link>.
             </p>
           </div>
         </div>
