@@ -3486,3 +3486,29 @@ changed, and nothing was deleted.
   read-only remains to drive under the halt. The ledger's section widened to cover session 33 and
   gained the fresh-PATH row; the "Last re-verified" line in REVIEW-QUEUE.md updated. The sentinel
   was not written.
+
+## 2026-09-07 05:14 to 05:16 (C16, continued, session 34) the halt re-verified on relaunch; nothing has moved; nothing started
+
+- Governing laws: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder applies), the
+  C16.0 halt rule, Definition of Done clause 6. No code changed, nothing merged, nothing started,
+  nothing written to production; the CLI rests on TEST (project-ref read back before and after the
+  parity step: vkapkibzokmfaxqogypq). No MERGE_HEAD, tree clean at 100be967, six commits ahead of
+  origin/main and zero behind after a fetch. Disk 23 GB free at start and end; no build output; one
+  node_modules (this worktree's) and no .next under C:\dev or C:\elrel; the one fetched homepage file
+  deleted after its release was read.
+- Re-verified read only, through the clean-env wrapper, and every reading is identical to session 33:
+  parity FAIL on the schema half (116 in the tree, 113 applied, the same 3 pending: 20260905000003,
+  20260906000001, 20260906000002), environment half 0 faults across 34 records and 43 manifest
+  entries, exit 1, "BLOCKED at production-parity after 4s. Nothing was pushed."; Vercel production by
+  sha 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY (still the newest READY,
+  dpl_9SkwNKZ7tYnfw3EgZs1oKx8jf7uu); the live site serves sentry-release b4255a96 (HTTP 200, 396472
+  bytes), the apex 301 to www; CI on main still red at 2d558d2a (run 34031455414), no new run since
+  11:52Z on 6 September (the only later run on main is the scheduled env-locks workflow, green at
+  15:30Z); origin/main unchanged after a fetch; PR 130 still BLOCKED by protection, not a draft,
+  MERGEABLE, head 2ed39584 on perf/c8-mobile-95. The founder has not run `npm run migrate:production`.
+  Evidence: C:\dev\EVIDENCE\C16\production-parity-recheck-session34.txt,
+  deployments-recheck-session34.txt.
+- THE HALT STANDS. The six C16 commits wait on ci/c16-production-parity and leave the machine the
+  moment the founder's command has run; the sequence after it is unchanged (02:39 entry). Nothing
+  read-only remains to drive under the halt. The ledger's section widened to cover session 34; the
+  "Last re-verified" line in REVIEW-QUEUE.md updated. The sentinel was not written.
