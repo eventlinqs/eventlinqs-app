@@ -2600,3 +2600,45 @@ changed, and nothing was deleted.
   merge, watch production to Ready and confirm the served release, drive the ten routes, C16.4 and C2
   close, PR 130 (C8) merges the same way, then C9, C17, C18. A relaunched session re-runs the parity
   step first and, if production is still behind, stops here again with nothing to add.
+
+## 2026-09-07 02:36 (C16, continued) the halt re-verified one minute after the last session; nothing has moved and nothing is left to add
+
+- Governing laws, stated first: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder
+  applies), the C16.0 halt rule, Definition of Done clause 6. No code changed. Nothing merged, nothing
+  started, nothing written to production; the CLI rests on TEST (supabase/.temp/project-ref read back:
+  vkapkibzokmfaxqogypq). Disk 23 GB free at start.
+- THE HALT RE-VERIFIED (C16.0), 02:31 to 02:34, read only. The parity step on the clean C16 tree at
+  8161cfe2: 116 migrations in the tree, 113 applied on gndnldyfudbytbboxesk, the same 3 pending
+  (20260905000003, 20260906000001, 20260906000002); the environment half read the production store
+  through the Vercel CLI login: 34 records, 43 manifest entries, 0 faults; FAIL on the schema half,
+  exit 1. Vercel's newest production deployments: 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY.
+  The live site serves sentry-release b4255a96 (HTTP 200, 392263 bytes). CI on main: still red at
+  2d558d2a (run 34031455414), no new run. origin/main unchanged after a fetch. The founder has not
+  run `npm run migrate:production`. Evidence: production-parity-recheck-session8.txt,
+  deployments-recheck-session8.txt.
+- WHAT WAS CHECKED SO THE FIRST PUSH AND MERGE AFTER THE FOUNDER'S STEP GO GREEN FIRST TIME, because
+  that is the only work the halt permits and the previous session had nothing left on the gate itself:
+  - The CI job "production parity" is complete: SUPABASE_ACCESS_TOKEN and VERCEL_TOKEN both exist as
+    repository secrets (`gh secret list`: set 2026-08-04 and 2026-08-14), the two Vercel ids are in
+    ci.yml, and VERCEL_TOKEN was accepted by Vercel as recently as 11:52Z on 6 September, when the
+    preview-state guard read the deployment list with it inside run 34031455414.
+  - The C16 branch is five commits ahead of origin/main and zero behind (merge base 2d558d2a), so no
+    rebase is needed. PR 130 (C8) is one ahead and zero behind main today; after the C16 squash lands
+    it will be one behind, and the strict protection will require it brought up to date and re-gated
+    before its own merge. That is the sequence already recorded, restated so nobody is surprised.
+  - The four gate steps the parity refusal has stopped from running on this tree (fixture, suite,
+    build, lighthouse) were NOT re-run by hand, and the reason is recorded rather than assumed:
+    `git diff --stat origin/main..HEAD` touches 20 files, none under src/ (workflows, scripts, guards,
+    tests, one package.json script), so `next build` output is byte-identical to 2d558d2a, whose push
+    went 12 of 12 GREEN through the gate including build (105 s) and the Lighthouse mobile gate
+    (973 s) (C:\dev\EVIDENCE\C14\gate-pass-on-push.txt). The suite ran on this tree in session 5
+    (311 files / 3588 tests, 0 failed) and 8161cfe2 changed only a verify script since. The push
+    itself will run all thirteen steps; a hand run of an identical build would prove nothing new and
+    spend twenty minutes and a .next on a machine under disk discipline.
+- DISK. 23 GB free at start and end; no build output produced; the evidence is two text files.
+- THE HALT STANDS. Five commits wait on ci/c16-production-parity and leave the machine the moment
+  `npm run migrate:production` has run. What follows is unchanged: push the branch, draft pull
+  request, mark ready, "production parity" reports, merge, watch production to Ready and confirm the
+  served release, drive the ten routes, C16.4 and C2 close, PR 130 (C8) brought up to date and merged
+  the same way, then C9, C17, C18. A relaunched session re-runs the parity step first and, if
+  production is still behind, stops here again.
