@@ -522,3 +522,48 @@ dashevents-1440-light.jpg. The empty states are in after\natural-empty\ and afte
 **Evidence:** C:\dev\EVIDENCE\C4\, C5-branch-hygiene.txt, C6\community-faith-production-2.txt, C7\sweep-production.txt.
 
 **Closed on the code side, 6 September 2026, 22:05:** the push went through the gate green (12 of 12), PR #129 was opened as a draft, marked ready once, CI green on all three jobs, squash-merged as 2d558d2a. Your live site still serves the release before C13 until you apply the two C13 migrations (the commands are in the C13 entry above); C14 rides the same redeploy.
+
+## C16 (7 September 2026): why main went red twice, what now stops it, and the one step that is yours
+
+**What actually failed, from the logs.** Both production builds (the C13 merge at 08:37 and the C14 merge at 11:53 UTC on 6 September) were stopped by two of your own guards: the database behind production does not carry the two C13 migrations, so the build that names those tables refused to ship rather than break the organiser events list and the event page on the live site. CI on main then went red for one reason only: a guard that looks at the newest deployment of the branch being built saw main's deployment in ERROR. The Lighthouse failures on the C13 pull request were two event pages scoring 0.77 and 0.75 against a 0.8 floor on the runner.
+
+**Why the pull request was green and main was red, in one sentence.** A pull request builds against the TEST database, where every migration is applied; main builds against production, where applying a migration is your reserved step and had not happened; and nothing on a pull request asked whether production carries what the code needs. That is exactly the class you named.
+
+**What now stops it.**
+- A production-parity check asks production, before a push and before a merge, whether it carries every migration in the tree and whether its environment satisfies the manifest. It runs inside the pre-push gate on this machine and as a required check on every pull request.
+- Branch protection on main now requires that check alongside the build and the tests, holds administrators to it, requires a pull request, and the ruleset's admin bypass is gone. A guard reads that back on every build.
+- Driven: the C8 pull request, ready and green, cannot be merged now ("the base branch policy prohibits the merge"). And the very branch carrying this fix is refused by the gate on this machine, because production is behind the tree, which is the condition that produced both red merges. The gate now refuses it before anything leaves the machine.
+
+**The one step that is yours, and everything waits on it.** Production is behind the tree by three migrations, not two: the C1 enum from 5 September as well as the two C13 files. Until you apply them, no branch can pass the parity check, main cannot deploy, and this fix cannot be pushed. In PowerShell, from the repo:
+```
+supabase link --project-ref gndnldyfudbytbboxesk
+Get-Content supabase\.temp\project-ref
+supabase db push --linked
+node scripts/ops/verify-production-schema.mjs
+supabase link --project-ref vkapkibzokmfaxqogypq
+```
+then redeploy the newest main build from Vercel. After that I push this branch, its pull request runs the parity check green, it merges, and I watch production to Ready and drive the live routes (C16.4). From then on a merge is not finished until production serves it, as you ruled.
+
+**One more thing yours to mint:** a Vercel token with read access, kept in .env.local as VERCEL_TOKEN, makes the environment half of the parity check real on this machine too. Without it the gate says so in capitals and the required CI job carries that half.
+
+**C2 is reopened** as you said and closes only when a merge reports parity green and deploys Ready.
+
+**Evidence:** C:\dev\EVIDENCE\C16\ (the parity refusal, the before and after protection, the refused merge, the guard red and green, the refused push).
+
+## C8 mobile Lighthouse (6 and 7 September 2026): the shell is fixed, 95 is not reached, and the rest is yours to decide
+
+**What the measurement said first.** From this machine, your live site scores 68 on the homepage, 75 on browse and 68 on an event page on mobile (desktop 96 to 99). Not the 93 on record. The pages are quick to a real phone (the largest image is on screen in about a second); what Lighthouse scores is a simulated slow 4G phone, and on that profile nothing painted for four seconds because the page's own head asked for nine images, seven font files and 400 KB of script at the same moment as the stylesheet it needs before it can draw anything.
+
+**What is fixed, platform-wide, on every page:**
+- A page now preloads one image, the one that matters (the hero, or the first tile under it), instead of up to ten. A guard refuses any new preload that nobody has named.
+- The two typefaces are one file each instead of seven. This also repairs something C14 caused without anyone seeing it: body text had been rendering semibold since that merge, because the body face only shipped its heavier weights.
+- Long pages no longer lay out every rail before they paint; sections below the fold wait until they are near.
+
+**Measured on Vercel, the old build against the new one, same day, same machine:** homepage 71 to 88, browse 74 to 76, the event page 68 to 74. Locally the homepage went 81 to 88. Nothing came down. An inlined stylesheet was also tried and made every page worse, so it is not in.
+
+**Why it is not 95, in plain terms:**
+- **The error-reporting SDK.** It loads the moment the page fires "load", which on a fast connection is a fraction of a second BEFORE the biggest image has painted, so Lighthouse charges its 218 KB against the page. With those two files kept out of that window, the same event page on the same preview scores 92 instead of 74. Your ruling of 25 August says not to move it later. Moving it to "after load and after that first big paint" would cost Session Replay roughly a fifth of a second of the earliest moments of a page and nothing else; every error is still captured. **This is your call.** Say yes and it is one change and a re-measure.
+- **Server time at full density.** With a full catalogue (the preview), the homepage and browse pages take one to two seconds to stream their content from the database before anything can paint. That is data and rendering, not the shell, and your live site with two events does not have it (35 ms). It becomes real the day the catalogue does, and it is a caching decision for those two pages.
+- **The live site cannot be re-measured** until the C13 migrations are applied and the site redeploys; this change rides that deploy. The command to re-take the number is in the ledger.
+
+**Evidence:** C:\dev\EVIDENCE\C8\ (the production baseline, the phase diagnoses, four local iterations, the champion-against-challenger preview runs, the Sentry-blocked runs, the guard proofs).

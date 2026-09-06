@@ -2309,3 +2309,119 @@ changed, and nothing was deleted.
   refused ("not on the reviewed list"). The second drill caught the guard's own first version,
   which missed a grant followed by another attribute on the same line; fixed, tested, drilled
   again.
+
+## 2026-09-07 01:30 (C16) main is red and production is failing to deploy: the diagnosis, the mechanism, and the halt
+
+- THE HALT (C16.0). Read at 00:05 on 7 September when CLOSE-OUT.md changed on disk. PR #130 (C8)
+  was ready with CI green and was NOT merged; nothing else was started. Everything below is C16.
+- WHAT FAILED, from the logs, not the notifications (C16.1):
+  - Vercel production build of b7798b76 (dpl_AyZ7qy3n964G3NAJBrdrtKZjMe59, 08:37 UTC) and of
+    2d558d2a (dpl_2PSWRQa7EcZtDsTV2jkg5ZSzRMBv, 11:53 UTC): `npm run build` exited 1 in prebuild
+    with "[guards] 2 of 69/70 guard(s) FAILED. Build blocked." The two: schema-ahead-of-code
+    ("the schema on gndnldyfudbytbboxesk is BEHIND the code": events.archived_at answered 42703
+    and event_tombstones.slug PGRST205, both created by 20260906000002) and
+    event-lifecycle-installed (event_lifecycle_guards() answered PGRST202, created by
+    20260906000001 and 20260906000002). Every other guard passed. The guards did what they are
+    for: production does not carry the C13 migrations, and a build that names those objects would
+    have broken the organiser events list, the admin console and the public event page on the
+    live site (C:\dev\EVIDENCE\C16\ are the log extracts; the full logs are on the two inspector
+    URLs in BUILD-LEDGER.md).
+  - CI on main, run 34022302141 (b7798b76) and run 34031455414 (2d558d2a): the job
+    "lint · typecheck · build" failed at its Build step, and the only FAILED line that is not a
+    warning is "[preview-state] FAILED: the newest settled deployment for main is in ERROR". The
+    two env-shape lines and the pricing-lock line in the same log are WARNING-only on a CI build
+    ("These do not stop the build") and are the CI placeholders being judged, not production. So
+    CI on main is red as a CONSEQUENCE of the production deployment being in ERROR, through the
+    guard that reads Vercel's newest deployment for the branch being built.
+  - Lighthouse CI on the C13 pull request (runs 34017623296, 34020000158, 34022011583): the
+    categories.performance minScore 0.8 assertion failed on two event pages on the runner,
+    /events/cat-indie-sounds-live-at-the-enmore-sydney (0.77; runs 0.77, 0.73, 0.76) and
+    /events/artist-layer-launch-night-geelong (0.75; 0.71, 0.71, 0.75); the homepage's 0.71 and
+    the LCP times were warnings. Those are the pages C8 measured (C:\dev\EVIDENCE\C8\), and the
+    C8 branch's own Lighthouse CI run (34037708436) is the test of whether the code fix moves them
+    on the runner; it is recorded under C16.3 when it settles.
+- WHY THE PULL REQUEST PASSED AND MAIN FAILED (the question C16.1 asks): a preview build's
+  database credentials point at TEST, where every migration is applied, so schema-ahead-of-code
+  and event-lifecycle-installed PASS on a pull request; a production build's credentials point
+  at production, where the founder's reserved step (applying a migration) had not happened, so
+  the same guards FAIL after the merge. The preview-state guard reads the deployment of the
+  branch being built: the pull request's preview (READY) on a pull request, main's production
+  deployment (ERROR) on main. Nothing on a pull request asked the one question that decides a
+  production build: does PRODUCTION carry what this tree needs? That is the owner's hypothesis
+  exactly, the same class as ORDER_ACCESS_SECRET in August: a production-only state that no
+  preview can see. It is not a code defect in C13 or C14, and it is not a flaky check; it is a
+  missing check.
+- THE REPAIR (C16.2), built and proven locally, not yet on main because the gate now refuses the
+  push (see below):
+  - scripts/ops/production-parity.mjs asks production, read only, two questions: every migration
+    in supabase/migrations applied there (Supabase Management API with the CLI token the gate
+    already hands the types-drift step), and the production scope of the Vercel store satisfying
+    src/lib/env/manifest.mjs (GET /v10/projects/{id}/env with decrypt=true, the endpoint's own
+    page cited in the file; a record held as sensitive is present but unreadable and is said so,
+    its shape being LOCK 2's to judge inside the production build). Names, states, lengths and
+    fingerprints only; never a value. Run for real from this machine
+    (C:\dev\EVIDENCE\C16\production-parity-local-RED.txt): production is BEHIND the tree by
+    THREE migrations, 20260905000003 (C1's enum), 20260906000001 and 20260906000002, exit 1, and
+    the environment half SKIPPED with no VERCEL_TOKEN on this machine, said in capitals with the
+    founder step that makes it real.
+  - The pre-push gate carries it as step 9 of 13, `production-parity`, between the types-drift
+    step and the fixture, with the same token wrapper; the gate-to-CI twin test holds the mirror.
+  - ci.yml carries it as the job "production parity" (SUPABASE_ACCESS_TOKEN and VERCEL_TOKEN from
+    the repository secrets, the two Vercel ids in version control), skipping drafts like every
+    other job; workflows-skip-drafts and pre-push-gate-wired both green on the new shape.
+  - Branch protection on main, applied through the API and read back
+    (branch-protection-before.json, -after.json, ruleset-before.json, -after.json): the required
+    checks are "lint · typecheck · build", "test (vitest)" and "production parity" in the classic
+    protection (strict) and in the main-protection ruleset, which previously required only the
+    first and carried a RepositoryRole bypass with bypass_mode "always", now removed. Admins were
+    already held (enforce_admins true), pull requests already required, force pushes and
+    deletions already refused.
+  - scripts/guards/branch-protection-required.mjs reads that state back on every build and fails
+    when the required checks lose "production parity", admins are released, pull requests stop
+    being required, or a ruleset carries a bypass: RED against the state before the change (four
+    faults), GREEN after; five unit tests; drilled by asking main for a check it does not carry.
+  - PROVEN AS THE OWNER ASKED: `gh pr merge 130 --squash` on the ready, CI-green C8 pull request
+    is REFUSED by the protection because "production parity" has not reported on it
+    (merge-refused-pr130.txt). And the push of this very branch is refused by the gate at the
+    production-parity step, because production is behind the tree, which is precisely the state
+    that produced the two red merges; the local gate now catches it before anything leaves the
+    machine (C16.2.1). What could not be driven: breaking a production-only ENVIRONMENT value on
+    Vercel, which is a write to production; the environment half is proven by its unit tests
+    (a missing required record, a forbidden record held, an empty value, a malformed value each
+    refused, never carrying the value) and by the CI job once a token-bearing run exists.
+- THE ONE STEP THAT UNBLOCKS MAIN, PRODUCTION AND THIS BRANCH is the founder's: apply the three
+  pending migrations to production and redeploy. The commands are printed by the parity step
+  itself and repeated in REVIEW-QUEUE.md. After that: the gate passes, this branch pushes, its
+  pull request runs "production parity" green, the merge is allowed, and C16.4 is driven on the
+  live site with the deployment watched to Ready.
+
+## 2026-09-07 00:40 (C8) the champion against the challenger on Vercel, the two mechanisms that remain, and the Sentry number
+
+- Pushed 2ed39584 through the gate GREEN 12 of 12 in 1277s; PR #130 opened as a draft; the preview
+  built on syd1. The C14 preview (main's content) is the champion on the same infrastructure, so
+  both sides were measured from this machine at fixture density, medians of three per form factor
+  (C:\dev\EVIDENCE\C8\lighthouse-preview-champion.log, lighthouse-preview-challenger.log): homepage
+  mobile 71 to 88, browse 74 to 76, the event page 83 to 81 on three runs, then 68 to 74 over five
+  runs each (lighthouse-preview-detail5.log; the preview's server state moves more between runs
+  than the change does, which is why five were taken); desktop 98 to 100 both sides. The
+  challenger lands on every route.
+- WHAT REMAINS, read off the challenger preview's own audits (preview-challenger-phases.txt):
+  - The event page: observed LCP 555 ms, simulated 3341 ms, 31 requests and 573 KB before the
+    paint, of which script 439 KB: the two Sentry chunks (123 + 95 KB) start at 427 ms, inside
+    the window, because `load` fires at 428 ms and the paint lands at 555 ms. Three runs with
+    exactly those two chunks blocked (preview-sentry-blocked.txt): 88, 92, 92 against 74. That is
+    the founder's ruling of 25 August (do not move Sentry to idle), so it is reported with the
+    number and a narrower proposal, "after load AND after the LCP paint", and not changed.
+  - Browse and the homepage at fixture density: the document's first byte is 174 to 180 ms but
+    its CONTENT streams in at 1.3 to 2.5 s (the paint probe under 4x CPU and 4G shows readyState
+    loading with zero cards until 1.9 s; paint-probe-events-*.jpg), which is the dynamic render
+    against the database for a page of 52 events. Not the shell; the catalogue's own cost, and a
+    caching decision for those two documents when the catalogue exists. Production with two
+    events streams in 220 to 600 ms.
+  - The reveal engine was suspected and cleared: with scripts blocked, zero reveal blocks are
+    hidden in the first viewport on browse (the flag script does not run without the bundle, so
+    nothing is armed), and with scripts the one hidden block is below the fold.
+- VERDICT: the shell fix is landed and measured; 95 is NOT reached; the remaining gap is owned by
+  the Sentry ruling and by server render time at density, and production cannot be re-measured
+  until the founder's redeploy. Recorded in BUILD-LEDGER.md as MET for the shell and NOT MET for
+  the 95, with the founder steps named.
