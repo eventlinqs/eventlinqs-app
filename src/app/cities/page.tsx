@@ -148,7 +148,7 @@ function CitiesGrid({
     >
       {entries.map((entry, idx) => (
         <li key={entry.slug}>
-          <CityTile entry={entry} priority={priority && idx < 4} />
+          <CityTile entry={entry} priority={priority && idx === 0} />
         </li>
       ))}
     </ul>

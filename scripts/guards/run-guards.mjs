@@ -113,6 +113,9 @@
  *   no-hardcoded-spacing      one spacing scale: no arbitrary padding, margin, gap or inset
  *                              off the 4px grid, in a utility, an inline style or a
  *                              stylesheet (close-out C14.12)
+ *   one-priority-image        a document preloads its LCP candidate and nothing else: every
+ *                              priority grant is a named candidate, none reaches past the
+ *                              first item (close-out C8)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -769,6 +772,12 @@ const GUARDS = [
   // declares, and nothing else in the gate set could see one. Drilled red and
   // green in scripts/verify/guard-failure-drills.mjs.
   'scripts/guards/no-hardcoded-spacing.mjs',
+  // Close-out C8 (6 September 2026): a document preloads its LCP candidate and
+  // nothing else. Nine image preloads on the homepage were competing with the
+  // render-blocking stylesheet on the mobile profile and first paint waited four
+  // seconds for it. Every priority grant is a named LCP candidate; a grant that
+  // reaches past the first item fails. Drilled red and green.
+  'scripts/guards/one-priority-image.mjs',
 ]
 
 /**

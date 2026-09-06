@@ -31,7 +31,7 @@ export async function CommunityRail() {
   if (entries.length === 0) return null
 
   const tiles = await Promise.all(
-    entries.map(async (e, i) => {
+    entries.map(async (e) => {
       // Spine-first for the wired community scenes; the rest keep the Pexels
       // community hero (held scenes await Community->Community Phase 2).
       const spine = getSpineSceneForCommunity(e.slug)
@@ -42,7 +42,7 @@ export async function CommunityRail() {
         metaLabel: e.eventCount > 0 ? `${e.eventCount} ${e.eventCount === 1 ? 'event' : 'events'}` : 'Be the first',
         imageSrc: spine ? spine.src : await getCommunityHeroPhoto(e.slug),
         objectPosition: spine?.objectPosition,
-        priority: i < 4,
+        priority: false,
       }
     }),
   )

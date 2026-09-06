@@ -138,7 +138,7 @@ function CommunitiesGrid({
     >
       {entries.map((entry, idx) => (
         <li key={entry.slug}>
-          <CommunityTile entry={entry} priority={priority && idx < 4} />
+          <CommunityTile entry={entry} priority={priority && idx === 0} />
         </li>
       ))}
     </ul>

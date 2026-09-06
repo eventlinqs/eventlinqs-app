@@ -33,18 +33,29 @@ import { getSiteUrl } from '@/lib/site-url'
 
 // Headline face: bold, characterful display grotesque for display-tier
 // headings and card titles. Broad, high-energy, mainstream.
+/*
+ * VARIABLE WEIGHTS (close-out C8 and C14.12, 6 September 2026). Each family is
+ * one variable file carrying every weight, instead of three or four static
+ * files. Two things this fixes at once: the document requests two font files
+ * rather than seven, which matters on the 1.6 Mbps mobile profile Lighthouse
+ * simulates, where every early byte competes with the render-blocking
+ * stylesheet; and body copy now renders at the weight it asks for. Manrope was
+ * declared at 600, 700 and 800 only (it used to be the UI face), so when C14
+ * made it the body face every paragraph asking for 400 or 500 was drawn at
+ * 600, the nearest declared weight. The variable file covers 200 to 800.
+ */
 const archivo = Archivo({
   subsets: ['latin'],
   variable: '--font-archivo',
   display: 'optional',
-  weight: ['600', '700', '800', '900'],
+  weight: 'variable',
 })
 
 const manrope = Manrope({
   subsets: ['latin'],
   variable: '--font-manrope',
   display: 'optional',
-  weight: ['600', '700', '800'],
+  weight: 'variable',
 })
 
 // metadataBase resolves relative OG/Twitter image routes and relative

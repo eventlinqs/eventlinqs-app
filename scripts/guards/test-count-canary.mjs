@@ -849,10 +849,13 @@ const ROOT = join(HERE, '..', '..')
  * (6 September 2026), one file and ten tests: tests/unit/guards/no-hardcoded-spacing
  * (the 4px scale, tokens and relationships pass, every term of a shorthand is
  * judged, widths and heights are not spacing, and the live tree is clean):
- * 306 files / 3550.
+ * 306 files / 3550. Close-out C8 (6 September 2026), one file and six tests:
+ * tests/unit/guards/one-priority-image (a grant is recognised, a pass-through is
+ * not, reach past the first item fails, an unlisted grant fails, a rotted list
+ * entry fails, and the live tree is clean): 307 files / 3556.
  */
-const MIN_FILES = 306
-const MIN_TESTS = 3550
+const MIN_FILES = 307
+const MIN_TESTS = 3556
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
