@@ -874,9 +874,16 @@ const ROOT = join(HERE, '..', '..')
  * race and the false green that the first version of the guard had, proven
  * with a fake clock; the timeout; the creation grace; no wait outside CI; the
  * v7 sha filter): 311 files / 3588, as the canary measured.
+ *
+ * Close-out C16, the founder's migration command (7 September 2026), four
+ * tests in tests/unit/ops/apply-production-migrations (askLine, the
+ * confirmation read: first line only, CRLF or LF; a closed stdin is a
+ * refusal; the prompt precedes the read; never readline, whose closed
+ * interface leaves a line read pending on the console that swallows the
+ * Enter meant for the CLI's own prompt): 311 files / 3592.
  */
 const MIN_FILES = 311
-const MIN_TESTS = 3588
+const MIN_TESTS = 3592
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

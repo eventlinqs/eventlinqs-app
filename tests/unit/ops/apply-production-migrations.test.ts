@@ -1,10 +1,13 @@
+import { spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, test } from 'vitest'
 import {
   LINKED_REF_FILE,
   TEST_PROJECT_REF,
+  askLine,
   decide,
   readLinkedRef,
   supabaseCommands,
@@ -92,5 +95,48 @@ describe('the one command', () => {
     expect(command).toBeDefined()
     expect(command).toContain('scripts/ops/with-supabase-token.ps1')
     expect(command).toContain('scripts/ops/apply-production-migrations.mjs')
+  })
+})
+
+describe('askLine, the confirmation read', () => {
+  const SCRIPT = join(process.cwd(), 'scripts', 'ops', 'apply-production-migrations.mjs')
+
+  /** Run askLine in a child with the given stdin, and return what it read. */
+  function askInChild(input: string): { typed: string | null; stdout: string; status: number | null } {
+    const r = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        `import { askLine } from ${JSON.stringify(pathToFileURL(SCRIPT).href)}; const t = askLine('prompt: '); process.stdout.write('<' + JSON.stringify(t) + '>')`,
+      ],
+      { input, encoding: 'utf8', timeout: 20000 },
+    )
+    const m = /<(".*")>$/s.exec(r.stdout)
+    return { typed: m ? (JSON.parse(m[1]) as string) : null, stdout: r.stdout, status: r.status }
+  }
+
+  test('returns the first line without its terminator, whether the terminal ends it CRLF or LF, and reads nothing beyond it', () => {
+    expect(askInChild('gndnldyfudbytbboxesk\r\n').typed).toBe('gndnldyfudbytbboxesk')
+    expect(askInChild('gndnldyfudbytbboxesk\n').typed).toBe('gndnldyfudbytbboxesk')
+    expect(askInChild('first\nsecond line never read\n').typed).toBe('first')
+  })
+
+  test('an empty or closed stdin reads as nothing typed, which decide() refuses', () => {
+    const closed = askInChild('')
+    expect(closed.typed).toBe('')
+    expect(closed.status).toBe(0)
+    expect(decide({ pending, typed: closed.typed }).action).toBe('refused')
+  })
+
+  test('the prompt is written before the read, so the founder sees what he is confirming', () => {
+    expect(askInChild('x\n').stdout.startsWith('prompt: ')).toBe(true)
+  })
+
+  test('the confirmation is never read through readline, whose closed interface leaves a line read pending on the console that swallows the Enter meant for the CLI prompt that follows', () => {
+    const source = readFileSync(SCRIPT, 'utf8')
+    expect(source).not.toMatch(/from 'node:readline/)
+    expect(source).not.toMatch(/createInterface\(/)
+    expect(typeof askLine).toBe('function')
   })
 })

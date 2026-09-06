@@ -34,6 +34,12 @@
  *     column the shipped code names now answers.
  *   - The Management API is asked again and must list zero pending.
  *
+ * IT LEAVES THE CONSOLE QUIET FOR THE CLI. The confirmation is read with one
+ * synchronous read of the console (askLine below), never with readline, so no
+ * read of ours is pending when the CLI asks its own questions. With readline
+ * the CLI's Y/n would have hung after the founder typed y (the mechanism and
+ * the drive are on askLine).
+ *
  * ALWAYS, in a finally and on Ctrl-C, it links the CLI back to TEST
  * (vkapkibzokmfaxqogypq) and reads the ref back, so the CLI never rests linked
  * to production. A password is never read, never passed, never printed.
@@ -43,10 +49,8 @@
  *   npm run migrate:production -- --dry-run  # list what is pending and stop
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { stdin, stdout } from 'node:process'
-import { createInterface } from 'node:readline/promises'
 import { fileURLToPath } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
 import { computePendingMigrations, fetchAppliedMigrations, MIGRATIONS_DIR, PRODUCTION_PROJECT_REF } from './production-parity.mjs'
@@ -74,6 +78,51 @@ export function readLinkedRef(root = ROOT) {
   if (!existsSync(file)) return null
   const ref = readFileSync(file, 'utf8').trim()
   return ref.length > 0 ? ref : null
+}
+
+/**
+ * Read one line from the console SYNCHRONOUSLY, leaving nothing pending on it.
+ *
+ * WHY NOT readline. The confirmation used to be read with node:readline. On a
+ * real console readline puts the TTY into raw mode and, on close, pauses the
+ * stream and restores cooked mode. But pause() on a TTY stream does not stop
+ * the underlying read (net.Socket.pause only calls readStop when an onread
+ * buffer is in use), and restoring the mode restarts that read in LINE mode.
+ * So when the Supabase CLI was then handed the console, this process still
+ * held a pending line read on it: the founder's keystrokes echoed, and the
+ * Enter completed THIS process's read, never the CLI's prompt. `supabase db
+ * push` would have hung at its own Y/n for ever, after he typed y. Driven on
+ * 7 September 2026 under a pseudo console with a line-reading child standing
+ * in for the CLI (C:\dev\EVIDENCE\C16\conpty-diag-handle-reading.txt:
+ * handle.reading=true after close and the child timed out;
+ * conpty-fix-sync-read.txt: this read, the child got the line, exit 0).
+ *
+ * A synchronous read of fd 0 is one ReadFile on the console handle. It returns
+ * when the line ends and leaves no read behind. On a pipe it returns the line,
+ * or 0 bytes at EOF, so a piped or empty stdin is a refusal, exactly as before.
+ * Only the project ref is ever read this way. A password never is: the CLI's
+ * own prompts read it, on the console this function has left quiet.
+ * @param {string} prompt
+ */
+export function askLine(prompt) {
+  process.stdout.write(prompt)
+  const buf = Buffer.alloc(4096)
+  let text = ''
+  for (;;) {
+    let n = 0
+    try {
+      n = readSync(0, buf, 0, buf.length, null)
+    } catch (err) {
+      // EOF: Windows raises it for a closed console; EAGAIN: a non-blocking pipe
+      // with nothing to read. Either is "no confirmation", which is a refusal.
+      if (err.code === 'EOF' || err.code === 'EAGAIN') break
+      throw err
+    }
+    if (n === 0) break
+    text += buf.toString('utf8', 0, n)
+    if (text.includes('\n')) break
+  }
+  return text.replace(/\r?\n[\s\S]*$/, '')
 }
 
 /**
@@ -171,14 +220,9 @@ async function main() {
 
   let typed = null
   if (pending.length > 0 && !dryRun) {
-    const rl = createInterface({ input: stdin, output: stdout })
-    try {
-      typed = await rl.question(
-        `${TAG} This applies ${pending.length} migration(s) to PRODUCTION, permanently. Type the project ref ${PRODUCTION_PROJECT_REF} to continue, anything else to stop: `,
-      )
-    } finally {
-      rl.close()
-    }
+    typed = askLine(
+      `${TAG} This applies ${pending.length} migration(s) to PRODUCTION, permanently. Type the project ref ${PRODUCTION_PROJECT_REF} to continue, anything else to stop: `,
+    )
   }
 
   const decision = decide({ pending, dryRun, typed })
