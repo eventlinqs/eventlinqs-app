@@ -3028,3 +3028,35 @@ changed, and nothing was deleted.
   it is unchanged and recorded in the 02:39 entry. The ledger's section for sessions 13 to 18 widened to
   cover 19 with two new rows; the "Last re-verified" line at the top of REVIEW-QUEUE.md's "Needs you"
   block updated and one plain-language entry added at the end.
+
+## 2026-09-07 04:15 to 04:17 (C16, continued, session 20) the halt re-verified on relaunch; nothing has moved; nothing started
+
+- Governing laws, stated first: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder
+  applies), the C16.0 halt rule, Definition of Done clause 6. No code changed. Nothing merged, nothing
+  started, nothing written to production; the CLI rests on TEST (supabase/.temp/project-ref read back:
+  vkapkibzokmfaxqogypq). Disk 23.8 GB free at start (df and Get-PSDrive agree); no build output produced;
+  no .next anywhere on the machine and one node_modules. The first check on relaunch, per the session-16
+  note: no .git/MERGE_HEAD, `git status --porcelain` empty, the C16 branch at 100be967, six commits ahead
+  of origin/main.
+- THE HALT RE-VERIFIED (C16.0), 04:16, read only, through the clean-env wrapper. The parity step on the
+  C16 tree: 116 migrations in the tree, 113 applied on gndnldyfudbytbboxesk, the same 3 pending
+  (20260905000003, 20260906000001, 20260906000002); the environment half read the production store
+  through the Vercel CLI login: 34 records, 43 manifest entries, 0 faults; FAIL on the schema half,
+  exit 1, "BLOCKED at production-parity after 4s. Nothing was pushed." Vercel's newest production
+  deployments by sha: 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY. The live site serves
+  sentry-release b4255a96 (HTTP 200, 392263 to 396472 bytes across the two reads); the apex answers 301.
+  CI on main: still red at 2d558d2a (run 34031455414), no new run since 11:52Z on 6 September (the only
+  later runs on main are the scheduled env-locks workflow, green). origin/main unchanged after a fetch
+  (2d558d2a). PR 130 (C8) still BLOCKED by protection, MERGEABLE, head 2ed39584. The founder has not run
+  `npm run migrate:production`. Evidence: C:\dev\EVIDENCE\C16\production-parity-recheck-session20.txt,
+  deployments-recheck-session20.txt.
+- A NOTE ON THE CLOCK: the session-19 entry above is titled "04:03 to 04:20" while its own evidence files
+  are stamped 04:12 and this session's `date` read 04:15 at launch, so that entry's end time was an
+  estimate written ahead of the clock. This entry's times are from `date`, per the standing note.
+- THE HALT STANDS. Six commits wait on ci/c16-production-parity (5ca9d984, eaf7deeb, 2f0545c1, 7c9101fe,
+  8161cfe2, 100be967) and leave the machine the moment the founder's command has run. The sequence after
+  it is unchanged and recorded in the 02:39 entry. Nothing read-only remains to drive under the halt
+  (both proofs inside the founder's command, the gate's refusal on a real push, the C8 merge resolution,
+  and production's own preconditions for the three files are all already recorded). The ledger's
+  section for sessions 13 to 19 widened to cover 20; the "Last re-verified" line at the top of
+  REVIEW-QUEUE.md's "Needs you" block updated.
