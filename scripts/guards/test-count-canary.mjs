@@ -849,10 +849,15 @@ const ROOT = join(HERE, '..', '..')
  * (6 September 2026), one file and ten tests: tests/unit/guards/no-hardcoded-spacing
  * (the 4px scale, tokens and relationships pass, every term of a shorthand is
  * judged, widths and heights are not spacing, and the live tree is clean):
- * 306 files / 3550.
+ * 306 files / 3550. Close-out C16
+ * (7 September 2026), two files and nine tests: tests/unit/ops/production-parity
+ * (a migration production lacks is pending; the production scope of the store is
+ * judged for a missing, forbidden, empty or malformed record, never carrying the
+ * value) and tests/unit/guards/branch-protection-required (every way main's
+ * protection can lose the merge gate): 308 files / 3559.
  */
-const MIN_FILES = 306
-const MIN_TESTS = 3550
+const MIN_FILES = 308
+const MIN_TESTS = 3559
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

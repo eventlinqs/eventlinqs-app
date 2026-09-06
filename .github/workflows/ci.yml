@@ -198,6 +198,36 @@ jobs:
       - name: Run types-drift guard
         run: bash scripts/check-types-drift.sh
 
+  production-parity:
+    name: production parity
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Close-out C16.2.2 (7 September 2026). REQUIRED on main. Two merges went
+    # red on main and failed to deploy after every pull-request check passed,
+    # because a preview build reads TEST and a production build reads
+    # production, and nothing on the pull request asked whether production
+    # carries what the tree needs. This job asks, against production, read
+    # only: every migration in supabase/migrations applied there, and the
+    # production scope of the Vercel store satisfying src/lib/env/manifest.mjs.
+    # scripts/guards/branch-protection-required.mjs fails the build if main
+    # stops requiring it.
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: prj_YIHLHcjuQfg4RmtNt7JekkcTVznJ
+      VERCEL_ORG_ID: team_yPo8T18zSl5VczJfWIIrNqly
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Production parity
+        run: node scripts/ops/production-parity.mjs
   test:
     name: test (vitest)
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}

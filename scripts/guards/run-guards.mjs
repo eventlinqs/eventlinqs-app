@@ -113,6 +113,9 @@
  *   no-hardcoded-spacing      one spacing scale: no arbitrary padding, margin, gap or inset
  *                              off the 4px grid, in a utility, an inline style or a
  *                              stylesheet (close-out C14.12)
+ *   branch-protection-required main requires lint, test and production parity, holds admins,
+ *                              requires a pull request, no force push, no bypass actor
+ *                              (close-out C16.2.4)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -769,6 +772,11 @@ const GUARDS = [
   // declares, and nothing else in the gate set could see one. Drilled red and
   // green in scripts/verify/guard-failure-drills.mjs.
   'scripts/guards/no-hardcoded-spacing.mjs',
+  // Close-out C16.2.4 (7 September 2026): branch protection on main must require
+  // the production parity check, hold admins to it, require a pull request and
+  // carry no bypass. Read back from GitHub on every build; SKIPS loudly with no
+  // credentials, judges in the CI job that carries GITHUB_TOKEN.
+  'scripts/guards/branch-protection-required.mjs',
 ]
 
 /**

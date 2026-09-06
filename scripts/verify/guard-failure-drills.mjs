@@ -74,6 +74,19 @@ console.log(`[drills] effective create_reservation: ${NEW_EFFECTIVE_RESERVATION}
 
 const DRILLS = [
   /*
+   * branch-protection-required (close-out C16.2.4), one drill: the guard is told
+   * to require a context main does not require, and the live protection read
+   * back from GitHub no longer satisfies it. Needs gh credentials, as the guard does.
+   */
+  {
+    name: 'main is asked for a required check it does not carry',
+    guard: `${GUARDS}/branch-protection-required.mjs`,
+    file: 'scripts/guards/branch-protection-required.mjs',
+    find: "export const REQUIRED_CONTEXTS = ['lint · typecheck · build', 'test (vitest)', 'production parity']",
+    replace: "export const REQUIRED_CONTEXTS = ['lint · typecheck · build', 'test (vitest)', 'production parity', 'a check nobody configured']",
+    expect: 'required status checks are missing',
+  },
+  /*
    * no-hardcoded-spacing (close-out C14.12), three drills: an arbitrary
    * utility off the 4px grid, an inline style off it, and a CSS declaration
    * off it. A token or a multiple of 4px passes, so the guard only fires on a
