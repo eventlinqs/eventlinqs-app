@@ -5,7 +5,7 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
-Last re-verified 7 September 2026 at 05:20 (session 35): still the same three migrations behind,
+Last re-verified 7 September 2026 at 05:24 (session 36): still the same three migrations behind,
 the same two failed production deployments, main still red. Nothing has moved. Session 33 also
 confirmed your command needs no preparation on your side: in a fresh PowerShell, without the Node
 PATH prefix the brief mentions, `npm run migrate:production -- --dry-run` ran clean, listed the
