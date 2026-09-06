@@ -5,6 +5,7 @@ import { SHARE_COOKIE, SHARE_COOKIE_MAX_AGE_SECONDS } from '@/lib/broadcast/shar
 import { validateAdmissionToken } from '@/lib/queue/tokens'
 import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
 import { GONE_HEADERS, GONE_STATUS, renderGoneHtml } from '@/lib/events/gone-page'
+import { SIGNED_IN_MARKER_COOKIE } from '@/lib/auth/signed-in-marker'
 
 /**
  * /dev/* production gate.
@@ -59,7 +60,9 @@ export function admitsToEvent(token: string, eventId: string): boolean {
 // the page itself be fully static while high-demand events still redirect
 // pre-admission visitors to /queue/<slug>. Skipped for /events/browse and
 // any nested route under /events.
-async function gateHighDemandEvent(request: NextRequest): Promise<NextResponse | typeof PRIVATE_TO_EDGE | null> {
+async function gateHighDemandEvent(
+  request: NextRequest,
+): Promise<NextResponse | typeof PRIVATE_TO_EDGE | typeof HOLDER_VIEW | null> {
   const { pathname } = request.nextUrl
   if (!pathname.startsWith('/events/')) return null
 
@@ -109,10 +112,24 @@ async function gateHighDemandEvent(request: NextRequest): Promise<NextResponse |
      * NO LIVE ROW AND NO GRAVE: the slug is unknown, unpublished, private, or
      * ARCHIVED. An archived event's page is per viewer (404 to a stranger, the
      * page to a ticket holder), and next.config.ts edge-caches /events/:slug
-     * publicly for 300s on the assumption that the render is anonymous. That
-     * assumption does not hold on this path, so the response is marked private
-     * to the edge (see privateToEdge), whoever it turns out to be for.
+     * publicly for 300s on the assumption that the render is anonymous.
+     *
+     * A SIGNED-IN VIEWER IS REWRITTEN OFF THE CACHED PATH. The edge looks a URL
+     * up before any function runs and cookies are not part of its key, so on
+     * the preview a holder was served the stranger's cached 404 whatever the
+     * origin's own headers said. Routing Middleware "runs globally before the
+     * cache" and rewriting is the documented way to personalise cached content
+     * (https://vercel.com/docs/routing-middleware, last updated 2026-08-14,
+     * fetched 2026-09-06), so a request carrying the signed-in marker goes to
+     * /events/[slug]/holder: the same page under the same layout guard, at a
+     * path no public cache rule matches. Only the marker is trusted here, never
+     * the session cookie itself: a signed-in request WITHOUT the marker gets
+     * the anonymous 404 (the response that sets the marker), so the holder path
+     * is never reached by a request the config rule would let the edge keep.
+     * Everyone else continues to the public path, marked private to the edge
+     * as belt and braces (privateToEdge).
      */
+    if (request.cookies.has(SIGNED_IN_MARKER_COOKIE)) return HOLDER_VIEW
     return PRIVATE_TO_EDGE
   }
   if (event.status !== 'published') return null
@@ -137,8 +154,26 @@ export function goneResponse(): NextResponse {
   return new NextResponse(renderGoneHtml(), { status: GONE_STATUS, headers: GONE_HEADERS })
 }
 
-/** The gate's answer when the slug has no live row: not a redirect, a marker. */
+/** The gate's answers when the slug has no live row: not redirects, markers. */
 const PRIVATE_TO_EDGE = Symbol('private-to-edge')
+const HOLDER_VIEW = Symbol('holder-view')
+
+/** Where a signed-in viewer of a slug with no live row is rewritten to. */
+export function holderViewPath(slug: string): string {
+  return `/events/${slug}/holder`
+}
+
+/**
+ * The rewrite for a signed-in viewer, carrying whatever cookies the session
+ * refresh set on this request so a rewritten navigation loses nothing.
+ */
+export function holderViewRewrite(request: NextRequest, slug: string, session: NextResponse): NextResponse {
+  const target = request.nextUrl.clone()
+  target.pathname = holderViewPath(slug)
+  const rewritten = NextResponse.rewrite(target, { request: { headers: request.headers } })
+  for (const cookie of session.cookies.getAll()) rewritten.cookies.set(cookie)
+  return privateToEdge(rewritten)
+}
 
 /**
  * KEEP THIS RESPONSE OUT OF THE EDGE CACHE.
@@ -247,6 +282,9 @@ export async function proxy(request: NextRequest) {
   const gate = await gateHighDemandEvent(request)
   if (gate instanceof NextResponse) return gate
   const response = attachShareCookie(request, await updateSession(request))
+  if (gate === HOLDER_VIEW) {
+    return holderViewRewrite(request, request.nextUrl.pathname.slice('/events/'.length), response)
+  }
   return gate === PRIVATE_TO_EDGE ? privateToEdge(response) : response
 }
 

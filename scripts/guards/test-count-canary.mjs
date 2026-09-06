@@ -840,10 +840,15 @@ const ROOT = join(HERE, '..', '..')
  * set and cleared by the session middleware, required by the archived view,
  * and the condition on the event page's public edge cache rule, after the
  * preview showed a proxy-set cache header does not reach Vercel's decision:
- * 305 files / 3537.
+ * 305 files / 3537. Plus three in proxy-decisions for the sixth decision: a
+ * request carrying the marker for a slug with no live row is REWRITTEN to
+ * /events/[slug]/holder (the edge looks a URL up before any function runs and
+ * cookies are not part of its key, so the holder had been served the
+ * stranger's cached 404), the session cookie alone never triggers it, and a
+ * live or deleted event is never rewritten: 305 files / 3540.
  */
 const MIN_FILES = 305
-const MIN_TESTS = 3537
+const MIN_TESTS = 3540
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

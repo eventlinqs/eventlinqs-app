@@ -243,13 +243,22 @@ THE EDGE CACHE, because it nearly undid the holder rule. `next.config.ts` caches
 anonymous. An archived event's answer is per viewer, and measured on the pull request preview
 the edge cached a stranger's 404 (`x-vercel-cache: HIT`) even with the proxy setting
 `Vercel-CDN-Cache-Control: private, no-store` on the response: a header the proxy adds does not
-reach the cache decision. So the rule is made on the request instead. The session middleware
-sets a marker cookie, `el-signed-in`, on every response that has a user and clears it on every
-response that does not; the public CDN header rule applies only when that cookie is MISSING
-(`src/lib/auth/signed-in-marker.ts`); and the holder view renders only when it is PRESENT. A
-signed-in viewer's responses are never shared at the edge, an anonymous viewer's 404 may be,
-and a session that predates the marker gets one anonymous 404 (the response that sets it) and
-then the page.
+reach the cache decision. Nor is it enough to keep the holder's own response out of the cache:
+the edge looks a URL up before any function runs and cookies are not part of its key, so a
+holder was served the stranger's cached 404 on the preview even when their own response would
+never have been kept. The answer is the one the vendor documents for personalising cached
+content: Routing Middleware "runs globally before the cache", and it rewrites. The session
+middleware sets a marker cookie, `el-signed-in`, carrying nothing, on every response that has a
+user and clears it on every response that does not (`src/lib/auth/signed-in-marker.ts`). The
+proxy rewrites a request that carries the marker, for a slug with no live row and no
+tombstone, to `/events/[slug]/holder`: the same page under the same layout guard, at a path no
+public cache rule matches. The public CDN header rule for `/events/:slug` applies only when the
+marker is MISSING, so a rewritten request's response is never kept either, and the holder view
+renders only when the marker is PRESENT. A signed-in viewer never touches the anonymous cache
+entry; an anonymous viewer's 404 may be cached, which is every anonymous viewer's answer; and a
+session that predates the marker gets one anonymous 404 (the response that sets it) and then
+the page. Driven on the pull request preview with a real signed-in holder and a stranger before
+and after.
 
 ## Audit
 

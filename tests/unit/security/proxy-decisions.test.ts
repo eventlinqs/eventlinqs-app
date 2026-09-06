@@ -263,3 +263,29 @@ describe('decision 5: what a slug with no live event answers (close-out C13)', (
     expect(res.headers.get('Vercel-CDN-Cache-Control')).toBeNull()
   })
 })
+
+describe('decision 6: a signed-in viewer of a slug with no live row is rewritten off the cached path', () => {
+  it('rewrites a request carrying the signed-in marker to /events/[slug]/holder, keeping the session', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: null })
+    const res = await proxy(new NextRequest(new Request('https://www.eventlinqs.com.au/events/archived-gig', { headers: { cookie: 'el-signed-in=1' } })))
+    const rewrite = res.headers.get('x-middleware-rewrite')
+    expect(rewrite).toBeTruthy()
+    expect(new URL(rewrite!).pathname).toBe('/events/archived-gig/holder')
+    expect(updateSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT rewrite on the session cookie alone: without the marker the anonymous path answers and sets it', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: null })
+    const res = await proxy(new NextRequest(new Request('https://www.eventlinqs.com.au/events/archived-gig', { headers: { cookie: 'sb-test-auth-token=abc' } })))
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+  })
+
+  it('never rewrites a live event or a deleted one', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: { id: 'ev-1', is_high_demand: false, status: 'published' } })
+    const live = await proxy(new NextRequest(new Request('https://www.eventlinqs.com.au/events/live-gig', { headers: { cookie: 'el-signed-in=1' } })))
+    expect(live.headers.get('x-middleware-rewrite')).toBeNull()
+    maybeSingle.mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: { slug: 'gone-gig' } })
+    const gone = await proxy(new NextRequest(new Request('https://www.eventlinqs.com.au/events/gone-gig', { headers: { cookie: 'el-signed-in=1' } })))
+    expect(gone.status).toBe(410)
+  })
+})
