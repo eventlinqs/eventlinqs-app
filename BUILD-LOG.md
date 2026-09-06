@@ -1903,3 +1903,275 @@ changed, and nothing was deleted.
 - C13 is MET on every requirement row; completion law 7 is BLOCKED ON FOUNDER, MIGRATION ONLY.
   Per the brief's standing instruction on founder-only steps, this does not stall the build: C14
   begins next, and production is re-verified the moment the migration lands.
+
+## 2026-09-06 19:20 (C14) design uplift begins: the plan, the measurement, and what the first measurement found
+
+- Order per CLOSE-OUT C14.9: homepage, browse and city browse, event detail, checkout, organiser
+  dashboard and events list, then STOP and report (C14.16). Branch feat/c14-design-uplift from
+  b7798b76. The plan is C:\dev\C14-PLAN.md. C14.1 to C14.8 are not on disk anywhere under C:\dev
+  (C15.5 cites "budgets from C14.5"); nothing is invented for them and the gap is in the queue.
+- ONE HARNESS FOR BEFORE AND AFTER, so the champion/challenger rule (C14.11) is decided by numbers:
+  scripts/verify/c14-rubric-measure.mjs loads a screen at 390, 768 and 1440 under light and dark
+  colour-scheme emulation and records, per cell, every rendered font size and the elements that
+  carry it, the families, characters per line and single-word last lines, the gold fill share,
+  every radius and every box shadow in use (Tailwind's transparent placeholder layers stripped),
+  every interactive element under 44px, a focus-ring sample, axe WCAG A/AA, script and stylesheet
+  bytes to first paint, the number of prefers-color-scheme rules the page ships, and a hash of the
+  two captures. The in-page code lives in scripts/verify/lib/rubric-in-page.mjs and is the SAME
+  code the competitor capture runs, so both sides are measured identically. Captures are JPEGs at
+  quality 70 (disk discipline). Lighthouse is scripts/verify/lighthouse-median.mjs, three runs per
+  form factor, on the local production build served on 3311 against TEST.
+- THEME: the platform ships zero prefers-color-scheme rules (measured on every screen), and the
+  light and dark captures hash identical wherever the page has no moving content. "Both themes" in
+  the rubric is therefore satisfied by one theme, recorded, not assumed.
+- SIGNED-IN SCREENS: scripts/verify/c14-authed-session.mjs signs an organiser up through the real
+  form, publishes an event through the wizard, and reserves a ticket on a live paid event as a
+  guest; the cookies go to a file the harness reads with --cookie and never prints.
+- THE BEFORE MEASUREMENT (b7798b76, C:\dev\EVIDENCE\C14\before\, fixture density for the
+  homepage per the density-proof rule, natural TEST for the rest):
+  - Homepage 1440: 12 font sizes rendered (10, 11, 12, 14, 16, 17, 18, 20, 24, 30, 36, 48), three
+    families plus a mono glyph, 6 radii, 6 shadows, a 103-character line in the footer and a
+    76-character line in the community band, 34 of 273 interactive elements under 44px (every
+    header nav link is 20px tall, every footer link 16 to 36px, the "View all" rail links 20px, the
+    language select 18px, the hero dots 24px wide), axe 0, Lighthouse median mobile 77 / desktop 98
+    on the local build. 390: 11 sizes. 768: 10 sizes.
+  - THE BODY FONT NEVER RENDERED. `--font-body` computed to an empty string on <body>: the
+    Hanken Grotesk variable was set on <body> by next/font, but the theme token that references
+    it is declared on :root, where that variable does not exist, so the token was invalid at
+    computed-value time and `body { font-family: var(--font-body) }` fell through to Tailwind's
+    preflight stack. Every body line on every page was the visitor's system font, and four Hanken
+    font files were fetched for nothing. Families measured: ui-sans-serif, Manrope, Archivo.
+  - Browse 1440: 8 sizes, 5 radii, 6 shadows, 16 of 200 under 44px, axe 0. City browse the same
+    shape. Event detail 1440: 9 sizes (incl. 13px), 7 to 9 radii, 5 to 10 shadows, five lines over
+    75 characters, 4 of 30 sampled controls with no focus ring (Share, Save, Get tickets), Google
+    Maps refuses the localhost referer (a key restriction, not a product defect).
+  - Checkout 1440: 6 sizes, 3 radii, 3 shadows, 4 small targets, axe 0, and 4.3 MB of script to
+    first paint (21 scripts) against 0.56 to 0.65 MB on every other screen.
+  - Dashboard 1440: 6 sizes, 4 radii, axe 2 SERIOUS (a progressbar with no accessible name, a
+    gold-600 "Connect Stripe" link failing contrast), 19 of 29 targets under 44px (every sidebar
+    item is 40px). Events list: 32 of 32 interactive elements under 44px; every row action (Edit,
+    View, Launch Kit, Duplicate, Pause, Cancel, Archive, Delete) is a 16px-tall text link.
+- C14.13 BENCHMARK, five competitors on their own live pages today (Law 7), captured and measured
+  with the same in-page code at 1440 and 390: scripts/verify/c14-competitor-capture.mjs,
+  C:\dev\EVIDENCE\C14\benchmark{,2}\. Homepage line of the study (desktop unless noted):
+  - Ticketmaster (https://www.ticketmaster.com.au/): 6 sizes (12/14/16/18/24/56), ONE family
+    (Averta), 3 radii, 2 shadows, longest line 46 characters, 30 of 105 targets under 44px. A
+    dark utility bar, the blue nav, the three-control search rig, a photographic tile grid with
+    white titles on dark bands, then "TRENDING SEARCHES" as a caps heading with a short rule and
+    paired arrows top-right. The tightest type discipline of the five.
+  - Eventbrite (https://www.eventbrite.com.au/): 8 sizes (10 to 56), one family (Founders
+    Grotesk), ELEVEN radii, no shadows, longest line 53, 137 of 245 targets under 44px, three
+    orphans. "HAND-PICKED HAPPENINGS" at 56px over portrait curated cards whose labels are
+    highlighter-boxed text ON the photograph, then a row of icon circles.
+  - DICE (https://dice.fm/): 6 sizes (12/14/16/18/28/106), two families (Favorit, Foggy), 8
+    radii, 1 shadow, longest line 64, 183 of 266 targets under 44px. An app-sell hero (a 106px
+    condensed "WELCOME TO THE ALTERNATIVE" beside a black phone panel), no event discovery above
+    the fold on the web homepage.
+  - Humanitix (https://humanitix.com/au): 8 sizes (10 to 42), one family (Satoshi), FOURTEEN
+    radii, 4 shadows, three lines over 75 characters, five orphans, 92 of 197 targets under 44px.
+    A search rig (interest, where, when, Explore), then a full-bleed featured hero that prints a
+    white caps title over artwork that already carries the same title in its own lettering, a
+    thumbnail strip with a progress underline and a pause control, then category chip cards.
+  - TryBooking (https://www.trybooking.com/): 9 sizes (13 to 55), two families (Poppins, Inter),
+    7 radii, 4 shadows, a 93-character line, 12 of 56 targets under 44px. An organiser-sell hero
+    with an illustration; no event discovery on the homepage at all.
+  - Nobody meets the 44px line broadly; Ticketmaster meets six sizes, one family and three radii
+    on its homepage and is the bar for type discipline. Humanitix's hero shows the text-on-text
+    failure our own composed covers produce, at the market leader's scale. Not copied: the DICE
+    condensed display, the Eventbrite highlighter labels on photographs (our law keeps text off
+    the image), the TryBooking illustration.
+- HOMEPAGE CRITIQUE against C14.12 (composition and dimensions are APPROVED and do not move):
+  - Type: twelve sizes where the rubric allows six; a 17px body token beside Tailwind's 16;
+    11px labels and eyebrows one pixel off the micro step; a 30px feature-card title larger than
+    the 24px rail heading above it; a 36px band heading nothing else uses; a mono 10px glyph in
+    the search hint; and the body face missing entirely (above).
+  - Measure: the footer acknowledgement at 103 characters, the community band at 76.
+  - Shape: six radii (16, 8, 6, 4, 2, pill) and six shadows for a system with three of each.
+  - Targets: 34 under 44px, all of them chrome the whole platform shares.
+  - Imagery: on a launch-stage catalogue every hero slide is a composed typographic cover, so the
+    hero printed each title twice, once in the artwork and once in the headline (the Humanitix
+    failure, at our own scale).
+  - Hover, focus, loading: the card hover already lifts, deepens and brightens; every sampled
+    control has a ring; the two streamed rails have shape-matched skeletons. Nothing to change.
+- INTENDED CHANGE, per rubric line, all tokens, no new value anywhere:
+  - two families: the font variables move to <html> so the :root tokens resolve; `--font-body`
+    points at Manrope, the face every label, price and eyebrow already used; the Hanken import
+    and its four files go. The constitution's Type line still names Hanken: queued for the founder.
+  - six sizes at 1440 (12, 14, 16, 18, 24, 48) and at 390 (12, 14, 16, 18, 22, 30): `--type-body`
+    17 to 16; `.type-eyebrow` and the card label 11 to 12; feature-card title 30 to 24 (18 on
+    mobile); the band heading onto the rail step; the kbd hint onto the UI face at 12.
+  - measure: `max-w-prose` (65ch) on the two long paragraphs.
+  - three radii: 4px and 6px focus and chip radii onto the 8px control radius; the flags lose
+    their 2px corners and rings.
+  - three elevations: every inline rgba shadow on cards, buttons, rail arrows and the hero CTA
+    becomes `--shadow-card` or `--shadow-card-hover`; the rings on the flag chip become a border.
+  - 44px: header nav links, the logo link, the search pill, Sign in, the rail "View all" links,
+    the hero dots, the footer accordion links, legal links, the mail link and the language select
+    all carry a 44px hit area; the shared Button's sm size is 44px tall.
+  - imagery: the hero prefers photographic covers and paints the category raster behind an
+    event whose cover is composed, so the title is printed once.
+  - spacing scale: the rubric's guard, scripts/guards/no-hardcoded-spacing.mjs, registered and
+    drilled red and green; it found three values off the 4px grid (a 14px error-page padding, a
+    10px skip-link padding, the 18px desktop rail gap) and each moved to the grid.
+
+## 2026-09-06 19:50 (C14) screens two to five: the benchmark and the critique, before the after-measurement
+
+- C14.13 BENCHMARK for browse, event detail, checkout and the dashboard, on the competitors' own
+  pages today (C:\dev\EVIDENCE\C14\benchmark{,2,3}\, same in-page code as our screens):
+  - Browse. Ticketmaster (https://www.ticketmaster.com.au/discover/concerts): a dark category
+    band with a breadcrumb and "MUSIC" in caps over a short blue rule, one filter row (a select, a
+    dates pill, a This Weekend pill), then "POPULAR CONCERTS" as a caps heading with a rule and
+    large photographic cards beside an advertisement column; 7 sizes, one family, 4 radii,
+    2 shadows, an 83-character line, 70 of 107 targets under 44px. Eventbrite
+    (https://www.eventbrite.com.au/d/australia--melbourne/all-events/): a breadcrumb, an h1, a
+    left filter rail (category with icons, date radios, price), list rows with the flyer left and
+    title, date, venue and "From $" right, and a map panel with "View map"; 7 sizes, one family,
+    ELEVEN radii, 1 shadow, 150 of 245 targets under 44px. DICE (https://dice.fm/browse, which
+    geolocates the visitor and answered for San Francisco): a black surface, filter pills for
+    city, date and price, category tiles, a Spotify and Apple Music connect band, then "Popular
+    Events" with portrait poster cards; 7 sizes, one family, 7 radii, 1 shadow, 86 of 130 under
+    44px. Humanitix and TryBooking publish no browse page reachable by address: three guessed
+    addresses each answered 404 on two passes, so the third pass reaches browse the way a person
+    does, through the homepage control.
+  - Event detail. Eventbrite (an event reached by clicking the first card on browse): a contained
+    media card with blurred edges, the title at 32px below it, an organiser row with follower
+    count and Follow, a sticky price card ("From $92.26", "Get tickets") at the right; 8 sizes, one
+    family, 8 radii, 2 shadows, 31 of 59 under 44px. DICE: a dark page, square artwork at the left
+    with save and share, the title at 64px, the venue, the date in yellow, a price panel that says
+    "The price you'll pay. No surprises later." beside BUY NOW, About, then the refund terms as a
+    list; 8 sizes, one family, 8 radii, 1 shadow, 40 of 44 under 44px. Ticketmaster hands the
+    event to Moshtix (https://www.moshtix.com.au/v2/event/...): a legacy page with a tab nav, a
+    green search bar, a thumbnail beside a 24px title, an "EVENT DETAILS" black band and centred
+    prose; ELEVEN sizes, Arial, a 109-character line and five over 75, 39 of 73 under 44px.
+  - Checkout and the organiser dashboard sit behind a purchase and a login on every one of the
+    five and were NOT captured; that is recorded rather than guessed at. What the public pages
+    show about the money moment is used instead: DICE puts the all-in sentence beside the buy
+    control, Eventbrite keeps the price card beside Get tickets.
+- CRITIQUE against C14.12, from the before-measurement (C:\dev\EVIDENCE\C14\before\):
+  - Browse and city browse (the event card): the browse card and the homepage rail card were two
+    objects: 8px radius against 16, a 22px title against 18, an inline hover shadow against a
+    lighter inline resting one, `transition-all`, and 10px badge type. The page: 8 sizes, 5 radii,
+    6 shadows; the search input and button at 42px, the Grid and Map toggles at 28px; the sticky
+    header, the mobile sheet and the bottom nav each carrying their own inline shadow.
+  - Event detail: 9 sizes including 13px, 7 to 9 radii (an 8px, a 12px and a 16px panel radius
+    on one page), 5 to 10 shadows, five lines over 75 characters at 1440, the Share, Save and Get
+    tickets controls with no focus ring in the sample, `transition-all` on five controls.
+  - Checkout: 6 sizes (11 to 20), 3 radii (8, 12, 16), 3 shadows, the "Log in" link 19px tall,
+    the trust panel a third column at the far right of a 1400px grid at 1440 and below every form
+    section on mobile, a raw 20px "EVENTLINQS" span instead of the wordmark, and 4.3 MB of script
+    to first paint of which 3.7 MB is Stripe.js loaded before the buyer has reached the payment
+    step (recorded for the queue; the money path is not touched by a design item).
+  - Dashboard: axe 2 serious (an unnamed progressbar, a gold-600 link), 19 of 29 targets under
+    44px (every sidebar item 40px, the search 36px, the bell 40px), a 30px page title on the
+    first screen against 24px on the events list. Events list: 32 of 32 interactive elements under
+    44px; every row action a 16px-tall text link.
+- INTENDED CHANGE per rubric line, all tokens:
+  - browse: the card onto the card radius, the two elevation tokens, the 18px title step and 12px
+    badges, explicit transition properties; the input, button and toggles to 44px; the header,
+    sheet and bottom nav onto the elevation tokens (the bottom nav and the sticky bar keep their
+    border and lose their upward shadows, which no token expresses and no competitor carries).
+  - event detail: 11, 10 and 13px onto 12 and 14; 8px and 12px panels onto 16; every inline
+    shadow onto the tokens; a focus ring and a 44px height on the hero CTA; explicit transitions.
+  - checkout: the trust panel handed to the form and rendered under the order total on the
+    details step and directly under the Pay button on the payment step, on every viewport; the
+    panels onto the card radius; the wordmark component in the checkout bar; a 44px "Log in".
+  - dashboard: the progressbar named; the link onto gold-800; sidebar, search, bell, account,
+    tabs, the Create button and every row action to 44px; the events-list title onto the page
+    step; the account menu onto the card radius and the modal elevation.
+
+## 2026-09-06 21:20 (C14) resumed: the stale after-set, the harness drift, three rounds on the challenger, the empty states, and the verdict per screen
+
+- FOUND ON RESUME, and it changed the plan. The after-measurement in the tree had been taken at
+  19:42 to 19:47 against the 19:41 build, and 33 source files were edited after that build (19:46
+  to 19:49). The .next output had been deleted at 19:50 while that run's Lighthouse was still going,
+  so its accessibility 94 and best-practices 88 were a deleted build answering, not the product. A
+  leftover after-all.sh, its Lighthouse and a c14-authed-session were still running against the dead
+  server. All stopped; the stale after set deleted; the tree rebuilt (build-2) and measured again.
+- HARNESS DRIFT, measured rather than assumed. scripts/verify/lib/rubric-in-page.mjs was edited at
+  19:48, after the before set (19:03 to 19:36), so the two sides had not been measured by the same
+  code. The champion (b7798b76) was rebuilt from a stash and re-measured with the FINAL harness
+  (C:\dev\EVIDENCE\C14\before2.sh, tracked changes stashed and restored in a trap). Under the final
+  code the champion's focus misses fall 1 to 0 (home) and 4 to 3 (event page), and its checkout
+  small targets 4 to 2 (the sampler now walks Tailwind's nested @layer rules; a checkbox is judged
+  by its 44px label). The first before set flattered the challenger by exactly that much, so every
+  verdict below is before2 against after; before is kept as the record of the drift.
+- ROUND ONE (build-2) after-measure found, on the challenger: the sticky bar's Share and Save with
+  no focus ring; the seat selector's party stepper at 36px, "Find our seats" at 32px, the table and
+  view chips at 36px; a 12px panel radius in the ticket selector (three panels, the pay button),
+  four checkout panels (attendee, discount, consent, tax invoice), the assistant panel (the
+  dashboard's fourth radius) and the seat key plan at 4px; and the measure: max-w-prose is 65ch,
+  and ch is the width of the digit zero, 0.642em in Manrope against an average advance of 0.46em,
+  so a 65ch paragraph at 14px measured 584px wide and held 90 characters a line (probed on the
+  running server: 181 characters on 2 rendered lines). Fixed: focus rings on both controls; every
+  control to 44px; every panel onto the card radius (16px) and the two elevation tokens; one CSS
+  utility .type-measure (max-width 52ch) in globals.css (75 characters at 0.46em is 34.5em,
+  53.7ch in Manrope; 52 keeps a margin for capitals and numerals), on the description, the refund
+  paragraph, the know-before-you-go rows, the checkout terms and the footer acknowledgement; the
+  contextual hint's 28px dismiss onto 44px.
+- ROUND TWO found one defect the rubric had been reporting as "a fourth radius on the help dialog":
+  the global :focus-visible rule in globals.css set border-radius 4px, and because it sits
+  outside every layer it beat the element's own utility. A pill button, a 16px card and the help
+  dialog all snapped to 4px corners the moment they took keyboard focus, on every screen, since the
+  rule was written. Removed; the outline now takes the element's own corners. Plus text-pretty on
+  the footer acknowledgement and the dashboard subtitle (single-word last lines).
+- ROUND THREE came from the visual review, which the numbers cannot see: on the events list,
+  min-w-11 centred the short row actions (Edit, View) in 44px boxes and left the long ones bare, so
+  the gaps between eight words read uneven. Every action now carries px-2 and the row has no flex
+  gap, so the rhythm is the padding.
+- C14.10, THE EMPTY AND SPARSE STATES, driven on the natural server: the homepage as TEST is
+  (103 events, rails topped up by invitation cards where thin); browse with zero results
+  (/events?q=zq-no-such-event-7q); a launch city with zero events (/events/browse/sydney; every
+  slug enumerated from src/lib/locations/launch-cities.ts and the count taken on TEST, where only
+  Geelong and Melbourne carry events: C:\dev\EVIDENCE\C14\empty-city-enumeration.txt); and the
+  dashboard and events list of an organiser who signed up through the real form and listed nothing
+  (scripts/verify/c14-empty-organiser.mjs). Found and fixed: the zero-result page's two buttons at
+  38px and its 12px corner, the empty city's two buttons at 38px and its 20px heading (a seventh
+  size; now the 18px card step, the same as the dashboard's empty heading), the empty upcoming
+  panel's Create event at 40px. After: 0 targets under 44px, three radii, six sizes or fewer, axe 0
+  on every empty state at every width (C:\dev\EVIDENCE\C14\after\natural-empty\,
+  natural-authed-empty\).
+- THE VERDICT, before2 against after, per screen (1440 unless stated;
+  C:\dev\EVIDENCE\C14\compare-before2-after.txt: 173 rubric lines better, 16 worse, every "worse"
+  named below):
+  - Homepage (fixture density): sizes 12 to 6, families 4 to 2, radii 6 to 3, shadows 6 to 1, longest
+    line 103 to 54 characters, lines over 75: 2 to 0, targets under 44px 34 of 273 to 0, axe 0 to 0;
+    390: sizes 11 to 6, shadows 8 to 2, small 28 to 0. Lighthouse mobile 77 to 81, desktop 98 to 98.
+    Script 562 to 563 KB (longer class attributes), stylesheet 181 to 175 KB (Hanken's faces gone).
+    CHALLENGER WINS. Composition and dimensions did not move (C14.9): the same sections, rails,
+    heights and card sizes in both captures.
+  - Browse and city browse: sizes 8 to 6, families 4 to 2, radii 5 to 3, shadows 6 to 2, longest line
+    103 to 51, small 16 to 0 (390: 25 to 0, shadows 8 to 3); the event card is now one object with
+    the homepage card (16px radius, the two elevation tokens, the 18px title step, 12px badges).
+    Lighthouse /events mobile 87 to 89 (five runs: 89, 89, 93, 92, 89), desktop 100 to 100 (five
+    runs, all 100); /events/browse/geelong mobile 84 to 88, desktop 99 to 100. CHALLENGER WINS.
+  - Event detail (fixture, the Enmore): sizes 9 to 6, families 3 to 1, radii 7 to 3, shadows 5 to 1,
+    longest line 103 to 68, lines over 75: 5 to 0, small 15 to 0, focus misses 3 to 0, gold share
+    4.82 to 4.49 percent; 390: sizes 9 to 6, shadows 8 to 2, small 26 to 0. The seated event
+    (natural): sizes 9 to 6, radii 9 to 5 (8, 16, pill, and the segmented zoom pair which is the 8px
+    radius on one side each), shadows 7 to 3, small 19 to 0, focus misses 3 to 0; at 390 Google's
+    map script (1.5 MB) now loads inside the first-paint window because the page is shorter, and
+    its RefererNotAllowed overlay contributes a Roboto title at 24px and a 1px radius on that
+    viewport only (a key restriction on localhost, not a product defect; the route's own bundle is
+    648 KB at 768 and 1440, as before). Lighthouse mobile 83 to 86, desktop 99 to 99. CHALLENGER WINS.
+  - Checkout: sizes 6 to 5, families 2 to 1, radii 3 to 2, shadows 3 to 1, small 2 to 0, the 768
+    measure 93 to 58; the trust panel sits under the order total beside the form on the details
+    step and directly under the Pay button on the payment step, on every width; the wordmark
+    replaces a raw 20px span. Lighthouse mobile 87 to 90, desktop 100 to 100. Script 4344 to 4345 KB
+    (Stripe.js is 3.7 MB of it, queued for the founder). CHALLENGER WINS.
+  - Organiser dashboard and events list: sizes 6 to 5, families 3 to 2, radii 4 to 3, shadows 2 to 1,
+    small 19 of 29 to 0, axe 2 serious to 0 (the progressbar named, the Connect Stripe link on
+    gold-800); events list small 32 of 32 to 0 of 32, radii 4 to 3, title onto the page step.
+    Lighthouse dashboard mobile 88 to 89, desktop 95 to 95; events list mobile 89 to 91, desktop 98
+    to 98. CHALLENGER WINS.
+  - The 16 "worse" lines, every one: script bytes up by 1 KB on 14 cells (562 to 563, 647 to 648,
+    590 to 591, 4344 to 4345 KB: the class attributes carry focus-visible and min-h-11 now) beside
+    the stylesheet down 6 KB on the same cells, so every page is lighter; the seated event at 390
+    (the map, above); and orphans 2 to 3 on that one cell, all three in body lines ("AEST",
+    "spot.", "selects."), none on a heading, text-pretty applied. No line of type, colour, form,
+    imagery, motion, interaction or craft is worse on any screen at any width.
+- REGRESSION on the final tree: tsc 0; eslint 0 on every changed file; no-hardcoded-spacing green
+  (919 files) and its three drills red; 90 of 90 drills with env; the suite 306 files / 3550 tests,
+  0 failed, 0 skipped, the canary raised 305/3540 to 306/3550 and the runner's header names the
+  guard (the registry test caught the missing line); five production builds green with the trace
+  check (build-2 to build-5, C:\dev\EVIDENCE\C14\build-*.txt); the push gate on the push. Disk
+  22 GB free at close; every Lighthouse JSON deleted after its median was read.

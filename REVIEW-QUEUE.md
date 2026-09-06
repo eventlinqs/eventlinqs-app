@@ -449,3 +449,60 @@ its job, so your live site still serves the previous release. In PowerShell, fro
 and relink to TEST with `supabase link --project-ref vkapkibzokmfaxqogypq`. Until then CI on main
 shows red for that one reason. Next time an item carries a migration the code depends on, I will
 hand you the migration before merging so main never sits red.
+
+## C14 design uplift, the five screens (6 September 2026): measured, landed, and stopped where you said to stop
+
+**What you asked for (C14.9):** the five screens a venue judges you on, in order, each one changed only where a
+measurement says the change is better and worse on nothing, then stop and show you. That is what happened. Nothing
+beyond those five screens was touched, and the remaining routes wait for you.
+
+**What a venue or a ticket buyer sees now, and did not before:**
+- **Every word on the platform is in the brand face.** Body copy had been falling back to the visitor's system
+  font since the Archivo pass landed, because the body token pointed at a variable that lived one element too
+  low. Nobody saw it because it looked "fine"; measured, it was a third or fourth family on every page.
+- **One type scale, six sizes, everywhere.** The homepage rendered twelve sizes; the event page nine; the dashboard
+  six with an 11px and a 20px that nothing else used. Every screen is now on 12, 14, 16, 18, the section step
+  and the display step, and nothing else.
+- **Three corner radii and one shadow family**, where there had been up to nine radii and ten shadows on one page.
+  The browse card and the homepage card are finally the same card.
+- **Every control is at least 44 pixels tall**, including every header link, every footer link, every row action
+  on your events list (which were 16px text links), the seat selector's steppers and the buttons on the empty
+  states. Every one shows a focus ring. Keyboard focus no longer snaps a rounded button to square corners (a
+  global rule had been doing that on every screen).
+- **Body copy holds 51 to 68 characters a line** at every width; the footer and the event page ran to 103.
+- **Checkout puts the trust panel where the money is**: under the order total beside the form, and directly under
+  the Pay button on the payment step, on every width. It used to be a third column at the far right on desktop
+  and below everything on a phone.
+- **The dashboard passes axe** (an unnamed progress bar and a gold link that failed contrast are fixed).
+- **The empty states are designed**: a city with no events, a search with no results, and a fresh organiser's
+  dashboard and events list each read as a next action, at 44px, on the same scale.
+
+**Measured, not claimed.** One harness measured the old build and the new one identically at 390, 768 and 1440,
+light and dark, on a production build against the test database: 173 rubric lines better, 16 "worse", and every
+one of the 16 is a 1 KB script rounding beside a 6 KB stylesheet saving on the same page, or Google's map loading
+a moment earlier on one phone view. Lighthouse is level or better on every route: the homepage 77 to 81 on mobile,
+checkout 87 to 90, the dashboard 88 to 89, the events list 89 to 91, browse 87 to 89, desktop unchanged at 95 to
+100. Nothing came down.
+
+**Before and after, the images to look at:** C:\dev\EVIDENCE\C14\before2\ (as it was) against
+C:\dev\EVIDENCE\C14\after\ (as it is), same file names: fixture\home-1440-light.jpg and home-390-light.jpg,
+natural\browse-1440-light.jpg, fixture\detail-1440-light.jpg and detail-390-light.jpg,
+natural-authed\checkout-1440-light.jpg, natural-authed-org\dashboard-1440-light.jpg and
+dashevents-1440-light.jpg. The empty states are in after\natural-empty\ and after\natural-authed-empty\.
+
+**Two things found underneath, fixed in the same change:**
+- A global focus rule set a 4px corner on every focused element, overriding pills, cards and dialogs the moment
+  they took keyboard focus, on every screen.
+- The "65-character" prose width was holding 90 characters in Manrope, because that unit is the width of a zero
+  and Manrope's zero is wide. One utility, derived from the measured glyph width, now holds it at about 72.
+
+**Decide, or know:**
+- **The body typeface.** The constitution names Hanken Grotesk as the body face; it never rendered. Your rubric
+  allows two families, so the platform now renders Archivo and Manrope. If you want Hanken instead, it is one
+  token and one import, and I will re-measure. Until you rule, the constitution line and the code disagree.
+- **C14.1 to C14.8 are not on disk.** The close-out carries C14.9 to C14.16 and cites "the field Web Vitals
+  budgets from C14.5"; nothing invented for them. Point me at them if they exist.
+- **Checkout loads 3.7 MB of Stripe before the buyer reaches payment.** Loading it on "Continue to payment" is a
+  one-line change on the money path; yours to call.
+- **Still yours from C13:** the two production migrations and the redeploy; main stays red on preview-state
+  until then.
