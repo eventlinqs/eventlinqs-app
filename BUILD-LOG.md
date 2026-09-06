@@ -2230,3 +2230,82 @@ changed, and nothing was deleted.
   first byte and the simulated critical path are. The production baseline (three runs, mobile and
   desktop, on www.eventlinqs.com.au) is being taken before any change is proposed, because a local
   first byte of 780ms is not what production serves.
+
+## 2026-09-06 22:50 (C8) mobile 95: what production actually measures, and the two things the document does to itself
+
+- THE BASELINE, production itself from this machine, three runs per route, Lighthouse 13.4.1
+  (C:\dev\EVIDENCE\C8\lighthouse-production-baseline.log): homepage mobile 68 (runs 76, 68, 67;
+  LCP 4.6 to 7.7s), browse 75, the event page 68; desktop 96, 99, 97. Not the 93 the close-out
+  records, and the reason is below. Accessibility, best practices and SEO are 100 on every route.
+- WHERE THE SCORE GOES. The server answers in 35 to 43 ms and the OBSERVED LCP is about one
+  second on every page (home 1011 ms, the event page 814 ms). The SIMULATED mobile LCP, which is
+  the number Lighthouse scores, is 5.3 to 7.0 s. Under APPLIED throttling (1.6 Mbps, 150 ms round
+  trips, 4x CPU: C:\dev\EVIDENCE\C8\experiments-1.txt) the homepage's first paint and LCP land
+  together at 4.0 s, and the LCP image alone takes 2.5 s to arrive. Nothing paints until the
+  25 KB render-blocking stylesheet lands, and that stylesheet queues behind everything else the
+  head asks for in the same window: NINE image preloads (the hero slide, four category tiles, four
+  community tiles; ten on the fixture homepage), three font files (92 KB), and 414 KB of script
+  (the 190 KB shell plus Sentry, which lands on `load` at 843 ms, 170 ms BEFORE the LCP paint at
+  1011 ms on a fast connection, so it sits inside the simulated LCP window too). TBT is 240 to
+  290 ms: the shell's main-thread cost is not where the score is lost.
+- SO "THE SHELL" IS THE DOCUMENT'S SHAPE, not the chunk list. React (72 KB gz) and the Next
+  runtime (33 KB gz) are the floor; the six app chunks are 3 to 9 KB gz each. What the document
+  does to itself: it preloads ten images, fetches seven static font files, blocks paint on a
+  stylesheet it then starves, and lays out the whole page (666 ms of style and layout on the
+  fixture homepage, times four on the mobile profile) before the first paint.
+- FOUND UNDERNEATH, a C14 side effect: Manrope was declared at 600, 700 and 800 only (its old
+  job was labels), so when C14 made it the body face every paragraph asking for 400 or 500 was
+  drawn at 600, the nearest declared weight. Every body line on the platform has been semibold
+  since C14 merged. The variable-weight file fixes it and is fewer bytes than the static set.
+- ITERATION ONE, one priority image per document and variable fonts:
+  scripts/guards/one-priority-image.mjs holds an allowlist of named LCP candidates (the hero, or
+  the first tile under it where the hero has no photograph) and fails the build on any grant it
+  does not know or any grant that reaches past the first item ("the first row paints eagerly",
+  the pattern that put nine preloads in one head); drilled red and green, nine tests; the served
+  head counted per route after the build: the homepage 2 (slide 0 and the doorway tile), the
+  index pages 2, every other route 1 (was 10, 5 and 1). Fonts: two variable files (36 + 26 KB)
+  instead of seven static. Local production build at fixture density, medians of three
+  (C:\dev\EVIDENCE\C8\lighthouse-iter1.log): homepage mobile 84 (the C14 after-set read 81 on
+  this machine), browse 89 (89), the event page 86 (86); desktop 99, 99, 99. The homepage moved
+  because it was the page carrying the preloads; the other two already carried one. The local
+  build cannot show more than this: its first byte is 230 to 780 ms because the local server
+  renders the fixture homepage on every request, where production answers from the edge in
+  35 ms. The honest floor for this item is therefore measured on a production build ON VERCEL
+  (the preview) and on production after the founder's redeploy, and the local number is
+  reported beside them as what this machine can see.
+- ITERATION TWO, the stylesheet and the layout: `experimental.inlineCss` (the installed Next
+  16.3 docs recommend it for atomic CSS and first-time visitors and name the cost, a returning
+  visitor re-downloads about 25 KB gz of styles per document instead of reading a cached sheet;
+  one line to reverse, queued for the founder), and `cv-section` (content-visibility: auto with
+  a 480px intrinsic estimate) on every rail section through SECTION_RAIL, so a discovery page
+  lays out its first viewport before painting and the rest as it approaches. Numbers below.
+- ITERATIONS TWO TO FOUR, judged by the champion rule on the local production build, medians of
+  three at fixture density (C:\dev\EVIDENCE\C8\lighthouse-iter*.log), mobile home / browse / event:
+  - iteration one (priority discipline, variable fonts): 84 / 89 / 86 (from 81 / 89 / 86).
+  - iteration two (one plus inlineCss plus cv-section): 83 / 83 / 85. WORSE on every route: FCP up
+    150 ms on the homepage, TBT up on browse. Not landed as one.
+  - iteration three (one plus inlineCss only): 78 / 87 / 85. The inlined stylesheet is a clear
+    LOSS on this profile: the document grows by the whole sheet before the first byte of markup
+    can be parsed, and that outweighs the round trip it saves. Reverted; the config carries no
+    trace of it. The installed docs' own trade-off (returning visitors lose the cached sheet)
+    would have cost real users on every navigation for a number that got worse.
+  - iteration four (one plus cv-section only): 88 / 89 / 86. The deferred section layout WINS on
+    the homepage (plus four) and ties on the other two, which carry one rail each. Landed.
+    Checked on the build: 18 rail sections carry content-visibility auto with a 480px estimate;
+    a hovered card's lift and shadow at a section edge captured
+    (C:\dev\EVIDENCE\C8\cv-section-hover-1440.jpg); layout shift while scrolling the whole page
+    0.0000; the C14 rubric on the same build unchanged (six sizes, three radii, 0 targets under
+    44px, axe 0; stylesheet 175 to 169 KB with the static faces gone).
+- WHERE THE LOCAL BUILD TOPS OUT, and why the proof moves to a Vercel build: the homepage's
+  simulated LCP is still 3.9 s on this machine with an observed LCP of 0.73 s, because the local
+  server's first byte is 230 to 780 ms (it renders the fixture homepage on every request) and
+  the simulation charges every script byte requested before the paint. Production answers from
+  the edge in 35 ms. So the number that decides C8 is the preview deployment of this branch (a
+  production build on Vercel's infrastructure, warmed, medians of three from this machine) beside
+  the production baseline taken the same way (68 / 75 / 68), and production itself once the
+  founder's redeploy lands.
+- The two new guard drills: the category rail preloading its first four tiles again is refused
+  ("One LCP candidate per document"); a rail card handed priority with no reason on the list is
+  refused ("not on the reviewed list"). The second drill caught the guard's own first version,
+  which missed a grant followed by another attribute on the same line; fixed, tested, drilled
+  again.
