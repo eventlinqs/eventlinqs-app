@@ -2461,3 +2461,77 @@ changed, and nothing was deleted.
 - THE HAND-BACK. REVIEW-QUEUE.md's "Needs you" section was stale (a 6.7 GB disk, five migration asks already applied on production, a token no longer needed) and the one blocking step was at the bottom of the file; rewritten so `npm run migrate:production` is the first thing he reads and the open decisions follow. BUILD-LEDGER.md: C16.2.1 and the founder steps table corrected; C17 and C18, added to CLOSE-OUT.md at midnight and never acknowledged, now carry rows as NOT STARTED by the halt rule, with their order (C17 immediately after C16.4, then C18).
 - A NOTE ON TIME. This session's timestamps are the machine's own clock (`date`, Australia/Melbourne); the previous session's 01:30 and 02:40 entries were written about an hour ahead of the files' modification times.
 - WHAT HAPPENS NEXT, IN ORDER, ONCE HIS COMMAND HAS RUN: push this branch (the gate passes), open the pull request as a draft and mark it ready, "production parity" reports green, merge, watch production to Ready and confirm the served release, drive the ten routes with C:\dev\EVIDENCE\C7\sweep-production.mjs, C16.4 closes and C2 closes with it, PR 130 (C8) merges the same way, then C9, C17, C18. A relaunched session re-runs the parity step first and, if production is still behind, stops here again with nothing to add.
+
+## 2026-09-07 01:45 (C16, continued) the deployment-state guard judged the wrong commit: found by the previous session, closed by this one
+
+- THE HALT RE-VERIFIED FIRST, before anything else, as C16.0 requires. Production parity at 01:50:
+  116 migrations in the tree, 113 applied on gndnldyfudbytbboxesk, the same 3 pending
+  (20260905000003, 20260906000001, 20260906000002); the environment half read the production
+  store through the Vercel CLI login and passed (34 records, 43 manifest entries). Vercel's
+  newest deployments on main: 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY, so production
+  still serves the C3 commit. CI on main: still red at 2d558d2a (run 34031455414); no new run
+  since. The founder has not yet run `npm run migrate:production`. Nothing merged, nothing
+  started, the CLI rests on TEST (supabase/.temp/project-ref read back: vkapkibzokmfaxqogypq).
+  Evidence: C:\dev\EVIDENCE\C16\production-parity-recheck-session5.txt,
+  deployments-recheck-session5.txt.
+- THE STATE FOUND. The previous session (01:20 to 01:44) rewrote
+  scripts/guards/preview-deployment-state.mjs, moved the Vercel login into
+  scripts/lib/vercel-login.mjs, taught the drill harness environment-only drills, wrote 18
+  unit tests, drove the guard both ways against the real deployments, and then ended its turn
+  with the drill harness still running as an orphan and NOTHING COMMITTED and no log written.
+  The orphaned harness finished at 01:43 (guard-failure-drills-session4.txt): 92 of 92 drills
+  fired correctly, then its final all-guards pass reported "46 of 71 guards FAILED" with no
+  failure text from any guard at all (five guard tags printed anything in that pass), which is
+  the signature of spawns not completing, not of guards judging. Re-run on the identical tree
+  at 01:50 with the environment: ALL 71 GUARDS PASS (guards-session5.txt). The suite: 311
+  files, 3588 tests, 0 failed, 0 skipped (suite-session5.txt). tsc 0 errors; eslint 0 on the
+  seven touched files. So the tree was clean and the harness's last line was an artefact of
+  the orphaned run. The harness is re-run alone this session for a clean end-to-end proof
+  (guard-failure-drills-session5.txt).
+- WHAT THE PREVIOUS SESSION FOUND, recorded here because it wrote no log entry. The
+  preview-deployment-state guard judged "the newest SETTLED deployment for the branch".
+  Measured from Vercel's own records (probe-deployments-by-sha.txt): a production build of
+  this project reaches READY 2m12s to 2m32s after creation, a failing one settles in 1m01s,
+  and CI reaches the guard 2m02s to 2m28s into the job. So while a commit's own build was
+  still running the guard fell through to the PREVIOUS commit's deployment. Every green run
+  of CI on main since 5 September passed on an older commit's READY: the C3 merge (b4255a96)
+  passed on 9f530a4d's READY ten seconds before its own went READY. Two consequences, both
+  wrong: the merge after a red one is judged by the red one for as long as its own build
+  runs, so the very commit that repairs main goes red again and the owner receives one more
+  failed-run email (this would have happened on the C16 merge itself, after the founder's
+  migration); and a build that fails slower than about two and a half minutes is passed on
+  the previous commit's READY, a false green on the one check that exists to refuse it.
+- THE FIX, now in the tree. The guard judges the deployment carrying THE COMMIT UNDER TEST,
+  through the list-deployments endpoint's own `sha` filter (v7). In CI it WAITS for that
+  deployment to settle: up to PREVIEW_STATE_WAIT_SECONDS (600) polling every 15 s, with
+  PREVIEW_STATE_CREATE_GRACE_SECONDS (90) for Vercel to create it at all. READY passes;
+  ERROR or BLOCKED fails; CANCELED or DELETED skips loudly; still building past the wait
+  FAILS, because a build nobody has seen finish is the fiction the 9 August ruling names.
+  On a pull request the commit is `pull_request.head.sha` from the event payload, never
+  GITHUB_SHA (the merge commit Vercel does not build). Outside CI nothing waits: HEAD is
+  normally unpushed, so "no deployment" is the honest state and the pre-push gate is never
+  stalled. A record with neither `state` nor `readyState` is a shape mismatch, never "still
+  building". Without a token or a CLI login it skips in capitals. Every verdict is a pure
+  function (judgeCommitDeployments, settleVerdict with an injected clock and listing), so
+  the race and the false green are each a unit test with a fake clock.
+- DRIVEN BOTH WAYS against the real deployments, by the previous session
+  (guard-preview-state-driven-both-ways.txt): a CI push of 2d558d2a (ERROR) FAILED, exit 1,
+  naming the inspector URL; a CI push of b4255a96 (READY) PASS; the local unpushed HEAD SKIP
+  after one poll with no wait; a CI push of an unpushed commit with a 20 s creation grace
+  polled three times then SKIP in capitals; a pull_request whose payload head is b4255a96
+  while GITHUB_SHA is the ERROR merge commit PASS on the head; no login at all, loud SKIP.
+  The drill harness now carries an environment-only drill aimed at the newest ERROR
+  deployment found live (never a sha written down, for the same reason the effective
+  migrations are computed), and a drill that cannot aim reports STALE and fails the harness.
+- THIS SESSION, on top: the test-count canary raised 310 / 3570 to 311 / 3588 (the 18 new
+  tests in one file) and run alone at the new floor: PASS (canary-session5.txt). The verify
+  job's budget in .github/workflows/ci.yml raised 15 to 20 minutes, with the measurement in
+  the comment: on the last two green runs (34011854099, 33989540313) the build step began
+  1m55s to 2m18s into the job and the whole job took 3m32s to 4m48s, so a full 600 s wait
+  plus the build fits inside 15 with about a minute to spare, and a minute is not a margin.
+  The wider budget is so the guard's own verdict (FAILED after 600 s, naming the deployment)
+  is always what a red run shows, never a bare job timeout. The wait itself is unchanged.
+- THE HALT STANDS. Nothing here changes the founder's step: production is behind by the same
+  three migrations, the gate refuses the push at production parity, and the C16 branch
+  cannot reach GitHub until `npm run migrate:production` has run. What changed is that the
+  first merge after it will now be judged on its own build.

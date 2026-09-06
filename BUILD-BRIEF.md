@@ -221,3 +221,85 @@ WHAT "DRIVEN" MEANS, AND IT IS NOT NEGOTIABLE
   create for themselves, that journey FAILS. Say so and build the missing path.
 - The item is not finished until production deploys green with it included.
   A green local build that Vercel rejects is not a finished item.
+
+## P0 ADDED 2026-09-05, DO THIS BEFORE ANY OTHER REMAINING ITEM
+
+CI is failing on origin/main at dc71374e. The types-drift guard (run 33942112287)
+reports 48 unexplained differences between src/types/database.ts and the live
+schema of gndnldyfudbytbboxesk. Migrations are NOT the cause: 113 in the
+repository, 113 applied, 0 pending. The committed type file is what is wrong.
+
+Three faults, not 48. Fix all three.
+
+FAULT 1, wrong schema block.
+door_realtime_enabled, door_staff_for_event, door_validation_set,
+resolve_scan_review, scan_ticket and sync_offline_scans are declared under
+graphql_public.Functions in the committed file and under public.Functions in the
+live database. Every added entry under graphql_public mirrors a removed entry
+under public. The generated section was written into the wrong schema block.
+The live database is correct.
+
+FAULT 2, missing return fields.
+public.Functions.events_within_distance returns venue_geocode_source and
+venue_geocoded_at in the live database. The committed file omits both.
+The live database is correct.
+
+FAULT 3, hand narrowed union inside generated output.
+events.venue_geocode_source is committed as
+'places' | 'geocoding' | 'manual' | null
+but the generator emits string | null, because the column is text and not a
+Postgres enum. Someone hand wrote that union into the generated section. That is
+the defect. Do NOT reintroduce it there.
+
+REQUIRED WORK
+
+P0.1 Update the local Supabase CLI to 2.116.0 before anything else. CI generates
+     with 2.116.0 and the guard requires the committed types to come from the
+     same version. Regenerating with 2.115.0 will drift again immediately.
+
+P0.2 Regenerate the generated section only:
+       npx supabase gen types --lang=typescript --project-id gndnldyfudbytbboxesk
+     Replace lines 1 through the // BEGIN LEGACY ALIASES marker in
+     src/types/database.ts. This is a READ against production and is permitted.
+     You have NO approval to write to production. Do not run supabase db push
+     against gndnldyfudbytbboxesk under any circumstances.
+
+P0.3 Restore the venue_geocode_source narrowing properly, by making the database
+     enforce it rather than TypeScript alone. Add a migration converting
+     events.venue_geocode_source to a real Postgres enum with values places,
+     geocoding and manual. Apply it to TEST vkapkibzokmfaxqogypq and let it reach
+     production through the normal PR and deploy path. Once the enum exists the
+     generator emits the union by itself and nobody ever hand writes it again.
+     If a CHECK constraint already covers those values, replace it with the enum
+     in the same migration. Read the migration before applying it, and confirm
+     no existing row holds a value outside the three.
+
+P0.4 npx tsc --noEmit must pass. Fix every call site the regeneration breaks.
+     Do not widen a type to silence an error.
+
+P0.5 Run the types-drift guard locally and prove it passes, then prove it still
+     FAILS when fed a deliberately stale type file, per the standing rule that
+     every guard is proven both ways.
+
+P0.6 Only then push. origin/main must be green before any further Scope v5 item
+     begins.
+
+CI HYGIENE, DO IMMEDIATELY AFTER P0
+
+F1 Add a local pre-push gate: one command running lint, typecheck, vitest, every
+   registered guard and the Lighthouse gate. Wire it as a git pre-push hook so a
+   push is impossible until it is green. Prove the gate fails as well as passes.
+
+F2 Change the CI workflows so the heavy jobs do not run on draft pull requests.
+   Gate them on github.event.pull_request.draft == false. Open every future PR as
+   a draft, work, pass F1 locally, then mark it ready so CI runs exactly once.
+
+F4 Register a guard that fails if any workflow loses the draft condition, and a
+   guard that fails if the pre-push hook is missing.
+
+STANDING RULE FROM NOW ON: nothing is pushed until the same checks pass locally
+first. Lawal received six failed run emails for a single pull request because CI
+was used as a test runner. That must never happen again.
+
+## READ C:\dev\CLOSE-OUT.md NOW. It is the authoritative remaining work and it overrides any earlier ordering in this brief. Do C1 first. Nothing in it may be skipped.
+

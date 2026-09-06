@@ -583,3 +583,33 @@ It shows you the three files from production's own record, asks you to type the 
 **Also acknowledged.** C17 (the empty homepage hero) and C18 (the community taxonomy against the scope) were added to CLOSE-OUT.md at midnight; both are in the ledger as not started, because of the halt rule, and are next in that order after C16 closes.
 
 **Evidence:** C:\dev\EVIDENCE\C16\ (production-parity-recheck-session3.txt, migrate-production-dry-run.txt, migrate-production-refused.txt, production-parity-env-half-real.txt, guards-session3.txt and guards-session3-after.txt, suite-session3.txt, gate-refused-on-push-session3.txt).
+
+## C16, continued (7 September 2026, 01:58): one more thing that would have made main go red again after your migration, found and fixed
+
+**Where things stand.** Unchanged: production still serves the C3 build, the two later
+production deployments are still failed, main is still red, and production is still three
+migrations behind the tree. Your one command is still the only thing that unblocks it:
+```
+npm run migrate:production
+```
+
+**What was found.** The check that reads Vercel's build state during CI was reading the
+wrong build. A successful Vercel build of this site lands about two and a half minutes after
+a push, and CI reaches that check about two minutes in, so the check had been looking at the
+PREVIOUS commit's build every time. Every green run on main since 5 September passed on the
+commit before it. After your migration, the first merge would have been judged by the two
+failed builds that are still on record, main would have gone red one more time, and you
+would have received one more failed-run email for a commit that was in fact fine.
+
+**What is fixed.** The check now waits for the commit's own build, up to ten minutes, and
+judges that one. It was driven against the real records: it fails on the commit whose build
+failed, passes on the one whose build succeeded, and does not wait on this machine for a
+build that cannot exist yet. Eighteen tests pin it, the whole guard drill set was re-run
+alone and passed, 92 of 92 drills fired correctly and all 71 guards green on the restored tree, and every other check is green on the tree.
+
+**Nothing changes for you.** The command above is the step; after it, the sequence in the
+"Needs you" item at the top runs without you.
+
+**Evidence:** C:\dev\EVIDENCE\C16\ (guard-preview-state-driven-both-ways.txt,
+probe-deployments-by-sha.txt, guard-failure-drills-session5.txt, guards-session5.txt,
+suite-session5.txt, canary-session5.txt, production-parity-recheck-session5.txt).
