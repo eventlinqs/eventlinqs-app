@@ -3199,3 +3199,40 @@ changed, and nothing was deleted.
   merge resolution, and production's own preconditions for the three files are all already recorded).
   The ledger's section for sessions 13 to 23 widened to cover 24; the "Last re-verified" line at the
   top of REVIEW-QUEUE.md's "Needs you" block updated.
+
+## 2026-09-07 04:36 to 04:39 (C16, continued, session 25) the halt re-verified on relaunch; nothing has moved; nothing started
+
+- Governing laws, stated first: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder
+  applies), the C16.0 halt rule, Definition of Done clause 6. No code changed. Nothing merged, nothing
+  started, nothing written to production; the CLI rests on TEST (supabase/.temp/project-ref read back
+  before and after the parity step: vkapkibzokmfaxqogypq). Disk 22 GB free at start and end
+  (Get-PSDrive 22.15 GB; df 23 GB of 237 GB); no build output produced; no .next anywhere under
+  C:\dev or C:\elrel and one node_modules (this worktree's); no Playwright temp artefacts. The first
+  check on relaunch, per the session-16 note: no .git/MERGE_HEAD, `git status --porcelain` empty, the
+  C16 branch at 100be967, six commits ahead of origin/main after a fetch; the ops/session-log
+  worktree at 74eee0d2, clean.
+- THE HALT RE-VERIFIED (C16.0), 04:36 to 04:37, read only, through the clean-env wrapper. The parity
+  step on the C16 tree: 116 migrations in the tree, 113 applied on gndnldyfudbytbboxesk, the same 3
+  pending (20260905000003_venue_geocode_source_enum, 20260906000001_event_status_archived,
+  20260906000002_event_lifecycle_archive_delete); the environment half read the production store
+  through the Vercel CLI login: 34 records, 43 manifest entries, 0 faults; FAIL on the schema half,
+  exit 1, "BLOCKED at production-parity after 4s. Nothing was pushed." Vercel's production
+  deployments, newest three by sha: 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY, and the newest
+  READY on production is still b4255a96 (dpl_9SkwNKZ7tYnfw3EgZs1oKx8jf7uu, ready 04:36:59Z on
+  6 September). The live site serves sentry-release b4255a96 (HTTP 200, 396472 bytes); the apex
+  answers 301 to www. CI on main: still red at 2d558d2a (run 34031455414), no new run since 11:52Z on
+  6 September (the only later run on main is the scheduled env-locks workflow, green at 15:30Z).
+  origin/main unchanged after a fetch (2d558d2a). PR 130 (C8) still BLOCKED by protection,
+  MERGEABLE, not a draft, head 2ed39584 on perf/c8-mobile-95. The founder has not run
+  `npm run migrate:production`. Evidence: C:\dev\EVIDENCE\C16\production-parity-recheck-session25.txt,
+  deployments-recheck-session25.txt (both status lines present, the URL last on each curl, per the
+  session-23 note).
+- THE HALT STANDS. Six commits wait on ci/c16-production-parity (5ca9d984, eaf7deeb, 2f0545c1,
+  7c9101fe, 8161cfe2, 100be967) and leave the machine the moment the founder's command has run. The
+  sequence after it is unchanged and recorded in the 02:39 entry. Nothing read-only remains to drive
+  under the halt (both proofs inside the founder's command, the gate's refusal on a real push, the C8
+  merge resolution, and production's own preconditions for the three files are all already recorded).
+  The only path to a green main is the three migrations reaching production, which is the founder's
+  reserved step; reverting them from main would remove the shipped C1 enum and the C13 lifecycle and
+  is not a fix. The ledger's section for sessions 13 to 24 widened to cover 25; the "Last re-verified"
+  line at the top of REVIEW-QUEUE.md's "Needs you" block updated.
