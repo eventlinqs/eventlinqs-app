@@ -102,6 +102,14 @@
  *                              and no direct satori or resvg import anywhere under src except
  *                              card-raster.ts, because next/og rasterises through a sharp that
  *                              cannot decode SVG inside the Next server runtime
+ *   event-lifecycle-total     no event status is a dead end, archived leaves only by restore,
+ *                              the one public rule pins published, both organiser surfaces
+ *                              render the lifecycle controls, and the door SQL never reads
+ *                              event status (docs/EVENT-LIFECYCLE.md)
+ *   event-lifecycle-installed the build's own database refuses a delete with money records,
+ *                              writes a tombstone, carries the archived enum value, gates
+ *                              checkout on published and gates every anon read of events,
+ *                              asked through one read-only RPC
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -734,6 +742,23 @@ const GUARDS = [
   // the drill below; green on the repaired tree
   // (C:\dev\EVIDENCE\C3\guard-og-single-rasteriser-{RED,GREEN}.txt).
   'scripts/guards/og-single-rasteriser.mjs',
+  // event-lifecycle-total and event-lifecycle-installed (close-out C13,
+  // 6 September 2026). The founder found on production that a cancelled event
+  // could be edited, viewed or duplicated for ever and nothing else, because
+  // `cancelled: []` in the lifecycle table was a dead end that compiles, and
+  // that delete existed for drafts only, decided by the interface. The static
+  // guard reads the lifecycle module the application runs (through the alias
+  // loader) and fails on any dead end, on archived leaving by anything but
+  // restore, on the public rule drifting off published, on either organiser
+  // surface dropping the controls, and on the door SQL reading event status.
+  // The database guard asks event_lifecycle_guards() on the build's own
+  // project and fails unless the money-records delete trigger, the tombstone
+  // trigger, the archived enum value, the reservation status gate and the
+  // gated anon policies are all in place, because none of that is visible to
+  // anything else in the gate set. Both drilled red and green
+  // (C:\dev\EVIDENCE\C13\guard-event-lifecycle-*.txt).
+  'scripts/guards/event-lifecycle-total.mjs',
+  'scripts/guards/event-lifecycle-installed.mjs',
 ]
 
 /**

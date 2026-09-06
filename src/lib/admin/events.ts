@@ -1,6 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { hasRealCover } from '@/lib/events/publish-gate'
+import { ARCHIVED_STATUS, canArchive, restoreTarget } from '@/lib/event-lifecycle'
+import { deleteEventEverywhere } from '@/lib/events/delete-event-core'
+import { typedMatches } from '@/lib/events/typed-confirmation'
 import type { AdminSession } from '@/lib/admin/types'
 import type { Database } from '@/types/database'
 
@@ -19,7 +22,15 @@ import type { Database } from '@/types/database'
 
 type EventStatus = Database['public']['Enums']['event_status']
 
-export type EventAction = 'pause' | 'resume' | 'cancel' | 'takedown'
+/**
+ * Archive and restore joined the set on 6 September 2026 (close-out C13.7):
+ * the admin console gets the same delete and archive as the organiser, under
+ * the same database rules. Archive is legal from every status but archived
+ * (the lifecycle module decides, never a list here) and restore returns an
+ * archived event to exactly the status it came from. Delete is its own path,
+ * deleteEventAsAdmin, because it is not a status change.
+ */
+export type EventAction = 'pause' | 'resume' | 'cancel' | 'takedown' | 'archive' | 'restore'
 
 interface ActionSpec {
   from: readonly EventStatus[]
@@ -28,7 +39,7 @@ interface ActionSpec {
   requiresReason?: boolean
 }
 
-const ACTION_SPECS: Record<EventAction, ActionSpec> = {
+const ACTION_SPECS: Record<Exclude<EventAction, 'archive' | 'restore'>, ActionSpec> = {
   pause: { from: ['published'], to: 'paused', auditAction: 'admin.event.paused' },
   resume: { from: ['paused'], to: 'published', auditAction: 'admin.event.resumed' },
   cancel: {
@@ -53,6 +64,8 @@ export const EVENT_ACTION_LABELS: Record<EventAction, string> = {
   resume: 'Resume',
   cancel: 'Cancel',
   takedown: 'Take down',
+  archive: 'Archive',
+  restore: 'Restore',
 }
 
 /**
@@ -61,9 +74,12 @@ export const EVENT_ACTION_LABELS: Record<EventAction, string> = {
  * its own panel on the event detail page, not the compact list rows.
  */
 export function actionsForEventStatus(status: EventStatus): EventAction[] {
-  return (Object.keys(ACTION_SPECS) as EventAction[]).filter(
+  const fixed = (Object.keys(ACTION_SPECS) as (keyof typeof ACTION_SPECS)[]).filter(
     (a) => a !== 'takedown' && ACTION_SPECS[a].from.includes(status),
-  )
+  ) as EventAction[]
+  if (canArchive(status)) fixed.push('archive')
+  if (status === ARCHIVED_STATUS) fixed.push('restore')
+  return fixed
 }
 
 export interface AdminEventRow {
@@ -85,6 +101,7 @@ export const EVENT_STATUS_FILTERS: readonly (EventStatus | 'all')[] = [
   'postponed',
   'cancelled',
   'completed',
+  'archived',
 ]
 
 export interface EventListFilters {
@@ -181,6 +198,9 @@ export interface AdminEventDetail {
   city: string | null
   createdAt: string
   tiers: AdminEventTier[]
+  /** Where an archived event returns to on restore; null unless archived. */
+  archivedFromStatus: EventStatus | null
+  archivedAt: string | null
 }
 
 /** Full admin view of one event: core fields, organiser, and ticket tiers. */
@@ -189,7 +209,7 @@ export async function getAdminEventDetail(eventId: string): Promise<AdminEventDe
   const { data, error } = await admin
     .from('events')
     .select(
-      'id, title, slug, status, visibility, is_featured, is_free, fee_pass_type, organisation_id, start_date, end_date, max_capacity, venue_name, venue_city, city_primary, created_at, organisations(name)',
+      'id, title, slug, status, visibility, is_featured, is_free, fee_pass_type, organisation_id, start_date, end_date, max_capacity, venue_name, venue_city, city_primary, created_at, archived_from_status, archived_at, organisations(name)',
     )
     .eq('id', eventId)
     .maybeSingle()
@@ -226,7 +246,41 @@ export async function getAdminEventDetail(eventId: string): Promise<AdminEventDe
       priceCents: t.price,
       currency: t.currency,
     })),
+    archivedFromStatus: (data.archived_from_status as EventStatus | null) ?? null,
+    archivedAt: data.archived_at ?? null,
   }
+}
+
+export type AdminDeleteResult =
+  | { ok: true; title: string }
+  | { ok: false; reason: 'title_mismatch' | 'money_records' | 'not_found' | 'failed'; message: string }
+
+/**
+ * Delete from the admin console. The SAME core the organiser action uses, run
+ * under the service role, so the money-records trigger is the rule here too
+ * and there is no override (close-out C13.7). The typed title is the human
+ * check; the trigger is the enforcement.
+ */
+export async function deleteEventAsAdmin(
+  input: { eventId: string; typedTitle: string },
+  session: AdminSession,
+): Promise<AdminDeleteResult> {
+  const admin = createAdminClient()
+  const { data: current } = await admin.from('events').select('id, title').eq('id', input.eventId).maybeSingle()
+  if (!current) return { ok: false, reason: 'not_found', message: 'Event not found' }
+  if (!typedMatches(input.typedTitle, current.title)) {
+    return { ok: false, reason: 'title_mismatch', message: 'The title you typed does not match the event.' }
+  }
+  const outcome = await deleteEventEverywhere({
+    eventId: input.eventId,
+    actor: { id: session.userId, email: session.email, role: session.admin.role },
+    deleteWith: admin,
+  })
+  if (!outcome.ok) {
+    const reason = outcome.reason === 'money_records' ? 'money_records' : outcome.reason === 'not_found' ? 'not_found' : 'failed'
+    return { ok: false, reason, message: outcome.message }
+  }
+  return { ok: true, title: outcome.title }
 }
 
 /** Toggles an event's featured flag, audit-logged. */
@@ -275,15 +329,20 @@ export async function applyEventAction(
   session: AdminSession,
 ): Promise<EventActionResult> {
   const admin = createAdminClient()
-  const spec = ACTION_SPECS[input.action]
 
   const { data: current, error: readErr } = await admin
     .from('events')
-    .select('id, title, status, cover_image_url')
+    .select('id, title, status, cover_image_url, archived_from_status')
     .eq('id', input.eventId)
     .maybeSingle()
   if (readErr) return { ok: false, error: readErr.message }
   if (!current) return { ok: false, error: 'Event not found' }
+
+  if (input.action === 'archive' || input.action === 'restore') {
+    return applyArchiveOrRestore(input.action, current, session)
+  }
+
+  const spec = ACTION_SPECS[input.action]
   if (!spec.from.includes(current.status)) return { ok: false, invalidTransition: true }
 
   // COVER REQUIRED TO PUBLISH, on every path that reaches 'published', not only
@@ -326,5 +385,76 @@ export async function applyEventAction(
     session,
   })
 
+  return { ok: true }
+}
+
+/**
+ * Archive and restore, from the console. The lifecycle module decides what is
+ * legal (docs/EVENT-LIFECYCLE.md); the update is conditional on the row still
+ * holding the status that was read, so a concurrent change is never clobbered;
+ * and a restore to published re-checks the cover exactly as resume does, so
+ * nothing goes live through the console that could not go live through the
+ * organiser's publish. Audited old -> new, with the actor.
+ */
+async function applyArchiveOrRestore(
+  action: 'archive' | 'restore',
+  current: { id: string; title: string; status: EventStatus; cover_image_url: string | null; archived_from_status: EventStatus | null },
+  session: AdminSession,
+): Promise<EventActionResult> {
+  const admin = createAdminClient()
+  const now = new Date().toISOString()
+
+  if (action === 'archive') {
+    if (!canArchive(current.status)) return { ok: false, invalidTransition: true }
+    const { data: updated, error } = await admin
+      .from('events')
+      .update({
+        status: ARCHIVED_STATUS,
+        archived_at: now,
+        archived_from_status: current.status,
+        archived_by: session.userId,
+        updated_at: now,
+      })
+      .eq('id', current.id)
+      .eq('status', current.status)
+      .select('id')
+      .maybeSingle()
+    if (error) return { ok: false, error: error.message }
+    if (!updated) return { ok: false, invalidTransition: true }
+    await recordAuditEvent({
+      action: 'admin.event.archived',
+      targetType: 'event',
+      targetId: current.id,
+      metadata: { title: current.title, oldStatus: current.status, newStatus: ARCHIVED_STATUS },
+      session,
+    })
+    return { ok: true }
+  }
+
+  const target = restoreTarget(current)
+  if (!target) return { ok: false, invalidTransition: true }
+  if (target === 'published' && !hasRealCover(current.cover_image_url)) {
+    return {
+      ok: false,
+      error:
+        'This event has no cover photo, so it cannot return to live. Restore it to a draft by asking the organiser to upload one first.',
+    }
+  }
+  const { data: restored, error } = await admin
+    .from('events')
+    .update({ status: target, archived_at: null, archived_from_status: null, archived_by: null, updated_at: now })
+    .eq('id', current.id)
+    .eq('status', ARCHIVED_STATUS)
+    .select('id')
+    .maybeSingle()
+  if (error) return { ok: false, error: error.message }
+  if (!restored) return { ok: false, invalidTransition: true }
+  await recordAuditEvent({
+    action: 'admin.event.restored',
+    targetType: 'event',
+    targetId: current.id,
+    metadata: { title: current.title, oldStatus: ARCHIVED_STATUS, newStatus: target },
+    session,
+  })
   return { ok: true }
 }

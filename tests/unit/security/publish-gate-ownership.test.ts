@@ -113,20 +113,36 @@ describe('every service-role publish-gate call site proves ownership first', () 
     expect(serviceRole).toBe(total)
   })
 
-  it('proves ownership before the gate at every call site', () => {
-    // The ownership call must appear BEFORE each gate call, in file order.
+  it('proves ownership before the gate INSIDE the same function, at every call site', () => {
+    /*
+     * This used to require one ownership call per gate call, file-wide, in
+     * order. That proxy broke on 6 September 2026 when archive, restore and
+     * delete (close-out C13) each added an ownership check with no gate call,
+     * and it was always weaker than it looked: an ownership call anywhere
+     * earlier in the file satisfied it. The contract is per FUNCTION: between
+     * the start of the function that calls the gate and the call itself, the
+     * ownership proof must appear. That is what the no-unowned-organisation-read
+     * guard enforces at build time; this test pins it in the suite.
+     */
     const gateAt = [...src.matchAll(/checkPublishGate\(/g)].map((m) => m.index ?? 0)
-    const ownAt = [...src.matchAll(/assertCallerMayActForOrganisation\(/g)].map((m) => m.index ?? 0)
     expect(gateAt.length).toBeGreaterThan(0)
-    expect(ownAt.length).toBe(gateAt.length)
+    const fnStarts = [...src.matchAll(/^(?:export )?async function \w+\(/gm)].map((m) => m.index ?? 0)
     for (const g of gateAt) {
-      expect(ownAt.some((o) => o < g)).toBe(true)
+      const start = fnStarts.filter((s) => s < g).pop() ?? 0
+      const body = src.slice(start, g)
+      expect(body, `no ownership proof before the gate in ${body.slice(0, 60)}`).toContain('assertCallerMayActForOrganisation(')
     }
   })
 
-  it('keeps createEvent owner-only and the editing paths owner-or-manager', () => {
+  it('keeps createEvent and deleteEvent owner-only and the editing paths owner-or-manager', () => {
     expect(src).toContain("assertCallerMayActForOrganisation(user.id, input.organisationId, 'owner')")
-    expect((src.match(/'owner_or_manager'/g) ?? []).length).toBe(2)
+    // Delete is destructive and stays with the owner, like create.
+    const deleteBody = src.slice(src.indexOf('export async function deleteEvent('))
+    expect(deleteBody.slice(0, deleteBody.indexOf('deleteEventEverywhere('))).toContain("'owner')")
+    // Every other ownership call admits a manager, and there are no other modes.
+    const modes = [...src.matchAll(/assertCallerMayActForOrganisation\([^)]*'(owner|owner_or_manager)'\)/g)].map((m) => m[1])
+    expect(modes.filter((m) => m === 'owner').length).toBe(2)
+    expect(modes.every((m) => m === 'owner' || m === 'owner_or_manager')).toBe(true)
   })
 })
 

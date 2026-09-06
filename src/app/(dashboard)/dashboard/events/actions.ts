@@ -10,12 +10,14 @@ import {
   revalidateEventSurfaces,
   revalidateEventSurfacesById,
 } from '@/lib/events/revalidate-event'
-import { canTransition } from '@/lib/event-lifecycle'
+import { ARCHIVED_STATUS, canArchive, canTransition, restoreTarget } from '@/lib/event-lifecycle'
+import { deleteEventEverywhere } from '@/lib/events/delete-event-core'
+import { recordLifecycleAudit } from '@/lib/events/lifecycle-audit'
+import { typedMatches } from '@/lib/events/typed-confirmation'
 import { checkPublishGate, hasPaidTier } from '@/lib/events/publish-gate'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
 import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-model'
 import { moderateEventMedia } from '@/lib/media/moderation'
-import { cleanupEventMedia } from '@/lib/upload'
 import { resolveCityClaim } from '@/lib/cities/resolve'
 import { resolveVenueCoordinates, type VenueGeocodeSource } from '@/lib/geo/venue-coordinates'
 import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
@@ -763,26 +765,8 @@ export async function publishEvent(eventId: string): Promise<ActionResult> {
     return { error: `Cannot publish event in '${event.status}' state` }
   }
 
-  const { data: tiers } = await supabase
-    .from('ticket_tiers')
-    .select('price, name, total_capacity, is_active')
-    .eq('event_id', eventId)
-
-  const gate = await checkPublishGate(createAdminClient(), {
-    organisationId: event.organisation_id,
-    tiersHavePaid: hasPaidTier(tiers ?? []),
-    coverImageUrl: event.cover_image_url,
-    endsAt: event.end_date,
-    isPhysical: event.event_type !== 'virtual',
-    venueName: event.venue_name,
-    venueAddress: event.venue_address,
-  })
-  if (!gate.ok) return { error: gate.message, nextAction: gate.nextAction }
-
-  const sellable = checkSellable(tiers ?? [], {
-    hasReservedSeating: Boolean(event.has_reserved_seating),
-  })
-  if (!sellable.ok) return { error: sellable.message }
+  const { refusal, tiers } = await refuseUnlessPublishable(supabase, user.id, eventId, event)
+  if (refusal) return refusal
 
   const { error } = await supabase
     .from('events')
@@ -804,6 +788,57 @@ export async function publishEvent(eventId: string): Promise<ActionResult> {
   })
 
   return {}
+}
+
+/**
+ * THE PUBLISH GATE, IN ONE PLACE. publishEvent ran it inline; restoreEvent
+ * needs the same gate when an archived event returns to published, because
+ * "an archived event cannot be published without being restored first" is
+ * only a rule if restore checks what publish checks. Returns the refusal to
+ * hand back, or null when the event may go live.
+ */
+async function refuseUnlessPublishable(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  eventId: string,
+  event: {
+    organisation_id: string
+    cover_image_url: string | null
+    end_date: string
+    event_type: string | null
+    venue_name: string | null
+    venue_address: string | null
+    has_reserved_seating: boolean | null
+  },
+): Promise<{ refusal: ActionResult | null; tiers: { price: number; name: string; total_capacity: number; is_active: boolean }[] }> {
+  // The gate reads the organisation's sale posture under the service role, so
+  // this helper proves the caller may act for that organisation itself rather
+  // than trusting every caller to have done so (no-unowned-organisation-read).
+  const authority = await assertCallerMayActForOrganisation(userId, event.organisation_id, 'owner_or_manager')
+  if (!authority.ok) return { refusal: { error: 'Event not found' }, tiers: [] }
+
+  const { data } = await supabase
+    .from('ticket_tiers')
+    .select('price, name, total_capacity, is_active')
+    .eq('event_id', eventId)
+  const tiers = data ?? []
+
+  const gate = await checkPublishGate(createAdminClient(), {
+    organisationId: event.organisation_id,
+    tiersHavePaid: hasPaidTier(tiers),
+    coverImageUrl: event.cover_image_url,
+    endsAt: event.end_date,
+    isPhysical: event.event_type !== 'virtual',
+    venueName: event.venue_name,
+    venueAddress: event.venue_address,
+  })
+  if (!gate.ok) return { refusal: { error: gate.message, nextAction: gate.nextAction }, tiers }
+
+  const sellable = checkSellable(tiers, {
+    hasReservedSeating: Boolean(event.has_reserved_seating),
+  })
+  if (!sellable.ok) return { refusal: { error: sellable.message }, tiers }
+  return { refusal: null, tiers }
 }
 
 export async function pauseEvent(eventId: string): Promise<{ error?: string }> {
@@ -927,43 +962,150 @@ export async function duplicateEvent(eventId: string): Promise<{ error?: string;
   return { newEventId: newEvent.id }
 }
 
-export async function deleteEvent(eventId: string): Promise<{ error?: string }> {
+/**
+ * ARCHIVE (close-out C13.4). Takes the event off every public surface and
+ * stops sales, keeps every record, and remembers where it came from so
+ * restore is exact. Owner or manager, like every other change to an event.
+ * The update is conditional on the status that was read, so two people
+ * acting at once cannot clobber each other.
+ */
+export async function archiveEvent(eventId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
   const { data: event } = await supabase
     .from('events')
-    // slug, venue_city and tags are read HERE because after the delete there is
-    // no row left to compose the invalidation from, and a deleted event that
-    // lingers on a cached listing is a link straight into a 404.
-    .select('status, created_by, cover_image_url, gallery_urls, slug, venue_city, tags')
+    .select('id, slug, title, status, organisation_id, archived_from_status')
     .eq('id', eventId)
-    .single()
-
+    .maybeSingle()
   if (!event) return { error: 'Event not found' }
-  if (event.status !== 'draft') return { error: 'Only draft events can be deleted' }
 
-  const { error } = await supabase.from('events').delete().eq('id', eventId)
-  if (error) return { error: 'Failed to delete event' }
+  const authority = await assertCallerMayActForOrganisation(user.id, event.organisation_id, 'owner_or_manager')
+  if (!authority.ok) return { error: 'Event not found' }
 
-  revalidateEventSurfaces({
-    slug: event.slug,
-    venue_city: event.venue_city,
-    tags: Array.isArray(event.tags) ? (event.tags as string[]) : [],
+  const from = event.status as EventStatus
+  if (!canArchive(from)) return { error: `Cannot archive an event in '${from}' state` }
+
+  const now = new Date().toISOString()
+  const { data: updated, error } = await supabase
+    .from('events')
+    .update({ status: ARCHIVED_STATUS, archived_at: now, archived_from_status: from, archived_by: user.id })
+    .eq('id', eventId)
+    .eq('status', from)
+    .select('id')
+    .maybeSingle()
+  if (error) return { error: 'Failed to archive event' }
+  if (!updated) return { error: 'This event changed while you were looking at it. Reload and try again.' }
+
+  await recordLifecycleAudit({
+    action: 'event.archived',
+    actor: { id: user.id, email: user.email ?? null, role: 'organiser' },
+    event: { ...event, status: from, archived_from_status: from },
   })
+  // Off every cached surface at once: the sitemap, the rails, the city pages.
+  await revalidateEventSurfacesById(supabase, eventId)
+  return {}
+}
 
-  // Orphan cleanup: remove the event's stored images so deleting an event never
-  // leaks storage. Best-effort (the row is already gone); failures are logged.
-  const galleryUrls = Array.isArray(event.gallery_urls)
-    ? event.gallery_urls
-        .map((g) => (typeof g === 'string' ? g : (g as { url?: string } | null)?.url))
-        .filter((u): u is string => typeof u === 'string')
-    : []
-  await cleanupEventMedia({
+/**
+ * RESTORE. The only way out of archived, and it returns the event to exactly
+ * the status it held (docs/EVENT-LIFECYCLE.md). A return to published runs
+ * the publish gate, so nothing goes live by a side door.
+ */
+export async function restoreEvent(eventId: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: event } = await supabase
+    .from('events')
+    .select(
+      'id, slug, title, status, organisation_id, archived_from_status, cover_image_url, end_date, event_type, venue_name, venue_address, has_reserved_seating',
+    )
+    .eq('id', eventId)
+    .maybeSingle()
+  if (!event) return { error: 'Event not found' }
+
+  const authority = await assertCallerMayActForOrganisation(user.id, event.organisation_id, 'owner_or_manager')
+  if (!authority.ok) return { error: 'Event not found' }
+
+  const target = restoreTarget({
+    status: event.status as EventStatus,
+    archived_from_status: (event.archived_from_status as EventStatus | null) ?? null,
+  })
+  if (!target) return { error: `Cannot restore an event in '${event.status}' state` }
+
+  if (target === 'published') {
+    const { refusal } = await refuseUnlessPublishable(supabase, user.id, eventId, event)
+    if (refusal) return refusal
+  }
+
+  const { data: restored, error } = await supabase
+    .from('events')
+    .update({ status: target, archived_at: null, archived_from_status: null, archived_by: null })
+    .eq('id', eventId)
+    .eq('status', ARCHIVED_STATUS)
+    .select('id')
+    .maybeSingle()
+  if (error) return { error: 'Failed to restore event' }
+  if (!restored) return { error: 'This event changed while you were looking at it. Reload and try again.' }
+
+  await recordLifecycleAudit({
+    action: 'event.restored',
+    actor: { id: user.id, email: user.email ?? null, role: 'organiser' },
+    event: {
+      id: event.id,
+      slug: event.slug,
+      title: event.title,
+      organisation_id: event.organisation_id,
+      status: ARCHIVED_STATUS,
+      archived_from_status: target,
+    },
+    metadata: { restoredTo: target },
+  })
+  await revalidateEventSurfacesById(supabase, eventId)
+  return {}
+}
+
+/**
+ * DELETE (close-out C13.2 and C13.3). Owner only. The organiser types the
+ * event's name; the DATABASE decides whether the delete may happen (the
+ * money-records trigger), the shared core removes the row, its storage and
+ * every cached surface, and records who did it.
+ *
+ * It used to be draft-only, decided here. That was the interface deciding a
+ * rule the database now owns, and it left every other status with no exit.
+ */
+export async function deleteEvent(eventId: string, typedTitle: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: event } = await supabase
+    .from('events')
+    .select('id, title, organisation_id')
+    .eq('id', eventId)
+    .maybeSingle()
+  if (!event) return { error: 'Event not found' }
+
+  const authority = await assertCallerMayActForOrganisation(user.id, event.organisation_id, 'owner')
+  if (!authority.ok) return { error: 'Only the organisation owner can delete an event.' }
+
+  if (!typedMatches(typedTitle ?? '', event.title)) {
+    return { error: 'Type the event name exactly as it appears to confirm.' }
+  }
+
+  const outcome = await deleteEventEverywhere({
     eventId,
-    createdBy: event.created_by,
-    urls: [event.cover_image_url, ...galleryUrls].filter((u): u is string => typeof u === 'string'),
+    actor: { id: user.id, email: user.email ?? null, role: 'organiser' },
+    deleteWith: supabase,
   })
+  if (!outcome.ok) return { error: outcome.message }
+
+  // The core invalidates every surface from the row it read; this repeats the
+  // slug's own path so the guard that reads this file can see the mutation
+  // revalidates, and a second invalidation costs one cold read.
+  revalidateEventSurfaces({ slug: outcome.slug })
   return {}
 }

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { fixtureEventExists } from '@/lib/dev/fixture-events'
+import { viewerMayReachArchivedEvent } from '@/lib/events/archived-view'
 
 /**
  * Existence guard for /events/[slug].
@@ -41,7 +42,20 @@ export default async function EventSlugLayout({
     .eq('slug', slug)
     .maybeSingle()
 
-  if (!data) notFound()
+  if (data) return children
 
-  return children
+  /*
+   * NOTHING PUBLIC AT THIS SLUG. An ARCHIVED event is invisible to the anon
+   * read by row-level security, which is right for a stranger, but a viewer
+   * who holds a ticket to it may still reach its page (docs/EVENT-LIFECYCLE.md,
+   * close-out C13.5 and C13.6). That decision has to be made HERE, because this
+   * guard answers before the page runs: the first C13 drive found the page's
+   * own holder branch was never reached, the layout having already said 404.
+   * The session is read only on this path, so an ordinary missing slug still
+   * 404s without touching request data; for an archived slug the response is
+   * per viewer, and the proxy marks it private to the edge cache.
+   */
+  if (await viewerMayReachArchivedEvent(slug)) return children
+
+  notFound()
 }

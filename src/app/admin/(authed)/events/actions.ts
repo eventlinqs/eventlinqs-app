@@ -4,11 +4,11 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { assertCan } from '@/lib/admin/rbac'
-import { applyEventAction, setEventFeatured } from '@/lib/admin/events'
+import { applyEventAction, deleteEventAsAdmin, setEventFeatured } from '@/lib/admin/events'
 
 const ActionSchema = z.object({
   eventId: z.string().uuid(),
-  action: z.enum(['pause', 'resume', 'cancel', 'takedown']),
+  action: z.enum(['pause', 'resume', 'cancel', 'takedown', 'archive', 'restore']),
   reason: z.string().max(500).optional(),
   returnTo: z.string().optional(),
 })
@@ -36,6 +36,35 @@ export async function eventActionForm(formData: FormData): Promise<void> {
   if (res.invalidTransition) redirect(appendNotice(base, 'stale'))
   if (!res.ok) redirect(appendNotice(base, 'error'))
   redirect(appendNotice(base, 'done', action))
+}
+
+const DeleteSchema = z.object({
+  eventId: z.string().uuid(),
+  typedTitle: z.string().min(1).max(300),
+})
+
+/**
+ * DELETE FROM THE ADMIN CONSOLE, under the same database rule as the organiser
+ * (close-out C13.7): the money-records trigger fires for the service role too,
+ * so there is no admin override. The admin types the event title, exactly as
+ * the organiser does. The redirect carries the outcome as a notice; a refusal
+ * names the records that stand in the way.
+ */
+export async function eventDeleteForm(formData: FormData): Promise<void> {
+  const session = await requireAdminSession()
+  assertCan(session, 'admin.events.manage')
+
+  const parsed = DeleteSchema.safeParse({
+    eventId: formData.get('eventId'),
+    typedTitle: formData.get('typedTitle'),
+  })
+  if (!parsed.success) redirect('/admin/events?notice=invalid')
+
+  const res = await deleteEventAsAdmin(parsed.data, session)
+  if (res.ok) redirect(appendNotice('/admin/events', 'done', 'delete'))
+  if (res.reason === 'title_mismatch') redirect(`/admin/events/${parsed.data.eventId}?notice=title`)
+  if (res.reason === 'money_records') redirect(`/admin/events/${parsed.data.eventId}?notice=money`)
+  redirect(`/admin/events/${parsed.data.eventId}?notice=error`)
 }
 
 const FeatureSchema = z.object({

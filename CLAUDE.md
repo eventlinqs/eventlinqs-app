@@ -63,6 +63,7 @@ silently follow the stale doc.
 | Seed or demo data | `seed-events` skill, Law 3, Media architecture |
 | Links, routes, navigation | Law 5 (zero dead links) |
 | A migration or the database | Verification and gates (Migrations) |
+| An event status change, archive, restore or delete, or what a deleted or archived event URL answers | `docs/EVENT-LIFECYCLE.md` (AUTHORITY: the total state machine, the money-records delete rule the database enforces, the 410 and 404 rules), `src/lib/event-lifecycle.ts` (the table the code runs), `scripts/guards/event-lifecycle-total.mjs` and `event-lifecycle-installed.mjs` (the gates) |
 | An environment variable, a secret, a store scope, a sender or alert address | `docs/ENV-DOCTRINE.md`, `src/lib/env/manifest.mjs` (declare it there and the guards pick it up), Verification and gates |
 | A rate limit: adding one, changing a cap, or flipping fail-open to fail-closed | `docs/RATE-LIMIT-DOCTRINE.md` (AUTHORITY on the fail-open decision and on the `launch-compose` ruling), `src/lib/rate-limit/policies.ts` (the table), `scripts/verify/rate-limit-audit.mjs` (run it BEFORE claiming what a policy costs or what it is keyed by) |
 | A fee, pricing, checkout charge, or payout | Fee system (one source), `docs/FEE-SYSTEM.md` |

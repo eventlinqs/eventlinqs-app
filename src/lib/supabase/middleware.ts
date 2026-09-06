@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSupabaseAnonKey, getSupabaseUrl } from './env'
+import { SIGNED_IN_MARKER_COOKIE, signedInMarkerOptions } from '@/lib/auth/signed-in-marker'
 
 export async function updateSession(request: NextRequest) {
   // Stripe webhook must bypass everything - no cookie touching, no redirects.
@@ -38,10 +39,10 @@ export async function updateSession(request: NextRequest) {
 
   // API routes handle their own auth - never redirect them to /login
   if (request.nextUrl.pathname.startsWith('/api/')) {
-    return supabaseResponse
+    return withSignedInMarker(supabaseResponse, request, Boolean(user))
   }
 
-  // Default-public, explicit-protected. Only the listed prefixes require auth  - 
+  // Default-public, explicit-protected. Only the listed prefixes require auth  -
   // adding a new public marketing/legal/help route requires zero changes here.
   const protectedPrefixes = ['/dashboard']
   const isProtectedRoute = protectedPrefixes.some(prefix =>
@@ -53,15 +54,32 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', request.nextUrl.pathname)
-    return NextResponse.redirect(url)
+    return withSignedInMarker(NextResponse.redirect(url), request, false)
   }
 
   // Redirect authenticated users away from auth pages
   if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+    return withSignedInMarker(NextResponse.redirect(url), request, true)
   }
 
-  return supabaseResponse
+  return withSignedInMarker(supabaseResponse, request, Boolean(user))
+}
+
+/**
+ * THE SIGNED-IN MARKER, kept in step with the session on every response
+ * (src/lib/auth/signed-in-marker.ts says why). Set when there is a user and
+ * the request did not already carry it; cleared when there is no user and the
+ * request still carries it. Untouched otherwise, so an anonymous response
+ * stays byte-for-byte cacheable.
+ */
+export function withSignedInMarker(response: NextResponse, request: NextRequest, signedIn: boolean): NextResponse {
+  const present = request.cookies.has(SIGNED_IN_MARKER_COOKIE)
+  if (signedIn && !present) {
+    response.cookies.set(SIGNED_IN_MARKER_COOKIE, '1', signedInMarkerOptions(request.nextUrl.protocol === 'https:'))
+  } else if (!signedIn && present) {
+    response.cookies.set(SIGNED_IN_MARKER_COOKIE, '', { ...signedInMarkerOptions(request.nextUrl.protocol === 'https:'), maxAge: 0 })
+  }
+  return response
 }

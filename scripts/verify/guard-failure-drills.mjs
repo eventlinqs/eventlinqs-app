@@ -60,8 +60,17 @@ function effectiveDefinitionOf(fnName) {
 
 const NEW_EFFECTIVE_CONFIRM = effectiveDefinitionOf('confirm_order')
 const NEW_EFFECTIVE_RECONCILE = effectiveDefinitionOf('reconcile_refund')
+/*
+ * create_reservation joined the derived set on 6 September 2026 (close-out
+ * C13), the day 20260906000002 redefined it with the event status gate and the
+ * three inventory drills below went on mutating 20260704000005, reporting
+ * "DID NOT FAIL" three times over: the harness's own failure, again, one
+ * migration later. Derived now, so the next redefinition cannot repeat it.
+ */
+const NEW_EFFECTIVE_RESERVATION = effectiveDefinitionOf('create_reservation')
 console.log(`[drills] effective confirm_order:   ${NEW_EFFECTIVE_CONFIRM}`)
 console.log(`[drills] effective reconcile_refund: ${NEW_EFFECTIVE_RECONCILE}`)
+console.log(`[drills] effective create_reservation: ${NEW_EFFECTIVE_RESERVATION}`)
 
 const DRILLS = [
   /*
@@ -869,7 +878,7 @@ const DRILLS = [
   {
     name: 'the reservation row lock removed (16 of 50 buyers won one seat without it)',
     guard: `${GUARDS}/inventory-lock-integrity.mjs`,
-    file: 'supabase/migrations/20260704000005_sale_window_enforcement.sql',
+    file: NEW_EFFECTIVE_RESERVATION,
     find: '      FOR UPDATE;',
     replace: '      ;',
     expect: 'no longer takes the row lock',
@@ -877,7 +886,7 @@ const DRILLS = [
   {
     name: 'availability arithmetic stops subtracting reserved_count',
     guard: `${GUARDS}/inventory-lock-integrity.mjs`,
-    file: 'supabase/migrations/20260704000005_sale_window_enforcement.sql',
+    file: NEW_EFFECTIVE_RESERVATION,
     find: 'tt.total_capacity - tt.sold_count - tt.reserved_count AS available',
     replace: 'tt.total_capacity - tt.sold_count AS available',
     expect: 'computes availability as capacity minus sold minus reserved',
@@ -885,7 +894,7 @@ const DRILLS = [
   {
     name: 'reserved_count assigned instead of incremented (loses concurrent reservations)',
     guard: `${GUARDS}/inventory-lock-integrity.mjs`,
-    file: 'supabase/migrations/20260704000005_sale_window_enforcement.sql',
+    file: NEW_EFFECTIVE_RESERVATION,
     find: 'SET reserved_count = reserved_count + v_quantity',
     replace: 'SET reserved_count = v_quantity',
     expect: 'increments reserved_count rather than assigning it',
@@ -1143,6 +1152,36 @@ const DRILLS = [
     find: '                step="any"',
     replace: '                step="any"\n                max="0"',
     expect: 'No value satisfies both',
+  },
+  /*
+   * event-lifecycle-total, three drills (close-out C13, 6 September 2026).
+   *
+   * The class: a lifecycle table with a dead end compiles, tests green, and
+   * strands an organiser. The founder found `cancelled: []` on production.
+   */
+  {
+    name: 'cancelled loses its way out of the lifecycle (the production defect)',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'src/lib/event-lifecycle.ts',
+    find: "  cancelled: ['archived'],",
+    replace: '  cancelled: [],',
+    expect: 'dead end: cancelled',
+  },
+  {
+    name: 'the events list stops rendering the archive, restore and delete controls',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/events-table.tsx',
+    find: '      <EventLifecycleActions\n        variant="row"',
+    replace: '      <EventLifecycleActionsGone\n        variant="row"',
+    expect: 'events-table.tsx does not render <EventLifecycleActions>',
+  },
+  {
+    name: 'the door starts refusing tickets on event status',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'supabase/migrations/20260905000002_door_realtime.sql',
+    find: '  WHERE e.id = p_event_id;',
+    replace: "  WHERE e.id = p_event_id AND e.status = 'published';",
+    expect: 'reads event status',
   },
 ]
 

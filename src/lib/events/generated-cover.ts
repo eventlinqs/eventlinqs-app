@@ -94,8 +94,14 @@ export function labelsFromLocal(startLocal: string | null | undefined): {
 /** The bucket event imagery already lives in. */
 export const EVENT_IMAGE_BUCKET = 'event-images'
 
-/** Where generated covers sit inside it, so they can be told apart later. */
-export const GENERATED_COVER_PREFIX = 'generated-covers'
+/**
+ * Where generated covers sit inside it, so they can be told apart later. The
+ * value lives in its own leaf module so the delete sweep in src/lib/upload.ts
+ * can name the prefix without importing this rasteriser; re-exported here so
+ * every existing reader keeps its import and there is still one definition.
+ */
+import { GENERATED_COVER_PREFIX } from './generated-cover-prefix'
+export { GENERATED_COVER_PREFIX }
 
 export type GeneratedCoverResult =
   | { ok: true; url: string; bytes: number; regenerated: boolean }

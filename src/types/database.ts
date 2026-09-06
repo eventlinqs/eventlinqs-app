@@ -972,6 +972,36 @@ export type Database = {
           },
         ]
       }
+      event_tombstones: {
+        Row: {
+          deleted_at: string
+          deleted_by: string | null
+          event_id: string
+          organisation_id: string | null
+          slug: string
+          status_at_delete: Database["public"]["Enums"]["event_status"]
+          title: string
+        }
+        Insert: {
+          deleted_at?: string
+          deleted_by?: string | null
+          event_id: string
+          organisation_id?: string | null
+          slug: string
+          status_at_delete: Database["public"]["Enums"]["event_status"]
+          title: string
+        }
+        Update: {
+          deleted_at?: string
+          deleted_by?: string | null
+          event_id?: string
+          organisation_id?: string | null
+          slug?: string
+          status_at_delete?: Database["public"]["Enums"]["event_status"]
+          title?: string
+        }
+        Relationships: []
+      }
       event_types: {
         Row: {
           created_at: string
@@ -1003,6 +1033,11 @@ export type Database = {
         Row: {
           age_restriction_min: number | null
           allow_seat_self_service: boolean
+          archived_at: string | null
+          archived_by: string | null
+          archived_from_status:
+            | Database["public"]["Enums"]["event_status"]
+            | null
           category_id: string | null
           city_primary: string | null
           community_primary: string | null
@@ -1082,6 +1117,11 @@ export type Database = {
         Insert: {
           age_restriction_min?: number | null
           allow_seat_self_service?: boolean
+          archived_at?: string | null
+          archived_by?: string | null
+          archived_from_status?:
+            | Database["public"]["Enums"]["event_status"]
+            | null
           category_id?: string | null
           city_primary?: string | null
           community_primary?: string | null
@@ -1161,6 +1201,11 @@ export type Database = {
         Update: {
           age_restriction_min?: number | null
           allow_seat_self_service?: boolean
+          archived_at?: string | null
+          archived_by?: string | null
+          archived_from_status?:
+            | Database["public"]["Enums"]["event_status"]
+            | null
           category_id?: string | null
           city_primary?: string | null
           community_primary?: string | null
@@ -4799,11 +4844,23 @@ export type Database = {
         }
         Returns: Json
       }
+      event_lifecycle_guards: { Args: never; Returns: Json }
+      event_money_record_counts: { Args: { p_event_id: string }; Returns: Json }
+      event_money_record_counts_many: {
+        Args: { p_event_ids: string[] }
+        Returns: Json
+      }
+      event_referencing_tables: { Args: never; Returns: Json }
       events_within_distance: {
         Args: { p_lat: number; p_lng: number; p_radius_km: number }
         Returns: {
           age_restriction_min: number | null
           allow_seat_self_service: boolean
+          archived_at: string | null
+          archived_by: string | null
+          archived_from_status:
+            | Database["public"]["Enums"]["event_status"]
+            | null
           category_id: string | null
           city_primary: string | null
           community_primary: string | null
@@ -5081,6 +5138,7 @@ export type Database = {
         | "postponed"
         | "cancelled"
         | "completed"
+        | "archived"
       event_type: "in_person" | "virtual" | "hybrid"
       event_visibility: "public" | "private" | "unlisted"
       fee_pass_type: "absorb" | "pass_to_buyer"
@@ -5301,6 +5359,7 @@ export const Constants = {
         "postponed",
         "cancelled",
         "completed",
+        "archived",
       ],
       event_type: ["in_person", "virtual", "hybrid"],
       event_visibility: ["public", "private", "unlisted"],
@@ -5394,6 +5453,7 @@ export const Constants = {
     },
   },
 } as const
+
 // BEGIN LEGACY ALIASES (handwritten, not regenerated)
 // ============================================================================
 // Convenience aliases the codebase imports by name. The previous handwritten

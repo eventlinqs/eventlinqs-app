@@ -235,3 +235,57 @@ describe('the matcher still excludes static assets', () => {
     }
   })
 })
+
+describe('decision 5: what a slug with no live event answers (close-out C13)', () => {
+  // The gate reads the events row first, then, and only when that finds
+  // nothing, the tombstone. The shared mock answers in that order.
+  it('answers 410 Gone from the tombstone for a deleted event, without touching the session', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: { slug: 'gone-gig' } })
+    const res = await proxy(request('https://www.eventlinqs.com.au/events/gone-gig'))
+    expect(res.status).toBe(410)
+    expect(res.headers.get('content-type')).toContain('text/html')
+    expect(res.headers.get('x-robots-tag')).toContain('noindex')
+    expect(await res.text()).toContain('This event has been removed')
+    expect(updateSession).not.toHaveBeenCalled()
+  })
+
+  it('marks an unknown or archived slug private to the edge cache, since its answer is per viewer', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: null })
+    const res = await proxy(request('https://www.eventlinqs.com.au/events/archived-gig'))
+    expect(res.status).not.toBe(410)
+    expect(res.headers.get('Vercel-CDN-Cache-Control')).toBe('private, no-store')
+    expect(updateSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves a live event publicly cacheable, as the config intends', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: { id: 'ev-1', is_high_demand: false, status: 'published' } })
+    const res = await proxy(request('https://www.eventlinqs.com.au/events/live-gig'))
+    expect(res.headers.get('Vercel-CDN-Cache-Control')).toBeNull()
+  })
+})
+
+describe('decision 6: a signed-in viewer of a slug with no live row is rewritten off the cached path', () => {
+  it('rewrites a request carrying the signed-in marker to /events/[slug]/holder, keeping the session', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: null })
+    const res = await proxy(new NextRequest(new Request('https://www.eventlinqs.com.au/events/archived-gig', { headers: { cookie: 'el-signed-in=1' } })))
+    const rewrite = res.headers.get('x-middleware-rewrite')
+    expect(rewrite).toBeTruthy()
+    expect(new URL(rewrite!).pathname).toBe('/events/archived-gig/holder')
+    expect(updateSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT rewrite on the session cookie alone: without the marker the anonymous path answers and sets it', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: null })
+    const res = await proxy(new NextRequest(new Request('https://www.eventlinqs.com.au/events/archived-gig', { headers: { cookie: 'sb-test-auth-token=abc' } })))
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+  })
+
+  it('never rewrites a live event or a deleted one', async () => {
+    maybeSingle.mockResolvedValueOnce({ data: { id: 'ev-1', is_high_demand: false, status: 'published' } })
+    const live = await proxy(new NextRequest(new Request('https://www.eventlinqs.com.au/events/live-gig', { headers: { cookie: 'el-signed-in=1' } })))
+    expect(live.headers.get('x-middleware-rewrite')).toBeNull()
+    maybeSingle.mockResolvedValueOnce({ data: null }).mockResolvedValueOnce({ data: { slug: 'gone-gig' } })
+    const gone = await proxy(new NextRequest(new Request('https://www.eventlinqs.com.au/events/gone-gig', { headers: { cookie: 'el-signed-in=1' } })))
+    expect(gone.status).toBe(410)
+  })
+})

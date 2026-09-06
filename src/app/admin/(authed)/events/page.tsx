@@ -30,8 +30,8 @@ type SearchParams = Promise<{
   action?: string
 }>
 
-// Pause and cancel take an event off sale; confirm before applying.
-const DESTRUCTIVE: ReadonlySet<EventAction> = new Set(['pause', 'cancel'])
+// Pause, cancel and archive take an event off sale; confirm before applying.
+const DESTRUCTIVE: ReadonlySet<EventAction> = new Set(['pause', 'cancel', 'archive'])
 
 const STATUS_BADGE: Record<string, string> = {
   draft: 'border-white/15 bg-white/[0.04] text-white/50',
@@ -41,6 +41,7 @@ const STATUS_BADGE: Record<string, string> = {
   postponed: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
   cancelled: 'border-red-500/30 bg-red-500/10 text-red-200',
   completed: 'border-white/15 bg-white/[0.04] text-white/50',
+  archived: 'border-white/15 bg-white/[0.04] text-white/50',
 }
 
 /**
@@ -77,8 +78,9 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
         <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Trust and safety</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Events</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
-          Pause a live event to take it off sale, resume a paused event, or cancel an event. Every
-          action is recorded in the audit log.
+          Pause a live event to take it off sale, resume a paused event, cancel an event, archive it off every
+          public surface, or restore an archived one. Delete lives on the event page. Every action is recorded
+          in the audit log.
         </p>
       </header>
 
@@ -209,7 +211,9 @@ function ActionForm({ row, action, returnTo }: { row: AdminEventRow; action: Eve
             confirmMessage={
               action === 'cancel'
                 ? `Cancel "${row.title}"? This cannot be undone and is recorded in the audit log.`
-                : `Pause "${row.title}"? It will be taken off sale. Recorded in the audit log.`
+                : action === 'archive'
+                  ? `Archive "${row.title}"? It comes off every public surface and sales stop; ticket holders keep their tickets and it can be restored. Recorded in the audit log.`
+                  : `Pause "${row.title}"? It will be taken off sale. Recorded in the audit log.`
             }
             className={btnClass}
           >
@@ -226,7 +230,14 @@ function ActionForm({ row, action, returnTo }: { row: AdminEventRow; action: Eve
 function NoticeBanner({ notice, action }: { notice?: string; action?: string }) {
   if (!notice) return null
   if (notice === 'done') {
-    const verb: Record<string, string> = { pause: 'paused', resume: 'resumed', cancel: 'cancelled' }
+    const verb: Record<string, string> = {
+      pause: 'paused',
+      resume: 'resumed',
+      cancel: 'cancelled',
+      archive: 'archived',
+      restore: 'restored',
+      delete: 'deleted. Nothing of it remains',
+    }
     return (
       <div role="status" className="mb-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
         Event {verb[action ?? ''] ?? 'updated'}.
