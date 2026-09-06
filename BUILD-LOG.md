@@ -2175,3 +2175,58 @@ changed, and nothing was deleted.
   guard (the registry test caught the missing line); five production builds green with the trace
   check (build-2 to build-5, C:\dev\EVIDENCE\C14\build-*.txt); the push gate on the push. Disk
   22 GB free at close; every Lighthouse JSON deleted after its median was read.
+
+## 2026-09-06 21:50 (C4, C5, C6, C7) the production drives after C14: the Arts object, the branches, every community and faith page, and every route from src/app
+
+- Order per the owner's run order after C14: C4, C5, C6, C7. All four are READS of production (or
+  git refs); nothing was written to production and nothing needed to be.
+- C4 re-driven: the Arts tile on the served homepage is one anchor to /events?category=arts-community
+  wrapping seven optimiser widths, every one 200 image/avif with real bytes; the storage object
+  stock/categories/arts-community/theatre-interior-evening-1440.avif answers 200 image/avif, 30979
+  bytes; the tile's landing page 200 with no error boundary and no placeholder. Nothing 404d, so
+  nothing was copied. The earlier drive (13:28) had already enumerated all 55 spine objects from
+  src/lib/images/spine.ts and found 0 missing on production; that stands.
+- C5: integration/launch deleted locally (33068221) and on origin, origin pruned, git branch -a
+  carries no integration ref. The working branch is cut from origin/main at the C13 merge.
+- C6 re-driven: 21 community slugs and 5 faith slugs from the route accessors (getAllCommunities,
+  getAllFaiths), 26 of 26 answer 200 on production with a real h1 each, 0 placeholder copy, 0
+  error boundaries, 129 to 290 KB (C:\dev\EVIDENCE\C6\community-faith-production-2.txt).
+- C7: the route list from src/app on disk (76 static pages, 53 dynamic pages, 48 static handlers,
+  12 dynamic handlers). Real ids from the production sitemap (550 urls, built by the platform from
+  its own database) and anchors harvested off the index pages; 209 requests
+  (C:\dev\EVIDENCE\C7\sweep-production.mjs, sweep-production.txt). Result: 0 server errors, 0 error
+  boundaries inside a 200, 0 soft 404s, 0 undeliberate 404s. Seven 404s, each read off the source
+  and deliberate: /artists, /artist/dashboard and /gigs sit behind the artist_showcase,
+  broadcast_artists and gig_board flags, which are off on production; /design/cards and the three
+  /dev routes are gated for production by src/proxy.ts and src/lib/dev/preview-route.ts. The 52
+  routes whose id is private to a signed-in person were driven with a well-formed unknown id and
+  answer 307 to login, 404 for an unknown code, or a designed noindex page ("This link has
+  expired", "This invitation is not available", "This link is not valid", the checkout's
+  reservation-not-found notice). Driving those with a REAL id while signed in on production needs
+  a production account, which is a write to production: OWNER BLOCKED for the production drive;
+  the same routes were driven signed in on the local production build against TEST in C13 and C14.
+- Restated, because it outranks all four items: production publishes TWO events (the sitemap's
+  only event pages are /events/open-field-party-v8yqlp and /events/open-party-r3wpl0), the homepage
+  shows invitation cards on every rail, and /events lists nothing. Every route is correct
+  engineering; the catalogue is a supply decision (growth lever 1, or a seeding decision, which is
+  a write to production and needs the owner's word).
+
+## 2026-09-06 22:05 (C14) merged as 2d558d2a; C4 to C7 driven on production; C8 opened
+
+- The push of 4728fefe went through the pre-push gate GREEN 12 of 12 in 1333s (Lighthouse 973s of it,
+  every page above its floor). PR #129 opened as a draft (every pull-request workflow skipped), marked
+  ready once, CI ran once and passed on all three jobs, squash-merged as 2d558d2a. Production still
+  serves b4255a96 until the founder applies the C13 migrations; the C14 change rides that redeploy.
+  The local branch is gone; perf/c8-mobile-95 is cut from origin/main at 2d558d2a.
+- C8 opened with a diagnosis rather than a change. On the local production build, Lighthouse mobile
+  reads the homepage at 82 to 88, browse 93, the event page 85 to 87 in single runs, and the metrics
+  audit says why: the OBSERVED LCP is 1.1s on both pages, the SIMULATED LCP 4.2 to 4.6s. The LCP
+  breakdown on the homepage is time to first byte 782ms (the local server rendering the fixture
+  homepage on every request), resource load 19 + 24ms (the hero AVIF is discoverable, priority-hinted
+  and eager), element render delay 363ms; render-blocking CSS 29 KB (460ms) plus 2.7 KB. The shell
+  is 13 scripts, 190 KB transfer: React 72 KB gz and the Next runtime 33 KB gz, then six app chunks
+  of 3 to 9 KB gz each (header, hero carousel, bottom nav and referral capture, analytics, hero
+  presence). TBT is 34 to 269ms. So the shell is not where the score goes on this machine; the
+  first byte and the simulated critical path are. The production baseline (three runs, mobile and
+  desktop, on www.eventlinqs.com.au) is being taken before any change is proposed, because a local
+  first byte of 780ms is not what production serves.

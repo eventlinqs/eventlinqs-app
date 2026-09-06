@@ -240,7 +240,7 @@ witness; the row below records the gap so it is closed by whoever next touches t
 | 4. Guard proven red and green | MET. no-hardcoded-spacing green on 919 files; three drills red (an arbitrary 13px utility, an inline 17px, a stylesheet 5px); 90 of 90 drills with env on the final tree | guard-no-hardcoded-spacing-GREEN.txt, guard-failure-drills-with-env.txt |
 | 5. Driven at 390, 768 and 1440 | MET. Every screen and every empty state captured and measured at the three widths, light and dark, on a local production build against TEST as a real organiser (signed up and published through the wizard), a real guest with a live reservation, and an organiser with nothing listed; axe 0 at every cell | the capture sets above |
 | 6. Full regression green after the item | MET for tsc, eslint, 70 guards, 90 drills, the suite, five builds, axe 0 on every measured cell, Lighthouse per route never lower; the push gate ran the whole set again on the push (row 7) | as above |
-| 7. Committed, Australian English, no trailers, pushed, production deploys green | PENDING AT THE TIME OF WRITING: see the row added below once the gate and the pull request report | |
+| 7. Committed, Australian English, no trailers, pushed, production deploys green | MET on the code side, BLOCKED ON FOUNDER, MIGRATION ONLY for the deploy (the same block as C13). Committed as 4728fefe with no trailer (the commit-msg hook and no-ai-authorship guard both green); pushed through the pre-push gate GREEN 12 of 12 in 1333s (typecheck 35s, lint 58, guards 69 with 70 of 70, types-drift 34 PENDING, suite 58, build 105, Lighthouse 973 with every page above its floor); PR #129 opened as a DRAFT (every pull-request workflow skipped), marked ready once, CI ran once: lint · typecheck · build, test (vitest) and the types-drift guard all success; squash-merged as 2d558d2a on 6 September 2026. Production keeps serving b4255a96 until the founder applies the two C13 migrations (the schema guard refuses the build on production by design); the C14 change rides the same redeploy | C:devEVIDENCEC14gate-pass-on-push.txt; gh run list --branch feat/c14-design-uplift (CI 34031040321) |
 
 ### Founder steps (Law 10)
 
@@ -249,3 +249,57 @@ witness; the row below records the gap so it is closed by whoever next touches t
 | Rule on the body face: the constitution's Type line names Hanken Grotesk; it never rendered, and the rubric's two-family line is met with Archivo and Manrope | RESERVED (a design ruling). Flipping to Hanken is one token (--font-body in globals.css) and one import in layout.tsx, then a re-measure of the five screens with the harness above; nothing else moves | say the word and it is one commit |
 | Decide whether Stripe.js (3.7 MB) may load on "Continue to payment" instead of on the details step | RESERVED (the money path). The one-line change is in checkout-form.tsx; a design item did not touch it | as above |
 | Point at C14.1 to C14.8 if they exist somewhere other than C:\dev | RESERVED (owner knowledge) | none |
+
+## C4, C5 and C6, driven on production, 6 September 2026 (re-driven at 21:21 to 21:26 after C14; the first drive was 13:28 to 13:42 the same day, before C13 was promoted ahead of them)
+
+Production has not changed between the two drives: it serves b4255a96 (C3) because the C13 deploy is refused until the founder's migration. Both drives are kept: C:\dev\EVIDENCE\C4\verify-c4.txt (21:21, the script rewrites its own file) with verify-c4-2.txt, and C:\dev\EVIDENCE\C6\community-faith-production.txt (13:33) with community-faith-production-2.txt (21:25).
+
+## C5. CLOSE THE ORIGINAL BLOCKER 5, BRANCH HYGIENE (6 September 2026)
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| PR 124 is squash merged; delete integration/launch locally and on the remote | MET. PR #124 is dc71374e on origin/main. integration/launch deleted locally (was 33068221) and on origin (the pre-push gate skipped itself for a deletion-only push, as designed); origin pruned | C:\dev\EVIDENCE\C5-branch-hygiene.txt |
+| Cut a fresh working branch from origin/main | MET. Every branch since has been cut from origin/main at the merge before it: ci/c2-pre-push-gate, fix/c3-social-cards-proof, feat/c13-archive-delete and feat/c14-design-uplift (merge base b7798b76, the C13 merge) | the same file |
+| Confirm with git branch -a that no stale integration/launch remains anywhere | MET. git branch -a lists no integration ref, locally or remote | the same file |
+
+## C4. CLOSE THE ORIGINAL BLOCKER 3, ARTS STORAGE OBJECT (6 September 2026)
+
+Driven against PRODUCTION, read only, never against a local build.
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| The Arts storage object exists in production storage | MET, and BOTH of them do. The paths were built from src/lib/images/spine.ts rather than typed: the tile is stock/categories/arts-community/theatre-interior-evening-1440.avif (200, image/avif, 30979 bytes) and the landing hero is stock/categories/arts/gallery-day-1440.avif (200, image/avif, 127122 bytes), which lives under the key 'arts' exactly as the comment beside the slot says | C:\dev\EVIDENCE\C4\arts-objects-production.txt |
+| Widened beyond the ask, because one object proves one object | MET. All 55 distinct spine objects were enumerated from spine.ts by parsing its slot table and its ROLE_WIDTH map, then driven on production: 0 of 55 missing, 0 under a kilobyte. Nothing was copied because nothing was absent | C:\dev\EVIDENCE\C4\spine-objects.txt, spine-objects-production.txt, enumerate-spine.mjs |
+| The Arts tile resolves on https://www.eventlinqs.com.au with a 200 and a non empty body | MET, driven as a browser does it rather than as a guess. The tile was HARVESTED from the served homepage HTML, not assumed: it is an anchor to /events?category=arts-community wrapping a next/image srcSet of seven widths. All seven optimiser variants return 200 image/avif with real bytes, and three were decoded to confirm they are pictures rather than error bodies: w=384 gives 384x238 ink 65.7, w=1080 gives 1080x669 ink 66.3, w=3840 gives 1440x892 ink 66.5 | C:\dev\EVIDENCE\C4\arts-tile-production.txt, arts-tile-*.img |
+| The tile leads somewhere real | MET. The tile's own href, /events?category=arts-community, returns 200 with 148991 bytes, no error boundary and no placeholder copy. The legacy /categories/arts-community path 308s to the same address, so an old link still lands | C:\dev\EVIDENCE\C4\arts-events.html |
+| If it 404s, copy the object to production storage | NOT NEEDED. Nothing 404d, so nothing was written to production. Production was read and never written, per the standing rule | as above |
+
+FOUND WHILE DRIVING C4, and it is far more serious than C4 itself. See the note under C6.
+
+## C6. COMMUNITY AND FAITH PAGES (6 September 2026)
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| Enumerate every community slug and every faith slug from the database or the route source, never typed | MET. The slugs come from the SAME accessors the route files call in their own generateStaticParams: getAllCommunities() in src/lib/communities/data.ts (21 communities) and getAllFaiths() in src/lib/faiths/data.ts (5 faiths), imported through the src alias loader. A slug this check drives is by construction a slug the route will generate | C:\dev\EVIDENCE\C6\enumerate.mjs, slugs.json |
+| Drive every single one on production and record the status code and byte count for each | MET. 26 of 26 driven on https://www.eventlinqs.com.au, every one HTTP 200, byte counts 263829 to 289906 for the communities and 129242 to 134291 for the faiths, each with a real h1 in its own words ("First Nations community", "Maori community, carried", "Jewish events, faith and"), zero error boundaries, zero placeholder copy | C:\dev\EVIDENCE\C6\community-faith-production.txt, and the 26 saved pages under C6\pages\ |
+| Every one must return 200 with correct, non placeholder content. Fix every page that does not | MET, nothing to fix. Beyond the status code, one page was taken apart in full: /community/indian asks for 192 distinct optimiser images and every one returns 200 with real bytes (the six that came back under 500 bytes are the 16px and 32px BLUR PLACEHOLDERS Next generates, checked and confirmed as real AVIFs, not failures: my first threshold was too crude and the finding was withdrawn), and all 68 internal links resolve (the three that answer 307 are /account, /account/saved and /organisers/signup redirecting an anonymous visitor to /login?next=... and /signup?role=organiser, which is the auth path working, not a dead link) | C:\dev\EVIDENCE\C6\indian-images.txt, indian-links.txt |
+
+### THE FINDING THAT OUTRANKS BOTH ITEMS: production has almost no catalogue
+
+Not a code defect, and not fixable by code, so it is recorded here rather than repaired.
+
+| Observation | Measurement | Evidence |
+|---|---|---|
+| The live site publishes TWO events | The production sitemap carries 550 URLs, of which exactly 2 are event detail pages: /events/open-field-party-v8yqlp and /events/open-party-r3wpl0. An earlier capture in this same evidence folder listed four, two of which have since stopped being published | C:\dev\EVIDENCE\C4\sitemap.xml, C:\dev\EVIDENCE\C3\prod-event-slugs.txt |
+| The homepage shows no events at all | Zero hrefs matching /events/<slug> in the served homepage HTML. What it does carry is 40 "Be the first" invitation cards, which is the one-event-shows-the-rail law doing exactly what it was written to do, on rails that have nothing to show | C:\dev\EVIDENCE\C4\prod-home.html |
+| /events lists nothing | 200 with 162152 bytes and zero event links; the arts filter reads "No events match these filters" | C:\dev\EVIDENCE\C4\all-events.html, arts-events.html |
+| What this means | Every surface in C4 and C6 is correct engineering and passes its checks. The platform is not market-ready by the volume law in CLAUDE.md ("Volume is proven, not assumed. A thin catalogue fails the bar even when every route resolves 200"), and no amount of route fixing changes that. It needs events, which is growth lever 1 (recruit the first 25 to 50 organisers personally) or a seeding decision. Seeding production is a write to production and needs Lawal's explicit approval, which has not been given and was not assumed | this table |
+
+## C7. FULL ROUTE SWEEP ON PRODUCTION (6 September 2026)
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| Build the route list from src/app on disk | MET. scripts walk src/app for page.tsx and route.ts, strip route groups, keep dynamic segments as written: 76 static pages, 53 dynamic pages, 48 static handlers, 12 dynamic handlers; /events/browse alone is not a route and is not in the list, /events/browse/[city] is | C:\dev\EVIDENCE\C7\enumerate-routes.mjs, routes.json, routes.err |
+| Drive every static route on https://www.eventlinqs.com.au and record the status | MET. 76 pages and 48 handlers driven with redirects recorded, then followed: public pages 200; account, dashboard and scanner pages 307 to /login (200); admin pages 307 to /admin/login; POST-only handlers 405; cron handlers guarded 401; nothing 500, no error boundary inside a 200, no soft 404 | C:\dev\EVIDENCE\C7\sweep-production.txt, sweep-production.json |
+| Drive every dynamic route with a real id or slug pulled from the database | MET for every route an anonymous visitor can reach: real slugs came from the production sitemap, which the platform builds from its own database (550 urls: community and community-by-city, city and suburb, events and browse cities, guides, help, organisers, venues, categories, faith) and from anchors harvested off the index pages a person lands on (up to three instances per pattern, every one 200), plus /api/og/event/[slug] with both live event slugs (200 image). The 52 routes whose id is private to a signed-in person (dashboard, admin, checkout, orders, tickets, squads, launch codes, share codes, unsubscribe tokens, the scanner) were driven with a well-formed unknown id and the anonymous answer recorded: 307 to login, 404 for an unknown code, or a designed 200 with noindex ("This link has expired", "This invitation is not available", "This link is not valid", the checkout's reservation-not-found notice). A signed-in, real-id drive of those on PRODUCTION needs a production account, which is a write to production (OWNER BLOCKED); the same routes were driven signed-in with real ids on the local production build against TEST in C13 and C14 | sweep-production.txt (the NO PUBLIC ID section), C:\dev\EVIDENCE\C13\, C:\dev\EVIDENCE\C14\ |
+| Report every 404 and every 500 with the route that produced it; fix them all | MET: 0 server errors, 0 error boundaries, 0 soft 404s, 0 undeliberate 404s in 209 requests. Seven 404s, every one deliberate and read off the source: /artists (artist_showcase flag off on production), /artist/dashboard (broadcast_artists flag), /gigs (gig_board flag), and /design/cards, /dev/logo-preview, /dev/shell-preview, /dev/connect-onboarding-preview (production gate in src/proxy.ts and src/lib/dev/preview-route.ts). Nothing to fix; nothing was written to production | sweep-production.txt (the DEFECT lines, each explained above), src/proxy.ts, src/lib/dev/preview-route.ts |

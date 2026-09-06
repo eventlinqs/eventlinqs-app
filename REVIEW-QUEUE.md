@@ -506,3 +506,19 @@ dashevents-1440-light.jpg. The empty states are in after\natural-empty\ and afte
   one-line change on the money path; yours to call.
 - **Still yours from C13:** the two production migrations and the redeploy; main stays red on preview-state
   until then.
+
+## C4, C5, C6 and C7 (6 September 2026): four production checks, nothing broken, one decision restated
+
+**What a visitor gets on the live site, driven today, read only:**
+- **The Arts tile** on the homepage draws (every image size the browser can ask for answers with a real picture) and lands on a working page. Nothing was missing, so nothing was copied.
+- **Every community page and every faith page**, 26 of 26, answers with its own heading and no placeholder.
+- **Every route the code declares** (189 pages and handlers, 209 requests with real slugs from your own sitemap) answers correctly: nothing crashes, nothing is a dead page. The seven addresses that answer "not found" are meant to: three sit behind feature flags that are off on production (artists, the artist dashboard, the gig board) and four are design previews gated off production.
+- **The old integration/launch branch is gone** locally and on GitHub.
+
+**One thing I could not drive on production:** the 52 addresses that belong to a signed-in person (your dashboard pages, orders, tickets, squads, launch codes). Anonymously they answer the right thing (sign in, not found, or a designed "this link has expired" page). Driving them with a real id on production means creating an account on production, which is a write, so I did not. They were driven signed in on the local production build against the test database in C13 and C14.
+
+**Restated, because it matters more than the four items:** the live site publishes two events. Every rail on the homepage is invitation cards and /events lists nothing. The engineering is right; the catalogue is a supply decision, yours: recruit, or approve seeding production.
+
+**Evidence:** C:\dev\EVIDENCE\C4\, C5-branch-hygiene.txt, C6\community-faith-production-2.txt, C7\sweep-production.txt.
+
+**Closed on the code side, 6 September 2026, 22:05:** the push went through the gate green (12 of 12), PR #129 was opened as a draft, marked ready once, CI green on all three jobs, squash-merged as 2d558d2a. Your live site still serves the release before C13 until you apply the two C13 migrations (the commands are in the C13 entry above); C14 rides the same redeploy.
