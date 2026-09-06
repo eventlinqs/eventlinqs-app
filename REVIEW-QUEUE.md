@@ -5,22 +5,39 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
+Rewritten 7 September 2026 at 01:10. Everything below the first item is unchanged in
+substance; what was already done (the A2, A3, A4, B1 and B2 migrations are on production,
+disk is at 22 GB, the Vercel token is no longer needed) has been removed so the one thing
+that is blocking is the first thing you read.
+
+- **FIRST. Apply three migrations to production. Everything waits on this, by your own
+  halt rule.** Production is behind the tree by 20260905000003 (the C1 enum),
+  20260906000001 and 20260906000002 (C13). Until they are applied no branch can pass the
+  parity check, main cannot deploy, and the C16 fix cannot be pushed. Since tonight it is
+  ONE command, in PowerShell from the repo:
+  ```
+  npm run migrate:production
+  ```
+  It lists the three files from production's own record, asks you to type the production
+  ref (anything else stops it with nothing linked and nothing pushed), links the CLI, reads
+  the ref back from disk before it does anything, hands you the CLI's own prompts for the
+  push (its password prompt if it needs one, its Y/N), proves the result two ways (every
+  column the shipped code names answers on production, and production's record lists zero
+  pending), and rests the CLI on TEST again whatever happens, including on Ctrl-C.
+  `npm run migrate:production -- --dry-run` only lists. Driven tonight in both refusing
+  paths (C:\dev\EVIDENCE\C16\migrate-production-dry-run.txt, migrate-production-refused.txt);
+  the apply path is yours and was not driven. You do NOT need to redeploy from the Vercel
+  dashboard afterwards: the C16 merge redeploys production, and I watch it to Ready.
+  After your command, in order and without you: the C16 branch pushes (the gate passes),
+  its pull request reports production parity, it merges, production is watched to Ready
+  and the live routes are driven (C16.4), then PR 130 (C8) merges the same way, then C9,
+  C17 and C18.
 - **Production catalogue.** The live site has four event pages, two of them payment test
   artefacts. Every city, community and category page resolves but shows almost nothing. The
   only national seeder refuses a production target by design, and this brief makes production
   read only for me. Options, from C:\dev\PRODUCTION-STEPS.md: seed production deliberately
   (needs a decision and a new guarded path), launch thin and let the invitation cards carry the
   rails, or delay go-to-market until real organisers list. Your call.
-- **Disk.** About 6.7 GB free on C:. The one big safe win is the Windows Update download cache
-  (7.7 GB at C:\Windows\SoftwareDistribution\Download), which needs an admin shell: Settings,
-  System, Storage, Temporary files, "Windows Update Clean-up". Downloads holds 15.4 GB of audio
-  and Ableton packs; I did not touch them.
-- **Production migrations for A2**, when A2 merges: 20260903000001 and 20260903000002 are on
-  TEST only. Applying them to production is yours: link to gndnldyfudbytbboxesk, read the ref
-  back, then `supabase db push --linked`. The code is written so it does not matter which of
-  the code and the schema deploys first: the second migration keeps events.virtual_url inert
-  either way.
-
 - **Google Maps keys for A3 (two Cloud console steps, both IMPOSSIBLE for a machine without
   your Google credentials).** (1) The browser key is referer restricted to www.eventlinqs.com.au,
   so the venue finder works on the live site and nowhere else: add http://localhost:3311/* and
@@ -31,46 +48,27 @@ anything you must decide. Newest last. Plain language.
   restriction) and set it as GOOGLE_MAPS_API_KEY on production and preview. Then one command
   proves both: `node --env-file=.env.local scripts/ops/verify-google-maps-keys.mjs`. The
   build guard geocoding-key-posture goes from SKIP to PASS on its own once the key is distinct
-  and Google answers OK.
-- **Production migration for A3**, when A3 merges: 20260904000001 (events.venue_geocode_source,
-  venue_geocoded_at) is on TEST only. Same procedure as the A2 pair; the schema-ahead-of-code
-  guard refuses the production build until it is applied, by design.
-- **Production migration for A4**, when A4 merges: 20260904000002 (ticket_price_history, its
-  two deferred triggers, record_tier_price_history and save_dynamic_pricing, plus the backfill of
-  one listed row per existing tier) is on TEST only. Same procedure as the A2 pair and A3; the
-  schema-ahead-of-code guard names ticket_price_history.id ABSENT on production and refuses the
-  production build until it is applied, by design. Apply A2, A3 and A4 in version order in one
-  `supabase db push --linked` after reading the ref back, then
-  `node scripts/ops/verify-production-schema.mjs`.
-- **Production migration for B1**, when B1 merges: 20260905000001 (the eight ticket_scans
-  columns, door_staff_for_event, door_validation_set, sync_offline_scans, resolve_scan_review,
-  and `CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions`, which is a no-op on a
-  Supabase project because pgcrypto is already there) is on TEST only. Same procedure as A2, A3
-  and A4, in version order, one `supabase db push --linked` after reading the ref back, then
-  `node scripts/ops/verify-production-schema.mjs`. The schema-ahead-of-code guard names
-  ticket_scans.client_scan_id ABSENT on production and refuses the production build until it
-  is applied, by design.
-- **Production migration for B2**, when B2 merges: 20260905000002 (ticket_scans joins the
-  supabase_realtime publication, the door list leads with ticket_id, scan_ticket takes an
-  optional device id, door_realtime_enabled() for the build guard) is on TEST only. Same
-  procedure, in version order after 20260905000001. Until it is applied the door-live-published
-  guard FAILS a production build by name ("ticket_scans is NOT in the supabase_realtime
-  publication"), because a door on a project without the publication would subscribe, say it
-  is live, and never hear another door; refusing the build is the honest state.
+  and Google answers OK. C9 (the code side: required on production, forbidden on development,
+  loud failure) is queued behind the halt rule.
+- **The Sentry decision from C8.** The error-reporting SDK boots on `load`, inside the
+  simulated LCP window; with it out of that window the same event page scores 92 against 74.
+  Your 25 August ruling says not to move it to idle. The narrower proposal is "after load AND
+  after the first big paint". Say yes and it is one change and a re-measure. Detail in the C8
+  entry below.
 - **A Stripe test secret for the local server (your `stripe login`, or nothing).** Since
   2 September no local drive can pay: Vercel will not hand a sensitive value back, and both keys
   the Stripe CLI stores expired in July. A4's two buyers therefore paid on the Vercel preview of
   the branch, which is a real deployed surface holding the test secret and reading TEST, and the
   organiser and the stranger ran locally; the evidence names the origin on every buyer line. If
   you want every leg on one origin, run `stripe login` once on this machine and
-  `node scripts/ops/after-stripe-login.mjs` proves it. Nothing in A4 waits on this.
-- **A hole in no-plaintext-credential, its own small item, not pulled into A4.** The guard's
-  regex needs at least one character before the credential word, so its own headline case
+  `node scripts/ops/after-stripe-login.mjs` proves it. Nothing waits on this.
+- **A hole in no-plaintext-credential, its own small item.** The guard's regex needs at
+  least one character before the credential word, so its own headline case
   `const PASSWORD = '...'` is not caught, while `const NEW_PASSWORD = '...'` is. Widening it
   catches 20 sites today: journeys 1, 2 and 8, two break-attempt scripts, three sweep scripts,
   six verify scripts and four unit-test fixtures, every one a per-run minted value or a fixture,
   none a real credential. The fix is one regex character plus twenty one-line edits to mint at
-  runtime and a drill test; about an hour. Decide whether it goes before or after Phase B.
+  runtime and a drill test; about an hour. Decide when it goes.
 - **The event page can lag a purchase by up to five minutes, by its own design.** Found on the
   A4 drive: the tier pill said "Only 4 left" beside a row saying "Only 2 left". The event page
   is ISR with a five-minute revalidate (src/app/events/[slug]/page.tsx, the reason at line 85),
@@ -567,3 +565,21 @@ then redeploy the newest main build from Vercel. After that I push this branch, 
 - **The live site cannot be re-measured** until the C13 migrations are applied and the site redeploys; this change rides that deploy. The command to re-take the number is in the ledger.
 
 **Evidence:** C:\dev\EVIDENCE\C8\ (the production baseline, the phase diagnoses, four local iterations, the champion-against-challenger preview runs, the Sentry-blocked runs, the guard proofs).
+
+## C16, continued (7 September 2026, 01:15): nothing has moved, your step is now one command, and two small things were found and fixed
+
+**Where things stand.** Exactly where the last entry left them: production still serves the C3 build, the two production deployments after it still failed, main is still red, and production is still three migrations behind the tree. Nothing new has been started, by your halt rule. This session checked all of that against the live systems before doing anything.
+
+**What changed for you.** The five commands and the dashboard redeploy are gone. Your step is now:
+```
+npm run migrate:production
+```
+It shows you the three files from production's own record, asks you to type the production ref, hands you the CLI's own prompts for the push, proves the result two ways, and leaves the CLI linked to TEST whatever happens. It was driven tonight in both the paths that refuse (a dry run, and a wrong confirmation); the path that applies is yours. The redeploy is not a separate step any more: merging the C16 branch redeploys production, and I watch it to Ready. The full text is at the top of this file under "Needs you".
+
+**Two things found underneath, both fixed and tested:**
+- The gate's production-parity check had been skipping its environment half on this machine "for want of a Vercel token", and I had told you minting one was a step only you could do. That was wrong: the Vercel CLI on this machine has been logged in as your account since 3 September, and its login is enough. The check now reads that login (never printing it) and judged the production store for real tonight: 34 records, every required one present, nothing forbidden held. You do not need to mint anything.
+- A build guard wrongly refused the new script for using a Node feature "Node 24 does not provide" (it does; the guard's list of what Node provides was missing everything a global inherits). Fixed at the source, the list regenerated, a test pins it.
+
+**Also acknowledged.** C17 (the empty homepage hero) and C18 (the community taxonomy against the scope) were added to CLOSE-OUT.md at midnight; both are in the ledger as not started, because of the halt rule, and are next in that order after C16 closes.
+
+**Evidence:** C:\dev\EVIDENCE\C16\ (production-parity-recheck-session3.txt, migrate-production-dry-run.txt, migrate-production-refused.txt, production-parity-env-half-real.txt, guards-session3.txt and guards-session3-after.txt, suite-session3.txt, gate-refused-on-push-session3.txt).
