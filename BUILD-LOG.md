@@ -1726,3 +1726,19 @@ target IS gndnldyfudbytbboxesk, reading the service role key from a plaintext C:
 while every other ops script calls assertNotProduction and refuses the opposite way. Moved
 intact to C:\dev\quarantine\ with a note setting out three ways forward. Nothing it does was
 changed, and nothing was deleted.
+
+## 2026-09-06 14:40 (session resumed) C3 CLOSED: merged as b4255a96, production serves it
+
+- START. Read C:\dev\CLOSE-OUT.md and BUILD-BRIEF.md again. Branch fix/c3-social-cards-proof at
+  ff7ac094, tree clean, already pushed; PR #127 open and marked ready with CI, vitest and the
+  types-drift guard green and the advisory Lighthouse run still going. Disk 21.0 GB free, one
+  node_modules, no .next. Supabase CLI 2.116.0, linked ref read back as vkapkibzokmfaxqogypq.
+  Production already served the C2 merge (9f530a4d).
+- The Lighthouse run (34010933411) finished SUCCESS at 14:33; the pull request went CLEAN.
+  Squash-merged with the PR body as the message (checked for trailers, dashes and "generated
+  with" first: clean) as b4255a96, branch deleted on the remote and locally. CI on main
+  34011854099 success in 3m35s; post-deploy smoke 34011950208 (deployment_status) and
+  34012005278 (workflow_run) both success; www.eventlinqs.com.au answers 200 with
+  sentry-release=b4255a96fa70af2a10965f106eb3d93f3145b1a8. C3 completion law 7 moves to MET.
+- ORDER FROM HERE, per the owner decision of 6 September in CLOSE-OUT.md: C13 (delete and
+  archive), then C14 (design uplift, the five screens first), then C4, C5, C6, C7, C8, C9, C10.

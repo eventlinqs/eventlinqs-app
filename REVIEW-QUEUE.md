@@ -371,3 +371,9 @@ reclaimed what I could reach and reported the rest; it now sits above 20 GB. The
 still cannot touch is 7.3 GB of old Logitech update payloads in
 `C:\ProgramData\LogiOptionsPlus\depots`, which needs an admin PowerShell:
 `Get-ChildItem C:\ProgramData\LogiOptionsPlus\depots -Directory | Sort-Object LastWriteTime | Select-Object -SkipLast 2 | Remove-Item -Recurse -Force`
+
+**Closed 6 September 2026:** the push went through the gate, PR #127 was opened as a draft,
+marked ready once (CI, tests, the types check and the advisory Lighthouse run all green),
+squash-merged as b4255a96, and your live site serves it: both post-deploy smoke runs passed and
+the served page carries that release. Every shared link on production now draws its card
+through the platform's own renderer, with the navy wash and the brand fonts.

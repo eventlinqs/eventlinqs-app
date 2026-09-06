@@ -164,7 +164,7 @@ witness; the row below records the gap so it is closed by whoever next touches t
 | 4. Guard proven red and green | MET, both new rules. og-single-rasteriser RED on the pre-fix routes and GREEN after; the inset rule RED on a replanted scrim and GREEN after; 84 of 84 drills fired correctly with the env loaded, including both new drills, and every guard passes on the restored tree | C:\dev\EVIDENCE\C3\og-root-cause\guard-failure-drills-with-env.txt |
 | 5. Driven at 390, 768 and 1440 | MET. 32 of 32 at each viewport, 0 server errors, 0 blockers, as a real organiser end to end; axe 0 violations at any impact on both the kit screen and the event page at every viewport | C:\dev\EVIDENCE\C3\{desktop-1440,tablet-768,mobile-390}\, docs/verification/journeys-2026-08-28/launch-kit-inspect/ |
 | 6. Full regression green after the item | MET for build, all 68 guards, the drills, the full suite, lint, typecheck and in-journey axe. Lighthouse runs as step 12 of the pre-push gate on the push | as above |
-| 7. Committed, Australian English, no trailers, pushed, production deploys green | Recorded below when the pull request lands | |
+| 7. Committed, Australian English, no trailers, pushed, production deploys green | MET. Pushed through the pre-push gate (12 of 12), PR #127 opened as a draft and marked ready once, CI, tests and the types-drift guard green, the advisory Lighthouse run green, squash-merged as b4255a96 on 6 September 2026, CI on main 34011854099 success, both post-deploy smoke runs (34011950208, 34012005278) success, and www.eventlinqs.com.au serves sentry-release b4255a96fa70af2a10965f106eb3d93f3145b1a8 | C:devEVIDENCEC3gate-pass-on-push-c3.txt, C:devEVIDENCEC3merge-body.md |
 
 ### Found in the working tree during C3, and NOT mine to decide
 
