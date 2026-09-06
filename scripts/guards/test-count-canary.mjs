@@ -854,10 +854,22 @@ const ROOT = join(HERE, '..', '..')
  * (a migration production lacks is pending; the production scope of the store is
  * judged for a missing, forbidden, empty or malformed record, never carrying the
  * value) and tests/unit/guards/branch-protection-required (every way main's
- * protection can lose the merge gate): 308 files / 3559.
+ * protection can lose the merge gate): 308 files / 3559. Close-out C16, Law 10
+ * (7 September 2026), one file and nine tests: tests/unit/ops/apply-production-migrations
+ * (the founder's migration step as one command: nothing pending is nothing to
+ * do, a dry run stops, anything but the production ref is refused, the push
+ * carries no credential on its command line, the CLI rests on TEST last, and
+ * package.json routes the command through the Credential Manager helper), and
+ * two more in tests/unit/ops/production-parity (the Vercel CLI's own login is
+ * found in XDG order and a token near expiry is expired, so the environment
+ * half of the gate runs on a developer machine with no minted token), and one
+ * in tests/unit/guards/node-surface-inherited-members (the surface manifest
+ * records what process inherits as an EventEmitter, after process.on was
+ * reported as an API Node 24 lacks): 310 files / 3570, as the canary measured
+ * (the 3559 floor above had been set one below the suite's own count).
  */
-const MIN_FILES = 308
-const MIN_TESTS = 3559
+const MIN_FILES = 310
+const MIN_TESTS = 3570
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

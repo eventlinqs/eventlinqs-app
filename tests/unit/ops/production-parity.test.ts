@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { computePendingMigrations, productionEnvFromListing, judgeEnvParity } from '../../../scripts/ops/production-parity.mjs'
+import { computePendingMigrations, judgeEnvParity, judgeStoredLogin, productionEnvFromListing, vercelCliAuthCandidates } from '../../../scripts/ops/production-parity.mjs'
 
 /**
  * PRODUCTION PARITY (close-out C16.2): the two questions a production build
@@ -65,5 +65,37 @@ describe('judgeEnvParity', () => {
     for (const f of findings) expect(JSON.stringify(f)).not.toContain('not-a-match')
     const empty = judgeEnvParity(productionEnvFromListing([{ key: 'REQ_URL', value: '   ', type: 'plain', target: ['production'] }, { key: 'SECRET', value: 'sk_abcdefghijk', type: 'plain', target: ['production'] }]), manifest)
     expect(empty.findings.map((f) => `${f.name}:${f.state}`)).toEqual(['REQ_URL:empty'])
+  })
+})
+
+/**
+ * The environment half on a developer machine (7 September 2026): the Vercel
+ * CLI's own login stands in for a minted token. The CLI writes auth.json by
+ * the XDG rules, and on this machine the fresh login sat under
+ * %APPDATA%\xdg.data while a stale July copy sat under the legacy Data path,
+ * so the order of the candidates is the difference between a real check and a
+ * 403.
+ */
+describe('the Vercel CLI login as the local token', () => {
+  test('candidates run XDG_DATA_HOME, then the Windows xdg.data paths, then ~/.local/share, and the legacy Data path last', () => {
+    const paths = vercelCliAuthCandidates({ XDG_DATA_HOME: '/xdg', APPDATA: 'C:/Roaming', LOCALAPPDATA: 'C:/Local' }, '/home/lawal').map((p) => p.replace(/\\/g, '/'))
+    expect(paths).toEqual([
+      '/xdg/com.vercel.cli/auth.json',
+      'C:/Roaming/xdg.data/com.vercel.cli/auth.json',
+      'C:/Local/xdg.data/com.vercel.cli/auth.json',
+      '/home/lawal/.local/share/com.vercel.cli/auth.json',
+      'C:/Roaming/com.vercel.cli/Data/auth.json',
+    ])
+    expect(vercelCliAuthCandidates({}, '/home/lawal').map((p) => p.replace(/\\/g, '/'))).toEqual(['/home/lawal/.local/share/com.vercel.cli/auth.json'])
+  })
+
+  test('a stored login is usable only with a token that is not within a minute of its expiry; the token is returned, never reshaped', () => {
+    const now = 1_788_700_000
+    expect(judgeStoredLogin(null, now)).toEqual({ state: 'absent' })
+    expect(judgeStoredLogin({ token: '   ' }, now)).toEqual({ state: 'absent' })
+    expect(judgeStoredLogin({ token: 'abc', expiresAt: now - 1 }, now)).toEqual({ state: 'expired', expiresAt: now - 1 })
+    expect(judgeStoredLogin({ token: 'abc', expiresAt: now + 59 }, now).state).toBe('expired')
+    expect(judgeStoredLogin({ token: 'abc', expiresAt: now + 3600 }, now)).toEqual({ state: 'usable', token: 'abc' })
+    expect(judgeStoredLogin({ token: 'abc' }, now)).toEqual({ state: 'usable', token: 'abc' })
   })
 })

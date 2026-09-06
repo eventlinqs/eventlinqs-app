@@ -171,8 +171,10 @@ function runTypesDrift(env) {
  * it carries every migration this tree needs and whether its store satisfies
  * the manifest: the two questions nothing asked before the merges of
  * 6 September 2026 went red on main. The Supabase token comes from the same
- * Credential Manager helper as the types-drift step; VERCEL_TOKEN comes from
- * .env.local once the founder has minted one (the step says so when it has not).
+ * Credential Manager helper as the types-drift step; the Vercel token is
+ * VERCEL_TOKEN from .env.local if one is set, otherwise the login the Vercel CLI
+ * already keeps on this machine, resolved inside the step (the step says so
+ * when it has neither).
  */
 function runProductionParity(env) {
   if (nonEmpty(env.SUPABASE_ACCESS_TOKEN)) return exec(NODE, ['scripts/ops/production-parity.mjs'], env)

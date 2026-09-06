@@ -106,10 +106,32 @@ for (const name of surface.modules) {
   }
 }
 
+/**
+ * A global's members: its own names, plus what it inherits from any prototype
+ * short of Object.prototype and Function.prototype. `process` is an
+ * EventEmitter, so `process.on`, `process.once` and `process.emit` live on its
+ * prototype chain and not on the object itself; recording own names alone
+ * reported `process.on` as "not provided by Node 24" on 7 September 2026, a
+ * false positive that refused the first script in this repository to register
+ * a signal handler. The two root prototypes are excluded so `call`, `apply`,
+ * `bind` and `toString` are not recorded as members of every global; the
+ * function-valued globals (Object, Array, Promise, ...) therefore still record
+ * their own static members and nothing else.
+ */
+function membersOf(value) {
+  const names = new Set(Object.getOwnPropertyNames(value))
+  let proto = Object.getPrototypeOf(value)
+  while (proto && proto !== Object.prototype && proto !== Function.prototype) {
+    for (const inherited of Object.getOwnPropertyNames(proto)) names.add(inherited)
+    proto = Object.getPrototypeOf(proto)
+  }
+  return [...names].sort()
+}
+
 for (const name of GLOBALS) {
   const value = globalThis[name]
   if (value === undefined || value === null) continue
-  surface.globals[name] = Object.getOwnPropertyNames(value).sort()
+  surface.globals[name] = membersOf(value)
 }
 
 const out = join(HERE, 'node-surface.json')

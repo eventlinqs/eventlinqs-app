@@ -46,7 +46,9 @@
  * protection on main requires (scripts/guards/branch-protection-required.mjs
  * holds that).
  */
+import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ENV_MANIFEST, policyFor, shapeFor } from '../../src/lib/env/manifest.mjs'
@@ -111,7 +113,7 @@ export function judgeEnvParity(listing, manifest = ENV_MANIFEST) {
     }
     if (!present) continue
     if (!rec.readable) {
-      notes.push({ name: entry.name, state: 'present-unreadable', reason: `present as ${rec.type}; its shape is judged by the production build (LOCK 2), not readable here` })
+      notes.push({ name: entry.name, state: 'present-unreadable', reason: `present as ${rec.type}, not decrypted for this token; its shape is judged by the production build (LOCK 2)` })
       continue
     }
     const value = rec.value.trim()
@@ -132,6 +134,32 @@ function fail(line) {
   console.error(`${TAG} ${line}`)
 }
 
+/**
+ * The migrations a project has applied, listed through the Supabase Management
+ * API (the same call scripts/ci/types-drift-guard.mjs makes). Read only. Shared
+ * with scripts/ops/apply-production-migrations.mjs so the founder's step and
+ * the gate agree on what "pending" means. Never throws: a rejected token and an
+ * unreachable API come back as `{ ok: false, reason }` so the caller can say
+ * which, and neither is ever mistaken for "nothing pending".
+ */
+export async function fetchAppliedMigrations(token, project) {
+  try {
+    const res = await fetch(`https://api.supabase.com/v1/projects/${project}/database/migrations`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) {
+      const rejected = res.status === 401 || res.status === 403
+      return {
+        ok: false,
+        status: res.status,
+        reason: `HTTP ${res.status}${rejected ? ': the token is PRESENT but REJECTED, expired, revoked, or without access to this project' : ''}`,
+      }
+    }
+    const body = await res.json()
+    return { ok: true, status: res.status, applied: new Set((Array.isArray(body) ? body : []).map((m) => String(m.version))) }
+  } catch (err) {
+    return { ok: false, status: 0, reason: `could not reach the Supabase Management API: ${err.message}` }
+  }
+}
+
 async function schemaParity() {
   const token = process.env.SUPABASE_ACCESS_TOKEN
   const project = process.env.SUPABASE_PROJECT_ID || PRODUCTION_PROJECT_REF
@@ -141,20 +169,12 @@ async function schemaParity() {
     fail('  in CI the repository secret SUPABASE_ACCESS_TOKEN must be set. This step does not guess.')
     return false
   }
-  let applied
-  try {
-    const res = await fetch(`https://api.supabase.com/v1/projects/${project}/database/migrations`, { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) {
-      fail(`FAIL schema: could not list applied migrations on ${project} (HTTP ${res.status}).`)
-      if (res.status === 401 || res.status === 403) fail('  The token is PRESENT but REJECTED: expired, revoked, or without access to this project.')
-      return false
-    }
-    const body = await res.json()
-    applied = new Set((Array.isArray(body) ? body : []).map((m) => String(m.version)))
-  } catch (err) {
-    fail(`FAIL schema: could not reach the Supabase Management API: ${err.message}`)
+  const listed = await fetchAppliedMigrations(token, project)
+  if (!listed.ok) {
+    fail(`FAIL schema: could not list applied migrations on ${project} (${listed.reason}).`)
     return false
   }
+  const { applied } = listed
   const files = existsSync(MIGRATIONS_DIR) ? readdirSync(MIGRATIONS_DIR) : []
   const pending = computePendingMigrations(files, applied)
   tally.migrations = files.filter((f) => f.endsWith('.sql')).length
@@ -192,21 +212,120 @@ function vercelIds() {
   return { projectId, teamId }
 }
 
+/**
+ * WHERE THE VERCEL CLI KEEPS ITS LOGIN, so the environment half can run on a
+ * developer machine with no minted token. `vercel login` stores an access
+ * token, its expiry (seconds) and a refresh token in auth.json under the CLI's
+ * data directory, which the CLI resolves by the XDG rules: XDG_DATA_HOME first,
+ * then on Windows %APPDATA%\xdg.data (observed on 7 September 2026: CLI 55.0.0
+ * wrote there, and its earlier %APPDATA%\com.vercel.cli\Data\auth.json was a
+ * stale copy from July that the API refused), then the POSIX ~/.local/share.
+ * The legacy Data path is last, so a fresh login is never shadowed by a stale
+ * one. The order is a list, and a list can be short by one: a path this misses
+ * reads as "not logged in", never as a wrong token.
+ * @param {Record<string, string | undefined>} [env]
+ * @param {string} [home]
+ */
+export function vercelCliAuthCandidates(env = process.env, home = homedir()) {
+  const out = []
+  if (env.XDG_DATA_HOME) out.push(join(env.XDG_DATA_HOME, 'com.vercel.cli', 'auth.json'))
+  if (env.APPDATA) out.push(join(env.APPDATA, 'xdg.data', 'com.vercel.cli', 'auth.json'))
+  if (env.LOCALAPPDATA) out.push(join(env.LOCALAPPDATA, 'xdg.data', 'com.vercel.cli', 'auth.json'))
+  out.push(join(home, '.local', 'share', 'com.vercel.cli', 'auth.json'))
+  if (env.APPDATA) out.push(join(env.APPDATA, 'com.vercel.cli', 'Data', 'auth.json'))
+  return out
+}
+
+/**
+ * Judge one stored login. `expiresAt` is seconds since the epoch, as the CLI
+ * writes it; a token inside a minute of expiry is treated as expired so a
+ * request never races the clock. Pure, and the token is only ever returned,
+ * never printed.
+ */
+export function judgeStoredLogin(record, nowSeconds = Date.now() / 1000) {
+  if (!record || typeof record.token !== 'string' || record.token.trim() === '') return { state: 'absent' }
+  if (typeof record.expiresAt === 'number' && record.expiresAt <= nowSeconds + 60) return { state: 'expired', expiresAt: record.expiresAt }
+  return { state: 'usable', token: record.token }
+}
+
+function readStoredLogin(path) {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'))
+  } catch (error) {
+    console.warn(`${TAG} the Vercel CLI login at ${path} could not be read (${error.message}); treated as not logged in`)
+    return null
+  }
+}
+
+/** The Vercel CLI as a Node program (its .cmd shim needs a shell; its entrypoint does not). */
+function vercelCliEntry() {
+  const roots = []
+  if (process.env.APPDATA) roots.push(join(process.env.APPDATA, 'npm', 'node_modules', 'vercel'))
+  roots.push(join(ROOT, 'node_modules', 'vercel'))
+  for (const root of roots) {
+    const entry = join(root, 'dist', 'index.js')
+    if (existsSync(entry)) return { file: process.execPath, prefix: [entry] }
+  }
+  return null
+}
+
+/**
+ * Ask the CLI to refresh its own login: `vercel whoami` refreshes an expired
+ * access token with the stored refresh token and rewrites auth.json. Its output
+ * is not printed (it names the account, nothing more, but nothing is needed).
+ */
+function refreshVercelCliLogin() {
+  const cli = vercelCliEntry()
+  if (!cli) return false
+  const r = spawnSync(cli.file, [...cli.prefix, 'whoami'], { cwd: ROOT, encoding: 'utf8', timeout: 60_000 })
+  return !r.error && r.status === 0
+}
+
+/**
+ * The token the environment half reads the production store with, in this
+ * order and never printed: VERCEL_TOKEN from the environment (the repository
+ * secret in CI, or .env.local); otherwise the login the Vercel CLI already
+ * holds on this machine, refreshed through the CLI when it has expired. The
+ * same discipline as scripts/ops/with-supabase-token.ps1: the credential a
+ * tool already keeps is handed to one process, and nobody pastes it anywhere.
+ * @param {Record<string, string | undefined>} [env]
+ */
+export function resolveVercelToken(env = process.env) {
+  if (typeof env.VERCEL_TOKEN === 'string' && env.VERCEL_TOKEN.trim() !== '') return { token: env.VERCEL_TOKEN, source: 'VERCEL_TOKEN from the environment' }
+  const present = vercelCliAuthCandidates(env).filter((p) => existsSync(p))
+  if (present.length === 0) return { token: null, reason: 'no VERCEL_TOKEN in the environment and no Vercel CLI login on this machine' }
+  let expiredAt = null
+  for (const path of present) {
+    const judged = judgeStoredLogin(readStoredLogin(path))
+    if (judged.state === 'usable') return { token: judged.token, source: `the Vercel CLI login at ${path}` }
+    if (judged.state === 'expired') expiredAt = expiredAt ?? path
+  }
+  if (expiredAt && refreshVercelCliLogin()) {
+    for (const path of present) {
+      const judged = judgeStoredLogin(readStoredLogin(path))
+      if (judged.state === 'usable') return { token: judged.token, source: `the Vercel CLI login at ${path}, refreshed by the CLI` }
+    }
+  }
+  return { token: null, reason: expiredAt ? `the Vercel CLI login at ${expiredAt} has expired and the CLI could not refresh it` : 'the Vercel CLI login on this machine holds no token' }
+}
+
 async function envParity() {
-  const token = process.env.VERCEL_TOKEN
   const inCi = process.env.GITHUB_ACTIONS === 'true'
+  const resolved = resolveVercelToken()
+  const token = resolved.token
   if (!token) {
     if (inCi) {
       fail('FAIL environment: VERCEL_TOKEN is not set in CI, so the production store cannot be read. Add the repository secret.')
       return false
     }
-    tally.envSkipped = 'no VERCEL_TOKEN on this machine; the required CI job judges the store with the repository secret'
-    console.warn(`${TAG} SKIP environment: no VERCEL_TOKEN on this machine, so the production store was NOT judged here.`)
+    tally.envSkipped = `${resolved.reason}; the required CI job judges the store with the repository secret`
+    console.warn(`${TAG} SKIP environment: ${resolved.reason}, so the production store was NOT judged here.`)
     console.warn(`${TAG}   The required CI job "production parity" judges it with the repository secret before any merge.`)
-    console.warn(`${TAG}   FOUNDER STEP to make the local half real: mint a Vercel token with read access to the project`)
-    console.warn(`${TAG}   (vercel.com/account/tokens) and put it in .env.local as VERCEL_TOKEN; it is never printed.`)
+    console.warn(`${TAG}   To make the local half real: \`vercel login\` once on this machine (the login is read, never printed),`)
+    console.warn(`${TAG}   or put a token with read access to the project in .env.local as VERCEL_TOKEN.`)
     return true
   }
+  say(`environment: reading the production store with ${resolved.source}`)
   const { projectId, teamId } = vercelIds()
   if (!projectId || !teamId) {
     fail('FAIL environment: VERCEL_PROJECT_ID and VERCEL_ORG_ID are not available (env or .vercel/project.json).')
