@@ -20,6 +20,7 @@ import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-mod
 import { moderateEventMedia } from '@/lib/media/moderation'
 import { resolveCityClaim } from '@/lib/cities/resolve'
 import { resolveVenueCoordinates, type VenueGeocodeSource } from '@/lib/geo/venue-coordinates'
+import { deploymentEnvironment, judgeVenueSave } from '@/lib/geo/venue-save-rule'
 import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
 import { getSiteUrl } from '@/lib/site-url'
 import { trackEventPublishedServer } from '@/lib/analytics/plausible'
@@ -286,7 +287,22 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
     venue_place_id: input.venue_place_id ?? null,
     venue_geocode_source: input.venue_geocode_source ?? null,
   })
-  if (venue.reason) console.warn(`[events] no coordinates for "${input.venue_name ?? input.venue_address ?? ''}": ${venue.reason}`)
+  // NEVER A NULL PAIR SAVED SILENTLY (close-out C9, 7 September 2026). On a
+  // production-like environment a typed address that could not be placed is
+  // refused with a message the organiser can act on; on a local checkout it is
+  // allowed and the reason goes to the log. src/lib/geo/venue-save-rule.ts holds
+  // the rule and scripts/guards/geocoding-never-silent-null.mjs holds this call.
+  const venueVerdict = judgeVenueSave({
+    eventType: input.event_type,
+    venueAddress: input.venue_address || null,
+    coordinates: venue,
+    environment: deploymentEnvironment(),
+  })
+  if (!venueVerdict.ok) {
+    console.error(`[events] refusing to save "${input.venue_name ?? input.venue_address ?? ''}" without coordinates (${venueVerdict.kind}): ${venue.reason}`)
+    return { error: venueVerdict.error, nextAction: venueVerdict.nextAction ?? undefined }
+  }
+  if (venueVerdict.warning) console.warn(`[events] no coordinates for "${input.venue_name ?? input.venue_address ?? ''}": ${venueVerdict.warning}`)
   const cityClaim = resolveCityClaim(input.venue_city, venue.venue_latitude, venue.venue_longitude)
   const { error: eventError } = await admin
     .from('events')
@@ -580,7 +596,22 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
     venue_place_id: input.venue_place_id ?? null,
     venue_geocode_source: input.venue_geocode_source ?? null,
   })
-  if (venue.reason) console.warn(`[events] no coordinates for "${input.venue_name ?? input.venue_address ?? ''}": ${venue.reason}`)
+  // NEVER A NULL PAIR SAVED SILENTLY (close-out C9, 7 September 2026). On a
+  // production-like environment a typed address that could not be placed is
+  // refused with a message the organiser can act on; on a local checkout it is
+  // allowed and the reason goes to the log. src/lib/geo/venue-save-rule.ts holds
+  // the rule and scripts/guards/geocoding-never-silent-null.mjs holds this call.
+  const venueVerdict = judgeVenueSave({
+    eventType: input.event_type,
+    venueAddress: input.venue_address || null,
+    coordinates: venue,
+    environment: deploymentEnvironment(),
+  })
+  if (!venueVerdict.ok) {
+    console.error(`[events] refusing to save "${input.venue_name ?? input.venue_address ?? ''}" without coordinates (${venueVerdict.kind}): ${venue.reason}`)
+    return { error: venueVerdict.error, nextAction: venueVerdict.nextAction ?? undefined }
+  }
+  if (venueVerdict.warning) console.warn(`[events] no coordinates for "${input.venue_name ?? input.venue_address ?? ''}": ${venueVerdict.warning}`)
   const cityClaim = resolveCityClaim(input.venue_city, venue.venue_latitude, venue.venue_longitude)
   const { error: eventError } = await admin
     .from('events')
