@@ -4163,3 +4163,112 @@ changed, and nothing was deleted.
   (required on production by the manifest and the two parity checks; forbidden on the Development store by the
   store policy, pinned; the loud, visible refusal driven on the preview; the guard drilled). Queue entry
   written. Next: C18 FINAL.
+
+
+## 2026-09-07 19:10 to 19:40 (C18 FINAL, session 40) the community layer written into the scope, recorded, guarded, and every page of it driven on production
+
+- Governing laws: Law 0, Law 7 (every list enumerated from source and from the database, read only), Law 8,
+  the C18F.0 rule (additive both ways; nothing removed; a slug is never touched), the Copy laws (the addendum
+  says "community" throughout and reports the one renamed category without repeating the banned word), the
+  COMPLETION LAW. Branch docs/c18-final-community-layer from main a1321e98; the halt rule held before it began
+  (main green, production READY and serving a1321e98).
+- Enumerated, never typed. Communities: 21 in src/lib/communities/data.ts (getAllCommunities, COMMUNITY_SLUGS),
+  the list read by the community pages, the 420 city variants (21 x the 20 cities of getAllCities), the
+  communities index, the organiser form's community tagging, search, the footer, the rails, the sitemap and
+  the AI drafting assistant (consumers grepped across src/app, src/components and src/lib). The production
+  sitemap publishes exactly those 21 and 420. A DIFFERENT list lives in public.communities on both databases:
+  14 rows (african, south-asian, caribbean, latin, east-asian, filipino, mediterranean, middle-eastern,
+  european, pacific, gospel, comedy, wellness, pride), older than the layer, read by nothing in src; recorded
+  and left alone, its retirement the owner's decision. Faiths: 5 pages (christian, muslim, hindu, buddhist,
+  jewish) and 3 filter-only (sikh, bahai, spiritual) in src/lib/faiths/data.ts. Categories:
+  public.event_categories has 22 slugs, identical on production and TEST (read through the Management API and
+  the TEST service key): the scope's 15 are all present (Arts & Culture as `arts-community` "Arts", renamed on
+  26 August because the scope name's second word is banned; reported, not changed) and seven are approved
+  additions (comedy, festival, film, pride, european, middle-eastern, pacific). /categories/[slug] forwards a
+  real category slug (308) to /events?category=; seven editorial hero categories in src/lib/hero-categories.ts
+  are bound to that route, six redirected to a community page by src/lib/seo/permanent-redirects.ts and
+  networking rendering its own page. Checked on production: /categories/gospel forwards to /community/gospel,
+  which is not one of the 21 and forwards again to /faith/christian (200): two hops, no dead link.
+- Built: docs/scope/community-layer-approved.json (the machine-readable record of all of the above);
+  docs/EventLinqs_Scope_v5-Addendum-A-Community-Layer.md (APPROVED BY OWNER, added during build, September
+  2026: the 21, the matrix, the routes and what each renders, faith beside community, the two axes beside line
+  351, the 22 categories against the 15, the hero categories, the legacy table, and what protects it); one
+  footer paragraph appended to docs/EventLinqs_Scope_v5.md after "END OF SCOPE OF WORK" pointing at the
+  addendum, the body untouched (the test asserts the body carries no reference).
+  scripts/guards/community-layer-protected.mjs (registered, described in the runner header) loads the source
+  lists through the alias loader, reads event_categories from the database the build runs against through
+  PostgREST, and fails on any loss in the source or the database, any unrecorded addition, any scope category
+  without a slug, or the routes and the sitemap ceasing to publish the layer; PASS on the tree against TEST
+  (22 categories, 15 scope categories mapped). tests/unit/scope/community-layer-approved.test.ts (7) binds the
+  record to the source name for name and in order, the 15 scope names to one slug each, the addendum to every
+  slug, and the scope's footer to the addendum. tsc 0, eslint 0, 75 of 75 guards; canary 321/3646 to
+  322/3653, measured. No slug touched (C18F.3).
+- C18F.6 driven on production, 19:14 to 19:34 (drive-c18.mjs, Playwright, slugs from the production sitemap
+  and the production event_categories, never typed): 469 pages at 390, 768 and 1440, 1,407 loads: all 21
+  community pages, all 420 community-by-city pages, all 5 faith pages, the networking category page and the 22
+  category forwards. Every load 200 with an h1, no error boundary, no broken image; the forwards land on
+  /events?category= (final URL recorded). Two flags, both explained: the 66 forward loads show the browse
+  view's designed "No events listed yet" state (production lists no events), and the Filipino community page
+  and its 20 city variants matched the empty-wording regex because "Filipino events" contains the letters
+  "no events", an artefact of the check, not of the page. Five sample captures at 390 (one per family) and
+  the full table with status, final URL, h1, body length, cards and images per page. Evidence:
+  C:\dev\EVIDENCE\C18\drive\c18-drive.md, c18-drive.json, the five JPEGs.
+- C18F.5: Pride is one line for the owner in REVIEW-QUEUE.md; nothing done. Noted beside it: `pride` exists
+  as a CATEGORY on the platform (an approved addition) and as a row of the unread legacy table, and not as a
+  community.
+- The push launched after the drive finished so the gate's Lighthouse step ran on a quiet machine.
+
+## 2026-09-07 20:07 to 20:45 (C18 FINAL, session 40) the first CI run of PR 136 failed twice over, and both faults were the guard's, not the platform's
+
+- The push gate was GREEN, 13 of 13 in 1715 s (Lighthouse 1406 s), and PR 136 opened as a draft and was
+  marked ready at 20:04. CI: "production parity" PASS in 51 s; "lint, typecheck, build" FAIL at 3 m 27 s;
+  the Vercel preview deployment of 718d93b1 ERROR. Two faults, both in the new guard, neither in anything a
+  visitor sees. Read from the CI job log (gh run view 34109431373 --log-failed) and the Vercel build events
+  (C:\dev\EVIDENCE\C18\preview-build-log-718d93b1-full.txt, 937 lines, read through the API with the CLI login).
+- FAULT ONE (CI). CI's typecheck build runs on a placeholder project URL (27 characters). The guard's category
+  half demanded a real database and FAILED the build where it could not have one: a wall, not a lock, and the
+  very shape the tree already answers elsewhere (event-lifecycle-installed SKIPs by name on the same
+  placeholder). Its declareWork also carried zeroIsFine: true, which the reporter reads as a map, so the zero
+  database read was reported as DID NOTHING as well. Fixed: no real project URL, or a real one with no key, is
+  a named SKIP of the category half alone (the source halves and the routes are still judged, 21 communities,
+  8 faiths, 22 approved categories read); a real project whose read fails still FAILS. Proven on the tree with
+  CI's placeholder (SKIP line printed, exit 0: community-layer-guard-skip-on-placeholder.txt) and against TEST
+  (22 categories read, PASS).
+- FAULT TWO (Vercel). ENOENT on /vercel/path0/docs/scope/community-layer-approved.json. .vercelignore excludes
+  docs/* to keep the upload small and its own header records this exact failure TWICE before (docs/PRICING.md
+  on the pricing lock; docs/security/CREDENTIAL-ROTATION.md), with the rule "anything a build-time guard reads
+  must be listed here as an exception" and the walk-down shape (!dir/, dir/*, !dir/file) because a file inside
+  an excluded directory can never be re-included. I read the file after the failure, not before. Fixed: the
+  record is walked down in .vercelignore, the header records the third occurrence, and the rule is now a guard.
+- THE NEW GUARD scripts/guards/vercelignore-covers-guard-reads.mjs (registered, in the header) evaluates
+  .vercelignore with gitignore semantics (last match wins; an excluded ancestor seals its children; a pattern
+  outside name, path and path/* is REFUSED rather than guessed) against a registry of the docs/ files the
+  prebuild chain cannot do without (docs/PRICING.md, the approved record), requires each to exist and to be named
+  by a build-time script so the registry cannot rot, and scans every build-time script (scripts/guards,
+  scripts/guards/lib, src/lib/health, scripts/check-*.mjs, scripts/prebuild-fixture.mjs: 88 files, 25 docs/
+  literals) so that any docs/ literal is either registered or in a file reviewed as tolerant (one-fee-copy,
+  no-plaintext-credential, sourced-specifications, each of which PASSED in the Vercel build where docs/ was
+  absent: lines 655, 214 and 250 of the full log). Both lists print every run. RED on the real defect before the
+  .vercelignore fix ("docs/scope/community-layer-approved.json is EXCLUDED by .vercelignore (its directory
+  docs/scope/ is excluded and never re-included)": vercelignore-guard-red-on-real-defect.txt), GREEN after.
+  Two drills: the record's re-inclusion removed; a guard made to read an unregistered docs/ path.
+- Why the local gate did not catch either: the gate runs where the file exists and the database is real. The
+  new guard closes the second gap in the gate itself; the first (a placeholder database) is CI's environment,
+  now handled by the guard the way the tree's other database-reading guards handle it.
+- eslint clean on the four scripts; guard-registry and the C18 record tests 12 of 12.
+
+## 2026-09-07 20:21 to 21:05 (C18 FINAL, session 40) the fix through the gate, CI green, merged, production serving it
+
+- The fix commit 4455104f went through the full push gate GREEN, 13 of 13 in 1721 s (Lighthouse 1416 s). CI on PR
+  136 (synchronize): lint, typecheck, build 4 m 22 s PASS; test 2 m 12 s PASS; production parity 47 s PASS;
+  types-drift guard 1 m 24 s PASS; the Vercel preview of 4455104f READY, and its build log carries both guards
+  PASS (community-layer-protected: 22 categories on vkapkibzokmfaxqogypq, 15 scope categories mapped;
+  vercelignore-covers-guard-reads: 2 required docs reads survive .vercelignore, 25 literals across 88 scripts):
+  C:\dev\EVIDENCE\C18\preview-build-log-4455104f-full.txt lines 920 to 938.
+- Squash-merged at 10:55:25Z (20:55 local) as 15ccce5c with an explicit subject and a body naming both commits.
+  Production deployment dpl_BuXjWuPXtXdRfr8M9hjXrq1su24N BUILDING at 10:55:29Z, READY at 10:57:55Z; www 200
+  serving sentry-release 15ccce5c053f; CI on main 34113945964 SUCCESS; post-deploy smoke SUCCESS on both events.
+  Local main fast-forwarded. The branch is deleted once its Lighthouse CI run (34113494968) ends.
+- Records: the C18 FINAL ledger section (C18F.0 to F.6, the defect fixed on the way, the completion law, the two
+  reserved founder decisions), the queue entry (Pride one line; the legacy table; both decisions, neither urgent),
+  the queue headline. The halt rule holds: main green, production Ready and serving. Next: C19.
