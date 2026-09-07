@@ -913,9 +913,17 @@ const ROOT = join(HERE, '..', '..')
  * measured. C17.4 added tests/unit/home/hero-scrim (three: the seven stops,
  * never darker higher up, the headline band held at 0.78): 319 files / 3636,
  * as the canary measured.
+ *
+ * Close-out C9 (7 September 2026), two files and 10 tests:
+ * tests/unit/geo/venue-save-rule (the environment read, the key absent refused
+ * by name, the browser key the same, Google refusing named, development allowed
+ * with the reason, coordinates and virtual and no address allowed, hybrid judged
+ * like in-person) and tests/unit/security/google-maps-server-key-scopes (required
+ * on production and preview, forbidden on the Development store, optional for a
+ * local process): 321 files / 3646, as the canary measured.
  */
-const MIN_FILES = 319
-const MIN_TESTS = 3636
+const MIN_FILES = 321
+const MIN_TESTS = 3646
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

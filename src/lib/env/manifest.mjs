@@ -648,6 +648,14 @@ export const ENV_MANIFEST = [
     describe: 'Google Maps server key: geocoding at seed and publish time',
     requiredOn: ['production', 'preview'],
     forbiddenOn: [],
+    // Close-out C9 (7 September 2026): REQUIRED on production, FORBIDDEN on the
+    // Development STORE. The store half is enforced by storePolicyFor through
+    // mustBeSensitive below (R3: a scope that cannot be marked sensitive may not
+    // hold a secret), and pinned by tests/unit/security/google-maps-server-key-scopes.test.ts.
+    // The PROCESS policy on development stays optional so a local checkout may
+    // hold the key in its gitignored file (doctrine 3.3); without it, the save
+    // rule (src/lib/geo/venue-save-rule.ts) allows a typed address with the
+    // reason in the log, and on production or preview refuses it by name.
     optionalOn: ['development'],
     /*
      * RULING R3 IS NOW ENFORCED HERE, 3 September 2026.

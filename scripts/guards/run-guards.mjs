@@ -123,6 +123,9 @@
  *                              licensed hero raster from the attribution file beside the
  *                              assets, and the media component owns the failure path
  *                              (close-out C17)
+ *   geocoding-never-silent-null a typed address with no coordinates refuses to save on a
+ *                              production-like environment, naming the fault, and both
+ *                              event actions run that rule (close-out C9)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -799,6 +802,10 @@ const GUARDS = [
   // the empty branch now wears a curated, licensed raster and the media component
   // owns the failure path. Drilled red and green.
   'scripts/guards/homepage-hero-never-empty.mjs',
+  // Close-out C9 (7 September 2026): an organiser's event cannot be saved with
+  // null coordinates on a production-like environment when the server key is
+  // absent or refused; the save rule is driven and both actions must call it.
+  'scripts/guards/geocoding-never-silent-null.mjs',
 ]
 
 /**

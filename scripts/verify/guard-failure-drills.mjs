@@ -183,6 +183,26 @@ const DRILLS = [
     expect: 'required status checks are missing',
   },
   /*
+   * geocoding-never-silent-null (close-out C9), two drills: the rule made to
+   * allow the production case, and the create action's call removed.
+   */
+  {
+    name: 'the save rule lets a typed address with no coordinates through on production',
+    guard: `${GUARDS}/geocoding-never-silent-null.mjs`,
+    file: 'src/lib/geo/venue-save-rule.ts',
+    find: "  if (input.environment === 'development') return { ok: true, warning: reason }",
+    replace: "  if (input.environment === 'development' || input.environment === 'production') return { ok: true, warning: reason }",
+    expect: 'ALLOWED a typed address with no coordinates',
+  },
+  {
+    name: 'the create action stops asking the save rule',
+    guard: `${GUARDS}/geocoding-never-silent-null.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/actions.ts',
+    find: '  const venueVerdict = judgeVenueSave({',
+    replace: '  const venueVerdict = { ok: true, warning: null } as const; void ({',
+    expect: 'judgeVenueSave is called 1 time(s)',
+  },
+  /*
    * homepage-hero-never-empty (close-out C17), two drills: the empty branch
    * painting a panel without HeroMedia, and a curated entry with no raster.
    */
