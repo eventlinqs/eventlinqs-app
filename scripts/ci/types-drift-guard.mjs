@@ -33,6 +33,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { analyse, renderVerdict } from './types-drift-analyse.mjs'
+import { cliCannotStartLines, genTypesFailedLines } from './types-drift-messages.mjs'
 
 const PROJECT_ID = process.env.SUPABASE_PROJECT_ID || 'gndnldyfudbytbboxesk'
 const COMMITTED = 'src/types/database.ts'
@@ -83,11 +84,15 @@ const committedText = committedRaw.slice(0, committedRaw.indexOf(MARKER))
 let genVersion = 'unknown'
 try {
   genVersion = execFileSync('npx', ['--yes', 'supabase', '--version'], {
-    encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], shell: process.platform === 'win32',
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32',
   }).trim()
 } catch (error) {
-  console.warn('[scripts/ci/types-drift-guard:89]', error instanceof Error ? error.message : error)
-  // Non-fatal: the generation call below reports its own failure in full.
+  // The CLI could not start, so nothing below can run and nothing about the
+  // live schema is known. Until 7 September 2026 this was a warning and the
+  // failure surfaced at gen-types as "run npx supabase login", which is the
+  // wrong repair for a tool that never started (scripts/ci/types-drift-messages.mjs).
+  for (const line of cliCannotStartLines(error)) fail(line)
+  process.exit(1)
 }
 say(`generating live types with supabase CLI ${genVersion} (the committed types must come from the same version)`)
 
@@ -99,11 +104,9 @@ try {
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' },
   )
 } catch (err) {
-  fail("FAIL: 'supabase gen types' could not reach the live DB.")
-  fail('In CI: ensure repository secret SUPABASE_ACCESS_TOKEN is set.')
-  fail("Locally: run 'npx supabase login' once.")
-  fail('--- gen-types stderr ---')
-  fail(String(err.stderr || err.message).split('\n').slice(0, 20).join('\n'))
+  // The CLI started (its version printed above) and Supabase refused or was
+  // unreachable: this is the fault a login or the CI secret repairs.
+  for (const line of genTypesFailedLines(err, genVersion)) fail(line)
   process.exit(1)
 }
 

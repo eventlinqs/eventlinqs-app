@@ -220,14 +220,56 @@ async function waitForServer(base, child, timeoutMs) {
   return `the server did not answer 200 on / within ${timeoutMs / 1000}s`
 }
 
-function killTree(child) {
-  if (!child || child.exitCode !== null) return
-  if (process.platform === 'win32') {
-    const r = spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' })
-    if (r.error) console.warn(`[gate] taskkill failed for pid ${child.pid}: ${r.error.message}`)
-    return
+/**
+ * Stop a child and everything it spawned, and READ the verdict of the attempt.
+ *
+ * On Windows `taskkill /T /F` is the only way to reach the grandchildren, and
+ * its exit status used to be ignored. On 7 September 2026 the red Lighthouse
+ * path left the `next start` server and the Upstash stub alive with no line
+ * printed, the gate process stayed alive on their two handles, and git never got
+ * the hook's exit: a refused push that hung until somebody killed it by hand.
+ * Now a taskkill that cannot start or exits non-zero is said out loud and the
+ * plain signal is sent next, and the handle is released either way, so a child
+ * that survives both attempts cannot hold a decided verdict back from git.
+ *
+ * Returns what happened, for the test and the log: 'exited' (nothing to do),
+ * 'killed' (taskkill succeeded), 'fallback' (taskkill failed, SIGTERM sent) or
+ * 'signalled' (not Windows, SIGTERM sent).
+ *
+ * @param {{ pid?: number, exitCode: number | null, kill: (signal: string) => unknown, unref?: () => void } | null | undefined} child
+ * @param {{ run?: (command: string, args: string[], options: object) => { error?: Error, status?: number | null, stdout?: string, stderr?: string }, platform?: string, warn?: (message: string) => void }} [options]
+ */
+export function killTree(child, { run = spawnSync, platform = process.platform, warn = (m) => console.warn(m) } = {}) {
+  if (!child || child.exitCode !== null) return 'exited'
+  let outcome = 'signalled'
+  if (platform === 'win32') {
+    const r = run('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    })
+    if (r.error) {
+      warn(`[gate] taskkill could not start for pid ${child.pid}: ${r.error.message}; sending SIGTERM instead`)
+      outcome = 'fallback'
+    } else if (r.status !== 0) {
+      const said = String(r.stderr || r.stdout || '').trim().split(/\r?\n/)[0] ?? ''
+      warn(`[gate] taskkill exited ${r.status} for pid ${child.pid}: ${said}; sending SIGTERM instead`)
+      outcome = 'fallback'
+    } else {
+      outcome = 'killed'
+    }
   }
-  child.kill('SIGTERM')
+  if (outcome !== 'killed') {
+    try {
+      child.kill('SIGTERM')
+    } catch (error) {
+      warn(`[gate] kill failed for pid ${child.pid}: ${error.message}`)
+    }
+  }
+  // The verdict is decided and git is waiting for it; a child that refuses to
+  // die must not keep this process alive.
+  if (typeof child.unref === 'function') child.unref()
+  return outcome
 }
 
 function tailOf(file, lines = 40) {

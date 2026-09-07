@@ -887,9 +887,15 @@ const ROOT = join(HERE, '..', '..')
  * pass-through is not, reach past the first item fails, an unlisted grant
  * fails, a rotted list entry fails, and the live tree is clean): 312 files /
  * 3598, as the canary measured.
+ *
+ * The C8 bring-up (7 September 2026), the two gate defects C16 found on the way,
+ * one file and nine tests: tests/unit/ops/pre-push-gate (killTree, five: exited,
+ * clean taskkill, non-zero taskkill, taskkill cannot start, elsewhere) and
+ * tests/unit/ci/types-drift-messages (four: cannot start, elsewhere, refused,
+ * the cap): 313 files / 3607, as the canary measured.
  */
-const MIN_FILES = 312
-const MIN_TESTS = 3598
+const MIN_FILES = 313
+const MIN_TESTS = 3607
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

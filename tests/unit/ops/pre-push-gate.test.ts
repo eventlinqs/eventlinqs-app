@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { STEPS, classifyPush, judgeLighthouseRun, parseEnvFile } from '../../../scripts/ops/pre-push-gate.mjs'
+import { STEPS, classifyPush, judgeLighthouseRun, killTree, parseEnvFile } from '../../../scripts/ops/pre-push-gate.mjs'
 
 /**
  * THE GATE RUNS WHAT CI RUNS, AND SKIPS ONLY WHAT SENDS NOTHING.
@@ -134,5 +134,99 @@ describe('the step list against the CI workflow', () => {
     expect(at('suite')).toBeLessThan(at('build'))
     expect(at('build')).toBeLessThan(at('lighthouse'))
     expect(at('typecheck')).toBeLessThan(at('suite'))
+  })
+})
+
+/**
+ * THE GATE STOPS WHAT IT STARTED, AND SAYS SO WHEN IT CANNOT.
+ *
+ * 7 September 2026: the red Lighthouse path left the served build and the
+ * Upstash stub alive, taskkill's verdict was ignored, and the gate process hung
+ * on the two child handles with git waiting for the hook. Each way a kill can
+ * go is pinned here with a fake child and a fake taskkill.
+ */
+describe('killTree', () => {
+  const fakeChild = (over: Record<string, unknown> = {}) => {
+    const calls = { kill: [] as string[], unref: 0 }
+    const proc = {
+      pid: 4242,
+      exitCode: null as number | null,
+      kill: (signal: string) => {
+        calls.kill.push(signal)
+        return true
+      },
+      unref: () => {
+        calls.unref += 1
+      },
+      ...over,
+    }
+    return { calls, proc }
+  }
+  const quiet = () => {}
+
+  test('a child that already exited is left alone', () => {
+    const c = fakeChild({ exitCode: 1 })
+    let ran = 0
+    const outcome = killTree(c.proc, { run: () => { ran += 1; return { status: 0 } }, platform: 'win32', warn: quiet })
+    expect(outcome).toBe('exited')
+    expect(ran).toBe(0)
+    expect(c.calls.kill).toEqual([])
+    expect(c.calls.unref).toBe(0)
+  })
+
+  test('on Windows a clean taskkill is the kill, and the handle is released', () => {
+    const c = fakeChild()
+    const warned: string[] = []
+    const seen: unknown[] = []
+    const outcome = killTree(c.proc, {
+      run: (cmd: string, args: string[]) => { seen.push([cmd, args]); return { status: 0, stdout: 'SUCCESS', stderr: '' } },
+      platform: 'win32',
+      warn: (m: string) => warned.push(m),
+    })
+    expect(outcome).toBe('killed')
+    expect(seen).toEqual([['taskkill', ['/PID', '4242', '/T', '/F']]])
+    expect(c.calls.kill).toEqual([])
+    expect(c.calls.unref).toBe(1)
+    expect(warned).toEqual([])
+  })
+
+  test('on Windows a taskkill that exits non-zero is said out loud and SIGTERM follows', () => {
+    const c = fakeChild()
+    const warned: string[] = []
+    const outcome = killTree(c.proc, {
+      run: () => ({ status: 128, stdout: '', stderr: 'ERROR: The process "4242" not found.\r\n' }),
+      platform: 'win32',
+      warn: (m: string) => warned.push(m),
+    })
+    expect(outcome).toBe('fallback')
+    expect(warned).toHaveLength(1)
+    expect(warned[0]).toContain('exited 128')
+    expect(warned[0]).toContain('not found')
+    expect(c.calls.kill).toEqual(['SIGTERM'])
+    expect(c.calls.unref).toBe(1)
+  })
+
+  test('on Windows a taskkill that cannot start is said out loud and SIGTERM follows', () => {
+    const c = fakeChild()
+    const warned: string[] = []
+    const outcome = killTree(c.proc, {
+      run: () => ({ error: new Error('spawn taskkill ENOENT'), status: null }),
+      platform: 'win32',
+      warn: (m: string) => warned.push(m),
+    })
+    expect(outcome).toBe('fallback')
+    expect(warned[0]).toContain('ENOENT')
+    expect(c.calls.kill).toEqual(['SIGTERM'])
+    expect(c.calls.unref).toBe(1)
+  })
+
+  test('elsewhere SIGTERM is the kill and the handle is released', () => {
+    const c = fakeChild()
+    let ran = 0
+    const outcome = killTree(c.proc, { run: () => { ran += 1; return { status: 0 } }, platform: 'linux', warn: quiet })
+    expect(outcome).toBe('signalled')
+    expect(ran).toBe(0)
+    expect(c.calls.kill).toEqual(['SIGTERM'])
+    expect(c.calls.unref).toBe(1)
   })
 })
