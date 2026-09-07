@@ -3564,3 +3564,41 @@ changed, and nothing was deleted.
   moment the founder's command has run; the sequence after it is unchanged (02:39 entry). Nothing
   read-only remains to drive under the halt. The ledger's section widened to cover session 36; the
   "Last re-verified" line in REVIEW-QUEUE.md updated. The sentinel was not written.
+
+## 2026-09-07 11:15 to 11:18 (C16, continued, session 38) the halt re-verified on relaunch six hours on; nothing has moved; C18 FINAL and the new C19 read and recorded, not started
+
+- Governing laws: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder applies), the
+  C16.0 halt rule, Definition of Done clause 6. No code changed, nothing merged, nothing started,
+  nothing written to production; the CLI rests on TEST (project-ref read back before and after the
+  parity step: vkapkibzokmfaxqogypq). No MERGE_HEAD, tree clean at 100be967, six commits ahead of
+  origin/main and zero behind after a fetch. Disk 29 GB free at start and end; no build output; one
+  node_modules (this worktree's) and no .next under C:\dev or C:\elrel; the one fetched homepage file
+  deleted after its release was read.
+- Re-verified read only, through the clean-env wrapper, and every reading is identical to session 36
+  (and to session 37's two evidence files, written at 05:27 by a session that ended before it wrote
+  the ledger; folded in here): parity FAIL on the schema half (116 in the tree, 113 applied, the same
+  3 pending: 20260905000003, 20260906000001, 20260906000002), environment half 0 faults across 34
+  records and 43 manifest entries, exit 1, "BLOCKED at production-parity after 5s. Nothing was
+  pushed."; Vercel production by sha 2d558d2a ERROR, b7798b76 ERROR, b4255a96 READY (still the newest
+  READY, dpl_9SkwNKZ7tYnfw3EgZs1oKx8jf7uu); the live site serves sentry-release b4255a96 (HTTP 200,
+  396471 bytes), the apex 301 to www; CI on main still red at 2d558d2a (run 34031455414), no new run
+  since 11:52Z on 6 September (the later runs on main are the scheduled env-locks workflow, green at
+  15:30Z and 20:27Z); origin/main unchanged after a fetch; PR 130 still BLOCKED by protection, not a
+  draft, MERGEABLE, head 2ed39584 on perf/c8-mobile-95; protection reads back the three required
+  contexts (lint, typecheck, build; test (vitest); production parity), strict, admins enforced. The
+  founder has not run `npm run migrate:production`. Evidence:
+  C:\dev\EVIDENCE\C16\production-parity-recheck-session38.txt, deployments-recheck-session38.txt.
+- CLOSE-OUT.md changed at 11:13 (two minutes before this session): it now carries C19 (Google is not
+  indexing pages: the canonical, robots and sitemap audit, the indexing threshold policy the owner
+  confirms, unique text and structured data, the 404s resolved to 301 or 410, guards both ways). It
+  also carries the owner's "C18 FINAL" section, which voids the earlier C18 and C18 CORRECTED: the
+  community layer is approved and stays, the item is additive in both directions, nothing is removed,
+  the scope gets an addendum, no slug is touched, Pride is one line for the owner. Neither the log nor
+  the ledger had recorded the FINAL wording, so the ledger's C18 row was replaced with it and a C19 row
+  added, both NOT STARTED under the halt. The run order after the founder's command is unchanged:
+  push and merge C16, watch production to READY, C16.4 and C2 closed, PR 130 brought up to date and
+  merged the same way, then C9, C17, C18 FINAL, C19.
+- THE HALT STANDS. The six C16 commits wait on ci/c16-production-parity and leave the machine the
+  moment the founder's command has run. Nothing read-only remains to drive under the halt. The
+  ledger's section widened to cover sessions 37 and 38; the "Last re-verified" line in
+  REVIEW-QUEUE.md updated. The sentinel was not written.
