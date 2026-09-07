@@ -3602,3 +3602,165 @@ changed, and nothing was deleted.
   moment the founder's command has run. Nothing read-only remains to drive under the halt. The
   ledger's section widened to cover sessions 37 and 38; the "Last re-verified" line in
   REVIEW-QUEUE.md updated. The sentinel was not written.
+
+## 2026-09-07 11:20 to 11:25 (C16, continued, session 39) THE BLOCK LIFTED: the founder ran the migration, production carries all 116, the C16 push is running through the gate
+
+- Governing laws: Law 0, Law 8, Law 10, Verification and gates (Migrations: the founder applies;
+  Delivery: nothing pushed until the same checks pass locally, PRs open as drafts), the C16.0 halt
+  rule (fixing main is the only work in progress, and this is it), Definition of Done clause 6.
+  Nothing written to production by this session; the CLI rests on TEST (project-ref read back
+  before and after every Supabase call: vkapkibzokmfaxqogypq). Disk 29 GB free at start.
+- 11:20, the relaunch check, read only through the clean-env wrapper, and it MOVED for the first
+  time since 6 September: 116 migrations in the tree, 116 applied on gndnldyfudbytbboxesk, 0
+  pending, schema PASS; environment half PASS (34 records, 43 manifest entries, 0 faults); the
+  gate step PASS in 6 s, exit 0. Session 38 had read 3 pending at 11:16, so the founder ran
+  `npm run migrate:production` between 11:19 and 11:20. Evidence:
+  C:\dev\EVIDENCE\C16\production-parity-recheck-session39.txt.
+- 11:22, the command's two proofs re-driven read only after the fact: verify-production-schema
+  PRESENT on all 9 objects (events.archived_at and event_tombstones.slug included, the two that
+  were ABSENT in session 13), PASS, exit 0; the parity re-list 0 pending. TEST carries the same
+  116 (supabase migration list --linked, the scoop 2.116.0 binary; the npx copy has no win32
+  binary on this machine and is not used). Evidence: verify-production-schema-session39.txt.
+- Vercel and the live site at that moment, unchanged until a merge redeploys: 2d558d2a ERROR,
+  b7798b76 ERROR, b4255a96 READY; the site serves sentry-release b4255a96 (HTTP 200, 396501
+  bytes), the apex 301 to www; CI on main red at 2d558d2a, no new run; PR 130 BLOCKED,
+  MERGEABLE; protection reads back the three required contexts, strict, admins enforced.
+  Evidence: deployments-recheck-session39.txt.
+- 11:23, the push of ci/c16-production-parity at 100be967 started through clean-env.sh (tree clean,
+  no MERGE_HEAD, six ahead and zero behind origin/main after a fetch, the branch not yet on origin).
+  The hook runs all 13 gate steps; disk 28.8 GB free at step 1. The tree is not touched while it
+  runs, and the log branch is not pushed while it runs either (push-build-log.ps1 parks .env.local
+  around its push, which would pull the file from under the guards step). Output:
+  gate-pass-on-push-session39.txt.
+- NEXT, in order, each recorded as it lands: draft pull request, `gh pr ready`, the three required
+  checks (lint · typecheck · build; test (vitest); production parity) plus the deployment-state
+  guard waiting for the commit's own preview build, squash merge with an explicit subject and body
+  (Law 8), the production deployment watched by sha to READY, the served sentry-release read back,
+  the ten routes driven with C:\dev\EVIDENCE\C7\sweep-production.mjs, C16.4 and C2 closed, then
+  PR 130 (C8) brought up to date with the saved resolution and merged the same way, then C9, C17,
+  C18 FINAL, C19.
+
+## 2026-09-07 11:27 to 11:31 (C16, continued, session 39) the first push refused at types-drift by a broken npx cache entry; cause read off the machine; repaired; the push relaunched
+
+- 11:27, the first push ran seven gate steps green (disk 28.8 GB, typecheck 52 s, lint 100 s, copy,
+  critical-path, exemptions, 71 guards in 81 s) and was REFUSED at step 8, types-drift, in 6 s,
+  nothing pushed. The guard's `npx --yes supabase --version` and `gen types` both died with "No
+  matching Supabase CLI binary package found for win32-x64". Evidence:
+  C:\dev\EVIDENCE\C16\gate-pass-on-push-session39.txt.
+- The cause, read rather than guessed. (1) The founder's watchdog launcher, C:\dev\RUN-BUILD13.ps1
+  line 48, deletes %LOCALAPPDATA%\npm-cache\_npx (and _cacache) on every reclaim, so the npx copy of
+  the CLI is re-installed from the registry on every relaunch rather than once. (2) The entry
+  re-created at 11:22 this session (by this session's own `npx supabase migration list`) held
+  supabase@2.116.0 with an EMPTY node_modules/@supabase directory: npm skipped the optional
+  platform package @supabase/cli-windows-x64, which is what an optional dependency does when its
+  fetch fails, silently. The registry carries it (npm view: version 2.116.0, os win32, cpu x64,
+  tarball present) and `supabase` latest is 2.116.0, so nothing about versions moved. The scoop
+  binary on PATH (2.116.0) was never involved; the guard resolves the CLI through npx by design so
+  that CI and the machine generate with the same version.
+- The repair: the broken entry removed and `npx --yes supabase --version` re-run, which installed
+  @supabase/cli-windows-x64 (bin/supabase.exe present) and printed 2.116.0. The step hand-run alone
+  through clean-env.sh: CLI 2.116.0, the generated section matches production, PASS in 14 s.
+  Evidence: types-drift-after-npx-repair-session39.txt.
+- A defect in the check itself (C16.5): the guard treats a `--version` failure as non-fatal and then
+  labels the gen-types failure "could not reach the live DB, run npx supabase login", which sent the
+  reader to the wrong place. It is carried to the next push through the gate (the C8 bring-up) rather
+  than fixed now, so production is not held behind a second 30 minute gate run; recorded in the
+  ledger as FOUND, NOT YET FIXED, with the shape of the fix.
+- The second push started at 11:31 through clean-env.sh, tree unchanged at 100be967. Output:
+  gate-pass-on-push-session39b.txt.
+
+## 2026-09-07 11:49 to 12:20 (C16, continued, session 40) the second push was killed from outside by the watchdog's reclaim and left hanging; cleared, relaunched, GREEN 13 of 13, pushed, pull request 131 open and ready
+
+- Governing laws: Law 0, Law 8, Law 10, Verification and gates (Delivery: nothing pushed until the same
+  checks pass locally, PRs open as drafts), the C16.0 halt rule (fixing main is the only work in progress),
+  Definition of Done clause 6. Nothing written to production; the CLI rests on TEST (project-ref read back
+  before the push and after it: vkapkibzokmfaxqogypq). Disk 28.4 GB free at start, 27.4 GB after the gate
+  (the tree's own .next kept by the gate as designed, 0.9 GB).
+- 11:49, on relaunch: session 39's second push (started 11:31) was still running as an orphan. The gate log
+  (gate-pass-on-push-session39b.txt) showed twelve steps green and the thirteenth, Lighthouse, REFUSED on
+  /organisers with three attempts "no report was written" and a Node ERR_MODULE_NOT_FOUND from the
+  Lighthouse binary itself; the summary and "BLOCKED at lighthouse (exit 1) after 632s. Nothing was pushed."
+  were written at about 11:47. Yet at 11:51 the gate process (pid 3048), its `next start` server (19900,
+  still listening on 58203) and its Upstash stub (26324) were all alive, with `git push` (16904) holding the
+  hook open, and `.next` was gone from the tree.
+- The cause, read off the machine rather than guessed. WATCHDOG.log: session 39's turn ended while the gate
+  ran in the background; the harness waited its 600 s ceiling and terminated ("Background tasks still
+  running after 600s; terminating"); the founder's launcher C:\dev\RUN-BUILD13.ps1 then ran its `Reclaim`
+  at 11:46:50 (Remove-Item on .next, .lighthouseci, %LOCALAPPDATA%\npm-cache\_npx and _cacache, %TEMP%\*)
+  and recovered 1.04 GB, WHILE the orphaned gate was auditing /organisers. The Lighthouse binary lives in
+  the npx cache it deleted (hence ERR_MODULE_NOT_FOUND on the next spawn) and the server's build was
+  deleted under it (hence "The destination stream closed early" in .tmp/gate-server.log). This is the same
+  launcher line (48) that broke the types-drift step at 11:27: one cause, two refusals in one hour, neither
+  a product defect and neither a gate defect.
+- A second finding under it: after the red verdict the gate's killTree (taskkill /PID /T /F, stdio ignored)
+  did not stop the server or the stub, no warning was printed, and the gate process stayed alive waiting on
+  the two child handles, so git never got its exit. The green path cleans up (proven at 12:19: no node or
+  git process left after the push). Not reproduced in isolation; recorded in the ledger as FOUND, NOT FIXED,
+  with the shape of the fix (report taskkill's exit status and fall back to child.kill; unref the children
+  after the kill attempt so a failed kill cannot hold the process open). Not fixed in this push: production
+  has been serving a two-day-old build and a second gate run costs 25 minutes.
+- 11:52, the orphan tree killed by hand (`taskkill /PID 3048 /T /F`: three SUCCESS lines), git exited with
+  "failed to push some refs", the branch confirmed absent on origin, the tree clean at 100be967, no
+  MERGE_HEAD, CLI on TEST. Evidence: gate-orphaned-by-reclaim-session40.txt.
+- 11:54:46, the push relaunched through clean-env.sh, and THIS TIME THE TURN WAS HELD OPEN until the verdict
+  (blocking waits of ten minutes at a time), so no reclaim could run against it. GREEN 13 of 13 in 1486 s:
+  disk, typecheck 7 s, lint 41 s, copy, critical-path, exemptions, 71 guards 66 s, types-drift 16 s
+  (CLI 2.116.0, generated section matches production), production-parity 6 s (116 of 116 applied, 0
+  pending; environment half 34 records, 43 entries, 0 faults), fixture, suite 52 s, build 151 s, Lighthouse
+  1145 s (13 URLs, three runs each, every page above its floor, "All results processed!"). git exit 0 at
+  12:19:35; origin now carries ci/c16-production-parity at 100be967. Evidence:
+  gate-pass-on-push-session40.txt.
+- 12:20, pull request 131 opened as a DRAFT with the body from pr-body-c16.md, then `gh pr ready`
+  (isDraft false, mergeStateStatus BLOCKED until the required checks report). CI runs once, on ready.
+- The relaunch procedure for the founder's launcher is a founder decision and is written to REVIEW-QUEUE.md:
+  the Reclaim must not run while a `pre-push-gate.mjs` process exists, or the harness must be run with the
+  background-wait ceiling lifted. Nothing in his script was edited.
+
+## 2026-09-07 12:20 to 12:41 (C16, continued, session 40) PR 131 ready, checks green, merged as 1e3b9b2f, production READY and serving it, CI on main green, the routes driven: C16 CLOSED, the halt lifted
+
+- 12:20:15 PR 131 opened as a draft (body: pr-body-c16.md); 12:20:18 marked ready. Two CI runs appeared as designed:
+  the draft-time run 34075952475 skipped all four jobs; the ready run 34075955838 ran them: production parity
+  SUCCESS 02:21:39Z, types-drift guard SUCCESS 02:22:22Z, test (vitest) SUCCESS 02:22:36Z, lint · typecheck · build
+  SUCCESS 02:25:18Z. The Vercel preview for 100be967 (dpl_87UNCeQPTWRAMc3n86JeQN9M36nQ) READY. `gh pr checks` lists
+  the skipped draft-time jobs beside the ready ones by name, which reads as "skipping" for the required checks;
+  the check-runs on the head sha, read through the API, show the four SUCCESS runs. mergeStateStatus UNSTABLE
+  (the advisory Lighthouse CI still running), mergeable MERGEABLE; the protection requires the three contexts,
+  strict, admins enforced, 0 approvals required.
+- 12:33:10 squash-merged with an explicit subject and body (merge-body-c16.md); the merge commit 1e3b9b2f
+  checked for attribution lines: none (author eventlinqs, committer GitHub). Law 8 holds.
+- The production deployment watched by sha every 30 s: BUILDING from 02:33:13Z, READY at 02:36:06Z
+  (dpl_BGj2mwXtKHnUuVb2XvyRtx7N85CA, target production, ref main). CI on main for the same commit, run
+  34076661236, in progress until 02:38:02Z, then SUCCESS on all four jobs, the verify job's preview-state guard
+  having waited for and judged the commit's own production deployment (the C16 repair working as designed on
+  its first real merge). Post-deploy smoke SUCCESS on the deployment_status event (34076823488) and on the
+  workflow_run event (34076933290).
+- The live site: www 200, 398,232 bytes, sentry-release 1e3b9b2f3fe01da1d4a0193fe6514fb823aed9f8; the apex 301
+  to https://www.eventlinqs.com.au/ and 200 when followed. Three gh reads in the first evidence capture failed
+  ("not a git repository") because they ran from the evidence folder; re-read from the repo and appended (the
+  session-38 trap, recorded in memory, hit again).
+- C16.4 routes: the route list re-enumerated from src/app (76 static pages, 54 dynamic pages, 48 static handlers,
+  12 dynamic handlers; one more than the 6 September list, /events/[slug]/holder from C13, which the C7 sweep at
+  21:21 on 6 September therefore never drove), the production sitemap re-fetched (550 urls, 78,010 bytes,
+  byte-identical to 6 September: nothing on production had changed until this deploy), and the C7 sweep re-run
+  from a copy writing under C:\dev\EVIDENCE\C16\sweep so the C7 evidence stays as cited. 210 requests in 77 s:
+  0 server errors, 0 error boundaries in a 200, 0 soft 404s, the same seven deliberate 404s as C7 recorded
+  (artist_showcase, broadcast_artists and gig_board flags off on production; the four dev and design previews
+  gated in src/proxy.ts), /events/zq-no-such-slug/holder 404 for an unknown slug (correct); homepage, /events,
+  browse cities, city and suburb pages, community and community-by-city pages, faith pages, a category page,
+  both live event pages, organisers, pricing, communities, cities all 200; /checkout/[reservation_id] 200 for an
+  anonymous unknown id (the anonymous answer, as C7 recorded).
+- Lighthouse CI on PR 131 (run 34075955811, advisory, not required): FAILED on the runner on three of thirteen
+  pages: the homepage gate value 0.75 (runs 0.56, 0.75, 0.74), the arena event page 0.77, the cat-indie event
+  page 0.77, floor 0.8; ten pages 0.89 to 0.96. This branch changes no page, so it measured main as it stands,
+  which is the C16.3 finding; the fix is C8 (PR 130), whose branch passed the same workflow on the same runner
+  on 6 September (run 34037708436), merged next.
+- C16 CLOSED in the ledger: C16.4 MET, C2 closed, the session-39 heading's "%s" repaired, the push and sequence
+  rows finalised, two gate defects (killTree on the red path; the types-drift message when the CLI cannot start)
+  recorded FOUND, NOT YET FIXED and carried to the C8 bring-up push, and the launcher defect recorded with the
+  corrected copy C:\dev\RUN-BUILD14.ps1 offered in REVIEW-QUEUE.md (Law 10: the step is one file to start
+  instead of another; his file untouched). Disk 27.4 GB; .next kept by the gate; the fetched HTML deleted;
+  CLI on TEST.
+- NEXT: PR 130 (C8) brought up to date with main using the saved resolution under
+  C:\dev\EVIDENCE\C16\c8-merge-resolution (three files, union; canary 312/3598 to be measured), the two carried
+  gate defects fixed in the same push, the drills re-run, the full gate, CI once, merge, production watched to
+  READY. Then C17.

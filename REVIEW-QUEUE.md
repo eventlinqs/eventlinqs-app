@@ -5,50 +5,17 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
-Last re-verified 7 September 2026 at 11:18 (session 38): still the same three migrations behind,
-the same two failed production deployments, main still red. Nothing has moved. Session 33 also
-confirmed your command needs no preparation on your side: in a fresh PowerShell, without the Node
-PATH prefix the brief mentions, `npm run migrate:production -- --dry-run` ran clean, listed the
-three files and touched nothing (C:\dev\EVIDENCE\C16\migrate-production-dry-run-fresh-path-session33.txt).
-So it is exactly the one command, in any PowerShell opened at the repo. Session 12 found and
-fixed a hang in your one command (see the 03:25 entry at the end of this file): it is the same
-command, and it now gets past its own confirmation. Session 13 ran the command's own first proof
-by hand, read only: it correctly reports the two C13 objects still absent on production. Session 15
-tried the C8 pull request's merge against the C16 branch in advance (three small conflicts, all
-resolved and saved; every check green except the drill run, which the session died under, so that
-one is not counted); session 16 put that trial back in its box, so the C16 branch is clean and
-ready to push the moment your command has run. Session 19 read production's own data against every
-assumption the three files make, and read how the tool applies them from its source code rather
-than assuming: every assumption holds, so your command will run clean (the 04:20 entry at the end
-of this file).
+UPDATE 7 September 2026 at 12:41 (session 40): C16 IS CLOSED. Your command ran at 11:20; the C16 branch passed the full local gate (13 of 13), its pull request reported production parity green as a required check, it merged as 1e3b9b2f at 12:33, the production deployment reached Ready at 12:36 and www.eventlinqs.com.au serves that commit. CI on main is green for the first time since 5 September. The route sweep on production found nothing new. Next, in order: PR 130 (the C8 shell fix) brought up to date and merged the same way, then C17 (the empty hero), C9, C18 FINAL, C19. One new item for you is first in the list below: your launcher script killed two gate runs today and a corrected copy is ready.
+
+The block history (sessions 3 to 39: the same three migrations behind, re-verified on every relaunch, your one command made safe and checked against production read only) is in BUILD-LOG.md and BUILD-LEDGER.md; it is finished and is not repeated here.
 
 Rewritten 7 September 2026 at 01:10. Everything below the first item is unchanged in
 substance; what was already done (the A2, A3, A4, B1 and B2 migrations are on production,
 disk is at 22 GB, the Vercel token is no longer needed) has been removed so the one thing
 that is blocking is the first thing you read.
 
-- **FIRST. Apply three migrations to production. Everything waits on this, by your own
-  halt rule.** Production is behind the tree by 20260905000003 (the C1 enum),
-  20260906000001 and 20260906000002 (C13). Until they are applied no branch can pass the
-  parity check, main cannot deploy, and the C16 fix cannot be pushed. Since tonight it is
-  ONE command, in PowerShell from the repo:
-  ```
-  npm run migrate:production
-  ```
-  It lists the three files from production's own record, asks you to type the production
-  ref (anything else stops it with nothing linked and nothing pushed), links the CLI, reads
-  the ref back from disk before it does anything, hands you the CLI's own prompts for the
-  push (its password prompt if it needs one, its Y/N), proves the result two ways (every
-  column the shipped code names answers on production, and production's record lists zero
-  pending), and rests the CLI on TEST again whatever happens, including on Ctrl-C.
-  `npm run migrate:production -- --dry-run` only lists. Driven tonight in both refusing
-  paths (C:\dev\EVIDENCE\C16\migrate-production-dry-run.txt, migrate-production-refused.txt);
-  the apply path is yours and was not driven. You do NOT need to redeploy from the Vercel
-  dashboard afterwards: the C16 merge redeploys production, and I watch it to Ready.
-  After your command, in order and without you: the C16 branch pushes (the gate passes),
-  its pull request reports production parity, it merges, production is watched to Ready
-  and the live routes are driven (C16.4), then PR 130 (C8) merges the same way, then C9,
-  C17 and C18.
+- **FIRST. Your launcher deleted the build and the tool cache under a running push gate, twice today. A corrected copy is ready; switching to it is one step.** C:\dev\RUN-BUILD13.ps1 cleans the disk every time a session ends, and one of the things it deletes is the folder where npx keeps the Supabase CLI and Lighthouse. At 11:27 that broke the types-drift step (the CLI had been deleted and came back without its Windows binary). At 11:46 it ran again while the previous session's push gate was still auditing in the background (the harness had ended that session after waiting ten minutes for the gate), deleted the build the gate was serving and the Lighthouse binary it was running, and the gate failed on /organisers with "module not found" and then hung. Each gate run is 25 minutes. Nothing about the product was wrong; the third run passed 13 of 13. The fix is two lines and I have NOT edited your file: C:\dev\RUN-BUILD14.ps1 is RUN-BUILD13 plus (1) the harness told to wait for background work indefinitely instead of ten minutes, and (2) the clean-up refusing to run while a push gate or a git push is alive (it waits up to 45 minutes). When you next start the watchdog, start RUN-BUILD14.ps1 instead of 13. Evidence: C:\dev\EVIDENCE\C16\gate-orphaned-by-reclaim-session40.txt, gate-pass-on-push-session39b.txt (the refusal), C:\dev\WATCHDOG.log 11:19 to 11:47.
+- **Two small gate defects found on the way, not yet fixed, going into the next push (PR 130).** (a) When the Lighthouse step fails, the gate does not always stop the local server it started, and then waits on it for ever instead of returning the verdict to git. (b) When the Supabase CLI cannot start at all, the types-drift report says "run npx supabase login", which sends you to the wrong place. Both are recorded in the ledger with the shape of the fix. Nothing for you to do.
 - **Production catalogue.** The live site has four event pages, two of them payment test
   artefacts. Every city, community and category page resolves but shows almost nothing. The
   only national seeder refuses a production target by design, and this brief makes production
@@ -723,3 +690,16 @@ safely, so if anything stopped partway the same command would finish it.
 **Evidence:** C:\dev\EVIDENCE\C16\ (migration-preconditions-production-session19.txt,
 probe-migration-preconditions.mjs, production-parity-recheck-session19.txt,
 deployments-recheck-session19.txt).
+
+
+## C16 closed (7 September 2026, 12:41): main is green, production serves the fix, and what your launcher did to two gate runs
+
+**What is true now.** You ran `npm run migrate:production` at 11:20 and production carries every migration. The C16 branch then went through the full local gate (typecheck, lint, copy laws, 71 guards, types-drift, production parity, the suite, the build, Lighthouse on 13 pages) and passed 13 of 13. Its pull request (131) opened as a draft, was marked ready, and its three required checks passed, including the new "production parity" check that did not exist before this item. It merged as 1e3b9b2f at 12:33. The production deployment for that commit reached Ready at 12:36, www.eventlinqs.com.au serves it (the page carries the commit id), the apex redirects to www as before, the post-deploy smoke passed twice, and CI on main is green on the merge commit: the first green on main since 5 September. So C13 (archive and delete) and C14 (the five screens) are finally live on production as well; they had been sitting behind the two failed deployments since yesterday morning.
+
+**Proof you can check.** Every route enumerated from the code was driven on production again (210 requests): the homepage, browse, three city pages, three suburb pages, three community pages, three community-by-city pages, three faith pages, a category page, two event pages, organisers, pricing, checkout. All 200. No server error, no broken page inside a 200, no soft 404. The only 404s are the same seven as yesterday and all deliberate (three features switched off on production, four developer previews gated off production).
+
+**What the launcher did.** Two 25-minute gate runs were lost today to C:\dev\RUN-BUILD13.ps1, not to the product: it deletes the tool cache and the build every time a session ends, and it did so once while a gate was still running. The details and the corrected copy (RUN-BUILD14.ps1) are in the first "Needs you" item at the top of this file.
+
+**One advisory red you will see.** The Lighthouse CI workflow on pull request 131 failed on the runner on three pages (the homepage 0.75, two event pages 0.77, floor 0.8). It is advisory by your 25 August ruling, it is not one of the required checks, and this branch changes no page at all, so it measured main as it stood. The C8 shell fix in PR 130 is what moves those numbers (it passed the same workflow on the same runner on 6 September) and it merges next.
+
+**Evidence:** C:\dev\EVIDENCE\C16\production-healthy-session40.txt, gate-pass-on-push-session40.txt, gate-orphaned-by-reclaim-session40.txt, sweep\sweep-production.txt, pr-body-c16.md, merge-body-c16.md.
