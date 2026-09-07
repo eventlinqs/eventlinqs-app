@@ -921,9 +921,17 @@ const ROOT = join(HERE, '..', '..')
  * like in-person) and tests/unit/security/google-maps-server-key-scopes (required
  * on production and preview, forbidden on the Development store, optional for a
  * local process): 321 files / 3646, as the canary measured.
+ 
+ *
+ * Close-out C18 FINAL (7 September 2026), one file and 7 tests:
+ * tests/unit/scope/community-layer-approved (the record equals the source for
+ * the 21 communities, the 20 matrix cities, the faiths and the hero categories;
+ * every Scope v5 line 351 category maps to one slug; the addendum names every
+ * slug and is marked approved; the scope points at the addendum without its
+ * body changing): 322 files / 3653, as the canary measured.
  */
-const MIN_FILES = 321
-const MIN_TESTS = 3646
+const MIN_FILES = 322
+const MIN_TESTS = 3653
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

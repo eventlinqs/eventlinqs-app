@@ -1329,3 +1329,7 @@ Full API documentation must be delivered as an interactive API reference (Swagge
 EventLinqs --- Version 5.0 --- March 2026
 
 *This document is confidential and intended for developer evaluation purposes only.*
+
+---
+
+**Addenda (part of this scope, added during build).** A: the community layer and the event categories as built, `docs/EventLinqs_Scope_v5-Addendum-A-Community-Layer.md`, APPROVED BY OWNER, September 2026. The body of this document above is unchanged; the addendum is the authority for the community layer, the faith route and the categories as they exist.
