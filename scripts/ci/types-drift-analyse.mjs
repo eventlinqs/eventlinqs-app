@@ -698,8 +698,9 @@ export function renderVerdict(result, { committedPath, projectId, migrationsDir,
     p('schema the merged tree compiles against. Do NOT regenerate them from the live')
     p('database: that would replace correct types with the pre-migration shape.')
     p()
-    p("Apply them with 'supabase db push --linked' when the ordering is safe. Until")
-    p('then this state is expected, and this guard will keep reporting it by name.')
+    p("Apply them with 'npm run migrate:production' (the founder's one command) when the")
+    p('ordering is safe. Until then this state is expected, and this guard will keep')
+    p('reporting it by name.')
     return { lines: L, exitCode: 0 }
   }
 

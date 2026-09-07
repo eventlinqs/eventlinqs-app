@@ -166,6 +166,29 @@ function runTypesDrift(env) {
   return 1
 }
 
+/**
+ * Production parity (close-out C16.2.1) asks production, before a push, whether
+ * it carries every migration this tree needs and whether its store satisfies
+ * the manifest: the two questions nothing asked before the merges of
+ * 6 September 2026 went red on main. The Supabase token comes from the same
+ * Credential Manager helper as the types-drift step; the Vercel token is
+ * VERCEL_TOKEN from .env.local if one is set, otherwise the login the Vercel CLI
+ * already keeps on this machine, resolved inside the step (the step says so
+ * when it has neither).
+ */
+function runProductionParity(env) {
+  if (nonEmpty(env.SUPABASE_ACCESS_TOKEN)) return exec(NODE, ['scripts/ops/production-parity.mjs'], env)
+  if (process.platform === 'win32') {
+    return exec(
+      'powershell.exe',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'scripts/ops/with-supabase-token.ps1', 'node', 'scripts/ops/production-parity.mjs'],
+      env,
+    )
+  }
+  console.error('[gate] SUPABASE_ACCESS_TOKEN is not set, and the Credential Manager helper is Windows only.')
+  return 1
+}
+
 function freePort() {
   return new Promise((resolvePort, reject) => {
     const s = createServer()
@@ -508,6 +531,14 @@ export const STEPS = [
     mirrors: ['bash scripts/check-types-drift.sh'],
     env: 'plain',
     run: runTypesDrift,
+  },
+  {
+    id: 'production-parity',
+    ci: 'CI > production parity',
+    title: 'production parity: every migration applied on production, the production store satisfying the manifest',
+    mirrors: ['node scripts/ops/production-parity.mjs'],
+    env: 'local',
+    run: runProductionParity,
   },
   {
     id: 'fixture',

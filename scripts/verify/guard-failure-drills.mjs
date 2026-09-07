@@ -22,9 +22,10 @@
  *
  * Usage: node scripts/verify/guard-failure-drills.mjs
  */
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
+import { resolveVercelToken } from '../lib/vercel-login.mjs'
 
 const ROOT = process.cwd()
 const GUARDS = 'scripts/guards'
@@ -72,7 +73,115 @@ console.log(`[drills] effective confirm_order:   ${NEW_EFFECTIVE_CONFIRM}`)
 console.log(`[drills] effective reconcile_refund: ${NEW_EFFECTIVE_RECONCILE}`)
 console.log(`[drills] effective create_reservation: ${NEW_EFFECTIVE_RESERVATION}`)
 
+/*
+ * THE ERROR DEPLOYMENT TO AIM AT. preview-deployment-state judges the deployment
+ * of the commit under test, so its drill points GITHUB_SHA at a commit whose
+ * deployment Vercel holds in ERROR, found live (GET /v7/deployments?state=ERROR)
+ * rather than written down, for the same reason the effective migrations above
+ * are computed: a sha pinned here rots the day retention deletes that
+ * deployment, and a drill aimed at nothing reports "DID NOT FAIL" for ever.
+ * Needs a Vercel login, as the guard does; without one, or with no ERROR
+ * deployment on the project, the drill cannot aim and reports STALE with the
+ * reason. Nothing is mutated on disk for this drill: the fault is real and
+ * lives on Vercel.
+ */
+async function newestErrorDeployment() {
+  const { token } = resolveVercelToken()
+  if (!token) return { error: 'no VERCEL_TOKEN and no Vercel CLI login, so no ERROR deployment can be found to aim at' }
+  let projectId = process.env.VERCEL_PROJECT_ID
+  let teamId = process.env.VERCEL_ORG_ID
+  const projectJson = join(ROOT, '.vercel', 'project.json')
+  if ((!projectId || !teamId) && existsSync(projectJson)) {
+    const cfg = JSON.parse(readFileSync(projectJson, 'utf8'))
+    projectId = projectId || cfg.projectId
+    teamId = teamId || cfg.orgId
+  }
+  if (!projectId || !teamId) return { error: 'no Vercel project and team id (VERCEL_PROJECT_ID, VERCEL_ORG_ID or .vercel/project.json)' }
+  const url = `https://api.vercel.com/v7/deployments?projectId=${encodeURIComponent(projectId)}&teamId=${encodeURIComponent(teamId)}&state=ERROR&limit=1`
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) return { error: `Vercel answered HTTP ${res.status} listing ERROR deployments` }
+  const d = (await res.json()).deployments?.[0]
+  if (!d?.meta?.githubCommitSha) return { error: 'the project holds no deployment in ERROR to aim at' }
+  return { sha: d.meta.githubCommitSha, ref: d.meta.githubCommitRef, url: d.inspectorUrl || d.url }
+}
+const AIM = await newestErrorDeployment()
+console.log(`[drills] ERROR deployment for preview-deployment-state to judge: ${AIM.sha ? `${AIM.sha.slice(0, 7)} on ${AIM.ref} (${AIM.url})` : `NONE (${AIM.error})`}`)
+
+/*
+ * THE STORE FOR production-parity TO JUDGE. The environment half of
+ * scripts/ops/production-parity.mjs (close-out C16.2.1, 7 September 2026)
+ * reads the production scope of the Vercel store and judges it against
+ * src/lib/env/manifest.mjs. The close-out asks for the gate to be watched
+ * refusing a deliberately broken production-only value. Breaking one ON
+ * VERCEL is a write to production, which no session holds approval for and
+ * which would break the live site for real, so the fault is planted on the
+ * other side of the comparison: the store is read for real, and the contract
+ * it is judged against is what moves. From the judge's side the two are one
+ * finding ('missing', 'forbidden-present'): the same lines a broken store
+ * produces, from the same function, on the same live listing. Needs the
+ * Vercel login, as the step does; without one the drills cannot aim and
+ * report STALE with the reason.
+ */
+const PARITY_LOGIN = resolveVercelToken()
+const PARITY_STALE = PARITY_LOGIN.token ? null : `${PARITY_LOGIN.reason}, so the production store cannot be read`
+console.log(`[drills] production store for production-parity to judge: ${PARITY_STALE ? `NONE (${PARITY_STALE})` : `read with ${PARITY_LOGIN.source}`}`)
+
 const DRILLS = [
+  /*
+   * preview-deployment-state (close-out C16, 7 September 2026), one drill: the
+   * guard is run exactly as CI runs it on a push of a commit whose deployment
+   * is in ERROR, and must refuse naming that deployment. This is the guard that
+   * had been judging the previous commit's deployment; the drill asks about a
+   * specific commit and expects the answer about that commit.
+   */
+  {
+    name: 'the commit under test has a deployment in ERROR',
+    guard: `${GUARDS}/preview-deployment-state.mjs`,
+    env: AIM.sha ? { GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'push', GITHUB_REF_NAME: AIM.ref, GITHUB_SHA: AIM.sha, PREVIEW_STATE_WAIT_SECONDS: '60' } : null,
+    stale: AIM.error ?? null,
+    expect: 'FAILED: the deployment of',
+  },
+  /*
+   * production-parity (close-out C16.2.1), two drills on the environment half,
+   * each run against the REAL production store: a variable the manifest
+   * requires on production that the store does not hold, and a variable the
+   * store holds that the manifest forbids there. The finding must name the
+   * record and its state; a bare "FAIL" would pass on the schema half alone,
+   * which refuses whenever production is behind the tree.
+   */
+  {
+    name: 'production parity: a variable REQUIRED on production that the store does not hold',
+    guard: 'scripts/ops/production-parity.mjs',
+    file: 'src/lib/env/manifest.mjs',
+    find: 'export const ENV_MANIFEST = [\n',
+    replace:
+      'export const ENV_MANIFEST = [\n' +
+      "  { name: 'A_RECORD_THE_DRILL_REQUIRES', describe: 'a record the drill requires on production and the store does not hold', requiredOn: ['production'], forbiddenOn: [], mustBeSensitive: false, previewBranchScoping: 'allowed', shape: SHAPES.anyNonEmpty, paymentCritical: false, githubActions: false, publicVar: false },\n",
+    stale: PARITY_STALE,
+    expect: 'A_RECORD_THE_DRILL_REQUIRES [missing]',
+  },
+  {
+    name: 'production parity: a variable the store holds that the manifest FORBIDS on production',
+    guard: 'scripts/ops/production-parity.mjs',
+    file: 'src/lib/env/manifest.mjs',
+    find: "    forbiddenOn: [],\n    optionalReason:\n      'getSiteUrl() resolves a correct branded origin",
+    replace: "    forbiddenOn: ['production'],\n    optionalReason:\n      'getSiteUrl() resolves a correct branded origin",
+    stale: PARITY_STALE,
+    expect: 'NEXT_PUBLIC_SITE_URL [forbidden-present]',
+  },
+  /*
+   * branch-protection-required (close-out C16.2.4), one drill: the guard is told
+   * to require a context main does not require, and the live protection read
+   * back from GitHub no longer satisfies it. Needs gh credentials, as the guard does.
+   */
+  {
+    name: 'main is asked for a required check it does not carry',
+    guard: `${GUARDS}/branch-protection-required.mjs`,
+    file: 'scripts/guards/branch-protection-required.mjs',
+    find: "export const REQUIRED_CONTEXTS = ['lint · typecheck · build', 'test (vitest)', 'production parity']",
+    replace: "export const REQUIRED_CONTEXTS = ['lint · typecheck · build', 'test (vitest)', 'production parity', 'a check nobody configured']",
+    expect: 'required status checks are missing',
+  },
   /*
    * no-hardcoded-spacing (close-out C14.12), three drills: an arbitrary
    * utility off the 4px grid, an inline style off it, and a CSS declaration
@@ -1215,8 +1324,9 @@ const DRILLS = [
   },
 ]
 
-function run(guard) {
-  const r = spawnSync(process.execPath, [join(ROOT, guard)], { encoding: 'utf8' })
+/** Run a guard as the runner would; a drill may add environment (never replace it). */
+function run(guard, env = null) {
+  const r = spawnSync(process.execPath, [join(ROOT, guard)], { encoding: 'utf8', env: env ? { ...process.env, ...env } : process.env })
   return { code: r.status, out: `${r.stdout ?? ''}${r.stderr ?? ''}` }
 }
 
@@ -1239,19 +1349,34 @@ console.log('\n=== GUARD FAILURE DRILLS ===\n')
 console.log('Each drill introduces a real regression, runs the guard, and restores the file.\n')
 
 for (const drill of DRILLS) {
-  const path = join(ROOT, drill.file)
-  const original = readFileSync(path, 'utf8')
+  /*
+   * A drill that could not aim is STALE, exactly like a missing anchor: it is
+   * reported as a problem and fails the harness, never skipped in silence.
+   */
+  if (drill.stale) {
+    failed.push(`${drill.name}: the drill could not aim (${drill.stale}). The drill is stale.`)
+    console.log(`  STALE  ${drill.name}`)
+    continue
+  }
 
-  const anchor = anchorRegex(drill.find)
-  if (!anchor.test(original)) {
+  /*
+   * A drill plants its fault by mutating a file (`file`, `find`, `replace`) or
+   * by environment alone (`env`), when the fault is real and lives outside the
+   * tree. A file drill is restored in the finally whatever happens.
+   */
+  const mutates = Boolean(drill.file)
+  const path = mutates ? join(ROOT, drill.file) : null
+  const original = mutates ? readFileSync(path, 'utf8') : null
+  const anchor = mutates ? anchorRegex(drill.find) : null
+  if (mutates && !anchor.test(original)) {
     failed.push(`${drill.name}: anchor text not found in ${drill.file}. The drill is stale.`)
     console.log(`  STALE  ${drill.name}`)
     continue
   }
 
   try {
-    writeFileSync(path, original.replace(anchor, drill.replace))
-    const { code, out } = run(drill.guard)
+    if (mutates) writeFileSync(path, original.replace(anchor, drill.replace))
+    const { code, out } = run(drill.guard, drill.env ?? null)
 
     /*
      * A drill that asserts the guard STAYS QUIET. Added 28 August 2026 with the
@@ -1306,7 +1431,7 @@ for (const drill of DRILLS) {
     console.log(`  FAILS AS EXPECTED  ${drill.name}`)
     console.log(`      exit ${code}: ${line}\n`)
   } finally {
-    writeFileSync(path, original)
+    if (mutates) writeFileSync(path, original)
   }
 }
 
