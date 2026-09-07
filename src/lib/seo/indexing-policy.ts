@@ -78,6 +78,28 @@ export type IndexingClass = 'always' | 'conditional' | 'alias' | 'never'
  */
 export const DISCOVERY_INDEXING_THRESHOLD = 3
 
+/**
+ * ROUTES NOTHING ON THE PLATFORM LINKS TO, ON PURPOSE.
+ *
+ * A crawl of production on 8 September 2026 (scripts/verify/internal-reachability.mjs,
+ * close-out C19.1's fourth question) found ten route families no internal link
+ * reached. Most had an explanation the crawler could work out for itself: the
+ * page 404s because its feature flag is off, or there is no member to link to
+ * because the catalogue holds none. These three did not, and they are deliberate,
+ * so they are written down rather than left to fail the check forever.
+ *
+ * Two orphans found by the same crawl were NOT deliberate and were fixed rather
+ * than listed here: the five /faith/[faith] pages now have a door on
+ * /communities (a page whose own subheading already promised one), and the 21
+ * /events/browse/[city] pages are linked from their city page.
+ */
+export const UNLINKED_BY_DESIGN: Record<string, string> = {
+  '/launch': 'a campaign landing reached from a link the founder sends, not from site navigation',
+  '/waitlist': 'a campaign landing reached from a link the founder sends, not from site navigation',
+  '/categories/[slug]':
+    'the legacy hero-category landings. Six of the seven permanently redirect to /community/*, and category browsing on the platform routes to /events?category=, so the surviving one is deliberately not navigated to',
+}
+
 export interface PolicyEntry {
   /** The route as it appears under src/app, dynamic segments as written. */
   route: string

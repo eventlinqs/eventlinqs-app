@@ -7,6 +7,7 @@ import { CategoryTileImage } from '@/components/media/CategoryTileImage'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getCommunityIndexEntries, type CommunityIndexEntry } from '@/lib/communities/index-page-data'
 import { getSiteUrl } from '@/lib/site-url'
+import { getAllFaiths } from '@/lib/faiths/data'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
@@ -35,6 +36,7 @@ export default async function CommunitiesIndexPage() {
     getCommunityIndexEntries(),
     getCommunityHeroPhoto('african'),
   ])
+  const faiths = getAllFaiths()
 
   // v2: one ordered list. getCommunityIndexEntries() is sorted by
   // heritageOrder, so Aboriginal & Torres Strait Islander is always
@@ -80,6 +82,33 @@ export default async function CommunitiesIndexPage() {
           subheading="Twenty-one heritages, First Nations always first. Faith communities and event types are browseable as their own dimensions."
         >
           <CommunitiesGrid entries={entries} priority />
+        </Section>
+
+        {/* FAITH HAD NO DOOR, AND THIS PAGE WAS ALREADY PROMISING ONE.
+          *
+          * The subheading above has said "Faith communities and event types are
+          * browseable as their own dimensions" since it was written, and a crawl
+          * of production on 8 September 2026 found that NOTHING on the platform
+          * linked to /faith/[faith]: five real pages reachable only through the
+          * sitemap (scripts/verify/internal-reachability.mjs, close-out C19.1).
+          * Under C19.3 a faith page leaves the sitemap while it holds no events,
+          * so without this the five would have had no way in at all. */}
+        <Section
+          heading="Faith and worship"
+          subheading="Faith sits beside heritage, not inside it. Each has its own home and its own calendar."
+        >
+          <ul role="list" className="flex flex-wrap gap-3">
+            {faiths.map(faith => (
+              <li key={faith.slug}>
+                <Link
+                  href={`/faith/${faith.slug}`}
+                  className="inline-flex min-h-[44px] items-center rounded-xl border border-ink-200 bg-white px-5 py-3 font-display text-base font-semibold text-ink-900 transition-colors duration-200 hover:border-[var(--brand-accent)] hover:text-[var(--brand-accent-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
+                >
+                  {faith.displayName}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </Section>
       </main>
       <SiteFooter />

@@ -22,12 +22,22 @@ interface Props {
   city: string
   country: string
   total: number
+  /**
+   * The city catalogue's own one-sentence descriptor, where the platform holds
+   * one. Added 8 September 2026 (close-out C19.4): every one of these 21 pages
+   * carried the city name in its heading and nothing else specific to it, so
+   * they read as one page with the noun changed. The descriptor is
+   * hand-written per city in src/lib/cities/data.ts and is a DIFFERENT field
+   * from the longer `editorial` /city/[slug] uses, so the two city surfaces do
+   * not become copies of each other.
+   */
+  descriptor?: string | null
   imageSrc: string | null
   /** Focal point for the cover crop (spine slot imagery). Defaults centre. */
   objectPosition?: string
 }
 
-export function PhotographicCityHero({ city, country, total, imageSrc, objectPosition = '50% 30%' }: Props) {
+export function PhotographicCityHero({ city, country, total, descriptor, imageSrc, objectPosition = '50% 30%' }: Props) {
   const alt = `${city} on EventLinqs`
   const totalLabel = `${total} event${total === 1 ? '' : 's'} available`
 
@@ -77,6 +87,9 @@ export function PhotographicCityHero({ city, country, total, imageSrc, objectPos
             >
               Events in {city}
             </h1>
+            {descriptor ? (
+              <p className="mt-3 max-w-xl text-sm text-white/90 sm:text-base">{descriptor}</p>
+            ) : null}
             <p className="mt-3 text-sm font-medium text-white/85 sm:text-base">
               {totalLabel}
             </p>

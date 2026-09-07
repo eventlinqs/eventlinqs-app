@@ -942,8 +942,15 @@ const ROOT = join(HERE, '..', '..')
  * indexing-policy and the three rewritten seo-audits-indexability cases sit in
  * files that already counted: 324 files / 3680, as the canary measured.
  */
-const MIN_FILES = 324
-const MIN_TESTS = 3680
+/*
+ * Close-out C19, the roast pass (8 September 2026), one file and 21 tests:
+ * tests/unit/seo/indexing-rules (all five driven rules judged in BOTH
+ * directions, which two of them had never been). The three rewritten
+ * permanent-redirect assertions sit in a file that already counted:
+ * 325 files / 3701, as the canary measured.
+ */
+const MIN_FILES = 325
+const MIN_TESTS = 3701
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

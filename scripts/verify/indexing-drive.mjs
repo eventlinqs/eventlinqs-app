@@ -35,6 +35,7 @@
 import { spawnSync } from 'node:child_process'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { judgePage, judgeSitemapEntry } from './lib/indexing-rules.mjs'
 
 const ROOT = process.cwd()
 const BASE = (process.argv[2] || process.env.INDEXING_BASE || 'http://127.0.0.1:3000').replace(/\/$/, '')
@@ -227,77 +228,24 @@ for (let i = 0; i < targets.length; i += CONC) {
 
 /* ----------------------------------------------------------------- the rules */
 
-const isNoindex = (r) => /noindex/i.test(r.robots ?? '')
+/*
+ * The five rules are pure functions in ./lib/indexing-rules.mjs, and the reason
+ * is the standing law that every guard is proven to FAIL as well as to pass.
+ * RULE 2 and RULE 5 only fire against a host in a broken state, so as inline
+ * code they passed forever and were never once seen failing.
+ * tests/unit/seo/indexing-rules.test.ts drives all five both ways over synthetic
+ * results; this script feeds them the real ones.
+ */
 
-for (const r of results) {
-  const where = `${r.path} (${r.route}, ${r.klass})`
-  if (r.error) {
-    fail(`${where} could not be fetched: ${r.error}`)
-    continue
-  }
-  if (r.redirect) {
-    // A redirect has no document. The only thing to assert is that it is not
-    // being advertised in the sitemap, which would publish a redirect to Google
-    // against its own guidance for sitemaps.
-    if (r.inSitemap) fail(`${where} redirects to ${r.redirect} and is published in the sitemap`)
-    continue
-  }
-  if (r.status >= 500) {
-    fail(`${where} answered ${r.status}`)
-    continue
-  }
-  // A 404 carries the not-found document, whose metadata is deliberately its own.
-  if (r.status === 404) continue
-
-  if (r.klass === 'never') {
-    if (!isNoindex(r)) fail(`RULE 1: ${where} is INDEXABLE. robots=${r.robots ?? 'none'}. A never route must be noindex.`)
-    if (r.inSitemap) fail(`RULE 1: ${where} is published in the sitemap. A never route must never be in it.`)
-    if (r.canonical) fail(`RULE 1: ${where} emits a canonical (${r.canonical}). A noindex page should not also name one.`)
-    continue
-  }
-
-  if (r.klass === 'alias') {
-    if (!isNoindex(r)) fail(`RULE 4: ${where} is an alias and is INDEXABLE. robots=${r.robots ?? 'none'}`)
-    if (r.canonical && r.canonical === r.path) fail(`RULE 4: ${where} is an alias whose canonical points at itself; it must point at the page it aliases`)
-    if (r.inSitemap) fail(`RULE 4: ${where} is an alias published in the sitemap`)
-    continue
-  }
-
-  // always and conditional
-  if (!r.canonical) {
-    fail(`RULE 3: ${where} emits NO canonical. Every indexable page must name itself.`)
-  } else if (r.canonical !== r.path) {
-    fail(
-      `RULE 4: ${where} emits a canonical pointing somewhere else: ${r.canonicalRaw}.\n` +
-        '        This is the defect Search Console reports as "duplicate, Google chose different\n' +
-        '        canonical than user". Only an alias may point elsewhere.',
-    )
-  }
-
-  if (r.klass === 'always' && isNoindex(r)) {
-    fail(`${where} is classified always and is NOINDEX. robots=${r.robots}. A public page carrying noindex by accident is a defect too.`)
-  }
-
-  if (r.klass === 'conditional') {
-    const indexable = !isNoindex(r)
-    if (indexable !== r.inSitemap) {
-      fail(
-        `RULE 5: ${where} says ${indexable ? 'INDEXABLE' : 'noindex'} and the sitemap says ${r.inSitemap ? 'PUBLISHED' : 'absent'}.\n` +
-          '        The page and the sitemap read the same counts through\n' +
-          '        src/lib/seo/discovery-counts.ts, so a disagreement means one of them stopped.',
-      )
-    }
-  }
-}
+for (const r of results) for (const f of judgePage(r)) fail(f)
 
 /* -------------------------- RULE 2: every sitemap URL is 200 and is indexable */
 
 const sitemapSample = [...sitemapPaths]
 let sitemapChecked = 0
 for (let i = 0; i < sitemapSample.length; i += CONC) {
-  const batch = sitemapSample.slice(i, i + CONC)
   await Promise.all(
-    batch.map(async (path) => {
+    sitemapSample.slice(i, i + CONC).map(async (path) => {
       let res
       try {
         res = await fetch(BASE + path, { redirect: 'manual', headers: { 'user-agent': 'EventLinqs-indexing-drive' } })
@@ -306,17 +254,15 @@ for (let i = 0; i < sitemapSample.length; i += CONC) {
         return
       }
       sitemapChecked++
-      if (res.status !== 200) {
-        fail(`RULE 2: ${path} is in the sitemap and answered ${res.status}${res.status >= 300 && res.status < 400 ? ` -> ${res.headers.get('location')}` : ''}`)
-        return
-      }
-      const html = await res.text()
-      const robots = pick(html, /<meta name="robots" content="([^"]*)"/)
-      if (/noindex/i.test(robots ?? '')) {
-        fail(`RULE 2: ${path} is in the sitemap and is NOINDEX (robots=${robots}). A sitemap of pages we ask not to be indexed is the contradiction Search Console reports.`)
-      }
-      if (!pick(html, /<link rel="canonical" href="([^"]*)"/)) {
-        fail(`RULE 3: ${path} is in the sitemap and emits no canonical`)
+      const html = res.status === 200 ? await res.text() : ''
+      for (const f of judgeSitemapEntry({
+        path,
+        status: res.status,
+        location: res.headers.get('location'),
+        robots: pick(html, /<meta name="robots" content="([^"]*)"/),
+        canonical: pick(html, /<link rel="canonical" href="([^"]*)"/),
+      })) {
+        fail(f)
       }
     }),
   )

@@ -58,7 +58,17 @@ export const LEGACY_CATEGORY_REDIRECTS: PermanentRedirect[] = [
   { source: '/categories/owambe', destination: '/community/african', permanent: true },
   { source: '/categories/heritage-and-independence', destination: '/community/african', permanent: true },
   { source: '/categories/caribbean', destination: '/community/caribbean', permanent: true },
-  { source: '/categories/gospel', destination: '/community/gospel', permanent: true },
+  /*
+   * STRAIGHT TO THE FINAL DESTINATION, NOT THROUGH ANOTHER REDIRECT.
+   *
+   * This pointed at /community/gospel until 8 September 2026, and
+   * src/lib/communities/redirects.ts forwards THAT to /faith/christian, so the
+   * URL served a two-hop chain: 308 to a 308. Measured on production by
+   * scripts/verify/published-url-graveyard.mjs (close-out C19.5), and a chain is
+   * what Search Console reports back as "page with redirect". Every other entry
+   * in this table already lands on a live page in one hop; this one now does too.
+   */
+  { source: '/categories/gospel', destination: '/faith/christian', permanent: true },
 ]
 
 /**

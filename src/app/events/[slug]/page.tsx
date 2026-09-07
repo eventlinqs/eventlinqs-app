@@ -78,6 +78,7 @@ import { SaveEventButton } from '@/components/features/events/save-event-button'
 import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
 import { parseGallery } from '@/lib/media/event-media-model'
+import { venueSlugify } from '@/lib/venues/resolver'
 import { isVideoProvider } from '@/lib/media/video-embed'
 import { describeCountries } from '@/lib/stream/countries'
 
@@ -1018,7 +1019,23 @@ export default async function EventDetailPage({ params }: Props) {
                     ) : (
                       <>
                         {event.venue_name && (
-                          <p className="mt-2 text-sm font-semibold text-ink-900">{event.venue_name}</p>
+                          <p className="mt-2 text-sm font-semibold text-ink-900">
+                            {/* THE VENUE PROFILE HAD NO WAY IN FROM ITS OWN EVENTS.
+                              * /venues/[handle] is public, indexable and built from
+                              * the events held there, and a crawl on 8 September 2026
+                              * found nothing on the platform linking to one
+                              * (scripts/verify/internal-reachability.mjs, close-out
+                              * C19.1). The event page is the natural parent: the
+                              * venue name is already printed here, it just was not a
+                              * link. venueSlugify is the same function the route
+                              * resolves the handle with, so the two cannot drift. */}
+                            <Link
+                              href={`/venues/${venueSlugify(event.venue_name)}`}
+                              className="underline decoration-ink-300 underline-offset-2 transition-colors hover:text-[var(--brand-accent-strong)] hover:decoration-[var(--brand-accent)]"
+                            >
+                              {event.venue_name}
+                            </Link>
+                          </p>
                         )}
                         {fullAddress && <p className="mt-1 text-xs text-ink-600">{fullAddress}</p>}
                       </>
