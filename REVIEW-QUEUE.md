@@ -963,3 +963,111 @@ Accessibility is zero violations on every one.
 **Evidence:** `docs/roast/c19-indexing-2026-09-08.md` in the repository is the
 full audit, every instruction with its verdict. Captures and check outputs are in
 `C:\dev\EVIDENCE\C19`.
+
+## C10, part one. The Scope v5 audit, and three switches on the event form that did nothing (8 September 2026)
+
+**ONE THING FOR YOU TO DO, AND IT IS ONE COMMAND.**
+
+```
+npm run migrate:production
+```
+
+That applies two database changes to production. Nothing else in this item can
+finish until it runs, because the platform deliberately refuses to build against
+a database that is behind its own code. Running it with `-- --dry-run` first
+lists exactly what it would do and changes nothing; I have already done that and
+it names exactly the two files, nothing else.
+
+### What I audited, and what I found
+
+CLOSE-OUT asked for every numbered section of the scope document to be checked
+against the platform, with evidence, not by reading code and guessing. There are
+101 of them. I did not type that list: a script reads the scope document and
+reports what it declares, so the audit cannot quietly fall behind the document,
+and the same script re-runs at the end of the project instead of somebody
+retyping it.
+
+Of the 101 sections: 10 are fully built, 48 are partly built, 13 are not built,
+and 30 ask for nothing to be built at all (a vision statement, or the criteria
+for choosing a developer). Every one of the 183 checks behind those numbers was
+driven against the live site and every one passed.
+
+The full table is in the repository at
+`docs/verification/SCOPE-V5-AUDIT-2026-09-08.md`.
+
+Two of the gaps stop a real person completing a real journey, so those are the
+two I build now. Everything else is written down by name for after launch,
+rather than quietly skipped. The big ones on that list are the recommendation
+engine, loyalty points, the resale market, event comments and reviews, the
+support ticket system, and the public API.
+
+### The thing that was actually broken
+
+Your event creation form had three switches on the Date and Time step:
+
+  - "This is a multi-day event"
+  - "This is a recurring event"
+  - and the Daily / Weekly / Monthly dropdown under it
+
+None of them did anything. Not "did something small", not "half worked". An
+organiser could tick "recurring", choose Weekly, save, and get exactly one
+event. Nothing told them. If they reopened the event the tick was still there,
+so it looked like it had worked.
+
+This is the worst kind of defect because everything about it was correct except
+the last step. The form saved the answer, the database stored the answer, and
+the page read the answer back. Nothing in the platform ever LOOKED at it.
+
+### What it does now
+
+**Recurring events are real.** You pick how often it repeats and how many dates,
+and before you save anything the form shows you the exact dates it is about to
+create. When you save, you get one real event per date, each with its own page,
+its own tickets and its own capacity, so one night selling out never closes the
+others. Each event page offers the other dates, and your events list says
+"Date 2 of 4" so a weekly residency does not read as four unrelated events with
+the same name.
+
+There is one detail worth knowing about, because it is the kind of thing that
+embarrasses a platform in front of an organiser. Australia has daylight saving.
+If you build a weekly series by adding seven days of hours, then the moment the
+clocks change your 7pm show becomes an 8pm show, and the organiser finds out
+when an audience turns up an hour early. This does not do that. In the driven
+proof the four dates are 167, 168 and 168 hours apart, and every single one
+starts at 19:40 local, which is exactly right.
+
+**Multi-day is worked out rather than asked.** The checkbox is gone and the
+platform now decides from the two times you entered, in your event's own
+timezone. A 9pm show finishing at 1am genuinely runs across two days and now
+says so on the event page; a twelve-hour festival inside one day does not. It
+cannot be wrong, because nobody is being asked to get it right.
+
+### The part that matters more than the fix
+
+I added a check that fails the build if any switch on the event form ever again
+writes something nothing reads. Fixing this once is worth little; a platform
+that cannot ship a switch that lies is worth a great deal.
+
+I got that check wrong the first time and the drill caught it: it counted a
+mention in a code COMMENT as though something were reading the value. So I
+deleted the real reader, left a comment behind, and the check said everything was
+fine. It does not do that any more, and there is now a permanent test for exactly
+that trick. Once fixed, it immediately found one more thing I had missed, which
+is now on the event page: a recurring event says "Weekly, 4 dates" in words.
+
+### Proof
+
+Driven at phone, tablet and desktop width, on a real build, signing up as a new
+organiser and going through the real form. 24 of 24 checks passed and every test
+event was deleted afterwards. Pictures are in `C:\dev\EVIDENCE\C10\series`.
+
+I also found and fixed two mistakes in my own proof script. Four of its checks
+were reporting PASS while looking at an empty list, on a run where nothing had
+been created at all. A check that passes when there is nothing to check is worse
+than no check, because it reads as evidence.
+
+### What is left in C10
+
+The second gap: an organiser cannot create ticket add-ons (parking, merchandise,
+drink packages). The buyer side of that feature is fully built and can never
+appear, because nothing in the platform can create one. That is next.

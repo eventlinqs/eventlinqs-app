@@ -700,3 +700,66 @@ two minutes earlier (run 34143360387), and at that time all 550 sitemap URLs and
 87 routes were being driven from here and every one answered 200. Both smokes on
 the merge commit 449311ae are green. Recorded rather than deleted, because a red
 run that is explained is still a red run somebody should be able to look up.
+
+## C10. RESUME SCOPE V5, the audit and the launch-affecting gaps (8 September 2026, session 42)
+
+CLOSE-OUT's "SUPERSEDES C10" replaces "continue Phase B3 onward" with four
+clauses. L2 item 8 narrows the build half: every gap that affects an L1 journey
+is built now, everything else is named for the L4 post-launch queue.
+
+### C10.1 and C10.2, the audit
+
+| Clause | Verdict | Evidence |
+|---|---|---|
+| C10.1 Enumerate EVERY numbered section from the file, never from memory | MET. `scripts/verify/scope-sections.mjs` parses the document: 11 top-level sections, 90 subsections, 355 requirement lines. 101 in total, and a plain grep for numbered lines in the same file returns 101, so nothing was dropped and nothing invented | C:\dev\EVIDENCE\C10\scope-sections.txt, scope-sections.json |
+| C10.2 Record the true state with DRIVEN evidence, not by reading code and assuming | MET. `scripts/verify/scope-audit.mjs` carries one row per section and 183 probes. Every probe ran against https://www.eventlinqs.com.au and all 183 passed. Probe strength is declared per row: driven URL, cited artefact, source path, or a precise absence | docs/verification/SCOPE-V5-AUDIT-2026-09-08.md |
+| C10.2 states | 10 BUILT, 48 PARTIAL, 13 NOT BUILT, 30 NOT A BUILD ITEM. The last state is used only where a section specifies nothing to build (a vision statement, the criteria for choosing a development contractor) and every one says in its own note why | the generated table |
+| DEFERRED reserved to Africa | MET and ENFORCED. The harness fails a DEFERRED row that does not name one of the five items the owner narrowed on 7 September | scope-audit.mjs, DEFERRALS |
+| The audit cannot fall behind the document | MET. The harness fails when a section has no adjudication row OR a row names no section. The markdown is generated, never hand-edited | scope-audit.mjs, adjudicationFaults |
+
+**The audit corrected one of my own claims before it shipped.** My first
+adjudication of 3.9.2 said Google social login was NOT BUILT. The absence probe
+found `src/components/auth/google-button.tsx` and production's `/login` serves
+"Continue with Google". The row was corrected. Apple and Facebook are genuinely
+absent.
+
+### The two launch-affecting gaps
+
+| Gap | Section | L1 journey | State |
+|---|---|---|---|
+| C10-G1 three controls on the organiser event form wrote columns nothing read | 3.1.1 Event Builder | L1 item 2, create an event | CLOSED this session |
+| C10-G2 add-ons are unreachable: `public.event_addons` is read by the event page and checkout and written by nothing in the product | 3.1.4 Ticketing Engine | L1 item 3, tiers and pricing | NOT STARTED |
+
+Everything else is PARTIAL or NOT BUILT with the reason recorded, routed to the
+L4 post-launch queue by name. The largest are SmartLinq (3.5), loyalty (3.6), the
+resale market (3.8), the activity feed and reviews (3.4.2), the support toolset
+(3.18) and the public API (11.1).
+
+### C10-G1 against the COMPLETION LAW
+
+| Law | Verdict | Evidence |
+|---|---|---|
+| 1. Schema, applied to TEST and verified by querying it back | MET. Migrations 20260908000001 and 20260908000002. Read back from TEST: both columns, the constraint, both indexes and the trigger, and the trigger's UPDATE OF list carries recurrence_rule. Backfill measured: 236 events, 9 multi-day, 0 disagreeing; 0 rows disagree on is_recurring | the db query output in the session log |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc 0, eslint 0, 78 of 78 guards PASS | C:\dev\EVIDENCE\C10\guards-after-g1.txt |
+| 3. Tests added, canary raised in the same commit | MET. `tests/unit/events/recurrence.test.ts`, 26 tests, weighted towards the daylight-saving cases a naive implementation gets wrong. Suite 3729 total | C:\dev\EVIDENCE\C10\vitest.txt |
+| 4. Guard proven red and green | MET. `scripts/guards/no-op-control.mjs`, registered and blocking. 111 of 111 drills fire, three of them this guard's: a new unread control, the reader deleted, and the reader left as a COMMENT. That third drill exists because the guard's first version passed it | C:\dev\EVIDENCE\C10\guard-drills-c10.txt |
+| 5. Driven at 390, 768 and 1440 | MET. 24 of 24 checks, through the real signup and the real create wizard on a local production build against TEST. The preview, the organiser list and the public event page captured at all three viewports. Fixtures removed: 5 created, 5 deleted, 0 remaining | C:\dev\EVIDENCE\C10\series (10 files), series-drive.txt |
+| 6. Full regression green after the item | PARTIAL, by design and not by defect. 3728 of 3729. The one failure is `tests/unit/guards/schema-ahead-of-code.test.ts` asserting the generated types carry `events.series_id`. The types are generated from PRODUCTION, which does not have the migration yet. That is the repository saying the schema must reach production before this code merges | C:\dev\EVIDENCE\C10\vitest.txt |
+| 7. Committed, no trailers, pushed, production deploys green | PARTIAL. Committed as 12b83165 with no trailer, on `feat/c10-scope-audit-and-series`. NOT pushed and NOT merged: the pre-push gate would refuse it on the failure above, correctly, until the founder's migration lands | git log |
+
+### The defects found on the way, all fixed before the commit
+
+| Defect | Where | Fix |
+|---|---|---|
+| The no-op-control guard counted a mention in a COMMENT as a reader | its first version | Comments are stripped before matching. A drill now pins it: the reader is replaced by a comment naming the column and the guard must still fail |
+| The same guard collected `p_event_id` and `days` as if they were events columns, from an RPC call and a nested object | its first version | It brace-matches the two event payloads instead of scanning the whole file. Checking things that are not columns is not harmless: one of them having no reader would fail the build for a defect that does not exist |
+| Four checks in my own driven proof reported PASS over an EMPTY array | event-series-drive.mjs | `checkEvery` fails on an empty collection. This was found on a run where the wizard never completed and nothing was created, and four checks still said PASS |
+| One assertion in the same proof was case sensitive against a line styled `uppercase` | event-series-drive.mjs | Matched case-insensitively. The product was right and said DATE 1 OF THIS SERIES |
+| `EMAIL_TRANSPORT=console`, needed by the drive, leaked into the suite and broke four payout email tests | the local env loader | Set only for the drive that needs it. Confirmed: those four pass 7 of 7 without it |
+
+### Founder steps (Law 10)
+
+| Step | Verdict | Command |
+|---|---|---|
+| Apply migrations 20260908000001 and 20260908000002 to production | RESERVED by the constitution (Verification and gates, Migrations) and by his ruling of 26 August 2026: a production schema change is the one thing he presses himself. Everything around it is scripted | `npm run migrate:production` (dry run confirms exactly these two pending, and the CLI rests on TEST afterwards) |
+| Everything after that push | SCRIPTED. Regenerating the types, re-running the gate, opening the pull request as a draft and watching production to Ready are all mine | none |

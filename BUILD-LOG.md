@@ -4430,3 +4430,74 @@ changed, and nothing was deleted.
 - After the deploy, on production: the three driven checks PASS, the graveyard PASSES, all 550 previously
   published URLs still answer 200, and /events/browse/melbourne and /faith/christian now carry no empty
   CollectionPage. Branch deleted, .next removed, 28.6 GB free.
+
+## 2026-09-08 11:00 to 17:20 (C10, session 42) the Scope v5 audit, and three controls on the event form that changed nothing
+
+- HALT RULE CHECKED FIRST. origin/main green at 449311ae (CI SUCCESS, both post-deploy smokes SUCCESS),
+  and production serves sentry-release 449311ae. The C16 halt does not apply, so C10 could start.
+- THE ENUMERATION IS PARSED, NOT TYPED. scripts/verify/scope-sections.mjs reads
+  docs/EventLinqs_Scope_v5.md and reports every numbered section: 11 top level, 90 subsections, 355
+  requirement lines. That is 101, and a plain grep for numbered lines in the file also returns 101, so
+  nothing was dropped and nothing invented. C15.1 re-runs this rather than re-typing it.
+- THE AUDIT IS A HARNESS, NOT A DOCUMENT. scripts/verify/scope-audit.mjs holds one adjudication row per
+  section and FAILS in both directions: a section with no row, or a row naming no section. The markdown
+  at docs/verification/SCOPE-V5-AUDIT-2026-09-08.md is generated from it. DEFERRED is enforced to the
+  five Africa items the owner narrowed on 7 September; a row cannot acquire the label otherwise.
+- 183 PROBES, ALL DRIVEN AGAINST PRODUCTION, ALL PASSING. States: 10 BUILT, 48 PARTIAL, 13 NOT BUILT,
+  30 that specify nothing to build (a vision statement, the criteria for choosing a contractor). Every
+  one of those 30 says in its own note why, because forcing a narrative section into BUILT would be a
+  false claim and into NOT BUILT a false gap.
+- THE PROBES CAUGHT ME OUT ONCE, WHICH IS THE POINT. My first adjudication said Google social login was
+  NOT BUILT. The absence probe found src/components/auth/google-button.tsx, and production's /login
+  serves "Continue with Google". The row was corrected. Apple and Facebook are genuinely absent.
+- THE ABSENCE PROBES WERE TOO BLUNT AND WERE REPLACED. "no file mentions add-ons" was false and useless.
+  unwritten(table) asks whether src/ reads a table and never writes it; unread(column, writers) asks
+  whether a column appears anywhere outside its own write path. Those are the two shapes of the defect.
+- TWO GAPS AFFECT A LAUNCH JOURNEY, and the audit names them C10-G1 and C10-G2. Everything else is
+  recorded for the L4 post-launch queue with the reason, never silently skipped.
+- GAP C10-G1, THE ONE BUILT THIS SESSION. The organiser event form carried three live controls writing
+  columns no code read: "This is a multi-day event" (events.is_multi_day), "This is a recurring event"
+  (events.is_recurring) and the Recurrence select (events.recurrence_rule). Every step was correct
+  except the last: the form held them, the payload carried them, the action wrote them, the database
+  stored them, and the edit form read them back, so ticking one and reopening the event showed it still
+  ticked. And an organiser who chose weekly got ONE event with nothing saying the choice was discarded.
+- MULTI-DAY IS DERIVED NOW. Migration 20260908000001 adds a trigger deriving is_multi_day from
+  start_date, end_date and the event's own timezone, on the LOCAL calendar day: a 21:00 to 01:00 show
+  spans two days, a twelve-hour festival inside one day does not. Backfill measured on TEST: 236 events,
+  9 genuinely multi-day, 0 disagreeing with the derivation.
+- RECURRENCE CREATES A REAL SERIES. The rule format is RFC 5545, which is what the column already
+  half-held, with FREQ, INTERVAL and COUNT quoted to the specification (fetched 2026-09-08). The
+  organiser picks a cadence and a number of dates, SEES THE EXACT DATES before anything is written, and
+  on save gets one real event per date, each with its own slug, tickets and inventory, joined by
+  events.series_id. That shape is why nothing else needed teaching: checkout, the door scanner, the
+  sitemap and the refund path all already work on a series of events.
+- THE ARITHMETIC IS ON THE LOCAL WALL CLOCK. Adding 168 hours is not "the same time next week" in a
+  country with daylight saving: a Melbourne show crossing the October transition would move from 19:00
+  to 20:00 and the organiser would learn about it when an audience arrived an hour early. The driven run
+  shows the correct behaviour directly: four dates at 167h, 168h, 168h apart, every one at 19:40 local.
+- THE GUARD IS THE DURABLE PART, and its first version was wrong. scripts/guards/no-op-control.mjs fails
+  the build when a column the organiser write path sets is read by nothing. Version one counted a
+  mention in a COMMENT as a reader; a drill deleted the real reader and the guard still passed. It
+  strips comments now and brace-matches the two event payloads rather than scanning the whole file.
+  Tightened, it immediately found recurrence_rule still unread, which the event page fixed by naming the
+  cadence in words. 111 of 111 drills fire, three of them this guard's.
+- DRIVEN, 24 OF 24, at 390, 768 and 1440, through the real signup and the real create wizard on a local
+  production build against TEST, with every fixture removed afterwards (5 events created, 5 deleted, 0
+  remaining). Evidence C:\dev\EVIDENCE\C10\series.
+- THE DRIVE FAILED FOUR TIMES BEFORE IT PASSED, and none of the four was the product. The signup rate
+  limiter is fail-closed and this machine has no Upstash, so the local stub was started. The confirmation
+  email needed EMAIL_TRANSPORT=console. A stale server held port 3311. And EMAIL_TRANSPORT then leaked
+  into the suite and broke four payout email tests, which is why the loader now sets it only for the
+  drive that needs it.
+- TWO DEFECTS IN MY OWN PROOF, FIXED. Four checks reported PASS over an EMPTY array, because
+  [].every() is true, on a run where the wizard never completed and nothing was created. A vacuous pass
+  reads as evidence and is worse than no check, so every per-row assertion goes through checkEvery now,
+  which fails on an empty collection. And one assertion was case sensitive against a line styled
+  uppercase: the product said DATE 1 OF THIS SERIES and the check called it missing.
+- REGRESSION: tsc 0, eslint 0, all 78 guards PASS, suite 3728 of 3729.
+- THE ONE FAILING TEST IS THE ORDERING SIGNAL, NOT A DEFECT.
+  tests/unit/guards/schema-ahead-of-code.test.ts asserts the generated types carry every column the
+  schema manifest names. src/types/database.ts is generated from PRODUCTION, and production does not yet
+  have events.series_id. That is the repository's own way of saying the migration must reach production
+  BEFORE this code merges, which is the founder's reserved step. `npm run migrate:production --dry-run`
+  confirms exactly the two pending files, and the CLI rests linked to TEST.
