@@ -119,6 +119,10 @@
  *   one-priority-image        a document preloads its LCP candidate and nothing else: every
  *                              priority grant is a named candidate, none reaches past the
  *                              first item (close-out C8)
+ *   homepage-hero-never-empty a homepage with no featured event still wears a curated,
+ *                              licensed hero raster from the attribution file beside the
+ *                              assets, and the media component owns the failure path
+ *                              (close-out C17)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -790,6 +794,11 @@ const GUARDS = [
   // seconds for it. Every priority grant is a named LCP candidate; a grant that
   // reaches past the first item fails. Drilled red and green.
   'scripts/guards/one-priority-image.mjs',
+  // Close-out C17 (7 September 2026): the homepage hero never renders without
+  // imagery. Production showed a flat navy panel the day every event had ended;
+  // the empty branch now wears a curated, licensed raster and the media component
+  // owns the failure path. Drilled red and green.
+  'scripts/guards/homepage-hero-never-empty.mjs',
 ]
 
 /**

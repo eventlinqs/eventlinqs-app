@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
 import { HeroMedia } from '@/components/media'
+import { HERO_SCRIM_GRADIENT } from './hero-scrim'
 
 export interface FeaturedHeroSlide {
   id: string
@@ -185,10 +186,7 @@ export function FeaturedHeroClient({ slides }: Props) {
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(to top, rgba(10,22,40,0.84) 0%, rgba(10,22,40,0.54) 20%, rgba(10,22,40,0.24) 44%, rgba(10,22,40,0.06) 68%, rgba(10,22,40,0) 88%)',
-              }}
+              style={{ background: HERO_SCRIM_GRADIENT }}
             />
             <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
               {/* hero-enter staggers the content stack (kicker, title, detail,

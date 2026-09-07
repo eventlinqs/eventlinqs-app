@@ -47,6 +47,7 @@ const EXCLUDED_PREFIXES = ['src/lib/broadcast/', 'src/app/dev/', 'src/app/design
  */
 export const ALLOWED_GRANTS = [
   { file: 'src/components/features/home/FeaturedHeroClient.tsx', match: 'priority={idx === 0}', why: 'homepage: slide 0 of the hero is the LCP; later slides never preload' },
+  { file: 'src/components/features/home/FeaturedHero.tsx', match: 'alt={curated.alt} priority />', why: 'homepage with no featured event (close-out C17): the curated hero raster is the LCP' },
   { file: 'src/components/features/home/category-nav-rail.tsx', match: 'priority: true,', why: 'homepage: the Communities doorway tile leads the first rail under the hero and sits in the first viewport at 390; it is the LCP when the hero has no photograph' },
   { file: 'src/components/features/events/m5-recommended-rail.tsx', match: 'priority={i === 0}', why: 'browse: no hero image; the first rail card is the LCP' },
   { file: 'src/components/features/events/m5-events-grid-client.tsx', match: 'priority={firstCardEager && i === 0}', why: 'browse grid without a rail above it: the first card is the LCP' },

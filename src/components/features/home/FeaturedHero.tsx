@@ -1,5 +1,8 @@
 import Link from 'next/link'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
+import { HeroMedia } from '@/components/media'
+import { pickCuratedHomepageHero } from '@/lib/images/homepage-hero-curated'
+import { HERO_SCRIM_GRADIENT } from './hero-scrim'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
@@ -82,10 +85,19 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
   const photographic = (e: BentoEvent) => Boolean(e.cover_image_url) && !isComposedCover(e.cover_image_url)
   const featured = [...events].sort((a, b) => Number(photographic(b)) - Number(photographic(a))).slice(0, MAX_SLIDES)
 
-  // Empty state: no live events yet. Render a calm, branded banner so the
-  // top of the page never collapses - still the only place text sits on a
-  // surface, here a flat navy panel rather than a photo.
+  // NO FEATURED EVENT: THE HERO STILL WEARS A PHOTOGRAPH (close-out C17.2,
+  // 7 September 2026). This branch used to render a flat navy banner, and on
+  // 6 September production held only events that had ended, so the first thing
+  // the owner's reviewer would have seen was a dark rectangle. Now it wears one
+  // of the founder's licensed homepage rasters (public/images/hero, the licence
+  // recorded beside the assets), chosen by the day so a render never flickers
+  // and the set turns over, under the same hero frame, scrim, eyebrow, display
+  // scale and gold call to action as a featured slide. HeroMedia owns the one
+  // remaining failure: a raster that does not load paints the branded navy and
+  // gold treatment. scripts/guards/homepage-hero-never-empty.mjs fails the
+  // build if this branch stops rendering HeroMedia from the curated set.
   if (featured.length === 0) {
+    const curated = pickCuratedHomepageHero()
     return (
       <section
         aria-labelledby="home-hero-heading"
@@ -95,32 +107,36 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
         <h1 id="home-hero-heading" className="sr-only">
           Live events across Australia: music, scenes, festivals and community
         </h1>
-        {/* Empty-state banner sits on the single platform hero token
-            (founder ruling 2026-07-07 raised .hero-marketing platform-wide,
-            superseding the 2026-07-05 homepage-only +17% inline scale). */}
-        <div className="hero-marketing mx-auto flex max-w-7xl items-end px-6 pb-10 sm:px-8 lg:px-12">
-          <div className="max-w-2xl hero-enter">
-            <p
-              className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
-              style={{ fontWeight: 600 }}
-            >
-              EventLinqs
-            </p>
-            <p className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
-              Every community. Every event. One platform.
-            </p>
-            <p className="mt-2 text-sm text-white/85 sm:text-base">
-              The first organisers are getting set up. New events land here every week.
-            </p>
-            <div className="mt-5">
-              <Link
-                href="/events"
-                prefetch={false}
-                className="inline-flex h-12 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-[var(--color-navy-950)] shadow-[var(--shadow-card)] hover:scale-[1.02] hover:shadow-[var(--shadow-card-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
-                style={{ fontSize: 'var(--type-body)', fontWeight: 600, transition: 'transform var(--motion-quick), box-shadow var(--motion-quick)' }}
+        {/* The single platform hero token (.hero-marketing, founder ruling
+            2026-07-07) sizes the box; HeroMedia fills it with the raster that
+            is the LCP of a homepage with no featured event. */}
+        <div className="relative hero-marketing w-full">
+          <HeroMedia image={curated.image} alt={curated.alt} priority />
+          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: HERO_SCRIM_GRADIENT }} />
+          <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
+            <div className="max-w-2xl hero-enter">
+              <p
+                className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
+                style={{ fontWeight: 600 }}
               >
-                Browse all events
-              </Link>
+                EventLinqs
+              </p>
+              <p className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+                Every community. Every event. One platform.
+              </p>
+              <p className="mt-2 text-sm text-white/85 sm:text-base">
+                The first organisers are getting set up. New events land here every week.
+              </p>
+              <div className="mt-5">
+                <Link
+                  href="/events"
+                  prefetch={false}
+                  className="inline-flex h-12 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-[var(--color-navy-950)] shadow-[var(--shadow-card)] hover:scale-[1.02] hover:shadow-[var(--shadow-card-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
+                  style={{ fontSize: 'var(--type-body)', fontWeight: 600, transition: 'transform var(--motion-quick), box-shadow var(--motion-quick)' }}
+                >
+                  Browse all events
+                </Link>
+              </div>
             </div>
           </div>
         </div>

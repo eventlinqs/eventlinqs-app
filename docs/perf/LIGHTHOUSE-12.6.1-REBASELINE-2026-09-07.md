@@ -78,5 +78,33 @@ quoted from this document is a local-gate number on Lighthouse 12.6.1, and says 
 
 ## The runner, both versions
 
-Appended when this branch's Lighthouse CI run (0.15.1, five runs, medians) has landed, against run
-34079721873 (0.14.x, three runs, optimistic) on the merged head 1b559180, whose tree is `main`'s.
+The same workflow on GitHub's runner, measuring the Vercel preview of the same tree. Run
+34079721873 (0.14.x, Lighthouse 12.1.0, three runs, judged optimistic, on the merged head
+1b559180) against run 34087352524 (0.15.1, Lighthouse 12.6.1, five runs, judged median, on
+891fd66a); both trees serve the same pages. Medians of the performance score, with the spread:
+
+| URL | 12.1.0 (3 runs) | 12.6.1 (5 runs) | 12.6.1 LCP | 12.6.1 TBT | 12.6.1 script | 12.6.1 LCP element |
+|---|---|---|---|---|---|---|
+| / | 75 (66 to 76) | 83 (68 to 88) | 2,418 ms | 530 ms | 408 KB | the hero raster |
+| /community/african | 93 (91 to 93) | 92 (92 to 93) | 2,499 ms | 259 ms | 405 KB | the hero raster |
+| /events | 78 (70 to 89) | 90 (72 to 93) | 2,569 ms | 305 ms | 419 KB | the first rail card image |
+| /events/arena-sessions-large-room-performance-test | 76 (75 to 79) | 74 (74 to 85) | 4,259 ms | 395 ms | 440 KB | the hero raster |
+| /events/artist-layer-launch-night-geelong | 85 (81 to 86) | 82 (78 to 90) | 4,049 ms | 246 ms | 440 KB | the hero raster |
+| /events/browse/melbourne | 90 (89 to 91) | 92 (90 to 93) | 2,652 ms | 246 ms | 418 KB | the hero raster |
+| /events/cat-indie-sounds-live-at-the-enmore-sydney | 75 (73 to 87) | 76 (73 to 80) | 4,261 ms | 365 ms | 440 KB | the hero raster |
+| /help | 93 (92 to 96) | 93 (91 to 93) | 2,622 ms | 233 ms | 396 KB | the page heading |
+| /legal/terms | 93 (91 to 93) | 92 (90 to 92) | 2,291 ms | 302 ms | 397 KB | the first paragraph |
+| /login | 83 (83 to 93) | 88 (88 to 91) | 2,577 ms | 367 ms | 467 KB | the "Welcome back" heading |
+| /organisers | 92 (91 to 94) | 92 (92 to 94) | 2,436 ms | 252 ms | 404 KB | the hero raster |
+| /pricing | 94 (81 to 97) | 96 (94 to 96) | 2,268 ms | 187 ms | 396 KB | the page heading |
+| /signup | 83 (82 to 83) | 91 (91 to 95) | 2,575 ms | 287 ms | 469 KB | the digest opt-in label |
+
+Under the median floors the run FAILED on the two heavy event pages (0.74 and 0.76 against 0.80);
+the event-detail numeric budget passed on all three event pages, the LCP cap by 241 ms. The job
+took 28 minutes 21 seconds inside the 45 minute budget.
+
+Why the runner reads below the local gate: the runner and production load the error-reporting
+SDK, about 200 KB of script that the local gate never loads because it has no key for it
+(396 to 469 KB of script per page on the runner against 177 to 252 KB locally, with TBT 187 to
+530 ms against 28 to 73 ms). The runner is the environment the gate's emails come from and the
+one to plan against.
