@@ -340,7 +340,7 @@ const COMMUNITIES: Record<CommunitySlug, CommunityContent> = {
     tagline: 'Tet, ao dai, V-pop and the whole table.',
     heroHeadline: 'Vietnamese community, every weekend.',
     heroBody:
-      'Tet Lunar New Year festivals, Mid-Autumn lantern nights, V-pop concerts, ao dai showcases and community fundraisers. One of Australia largest and most established communities.',
+      "Tet Lunar New Year festivals, Mid-Autumn lantern nights, V-pop concerts, ao dai showcases and community fundraisers. One of Australia's largest and most established communities.",
     storyParagraphs: [
       'Where Saigon meets Cabramatta under the same Tet banner. Where the lion dance runs the markets, the ao dai comes out for the new year, and the whole community shows for the Tet festival. Vietnamese events span Tet street festivals that fill showgrounds, Mid-Autumn lantern parades, V-pop concerts when the artists tour, ao dai and community showcases, and community fundraisers run with serious organisation. Vietnamese is one of the top languages spoken at home in Australia.',
       'EventLinqs supports community committees with festival multi-day passes, family bundles, multilingual listings, and transparent fees.',
@@ -444,7 +444,7 @@ const COMMUNITIES: Record<CommunitySlug, CommunityContent> = {
     heroBody:
       'Sagra food festivals, festa saint-day celebrations, opera nights, Italian film, regional clubs and long-table dinners. A founding thread of modern Australia.',
     storyParagraphs: [
-      "Where Palermo meets Carlton under the same long table. Where the sagra runs three days, the band starts after the pasta, and someone's nonna is still bringing out more food at midnight. Italian events are saint-day feste with food that takes a year to plan, sagra food festivals, opera and tarantella nights, Italian film seasons, and regional club dinners. Italian is one of Australia largest ancestries and oldest community calendars.",
+      "Where Palermo meets Carlton under the same long table. Where the sagra runs three days, the band starts after the pasta, and someone's nonna is still bringing out more food at midnight. Italian events are saint-day feste with food that takes a year to plan, sagra food festivals, opera and tarantella nights, Italian film seasons, and regional club dinners. Italian is one of Australia's largest ancestries and oldest community calendars.",
       'EventLinqs supports long-table communal dinners with set seating, festival multi-day passes, family bundles, and transparent fees.',
       'If you run sagras, feste, opera nights or Italian festivals, list with us.',
     ],

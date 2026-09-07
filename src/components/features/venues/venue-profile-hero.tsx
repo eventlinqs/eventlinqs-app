@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { HeroMedia } from '@/components/media'
+import { BrandedPlaceholder, HeroMedia } from '@/components/media'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { MapPin, Users } from 'lucide-react'
 
@@ -47,14 +47,9 @@ export function VenueProfileHero({
         {imageSrc ? (
           <HeroMedia image={imageSrc} alt={`${venueName}${city ? ` in ${city}` : ''}`} priority />
         ) : (
-          <div
-            aria-hidden
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(135deg, rgb(10,22,40) 0%, rgb(20,32,56) 50%, rgb(10,22,40) 100%)',
-            }}
-          />
+          // No venue photograph yet: the branded navy and gold treatment, never a
+          // flat panel (close-out C17.6, the venue page on production, 7 September 2026).
+          <BrandedPlaceholder chromeless />
         )}
         <div
           aria-hidden

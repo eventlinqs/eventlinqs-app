@@ -183,6 +183,26 @@ const DRILLS = [
     expect: 'required status checks are missing',
   },
   /*
+   * homepage-hero-never-empty (close-out C17), two drills: the empty branch
+   * painting a panel without HeroMedia, and a curated entry with no raster.
+   */
+  {
+    name: 'the no-event hero paints a panel instead of a photograph',
+    guard: `${GUARDS}/homepage-hero-never-empty.mjs`,
+    file: 'src/components/features/home/FeaturedHero.tsx',
+    find: '<HeroMedia image={curated.image} alt={curated.alt} priority />',
+    replace: '<div aria-hidden className="absolute inset-0" />',
+    expect: 'renders no HeroMedia',
+  },
+  {
+    name: 'a curated hero entry names a raster that does not exist',
+    guard: `${GUARDS}/homepage-hero-never-empty.mjs`,
+    file: 'public/images/hero/homepage-hero-attribution.json',
+    find: '"slug": "homepage-rooftop",',
+    replace: '"slug": "homepage-rooftop-missing",',
+    expect: 'has no raster at',
+  },
+  /*
    * one-priority-image (close-out C8), two drills: a grant that reaches past the
    * first item, and a new grant nobody listed.
    */

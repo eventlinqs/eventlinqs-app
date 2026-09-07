@@ -900,9 +900,20 @@ const ROOT = join(HERE, '..', '..')
  * the markdown table) and tests/unit/ci/lhci-pin-agreement (four: an exact
  * version, the workflow's three mentions, the admin script, the config note):
  * 315 files / 3619, as the canary measured.
+ *
+ * Close-out C17 (7 September 2026), two files and eleven tests:
+ * tests/unit/home/homepage-hero-curated (seven: the set read from the
+ * attribution file, the licence holder named, every slug backed by both
+ * rasters, deterministic within a day, turning over across days, always a
+ * member, the day count) and tests/component/hero-raster (four: the priority
+ * raster while loading, the treatment on error, the treatment for a failure
+ * before hydration, a loaded raster left alone): 317 files / 3630, as the
+ * canary measured. The C17.6 sweep added tests/component/events-empty-state
+ * (three: unfiltered, filtered, a query): 318 files / 3633, as the canary
+ * measured.
  */
-const MIN_FILES = 315
-const MIN_TESTS = 3619
+const MIN_FILES = 318
+const MIN_TESTS = 3633
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

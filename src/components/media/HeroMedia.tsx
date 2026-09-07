@@ -1,9 +1,9 @@
-import Image from 'next/image'
 import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 import { HeroAmbientLayer } from './hero-ambient-layer'
 import { resolveImageSrc } from './safe-image-src'
 import { BrandedPlaceholder } from './decorative/branded-placeholder'
+import { HeroRaster } from './hero-raster'
 
 /**
  * HeroMedia - the only allowed surface for above-fold full-bleed hero
@@ -114,18 +114,18 @@ export function HeroMedia({
         opacity transition. This is the element Lighthouse measures as LCP
         when priority=true. Sibling slides pass priority=false so they
         download lazily and never out-compete the active LCP candidate.
+        HeroRaster (close-out C17.2) renders that same <Image> and owns the
+        one thing a server component cannot: what paints if the raster fails
+        to load, which is the branded navy and gold treatment, never the
+        browser's broken glyph.
       */}
-      <Image
+      <HeroRaster
         src={safeSrc}
         alt={alt}
-        fill
         priority={priority}
-        fetchPriority={priority ? 'high' : 'auto'}
-        loading={priority ? 'eager' : 'lazy'}
         sizes={sizes}
         quality={MEDIA_QUALITY.hero}
-        className="object-cover"
-        style={{ objectPosition }}
+        objectPosition={objectPosition}
       />
 
       {/*
