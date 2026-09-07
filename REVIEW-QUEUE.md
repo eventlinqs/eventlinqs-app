@@ -810,3 +810,100 @@ The runner's verdict under the new median floors: two pages FAIL the 0.80 floor 
 **Also yours, recorded and left alone.** The legacy `public.communities` table holds 14 rows that predate the 21-community layer and are read by nothing in the application (checked 7 September 2026). Retiring it would be a production migration, which is your step by your ruling; the addendum records it and this build did not touch it.
 
 **Evidence:** C:\dev\EVIDENCE\C18\ (drive\c18-drive.md and the five captures; production-categories.txt and production-communities.txt; guard-failure-drills-c18-fix.txt; gate-pass-on-push-c18.txt and gate-pass-on-push-c18-fix.txt; preview-build-log-718d93b1-full.txt).
+
+## C19 (8 September 2026): Google was being told the homepage was the real version of 57 of your pages, and 545 of your 550 sitemap URLs were empty
+
+**What was actually wrong, and it was ours.** Search Console gave you five
+exclusion reasons on Saturday. Two of them we caused, and I found both by
+fetching the live site rather than by reading the code.
+
+The first is a single line. Our site-wide layout file said "the canonical
+address of this page is the homepage", and the framework passes that down to
+every page that does not overrule it. Fifty-seven pages did not overrule it, so
+each of them was telling Google, in writing, that the real version of itself was
+the homepage. Seven of those were pages we actively want ranked and had listed in
+our sitemap: every help centre topic. Search Console's first two reasons,
+"alternate page with proper canonical tag" and "duplicate, Google chose different
+canonical than user", are the name of that mistake.
+
+The second is volume. Our sitemap offers Google 550 addresses. The site publishes
+two events. So 545 of those 550 are community, city, suburb and browse pages
+holding nothing, differing from one another by a place name. Google's answer to
+hundreds of near-identical pages is to pick one and discard the rest, which is
+exactly what it reported.
+
+**What happens now.** Every page names itself. And a templated discovery page
+stops asking to be indexed until it actually has something on, then starts again
+by itself the moment it does. Nothing is hidden from a visitor: all 21 community
+pages, all 420 city variants, every city, suburb, category and faith page still
+render exactly as they do today and are still linked from the site. The only
+thing that changes is what we ask a search engine to file.
+
+**A decision for you, and it is one number.** The threshold is set to THREE
+published upcoming events, which is what the close-out named as the default. My
+reasoning: one event makes a page real for a visitor, which is why our own rule
+says one event shows the rail, but it does not make that page DIFFERENT from the
+other 440 in its family, and difference is the thing Google is judging. Three is
+the smallest number where the list, the map and the "what is on" heading all
+carry something only that page has. It is one named constant and moving it moves
+both the pages and the sitemap together. Tell me a different number and it is a
+one-line change.
+
+**Two smaller things fixed while in there.** Your organiser identity (the
+Organization and WebSite markup Google reads for a brand panel) existed on the
+homepage only, so every event page and every community page a search result
+actually lands on carried no publisher identity at all. It is now on every page.
+And the 21 city browse pages and the 420 community-by-city pages were carrying
+one sentence with the noun swapped, while 271 hand-written city-specific
+paragraphs sat unused in the repository. They now describe themselves properly,
+using copy the platform already owned. Nothing was invented.
+
+**Proof you can check.** Before the change, the checker I wrote was pointed at
+the live site and it FAILED, naming /help/getting-started and six sign-in pages
+for exactly this defect. After the change it passes against the build. All 550
+sitemap URLs were driven before the change and every one answered 200; the same
+550 are driven again after the deploy to prove that leaving the sitemap did not
+turn any of them into a broken link. Accessibility is zero violations on every
+page touched, at 390 and 1440.
+
+**Evidence:** C:\dev\EVIDENCE\C19\ (audit-production.json, the driven audit of
+88 routes; sweep-before.json and sweep-after.json, all 550 sitemap URLs;
+indexing-drive-production-before.txt, the checker failing on the live site;
+indexing-drive-local.txt, it passing on the fix; drive\ with the tables and
+captures at 390, 768 and 1440; guard-failure-drills-c19.txt) and
+docs/verification/INDEXING-AUDIT-2026-09-08.md in the repository.
+
+### C19 is live (8 September 2026). The numbers after the deploy, and the one number I need from you.
+
+**Merged, deployed, and checked on the live site.** Production is serving it, CI
+on main is green, both addresses answer 200.
+
+| | Before | After |
+|---|---|---|
+| Addresses we offer Google in the sitemap | 550, of which 545 held no events | 38 |
+| Pages telling Google the homepage is the real version of them | 57, seven of them pages we want ranked | 0 |
+| Old addresses that now break | n/a | 0 of 550, re-checked after the deploy |
+| Pages carrying our organisation identity for Google | 1 | every page |
+
+**Read the 550 to 38 correctly, because it looks alarming and is not.** Nothing
+was deleted. All 21 community pages, all 420 city variants, every city, suburb,
+category and faith page still load, still look the same, and are still linked
+from the site: I re-drove all 550 of the old addresses after the deploy and every
+single one answered 200. What changed is that we stopped ASKING Google to file
+pages that have nothing on them, which is what it was refusing to do anyway and
+reporting back to you as duplicates. The moment a page has three events on it, it
+puts itself back in the sitemap with no work from anyone.
+
+**The one thing I need from you: confirm the number is three.** That is the
+default the close-out named and my reasoning is in the entry above. It is a
+single named constant read by both the pages and the sitemap, so changing it is
+one line and one gate run. If you would rather it were one, or five, say so.
+
+**One thing you may want to do, and only you can.** The sitemap regenerates
+itself and production is already serving the new one, but resubmitting it in
+Search Console needs your login. Nothing in the repository can reach that.
+
+**Evidence:** C:\dev\EVIDENCE\C19\ (sweep-after.json, all 550 old addresses
+driven after the deploy; indexing-drive-production-before.txt and
+-after.txt, the same checker failing on the live site before and passing after;
+drive\prod-tags.md with captures at 390, 768 and 1440).

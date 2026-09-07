@@ -4272,3 +4272,114 @@ changed, and nothing was deleted.
 - Records: the C18 FINAL ledger section (C18F.0 to F.6, the defect fixed on the way, the completion law, the two
   reserved founder decisions), the queue entry (Pride one line; the legacy table; both decisions, neither urgent),
   the queue headline. The halt rule holds: main green, production Ready and serving. Next: C19.
+
+## 2026-09-08 00:05 to 01:10 (C19, session 41) the indexing audit, driven on production before anything was written
+
+- Halt rule first: origin/main green (CI run 34113945964 SUCCESS on 15ccce5c), production serving
+  sentry-release 15ccce5c, www 200. Disk 29.5 GB. Branch feat/c19-indexing-policy cut from origin/main.
+- C19.1 driven, never read off the code. Routes enumerated from src/app with the C7 enumerator (130 page
+  routes: 76 static, 54 dynamic; 48 static and 12 dynamic handlers). 88 of the 130 have a value an
+  anonymous visitor can reach; every one was fetched on https://www.eventlinqs.com.au and the canonical,
+  the robots meta, the x-robots-tag, the title, the description and the JSON-LD types were read off the
+  response. Evidence C:\dev\EVIDENCE\C19, file audit-production.json, table in
+  docs/verification/INDEXING-AUDIT-2026-09-08.md.
+- FINDING D1, the cause of two of the five Search Console reasons. src/app/layout.tsx declared
+  `alternates: { canonical: '/' }`. Next merges metadata FIELD BY FIELD, so any page that did not declare
+  its own inherited it. 57 routes published the HOMEPAGE as the canonical version of themselves, and
+  SEVEN of them were indexable and in the sitemap: every /help/[slug] topic.
+- FINDING D2. The production sitemap carries 550 URLs and production publishes two events, so 545 of them
+  are templated pages holding nothing: 441 community and community-by-city, 44 city and suburb, 22
+  browse-city. That is C19.3's premise, measured rather than assumed.
+- FINDING D3, boilerplate with a swapped noun, on two families. /events/browse/[city]: one sentence with
+  the city changed, on all 21. /community/[community]/[city]: "{Community} events on tonight in {City}"
+  plus one shared sentence on all 420, while 271 hand-written city-specific paragraphs sat unused in
+  src/lib/communities/intersection-editorial.ts. Checked and NOT boilerplate: /community/[community],
+  /city/[slug] and /city/[slug]/[suburb] all carry genuinely distinct copy.
+- FINDING D4. Organization and WebSite existed on the homepage only. /events, /help and /help/[slug]
+  emitted no ItemList. (/events was checked rather than assumed: it renders EventCollectionJsonLd inside
+  Suspense and correctly returns null with an empty list, so the absence on production is right.)
+- FINDING D5. scripts/ci/assert-seo-audits.mjs derived its exempt set from src/app/(auth)/ alone and only
+  ever SKIPPED those four. Nothing anywhere failed if /dashboard, /admin or the door scanner became
+  indexable. Five routes declared no robots directive at all.
+
+## 2026-09-08 01:10 to 03:40 (C19, session 41) the policy, the threshold, the copy and the guards
+
+- src/lib/seo/indexing-policy.ts: all 130 page routes classified ALWAYS (28), CONDITIONAL (7), ALIAS (3)
+  or NEVER (92), each with a reason, plus DISCOVERY_INDEXING_THRESHOLD (3) and the three metadata blocks
+  every page spreads. Root layout's alternates deleted; the homepage declares its own.
+- Two classifications were CORRECTED BY THE GUARD on its first run rather than by me: /gigs/[id] has
+  declared `index: false` for itself since it shipped, so the platform already keeps the gig board out of
+  the index and the policy records that rather than reversing it; and /e/[code] inherited its canonical
+  through a spread of the event's metadata, which is right but unreadable, so it now names the event page
+  explicitly through aliasMetadata.
+- The threshold reads through src/lib/seo/discovery-matchers.ts (pure) and discovery-counts.ts (one
+  cached query). ONE query returns the dimension columns of every publicly visible event and every count
+  is a pure function over those rows, so the PAGE and the SITEMAP cannot disagree: the alternative, a
+  head-count per URL, would have been about 490 round trips in one sitemap request AND a second
+  implementation of every matching rule.
+- The matchers mirror SQL, which is the risk, so scripts/verify/discovery-counts-agree.mjs runs BOTH
+  sides against the linked database for all 53 keys. PASS, no disagreement (city/melbourne SQL 27 memory
+  27; city/geelong SQL 31 memory 31). It also prints what it did NOT prove: community, faith and category
+  had no non-zero count on TEST, so those were compared on zeroes only, and the matcher shapes are held
+  by tests/unit/seo/discovery-counts.test.ts against the real token lists.
+- C19.4 copy, from data the platform already holds, nothing invented: browse-city descriptions now lead
+  with the city catalogue's own one-sentence `descriptor` (20 of the 21 have one; the 21st keeps a
+  generic line), which is a DIFFERENT field from the `editorial` /city/[slug] uses, so the two city
+  surfaces do not become duplicates of each other while being de-duplicated from the rest. The 420
+  intersections now describe themselves from getIntersectionEditorial, the paragraph the page body
+  already renders.
+- Guards. scripts/guards/indexing-policy.mjs registered and blocking. TWO faults in the guard itself were
+  found by running it: it fired on the COMMENT in layout.tsx that explains why the canonical was removed
+  (every check now reads comment-stripped source), and its redirect-only exemption matched twenty
+  dashboard pages that render a full screen and merely call redirect() as an auth guard (it now requires
+  no JSX; 23 matches became 3). A third was found by the drill rather than by me: with the community gate
+  deleted from the sitemap, a fixed character window still found the NEIGHBOURING family's gate and the
+  guard passed on a violating tree. The window now runs from the `for (` that opens the loop to the next
+  one.
+- scripts/ci/assert-seo-audits.mjs now reads the policy: a NEVER or ALIAS route is ASSERTED blocked
+  (new), a CONDITIONAL route is named as not-assertable-from-a-Lighthouse-report and handed to the driven
+  check, an ALWAYS route must be crawlable as before. Three of its tests were rewritten to the stronger
+  contract and three added.
+- scripts/verify/indexing-drive.mjs drives a running host on five rules and is a new pre-push gate step
+  ('indexing', its own server after the build). Both halves of the threshold are driven, not just the
+  full half: every conditional family also gets a member the sitemap does NOT publish, enumerated from
+  the same source lists the routes' own generateStaticParams read.
+- 108 of 108 guard-failure drills fire correctly, including the four new ones.
+
+## 2026-09-08 03:40 to 05:20 (C19, session 41) the gate, the one guard that caught me, and the pull request
+
+- FIRST GATE RUN BLOCKED at step 7 of 14, on no-control-characters, and it was right: a Windows path
+  written through a shell heredoc had turned `C19\a` into a BEL inside
+  docs/verification/INDEXING-AUDIT-2026-09-08.md. The same character had landed in BUILD-LOG.md from the
+  same edit and was fixed there too. The guard's own message names the cause ("almost always a shell
+  heredoc eating a backslash") and the fix ("rewrite the line from a raw string"), which is what was done.
+- SECOND GATE RUN GREEN, 14 of 14 in 2342 s: disk 0 s, typecheck 11, lint 5, copy 1, critical-path 0,
+  lighthouse-exemptions 0, guards 110 (77 of 77), types-drift 39, production-parity 7, fixture 0, suite 97,
+  build 175, indexing 68 (the new step), lighthouse 1829.
+- The new step, 'indexing', serves the production build and drives 91 routes plus all 469 sitemap URLs on
+  five rules. It is the check a parser cannot be: the whole defect was that every page declared
+  correct-looking metadata and the framework's merge published the homepage as the canonical of 57 of them.
+- Pushed as 1f8f153d and 4ffa402a. PR 137 opened as a draft and marked ready so CI runs once.
+
+## 2026-09-08 05:20 to 06:15 (C19, session 41) merged, production serving it, and the numbers after
+
+- CI on PR 137 ran once (the branch was opened as a draft and marked ready): lint/typecheck/build, test
+  (vitest), production parity and the types-drift guard all SUCCESS, and the advisory Lighthouse CI
+  SUCCESS on the runner, which matters here because the change touches the head of every page.
+- Squash-merged as 9ac4d885 with a body naming both commits. Production served sentry-release 9ac4d885
+  within three minutes of the merge; CI on main SUCCESS; post-deploy smoke SUCCESS; www and the apex both
+  200. The halt rule is satisfied before the next item begins.
+- THE PRODUCTION SITEMAP WENT FROM 550 URLS TO 38. That is the whole of C19.3 landing: production
+  publishes two events, so every one of the 441 community and community-by-city pages, the 44 city and
+  suburb pages and the 22 browse-city pages is below the threshold of three and has taken itself out.
+  They all still render, they are all still linked, and each returns by itself the moment it holds three.
+- ALL 550 PREVIOUSLY PUBLISHED URLS WERE RE-DRIVEN ON PRODUCTION AFTER THE DEPLOY: 550 of 550 answered
+  200, zero 404s. Leaving the sitemap is not the same as leaving the platform, and this is the measurement
+  that says so rather than the assertion.
+- The driven checker was run against production a second time and PASSED (87 routes, 38 sitemap URLs, all
+  38 answered). Against production BEFORE the change the same script FAILED with seven faults. That pair
+  is the both-directions proof, taken on the real site rather than on a fixture.
+- Driven at 390, 768 and 1440 on production: /help/getting-started now names itself instead of the
+  homepage; /community/african, /community/african/melbourne, /city/sydney and /events/browse/melbourne
+  are noindex, self-canonical, out of the sitemap and still rendering their full page.
+- Cleanup: branch deleted locally and on the remote, .next removed (614 MB). 29.3 GB free.
