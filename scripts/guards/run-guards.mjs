@@ -129,6 +129,9 @@
  *   community-layer-protected the 21 communities, their 20 cities, the faith pages and the
  *                              22 categories match the approved record in both directions;
  *                              the routes and the sitemap still publish them (close-out C18 FINAL)
+ *   vercelignore-covers-guard-reads every docs/ file a prebuild script reads survives
+ *                              .vercelignore, walked down level by level, and every docs/
+ *                              literal in a build-time script is required or reviewed (C18 FINAL)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -813,6 +816,9 @@ const GUARDS = [
   // are approved and recorded; nothing may be lost from the source or the database,
   // and every addition is recorded in docs/scope/community-layer-approved.json.
   'scripts/guards/community-layer-protected.mjs',
+  // Close-out C18 FINAL, the same day: a guard that reads under docs/ must survive
+  // .vercelignore, or it passes locally and kills every Vercel build (third time).
+  'scripts/guards/vercelignore-covers-guard-reads.mjs',
 ]
 
 /**

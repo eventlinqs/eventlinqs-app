@@ -183,6 +183,27 @@ const DRILLS = [
     expect: 'required status checks are missing',
   },
   /*
+   * vercelignore-covers-guard-reads (close-out C18 FINAL), two drills: the approved
+   * record's re-inclusion lost from .vercelignore, and a build-time guard naming a
+   * docs/ path that is neither required-and-re-included nor in a reviewed file.
+   */
+  {
+    name: 'the approved record is excluded from the Vercel upload again',
+    guard: `${GUARDS}/vercelignore-covers-guard-reads.mjs`,
+    file: '.vercelignore',
+    find: '!docs/scope/community-layer-approved.json',
+    replace: '!docs/scope/community-layer-approved.json.retired',
+    expect: 'docs/scope/community-layer-approved.json is EXCLUDED by .vercelignore',
+  },
+  {
+    name: 'a build-time guard reads a docs path nobody re-included',
+    guard: `${GUARDS}/vercelignore-covers-guard-reads.mjs`,
+    file: 'scripts/guards/community-layer-protected.mjs',
+    find: "const APPROVED = 'docs/scope/community-layer-approved.json'",
+    replace: "const APPROVED = 'docs/scope/community-layer-approved-v2.json'",
+    expect: 'docs/scope/community-layer-approved-v2.json is read by scripts/guards/community-layer-protected.mjs',
+  },
+  /*
    * community-layer-protected (close-out C18 FINAL), two drills: a faith page lost
    * from the source, and an approved community left unrecorded.
    */

@@ -32,11 +32,22 @@
 # under docs/ and is therefore excluded as a FILE.
 #
 # So each level is re-included, then re-excluded, then the one file is named.
+#
+# A THIRD time on 2026-09-07: community-layer-protected.mjs reads
+# docs/scope/community-layer-approved.json; the local gate was green and the
+# preview build of PR 136 died with ENOENT on it. The rule above is now a guard,
+# scripts/guards/vercelignore-covers-guard-reads.mjs, in the same prebuild chain:
+# it evaluates this file against every docs/ path a prebuild script reads and
+# fails the local gate before Vercel can. Nothing reads CREDENTIAL-ROTATION.md
+# at build time any more; its lines stay as history and cost nothing.
 docs/*
 !docs/PRICING.md
 !docs/security/
 docs/security/*
 !docs/security/CREDENTIAL-ROTATION.md
+!docs/scope/
+docs/scope/*
+!docs/scope/community-layer-approved.json
 design-captures
 research
 audit-v2
