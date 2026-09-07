@@ -7,9 +7,9 @@ anonymous visitor can reach; the other 42 are bearer tokens, reservations,
 one-time codes and authenticated ids, and their declarations are held by
 `scripts/guards/indexing-policy.mjs` instead.
 
-Evidence: `C:\dev\EVIDENCE\C19udit-production.json` (the driven run),
-`sitemap-prod.xml` (550 URLs), `sweep-before.json` (all 550 driven: 550 of 550
-answered 200), `uniqueness.json` (31 pages sampled for copy).
+Evidence, all under `C:\dev\EVIDENCE\C19`: `audit-production.json` (the driven
+run), `sitemap-prod.xml` (550 URLs), `sweep-before.json` (all 550 driven: 550
+of 550 answered 200), `uniqueness.json` (31 pages sampled for copy).
 
 ## What it found
 
