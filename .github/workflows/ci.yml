@@ -26,7 +26,15 @@ jobs:
     name: lint · typecheck · build
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 20, not 15, since 7 September 2026: the build step's prebuild guards
+    # include preview-deployment-state, which now WAITS up to 600 s for this
+    # commit's own Vercel deployment to settle. Measured on the last two green
+    # runs, the build step starts 1m55s to 2m18s into the job and the whole job
+    # took 3m32s to 4m48s, so the full wait plus the build fits inside 15 with
+    # about a minute to spare, and a minute is not a margin. The budget is
+    # wider so the guard's own verdict (FAILED after 600 s, naming the
+    # deployment) is always what a red run shows, never a bare job timeout.
+    timeout-minutes: 20
 
     env:
       NEXT_TELEMETRY_DISABLED: 1
@@ -53,9 +61,14 @@ jobs:
       # naming them here is what puts the contract in version control rather than
       # in a dashboard (Law 9, clause 3).
       #
-      # This can only ever SKIP or FAIL-ON-ERROR: an absent, invalid or rejected
-      # token exits 0 with a warning by design, so wiring it cannot break a build
-      # that would otherwise pass.
+      # An absent, invalid or rejected token exits 0 with a warning by design, so
+      # wiring it cannot break a build that would otherwise pass. With the token
+      # it judges THE COMMIT UNDER TEST: since 7 September 2026 (close-out C16)
+      # it waits for that commit's own deployment to settle (up to
+      # PREVIEW_STATE_WAIT_SECONDS, default 600, inside this job's 20 minutes)
+      # instead of judging whichever older deployment had settled, which is how
+      # every green run on main had been passing on the previous commit, and
+      # how the first merge after a red one would have gone red on the red one.
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_PROJECT_ID: prj_YIHLHcjuQfg4RmtNt7JekkcTVznJ
       VERCEL_ORG_ID: team_yPo8T18zSl5VczJfWIIrNqly
@@ -198,6 +211,36 @@ jobs:
       - name: Run types-drift guard
         run: bash scripts/check-types-drift.sh
 
+  production-parity:
+    name: production parity
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Close-out C16.2.2 (7 September 2026). REQUIRED on main. Two merges went
+    # red on main and failed to deploy after every pull-request check passed,
+    # because a preview build reads TEST and a production build reads
+    # production, and nothing on the pull request asked whether production
+    # carries what the tree needs. This job asks, against production, read
+    # only: every migration in supabase/migrations applied there, and the
+    # production scope of the Vercel store satisfying src/lib/env/manifest.mjs.
+    # scripts/guards/branch-protection-required.mjs fails the build if main
+    # stops requiring it.
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: prj_YIHLHcjuQfg4RmtNt7JekkcTVznJ
+      VERCEL_ORG_ID: team_yPo8T18zSl5VczJfWIIrNqly
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Production parity
+        run: node scripts/ops/production-parity.mjs
   test:
     name: test (vitest)
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}

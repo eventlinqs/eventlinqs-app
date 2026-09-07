@@ -113,6 +113,9 @@
  *   no-hardcoded-spacing      one spacing scale: no arbitrary padding, margin, gap or inset
  *                              off the 4px grid, in a utility, an inline style or a
  *                              stylesheet (close-out C14.12)
+ *   branch-protection-required main requires lint, test and production parity, holds admins,
+ *                              requires a pull request, no force push, no bypass actor
+ *                              (close-out C16.2.4)
  *   one-priority-image        a document preloads its LCP candidate and nothing else: every
  *                              priority grant is a named candidate, none reaches past the
  *                              first item (close-out C8)
@@ -232,13 +235,17 @@
  * would have stayed green while an entire class of regression stopped being
  * checked. That is the failure mode this comment exists to prevent recurring.
  *
- * preview-deployment-state: fails when the newest deployment for the current
- * branch is in ERROR. Added 9 August 2026 after feat/public-composer was found
- * with SIX consecutive preview builds in ERROR while tsc, eslint, 1839 tests
- * and nine guards all reported green, because none of them can see a bundler
- * failure. Skips loudly without a VERCEL_TOKEN rather than failing on every
- * machine without credentials, because a guard everyone disables protects
- * nothing. A skip is the honest state, not a pass.
+ * preview-deployment-state: fails when the deployment of the COMMIT UNDER TEST
+ * is in ERROR, and in CI waits for that deployment to settle first. Added
+ * 9 August 2026 after feat/public-composer was found with SIX consecutive
+ * preview builds in ERROR while tsc, eslint, 1839 tests and nine guards all
+ * reported green, because none of them can see a bundler failure. Rewritten
+ * 7 September 2026 (close-out C16) when it was found judging the PREVIOUS
+ * commit's deployment whenever the current one was still building, which is
+ * every successful merge. Skips loudly without a VERCEL_TOKEN or a Vercel CLI
+ * login rather than failing on every machine without credentials, because a
+ * guard everyone disables protects nothing. A skip is the honest state, not a
+ * pass.
  *
  * The resolution is deliberately structural rather than a longer `&&` chain.
  * `prebuild` now names ONE runner, and the list below is the single place a
@@ -772,6 +779,11 @@ const GUARDS = [
   // declares, and nothing else in the gate set could see one. Drilled red and
   // green in scripts/verify/guard-failure-drills.mjs.
   'scripts/guards/no-hardcoded-spacing.mjs',
+  // Close-out C16.2.4 (7 September 2026): branch protection on main must require
+  // the production parity check, hold admins to it, require a pull request and
+  // carry no bypass. Read back from GitHub on every build; SKIPS loudly with no
+  // credentials, judges in the CI job that carries GITHUB_TOKEN.
+  'scripts/guards/branch-protection-required.mjs',
   // Close-out C8 (6 September 2026): a document preloads its LCP candidate and
   // nothing else. Nine image preloads on the homepage were competing with the
   // render-blocking stylesheet on the mobile profile and first paint waited four

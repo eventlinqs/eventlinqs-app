@@ -849,13 +849,47 @@ const ROOT = join(HERE, '..', '..')
  * (6 September 2026), one file and ten tests: tests/unit/guards/no-hardcoded-spacing
  * (the 4px scale, tokens and relationships pass, every term of a shorthand is
  * judged, widths and heights are not spacing, and the live tree is clean):
- * 306 files / 3550. Close-out C8 (6 September 2026), one file and six tests:
- * tests/unit/guards/one-priority-image (a grant is recognised, a pass-through is
- * not, reach past the first item fails, an unlisted grant fails, a rotted list
- * entry fails, and the live tree is clean): 307 files / 3556.
+ * 306 files / 3550. Close-out C16
+ * (7 September 2026), two files and nine tests: tests/unit/ops/production-parity
+ * (a migration production lacks is pending; the production scope of the store is
+ * judged for a missing, forbidden, empty or malformed record, never carrying the
+ * value) and tests/unit/guards/branch-protection-required (every way main's
+ * protection can lose the merge gate): 308 files / 3559. Close-out C16, Law 10
+ * (7 September 2026), one file and nine tests: tests/unit/ops/apply-production-migrations
+ * (the founder's migration step as one command: nothing pending is nothing to
+ * do, a dry run stops, anything but the production ref is refused, the push
+ * carries no credential on its command line, the CLI rests on TEST last, and
+ * package.json routes the command through the Credential Manager helper), and
+ * two more in tests/unit/ops/production-parity (the Vercel CLI's own login is
+ * found in XDG order and a token near expiry is expired, so the environment
+ * half of the gate runs on a developer machine with no minted token), and one
+ * in tests/unit/guards/node-surface-inherited-members (the surface manifest
+ * records what process inherits as an EventEmitter, after process.on was
+ * reported as an API Node 24 lacks): 310 files / 3570, as the canary measured
+ * (the 3559 floor above had been set one below the suite's own count).
+ * Close-out C16, the deployment-state guard (7 September 2026), one file and
+ * eighteen tests: tests/unit/guards/preview-deployment-state (the commit under
+ * test on a push, on a pull request from the payload head and locally from
+ * git; READY, ERROR, BLOCKED, CANCELED, DELETED and the unsettled states; the
+ * race and the false green that the first version of the guard had, proven
+ * with a fake clock; the timeout; the creation grace; no wait outside CI; the
+ * v7 sha filter): 311 files / 3588, as the canary measured.
+ *
+ * Close-out C16, the founder's migration command (7 September 2026), four
+ * tests in tests/unit/ops/apply-production-migrations (askLine, the
+ * confirmation read: first line only, CRLF or LF; a closed stdin is a
+ * refusal; the prompt precedes the read; never readline, whose closed
+ * interface leaves a line read pending on the console that swallows the
+ * Enter meant for the CLI's own prompt): 311 files / 3592.
+ *
+ * Close-out C8 (6 September 2026, brought up to date after C16), one file and
+ * six tests: tests/unit/guards/one-priority-image (a grant is recognised, a
+ * pass-through is not, reach past the first item fails, an unlisted grant
+ * fails, a rotted list entry fails, and the live tree is clean): 312 files /
+ * 3598, as the canary measured.
  */
-const MIN_FILES = 307
-const MIN_TESTS = 3556
+const MIN_FILES = 312
+const MIN_TESTS = 3598
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
