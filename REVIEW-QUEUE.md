@@ -907,3 +907,59 @@ Search Console needs your login. Nothing in the repository can reach that.
 driven after the deploy; indexing-drive-production-before.txt and
 -after.txt, the same checker failing on the live site before and passing after;
 drive\prod-tags.md with captures at 390, 768 and 1440).
+
+### C19 again (8 September 2026): I checked my own work against the brief and had missed six things. Here they are, and what finding them turned up.
+
+**What happened.** After C19 merged I ran the self-audit the build brief requires:
+take the original text, break it into every separate instruction, and adjudicate
+each one against evidence rather than memory. Six instructions I had reported as
+covered were not covered. That is a real failure and it is the honest headline.
+
+**The six.** Your section asks four things about every page, and I answered three
+of them: I never checked whether a page is reachable by an internal link. It asks
+for copy that reflects the specific city, and I fixed the invisible description
+and left the visible page alone. It says "validate it, do not assume it" about the
+structured data, and I read the labels and stopped. It asks for every URL the
+platform has EVER published, and I drove the ones currently in the sitemap, which
+is an easier set. It says prove each check fails as well as passes, and two of my
+five had never once been seen failing. And it asks for a community page WITH
+events, which does not exist anywhere on the platform, so I drove a city page
+instead and did not say I had substituted it.
+
+**All six are done now, and doing them found six more faults I had shipped.**
+
+1. **488 of your 550 pages were telling Google "here is a list of events" and
+   then listing none.** An empty list is a worse signal than no list, and it was
+   on exactly the empty pages this whole item exists to stop advertising.
+2. A venue page was publishing an organiser with a blank name.
+3. **`/categories/gospel` was bouncing twice** (to `/community/gospel`, which
+   bounces again to `/faith/christian`). A double bounce is one of the five
+   things Search Console complained about. It goes straight there now.
+4. The test that was supposed to catch that double bounce was looking in one
+   file and the second bounce was in another. It looks in both now.
+5. **Nothing on the platform linked to your five faith pages.** Not one link,
+   anywhere, while the communities page's own subheading told visitors they were
+   browseable. They now have a "Faith and worship" section on that page.
+6. **Nothing linked to the 21 city browse pages or to any venue page either** -
+   not even from the event page that prints the venue's name. Both fixed. There
+   was even a component written years ago for the city one that was never put on
+   a page.
+
+**Why it matters more than it looks.** Since empty pages now leave the sitemap, a
+link is the only way in. A page nothing links to and that is not in the sitemap is
+invisible to Google entirely. So five faith pages, 21 browse pages and every venue
+page were about to become unreachable, and I would not have known.
+
+**What stops it happening again.** Three checks now run on every push, against a
+real running copy of the site: the indexing policy, the structured data, and
+whether every page we want ranked can actually be reached by a link. Each one was
+watched failing on the real fault before it was fixed.
+
+**Nothing changed for a visitor except three additions**, each captured at phone,
+tablet and desktop: a faith section on the communities page, the city's own
+sentence on the browse page, and the venue name on an event page becoming a link.
+Accessibility is zero violations on every one.
+
+**Evidence:** `docs/roast/c19-indexing-2026-09-08.md` in the repository is the
+full audit, every instruction with its verdict. Captures and check outputs are in
+`C:\dev\EVIDENCE\C19`.

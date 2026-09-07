@@ -648,3 +648,55 @@ The close-out names the platform-wide client shell as the cause on record and fo
 |---|---|---|
 | Confirm the indexing threshold of three published upcoming events, or name a different number | RESERVED: a judgement about how much content makes a page worth offering to Google, which is his call. It is one named constant (DISCOVERY_INDEXING_THRESHOLD) read by both the pages and the sitemap, so a change is one line and one gate run | none until decided |
 | Resubmit the sitemap in Search Console | SCRIPTED where a machine can: the sitemap regenerates itself and production already serves the new one at https://www.eventlinqs.com.au/sitemap.xml. IMPOSSIBLE for the rest: Search Console needs his authenticated session and no credential in this repository can reach it | none |
+
+## C19, THE ROAST PASS. Six requirements the first pass did not meet, and the six defects that finishing them uncovered (8 September 2026, session 41)
+
+The brief-roast gate was run against C19's own clauses AFTER the first pass merged
+as 9ac4d885. It found six requirements reported as covered that were not, so the
+C19 verdicts above are superseded on those six rows. The full ledger, every row
+adjudicated with the verdict and the evidence, is `docs/roast/c19-indexing-2026-09-08.md`.
+
+### The six requirements, now met
+
+| # | Requirement | What was wrong | Now | Evidence |
+|---|---|---|---|---|
+| C19.1, fourth clause | "whether it is reachable by internal links" | Never checked. Three of the clause's four questions were answered and the fourth was not mentioned | `scripts/verify/internal-reachability.mjs` crawls the host from its own entry points and reports every route family. It does not report a bare zero: it works out whether a zero means unlinked by design, no member published yet, a page 404ing behind a feature flag, or an orphan, and only the last fails | internal-reachability-production-final.txt (PASS), internal-reachability-local.txt |
+| C19.4 | "copy that reflects that specific community or city" | Only the meta description was fixed. The visible browse page still carried the city name and nothing else particular to it | The city catalogue's own hand-written `descriptor` is in the browse hero. It is a different field from the longer `editorial` /city/[slug] uses, so the two city surfaces are not copies of each other | drive\after-events-browse-melbourne-390/768/1440.jpg |
+| C19.4 | "Validate it, do not assume it" | Only the `@type` values were read, which proves a block exists and nothing about what it says | `scripts/verify/structured-data-validate.mjs` parses every block, applies the structural rules and the one cited required set (Google's breadcrumb page, updated 2025-12-10 UTC, fetched 2026-09-08; Organization has none, per its own page of 2026-04-15 UTC). It is a pre-push gate step | structured-data-production-final.txt (PASS), structured-data-production-all550.txt (the run that found the defect) |
+| C19.5 | "every URL the platform has EVER published" | The current sitemap was enumerated instead: a different and easier set | `scripts/verify/published-url-graveyard.mjs` builds the set the clause names from production's own database (every event with a slug that is not publicly visible, every event_tombstones row) plus the permanent-redirect table, and drives each. 2 not-live events both 404 and both deliberate; 0 deleted; 9 renamed all 308 | url-graveyard-production-final.txt (PASS) |
+| C19.6 | "Prove each fails as well as passes" | Two of the five driven rules had never been seen failing, because they only fire against a host in a broken state and nobody had made one | The five rules are pure functions in `scripts/verify/lib/indexing-rules.mjs`; `tests/unit/seo/indexing-rules.test.ts` drives all five in both directions, 21 tests | the test file, gate-pass-on-push-c19-roast.txt |
+| C19.7 | "one community page WITH events" | No community page anywhere held an event, so /city/melbourne was driven instead and reported without being named as a substitute | `scripts/verify/community-threshold-drive.mjs` publishes exactly DISCOVERY_INDEXING_THRESHOLD events carrying a real community tag on TEST, through the same table an organiser's publish writes to, and removes them again (0 rows remain, verified). Driven at 390, 768 and 1440: /community/african and /community/african/sydney index+follow, self-canonical, IN the sitemap, with CollectionPage; /community/greek in the same run noindex+follow, out of the sitemap, with NO CollectionPage | drive\threshold-tags.md and the twelve captures |
+
+### The six defects finishing them uncovered, all fixed before the merge
+
+| Defect | Measurement | Fix |
+|---|---|---|
+| 488 of the 550 published URLs emitted `itemListElement: []`: an ItemList asserting a list and listing nothing, on exactly the empty pages the threshold exists to stop advertising | structured-data-production-all550.txt, 976 faults across 488 pages | `EventCollectionJsonLd` returns null on an empty list, as /events already did, and the four hand-rolled copies (community, community-by-city, city, faith) gate their block the same way |
+| A venue page emitted `Organization.name: ""` for any event whose organisation join came back null, and a `/organisers/` URL with nothing after it | structured-data-local.txt, three faults on one venue | The organiser node is omitted rather than emitted empty |
+| `/categories/gospel` served a TWO-HOP redirect chain: 308 to /community/gospel, itself a 308 to /faith/christian. That is Search Console's "page with redirect" | url-graveyard-production.txt | It points straight at /faith/christian |
+| The unit test asserting "never to another redirect" was blind to that chain, because the second hop lives in `src/lib/communities/redirects.ts` and the test asked only its own module | tests/unit/seo/permanent-redirects.test.ts | It asks both redirect sources now, so a chain across the two cannot pass |
+| Five `/faith/[faith]` pages nothing on the platform linked to, on an index page whose own subheading already said they were browseable | internal-reachability-production.txt | A "Faith and worship" section on /communities, and the page's claim is true |
+| Twenty-one `/events/browse/[city]` pages and every `/venues/[handle]` profile unlinked. The component written for the first, `CityRailTile`, was never rendered anywhere; the second was unlinked even from the event page that prints the venue's name | internal-reachability-production.txt, -local.txt | A browse link on the city page and a venue link on the event page, the latter through `venueSlugify`, the same function the route resolves the handle with |
+
+### The roast pass against the COMPLETION LAW
+
+| Law | Verdict | Evidence |
+|---|---|---|
+| 1. Schema | NOT APPLICABLE. No migration | the diff |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc 0, eslint 0, 77 of 77 guards. The no-silent-catch guard caught four catches in the new reachability script and every one was given a voice | gate-pass-on-push-c19-roast.txt |
+| 3. Tests added, canary raised in the same commit | MET. One file, 21 tests (all five rules both ways); three rewritten redirect assertions. Canary 324/3680 to 325/3701, measured | scripts/guards/test-count-canary.mjs |
+| 4. Guard proven red and green | MET. 108 of 108 drills; the two rules that had never fired now fire in six separate shapes; the three driven checks are gate steps and each was seen failing on a real state before it was fixed | guard-failure-drills-c19-roast.txt, and the three "before" outputs |
+| 5. Driven at 390, 768 and 1440 | MET. Eleven surfaces across the threshold build and production: the community page above and below the threshold, the browse hero's new copy, the faith door, and the three production surfaces after the deploy | drive\threshold-tags.md, after-tags.md, prod-final-tags.md |
+| 6. Full regression green after the item | MET. Gate 14 of 14 in 2102 s; CI four required jobs SUCCESS; the advisory Lighthouse CI SUCCESS on the runner; axe-core zero at every impact level on the five changed surfaces at 390 and 1440 | gate-pass-on-push-c19-roast.txt, axe-c19-after.txt |
+| 7. Committed, no trailers, pushed, production deploys green | MET. 172144b5, no trailer; PR 138 draft then ready; squash-merged as 449311ae; production served sentry-release 449311ae within three minutes; CI on main SUCCESS; both post-deploy smokes SUCCESS | this ledger |
+| Fix every defect found before the next task | MET. All six, before the merge | the table above |
+
+### One red run on the way, read and not dismissed
+
+The second post-deploy smoke on the previous commit (run 34143506887, 9ac4d885)
+FAILED. The step log says `HTTP=000curl-failed`, which is the runner's own request
+failing, not an answer from the site: the FIRST smoke on the same commit succeeded
+two minutes earlier (run 34143360387), and at that time all 550 sitemap URLs and
+87 routes were being driven from here and every one answered 200. Both smokes on
+the merge commit 449311ae are green. Recorded rather than deleted, because a red
+run that is explained is still a red run somebody should be able to look up.

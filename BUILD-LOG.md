@@ -4383,3 +4383,50 @@ changed, and nothing was deleted.
   homepage; /community/african, /community/african/melbourne, /city/sydney and /events/browse/melbourne
   are noindex, self-canonical, out of the sitemap and still rendering their full page.
 - Cleanup: branch deleted locally and on the remote, .next removed (614 MB). 29.3 GB free.
+
+## 2026-09-08 06:20 to 10:40 (C19 roast, session 41) the self-audit found six missed requirements, and finishing them found six shipped defects
+
+- The brief-roast gate was run against C19's clauses AFTER the first pass merged. Phase 1 decomposed the
+  section into 34 rows; phase 2 adjudicated each against observed evidence. Three came back NOT MET
+  (internal-link reachability, the "ever published" URL set, a community page with events) and three
+  PARTIAL (visible city copy, validating the structured data, RULE 2 never seen failing). Ledger:
+  docs/roast/c19-indexing-2026-09-08.md.
+- The two interpretation drifts are named in the ledger because they are the pattern worth remembering:
+  I substituted "URLs currently in the sitemap" for "URLs the platform has ever published", and
+  "a templated page above the threshold" for "a community page with events", and reported the
+  substitutes without saying they were substitutes.
+- REACHABILITY. scripts/verify/internal-reachability.mjs crawls from the site's own entry points. Ten
+  route families had no internal link at all. It now classifies each zero rather than reporting it:
+  unlinked by design (recorded in UNLINKED_BY_DESIGN with a reason), no member published yet, 404 behind
+  a feature flag, every published event already ended (read from the pages' own dates, so it turns back
+  into a fault the day one live event exists), or ORPHAN, which fails. Three were orphans and were fixed.
+- STRUCTURED DATA. scripts/verify/structured-data-validate.mjs parses every block rather than reading its
+  type. Two claims it makes about required properties are cited to Google's own pages, fetched today; the
+  rest of the checks make no specification claim at all (parses, @context, no empty value, contiguous
+  ListItem positions, absolute URLs). Run across all 550 published URLs it found 976 faults on 488 pages:
+  every empty discovery page was emitting CollectionPage with mainEntity.ItemList and itemListElement: [].
+  Fixed in the shared component and in the four hand-rolled copies.
+- THE GRAVEYARD. scripts/verify/published-url-graveyard.mjs reads production through the Management API
+  (SELECT only) for every event with a slug that is not publicly visible and every event_tombstones row,
+  plus the permanent-redirect table, and drives each. Its first run drove the literal string
+  "/culture/:slug" and reported two failures for URLs that do not exist; the placeholders are filled from
+  the platform's own lists now. Its real finding: /categories/gospel served a two-hop chain.
+- THE RULES. The five driven rules moved into scripts/verify/lib/indexing-rules.mjs as pure functions
+  because two of them could not otherwise be shown failing. 21 tests drive all five both ways.
+- THE COMMUNITY PAGE WITH EVENTS. scripts/verify/community-threshold-drive.mjs publishes exactly the
+  threshold number of events carrying a real community tag on TEST, from a template row read off the
+  database rather than a hand-written column list (the first attempt guessed the schema and earned a
+  23502 on created_by), and removes them again. Driven at three viewports: african index+follow and in
+  the sitemap, greek noindex and out of it, in the same run.
+- The no-silent-catch guard caught four catches in the new reachability script. Every one was given a
+  voice rather than an exemption.
+- Gate GREEN 14 of 14 in 2102 s. The indexing step now runs three checks against the build. PR 138 draft
+  then ready; CI four required jobs SUCCESS; Lighthouse CI SUCCESS; squash-merged as 449311ae; production
+  served it within three minutes; CI on main SUCCESS; both post-deploy smokes SUCCESS.
+- One red run on the way, read rather than dismissed: the second post-deploy smoke on 9ac4d885 failed with
+  HTTP=000curl-failed, which is the runner's own request failing. The first smoke on the same commit
+  succeeded two minutes earlier, and 550 sitemap URLs plus 87 routes were being driven from here at the
+  time, all 200. Recorded in the ledger.
+- After the deploy, on production: the three driven checks PASS, the graveyard PASSES, all 550 previously
+  published URLs still answer 200, and /events/browse/melbourne and /faith/christian now carry no empty
+  CollectionPage. Branch deleted, .next removed, 28.6 GB free.
