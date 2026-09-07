@@ -804,3 +804,54 @@ appears as a fact rather than as prose nobody re-measured.
 | Step | Verdict | Command |
 |---|---|---|
 | Apply 20260908000001, 20260908000002 and 20260908000003 to production | RESERVED by the constitution and by his ruling of 26 August 2026 | `npm run migrate:production` |
+
+### C10 THE ROAST PASS: one clause done not at all, and the rule that now refuses it (8 September 2026, session 42)
+
+The brief-roast gate was run against C10's own clauses AFTER both gaps were built.
+34 requirements were decomposed and adjudicated. The full ledger, with the
+adversarial pass, is `docs/roast/c10-scope-audit-2026-09-08.md`.
+
+| # | Clause | First-pass verdict | Now |
+|---|---|---|---|
+| 12 | C10.4 "Mark it OWNER BLOCKED" | NOT MET | Four rows carry the state |
+| 13 | C10.4 "name exactly what is needed, in one sentence" | NOT MET | Each carries its sentence, and the harness refuses a row without one |
+
+**The drift, named because it is the pattern worth remembering.** I read C10.2's
+four states as the complete set and never reached for the fifth, even while
+writing a note that said "OWNER BLOCKED in substance" with PARTIAL beside it.
+Writing the words and not using the state is exactly the substitution this gate
+exists to catch.
+
+**The four, each with the one thing only the owner can supply**
+
+| Section | Needed |
+|---|---|
+| 1.4 Target Markets | An entity and a tax registration in the United States and the United Kingdom |
+| 2.6.1 Monitoring Stack | A PostHog project and key. The section names PostHog; Plausible is what is wired, which is why 3.17's conversion rate cannot be computed |
+| 4.4 Compliance Roadmap | An engaged external auditor for SOC 2 and ISO 27001 |
+| 9 Final Deliverables | Authorisation to commission a penetration test, an OWASP Top 10 audit and a formal WCAG 2.1 AA audit |
+
+Two further candidates were left PARTIAL deliberately: 3.10 needs a hosted
+Meilisearch instance and 3.14.1 needs an SMS provider, but each has substantial
+buildable work beside it, so blocking the whole section would overstate it.
+
+**The rule, drilled three ways.** The harness fails when a row is OWNER BLOCKED
+without saying what is needed, when it says it in more than one sentence, or when
+it names an owner need under any other state, which is how a blocker gets buried
+in a note nobody acts on. Each drill fires and the tree is green restored.
+
+**Also removed.** The `unread` probe kind, which is how C10-G1 was evidenced. Its
+job moved to `scripts/guards/no-op-control.mjs`, which asks the same question on
+every build and BLOCKS where a probe only reported. A probe kept alive for a
+closed gap is dead code pretending to be coverage.
+
+### What C10 is, honestly, after the roast
+
+| Clause | Verdict |
+|---|---|
+| C10.1 enumerate every section from the file | MET, 101, cross-checked against an independent count of the same file |
+| C10.2 true state with driven evidence | MET, 183 probes, all driven against production, all passing |
+| C10.3 build every PARTIAL or NOT BUILT section | REFUSED ON INSTRUCTION. 60 sections qualify and 2 were built. L2 item 8 narrows this phase to launch-affecting gaps, and both of those are built. This is stated plainly rather than implied away |
+| C10.4 OWNER BLOCKED, named | MET after the roast, and now guarded |
+| L2 item 8 build every launch-affecting gap | MET, both |
+| L2 item 8 name everything else for the queue | MET, one row per section with its own note |

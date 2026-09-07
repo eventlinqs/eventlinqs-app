@@ -1149,3 +1149,39 @@ Both gaps that block a launch journey are now built. The rest of the scope audit
 is written down by name for after launch. Nothing here can reach the live site
 until you run that one command, because the platform refuses to build against a
 database that is behind its own code.
+
+## C10, the self-audit. One instruction I had missed completely (8 September 2026)
+
+After building both gaps I ran the roast gate against C10's own wording, which is
+the step that exists to catch me reporting something as finished when part of it
+was quietly dropped. It caught one.
+
+C10 has a clause saying that when a section cannot be finished because it needs
+something only YOU can supply, it must be marked OWNER BLOCKED and say in one
+sentence what is needed, rather than being lumped in with everything else as
+"partly built". I had used four labels and never reached for that one. Six
+sections that genuinely need you were all filed as "partly built", and in one of
+them I had literally written the words "owner blocked in substance" while the
+label beside it said something else.
+
+That is the difference between a list you can act on and a list you cannot, so it
+mattered.
+
+**Four things are now waiting on you, and they are all outside the code:**
+
+1. **Overseas markets.** The United States and the United Kingdom need a company
+   and a tax registration in each. Nothing I write can create those.
+2. **PostHog.** The scope names PostHog for product analytics and the platform
+   runs Plausible. This is why the specific conversion rate your scope defines
+   (checkouts started, divided by event page views) cannot be reported today. It
+   needs a PostHog account and key.
+3. **SOC 2 and ISO 27001.** These are certificates an external auditor issues.
+4. **The security and accessibility audits.** A penetration test, an OWASP Top 10
+   review and a formal accessibility audit are reports a third party signs.
+
+None of these blocks the launch. They are recorded so they stop being invisible.
+
+I also added a rule so this cannot happen again: the audit now refuses to run if
+something is marked as waiting on you without saying what is needed, or if it
+says what is needed while pretending not to be waiting on you. I tested that rule
+three ways and watched it refuse each time.
