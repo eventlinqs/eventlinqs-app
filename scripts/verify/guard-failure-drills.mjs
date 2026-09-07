@@ -183,6 +183,47 @@ const DRILLS = [
     expect: 'required status checks are missing',
   },
   /*
+   * vercelignore-covers-guard-reads (close-out C18 FINAL), two drills: the approved
+   * record's re-inclusion lost from .vercelignore, and a build-time guard naming a
+   * docs/ path that is neither required-and-re-included nor in a reviewed file.
+   */
+  {
+    name: 'the approved record is excluded from the Vercel upload again',
+    guard: `${GUARDS}/vercelignore-covers-guard-reads.mjs`,
+    file: '.vercelignore',
+    find: '!docs/scope/community-layer-approved.json',
+    replace: '!docs/scope/community-layer-approved.json.retired',
+    expect: 'docs/scope/community-layer-approved.json is EXCLUDED by .vercelignore',
+  },
+  {
+    name: 'a build-time guard reads a docs path nobody re-included',
+    guard: `${GUARDS}/vercelignore-covers-guard-reads.mjs`,
+    file: 'scripts/guards/community-layer-protected.mjs',
+    find: "const APPROVED = 'docs/scope/community-layer-approved.json'",
+    replace: "const APPROVED = 'docs/scope/community-layer-approved-v2.json'",
+    expect: 'docs/scope/community-layer-approved-v2.json is read by scripts/guards/community-layer-protected.mjs',
+  },
+  /*
+   * community-layer-protected (close-out C18 FINAL), two drills: a faith page lost
+   * from the source, and an approved community left unrecorded.
+   */
+  {
+    name: 'a faith page leaves the source',
+    guard: `${GUARDS}/community-layer-protected.mjs`,
+    file: 'src/lib/faiths/data.ts',
+    find: "    slug: 'jewish',",
+    replace: "    slug: 'jewish-x',",
+    expect: 'the approved jewish is missing',
+  },
+  {
+    name: 'a community is shipped but not recorded in the approved file',
+    guard: `${GUARDS}/community-layer-protected.mjs`,
+    file: 'docs/scope/community-layer-approved.json',
+    find: '    { "slug": "other-european", "name": "Other European", "tier": 1, "heritageOrder": 21 }',
+    replace: '    { "slug": "other-european-recorded-elsewhere", "name": "Other European", "tier": 1, "heritageOrder": 21 }',
+    expect: 'other-european is in src/lib/communities/data.ts but not recorded',
+  },
+  /*
    * geocoding-never-silent-null (close-out C9), two drills: the rule made to
    * allow the production case, and the create action's call removed.
    */

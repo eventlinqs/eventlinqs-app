@@ -1,0 +1,81 @@
+{
+  "_what": "THE APPROVED TAXONOMY OF THE COMMUNITY LAYER AND THE EVENT CATEGORIES, machine readable. Close-out C18 FINAL, 7 September 2026, owner decision of that day: the community layer is an approved, deliberate feature added during the build and it stays; nothing is removed; where the platform is ahead of the scope the scope is updated, where the scope is ahead the platform is built. This file is the one list scripts/guards/community-layer-protected.mjs judges the source and the database against, and docs/EventLinqs_Scope_v5-Addendum-A-Community-Layer.md is its prose. Enumerated on 7 September 2026 from src/lib/communities/data.ts (the list every live surface reads), src/lib/faiths/data.ts, src/lib/hero-categories.ts and public.event_categories on production (read only), never typed from memory.",
+  "approved": "APPROVED BY OWNER, added during build, September 2026",
+  "communities": [
+    { "slug": "aboriginal-torres-strait-islander", "name": "Aboriginal & Torres Strait Islander", "tier": 1, "heritageOrder": 1 },
+    { "slug": "african", "name": "African", "tier": 1, "heritageOrder": 2 },
+    { "slug": "caribbean", "name": "Caribbean", "tier": 1, "heritageOrder": 3 },
+    { "slug": "indian", "name": "Indian", "tier": 1, "heritageOrder": 4 },
+    { "slug": "chinese", "name": "Chinese", "tier": 1, "heritageOrder": 5 },
+    { "slug": "filipino", "name": "Filipino", "tier": 1, "heritageOrder": 6 },
+    { "slug": "latin-american", "name": "Latin American", "tier": 1, "heritageOrder": 7 },
+    { "slug": "vietnamese", "name": "Vietnamese", "tier": 1, "heritageOrder": 8 },
+    { "slug": "lebanese-levantine", "name": "Lebanese & Levantine", "tier": 1, "heritageOrder": 9 },
+    { "slug": "greek", "name": "Greek", "tier": 1, "heritageOrder": 10 },
+    { "slug": "italian", "name": "Italian", "tier": 1, "heritageOrder": 11 },
+    { "slug": "korean", "name": "Korean", "tier": 1, "heritageOrder": 12 },
+    { "slug": "japanese", "name": "Japanese", "tier": 1, "heritageOrder": 13 },
+    { "slug": "pacific-pasifika", "name": "Pacific / Pasifika", "tier": 1, "heritageOrder": 14 },
+    { "slug": "maori", "name": "Maori", "tier": 1, "heritageOrder": 15 },
+    { "slug": "persian-iranian", "name": "Persian / Iranian", "tier": 1, "heritageOrder": 16 },
+    { "slug": "turkish", "name": "Turkish", "tier": 1, "heritageOrder": 17 },
+    { "slug": "arab", "name": "Arab", "tier": 1, "heritageOrder": 18 },
+    { "slug": "other-south-asian", "name": "Other South Asian", "tier": 1, "heritageOrder": 19 },
+    { "slug": "other-east-southeast-asian", "name": "Other East & Southeast Asian", "tier": 1, "heritageOrder": 20 },
+    { "slug": "other-european", "name": "Other European", "tier": 1, "heritageOrder": 21 }
+  ],
+  "communityCityMatrix": {
+    "_what": "Every community has a page for every city in src/lib/cities/data.ts getAllCities(): 21 x 20 = 420 pages at /community/[community]/[city], all published in the sitemap.",
+    "cities": ["sydney", "melbourne", "brisbane", "perth", "adelaide", "gold-coast", "canberra", "hobart", "newcastle", "wollongong", "geelong", "townsville", "cairns", "darwin", "sunshine-coast", "bendigo", "ballarat", "albury", "launceston", "toowoomba"]
+  },
+  "faiths": {
+    "pages": [
+      { "slug": "christian", "name": "Christian" },
+      { "slug": "muslim", "name": "Muslim" },
+      { "slug": "hindu", "name": "Hindu" },
+      { "slug": "buddhist", "name": "Buddhist" },
+      { "slug": "jewish", "name": "Jewish" }
+    ],
+    "filterOnly": [
+      { "slug": "sikh", "name": "Sikh" },
+      { "slug": "bahai", "name": "Baha'i" },
+      { "slug": "spiritual", "name": "Spiritual & Interfaith" }
+    ]
+  },
+  "categories": {
+    "_what": "public.event_categories, the platform's real category taxonomy (22 slugs on production and TEST, identical), each forwarded by /categories/[slug] to /events?category=[slug]. inScopeV5 names the Scope v5 line 351 category the slug implements; null marks an approved addition beyond the scope.",
+    "rows": [
+      { "slug": "music", "name": "Music", "inScopeV5": "Music" },
+      { "slug": "sports", "name": "Sports", "inScopeV5": "Sports" },
+      { "slug": "arts-community", "name": "Arts", "inScopeV5": "Arts & Culture", "note": "RENAMED on the platform: the second word of the scope's name is banned in every form (CLAUDE.md, Copy and banned content); the slug and the name were changed on 26 August 2026 and are reported here, not changed again" },
+      { "slug": "food-drink", "name": "Food & Drink", "inScopeV5": "Food & Drink" },
+      { "slug": "business-networking", "name": "Business & Networking", "inScopeV5": "Business & Networking" },
+      { "slug": "education", "name": "Education", "inScopeV5": "Education" },
+      { "slug": "charity", "name": "Charity", "inScopeV5": "Charity" },
+      { "slug": "nightlife", "name": "Nightlife", "inScopeV5": "Nightlife" },
+      { "slug": "comedy", "name": "Comedy", "inScopeV5": null },
+      { "slug": "family", "name": "Family", "inScopeV5": "Family" },
+      { "slug": "technology", "name": "Technology", "inScopeV5": "Technology" },
+      { "slug": "religion", "name": "Religion", "inScopeV5": "Religion" },
+      { "slug": "fashion", "name": "Fashion", "inScopeV5": "Fashion" },
+      { "slug": "health-wellness", "name": "Health & Wellness", "inScopeV5": "Health & Wellness" },
+      { "slug": "community", "name": "Community", "inScopeV5": "Community" },
+      { "slug": "festival", "name": "Festival", "inScopeV5": null },
+      { "slug": "film", "name": "Film", "inScopeV5": null },
+      { "slug": "other", "name": "Other", "inScopeV5": "Other" },
+      { "slug": "pride", "name": "Pride", "inScopeV5": null },
+      { "slug": "european", "name": "European", "inScopeV5": null },
+      { "slug": "middle-eastern", "name": "Middle Eastern", "inScopeV5": null },
+      { "slug": "pacific", "name": "Pacific", "inScopeV5": null }
+    ],
+    "scopeV5Line351": ["Music", "Sports", "Arts & Culture", "Food & Drink", "Business & Networking", "Education", "Charity", "Nightlife", "Family", "Technology", "Religion", "Fashion", "Health & Wellness", "Community", "Other"]
+  },
+  "heroCategories": {
+    "_what": "src/lib/hero-categories.ts, seven editorial slugs bound to /categories/[slug]; six are permanently redirected to a community page by next.config.ts and one (networking) renders its own landing page. Kept as they are.",
+    "slugs": ["afrobeats", "amapiano", "gospel", "owambe", "caribbean", "heritage-and-independence", "networking"]
+  },
+  "legacyDatabaseTable": {
+    "_what": "public.communities holds 14 rows (african, south-asian, caribbean, latin, east-asian, filipino, mediterranean, middle-eastern, european, pacific, gospel, comedy, wellness, pride) that predate the 21-community layer. Nothing in src reads it (checked 7 September 2026: no from('communities') in the application). It is recorded here and left alone; whether it is retired is the owner's decision.",
+    "rows": ["african", "south-asian", "caribbean", "latin", "east-asian", "filipino", "mediterranean", "middle-eastern", "european", "pacific", "gospel", "comedy", "wellness", "pride"]
+  }
+}
