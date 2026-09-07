@@ -56,6 +56,12 @@ export const EVENT_DATA_CACHE_TAGS = [
   'cities-index',
   /** The communities index page: per-community event counts. 5m. */
   'communities-index',
+  /**
+   * loadDiscoveryRows: the dimension columns of every publicly visible event,
+   * from which src/lib/seo/indexing-policy.ts decides whether a templated
+   * discovery page is indexable and whether the sitemap publishes it. 5m.
+   */
+  'discovery-indexability',
 ] as const
 
 export type EventDataCacheTag = (typeof EVENT_DATA_CACHE_TAGS)[number]

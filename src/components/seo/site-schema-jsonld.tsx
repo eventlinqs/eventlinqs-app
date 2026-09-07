@@ -1,5 +1,5 @@
 /**
- * Schema.org WebSite + Organization JSON-LD for the homepage (Batch 9).
+ * Schema.org WebSite + Organization JSON-LD, SITE WIDE.
  *
  * Two payloads in a single block:
  *
@@ -12,15 +12,19 @@
  *      logo. Google's organisation rich-results pipeline reads this
  *      to populate the brand panel for "EventLinqs" branded queries.
  *
- * Per the Batch 9 V2 brief this is the SEO launch blocker for the
- * homepage.
+ * MOVED OUT OF THE HOMEPAGE, 8 September 2026 (close-out C19.4, which requires
+ * "Organization and WebSite site wide"). It rendered on `/` alone from Batch 9
+ * until then, so every other page on the platform, including every event page
+ * and every community page a search result actually lands on, carried no
+ * publisher identity at all. It is rendered once by src/app/layout.tsx and must
+ * not be rendered again by a page: two copies of an Organization node is the
+ * ambiguity the markup exists to remove.
  */
-
 interface Props {
   baseUrl: string
 }
 
-export function HomeSchemaJsonLd({ baseUrl }: Props) {
+export function SiteSchemaJsonLd({ baseUrl }: Props) {
   const website = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',

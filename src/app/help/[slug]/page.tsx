@@ -4,6 +4,7 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { getHelpTopic, helpTopics } from '@/lib/help-content'
+import { noIndexMetadata } from '@/lib/seo/indexing-policy'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -16,10 +17,15 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const topic = getHelpTopic(slug)
-  if (!topic) return { title: 'Not Found | Help Centre | EventLinqs' }
+  if (!topic) return { title: 'Not Found | Help Centre | EventLinqs', ...noIndexMetadata() }
   return {
     title: `${topic.title} | Help Centre | EventLinqs`,
     description: topic.description,
+    // THE CANONICAL THAT WAS MISSING. Without it these seven pages inherited
+    // the root layout's `alternates: { canonical: '/' }` and told Google the
+    // canonical version of each help topic was the HOMEPAGE, while sitting in
+    // the sitemap as indexable. See src/lib/seo/indexing-policy.ts.
+    alternates: { canonical: `/help/${topic.slug}` },
   }
 }
 

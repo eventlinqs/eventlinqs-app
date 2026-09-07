@@ -96,6 +96,7 @@ export const LHCI_SPEC = '@lhci/cli@0.15.1'
 const TMP = join(ROOT, '.tmp')
 const GATE_URLS = join(TMP, 'gate-urls.txt')
 const SERVER_LOG = join(TMP, 'gate-server.log')
+const INDEXING_LOG = join(TMP, 'gate-indexing-server.log')
 const LHCI_DIR = join(ROOT, '.lighthouseci')
 const ZERO_SHA = /^0{40}$/
 
@@ -430,6 +431,48 @@ function collectLikeLhci(urls, env) {
  * Every script here is the one the workflow runs; the only substitution is the
  * host.
  */
+/**
+ * THE INDEXING POLICY, DRIVEN AGAINST THIS BUILD (close-out C19).
+ *
+ * scripts/guards/indexing-policy.mjs reads the source and runs in the guard
+ * registry above. It cannot see what a RUNNING page emits, and the defect that
+ * started C19 was exactly that: the pages all declared correct-looking metadata
+ * and Next's field-by-field merge published the homepage as the canonical of 57
+ * of them. Only a fetch shows that, so this serves the production build and
+ * reads the tags off the responses.
+ *
+ * Its own server, deliberately, rather than sharing the Lighthouse step's: a
+ * step that fails should name the thing that failed, and folding two unrelated
+ * checks into one line is how a red gate becomes hard to read.
+ */
+async function runIndexingDrive(env) {
+  if (!existsSync(join(ROOT, '.next', 'BUILD_ID'))) {
+    console.error('[gate] no production build under .next (no BUILD_ID). The build step produces it; run the whole gate.')
+    return 1
+  }
+  mkdirSync(TMP, { recursive: true })
+  const appPort = await freePort()
+  const base = `http://127.0.0.1:${appPort}`
+  const fd = openSync(INDEXING_LOG, 'w')
+  const server = spawn(NODE, ['node_modules/next/dist/bin/next', 'start', '--port', String(appPort)], {
+    cwd: ROOT,
+    env: { ...env, PORT: String(appPort), EMAIL_TRANSPORT: 'console' },
+    stdio: ['ignore', fd, fd],
+  })
+  try {
+    const notUp = await waitForServer(base, server, 120_000)
+    if (notUp) {
+      console.error(`[gate] ${notUp}. Server log tail (.tmp/gate-indexing-server.log):`)
+      console.error(tailOf(INDEXING_LOG))
+      return 1
+    }
+    return exec(NODE, ['scripts/verify/indexing-drive.mjs', base], env)
+  } finally {
+    killTree(server)
+    closeSync(fd)
+  }
+}
+
 async function runLighthouse(env) {
   if (!existsSync(join(ROOT, '.next', 'BUILD_ID'))) {
     console.error('[gate] no production build under .next (no BUILD_ID). The build step produces it; run the whole gate.')
@@ -608,6 +651,14 @@ export const STEPS = [
     mirrors: ['npm run build'],
     env: 'local',
     run: (env) => exec(NODE, [NPM_CLI, 'run', 'build'], env),
+  },
+  {
+    id: 'indexing',
+    ci: 'local only: the driven half of close-out C19 (the static half is a registered guard, so CI runs it in the build)',
+    title: 'the indexing policy driven against this build: canonicals, robots and the sitemap',
+    mirrors: [],
+    env: 'local',
+    run: runIndexingDrive,
   },
   {
     id: 'lighthouse',

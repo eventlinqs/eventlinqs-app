@@ -7,6 +7,7 @@ import EventDetailPage, {
 } from '@/app/events/[slug]/page'
 import { recordShortLinkClick, resolveShortCode } from '@/lib/broadcast/resolve-short-link'
 import { validateExternalTicketUrl } from '@/lib/broadcast/external-destination'
+import { aliasMetadata } from '@/lib/seo/indexing-policy'
 
 /**
  * THE SHARE ADDRESS: /e/[code].
@@ -73,7 +74,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // canonical address of an event is /events/[slug], and a second indexable
   // copy per channel would split it.
   const meta = await eventMetadata({ params: Promise.resolve({ slug: link.slug }) })
-  return { ...meta, robots: { index: false, follow: true } }
+  // aliasMetadata names the event page explicitly rather than inheriting its
+  // canonical through the spread, so what this route claims about itself is
+  // readable here and checkable by scripts/guards/indexing-policy.mjs.
+  return { ...meta, ...aliasMetadata(`/events/${link.slug}`) }
 }
 
 export default async function ShareLinkPage({ params }: Props) {

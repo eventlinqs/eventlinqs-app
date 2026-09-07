@@ -1,4 +1,7 @@
 import type { Metadata } from 'next'
+import { getCity } from '@/lib/cities/data'
+import { loadDiscoveryRows, countCity } from '@/lib/seo/discovery-counts'
+import { discoveryIndexing } from '@/lib/seo/indexing-policy'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
@@ -59,11 +62,32 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: 'City not found | EventLinqs' }
   }
   const title = `Events in ${city.city} | EventLinqs`
-  const description = `Discover upcoming events, concerts, and experiences in ${city.city}, ${city.country}. All-in pricing, guest checkout, no hidden fees.`
+  /*
+   * A DESCRIPTION THAT IS ABOUT THIS CITY, NOT A NOUN SWAP.
+   *
+   * It used to read "Discover upcoming events, concerts, and experiences in
+   * ${city}, ${country}. All-in pricing, guest checkout, no hidden fees." on all
+   * 21 of these pages, which is close-out C19.4's boilerplate-with-a-swapped-noun
+   * verbatim, and it is one of the reasons Google collapsed the family.
+   *
+   * The city catalogue already carries a hand-written one-sentence `descriptor`
+   * per city (src/lib/cities/data.ts) and 20 of the 21 browse cities have one.
+   * It leads here. It is NOT the same text as /city/[slug], which describes
+   * itself from the longer `editorial` field, so the two city surfaces do not
+   * become duplicates of each other while being de-duplicated from the rest.
+   */
+  const record = getCity(city.slug)
+  const description = record
+    ? `${record.descriptor} Browse every event on in ${city.city}, ${record.state}, with all-in pricing.`.slice(0, 155)
+    : `Upcoming events, concerts and experiences in ${city.city}, ${city.country}, with all-in pricing.`
+
+  // INDEXABLE ONLY WHILE IT HOLDS EVENTS (close-out C19.3).
+  const eventCount = countCity(await loadDiscoveryRows(), city.city)
+
   return {
     title,
     description,
-    alternates: { canonical: `/events/browse/${city.slug}` },
+    ...discoveryIndexing(eventCount, `/events/browse/${city.slug}`),
     openGraph: {
       title,
       description,

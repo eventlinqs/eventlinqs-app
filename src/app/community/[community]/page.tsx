@@ -1,5 +1,7 @@
 import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
+import { loadDiscoveryRows, countCommunity } from '@/lib/seo/discovery-counts'
+import { discoveryIndexing } from '@/lib/seo/indexing-policy'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
@@ -39,11 +41,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = community.heroBody.slice(0, 155)
   const title = `${community.displayName} events in your city | EventLinqs`
 
+  // INDEXABLE ONLY WHILE IT HOLDS EVENTS (close-out C19.3). 21 of these pages
+  // and 420 of their city variants were in the sitemap holding nothing, which is
+  // what Google collapsed as duplicates.
+  const eventCount = countCommunity(await loadDiscoveryRows(), community.slug)
   return {
     title,
     description,
     keywords: community.keywords,
-    alternates: { canonical: `/community/${community.slug}` },
+    ...discoveryIndexing(eventCount, `/community/${community.slug}`),
     openGraph: {
       title,
       description,

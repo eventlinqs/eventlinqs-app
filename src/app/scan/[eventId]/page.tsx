@@ -1,9 +1,20 @@
+import type { Metadata } from 'next'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Scanner } from '@/components/features/scanner/scanner'
+import { noIndexMetadata } from '@/lib/seo/indexing-policy'
 
 export const dynamic = 'force-dynamic'
+
+// The door scanner is staff only and NEVER indexable
+// (src/lib/seo/indexing-policy.ts). It declared no robots directive until
+// 8 September 2026, so it inherited the root layout's index, follow. It is
+// not in robots.txt's disallow list either, so nothing anywhere said no.
+export const metadata: Metadata = {
+  title: 'Door check-in | EventLinqs',
+  ...noIndexMetadata(),
+}
 
 type Props = { params: Promise<{ eventId: string }> }
 

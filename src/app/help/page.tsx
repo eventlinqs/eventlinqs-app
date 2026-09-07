@@ -14,6 +14,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
 import { AssistantPanel } from '@/components/ai/assistant-panel'
 import { helpTopics } from '@/lib/help-content'
+import { getSiteUrl } from '@/lib/site-url'
 import type { ComponentType } from 'react'
 
 const POPULAR_QUESTIONS: { topicSlug: string; q: string }[] = [
@@ -85,8 +86,45 @@ const TOPICS: HelpTopic[] = [
 ]
 
 export default function HelpPage() {
+  /*
+   * ItemList FOR THE HELP CENTRE (close-out C19.4: "ItemList on listing pages").
+   *
+   * Driven on production on 8 September 2026, /help and every /help/[slug] topic
+   * carried NO structured data at all, while sitting in the sitemap as
+   * indexable. The help centre is one of the two compounding organic surfaces
+   * this platform owns (the other is the guides, which already emit Article),
+   * because it answers the long-tail questions a ticket buyer types in full.
+   *
+   * ItemList of the topics with position, name, description and URL. No FAQPage
+   * node: Google restricted FAQ rich results to authoritative government and
+   * health sites in August 2023
+   * (https://developers.google.com/search/blog/2023/08/howto-faq-changes,
+   * fetched 8 September 2026), so claiming it here would earn nothing and would
+   * be markup written for a result that no longer exists.
+   */
+  const baseUrl = getSiteUrl()
+  const itemList = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'EventLinqs help centre',
+    description: 'Answers for organisers and ticket buyers, by topic.',
+    numberOfItems: helpTopics.length,
+    itemListElement: helpTopics.map((topic, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: topic.title,
+      description: topic.description,
+      url: `${baseUrl}/help/${topic.slug}`,
+    })),
+  }
+
   return (
     <PageShell>
+      <script
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }}
+      />
       <PageHero
         eyebrow="HELP CENTRE"
         title="How can we help?"

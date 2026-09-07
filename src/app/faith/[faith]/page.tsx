@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { loadDiscoveryRows, countFaith } from '@/lib/seo/discovery-counts'
+import { discoveryIndexing } from '@/lib/seo/indexing-policy'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
@@ -38,11 +40,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!faith) return { title: 'Not Found | EventLinqs' }
   const title = `${faith.displayName} events | EventLinqs`
   const description = faith.heroBody.slice(0, 155)
+  // INDEXABLE ONLY WHILE IT HOLDS EVENTS (close-out C19.3).
+  const eventCount = countFaith(await loadDiscoveryRows(), faith.slug)
   return {
     title,
     description,
     keywords: faith.keywords,
-    alternates: { canonical: `/faith/${faith.slug}` },
+    ...discoveryIndexing(eventCount, `/faith/${faith.slug}`),
     openGraph: { title, description, url: `/faith/${faith.slug}`, type: 'website' },
     twitter: { card: 'summary_large_image', title },
   }

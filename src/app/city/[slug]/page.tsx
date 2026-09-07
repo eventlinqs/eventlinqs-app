@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { loadDiscoveryRows, countCity } from '@/lib/seo/discovery-counts'
+import { discoveryIndexing } from '@/lib/seo/indexing-policy'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
@@ -44,11 +46,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = `Things to do in ${city.name} | EventLinqs`
   const description = city.editorial.slice(0, 155)
+  // INDEXABLE ONLY WHILE IT HOLDS EVENTS (close-out C19.3). The canonical is
+  // self-referencing in both states; only the robots directive moves.
+  const eventCount = countCity(await loadDiscoveryRows(), city.name)
   return {
     title,
     description,
     keywords: city.keywords,
-    alternates: { canonical: `/city/${city.slug}` },
+    ...discoveryIndexing(eventCount, `/city/${city.slug}`),
     openGraph: { title, description, url: `/city/${city.slug}`, type: 'website', images: ['/opengraph-image'] },
   }
 }

@@ -6,6 +6,7 @@ import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
 import { HeaderScrollSentinel } from '@/components/layout/header-scroll-sentinel'
 import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
+import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
 import { ReferralCapture } from '@/components/growth/referral-capture'
 import { getSiteUrl } from '@/lib/site-url'
 
@@ -74,7 +75,24 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: 'EventLinqs | The ticketing platform built for every community',
   description: 'Every community. Every event. One platform. Browse Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and more. All-in pricing, no surprise fees.',
-  alternates: { canonical: '/' },
+  /*
+   * NO `alternates` HERE, DELIBERATELY, AND IT MUST NEVER COME BACK.
+   *
+   * This block used to carry `alternates: { canonical: '/' }`. Next merges
+   * metadata FIELD BY FIELD, so every page that did not declare its own
+   * `alternates` inherited it and published `<link rel="canonical"
+   * href="https://www.eventlinqs.com.au">` - the HOMEPAGE - as the canonical
+   * version of itself. Driven on production on 8 September 2026: 57 routes did
+   * exactly that, and seven of them (every /help/[slug] topic) were indexable
+   * AND in the sitemap. Google Search Console reported it back as "duplicate,
+   * Google chose different canonical than user" and "alternate page with proper
+   * canonical tag".
+   *
+   * The homepage now declares its own canonical in src/app/page.tsx, and
+   * src/lib/seo/indexing-policy.ts records what every other route must declare.
+   * scripts/guards/indexing-policy.mjs fails the build if this file declares a
+   * canonical again, or if an indexable page stops declaring one.
+   */
   robots: {
     index: true,
     follow: true,
@@ -181,6 +199,9 @@ export default function RootLayout({
         {/* Brand duotone filter (Batch 10) - referenced by any media
          *  surface via filter:url(#brand-duotone). Renders 0x0 hidden. */}
         <DuotoneFilterDefs />
+        {/* Organization + WebSite, site wide (close-out C19.4). Rendered here
+         *  and nowhere else, so no page can emit a second copy. */}
+        <SiteSchemaJsonLd baseUrl={SITE_URL} />
         <HeroPresenceProvider>
           <HeaderScrollSentinel />
           <div id="main-content" className="pb-16 md:pb-0">
