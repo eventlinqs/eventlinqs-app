@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import type { Metadata } from 'next'
+import { loadDiscoveryRows, countSuburb } from '@/lib/seo/discovery-counts'
+import { discoveryIndexing } from '@/lib/seo/indexing-policy'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
   getCity,
@@ -44,10 +46,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = `Things to do in ${s.name}, ${city.name} | EventLinqs`
   const description = s.editorial.slice(0, 155)
+  // INDEXABLE ONLY WHILE IT HOLDS EVENTS (close-out C19.3), counted by the same
+  // exclusive nearest-district rule the page itself lists by.
+  const eventCount = countSuburb(await loadDiscoveryRows(), city.name, city.slug, s.slug)
   return {
     title,
     description,
-    alternates: { canonical: `/city/${city.slug}/${suburb}` },
+    ...discoveryIndexing(eventCount, `/city/${city.slug}/${suburb}`),
     openGraph: { title, description, url: `/city/${city.slug}/${suburb}`, type: 'website', images: ['/opengraph-image'] },
   }
 }

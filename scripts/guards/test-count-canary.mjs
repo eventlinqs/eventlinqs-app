@@ -930,8 +930,20 @@ const ROOT = join(HERE, '..', '..')
  * slug and is marked approved; the scope points at the addendum without its
  * body changing): 322 files / 3653, as the canary measured.
  */
-const MIN_FILES = 322
-const MIN_TESTS = 3653
+/*
+ * Close-out C19 (8 September 2026), two files and 27 tests:
+ * tests/unit/seo/indexing-policy (eleven: every page route classified and every
+ * classified route still on disk, no route classified twice, all four classes in
+ * use, every private prefix classed never, the threshold a single constant, the
+ * boundary, the three metadata blocks, and the root layout carrying no canonical
+ * while the homepage carries its own) and tests/unit/seo/discovery-counts
+ * (sixteen: each matcher against the SQL it mirrors, and each count composing
+ * them the way the pages compose the query). The four new drills on
+ * indexing-policy and the three rewritten seo-audits-indexability cases sit in
+ * files that already counted: 324 files / 3680, as the canary measured.
+ */
+const MIN_FILES = 324
+const MIN_TESTS = 3680
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

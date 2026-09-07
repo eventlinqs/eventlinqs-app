@@ -1,5 +1,7 @@
 import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
+import { loadDiscoveryRows, countCategory } from '@/lib/seo/discovery-counts'
+import { discoveryIndexing } from '@/lib/seo/indexing-policy'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
@@ -41,11 +43,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const description = category.heroBody.slice(0, 155)
 
+  // INDEXABLE ONLY WHILE IT HOLDS EVENTS (close-out C19.3). The slug set the
+  // page queries with is the same pair the page body uses.
+  const eventCount = countCategory(await loadDiscoveryRows(), [
+    category.slug,
+    category.displayName.toLowerCase(),
+  ])
   return {
     title: `${category.displayName} events - ${category.tagline} | EventLinqs`,
     description,
     keywords: category.keywords,
-    alternates: { canonical: `/categories/${category.slug}` },
+    ...discoveryIndexing(eventCount, `/categories/${category.slug}`),
     openGraph: {
       title: `${category.displayName} events - ${category.tagline} | EventLinqs`,
       description,

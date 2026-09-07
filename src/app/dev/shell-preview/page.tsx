@@ -9,7 +9,19 @@
  * public launch (add to robots.txt or delete when no longer needed).
  */
 
+import type { Metadata } from 'next'
 import Link from 'next/link'
+import { noIndexMetadata } from '@/lib/seo/indexing-policy'
+
+// A developer preview is NEVER indexable (src/lib/seo/indexing-policy.ts). It
+// declared nothing until 8 September 2026, which meant it inherited the root
+// layout's index, follow and its canonical. It 404s on production because the
+// route is stripped there, but a declaration that says "index me" on a page
+// nobody meant to publish is a defect whichever environment is serving it.
+export const metadata: Metadata = {
+  title: 'Shell preview | EventLinqs',
+  ...noIndexMetadata(),
+}
 import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'

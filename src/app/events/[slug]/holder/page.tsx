@@ -1,3 +1,7 @@
+import type { Metadata } from 'next'
+import { generateMetadata as parentMetadata } from '../page'
+import { noIndexMetadata } from '@/lib/seo/indexing-policy'
+
 /**
  * THE HOLDER'S VIEW OF AN ARCHIVED EVENT, at a path the edge never caches.
  *
@@ -22,7 +26,23 @@
  * this viewer holds a ticket. Everyone else gets the same 404 they would get
  * at the public path.
  *
- * It is the same page. Nothing is duplicated: the component and its metadata
- * are the parent route's own.
+ * It is the same page. The component IS the parent route's own.
+ *
+ * THE METADATA IS NOT, AND THAT WAS A DEFECT UNTIL 8 SEPTEMBER 2026. This file
+ * used to re-export the parent's `generateMetadata` unchanged, so the private,
+ * per-viewer view of an ARCHIVED event inherited the parent's `index, follow`
+ * and its self-referencing canonical. An archived event is deliberately absent
+ * from search (close-out C13.6: 404 to anyone who does not hold a ticket), so
+ * a page that renders it must not ask to be indexed. The parent's title,
+ * description and social card are kept, because it is the same event; only the
+ * robots directive changes, and the canonical is dropped with it.
  */
-export { default, generateMetadata } from '../page'
+export { default } from '../page'
+
+export async function generateMetadata(
+  props: Parameters<typeof parentMetadata>[0],
+): Promise<Metadata> {
+  const parent = await parentMetadata(props)
+  const { alternates: _dropped, ...rest } = parent
+  return { ...rest, ...noIndexMetadata() }
+}

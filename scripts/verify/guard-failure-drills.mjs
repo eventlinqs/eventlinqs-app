@@ -224,6 +224,44 @@ const DRILLS = [
     expect: 'other-european is in src/lib/communities/data.ts but not recorded',
   },
   /*
+   * indexing-policy (close-out C19), four drills, one per rule that was actually
+   * broken on production: the root canonical coming back, an indexable page with
+   * no canonical of its own, a private route losing its noindex, and the sitemap
+   * publishing a templated family without the threshold gate.
+   */
+  {
+    name: 'the root layout declares a canonical again, the defect that leaked onto 57 routes',
+    guard: `${GUARDS}/indexing-policy.mjs`,
+    file: 'src/app/layout.tsx',
+    find: '  robots: {\n    index: true,',
+    replace: "  alternates: { canonical: '/' },\n  robots: {\n    index: true,",
+    expect: 'src/app/layout.tsx declares `alternates` again',
+  },
+  {
+    name: 'an indexable page stops naming itself',
+    guard: `${GUARDS}/indexing-policy.mjs`,
+    file: 'src/app/help/[slug]/page.tsx',
+    find: '    alternates: { canonical: `/help/${topic.slug}` },',
+    replace: '',
+    expect: '/help/[slug] is indexable and declares no canonical of its own',
+  },
+  {
+    name: 'the door scanner loses its noindex',
+    guard: `${GUARDS}/indexing-policy.mjs`,
+    file: 'src/app/scan/[eventId]/page.tsx',
+    find: '  ...noIndexMetadata(),',
+    replace: '',
+    expect: '/scan/[eventId] is classified never and nothing in its metadata chain declares noindex',
+  },
+  {
+    name: 'the sitemap publishes a templated family without the threshold gate',
+    guard: `${GUARDS}/indexing-policy.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug))) continue\n',
+    replace: '',
+    expect: 'publishes /community/[community] without an isDiscoveryIndexable() gate',
+  },
+  /*
    * geocoding-never-silent-null (close-out C9), two drills: the rule made to
    * allow the production case, and the create action's call removed.
    */

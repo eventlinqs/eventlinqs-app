@@ -132,6 +132,10 @@
  *   vercelignore-covers-guard-reads every docs/ file a prebuild script reads survives
  *                              .vercelignore, walked down level by level, and every docs/
  *                              literal in a build-time script is required or reviewed (C18 FINAL)
+ *   indexing-policy           every page route is classified in the indexing policy, every
+ *                              never route resolves to noindex, every indexable page names
+ *                              its own canonical, the root layout names none, and the
+ *                              sitemap gates each templated family on the threshold (C19)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -819,6 +823,10 @@ const GUARDS = [
   // Close-out C18 FINAL, the same day: a guard that reads under docs/ must survive
   // .vercelignore, or it passes locally and kills every Vercel build (third time).
   'scripts/guards/vercelignore-covers-guard-reads.mjs',
+  // Close-out C19 (8 September 2026): the indexing policy is the one place that says
+  // what may be indexed, and the tree must keep agreeing with it. Google Search
+  // Console had been reporting the disagreement back for weeks.
+  'scripts/guards/indexing-policy.mjs',
 ]
 
 /**

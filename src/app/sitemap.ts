@@ -12,15 +12,32 @@ import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { isRedirected } from '@/lib/seo/permanent-redirects'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { isDiscoveryIndexable } from '@/lib/seo/indexing-policy'
+import {
+  loadDiscoveryRows,
+  countCommunity,
+  countCommunityCity,
+  countCity,
+  countSuburb,
+  countCategory,
+  countFaith,
+} from '@/lib/seo/discovery-counts'
 
 /**
  * Dynamic sitemap for EventLinqs.
  *
  * Includes:
  *  - homepage + /events (index)
- *  - every picker city under /events/browse/{slug} (launch targets ∪ DB cities).
- *    Zero-event launch cities stay in the sitemap so Google accumulates
- *    authority for when events arrive.
+ *  - every picker city under /events/browse/{slug} (launch targets ∪ DB cities)
+ *    THAT CURRENTLY HOLDS EVENTS. This block used to say "zero-event launch
+ *    cities stay in the sitemap so Google accumulates authority for when events
+ *    arrive". Measured on production on 8 September 2026, that theory had
+ *    produced a 550-URL sitemap of which 545 URLs held nothing, and Google
+ *    Search Console's answer was to report them back as duplicates of one
+ *    another. Authority does not accumulate on an empty page. See
+ *    src/lib/seo/indexing-policy.ts (close-out C19.3): a templated discovery
+ *    page is published here exactly while it is indexable, and it enters and
+ *    leaves this file with its own state.
  *  - every published, public event under /events/{slug}.
  *  - every category, help topic, guide and marketing surface worth indexing.
  *
@@ -89,6 +106,16 @@ export const revalidate = 300
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getSiteUrl()
+
+  /*
+   * ONE READ, EVERY COUNT. The indexing threshold is applied to about 490 URLs
+   * below. `loadDiscoveryRows` fetches the dimension columns of every publicly
+   * visible event once, cached for five minutes and cleared on every event
+   * mutation, and each count is a pure function over those rows - the SAME
+   * functions the pages themselves call in generateMetadata, so the sitemap and
+   * the page can never disagree about whether a URL is indexable.
+   */
+  const discoveryRows = await loadDiscoveryRows()
 
   const entries: MetadataRoute.Sitemap = [
     {
@@ -231,6 +258,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const category of getAllHeroCategories()) {
     const path = `/categories/${category.slug}`
     if (isRedirected(path)) continue
+    // Published only while indexable (close-out C19.3), on the same count and
+    // the same slug pair the page's own metadata uses.
+    if (!isDiscoveryIndexable(countCategory(discoveryRows, [category.slug, category.displayName.toLowerCase()]))) continue
     entries.push({
       url: `${baseUrl}${path}`,
       changeFrequency: 'daily',
@@ -245,6 +275,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   for (const c of allCities) {
+    if (!isDiscoveryIndexable(countCity(discoveryRows, c.city))) continue
     entries.push({
       url: `${baseUrl}/events/browse/${c.slug}`,
       changeFrequency: 'daily',
@@ -254,6 +285,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Batch 5 - community landing pages.
   for (const community of getAllCommunities()) {
+    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug))) continue
     entries.push({
       url: `${baseUrl}/community/${community.slug}`,
       changeFrequency: 'daily',
@@ -263,6 +295,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Community Taxonomy v2 - faith landing pages.
   for (const faith of getAllFaiths()) {
+    if (!isDiscoveryIndexable(countFaith(discoveryRows, faith.slug))) continue
     entries.push({
       url: `${baseUrl}/faith/${faith.slug}`,
       changeFrequency: 'daily',
@@ -272,12 +305,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Batch 6 - city + suburb landing pages.
   for (const city of getAllCities()) {
-    entries.push({
-      url: `${baseUrl}/city/${city.slug}`,
-      changeFrequency: 'daily',
-      priority: city.tier === 1 ? 0.9 : 0.75,
-    })
+    if (isDiscoveryIndexable(countCity(discoveryRows, city.name))) {
+      entries.push({
+        url: `${baseUrl}/city/${city.slug}`,
+        changeFrequency: 'daily',
+        priority: city.tier === 1 ? 0.9 : 0.75,
+      })
+    }
     for (const s of getSuburbsForCity(city.slug)) {
+      if (!isDiscoveryIndexable(countSuburb(discoveryRows, city.name, city.slug, s.slug))) continue
       const facing = s.slug.startsWith(`${city.slug}-`) ? s.slug.slice(city.slug.length + 1) : s.slug
       entries.push({
         url: `${baseUrl}/city/${city.slug}/${facing}`,
@@ -295,6 +331,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // combination so search engines have the full surface.
   for (const community of getAllCommunities()) {
     for (const city of getAllCities()) {
+      if (!isDiscoveryIndexable(countCommunityCity(discoveryRows, community.slug, city.name))) continue
       entries.push({
         url: `${baseUrl}/community/${community.slug}/${city.slug}`,
         changeFrequency: 'weekly',

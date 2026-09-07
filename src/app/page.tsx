@@ -5,7 +5,6 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { FeaturedHero } from '@/components/features/home/FeaturedHero'
-import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
 import { CategoryNavRail } from '@/components/features/home/category-nav-rail'
 import { SoundsRail } from '@/components/features/home/sounds-rail'
 import { CommunityRail } from '@/components/features/home/community-rail'
@@ -24,7 +23,6 @@ import {
   CityRailSkeleton,
 } from '@/components/features/home/section-skeletons'
 
-import { getSiteUrl } from '@/lib/site-url'
 /**
  * Homepage - the visceral experience layer.
  *
@@ -188,11 +186,8 @@ export default async function HomePage() {
     .slice(0, 10)
     .map(toBentoEvent)
 
-  const baseUrl = getSiteUrl()
-
   return (
     <div className="min-h-screen bg-canvas">
-      <HomeSchemaJsonLd baseUrl={baseUrl} />
       <SiteHeader />
 
       <main>

@@ -1,6 +1,8 @@
 import { notFound, permanentRedirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import type { Metadata } from 'next'
+import { loadDiscoveryRows, countCommunityCity } from '@/lib/seo/discovery-counts'
+import { discoveryIndexing } from '@/lib/seo/indexing-policy'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
   getCommunity,
@@ -78,7 +80,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!community || !cityName) return { title: 'Not Found | EventLinqs' }
 
   const title = `${community.displayName} events in ${cityName} | EventLinqs`
-  const description = `${community.displayName} events on tonight in ${cityName}. ${community.tagline}`.slice(0, 155)
+  /*
+   * THE DESCRIPTION COMES FROM THE HAND-WRITTEN EDITORIAL, NOT FROM A TEMPLATE.
+   *
+   * It used to read "${displayName} events on tonight in ${cityName}. ${tagline}"
+   * on all 420 intersections, which is close-out C19.4's "boilerplate paragraph
+   * with a swapped noun" exactly, and it was doing that while 271 hand-crafted
+   * city-specific paragraphs sat unread in intersection-editorial.ts. The page
+   * body already renders that editorial (line 250); the head now describes the
+   * same page the body shows.
+   */
+  const cityRecord = isCitySlug(cityParam) ? getCity(cityParam) : null
+  const description = getIntersectionEditorial(community, cityParam, cityName, cityRecord).slice(0, 155)
+
+  // INDEXABLE ONLY WHILE IT HOLDS EVENTS (close-out C19.3). 420 of these.
+  const eventCount = countCommunityCity(await loadDiscoveryRows(), community.slug, cityName)
 
   return {
     title,
@@ -88,7 +104,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       `${community.displayName} ${cityName}`,
       `${cityName} ${community.displayName.toLowerCase()} events`,
     ],
-    alternates: { canonical: `/community/${community.slug}/${cityParam}` },
+    ...discoveryIndexing(eventCount, `/community/${community.slug}/${cityParam}`),
     openGraph: {
       title,
       description,

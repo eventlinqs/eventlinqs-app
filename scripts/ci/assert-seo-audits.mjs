@@ -53,6 +53,7 @@
  * Run: node scripts/ci/assert-seo-audits.mjs [lighthouseciDir]
  */
 
+import { spawnSync } from 'node:child_process'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
@@ -88,6 +89,9 @@ const NOT_ASSERTED = {
 
 const MUST_BE_ASSERTED = SEO_AUDIT_BASELINE.filter((id) => !(id in NOT_ASSERTED))
 
+/** Line splitter, declared once. */
+const LINES = /\r?\n/
+
 // Canonical host ruling (founder, 2026-07-25), single-sourced in
 // src/lib/site-url.ts as CANONICAL_HOST.
 const CANONICAL_HOST = 'www.eventlinqs.com.au'
@@ -109,30 +113,80 @@ const PRODUCTION_HOSTS = new Set([CANONICAL_HOST, 'eventlinqs.com.au'])
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1'])
 
 /*
- * THE ROUTES THE APP DELIBERATELY NOINDEXES, read from the app rather than
- * written here. src/app/(auth)/layout.tsx sets `robots: { index: false }` for
- * every route in that group (login, signup, forgot-password, verify-email-sent
- * as of 6 September 2026), so on production and on a local build those pages
- * are correctly blocked, and a rule that flagged them would be crying wolf.
- * Derived from the directory listing so a new auth route is covered the day it
- * is added and a route moved out of the group loses its exemption the same day.
+ * WHAT THE APP DELIBERATELY KEEPS OUT OF THE INDEX, READ FROM THE POLICY.
+ *
+ * This used to read src/app/(auth)/ alone: the group layout sets
+ * `robots: { index: false }`, so those four pages are correctly blocked and a
+ * rule that flagged them would be crying wolf. It was right about those four and
+ * silent about everything else. Nothing anywhere failed if /dashboard, /admin or
+ * the door scanner became indexable, and on 8 September 2026 five routes were
+ * found declaring no robots directive at all (close-out C19).
+ *
+ * Since then src/lib/seo/indexing-policy.ts is the one place that says what may
+ * be indexed, and this reads it:
+ *
+ *   NEVER        must be BLOCKED. This is new, and it is the half that was
+ *                missing: an authenticated or transactional page that becomes
+ *                indexable now fails this gate.
+ *   CONDITIONAL  a templated discovery page, indexable exactly while it holds
+ *                enough events. An LHR carries no event count, so this script
+ *                cannot judge it and says so by name rather than guessing.
+ *                scripts/verify/indexing-drive.mjs asserts that half against a
+ *                running server, where the count is knowable, and the pre-push
+ *                gate runs it.
+ *   ALIAS        must be BLOCKED, same as never.
+ *   ALWAYS       must be CRAWLABLE, which is the rule this file already had.
  */
-function deliberatelyNoindexedPaths() {
-  const group = join(process.cwd(), 'src', 'app', '(auth)')
-  const layout = join(group, 'layout.tsx')
-  if (!existsSync(layout)) return new Set()
-  if (!/index:\s*false/.test(readFileSync(layout, 'utf8'))) return new Set()
-  return new Set(
-    readdirSync(group, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => `/${entry.name}`),
+function loadIndexingPolicy() {
+  const script = [
+    "import { INDEXING_POLICY } from '@/lib/seo/indexing-policy'",
+    'console.log(JSON.stringify(INDEXING_POLICY))',
+    '',
+  ].join(String.fromCharCode(10))
+  const run = spawnSync(
+    process.execPath,
+    ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', '--import', './scripts/lib/src-alias-loader.mjs', '--input-type=module', '-e', script],
+    { cwd: process.cwd(), encoding: 'utf8' },
   )
+  if (run.status !== 0) return null
+  const line = run.stdout.trim().split(LINES).find((l) => l.startsWith('['))
+  return line ? JSON.parse(line) : null
 }
-const NOINDEXED = deliberatelyNoindexedPaths()
+
+/**
+ * `/community/[community]` becomes `^/community/[^/]+$`.
+ *
+ * A literal segment is escaped before it becomes part of a pattern. Every route
+ * on this platform is lower-case letters, digits and hyphens today, so the
+ * escaping buys nothing right now; it is here so that the day a route carries a
+ * dot this function does not quietly start matching the wrong pages.
+ */
+function routeToRegExp(route) {
+  const escape = (seg) => seg.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+  const body = route
+    .split('/')
+    .filter(Boolean)
+    .map((seg) => (seg.startsWith('[') ? '[^/]+' : escape(seg)))
+    .join('/')
+  return new RegExp(`^/${body}$`)
+}
+
+const POLICY = loadIndexingPolicy()
+/** Recorded here and pushed into `failures` once that array exists, below. */
+const POLICY_LOAD_FAULT = POLICY
+  ? null
+  : [
+      'src/lib/seo/indexing-policy.ts could not be loaded, so indexability cannot be asserted against the policy.',
+      '        This file used to fall back to src/app/(auth)/ alone; falling back now would assert a',
+      '        weaker rule while reporting a pass, which is the shape this repository keeps deleting.',
+    ].join('\n')
+const policyMatchers = (POLICY ?? []).map((entry) => ({ ...entry, re: routeToRegExp(entry.route) }))
+const classForPath = (pathname) => policyMatchers.find((m) => m.re.test(pathname))?.klass ?? null
 
 const dir = process.argv[2] || '.lighthouseci'
 const failures = []
 const notes = []
+if (POLICY_LOAD_FAULT) failures.push(POLICY_LOAD_FAULT)
 
 /* ------------------------------------------------------- load the reports */
 
@@ -233,9 +287,34 @@ for (const lhr of reports) {
   const isLocal = LOCAL_HOSTS.has(host)
   const isProduction = PRODUCTION_HOSTS.has(host) || isLocal
   const pathname = new URL(lhr.requestedUrl).pathname.replace(/\/$/, '') || '/'
-  if (isProduction && NOINDEXED.has(pathname)) {
+  const klass = classForPath(pathname)
+
+  if (isProduction && (klass === 'never' || klass === 'alias')) {
+    // NEW ON 8 SEPTEMBER 2026, AND IT IS THE HALF THAT WAS MISSING. A page the
+    // policy says must never be indexed is now ASSERTED blocked rather than
+    // merely skipped. Until today nothing failed if /dashboard, /admin or the
+    // door scanner started inviting crawlers.
+    checked++
+    if (audit.score !== 0) {
+      failures.push(
+        [
+          `A ${klass.toUpperCase()} ROUTE IS INDEXABLE: ${lhr.requestedUrl}`,
+          `        is-crawlable scored ${audit.score}, so this page is NOT blocked from indexing.`,
+          '        src/lib/seo/indexing-policy.ts classes it as one that must never be indexed.',
+        ].join('\n'),
+      )
+    }
+    continue
+  }
+
+  if (isProduction && klass === 'conditional') {
+    // A templated discovery page is indexable exactly while it holds at least
+    // DISCOVERY_INDEXING_THRESHOLD events, and an LHR carries no event count, so
+    // this file cannot tell a correct noindex from a broken one. Named, not
+    // silently skipped: scripts/verify/indexing-drive.mjs asserts it against a
+    // running server, where the count is knowable, and the pre-push gate runs it.
     skipped++
-    notes.push(`${pathname} is noindex by src/app/(auth)/layout.tsx, so its being blocked is correct and was not asserted`)
+    notes.push(`${pathname} is a templated discovery page, indexable only while it holds events; asserted by scripts/verify/indexing-drive.mjs against a running server, not here`)
     continue
   }
 

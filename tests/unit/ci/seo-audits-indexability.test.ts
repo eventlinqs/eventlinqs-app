@@ -14,7 +14,9 @@ import { join } from 'node:path'
  * contract, while production's crawlability was asserted nowhere at all.
  * next.config.ts sends `index, follow` whenever VERCEL_ENV is absent, so a
  * local build carries production's header and is held to production's rule,
- * minus the routes src/app/(auth)/layout.tsx deliberately noindexes.
+ * as src/lib/seo/indexing-policy.ts classifies each route: always must be
+ * crawlable, never and alias must be blocked, conditional is named and left to
+ * the driven check that can count events.
  *
  * The script runs at import, so it is driven as a child over synthetic
  * reports in a temp directory, the way the gate drives it over real ones.
@@ -73,15 +75,55 @@ describe('assert-seo-audits indexability by host', () => {
     expect(out).toContain('carries the production header')
   })
 
-  test('the auth routes the app noindexes are skipped by name, on local and on production', () => {
+  /*
+   * CHANGED 8 SEPTEMBER 2026 (close-out C19), AND THE CHANGE IS A STRENGTHENING.
+   *
+   * A route the indexing policy classes `never` used to be SKIPPED here: the
+   * script read src/app/(auth)/ and excused those four paths, and said nothing
+   * about any other private surface. Nothing anywhere failed if /dashboard,
+   * /admin or the door scanner started inviting crawlers. It is now ASSERTED:
+   * a never route must be blocked, and a never route that is crawlable fails.
+   */
+  test('a never route is asserted BLOCKED, on local and on production', () => {
     const local = runOver([report('http://127.0.0.1:3311/login', 0), report('http://127.0.0.1:3311/', 1)])
     expect(local.status, local.out).toBe(0)
-    expect(local.out).toContain('/login is noindex by src/app/(auth)/layout.tsx')
-    expect(local.out).toContain('indexability asserted on 1 report(s), skipped on 1')
+    expect(local.out).toContain('indexability asserted on 2 report(s), skipped on 0')
 
     const production = runOver([report('https://www.eventlinqs.com.au/signup', 0), report('https://www.eventlinqs.com.au/', 1)])
     expect(production.status, production.out).toBe(0)
-    expect(production.out).toContain('/signup is noindex by src/app/(auth)/layout.tsx')
+  })
+
+  test('a never route that is CRAWLABLE fails, which nothing checked before', () => {
+    const { status, out } = runOver([report('https://www.eventlinqs.com.au/dashboard', 1)])
+    expect(status).toBe(1)
+    expect(out).toContain('A NEVER ROUTE IS INDEXABLE')
+    expect(out).toContain('/dashboard')
+  })
+
+  test('an alias route is asserted blocked too', () => {
+    const blocked = runOver([report('https://www.eventlinqs.com.au/for-organisers', 0)])
+    expect(blocked.status, blocked.out).toBe(0)
+    const open = runOver([report('https://www.eventlinqs.com.au/for-organisers', 1)])
+    expect(open.status).toBe(1)
+    expect(open.out).toContain('A ALIAS ROUTE IS INDEXABLE')
+  })
+
+  /*
+   * A templated discovery page is indexable exactly while it holds enough
+   * events, and a Lighthouse report carries no event count, so this script
+   * cannot tell a correct noindex from a broken one. It says so by name instead
+   * of guessing; scripts/verify/indexing-drive.mjs asserts that half against a
+   * running server, where the count is knowable.
+   */
+  test('a conditional discovery page is named as not-asserted-here, in either state', () => {
+    const blocked = runOver([report('https://www.eventlinqs.com.au/community/african', 0), report('https://www.eventlinqs.com.au/', 1)])
+    expect(blocked.status, blocked.out).toBe(0)
+    expect(blocked.out).toContain('templated discovery page')
+    expect(blocked.out).toContain('indexing-drive.mjs')
+    expect(blocked.out).toContain('indexability asserted on 1 report(s), skipped on 1')
+
+    const open = runOver([report('https://www.eventlinqs.com.au/community/african', 1), report('https://www.eventlinqs.com.au/', 1)])
+    expect(open.status, open.out).toBe(0)
   })
 
   test('a preview that is indexable still fails, and an unknown host is still only noted', () => {
