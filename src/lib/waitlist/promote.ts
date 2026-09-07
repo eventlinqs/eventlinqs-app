@@ -2,6 +2,7 @@ import { getAppUrl } from '@/lib/site-url'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 import { getNoReplyFrom } from '@/lib/email/sender'
+import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 
 /**
  * Calls the promote_waitlist RPC, then sends Resend emails to everyone
@@ -199,7 +200,7 @@ function buildPromotionEmailHtml(p: EmailParams): string {
       <p style="color:#9CA3AF;font-size:12px;">
         If you no longer want this ticket, ignore this email and your spot will be passed to the next person.
       </p>
-      <p style="color:#9CA3AF;font-size:12px;">The EventLinqs team. The ticketing platform built for every community.</p>
+      <p style="color:#9CA3AF;font-size:12px;">The EventLinqs team. ${BRAND_STRAPLINE}</p>
     </div>
   `
 }

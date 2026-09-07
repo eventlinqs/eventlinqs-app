@@ -39,10 +39,10 @@ Free events always free. 50 founding organiser spots.
 [Link to organiser page]
 
 **LinkedIn company page:**
-EventLinqs is the Australian ticketing platform built for local organisers. One all-in fee of $1.69 on a $20 ticket, organisers keep full face value, free events always free. Launching in Geelong and Melbourne with 50 founding organiser spots: zero fees for 6 months in exchange for your honest feedback. Built in Melbourne.
+EventLinqs is the Australian platform where local events get made. One all-in fee of $1.69 on a $20 ticket, organisers keep full face value, free events always free. Launching in Geelong and Melbourne with 50 founding organiser spots: zero fees for 6 months in exchange for your honest feedback. Built in Melbourne.
 
 **Lawal's personal LinkedIn headline:**
-Founder, EventLinqs. Building Australia's ticketing platform for local events, starting with Geelong and Melbourne. 50 founding organiser spots open.
+Founder, EventLinqs. Building the place Australian local events get made, starting with Geelong and Melbourne. 50 founding organiser spots open.
 
 **Facebook page about section:** reuse the LinkedIn company copy.
 
@@ -96,7 +96,7 @@ RULE FOR POST 9: publish only with the true remaining count, and update it as sp
 
 ## BLOCK 3: LAWAL'S FIRST LINKEDIN POST (build in public, publish day 2)
 
-I have spent [X months] building a ticketing platform, and this week it processed its first real card payment end to end.
+I have spent [X months] building the platform where events get made, and this week it processed its first real card payment end to end.
 
 EventLinqs is my answer to a simple problem: Australian event organisers, especially the local ones running gigs, markets, comedy nights and community events, give away too much of every ticket and get too little back.
 

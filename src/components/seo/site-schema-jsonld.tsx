@@ -20,6 +20,8 @@
  * not be rendered again by a page: two copies of an Organization node is the
  * ambiguity the markup exists to remove.
  */
+import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
+
 interface Props {
   baseUrl: string
 }
@@ -50,7 +52,7 @@ export function SiteSchemaJsonLd({ baseUrl }: Props) {
     url: baseUrl,
     logo: `${baseUrl}/icon`,
     description:
-      'Live event ticketing platform built for every community. Founded in Australia, serving organisers and attendees across 20 cities and 14 community heritages.',
+      `${BRAND_STRAPLINE} Find your suppliers, sell your tickets, run your door and get paid. Founded in Australia, serving organisers and attendees in every community.`,
     foundingDate: '2026',
     address: {
       '@type': 'PostalAddress',

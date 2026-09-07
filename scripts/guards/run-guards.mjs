@@ -50,6 +50,7 @@
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
  *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
  *   one-fee-copy               no customer-facing surface names a second fee
+ *   positioning-lock           no user-facing surface calls EventLinqs a ticketing platform
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
  *   no-external-checkout       an externally ticketed event cannot reach a checkout
@@ -598,6 +599,15 @@ const GUARDS = [
   // sentence that there is no payment processing fee. Reviewed exemptions carry
   // ONE-FEE-ALLOW with a written reason and print on every run.
   'scripts/guards/one-fee-copy.mjs',
+  // Owner ruling 2026-09-07, the positioning lock: EventLinqs is not a
+  // ticketing platform, it is the platform where events get made, and the
+  // phrases "ticketing platform" and "ticket seller" are never used for us.
+  // The sibling of one-fee-copy and it exists for the same reason: when the
+  // ruling arrived, the retired strapline was the platform's own description in
+  // fifteen source files and four founder copy packs, and not one of them
+  // failed a gate, because prose is not executed. Describing a COMPETITOR that
+  // way stays legal and is allowed by a marker in the same sentence.
+  'scripts/guards/positioning-lock.mjs',
   // pricing-derive recomputes the worked examples and the margin table in
   // docs/PRICING.md from the PRICING-LOCK block and fails if the committed text
   // disagrees. It lives outside scripts/guards/ because it is also the

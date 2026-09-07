@@ -10,12 +10,12 @@ import { ABOUT_PHOTOS } from '@/lib/images/about-photos'
 export const metadata: Metadata = {
   title: 'About | EventLinqs',
   description:
-    'EventLinqs is the ticketing platform built for every community. All-in pricing, guest checkout, and tools that respect both organisers and attendees. Headquartered in Geelong, Australia, serving organisers nationwide.',
+    'EventLinqs is where events get made, for every community. Find your suppliers, sell your tickets, run your door and get paid, with tools that respect both organisers and attendees. Headquartered in Geelong, Australia, serving organisers nationwide.',
   alternates: { canonical: '/about' },
   openGraph: {
     title: 'About | EventLinqs',
     description:
-      'The ticketing platform built for every community. All-in pricing, guest checkout, and tools that respect both organisers and attendees.',
+      'The place events get made, for every community. Find your suppliers, sell your tickets, run your door and get paid.',
     url: '/about',
     type: 'website',
     images: ['/opengraph-image'],
@@ -106,8 +106,8 @@ export default function AboutPage() {
               Built for every community
             </h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-white/85 sm:text-lg">
-              The ticketing platform built for every community. All-in pricing, guest
-              checkout, and tools that respect both organisers and attendees.
+              The place events get made, for every community. Find your suppliers,
+              sell your tickets, run your door and get paid.
             </p>
           </div>
         </div>
@@ -134,10 +134,10 @@ export default function AboutPage() {
                 infrastructure than that.
               </p>
               <p>
-                EventLinqs is a fan-first ticketing platform that takes every
-                community seriously, treats every organiser like an actual
-                business partner, and refuses to dress up a checkout fee as
-                a service charge. The product is the work. We measure ourselves
+                EventLinqs is a fan-first platform that takes every community
+                seriously, treats every organiser like an actual business
+                partner, and refuses to dress up a checkout fee as a service
+                charge. The product is the work. We measure ourselves
                 against the best ticketing platforms in the world and iterate
                 until we beat them on every public surface that matters: search,
                 discovery, pricing transparency, checkout speed, and post-event

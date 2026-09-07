@@ -23,7 +23,7 @@ Hard rule: no outreach at scale until Tab 2 (paid path) and Tab 3 (verification)
 Organisers do not switch platforms for vibes. They switch for one of five reasons: money, control, audience, support, or pain with their current platform. EventLinqs must lead with a concrete offer on at least two of these.
 
 ### The core pitch (one sentence)
-EventLinqs is the Australian ticketing platform built for local organisers: lower cost, faster setup with AI assistance, and a growing local audience in your own city, backed by a founder who will personally get your first event live.
+EventLinqs is the Australian platform where local events get made: lower cost, faster setup with AI assistance, and a growing local audience in your own city, backed by a founder who will personally get your first event live.
 
 ### The five attack angles, mapped to competitor weaknesses
 
@@ -98,10 +98,10 @@ Touches sent, reply rate (target 15 percent or better on DMs; below 8 percent me
 Rules for all copy: Australian English, no em-dashes or en-dashes, "community" never the banned word, no hype words like revolutionary or disrupt, every message personalised in the first line, one clear ask, short.
 
 ### Instagram or Facebook DM, first touch (Eventbrite organiser)
-> Hey [name], came across [event name] and it looks like a great night. Quick one from one local to another: I have built EventLinqs, a new Australian ticketing platform, and I am taking on 50 founding organisers in Geelong and Melbourne with zero platform fees for the first 6 months, free migration from Eventbrite, and me personally setting up your first event. Keen to show you what you would save on your ticket prices? Takes 10 minutes.
+> Hey [name], came across [event name] and it looks like a great night. Quick one from one local to another: I have built EventLinqs, a new Australian platform where events get made, and I am taking on 50 founding organisers in Geelong and Melbourne with zero platform fees for the first 6 months, free migration from Eventbrite, and me personally setting up your first event. Keen to show you what you would save on your ticket prices? Takes 10 minutes.
 
 ### DM, first touch (community group or free events)
-> Hey [name], love what you are doing with [group/event]. I am a Melbourne founder building EventLinqs, a ticketing platform focused on local community events in Geelong and Melbourne. Free events are always free on the platform, setup takes minutes, and I am personally helping our first 50 organisers get live. Would you be open to me setting up [event name] for you as a demo, no strings?
+> Hey [name], love what you are doing with [group/event]. I am a Melbourne founder building EventLinqs, a platform focused on local community events in Geelong and Melbourne. Free events are always free on the platform, setup takes minutes, and I am personally helping our first 50 organisers get live. Would you be open to me setting up [event name] for you as a demo, no strings?
 
 ### DM, follow-up (day 4)
 > Hey [name], just floating this back up. Happy to send a 2 minute video of how [event name] would look on EventLinqs if that is easier than a call. Either way, good luck with the event.
@@ -111,7 +111,7 @@ Rules for all copy: Australian English, no em-dashes or en-dashes, "community" n
 >
 > Hi [name],
 >
-> I found [event name] on [platform] and wanted to reach out directly. I am Lawal, founder of EventLinqs, a new Australian ticketing platform launching in Geelong and Melbourne.
+> I found [event name] on [platform] and wanted to reach out directly. I am Lawal, founder of EventLinqs, a new Australian event platform launching in Geelong and Melbourne.
 >
 > For a $[price] ticket, your attendees currently pay about $[their fee] in fees. On EventLinqs, as one of our 50 founding organisers, you would pay zero platform fees for 6 months, extendable by 3 months for every organiser you successfully refer. I will also migrate your events and attendee list across myself, free.
 >

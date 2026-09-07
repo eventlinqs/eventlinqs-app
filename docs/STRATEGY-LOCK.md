@@ -303,3 +303,81 @@ Public launch metric: 100+ events live, 50+ organisers onboarded, 1,000+ buyers 
 ---
 
 **This document is authoritative. Updates require founder decision in writing.**
+
+---
+
+## 11. POSITIONING (LOCKED, owner decision 7 September 2026)
+
+ADDED, not substituted. Section 1 stands: community-first is the identity and it
+is reinforced by this, never replaced. Nothing above this line is withdrawn.
+
+### The category
+
+EventLinqs is NOT a ticketing platform. It is the platform where events get made.
+Ticketing is one module. The platform is never described as a ticketing platform,
+in copy, in metadata, in social cards, in emails, or on the About page.
+
+### The promise
+
+"You've got help."
+
+### The positioning statement
+
+For anyone putting on an event in Australia, EventLinqs is the one place it gets
+made. Find your suppliers, book them, sell your tickets, run your door, get paid.
+Unlike ticketing platforms that stop at the checkout, EventLinqs helps you put the
+event on.
+
+### The tagline, unchanged
+
+Every community. Every event. One platform.
+
+### What this means the platform must always do
+
+- An organiser is never left at a dead end. Every screen where they could be stuck
+  offers the next step.
+- Help is free. Finding suppliers is free, quoting is free, asking is free.
+- The platform earns only when the organiser's event succeeds and money moves.
+- Every surface answers "what does this organiser need next", not "what can we
+  sell them".
+
+### What we never do
+
+- Never lead with fees or a price comparison. We do not compete on price.
+- Never charge an organiser to be helped.
+- Never charge a supplier to see or answer a job.
+- Never describe ourselves as cheaper. We are not cheaper, we are a different
+  category.
+- Never use the phrases "ticketing platform" or "ticket seller" for EventLinqs.
+
+### Where this lives in the code, and what enforces it
+
+The tagline, the promise, the strapline, the category line and the positioning
+statement are one source: `src/lib/brand/positioning.ts`. Every surface imports
+them, because when this ruling arrived the retired strapline "The ticketing
+platform built for every community" was the platform's own description in fifteen
+source files and four founder copy packs, and not one of them failed a gate: prose
+is not executed.
+
+`scripts/guards/positioning-lock.mjs` is registered in `run-guards.mjs` and blocks
+the build when a user-facing surface calls EventLinqs a ticketing platform or a
+ticket seller. Describing a COMPETITOR that way is correct and stays legal: a hit
+is allowed when the same sentence carries a competitor marker. The retired
+strapline has no such escape. Three drills in
+`scripts/verify/guard-failure-drills.mjs` prove it fails as well as passes: the
+strapline returning to a page, the strapline returning to a transactional email,
+and a fresh sentence describing the platform in the forbidden words.
+
+### Two things in THIS document that the owner should look at
+
+Recorded here rather than changed, because this document is authoritative and
+updates require a founder decision in writing.
+
+1. Section 1 states the tagline as "Where the culture gathers". CLAUDE.md locks
+   the tagline as "Every community. Every event. One platform.", the 7 September
+   ruling restates that one UNCHANGED, and CLAUDE.md bans the word "culture"
+   everywhere in every form. The line above is stale on both counts.
+2. Section 2 writes the per-ticket fee as a literal. CLAUDE.md and
+   `docs/PRICING.md` hold that the rate is written down in exactly ONE place, the
+   PRICING-LOCK block, and derived everywhere else. A second literal is how a
+   deleted fee outlived its deletion once already.

@@ -31,7 +31,7 @@ export const helpTopics: HelpTopic[] = [
     articles: [
       {
         q: 'What is EventLinqs?',
-        a: "EventLinqs is the ticketing platform built for every community. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and beyond. The features we prioritise show it: WhatsApp sharing, squad bookings, all-in pricing, and a checkout that actually works on mobile. Anyone can organise any kind of event here. Our launch markets are Australia, the UK, Canada, Europe, and the United States, with expansion across Africa underway.",
+        a: "EventLinqs is where events get made, for every community. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and beyond. The features we prioritise show it: WhatsApp sharing, squad bookings, all-in pricing, and a checkout that actually works on mobile. Anyone can organise any kind of event here. Our launch markets are Australia, the UK, Canada, Europe, and the United States, with expansion across Africa underway.",
       },
       {
         q: 'Who is EventLinqs for?',
@@ -62,7 +62,7 @@ export const helpTopics: HelpTopic[] = [
         a: "Yes. Creating a buyer account is completely free. There are no monthly or annual fees for buyers. For organisers, there is no upfront cost to list events. Our single fee is a share of ticket revenue, only charged when paid tickets are sold. Free events carry no fee at all, permanently. See our pricing page for the current rate.",
       },
       {
-        q: 'How is EventLinqs different from other ticketing platforms?',
+        q: 'How is EventLinqs different from a traditional ticketing platform?',
         a: "EventLinqs is built for every community, and open to every organiser and every community that wants a platform that gets it right. Mainstream platforms treat community events as a small subset of their business. For us, they are the whole business. That means all-in pricing with no hidden fees at checkout, WhatsApp-native sharing, squad bookings so whole groups can buy together, and support from a team that understands the events we serve. We are also built on transparency: what you see at checkout is what you pay. No convenience fee surprises at the final step.",
       },
       {

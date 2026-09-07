@@ -950,6 +950,7 @@ const ROOT = join(HERE, '..', '..')
  * 325 files / 3701, as the canary measured.
  */
 /*
+
  * Close-out H3 / P0.5 and P0.2 (8 September 2026), one new file and eleven new tests:
  * tests/unit/ci/gate-client-sdk-parity (seven: the local gate can never again
  * build a browser bundle CI does not measure), and one added to
@@ -977,8 +978,21 @@ const ROOT = join(HERE, '..', '..')
  * where a diagnosis that threw would replace the failure the reader came for:
  * 330 files / 3783, as the canary measured.
  */
-const MIN_FILES = 330
-const MIN_TESTS = 3783
+/*
+ * The positioning lock (owner ruling 7 September 2026, worked 8 September,
+ * rebased onto main and landed 9 September), one new file and 25 tests:
+ * tests/unit/brand/positioning (the six locked strings, the copy laws applied
+ * to each of them, and the nine surfaces that carried the retired strapline now
+ * reading it from the one source, plus the approved homepage hero composition
+ * surviving a copy-only change). 26 at first, then 25: the drive found that
+ * `home-hero.tsx` is rendered by nothing, so the two tests reading it were
+ * replaced by three reading the hero that does render. Measured 326 files /
+ * 3726 against the 8 September base; re-measured after the rebase onto
+ * 330 / 3783:
+ * 331 files / 3808, as the canary measured.
+ */
+const MIN_FILES = 331
+const MIN_TESTS = 3808
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

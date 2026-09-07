@@ -2,6 +2,7 @@ import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 import { FirstNationsFlags } from '@/components/features/home/first-nations-flags'
 import { FooterAccordion } from '@/components/layout/footer-accordion'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -229,7 +230,7 @@ export function SiteFooter() {
             <div className="flex items-center gap-5">
               <EventlinqsLogo size="md" variant="inverted" />
               <p className="max-w-xs text-pretty text-sm leading-6 text-white/70">
-                The ticketing platform built for every community.
+                {BRAND_STRAPLINE}
               </p>
             </div>
             <div className="flex items-center gap-6">

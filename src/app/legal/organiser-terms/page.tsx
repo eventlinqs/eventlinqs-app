@@ -79,8 +79,8 @@ export default async function OrganiserAgreementPage() {
         responsibility for delivering what you advertised.
       </p>
       <p>
-        <strong>EventLinqs is your ticketing platform and your limited payment
-        collection agent.</strong> We provide the technology, and we collect ticket
+        <strong>EventLinqs provides your event technology and is your limited
+        payment collection agent.</strong> We provide the technology, and we collect ticket
         money from buyers on your behalf. Payment by a buyer to us discharges that
         buyer&apos;s obligation to pay you. We hold the funds and pay them to you
         under the payout terms below.

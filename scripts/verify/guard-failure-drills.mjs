@@ -561,6 +561,37 @@ const DRILLS = [
     expect: 'describe a fee the platform does not charge',
   },
   /*
+   * positioning-lock (owner ruling 2026-09-07): the three ways the retired
+   * self-description comes back. On a page, where somebody would eventually
+   * notice; in an EMAIL, where nobody would, which is why the strapline
+   * survived in four email footers until it was swept; and as a fresh sentence
+   * that never used the old strapline at all.
+   */
+  {
+    name: 'the retired strapline returns to a shipped page',
+    guard: `${GUARDS}/positioning-lock.mjs`,
+    file: 'src/components/layout/site-footer.tsx',
+    find: '                {BRAND_STRAPLINE}',
+    replace: '                The ticketing platform built for every community.',
+    expect: 'the retired strapline',
+  },
+  {
+    name: 'the retired strapline returns to a transactional email, where nobody reads the diff',
+    guard: `${GUARDS}/positioning-lock.mjs`,
+    file: 'src/lib/email/order-confirmation.ts',
+    find: 'The EventLinqs team. ${BRAND_STRAPLINE}</p>',
+    replace: 'The EventLinqs team. The ticketing platform built for every community.</p>',
+    expect: 'the retired strapline',
+  },
+  {
+    name: 'a new sentence calls EventLinqs a ticketing platform in its own words',
+    guard: `${GUARDS}/positioning-lock.mjs`,
+    file: 'src/app/about/page.tsx',
+    find: '                EventLinqs is a fan-first platform that takes every community',
+    replace: '                EventLinqs is a fan-first ticketing platform that takes every community',
+    expect: 'positioning lock forbids',
+  },
+  /*
    * workflows-skip-drafts and pre-push-gate-wired (close-out C2.3, 6 September
    * 2026): the four quiet ways "CI runs once, after the local gate" dies. A job
    * that loses its draft condition runs on every push again; a trigger that

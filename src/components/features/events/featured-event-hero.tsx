@@ -40,7 +40,7 @@ export interface FeaturedHeroEventSlide {
 }
 
 const HERO_SUBCOPY =
-  'The ticketing platform built for every community. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and more. All-in pricing, no surprise fees.'
+  'The place events get made, for every community. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and more. All-in pricing, no surprise fees.'
 
 function heroEyebrow(event: FeaturedHeroEvent): string {
   const daysToStart = Math.ceil(

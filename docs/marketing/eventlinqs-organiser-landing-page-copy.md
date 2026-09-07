@@ -18,7 +18,7 @@ Voice rules applied throughout: plain, confident, specific, no hype words (no re
 
 **Headline (verbatim, locked):** Build your event, map your room, get your complete promo kit, in minutes. Free.
 
-**Subheadline:** EventLinqs is the Australian ticketing platform built for local organisers. Every event you create comes with its complete promo kit: live event page, print-ready QR poster, social share cards, tracked links, and a live reach panel. One all-in fee of $1.69 on a $20 ticket, and you keep the full $20.
+**Subheadline:** EventLinqs is the Australian platform where local events get made. Every event you create comes with its complete promo kit: live event page, print-ready QR poster, social share cards, tracked links, and a live reach panel. One all-in fee of $1.69 on a $20 ticket, and you keep the full $20.
 
 **Primary CTA button:** Build your event
 **Secondary CTA:** Join the Founding Organiser Program
@@ -201,8 +201,8 @@ Yes. Export it any time. We never sell it and never contact your attendees witho
 ## 11. SEO AND META (for the production team)
 
 - **Title tag:** Sell Tickets Online in Australia | Low Fee Ticketing for Event Organisers | EventLinqs
-- **Meta description:** EventLinqs is the Australian ticketing platform for local organisers. Lower fees, fast payouts, free events always free. Launching in Geelong and Melbourne. Claim a founding organiser spot.
-- Target terms to weave naturally (already present in the copy): sell tickets online Australia, event ticketing platform Australia, Eventbrite alternative Australia, low fee ticketing, sell tickets Geelong, sell tickets Melbourne.
+- **Meta description:** EventLinqs is the Australian platform where local events get made. Lower fees, fast payouts, free events always free. Launching in Geelong and Melbourne. Claim a founding organiser spot.
+- Target terms to weave naturally (already present in the copy): sell tickets online Australia, event platform Australia, Eventbrite alternative Australia, low fee ticketing, sell tickets Geelong, sell tickets Melbourne.
 - One H1 only (the hero headline). Section headings as H2s.
 
 ---
