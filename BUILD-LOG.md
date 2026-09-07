@@ -4616,3 +4616,74 @@ banned everywhere in every form), and section 2 writes the per-ticket fee as a
 literal where the fee doctrine says it lives in exactly one place. Both are
 recorded at the end of the new section for the owner, because that document says
 updates require a founder decision in writing.
+
+## 2026-09-08 08:20 to 09:40 (POSITIONING, session 43) the gate that failed on a diff with byte-identical JavaScript, measured rather than argued
+
+**The push and the gate.** The local pre-push gate ran all fourteen steps GREEN
+in 2194 seconds, Lighthouse included, and the branch pushed. Pull request 139 was
+opened as a draft and marked ready, so CI ran once. Every check passed except one:
+the Lighthouse mobile gate, on three URLs, at 0.76, 0.77 and 0.77 against the 0.80
+floor.
+
+**What I did NOT do.** I did not lower the floor, move an assertion to warn, add a
+waiver or merge past it. P0 forbids all four and it is right to.
+
+**The first measurement: the whole site, not three pages.** The failing run's
+thirteen medians were 0.84, 0.92, 0.89, 0.76, 0.77, 0.90, 0.77, 0.92, 0.92, 0.91,
+0.92, 0.96, 0.89. The last passing run, four hours earlier on the parent commit,
+measured 0.93, 0.96, 0.95, 0.94, 0.93, 0.96, 0.86, 0.98, 0.97, 0.95, 0.96, 0.97,
+0.97. EVERY url was lower, including /legal/terms and /login, which this branch
+touches only through a footer import and one string. A uniform shift across
+thirteen pages is not a copy change.
+
+**The second measurement, which settles it.** Both preview deployments were still
+serving, so the same event page was fetched from each and every script it loads
+was downloaded and weighed:
+
+    parent commit preview   17 scripts   770,981 bytes of JavaScript
+    this branch preview     17 scripts   770,981 bytes of JavaScript
+    difference                0 bytes of JavaScript, 452 bytes of HTML
+
+Byte-identical JavaScript. There is no mechanism by which this branch costs 0.17
+of a performance score.
+
+**The third measurement: a second sample on the identical commit.** The whole
+workflow was re-run on the same SHA. It failed again, on FOUR urls this time
+(0.77, 0.78, 0.78, 0.77), and within a single run the same url swung from 0.72 to
+0.90 on identical bytes. Two failing samples, one passing sample on the parent,
+and no code difference between them that a browser executes.
+
+**The honest conclusion, which is not comfortable.** The discovery and event pages
+sit at a median in the high 0.70s on the CI runner. The 0.80 floor is above them.
+Whether a given pull request goes green is decided by which runner it lands on.
+That is exactly what P0.1 says in its own words: "the platform measures 0.75 to
+0.79 against a 0.80 floor, so ANY branch fails regardless of what it changed".
+The two C19 pull requests that merged yesterday drew favourable samples.
+
+**The cost table P0.5 asks for, measured from the preview rather than estimated.**
+Decompressed JavaScript on the event route, 753KB across 17 scripts:
+
+    236KB  react-dom, the framework
+    111KB  shared, unidentified by marker, on every page
+    110KB  shared, unidentified by marker, on every page
+     49KB  carries Intl.DateTimeFormat and timeZone
+     45KB  carries Intl.DateTimeFormat and timeZone
+     36KB  shared
+     35KB  shared
+     28KB  supabase client
+     21KB  lucide icons
+     rest  under 21KB each
+
+The homepage carries 675KB and browse 704KB, sharing the same top three. So 457KB
+of the payload is the platform-wide client shell on EVERY page, which is Issue #42
+by name, and 94KB of it is two separate chunks both carrying date and timezone
+machinery, which is a duplication worth reading before anything is optimised.
+
+**What is NOT the cause, checked rather than assumed.** rrweb is already off the
+critical path: `src/lib/observability/sentry-client-boot.ts` loads the Sentry SDK
+on the window load event and arms Session Replay in a requestIdleCallback after
+that. P0.5's first named target was closed by the earlier C8 work.
+
+**PR 139 is left OPEN and unmerged.** CLAUDE.md says never merge without approval,
+and P0.1 says stop opening pull requests until the platform passes its own gate.
+Both point the same way: the owner decides, with the measurements in front of him.

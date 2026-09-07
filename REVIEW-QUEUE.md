@@ -1262,3 +1262,93 @@ One command, in a normal PowerShell window, in the repo:
 
 Until it runs, the platform correctly refuses to deploy code that names a
 database column production does not have.
+
+## Three decisions for you, and one command (8 September 2026)
+
+### 1. The command, and it is the same one as yesterday
+
+    npm run migrate:production
+
+Three database changes from the C10 work are still not on production, so that
+work cannot merge, and the next piece (the "what do you still need for this
+event" form) will queue behind the same step. One command clears all of it. The
+platform is deliberately refusing to deploy code that names a database column
+production does not have, which is the safety net working, not a fault.
+
+### 2. The positioning work is finished and waiting on your word to merge
+
+Pull request 139. Everything passed: the full local gate (all fourteen steps,
+about 37 minutes), then CI: lint, typecheck, build, the whole test suite, the
+types guard, the production parity build, and the preview deployment.
+
+One check went red: the mobile performance gate, on three of thirteen pages, at
+0.76 and 0.77 against a floor of 0.80.
+
+**It is not this change, and I can prove it rather than assert it.** Both preview
+sites were still running, so I downloaded the same event page from the previous
+version and from this one and weighed every script each loads:
+
+  - previous version: 17 scripts, 770,981 bytes of JavaScript
+  - this version: 17 scripts, 770,981 bytes of JavaScript
+  - difference: zero bytes of JavaScript, 452 bytes of text
+
+Identical code, to the byte. I then re-ran the same measurement on the same
+commit a second time: it failed again, on four pages, and the same page scored
+anywhere between 0.72 and 0.90 across five runs of identical bytes.
+
+**What is really happening** is the thing your own notes already say: the event
+and discovery pages sit in the high 0.70s on the test machine, just under the
+0.80 line, so whether a change passes depends on which machine it lands on. Two
+changes merged yesterday got lucky. This one did not.
+
+I have not lowered the line, not made the check optional, and not merged past it.
+Your call: merge it (the check is advisory and the failure is not this change), or
+hold it until the speed work is done.
+
+### 3. Two instructions of yours now point in opposite directions
+
+This is the one I genuinely cannot decide for you.
+
+  - Your launch decision of 7 September says performance does NOT gate the
+    launch, that what gates it is the platform being operational, and that the
+    speed work continues after launch.
+  - Your P0 directive, further down the same file, says to do the speed work
+    FIRST and to open no more pull requests until every page passes 0.80.
+
+Following the first means carrying on with the launch list and accepting that
+some pull requests will show a red performance check. Following the second means
+stopping the feature work now and spending the time on page weight.
+
+My recommendation: carry on with the launch list, because your launch decision is
+the one that says what launch means, and treat the speed work as the next thing
+after it rather than never. But it is your call and I have stopped rather than
+guess.
+
+### What I measured for that work while I was in there
+
+The event page loads 753KB of JavaScript. 457KB of that is on EVERY page: three
+shared files of 236KB, 111KB and 110KB. The 236KB is React itself and is not
+going anywhere. Two separate files totalling 94KB both carry date and timezone
+machinery, which looks like the same thing shipped twice and is the first thing I
+would read. The session-recording library that your notes name as the old culprit
+is already loaded late and is no longer in the way.
+
+### 4. The four items you asked me to split before building
+
+You asked which of the bundle target, WhatsApp sharing, trust signals and fraud
+prevention affect a launch journey. Answer: none of them. All four go to the
+post-launch list, and here is what is actually missing in each, because three of
+the four are further along than the list suggests:
+
+  - **WhatsApp sharing** is built on the event page, the Launch Kit and squad
+    invites, each with its own preview card. The only flow missing it is passing
+    a ticket to someone else, which is email only.
+  - **Trust signals** are built on the event page and at checkout, and refund
+    policies are visible everywhere they should be. Missing: a real verified
+    badge (the code deliberately says "Community organiser" rather than claim a
+    verification that does not exist yet) and a public page explaining what
+    happens when something goes wrong.
+  - **Fraud prevention**: the half that stops the same ticket being used twice is
+    built and driven, including offline and across two doors. The rotating code
+    and cryptographic signing are not.
+  - **The bundle target** is the speed work above.

@@ -930,3 +930,30 @@ the platform that way. CLAUDE.md's own rule is to REPORT a contradiction rather
 than follow a stale line, and its preamble says a user instruction outranks it,
 so the ruling was followed and the line is reported here. The constitution is the
 founder's to edit; the one-line reconciliation is his call.
+
+### POSITIONING: the merge verdict, and why it is not mine to make
+
+| Question | Answer | Evidence |
+|---|---|---|
+| Did the local gate pass? | YES, 14 of 14 steps in 2194s, Lighthouse included | the gate output |
+| Did CI pass? | Everything except the Lighthouse mobile gate: lint, typecheck, build, vitest, types-drift, production parity, and the Vercel preview all PASS | PR 139 checks |
+| Did this branch cause the Lighthouse failure? | NO, and it is measured, not argued. The same event page on the parent commit's preview and on this branch's preview loads 17 scripts and 770,981 bytes of JavaScript on BOTH. Zero bytes of difference. 452 bytes of HTML | the byte comparison in BUILD-LOG |
+| Is it a one-off sample? | NO. The workflow was re-run on the identical SHA and failed again, on four urls. Within one run the same url swings 0.72 to 0.90 on identical bytes | run 34166611851, both attempts |
+| Was the parent green? | YES, four hours earlier, every url 0.86 or better. Every url is lower in both of this branch's runs, including pages this branch barely touches | the two run logs |
+| So what is it? | The platform's discovery and event pages sit in the high 0.70s at median on the CI runner, below the 0.80 floor. P0.1 states this in its own words and says to fix the performance before opening more pull requests | CLOSE-OUT P0.1 |
+| Was the gate touched? | NO. No threshold lowered, no assertion moved to warn, no waiver added, no admin override | the diff |
+
+**PR 139 is open and NOT merged.** CLAUDE.md: "Never merge without approval."
+P0.1: "Open no other pull request until every gated URL passes 0.80 at MEDIAN with
+real headroom." Both point at the owner, so the owner has it, with the numbers.
+
+### The A, B, C, D triage the 7 September narrowing asked for BEFORE building
+
+Full table with evidence in C:\dev\ABCD-TRIAGE.md. The split the owner asked for:
+
+| Item | Blocks an L1 journey? | Verdict |
+|---|---|---|
+| A. Bundle under 200KB, PWA offline, resilient checkout | NO. L1 item 9 completes. The bundle is 753KB decompressed on the event route; the PWA is offline for the DOOR only (scan-sw.js), which is the half that matters at a venue; checkout has retry affordances but no offline queue, and money should not queue optimistically | POST-LAUNCH QUEUE, and it is the same work as C8 and P0.5 |
+| B. WhatsApp share with rich preview | NO. Three of the four flows the scope names are BUILT and driven: the event share bar, the Launch Kit share row and the squad invite, each with a per-event Open Graph card. The gap is the TICKET TRANSFER flow, which is email only | POST-LAUNCH QUEUE, gap named |
+| C. Trust signals | NO. Contextual trust on the event page and on checkout, and visible refund policies, are BUILT in the placement the locked design rules require. The gaps are a VETTED verified-organiser pipeline (the component declines to make the claim rather than faking it) and a public dispute-resolution page | POST-LAUNCH QUEUE, two gaps named |
+| D. Fraud prevention, audited not rebuilt as asked | NO. Single-use validation is BUILT and driven, offline and across devices, which is L1 item 12 in full. Rotating 30-second tokens, HMAC signing with per-event keys, and the anti-screenshot watermark are NOT BUILT (build brief B4) | POST-LAUNCH QUEUE. Partly MET, and the built half is the half that stops a ticket being used twice |
