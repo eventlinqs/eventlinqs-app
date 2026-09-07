@@ -121,8 +121,11 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
               >
                 EventLinqs
               </p>
+              {/* Each phrase is bound with a non-breaking space so the headline wraps
+                  phrase by phrase and never leaves one word alone on a line
+                  (C17.4: measured orphaning "platform." at 390 and 768). */}
               <p className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                Every community. Every event. One platform.
+                {'Every\u00A0community. Every\u00A0event. One\u00A0platform.'}
               </p>
               <p className="mt-2 text-sm text-white/85 sm:text-base">
                 The first organisers are getting set up. New events land here every week.

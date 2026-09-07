@@ -910,10 +910,12 @@ const ROOT = join(HERE, '..', '..')
  * before hydration, a loaded raster left alone): 317 files / 3630, as the
  * canary measured. The C17.6 sweep added tests/component/events-empty-state
  * (three: unfiltered, filtered, a query): 318 files / 3633, as the canary
- * measured.
+ * measured. C17.4 added tests/unit/home/hero-scrim (three: the seven stops,
+ * never darker higher up, the headline band held at 0.78): 319 files / 3636,
+ * as the canary measured.
  */
-const MIN_FILES = 318
-const MIN_TESTS = 3633
+const MIN_FILES = 319
+const MIN_TESTS = 3636
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
