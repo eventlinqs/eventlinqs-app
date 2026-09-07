@@ -21,7 +21,13 @@ type Props = {
  */
 export async function EventsGrid({ events, params, page, totalPages, firstCardEager }: Props) {
   if (events.length === 0) {
-    return <EventsEmptyState query={typeof params.q === 'string' ? params.q.trim().slice(0, 80) : undefined} />
+    // Which emptiness is this (close-out C17.6)? Paging, sorting, the map or grid
+    // view, the tab and the focus or error markers do not narrow the catalogue;
+    // everything else does. An unfiltered, unsearched empty grid is a platform
+    // waiting for its first listing and says so.
+    const NOT_A_FILTER = new Set(['page', 'sort', 'view', 'tab', 'focus', 'error'])
+    const filtered = Object.entries(params).some(([key, value]) => !NOT_A_FILTER.has(key) && typeof value === 'string' && value.trim() !== '')
+    return <EventsEmptyState query={typeof params.q === 'string' ? params.q.trim().slice(0, 80) : undefined} filtered={filtered} />
   }
 
   const initialCards = await projectToCardData(events)

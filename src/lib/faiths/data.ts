@@ -53,7 +53,7 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
     slug: 'christian',
     displayName: 'Christian',
     order: 1,
-    censusNote: 'Australia largest religion (ABS 2021: 43.9%).',
+    censusNote: "Australia's largest religion (ABS 2021: 43.9%).",
     tagline: 'Worship, gospel, choir and community.',
     heroHeadline: 'Christian events, across every community.',
     heroBody:
