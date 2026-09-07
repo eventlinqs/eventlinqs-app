@@ -4082,3 +4082,84 @@ changed, and nothing was deleted.
 - Next: C9 (GOOGLE_MAPS_API_KEY required on production, forbidden on development, the geocoding path failing
   loudly, a guard both ways), then C18 FINAL, C19, C10, C15. The halt rule holds: main is green and
   production READY and serving the head before C9 begins.
+
+## 2026-09-07 18:07 to 18:40 (C9, session 40) the Google Maps server key, code side: the save rule, the guard, the scope pins, pushed
+
+- Governing laws: Law 0 (the reads before the first edit are in this entry), Law 7 (the doctrine and the
+  manifest's own ruling cited rather than assumed), Law 8, Law 10 (the founder's step, minting the server key,
+  is already one command in the queue and is unchanged), the Verification and gates section on the environment
+  (docs/ENV-DOCTRINE.md, src/lib/env/manifest.mjs is the executable authority), the COMPLETION LAW. Branch
+  feat/c9-geocoding-loud from main 03f03d5c. The halt rule held before it began: main green, production READY
+  and serving 03f03d5c.
+- What already existed, read from source: the manifest requires GOOGLE_MAPS_API_KEY on production and preview
+  and marks it sensitive, and storePolicyFor therefore already FORBIDS it on the Vercel Development store (ruling
+  R3, 3 August 2026: a scope that cannot be marked sensitive holds no secret); the process policy on
+  development is optional so a local checkout may hold the key in its gitignored file (doctrine 3.3). The
+  geocoder (src/lib/geo/geocode.ts) already decides by name why the live call is not attempted, and
+  resolveVenueCoordinates already returns a null pair WITH the reason. The gap was the last step: both actions
+  logged the reason at warn level and saved the event with the null pair anyway, so on production, where the
+  server key is the browser key and Google refuses it, every typed address saved unplaced and nobody was told.
+  The existing guard geocoding-key-posture judges the KEY (absent, browser, distinct-and-probed); nothing judged
+  the SAVE.
+- Built: src/lib/geo/venue-save-rule.ts, one pure rule for both actions. deploymentEnvironment() reads
+  VERCEL_ENV (production or preview; everything else is development). judgeVenueSave: virtual, coordinates
+  present, or no address at all are allowed; a typed address with no coordinates on production or preview is
+  REFUSED with a message the organiser can act on, as a configuration fault naming GOOGLE_MAPS_API_KEY when the
+  reason is "server geocoding is off" (the key absent, or the browser key standing in) or as a geocoding fault
+  naming Google's status otherwise, and in both cases the path that works (pick the venue from the suggestions,
+  which carry their own coordinates); on development it is allowed with the reason as the warning. Both actions
+  in src/app/(dashboard)/dashboard/events/actions.ts call it after resolveVenueCoordinates, log the refusal at
+  error level with the reason, and return it as the action error, which the form already shows in its
+  role="alert" box.
+- Guard scripts/guards/geocoding-never-silent-null.mjs (registered, described in the runner header): loads the
+  TypeScript rule through the alias loader in a child and drives six cases (the key absent on production, the
+  browser key on production, Google refusing on preview, the key absent on development, coordinates present, a
+  virtual event), refusing the build if a production-like case is allowed or a refusal fails to name the fault
+  and the path that works, then reads the actions file for both calls and both returns. Two drills: the rule
+  made to allow production; the create action's call removed. Tests: tests/unit/geo/venue-save-rule (7) and
+  tests/unit/security/google-maps-server-key-scopes (3: required on production and preview, forbidden on the
+  Development store, optional for a local process). The manifest entry carries the C9 note explaining the two
+  policies. tsc 0, eslint 0, 90 tests green across the touched areas, the guard PASS; canary 319/3636 to
+  321/3646, measured.
+- "Required on production" is enforced by the manifest through production parity (a missing record refuses
+  the push and the merge) and the production build's prebuild check; "forbidden on development" by the store
+  policy, now pinned by a test. Neither needed a code change beyond the pin; both are recorded with their
+  mechanism in the ledger rather than claimed.
+- The drive is written (C:\dev\EVIDENCE\C9\drive-c9.mjs): mint an organiser and an organisation on TEST, sign in
+  through /login in a real browser, walk the create wizard with a typed venue address and no Places pick, click
+  "Save as draft", and judge: on the Vercel preview of this branch (VERCEL_ENV=preview, where the server key is
+  the browser key) the refusal must show and no row may exist; on the local production build (development) the
+  draft must save with a null pair and the reason must be in the server log. It runs after the push, when the
+  preview and the gate's build exist.
+
+## 2026-09-07 18:40 to 19:10 (C9, session 40) pushed, driven both ways as a real organiser, merged as a1321e98, production READY: C9 CLOSED
+
+- 18:21:36 the push of feat/c9-geocoding-loud (46f07e35) through the full gate: GREEN 13 of 13 (Lighthouse
+  1417 s, five runs per URL, every page above its floor); git exit 0 at 18:50:24. PR 135 draft 18:50:52,
+  ready 18:50:54; the preview dpl_GrLoGzPiXHmfvM9Qjff8M5MZRLis READY 08:52:52Z; CI once (run 34102775396):
+  production parity, types-drift, test, lint · typecheck · build all SUCCESS.
+- The drive (drive-c9.mjs), both ways, three viewports each, as an organiser minted on TEST who signs in
+  through /login and walks the seven-step wizard with a typed Geelong address and no Places pick, then clicks
+  "Save as draft":
+  - local production build (the gate's .next, VERCEL_ENV unset, development), 18:58: the draft SAVED at every
+    viewport with venue_latitude null, venue_longitude null, venue_geocode_source null, status draft, the
+    organiser landing on /dashboard/events, and the server log carrying "[events] no coordinates for 'The Wool
+    Exchange': server geocoding is off: GOOGLE_MAPS_API_KEY is the public browser key ...". The first run of
+    this drive FAILED for a reason in the drive, recorded rather than hidden: it waited a fixed four seconds and
+    read the database before the save had finished, and its own cleanup then deleted the organisation under
+    the last in-flight save, which surfaced as a 23503 foreign-key error in the server log ("organisation_id
+    ... is not present"). Nothing was left on TEST (checked: no events titled C9 drive, no organisations from
+    the last hour). The drive now waits for the redirect or the alert, up to 90 s.
+  - the Vercel preview of the branch (VERCEL_ENV=preview; GOOGLE_MAPS_API_KEY there is the browser key), 19:00:
+    REFUSED at every viewport with "This environment cannot place a typed address on the map:
+    GOOGLE_MAPS_API_KEY is not configured for server geocoding. Pick the venue from the suggestions so it
+    carries its own coordinates, or contact hello@eventlinqs.com so we can fix the configuration." in the
+    form's alert, and no row saved. Captures: preview-refuse-390/768/1440.jpg (the alert in red under the
+    review card at 390).
+  Everything minted was deleted afterwards.
+- 09:00:43Z squash-merged as a1321e98 (no attribution line). production deployment dpl_2XQJdPLWCfrQ84qFx57k6ztgBSMo READY at 09:03:19Z (the newest production deployment, target production, ref main); CI on main run 34103641099 SUCCESS; env locks run 34103640921 SUCCESS; post-deploy smoke SUCCESS on the deployment_status event (34103873358); www 200 serving sentry-release a1321e98a041460da52aa418a65d2bde1c80a94d. Local main at a1321e98; the
+  local branch deleted; the remote branch waits for its Lighthouse run.
+- C9 CLOSED in the ledger with the mechanism of each of its four requirements named rather than claimed
+  (required on production by the manifest and the two parity checks; forbidden on the Development store by the
+  store policy, pinned; the loud, visible refusal driven on the preview; the guard drilled). Queue entry
+  written. Next: C18 FINAL.

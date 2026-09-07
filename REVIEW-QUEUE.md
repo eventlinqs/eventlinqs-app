@@ -5,7 +5,7 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
-UPDATE 7 September 2026 at 18:06 (session 40): C16 closed (12:41), C8 merged (13:33), C8 CORRECTED done through the estimate and merged (15:40), and C17 is done and live in two merges (17:07 the curated hero, the failure path, the guard and the empty-surface fixes; 17:59 the scrim re-tuned by measurement): production is Ready on 03f03d5c and serving it, CI on main green. The homepage hero on the live site now wears one of your three licensed photographs with legible copy over it. Next, in order: C9 (the Google Maps key, code side), C18 FINAL, C19, then C10 and C15. Three items for you below: the launcher (first), the 95 decision (C8 CORRECTED entry), and two small C17 questions (the C17 entry).
+UPDATE 7 September 2026 at 19:10 (session 40): C16 closed (12:41), C8 merged (13:33), C8 CORRECTED merged (15:40), C17 done in two merges (17:07, 17:59), and C9 merged at 19:00 (PR 135, a1321e98): production is Ready on it and serving it, CI on main green. An organiser who types a venue address on the live site without picking it from the suggestions now sees, by name, that the map service is not configured, instead of the event quietly saving with no place on the map; your server-key step (below, under Google Maps) is what turns that message into a geocode. Next: C18 FINAL, C19, then C10 and C15. Items for you: the launcher (first below), the 95 decision (the C8 CORRECTED entry), the two C17 questions, and the Google Maps key.
 
 The block history (sessions 3 to 39: the same three migrations behind, re-verified on every relaunch, your one command made safe and checked against production read only) is in BUILD-LOG.md and BUILD-LEDGER.md; it is finished and is not repeated here.
 
@@ -784,3 +784,16 @@ The runner's verdict under the new median floors: two pages FAIL the 0.80 floor 
 **Licence facts I could not verify (Law 7).** The attribution file records the licence holder (EventLinqs) and the source (Adobe Stock / Stocksy) but not the licence numbers or model releases; both are UNSOURCED in the ledger until you point at the receipts.
 
 **Evidence:** C:\dev\EVIDENCE\C17\ (production-events-probe.txt; prod-empty\, prod-failed\ and local-featured\ with the measure tables; empty-surfaces\; scrim-sim-round2.md; lighthouse-prod-c17-before-scrim.log; guard-failure-drills-c17*.txt; gate-pass-on-push-c17*.txt).
+
+
+## C9 (7 September 2026, 18:07 to 19:10): a typed address that cannot be placed on the map now says so, instead of saving unplaced
+
+**What was wrong.** When an organiser typed a venue address and did not pick it from the suggestions, the platform tried to place it on the map on the server, could not (on production the server key is your browser key, which Google refuses for this), wrote a line in the server log, and saved the event anyway with no coordinates. Nothing told the organiser; nothing told you. Every typed address on production would have been invisible to its city map, its suburb page and distance search.
+
+**What happens now.** On production and on previews, that save is refused with a message the organiser can act on. If the cause is our configuration (the server key missing, or the browser key standing in for it) the message says exactly that, names GOOGLE_MAPS_API_KEY, and tells them to pick the venue from the suggestions, which carry their own coordinates, or to contact hello@eventlinqs.com. If Google refused or found nothing, the message names that and says to check the address or pick from the suggestions. A virtual event, a venue picked from the suggestions, or an event with no address at all are unaffected. On a local developer checkout the save is still allowed, with the reason written to the log, because the server key is deliberately kept off that environment.
+
+**Proven, not assumed.** A build guard runs the rule against six cases (including "key absent on production") and refuses the build if any production case is let through or the message stops naming the fault and the way out; it was shown failing both ways. Then, as a real organiser minted on the test database, I signed in on this branch's Vercel preview and on the local build, filled the create wizard with a typed Geelong address and no pick, and clicked "Save as draft", at 390, 768 and 1440: the preview refused by name every time and saved nothing; the local build saved the draft with no coordinates and the reason in its log. The key's scopes are pinned by tests: required on production and preview, forbidden on the Development store, allowed in a local file.
+
+**Your step, unchanged.** Mint the separate server key (Geocoding API enabled, no referer restriction), set it as GOOGLE_MAPS_API_KEY on production and preview, then `node --env-file=.env.local scripts/ops/verify-google-maps-keys.mjs`. Until then, organisers on the live site who type an address without picking will see the message above; picking from the suggestions works today.
+
+**Evidence:** C:\dev\EVIDENCE\C9\ (preview-refuse\ and local-allow\ with the tables and six captures; guard-failure-drills-c9.txt; gate-pass-on-push-c9.txt).
