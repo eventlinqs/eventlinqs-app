@@ -142,7 +142,9 @@ jobs:
     needs: preview
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 45 since 7 September 2026 (close-out C8.2): a 13 URL three-run collection measured 17 minutes on the runner
+    # (run 34079721873, 03:30:14Z to 03:47:35Z), so five runs need about 29, plus the resolve and the warm pass.
+    timeout-minutes: 45
     env:
       PREVIEW_URL: ${{ needs.preview.outputs.url }}
     steps:
@@ -193,7 +195,7 @@ jobs:
             [ -z "$u" ] && continue
             args="$args --url=$u"
           done < gate-urls.txt
-          npx --yes @lhci/cli@0.14.x collect --config=./lighthouserc.json $args
+          npx --yes @lhci/cli@0.15.1 collect --config=./lighthouserc.json $args
 
           # Print every run value and the aggregation the floors actually use,
           # BEFORE asserting. LHCI prints run values only on failure, so a
@@ -205,6 +207,11 @@ jobs:
           # fails the build; `lhci assert` below is the gate.
           node scripts/ci/lighthouse-aggregation-report.mjs .lighthouseci
 
+          # The truth table (close-out C8 CORRECTED, 7 September 2026): medians
+          # per URL of the performance score, LCP, TBT, CLS and script bytes, and
+          # the named LCP element, as a markdown table. A reporter, never a gate.
+          node scripts/ci/lighthouse-truth-table.mjs .lighthouseci
+
           # The SEO half that a category floor cannot express, and this one DOES
           # fail the build. It asserts indexability against the ENVIRONMENT (a
           # preview must be blocked, production must be crawlable), and fails if
@@ -213,8 +220,8 @@ jobs:
           # header of that script for why SEO stopped being a category floor.
           node scripts/ci/assert-seo-audits.mjs .lighthouseci
 
-          npx --yes @lhci/cli@0.14.x assert --config=./lighthouserc.json
+          npx --yes @lhci/cli@0.15.1 assert --config=./lighthouserc.json
 
       - name: Upload Lighthouse reports
         if: always()
-        run: npx --yes @lhci/cli@0.14.x upload --config=./lighthouserc.json || true
+        run: npx --yes @lhci/cli@0.15.1 upload --config=./lighthouserc.json || true

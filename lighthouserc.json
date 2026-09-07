@@ -3,8 +3,8 @@
     "collect": {
       "_urlNote": "URLs are injected at runtime by .github/workflows/lighthouse.yml via scripts/ci/resolve-gate-urls.mjs, which reads the FIXED, REVIEWED set in lighthouse-gate-urls.json and verifies every path answers 200 on the warmed preview before LHCI sees it, so no stale slug can 404 the collect. Amended 25 August 2026: the event-detail pages used to be DISCOVERED from the preview sitemap, which made the audited page move with the catalogue and turned a marginal pass into a marginal fail on a 1,200 seat arena chart. The set is PINNED, not narrowed: three event pages, the heaviest first, and every public surface the gate has always covered. NO THRESHOLD IN THIS FILE WAS TOUCHED.",
       "_authNote": "All listed URLs verified to render without auth (HTTP 200, no redirect). Auth-gated surfaces - /dashboard/*, /admin/*, /orders/[order_id]/confirmation, /squad/[token], /verify-email-sent - are excluded from this gate because Lighthouse cannot pass session cookies/JWTs reliably in CI. Module M7 (admin) and Pre-Task 5 (checkout/orders perf) will each add their own auth-context Lighthouse gate using a recorded session.",
-      "_numberOfRuns_note": "CLAUDE.md hard rule: 'NO single-run Lighthouse measurements (median-of-5 only)'. Single-run measurements are statistically invalid for gating and produce intermittent NO_LCP / NO_FCP errors (observed on PR #40 first green-pass run: / and /culture/african both came back perf:null with errorMessage:NO_LCP, while /events scored 0.80 in the same run). 3 runs (median) is the floor that dampens cold-start flake without blowing the 20-minute workflow timeout; the full 5 the standard calls for can land once a longer timeout window is justified.",
-      "numberOfRuns": 3,
+      "_numberOfRuns_note": "CLAUDE.md hard rule: 'NO single-run Lighthouse measurements (median-of-5 only)'. FIVE RUNS since 7 September 2026 (close-out C8 CORRECTED). Single-run measurements are statistically invalid for gating and produce intermittent NO_LCP / NO_FCP errors (observed on PR #40 first green-pass run: / and /culture/african both came back perf:null with errorMessage:NO_LCP, while /events scored 0.80 in the same run). Three runs were the floor that fitted the 20-minute workflow timeout. Measured on the runner on 7 September 2026, a 13 URL three-run collection took 17 minutes end to end (run 34079721873, 03:30:14Z to 03:47:35Z), so five runs need about 29 minutes and the Lighthouse job's timeout in .github/workflows/lighthouse.yml is raised to 45 minutes to hold the resolve, the warm pass and the collection. The local gate reads this value and pays the same cost on every push.",
+      "numberOfRuns": 5,
       "settings": {
         "formFactor": "mobile",
         "chromeFlags": "--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage",
@@ -15,56 +15,56 @@
         "networkQuietThresholdMs": 5000,
         "cpuQuietThresholdMs": 3000
       },
-      "_lighthouse_version_note": "PINNED TO @lhci/cli 0.14.x, which bundles Lighthouse 12.1.0. KNOWN LIMITATION: in 12.1.0 the TraceElements gatherer throws ('Dependency RootCauses failed: Cannot read properties of undefined (reading frame_sequence)'), so largest-contentful-paint-element and layout-shifts come back scoreDisplayMode=error with NO details in every report this gate produces, locally and in CI. The consequence is that this gate cannot tell you WHICH element is the LCP or WHERE a layout shift came from - it reports the numbers but not the cause, which is exactly what you need when a score drops. Verified fixed in Lighthouse 12.6.1 (shipped in @lhci/cli 0.15.1): both audits return real data, and on the event detail route 12.6.1 scored the pre-fix page 0.71 and the post-fix page 0.83 (versus 0.74 and 0.80 on 12.1.0). The upgrade is a one-line change in .github/workflows/lighthouse.yml, but it re-baselines ALL 11 gated URLs and only the event detail route has been measured on both versions, so it needs a validation run before it is trusted. RE-CHECK BY 2026-11-01, alongside the exemption expiries below."
+      "_lighthouse_version_note": "PINNED TO @lhci/cli 0.15.1, which bundles Lighthouse 12.6.1 (the npm registry, read 7 September 2026: @lhci/cli@0.15.1 declares dependencies.lighthouse 12.6.1 and is the latest release; 0.14.0 declared 12.1.0). The pin lives in THREE places that must agree, and tests/unit/ci/lhci-pin-agreement.test.ts fails the build if they do not: .github/workflows/lighthouse.yml (collect, assert, upload), scripts/ops/pre-push-gate.mjs LHCI_SPEC (the local gate collects with the Lighthouse this spec bundles) and scripts/admin-lighthouse.mjs. HISTORY: until 7 September 2026 the pin was 0.14.x (Lighthouse 12.1.0), whose TraceElements gatherer threw ('Dependency RootCauses failed: Cannot read properties of undefined (reading frame_sequence)'), so largest-contentful-paint-element and layout-shifts came back scoreDisplayMode=error with NO details in every report, locally and in CI: the gate reported the number and could never name the LCP element or the source of a layout shift. 12.6.1 returns both audits with real data, and scripts/ci/lighthouse-truth-table.mjs prints the element after every collection. The upgrade re-baselined all 13 gated URLs on the same local production build, per URL and per run, on both versions: docs/perf/LIGHTHOUSE-12.6.1-REBASELINE-2026-09-07.md. RE-CHECK BY 2026-11-01, alongside the exemption expiry below."
     },
     "assert": {
       "_aggregationContract": {
-        "categoryFloors": "optimistic",
-        "_note": "THE AGGREGATION CONTRACT. Read this before quoting any number from this gate. Every categories:* floor in this file aggregates with aggregationMethod 'optimistic'. For a minScore assertion, @lhci/utils resolves optimistic to Math.max(...values): THE BEST RUN, NOT THE MEDIAN. Source: @lhci/utils/src/assertions.js, `aggregationMethod = 'optimistic'` is the default at getAssertionOptions, and getValueForAggregationMethod returns Math.max for a 'min'-prefixed assertion under optimistic. This cost real hours on 2026-08-05: CI reported 'found 0.74' from values 0.72, 0.74, 0.71. The median of those is 0.72; 0.74 is the maximum. The single number was read as a median, a regression was chased that did not exist, and the branch under suspicion had changed zero bytes of runtime code on the failing route. NUMERIC ASSERTIONS DIFFER. Under optimistic, a maxNumericValue assertion resolves to Math.min, again the best run. That is why the event-detail budget below pins aggregationMethod 'median' explicitly on every numeric assertion: without it a budget looks strict and behaves loosely. The floors are pinned to 'optimistic' here to record what this gate has always done, NOT to change it. Tightening the category floors to median is a deliberate decision with its own evidence, and it has not been made. tests/unit/ci/lighthouse-aggregation-contract.test.ts fails the build if this declaration and the assertions below ever drift apart."
+        "categoryFloors": "median",
+        "_note": "THE AGGREGATION CONTRACT. Read this before quoting any number from this gate. Every categories:* floor in this file, and every per-audit SEO minScore, aggregates with aggregationMethod 'median': the middle run of the collection, so the gate judges the TYPICAL run. Until 7 September 2026 (close-out C8 CORRECTED) the floors aggregated 'optimistic', which for a minScore assertion @lhci/utils resolves to Math.max(...values), THE BEST RUN (source: @lhci/utils/src/assertions.js, getValueForAggregationMethod returns Math.max for a 'min'-prefixed assertion under optimistic). That cost real hours on 2026-08-05, when CI reported 'found 0.74' from 0.72, 0.74, 0.71 and a regression was chased that did not exist, and it meant the owner was quoted best-run figures and planned against them; the C13 pull request's '0.77' and the merged head's homepage '0.76' on 7 September were both maxima over medians of 0.75. NUMERIC ASSERTIONS DIFFER in direction but not in kind: under optimistic a maxNumericValue resolves to Math.min, again the best run, which is why the event-detail budget below has pinned median on every numeric assertion since it was written; a budget that aggregates optimistically looks strict and behaves loosely. Every floor now pins median explicitly, and tests/unit/ci/lighthouse-aggregation-contract.test.ts fails the build if this declaration and the assertions below ever drift apart."
       },
       "assertMatrix": [
         {
-          "_note": "SEO IS ASSERTED AUDIT BY AUDIT, NOT AS A CATEGORY SCORE. This entry replaced `categories:seo: [error, minScore 1]`, which used to sit in the general entry below and in the /culture/* and homepage entries. THE REASON: this gate measures a VERCEL PREVIEW, and on 15 August 2026 a real defect was fixed - previews were serving `x-robots-tag: index, follow` and publishing a 932-URL sitemap on the preview host, overriding Vercel's own noindex and offering Googlebot a second copy of the catalogue. next.config.ts now sends `noindex, nofollow` on every non-production deployment. Lighthouse's `is-crawlable` audit carries 4.04 of the SEO category's 13.04 weighted points, so a CORRECTLY noindexed preview scores 0.69 and can never reach 1. Measured on PR #118, is-crawlable was the ONLY failing SEO audit on all eleven gated URLs: the gate was failing the fix. NOT A RELAXATION: a category score of 1 is reached exactly when every weighted audit passes, so asserting each audit at minScore 1 demands precisely the same things of the page, and names the one that broke instead of reporting a fraction. aggregationMethod is pinned to `optimistic` on every one of them so the replacement judges runs identically to the category floor it replaces - neither stricter nor looser. THE TWO EXCLUSIONS, both enforced elsewhere rather than dropped: `is-crawlable` is environment-dependent and is asserted by scripts/ci/assert-seo-audits.mjs against the HOST (a preview MUST be blocked, production MUST be crawlable), which means re-breaking the indexing defect now fails this gate - nothing checked that before; `structured-data` is weight 0 with scoreDisplayMode `manual`, for which LHCI's minScore getter returns undefined. That script also fails the build if Lighthouse ever reports an SEO audit outside its reviewed baseline, which is what stops a hand-written list silently covering less than the category floor did.",
+          "_note": "SEO IS ASSERTED AUDIT BY AUDIT, NOT AS A CATEGORY SCORE. This entry replaced `categories:seo: [error, minScore 1]`, which used to sit in the general entry below and in the /culture/* and homepage entries. THE REASON: this gate measures a VERCEL PREVIEW, and on 15 August 2026 a real defect was fixed - previews were serving `x-robots-tag: index, follow` and publishing a 932-URL sitemap on the preview host, overriding Vercel's own noindex and offering Googlebot a second copy of the catalogue. next.config.ts now sends `noindex, nofollow` on every non-production deployment. Lighthouse's `is-crawlable` audit carries 4.04 of the SEO category's 13.04 weighted points, so a CORRECTLY noindexed preview scores 0.69 and can never reach 1. Measured on PR #118, is-crawlable was the ONLY failing SEO audit on all eleven gated URLs: the gate was failing the fix. NOT A RELAXATION: a category score of 1 is reached exactly when every weighted audit passes, so asserting each audit at minScore 1 demands precisely the same things of the page, and names the one that broke instead of reporting a fraction. aggregationMethod is pinned to `median` on every one of them (since 7 September 2026, when every category floor moved from optimistic to median under close-out C8 CORRECTED) so the replacement judges runs identically to the category floor it replaces - neither stricter nor looser. THE TWO EXCLUSIONS, both enforced elsewhere rather than dropped: `is-crawlable` is environment-dependent and is asserted by scripts/ci/assert-seo-audits.mjs against the HOST (a preview MUST be blocked, production MUST be crawlable), which means re-breaking the indexing defect now fails this gate - nothing checked that before; `structured-data` is weight 0 with scoreDisplayMode `manual`, for which LHCI's minScore getter returns undefined. That script also fails the build if Lighthouse ever reports an SEO audit outside its reviewed baseline, which is what stops a hand-written list silently covering less than the category floor did.",
           "_pattern_note": "Excludes /login and /signup only. They are deliberately noindex AND deliberately non-canonical (measured: both fail `canonical` as well as `is-crawlable`), and the dedicated entry below already switches their SEO category off for that reason. Every other audited URL gets the full per-audit set.",
           "matchingUrlPattern": "^(?!.*/(login|signup)$).*",
           "_permanent": true,
           "_expiryReason": "The categories:seo floor is off because this gate measures a Vercel preview, which is noindex BY DESIGN and permanently so. That is a settled design decision, not a deferred fix, so it carries no expiry date. The per-audit assertions in this entry hold the same bar, and scripts/ci/assert-seo-audits.mjs asserts indexability against the environment and fails if the audit set drifts from its reviewed baseline. scripts/ci/lighthouse-exemption-expiry.mjs reprints this on every run so it stays visible.",
           "assertions": {
             "categories:seo": "off",
-            "canonical": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
-            "crawlable-anchors": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
-            "document-title": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
-            "hreflang": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
-            "http-status-code": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
-            "image-alt": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
-            "link-text": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
-            "meta-description": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
-            "robots-txt": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }]
+            "canonical": ["error", { "minScore": 1, "aggregationMethod": "median" }],
+            "crawlable-anchors": ["error", { "minScore": 1, "aggregationMethod": "median" }],
+            "document-title": ["error", { "minScore": 1, "aggregationMethod": "median" }],
+            "hreflang": ["error", { "minScore": 1, "aggregationMethod": "median" }],
+            "http-status-code": ["error", { "minScore": 1, "aggregationMethod": "median" }],
+            "image-alt": ["error", { "minScore": 1, "aggregationMethod": "median" }],
+            "link-text": ["error", { "minScore": 1, "aggregationMethod": "median" }],
+            "meta-description": ["error", { "minScore": 1, "aggregationMethod": "median" }],
+            "robots-txt": ["error", { "minScore": 1, "aggregationMethod": "median" }]
           }
         },
         {
-          "_pattern_note": "Negative lookahead excludes /login and /signup (they carry their own entry below; note this entry no longer asserts any SEO category - SEO moved to the per-audit entry at the top of this matrix on 16 August 2026), /culture/* (perf score - Issue #42 cold-start image-optimiser race; see the third assertMatrix entry below), AND the homepage / (same Issue #42 class per CLAUDE.md docs/perf/v2/closure-report.md flagging 'Mobile homepage and /events have known cold-cache measurement issue ... do not block on it'; see the fourth assertMatrix entry below). Each excluded path has its own dedicated assertMatrix entry that re-applies whichever assertions still need to fire at error-level for that path. assertMatrix entries are independent and additive (a URL matched by multiple entries has all matching assertions evaluated), so excluding here is the only way to suppress the default error-level threshold from also firing.",
-          "matchingUrlPattern": "^(?!.*/(login|signup)$)(?!.*/culture/.+$)(?!https?://[^/]+/?$).*",
+          "_pattern_note": "Negative lookahead excludes /login and /signup (they carry their own entry below; note this entry no longer asserts any SEO category - SEO moved to the per-audit entry at the top of this matrix on 16 August 2026) AND the homepage / (Issue #42 class per CLAUDE.md docs/perf/v2/closure-report.md flagging 'Mobile homepage and /events have known cold-cache measurement issue ... do not block on it'; see the dedicated entry below). Each excluded path has its own dedicated assertMatrix entry that re-applies whichever assertions still need to fire at error-level for that path. assertMatrix entries are independent and additive (a URL matched by multiple entries has all matching assertions evaluated), so excluding here is the only way to suppress the default error-level threshold from also firing. REMOVED 7 September 2026 (close-out C8.3): a third exclusion, (?!.*/culture/.+$), and the warn-level entry it fed. The pattern matched nothing, because the platform serves /community/* and has since the culture-to-community rename, so the waiver protected no page; and the community pages do not need it: /community/african measured 0.93 in every one of three runs on the runner (run 34079721873, 7 September 2026) and 0.93 to 0.96 on the local gate, above this entry's 0.80 floor, so the general floor applies to them at error level as it does to every other public page.",
+          "matchingUrlPattern": "^(?!.*/(login|signup)$)(?!https?://[^/]+/?$).*",
           "assertions": {
             "categories:performance": [
               "error",
               {
                 "minScore": 0.8,
-                "aggregationMethod": "optimistic"
+                "aggregationMethod": "median"
               }
             ],
             "categories:accessibility": [
               "error",
               {
                 "minScore": 1,
-                "aggregationMethod": "optimistic"
+                "aggregationMethod": "median"
               }
             ],
             "categories:best-practices": [
               "error",
               {
                 "minScore": 1,
-                "aggregationMethod": "optimistic"
+                "aggregationMethod": "median"
               }
             ],
             "largest-contentful-paint": [
@@ -145,83 +145,24 @@
               "error",
               {
                 "minScore": 0.8,
-                "aggregationMethod": "optimistic"
+                "aggregationMethod": "median"
               }
             ],
             "categories:accessibility": [
               "error",
               {
                 "minScore": 1,
-                "aggregationMethod": "optimistic"
+                "aggregationMethod": "median"
               }
             ],
             "categories:best-practices": [
               "error",
               {
                 "minScore": 1,
-                "aggregationMethod": "optimistic"
+                "aggregationMethod": "median"
               }
             ],
             "categories:seo": "off",
-            "largest-contentful-paint": [
-              "warn",
-              {
-                "maxNumericValue": 4000
-              }
-            ],
-            "total-blocking-time": [
-              "warn",
-              {
-                "maxNumericValue": 600
-              }
-            ],
-            "cumulative-layout-shift": [
-              "error",
-              {
-                "maxNumericValue": 0.1
-              }
-            ],
-            "first-contentful-paint": [
-              "warn",
-              {
-                "maxNumericValue": 2000
-              }
-            ],
-            "speed-index": [
-              "warn",
-              {
-                "maxNumericValue": 4500
-              }
-            ]
-          }
-        },
-        {
-          "_note": "Culture landing pages (/culture/<slug>) hit a cold-start Vercel image optimiser race that drops mobile performance score below the global 0.80 floor on heavy hero rasters. Surfaced after PR #40 fixed the /events 500 that previously masked Lighthouse from reaching this URL's assertion phase at all. Issue #42 tracks the proper fix (image-optimiser pre-warm or static raster hero on culture pages). Until then, performance is gated at warn-level on this route only - the score is still measured and visible in CI, just non-blocking - while accessibility and best-practices stay at the full error-level 1.0 floor. SEO is no longer asserted as a category here: it moved to the per-audit entry at the top of this matrix on 16 August 2026, which applies to this URL too and holds the same bar audit by audit. Restore performance to error-level when Issue #42 closes.",
-          "matchingUrlPattern": "/culture/.+$",
-          "_expiresOn": "2026-11-01",
-          "_expiryReason": "Issue #42 image-optimiser cold-start. Performance is warn-level on this route only. scripts/ci/lighthouse-exemption-expiry.mjs FAILS the build once this date passes, so the waiver cannot outlive its justification unnoticed.",
-          "assertions": {
-            "categories:performance": [
-              "warn",
-              {
-                "minScore": 0.8,
-                "aggregationMethod": "optimistic"
-              }
-            ],
-            "categories:accessibility": [
-              "error",
-              {
-                "minScore": 1,
-                "aggregationMethod": "optimistic"
-              }
-            ],
-            "categories:best-practices": [
-              "error",
-              {
-                "minScore": 1,
-                "aggregationMethod": "optimistic"
-              }
-            ],
             "largest-contentful-paint": [
               "warn",
               {
@@ -264,21 +205,21 @@
               "warn",
               {
                 "minScore": 0.8,
-                "aggregationMethod": "optimistic"
+                "aggregationMethod": "median"
               }
             ],
             "categories:accessibility": [
               "error",
               {
                 "minScore": 1,
-                "aggregationMethod": "optimistic"
+                "aggregationMethod": "median"
               }
             ],
             "categories:best-practices": [
               "error",
               {
                 "minScore": 1,
-                "aggregationMethod": "optimistic"
+                "aggregationMethod": "median"
               }
             ],
             "largest-contentful-paint": [

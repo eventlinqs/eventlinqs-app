@@ -893,9 +893,16 @@ const ROOT = join(HERE, '..', '..')
  * clean taskkill, non-zero taskkill, taskkill cannot start, elsewhere) and
  * tests/unit/ci/types-drift-messages (four: cannot start, elsewhere, refused,
  * the cap): 313 files / 3607, as the canary measured.
+ *
+ * Close-out C8 CORRECTED (7 September 2026), two files and twelve tests:
+ * tests/unit/ci/lighthouse-truth-table (eight: median, the LCP element named,
+ * errored, absent, the Lighthouse 13 insight, script bytes, one row per URL,
+ * the markdown table) and tests/unit/ci/lhci-pin-agreement (four: an exact
+ * version, the workflow's three mentions, the admin script, the config note):
+ * 315 files / 3619, as the canary measured.
  */
-const MIN_FILES = 313
-const MIN_TESTS = 3607
+const MIN_FILES = 315
+const MIN_TESTS = 3619
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
