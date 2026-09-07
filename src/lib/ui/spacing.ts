@@ -32,7 +32,7 @@ export const SECTION_TIGHT   = 'py-12 sm:py-16' as const
 // marketplace density; founder verdict). Tighter than SECTION_TIGHT but never
 // cramped. Horizontal card rhythm (Variant B gaps) is untouched. Use ONLY on
 // the stacked home rail sections, not on prose/marketing bands.
-export const SECTION_RAIL    = 'py-6 sm:py-8' as const
+export const SECTION_RAIL    = 'cv-section py-6 sm:py-8' as const // cv-section: skips layout until near the viewport (C8)
 
 export const CONTAINER         = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' as const
 export const HEADER_TO_CONTENT = 'mt-8' as const

@@ -62,7 +62,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
   const CATEGORIES = await curatedCategories()
   const [tiles, communityDoorImage] = await Promise.all([
     Promise.all(
-      CATEGORIES.map(async (c, i) => {
+      CATEGORIES.map(async (c) => {
         // Spine-first: licensed category tile photo; Pexels stays the fallback
         // for categories with no spine slot (e.g. comedy).
         const spine = getSpineCategoryTile(c.slug)
@@ -74,7 +74,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
             alt: `${c.name} events`,
             objectPosition: spine.objectPosition as string | undefined,
             metaLabel: count > 0 ? `${count} ${count === 1 ? 'event' : 'events'}` : 'Explore',
-            priority: i < 4,
+            priority: false,
           }
         }
         const photo = await getCategoryPhoto(c.slug)
@@ -84,7 +84,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
           alt: photo.alt ?? `${c.name} events`,
           objectPosition: undefined as string | undefined,
           metaLabel: count > 0 ? `${count} ${count === 1 ? 'event' : 'events'}` : 'Explore',
-          priority: i < 4, // first row above the fold paints eagerly
+          priority: false, // never preloaded: the doorway tile leading this rail is the one above-the-fold candidate (C8)
         }
       }),
     ),
@@ -106,6 +106,13 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
         >
           {/* Communities doorway - leads the rail, links to the resolving
               /communities hub (the moat entry from the very first rail). */}
+          {/* priority: the doorway tile is the first image under the hero and sits
+              inside the first viewport at 390, so it is the page's LCP candidate
+              whenever the hero has no photograph (an empty catalogue, as on
+              production today). It is the ONE tile preload the document carries;
+              the category tiles behind it load lazily. Ten image preloads were
+              competing with the render-blocking stylesheet on the mobile profile
+              and first paint waited four seconds for it (C8, 6 September 2026). */}
           <div className="w-[220px] shrink-0 snap-start sm:w-[260px]">
             <CategoryTile
               category={{

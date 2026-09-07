@@ -353,6 +353,20 @@ body {
 }
 
 /* ─── Safe-area utilities for notch / Dynamic Island ────────────────────── */
+/* Below-the-fold sections skip layout, style and paint until they approach the
+ * viewport (close-out C8, 6 September 2026). A long discovery page lays out
+ * every rail before its first paint: the fixture homepage spent 666 ms in
+ * style and layout on a fast machine, which the mobile profile multiplies by
+ * four before the LCP can paint. With content-visibility: auto the browser
+ * renders the first viewport and reserves an estimate for the rest; the
+ * `auto` keyword keeps each section at its real height once it has rendered,
+ * so nothing shifts inside the viewport. 480px is the rail step: heading plus
+ * one card row. Applied through SECTION_RAIL in src/lib/ui/spacing.ts, so
+ * every rail section on every page carries it. */
+@utility cv-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }

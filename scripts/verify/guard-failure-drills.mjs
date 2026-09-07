@@ -183,6 +183,26 @@ const DRILLS = [
     expect: 'required status checks are missing',
   },
   /*
+   * one-priority-image (close-out C8), two drills: a grant that reaches past the
+   * first item, and a new grant nobody listed.
+   */
+  {
+    name: 'the category rail preloads its first four tiles again',
+    guard: `${GUARDS}/one-priority-image.mjs`,
+    file: 'src/components/features/home/category-nav-rail.tsx',
+    find: '            priority: false,',
+    replace: '            priority: i < 4,',
+    expect: 'One LCP candidate per document',
+  },
+  {
+    name: 'a rail card is given priority with no reason on the list',
+    guard: `${GUARDS}/one-priority-image.mjs`,
+    file: 'src/components/features/home/cards.tsx',
+    find: 'priority={event.priority ?? false}',
+    replace: 'priority={true}',
+    expect: 'not on the reviewed list',
+  },
+  /*
    * no-hardcoded-spacing (close-out C14.12), three drills: an arbitrary
    * utility off the 4px grid, an inline style off it, and a CSS declaration
    * off it. A token or a multiple of 4px passes, so the guard only fires on a

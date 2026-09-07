@@ -131,7 +131,7 @@ export function EventCardFeature({ event, blurb }: { event: HomeCardEvent; blurb
   return (
     <Link href={event.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
       <div className={`${IMG_WRAP} aspect-[16/9]`}>
-        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="card" priority={event.priority ?? true} className={IMG_MOTION} />
+        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="card" priority={event.priority ?? false} className={IMG_MOTION} />
       </div>
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <p className={LABEL}>{event.label}</p>
