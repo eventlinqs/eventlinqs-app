@@ -60,6 +60,22 @@ export function EventCollectionJsonLd({
 }: Props) {
   const listed = events.slice(0, limit)
 
+  /*
+   * AN EMPTY LIST IS NOT A COLLECTION, SO NOTHING IS EMITTED.
+   *
+   * Found on 8 September 2026 by scripts/verify/structured-data-validate.mjs
+   * across all 550 published URLs (close-out C19.4, "validate it, do not assume
+   * it"): 488 of them emitted CollectionPage with mainEntity.ItemList and
+   * `itemListElement: []`. That is markup asserting "here is a list of events"
+   * and then listing none, on exactly the empty pages C19.3 exists to stop
+   * advertising, and `numberOfItems: 0` says so in writing.
+   *
+   * /events already behaved correctly: its EventsCollectionMarkup returns null
+   * on an empty result. The four surfaces calling this component did not, so
+   * the rule moves here, where it holds for every caller including the next one.
+   */
+  if (listed.length === 0) return null
+
   const payload = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',

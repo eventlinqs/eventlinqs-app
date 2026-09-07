@@ -466,7 +466,27 @@ async function runIndexingDrive(env) {
       console.error(tailOf(INDEXING_LOG))
       return 1
     }
-    return exec(NODE, ['scripts/verify/indexing-drive.mjs', base], env)
+    const drive = exec(NODE, ['scripts/verify/indexing-drive.mjs', base], env)
+    if (drive !== 0) return drive
+    /*
+     * The structured data is VALIDATED here, not assumed (close-out C19.4).
+     * Added 8 September 2026 after the roast of C19: the first pass read the
+     * @type values out of each page and stopped, and a run across all 550
+     * published URLs then found 488 of them emitting an ItemList with
+     * `itemListElement: []` - markup asserting a list and listing nothing, on
+     * exactly the empty pages C19.3 exists to stop advertising. Reading a type
+     * is not validating a payload, and this step is the difference.
+     */
+    const structured = exec(NODE, ['scripts/verify/structured-data-validate.mjs', base], env)
+    if (structured !== 0) return structured
+    /*
+     * And the fourth question C19.1 asks, which the first pass skipped: is every
+     * page we want ranked reachable by an internal link? It found five faith
+     * pages, 21 browse-city pages and every venue profile reachable by nothing at
+     * all. Since a templated page can now leave the sitemap while it is empty, a
+     * link is the only way in, so this is not a tidiness check.
+     */
+    return exec(NODE, ['scripts/verify/internal-reachability.mjs', base], env)
   } finally {
     killTree(server)
     closeSync(fd)
@@ -655,7 +675,7 @@ export const STEPS = [
   {
     id: 'indexing',
     ci: 'local only: the driven half of close-out C19 (the static half is a registered guard, so CI runs it in the build)',
-    title: 'the indexing policy driven against this build: canonicals, robots and the sitemap',
+    title: 'the indexing policy, the structured data and internal reachability, driven against this build',
     mirrors: [],
     env: 'local',
     run: runIndexingDrive,

@@ -46,11 +46,26 @@ export function VenueSchemaJsonLd({ venue, upcomingEvents, baseUrl }: Props) {
         addressCountry: venue.country ?? 'AU',
       },
     },
-    organizer: {
-      '@type': 'Organization',
-      name: e.organizerName,
-      url: `${baseUrl}/organisers/${e.organizerSlug}`,
-    },
+    /*
+     * NO ORGANISER NODE RATHER THAN AN EMPTY ONE.
+     *
+     * The page reads `e.organisation?.name ?? ''`, so an event whose
+     * organisation join comes back null published
+     * `organizer: { "@type": "Organization", "name": "" }` and a url of
+     * /organisers/ with nothing after it. Found on 8 September 2026 by
+     * scripts/verify/structured-data-validate.mjs (close-out C19.4, "validate
+     * it, do not assume it"). A named node with no name is a claim about a
+     * publisher we cannot make, and it is worse than saying nothing.
+     */
+    ...(e.organizerName && e.organizerSlug
+      ? {
+          organizer: {
+            '@type': 'Organization',
+            name: e.organizerName,
+            url: `${baseUrl}/organisers/${e.organizerSlug}`,
+          },
+        }
+      : {}),
   }))
 
   const payload = {

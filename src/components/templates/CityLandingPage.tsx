@@ -363,7 +363,24 @@ export function CityLandingPage({
           <p className="mt-6 text-xs text-[var(--text-secondary)]">
             All {allCities.length} cities on EventLinqs are listed in the
             {' '}
-            <Link href="/events" className="underline hover:text-[var(--text-primary)]">events directory</Link>.
+            <Link href="/events" className="underline hover:text-[var(--text-primary)]">events directory</Link>,
+            {' '}
+            and every {city.name} event with its filters is at
+            {' '}
+            {/* THE ONE INTERNAL LINK /events/browse/[city] HAS.
+              * A crawl of production on 8 September 2026 found that nothing on
+              * the platform linked to it: 21 real, filterable pages reachable
+              * only through the sitemap, which under close-out C19.3 they leave
+              * while they hold no events (scripts/verify/internal-reachability.mjs).
+              * The component written for this, CityRailTile, was never rendered
+              * anywhere. This is the door, and it is useful to a reader as well:
+              * the city page curates, the browse page filters. */}
+            <Link
+              href={`/events/browse/${city.slug}`}
+              className="underline hover:text-[var(--text-primary)]"
+            >
+              browse {city.name}
+            </Link>.
           </p>
         </ContentSection>
       ) : null}

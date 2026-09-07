@@ -213,6 +213,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
           city={city.city}
           country={city.country}
           total={result.total}
+          descriptor={getCity(city.slug)?.descriptor ?? null}
           imageSrc={heroImage}
         />
 
