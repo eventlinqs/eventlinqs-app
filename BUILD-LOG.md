@@ -3856,3 +3856,89 @@ changed, and nothing was deleted.
 - Ledger: the C8 completion-law row 7 MET, the founder-step row DONE, a new row for the production re-measure with
   its honest conclusion, and a C8 CORRECTED section opened. REVIEW-QUEUE.md: the top line and a plain-language
   entry. Pushed to ops/session-log.
+
+## 2026-09-07 14:12 to 15:04 (C8 CORRECTED, session 40) the truth table, the two Lighthouse versions measured on one build, medians of five, the dead waiver gone, and the push launched
+
+- Governing laws: Law 0, Law 7 (the registry read before a pin moved), Law 8, Law 9 (0.15.1 is the latest
+  @lhci/cli), Verification and gates (Delivery), the COMPLETION LAW, C8 CORRECTED's own rule that no threshold
+  moves down and no assertion moves from error to warn. Branch perf/c8-corrected-lighthouse-gate from main
+  cdf34aaa. Nothing written to production; CLI on TEST; disk 27 GB.
+- C8.4 needs a table the gate could not print, so the reporter came first: scripts/ci/lighthouse-truth-table.mjs
+  reads the collection's reports, groups by URL and prints MEDIANS of the performance score (with the run count
+  and the spread), LCP, TBT, CLS and script transfer bytes, and the LCP element named from Lighthouse 12's
+  largest-contentful-paint-element (or the reason it cannot: 12.1.0's errored audit, an absent audit), with a
+  fallback to Lighthouse 13's lcp-breakdown-insight node item because scripts/verify/lighthouse-median.mjs runs
+  the repository's own lighthouse 13.4.1, which retired the 12.x audit. A reporter, never a verdict; wired into the
+  gate's Lighthouse step after the aggregation report and into the same place in lighthouse.yml. Eight tests on
+  the shapes Lighthouse writes. Driven on the nine real production reports of the C3 deployment: on production's
+  thin catalogue the homepage LCP element is a rail card image ("Browse events by community"), NOT the hero, and
+  the browse page's is an invitation card paragraph; the event page's is its hero raster. Committed b13555d4.
+- Pass A, 14:18 to 14:36: the gate's Lighthouse step alone (`--only lighthouse`) on the existing production build
+  (BUILD_ID _Jt0Ls6IwoZu_SFEFqsik, the tree of main), @lhci/cli 0.14.x = Lighthouse 12.1.0, three runs, the
+  config unchanged: GREEN in 1084 s; medians 85 (homepage) to 94, every LCP element "not reported (audit
+  errored: Required TraceElements gatherer ...)" as the config note predicted. Evidence:
+  C:\dev\EVIDENCE\C8\rebaseline-lhci-0.14.x.txt.
+- Pass B, 14:36 to 14:55: LHCI_SPEC moved to 0.15.1 (Lighthouse 12.6.1) and nothing else, same build, same
+  runs: GREEN in 1141 s; medians 86 to 95; the LCP element named on all 13 pages (the homepage hero raster on
+  the seeded catalogue, the first rail card on /events, hero rasters on community, city, organisers and the event
+  pages, a heading or paragraph on help, pricing, terms, login and signup); TBT on the homepage 320 ms under
+  12.1.0 and 147 ms under 12.6.1 for the same bytes (the attribution changed between releases). Eleven of
+  thirteen pages moved by a point or none, the homepage +6, the Geelong event page -3, all inside the passes'
+  own spreads. Evidence: rebaseline-lhci-0.15.1.txt, rebaseline-compare.md; the comparison written into the
+  tree as docs/perf/LIGHTHOUSE-12.6.1-REBASELINE-2026-09-07.md with its sources (the registry read: 0.15.1
+  latest, dependencies.lighthouse 12.6.1; 0.14.0 declared 12.1.0) and what it is not (a local-gate number, 5 to
+  15 points above the runner on the same URLs, and not production).
+- C8.1 to C8.3 in one commit, 891fd66a: the pin moved in all three places (the workflow's collect, assert and
+  upload; the gate's LHCI_SPEC; scripts/admin-lighthouse.mjs) and tests/unit/ci/lhci-pin-agreement.test.ts
+  binds them and requires an exact version; lighthouserc.json: numberOfRuns 5 with the runner's measured 17
+  minutes for three runs written into the note and timeout-minutes 45 on the Lighthouse job; every
+  aggregationMethod optimistic replaced by median (18 of them: five category floors across three entries and
+  the nine per-audit SEO minScores), _aggregationContract.categoryFloors median with the note rewritten (the
+  C13 "0.77" and the merged head's "0.76" were maxima over medians of 0.75); the /culture/.+$ entry deleted and
+  its lookahead removed from the general pattern, with the reason in the pattern note (matched nothing; the
+  community pages measure 0.93 on the runner and 0.93 to 0.96 locally, above the floor); the homepage waiver
+  untouched. The exemption script now lists ONE dated exemption (the homepage, 2026-11-01). One test had pinned
+  the SEO audits to the literal "optimistic" while stating its intent as "the same method as the category
+  floor": it now reads the declared method, so it moves with the contract. The reporter's shebang removed after
+  the no-control-characters guard refused it. Suite 315 files / 3619 tests, 0 failed; canary raised to match;
+  tsc 0; eslint 0; 72 of 72 guards.
+- 15:04 the push launched through clean-env.sh with the turn held open; the gate's own Lighthouse step now
+  collects five runs per URL on 12.6.1 and judges medians, so this run IS pass C and its truth table is the C8.4
+  table. Output: C:\dev\EVIDENCE\C8\gate-pass-on-push-c8-corrected.txt.
+
+## 2026-09-07 15:05 to 16:15 (C8 CORRECTED, session 40) the push GREEN with five runs, PR 132 merged as e232be6c, production READY, the runner's honest table, the 95 estimate written, STOP on C8
+
+- 15:05:20 the push of perf/c8-corrected-lighthouse-gate (891fd66a) through the full gate: GREEN 13 of 13 in
+  1732 s; the Lighthouse step collected FIVE runs per URL on 12.6.1 and judged medians (1412 s, 23.5 min, so
+  five runs fit locally); every page 88 to 95 (the truth table in the log). PR 132 opened as a draft 15:34:51,
+  ready 15:34:52; CI once (run 34087352571): production parity 05:35:41Z, types-drift 05:36:16Z, test 05:37:20Z,
+  lint · typecheck · build 05:39:05Z, all SUCCESS; squash-merged 05:40:04Z as e232be6c (subject and body
+  explicit, no attribution line); production dpl_GqPQJv6aSKMrZUQMRQziDBXZHao1 READY 05:42:19Z; CI on main
+  SUCCESS (34087680826); smoke SUCCESS; www serves sentry-release e232be6c. Local branch deleted; the remote
+  branch kept until the runner's Lighthouse run on its head finished.
+- The runner's Lighthouse CI on the PR head (run 34087352524, 0.15.1, five runs, median floors): 28 min 21 s,
+  inside the 45 minute budget; FAILED as the honest floors predicted: the arena event page median 0.74 (runs
+  0.76, 0.74, 0.74, 0.74, 0.85) and the cat-indie event page 0.76 (0.76, 0.77, 0.80, 0.73, 0.74) under the 0.80
+  error floor; the homepage 0.83 (0.68 to 0.88, waived); the Geelong event page 0.82; /events 0.90 (0.72 to
+  0.93); the rest 0.88 to 0.96. LCP 2.3 to 2.7 s on ten pages and 4.0 to 4.3 s on the three event pages; TBT
+  187 to 530 ms; CLS 0.000 everywhere; script 396 to 469 KB against 177 to 252 KB on the local gate: the runner
+  and production load the error-reporting SDK (about 200 KB) that the local gate never loads for want of a key,
+  which is most of the two environments' disagreement and is written into the queue entry as the reason the
+  runner is the table to plan against. The event-detail numeric budget passed on all three event pages, the
+  LCP cap by 241 ms. Evidence: C:\dev\EVIDENCE\C8\runner-lighthouse-0.15.1-five-runs.txt.
+- C8.4 and C8.7 written to REVIEW-QUEUE.md in plain language: both tables (local and runner), what the table
+  says (one limiter, the biggest paint), the 95 estimate with its sources (Lighthouse 10+ weights and the good
+  bands from developer.chrome.com, read today: TBT 30 / LCP 25 / CLS 25 / FCP 10 / SI 10; LCP under 2.5 s, TBT
+  under 200 ms, FCP under 1.8 s, SI under 3.4 s), the three levers in size order, three to four weeks with the
+  95 not guaranteed on the runner, and where the gate would sit if set where the platform performs today (not
+  set). C8.5 and C8.6 recorded OWNER BLOCKED, DECISION ONLY; C8 stops here as the section orders.
+- The docs/perf re-baseline document promised the runner half "when the run lands"; it landed after the
+  merge, so the runner section rides the next push (C17's) as a documented addition, noted here so it is not
+  mistaken for scope creep. Raw reports from the afternoon's A/B and the five metric source pages deleted after
+  reading (disk 26.7 GB); the scoring page kept as the cited source copy.
+- C17 diagnosed read only while the runner ran (C17.1): production's first section carries no image because
+  loadHomeUpcoming returns nothing (four events on production: two published that ended 15 August, one paused
+  that ended 31 August, one cancelled in October; the Management API read only) and FeaturedHero's
+  `featured.length === 0` branch renders a flat navy panel by design. The repository already holds three
+  founder-licensed homepage rasters with an attribution file that the empty branch never uses. The plan is
+  written to C:\dev\C17-PLAN.md; branch feat/c17-hero-never-empty cut from main at e232be6c.

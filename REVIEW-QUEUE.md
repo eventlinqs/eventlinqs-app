@@ -5,7 +5,7 @@ anything you must decide. Newest last. Plain language.
 
 ## Needs you (open decisions and credentials)
 
-UPDATE 7 September 2026 at 14:12 (session 40): C16 closed at 12:41 and C8 merged at 13:33 (PR 130, as cdf34aaa); production is Ready on it and serving it, CI on main is green, the post-deploy smoke passed. Production was re-measured with the same script as the 6 September baseline and the numbers came out lower; that was chased rather than reported flat: the three reachable production deployments (the 6 September tree, the C14 tree, the C8 tree) all measure the same within noise this afternoon, so it is this machine, not the code. Your C8 CORRECTED section (14:00) has been read and started: the Lighthouse upgrade, medians of five, the dead waiver, the one honest table, and then the 95 estimate for your decision. The launcher item below still stands.
+UPDATE 7 September 2026 at 16:15 (session 40): C16 closed at 12:41, C8 merged at 13:33, and your C8 CORRECTED section is done through C8.4 and C8.7 and merged at 15:40 (PR 132, e232be6c; production Ready at 15:42 and serving it, CI on main green). The gate now judges medians of five on Lighthouse 12.6.1 and prints the truth table; the first honest table, local and on the runner, is in the C8 CORRECTED entry at the end of this file, with the 95 estimate. C8.5 and C8.6 wait on your decision there, as your section asked. C17 (the empty hero) is diagnosed and in build. The launcher item below still stands.
 
 The block history (sessions 3 to 39: the same three migrations behind, re-verified on every relaunch, your one command made safe and checked against production read only) is in BUILD-LOG.md and BUILD-LEDGER.md; it is finished and is not repeated here.
 
@@ -712,3 +712,57 @@ deployments-recheck-session19.txt).
 **The numbers, and what they mean.** Your standing instruction was to re-take the production score with the same script after the migrations landed. Done at 13:39: mobile 61 on the homepage, 72 on browse, 60 on the event page (desktop 92, 98, 94). All three are LOWER than Friday's 68, 75, 68. Before writing that down as a regression I measured the three production deployments that are still reachable at their own addresses, back to back, on the same afternoon: Friday's tree scored 59, 67, 51; the C14 tree 59, 66, 65; the C8 tree 62, 60, 62. Friday's own tree scores nine to seventeen points below its Friday number today, so the fall is this machine this afternoon (single runs on one page ranged from 54 to 76), not anything that shipped. The three trees are inside that spread of each other: on production's two-event catalogue the C8 change is neither a measurable win nor a measurable loss, and the 95 remains NOT MET as the ledger already said. The lesson is written into C8 CORRECTED's plan: this laptop cannot rank trees on production; the CI runner, judged on medians, is the yardstick.
 
 **Evidence:** C:\dev\EVIDENCE\C8\gate-pass-on-push-bringup.txt, production-healthy-c8-merge.txt, lighthouse-production-after.log, after-metrics.txt, ab-c3.log, ab-previous.log, ab-current.log.
+
+## C8 CORRECTED (7 September 2026, 14:12 to 16:15): the gate now tells the truth, here is the first honest table, and the 95 decision is yours
+
+**What changed in the gate.** Your section of 14:00 was read in full and done in order. The Lighthouse behind the gate moved from 12.1.0 to 12.6.1 (the latest Lighthouse CI package, checked against the registry before the pin moved), so it can now name the element that paints last. Every score floor now judges the MIDDLE of the runs, not the best one; there are five runs per page, not three, as the constitution has always said; the waiver that pointed at a path the platform no longer serves is gone (the community pages it was meant to protect score 0.93 on the runner and need no waiver). A new table prints after every collection, locally and on the runner. No threshold moved down, nothing moved from error to warn, and the homepage waiver you already knew about is untouched (it expires 1 November).
+
+**Two things to know about the numbers before you read them.** First, the same tree scores differently in the two places it is measured: the local gate on this machine (a warmed server, the test catalogue) reads 5 to 15 points above the GitHub runner (a Vercel preview), and neither is production. The runner is the place your Lighthouse CI emails come from, so the runner table below is the one to plan against. Second, the old "0.77" and "0.76" figures you were quoted were the BEST of three runs; the medians behind them were 0.75.
+
+**The truth table, local gate, Lighthouse 12.6.1, five runs per page, medians (the spread in brackets), from the push that carried this change:**
+
+| URL | runs | performance (median, spread) | LCP | TBT | CLS | script | LCP element |
+|---|---|---|---|---|---|---|---|
+| / | 5 | 91 (88 to 92) | 3,405 ms | 73 ms | 0.000 | 190 KB | the hero raster (div.group > div.absolute > div.hero-grade > img) |
+| /community/african | 5 | 91 (91 to 91) | 3,416 ms | 40 ms | 0.000 | 188 KB | the hero raster |
+| /events | 5 | 90 (89 to 91) | 3,550 ms | 31 ms | 0.000 | 201 KB | the first rail card image (img.card-media-img) |
+| /events/arena-sessions-large-room-performance-test | 5 | 88 (87 to 91) | 3,806 ms | 45 ms | 0.000 | 225 KB | the hero raster |
+| /events/artist-layer-launch-night-geelong | 5 | 88 (87 to 90) | 3,761 ms | 48 ms | 0.000 | 225 KB | the hero raster |
+| /events/browse/melbourne | 5 | 89 (89 to 90) | 3,724 ms | 32 ms | 0.000 | 201 KB | the hero raster |
+| /events/cat-indie-sounds-live-at-the-enmore-sydney | 5 | 89 (89 to 89) | 3,675 ms | 45 ms | 0.000 | 225 KB | the hero raster |
+| /help | 5 | 95 (95 to 95) | 2,927 ms | 31 ms | 0.000 | 178 KB | the page heading |
+| /legal/terms | 5 | 95 (94 to 95) | 2,920 ms | 29 ms | 0.000 | 180 KB | the first paragraph |
+| /login | 5 | 91 (91 to 94) | 3,485 ms | 38 ms | 0.000 | 251 KB | the "Welcome back" heading |
+| /organisers | 5 | 93 (93 to 94) | 3,183 ms | 40 ms | 0.000 | 186 KB | the hero raster |
+| /pricing | 5 | 94 (94 to 95) | 3,026 ms | 28 ms | 0.000 | 177 KB | the page heading |
+| /signup | 5 | 91 (91 to 91) | 3,488 ms | 30 ms | 0.000 | 252 KB | the digest opt-in label |
+
+**The same table on the GitHub runner (the Vercel preview of the same tree, the place your Lighthouse CI emails come from), Lighthouse 12.6.1, five runs per page, medians:**
+
+| URL | runs | performance (median, spread) | LCP | TBT | CLS | script | LCP element |
+|---|---|---|---|---|---|---|---|
+| / | 5 | 83 (68 to 88) | 2,418 ms | 530 ms | 0.000 | 408 KB | the hero raster |
+| /community/african | 5 | 92 (92 to 93) | 2,499 ms | 259 ms | 0.000 | 405 KB | the hero raster |
+| /events | 5 | 90 (72 to 93) | 2,569 ms | 305 ms | 0.000 | 419 KB | the first rail card image |
+| /events/arena-sessions-large-room-performance-test | 5 | 74 (74 to 85) | 4,259 ms | 395 ms | 0.000 | 440 KB | the hero raster |
+| /events/artist-layer-launch-night-geelong | 5 | 82 (78 to 90) | 4,049 ms | 246 ms | 0.000 | 440 KB | the hero raster |
+| /events/browse/melbourne | 5 | 92 (90 to 93) | 2,652 ms | 246 ms | 0.000 | 418 KB | the hero raster |
+| /events/cat-indie-sounds-live-at-the-enmore-sydney | 5 | 76 (73 to 80) | 4,261 ms | 365 ms | 0.000 | 440 KB | the hero raster |
+| /help | 5 | 93 (91 to 93) | 2,622 ms | 233 ms | 0.000 | 396 KB | the page heading |
+| /legal/terms | 5 | 92 (90 to 92) | 2,291 ms | 302 ms | 0.000 | 397 KB | the first paragraph |
+| /login | 5 | 88 (88 to 91) | 2,577 ms | 367 ms | 0.000 | 467 KB | the "Welcome back" heading |
+| /organisers | 5 | 92 (92 to 94) | 2,436 ms | 252 ms | 0.000 | 404 KB | the hero raster |
+| /pricing | 5 | 96 (94 to 96) | 2,268 ms | 187 ms | 0.000 | 396 KB | the page heading |
+| /signup | 5 | 91 (91 to 95) | 2,575 ms | 287 ms | 0.000 | 469 KB | the digest opt-in label |
+
+The runner's verdict under the new median floors: two pages FAIL the 0.80 floor at error level, the two heavy event pages (74 and 76); the homepage (83) is above the floor and in any case still under its dated waiver; everything else passes. The event-detail budget (blocking time, biggest paint, main thread, script bytes) passes on all three event pages, the biggest paint by a hair (4,259 ms against 4,500). The runner run took 28 minutes inside the new 45 minute budget. The runner carries about 200 KB of script the local gate does not, because the error-reporting SDK only loads where its key is configured (the preview and production), which is most of why the two environments disagree and why the runner is the table to plan against.
+
+**What the table says.** Every page is limited by ONE thing: how long the biggest element takes to paint (LCP, 2.9 to 3.8 seconds locally, over 4 seconds on the runner for the event pages). Blocking time is already small (28 to 73 ms locally), layout shift is zero everywhere, and script weight is 177 to 252 KB per page. On every content page the element is the hero photograph; on browse it is the first card image; on the text pages it is the heading. On production today, with two events, the homepage's biggest element is a rail card image, not the hero, which is the C17 problem seen from the other side.
+
+**What 0.95 on mobile costs (C8.7).** Lighthouse weights the mobile score as blocking time 30 percent, the biggest paint 25, layout shift 25, first paint 10 and speed index 10 (Google's own scoring page for Lighthouse 10 and later, read today), and its "good" bands are: biggest paint under 2.5 seconds, blocking time under 200 ms, first paint under 1.8 seconds, speed index under 3.4 seconds (each metric's page on developer.chrome.com, read today). We already sit inside the good band on blocking time and layout shift. The whole gap is the biggest paint: 3.0 to 3.8 seconds locally and 4.2 on the runner against a 2.5 second target. To reach 0.95 the hero photograph has to be on screen more than a second earlier on a simulated slow phone, on every content page, which means: (1) the error-reporting SDK out of the paint window (your 25 August ruling keeps it on load; the measured effect of moving it was 74 to 92 on the event page on the same preview, the single biggest lever and one line if you rule it); (2) the shared client shell split so the hero is not queued behind the platform's JavaScript (Issue #42, the architectural change: two to three weeks of work at about half an hour of gate per push, with the five C14 screens re-measured after each step under the champion rule, because it touches the same layout); (3) the hero image delivery itself (its size and priority per viewport, days, and it overlaps C17, which is rebuilding that hero anyway). The honest estimate is three to four weeks of focused work, with the 95 not guaranteed on the runner even then, because the runner's own variance is about 5 points on these pages.
+
+**Where the gate would sit if set where the platform performs today.** If the error floor were placed just under today's runner medians, per route, the platform would pass now and the ratchet would only ever move it up: the two heavy event pages 0.73 and 0.75, the Geelong event page 0.81, login 0.87, /events 0.89, browse and terms 0.91, community and organisers 0.91, help 0.92, signup 0.90, pricing 0.95, and the homepage 0.82 once its waiver ends. I have NOT set any of these. The floor stays at 0.80 everywhere it was, the homepage stays at warn until 1 November, and nothing was set in between, as you said.
+
+**Your decision.** Either 0.95 on mobile gates the launch, and the three items above become the next weeks of work before anything else ships to the five screens; or 0.95 is the ratchet's target, the floors are set just under today's medians and raised after each improvement, and the launch is gated on the floors never moving down. I have stopped here on C8, as instructed, and moved to C17 (the empty hero), which the launch also needs and which shares the hero-image work with item (3).
+
+**Evidence:** C:\dev\EVIDENCE\C8\gate-pass-on-push-c8-corrected.txt (the local table, five runs), rebaseline-lhci-0.14.x.txt and rebaseline-lhci-0.15.1.txt (both Lighthouse versions on one build), docs/perf/LIGHTHOUSE-12.6.1-REBASELINE-2026-09-07.md (in the repository), lh-scoring-page.html and the five metric pages (the sources for the weights and bands), runner-lighthouse-0.15.1-five-runs.txt (the runner table, run 34087352524).
