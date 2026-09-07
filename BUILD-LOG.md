@@ -3764,3 +3764,95 @@ changed, and nothing was deleted.
   C:\dev\EVIDENCE\C16\c8-merge-resolution (three files, union; canary 312/3598 to be measured), the two carried
   gate defects fixed in the same push, the drills re-run, the full gate, CI once, merge, production watched to
   READY. Then C17.
+
+## 2026-09-07 12:46 to 13:01 (C8, the bring-up, session 40) PR 130 brought up to date with main, the two gate defects fixed and driven, the drills running
+
+- Governing laws: Law 0, Law 8, Law 10, Verification and gates (Delivery), the COMPLETION LAW (law 3: tests and
+  the canary in the same commit; law 4: proven both ways; law 6: full regression), the C16.0 rule (production
+  served the C16 merge before this began). The halt lifted at 12:41; this is the first work after it, and it is
+  the finish of C8 rather than a new item: PR 130 has been open, ready and CI-green since 6 September, refused
+  only by the protection until production parity existed.
+- The saved resolution validated before use: each of the three files under C:\dev\EVIDENCE\C16\c8-merge-resolution
+  diffed against origin/main shows only the C8 additions (the one-priority-image registration and its two drills,
+  the canary paragraph and floor) and against the C8 branch shows only the C16 additions; the squash commit's tree
+  35851b42 is byte-identical to 100be967's, the tree the resolution was made against.
+- 12:47 `git checkout perf/c8-mobile-95` (reset to origin, 2ed39584), `git merge --no-ff --no-commit origin/main`:
+  the three expected conflicts (run-guards.mjs, test-count-canary.mjs, guard-failure-drills.mjs), the saved copies
+  applied, zero markers, 20 files staged from main. Measured before committing: the suite 312 files / 3598 tests,
+  0 failed (60.7 s), tsc exit 0. Committed as cb703db7 (parents 2ed39584 and 1e3b9b2f), no trailer.
+- 12:52 to 13:00, the two gate defects C16 recorded FOUND, NOT YET FIXED, fixed in one commit, 1b559180:
+  (1) `killTree` in scripts/ops/pre-push-gate.mjs is exported and takes its spawn, platform and warn as options;
+  taskkill's exit status is read (stdio piped, not dropped): 0 is the kill; non-zero or a spawn error is said out
+  loud and SIGTERM follows; the child is unref'd either way so a survivor cannot hold the gate open once the verdict
+  is decided. Five tests with a fake child and a fake taskkill (exited, clean kill, non-zero, cannot start,
+  elsewhere). The first tsc run refused the tests because the option's type was inferred from spawnSync itself;
+  a JSDoc type on the options fixed that, and a second pass narrowed the child's kill signature to what killTree
+  passes.
+  (2) scripts/ci/types-drift-messages.mjs holds the guard's two pre-comparison failure messages as pure functions;
+  the guard now STOPS when `npx --yes supabase --version` fails (stderr captured this time) and prints the tool
+  fault, the platform package (@supabase/cli-windows-x64, read off the npx cache) and the npx cache repair, never
+  the login; the gen-types failure names the version that ran and then the login. Four tests. Driven for real: a
+  stub npx.cmd first on PATH that prints the 7 September stderr line and exits 1 makes the guard exit 1 with the
+  repair and without the login line; the real step hand-run afterwards is green in 20 s (CLI 2.116.0, in sync
+  with production). Evidence: types-drift-cli-cannot-start-drill.txt.
+  On the final tree: tsc 0, eslint 0 on every changed file, 72 of 72 guards PASS (one-priority-image now among
+  them), the suite 313 files / 3607 tests, 0 failed (48.8 s); the canary raised 312/3598 to 313/3607 in the same
+  commit, as measured.
+- 13:01 the drill harness started alone on the final tree (guard-failure-drills.mjs through clean-env.sh with
+  .env.local), output to guard-failure-drills-c8-bringup.txt; nothing touches the tree while it runs. Then the
+  push through the full gate with the turn held open, PR 130's CI once, the merge, production watched to READY.
+
+## 2026-09-07 13:01 to 14:12 (C8, the bring-up, session 40) drills 96 of 96, the push GREEN 13 of 13, PR 130 merged as cdf34aaa, production READY and serving it, the production number re-taken and explained, C8 CORRECTED read
+
+- 13:00 to 13:03 the drill harness on the final tree (1b559180): 96 of 96 drills fired correctly, the two C8 drills
+  among them (the category rail preloading four tiles again; a rail card given priority with no reason on the list),
+  all guards PASS on the restored tree, `git status` clean afterwards. Evidence:
+  C:\dev\EVIDENCE\C16\guard-failure-drills-c8-bringup.txt.
+- 13:03:37 the push of perf/c8-mobile-95 (2ed39584..1b559180) through clean-env.sh with the turn held open: GREEN
+  13 of 13 in 1440 s (disk, typecheck 10 s, lint 69 s, copy, critical-path, exemptions, 72 guards 86 s, types-drift
+  18 s, production-parity 6 s, fixture, suite 50 s, build 154 s, Lighthouse 1045 s on 13 URLs, every page above its
+  floor). git exit 0 at 13:27:41. No node or git process left behind: the killTree fix observed on the green path.
+  Evidence: C:\dev\EVIDENCE\C8\gate-pass-on-push-bringup.txt.
+- PR 130 was already ready, so the synchronised head ran CI once (run 34079721872): production parity SUCCESS
+  03:28:56Z (68 s), types-drift guard SUCCESS 03:29:12Z, test (vitest) SUCCESS 03:30:40Z, lint · typecheck · build
+  SUCCESS 03:32:52Z (the deployment-state guard waiting for the head's own preview). mergeStateStatus UNSTABLE
+  (the advisory Lighthouse CI still running), MERGEABLE.
+- 13:33:42Z squash-merged with an explicit subject and body (merge-body-c8.md) as cdf34aaa; no attribution line.
+  The production deployment dpl_5ZL6jzNCCr3fu4VXWgMadT3JwpbW BUILDING 03:33:46Z, READY 03:36:16Z; CI on main run
+  34080053522 SUCCESS on all four jobs at 03:38:24Z; post-deploy smoke SUCCESS on both events (34080204501,
+  34080327143). www 200 (385,526 bytes) serving sentry-release cdf34aaa; ONE `as="image"` preload in the served
+  head (C8's rule, observed on production); the apex 301 to www. Evidence: production-healthy-c8-merge.txt.
+- The merged branches deleted locally and on origin: perf/c8-mobile-95, ci/c16-production-parity, and
+  fix/c1-types-drift (PR 125, its tree equal to 4587489f's). The deletion pushes were skipped by the gate as
+  deletions, as designed. The local checkout is on main at cdf34aaa, clean.
+- Lighthouse CI on the merged head (run 34079721873, advisory): FAILED on the runner: the homepage gate value 0.76
+  (runs 0.66, 0.76, 0.75; WARN-waived, cannot fail), the arena event page 0.79 (0.76, 0.75, 0.79) against the 0.8
+  floor; /events 0.89 from runs 0.70, 0.78, 0.89 (median 0.78); the cat-indie event page 0.87 from 0.87, 0.75, 0.73
+  (median 0.75). The gate quotes the best run: the owner's C8 CORRECTED names exactly this.
+- 13:39 to 13:46 the production number re-taken with the same script and URLs as the 6 September baseline
+  (lighthouse-median.mjs, three runs, mobile and desktop): homepage 61 / 92, browse 72 / 98, the event page 60 / 94,
+  every one LOWER than the baseline (68 / 96, 75 / 99, 68 / 97). Per-run metrics extracted before the 13 MB of raw
+  reports were deleted (after-metrics.txt): mobile TBT 548 to 900 ms, LCP 3.2 to 5.6 s, CLS 0.000 everywhere.
+- The cause measured rather than assumed: the three production deployments still reachable at their own URLs
+  (200, no protection wall), same infrastructure and database, measured back to back: the C16 tree 1e3b9b2f (C14,
+  no C8) 13:48 to 13:54: mobile 59 / 66 / 65, desktop 92 / 98 / 95; the C8 tree cdf34aaa 13:54 to 14:01: 62 / 60 /
+  62, desktop 92 / 98 / 96; the C3 tree b4255a96 (the baseline's own tree) 14:02 to 14:08: 59 / 67 / 51, desktop
+  90 / 97 / 95. The baseline's own tree measures 9 to 17 points below its Friday number today, so the fall is this
+  machine's conditions this afternoon (the user's browser holds 39 Chrome processes; single runs on one URL spread
+  54 to 76), not C13, C14, C16 or C8, and the three trees sit inside that spread of each other. Recorded in the C8
+  ledger as such; the 95 stays NOT MET. Evidence: ab-previous.log, ab-current.log, ab-c3.log. Raw reports deleted
+  after reading (disk 27 GB).
+- 14:00 CLOSE-OUT.md gained "C8 CORRECTED" (lines 883 to 962), read in full at 14:09: the floor has always been
+  0.80; category floors aggregate optimistic (the best run) and the owner has been quoted best-run figures; the
+  homepage and /culture/* performance are WARN-waived to Issue #42 until 2026-11-01 and the /culture pattern matches
+  nothing; Lighthouse 12.1.0 cannot name the LCP element; numberOfRuns is 3 against the median-of-5 rule. Work:
+  C8.1 upgrade to @lhci/cli 0.15.1 (Lighthouse 12.6.1) and re-baseline every URL on both versions into docs/perf;
+  C8.2 median aggregation and five runs; C8.3 the dead waiver decided by measurement; C8.4 one honest table in
+  REVIEW-QUEUE.md; C8.5 the gap closed biggest first; C8.6 the ratchet; C8.7 the 95 estimate, then STOP for the
+  owner. Verified from the registry before touching a pin (Law 7, Law 9): 0.15.1 is the latest @lhci/cli and
+  declares lighthouse 12.6.1; 0.14.0 declares 12.1.0. The spec lives in three files (the workflow, the gate's
+  LHCI_SPEC, scripts/admin-lighthouse.mjs) and moves in all three. C8 CORRECTED is the item in progress; C17
+  follows it.
+- Ledger: the C8 completion-law row 7 MET, the founder-step row DONE, a new row for the production re-measure with
+  its honest conclusion, and a C8 CORRECTED section opened. REVIEW-QUEUE.md: the top line and a plain-language
+  entry. Pushed to ops/session-log.
