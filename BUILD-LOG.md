@@ -4501,3 +4501,57 @@ changed, and nothing was deleted.
   have events.series_id. That is the repository's own way of saying the migration must reach production
   BEFORE this code merges, which is the founder's reserved step. `npm run migrate:production --dry-run`
   confirms exactly the two pending files, and the CLI rests linked to TEST.
+
+## 2026-09-08 17:20 to 20:40 (C10-G2, session 42) the add-on feature that was complete except for the end an organiser touches
+
+- THE GAP. public.event_addons has existed since the baseline schema. The event page selects it, the
+  checkout ticket selector renders a quantity stepper per add-on, the payment calculator prices them,
+  the confirmation lists them, and migration 20260825000001 added a trigger keeping sold_count true
+  against confirmed orders. All correct, and none of it could ever run: nothing in the product wrote the
+  table. The only two writers in the repository were verification scripts filling their own TEST
+  fixtures. Scope v5 3.1.4 lists add-ons as Phase 1.
+- BUILT: /dashboard/events/[id]/addons, reached from the event screen's own Quick actions rather than a
+  typed URL, because a screen nothing links to is not reachable. Create, edit, take off sale, put back
+  on sale, delete. Shaped like the discount codes page beside it rather than inventing its own access
+  or its own conventions: the same zod parse, the same resolveEventAccess gate (owner, admin or
+  manager, not owner alone), the same session client leaning on RLS.
+- DELETE IS THE DATABASE'S DECISION. order_items.addon_id is ON DELETE SET NULL, so deleting a sold
+  add-on does not fail; it silently detaches a paid line from what was bought. Migration
+  20260908000003 refuses it in a trigger, whoever asks, and the drive proves it by deleting with the
+  SERVICE ROLE and watching it refused. That is the standard C13.2 set for events: a hidden button is
+  not enforcement.
+- THE RULES ARE A PURE MODULE. src/lib/events/addon-rules.ts, because a 'use server' file may only
+  export async functions and a schema declared inside one cannot be imported by a test. 21 tests drive
+  the bounds, the capacity refusal and the money conversion in both directions.
+- TWO GUARDS CAUGHT THIS CODE BEFORE IT SHIPPED AND BOTH WERE RIGHT.
+  labels-name-the-right-control found a checkbox reading "Limit how many are available" sitting beside
+  an input aria-labelled "How many are available": the label named the wrong control. Reworded to "Cap
+  this add-on to a set number". mutation-revalidates found updateEventAddon and deleteEventAddon
+  invalidating a hand-written path list instead of revalidateEventSurfacesById, which reads the event
+  row and derives every public path, so a surface added later cannot be forgotten at that call site.
+- A DEFECT FOUND ON THE WAY AND FIXED, and it was live on main. reach-integrity, run here for the first
+  time this session, reported url-filters-parsed FAILING. The cause: checkout redirects an expired hold
+  to `/events?notice=reservation_expired` (two places) while three other bounces write `?error=`, and
+  parseEventsSearchParams read only `raw.error`. So the expired-hold bounce to the browse list rendered
+  NOTHING, which is the exact silence the comment above that redirect says it exists to end.
+  ReservationNotice has read both spellings since it shipped. The parser does now, with six tests.
+  Verified the failure predates this branch by checking main. reach-integrity is green for the first
+  time: 11 pass, 0 fail.
+- A CLAIM OF MY OWN, MEASURED AND CORRECTED. The money conversion's comment asserted that $12.10 is a
+  price where truncation loses a cent. It is not: 12.1 * 100 is exactly 1210. Measured on Node 24
+  instead: the first real case is $0.29 (28.999999999999996), and 4,586 of the 100,001 two-decimal
+  prices to $1000 truncate low, always against the organiser. The comment and the test now carry the
+  measured numbers, and the test asserts the count so a future engine change shows up as a fact.
+- DRIVEN, 20 OF 20, at 390, 768 and 1440: the empty state, the form, the created add-on ON THE PUBLIC
+  EVENT PAGE (the surface that had never once rendered), off sale and back on, the capacity refusal
+  naming the real number, the service-role delete refusal, and a clean delete of an unordered add-on.
+  Fixtures removed and verified: 0 events, 0 add-ons, 0 orders left on TEST.
+- TWO DEFECTS IN THE DRIVE ITSELF, both mine. It searched for the old checkbox label after the guard
+  made me rename it, and it inserted `buyer_email` into orders when the column is `guest_email`. The
+  second was invisible until the error was surfaced, because the check discarded it: a script that
+  throws away the reason reports "no row" and blames the product.
+- REGRESSION: tsc 0, eslint 0, 78 of 78 guards, 111 of 111 guard drills firing with all guards green on
+  the restored tree, suite 3754 of 3755, canary baseline raised 325/3701 to 327/3754 in the same commit.
+- THE ONE FAILING TEST IS STILL THE ORDERING SIGNAL, unchanged: the generated types cannot carry
+  events.series_id until the founder applies the migrations to production. Three are pending now.
+- Cleanup: both local servers stopped, .next removed (713 MB), 29 GB free.

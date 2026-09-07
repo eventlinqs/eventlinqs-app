@@ -1071,3 +1071,81 @@ than no check, because it reads as evidence.
 The second gap: an organiser cannot create ticket add-ons (parking, merchandise,
 drink packages). The buyer side of that feature is fully built and can never
 appear, because nothing in the platform can create one. That is next.
+
+## C10, part two. Add-ons: a whole feature that was finished except for the one end you touch (8 September 2026)
+
+**THE ONE THING FOR YOU IS STILL THE SAME ONE COMMAND**, and it now carries three
+database changes rather than two:
+
+```
+npm run migrate:production
+```
+
+### What was wrong
+
+Your platform has supported ticket add-ons since the very first version of the
+database. Parking, merchandise, a drinks package, a shuttle. The event page knows
+how to show them. The checkout knows how to let someone pick a quantity. The
+payment maths knows how to charge for them. The confirmation email knows how to
+list them. There is even a rule in the database that keeps the "how many sold"
+number honest.
+
+Every single piece of that was built and correct, and not one of them had ever
+run, or could ever run, because **there was no way for an organiser to create an
+add-on**. No screen, no button, no path of any kind. The feature was finished
+except for the one end a person touches.
+
+### What it does now
+
+There is an Add-ons screen on every event, reached from the Quick actions on the
+event page. You create one with a name, a description, a price, and optionally a
+limit on how many are available. It appears under the tickets on your event page
+straight away, and a buyer adds it to their order in the same checkout and pays
+once.
+
+You can take one off sale and put it back, which is instant on the public page.
+You can edit it. You can delete one nobody has bought.
+
+**You cannot delete one somebody has paid for, and that is deliberate.** The
+database itself refuses it, not the button. If it were allowed, the paid line on
+that person's order would be left pointing at nothing: a price and a quantity
+with no record of what it was for. The screen offers you "take off sale" instead,
+which stops it selling immediately and keeps every record. I proved the refusal
+by trying to delete it with the highest level of database access there is, and
+watching the database say no.
+
+### Something else I found and fixed
+
+While running a check I had not run before, I found a defect already live on the
+site, unrelated to add-ons.
+
+When someone is part-way through paying and their ticket hold runs out, checkout
+sends them back with a message explaining what happened and that they have not
+been charged. In one of those cases the message never appeared. They were sent
+back to the browse list with complete silence, which is the worst possible answer
+when somebody's card details were on screen a moment ago. The redirect and the
+page that receives it were using two different spellings of the same thing.
+
+Fixed, with tests for both spellings.
+
+### And a correction to my own work
+
+I wrote a note in the pricing code claiming a specific example of a rounding
+error. I checked it, and the example was wrong. I measured the real behaviour
+instead: there are 4,586 prices between zero and a thousand dollars where the
+naive calculation would lose a cent, and the first is 29 cents. The code was
+already doing the right thing; the explanation was wrong, and now it is measured
+rather than remembered.
+
+### Proof
+
+20 of 20 checks, driven at phone, tablet and desktop width on a real build, as a
+newly signed-up organiser using the real screens. Every test row deleted
+afterwards and the deletion verified. Pictures in `C:\dev\EVIDENCE\C10\addons`.
+
+### Where C10 stands
+
+Both gaps that block a launch journey are now built. The rest of the scope audit
+is written down by name for after launch. Nothing here can reach the live site
+until you run that one command, because the platform refuses to build against a
+database that is behind its own code.

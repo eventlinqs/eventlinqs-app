@@ -763,3 +763,44 @@ resale market (3.8), the activity feed and reviews (3.4.2), the support toolset
 |---|---|---|
 | Apply migrations 20260908000001 and 20260908000002 to production | RESERVED by the constitution (Verification and gates, Migrations) and by his ruling of 26 August 2026: a production schema change is the one thing he presses himself. Everything around it is scripted | `npm run migrate:production` (dry run confirms exactly these two pending, and the CLI rests on TEST afterwards) |
 | Everything after that push | SCRIPTED. Regenerating the types, re-running the gate, opening the pull request as a draft and watching production to Ready are all mine | none |
+
+### C10-G2 against the COMPLETION LAW (8 September 2026, session 42)
+
+| Law | Verdict | Evidence |
+|---|---|---|
+| 1. Schema, applied to TEST and verified by querying it back | MET. Migration 20260908000003: a BEFORE DELETE trigger refusing an add-on that appears on any order line, and an index for the ordered read. Both read back from TEST | the db query output in the session log |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc 0, eslint 0, 78 of 78 guards. Two guards failed this code first and both were right: `labels-name-the-right-control` on a checkbox whose words named the input beside it, and `mutation-revalidates` on a hand-written path list where the shared deriving helper belongs | C:\dev\EVIDENCE\C10\guards-after-g2.txt |
+| 3. Tests added, canary raised in the same commit | MET. `tests/unit/events/addon-rules.test.ts`, 21 tests; six more on the checkout bounce in `tests/unit/events-url-filters.test.ts`. Canary 325/3701 to 327/3754, measured not guessed | C:\dev\EVIDENCE\C10\vitest.txt |
+| 4. Guard proven red and green | MET. The reach check `addons-can-be-created` is in `scripts/verify/reach-integrity.mjs` and was RED before this work (it is what found the gap) and is green now. 111 of 111 guard drills fire, and all guards pass on the restored tree | C:\dev\EVIDENCE\C10\guard-drills-c10.txt, reach.txt |
+| 5. Driven at 390, 768 and 1440 | MET. 20 of 20 checks through the real signup, wizard and add-on form on a local production build against TEST. Includes the add-on rendering ON THE PUBLIC EVENT PAGE, the surface that had never once been able to render. Fixtures removed and verified zero | C:\dev\EVIDENCE\C10\addons (12 files), addon-drive.txt |
+| 6. Full regression green after the item | PARTIAL, by the same design as G1 and not by defect. 3754 of 3755. The one failure is the generated types not yet carrying `events.series_id`, which is the repository saying the migrations must reach production before this code merges | C:\dev\EVIDENCE\C10\vitest.txt |
+| 7. Committed, no trailers, pushed, production deploys green | PARTIAL. Committed as 876cf8ba with no trailer. NOT pushed and NOT merged: the pre-push gate would correctly refuse it until the founder's migration lands | git log |
+
+### The defect found on the way, live on main, fixed here
+
+`scripts/verify/reach-integrity.mjs` was run for the first time this session and
+was already FAILING on main, on `url-filters-parsed`. Checkout redirects an
+expired ticket hold to `/events?notice=reservation_expired` in two places, while
+three other bounces write `?error=`. `parseEventsSearchParams` read only
+`raw.error`, so the browse-list bounce rendered no message at all: precisely the
+silence the comment above that redirect says it exists to end. `ReservationNotice`
+has read both spellings since it shipped. The parser now does too, with six tests
+covering both spellings, whitespace, unknown values and the precedence when both
+appear. Confirmed the failure predated this branch by re-running on main.
+reach-integrity is green for the first time: 11 pass, 0 fail.
+
+### A claim of my own, measured and corrected
+
+`dollarsToCents` carried a comment asserting that $12.10 is a price where
+truncation loses a cent. It is not: `12.1 * 100` is exactly 1210. Measured on
+Node 24 rather than remembered: the first real case is $0.29, where `0.29 * 100`
+is 28.999999999999996, and 4,586 of the 100,001 two-decimal prices up to $1000
+truncate low, always against the organiser. The comment and the test now carry
+the measured numbers, and the test asserts the 4,586 so a future engine change
+appears as a fact rather than as prose nobody re-measured.
+
+### Founder step (Law 10), unchanged and now covering three migrations
+
+| Step | Verdict | Command |
+|---|---|---|
+| Apply 20260908000001, 20260908000002 and 20260908000003 to production | RESERVED by the constitution and by his ruling of 26 August 2026 | `npm run migrate:production` |
