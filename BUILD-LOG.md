@@ -3942,3 +3942,143 @@ changed, and nothing was deleted.
   `featured.length === 0` branch renders a flat navy panel by design. The repository already holds three
   founder-licensed homepage rasters with an attribution file that the empty branch never uses. The plan is
   written to C:\dev\C17-PLAN.md; branch feat/c17-hero-never-empty cut from main at e232be6c.
+
+## 2026-09-07 15:44 to 16:32 (C17, session 40) the empty hero diagnosed from production, the curated fallback and the failure path built and guarded, every empty-capable surface captured on production, three defects fixed, the push launched
+
+- Governing laws: Law 0 (C:\dev\C17-PLAN.md written before the first edit), Law 1, Law 3, Law 5, Law 6
+  (nothing generated: the curated set is the founder's licensed photography), Law 7 (the licence facts the
+  attribution file does not carry are marked UNSOURCED below), Law 8, Law 10, the Design system (one hero
+  treatment; the LCP raster never animates), the Media architecture (imagery through the media components;
+  section 5.2 updated), the Copy laws, the COMPLETION LAW. Branch feat/c17-hero-never-empty from main
+  e232be6c. CLI on TEST; nothing written to production; disk 26 GB.
+- C17.1, read only, not assumed: production's first section carried no `<img>` (fetched 15:44); the hero's
+  empty branch renders a flat navy banner by design when `loadHomeUpcoming` returns nothing; production
+  holds four events, all outside the listing window (two published, ended 15 August; one paused, ended
+  31 August; one cancelled, October), read through the Management API. The repository already held three
+  founder-licensed homepage rasters (public/images/hero/homepage-*, homepage-hero-attribution.json:
+  "Licence held by EventLinqs", Adobe Stock / Stocksy) used only as the coverless-event pool.
+  Evidence: C:\dev\EVIDENCE\C17\production-events-probe.txt.
+- C17.2 built (eb87a392): src/lib/images/homepage-hero-curated.ts reads the set from the attribution file
+  and picks by UTC day of the year (deterministic per day, turning over daily); FeaturedHero's empty branch
+  wears the pick under the same frame, the shared scrim (hero-scrim.ts, now one constant for the carousel
+  and the no-event hero), the gold eyebrow, the display scale and the gold call to action; HeroMedia
+  renders its raster through HeroRaster, the one client component in the hero, which keeps the
+  server-rendered priority image and owns the failure path (onError, and a next-frame read of a completed
+  image with no natural width; the eslint react-hooks rule refused a synchronous setState in the effect,
+  so the read runs on the next frame); either paints BrandedPlaceholder chromeless, the navy and gold
+  ramp. The one-priority-image allowlist names the curated hero as the LCP of a homepage with no featured
+  event (a comment carrying the word "priority" was flagged by that text-based guard and reworded).
+- The guard scripts/guards/homepage-hero-never-empty.mjs (registered, described in the runner header after
+  the registry test caught its absence): the empty branch must render HeroMedia from pickCuratedHomepageHero
+  under HERO_SCRIM_GRADIENT; the curated module must read the attribution file; every listed slug must have
+  both rasters and an alt; the note must name the licence holder; HeroMedia must render through HeroRaster.
+  Drilled red twice (the branch painting a panel; an entry whose raster does not exist) and green on the
+  tree: 98 of 98 drills, all guards PASS on the restored tree
+  (C:\dev\EVIDENCE\C17\guard-failure-drills-c17.txt). Tests: seven on the picker and the set, four on the
+  raster in jsdom (both failure paths, a loading raster, a loaded one); canary 315/3619 to 317/3630.
+- C17.6 driven on production at 390 and 1440 with slugs from the production sitemap, 16:23
+  (drive-empty-surfaces.mjs; 22 captures under C:\dev\EVIDENCE\C17\empty-surfaces, 4 MB): browse, city
+  browse (Adelaide), city (Sydney), suburb (Inner West), community and community-by-city (First Nations),
+  faith (Christian), category (networking), venue (Geelong showgrounds), feed. No artist page exists on
+  production (no public instance in the sitemap), recorded as such. Judged from the captures: every surface
+  renders a considered empty state with a next action (the city, suburb, community and community-by-city
+  pages carry "the first ... event could be yours" cards with organiser CTAs; the faith page "Be the first";
+  the category page its organiser band; the venue page "No upcoming events ... just yet" with browse and
+  directions; the feed asks an anonymous visitor to sign in). Three defects, fixed in eb1ea896 (the commit after
+  eb87a392): /events said "No events match these filters" and offered "Clear filters" with no filter set
+  (EventsEmptyState now tells three emptinesses apart; the grid decides from the search parameters; three
+  component tests); the venue hero with no photograph painted the same flat navy gradient the owner saw on
+  the homepage (now BrandedPlaceholder chromeless through the media library); "Australia largest" in the
+  faith data and twice in the community data (Australia's). Canary 317/3630 to 318/3633.
+- Found and NOT changed, for the owner (REVIEW-QUEUE.md): the category page's "Active in" band lists
+  overseas cities (Business & Networking: Melbourne, Sydney, London, Toronto, New York, Washington DC; the
+  music categories name Birmingham, Houston, Atlanta, Miami, Lagos, Johannesburg) from
+  src/lib/hero-categories.ts relatedCities, and the community intersection editorial carries Toronto
+  entries by design, so the platform's data layer is deliberately wider than "for Australia"; a decision on
+  what the category band should say, not a text edit. Also found: five more surfaces paint the same flat
+  navy gradient as their no-photograph fallback (cities and communities index heroes, the city hero, the
+  waitlist, the homepage bento); recorded for a platform-wide swap to the branded treatment rather than
+  changed unseen here.
+- The first push (eb87a392, 16:24) was stopped by hand at step 7 before anything left the machine, so the
+  C17.6 fixes ride one gate run instead of two; nothing was pushed (branch absent on origin, tree clean).
+  The second push launched at 16:32 with the turn held open.
+
+## 2026-09-07 16:33 to 17:54 (C17, session 40) merged and live; the production drive proved the hero and found the scrim too light; the scrim re-tuned by measurement and pushed
+
+- 16:33:45 the push of feat/c17-hero-never-empty (eb1ea896) through the full gate: GREEN 13 of 13 in 1706 s
+  (Lighthouse 1402 s, five runs per URL on 12.6.1, every page above its floor; the homepage 92 on the seeded
+  catalogue). PR 133 draft 17:02:44, ready 17:02:46; CI once (run 34093554122): production parity 07:03:38Z,
+  types-drift 07:04:13Z, test 07:05:08Z, lint · typecheck · build 07:06:20Z, all SUCCESS; squash-merged
+  07:07:20Z as 276ad201 (no attribution line); production dpl_DzmG7XLzq13RHwH8ByuRT9XSuzHS READY 07:09:43Z;
+  CI on main SUCCESS (34093924270); smoke SUCCESS; www serves sentry-release 276ad201. The advisory
+  Lighthouse CI on the head (34093554071) FAILED on the runner as C8 CORRECTED's table predicted (events 78,
+  arena 79, cat-indie 77 against 0.80; the homepage 84, waived). Evidence:
+  C:\dev\EVIDENCE\C17\gate-pass-on-push-c17.txt, runner-lighthouse-first-c17-head.txt.
+- The served homepage read back: the first section carries `<img alt="A daytime festival crowd under open
+  sky" fetchpriority="high">` and the head preloads /images/hero/homepage-day-festival.jpg; the headline
+  "Every community. Every event. One platform." is in the markup.
+- C17.7 driven (drive-hero.mjs: Playwright, three viewports, light and dark emulation, the text hidden for
+  a ground sample then shown for the capture, contrast as WCAG ratios at the mean, median and 90th percentile
+  of the ground, CLS and the LCP element observed in-page):
+  - featured event, the local production build against TEST (16:57 to 17:04, serve.ps1 on 3311): the slide's
+    cover loads, CLS 0, LCP the IMG at 444 to 956 ms, the call to action's label 10.3 to 1 on its fill and the
+    fill 4.8 to 7.9 off the ground; light and dark captures byte-identical (hashes recorded: the platform
+    has no dark theme). The seeded event's cover is a typographic upload, so its headline sits on its own
+    title; a TEST artefact, not the platform (real organisers upload photographs; a composed cover under the
+    generated prefix is already routed to the category raster). Evidence: local-featured\.
+  - no event, production (17:12): the curated daytime raster loads at every cell, CLS 0 to 0.0004, LCP the
+    IMG (640 to 2,172 ms in-page on this machine), the CTA label 10.3 on its fill and the fill 5.0 to 6.9 off
+    the ground. BUT the headline cleared only 2.33 / 2.39 / 1.41 (mean / median / p90) at 390 and 4.34 / 6.05 /
+    1.93 at 1440, the subline 6.8 to 9.6, and the headline orphaned "platform." on its last line at 390 and
+    768 (three lines and two lines respectively). C17.4 not met on the first deploy. Evidence: prod-empty\.
+  - raster aborted, production (17:13): no `<img>` in the hero, the branded treatment present at every cell,
+    the headline and subline 17.3 to 18.0 on it, the CTA 10.3, CLS 0 to 0.0004. Evidence: prod-failed\.
+- C17.5 on production after the deploy (lighthouse-median, mobile and desktop, three runs, 17:14 to 17:17):
+  mobile 76 median (89, 76, 76), LCP 2,980 / 4,402 / 4,520 ms; desktop 95, LCP about 1.25 s; the truth table
+  on the same reports names the hero raster as the LCP element ("A daytime festival crowd under open sky").
+  Against this afternoon's 59 to 62 on the same page from this machine it is better, and the 2.5 s LCP
+  budget is NOT met on the simulated profile, reported as such. Raw reports deleted after reading.
+- C17.6 judged from the 22 production captures (16:23): every surface considered with a next action; the
+  three defects fixed in eb1ea896 (recorded in the previous entry).
+- C17.4 fixed by measurement rather than taste (17:18 to 17:25): the drive geometry (hero box, headline,
+  subline, CTA per viewport; the hero starts 65 px below the viewport top) fed an offline simulation that
+  composites each curated raster at object-fit cover 50% 30% with the house grade (contrast 1.03) under a
+  candidate scrim and reports the same three statistics; the current scrim simulated at 2.36 median on the
+  daytime image at 390 against 2.39 measured, so the simulation is calibrated. Three candidates: the one
+  chosen (0.92 at the bottom, 0.86 at 30%, 0.78 at 45%, 0.60 at 58%, 0.35 at 72%, 0.12 at 86%, 0 at the top)
+  is the lightest that clears 4.5 at the mean and the median for the headline and subline on all three
+  images at all three viewports, with the headline's p90 never below 5.5 (day-festival at 390: 10.05 /
+  10.06 / 5.53). The gold eyebrow above the headline sits where the wash is 0.5 to 0.6 and reads at 2.5 to
+  3.1 on the two brightest images at 390 under every candidate; recorded, not darkened further (the law
+  keeps the eyebrow gold; lifting it to 4.5 on a bright image needs a 0.9 wash two thirds of the way up the
+  photograph). The headline's phrases bound with non-breaking spaces so it wraps phrase by phrase.
+  hero-scrim.ts exports the parsed stops and the wash at a height; three tests pin the shape; canary 318/3633
+  to 319/3636. Committed 3565e1e3; 98 of 98 drills; pushed through the gate GREEN 13 of 13 (1409 s
+  Lighthouse) at 17:53:40; PR 134 draft then ready at 17:54. Evidence: scrim-sim-round1.md (the
+  miscalibrated first pass, kept to show the correction), scrim-sim-round2.md, gate-pass-on-push-c17-scrim.txt.
+- Branch hygiene: feat/c17-hero-never-empty deleted on origin after its Lighthouse run finished; local main
+  reset to origin (the scrim commit had been made on main before the branch was cut, a slip with no
+  consequence beyond the reset).
+
+## 2026-09-07 17:54 to 18:06 (C17, session 40) the scrim merged as 03f03d5c, production READY, the second drive proves C17.4, C17 CLOSED
+
+- PR 134 draft 17:54:16, ready 17:54:17; CI once (run 34097789477): production parity, types-drift, test,
+  lint · typecheck · build all SUCCESS by 17:58:56; squash-merged 07:59:20Z as 03f03d5c (no attribution
+  line); production dpl_C8gRXNyCcKfrNA5gYshJzrQz92Ud READY 08:01:47Z; CI on main SUCCESS (34098209807);
+  smoke SUCCESS; www serves sentry-release 03f03d5c. Local main reset to origin and the scrim branch deleted
+  locally; its remote copy waits for its Lighthouse run.
+- The second production drive (18:04, drive-hero.mjs, the same method): no-event hero, the curated daytime
+  raster at every cell, CLS 0 to 0.0004, LCP the IMG (768 to 980 ms in-page here); headline 8.95 / 10.15 /
+  5.57 at 390, 14.43 / 14.82 / 12.26 at 768, 13.55 / 14.59 / 9.99 at 1440 (mean / median / p90); subline 15.2
+  to 16.1; last line 2 / 2 / 4 words; CTA label 10.33 on its fill, the fill 8.4 to 9.0 off the ground. The
+  simulation had predicted 10.05 / 10.06 / 5.53 for the 390 cell: calibrated. Raster aborted: the treatment
+  at every cell, text 17.8 to 18.1, no `<img>`. Captures read: the lower half of the photograph under a
+  deeper navy wash, the upper half clear, the eyebrow legible on the darker ground, the stack intact; the
+  treatment reads as the navy and gold ramp under the same words. Evidence: prod-empty-after\, prod-failed-after\.
+- C17 CLOSED in the ledger: C17.1 to C17.7 rows with evidence, the completion-law rows, two founder steps
+  (the licence receipts, IMPOSSIBLE for a machine; the "Active in" band, RESERVED); REVIEW-QUEUE.md carries
+  the plain-language entry and the top line; the log branch pushed. Disk 26.4 GB; the C17 evidence 5.7 MB
+  of tables and small JPEGs; no build output outside the tree's own .next.
+- Next: C9 (GOOGLE_MAPS_API_KEY required on production, forbidden on development, the geocoding path failing
+  loudly, a guard both ways), then C18 FINAL, C19, C10, C15. The halt rule holds: main is green and
+  production READY and serving the head before C9 begins.
