@@ -489,8 +489,11 @@ async function runLighthouse(env) {
 
     const collected = collectLikeLhci(urls, env)
     if (collected !== 0) return collected
-    // A reporter, never a verdict: prints every run value and the aggregation.
+    // Two reporters, never a verdict: every run value and the aggregation the
+    // floors use, then the truth table (medians per URL, LCP, TBT, CLS, script
+    // bytes and the named LCP element; close-out C8 CORRECTED, 7 September 2026).
     exec(NODE, ['scripts/ci/lighthouse-aggregation-report.mjs', '.lighthouseci'], env)
+    exec(NODE, ['scripts/ci/lighthouse-truth-table.mjs', '.lighthouseci'], env)
     const seo = exec(NODE, ['scripts/ci/assert-seo-audits.mjs', '.lighthouseci'], env)
     if (seo !== 0) return seo
     return exec(NODE, [NPX_CLI, '--yes', LHCI_SPEC, 'assert', '--config=./lighthouserc.json'], env)

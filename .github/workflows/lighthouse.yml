@@ -205,6 +205,11 @@ jobs:
           # fails the build; `lhci assert` below is the gate.
           node scripts/ci/lighthouse-aggregation-report.mjs .lighthouseci
 
+          # The truth table (close-out C8 CORRECTED, 7 September 2026): medians
+          # per URL of the performance score, LCP, TBT, CLS and script bytes, and
+          # the named LCP element, as a markdown table. A reporter, never a gate.
+          node scripts/ci/lighthouse-truth-table.mjs .lighthouseci
+
           # The SEO half that a category floor cannot express, and this one DOES
           # fail the build. It asserts indexability against the ENVIRONMENT (a
           # preview must be blocked, production must be crawlable), and fails if
