@@ -67,7 +67,7 @@ writeFileSync('lighthouserc.admin.json', JSON.stringify(config, null, 2))
 rmSync('.lighthouseci', { recursive: true, force: true })
 console.log(`Running Lighthouse (desktop, median of 3) on ${URLS.length} admin pages...\n`)
 try {
-  execFileSync('npx', ['--yes', '@lhci/cli@0.14.x', 'collect', '--config=lighthouserc.admin.json'], {
+  execFileSync('npx', ['--yes', '@lhci/cli@0.15.1', 'collect', '--config=lighthouserc.admin.json'], {
     stdio: 'inherit',
     shell: process.platform === 'win32',
   })

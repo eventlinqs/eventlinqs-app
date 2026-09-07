@@ -24,7 +24,12 @@ import { join } from 'node:path'
 type Assertion = string | [string, Record<string, unknown>]
 
 const config = JSON.parse(readFileSync(join(process.cwd(), 'lighthouserc.json'), 'utf8')) as {
-  ci: { assert: { assertMatrix?: Array<{ matchingUrlPattern?: string; assertions?: Record<string, Assertion> }> } }
+  ci: {
+    assert: {
+      _aggregationContract?: { categoryFloors?: string }
+      assertMatrix?: Array<{ matchingUrlPattern?: string; assertions?: Record<string, Assertion> }>
+    }
+  }
 }
 
 const matrix = config.ci.assert.assertMatrix ?? []
@@ -72,14 +77,18 @@ describe('lighthouse SEO per-audit coverage', () => {
   })
 
   it('judges them the same way the category floor it replaced was judged', () => {
-    // The category floors are pinned optimistic by the aggregation contract. If
-    // these were left unpinned they would default to optimistic anyway, but an
-    // unstated default is exactly how the 2026-08-05 median-versus-maximum
-    // confusion cost hours. Pinned, the replacement is provably neither stricter
-    // nor looser than what it replaced.
+    // The category floors declare their method in the aggregation contract
+    // (optimistic until 7 September 2026, median since close-out C8 CORRECTED).
+    // If these were left unpinned they would default to optimistic whatever the
+    // floors do, and an unstated default is exactly how the 2026-08-05
+    // median-versus-maximum confusion cost hours. Pinned to the DECLARED method,
+    // the replacement is provably neither stricter nor looser than what it
+    // replaced, and moves with it.
+    const declared = config.ci.assert._aggregationContract?.categoryFloors
+    expect(declared, 'the aggregation contract must declare the category method').toBeTruthy()
     const asserted = errorLevelAssertions()
     for (const id of MUST_BE_ASSERTED) {
-      expect(asserted.get(id)?.aggregationMethod, `${id} must pin aggregationMethod`).toBe('optimistic')
+      expect(asserted.get(id)?.aggregationMethod, `${id} must pin aggregationMethod to the declared ${declared}`).toBe(declared)
     }
   })
 

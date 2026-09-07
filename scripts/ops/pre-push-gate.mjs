@@ -92,7 +92,7 @@ const NODE = process.execPath
 const NPM_CLI = join(dirname(NODE), 'node_modules', 'npm', 'bin', 'npm-cli.js')
 const NPX_CLI = join(dirname(NODE), 'node_modules', 'npm', 'bin', 'npx-cli.js')
 /** The exact package spec .github/workflows/lighthouse.yml runs, so the assertion engine is the same one. */
-export const LHCI_SPEC = '@lhci/cli@0.14.x'
+export const LHCI_SPEC = '@lhci/cli@0.15.1'
 const TMP = join(ROOT, '.tmp')
 const GATE_URLS = join(TMP, 'gate-urls.txt')
 const SERVER_LOG = join(TMP, 'gate-server.log')

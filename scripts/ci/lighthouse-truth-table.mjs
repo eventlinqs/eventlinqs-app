@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * THE TRUTH TABLE: what the gated pages actually cost, one row per URL.
  *
