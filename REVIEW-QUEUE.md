@@ -1185,3 +1185,80 @@ I also added a rule so this cannot happen again: the audit now refuses to run if
 something is marked as waiting on you without saying what is needed, or if it
 says what is needed while pretending not to be waiting on you. I tested that rule
 three ways and watched it refuse each time.
+
+## The positioning you set on 7 September is now in the product (8 September 2026)
+
+### What you asked for
+
+You ruled that EventLinqs is not a ticketing platform, it is the platform where
+events get made, that the promise is "You've got help", that the tagline does not
+change, and that the words "ticketing platform" and "ticket seller" are never
+used for us in copy, metadata, social cards, emails or the About page.
+
+That instruction had not been started. I did it first, before the launch
+readiness report, because that report has to sign off the same pages.
+
+### What the site was actually saying
+
+The sentence "The ticketing platform built for every community" was how the
+platform described itself in fifteen places: the browser tab title, the link
+preview cards, the homepage, the footer, the login page, the About, Press,
+Careers and Events pages, the help centre, and four different emails your buyers
+and organisers receive. Google is being told the same thing right now: the live
+site's machine-readable description says "Live event ticketing platform built for
+every community".
+
+It also turned up in four of your own marketing files, including the outreach
+messages you send to organisers by name.
+
+All of it now says the same one sentence instead: **"The place events get made,
+for every community."** It is written down once and every page reads it from
+there, so it cannot go back to being fifteen different sentences.
+
+### The thing worth knowing about
+
+I changed the homepage headline, all the tests passed, and then I drove the real
+page on a phone, a tablet and a desktop and the headline was different. The file
+I had edited is not used by anything. The homepage hero is a different component
+entirely.
+
+That is the same defect I found last session in the event form, where three
+controls wrote data nothing read, and it is exactly why nothing here is reported
+as done until it has been driven in a browser. The real hero now reads the
+tagline from the one source and the tests point at the page that renders.
+
+While there, I found nine components in the homepage folder that nothing imports,
+two of which a build check still describes as "the homepage hero". I have not
+deleted anything: that is your call. They are listed in the ledger.
+
+### One thing I removed from the homepage
+
+The homepage was selling itself to Google on "No hidden fees, verified
+organisers, fair refund policy". That is a ticketing company's pitch and your
+ruling says never lead with fees, so it now says what the platform is for. The
+pricing page keeps its full fee table, because Australian consumer law requires
+the all-in price to be shown plainly and that is not the same thing.
+
+### Three things for you to decide, none of them urgent
+
+1. **docs/STRATEGY-LOCK.md still says the tagline is "Where the culture
+   gathers".** Your locked tagline is "Every community. Every event. One
+   platform.", and the word "culture" is banned across the platform. I added the
+   new positioning to that document without touching anything already in it,
+   because it says changes need your decision in writing. That line needs one.
+2. **The same document writes the ticket fee as a number.** The rule everywhere
+   else is that the fee is written down in exactly one place. A second copy is
+   how a deleted fee survived its deletion once already.
+3. **CLAUDE.md opens by calling EventLinqs "a complete, general ticketing
+   platform for Australia".** Your ruling says never. I followed the ruling and
+   left the constitution alone, since that file is yours.
+
+### Still waiting on you, from last session
+
+The three C10 migrations are still not on production, so that work cannot merge.
+One command, in a normal PowerShell window, in the repo:
+
+    npm run migrate:production
+
+Until it runs, the platform correctly refuses to deploy code that names a
+database column production does not have.

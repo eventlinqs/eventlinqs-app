@@ -4555,3 +4555,64 @@ changed, and nothing was deleted.
 - THE ONE FAILING TEST IS STILL THE ORDERING SIGNAL, unchanged: the generated types cannot carry
   events.series_id until the founder applies the migrations to production. Three are pending now.
 - Cleanup: both local servers stopped, .next removed (713 MB), 29 GB free.
+
+## 2026-09-08 21:10 to 21:55 (POSITIONING, session 43) the state read first, then the category written into the code, the strategy lock and a blocking guard
+
+**Where the platform actually was.** Production serves origin/main at 449311ae,
+CI green, post-deploy smoke green, so the C16 halt rule was not in force. The
+three C10 commits sit on `feat/c10-scope-audit-and-series` unpushed, and
+`node scripts/ops/verify-production-schema.mjs` says why in one line:
+`ABSENT events.series_id ... needs 20260908000001_event_series_and_multi_day.sql`.
+That is the repository refusing to deploy code that names a column production
+does not have, which is the designed behaviour, and it clears the moment the
+founder runs `npm run migrate:production`.
+
+**What was found unstarted.** CLOSE-OUT.md carries three sections dated
+7 September that appear in no ledger entry, no log entry and no commit:
+POSITIONING (LOCKED), the EVENT PRODUCTION MODULE (M1 "SHIPS WITH LAUNCH"), and
+the M6 money model. POSITIONING is marked AUTHORITATIVE and it rewrites copy on
+the same surfaces the L5 launch readiness report has to sign off, so it goes
+first. Plan written to C:\dev\POSITIONING-PLAN.md before any edit.
+
+**The measured state before the change, because "audit the copy" needs a number.**
+`grep -rniE "ticketing platform|ticket seller"` over src: 41 lines in 26 files.
+The retired strapline "The ticketing platform built for every community" was the
+platform's own description in FIFTEEN source files: the root title tag, the Open
+Graph and Twitter cards, the homepage H1, the site footer, the auth shell, the
+About, Press, Careers and Events metadata, the site JSON-LD, the help centre, and
+four transactional email footers. It was live on production inside the
+Organization schema at the moment it was read:
+`"description":"Live event ticketing platform built for every community..."`.
+
+**The line the audit draws.** Describing a COMPETITOR as a ticketing platform is
+correct and stays: the owner's own positioning statement says "Unlike ticketing
+platforms that stop at the checkout". Four such sentences survive untouched.
+Code COMMENTS are not copy and are not rewritten; one design note that asserted
+the platform's own identity was reworded because a future reader would follow it.
+
+**What the guard found that the grep had not.** `positioning-lock.mjs` scans
+`docs/marketing` as well as `src`, the way `one-fee-copy.mjs` does, because that
+is copy the founder pastes into a post or a direct message. It failed on four
+founder copy packs describing EventLinqs as "the Australian ticketing platform
+built for local organisers", in the landing page copy, the day one content pack
+and both recruitment playbooks, including the outreach messages sent to
+organisers by name. Fourteen more lines rewritten.
+
+**The one-source fix.** `src/lib/brand/positioning.ts` holds the tagline (which
+the ruling leaves UNCHANGED), the promise, the strapline, the short strapline,
+the category line and the positioning statement. Nine surfaces import it rather
+than repeating it. Fifteen literals is how a positioning decision half-lands.
+
+**Measured, not asserted.** tsc 0. The suite grew 325/3701 to 326/3727 and the
+canary was raised in the same change with the measurement written beside it. One
+test failed on the way and was right to: `guard-registry` requires the header
+comment of `run-guards.mjs` to name every registered guard, and the new guard was
+registered without being named.
+
+**Reported, not changed.** `docs/STRATEGY-LOCK.md` section 1 states the tagline as
+"Where the culture gathers", which CLAUDE.md bans twice over (the tagline is
+locked as "Every community. Every event. One platform." and the word "culture" is
+banned everywhere in every form), and section 2 writes the per-ticket fee as a
+literal where the fee doctrine says it lives in exactly one place. Both are
+recorded at the end of the new section for the owner, because that document says
+updates require a founder decision in writing.

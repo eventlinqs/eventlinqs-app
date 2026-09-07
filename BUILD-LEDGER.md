@@ -855,3 +855,78 @@ closed gap is dead code pretending to be coverage.
 | C10.4 OWNER BLOCKED, named | MET after the roast, and now guarded |
 | L2 item 8 build every launch-affecting gap | MET, both |
 | L2 item 8 name everything else for the queue | MET, one row per section with its own note |
+
+## POSITIONING, LOCKED (owner ruling 7 September 2026, built 8 September 2026, session 43)
+
+Read from CLOSE-OUT.md, section "POSITIONING, LOCKED ... AUTHORITATIVE". It
+appeared in no ledger entry, no log entry and no commit before this one.
+
+### Against the COMPLETION LAW
+
+| Law | Verdict | Evidence |
+|---|---|---|
+| 1. Schema, applied to TEST and verified by querying it back | NOT APPLICABLE, and stated rather than skipped. This item changes copy, one guard and one module. No migration was written and none is needed | the diff: no file under supabase/migrations |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc 0. 78 of 78 guards PASS. `no-silent-catch` failed the new guard first and was right: its directory walk swallowed a read error, which in a SCANNER is the dangerous direction, because a scanner that reads nothing finds nothing and reports PASS. It now distinguishes an absent directory (the answer, on Vercel where .vercelignore strips docs/) from a real read failure (reported) | C:\dev\EVIDENCE\POSITIONING\ , the gate log |
+| 3. Tests added, canary raised in the same commit | MET. `tests/unit/brand/positioning.test.ts`, 25 tests: the six locked strings, the copy laws applied to each, the eight surfaces that carried the retired strapline now reading it from one source, the live hero, and the phrase binding that stops "platform." orphaning. Suite 325/3701 to 326/3726, measured not guessed | the suite output, scripts/guards/test-count-canary.mjs |
+| 4. Guard proven red and green | MET. `scripts/guards/positioning-lock.mjs`, registered in run-guards.mjs, blocking on prebuild. Three drills, all firing: the retired strapline back on a page, the retired strapline back in a transactional email (where it lived longest and where nobody reads a diff), and a fresh sentence describing the platform in the forbidden words | scripts/verify/guard-failure-drills.mjs, the drill run |
+| 5. Driven at 390, 768 and 1440 | MET. 50 of 50 checks on a local production build: the homepage hero in both of its states, the footer brand strip, the login brand panel, About, Press, the served title, the Open Graph and Twitter cards, the Organization JSON-LD that production is serving wrong right now, and the order confirmation email rendered through the real builder | C:\dev\EVIDENCE\POSITIONING (12 screenshots, head-tags.json, order-confirmation-email.html, positioning-drive.json) |
+| 6. Full regression green after the item | MET. 326 of 326 files, 3726 of 3726 tests, 0 failed, 0 skipped | the suite output |
+| 7. Committed, no trailers, pushed, production deploys green | Committed as ff895c2c with no trailer. Pushed through the full local gate | git log |
+
+### What the drive found that no test could
+
+The first pass rewrote the headline in
+`src/components/features/home/home-hero.tsx` and every unit test went green. The
+drive then failed the same assertion at all three viewports, reading a different
+headline off the real page. NOTHING IMPORTS THAT FILE. The live homepage hero is
+`FeaturedHero`, whose visible headline is the locked tagline.
+
+That is the same defect class as C10-G1 (three controls writing columns nothing
+read), found the same way, and it is the argument for the driven-proof law in one
+line: a green suite proved a string was in a file, and the file was not the page.
+
+`FeaturedHero` now reads the phrase-bound tagline from the one source, and the
+tests read the hero that renders.
+
+### Found while driving, recorded for the owner, nothing removed
+
+Nine components in `src/components/features/home/` are imported by nothing:
+home-hero, split-state-hero, community-moments-bento, trending-events-bento,
+community-picks-section, featured-organisers-section, email-signup-panel,
+surprise-me-button, trust-badges-row. Two of them (home-hero, split-state-hero)
+hold reviewed grants in `scripts/guards/one-priority-image.mjs` describing them
+as "the static homepage hero raster is the LCP", so a build guard is protecting
+files nobody renders. Nothing was deleted: removal is an owner decision.
+
+### The second half of the ruling: copy that must change to match
+
+| Surface named by the ruling | State |
+|---|---|
+| The homepage hero and subhead | DONE. The hero headline is the locked tagline read from one source. The homepage METADATA sold on "No hidden fees, verified organisers, fair refund policy" and now names the category |
+| /for-organisers | REVIEWED, no change. It is a permanent redirect to /organisers, whose hero already reads "Build your event, map your room, get your complete promo kit", which is the ruling's own test passed |
+| /about, /pricing | DONE on About. On pricing, one tier read "Transparent, industry-leading rates", which is a price-leadership claim the ruling forbids, and now reads "Transparent rates, published in full". The fee table itself stays: the ACCC all-in display law in CLAUDE.md requires it and that is not "leading with fees" |
+| The organiser signup flow | REVIEWED, no change. It carries no self-description |
+| The empty states | REVIEWED, no change. They already read "EventLinqs is open right across Australia, so the first one here could be yours", which answers what an organiser does next |
+| The transactional email templates | DONE. Four builders: order confirmation (HTML and plain text), payout, waitlist confirmation, waitlist promotion |
+| Meta descriptions and titles | DONE. The root layout plus About, Careers, Events, Press, and the homepage's own block |
+| The social card copy | REVIEWED, no change. The Open Graph and Twitter image routes carry the TAGLINE, which the ruling leaves unchanged |
+
+### Two things in docs/STRATEGY-LOCK.md the owner has to decide
+
+Recorded in the new section, not changed, because that document says updates
+require a founder decision in writing.
+
+1. Section 1 states the tagline as "Where the culture gathers". CLAUDE.md locks
+   it as "Every community. Every event. One platform.", the ruling restates that
+   one UNCHANGED, and CLAUDE.md bans the word "culture" everywhere in every form.
+2. Section 2 writes the per-ticket fee as a literal, where the fee doctrine says
+   the rate lives in exactly one place and is derived everywhere else.
+
+### And one in CLAUDE.md
+
+CLAUDE.md's "What EventLinqs is" opens "EventLinqs is a complete, general
+ticketing platform for Australia". The ruling of 7 September says never describe
+the platform that way. CLAUDE.md's own rule is to REPORT a contradiction rather
+than follow a stale line, and its preamble says a user instruction outranks it,
+so the ruling was followed and the line is reported here. The constitution is the
+founder's to edit; the one-line reconciliation is his call.
