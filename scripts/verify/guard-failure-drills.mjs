@@ -126,6 +126,50 @@ const PARITY_LOGIN = resolveVercelToken()
 const PARITY_STALE = PARITY_LOGIN.token ? null : `${PARITY_LOGIN.reason}, so the production store cannot be read`
 console.log(`[drills] production store for production-parity to judge: ${PARITY_STALE ? `NONE (${PARITY_STALE})` : `read with ${PARITY_LOGIN.source}`}`)
 
+/*
+ * THE LIVE PULL REQUEST LIST FOR one-pull-request-at-a-time TO JUDGE (close-out
+ * PR5). Both of its drills mutate the reviewed parked record and let the guard
+ * read the REAL open list, so they need the same credential the guard needs.
+ * Without one the guard SKIPs, exit 0, and a drill against a skipping guard
+ * reports "DID NOT FAIL" for ever, so the absence is declared STALE with the
+ * reason instead.
+ *
+ * DERIVED, NOT PINNED, for the same reason the effective migrations above are:
+ * the anchor is the LAST entry's number read out of the record itself, and the
+ * closed pull request to point it at is found live. A number written down here
+ * rots the day that entry is unparked, and a drill aimed at nothing is the
+ * failure this harness exists to catch.
+ */
+function ghCanListPullRequests() {
+  if (process.env.GITHUB_TOKEN) return true
+  const probe = spawnSync('gh', ['auth', 'token'], { encoding: 'utf8' })
+  return probe.status === 0
+}
+const PARKED_RECORD_PATH = 'scripts/guards/lib/parked-pull-requests.json'
+const PARKED_RECORD = JSON.parse(readFileSync(join(ROOT, PARKED_RECORD_PATH), 'utf8'))
+const LAST_PARKED = PARKED_RECORD.parked?.[PARKED_RECORD.parked.length - 1] ?? null
+const PR_LIST_STALE = ghCanListPullRequests()
+  ? LAST_PARKED
+    ? null
+    : `${PARKED_RECORD_PATH} holds no parked entry, so there is nothing for the rot drill to move`
+  : 'no GITHUB_TOKEN and no gh login, so the open pull request list cannot be read and the guard would SKIP'
+
+function newestClosedPullRequest() {
+  if (!ghCanListPullRequests()) return { error: 'no credential to list pull requests' }
+  const res = spawnSync('gh', ['api', 'repos/{owner}/{repo}/pulls?state=closed&per_page=1'], { encoding: 'utf8' })
+  if (res.status !== 0) return { error: `gh could not list closed pull requests (${(res.stderr || '').trim().split('\n')[0]})` }
+  const first = JSON.parse(res.stdout)[0]
+  if (!first) return { error: 'the repository holds no closed pull request to point the drill at' }
+  return { number: first.number }
+}
+const CLOSED_PR = PR_LIST_STALE ? { error: PR_LIST_STALE } : newestClosedPullRequest()
+const CLOSED_PR_NUMBER = CLOSED_PR.number ?? null
+const CLOSED_PR_STALE = CLOSED_PR.error ?? null
+console.log(
+  `[drills] open pull requests for one-pull-request-at-a-time to judge: ` +
+    `${PR_LIST_STALE ? `NONE (${PR_LIST_STALE})` : `readable; rot drill moves #${LAST_PARKED.number} onto closed #${CLOSED_PR_NUMBER ?? '?'}`}`,
+)
+
 const DRILLS = [
   /*
    * preview-deployment-state (close-out C16, 7 September 2026), one drill: the
@@ -181,6 +225,36 @@ const DRILLS = [
     find: "export const REQUIRED_CONTEXTS = ['lint · typecheck · build', 'test (vitest)', 'production parity']",
     replace: "export const REQUIRED_CONTEXTS = ['lint · typecheck · build', 'test (vitest)', 'production parity', 'a check nobody configured']",
     expect: 'required status checks are missing',
+  },
+  /*
+   * one-pull-request-at-a-time (close-out PR5), two drills, both aimed at the
+   * REAL live list of open pull requests rather than at a fixture, because the
+   * unit tests already drive every shape and what cannot be tested offline is
+   * that the guard is pointed at the right repository and reads it correctly.
+   *
+   * The first empties the reviewed parked record, so the three pull requests
+   * held on purpose all become unaccounted for and the count rule fires. The
+   * second leaves the count alone and moves one entry's number onto a pull
+   * request that is closed, which is the record outliving its subject: the rot
+   * check, in isolation, with the count still legal.
+   */
+  {
+    name: 'the reviewed parked record is emptied and the held pull requests become unaccounted for',
+    guard: `${GUARDS}/one-pull-request-at-a-time.mjs`,
+    file: 'scripts/guards/lib/parked-pull-requests.json',
+    find: '"parked": [',
+    replace: '"parked": [], "_parkedDuringTheDrill": [',
+    stale: PR_LIST_STALE,
+    expect: 'are open and unaccounted for',
+  },
+  {
+    name: 'a parked entry outlives the pull request it explains',
+    guard: `${GUARDS}/one-pull-request-at-a-time.mjs`,
+    file: 'scripts/guards/lib/parked-pull-requests.json',
+    find: LAST_PARKED ? `"number": ${LAST_PARKED.number},` : '"number": 0,',
+    replace: `"number": ${CLOSED_PR_NUMBER ?? 0},`,
+    stale: PR_LIST_STALE ?? CLOSED_PR_STALE,
+    expect: 'is not open any more',
   },
   /*
    * vercelignore-covers-guard-reads (close-out C18 FINAL), two drills: the approved
