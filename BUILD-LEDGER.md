@@ -1459,3 +1459,83 @@ reporting its own condition.
 Unchanged from session 48 and repeated so it is not lost: the local gate still
 measures a locally served build rather than a Vercel preview (P0.2, costed and
 routed to the owner), and the 95 mobile standard is not met and is not claimed.
+
+## P0.7-D ON PRODUCTION (9 September 2026, session 50): merged as 1caf2f68, main green, production serving it
+
+C16.0 says a merge is not finished when the pull request closes, it is finished
+when production is serving it. These are the rows that finish it.
+
+| Requirement (C16.0 / C16.4) | Verdict | Evidence |
+|---|---|---|
+| Every required check green on the ready-for-review run | MET. Lighthouse mobile gate PASS 30m13s; lint/typecheck/build, test (vitest), types-drift guard and production parity all PASS on run 34256526383 | runs 34256526497 and 34256526383 |
+| No AI authorship trailer in the squash message | MET. The pull request body was grepped for `Co-Authored-By`, "Generated with", Claude, Anthropic and the robot emoji before the merge; none present | Law 8 check in BUILD-LOG.md |
+| origin/main CI green after the merge | MET. Run 34259810928 on 1caf2f68 SUCCESS, all four jobs | gh run view 34259810928 |
+| The newest production deployment is Ready and its commit matches origin/main | MET. `sentry-release=1caf2f68534679c1712fee908f836b3afbf688b0` served from https://www.eventlinqs.com.au at 17:57:20 UTC, polled from 17:54 | poll transcript in BUILD-LOG.md |
+| The post-deploy smoke passes | MET. post-deploy smoke on 1caf2f68 SUCCESS | gh run list --branch main |
+| At least ten real routes driven on production | MET. `/` 200, `/events` 200, `/pricing` 200, `/organisers` 200, `/community/african` 200, `/city/melbourne` 200, `/sitemap.xml` 200, `/about` 200, `/communities` 200, `/for-organisers` 308 to `/organisers` which resolves 200. Zero unexpected 404s, zero 500s | curl transcript in BUILD-LOG.md |
+
+The halt in C16.0 is therefore not in force: main is green and production serves
+it. The next item may begin.
+
+
+## PR HYGIENE (9 September 2026, session 50): 22 open pull requests adjudicated from the tree, 18 closed, 4 left open with a reason
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| PR1. Every open pull request recorded with number, title, age and a verdict | MET. All 22 in one table, each verdict resting on a file-by-file comparison of what the branch adds against what main holds, never on the title | the PR1 table in BUILD-LOG.md |
+| PR1. ALREADY ON MAIN determined by checking the changes are present in main | MET. `git diff --name-status origin/main...origin/<branch>` for the added set, then `git cat-file -e` plus blob-hash comparison per path on origin/main. `git cherry` was tried first and rejected as useless here: every one was squash-merged so no patch-id survives | the method paragraph in BUILD-LOG.md |
+| PR1. SUPERSEDED determined by naming the later work that replaced it | MET. Eight name a merge commit found with `git log --diff-filter=A` (pull request 100 / `17ffc3f5`, pull request 118 / `36179dc1`); ten name the built surface that replaced them (three door migrations and nine scanner modules; the PRICING-LOCK block and its two guards; `src/lib/email/templates/`; seven SEATING documents; the sounds-rail/community-rail split) | the close comments on each pull request |
+| PR2. Never close a pull request carrying work that is not on main and still wanted | MET. Four left OPEN for exactly that reason: 139 (4 files absent, the owner's own ruling), 69 (25 of 30 absent, `/music` routes parked by CLAUDE.md's own words), 97 (`docs/SHOT-LIST.md` absent and not duplicated by `docs/PHOTO-DAY.md`), 104 (`docs/marketing/CONTENT-PLAN.md` and `OUTREACH-TEMPLATES.md` exist nowhere on main) | `gh pr list` now returns 4 |
+| PR3. Close the dead ones with a one-line reason | MET. 18 closed, each with a comment naming the replacement | the closes |
+| PR3. Delete its branch only after the close | MET, and deliberately PARTIAL by design. Branches deleted ONLY for the eight where the audit proved every added file is on main, so nothing can be lost. The ten SUPERSEDED branches carry files main does not have, so their branches are KEPT and each close comment says so. Deleting them would be the silent loss PR2 forbids | 8 `git push origin --delete`, 10 kept |
+| PR4. Rebase each STILL WANTED branch, gate it, land one at a time. 139 first | IN PROGRESS. 139 rebased onto `1caf2f68`, one conflict (the canary baseline), resolved by keeping BOTH notes and re-MEASURING rather than arithmetic: `331 files, 3808 tests, 0 failed, 0 skipped`. tsc 0, eslint 0. Full gate running | the gate log |
+| PR5. One open pull request at a time, and a check that reports more than two | NOT MET YET. Its own change, after 139 lands, so 139 does not carry unrelated work | next item |
+
+### One finding kept OUT of a close
+
+Pull request 95 carried `lighthouserc.desktop.json`. Main's
+`.github/workflows/lighthouse.yml` contains no `desktop`, `preset` or
+`formFactor`, and its only job is named "Lighthouse mobile gate". **CI measures
+mobile and does not measure desktop at all**, against a standing law of 95 on
+both. Closing the pull request must not delete what it was right about, so this
+is recorded here and in REVIEW-QUEUE.md as an open finding rather than dying with
+the branch. It does not block the launch (the owner ruled on 7 September that the
+95 target does not gate it), but the ratchet it resumes into currently has an
+instrument for only half of itself.
+
+
+## PR4, part 2 (9 September 2026, session 51): the positioning branch gated and pushed, with the four checks that had never run
+
+| COMPLETION LAW clause | Verdict | Evidence |
+|---|---|---|
+| 1. Schema | NOT APPLICABLE. This item adds no column, table, function or policy. `npm run migrate:production -- --dry-run` confirms 116 in the tree, 116 applied, 0 pending on this branch | the dry run output in BUILD-LOG.md |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc 0, eslint 0 with `--max-warnings=0`, 78 of 78 registered guards PASS, `next build` PASS | `C:\dev\EVIDENCE\PR4-POSITIONING\gate-green-b6026cc5.txt` |
+| 3. Tests, suite grows, canary raised in the same commit | MET on the branch as a whole. The canary conflict from the rebase was resolved by RE-MEASURING rather than by arithmetic: 331 files, 3808 tests, 0 failed, 0 skipped. This commit adds no test because what it repairs is a driven proof, and the proof is the evidence | the suite step, 45s PASS |
+| 4. Guard proven red and green | MET, and the guard is `positioning-lock.mjs` from `9e5b44e0`. This commit's own subject is the guard's complement: the DRIVE was silently green on four checks it never reached, and it is now proven by having run them | `positioning-drive.json`, 51 of 51 |
+| 5. DRIVEN at 390, 768 and 1440 | MET. 51 of 51 checks, 0 failures, through a real browser against a local production build on TEST. Includes the four email checks that had never once executed | `C:\dev\EVIDENCE\PR4-POSITIONING` (15 files) |
+| 6. FULL regression green after the item | MET. The complete pre-push gate on `b6026cc5`: 14 of 14 steps in 2442s, including 65 Lighthouse reports over 13 URLs with medians 87 to 94, CLS 0.000 everywhere, and the collection taken at BenchmarkIndex 2757, inside the band the floors were derived at | `gate-green-b6026cc5.txt` |
+| 7. Committed, Australian English, no trailers, pushed | MET. `b6026cc5`, `core.hooksPath` confirmed set to `.githooks` before the commit so `commit-msg` judged it. Pushed only through the green gate | `git log`, the push output |
+| 7b. Merged, main green, production serving it (C16.0) | IN PROGRESS. CI queued on `b6026cc5` at 05:34 (runs 34270286914 and 34270286755). Not merged yet | next |
+
+### The defect this item exists to fix, stated plainly
+
+`scripts/verify/positioning-drive.mjs` imported a `src/` module that reaches for
+the `@/` alias. A bare `node` run cannot resolve it, so the import threw
+`ERR_MODULE_NOT_FOUND` and the drive died at that line, four checks short of the
+end. The four it never reached were the email checks, and the email footer is the
+one place the retired strapline survived longest. A proof that stops before its
+hardest assertion reports the same green as one that passes it.
+
+### Why this was not caught by the gate
+
+The gate does not run `positioning-drive.mjs`; it runs `positioning-lock.mjs`,
+the static guard. The guard reads source files and was always right. The drive is
+the DRIVEN half, and nothing gates a driven proof except reading its output,
+which is the standing reason the COMPLETION LAW asks for the evidence path rather
+than the word "driven".
+
+### PR5 is the next item and is deliberately NOT started
+
+The COMPLETION LAW forbids beginning item N+1 while N is partially built. PR4 is
+not finished until 139 is merged and production serves it (C16.0), so the PR5
+guard is designed and not written.

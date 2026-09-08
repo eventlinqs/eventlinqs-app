@@ -2002,3 +2002,138 @@ finish and watch your site redeploy.
 - Whether the local speed check should push a temporary branch so it measures a
   real Vercel preview. Costs a second build on every push. "Do the scratch
   branch" or "leave it".
+
+## Your 22 open pull requests are now 4, and nothing was lost
+
+### What I did
+
+You had 22 pull requests sitting open, some of them nearly four months old. That
+list was hiding what is actually in flight, so I went through every one of them.
+
+I did not read the titles and guess. For each branch I listed every file it adds,
+then looked up each of those files on main and compared them byte for byte. A
+branch whose files are all already on main is carrying nothing you would lose by
+closing it. That is a fact you can check, not an opinion.
+
+**Eight were already on main.** Their work landed months ago in two big merges:
+pull request 100 in July, and pull request 118 in August. Every single file each
+one adds is on main today. Closed, and their branches deleted, because there is
+genuinely nothing unique on them.
+
+**Ten were superseded.** The thing they proposed has since been built, and built
+better. The door scanner branch is the clearest: it proposed one migration, and
+main now has three, plus offline scanning, plus two doors syncing in real time,
+plus twenty tests. Closed, each with a one-line comment naming exactly what
+replaced it. **Their branches are kept**, so if any of them turns out to have had
+something in it, it is still there.
+
+**Four are still open on purpose**, because each carries something main does not
+have:
+
+  - **139, the positioning wording.** Your own ruling. I have rebased it onto
+    today's main and it is going through the full check now. This is the one that
+    lands next.
+  - **69, genre pages.** The `/music` pages genuinely do not exist on the
+    platform. Your own rules park them behind photo day, and the branch says so
+    itself. It stays open until photo day.
+  - **97, the photo shopping list.** 110 photos to buy, with exact filenames. It
+    is not on main and it is not the same as the photo instructions that are.
+    You still need this. One caveat before it lands: its counts were written
+    before the community layer was approved, so the list needs re-checking
+    against today's taxonomy first.
+  - **104, marketing content.** Half of it is old evidence and is dead, but the
+    other half is a content plan and outreach templates that exist nowhere else.
+    I will not close it and lose those.
+
+### One thing I found while closing them, and did not close with them
+
+Pull request 95 was trying to add a desktop speed check. I closed it, because the
+speed gate has been rebuilt from scratch since. But it was **right about one
+thing**, and closing a pull request must not delete what it was right about:
+
+**The automatic speed check measures mobile only. It does not check desktop at
+all.** The job is literally named "Lighthouse mobile gate" and there is no
+desktop configuration anywhere in it. Your standard is 95 on both. So for months
+the desktop half of that standard has not been measured by anything.
+
+This is not urgent, because you have already ruled that the 95 target does not
+gate the launch and continues afterwards as a ratchet. But it means that when the
+ratchet resumes, half of it has no instrument. I have put it in the queue rather
+than fixing it now, because fixing it is its own piece of work and the launch list
+comes first. Say the word if you want it sooner.
+
+### Still waiting on you, unchanged
+
+- The migration command, `npm run migrate:production`, still holding two branches
+  (the organiser "what do you still need" module, and the add-ons screen).
+- Approval for a test account, a real card put through and refunded, and real
+  events on the live site. Fourteen of the sixteen launch readiness checks cannot
+  be run without this, and it is the single biggest thing between the platform and
+  a launch readiness report.
+- The firewall decision (`npm run firewall:bypass`).
+- Whether the local speed check should push a temporary branch so it measures a
+  real Vercel preview. Costs a second build on every push. "Do the scratch branch"
+  or "leave it".
+
+
+## The positioning wording is through its checks and going in
+
+### What I did
+
+Your positioning ruling has been sitting in pull request 139, waiting. It is now
+rebased onto today's site, has passed every check on my machine, and is queued
+with GitHub for the final run before it merges.
+
+I also found and fixed something in my own proof of it, and it is worth telling
+you because it is the kind of thing that makes a green tick worthless.
+
+The check that walks the site and confirms the new wording had **four checks it
+had never once run**. They were the last four in the list, and they were the ones
+that read the order confirmation email. The check crashed one line before
+reaching them, every single time, and still reported everything above them as
+passed. The email footer is the exact place your old strapline survived longest,
+so the four checks that could not run were the four that mattered most.
+
+It now runs all fifty one. All fifty one pass, on a phone, a tablet and a desktop
+screen, and the email is rendered and read for real rather than skipped.
+
+### The full check, start to finish
+
+Fourteen steps, all green, forty one minutes. Thirteen pages measured five times
+each. Every page scored between 87 and 94, nothing jumped around on load
+anywhere, and the laptop was measured as fit to judge before any score was
+believed.
+
+### The one thing that is now the biggest thing in your way
+
+Two finished pieces of work cannot be pushed at all until you run one command.
+
+  - The event series and multi-day work, and the add-ons an organiser creates.
+  - The organiser "what do you still need" module.
+
+Both need four database changes applied to the live site, and applying a change
+to the live database is yours by your own ruling, not mine. Everything around it
+is already scripted. The command is:
+
+    npm run migrate:production
+
+Run it from the repository. It lists exactly what it will apply, asks you to type
+the production name to confirm, applies it, proves the result by asking the
+database back, and always leaves the tool pointed at the test database when it
+finishes. Running it twice is safe: the second time it says there is nothing to
+do and stops.
+
+Until that runs, those two pieces of work stay on my machine, and the platform's
+own safety check is correct to refuse them.
+
+### Still waiting on you, unchanged
+
+- The migration command above, `npm run migrate:production`.
+- Approval for a test account, a real card put through and refunded, and real
+  events on the live site. Fourteen of the sixteen launch readiness checks
+  cannot be run without this, and it remains the single biggest thing between
+  the platform and a launch readiness report.
+- The firewall decision (`npm run firewall:bypass`).
+- Whether the local speed check should push a temporary branch so it measures a
+  real Vercel preview. Costs a second build on every push. "Do the scratch
+  branch" or "leave it".

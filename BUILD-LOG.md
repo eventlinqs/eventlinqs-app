@@ -5917,3 +5917,260 @@ workflows run exactly once, after the local gate was already green.
 |---|---|---|
 | Everything in this item | SCRIPTED. `npm run gate:push` runs the whole thing | none |
 | Merging pull request 143 and watching production to Ready | MINE, not his, under C16.0 | none |
+
+---
+
+## 2026-09-09 03:50 to 04:05 AEST (session 50) P0.7-D landed on production, and the next item opened
+
+### Governing laws
+
+Law 0 (read first), Law 8 (authorship), Verification and gates, close-out C16.0
+(watch every merge through to Ready before starting the next item), the PR
+HYGIENE section (do after P0), and the COMPLETION LAW.
+
+Disk 27.43 GB free at start. TEST vkapkibzokmfaxqogypq remains linked. Production
+gndnldyfudbytbboxesk was READ only (the served HTML and route status codes).
+
+### The tail of P0.7-D, which is what C16.0 says finishes a merge
+
+Pull request 143 was open with its Lighthouse gate still running when this
+session started. Under the COMPLETION LAW that is an item in progress, so it is
+what was worked rather than anything new.
+
+  - Lighthouse mobile gate PASS, 30m13s, run 34256526497.
+  - Every other required check PASS on the ready-for-review run 34256526383:
+    lint/typecheck/build, test (vitest), types-drift guard, production parity.
+    The duplicate "skipping" rows in `gh pr checks` belong to the draft-era run
+    34256520630 and are the draft condition working as designed (C2.2).
+  - Merged squash as `1caf2f68`, branch deleted. No trailer: the pull request
+    body was checked for `Co-Authored-By`, "Generated with", the robot emoji and
+    the words Claude/Anthropic before merging, and carried none (Law 8).
+  - CI on main at 1caf2f68: SUCCESS (run 34259810928), all four jobs green.
+  - Production polled every 45 s until it served the commit:
+        17:54:13 sentry-release=c9a12d92...
+        17:55:45 sentry-release=c9a12d92...
+        17:56:34 (empty)
+        17:57:20 sentry-release=1caf2f68534679c1712fee908f836b3afbf688b0
+  - post-deploy smoke on 1caf2f68: SUCCESS.
+  - Ten routes driven on production, statuses recorded: `/` 200, `/events` 200,
+    `/pricing` 200, `/organisers` 200, `/community/african` 200,
+    `/city/melbourne` 200, `/sitemap.xml` 200, `/about` 200, `/communities` 200,
+    `/for-organisers` 308 to `/organisers` which resolves 200. Zero unexpected
+    404s, zero 500s.
+
+The empty reading at 17:56:34 is the same dropped-connection behaviour H2
+diagnosed on 8 September. It is one drop inside a retrying poll, the next request
+45 seconds later succeeded, and the smoke workflow that H2 taught to retry passed
+on the same deployment. Recorded rather than actioned, because H2's fix is
+precisely that one drop is not an outage.
+
+### One environment trap found and worked around, worth writing down
+
+`git cat-file -e "origin/main:.vercelignore"` reports the object missing on this
+machine. It is not missing. Git Bash on Windows rewrites an argument shaped like
+`unix/path:other/path` as a Windows path list, so the ref became
+`origin\main;.vercelignore`. Every path beginning with a dot in the first sweep
+of the pull-request audit came back as a false ABSENT because of it. Re-run with
+`MSYS_NO_PATHCONV=1` and the same eight paths resolve correctly. The corrected
+sweep is what the audit below is built on; the first one was discarded.
+
+### PR1. THE PULL-REQUEST AUDIT. Twenty-two open, every one adjudicated from the tree
+
+Method, so the verdicts can be checked rather than trusted. For each branch:
+`git diff --name-status origin/main...origin/<branch>` gives the files it ADDED
+since it diverged. Each of those paths is then resolved on `origin/main` with
+`git cat-file -e` and compared by blob hash. A branch whose added files all exist
+on main, byte-identical or superseded in place, is carrying nothing main lacks.
+`git cherry` was tried first and is useless here: every one of these was
+squash-merged, so no individual commit's patch-id survives to be matched.
+
+Run with `MSYS_NO_PATHCONV=1`. Without it Git Bash rewrites `origin/main:.x` into
+`origin\main;.x` and every dotfile reports a false ABSENT.
+
+| # | Age | Branch | Added | Identical on main | Differs | Absent | Verdict |
+|---|---|---|---|---|---|---|---|
+| 10 | 115d | fix/fee-story-consistency | 1 | 0 | 0 | 1 | SUPERSEDED |
+| 14 | 115d | chore/taxonomy-v2-research | 2 | 0 | 0 | 2 | SUPERSEDED |
+| 18 | 115d | design/ticketing-system-v1 | 1 | 0 | 0 | 1 | SUPERSEDED |
+| 20 | 115d | research/seated-events-v1 | 3 | 0 | 0 | 3 | SUPERSEDED |
+| 24 | 115d | research/email-design-v1 | 4 | 0 | 0 | 4 | SUPERSEDED |
+| 56 | 102d | ci/lighthouse-paths-scope | 0 | 0 | 0 | 0 | SUPERSEDED, and must never merge |
+| 69 | 100d | feat/genre-data-layer | 30 | 3 | 2 | 25 | STILL WANTED (parked) |
+| 70 | 100d | feat/door-checkin-scanner | 13 | 0 | 7 | 6 | SUPERSEDED |
+| 81 | 99d | feat/home-rebuild | 184 | 144 | 40 | 0 | ALREADY ON MAIN |
+| 94 | 93d | chore/workshop-inspection | 54 | 40 | 12 | 2 | SUPERSEDED |
+| 95 | 93d | chore/gates-to-law | 4 | 0 | 1 | 3 | SUPERSEDED, with one finding kept |
+| 97 | 93d | chore/photo-shot-list | 1 | 0 | 0 | 1 | STILL WANTED |
+| 98 | 81d | fix/hardening-security | 176 | 137 | 39 | 0 | ALREADY ON MAIN |
+| 99 | 81d | release/launch-line | 431 | 338 | 90 | 3 | ALREADY ON MAIN |
+| 102 | 59d | docs/main-merge-101-evidence | 19 | 0 | 0 | 19 | SUPERSEDED |
+| 104 | 59d | docs/marketing-and-merge-103-evidence | 19 | 0 | 0 | 19 | STILL WANTED (in part) |
+| 113 | 28d | feat/public-composer | 658 | 544 | 114 | 0 | ALREADY ON MAIN |
+| 114 | 28d | fix/security-hardening | 64 | 45 | 19 | 0 | ALREADY ON MAIN |
+| 115 | 28d | feat/launch-kit-artefacts | 122 | 71 | 51 | 0 | ALREADY ON MAIN |
+| 116 | 28d | feat/launch-kit-moat | 105 | 94 | 11 | 0 | ALREADY ON MAIN |
+| 117 | 28d | fix/production-sweep | 17 | 15 | 2 | 0 | ALREADY ON MAIN |
+| 139 | 0d | feat/positioning-lock | 4 | 0 | 0 | 4 | STILL WANTED |
+
+Where the work actually landed, so each close names its replacement rather than
+asserting one:
+
+  - 81, 98, 99: pull request 100, `17ffc3f5` "Launch line: Launch Kit, Magic
+    Start, network engine, seat supremacy, publish bulletproof". Confirmed by
+    `git log --diff-filter=A` on a file each branch introduced.
+  - 113, 114, 115, 116, 117: pull request 118, `36179dc1` "Integration/launch".
+  - 99's three genuinely absent files are `dashboard/venue-revenue/page.tsx` and
+    the two `admin/venues` files. Those are absent because the founder REMOVED
+    the Venue Revenue Sharing Program on 5 July 2026. Main is deliberately ahead,
+    not behind.
+
+Verdicts that rest on more than file presence:
+
+  - 70, door check-in scanner. Main's door work is three migrations
+    (`20260625000001_door_checkin_scan`, `20260905000001_offline_door_validation`,
+    `20260905000002_door_realtime`), nine modules under `src/lib/scanner/` and
+    twenty-plus test files including offline validation and multi-scanner
+    realtime. The branch's own migration `20260531000001_checkin_scanner.sql`
+    was never used. Main is generations ahead.
+  - 20, seated events. Shipped: seven `docs/design/SEATING-*.md` on main and a
+    working seat picker in the audited personas evidence.
+  - 24, email design. Shipped: `src/lib/email/templates/`.
+  - 10, fee story. `src/components/marketing/` does not exist on main at all. The
+    fee story is now the PRICING-LOCK block in `docs/PRICING.md` derived through
+    `getLivePublicFee`, held by `scripts/pricing-derive.mjs --check` and
+    `scripts/guards/one-fee-copy.mjs` under the one-fee ruling of 15 August 2026.
+  - 56 would make the Lighthouse gate conditional on which files a pull request
+    touches. That is the exact opposite of the standing instruction (H5, P0.7:
+    never make a check non-blocking) and it is closed as a thing that must not
+    merge, not merely as stale.
+  - 94's two absent files are `docs/benchmark/WORKSHOP-INSPECTION.md`, a 93-day-old
+    verdict, and `src/components/features/home/scene-rail.tsx`, which the locked
+    homepage split into `sounds-rail.tsx` plus `community-rail.tsx`.
+
+Verdicts that leave the pull request OPEN, under PR2:
+
+  - 69, genre data layer. Twenty-five of its thirty added files are genuinely not
+    on main: `/music`, `/music/[slug]`, `/music/[slug]/[city]`, `src/lib/genres/`,
+    `src/app/account/following/`. Main has the artist graph (`/artists`, `/gigs`,
+    `/artist/dashboard`), the genre taxonomy migration and a follow system under
+    different names (`src/app/actions/follow.ts`,
+    `src/components/features/follow/follow-button.tsx`,
+    `20260530000004_follows.sql`), but it has NO genre landing routes. CLAUDE.md
+    says so in its own words: "Missing scene landing pages are tracked for the
+    post-photos taxonomy mission." The branch even carries its own
+    `docs/genre-data-layer/PARKING-NOTE.md`. It stays open.
+  - 97, the photo shot list. `docs/SHOT-LIST.md` is not on main and is not
+    duplicated by `docs/PHOTO-DAY.md`, which it explicitly references: PHOTO-DAY
+    is how to ingest photos, SHOT-LIST is which 110 to buy. The owner still needs
+    licensed photography and C17.3 depends on it. It stays open, with the caveat
+    that its taxonomy counts ("19 locked scenes", "8 real event_categories", "13
+    cities") predate the C18F community-layer addendum and must be re-verified
+    against the database before it lands.
+  - 104 carries `docs/marketing/CONTENT-PLAN.md` and
+    `docs/marketing/OUTREACH-TEMPLATES.md`, neither of which exists on main under
+    any name. The merge evidence half of it is superseded; the marketing half is
+    not. It stays open rather than losing the marketing content silently.
+  - 139, the positioning ruling. Four real files absent from main. This is the
+    owner's own ruling of 7 September and it is the next thing to land.
+
+One finding kept out of a close, because closing a pull request must not delete
+what it was right about: 95 carried `lighthouserc.desktop.json`. Main's
+`.github/workflows/lighthouse.yml` contains no `desktop`, `preset` or
+`formFactor`, and its only job is named "Lighthouse mobile gate". **CI gates
+mobile and does not gate desktop at all**, while the standing law is 95 on both.
+That is a real gap, it is not this item's work, and it is written to
+REVIEW-QUEUE.md rather than closed with the pull request.
+
+
+---
+
+## 2026-09-09 04:57 to 05:40 AEST (session 51) PR4 continued: the four positioning checks that had never run, and the gate green on the rebased branch
+
+### Governing laws
+
+Law 0 (read the constitution first), Law 8 (authorship: the founder is the sole
+author), Verification and gates (the pre-push gate is the merge authority,
+nothing is pushed until the same checks pass locally), close-out C16.0 (a merge
+is finished when production serves it, not when the pull request closes), the
+PR HYGIENE section (PR4, PR5), and the COMPLETION LAW.
+
+Disk 28 GB free at start, 28 GB at this point. TEST vkapkibzokmfaxqogypq remains
+linked. Production gndnldyfudbytbboxesk was read only.
+
+### What was in flight, and what was actually wrong with it
+
+Session 50 left PR4 half done: `feat/positioning-lock` rebased onto `1caf2f68`
+as `9e5b44e0`, the full gate green on it at 04:53, and an UNCOMMITTED edit to
+`scripts/verify/positioning-drive.mjs` sitting in the tree, written at 04:54 and
+therefore covered by nothing.
+
+That edit is not cosmetic and it is worth naming precisely. The drive imported
+`src/lib/email/order-confirmation.ts` directly:
+
+    const { buildConfirmationEmailHtml } = await import('../../src/lib/email/order-confirmation.ts')
+
+`order-confirmation.ts` reaches for `@/lib/...`. A bare `node` run cannot resolve
+that alias, so the import threw `ERR_MODULE_NOT_FOUND` and took the whole drive
+down at that line. The four checks BELOW it never ran:
+
+    the confirmation email renders
+    the confirmation email HTML carries the strapline
+    the confirmation email HTML drops the retired strapline
+    the confirmation email plain text carries the strapline
+
+The email footer is the one place the retired strapline lived longest, so those
+were exactly the four checks worth running, and they were the four that could
+not run. A drive that dies before its hardest assertions is not a drive.
+
+The fix renders the email in a CHILD process under
+`scripts/lib/src-alias-loader.mjs`, which is the pattern
+`internal-reachability.mjs` and `indexing-drive.mjs` already use, so the
+documented one-line command keeps working exactly as documented.
+
+### Driven, at 390, 768 and 1440
+
+`node scripts/verify/positioning-drive.mjs` against a local production build on
+TEST: **51 of 51 checks pass, 0 fail**, including all four email checks for the
+first time. Evidence `C:\dev\EVIDENCE\PR4-POSITIONING` (15 files: home, about,
+press and login at all three viewports, `head-tags.json`,
+`order-confirmation-email.html`, `positioning-drive.json`).
+
+### Committed and gated
+
+`b6026cc5` on `feat/positioning-lock`, no trailer, message in Australian
+English. `.githooks/commit-msg` and `core.hooksPath` confirmed wired before the
+commit.
+
+The full pre-push gate ran on `b6026cc5` and passed every step:
+
+    disk 0s, typecheck 7s, lint 54s, copy 1s, critical-path 0s,
+    lighthouse-exemptions 0s, guards 73s, types-drift 26s,
+    production-parity 5s, fixture 0s, suite 45s, build 161s,
+    indexing 279s, lighthouse 1791s
+    GREEN: 14 of 14 step(s) passed in 2442s
+
+Lighthouse, 13 URLs, 5 runs each, 65 reports, medians 87 to 94 with layout shift
+0.000 on all thirteen and blocking time 57 to 118 ms. Machine speed while
+collecting: BenchmarkIndex median 2757 (2745 to 2765 across URLs), inside the
+2,665 to 2,755 band the floors were confirmed at, so the collection is
+comparable and every score is a statement about the pages rather than the
+laptop. Evidence `C:\dev\EVIDENCE\PR4-POSITIONING\gate-green-b6026cc5.txt`.
+
+Pushed as a forced update over the pre-rebase `ff895c2c` (the rebase had never
+reached the remote), so pull request 139 now carries `b6026cc5`.
+
+### The production migration remains the founder's, and it is now the largest blocker
+
+`npm run migrate:production -- --dry-run` on this branch reports 116 migrations
+in the tree, 116 applied on production, 0 pending, which is correct FOR THIS
+BRANCH. Two branches are held behind four migrations this tree does not carry:
+
+  - `feat/c10-scope-audit-and-series` adds `20260908000001_event_series_and_multi_day`,
+    `20260908000002_event_is_recurring_derived` and `20260908000003_addon_delete_guard`.
+  - `feat/m1-the-request` builds on it and adds `20260908000004_event_needs`.
+
+Neither can be pushed: `schema-ahead-of-code` correctly refuses a tree whose code
+names columns production does not have. The one command is
+`npm run migrate:production`, run from `feat/m1-the-request` so all four are
+listed at once, and it is RESERVED to the founder by the constitution
+(Verification and gates, Migrations) and by his ruling of 26 August 2026.
