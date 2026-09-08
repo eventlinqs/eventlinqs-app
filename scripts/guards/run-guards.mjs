@@ -150,6 +150,12 @@
  *                              high-water mark: a floor may never be lowered, a budget
  *                              never loosened, a check never moved from error to warn
  *                              and never deleted (close-out P0.7, H5)
+ *   gate-names-the-instrument  every Lighthouse collection records the machine it was
+ *                              taken on, and a red assertion says whether the page got
+ *                              slower or the laptop did. Without it the two are the same
+ *                              output: on 8 September 2026 the gate refused main's own
+ *                              tree at 41% machine speed and a session went after the
+ *                              floors (close-out P0.7, evidence C:\dev\EVIDENCE\P0.7-D)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -866,6 +872,15 @@ const GUARDS = [
   // a floor lowered, a check made advisory, a check deleted, a budget loosened,
   // and a new floor added undeclared. Close-out P0.7 and H5.
   'scripts/guards/lighthouse-floor-ratchet.mjs',
+  // The ratchet above holds the numbers. This holds the ability to READ them. On
+  // 8 September 2026 the local gate refused main's own tree against floors that
+  // tree had cleared three times the same afternoon, with script bytes identical
+  // to the byte, and nothing in the output said the laptop was running at 41% of
+  // the speed the floors were confirmed at. The session that followed proposed
+  // lowering a floor that was never wrong. Every Lighthouse collection now
+  // records the machine it was taken on and a red assertion says which of its
+  // two causes it was. Evidence: C:\dev\EVIDENCE\P0.7-D.
+  'scripts/guards/gate-names-the-instrument.mjs',
 ]
 
 /**

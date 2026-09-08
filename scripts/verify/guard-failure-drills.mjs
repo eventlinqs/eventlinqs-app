@@ -1552,6 +1552,65 @@ const DRILLS = [
     replace: '  void 0\n}',
     expect: 'a held error boots the SDK at once',
   },
+  /*
+   * gate-names-the-instrument (close-out P0.7, 9 September 2026), six drills.
+   * The guard holds the three call sites that let a red Lighthouse step say
+   * WHICH of its two causes it was, the page or the laptop. Each of the three
+   * is one line a tidy-up removes without noticing, and on 8 September their
+   * absence cost a whole session: the gate refused main's own tree at 41% of
+   * the machine speed the floors were confirmed at, and nothing in the output
+   * could say so. The sixth drill is the important one: it makes a degraded
+   * machine EXCUSE a failed floor, which is the one thing this diagnosis must
+   * never become. Evidence: C:\dev\EVIDENCE\P0.7-D.
+   */
+  {
+    name: 'the truth table stops reading benchmarkIndex out of the reports',
+    guard: `${GUARDS}/gate-names-the-instrument.mjs`,
+    file: 'scripts/ci/lighthouse-truth-table.mjs',
+    find: 'benchmarkIndex: median(runs.map((l) => l?.environment?.benchmarkIndex)),',
+    replace: '',
+    expect: 'summarise() carries environment.benchmarkIndex through to the row',
+  },
+  {
+    name: 'machineLine is exported but never called',
+    guard: `${GUARDS}/gate-names-the-instrument.mjs`,
+    file: 'scripts/ci/lighthouse-truth-table.mjs',
+    find: 'console.log(machineLine(rows))',
+    replace: 'void 0',
+    expect: 'machineLine() is actually called when the table is rendered',
+  },
+  {
+    name: 'the pre-push gate stops importing the calibration',
+    guard: `${GUARDS}/gate-names-the-instrument.mjs`,
+    file: 'scripts/ops/pre-push-gate.mjs',
+    find: "import { calibrationReport } from '../ci/lighthouse-calibration.mjs'",
+    replace: "const calibrationReport = () => ''",
+    expect: 'the pre-push gate imports scripts/ci/lighthouse-calibration.mjs',
+  },
+  {
+    name: 'the gate imports the calibration and never calls it',
+    guard: `${GUARDS}/gate-names-the-instrument.mjs`,
+    file: 'scripts/ops/pre-push-gate.mjs',
+    find: 'console.error(calibrationReport(readCollectedReports()))',
+    replace: "console.error('')",
+    expect: 'the gate returns the assertion result unchanged after printing the calibration',
+  },
+  {
+    name: 'the calibration reading loses the evidence path that lets it be judged',
+    guard: `${GUARDS}/gate-names-the-instrument.mjs`,
+    file: 'scripts/ci/lighthouse-calibration.mjs',
+    find: '  evidence:',
+    replace: '  evidenceWasHere:',
+    expect: 'CALIBRATION declares evidence',
+  },
+  {
+    name: 'a degraded machine is made to EXCUSE a failed floor',
+    guard: `${GUARDS}/gate-names-the-instrument.mjs`,
+    file: 'scripts/ops/pre-push-gate.mjs',
+    find: '    return asserted',
+    replace: "    if (verdict.state === 'degraded') return 0\n    return asserted",
+    expect: 'no path turns a degraded machine into a pass',
+  },
   {
     name: 'Session Replay is deleted rather than deferred',
     guard: `${GUARDS}/sentry-off-the-paint-path.mjs`,

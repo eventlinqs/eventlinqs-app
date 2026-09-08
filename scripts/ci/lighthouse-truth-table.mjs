@@ -120,10 +120,55 @@ export function summarise(lhrs) {
       tbtMs: audit('total-blocking-time'),
       cls: audit('cumulative-layout-shift'),
       scriptBytes: median(runs.map(scriptBytes)),
+      benchmarkIndex: median(runs.map((l) => l?.environment?.benchmarkIndex)),
       lcpElement: lcpElement(medianRun),
     })
   }
   return rows
+}
+
+/**
+ * WHAT MACHINE WAS THIS TAKEN ON. Without it a slow afternoon and a real
+ * regression are the same row.
+ *
+ * Lighthouse runs its own BenchmarkIndex before every audit and records it at
+ * environment.benchmarkIndex. It is the number Lighthouse itself uses to decide
+ * how hard to throttle, so two collections at different indexes are not directly
+ * comparable, and a score that fell while the index fell is a statement about
+ * the machine rather than about the page.
+ *
+ * The scale is Lighthouse's own, quoted from the header of computeBenchmarkIndex
+ * in node_modules/lighthouse/core/lib/page-functions.js (lighthouse 13.4.1):
+ * 1000+ desktop class, 800+ high-end Android, 125+ mid-tier Android, under 125
+ * budget Android.
+ *
+ * MEASURED ON THIS PROJECT, 8 September 2026: the local gate produced medians of
+ * 88 to 94 three times in one afternoon and then 79 to 92 that evening, on the
+ * same commit, with script bytes identical to the byte and Total Blocking Time
+ * roughly doubled on every URL. Nothing in the table said why. This line does.
+ */
+export function machineLine(rows) {
+  const values = rows.map((r) => r.benchmarkIndex).filter((v) => typeof v === 'number')
+  if (values.length === 0) {
+    return 'Machine speed: not recorded in these reports (no environment.benchmarkIndex).'
+  }
+  const mid = median(values)
+  const low = Math.min(...values)
+  const high = Math.max(...values)
+  const klass =
+    mid >= 1000
+      ? 'desktop class'
+      : mid >= 800
+        ? 'high-end Android class'
+        : mid >= 125
+          ? 'mid-tier Android class'
+          : 'budget Android class'
+  return (
+    `Machine speed while collecting: BenchmarkIndex median ${Math.round(mid)} ` +
+    `(${Math.round(low)} to ${Math.round(high)} across URLs), ${klass}. ` +
+    'A collection taken at a materially lower index is not comparable with one taken higher: ' +
+    'compare this number before comparing any score below.'
+  )
 }
 
 const fmtScore = (v) => (v == null ? 'n/a' : Math.round(v * 100).toString())
@@ -171,6 +216,7 @@ export function main(dir = process.argv[2] || '.lighthouseci') {
   console.log('LIGHTHOUSE TRUTH TABLE (medians across runs per URL; a REPORT, not a gate)')
   console.log('='.repeat(78))
   console.log(`Lighthouse ${versions}, form factor ${forms}, ${files.length} report(s) over ${rows.length} URL(s)`)
+  console.log(machineLine(rows))
   console.log('')
   console.log(renderTable(rows))
   console.log('')
