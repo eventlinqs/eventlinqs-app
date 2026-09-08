@@ -157,6 +157,10 @@
  *                              output: on 8 September 2026 the gate refused main's own
  *                              tree at 41% machine speed and a session went after the
  *                              floors (close-out P0.7, evidence C:\dev\EVIDENCE\P0.7-D)
+ *   one-pull-request-at-a-time  at most ONE open pull request is unaccounted for; any held on
+ *                              purpose sit in scripts/guards/lib/parked-pull-requests.json
+ *                              with a why and an unblockedBy, and that record is itself
+ *                              checked for rot on every run (close-out PR5)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -831,6 +835,21 @@ const GUARDS = [
   // carry no bypass. Read back from GitHub on every build; SKIPS loudly with no
   // credentials, judges in the CI job that carries GITHUB_TOKEN.
   'scripts/guards/branch-protection-required.mjs',
+  // Close-out PR HYGIENE, PR5 (9 September 2026). Twenty two open pull requests
+  // on 8 September, most of them months old, and the PR1 audit found eighteen
+  // already on main or superseded. The rule is one open pull request at a time.
+  // The guard counts ACTIVE = open minus parked, not the raw total, because the
+  // same audit left three open BY DECISION carrying files main does not have,
+  // and a guard that fails on day one for three pull requests the owner agreed
+  // to is a guard somebody switches off. Parking is therefore a reviewed record
+  // (scripts/guards/lib/parked-pull-requests.json) with a why and an
+  // unblockedBy per entry, printed every run and checked for rot: an entry
+  // naming a pull request that is not open, one whose branch has moved, or one
+  // with no reason, are each a fault. Reads with the gh login or GITHUB_TOKEN
+  // and SKIPS in capitals without either, so no build host blocks for want of a
+  // credential. Drilled red in scripts/verify/guard-failure-drills.mjs and
+  // green against the real live list.
+  'scripts/guards/one-pull-request-at-a-time.mjs',
   // Close-out C8 (6 September 2026): a document preloads its LCP candidate and
   // nothing else. Nine image preloads on the homepage were competing with the
   // render-blocking stylesheet on the mobile profile and first paint waited four

@@ -991,8 +991,20 @@ const ROOT = join(HERE, '..', '..')
  * 330 / 3783:
  * 331 files / 3808, as the canary measured.
  */
-const MIN_FILES = 331
-const MIN_TESTS = 3808
+/*
+ * Close-out PR HYGIENE, PR5 (9 September 2026), one new file and eleven new
+ * tests: tests/unit/guards/one-pull-request-at-a-time. Eight drive the pure
+ * judgement over every shape the rule can take (zero open, one active, two
+ * active, many parked plus one active, all parked plus two active, an entry
+ * whose pull request has closed, an entry whose branch has moved, an entry with
+ * no why and one with no unblockedBy), and three hold the SHIPPED parked record
+ * itself: every entry complete, the record judging itself clean in the state it
+ * was written in, and an audit date that is a date, so its age is visible
+ * rather than assumed:
+ * 332 files / 3819, as the canary measured.
+ */
+const MIN_FILES = 332
+const MIN_TESTS = 3819
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

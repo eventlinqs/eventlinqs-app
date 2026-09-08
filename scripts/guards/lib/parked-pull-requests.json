@@ -1,0 +1,26 @@
+{
+  "_why": "The pull requests this project holds open ON PURPOSE. Close-out PR5 says one open pull request at a time, and scripts/guards/one-pull-request-at-a-time.mjs enforces it by failing when more than ONE open pull request is unaccounted for. Three were open by decision on 9 September 2026 after the PR1 audit, each carrying work that is on main nowhere and is still wanted, so a bare count would have failed the build on day one for three pull requests the owner was told in writing would stay open. That guard gets switched off within a week, which is the decay CLAUDE.md already names for no-ai-authorship and branch-protection-required. So parking is allowed, and parking must be EXPLAINED: every entry carries why it is held and what ends the holding.",
+  "_rules": "An entry naming a pull request that is no longer open is a FAULT, not a tidy-up: the record outlived its subject. An entry whose branch no longer matches the open pull request's head is a FAULT. An empty why or unblockedBy is a FAULT, because parking with no stated end is abandonment with better manners. The guard prints every entry on every run, so the list cannot rot into an unexamined allowlist.",
+  "_audited": "2026-09-09",
+  "_auditMethod": "Close-out PR1. Each verdict rests on a file-by-file comparison of what the branch adds against what origin/main holds, never on the title.",
+  "parked": [
+    {
+      "number": 104,
+      "branch": "docs/marketing-and-merge-103-evidence",
+      "why": "Adds docs/marketing/CONTENT-PLAN.md and docs/marketing/OUTREACH-TEMPLATES.md, both of which exist on main nowhere, so closing it loses them. Held rather than landed because the positioning ruling of 7 September 2026 retired the strapline both documents were written around, and landing marketing copy that contradicts the locked positioning would put the defect the positioning-lock guard exists to catch into the repository by hand.",
+      "unblockedBy": "Re-reading both documents against the locked positioning in CLAUDE.md, correcting what the ruling retired, then landing it as the single active pull request."
+    },
+    {
+      "number": 97,
+      "branch": "chore/photo-shot-list",
+      "why": "Adds docs/SHOT-LIST.md, which is absent from main and is not duplicated by docs/PHOTO-DAY.md. Held because the shot list is written against a community and category taxonomy that C18 FINAL changed, so its slot counts are claims about a taxonomy that has since moved.",
+      "unblockedBy": "Photo day being scheduled, and the shot list's counts re-verified against docs/scope/community-layer-approved.json rather than against the taxonomy it was written for."
+    },
+    {
+      "number": 69,
+      "branch": "feat/genre-data-layer",
+      "why": "Twenty five of its thirty files are absent from main, including the /music routes and the follow graph surfaces. Held because CLAUDE.md's Scene layer section parks exactly this work in its own words: missing scene landing pages are tracked for the post-photos taxonomy mission.",
+      "unblockedBy": "The post-photos taxonomy mission that CLAUDE.md's Scene layer section names, at which point the branch is rebased and gated as the single active pull request."
+    }
+  ]
+}
