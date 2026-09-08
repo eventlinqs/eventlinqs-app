@@ -20,6 +20,7 @@
     "admin:proof": "playwright test --config playwright.admin.config.ts --project desktop && playwright test --config playwright.admin.config.ts --project mobile",
     "admin:lighthouse": "node scripts/admin-lighthouse.mjs",
     "guards": "node scripts/guards/run-guards.mjs",
+    "firewall:bypass": "node scripts/ops/firewall-bypass-machine-callers.mjs",
     "guards:contract-node": "node scripts/guards/contract-node.mjs",
     "guards:surface": "node scripts/guards/contract-node.mjs scripts/guards/lib/generate-node-surface.mjs",
     "guards:drills": "node scripts/verify/guard-failure-drills.mjs",

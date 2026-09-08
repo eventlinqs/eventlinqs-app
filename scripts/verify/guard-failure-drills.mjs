@@ -1461,6 +1461,51 @@ const DRILLS = [
     replace: "  WHERE e.id = p_event_id AND e.status = 'published';",
     expect: 'reads event status',
   },
+  /*
+   * machine-callers-reachable (close-out H2.1, 8 September 2026): the three
+   * ways a caller that has already proved who it is ends up being refused
+   * anyway, and the way the reviewed record rots.
+   */
+  {
+    name: 'a signed Stripe webhook gains a rate limit',
+    guard: `${GUARDS}/machine-callers-reachable.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: "  const signature = request.headers.get('stripe-signature')",
+    replace: "  const blocked = await applyRateLimit('checkout-reserve', request)\n  if (blocked) return blocked\n  const signature = request.headers.get('stripe-signature')",
+    expect: 'applies a rate limit to a SIGNED webhook',
+  },
+  {
+    name: "a cron's rate limiter becomes fail-closed, so no Upstash means no crons",
+    guard: `${GUARDS}/machine-callers-reachable.mjs`,
+    file: 'src/app/api/cron/aggregate-reconcile/route.ts',
+    find: "  const blocked = await applyRateLimit('cron-job', request)",
+    replace: "  const blocked = await applyRateLimit('checkout-reserve', request)",
+    expect: 'which is failClosed',
+  },
+  {
+    name: 'the reviewed record stops naming a route that exists',
+    guard: `${GUARDS}/machine-callers-reachable.mjs`,
+    file: 'scripts/guards/machine-callers-reachable.mjs',
+    find: "  'src/app/api/webhooks/stripe/route.ts': {",
+    replace: "  'src/app/api/webhooks/stripe/route.ts.moved': {",
+    expect: 'has no row in the reviewed record',
+  },
+  {
+    name: 'a secret-gated route falls out of both the record and the exclusions',
+    guard: `${GUARDS}/machine-callers-reachable.mjs`,
+    file: 'scripts/guards/machine-callers-reachable.mjs',
+    find: "  'src/app/api/health/sentry-error/route.ts':",
+    replace: "  'src/app/api/health/sentry-error/route.ts.retired':",
+    expect: 'appears in neither the reviewed record nor the reviewed exclusions',
+  },
+  {
+    name: 'a System Bypass rule appears on the project that the record does not list',
+    guard: `${GUARDS}/machine-callers-reachable.mjs`,
+    file: 'scripts/guards/lib/firewall-bypass-expected.json',
+    find: '"expectedSourceIps": []',
+    replace: '"expectedSourceIps": ["3.18.12.63"]',
+    expect: 'not installed',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
