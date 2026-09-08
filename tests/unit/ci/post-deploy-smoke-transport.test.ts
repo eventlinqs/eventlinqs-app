@@ -79,9 +79,21 @@ describe('telling the three faults apart', () => {
     expect(classifyThrown(undiciError('UND_ERR_CONNECT_TIMEOUT', 'Connect Timeout Error'))).toBe(OUTCOME.TIMEOUT)
   })
 
-  it('describes each fault differently, so one line cannot mean three things', () => {
-    const said = [OUTCOME.HTTP_STATUS, OUTCOME.BODY, OUTCOME.CONNECTION, OUTCOME.TIMEOUT, OUTCOME.CONFIG].map(describeOutcome)
+  it('describes each fault differently, so one line cannot mean several things', () => {
+    const said = [OUTCOME.HTTP_STATUS, OUTCOME.BODY, OUTCOME.CONNECTION, OUTCOME.TIMEOUT, OUTCOME.CONFIG, OUTCOME.WRONG_BUILD].map(describeOutcome)
     expect(new Set(said).size).toBe(said.length)
+  })
+
+  it('never blames the site for serving a different build than the one under test', () => {
+    // Driving the pinned wait against real production printed "the deployment
+    // is serving something it should not" for a site that was serving
+    // perfectly, because the refusal borrowed the wrong-status sentence.
+    expect(describeOutcome(OUTCOME.WRONG_BUILD)).toContain('answered well')
+    expect(describeOutcome(OUTCOME.WRONG_BUILD)).not.toContain('should not')
+  })
+
+  it('never retries a wrong build, because waiting is the wait step, not the check', () => {
+    expect(isRetryable(OUTCOME.WRONG_BUILD)).toBe(false)
   })
 
   it('says plainly that a connection fault is not proof the site is down', () => {

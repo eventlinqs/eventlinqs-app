@@ -258,7 +258,7 @@ async function main() {
     checks.push({
       name: 'the deployment under test is live',
       url: base,
-      verdict: { ok: false, outcome: deployment.state === 'blind' ? OUTCOME.CONNECTION : OUTCOME.HTTP_STATUS, consistent: true, attempts: deployment.polls, reason: deployment.message },
+      verdict: { ok: false, outcome: deployment.state === 'blind' ? OUTCOME.CONNECTION : OUTCOME.WRONG_BUILD, consistent: true, attempts: deployment.polls, reason: deployment.message },
       attempts: [],
       lastBody: '',
     })

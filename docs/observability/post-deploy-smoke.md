@@ -70,6 +70,7 @@ It runs against the production URL (override with `E2E_BASE_URL`) and asserts th
    - `body`: it answered 200 with "We hit a snag loading this page" or "Minified React error" in the HTML. A real product fault.
    - `connection`: nothing was ever answered. A network or edge fault, and **not proof the site is down**. This is the class that produced the 7 September false alarm.
    - `timeout`: something was answering, too slowly, and the 30s deadline passed.
+   - `wrong-build`: the site answered, and answered well, but from a different commit than the one this run is about. Wait for the deploy, or re-run pinned to the commit that is actually live.
    - `configuration`: the gate is missing an input (usually `CRON_SECRET`). This says nothing about production; it is our fault, and it is still a failure, never a skip.
 3. The failing check name tells you which surface: `homepage anonymous`, `homepage with el_city` (cookie `{"city":"Melbourne","region":"Victoria","country":"AU","source":"picker"}`), `payment sentinel`, `platform health sentinel`, or `the deployment under test is live`.
 4. Download the run artifact `post-deploy-smoke-<run id>`. It carries `smoke-report.json` (every check, every attempt, every timing) and, when the smoke failed, `transport-probe.json`.

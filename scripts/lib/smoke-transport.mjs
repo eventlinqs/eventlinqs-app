@@ -47,6 +47,15 @@ export const OUTCOME = {
   /** Something was answering, too slowly, and we gave up on it. */
   TIMEOUT: 'timeout',
   /**
+   * The site answered, correctly, from a DIFFERENT build than the one this run
+   * is about. Found by driving the pinned wait against real production: the
+   * refusal was classified as HTTP_STATUS and therefore explained as "the
+   * deployment is serving something it should not", which is a false accusation
+   * about a site that was serving perfectly. It is its own fault because the
+   * response to it is its own: wait, or re-run against the right commit.
+   */
+  WRONG_BUILD: 'wrong-build',
+  /**
    * The check could not be asked at all, because something the GATE needs is
    * missing. Driving the first version of this file found it printing "the
    * deployment is serving something it should not" for an unset CRON_SECRET,
@@ -125,7 +134,9 @@ export function describeOutcome(outcome) {
     case OUTCOME.HTTP_STATUS:
       return 'ANSWERED with the wrong status: the deployment is serving something it should not'
     case OUTCOME.BODY:
-      return 'ANSWERED 200 carrying a failure signature in the HTML: the page rendered an error'
+      return 'ANSWERED 200 carrying a failure signature in the response body: the page or the endpoint reported an error while answering'
+    case OUTCOME.WRONG_BUILD:
+      return 'ANSWERED, and answered well, but from a DIFFERENT build than the commit this run is about, so nothing here would be evidence about it'
     case OUTCOME.CONNECTION:
       return 'NEVER ANSWERED: the connection failed before a response arrived, which is a network or edge fault and not proof the site is down'
     case OUTCOME.TIMEOUT:

@@ -207,6 +207,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMIT_SHA: ${{ steps.under_test.outputs.sha }}
+          REF_SHA: ${{ github.sha }}
           EVENT: ${{ github.event_name }}
         run: |
           set -u

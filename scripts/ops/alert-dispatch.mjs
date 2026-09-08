@@ -46,6 +46,10 @@
  *   GITHUB_TOKEN        channel 2, needs `issues: write`.
  *   GITHUB_REPOSITORY   owner/repo, set by Actions.
  *   RUN_URL, COMMIT_SHA, EVENT   context printed into both channels.
+ *   REF_SHA             the commit the workflow ran FROM, which is not the same
+ *                       fact as the commit under test. The H2.5 drill's alert
+ *                       said "Commit: unknown", which was true (a manual
+ *                       dispatch pins no commit) and told the reader nothing.
  *
  * Exit codes:
  *   0  at least one channel delivered
@@ -302,6 +306,7 @@ async function main() {
 
   const runUrl = process.env.RUN_URL ?? ''
   const commit = process.env.COMMIT_SHA ?? ''
+  const refSha = process.env.REF_SHA ?? ''
   const event = process.env.EVENT ?? ''
   const detail = renderFailureLines(report)
 
@@ -309,7 +314,8 @@ async function main() {
     `**${args.subject}**`,
     '',
     `- Trigger: \`${event || 'unknown'}\``,
-    `- Commit: \`${commit || 'unknown'}\``,
+    `- Commit under test: \`${commit || 'none pinned'}\``,
+    `- Ran from: \`${refSha || 'unknown ref'}\``,
     runUrl ? `- Run: ${runUrl}` : '- Run: unknown',
     '',
     '```',
@@ -324,7 +330,8 @@ async function main() {
     `<h2>${args.subject}</h2>`,
     '<ul>',
     `  <li><b>Trigger:</b> ${event || 'unknown'}</li>`,
-    `  <li><b>Commit:</b> <code>${commit || 'unknown'}</code></li>`,
+    `  <li><b>Commit under test:</b> <code>${commit || 'none pinned'}</code></li>`,
+    `  <li><b>Ran from:</b> <code>${refSha || 'unknown ref'}</code></li>`,
     runUrl ? `  <li><b>Run:</b> <a href="${runUrl}">${runUrl}</a></li>` : '  <li><b>Run:</b> unknown</li>',
     '</ul>',
     `<pre>${detail.join('\n')}</pre>`,
