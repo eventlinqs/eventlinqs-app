@@ -1428,3 +1428,33 @@ Pull request 139 (the positioning wording) is open and not merged. The only red
 check on it is the speed one, and I measured that it is not caused by that
 change: both previews serve byte-identical JavaScript. Your call whether to
 merge it or hold it.
+
+### And after M1, two more launch-readiness rows closed without touching production
+
+Your launch readiness report has sixteen rows. Two of them can be checked
+without writing anything to the live site, and both now pass:
+
+- **Every page and API route the app has, driven on the live site.** 211
+  requests. Nothing errored, nothing showed an error page inside a working one,
+  and nothing 404d that should not have. The two routes that do 404 are the two
+  sitting on this laptop waiting for your migration command.
+- **Accessibility on every public page.** 60 pages, on a phone and a desktop,
+  120 scans, zero problems found at any severity.
+
+The other fourteen rows all need something from you, and there are three:
+
+1. **Permission to create a test organiser account and a test event on the LIVE
+   site.** There is nowhere else to drive them; that is what makes it a launch
+   readiness report rather than a rehearsal.
+2. **Permission to put a real card through a cheap live event and refund it.**
+   Your own list asks for exactly that. It is real money on your live Stripe
+   account, so I have not done it.
+3. **Real events on production.** There are two. Most of the discovery pages and
+   the sitemap read completely differently at any real volume.
+
+One thing worth knowing while you decide: your sitemap now offers Google 38
+addresses where it offered 550 two days ago. That is the change you approved in
+C19 working exactly as designed, holding the community, city and category pages
+back until each has enough events to be worth showing. With two events live,
+almost everything is held back. It will come back on its own as events arrive,
+and I have changed nothing.

@@ -4789,3 +4789,67 @@ and this tree has 120. The production-parity gate on main and the pre-push gate
 both refuse a tree whose code names a column production does not have, which is
 exactly the invariant that put main red twice in September. One founder command
 clears all four at once: `npm run migrate:production`.
+
+## 2026-09-08 11:00 to 12:10 (L5 read-only half, session 44) two of sixteen launch-readiness rows closed without writing a byte to production
+
+**Why only two.** L5 is the launch readiness report: sixteen rows, each a
+journey driven on production. Fourteen of them require WRITING to production (an
+organiser account, an event, a card charge, a refund, a scan) and the standing
+instruction is that production is never written without the owner's approval.
+Two do not: item 14 (every route driven) and item 16 (axe zero on every public
+surface). Both are read-only and both are now done. The other fourteen are named
+in the ledger with the one sentence each needs from him.
+
+**Item 14, and the script that should have existed since C7.** C7 drove this on
+6 September and passed, and what survived was the output and the enumerator, not
+the thing that did the driving. C15.3 has to re-drive the same set. So
+`scripts/verify/production-route-sweep.mjs` now exists: read only, GET only, and
+the header says that as a boundary rather than a description, because this is
+the one check pointed at the live site without approval.
+
+211 requests. 68 answered 200, 71 redirected to a 200 login, 24 refused 401, 16
+refused 405, 1 refused 400 for a missing required parameter, and 28 answered 404
+to a value the platform has never minted. No server error, no error boundary
+inside a 200, no soft 404, no undeliberate 404.
+
+**Three defects in that script, all found by pointing it at production.**
+
+    twenty-six false defects out of twenty-seven
+        It called every 404 a defect unless allowlisted, and /t/zzzzzzzzzzzz
+        SHOULD be 404. The rule is now about the VALUE: a 404 on something the
+        platform itself published is a dead link; a 404 on a well-formed unknown
+        id is the product answering correctly.
+
+    the twenty-seventh blamed production for unmerged work
+        /admin/requests 404s because this tree has it and origin/main does not.
+        Decided from git now. It correctly names two: /admin/requests from M1
+        and /dashboard/events/[id]/addons from C10-G2, which are exactly the two
+        branches waiting on the founder's migration.
+
+    the header promised anchor harvesting the code did not do
+        and that gap mattered. C19 gates the templated families out of the
+        sitemap until each has enough events, so with two events live the
+        sitemap publishes 38 urls where it published 550 on 6 September. A sweep
+        trusting the sitemap alone would have driven almost no real community,
+        city or category page and called it a clean run.
+
+**What the sweep found.** `/categories/[slug]` has seven slugs and NOTHING on
+the platform links to any of them: the homepage tiles go to
+`/events?category=<slug>`. Driven by hand, enumerated from
+`src/lib/hero-categories.ts` rather than typed: six permanently redirect into
+the community layer by the C18 decision and `/categories/networking` answers 200
+with real content. Correct, and recorded in the script so the next reader does
+not re-investigate it as a dead route.
+
+**Item 16.** 120 scans across 60 public urls at 390 and 1440, 0 violations at
+every impact level, 0 non-200 loads. It took three attempts to get a complete
+run: `axe-urls.mjs` had no retry and died on url thirteen with
+`ERR_NETWORK_CHANGED`, discarding everything before it. It now retries a
+TRANSPORT failure three times and prints each retry, and never retries a page
+that loads and answers 404 or 500, because that is the product's answer and
+re-asking would launder it.
+
+**The sitemap shrinking from 550 to 38 is C19 working, not a regression**, and
+the owner should know it: the threshold gate holds about 490 templated
+community, city, faith and category urls out until each family has enough
+events, and production has two events.

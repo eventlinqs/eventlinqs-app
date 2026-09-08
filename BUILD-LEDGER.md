@@ -1024,3 +1024,70 @@ env guards already hold it.
 Until that command runs, `feat/c10-scope-audit-and-series` and
 `feat/m1-the-request` both stay unpushed, and that is the pre-push gate and the
 production-parity gate working, not failing.
+
+## L1 item 14. EVERY ROUTE ENUMERATED FROM src/app, DRIVEN ON PRODUCTION (8 September 2026, session 44)
+
+The first row of the launch readiness report (L5), and the only part of L1 that
+can be driven WITHOUT writing to production. Read only, GET only, nothing
+signed in, nothing created.
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| Build the route list from src/app on disk, never typed | MET. 77 static pages, 55 dynamic pages, 48 static handlers, 12 dynamic handlers | C:\dev\EVIDENCE\L1\route-sweep.txt, route-sweep.json |
+| Drive every one on https://www.eventlinqs.com.au and record the status | MET. 211 requests. 68 answered 200, 71 redirected to a 200 login, 24 refused 401, 16 refused 405, 1 refused 400 for a missing required query parameter, 28 answered 404 to a value the platform has never minted | route-sweep.json (every row carries its url, how the value was obtained, its status and its redirect chain) |
+| Dynamic routes driven with a REAL id or slug, never a guess | MET for every pattern the platform publishes or links to. Two sources, both the platform's own output: the sitemap, and the internal anchors harvested from the pages this sweep already drives. 18 public patterns have no anonymous value and each carries its reason in the script; 13 of those are bearer tokens only a purchase or an invite can mint, 4 are behind flags that are off on production, and 1 is `/categories/[slug]`, driven by hand below | route-sweep.txt, the NO_ANONYMOUS_VALUE map |
+| Zero unexpected 404s, zero 500s | MET. 0 server errors, 0 error boundaries inside a 200, 0 soft 404s, 0 undeliberate 404s | the PASS line |
+
+**What it found that nothing else would have.** `/categories/[slug]` has seven
+slugs and NOTHING on the platform links to any of them: the homepage category
+tiles go to `/events?category=<slug>`. Driven by hand, enumerated from
+`src/lib/hero-categories.ts` rather than typed: six permanently redirect into
+the community layer by the C18 decision (`src/lib/seo/permanent-redirects.ts`)
+and `/categories/networking` answers 200 with real content. Correct, and now
+recorded in the script so it is not re-investigated as a dead route.
+
+**The sitemap has gone from 550 urls to 38, and that is C19 working.** The
+threshold gate holds the ~490 templated community, city, faith and category urls
+out until each family has enough events, and production has two events. Worth
+the owner knowing, because it is the SEO surface shrinking for a reason he
+chose, not a regression.
+
+**Two routes this tree has and production does not**, named by the sweep from
+git rather than from the response: `/admin/requests` (M1, this session) and
+`/dashboard/events/[id]/addons` (C10-G2). Those are exactly the two branches
+waiting on `npm run migrate:production`.
+
+### The rest of L5 is OWNER BLOCKED, and it is not a small remainder
+
+L1 items 1 to 13 and 15 all require WRITING TO PRODUCTION: a real organiser
+sign-up, a real event, a real card charge on a low-price event, a refund of it,
+a scan at the door, and the emails that go with them. The standing instruction
+is that production is never written without the owner's approval, and item 9
+asks for money to move on the live site.
+
+**What the owner must supply, in one sentence each:**
+
+| Need | Why |
+|---|---|
+| Approval to create a test organiser account and event on PRODUCTION | L1 items 1 to 8 cannot be driven anywhere else, and the whole point of L5 is that it is production |
+| Approval to put a real card through a low-price live event and refund it | L1 items 9 and 10 name it; it is real money on a live Stripe account |
+| Real event supply on production | Two events exist; the discovery surfaces and the sitemap threshold both read differently at any real volume |
+
+Until those land, L5 cannot be produced honestly: fourteen of its sixteen rows
+would say BLOCKED. Item 14 is done and is recorded above; item 16 (axe on every
+public surface) is drivable read-only and is the next thing that does not need
+him.
+
+## L1 item 16. axe-core ZERO ON EVERY PUBLIC SURFACE, ON PRODUCTION (8 September 2026, session 44)
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| axe-core zero on every public surface | MET. 120 scans across 60 public urls at 390 and 1440 on https://www.eventlinqs.com.au. 0 violations at EVERY impact level (WCAG 2.0 and 2.1, A and AA), 0 non-200 loads | C:\dev\EVIDENCE\L1\axe.txt, axe\ (120 json reports, one per url per viewport) |
+| The url list is enumerated, never typed | MET. Built from the route sweep's own results: every path that answered 200 to an anonymous visitor and is not under a private prefix | C:\dev\EVIDENCE\L1\public-urls.txt, route-sweep.json |
+
+**The harness was fixed to make this runnable at all.** `scripts/verify/axe-urls.mjs`
+had no retry, so the scan died on url thirteen with `ERR_NETWORK_CHANGED` and
+discarded the twelve results before it, twice. It now retries a TRANSPORT
+failure up to three times and prints every retry; a page that LOADS and answers
+404 or 500 is never retried, because that is the product's answer and re-asking
+would launder it.
