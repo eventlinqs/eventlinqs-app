@@ -1377,3 +1377,85 @@ H3's own condition, "Land that ONE branch. Every gated URL must pass 0.80 at MED
 main green at c9a12d92, production Ready and serving that commit, post-deploy
 smoke green, CI green. Nothing is half-landed. The blockage is the pre-push gate
 refusing every push, including main's own tree, and it is one owner decision wide.
+
+## P0.7 RESOLVED WITHOUT THE OWNER'S DECISION (9 September 2026, session 48): the floors hold, and the gate can now tell a slow laptop from a slow page
+
+The blocking question from session 47 is WITHDRAWN, not answered. It rested on a
+diagnosis this session's measurements overturned.
+
+### The claim I made yesterday, tested and reversed
+
+| Yesterday's claim | Verdict today | Evidence |
+|---|---|---|
+| "The raised floors are unholdable on the local instrument" | FALSE. All three tightest-floor URLs clear their floors on the local server, median of five: / 92 against 0.88, the event page 87 against 0.85, /community/african 92 against 0.88 | C:\dev\EVIDENCE\P0.7-D\local-chrome-vs-local-server.txt |
+| "The cause is the error-reporting SDK's boot timer landing on the gather-window boundary" | NOT THE CAUSE. The same page on the same server measured TBT 65 to 169 ms today against 220 to 665 ms yesterday. The SDK cost scales with machine load; it is real and it is not what refused the push | the two tables in BUILD-LOG.md |
+| "It is not the machine, BenchmarkIndex reads 1222 to 1993 and 1000+ is desktop class" | WRONG READING. Lighthouse's absolute scale says desktop class; this machine's own healthy band is 2665 to 2755. 1113 to 1993 is roughly 60% of what it does when free, and machine-speed.mjs says in its own header to treat the MOVEMENT as the signal. I quoted my own tool's absolute number against its own advice | scripts/perf/machine-speed.mjs header; both collections |
+| "The floor was not lowered" | STILL HELD, and now it never needed to be. Nothing in lighthouserc.json was touched this session either. Seven floors stand at 0.85 to 0.91 | git diff on lighthouserc.json: empty |
+
+### The item, against the COMPLETION LAW
+
+| Law | Verdict | Evidence |
+|---|---|---|
+| 1. Schema | NOT APPLICABLE. No database change. TEST vkapkibzokmfaxqogypq stayed the linked project and production was never written | supabase link unchanged |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc 0, eslint 0 across all six changed files, and no-silent-catch caught my empty catch in readCollectedReports and I gave it a voice rather than an exemption | the guard run in BUILD-LOG.md |
+| 3. Tests added, canary raised in the same commit | MET. 16 new tests: 13 in tests/unit/ci/lighthouse-calibration.test.ts pinning the judgement in all three states from the REAL readings of both days, and 3 in tests/unit/ops/pre-push-gate.test.ts covering the report reader on the failure path. Canary 329/3767 to 330/3783, measured by running it | .tmp/canary.log, quoted in the canary's own comment block |
+| 4. Guard proven red and green | MET. Six drills against the REAL files, each restoring byte for byte: the truth table stops reading benchmarkIndex, machineLine is never called, the gate stops importing the calibration, it imports and never calls, the calibration loses its evidence path, and a degraded machine is made to EXCUSE a failed floor. All six RED, guard green on the restored tree, all three git hash-objects identical before and after | C:\dev\EVIDENCE\P0.7-D\guard-drills.txt |
+| 5. Driven at 390, 768 and 1440 | NOT APPLICABLE as three viewports: nothing here renders. The driven equivalent is 30 real Lighthouse audits across two targets, plus the guard driven against the real files rather than a fixture, plus summarise() and machineLine() driven with a report inside the guard itself | the two collections |
+| 6. Full regression green after the item | See the gate run recorded below | .tmp/gate-full.log |
+| 7. Committed, no trailers, pushed, production deploys green | Recorded below | git log |
+| Fix every defect found before the next task | MET. Three: a guard that a comment could satisfy, a guard that failed on a CRLF, and a drill harness whose mutations silently did not apply. Plus one of my own making cleaned up, the failed CLI deployment that preview-deployment-state correctly refused | BUILD-LOG.md |
+
+### P0.2, stated honestly rather than quietly
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| The pre-push gate runs the same Lighthouse VERSION CI runs | MET. 12.6.1, bundled by @lhci/cli 0.15.1, pinned in three places with a test holding them together | lhci-pin-agreement.test.ts |
+| The same RUN COUNT and the same AGGREGATION | MET. Five runs, median, both read out of lighthouserc.json by the gate rather than restated | collectLikeLhci |
+| Against a VERCEL PREVIEW | NOT MET, and now costed rather than unexplained. vercel deploy from the CLI fails its own build (the CLI upload path drops two docs/ files the Git-integration build keeps); vercel build returns EMPTY for every sensitive preview variable, which is Vercel behaving correctly. The only working route is pushing a scratch branch, which costs a second preview build per push and puts a push inside the pre-push hook. Routed to the owner | BUILD-LOG.md; .tmp/vercel-deploy.err, .tmp/vercel-build.log |
+| "If local says pass and CI says fail, the local gate is lying" | The measured gap on the same artefact is 1 to 2 points, local BELOW the runner on two of three URLs, which is the safe direction: a local pass is a conservative claim about CI | C:\dev\EVIDENCE\P0.7-D\local-chrome-vs-vercel-preview.txt |
+
+### What is NOT claimed
+
+The local gate still measures a locally served build, and that build costs the
+event page 7 points of LCP against the deployed one. It clears its floor anyway
+and the bias was already inside the allowance, but it is a bias and it is named
+here rather than left for someone to rediscover.
+
+The 95 mobile standard is not met and is not claimed. The runner puts eleven of
+thirteen URLs at or above 95; the standard is production, and C8 remains in the
+post-launch queue as the ratchet towards it.
+
+## P0.7-D CLOSED (9 September 2026, session 49): the calibration work gated, committed and pushed, and the gate agreed with itself twice
+
+Session 48 built this and left it uncommitted, with the last two rows of its own
+completion table pointing at a gate run and a commit that did not exist. This
+session ran the gate, fixed nothing (there was nothing to fix), committed and
+pushed. The rows below replace the placeholders rather than repeat them.
+
+| Law | Verdict | Evidence |
+|---|---|---|
+| 1. Schema | NOT APPLICABLE. No database change. TEST vkapkibzokmfaxqogypq stayed linked; production was read by the parity step and never written | production-parity PASS in the gate log |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc PASS 35 s, eslint PASS 54 s, every registered guard PASS, on the tree that left the machine | C:\dev\EVIDENCE\P0.7-D\gate-green-14-of-14.txt |
+| 3. Tests added, canary raised in the same commit | MET. 16 new tests, canary 329/3767 to 330/3783, and the suite step PASSED through the canary on both runs | the gate log, step `suite` |
+| 4. Guard proven red and green | MET, session 48, six drills against the real files each restoring byte for byte, and re-confirmed green here by the guard step on both gate runs | C:\dev\EVIDENCE\P0.7-D\guard-drills.txt |
+| 5. Driven at 390, 768 and 1440 | NOT APPLICABLE as three viewports: nothing here renders. The driven equivalent is 130 real Lighthouse audits across two full collections, 65 per run, at mobile emulation | the truth tables in the same file |
+| 6. Full regression green after the item | MET, TWICE. `npm run gate:push` GREEN 14 of 14 in 2,570 s on the working tree, and GREEN 14 of 14 in 2,325 s as the pre-push hook on commit 22d6c4bb. Thirteen URLs, five runs each, medians 87 to 94, every floor cleared, CLS 0.000 everywhere | C:\dev\EVIDENCE\P0.7-D\gate-green-14-of-14.txt |
+| 7. Committed, no trailers, pushed | MET. 22d6c4bb on `perf/gate-determinism`, no trailer, pushed only through the gate. Pull request 143 opened as a DRAFT then marked ready, so the pull-request workflows run once | git log; pull request 143 |
+| Fix every defect found before the next task | MET. Nothing new was found. The two defects session 48 found in its own work were already fixed in the tree that was gated here | BUILD-LOG.md |
+
+### The claim the item exists to make, now made by the gate itself
+
+    Machine speed while collecting: BenchmarkIndex median 2724
+    (2408 to 2750 across URLs), desktop class.
+
+Inside the 2,665 to 2,755 band the floors were confirmed at, 731 above the 2,000
+calibration floor. Every one of the thirteen URLs cleared its floor on the same
+collection. This is the third independent confirmation that the 8 September
+floors hold on this instrument, and the first taken with the instrument
+reporting its own condition.
+
+### What is NOT claimed
+
+Unchanged from session 48 and repeated so it is not lost: the local gate still
+measures a locally served build rather than a Vercel preview (P0.2, costed and
+routed to the owner), and the 95 mobile standard is not met and is not claimed.

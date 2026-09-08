@@ -5671,3 +5671,249 @@ NOT pushed, because the gate refuses every push while this is open.
   - I have not lowered a floor and I will not without the owner's ruling. I wrote
     the rule that forbids it this afternoon, and being the one who then grants
     myself the exception is the exact pattern the rule exists to prevent.
+
+---
+
+## 2026-09-09 00:25 to 02:40 (session 48) the floors were never wrong, the machine was, and the gate could not say so
+
+### Governing laws
+
+Law 0 (read first), Law 7 (research before recommending), Law 9 (current by
+default), Law 10 (script the founder's step), Verification and gates, close-out
+P0 / P0.2 / P0.7 / H5 / C16.5 (never lower a threshold), and the COMPLETION LAW.
+
+Disk at start 27.66 GB free, at end recorded below. TEST vkapkibzokmfaxqogypq
+remains the linked project; nothing was written to production.
+
+### The state I inherited, and the question I did not ask again
+
+Session 47 ended with the pre-push gate refusing every push, including main's own
+tree, and an owner decision routed to REVIEW-QUEUE.md: option 1, re-derive the
+performance floors downward from all readings, or option 2, delete the
+error-reporting SDK's post-load boot timer. The owner replied "continue the
+build" without choosing.
+
+I did not re-ask, for one reason that is not impatience: **option 1 is forbidden
+by four separate standing instructions**. P0 says "the gate stays at minScore
+0.80 and above ... the platform rises to meet the gate. The gate does not come
+down." P0.7 says "the floor only ever rises". H5 says "never lower the gate to
+get past this". C16.5 says "never lower a threshold". Offering it as an option
+was itself a mistake. And option 2 traded away a piece of the product under
+pressure to unblock a push, which is the shape the champion-and-challenger rule
+in C14.11 exists to refuse.
+
+So the honest move was to find out whether either was necessary. Neither was.
+
+### MEASUREMENT 1. The same artefact, two instruments
+
+The Vercel preview for ddc855c6 (eventlinqs-j74ifr100) is the exact deployment CI
+run 34216666264 audited that morning. I collected against it from this laptop
+with the gate's own collection code path: Lighthouse 12.6.1 bundled by
+@lhci/cli 0.15.1, the settings block from lighthouserc.json, median of five,
+after the same warm pass.
+
+| URL | CI runner | this laptop | floor |
+|---|---|---|---|
+| / | 93 (84 to 93) | 91 (86 to 92) | 0.88 |
+| /events/cat-indie-sounds-live-at-the-enmore-sydney | 95 (95 to 96) | 94 (90 to 95) | 0.85 |
+| /community/african | 96 (96 to 97) | 96 (96 to 97) | 0.88 |
+
+Within 1 to 2 points of the runner on every URL, and every URL clears its floor.
+Evidence: C:\dev\EVIDENCE\P0.7-D\local-chrome-vs-vercel-preview.txt
+
+### MEASUREMENT 2. The control I was missing, taken the same hour
+
+The comparison above cannot separate "the local SERVER costs points" from "the
+machine was degraded yesterday", so I built this tree's production build with the
+gate's own build step, served it exactly as the gate serves it (the Upstash stub,
+the Sentry parity sink, next start, the same warm pass), and measured the same
+three URLs with the same instrument minutes later.
+
+| URL | Vercel preview | local next start | floor |
+|---|---|---|---|
+| / | 91 (86 to 92) | 92 (88 to 92) | 0.88 |
+| /events/cat-indie-sounds-live-at-the-enmore-sydney | 94 (90 to 95) | 87 (85 to 88) | 0.85 |
+| /community/african | 96 (96 to 97) | 92 (90 to 92) | 0.88 |
+
+Evidence: C:\dev\EVIDENCE\P0.7-D\local-chrome-vs-local-server.txt
+
+**Every URL clears its floor on the local server too.** The local server does
+cost the event page 7 points, and it is LCP rather than blocking time (local LCP
+3.2 to 4.0 s against the preview's 2.4 to 2.9 s), which is next start serving
+assets slower than Vercel's edge. That bias is systematic, it was inside the
+floors' 3 to 4 point allowance all along, and it is not what refused the push.
+
+### So my diagnosis of yesterday was wrong, and here is the number that shows it
+
+Yesterday's five-run table recorded a 207 to 455 ms long task from the SDK chunk
+and Total Blocking Time of 220 to 665 ms on the event page. Today the same page
+on the same server measured TBT of 65 to 169 ms. The BenchmarkIndex Lighthouse
+recorded for itself: 1113 to 1993 yesterday, 2665 to 2755 today.
+
+The SDK boot timer is real and it does cost main-thread time. What it is NOT is
+the reason the gate refused: its cost scales with how loaded the machine is, and
+yesterday the machine was running at roughly 60% of today's speed. I read a
+bimodal score as a scheduling boundary in the product when the simpler reading
+was in front of me the whole time, in a field Lighthouse writes into every report.
+
+**The floors were never wrong. The pages were never slow. The gate could not tell
+a slow laptop from a slow page, so it reported one as the other, and I followed
+it.**
+
+### What was built
+
+scripts/ci/lighthouse-calibration.mjs. Reads environment.benchmarkIndex out of
+every report in a collection and says whether the machine was comparable with the
+one the floors were confirmed on. CALIBRATION carries its reading, its range, its
+date and its evidence path, the same contract the support horizon in
+no-deprecated-runtime.mjs holds itself to. The floor is 2000: above every reading
+from the refusing evening, 700 below every reading from the confirming day.
+
+scripts/ops/pre-push-gate.mjs. On a FAILED Lighthouse assertion the step now
+prints the calibration verdict under the failure. **It cannot change a verdict:**
+asserted is returned untouched, a slow page still blocks, and the degraded
+message says so in its own words ("NOTHING WAS PUSHED AND NOTHING WAS EXCUSED").
+What it changes is that a red step now names which of its two causes it was, and
+tells the reader to free the machine and re-run rather than to go looking at the
+floors.
+
+scripts/guards/gate-names-the-instrument.mjs, registered and blocking. Holds the
+three call sites a tidy-up would remove, and refuses to be satisfied by a waiver:
+a path that turned a degraded machine into a pass fails it. Drilled red in six
+directions and green on the restored tree, byte for byte.
+
+### Two defects found in my own work, both fixed before moving on
+
+1. **The guard passed on prose.** Its first check searched the source for
+   environment.benchmarkIndex; deleting the line that actually reads it left the
+   guard GREEN, because a message four lines below names the same field inside a
+   string literal. Found by the drill, not by reading. The check is now DRIVEN:
+   it feeds summarise() a report and reads the row back, and every remaining text
+   check runs against stripComments() from scripts/lib/js-source.mjs rather than
+   raw source.
+2. **A guard that failed on a line ending.** The pattern for "return asserted"
+   cannot match across a CRLF, and this working tree is CRLF. The guard reported
+   a rule as broken that was not. Fixed by normalising on read, and recorded in
+   the file so the next reader does not spend the same ten minutes.
+
+A third, in the drill harness rather than the product: two of six drills silently
+did not apply because their anchors carried a bare newline against a CRLF file,
+and a drill that does not apply reports as "the guard did not fire", which is the
+same output as a broken guard. Both are now newline-agnostic and all six fire.
+
+### P0.2 is still NOT MET, and I now know exactly why
+
+P0.2 asks for the pre-push gate to measure "a Vercel preview, with the same
+version, the same run count and the same aggregation". Version, run count and
+aggregation all match CI. The target does not: the gate serves the build locally.
+I tried both cheap routes to a preview from this machine and both are closed, so
+this is a costed finding rather than an omission.
+
+- **vercel deploy from the CLI builds, and the build FAILS.** Three guards go red
+  because docs/security/CREDENTIAL-ROTATION.md and
+  docs/scope/community-layer-approved.json are absent from the upload.
+  docs/PRICING.md, which sits directly under docs/, arrives fine. So the CLI
+  upload path prunes a directory at docs/* and does not honour the re-inclusion
+  walk-down that .vercelignore uses, while the Git-integration build does honour
+  it (every preview since 7 September proves that). The two deploy paths
+  disagree, and vercelignore-covers-guard-reads is green against the one that
+  works. Nobody deploys by CLI, so this is latent rather than live.
+- **vercel build cannot reproduce a preview build either.** It pulls the preview
+  environment and every SENSITIVE variable comes back EMPTY, which is Vercel
+  behaving correctly: sensitive values are write-only. Six required variables
+  fail their declared shape and the build blocks. So
+  vercel build then vercel deploy --prebuilt is not available.
+- The one route that does work is pushing a scratch branch and letting the Git
+  integration build it, which costs a second preview build on every push, adds a
+  remote branch per push and a recursion hazard in the hook. Named for the owner
+  rather than built on my own authority.
+
+I also cleaned up after myself: the failed CLI deployment was left attached to
+HEAD's commit and preview-deployment-state correctly refused the next build
+because of it. Removed with vercel remove, and the guard went back to SKIP.
+
+### One report that looked like a defect and is not
+
+The Vercel build log shows sourced-specifications reporting that one reviewed
+entry, docs/security/AUDIT-2026-08-08-SECTIONS-2-8.md, matches nothing. The file
+exists locally and is git-tracked; it is absent on Vercel because .vercelignore
+excludes docs/security. An artefact of the environment, not a rotted allowlist.
+Checked rather than actioned.
+
+### Founder steps (Law 10)
+
+| Step | Verdict | What it is |
+|---|---|---|
+| Everything in this item | SCRIPTED. npm run gate:push runs the whole thing; node scripts/perf/machine-speed.mjs reads the machine on demand | none |
+| Deciding whether the gate should push a scratch branch to measure a real Vercel preview (the only remaining route to P0.2) | HIS. It costs a second preview build on every push and puts a push inside the pre-push hook, which is a trade about his build minutes and his remote, not a technical judgement | REVIEW-QUEUE.md |
+| The two option-1 / option-2 questions from yesterday | WITHDRAWN. Neither is needed; both rested on a diagnosis this session's measurements overturned | REVIEW-QUEUE.md |
+
+---
+
+## 2026-09-09 02:00 to 04:20 (session 49) the instrumentation landed, and the machine agreed with itself twice
+
+### Governing laws
+
+Law 0 (read first), Law 8 (authorship), Law 9 (current by default), Law 10
+(script the founder's step), Verification and gates, close-out P0.7, H4, H5,
+C16.5, and the COMPLETION LAW.
+
+Disk 27.66 GB free at start, 27 GB at end after removing `.next` (623 MB) and
+`.lighthouseci` (24 MB). TEST vkapkibzokmfaxqogypq remains the linked project.
+Production gndnldyfudbytbboxesk was read by the parity step and never written.
+
+### The state I inherited, and what was actually wrong with it
+
+Session 48 built the calibration work, drilled it, and wrote it up in the ledger
+with rows 6 and 7 reading "see the gate run recorded below" and "recorded below".
+Nothing was recorded below, because nothing had run. The work sat UNCOMMITTED in
+the working tree: three new files, five modified, no gate, no commit, no push.
+
+Under the COMPLETION LAW that is an item in progress, not an item finished, so it
+is what this session started on rather than anything new.
+
+### The gate, twice, and what the new line says
+
+`npm run gate:push` GREEN 14 of 14 in 2,570 s on the working tree, then GREEN 14
+of 14 again in 2,325 s as the pre-push hook on the commit that actually left the
+machine. Nothing was bypassed and `--no-verify` was not used.
+
+The line the whole item exists to print, from the truth table of the first run:
+
+    Machine speed while collecting: BenchmarkIndex median 2724 (2408 to 2750
+    across URLs), desktop class.
+
+2,724 sits inside the 2,665 to 2,755 band the floors were confirmed at on
+9 September and 731 above the 2,000 calibration floor, so the collection is
+comparable and every score below it is a statement about the pages. Every one of
+the thirteen URLs cleared its floor: medians 87 to 94, the tightest headroom the
+event pages at 87 and 88 against 0.85, layout shift 0.000 on all thirteen,
+blocking time 71 to 131 ms against a 600 ms cap.
+
+That is the third independent confirmation that the floors raised on 8 September
+hold on this instrument, and the first one taken with the instrument reporting
+its own condition.
+
+### One thing I checked rather than assumed
+
+`node scripts/perf/machine-speed.mjs` read 2,145 before the gate started, which
+is 79 percent of the derivation band and would have been reported as CALIBRATED
+because it clears the 2,000 floor. The Chrome collection minutes later read
+2,724. The two numbers are taken by different processes under different load and
+the gap is not a defect in either: machine-speed.mjs says in its own header to
+treat the MOVEMENT as the signal rather than the absolute figure, which is the
+advice session 48 recorded itself for quoting back to front. Recorded here so the
+next reader does not treat a pre-flight reading as a prediction of the collection.
+
+### Committed and pushed
+
+22d6c4bb on `perf/gate-determinism`, no trailer, pushed only through the gate.
+Pull request 143 opened as a DRAFT and then marked ready, so the pull-request
+workflows run exactly once, after the local gate was already green.
+
+### Founder steps (Law 10)
+
+| Step | Verdict | What it is |
+|---|---|---|
+| Everything in this item | SCRIPTED. `npm run gate:push` runs the whole thing | none |
+| Merging pull request 143 and watching production to Ready | MINE, not his, under C16.0 | none |

@@ -1863,3 +1863,142 @@ Two finished things are queued behind it:
 - The migration command, `npm run migrate:production`, still holding two branches.
 - Approval for a test account, a real card, and real events on the live site.
 - The firewall decision.
+
+## Withdraw yesterday's question. Neither option was needed, and here is why
+
+### Short version
+
+Yesterday I asked you to choose between lowering the speed bar and deleting a
+piece of the error reporting. **Please ignore that question. I was wrong about
+the cause.** I measured it properly today and the bar was never the problem, the
+site was never slow, and nothing needs to be traded away.
+
+You do not need to reply to this one. There is a separate, smaller question at
+the bottom.
+
+### What actually happened
+
+Yesterday evening the speed check refused work, including the code that is live
+on your site. I concluded the bar was set too high and asked you to choose.
+
+Today I ran the same three pages twice, an hour apart, on the same laptop:
+
+- against your live preview on Vercel, the exact one the automated check had
+  measured that morning
+- against the same code running on my machine, the way the local check runs it
+
+Both passed. Every page, both times, with room to spare. The numbers came back
+within one or two points of what the automated check had reported that morning,
+which is as close as this kind of measurement gets.
+
+The one thing that had changed since yesterday evening was **how busy your laptop
+was**. There is a number the speed tool records about the machine every time it
+runs. Yesterday it read 1,113 to 1,993. Today it read 2,665 to 2,755. The same
+page did roughly half as much work today as yesterday, on identical code.
+
+So the real fault was never in the bar or in the pages. It was that **the check
+could not tell a busy laptop from a slow website**, so it reported one as the
+other, and I believed it.
+
+### What I have changed so it cannot happen again
+
+When the speed check now fails, it says which of the two it was. If the machine
+was too busy to give a trustworthy reading, it says so plainly, tells you to free
+the machine and run it again, and says in its own words that nothing was excused
+and nothing was let through.
+
+It cannot be used to sneak anything past. A slow page still blocks, exactly as
+before. I wrote a check that breaks the build if anyone ever changes that, and
+tested it by breaking it six different ways on purpose. All six were caught, and
+the files went back exactly as they were.
+
+Nothing about the bar moved. Not one number.
+
+### Three mistakes of mine, said plainly
+
+1. I offered you "lower the bar" as an option. Your own written instruction says
+   four separate times that the bar only ever goes up. I should never have put it
+   on the table.
+2. I read a wobbly measurement as a fault in the product, and spent a session on
+   it, when the explanation was sitting in a field the tool writes into every
+   report.
+3. I quoted my own tool's guidance back to front. It says to watch how the
+   machine's number MOVES; I read the raw figure, saw "desktop class", and stopped.
+
+### The one thing that is still not done, and it is now a decision for you
+
+Your instruction says the local check should measure a real Vercel preview, the
+same thing the automated check measures. It still does not: it measures the site
+running on your laptop. I tried the two easy ways to fix that today and both are
+closed:
+
+- Deploying straight from the command line builds on Vercel and **fails**, because
+  the command-line upload silently drops two files the guards need. The normal
+  deploy through GitHub keeps them. (Nobody deploys this way, so nothing is broken
+  today, but it is worth knowing.)
+- Building locally and uploading the result **cannot work at all**: Vercel refuses
+  to hand back the secret values to a local machine, which is correct of it.
+
+The only route left is for the check to push a temporary branch, let Vercel build
+it normally, measure that, then tidy up. That works, but it means **a second
+Vercel build every time I push**, and a push happening inside the thing that is
+supposed to run before a push. That is your build minutes and your repository, so
+I have not done it on my own authority.
+
+**Reply "do the scratch branch" if you want it, or "leave it" if the current
+setup is good enough.** Either is a reasonable answer. Leaving it costs a bias of
+about seven points on one page type, which the bar already allows for.
+
+### Still waiting on you, unchanged
+
+- Pull request 139, the positioning wording, open and not merged.
+- The migration command, npm run migrate:production, still holding two branches.
+- Approval for a test account, a real card put through and refunded, and real
+  events on the live site.
+- The firewall decision (npm run firewall:bypass).
+
+## The speed check now records how fast your laptop was, and it is live
+
+### What changed for you
+
+Nothing you can see on the site. This is a change to the check that runs before
+anything is pushed.
+
+Two days ago that check refused work, including code that is live on your site
+right now, and I spent a session concluding the speed bar was too high. It was
+not. The laptop was busy. I explained that yesterday. Today I finished the fix
+and put it in: the check now writes down how fast the machine was every time it
+measures, and when it refuses something it says which of the two it was, a slow
+page or a busy laptop.
+
+It cannot be used to let anything through. A slow page still blocks, exactly as
+before. I wrote a separate check that breaks the build if anyone ever changes
+that, and tested it by breaking it six different ways on purpose.
+
+### The proof
+
+The full check ran twice today, start to finish, and passed all fourteen of its
+steps both times. Thirteen pages, five measurements each, sixty five
+measurements per run. Every page cleared its bar with room to spare, and the new
+line reported the machine at 2,724, right in the healthy range.
+
+That is the third separate time the raised bar has been confirmed to hold, and
+the first time the check said out loud that the machine was fit to judge.
+
+Pull request 143 is open for it. I will merge it once the automatic checks
+finish and watch your site redeploy.
+
+### What is waiting on you, unchanged
+
+- Pull request 139, the positioning wording, open and not merged. I am rebasing
+  it next.
+- The migration command, `npm run migrate:production`, still holding two branches
+  (the organiser "what do you still need" module, and the add-ons screen).
+- Approval for a test account, a real card put through and refunded, and real
+  events on the live site. Fourteen of the sixteen launch readiness checks
+  cannot be run without this, and it is now the single biggest thing between the
+  platform and a launch readiness report.
+- The firewall decision (`npm run firewall:bypass`).
+- Whether the local speed check should push a temporary branch so it measures a
+  real Vercel preview. Costs a second build on every push. "Do the scratch
+  branch" or "leave it".

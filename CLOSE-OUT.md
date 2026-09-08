@@ -1631,3 +1631,39 @@ Fix:
   - Register a guard: an alert generated from a drill target must carry the drill
     marker, and an alert generated from the real production URL must not. Prove it
     fails as well as passes.
+
+## PR HYGIENE. 22 OPEN PULL REQUESTS, MOST OF THEM MONTHS OLD. DO AFTER P0.
+
+Open pull requests as at 8 September 2026 include #139 (15 hours), #117, #116,
+#115, #114, #113 (27 days), #104, #102 (1 month), #99, #98 (2 months), and twelve
+more not listed. This is a graveyard and it hides what is actually in flight.
+
+### PR1. Audit every open pull request. Report before closing anything.
+
+For each one, record in REVIEW-QUEUE.md: number, title, age, and a verdict of
+ALREADY ON MAIN, SUPERSEDED, STILL WANTED, or UNKNOWN.
+
+Determine ALREADY ON MAIN by checking whether its changes are present in main, not
+by reading the title. Determine SUPERSEDED by naming the later work that replaced it.
+
+### PR2. Never close a pull request carrying work that is not on main.
+
+If a branch holds anything not present on main and still wanted, say so and leave it
+open. If it is wanted but unmergeable through drift, say that too rather than
+quietly closing it. Losing work silently is worse than a messy list.
+
+### PR3. Close the dead ones with a reason.
+
+Anything ALREADY ON MAIN or SUPERSEDED gets closed with a one line comment saying
+which commit or pull request replaced it. Delete its branch only after the close.
+
+### PR4. Then rebase and finish what is left.
+
+Rebase each STILL WANTED branch onto main, run it through the gate, and land it one
+at a time. #139, the positioning ruling, is the most recent and should now pass
+Lighthouse since H3 raised the floor and cut the bundle. Re-run it first.
+
+### PR5. From now on, one open pull request at a time.
+
+Open the next only when the previous is merged or closed. Register a guard or a
+check that reports when more than two pull requests are open at once.
