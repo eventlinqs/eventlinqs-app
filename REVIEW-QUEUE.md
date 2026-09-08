@@ -2137,3 +2137,60 @@ own safety check is correct to refuse them.
 - Whether the local speed check should push a temporary branch so it measures a
   real Vercel preview. Costs a second build on every push. "Do the scratch
   branch" or "leave it".
+
+## Your positioning ruling is live on the site
+
+It merged and the live site is serving it, which I watched happen rather than
+assumed. Here is the proof in one line.
+
+Before today, if you asked the live site what EventLinqs is, buried in the code
+that Google and Facebook read, it answered:
+
+    "The ticketing platform built for every community"
+
+Right now it answers:
+
+    "The place events get made, for every community."
+
+The words "ticketing platform" appear **zero** times on the live homepage. Your
+old strapline appears **zero** times. The page title, the Facebook and Twitter
+preview text, the help centre, the About page, the sign-in screen and all four
+confirmation emails now say the same thing, and they all read it from one file,
+so it can only ever be changed in one place again.
+
+There is a check in the build that refuses the old words. If anyone, including
+me, writes "ticketing platform" about us again, the build stops.
+
+Twelve pages on the live site checked afterwards, all working, nothing broken.
+
+### The thing I want you to do next, and it is one command
+
+Two finished pieces of work are stuck and cannot move until you run this:
+
+    npm run migrate:production
+
+It applies four database changes to the live site. That is yours to press, by
+your own ruling, and everything around it is already automated: it lists what it
+will do, asks you to type the name of the live database to confirm, applies it,
+asks the database back to prove it worked, and always leaves the tool pointed at
+the test database afterwards. Running it twice is safe.
+
+What it unblocks:
+
+  - Multi-day and repeating events, and the add-ons an organiser sells alongside
+    a ticket.
+  - The organiser "what do you still need" module.
+
+Until then both sit on my machine, and the platform's own safety check is right
+to refuse them.
+
+### Still waiting on you, unchanged
+
+- The migration command above.
+- Approval for a test account, a real card put through and refunded, and real
+  events on the live site. Fourteen of the sixteen launch readiness checks
+  cannot be run without this, and it remains the single biggest thing between
+  the platform and a launch readiness report.
+- The firewall decision (`npm run firewall:bypass`).
+- Whether the local speed check should push a temporary branch so it measures a
+  real Vercel preview. "Do the scratch branch" or "leave it".

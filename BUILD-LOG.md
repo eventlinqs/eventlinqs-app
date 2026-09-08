@@ -6174,3 +6174,40 @@ names columns production does not have. The one command is
 `npm run migrate:production`, run from `feat/m1-the-request` so all four are
 listed at once, and it is RESERVED to the founder by the constitution
 (Verification and gates, Migrations) and by his ruling of 26 August 2026.
+
+### PR4 closed: merged, and the ruling read back off production
+
+`gh pr merge 139 --squash --delete-branch` at 06:12 AEST. Squash `aae27c25`,
+39 files changed, 971 insertions, 66 deletions, branch deleted. The squash
+message was grepped for every Law 8 marker before and after: clean.
+
+Production polled every 45 seconds and served the new commit at the fourth poll:
+
+    20:13:18 UTC  sentry-release=1caf2f68...
+    20:14:05 UTC  sentry-release=1caf2f68...
+    20:14:50 UTC  sentry-release=1caf2f68...
+    20:15:37 UTC  sentry-release=aae27c2568b7a11fd1da43276f9ef6841e5210f4
+
+Twelve routes driven on production, every one 200: `/`, `/events`, `/pricing`,
+`/organisers`, `/about`, `/communities`, `/community/african`, `/city/melbourne`,
+`/help`, `/login`, `/sitemap.xml`, `/legal/terms`. Zero 404s, zero 500s.
+
+**The line the whole item exists to print.** Production's served homepage HTML
+now carries zero occurrences of the retired strapline and zero occurrences of the
+words "ticketing platform". The Organization JSON-LD, which on 7 September told
+every crawler that EventLinqs is "The ticketing platform built for every
+community", now reads "The place events get made, for every community." The
+title is "EventLinqs - Every community. Every event. One platform." and the
+og:description is "Discover live events from communities across Australia.
+EventLinqs is where events get made: find your suppliers, sell your tickets, run
+your door and get paid."
+
+Evidence `C:\dev\EVIDENCE\PR4-POSITIONING\production-aae27c25.txt`.
+
+### Next item: PR5, one pull request at a time
+
+Planned at `C:\dev\PR5-PLAN.md` and not started, because PR4 was not finished
+until the line above could be printed. Three pull requests remain open (104, 97,
+69) and every one of them is open by a recorded decision rather than by neglect,
+so the guard is built around a reviewed parked record that cannot rot, not around
+a bare count that would fail the build on its first run.

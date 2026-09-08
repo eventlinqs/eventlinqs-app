@@ -1539,3 +1539,19 @@ than the word "driven".
 The COMPLETION LAW forbids beginning item N+1 while N is partially built. PR4 is
 not finished until 139 is merged and production serves it (C16.0), so the PR5
 guard is designed and not written.
+
+### PR4 CLOSED (9 September 2026, session 51): merged as `aae27c25`, production serving it
+
+C16.0 says a merge is finished when production serves it. These are the rows
+that finish it.
+
+| Requirement (C16.0) | Verdict | Evidence |
+|---|---|---|
+| Every required check green on the run for the pushed head | MET. On `b6026cc5`: Lighthouse mobile gate PASS 28m47s, lint/typecheck/build PASS 5m49s, test (vitest) PASS 2m27s, types-drift guard PASS 2m31s, production parity PASS 46s, Resolve Vercel preview PASS 3m8s, Vercel PASS. The two Buyer purchase journey rows show `skipping`, which is the draft condition (C2.2) | runs 34270286914 and 34270286755 |
+| No AI authorship trailer in the squash message | MET. `git log origin/main -1 --format=%B` grepped for `Co-Authored-By`, "Generated with", Claude, Anthropic and the robot emoji: zero matches. The pull request body was grepped the same way BEFORE the merge, because the squash takes the body | the grep output in BUILD-LOG.md |
+| Merged and the branch deleted | MET. Squash merge `aae27c25`, 39 files changed, 971 insertions, 66 deletions. `feat/positioning-lock` deleted on the remote | `gh pr merge 139 --squash --delete-branch` |
+| The newest production deployment is Ready and its commit matches origin/main | MET. Polled every 45 s from 20:13:18 UTC: `1caf2f68`, `1caf2f68`, `1caf2f68`, then at 20:15:37 `sentry-release=aae27c2568b7a11fd1da43276f9ef6841e5210f4` | `C:\dev\EVIDENCE\PR4-POSITIONING\production-aae27c25.txt` |
+| At least ten real routes driven on production | MET. Twelve, all 200: `/`, `/events`, `/pricing`, `/organisers`, `/about`, `/communities`, `/community/african`, `/city/melbourne`, `/help`, `/login`, `/sitemap.xml`, `/legal/terms`. Zero 404s, zero 500s | same file |
+| The ruling is actually live, not merely merged | MET, and this is the row the item exists for. Production's served homepage HTML now carries **zero** occurrences of the retired strapline and **zero** occurrences of the words "ticketing platform". Its Organization JSON-LD description reads "The place events get made, for every community. Find your suppliers, sell your t..." where on 7 September it read "The ticketing platform built for every community" | same file |
+
+PR4 is therefore MET in full. PR5 may begin.
