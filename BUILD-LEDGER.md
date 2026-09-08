@@ -1091,3 +1091,64 @@ discarded the twelve results before it, twice. It now retries a TRANSPORT
 failure up to three times and prints every retry; a page that LOADS and answers
 404 or 500 is never retried, because that is the product's answer and re-asking
 would launder it.
+
+## H2. THE POST-DEPLOY SMOKE, AND THE ALERT THAT NEVER ARRIVED (8 September 2026, session 45)
+
+The HALT section added to CLOSE-OUT.md at 11:19 on 8 September outranks
+everything below it. H1 (no new pull request for a feature) was obeyed: M1 and
+the L5 launch-readiness work stopped where they were, both committed on their own
+branches, neither lost. This session did H2 and nothing else.
+
+**One correction to the premise, stated rather than skated over.** H2 says the
+smoke "is red" on main at 9ac4d88. It is not red now: main is at 449311ae and
+both post-deploy smokes on it succeeded (34151712255, 34151816690). The red run
+was on the SUPERSEDED commit 9ac4d885, and the first smoke on that same commit
+had passed two minutes earlier. Production is verified. All four faults H2
+EXPANDED names were real, were still in the workflow this morning, and are fixed.
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| H2. Read the failing job log and name the cause in BUILD-LOG.md | MET. curl exit 35 is CURLE_SSL_CONNECT_ERROR, a fault in the SSL/TLS handshake, which happens BEFORE the request line. Production never received the path, the cookie or the user agent, so nothing that reads an HTTP request can have answered. The project has NO firewall configuration (`{"active":null,"draft":null,"versions":[]}`) and no bypass rules (`{"result":[]}`), so what remains is Vercel's always-on system mitigation of a shared datacentre address | BUILD-LOG.md this session; C:\dev\EVIDENCE\H2\the-failing-run-34143506887.txt; C:\dev\EVIDENCE\H2\NOTES-for-the-ledger.md |
+| H2.1 Identify why production reset a connection from a GitHub runner, investigating the rate limiter, Vercel bot or attack protection, and the user agent, in that order | MET. All three eliminated, two by the handshake timing and by reading the live firewall configuration, the third by measurement | NOTES-for-the-ledger.md; the guard's own header carries every citation |
+| H2.1 Reproduce it deliberately before claiming a fix | MET, and the answer is NOT REPRODUCED, which is said in those words rather than dressed as a clean bill of health. `scripts/verify/transport-probe.mjs` from a runner: 80 of 80 requests answered, egress 20.25.10.67, and the smoke agent was indistinguishable from a browser agent (median 840ms against 847ms, 20 of 20 each), which refutes the user-agent hypothesis by measurement | run 34182520103; C:\dev\EVIDENCE\H2\runner-smoke-and-probe-34182520103.txt |
+| H2.1 Verify every machine-to-machine caller is exempt from whatever is doing this | PARTIALLY MET, and the unmet half is the founder's, not deferred silently. The half that is OURS is met and guarded: 20 secret-gated routes enumerated from disk, no signed webhook rate limited by us, no cron limiter failing closed. The half that is NOT ours: **Stripe's 15 published webhook addresses are not exempt from Vercel system mitigation, because no System Bypass rule exists on the project.** Installing one changes production infrastructure | `npm run firewall:bypass`; C:\dev\EVIDENCE\H2\firewall-bypass-plan.txt |
+| H2.1 Register a guard | MET. `scripts/guards/machine-callers-reachable.mjs`, registered, blocking on prebuild. Five faults drilled, all firing | drills 109 to 113 in `scripts/verify/guard-failure-drills.mjs` |
+| H2.2 Retry with backoff, at least three attempts, fail only when consistent | MET. Up to four attempts at 5s, 15s, 30s. An ANSWER is never retried, because re-asking a 500 until it changes launders it | `scripts/lib/smoke-transport.mjs`; C:\dev\EVIDENCE\H2\local-smoke-connection-failure.txt |
+| H2.2 Distinguish a non-200, a connection failure and a timeout in the output | MET, and six rather than three: `http-status`, `body`, `connection`, `timeout`, `wrong-build`, `configuration`. A test asserts all six read differently | tests/unit/ci/post-deploy-smoke-transport.test.ts |
+| H2.3 Wait for the deployment under test, identified by its own id, and fail clearly if it never appears | MET, by COMMIT rather than by deployment id, and the difference is deliberate: the run is about a commit, a deployment id changes on a redeploy of the same commit, and the site publishes `sentry-release=<sha>` in its own HTML. The deployment id is still read, reported, and watched for changing mid-run | C:\dev\EVIDENCE\H2\smoke-refuses-the-wrong-build.txt (driven against real production) |
+| H2.4 Establish the real sending limit | MET. 10 requests per second per team, and three DIFFERENT 429s: `rate_limit_exceeded` clears, `daily_quota_exceeded` and `monthly_quota_exceeded` do not. The old step could not tell them apart because `curl -f` discarded the body | resend.com/docs/api-reference/introduction and /errors, both fetched 2026-09-08, cited in the source |
+| H2.4 Retry with backoff, and add a second channel that does not share the limit | MET. Resend retried on a burst and not on a quota, plus a deduplicated GitHub issue sharing no limit, no vendor and no domain | `scripts/ops/alert-dispatch.mjs` |
+| H2.4 / H2.5 Prove an alert arrives by deliberately failing the smoke once | MET. Run 34182685959, `force_failure=true`: BOTH channels delivered. Resend accepted on attempt 1; the GitHub channel opened issue 140, naming the failing check and what that class of failure means. Closed with a note saying it was a drill | C:\dev\EVIDENCE\H2\alert-drill-34182685959.txt; issue 140 |
+| H2.5 Re-run the smoke and show it green | MET on a runner against production: run 34182520103, five of five checks green, both sentinels included. The on-MAIN automatic run follows the merge | runner-smoke-and-probe-34182520103.txt |
+| Tests | MET. 38 new tests across two files; 3739 in the suite, 0 failed, 0 skipped | the suite output |
+| Guard proven red and green | MET. Five drills: a signed webhook gaining a rate limit, a cron limiter turning fail-closed, the record no longer naming a route that exists, a secret-gated route in neither the record nor the exclusions, and a System Bypass rule disagreeing with the record. 113 of 113 drills fire | /tmp/drills2.log, transcribed |
+| Full regression green | MET. Pre-push gate GREEN 14 of 14 in 2699s before anything was pushed: disk, typecheck, lint, copy, critical-path, exemption clock, every guard, types-drift, production parity, fixture, suite, build, indexing, Lighthouse mobile | the gate output |
+| Committed, no trailers | MET. 93598f32 and 10831307 on `fix/post-deploy-smoke-h2`, neither carrying a trailer | git log |
+
+### Why "driven at 390, 768 and 1440" does not appear above
+
+This item has no user-facing surface. Nothing it changes renders in a browser.
+Its equivalent of a driven proof is that every claim was made by running the
+thing against the real environment: the smoke against real production three ways
+(passing, refusing a wrong build, failing at the transport against a closed
+port), the probe and the alert channels from a real GitHub runner, and the
+firewall state read from the live Vercel API rather than assumed. Stating that
+plainly is better than reporting three viewport widths that would mean nothing.
+
+### Six defects in my own work, every one found by driving it
+
+| Defect | What it would have said | Fix |
+|---|---|---|
+| A missing `CRON_SECRET` classified as a bad HTTP status | "the deployment is serving something it should not", about a request that was never sent. A false accusation against production for a fault of ours | A `configuration` outcome: still a failure, never a skip, but saying nothing was asked |
+| An unpinned wait that saw nothing reported PASSED | A smoke pointed at a dead host would have gone on to "check" it | Blind is judged first, for pinned and unpinned alike. Found by driving it at a closed port |
+| Three identical `TypeError: fetch failed` lines | A refused connection, a reset one and a DNS failure reading the same. The item's own defect, inside its own fix | `describeThrown` walks the cause chain |
+| The step counter printed [4/6] then [6/6] | A step that appears to have vanished | Counted, not typed |
+| The guard exited 3221226505 with a libuv assertion | A guard that CRASHES rather than fails sends its reader looking for a bug in Node. The build was still blocked, so nothing would have caught it | `process.exitCode` and let the loop drain, everywhere a gate reads the code |
+| The refusal to smoke the wrong build borrowed the wrong-status sentence | Blamed a site that was serving perfectly | A sixth outcome, `wrong-build`, with its own sentence |
+
+### Founder step (Law 10)
+
+| Step | Verdict | Command |
+|---|---|---|
+| Exempt Stripe's 15 published webhook addresses from Vercel system mitigation | SCRIPTED, and RESERVED for him because it changes production infrastructure. The script fetches the list from Stripe rather than remembering it, refuses without `--apply`, is idempotent, never prints the token, verifies by re-reading, and rewrites the record the guard compares against | `npm run firewall:bypass` (plan), then `npm run firewall:bypass -- --apply` |
+| Everything else in H2 | SCRIPTED. Nothing else here needs him | none |

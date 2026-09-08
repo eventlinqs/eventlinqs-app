@@ -4853,3 +4853,157 @@ re-asking would launder it.
 the owner should know it: the threshold gate holds about 490 templated
 community, city, faith and category urls out until each family has enough
 events, and production has two events.
+
+## 2026-09-08 12:00 to (session 45) H2: the smoke that called one dropped connection an outage, and the alert that dropped itself
+
+**THE HALT WAS READ FIRST, AND IT REORDERED THE SESSION.** CLOSE-OUT.md gained a
+HALT section at 11:19 on 8 September, after session 44 had already started, and
+it outranks everything below it: H1 open no new pull request for a feature, H2
+fix the post-deploy smoke FIRST, H3 then P0 and only P0 on one branch. So M1 and
+the L5 launch-readiness work stopped where they were (both are committed on
+their own branches and neither is lost) and this session did H2 and nothing else.
+
+**ONE CORRECTION TO THE PREMISE, STATED RATHER THAN SKATED OVER.** H2 says the
+post-deploy smoke "is red" on main at 9ac4d88. It is not red now. Main is at
+449311ae and both post-deploy smokes on it succeeded (34151712255 and
+34151816690). The red run, 34143506887, was on the SUPERSEDED commit 9ac4d885,
+and the first smoke on that same commit had passed two minutes earlier. So
+production is verified. The four faults H2 EXPANDED names are all real, all
+still in the workflow this morning, and all fixed here.
+
+### The cause, named, which is what H2 asks for in this file
+
+    curl: (35) Recv failure: Connection reset by peer
+    HTTP=000curl-failed
+    ::error::Anonymous request returned HTTP 000curl-failed, expected 200
+
+**curl exit 35 is CURLE_SSL_CONNECT_ERROR, "A problem occurred somewhere in the
+SSL/TLS handshake"** (https://curl.se/libcurl/c/libcurl-errors.html, fetched
+2026-09-08). The handshake completes BEFORE the request line, so at the instant
+of the reset production had not received the path, the cookie, or the
+`eventlinqs-post-deploy-smoke/1.0` user agent that this run was later suspected
+of tripping over. Nothing that reads an HTTP request can have been what answered.
+That one fact eliminated two of the three hypotheses H2.1 listed, in its order:
+
+1. **The platform's own rate limiter.** Eliminated twice. It never saw the
+   request, and separately no policy sits in front of `/` at all
+   (`scripts/verify/rate-limit-audit.mjs`, 31 policies).
+2. **Vercel bot or attack protection.** Eliminated by READING the project rather
+   than guessing. `GET /v1/security/firewall/config` answers
+   `{"active":null,"draft":null,"versions":[]}` and `GET .../bypass` answers
+   `{"result":[]}`. No WAF rules, no managed rulesets, no IP blocks, no attack
+   challenge mode, no bypass rules, and no `@vercel/firewall` or BotID import
+   anywhere in `src`. Nothing configurable had been configured.
+3. **The user agent.** Eliminated by the handshake timing, and then MEASURED (see
+   the probe below) rather than left as an argument.
+
+**What is left is Vercel's always-on system mitigation**, which is not
+configurable and runs on every plan. Vercel documents it as mitigating "L3, L4,
+and L7 DDoS attacks" and says it "can happen that they block traffic from trusted
+sources like proxies or shared networks in situations where traffic from these
+proxies or shared networks was identified as malicious"
+(https://vercel.com/docs/vercel-firewall/ddos-mitigation, fetched 2026-09-08). A
+GitHub Actions hosted runner egresses from a shared Azure datacentre address, and
+an L3/L4 block of one is a TCP reset with no HTTP anywhere in it.
+
+The rest of that job corroborates a blip rather than an outage: polls 1 and 2
+answered in about a second, poll 3 took 85 seconds, poll 5 returned an empty
+body, poll 6 was normal, then the assertion request was reset after 30 seconds.
+
+### The reproduction, and the honest answer it gave
+
+`scripts/verify/transport-probe.mjs` measures from the place the drop happened.
+Three user-agent cohorts against production plus a control host, from a runner.
+Run 34182520103: **80 of 80 requests answered**, egress 20.25.10.67, and the
+smoke agent and a browser agent were indistinguishable (median 840ms against
+847ms, 20 of 20 each). **It did NOT reproduce**, and the probe's own verdict says
+so in those words rather than reporting a clean bill of health, because an
+intermittent mitigation decision is not on all the time. What it does settle by
+measurement is hypothesis 3: the user agent is not the variable.
+
+### The blast radius, which was the more important half of H2.1
+
+`scripts/guards/machine-callers-reachable.mjs`, blocking on prebuild. It
+enumerates every route that authenticates a machine with a shared secret, from
+disk, by matching `process.env.*TOKEN|SECRET` rather than by a list somebody
+typed: **20 of them**, one signed webhook, eighteen crons, one reviewed
+exclusion. It fails when one is in neither the record nor the exclusions, when a
+signed webhook is rate limited by us (a 429 to Stripe discards an event we were
+paid to receive), when a cron limiter fails closed (no Upstash would mean no
+crons, and the crons reconcile payments), and when the project's live Vercel
+System Bypass rules differ from what is recorded.
+
+**And the honest state: Stripe's fifteen published webhook addresses are NOT
+exempt from system mitigation, because no bypass rule exists.** Installing them
+is a production infrastructure change. `npm run firewall:bypass` prints the plan,
+fetches the fifteen from Stripe rather than remembering them, refuses without
+`--apply`, verifies by re-reading, and rewrites the record so the guard cannot
+drift from reality. One command, and it is the founder's to run.
+
+### The three faults in the gate itself
+
+H2.2, one attempt and three faults printed as one string. The checks left the
+YAML and became `scripts/verify/post-deploy-smoke.mjs`, runnable before pushing
+and covered by tests. Six named outcomes, each with its own sentence. Transport
+faults retry at 5s, 15s and 30s. **An answer is never retried**, because
+re-asking a 500 until it changes launders it into a pass, which is the rule
+`axe-urls.mjs` adopted for the same reason a day earlier.
+
+H2.3, the run judged the previous build. The deployment id never changed across
+all six polls of the failing run. The commit under test is now pinned from the
+trigger payload (`deployment.sha`, `workflow_run.head_sha`, both confirmed
+against the REST API rather than assumed) and the smoke waits for the site to say
+it is serving that commit through the `sentry-release` marker the build stamps
+into its own HTML, then refuses if it never arrives. A manual dispatch is
+unpinned by default and says so, because the operator picks the ref and a ref is
+almost never what production is serving.
+
+H2.4, the alert dropped itself. Resend answered 429, `curl -f` discarded the
+body, the step printed a warning and exited 0. Now two channels sharing no limit,
+no vendor and no domain: Resend, retried against its published 10 requests per
+second per team and reading WHICH of the three documented 429s it received
+(`rate_limit_exceeded` clears, the two quota ones do not), and a deduplicated
+GitHub issue. If both fail the dispatcher exits non-zero.
+
+### H2.5, both halves proven on a runner
+
+Run 34182520103 on this branch: five of five checks green against production,
+both sentinels included. Run 34182685959 with `force_failure=true`: **both
+channels delivered**, Resend accepted on attempt 1 and the GitHub channel opened
+issue 140, which also settles empirically that a workflow can hold `issues:
+write` while the repository default is read. The issue named the failing check
+and what that class of failure means. Closed with a note saying it was a drill.
+
+### Six defects in my own work, every one found by driving it
+
+    a missing CRON_SECRET reported as "the deployment is serving something it
+        should not". A false accusation against production for a fault of ours.
+        It is now its own outcome, `configuration`, still a failure and never a
+        skip, but saying plainly that nothing was asked.
+
+    an unpinned run that could read nothing reported its wait as PASSED.
+        `judgeDeploymentWait` answered `unpinned, ok` before checking whether any
+        poll had succeeded, so a smoke pointed at a dead host would have gone on
+        to "check" it. Found by driving it at a closed port.
+
+    three identical `TypeError: fetch failed` lines. undici hides the fact on
+        `.cause`, so a refused connection, a reset one and a DNS failure read
+        the same. The item's own defect, reproduced inside its own fix.
+
+    the step counter printed [4/6] then [6/6], a step that appears to vanish.
+
+    the guard exited 3221226505 with a libuv assertion instead of exiting 1,
+        because `process.exit()` tore the loop down while undici still held the
+        socket its fetch opened. Found by the drill written for that guard.
+
+    the refusal to smoke the wrong build borrowed the wrong-status sentence and
+        blamed a site that was serving perfectly.
+
+### The state of the tree
+
+tsc 0, eslint 0, 78 of 78 guards (the two database guards pass against TEST
+vkapkibzokmfaxqogypq with `--env-file=.env.local`), 113 of 113 drills firing
+including five new ones, 3739 tests with nothing failing and nothing skipped, and
+the full pre-push gate GREEN 14 of 14 in 2699s before anything was pushed. Local
+Lighthouse mobile on this build ran 0.83 to 0.95 across the gated set, which is
+the runner gap the advisory ruling describes and is H3's problem, not this one.

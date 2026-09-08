@@ -1515,3 +1515,98 @@ ticketing company, or like the place an event gets made.
 
 Driven at 390, 768 and 1440. Do not change the approved homepage composition or
 dimensions; copy only.
+
+## HALT. 8 September 2026. NOTHING BUT THESE TWO THINGS.
+
+The owner is receiving a failed-run email for every pull request opened. The cause
+is not those pull requests. The Lighthouse gate demands 0.80 and the platform
+measures 0.75 to 0.79, so EVERY branch fails regardless of content. The positioning
+pull request failed the gate twice for a defect it did not cause.
+
+### H1. OPEN NO NEW PULL REQUEST. Merge only what is already green.
+
+No new branch. No new item. Not C19, not positioning, not the production module,
+not anything already written in this file below the P0 section. Everything waits.
+
+### H2. Fix the post-deploy smoke failure on main at 9ac4d88 FIRST.
+
+That is the production health check and it is red. Read the failing job log, name
+the cause in BUILD-LOG.md, fix it, and confirm the workflow passes on main. A red
+smoke check on main means production is not verified.
+
+### H3. Then do P0, and only P0, on ONE branch.
+
+P0.3 Lighthouse 12.6.1 upgrade so the gate can name the LCP element.
+P0.4 median aggregation, 5 runs, fix the dead /culture/* waiver.
+P0.5 the chunk cost table, then the 187KB rrweb chunk with 1,047ms evaluation.
+P0.6 towards the Scope v5 target of a sub-200KB initial bundle.
+Measure before and after on every change. Revert anything that does not improve the
+measured numbers.
+
+Land that ONE branch. Every gated URL must pass 0.80 at MEDIAN with headroom.
+
+### H4. Only then resume.
+
+After the platform passes its own gate, every subsequent pull request passes on its
+own merit and the failure emails stop. Then work the launch-blocking list in L2 in
+order, one item at a time, and open one pull request at a time.
+
+### H5. Never lower the gate to get past this.
+
+The floor stays at 0.80 and above. No waivers, no warn-level downgrades, no skipped
+checks. The platform rises to meet the gate.
+
+## H2 EXPANDED. THE POST-DEPLOY SMOKE FAILURE, DIAGNOSED. Fix all four.
+
+Run 34143506887 on main at 9ac4d88. The real failure, from the log:
+  curl: (35) Recv failure: Connection reset by peer
+  HTTP=000curl-failed
+Production RESET THE CONNECTION after 30 seconds. It was not an HTTP error and the
+site is not down: the homepage was independently fetched and served correctly with
+the right headline and no error boundary.
+
+Evidence pattern inside that single job: polls 1 and 2 fast, poll 3 took 85 seconds,
+poll 5 returned empty, poll 6 fine, then the assertion request was reset. That is a
+client being throttled and dropped, not an outage.
+
+### H2.1 Find out what dropped the connection. This is the important one.
+
+Identify why production reset a connection from a GitHub runner. Investigate, in
+order: rate limiting middleware and its Upstash configuration, Vercel bot or attack
+protection, and whether the user agent 'eventlinqs-post-deploy-smoke/1.0' from a
+datacentre IP is being filtered. Reproduce it deliberately before claiming a fix.
+
+This matters far beyond the smoke check. If production silently resets connections
+to an unfamiliar client it may do the same to a Stripe webhook or a Supabase
+callback, and a dropped payment webhook is a lost order nobody is told about. Verify
+that every machine-to-machine caller the platform depends on is exempt from whatever
+is doing this, and register a guard.
+
+### H2.2 The smoke must retry before it cries
+
+A single failed request must not declare production down. Retry with backoff, at
+least three attempts, and only fail when the failures are consistent. Distinguish in
+the output between a non-200 response, a connection failure, and a timeout, because
+those are three different problems and they currently all read the same.
+
+False alarms are worse than no alarm, because they teach the owner to ignore the
+channel.
+
+### H2.3 The smoke checked the wrong deployment
+
+The deployment ID never changed across all six polls, so the check ran against the
+previous build and then judged it. Wait for the deployment under test to actually be
+live, identified by its own deployment id, and fail with a clear message if it never
+appears rather than silently testing something else.
+
+### H2.4 The alerting is rate limited and therefore unreliable
+
+The Resend dispatch returned 429, so the alert email was never delivered. An alert
+channel that silently drops is worse than none. Establish the real sending limit,
+add retry with backoff, and add a second channel that does not share the same
+limit. Prove an alert arrives by deliberately failing the smoke once.
+
+### H2.5 Prove it
+
+Re-run the smoke on main and show it green. Then deliberately break it once and show
+the alert arriving. Both captured, evidence paths in the ledger.

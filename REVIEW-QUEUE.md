@@ -1458,3 +1458,102 @@ C19 working exactly as designed, holding the community, city and category pages
 back until each has enough events to be worth showing. With two events live,
 almost everything is held back. It will come back on its own as events arrive,
 and I have changed nothing.
+
+## 8 September, later. The false alarm that told you production was down
+
+**Short version: production was never down, the gate was wrong, and the gate is
+fixed. You should get fewer emails, and the ones you do get will be worth
+reading.**
+
+Yesterday you got an email saying the production health check failed. It had
+not. The site was serving normally the whole time, and the same check had passed
+two minutes earlier on the same code. One network connection from GitHub's
+servers to ours was dropped, and the check was written in a way that could not
+tell "the connection dropped" apart from "the site is broken". It reported the
+worse of the two.
+
+I could prove which it was, because of exactly where the connection died: during
+the encryption handshake, which happens BEFORE the browser or the checker sends
+anything at all. Our site had not been told what page was being asked for. So
+nothing about our site can have caused it.
+
+**What did cause it, as far as anyone can tell.** Vercel runs automatic
+protection against denial-of-service attacks on every site, at the network level,
+and it is not something we configure or can turn off. Their own documentation
+says it can occasionally block traffic from shared networks. GitHub's build
+machines share addresses with an enormous number of other customers. That is the
+only thing left standing after I checked everything else, and I checked our own
+settings rather than guessing: we have no firewall rules, no bot protection and
+no attack mode configured at all.
+
+**I tried to make it happen again, from GitHub's machines, and could not.** 80
+requests, three different browser identities, all answered. That is an honest
+"did not reproduce" rather than an all-clear, because an occasional block is not
+happening all the time. What it did settle is that our checker is not being
+singled out: it was treated exactly like an ordinary visitor.
+
+### One thing that needs a decision from you
+
+You asked the right question when you wrote this up: if the network can drop our
+health check, can it drop a Stripe payment notification? A dropped payment
+notification is a paid order the platform never records, and nobody gets told.
+
+Vercel has a way to say "never block these addresses", and Stripe publishes the
+fifteen addresses its payment notifications come from. Fifteen fits inside the
+twenty-five we are allowed. **We have none of them set up today.**
+
+I have not done it, because it changes live infrastructure and that is yours to
+approve. It is one command and it shows you the plan before it does anything:
+
+    npm run firewall:bypass              shows what it would do, changes nothing
+    npm run firewall:bypass -- --apply   does it, then re-reads to prove it
+
+To be straight with you about the strength of the case: I have no evidence a
+Stripe notification has ever been dropped. This is a precaution against a
+mechanism I have now seen drop one connection, protecting the one path where a
+drop costs money. Low cost, small blast radius, your call.
+
+### What is fixed
+
+- **The check retries.** One dropped connection can no longer declare an outage.
+  It tries up to four times, waiting longer each time. It never retries a real
+  error page, because asking a broken site again until it answers is cheating.
+- **It says which kind of problem it is.** Six different plain sentences instead
+  of one. "The connection failed and that is not proof the site is down" is a
+  different message from "the site returned an error page", and you should not
+  have to guess which you are looking at.
+- **It checks the right version.** In the failing run, the check ran against the
+  PREVIOUS build and then judged it, because it never confirmed the new one had
+  gone live. It now waits for the site to say it is running the exact version
+  being tested, and refuses to report on anything else.
+- **The alert can no longer lose itself.** Your alert email was never delivered
+  yesterday: the email service rate-limited us and the step quietly gave up.
+  There are now two ways to reach you that do not share a limit, an email and a
+  GitHub issue, and if both fail the run says so loudly instead of going quiet.
+
+**I proved the alert works by breaking the check on purpose.** Both channels
+delivered. You may have received one email titled "EventLinqs production
+homepage smoke FAILED" and seen a GitHub issue appear and then close: that was
+the test, it was pointed at a fake address, and production was not involved. I
+closed the issue with a note explaining it.
+
+### What I found wrong in my own work, six times
+
+Every one was found by running the thing rather than reading it, and every one
+was the same mistake the whole task exists to fix: a problem wearing another
+problem's explanation.
+
+The two worth your time: a version that could not reach the site at all reported
+its check as PASSED, which would have been the original bug with a new face. And
+the new safety check I wrote crashed instead of failing cleanly, which was caught
+by the test I wrote to try to break it.
+
+### Still waiting on you, unchanged from this morning
+
+- Pull request 139, the positioning wording, open and not merged.
+- The migration command, `npm run migrate:production`, which is holding two
+  finished branches (the Scope v5 work and the event-production question).
+- The three approvals the launch readiness report needs: a test account on the
+  live site, a real card put through and refunded, and real events on production.
+
+And a new one: the firewall decision above.
