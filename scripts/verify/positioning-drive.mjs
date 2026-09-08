@@ -25,6 +25,7 @@
  * Usage:
  *   BASE=http://localhost:3311 node scripts/verify/positioning-drive.mjs --out C:/dev/EVIDENCE/POSITIONING
  */
+import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium, BASE } from '../journeys/harness.mjs'
@@ -212,9 +213,22 @@ async function run() {
     writeFileSync(join(out, 'head-tags.json'), JSON.stringify({ title, ...byKey, organization: org?.description }, null, 2))
 
     // ---- 6. The transactional email, rendered through the real builder ----
-    const { buildConfirmationEmailHtml, buildConfirmationEmailText } = await import(
-      '../../src/lib/email/order-confirmation.ts'
-    )
+    // `order-confirmation.ts` reaches for `@/lib/...`, and a bare `node` run
+    // cannot resolve that alias: the import throws ERR_MODULE_NOT_FOUND and takes
+    // the whole drive with it BEFORE these four checks run. That is how the email
+    // footer, the one place the retired strapline lived longest, went unread.
+    // So it is rendered in a child under scripts/lib/src-alias-loader.mjs, the
+    // same pattern internal-reachability and indexing-drive already use, which
+    // keeps the documented one-line command working as documented.
+    const renderScript = [
+      "import { buildConfirmationEmailHtml, buildConfirmationEmailText } from '@/lib/email/order-confirmation'",
+      'const [order, event, tickets] = JSON.parse(process.env.POSITIONING_DRIVE_EMAIL_ARGS)',
+      'process.stdout.write(JSON.stringify({',
+      "  html: buildConfirmationEmailHtml(order, event, tickets, null, 'Robin'),",
+      "  text: buildConfirmationEmailText(order, event, tickets, null, 'Robin'),",
+      '}))',
+      '',
+    ].join(String.fromCharCode(10))
     // The shapes are read off the builder's own types, never invented.
     const order = {
       id: '00000000-0000-4000-8000-00000000c0de',
@@ -241,11 +255,33 @@ async function run() {
     ]
     let emailHtml = ''
     let emailText = ''
-    try {
-      emailHtml = buildConfirmationEmailHtml(order, event, tickets, null, 'Robin')
-      emailText = buildConfirmationEmailText(order, event, tickets, null, 'Robin')
-    } catch (error) {
-      check('the confirmation email renders', false, String(error).slice(0, 160))
+    const rendered = spawnSync(
+      process.execPath,
+      [
+        '--disable-warning=MODULE_TYPELESS_PACKAGE_JSON',
+        '--import',
+        './scripts/lib/src-alias-loader.mjs',
+        '--input-type=module',
+        '-e',
+        renderScript,
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        env: { ...process.env, POSITIONING_DRIVE_EMAIL_ARGS: JSON.stringify([order, event, tickets]) },
+      },
+    )
+    if (rendered.status !== 0) {
+      check(
+        'the confirmation email renders',
+        false,
+        (rendered.stderr || rendered.stdout || 'no output').trim().slice(0, 200),
+      )
+    } else {
+      const payload = JSON.parse(rendered.stdout.slice(rendered.stdout.indexOf('{')))
+      emailHtml = payload.html
+      emailText = payload.text
+      check('the confirmation email renders', Boolean(emailHtml && emailText))
     }
     if (emailHtml) {
       check('the confirmation email HTML carries the strapline', emailHtml.includes(BRAND_STRAPLINE))
