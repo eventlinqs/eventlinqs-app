@@ -27,10 +27,39 @@
 // NAMED IMPORTS, NEVER A NAMESPACE IMPORT. `import * as Sentry` cannot be
 // tree-shaken, because the bundler must assume any property of the namespace
 // object might be read. scripts/check-client-barrel-imports.mjs blocks it.
-import { init, addIntegration, captureException } from '@sentry/nextjs'
+import { init, captureException, captureRouterTransitionStart } from '@sentry/nextjs'
+
+/**
+ * Re-exported so instrumentation-client.ts can reach it WITHOUT a second
+ * dynamic import of the @sentry/nextjs barrel.
+ *
+ * That barrel import was the leak (close-out P0.5, 8 September 2026). A dynamic
+ * `import('@sentry/nextjs')` is a NAMESPACE import: the bundler must assume any
+ * property of the namespace might be read, so it cannot tree-shake, so that one
+ * line dragged the rrweb recorder into the same chunk group. Driven proof: with
+ * Session Replay already correctly deferred to the first interaction, the
+ * recorder chunk was still fetched at 4,323 ms with no input at all, 50 ms
+ * behind the SDK core, on 2 of 2 runs. The arming was deferred; the 123.2 KB
+ * was not.
+ *
+ * A named static import shakes cleanly and lands in the core chunk that was
+ * being fetched anyway, so this costs nothing.
+ */
+export { captureRouterTransitionStart }
 import { scrubValue } from './pii-scrub'
 import { sentryEnvironment } from './sentry-env'
 import { setClientErrorSink } from './client-error-report'
+
+/**
+ * Why the SDK was loaded, decided by instrumentation-client.ts.
+ *
+ * It is passed in rather than inferred here because only the scheduler knows:
+ * 'interaction' means the visitor has already touched the page, 'timer' means
+ * the page loaded and nobody touched it, 'error' means something threw and the
+ * report must not wait. Session Replay reads it to decide whether it may start
+ * recording at once or must wait for a first interaction of its own.
+ */
+export type SentryBootReason = 'error' | 'interaction' | 'timer'
 
 /** An error the capture shim held while the SDK was still loading. */
 export type PendingError = {
@@ -47,7 +76,11 @@ export type PendingError = {
  * Returns the number of buffered errors forwarded, so the caller can assert the
  * drain actually happened rather than assuming it.
  */
-export function bootSentryClient(dsn: string, pending: PendingError[]): number {
+export function bootSentryClient(
+  dsn: string,
+  pending: PendingError[],
+  reason: SentryBootReason = 'timer',
+): number {
   init({
     dsn,
     tracesSampleRate: 0.1,
@@ -123,70 +156,65 @@ export function bootSentryClient(dsn: string, pending: PendingError[]): number {
     })
   })
 
-  armSessionReplay()
+  armSessionReplay(reason === 'interaction')
   return forwarded
 }
 
 /**
- * Arm Session Replay off the critical path.
+ * The interaction signals that arm the recorder.
  *
- * Why armed on idle and NOT on first error: replay runs in BUFFER mode here
- * (replaysSessionSampleRate 0, replaysOnErrorSampleRate 1.0). Buffer mode keeps
- * a rolling ~60s ring of DOM events so that when an error fires it can upload
- * what led up to it. That buffer only exists if the recorder was already
- * running. Sentry's documentation is explicit: if the integration is added
- * after an error has occurred there is nothing in the buffer to capture. So
- * arming on first error would report errors with no preceding context, which is
- * the entire value of on-error replay. Idle arming is the honest trade.
- *
- * The scheduling here is UNCHANGED from the previous implementation: a
- * requestIdleCallback with a 5000ms timeout, or a 2000ms setTimeout where the
- * API is missing. What moved is that the SDK itself now loads on the window
- * load event rather than at boot, so this callback is scheduled that much
- * later. The real-world width of that shift is measured, not estimated:
- * docs/perf/sentry-client-surface.md records the before and after arming times.
+ * The same four instrumentation-client.ts schedules the SDK on, and for the
+ * same reason: all four mean a person has acted on a page that has painted.
+ * `scroll` is excluded because a restored scroll position fires it with nobody
+ * involved.
  */
-function armSessionReplay() {
+const REPLAY_INTERACTION_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'wheel'] as const
+
+/**
+ * Arm Session Replay strictly off the PAINT path: never before the visitor's
+ * first interaction with the page.
+ *
+ * Why armed on an interaction and NOT on first error: replay runs in BUFFER
+ * mode here (replaysSessionSampleRate 0, replaysOnErrorSampleRate 1.0). Buffer
+ * mode keeps a rolling ~60s ring of DOM events so that when an error fires it
+ * can upload what led up to it. That buffer only exists if the recorder was
+ * already running. Sentry's documentation is explicit: if the integration is
+ * added after an error has occurred there is nothing in the buffer to capture.
+ * So arming on first error would report errors with no preceding context, which
+ * is the entire value of on-error replay.
+ *
+ * WHAT THIS COSTS, SAID PLAINLY. An error that happens BEFORE the visitor has
+ * touched the page now has no replay attached. The error itself is reported in
+ * full, with its stack, exactly as before; what is missing is a recording of a
+ * page nobody had yet interacted with.
+ *
+ * WHY THAT TRADE (close-out P0.5, 8 September 2026). The previous schedule was
+ * requestIdleCallback with a 5,000 ms timeout, which reads as "off the critical
+ * path" and is not: an idle callback fires during the quiet a throttled device
+ * has WHILE the hero is still being painted. Measured on the deployed preview
+ * with scripts/perf/chunk-cost-table.mjs and Lighthouse 12.6.1, on
+ * /events/cat-indie-sounds-live-at-the-enmore-sydney: the recorder is 123.2 KB
+ * transferred and 413 ms of script evaluation, 70% of it never executed, and it
+ * was evaluating inside the Largest Contentful Paint window - a 270 ms long
+ * task at 4,079 ms against an LCP of 4,382 ms whose Render Delay was 2,403 ms.
+ * Every visitor paid that on every page load, and that page scored 0.79 against
+ * the launch gate's 0.80 floor.
+ *
+ * P0.5 set the bar in the owner's own words: "either remove it, or load it
+ * lazily and strictly off the critical path so it costs nothing before first
+ * interaction." This is the second of those. Nothing is removed.
+ *
+ * @param userHasInteracted true when the SDK itself was booted BY an
+ *   interaction, in which case waiting for a second one would only widen the
+ *   window in which there is no buffer.
+ */
+function armSessionReplay(userHasInteracted: boolean) {
   if (typeof window === 'undefined') return
 
   const load = () =>
-    import('@sentry/nextjs')
-      .then(({ replayIntegration }) => {
-        addIntegration(
-          replayIntegration({
-            // MASKING RESTORED TO SENTRY'S DEFAULTS (both default to true; this
-            // call previously set both to false, which disabled them).
-            //
-            // WHY. beforeSend does NOT apply to Session Replay. Sentry documents
-            // a separate hook for that, beforeAddRecordingEvent, and there was
-            // none here, so the scrubValue discipline that protects every error
-            // event did not cover replays at all. With replaysOnErrorSampleRate
-            // at 1.0, every error uploaded a recording of the preceding ~60s of
-            // DOM, with text unmasked.
-            //
-            // What that DOM contains on this platform is other people's personal
-            // data: the organiser attendee list and orders table render buyer
-            // names and email addresses, the ticket page renders a ticket code,
-            // and checkout renders a name and email. So an error on any of those
-            // screens shipped buyer PII to a third party as readable text.
-            // Sentry's own guidance for maskAllText: false is to use it "only if
-            // your site has no sensitive data". This site is almost entirely
-            // other people's data.
-            //
-            // ASVS 14.2.3 (sensitive data must not be sent to untrusted parties)
-            // and 16.2.5 (logging enforced by the data's protection level).
-            //
-            // COST, stated honestly: replays now show masked text, so a replay
-            // localises a fault to an element rather than showing the exact
-            // value. Recovering fidelity is a matter of adding `unmask`/`unblock`
-            // selectors for regions PROVEN to hold no personal data, which is
-            // safe because it is opt-in per element. Turning masking off
-            // wholesale is not, because it is opt-out for the entire product.
-            maskAllText: true,
-            blockAllMedia: true,
-          }),
-        )
-        markReplayArmed()
+    import('./sentry-session-replay')
+      .then(({ addSessionReplay }) => {
+        addSessionReplay()
       })
       .catch(() => {
         // Replay is best-effort telemetry. A failed chunk fetch (offline,
@@ -194,27 +222,14 @@ function armSessionReplay() {
         // error reporting that still works without it.
       })
 
-  // Property-level typeof rather than `'x' in window`: the `in` form narrows
-  // `window` itself to never in the else branch, because lib.dom declares
-  // requestIdleCallback as always present.
-  if (typeof window.requestIdleCallback === 'function') {
-    window.requestIdleCallback(load, { timeout: 5000 })
-  } else {
-    window.setTimeout(load, 2000)
+  if (userHasInteracted) {
+    load()
+    return
   }
-}
 
-/**
- * Leave a performance mark when Replay actually starts recording.
- *
- * This exists so the no-buffer window is a measured number rather than a
- * guess. scripts/verify/sentry-replay-window.mjs reads it. The mark is free
- * (User Timing is already collected) and carries no PII.
- */
-function markReplayArmed() {
-  try {
-    performance.mark('el:sentry-replay-armed')
-  } catch {
-    // User Timing is not load-bearing. Never let telemetry break the page.
+  const onFirstInteraction = () => {
+    for (const name of REPLAY_INTERACTION_EVENTS) window.removeEventListener(name, onFirstInteraction)
+    load()
   }
+  for (const name of REPLAY_INTERACTION_EVENTS) window.addEventListener(name, onFirstInteraction, { passive: true })
 }

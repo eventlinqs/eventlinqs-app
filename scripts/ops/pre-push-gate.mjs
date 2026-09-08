@@ -103,6 +103,38 @@ const ZERO_SHA = /^0{40}$/
 const nonEmpty = (v) => typeof v === 'string' && v.trim().length > 0
 
 /**
+ * THE CLIENT-SDK PARITY DSN. Close-out P0.2: "If local says pass and CI says
+ * fail, the local gate is lying and that is a defect in the gate."
+ *
+ * It was lying, and this is the mechanism. `NEXT_PUBLIC_SENTRY_DSN` is inlined
+ * into the CLIENT bundle at build time, and instrumentation-client.ts refuses
+ * to load the SDK at all when it is empty. On the founder's machine .env.local
+ * carries `NEXT_PUBLIC_SENTRY_DSN=""`, so every local gate build shipped a
+ * browser bundle with no error-reporting SDK in it, while every Vercel preview
+ * CI measures ships one.
+ *
+ * MEASURED, 8 September 2026, on the deployed preview of main's tree
+ * (scripts/perf/chunk-cost-table.mjs, run 34188084768's preview): the SDK and
+ * its Session Replay recorder are 217.8 KB of the event page's 439.0 KB of
+ * script, arrive by dynamic import, and carry 644 ms of script evaluation. The
+ * local gate could not see one byte of it. That is the whole of the 5 to 15
+ * point gap this repository kept recording between the local gate and the
+ * runner, and it meant the local Lighthouse step could go green on a build
+ * nobody deploys.
+ *
+ * WHY A SYNTHETIC ONE AND NOT THE REAL ONE. The cost being measured is bytes
+ * and main-thread evaluation, which the SDK pays identically whatever the DSN
+ * points at. A real DSN would send this machine's audit traffic to the
+ * founder's production Sentry project, which is the exact failure
+ * shouldInitSentry() was written to prevent. `.invalid` is reserved by RFC 2606
+ * and can never resolve, so the SDK loads, parses, evaluates and arms exactly
+ * as it does in production, and its first attempt to send goes nowhere.
+ *
+ * A DSN ALREADY IN THE ENVIRONMENT ALWAYS WINS. This only fills a hole.
+ */
+export const PARITY_SENTRY_DSN = 'https://0000000000000000000000000000000a@sdk-parity.invalid/1'
+
+/**
  * The repository's env-file shape, the same parse C:\dev\serve.ps1 and the
  * production-write preflight use: comments and blank lines skipped, one pair
  * per line, surrounding quotes stripped, an empty value is no value.
@@ -124,15 +156,29 @@ export function parseEnvFile(text) {
   return out
 }
 
-/** The environment a step runs in: git variables cleared, and .env.local for the steps that read the database. */
-function envFor(kind) {
-  const base = { ...gitEnv(), NEXT_TELEMETRY_DISABLED: '1' }
+/**
+ * The environment a step runs in: git variables cleared, and .env.local for the
+ * steps that read the database.
+ *
+ * @param {string} kind 'local' to merge .env.local, anything else for a plain shell.
+ * @param {{ root?: string, shell?: Record<string, string | undefined> }} [options]
+ *   Injection seams for the tests: which tree's .env.local to read, and what to
+ *   treat as the ambient shell. Neither is passed in real use.
+ * @returns {Record<string, string | undefined>}
+ */
+export function envFor(kind, { root = ROOT, shell = /** @type {Record<string, string | undefined>} */ (gitEnv()) } = {}) {
+  const base = { ...shell, NEXT_TELEMETRY_DISABLED: '1' }
   if (kind !== 'local') return base
-  const file = join(ROOT, '.env.local')
-  if (!existsSync(file)) return base
-  for (const [name, value] of Object.entries(parseEnvFile(readFileSync(file, 'utf8')))) {
-    if (base[name] === undefined) base[name] = value
+  const file = join(root, '.env.local')
+  if (existsSync(file)) {
+    for (const [name, value] of Object.entries(parseEnvFile(readFileSync(file, 'utf8')))) {
+      if (base[name] === undefined) base[name] = value
+    }
   }
+  // See PARITY_SENTRY_DSN. Without this the local build ships a browser bundle
+  // CI never measures, and the local Lighthouse step judges a page that is
+  // 217.8 KB lighter than the one that deploys.
+  if (!nonEmpty(base.NEXT_PUBLIC_SENTRY_DSN)) base.NEXT_PUBLIC_SENTRY_DSN = PARITY_SENTRY_DSN
   return base
 }
 
@@ -805,6 +851,12 @@ async function main() {
   console.log('='.repeat(72))
   console.log(`[gate] pre-push gate on ${headLine()}, node ${process.versions.node}`)
   console.log('='.repeat(72))
+  if (envFor('local').NEXT_PUBLIC_SENTRY_DSN === PARITY_SENTRY_DSN) {
+    console.log('[gate] no NEXT_PUBLIC_SENTRY_DSN in the environment, so the build uses the parity DSN')
+    console.log(`[gate]   ${PARITY_SENTRY_DSN} (RFC 2606 reserved, cannot resolve, sends nothing anywhere)`)
+    console.log('[gate]   The client SDK therefore loads and evaluates here exactly as it does on a preview,')
+    console.log('[gate]   which is what CI measures. Without it this gate judges a bundle nobody deploys.')
+  }
   const push = classifyPush(refsText, treeHasPackageJson)
   if (push.verdict === 'skip') {
     console.log(`[gate] SKIPPED: ${push.reason}`)

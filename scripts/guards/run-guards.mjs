@@ -141,6 +141,11 @@
  *                              can be refused by our own rate limiter, no cron limiter fails
  *                              closed, and the project's live Vercel System Bypass rules match
  *                              what scripts/guards/lib/firewall-bypass-expected.json records (H2.1)
+ *   sentry-off-the-paint-path the error-reporting SDK boots on a held error, a first
+ *                              interaction or a post-load timer, and the Session Replay
+ *                              recorder is never fetched before a first interaction:
+ *                              measured at 217.8 KB and 644 ms inside the LCP window
+ *                              when it was scheduled on `load` (close-out P0.5)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -844,6 +849,13 @@ const GUARDS = [
   // the reviewed record of every machine caller complete in both directions, and
   // reads the project's live System Bypass rules when it has a token.
   'scripts/guards/machine-callers-reachable.mjs',
+  // Close-out P0.5 (8 September 2026): the error-reporting SDK was moved off the
+  // BOOT path in August and stayed on the PAINT path, because `load` fires long
+  // before the hero paints on a throttled mobile. Measured on the deployed
+  // preview: 217.8 KB of the event page's 439.0 KB of script and 644 ms of main
+  // thread, evaluating at 3,180 ms and 4,079 ms against an LCP of 4,382 ms. That
+  // page scored 0.79 against the gate's 0.80 floor. Drilled red and green.
+  'scripts/guards/sentry-off-the-paint-path.mjs',
 ]
 
 /**

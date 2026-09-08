@@ -47,8 +47,31 @@ const readCode = (rel: string) =>
     .replace(/\/\/[^\n]*/g, ' ')
 
 describe('Session Replay does not ship readable personal data to Sentry', () => {
-  const code = readCode('src/lib/observability/sentry-client-boot.ts')
-  const src = read('src/lib/observability/sentry-client-boot.ts')
+  /*
+   * THE RECORDER MOVED, AND THIS TEST MOVED WITH IT (close-out P0.5, 8 September
+   * 2026). replayIntegration() used to be constructed in sentry-client-boot.ts.
+   * It now lives in src/lib/observability/sentry-session-replay.ts, so that the
+   * rrweb recorder gets a chunk of its own and cannot be dragged onto the paint
+   * path by a barrel import.
+   *
+   * NOTHING HERE IS RELAXED. The same three assertions are made against the file
+   * that now constructs the integration, plus a fourth: the masking options may
+   * appear in exactly ONE file, so this test can never again be pointed at a
+   * file that no longer decides anything while a second one quietly does.
+   */
+  const RECORDER = 'src/lib/observability/sentry-session-replay.ts'
+  const code = readCode(RECORDER)
+  const src = read(RECORDER)
+
+  it('constructs the integration in exactly one file, which is the file asserted below', () => {
+    const others = ['src/lib/observability/sentry-client-boot.ts', 'instrumentation-client.ts']
+    for (const other of others) {
+      expect(readCode(other), `${other} must not construct replayIntegration()`).not.toMatch(
+        /replayIntegration\s*\(/,
+      )
+    }
+    expect(code).toMatch(/replayIntegration\s*\(/)
+  })
 
   it('masks all text', () => {
     expect(code).toMatch(/maskAllText:\s*true/)
@@ -64,9 +87,12 @@ describe('Session Replay does not ship readable personal data to Sentry', () => 
 
   it('still scrubs ordinary error events through the PII scrubber', () => {
     // The replay fix must not be mistaken for the error-event control. Both are
-    // required, and this one was already correct.
-    expect(src).toContain('scrubValue')
-    expect(src).toMatch(/beforeSend\(/)
+    // required, and this one was already correct. It is asserted against the
+    // BOOT module, which is where init() and beforeSend() live and always did;
+    // splitting the recorder out did not move the error path.
+    const boot = read('src/lib/observability/sentry-client-boot.ts')
+    expect(boot).toContain('scrubValue')
+    expect(boot).toMatch(/beforeSend\(/)
   })
 
   it('records WHY masking is on, so it is not switched off for convenience', () => {

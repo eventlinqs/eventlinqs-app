@@ -454,7 +454,7 @@ const nextConfig: NextConfig = {
     // Statsig, Unleash). All four packages declare sideEffects:false with real
     // ESM entries, so the chain is shakeable in principle. Whether it actually
     // shakes under Turbopack is MEASURED, never assumed: the numbers and the
-    // verdict are in docs/perf/sentry-client-surface.md.
+    // verdict are in docs/roast/sentry-client-surface-2026-08-05.md.
     optimizePackageImports: [
       'lucide-react',
       '@tanstack/react-query',

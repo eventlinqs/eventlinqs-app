@@ -118,8 +118,13 @@ await page.evaluate((marker) => {
 }, MARKER)
 
 await page.waitForLoadState('load', { timeout: 90000 }).catch(() => {})
-// The SDK loads on window load and drains immediately; allow generous room for
-// the held chunk to arrive, the drain to run, and the envelope to leave.
+// A HELD ERROR BOOTS THE SDK AT ONCE (close-out P0.5, 8 September 2026). Before
+// that change the SDK waited for the window load event and this script waited
+// with it; now the throw above is itself the trigger, so the chunk is already on
+// its way by the time load fires. The generous window stays: it has to cover the
+// held chunk arriving, the drain running and the envelope leaving, and being
+// generous here costs seconds while being tight here produced two false
+// failures that had nothing to do with the code under test.
 await page.waitForTimeout(15000)
 console.log(`held back SDK chunk: ${heldChunk ?? '(none seen)'} for ${SDK_DELAY_MS}ms`)
 
