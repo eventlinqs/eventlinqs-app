@@ -36,21 +36,42 @@
  *   5. ALL SIXTEEN ARE THERE, AND ONLY THOSE SIXTEEN. A missing row is a journey
  *      nobody adjudicated, and an extra row is a journey L1 does not contain.
  *
- * WHERE IT DOES NOT RUN, said plainly. The report lives under docs/, which
- * .vercelignore strips from the deployment upload, so on the Vercel build host
- * the file is legitimately absent. An ABSENT docs/verification DIRECTORY is that
- * environment and is a SKIP by name; a present directory with the report missing
- * is the file having been deleted, and is a FAIL. This file is therefore
- * registered as TOLERANT in vercelignore-covers-guard-reads.mjs rather than
- * re-included, because the fault it catches is committed on a developer machine
- * and caught by the pre-push gate and by CI, both of which have the whole tree.
- * Vercel would add nothing and could only fail for a file it was never sent.
+ * WHERE IT DOES NOT RUN, said plainly, and this paragraph is the second version
+ * of itself because the first one was wrong and blocked a deployment.
+ *
+ * The report lives under docs/, which .vercelignore strips from the deployment
+ * upload, so on the Vercel build host the file is legitimately absent. The test
+ * used to be "is the docs/verification DIRECTORY absent", on the assumption that
+ * an ignored directory does not arrive. IT DOES ARRIVE. Vercel deletes the
+ * matched FILES and leaves the directory tree standing, which its own build log
+ * says in as many words: .vercelignore names `.git`, and the removal enumerated
+ * /.git/config, /.git/description and the hook samples INSIDE it. So on 8
+ * September 2026 the deployment of 7564b40 found docs/verification present and
+ * empty, read that as "somebody deleted the report", and blocked the build.
+ *
+ * The test is now the two facts that actually distinguish the two environments,
+ * neither of them inferred:
+ *   - the tree is not a git checkout (the Vercel host unpacks a tarball with no
+ *     .git; every git-reading guard printed "fatal: not a git repository" in that
+ *     same build log), AND
+ *   - docs/verification holds no file at any depth (the stripped shape).
+ * Both together are the upload and nothing else. A developer or a CI runner
+ * deleting the report still has a .git, so it still FAILS there, which is the
+ * whole point of the guard.
+ *
+ * This file is registered as TOLERANT in vercelignore-covers-guard-reads.mjs
+ * rather than re-included, because the fault it catches is committed on a
+ * developer machine and caught by the pre-push gate and by CI, both of which
+ * hold the whole tree. Vercel would add nothing and could only fail for a file
+ * it was never sent. That claim is no longer prose: it is executed against a
+ * materialised upload by tolerant-guards-survive-the-upload.mjs.
  *
  * Run: node scripts/guards/launch-readiness-honest.mjs
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
+import { holdsNoFile, isGitCheckout } from './lib/vercel-upload.mjs'
 import {
   ITEMS,
   REPORT_PATH,
@@ -68,9 +89,9 @@ const fail = (m) => {
   console.error(`${TAG} FAIL: ${m}`)
 }
 
-if (!existsSync(join(ROOT, DOCS_DIR))) {
+if (!isGitCheckout(ROOT) && holdsNoFile(join(ROOT, DOCS_DIR))) {
   console.log(
-    `${TAG} SKIP - ${DOCS_DIR} is not on this machine, which is the Vercel build host: .vercelignore strips docs/ from the upload.`,
+    `${TAG} SKIP - this tree is not a git checkout and ${DOCS_DIR} holds no file at any depth, which is the Vercel build host: .vercelignore strips docs/ from the upload and leaves the empty directories behind.`,
   )
   console.log(`${TAG}   This guard is a real gate on the pre-push gate and in CI, where the whole tree is present.`)
   process.exit(0)
@@ -82,7 +103,7 @@ for (const f of judgementFaults) fail(f)
 
 if (!existsSync(join(ROOT, REPORT_PATH))) {
   fail(
-    `${REPORT_PATH} is missing, and ${DOCS_DIR} is present, so it was deleted rather than stripped. ` +
+    `${REPORT_PATH} is missing from a tree the strip test did not excuse, so it was deleted rather than stripped. ` +
       'Close-out L5 requires it. Run: node scripts/verify/launch-readiness.mjs --write',
   )
 } else {

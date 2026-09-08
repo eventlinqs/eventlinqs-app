@@ -1019,9 +1019,21 @@ const ROOT = join(HERE, '..', '..')
  * including that it is byte-stable, which is the property the guard's comparison
  * depends on:
  * 333 files / 3846, as the canary measured.
+ *
+ * 2026-09-09: raised 333/3846 -> 334/3866, MEASURED by running the suite, not
+ * calculated. One file, tests/unit/guards/vercel-upload.test.ts, 20 tests, added
+ * with the fix for the fourth deployment lost to .vercelignore. Six prove the
+ * ignore grammar (a bare name at any depth, the rule that a file inside an
+ * excluded directory can never be re-included, the walk-down that actually
+ * re-includes one, comments, and a refusal for every pattern outside the
+ * grammar); four prove the MECHANISM that cost the deployment, chiefly that an
+ * ignored file is stripped while its DIRECTORY is left standing, which is why
+ * "the directory is absent" was the wrong test for the build host; five prove
+ * the two-fact discriminator that replaced it; and four hold the shared registry
+ * the two guards read, so the required and the tolerant halves cannot rot apart.
  */
-const MIN_FILES = 333
-const MIN_TESTS = 3846
+const MIN_FILES = 334
+const MIN_TESTS = 3866
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

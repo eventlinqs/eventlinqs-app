@@ -325,6 +325,31 @@ const DRILLS = [
     expect: 'docs/scope/community-layer-approved-v2.json is read by scripts/guards/community-layer-protected.mjs',
   },
   /*
+   * tolerant-guards-survive-the-upload (8 September 2026), two drills. The first
+   * is the real regression, restored exactly: launch-readiness-honest.mjs testing
+   * for an ABSENT docs/verification instead of the two facts that identify the
+   * build host. That is the code that was on 7564b40, and it killed the preview
+   * deployment while the local gate stayed green, which is the whole reason this
+   * guard exists. The second is registry rot, the failure mode every reviewed
+   * list in this repository is drilled for.
+   */
+  {
+    name: 'a tolerant guard goes back to testing for an absent directory, and dies on the real upload',
+    guard: `${GUARDS}/tolerant-guards-survive-the-upload.mjs`,
+    file: 'scripts/guards/launch-readiness-honest.mjs',
+    find: 'if (!isGitCheckout(ROOT) && holdsNoFile(join(ROOT, DOCS_DIR))) {',
+    replace: 'if (!existsSync(join(ROOT, DOCS_DIR))) {',
+    expect: 'exits 1 in the stripped upload',
+  },
+  {
+    name: 'a reviewed-tolerant entry outlives the script it reviews',
+    guard: `${GUARDS}/tolerant-guards-survive-the-upload.mjs`,
+    file: 'scripts/guards/lib/vercelignore-registry.mjs',
+    find: "  'scripts/guards/one-fee-copy.mjs':",
+    replace: "  'scripts/guards/one-fee-copy-renamed-and-nobody-updated-this.mjs':",
+    expect: 'names a file that is not in the tree',
+  },
+  /*
    * community-layer-protected (close-out C18 FINAL), two drills: a faith page lost
    * from the source, and an approved community left unrecorded.
    */

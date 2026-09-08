@@ -133,6 +133,10 @@
  *   vercelignore-covers-guard-reads every docs/ file a prebuild script reads survives
  *                              .vercelignore, walked down level by level, and every docs/
  *                              literal in a build-time script is required or reviewed (C18 FINAL)
+ *   tolerant-guards-survive-the-upload  and every script that guard reviews as TOLERANT of
+ *                              an absent docs/ is EXECUTED in a materialised .vercelignore
+ *                              upload, because a rationale is prose and prose does not run:
+ *                              one of them was wrong and blocked the deployment of 7564b40
  *   indexing-policy           every page route is classified in the indexing policy, every
  *                              never route resolves to noindex, every indexable page names
  *                              its own canonical, the root layout names none, and the
@@ -889,6 +893,11 @@ const GUARDS = [
   // Close-out C18 FINAL, the same day: a guard that reads under docs/ must survive
   // .vercelignore, or it passes locally and kills every Vercel build (third time).
   'scripts/guards/vercelignore-covers-guard-reads.mjs',
+  // The fourth occurrence of that same defect, 8 September 2026: the guard above
+  // accepts a WRITTEN RATIONALE for a script declared tolerant of an absent docs/,
+  // one of those rationales was wrong, and the deployment of 7564b40 died on it.
+  // This one materialises the upload and RUNS each tolerant script inside it.
+  'scripts/guards/tolerant-guards-survive-the-upload.mjs',
   // Close-out C19 (8 September 2026): the indexing policy is the one place that says
   // what may be indexed, and the tree must keep agreeing with it. Google Search
   // Console had been reporting the disagreement back for weeks.

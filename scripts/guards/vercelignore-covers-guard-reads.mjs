@@ -44,41 +44,18 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
+import { makeJudgeIgnored, parseVercelIgnore } from './lib/vercelignore.mjs'
+import { REQUIRED_READS, TOLERANT_FILES } from './lib/vercelignore-registry.mjs'
 
 const ROOT = process.cwd()
 const TAG = '[vercelignore-covers-guard-reads]'
 const IGNORE_FILE = '.vercelignore'
 
-/**
- * docs/ files the prebuild chain reads and cannot do without. The reason names
- * the reader. Adding a docs/ read to a guard means adding it here AND walking it
- * down in .vercelignore; this guard fails until both are done.
+/*
+ * REQUIRED_READS and TOLERANT_FILES now live in ./lib/vercelignore-registry.mjs,
+ * because tolerant-guards-survive-the-upload.mjs executes the tolerant half and
+ * two copies of one list is how the two guards would come to disagree.
  */
-const REQUIRED_READS = {
-  'docs/PRICING.md':
-    'src/lib/health/pricing-lock.mjs (scripts/check-pricing-lock.mjs in prebuild) parses every locked fee figure from it',
-  'docs/scope/community-layer-approved.json':
-    'scripts/guards/community-layer-protected.mjs judges the source and the database against it (close-out C18 FINAL)',
-}
-
-/**
- * Build-time scripts that name docs/ paths but are correct when docs/ is absent:
- * each ran and PASSED in the Vercel build of 718d93b on 7 September 2026, where
- * the whole of docs/ except the two re-included files was missing.
- */
-const TOLERANT_FILES = {
-  'scripts/guards/one-fee-copy.mjs':
-    'names docs/ directories to skip and authority documents to exclude from the copy scan; it walks what exists',
-  'scripts/guards/positioning-lock.mjs':
-    'the sibling of one-fee-copy: it names docs/marketing as a scan root and five docs/ directories to exclude as dated records, and walks what exists (its walk() returns empty on ENOENT and it reports the file count it scanned)',
-  'scripts/guards/no-plaintext-credential.mjs':
-    'names docs/ files only inside its reviewed-redaction allowlist, as reasons; an absent file is simply not scanned',
-  'scripts/guards/sourced-specifications.mjs':
-    'names a docs/ file only inside its reviewed baseline; the baseline is reported, never required to match',
-  'scripts/guards/launch-readiness-honest.mjs':
-    'reads docs/verification/LAUNCH-READINESS.md and the artefacts beside it, and SKIPS by name when docs/verification is absent, which is exactly the stripped upload; the fault it catches is committed on a developer machine and is caught by the pre-push gate and by CI, both of which hold the whole tree',
-}
-
 const SCAN_DIRS = ['scripts/guards', 'scripts/guards/lib', 'src/lib/health']
 const SCAN_FILES = ['scripts/prebuild-fixture.mjs']
 
@@ -94,80 +71,12 @@ const fail = (m) => {
 if (!existsSync(join(ROOT, IGNORE_FILE))) {
   fail(`${IGNORE_FILE} is missing from the repository root`)
 }
-const rawLines = existsSync(join(ROOT, IGNORE_FILE)) ? readFileSync(join(ROOT, IGNORE_FILE), 'utf8').split(/\r?\n/) : []
+const ignoreText = existsSync(join(ROOT, IGNORE_FILE)) ? readFileSync(join(ROOT, IGNORE_FILE), 'utf8') : ''
+const { rules, errors: ignoreErrors } = parseVercelIgnore(ignoreText)
+for (const e of ignoreErrors) fail(`${IGNORE_FILE} ${e}`)
 
-/** @type {Array<{ negate: boolean, dirOnly: boolean, pattern: string, kind: 'name' | 'exact' | 'children', line: number }>} */
-const rules = []
-rawLines.forEach((line, i) => {
-  const text = line.trim()
-  if (text === '' || text.startsWith('#')) return
-  let negate = false
-  let pattern = text
-  if (pattern.startsWith('!')) {
-    negate = true
-    pattern = pattern.slice(1)
-  }
-  let dirOnly = false
-  if (pattern.endsWith('/')) {
-    dirOnly = true
-    pattern = pattern.slice(0, -1)
-  }
-  if (pattern.startsWith('/')) pattern = pattern.slice(1)
-  if (pattern.includes('**') || pattern.includes('[') || pattern.includes('?') || pattern.includes('{')) {
-    fail(`${IGNORE_FILE} line ${i + 1} "${text}" uses a pattern this guard does not evaluate; keep to name, path, and path/*`)
-    return
-  }
-  let kind = 'exact'
-  if (pattern.endsWith('/*')) {
-    kind = 'children'
-    pattern = pattern.slice(0, -2)
-    if (pattern.includes('*')) {
-      fail(`${IGNORE_FILE} line ${i + 1} "${text}" has a wildcard somewhere other than its last segment`)
-      return
-    }
-  } else if (pattern.includes('*')) {
-    fail(`${IGNORE_FILE} line ${i + 1} "${text}" has a wildcard somewhere other than a final /*`)
-    return
-  } else if (!pattern.includes('/')) {
-    kind = 'name'
-  }
-  rules.push({ negate, dirOnly, pattern, kind, line: i + 1 })
-})
-
-/** Does one rule match this path (a directory or a file)? */
-function matches(rule, path, isDir) {
-  if (rule.dirOnly && !isDir) return false
-  if (rule.kind === 'exact') return path === rule.pattern
-  if (rule.kind === 'children') {
-    return path.startsWith(`${rule.pattern}/`) && !path.slice(rule.pattern.length + 1).includes('/')
-  }
-  // A bare name matches that segment at any depth.
-  return path.split('/').includes(rule.pattern)
-}
-
-/** Last matching rule wins for one path, as in gitignore. */
-function ownStatus(path, isDir) {
-  let ignored = false
-  for (const rule of rules) {
-    if (matches(rule, path, isDir)) ignored = !rule.negate
-  }
-  return ignored
-}
-
-/**
- * A path is ignored when its own last rule excludes it, OR when any ancestor
- * directory is ignored: gitignore never re-includes a file inside an excluded
- * directory, and Vercel inherits that rule. Returns the ancestor that sealed it,
- * so the message can say where the walk-down is missing.
- */
-export function judgeIgnored(path) {
-  const parts = path.split('/')
-  for (let depth = 1; depth < parts.length; depth++) {
-    const ancestor = parts.slice(0, depth).join('/')
-    if (ownStatus(ancestor, true)) return { ignored: true, by: `its directory ${ancestor}/ is excluded and never re-included` }
-  }
-  return ownStatus(path, false) ? { ignored: true, by: 'its own last matching rule excludes it' } : { ignored: false, by: '' }
-}
+/** A path is ignored by its own last matching rule, or by an excluded ancestor. */
+const judgeIgnored = makeJudgeIgnored(rules)
 
 // ---------------------------------------------------------------------------
 // 2. Scan the build-time scripts for docs/ literals.
@@ -232,7 +141,7 @@ for (const [path, reason] of Object.entries(REQUIRED_READS)) {
   console.log(`${TAG}   ${v.ignored ? 'EXCLUDED ' : 'included '} ${path}`)
   console.log(`${TAG}       ${reason}`)
 }
-console.log(`${TAG} TOLERANT build-time scripts (reviewed, each PASSED on Vercel with docs/ absent):`)
+console.log(`${TAG} TOLERANT build-time scripts (reviewed, and EXECUTED in a materialised upload by tolerant-guards-survive-the-upload.mjs):`)
 for (const [file, reason] of Object.entries(TOLERANT_FILES)) {
   console.log(`${TAG}   ${file}`)
   console.log(`${TAG}       ${reason}`)
