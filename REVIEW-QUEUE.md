@@ -1775,3 +1775,91 @@ Your scope asks for the JavaScript on a page to be under 200 KB. It was 439 KB o
 the event page, it is now 307 KB, and that is not under 200 KB. What is left is
 React itself and the error reporting, and both are decisions rather than fixes, so
 I have written them down instead of making them on your behalf.
+
+## I need one decision from you, and it is the only thing blocking me
+
+### What happened, short version
+
+I raised the speed bar this afternoon so the improvement could not be given back.
+A few hours later the bar rejected a piece of finished work. I checked, and it
+also rejects **the code that is live on your site right now**, which had passed
+the same bar three times earlier the same day.
+
+Nothing is broken. Your site is fine and fast. The bar is the problem.
+
+### Why
+
+There is one piece of code, the error reporting, that starts up three seconds
+after a page finishes loading and takes between 0.2 and 0.45 of a second of work.
+
+The speed test stops watching at roughly the same moment. So sometimes it sees
+that work and sometimes it does not, and the page scores 15 points differently
+depending on which happens. I proved it by running the same page five times and
+recording each run:
+
+    run 1   saw it        score 83
+    run 2   saw it        score 76
+    run 3   saw it        score 72
+    run 4   saw it        score 84
+    run 5   did NOT see it   score 87
+
+That is the same page, the same code, five minutes apart.
+
+The three measurements I set the bar from all happened to be runs like number 5.
+That was my mistake: three readings that agree are not a stable measurement if
+they all landed the same way by chance.
+
+### It is not your laptop
+
+I checked that first, because it is the easy answer. I measured the machine with
+the speed test's own built-in benchmark: it reads 1,222 to 1,993, and anything
+over 1,000 is described by the tool as desktop class. The machine is fine.
+
+### What I am NOT doing
+
+I am not lowering the bar to get moving again. I wrote the rule this afternoon
+that says the bar only ever goes up, and me granting myself an exception to my
+own rule six hours later is exactly what that rule exists to stop. So I have
+stopped and I am asking you.
+
+### Your two options
+
+**Option 1: correct the bar, keep everything else.**
+Re-derive the numbers from ALL the readings instead of the lucky ones. Some
+numbers go down from where I put them this afternoon, but they still end up well
+above where they were this morning for most pages. Cost: about half an hour, no
+product change, no risk.
+
+**Option 2: change when the error reporting starts, keep the bar where it is.**
+Right now it starts on a timer three seconds after load. It also starts instantly
+whenever an actual error happens, and instantly when someone touches the page, so
+**no error report depends on the timer** (I checked the code rather than assuming
+it). If the timer goes, pages get 0.2 to 0.45 of a second of work back, the
+measurement stops being a coin toss, and the raised bar stands.
+
+What you would lose: performance data from visitors who arrive, do not touch
+anything, hit no error, and leave. That is the bounce cohort, and it is arguably
+the group whose slowness you would most want to see. I nearly recommended this as
+free and then checked the setting and found it is not free.
+
+**My recommendation: Option 1**, then treat the error reporting's 0.2 to 0.45 of
+a second as its own piece of work later, on its merits, rather than deciding it
+under pressure to unblock a push.
+
+Reply with "option 1" or "option 2" and I will do it and carry on.
+
+### What is waiting on that answer
+
+Nothing can be pushed until it is settled, because the check runs on every push.
+Two finished things are queued behind it:
+
+- The positioning wording, pull request 139, rebased and ready.
+- A small improvement I made tonight: the speed check now records how fast the
+  machine was when it measured, so a slow laptop and a slow website can never
+  again look identical in the report.
+
+### Unchanged from before
+
+- The migration command, `npm run migrate:production`, still holding two branches.
+- Approval for a test account, a real card, and real events on the live site.
+- The firewall decision.

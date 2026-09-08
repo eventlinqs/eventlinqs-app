@@ -1350,3 +1350,30 @@ neither remaining item is a tuning change.
 | Branch hygiene | MET. perf/h3-initial-bundle deleted on the remote by the merge and pruned locally; `git branch -a` carries no ref to it | git branch -a |
 
 H3's own condition, "Land that ONE branch. Every gated URL must pass 0.80 at MEDIAN with headroom", is MET, and the floor now stands at 0.85 to 0.91 rather than 0.80, held by a registered guard and a test.
+
+## P0.7 REOPENED BY ITS OWN GATE (9 September 2026, session 47): the floors are unholdable on the local instrument, and the reason is measured
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| The raised floors hold on the runner | MET, twice. Run 34216666264 on ddc855c6, medians 93 to 98 against floors of 0.85 to 0.91, accessibility and best practices 1.00, layout shift 0.000. CI is not in question | C:\dev\EVIDENCE\H3\ci-lighthouse-ratchet-34216666264.txt |
+| The raised floors hold on the LOCAL gate | NOT MET. Four consecutive collections refused them, on TWO trees. The decisive one is MAIN'S OWN TREE, c9a12d92, the commit these floors were derived from and which passed them three times the same afternoon: event pages 79 to 84 against 0.85, /organisers 86 to 88 against 0.88, /community/african 84 to 86 against 0.88 | C:\dev\EVIDENCE\H3\gate-refused-main-control.txt, gate-refused-rebase-collection1.txt |
+| The positioning branch is not the cause | PROVEN, not argued. Main measures the same way. The branch was rebased, the canary re-measured at 330 files / 3792 tests rather than added up, tsc 0, 81 of 81 guards PASS | git log feat/positioning-lock |
+| The machine is not the cause | PROVEN. Lighthouse's own BenchmarkIndex, lifted from the installed package: 1222 at idle, 1624 to 1993 during real Chrome audits. Lighthouse's own scale calls 1000+ desktop class. 38 Chrome processes checked and all are the owner's browser, none headless leftovers; one node process, my own server; no orphans; CPU at its rated clock | scripts/perf/machine-speed.mjs |
+| The cause, driven rather than reasoned | The error-reporting SDK boots on a 3,000 ms post-load timer and its evaluation lands ON the gather-window boundary. Five warmed audits of one event page: four saw a 207 to 455 ms long task from the SDK chunk at 4,999 to 5,457 ms and scored 0.72 to 0.84; the fifth saw none and scored 0.87 with TBT 114 ms, which is this afternoon's number to the point. One scheduling boundary swings the gated score by up to 15 points | the five-run table in BUILD-LOG.md |
+| Whose defect | MINE, in the derivation. Three collections agreeing within 1 point were read as a stable measurement; they were three tosses of a coin that landed the same way. The non-determinism itself predates the ratchet and was invisible while the floor was 0.80, because both sides of the toss cleared it | BUILD-LOG.md |
+| The floor was NOT lowered to get past it | HELD. Nothing in lighthouserc.json was touched. The rule that forbids it was written this afternoon and the author granting himself the exception six hours later is the pattern it exists to prevent. Routed to the owner with two costed options | REVIEW-QUEUE.md |
+| A claim of mine, checked and reversed before it was acted on | I was about to recommend deleting the boot timer as free, on the reasoning that errors and interactions both boot the SDK immediately so the timer buys nothing. The first half is true and verified in the code. The second is false: `init()` passes `integrations: []` and I assumed an empty array replaces Sentry's defaults, but `getIntegrationsToSetup` in @sentry/core APPENDS an array to them, so browser tracing is active and the timer buys 10 percent sampled traces and session records for the bounce cohort. A trade, not a free win, and therefore the owner's | node_modules/@sentry/core/build/cjs/integration.js |
+
+### What was built while the answer is pending
+
+| Item | State |
+|---|---|
+| `scripts/ci/lighthouse-truth-table.mjs` prints the BenchmarkIndex every collection was taken at, with Lighthouse's device-class scale | Committed on `perf/gate-determinism`, NOT pushed. A slow machine and a slow product can no longer arrive in the log looking identical |
+| `scripts/perf/machine-speed.mjs`, the same benchmark on demand | Same commit |
+| `feat/positioning-lock` rebased onto main, canary re-measured, tsc 0, 81 guards PASS | Committed locally at 45b00a0c, NOT pushed |
+
+### The state of the platform, which is not in question
+
+main green at c9a12d92, production Ready and serving that commit, post-deploy
+smoke green, CI green. Nothing is half-landed. The blockage is the pre-push gate
+refusing every push, including main's own tree, and it is one owner decision wide.

@@ -5523,3 +5523,151 @@ and for the same reason.
 328/3748 to 329/3767 in the same commit, measured rather than guessed. Committed
 as ddc855c6 with no trailer. The push is running the whole gate again, which is
 the proof that the raised floors hold on the environment that judges them.
+
+## 2026-09-09 00:10 to 02:20 (session 47) the ratchet refused main's own tree, and the reason is a 200 ms task sitting on the edge of the measurement window
+
+### What happened
+
+H3 merged as c9a12d92, main went green and production served it. The next item
+was the positioning branch, pull request 139, which had been finished for a day
+and had failed only on Lighthouse for the reason P0.1 named. I rebased it onto
+main, resolved the canary conflict by MEASURING the merged suite rather than
+adding the two deltas (330 files / 3792 tests), and pushed.
+
+**The gate refused it.** Four URLs under their new floors.
+
+I did not adjust anything. I re-ran the same tree: refused again. Then I checked
+out MAIN, rebuilt it, and ran the same step against the commit that had passed
+these very floors three hours earlier.
+
+**Main failed its own floors.** Twice.
+
+| URL | this afternoon, 3 collections | tonight, 4 collections | floor |
+|---|---|---|---|
+| `/events/cat-indie-...` | 88, 88, 89 | 82, 80, 79, 82 | 0.85 |
+| `/events/arena-sessions-...` | 88, 88, 88 | 82, 80, 82, 82 | 0.85 |
+| `/events/artist-layer-...` | 88, 88, 88 | 83, 84, 84, 82 | 0.85 |
+| `/community/african` | 92, 92, 92 | 84, 86, 86 | 0.88 |
+| `/organisers` | 91, 91, 91 | 86, 88, 87 | 0.88 |
+
+So the positioning branch was never the cause, and that is settled by measurement
+rather than by argument.
+
+### The two wrong answers I did not take
+
+The first was to blame the branch. Main measured the same, so it is not the
+branch.
+
+The second was to blame the machine, which is the comfortable answer because it
+needs no fix. Script bytes were identical to the byte on every URL and Total
+Blocking Time had roughly doubled everywhere, which is the classic signature of
+a busy machine, so I went looking for one: 38 Chrome processes, all the owner's
+own browser and none of them Lighthouse leftovers, one node process which was my
+own server, no orphans, CPU at its rated clock. Then I measured the machine with
+Lighthouse's own BenchmarkIndex, lifted unchanged from the installed package:
+
+    median 1222, and during real Chrome audits 1624 to 1993
+
+Lighthouse's own scale, quoted from `page-functions.js` in lighthouse 13.4.1,
+puts 1000+ at "a desktop-class device, Core i3 PC, iPhone X". The machine was
+fine. Blaming it would have been wrong and would have closed the investigation.
+
+### The actual cause, driven
+
+Five warmed audits of one event page, reading each report for whether a long task
+attributed to the error-reporting SDK's chunk appears:
+
+| run | BenchmarkIndex | performance | TBT | Sentry chunk long task |
+|---|---|---|---|---|
+| 1 | 1340 | 0.83 | 277 ms | 216 ms at 5,239 ms |
+| 2 | 1632 | 0.76 | 505 ms | 350 ms at 5,389 ms |
+| 3 | 1113 | 0.72 | 665 ms | 455 ms at 5,457 ms |
+| 4 | 1976 | 0.84 | 220 ms | 207 ms at 4,999 ms |
+| **5** | **1993** | **0.87** | **114 ms** | **none** |
+
+Run 5 is this afternoon's number exactly: TBT 114 ms, performance 0.87. The only
+difference between run 5 and the other four is whether the SDK's post-load
+evaluation landed inside the gather window.
+
+`instrumentation-client.ts` boots the SDK at the earliest of a held error, the
+first interaction, or `BOOT_AFTER_LOAD_MS` = 3,000 ms after load. A Lighthouse
+audit has no error and no interaction, so the timer is always the path taken, and
+it fires at roughly 5,000 ms into the trace. The gate's collect settings extend
+the window (`pauseAfterLoadMs` 5,000, `networkQuietThresholdMs` 5,000), so the
+boot lands **on the boundary**: sometimes inside, sometimes outside.
+
+Inside, it costs 207 to 455 ms of main thread and the page scores 0.72 to 0.84.
+Outside, 0.87. **A single scheduling boundary swings the gated number by up to 15
+points**, and every collection is a weighted coin toss.
+
+That non-determinism is not new. It has been there since the SDK moved to a timer
+and it did not matter while the floor was 0.80, because both sides of the toss
+cleared it. Raising the floor to 0.85 is what made it visible.
+
+### So the defect is mine, and it is in the derivation
+
+The floors were derived from three collections that agreed within 1 point per
+URL, taken across one afternoon. I read that agreement as stability and it was
+not: all three happened to land on the same side of a bimodal distribution. A
+sample that never varies is not evidence of a stable measurement if the thing
+that varies is a coin that landed the same way three times.
+
+### The comment that decided what I could not do
+
+The obvious repair is to move the boot timer out past the window. The code
+forbids it, in writing, and it is right to:
+
+    Three seconds, and the number is chosen rather than felt. Lighthouse's
+    mobile profile finishes its gather window well after this, so the timer
+    still fires during an audit and the audited page is the same page a real
+    visitor gets: this is a deferral, never a way to hide the SDK from a
+    measurement.
+
+Shortening the gate's gather window has the same effect and the same objection,
+and P0.4 says the measurement gets stricter, never looser. Both roads lead to
+scoring a page a visitor does not get.
+
+### A claim I checked instead of asserting, and it reversed my conclusion
+
+I was about to recommend deleting the timer outright, on this reasoning: an error
+boots the SDK immediately through `hold()`, and an interaction boots it, so a
+session with neither has nothing to report and the timer buys nothing for 200 to
+455 ms. The first half is true, verified in the code: `hold()` calls
+`boot('error')` and the listeners stay attached for the whole session, so **no
+error report depends on the timer**.
+
+The second half was wrong. `init()` passes `integrations: []`, and I assumed an
+empty array replaces Sentry's defaults. It does not.
+`getIntegrationsToSetup` in `@sentry/core` reads:
+
+    if (Array.isArray(userIntegrations)) {
+      integrations = [...defaultIntegrations, ...userIntegrations];
+    }
+
+An array is APPENDED. So the browser tracing default is active, and the timer
+does buy something real: 10 percent sampled performance traces and session
+records for sessions with no interaction and no error, which is precisely the
+bounce cohort, and precisely the cohort whose performance you most want to see.
+
+Deleting the timer is therefore a trade, not a free win, and it is the owner's
+trade to make.
+
+### What I did do
+
+`scripts/ci/lighthouse-truth-table.mjs` now prints the machine speed every
+collection was taken at, with Lighthouse's device-class scale, so a slow machine
+and a slow product can never again arrive in the log looking the same.
+`scripts/perf/machine-speed.mjs` answers the same question on demand. Neither
+changes what is measured or asserted. Committed on `perf/gate-determinism` and
+NOT pushed, because the gate refuses every push while this is open.
+
+### The state I am leaving
+
+  - main is green at c9a12d92, production is Ready and serving it, the smoke
+    passes. Nothing is broken and nothing is half-landed.
+  - The pre-push gate refuses ALL pushes, including main's own tree. Two branches
+    are finished and waiting on the answer: `feat/positioning-lock` (rebased,
+    canary re-measured) and `perf/gate-determinism` (the instrumentation).
+  - I have not lowered a floor and I will not without the owner's ruling. I wrote
+    the rule that forbids it this afternoon, and being the one who then grants
+    myself the exception is the exact pattern the rule exists to prevent.
