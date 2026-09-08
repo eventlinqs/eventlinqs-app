@@ -229,6 +229,37 @@ for (const route of cronRoutes) {
 }
 
 // 4. The Vercel-side state matches the record.
+/**
+ * The project and team ids, resolved the way the two scripts that already need
+ * them resolve them (preview-deployment-state.mjs, production-parity.mjs).
+ *
+ * CI CAUGHT THIS AND THE LOCAL GATE COULD NOT. `.vercel/project.json` is
+ * gitignored, so it exists on this laptop and on nobody's runner. The first
+ * version read it unconditionally and the build died with ENOENT after every
+ * other guard had passed. The environment comes FIRST because that is where CI
+ * puts it (ci.yml sets VERCEL_PROJECT_ID and VERCEL_ORG_ID beside VERCEL_TOKEN,
+ * with a comment saying why), and the file is the local fallback.
+ */
+function resolveProjectIds(env) {
+  let projectId = env.VERCEL_PROJECT_ID
+  let teamId = env.VERCEL_ORG_ID
+  if (!projectId || !teamId) {
+    const file = join(ROOT, '.vercel', 'project.json')
+    if (existsSync(file)) {
+      try {
+        const parsed = JSON.parse(readFileSync(file, 'utf8'))
+        projectId = projectId || parsed.projectId
+        teamId = teamId || parsed.orgId
+      } catch (error) {
+        // Named, never swallowed: an unreadable link file is worth saying out
+        // loud, and the environment may still carry both ids.
+        console.log(`${TAG} .vercel/project.json could not be read (${error.message}); only the environment remains`)
+      }
+    }
+  }
+  return { projectId, teamId }
+}
+
 async function judgeBypassRules() {
   const token = process.env.VERCEL_TOKEN?.trim()
   let resolved = token ? { token, source: 'VERCEL_TOKEN from the environment' } : null
@@ -243,8 +274,12 @@ async function judgeBypassRules() {
     }
   }
 
-  const projectId = JSON.parse(readFileSync(join(ROOT, '.vercel', 'project.json'), 'utf8'))
-  const url = `https://api.vercel.com/v1/security/firewall/bypass?projectId=${projectId.projectId}&teamId=${projectId.orgId}`
+  const { projectId, teamId } = resolveProjectIds(process.env)
+  if (!projectId || !teamId) {
+    console.log(`${TAG} SKIP (loudly) - no project or team id available (VERCEL_PROJECT_ID, VERCEL_ORG_ID or .vercel/project.json), so clause 4 could not be judged.`)
+    return
+  }
+  const url = `https://api.vercel.com/v1/security/firewall/bypass?projectId=${projectId}&teamId=${teamId}`
   let payload = null
   try {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${resolved.token}` }, signal: AbortSignal.timeout(20_000) })

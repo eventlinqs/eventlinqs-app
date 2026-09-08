@@ -43,7 +43,7 @@
  *     that re-read agrees, so the guard and reality cannot drift apart
  */
 
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { resolveVercelToken } from '../lib/vercel-login.mjs'
 
@@ -80,13 +80,30 @@ const resolved = resolveVercelToken(process.env)
 if (!resolved.token) fail(`no Vercel token: ${resolved.reason}. Run \`vercel login\` once, or set VERCEL_TOKEN.`)
 console.log(`firewall:bypass: authenticated by ${resolved.source}`)
 
-let project
-try {
-  project = JSON.parse(readFileSync(join(ROOT, '.vercel', 'project.json'), 'utf8'))
-} catch (err) {
-  fail(`could not read .vercel/project.json: ${err instanceof Error ? err.message : String(err)}`)
+/*
+ * The environment FIRST, the link file second, the same order as
+ * preview-deployment-state.mjs and production-parity.mjs. `.vercel/project.json`
+ * is gitignored, so a fresh clone has a token and no link file, and dying there
+ * with a stack trace would be worse than naming what is missing.
+ */
+let projectId = process.env.VERCEL_PROJECT_ID
+let teamId = process.env.VERCEL_ORG_ID
+if (!projectId || !teamId) {
+  const file = join(ROOT, '.vercel', 'project.json')
+  if (existsSync(file)) {
+    try {
+      const parsed = JSON.parse(readFileSync(file, 'utf8'))
+      projectId = projectId || parsed.projectId
+      teamId = teamId || parsed.orgId
+    } catch (err) {
+      fail(`could not read ${file}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 }
-const query = `projectId=${project.projectId}&teamId=${project.orgId}`
+if (!projectId || !teamId) {
+  fail('no project or team id: set VERCEL_PROJECT_ID and VERCEL_ORG_ID, or run `vercel link` in this checkout.')
+}
+const query = `projectId=${projectId}&teamId=${teamId}`
 
 async function vercel(path, init = {}) {
   const res = await fetch(`https://api.vercel.com${path}`, {
