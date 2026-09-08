@@ -75,8 +75,38 @@ for (const path of urls) {
       ...(storageState ? { storageState } : {}),
     })
     const page = await context.newPage()
-    const res = await page.goto(base + path, { waitUntil: 'networkidle', timeout: 90000 })
-    const status = res ? res.status() : 0
+
+    /*
+     * BOUNDED RETRY ON A TRANSPORT FAILURE, added 8 September 2026 after a
+     * 60-url scan of production died on url thirteen with ERR_NETWORK_CHANGED
+     * and threw away every result before it.
+     *
+     * The distinction that makes this safe: a transport failure (the page never
+     * loaded) is retried; a page that LOADS and answers 404, 500 or anything
+     * else is NOT retried, it is recorded, because that is the product's answer
+     * and re-asking would be laundering it. A retry is printed when it happens,
+     * so a flaky network shows up in the report rather than hiding in it.
+     */
+    let res = null
+    let attempts = 0
+    let lastError = null
+    while (attempts < 3 && res === null) {
+      attempts += 1
+      try {
+        res = await page.goto(base + path, { waitUntil: 'networkidle', timeout: 90000 })
+      } catch (error) {
+        lastError = error
+        if (attempts < 3) {
+          console.log(`  retry ${attempts}/2  ${path} (${error instanceof Error ? error.message.split(String.fromCharCode(10))[0] : String(error)})`)
+          await page.waitForTimeout(2000 * attempts)
+        }
+      }
+    }
+    if (res === null) {
+      console.error(`  LOAD FAILED after ${attempts} attempts: ${path}`)
+      throw lastError
+    }
+    const status = res.status()
     await page.waitForTimeout(800)
     let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     for (const sel of excludes) builder = builder.exclude(sel)
