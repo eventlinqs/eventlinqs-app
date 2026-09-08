@@ -957,3 +957,70 @@ Full table with evidence in C:\dev\ABCD-TRIAGE.md. The split the owner asked for
 | B. WhatsApp share with rich preview | NO. Three of the four flows the scope names are BUILT and driven: the event share bar, the Launch Kit share row and the squad invite, each with a per-event Open Graph card. The gap is the TICKET TRANSFER flow, which is email only | POST-LAUNCH QUEUE, gap named |
 | C. Trust signals | NO. Contextual trust on the event page and on checkout, and visible refund policies, are BUILT in the placement the locked design rules require. The gaps are a VETTED verified-organiser pipeline (the component declines to make the claim rather than faking it) and a public dispute-resolution page | POST-LAUNCH QUEUE, two gaps named |
 | D. Fraud prevention, audited not rebuilt as asked | NO. Single-use validation is BUILT and driven, offline and across devices, which is L1 item 12 in full. Rotating 30-second tokens, HMAC signing with per-event keys, and the anti-screenshot watermark are NOT BUILT (build brief B4) | POST-LAUNCH QUEUE. Partly MET, and the built half is the half that stops a ticket being used twice |
+
+## M1. THE REQUEST: "what do you still need for this event?" (8 September 2026, session 44)
+
+Read from CLOSE-OUT.md, "EVENT PRODUCTION MODULE. M1 SHIPS WITH LAUNCH", M1.1 to
+M1.6, plus "M6 REPLACED. THE MONEY MODEL" and "POSITIONING, LOCKED". Planned in
+C:\dev\M1-PLAN.md by session 43; built here.
+
+### Against the COMPLETION LAW
+
+| Law | Verdict | Evidence |
+|---|---|---|
+| 1. Schema, applied to TEST and verified by querying it back | MET. Migration 20260908000004, four tables. Read back from TEST vkapkibzokmfaxqogypq by query, not by trusting the push: 21 categories in 7 groups, 6 budget bands, 4 RLS policies, RLS enabled on all four tables, 1 trigger, 3 indexes | the db query output in BUILD-LOG |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc 0, eslint 0, 79 of 79 guards PASS against the TEST project, `npm run build` green | C:\dev\EVIDENCE\M1\guards.txt |
+| 3. Tests added, canary raised in the same commit | MET. `tests/unit/event-needs/the-request.test.ts`, 24 tests, plus 4 the schema manifest adds to schema-ahead-of-code. Canary 327/3754 to 328/3783, measured against a stashed baseline, not guessed | the suite output |
+| 4. Guard proven red and green | MET. `scripts/guards/event-need-taxonomy.mjs`, registered, blocking on prebuild. SIX faults drilled, all firing: an unrecorded addition, a renamed word, an approved option deactivated in the database, the module no longer reading the database, an emptied record, and the module deleted. Three are registered in the harness (114 of 114 drills fire); the three database-side ones are transcribed | C:\dev\EVIDENCE\M1\guard-drills.txt, guard-drills-harness.txt |
+| 5. Driven at 390, 768 and 1440 | MET. 61 of 61 checks on a local production build, as a real organiser through the real wizard and event screen, and as a real admin through the real /admin/login. axe-core zero at EVERY impact level on all four screens at 390 and 1440 | C:\dev\EVIDENCE\M1\drive.txt, drive\ (29 files: 20 screenshots, 8 axe reports, result.json) |
+| 6. Full regression green after the item | MET. 328 of 328 files, 3783 of 3783 tests, 0 failed, 0 skipped | the suite output |
+| 7. Committed, no trailers, pushed, production deploys green | PARTIAL, by the same design as C10 and stated rather than implied. Committed as 221633ac with no trailer, on `feat/m1-the-request`. NOT pushed and NOT merged: production does not carry the schema and the parity gate is right to refuse it until it does | git log |
+
+### What M1 is, clause by clause
+
+| Clause | Verdict | How |
+|---|---|---|
+| M1.1 the question on event creation AND in the organiser dashboard | MET | The create wizard's review step and a panel on `/dashboard/events/[id]`. One shared `EventNeedsFields`, so the two surfaces cannot ask different questions |
+| M1.2 categories in the database as a guarded taxonomy, never hardcoded, enumerated from source | MET | 21 categories in 7 groups and 6 budget bands in `event_need_categories` and `event_need_budget_bands`. No list exists in any TypeScript file; `src/lib/event-needs/taxonomy.ts` holds the query only, and the guard fails if it stops selecting from either table. The drive read the options off the form and compared them to the database row by row, words included |
+| M1.3 free, never a blocking step, an event creatable with no request | MET, and proven by NOT answering. The write lives in its own action file; `actions.ts` names neither the table nor the action; the wizard writes only after `createEvent` returns; no validation reads it and no button is disabled by it. The drive created and published an event with the question on screen and untouched, then confirmed the database held no request | drive step 1 |
+| M1.4 the acknowledgement is honest, never implying a service that does not exist | MET | The copy promises a person and says plainly that nothing was sent to a supplier. Seven assertions and four driven checks hold it, and the words are read off the rendered copy rather than the source |
+| M1.5 admin can see every request with its event context attached | MET, and DRIVEN rather than queried | `/admin/requests`, reachable from the admin nav, showing the event, its date, its venue, the organisation, who filed it, the categories in words (never slugs) and the budget band in the organiser's own words |
+| M1.6 driven at 390, 768 and 1440, evidence paths in the ledger | MET | Above |
+
+### The defect the drill found in my own guard, before it shipped
+
+The "never hardcoded" check was `mod.includes(table)`, and its own drill walked
+straight through it: `.from('event_need_budget_bands_removed')` still CONTAINS
+`event_need_budget_bands`, so a table renamed out from under the read passed.
+It now matches the whole `.from('table')` call, and the drill fires. A guard
+that is written and not drilled is a guard nobody has tested.
+
+### Three defects in my own driven proof, each found by running it
+
+| Defect | What it did | Fix |
+|---|---|---|
+| A case-sensitive assertion against a line styled `uppercase` | Failed all seven group headings while the product was correct. `innerText` reports the RENDERED text, so Chrome returns "PRODUCTION AND STAGE" for a row that says "Production and stage". The same mistake C10's proof made | Matched case-insensitively, with the reason written beside it |
+| `checkEvery` dropped the index | `items.filter(i => !predicate(i))` passes one argument, so an ORDERING predicate compared against `undefined` and failed every element | The index is passed |
+| PASS lines printing the explanation of a failure that had not happened | "PASS the row is gone :: a row survived": true verdict, contradictory evidence, an artefact a reader cannot trust | `mustBe()` prints the reason only when it fails |
+
+### One environment gap, named because it is not a product defect
+
+The admin console could not be driven at first: `/admin/login` answered 500 with
+`ADMIN_TOTP_ENC_KEY env var is not set`. That variable is `optionalOn:
+['preview','development']` in the manifest and is not in `.env.local`, because
+Vercel refuses to decrypt sensitive values into a pull. The local server was
+restarted with a generated 48-character value for the run and the console drove
+green. Nothing in the product was changed and no value was written into the
+repository. On production the variable is `requiredOn: ['production']` and the
+env guards already hold it.
+
+### Founder step (Law 10)
+
+| Step | Verdict | Command |
+|---|---|---|
+| Apply 20260908000001, 20260908000002, 20260908000003 and 20260908000004 to production | RESERVED by the constitution (Verification and gates, Migrations) and by his ruling of 26 August 2026. Everything around it is scripted | `npm run migrate:production` |
+| Everything after that push | SCRIPTED. Re-running the gate, opening the pull requests as drafts and watching production to Ready are mine | none |
+
+Until that command runs, `feat/c10-scope-audit-and-series` and
+`feat/m1-the-request` both stay unpushed, and that is the pre-push gate and the
+production-parity gate working, not failing.

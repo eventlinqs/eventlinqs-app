@@ -4687,3 +4687,105 @@ that. P0.5's first named target was closed by the earlier C8 work.
 **PR 139 is left OPEN and unmerged.** CLAUDE.md says never merge without approval,
 and P0.1 says stop opening pull requests until the platform passes its own gate.
 Both point the same way: the owner decides, with the measurements in front of him.
+
+## 2026-09-08 09:50 to 11:00 (M1, session 44) the request, and the three defects my own proof had before the product had any
+
+**Where the session started.** Read CLOSE-OUT.md and BUILD-BRIEF.md. The
+launch-blocking list (L2) is worked through item 9; item 10 is the launch
+readiness report, and "EVENT PRODUCTION MODULE. M1 SHIPS WITH LAUNCH" is the one
+build item left before it. Session 43 wrote C:\dev\M1-PLAN.md and did the A, B,
+C, D triage the owner asked for first. This session built M1.
+
+**Two things found in the tree before any code was written, both reported rather
+than worked around.**
+
+1. `feat/c10-scope-audit-and-series` holds four commits (C10's audit, C10-G1,
+   C10-G2 and the roast pass) that exist ONLY on this machine. Not pushed, no
+   pull request, and `git branch -a` shows no remote for it. Its own ledger row
+   says why: the pre-push gate refuses it because production does not carry
+   migrations 20260908000001 to 000003.
+2. TEST carried three migrations the checked-out branch did not, which is the
+   same fact from the other side. M1 was therefore branched from the C10 branch
+   rather than from main, so the repository stays self-consistent: the types
+   regenerated from TEST carry only columns that some migration IN THIS TREE
+   creates, which is the one thing the drift guard cannot forgive.
+
+**The schema.** Migration 20260908000004, four tables, applied to TEST with
+`supabase db push --linked` (the CLI rested on vkapkibzokmfaxqogypq before and
+after; production was never touched). Read back BY QUERY rather than by trusting
+the push: 21 categories in 7 groups, 6 budget bands, 4 policies, RLS on all four
+tables, 1 trigger, 3 indexes.
+
+Two design decisions worth recording. The taxonomy is TWO tables, not an enum
+and a hardcoded label map, because M1.2 says the categories live in the database
+and the organiser reads those WORDS off the screen; with the labels in code a
+rename would be invisible. And there is NO status column, because nothing in M1
+would write it and nothing would read it, and `no-op-control` is right about
+that shape.
+
+**The guard, and the hole its own drill found.** `event-need-taxonomy.mjs`
+judges the database against `docs/scope/event-need-taxonomy-approved.json` in
+both directions. Its "never hardcoded" half was `mod.includes(table)`, and the
+drill for it PASSED on a violating tree: `.from('event_need_budget_bands_removed')`
+still contains `event_need_budget_bands`. It now matches the whole `.from()`
+call. Six faults are drilled in total, all firing, and the harness is 114 of 114
+with the tree green restored.
+
+**The types.** Regenerating `src/types/database.ts` from TEST fixed a test that
+had been failing on the C10 branch BY DESIGN: the types were generated from
+production, so `schema-ahead-of-code`'s assertion about `events.series_id` could
+not pass. The drift guard now reports MIGRATIONS PENDING and passes, naming
+20260908000001 and 20260908000004 by filename. That is the state that guard was
+built to recognise.
+
+**The drive: 61 of 61, and three defects in the proof itself.** Each was found by
+running it, and each would have produced a confident false report.
+
+    a case-sensitive assertion against a line styled `uppercase`
+        failed all seven group headings while the product was right. innerText
+        reports the RENDERED text, so Chrome returns "PRODUCTION AND STAGE" for
+        a database row reading "Production and stage". C10's proof made the
+        same mistake on a line styled the same way.
+
+    checkEvery dropped the index
+        `items.filter(i => !predicate(i))` passes ONE argument, so the ordering
+        predicate compared `seen[undefined]` and failed every element. The
+        product had been correct in both runs.
+
+    PASS lines printing the explanation of a failure that had not happened
+        "PASS the row is gone :: a row survived". True verdict, contradictory
+        evidence. `mustBe()` now prints the reason only on a failure.
+
+A fourth was structural rather than cosmetic: the first version saved a
+signed-in session and wrote the event's URL into `axe-targets.json` for a later
+scan, then DELETED that event in its own cleanup. The scan would have run
+against a 404 and reported zero violations. axe now runs inside the drive, on
+the live screen, in the same session.
+
+**The admin console was queried, then driven.** The first version of step 5 read
+the join out of the database and called M1.5 proven, which proves the query and
+not the screen. It now creates a fixture super-admin, signs in through the real
+`/admin/login`, confirms `/admin/requests` is in the navigation rather than only
+reachable by typing a URL, and reads the console: the event, its date, The Wool
+Exchange, the organisation, "filed by Nadia Okafor", the categories in words with
+no slug on screen, and the budget band in the organiser's own words.
+
+That step failed first with a 500. The cause was `ADMIN_TOTP_ENC_KEY env var is
+not set`, which is a LOCAL environment gap and not a product defect: the manifest
+has it `optionalOn: ['preview','development']` and `requiredOn: ['production']`,
+and `.env.local` does not carry it because Vercel will not decrypt a sensitive
+value into a pull. The server was restarted with a generated 48-character value
+for the run. Nothing in the product changed and no value was written into the
+repository.
+
+**The state of the tree.** tsc 0, eslint 0, 79 of 79 guards against the TEST
+project, 114 of 114 drills, 328 files and 3783 tests with nothing failing and
+nothing skipped, `npm run build` green, the drive 61 of 61 with axe-core zero at
+every impact level on four screens at 390 and 1440. Committed as 221633ac with
+no trailer.
+
+**NOT PUSHED, and this is the gate working.** Production carries 116 migrations
+and this tree has 120. The production-parity gate on main and the pre-push gate
+both refuse a tree whose code names a column production does not have, which is
+exactly the invariant that put main red twice in September. One founder command
+clears all four at once: `npm run migrate:production`.

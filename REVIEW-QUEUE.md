@@ -1352,3 +1352,79 @@ the four are further along than the list suggests:
     built and driven, including offline and across two doors. The rotating code
     and cryptographic signing are not.
   - **The bundle target** is the speed work above.
+
+---
+
+## 8 September 2026, session 44. M1 is built: organisers can tell us what they still need
+
+### What you can now do, in plain words
+
+When an organiser creates an event, the last thing they see before publishing is
+"What do you still need for this event?" with 21 things to tick, a budget range
+and a box for anything else. The same question sits on every event's own screen
+in their dashboard, so they can answer it later or change their mind.
+
+It is optional in the strongest sense I could build. An event publishes exactly
+the same whether they answer or not, nothing is disabled by it, and I proved
+that by creating an event with the question on screen and deliberately not
+touching it.
+
+What they are told when they send it is the part I want you to read, because it
+is a promise you will have to keep:
+
+> Saved. Someone from EventLinqs will be in touch about this. It has not been
+> sent to any supplier.
+
+There is no supplier network yet, so the screen never says we are matching them
+or getting quotes. Your own close-out says you work the first fifty by phone and
+calls that deliberate. The words match that, and a test fails the build if
+anybody softens them into a promise the platform cannot keep.
+
+You see all of it at Admin > Organiser requests: the event, its date, the venue,
+the organisation, who filed it, what they ticked in plain words, their budget
+range and their notes, newest first, so you can pick up the phone.
+
+### The one thing I need from you before any of this can go live
+
+**Run `npm run migrate:production`.** That is the whole ask, and it is the same
+one that has been waiting since session 42.
+
+Production's database is four changes behind this machine: three from C10 (event
+series, multi-day events, and the add-on delete rule) and one from M1 (the four
+tables behind the request). Until you run it, two finished branches sit on this
+laptop unable to push, and that is the safety catch working rather than
+something broken. Applying a change to the live database is the one thing you
+said you wanted to press yourself, and I have not touched it.
+
+There is nothing else for you to do. Everything after that command is mine.
+
+### What I found wrong and fixed on the way, including in my own work
+
+The most useful failure was in a guard I had just written. It is supposed to
+refuse a change that stops reading the category list from the database, and I
+tested it by breaking the code on purpose. It did not notice, because I had
+asked it to look for a name inside a line rather than for the whole call, and a
+renamed table still contained the old name. Fixed, and it now fails properly.
+
+Three more were in my own proof rather than the product, and all three would
+have told you something false:
+
+- A check compared a heading against the database while the screen renders it in
+  capitals. It failed all seven headings and the product was right every time.
+- A helper that checks "every one of these" was silently ignoring position, so
+  an ordering check was comparing against nothing.
+- Some lines printed as PASSED with the words explaining why they would have
+  failed sitting beside them, which is an unreadable report.
+
+And one that mattered more: the accessibility scan was set up to run after the
+test data had been deleted, so it would have scanned a missing page and reported
+a clean bill of health. It now runs on the live screen while the organiser's
+answer is on it. Zero problems found, on all four screens, on a phone and on a
+desktop.
+
+### Still waiting on you from before, unchanged
+
+Pull request 139 (the positioning wording) is open and not merged. The only red
+check on it is the speed one, and I measured that it is not caused by that
+change: both previews serve byte-identical JavaScript. Your call whether to
+merge it or hold it.
