@@ -1,0 +1,8 @@
+{
+  "_why": "The System Bypass rules this project EXPECTS to exist on Vercel, and the record of the decision behind them. scripts/guards/machine-callers-reachable.mjs fails the build when the live rules disagree with this file, in either direction, so a rule silently added or silently deleted is caught. scripts/ops/firewall-bypass-machine-callers.mjs is the only thing that should edit it, and it does so only after re-reading the live rules and confirming what it changed.",
+  "_source": "Vercel System Bypass Rules, IP or CIDR based, 25 per project on Pro: https://vercel.com/docs/vercel-firewall/vercel-waf/system-bypass-rules (fetched 2026-09-08). Stripe publishes its webhook source addresses at https://stripe.com/files/ips/ips_webhooks.json and gives seven days notice of a change: https://docs.stripe.com/ips (fetched 2026-09-08).",
+  "decision": "PENDING-OWNER",
+  "decidedOn": null,
+  "note": "No bypass rules are installed. Installing them changes production infrastructure, which is the owner's call, so the guard asserts the CURRENT state (none) rather than demanding a state nobody has approved. One command installs them and rewrites this file: npm run firewall:bypass -- --apply",
+  "expectedSourceIps": []
+}

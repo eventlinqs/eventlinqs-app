@@ -1,61 +1,49 @@
 name: post-deploy smoke
 
-# Post-deploy smoke gate. Runs after the CI workflow completes on main,
-# which is a workable proxy for "the Vercel production deploy has had
-# time to roll over" (Vercel deploys in parallel with GH Actions and
-# usually finishes inside the CI window). The first step inside this
-# workflow waits up to 90s and polls for the production deployment id
-# to change as a safety belt, so a faster CI run does not race the
-# smoke against the OLD production build.
+# Post-deploy production smoke gate.
 #
-# See docs/observability/post-deploy-smoke.md for the full operator
-# runbook (what it catches, what to do when it fails, how to disable).
+# See docs/observability/post-deploy-smoke.md for the operator runbook.
+#
+# THE CHECKS THEMSELVES ARE NOT IN THIS FILE ANY MORE (close-out H2,
+# 8 September 2026). They live in scripts/verify/post-deploy-smoke.mjs, which
+# can be run before pushing and is covered by tests. They were six inline bash
+# steps, and on 7 September that shape produced a false outage:
+#
+#   run 34143506887, main at 9ac4d885
+#   curl: (35) Recv failure: Connection reset by peer
+#   HTTP=000curl-failed
+#   ::error::Anonymous request returned HTTP 000curl-failed, expected 200
+#
+# Production was serving correctly the whole time. Four faults, all fixed:
+#
+#   H2.1  a connection reset from a shared datacentre address was read as an
+#         outage. Diagnosed in scripts/guards/machine-callers-reachable.mjs,
+#         which also holds the invariant that nothing WE control can refuse a
+#         caller that has already proved who it is.
+#   H2.2  one attempt, no retry, and three different faults (a bad status, a
+#         dead connection, a timeout) printed as one string.
+#   H2.3  the deployment id never changed across all six polls, so the run
+#         smoked the PREVIOUS build and then judged it.
+#   H2.4  the alert email was never delivered. Resend answered 429, `curl -f`
+#         discarded the body, and the step printed a warning and exited 0.
 #
 # Triggers:
-#   deployment_status   - when Vercel reports a PRODUCTION deploy succeeded.
-#                         This is the primary trigger: a POST-DEPLOY gate should
-#                         key off the DEPLOY, not off CI.
-#   workflow_run        - after CI on main completes (push-driven). Kept as a
-#                         belt-and-braces second path.
-#   workflow_dispatch   - manual re-run from the Actions UI
+#   deployment_status   when Vercel reports a PRODUCTION deploy succeeded. This
+#                       is the primary trigger: a POST-DEPLOY gate should key
+#                       off the DEPLOY, not off CI.
+#   workflow_run        after CI on main completes. Belt and braces.
+#   workflow_dispatch   manual re-run, with two switches for drilling it.
 #
 # WHY THE deployment_status TRIGGER EXISTS (2026-07-26). This gate was SKIPPED
-# on every run from 2026-07-12 to 2026-07-26 and nobody noticed. The chain: the
-# SUPABASE_ACCESS_TOKEN repository secret expired, so the `types-drift guard`
-# job failed ("failed to retrieve generated types: Unauthorized"), so the CI
-# run concluded `failure`, so the `workflow_run.conclusion == 'success'`
-# condition below was false, so the job was skipped. Production therefore had
-# no smoke gate for two weeks because an unrelated schema-introspection job
-# could not authenticate.
+# on every run from 2026-07-12 to 2026-07-26 and nobody noticed: the
+# SUPABASE_ACCESS_TOKEN secret expired, the types-drift job failed, the CI run
+# concluded `failure`, and the `workflow_run.conclusion == 'success'` condition
+# below was false. A schema-drift guard losing its token must never silently
+# disable the production smoke gate.
 #
-# The coupling was the defect. A schema-drift guard losing its token must never
-# silently disable the production smoke gate. Keying off the deploy removes the
-# dependency entirely, without weakening the drift guard, which stays blocking
-# on its own merits.
-#
-# Steps in order:
-#   1. Wait for the Vercel deploy id to differ from a captured starting
-#      point (90s window). Best-effort, non-fatal.
-#   2. curl smoke - anonymous request. Asserts HTTP 200 and that the
-#      response body does NOT contain the error boundary phrase
-#      "We hit a snag loading this page" or "Minified React error".
-#   3. curl smoke - same checks with the el_city Melbourne cookie set
-#      (replays the 2026-05-24 trigger state).
-#   4. On any failure: dispatch an alert email to hello@eventlinqs.com
-#      via Resend (requires RESEND_API_KEY secret; non-fatal if absent).
-#
-# Deliberately curl-only in CI for speed: a curl probe runs in under
-# 10 seconds while a Playwright install plus browser launch adds 90s+.
-# The Playwright regression suite at
-# tests/e2e/site-header-cookie-snapshot.production.spec.ts holds the
-# browser-side regression (catches client-only errors curl cannot see)
-# and can be run manually via
-# `npx playwright test --config=playwright.smoke.config.ts --grep @smoke`
-# whenever a deeper investigation is needed.
-#
-# Required secrets (none are strictly required for the smoke to run;
-# the email-on-failure step is the only one that needs a secret):
-#   RESEND_API_KEY   alerts to hello@eventlinqs.com on failure
+# Secrets:
+#   CRON_SECRET      required. A missing one FAILS, it does not skip.
+#   RESEND_API_KEY   alert channel 1. The GitHub issue channel needs no secret.
 
 on:
   deployment_status:
@@ -64,9 +52,26 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      run_transport_probe:
+        description: 'Also run the transport probe (H2.1 reproduction) from this runner'
+        type: boolean
+        default: false
+      force_failure:
+        description: 'Deliberately fail the smoke, to prove the alert channels deliver (H2.5)'
+        type: boolean
+        default: false
+      expect_sha:
+        description: 'Pin the smoke to a commit. Empty means judge whatever is live and say so.'
+        type: string
+        default: ''
 
 permissions:
   contents: read
+  # Alert channel 2 opens or comments on an issue when the smoke fails. It
+  # exists because channel 1 shares a rate limit with every other message the
+  # platform sends, and on 7 September that limit ate the only alert.
+  issues: write
 
 concurrency:
   group: post-deploy-smoke
@@ -76,14 +81,13 @@ jobs:
   smoke:
     name: production homepage smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     # Run when a PRODUCTION deploy succeeded (the primary path), when the
     # upstream CI succeeded (the secondary path), or on a manual dispatch.
     # The deployment_status arm is deliberately NOT conditioned on CI: a
     # deployed production build must be smoked even if some other CI job is red,
     # which is exactly the state that silenced this gate for two weeks.
-    # Preview deploy events are filtered out by the environment check.
     if: >-
       ${{ github.event_name == 'workflow_dispatch'
        || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
@@ -100,133 +104,71 @@ jobs:
       NEXT_TELEMETRY_DISABLED: 1
 
     steps:
-      - name: Best-effort wait for new Vercel deployment
-        # Capture current deployment id, then poll for ~90s for it to
-        # change. If it does not change inside the window we still
-        # proceed (Vercel may have deployed before CI finished and our
-        # capture already shows the new id), but we log it so a future
-        # failure investigation has the signal.
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Identify the commit under test
+        # H2.3. Each trigger carries the commit in a different place, and both
+        # field names were confirmed against the REST API rather than assumed:
+        # a deployment carries `sha`, a workflow run carries `head_sha`. If none
+        # of them resolves, the smoke runs UNPINNED and says so in its own
+        # output; it never quietly judges whatever happens to be live.
+        id: under_test
+        env:
+          EVENT: ${{ github.event_name }}
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
+          WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          DISPATCH_SHA: ${{ github.event.inputs.expect_sha }}
         run: |
           set -u
-          START_ID=$(curl -fsSL "$PROD_URL" 2>/dev/null | grep -oE 'data-dpl-id="dpl_[^"]+"' | head -1 || true)
-          echo "start_id=$START_ID"
-          for i in $(seq 1 6); do
-            sleep 15
-            NEW_ID=$(curl -fsSL "$PROD_URL" 2>/dev/null | grep -oE 'data-dpl-id="dpl_[^"]+"' | head -1 || true)
-            if [ -n "$NEW_ID" ] && [ "$NEW_ID" != "$START_ID" ]; then
-              echo "deployment changed after $((i*15))s: $NEW_ID"
-              break
-            fi
-            echo "[$i] still $NEW_ID"
-          done
+          # A MANUAL DISPATCH IS UNPINNED BY DEFAULT, and that is not a weakening
+          # of H2.3. The operator picks the ref, and a ref is almost never the
+          # commit production is serving, so pinning to github.sha would make
+          # every manual re-run fail for the wrong reason. Unpinned, the smoke
+          # prints the commit it judged; expect_sha pins it deliberately.
+          case "$EVENT" in
+            deployment_status) SHA="${DEPLOYMENT_SHA:-}" ;;
+            workflow_run)      SHA="${WORKFLOW_RUN_SHA:-}" ;;
+            *)                 SHA="${DISPATCH_SHA:-}" ;;
+          esac
+          if [ -z "$SHA" ] && [ "$EVENT" != "workflow_dispatch" ]; then
+            echo "::warning::No commit sha on the $EVENT payload; the smoke will run unpinned and report what it judged."
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "commit under test: ${SHA:-none}"
 
-      - name: curl smoke - anonymous
-        # Catches SSR-rendered failures: missing prod env vars, throws
-        # during server render, RLS exceptions baked into HTML.
-        run: |
-          set -u
-          BODY_FILE=$(mktemp)
-          HTTP=$(curl -fsSL -o "$BODY_FILE" -w '%{http_code}' \
-            -H 'User-Agent: eventlinqs-post-deploy-smoke/1.0' \
-            "$PROD_URL" || echo "curl-failed")
-          echo "HTTP=$HTTP"
-          if [ "$HTTP" != "200" ]; then
-            echo "::error::Anonymous request returned HTTP $HTTP, expected 200"
-            head -c 4000 "$BODY_FILE" || true
-            exit 1
-          fi
-          if grep -q "We hit a snag loading this page" "$BODY_FILE"; then
-            echo "::error::Anonymous response contains the error boundary phrase"
-            grep -n -C 2 "We hit a snag" "$BODY_FILE" | head -20 || true
-            exit 1
-          fi
-          if grep -q "Minified React error" "$BODY_FILE"; then
-            echo "::error::Anonymous response contains 'Minified React error'"
-            grep -n -C 2 "Minified React error" "$BODY_FILE" | head -20 || true
-            exit 1
-          fi
-          echo "curl-anonymous: pass"
-
-      - name: curl smoke - el_city cookie set
-        # Replays the 2026-05-24 React #185 trigger cookie state. The
-        # curl check cannot catch the original client-side loop, but it
-        # documents the trigger and catches any future variant that
-        # bakes the error UI into SSR HTML.
-        run: |
-          set -u
-          BODY_FILE=$(mktemp)
-          COOKIE_VALUE=$(printf '%s' '{"city":"Melbourne","region":"Victoria","country":"AU","source":"picker"}' \
-            | jq -sRr @uri)
-          HTTP=$(curl -fsSL -o "$BODY_FILE" -w '%{http_code}' \
-            -H 'User-Agent: eventlinqs-post-deploy-smoke/1.0' \
-            -H "Cookie: el_city=$COOKIE_VALUE" \
-            "$PROD_URL" || echo "curl-failed")
-          echo "HTTP=$HTTP"
-          if [ "$HTTP" != "200" ]; then
-            echo "::error::el_city request returned HTTP $HTTP, expected 200"
-            head -c 4000 "$BODY_FILE" || true
-            exit 1
-          fi
-          if grep -q "We hit a snag loading this page" "$BODY_FILE"; then
-            echo "::error::el_city response contains the error boundary phrase"
-            grep -n -C 2 "We hit a snag" "$BODY_FILE" | head -20 || true
-            exit 1
-          fi
-          if grep -q "Minified React error" "$BODY_FILE"; then
-            echo "::error::el_city response contains 'Minified React error'"
-            grep -n -C 2 "Minified React error" "$BODY_FILE" | head -20 || true
-            exit 1
-          fi
-          echo "curl-el_city: pass"
-
-      - name: Payment sentinel probe (post-deploy hook)
+      - name: Smoke production
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FORCE_FAILURE: ${{ github.event.inputs.force_failure }}
+          # Through the environment, never interpolated into the script body.
+          # EXPECT_SHA can originate in a workflow_dispatch input, and a value
+          # pasted straight into a `run:` block is a shell injection waiting for
+          # someone with write access to have a bad day.
+          EXPECT_SHA: ${{ steps.under_test.outputs.sha }}
         run: |
           set -u
-          # A MISSING SECRET IS A FAILURE, NOT A SKIP. This step used to warn and
-          # exit 0, so from 2026-07-12 to 2026-07-30 production deployed with no
-          # sentinel probe at all and the gate reported green every time. A gate
-          # that quietly switches itself off when its input is absent is worse
-          # than no gate, because everyone reads the tick.
-          if [ -z "${CRON_SECRET:-}" ]; then
-            echo "::error::CRON_SECRET is not configured as a GitHub Actions secret, so the payment sentinel cannot be probed."
-            echo "::error::Fix: gh secret set CRON_SECRET (the same value as the Vercel Production scope). See docs/payments/WEBHOOK-CANON.md."
-            exit 1
+          if [ "${FORCE_FAILURE:-false}" = "true" ]; then
+            # H2.5. The drill: smoke a path this site answers 404 for, so the
+            # alert channels are proven on a real failure rather than on a
+            # mock. It is a deliberate switch on a manual dispatch only.
+            echo "::warning::force_failure was requested: smoking a deliberately wrong host to prove the alert channels."
+            node scripts/verify/post-deploy-smoke.mjs \
+              --url "https://smoke-drill.invalid" \
+              --wait-seconds 30 \
+              --attempts 3 \
+              --report smoke-report.json
+          else
+            node scripts/verify/post-deploy-smoke.mjs \
+              --url "$PROD_URL" \
+              --expect-sha "$EXPECT_SHA" \
+              --wait-seconds 240 \
+              --attempts 4 \
+              --report smoke-report.json
           fi
-          # NO REDIRECTS. curl DROPS the Authorization header across a cross-host
-          # redirect, so probing a host that 301s to the canonical one arrives
-          # unauthenticated and 401s, which reads exactly like a wrong secret.
-          # Asserting zero redirects names the real fault instead.
-          REDIRECTS=$(curl -s -o /dev/null -w '%{num_redirects}' -m 30 "$PROD_URL/api/cron/webhook-sentinel")
-          if [ "$REDIRECTS" != "0" ]; then
-            echo "::error::$PROD_URL redirected ($REDIRECTS hop(s)). A bearer token is dropped across a cross-host redirect,"
-            echo "::error::so this probe can never authenticate. Point PROD_URL at the canonical host."
-            exit 1
-          fi
-          BODY=$(curl -sS -m 30 -H "Authorization: Bearer ${CRON_SECRET}" "$PROD_URL/api/cron/webhook-sentinel")
-          echo "$BODY"
-          echo "$BODY" | grep -q '"ok":true' || { echo "payment sentinel RED"; exit 1; }
-          echo "payment sentinel GREEN"
-
-      - name: Platform health sentinel probe (post-deploy hook)
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          set -u
-          if [ -z "${CRON_SECRET:-}" ]; then
-            echo "::error::CRON_SECRET is not configured, so the platform health sentinel cannot be probed."
-            echo "::error::Fix: gh secret set CRON_SECRET. See docs/ops/HEALTH-ALERTS.md."
-            exit 1
-          fi
-          # Runs the full check battery after deploy. The sentinel itself emails
-          # the founder on any CRITICAL fault; here we fail the gate on critical
-          # (warnings like push/AI config are known soft gaps, not blockers).
-          # No -L, for the same bearer-dropping reason as the step above.
-          BODY=$(curl -sS -m 60 -H "Authorization: Bearer ${CRON_SECRET}" "$PROD_URL/api/cron/health-sentinel")
-          echo "$BODY"
-          if echo "$BODY" | grep -q '"status":"critical"'; then echo "platform health CRITICAL"; exit 1; fi
-          echo "platform health OK (green or warnings only)"
 
       - name: Browser-level map guard (post-deploy)
         # Opt-in blocking: enable the repo variable MAP_GUARD_ENABLED=true once
@@ -240,39 +182,45 @@ jobs:
           npx playwright install chromium >/dev/null 2>&1 || true
           node scripts/verify/map-guard.mjs "$PROD_URL" || { echo "::error::A map surface ships a dead (fallback) map"; exit 1; }
 
-      - name: Email alert via Resend on failure
+      - name: Transport probe
+        # H2.1. Runs when the smoke FAILED, and on request. A connection reset
+        # from a runner is the one fault that cannot be investigated after the
+        # fact, because by the time anyone reads the log the condition is gone.
+        # Measuring it in the same job, minutes later, is the only chance.
+        # It never fails the job; it is an instrument.
+        if: ${{ failure() || github.event.inputs.run_transport_probe == 'true' }}
+        run: |
+          set -u
+          node scripts/verify/transport-probe.mjs \
+            --url "$PROD_URL" \
+            --rounds 20 \
+            --gap-ms 400 \
+            --report transport-probe.json
+
+      - name: Alert on failure
+        # H2.4. TWO channels that share no rate limit, and a loud failure if
+        # both are silent. The old step was `curl ... || echo "::warning::"`,
+        # which is how the one alert that mattered was lost.
         if: failure()
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_SHA: ${{ steps.under_test.outputs.sha }}
           EVENT: ${{ github.event_name }}
         run: |
           set -u
-          if [ -z "${RESEND_API_KEY:-}" ]; then
-            echo "::warning::RESEND_API_KEY not configured; skipping email alert. Workflow status is still red in the Actions UI."
-            exit 0
-          fi
-          HTML=$(cat <<HTML_EOF
-          <h2>EventLinqs production homepage smoke FAILED</h2>
-          <p>The post-deploy smoke gate failed at $(date -u +"%Y-%m-%d %H:%M:%S UTC").</p>
-          <ul>
-            <li><b>Trigger:</b> ${EVENT}</li>
-            <li><b>Commit:</b> <code>${COMMIT_SHA}</code></li>
-            <li><b>Run:</b> <a href="${RUN_URL}">${RUN_URL}</a></li>
-          </ul>
-          <p>What this means: at least one of the curl smokes or the Playwright @smoke checks failed against <code>${PROD_URL}</code>. Open the Actions run for the failing step output.</p>
-          <p>Runbook: <code>docs/observability/post-deploy-smoke.md</code></p>
-          HTML_EOF
-          )
-          PAYLOAD=$(jq -n \
-            --arg from 'EventLinqs Smoke <noreply@eventlinqs.com>' \
-            --arg subject 'EventLinqs production homepage smoke FAILED' \
-            --arg html "$HTML" \
-            '{from: $from, to: ["hello@eventlinqs.com"], subject: $subject, html: $html, reply_to: "hello@eventlinqs.com"}')
-          curl -fsSL -X POST https://api.resend.com/emails \
-            -H "Authorization: Bearer ${RESEND_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
-            && echo "alert email dispatched to hello@eventlinqs.com" \
-            || echo "::warning::Resend dispatch failed (workflow status is still red in the Actions UI)"
+          node scripts/ops/alert-dispatch.mjs \
+            --subject "EventLinqs production homepage smoke FAILED" \
+            --report smoke-report.json
+
+      - name: Keep the evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: post-deploy-smoke-${{ github.run_id }}
+          path: |
+            smoke-report.json
+            transport-probe.json
+          if-no-files-found: ignore
+          retention-days: 14

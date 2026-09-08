@@ -136,6 +136,11 @@
  *                              never route resolves to noindex, every indexable page names
  *                              its own canonical, the root layout names none, and the
  *                              sitemap gates each templated family on the threshold (C19)
+ *   machine-callers-reachable every route that authenticates a machine with a shared secret is
+ *                              on a reviewed record or a reviewed exclusion, no signed webhook
+ *                              can be refused by our own rate limiter, no cron limiter fails
+ *                              closed, and the project's live Vercel System Bypass rules match
+ *                              what scripts/guards/lib/firewall-bypass-expected.json records (H2.1)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -827,6 +832,18 @@ const GUARDS = [
   // what may be indexed, and the tree must keep agreeing with it. Google Search
   // Console had been reporting the disagreement back for weeks.
   'scripts/guards/indexing-policy.mjs',
+  // Close-out H2.1 (8 September 2026): production reset a TLS handshake from a
+  // GitHub Actions runner and the post-deploy smoke called it an outage. The
+  // reset was at the handshake, before any header was sent, so nothing that
+  // reads an HTTP request can have answered it, and the project has no firewall
+  // configuration at all. What is left is Vercel's always-on system mitigation
+  // of a shared datacentre address, and the owner's question was the right one:
+  // the same thing could drop a Stripe webhook, and a dropped webhook is a paid
+  // order nobody is told about. This guard holds the half that is ours (a signed
+  // webhook is never rate limited by us, a cron limiter never fails closed), keeps
+  // the reviewed record of every machine caller complete in both directions, and
+  // reads the project's live System Bypass rules when it has a token.
+  'scripts/guards/machine-callers-reachable.mjs',
 ]
 
 /**
