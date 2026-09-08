@@ -145,7 +145,7 @@ const INTERSECTIONS: Record<string, IntersectionEntry> = {
   'south-asian/sydney': {
     hero_subtitle: "From Bollywood to Bondi, Sydney's South Asian scene.",
     editorial:
-      "Bollywood club nights at the Star, garba and Navratri at Sydney Olympic Park, Diwali fireworks lighting up Parramatta and Auburn, Holi colours covering Sydney University every March. Tamil cinema premieres in Strathfield, Indian classical at the Opera House, bhangra raves in Liverpool. Sydney's South Asian scene is generations deep and a million strong, from Indian and Pakistani aunties running family festivals to Sri Lankan and Bangladeshi student societies booking out venues every weekend. EventLinqs is built for the Sydney South Asian promoters who already know the community shows up - we just give them a fairer ticketing platform.",
+      "Bollywood club nights at the Star, garba and Navratri at Sydney Olympic Park, Diwali fireworks lighting up Parramatta and Auburn, Holi colours covering Sydney University every March. Tamil cinema premieres in Strathfield, Indian classical at the Opera House, bhangra raves in Liverpool. Sydney's South Asian scene is generations deep and a million strong, from Indian and Pakistani aunties running family festivals to Sri Lankan and Bangladeshi student societies booking out venues every weekend. EventLinqs is built for the Sydney South Asian promoters who already know the community shows up - we just give them a fairer place to run it.",
   },
   'south-asian/melbourne': {
     hero_subtitle: "From Bollywood to Bayside, Melbourne's South Asian scene.",

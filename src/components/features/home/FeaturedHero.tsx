@@ -7,6 +7,7 @@ import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { FeaturedHeroClient, type FeaturedHeroSlide } from './FeaturedHeroClient'
+import { BRAND_TAGLINE_PHRASE_BOUND } from '@/lib/brand/positioning'
 
 /**
  * FeaturedHero - the homepage hero. ONE strong, real featured event at a
@@ -125,7 +126,7 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
                   phrase by phrase and never leaves one word alone on a line
                   (C17.4: measured orphaning "platform." at 390 and 768). */}
               <p className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                {'Every\u00A0community. Every\u00A0event. One\u00A0platform.'}
+                {BRAND_TAGLINE_PHRASE_BOUND}
               </p>
               <p className="mt-2 text-sm text-white/85 sm:text-base">
                 The first organisers are getting set up. New events land here every week.

@@ -60,8 +60,8 @@ export default function PrivacyPolicyPage() {
 
       <h2 id="what-we-collect">What We Collect</h2>
       <p>
-        We collect only what we need to run a ticketing platform. The categories
-        are:
+        We collect only what we need to run the platform and sell your tickets.
+        The categories are:
       </p>
       <ul>
         <li>

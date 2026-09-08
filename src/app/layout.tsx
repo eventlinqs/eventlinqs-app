@@ -9,6 +9,7 @@ import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
 import { ReferralCapture } from '@/components/growth/referral-capture'
 import { getSiteUrl } from '@/lib/site-url'
+import { BRAND_STRAPLINE, BRAND_STRAPLINE_SHORT, BRAND_TAGLINE } from '@/lib/brand/positioning'
 
 /*
  * TWO FAMILIES (close-out C14.12, 6 September 2026): Archivo for headlines,
@@ -73,8 +74,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'EventLinqs | The ticketing platform built for every community',
-  description: 'Every community. Every event. One platform. Browse Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and more. All-in pricing, no surprise fees.',
+  title: `EventLinqs | ${BRAND_STRAPLINE_SHORT}`,
+  description: `${BRAND_TAGLINE} Find your suppliers, sell your tickets, run your door and get paid. Browse Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and more.`,
   /*
    * NO `alternates` HERE, DELIBERATELY, AND IT MUST NEVER COME BACK.
    *
@@ -100,15 +101,15 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    title: 'EventLinqs | The ticketing platform built for every community',
-    description: 'Every community. Every event. One platform. All-in pricing, no surprise fees.',
+    title: `EventLinqs | ${BRAND_STRAPLINE_SHORT}`,
+    description: `${BRAND_TAGLINE} Find your suppliers, sell your tickets, run your door and get paid.`,
     siteName: 'EventLinqs',
     locale: 'en_AU',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'EventLinqs',
-    description: 'The ticketing platform built for every community.',
+    description: BRAND_STRAPLINE,
   },
 }
 

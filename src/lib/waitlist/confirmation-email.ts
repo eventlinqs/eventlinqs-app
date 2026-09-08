@@ -1,5 +1,6 @@
 import { getSiteUrl } from '@/lib/site-url'
 import type { WaitlistRole } from './city-waitlist'
+import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 
 /**
  * The local-alerts confirmation email.
@@ -61,7 +62,7 @@ export function buildWaitlistConfirmationEmail(input: {
     `Stop these emails any time with one click: ${unsubscribeUrl}`,
     '',
     'EventLinqs',
-    'The ticketing platform built for every community.',
+    BRAND_STRAPLINE,
   ].join('\n')
 
   const html = `
@@ -90,7 +91,7 @@ export function buildWaitlistConfirmationEmail(input: {
       <tr>
         <td style="padding:16px 28px 24px;border-top:1px solid #EFEFEA;">
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#888888;margin:0;">
-            EventLinqs, the ticketing platform built for every community.<br/>
+            EventLinqs, the place events get made, for every community.<br/>
             Change your mind? <a href="${unsubscribeUrl}" style="color:#8A6D1E;">Stop these emails</a> with one click.
           </p>
         </td>

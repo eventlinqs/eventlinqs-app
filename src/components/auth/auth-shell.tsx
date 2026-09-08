@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 import { HeroMedia } from '@/components/media'
+import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 
 type Props = {
   title: string
@@ -38,7 +39,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
               Every community. Every event. One platform.
             </h2>
             <p className="mt-4 text-base leading-relaxed text-white/80">
-              The ticketing platform built for every community.
+              {BRAND_STRAPLINE}
             </p>
           </div>
           <p className="text-xs text-white/55">

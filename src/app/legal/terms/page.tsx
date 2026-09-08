@@ -82,7 +82,7 @@ export default async function TermsOfServicePage() {
 
       <h2 id="our-role">Our Role</h2>
       <p>
-        EventLinqs is a ticketing platform. We provide the technology that lets
+        EventLinqs is an event platform. We provide the technology that lets
         independent organisers list events, sell tickets, and manage attendees.
       </p>
       <p>

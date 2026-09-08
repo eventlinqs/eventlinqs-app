@@ -62,21 +62,21 @@ export const revalidate = 120
 export const metadata: Metadata = {
   title: 'EventLinqs - Every community. Every event. One platform.',
   description:
-    'Discover live events across Australia: music, food and drink, festivals, comedy, theatre, arts, nightlife, sports and family, plus the community scenes you follow. No hidden fees, verified organisers, fair refund policy.',
+    'Discover live events across Australia: music, food and drink, festivals, comedy, theatre, arts, nightlife, sports and family, plus the community scenes you follow. EventLinqs is where events get made.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     locale: 'en_AU',
     title: 'EventLinqs - Every community. Every event. One platform.',
     description:
-      'Discover live events from communities across Australia and beyond. No hidden fees, verified organisers, fair refund policy.',
+      'Discover live events from communities across Australia. EventLinqs is where events get made: find your suppliers, sell your tickets, run your door and get paid.',
     siteName: 'EventLinqs',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'EventLinqs - Every community. Every event. One platform.',
     description:
-      'Discover live events from communities across Australia and beyond.',
+      'Discover live events from communities across Australia. The place events get made.',
   },
 }
 
@@ -242,7 +242,7 @@ export default async function HomePage() {
 
         {/*
          * STRUCTURE (strategic correction, 6 June 2026):
-         * EventLinqs is a complete general ticketing platform first. General
+         * EventLinqs sells the whole general catalogue first, the way a general
          * category breadth LEADS the page, the way Ticketmaster and Eventbrite
          * do it. Community is one curated thread (SceneRail) placed mid-page,
          * never the lead. Strip the SceneRail out and the page still stands as

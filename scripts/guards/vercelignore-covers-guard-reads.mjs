@@ -69,6 +69,8 @@ const REQUIRED_READS = {
 const TOLERANT_FILES = {
   'scripts/guards/one-fee-copy.mjs':
     'names docs/ directories to skip and authority documents to exclude from the copy scan; it walks what exists',
+  'scripts/guards/positioning-lock.mjs':
+    'the sibling of one-fee-copy: it names docs/marketing as a scan root and five docs/ directories to exclude as dated records, and walks what exists (its walk() returns empty on ENOENT and it reports the file count it scanned)',
   'scripts/guards/no-plaintext-credential.mjs':
     'names docs/ files only inside its reviewed-redaction allowlist, as reasons; an absent file is simply not scanned',
   'scripts/guards/sourced-specifications.mjs':

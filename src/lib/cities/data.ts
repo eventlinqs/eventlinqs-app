@@ -124,7 +124,7 @@ const CITIES: Record<CitySlug, CityContent> = {
     tier: 1, population: 1402000, latitude: -34.9285, longitude: 138.6007,
     descriptor: 'The festival city.',
     editorial:
-      "Adelaide is a city built around a festival calendar. WOMADelaide brings global music to Botanic Park every March. Adelaide Fringe runs the longest comedy and arts festival in the southern hemisphere. Greek glendi in Thebarton, Italian street fairs in Norwood, Vietnamese new year at Bonython Park, Filipino fiestas in Salisbury, Iranian Norouz at Rymill Park, German Schutzenfest in Hahndorf. Live music venues line Hindley Street. Concerts at Adelaide Oval. Workshops at the Art Gallery of South Australia. Cabaret at the Gov. Theatre at Her Majesty's. EventLinqs is built for the Adelaide organisers who already know the city runs on community events and want a ticketing platform that respects that rhythm.",
+      "Adelaide is a city built around a festival calendar. WOMADelaide brings global music to Botanic Park every March. Adelaide Fringe runs the longest comedy and arts festival in the southern hemisphere. Greek glendi in Thebarton, Italian street fairs in Norwood, Vietnamese new year at Bonython Park, Filipino fiestas in Salisbury, Iranian Norouz at Rymill Park, German Schutzenfest in Hahndorf. Live music venues line Hindley Street. Concerts at Adelaide Oval. Workshops at the Art Gallery of South Australia. Cabaret at the Gov. Theatre at Her Majesty's. EventLinqs is built for the Adelaide organisers who already know the city runs on community events and want a platform that respects that rhythm.",
     mapZoom: 11,
     relatedCities: ['melbourne', 'sydney', 'perth', 'ballarat', 'bendigo', 'hobart'],
     suburbs: [],

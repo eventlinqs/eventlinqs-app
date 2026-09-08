@@ -102,10 +102,10 @@ Touches sent, reply rate (target 15 percent or better on DMs; below 8 percent me
 Rules for all copy: Australian English, no em-dashes or en-dashes, "community" never the banned word, no hype words like revolutionary or disrupt, every message personalised in the first line, one clear ask, short.
 
 ### Instagram or Facebook DM, first touch (Eventbrite organiser)
-> Hey [name], came across [event name] and it looks like a great night. Quick one from one local to another: I have built EventLinqs, a new Australian ticketing platform, and I am taking on 50 founding organisers in Geelong and Melbourne with zero fees for the first 6 months, free migration from Eventbrite, and me personally setting up your first event. On a $20 ticket, your buyers pay exactly $20.00 during the founding period, and you keep the full $20. All I ask in return is your honest feedback as we build. Keen to see the numbers side by side with your current fees? Takes 10 minutes.
+> Hey [name], came across [event name] and it looks like a great night. Quick one from one local to another: I have built EventLinqs, a new Australian platform where events get made, and I am taking on 50 founding organisers in Geelong and Melbourne with zero fees for the first 6 months, free migration from Eventbrite, and me personally setting up your first event. On a $20 ticket, your buyers pay exactly $20.00 during the founding period, and you keep the full $20. All I ask in return is your honest feedback as we build. Keen to see the numbers side by side with your current fees? Takes 10 minutes.
 
 ### DM, first touch (community group or free events)
-> Hey [name], love what you are doing with [group/event]. I am a Melbourne founder building EventLinqs, a ticketing platform focused on local community events in Geelong and Melbourne. Free events are always free on the platform, setup takes minutes, and I am personally helping our first 50 organisers get live. Would you be open to me setting up [event name] for you as a demo, no strings?
+> Hey [name], love what you are doing with [group/event]. I am a Melbourne founder building EventLinqs, a platform focused on local community events in Geelong and Melbourne. Free events are always free on the platform, setup takes minutes, and I am personally helping our first 50 organisers get live. Would you be open to me setting up [event name] for you as a demo, no strings?
 
 ### Instagram or Facebook DM, soft-open variant (A/B test against the direct offer DM)
 > Hey [name], [event name] looks like a great night, love seeing this in [Geelong/Melbourne]. I am building something for local organisers here and your event is exactly the kind of thing it exists for. Mind if I ask what you use for ticketing at the moment, and how you find it?
@@ -119,7 +119,7 @@ Rules for all copy: Australian English, no em-dashes or en-dashes, "community" n
 >
 > Hi [name],
 >
-> I found [event name] on [platform] and wanted to reach out directly. I am Lawal, founder of EventLinqs, a new Australian ticketing platform launching in Geelong and Melbourne.
+> I found [event name] on [platform] and wanted to reach out directly. I am Lawal, founder of EventLinqs, a new Australian event platform launching in Geelong and Melbourne.
 >
 > On a $20 ticket, your attendees currently pay about $[X.XX] in fees on [platform] (competitor figure pending pre-launch verification). On EventLinqs there is one fee, card processing included, so that is $1.69 all-in and you keep the full $20. As one of our 50 founding organisers you pay zero fees for 6 months, so your buyers pay exactly $20.00, and every organiser you successfully refer adds 3 months to your zero-fee period. I will also migrate your events and attendee list across myself, free. In return, I ask for your honest feedback as we build the platform around organisers like you.
 >

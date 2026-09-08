@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAppUrl } from '@/lib/site-url'
 import { getNoReplyFrom } from '@/lib/email/sender'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 
 /**
  * M6 Phase 4 organiser payout notifications.
@@ -184,7 +185,7 @@ function shell(heading: string, body: string, dashboardUrl: string): string {
         </a>
       </p>
       <p style="margin-top:32px;color:#9CA3AF;font-size:12px;">
-        The EventLinqs team. The ticketing platform built for every community.
+        The EventLinqs team. ${BRAND_STRAPLINE}
       </p>
     </div>
   `

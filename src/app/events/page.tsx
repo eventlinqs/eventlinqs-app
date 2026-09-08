@@ -41,7 +41,7 @@ export const revalidate = 60
 export const metadata: Metadata = {
   title: 'Find your next event | EventLinqs',
   description:
-    'Browse upcoming events by date, community, city, and price. The ticketing platform built for every community.',
+    'Browse upcoming events by date, community, city, and price. The place events get made, for every community.',
   alternates: { canonical: '/events' },
 }
 

@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/Button'
 export const metadata: Metadata = {
   title: 'Careers | EventLinqs',
   description:
-    'Help build the ticketing platform for every community. Australian-based, fully remote, sole-founder team scaling toward national launch in mid-2026. Roles open as we grow.',
+    'Help build the place events get made, for every community. Australian-based, fully remote, sole-founder team scaling toward national launch in mid-2026. Roles open as we grow.',
   alternates: { canonical: '/careers' },
   openGraph: {
     title: 'Careers | EventLinqs',
     description:
-      'Help build the ticketing platform for every community. Engineering, design, organiser support, and community roles will open as we scale.',
+      'Help build the place events get made, for every community. Engineering, design, organiser support, and community roles will open as we scale.',
     url: '/careers',
     type: 'website',
     images: ['/opengraph-image'],

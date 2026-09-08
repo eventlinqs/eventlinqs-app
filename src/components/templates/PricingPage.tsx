@@ -46,7 +46,7 @@ const TIERS = [
     price: '',
     priceDetail: 'per paid ticket sold. That is the whole fee.',
     description:
-      'Transparent, industry-leading rates. Pass the fee to buyers or absorb it into your ticket price. Your choice.',
+      'Transparent rates, published in full. Pass the fee to buyers or absorb it into your ticket price. Your choice.',
     features: [
       'All features from Free tier',
       'Squad booking and group ticketing',

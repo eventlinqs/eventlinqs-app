@@ -3,6 +3,7 @@ import { EventCardMedia } from '@/components/media'
 import { BrandedPlaceholder } from '@/components/media'
 import { getEventMedia, type EventMediaInput } from '@/lib/images/event-media'
 import type { FeaturedHeroEvent } from '@/components/features/events/featured-event-hero'
+import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 
 /**
  * HomeHero - light-background, separated-card hero for the homepage.
@@ -123,12 +124,12 @@ export async function HomeHero({ featuredEvent }: Props) {
               className="mt-5 font-display font-extrabold leading-[1.05] tracking-tight text-[var(--text-primary)]"
               style={{ fontSize: 'clamp(2.25rem, 5.4vw, 4.25rem)' }}
             >
-              The ticketing platform built for every community.
+              {BRAND_STRAPLINE}
             </h1>
 
             <p className="mt-6 max-w-2xl text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">
-              All-in pricing from the first click. Guest checkout in two
-              taps. Discovery built around the community rhythms your city
+              Find your suppliers, sell your tickets, run your door and get
+              paid. Discovery built around the community rhythms your city
               actually celebrates, not generic genre buckets.
             </p>
 

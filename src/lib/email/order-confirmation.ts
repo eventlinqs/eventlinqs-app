@@ -10,6 +10,7 @@ import { describeRefundPolicy, policyFromEvent } from '@/lib/refunds/policy'
 import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
 import { formatMoney } from '@/lib/money/format'
 import { formatSeatLabel } from '@/lib/seating/format'
+import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 
 // ---------------------------------------------------------------------------
 // Order confirmation email (shared by the paid Stripe webhook and the free /
@@ -402,7 +403,7 @@ export function buildConfirmationEmailHtml(
 
   <p style="margin:0 0 12px;color:#6B7280;font-size:13px;">This email is your receipt.</p>
 
-  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">The EventLinqs team. The ticketing platform built for every community.</p>
+  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">The EventLinqs team. ${BRAND_STRAPLINE}</p>
   <p style="margin:0 0 4px;color:#6B7280;font-size:13px;"><strong style="color:#0A1628;">Refunds:</strong> ${escapeHtml(describeRefundPolicy(policyFromEvent(event), event.is_free ?? false))}</p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Your tax invoice or receipt, and the refund controls, are on <a href="${orderUrl}" style="color:#9CA3AF;">your order page</a>. Platform terms: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">${canonicalHost()}/legal/refunds</a></p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.</p>
@@ -492,7 +493,7 @@ export function buildConfirmationEmailText(
   lines.push('')
   lines.push('This email is your receipt.')
   lines.push('')
-  lines.push('The EventLinqs team. The ticketing platform built for every community.')
+  lines.push(`The EventLinqs team. ${BRAND_STRAPLINE}`)
   lines.push(`Refunds: ${describeRefundPolicy(policyFromEvent(event), event.is_free ?? false)}`)
   /*
    * THE EMAIL IS NOT THE TAX INVOICE, AND IT MUST NOT PRETEND TO BE.

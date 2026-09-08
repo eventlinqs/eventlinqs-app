@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 export const metadata: Metadata = {
   title: 'Press | EventLinqs',
   description:
-    'Press resources, founder bio, brand assets, and media contact for EventLinqs - the ticketing platform built for every community.',
+    'Press resources, founder bio, brand assets, and media contact for EventLinqs - the place events get made, for every community.',
   alternates: { canonical: '/press' },
   openGraph: {
     title: 'Press | EventLinqs',
@@ -96,12 +96,12 @@ export default function PressPage() {
               Company at a glance
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[var(--text-primary)] md:text-4xl">
-              The ticketing platform built for every community.
+              The place events get made, for every community.
             </h2>
             <div className="mt-6 space-y-4 text-base leading-relaxed text-[var(--text-secondary)] md:text-lg">
               <p>
-                EventLinqs is an Australian-founded ticketing platform
-                building toward national launch across Australia, the
+                EventLinqs is an Australian-founded platform where events get
+                made, building toward national launch across Australia, the
                 United Kingdom, the United States, and the European Union
                 in mid-2026. The product is designed mobile-first, prices
                 tickets all-in by default, and organises discovery around
