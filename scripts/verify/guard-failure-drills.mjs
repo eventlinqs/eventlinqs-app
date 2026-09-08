@@ -257,6 +257,53 @@ const DRILLS = [
     expect: 'is not open any more',
   },
   /*
+   * launch-readiness-honest (close-out L5, 9 September 2026), five drills, one
+   * per way the readiness report can be made to say something the evidence does
+   * not. The first is the one that matters and is the reason the guard exists: a
+   * report whose verdict is edited in the markdown. The others are the shapes
+   * C10.4's roast found in the scope audit, aimed at this document instead.
+   */
+  {
+    name: 'the launch readiness verdict is edited by hand in the markdown',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
+    file: 'docs/verification/LAUNCH-READINESS.md',
+    find: '## VERDICT: NOT LAUNCH READY',
+    replace: '## VERDICT: LAUNCH READY',
+    expect: 'does not match what the adjudication renders',
+  },
+  {
+    name: 'a PASS row cites evidence that is not in the repository',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
+    file: 'scripts/verify/launch-readiness.mjs',
+    find: 'route-sweep-2026-09-09.json',
+    replace: 'route-sweep-that-somebody-deleted.json',
+    expect: 'which is not in the repository',
+  },
+  {
+    name: 'a PASS row also names something the owner has to supply',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
+    file: 'scripts/verify/launch-readiness.mjs',
+    find: '    n: 14,\n',
+    replace: "    n: 14,\n    needs: 'test-account',\n",
+    expect: 'also names an owner need',
+  },
+  {
+    name: 'an OWNER BLOCKED need grows a second sentence',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
+    file: 'scripts/verify/launch-readiness.mjs',
+    find: 'L1 requires them driven there rather than on TEST.',
+    replace: 'L1 requires them driven there rather than on TEST. It would also be convenient.',
+    expect: 'C10.4 says one',
+  },
+  {
+    name: 'an L1 row is renumbered out of the sixteen and nobody adjudicates it',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
+    file: 'scripts/verify/launch-readiness.mjs',
+    find: '    n: 15,\n',
+    replace: '    n: 17,\n',
+    expect: 'L1 item 15 has no row',
+  },
+  /*
    * vercelignore-covers-guard-reads (close-out C18 FINAL), two drills: the approved
    * record's re-inclusion lost from .vercelignore, and a build-time guard naming a
    * docs/ path that is neither required-and-re-included nor in a reviewed file.

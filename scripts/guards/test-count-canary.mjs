@@ -1002,9 +1002,26 @@ const ROOT = join(HERE, '..', '..')
  * was written in, and an audit date that is a date, so its age is visible
  * rather than assumed:
  * 332 files / 3819, as the canary measured.
+ *
+ * Close-out L5 (9 September 2026), one new file and twenty seven new tests:
+ * tests/unit/verify/launch-readiness. Three drive the one-sentence rule the
+ * OWNER BLOCKED state inherits from C10.4, including a full stop inside a path
+ * and inside a version number; fourteen drive the judgement over every way a
+ * readiness row can lie (a PASS with no evidence, with evidence that is not on
+ * disk, with no date driven, or naming an owner need beside it; an OWNER BLOCKED
+ * with no need, an unreviewed need, a two sentence need, or evidence cited as if
+ * it were driven; a FAIL saying nothing; a missing row, an invented row, a
+ * duplicate row, a state outside the three); two hold the anti-rot rule on the
+ * owner-need list, added after the list was found holding an entry no row cited;
+ * three hold the SHIPPED adjudication (sixteen rows numbered one to sixteen,
+ * every owner need one sentence, and every OWNER BLOCKED row naming where it HAS
+ * been driven so blocked never reads as untested); and four hold the rendering,
+ * including that it is byte-stable, which is the property the guard's comparison
+ * depends on:
+ * 333 files / 3846, as the canary measured.
  */
-const MIN_FILES = 332
-const MIN_TESTS = 3819
+const MIN_FILES = 333
+const MIN_TESTS = 3846
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

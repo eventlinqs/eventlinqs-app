@@ -161,6 +161,12 @@
  *                              purpose sit in scripts/guards/lib/parked-pull-requests.json
  *                              with a why and an unblockedBy, and that record is itself
  *                              checked for rot on every run (close-out PR5)
+ *   launch-readiness-honest    docs/verification/LAUNCH-READINESS.md is a rendering of the
+ *                              adjudication in scripts/verify/launch-readiness.mjs and not a
+ *                              second place a claim can live: it is re-rendered and compared
+ *                              byte for byte, a PASS row must cite evidence that is still on
+ *                              disk and carry the date driven, and an OWNER BLOCKED row must
+ *                              name what is needed in one sentence (close-out L5, C10.4)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -466,6 +472,17 @@ const GUARDS = [
   // filling the field the label named produced a zero-priced ticket on a paid
   // event. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
   'scripts/guards/labels-name-the-right-control.mjs',
+  // Close-out L5 (9 September 2026): the launch readiness report is a rendering
+  // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
+  // and compared byte for byte, so a row cannot be improved by editing the
+  // markdown. A PASS row must cite evidence that is still in the repository and
+  // carry the date driven; an OWNER BLOCKED row must name what is needed in one
+  // sentence, which is close-out C10.4's rule applied for the same reason. It is
+  // the most tempting document in the tree to edit by hand, because every row is
+  // a claim about whether a journey works. SKIPS by name where docs/ has been
+  // stripped by .vercelignore, and is registered TOLERANT there. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs, four ways.
+  'scripts/guards/launch-readiness-honest.mjs',
 
   // Founder brief 2026-08-23: an event page can never ship without its
   // structured data. A production audit that day found every event page valid

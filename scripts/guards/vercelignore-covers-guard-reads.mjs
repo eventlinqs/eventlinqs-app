@@ -75,6 +75,8 @@ const TOLERANT_FILES = {
     'names docs/ files only inside its reviewed-redaction allowlist, as reasons; an absent file is simply not scanned',
   'scripts/guards/sourced-specifications.mjs':
     'names a docs/ file only inside its reviewed baseline; the baseline is reported, never required to match',
+  'scripts/guards/launch-readiness-honest.mjs':
+    'reads docs/verification/LAUNCH-READINESS.md and the artefacts beside it, and SKIPS by name when docs/verification is absent, which is exactly the stripped upload; the fault it catches is committed on a developer machine and is caught by the pre-push gate and by CI, both of which hold the whole tree',
 }
 
 const SCAN_DIRS = ['scripts/guards', 'scripts/guards/lib', 'src/lib/health']

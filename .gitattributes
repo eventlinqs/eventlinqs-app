@@ -33,6 +33,16 @@ docs/design/poster-composition/parity.json   text eol=lf
 docs/design/poster-composition/set/INDEX.txt text eol=lf
 docs/roast/organiser-copy/OUTPUT.md          text eol=lf
 
+# The launch readiness report and the artefacts it cites (close-out L5), same
+# rule and a sharper reason: scripts/guards/launch-readiness-honest.mjs re-renders
+# the report and compares it to the file BYTE FOR BYTE, and the renderer is Node,
+# so it emits LF. Left unpinned with core.autocrlf=true on Windows, a fresh clone
+# would check the file out with CRLF and the guard would fail every build on a
+# document nobody had touched. Caught before the first commit, by reading git's
+# own warning rather than scrolling past it.
+docs/verification/LAUNCH-READINESS.md        text eol=lf
+docs/verification/launch-readiness/*.json    text eol=lf
+
 # Shell scripts and git hooks must keep LF or they will not execute.
 *.sh        text eol=lf
 .githooks/* text eol=lf
