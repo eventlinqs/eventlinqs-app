@@ -5,6 +5,48 @@ import { PERMANENT_REDIRECTS } from "./src/lib/seo/permanent-redirects";
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
 
+/**
+ * The local Sentry parity sink's origin, and ONLY ever a loopback one.
+ *
+ * WHY THIS EXISTS, and what it is NOT. On a deployed build the browser SDK does
+ * not talk to Sentry directly at all: `tunnelRoute` below makes it POST
+ * same-origin to /api/monitoring, which `connect-src 'self'` already covers.
+ * Driven on the preview of 8 September 2026 to be sure rather than to assume:
+ *
+ *   [req POST] https://<preview>/api/monitoring?o=4511144322203648&p=45111443...
+ *   [res 200 ]
+ *
+ * That tunnel URL is built from the org and project ids the SDK parses out of a
+ * REAL Sentry DSN host (`o<org>.ingest.<region>.sentry.io`). The local gate's
+ * parity DSN (close-out P0.2, see PARITY_SENTRY_DSN in
+ * scripts/ops/pre-push-gate.mjs) has no such host, so no tunnel URL can be
+ * derived and the SDK posts straight to the DSN. That request is then a
+ * connect-src violation of the report-only policy, Chrome files it as an
+ * Inspector Issue, and Lighthouse's `inspector-issues` audit took best practices
+ * to 0.96 on all thirteen gated URLs. It is an artefact of the synthetic DSN and
+ * not a product defect, so the fix must be visible ONLY when that synthetic DSN
+ * is in use.
+ *
+ * Hence the loopback test. A DSN pointing anywhere else - and every deployed one
+ * does - adds nothing, and the production policy is byte for byte what it was.
+ */
+function sentryParityConnectSrc(): string {
+  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
+  if (!dsn) return ''
+  let origin: URL
+  try {
+    origin = new URL(dsn)
+  } catch (error) {
+    // A malformed DSN is the SDK's problem to report, not this policy's. Say so
+    // rather than widening the policy on a value nobody could parse.
+    console.warn(`[csp] NEXT_PUBLIC_SENTRY_DSN is not a URL, so no origin was added to connect-src: ${String(error)}`)
+    return ''
+  }
+  const loopback = origin.hostname === '127.0.0.1' || origin.hostname === 'localhost' || origin.hostname === '[::1]'
+  return loopback ? ` ${origin.origin}` : ''
+}
+const SENTRY_PARITY_CONNECT_SRC = sentryParityConnectSrc();
+
 // Content-Security-Policy. Shipped REPORT-ONLY first so violations surface in
 // the browser console without breaking anything; flip the header key to
 // 'Content-Security-Policy' to enforce once the report run is clean. Sources
@@ -12,6 +54,10 @@ const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'tr
 // Plausible (cookieless analytics), Supabase (data + storage images), Mapbox
 // and Google Maps (city/venue maps), Pexels/Picsum (stock imagery). Sentry is
 // same-origin via the /api/monitoring tunnel, so it needs no external source.
+// VERIFIED rather than assumed, on the deployed preview on 8 September 2026: the
+// browser POSTs to https://<host>/api/monitoring?o=...&p=... and is answered 200.
+// It is worth having driven, because the tunnel is derived from a real Sentry
+// DSN host and silently does not exist for any other kind of DSN.
 const CSP_REPORT_ONLY = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -31,7 +77,12 @@ const CSP_REPORT_ONLY = [
   // other doors' scans (B2, 5 September 2026): observed on the drive as
   // wss://<ref>.supabase.co/realtime/v1/websocket. Without it, the day this
   // policy is enforced every door goes quiet.
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://plausible.io https://*.upstash.io https://maps.googleapis.com https://places.googleapis.com",
+  // SENTRY_PARITY_CONNECT_SRC is empty on every deployed build and adds a
+  // loopback origin only when the local gate is running with its parity DSN.
+  // See the function above for the driven evidence that a deployed build tunnels
+  // through 'self' and needs nothing here.
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://plausible.io https://*.upstash.io https://maps.googleapis.com https://places.googleapis.com" +
+    SENTRY_PARITY_CONNECT_SRC,
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.instagram.com https://www.tiktok.com",
   "worker-src 'self' blob:",
 ].join('; ')
