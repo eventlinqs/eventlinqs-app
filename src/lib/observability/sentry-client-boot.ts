@@ -88,9 +88,9 @@ export function bootSentryClient(
     replaysOnErrorSampleRate: 1.0,
     environment: sentryEnvironment(true),
     release: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
-    // Session Replay is NOT listed here on purpose: it is armed after load by
-    // armSessionReplay() below. Adding it here statically imports the rrweb
-    // recorder (@sentry-internal/replay, ~304KB unminified with rrweb inlined)
+    // Session Replay is NOT listed here on purpose: it is armed on the visitor's
+    // first interaction by armSessionReplay() below. Adding it here statically
+    // imports the rrweb recorder (~304KB unminified with rrweb inlined)
     // into whatever chunk this module lands in. Measured on the event-detail
     // route: that chunk was 187KB transferred with 1,047ms of evaluation and
     // owned every long task on the page, holding LCP "Render Delay" at 3,071ms

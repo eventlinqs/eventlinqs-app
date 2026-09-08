@@ -309,3 +309,62 @@ it: the same shape arriving through `.gitignore` rather than `.vercelignore` (a
 build-time script reading a gitignored path passes locally and fails on every
 runner). It is written down, it is not built here, and it is not silently
 forgotten.
+
+### On the deployed preview, which is the environment the gate judges
+
+Driven against the preview of this branch (`eventlinqs-fdaod8b10`, commit
+6824d3dc), same route, same reporter:
+
+| | script requests | transferred | in the document | by dynamic import |
+|---|---|---|---|---|
+| before (preview of main's tree) | 21 | 439.0 KB | 207.9 KB | 231.1 KB |
+| after (preview of this branch) | 20 | **307.3 KB** | 207.9 KB | **99.4 KB** |
+
+**131.7 KB less script on every deployed page load, a 30% cut**, and the recorder
+absent until a person touches the page.
+
+## P0.6, stated honestly rather than rounded up
+
+Scope v5 section 10.3 asks for an initial JavaScript bundle under 200 KB.
+
+| reading | before | after | target | verdict |
+|---|---|---|---|---|
+| total script on the event route | 439.0 KB | 307.3 KB | 200 KB | **NOT MET** |
+| the in-document set alone | 207.9 KB | 207.9 KB | 200 KB | **NOT MET**, by 7.9 KB |
+
+The close-out's own framing ("the event route measures 433KB") is the total-script
+reading, and on that reading the gap is 107 KB. The in-document set did not move,
+because nothing this branch changed was ever in the document: the whole 131.7 KB
+came out of the dynamic-import half.
+
+What remains, in the order the table puts it:
+
+1. **React DOM, 74.7 KB, 580 ms of evaluation, 32% unused.** The framework. It
+   does not come out without a rendering-strategy change, and that is not a
+   performance tweak.
+2. **The error reporting SDK core, 75.8 KB plus 15.5 KB.** Still loaded on every
+   page, now at load + 3,000 ms rather than inside the paint. Removing it means
+   giving up error reporting on pages nobody interacts with, which is a product
+   decision rather than an engineering one.
+3. **`1boc349tfc3da.js`, 30.6 KB, unattributed.** The largest chunk this reporter
+   cannot name. Naming it is the next honest step and it is not guessed here.
+4. Everything else is under 16 KB.
+
+Reaching 200 KB of TOTAL script therefore means removing roughly one of item 1 or
+item 2 entirely. Neither is a tuning change and neither is attempted here.
+
+### And proven on the deployed build, not only locally
+
+`scripts/verify/sentry-replay-window.mjs` against the preview of this branch,
+three runs:
+
+    MEDIAN
+      window load                    580 ms
+      Sentry SDK chunk              3679 ms   (load + 3,099 ms: the timer)
+      Replay chunk (from navigation) 10102 ms
+      Replay chunk (from the input)    75 ms   <-- the no-buffer window
+
+PASS on 3 of 3: the recorder is not requested at all during 9,000 ms of no input
+on a real deployment, and arrives 75 ms after a real pointer input driven through
+the browser's own input pipeline. A local proof would have left the question of
+whether the deployed bundle behaves the same way; it does.
