@@ -2235,3 +2235,67 @@ of held, say so and it takes one line.
 CI measures Lighthouse on MOBILE only and does not measure desktop at all, against
 a standing law of 95 on both. Found while auditing pull request 95, recorded so it
 does not die with that branch. It does not block the launch, and it is still open.
+
+---
+
+## L5. The launch readiness report exists, and it says NOT LAUNCH READY (9 September 2026)
+
+**What is different now.** There is one document that answers "can this launch",
+and it is `docs/verification/LAUNCH-READINESS.md`. It has sixteen rows, one for
+each journey the launch definition names, and each row says PASS, or says exactly
+what is missing. Until today that document did not exist, and the answer lived
+scattered across a ledger nobody outside this project can read.
+
+**The answer, in one line.** Four of the sixteen rows pass. Twelve are waiting on
+you. Nothing is failing.
+
+**The four that pass, all driven on the live site today, not asserted:**
+
+  - Every route the application declares was driven on www.eventlinqs.com.au: 211
+    requests, no server error, no broken page, no dead link the platform itself
+    published.
+  - Every public page was scanned for accessibility problems at phone and desktop
+    width: 124 scans across 62 pages, zero problems at any severity.
+  - A real event was checked to appear where a real person would look for it: its
+    own page, the Melbourne browse page, the Melbourne city page, and both the
+    African and Caribbean community pages.
+  - An event was found from the homepage by clicking only, at phone, tablet and
+    desktop width, with no address typed.
+
+**The twelve that are waiting on you, and this is the whole gap.** They are not
+untested and they are not unbuilt. Every one of them has been driven end to end on
+the TEST database, and the report says so on each row. What they have never been
+driven on is PRODUCTION, because every one of them writes to the live site: a real
+signup, a real event, a real card, a real refund, a real scan at a door. Two
+approvals cover all twelve:
+
+  1. **Approval to create one test organiser account and one test event on the
+     live site.** That unblocks eight rows: signup, creating an organisation and
+     an event, tiers and discount codes, the Launch Kit, pause and archive and
+     delete, attendees and orders and the GST report, the payout page, and the
+     transactional emails.
+  2. **Approval to put one real card through a low-price live event and refund
+     it.** That unblocks the other four: the purchase, the refund, the squad and
+     waitlist paths, and the door scan of the ticket it issues.
+
+Say yes to those two and the remaining twelve rows can be driven and the report
+finished. Until then the honest answer stays NOT LAUNCH READY, and it would be
+wrong of me to write anything else.
+
+**One thing I found by testing rather than assuming.** The previous session
+recorded fourteen of the sixteen rows as blocked on you. Two of them were not:
+rows 4 and 8 need nobody to write anything to the live site, and both now pass.
+It cost about twenty minutes to find out.
+
+**Something to note, not a defect.** An event page does not link to its own city
+page. The event appears ON the city page correctly, so nothing is broken and the
+launch definition is met, but a person reading an event has no one-click way to
+see what else is on in that city. Worth a decision after launch.
+
+**The report cannot drift.** It is generated from a judgement held in code, and
+the build fails if anyone edits the file by hand, if a passing row cites evidence
+that has been deleted, or if a blocked row stops saying what would unblock it.
+That is proven by five deliberate breakages, including someone changing the
+verdict line to LAUNCH READY.
+
+**Evidence:** `C:\dev\EVIDENCE\L5\` and `docs/verification/launch-readiness/`

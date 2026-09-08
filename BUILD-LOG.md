@@ -6323,3 +6323,122 @@ restored tree. Registered guards: 82 to 83, all PASS.
   C:\dev\EVIDENCE\PR5\guard-GREEN.txt
   C:\dev\EVIDENCE\PR5\drills-full.txt
   C:\dev\EVIDENCE\PR5\all-guards.txt
+
+
+---
+
+## 2026-09-09, session 53. PR5 closed on production, then L5: the launch readiness report, and the two rows that were never blocked.
+
+Governing laws stated before the first edit, per Law 0: Law 8 (authorship, no AI
+trailer, and the pull request BODY grepped before a squash because the squash
+takes the body), the Definition of Done, the COMPLETION LAW, C16.0 (an item is
+not finished until production serves it), Verification and gates (the pre-push
+gate is the merge authority, pull requests open as drafts, a registered blocking
+guard proven both ways), and close-out PR5 (one open pull request at a time).
+
+### First: PR5 was not finished, and its own ledger said so
+
+Pull request 144 was green on every required check and its ledger row 7b read
+"SEE THE ROWS BELOW" with no rows below it. Under C16.0 a merge is finished when
+production serves it, so that was the unfinished half of the current item and it
+was closed before anything new began. Merged as `b3f9a56e`, CI green on main,
+post-deploy smoke green twice, production serving
+`sentry-release=b3f9a56e...` at 22:03:33Z, twelve real routes driven 200, and the
+guard re-run against the live list: `PASS - 0 active (limit 1), 3 parked with a
+reason, 3 open in total`.
+
+### Then the item: close-out L2 item 10 and L5
+
+The launch readiness report. It had never been written. The previous session
+concluded it "cannot be produced honestly" because fourteen of the sixteen rows
+would say BLOCKED, and that conclusion is reversed here. A report that says NOT
+LAUNCH READY and names the two approvals that would end it is precisely the
+artefact L5's "stop for the owner" means; withholding it leaves the answer inside
+a ledger nobody outside this project reads.
+
+### Two of the fourteen were never blocked, and that is the part worth recording
+
+The inherited sentence was "L1 items 1 to 13 and 15 all require WRITING TO
+PRODUCTION". Item 4 is four page loads. Item 8 is one click. Both are anonymous,
+both are read only, and neither needs the owner's approval for anything. Both were
+driven on production today, at 390, 768 and 1440, and both PASS.
+
+An inherited BLOCKER is a claim nobody re-tested, exactly like an inherited PASS.
+It cost twenty minutes to find that out and it moved the report from two rows
+passing to four.
+
+### The report is generated, and the build fails if it is edited
+
+`scripts/verify/launch-readiness.mjs` holds the sixteen rows and the adjudication;
+the markdown is rendered from it. `scripts/guards/launch-readiness-honest.mjs`
+re-renders it on every build and compares byte for byte, so a row cannot be
+improved by editing the file. A PASS row must cite evidence that is still in the
+repository and carry the date driven; an OWNER BLOCKED row must name what is
+needed in one sentence, which is close-out C10.4's rule applied to this document
+for the same reason.
+
+Proven red five ways, including the one that matters: the verdict line changed by
+hand from NOT LAUNCH READY to LAUNCH READY. `135/135 drills fired correctly`.
+
+### The evidence is in the repository, not only on this laptop
+
+Each PASS row rests on a compact artefact under `docs/verification/launch-readiness/`,
+7.3KB in total, because a readiness report whose proof lives at `C:\dev\EVIDENCE`
+cannot be checked from a clone and disappears the day that tree is cleared. The
+raw output stays in the session tree and the screenshots are cited for the human
+reader, never as the thing the guard checks.
+
+### Two harnesses were stranded off the main line
+
+`scripts/verify/production-route-sweep.mjs` and the retry in
+`scripts/verify/axe-urls.mjs` existed only on `feat/m1-the-request`, parked behind
+a production migration the owner has not run. Rows 14 and 16 rest on them, so main
+could not regenerate its own readiness evidence, and main's axe harness still had
+no retry. Both cherry-picked as the minimum dependency of this item.
+
+### Three defects in my own work, each found by running it
+
+The item 4 test asked the EVENT PAGE which city and communities it belonged to,
+by harvesting anchors, and produced nine false failures: the six `/community/`
+links on an event page are the rail every page carries, not that event's tags. The
+test is now inverted and asks the twenty cities and twenty one communities the
+platform publishes which of them list this event, which needs no guess and cannot
+be fooled by navigation chrome.
+
+The item 8 test read `page.url()` straight after the click and reported three
+false failures saying the click landed back on the homepage. The App Router soft
+navigation had not committed. `waitForURL` now, so a click that genuinely does not
+navigate is still reported.
+
+The owner-need list held an entry no row cited, rendering as a blocker of nothing.
+Removed, and an uncited need is now a fault.
+
+### Found on production, recorded, nothing removed
+
+An event page carries no link to its own city page. The event appears ON the city
+page correctly, so nothing is broken and L1 item 4 is met, but a reader of an
+event has no one-click route to what else is on in that city. Routed to the owner
+as a decision.
+
+### The state of the sentinel, stated because the session prompt asked for it
+
+The instruction to write DONE when C1 to C10 are MET is void by CLOSE-OUT's own
+text, twice over, and CLOSE-OUT is authoritative. "CORRECTIONS AND FINAL
+VERIFICATION" supersedes C12 with "C1 through C15 EACH marked MET" and says in
+terms that "the earlier wording naming C1 through C10 is void". The owner decision
+of 7 September then supersedes that ordering again: L5 says do NOT write the
+sentinel at the end of the launch-blocking list, produce this report instead, and
+"the sentinel is written only when the post-launch queue in L4 is also complete".
+L4 holds the C8 ratchet to 95, C15, and the fifty eight Scope v5 sections C10.3
+names. So the sentinel is not written, and BUILD-COMPLETE.txt is not created.
+
+### Evidence
+
+  C:\dev\EVIDENCE\PR5\production-b3f9a56e.txt
+  C:\dev\EVIDENCE\PR5\guard-GREEN-after-merge.txt
+  C:\dev\EVIDENCE\L5\route-sweep.json, route-sweep-summary.txt
+  C:\dev\EVIDENCE\L5\axe.txt, public-urls.txt
+  C:\dev\EVIDENCE\L5\l1-drive.json, shots\ (18 screenshots)
+  C:\dev\EVIDENCE\L5\all-guards.txt, drills.txt
+  docs/verification/LAUNCH-READINESS.md
+  docs/verification/launch-readiness/ (4 artefacts)

@@ -1610,3 +1610,105 @@ wiring it would turn that guard red for a permission rather than a fault. The
 rule is therefore enforced on the machine that runs the pre-push gate, which is
 the machine that opens pull requests, and it is not enforced in CI. That is
 stated rather than implied.
+
+### PR5 CLOSED (9 September 2026, session 53): merged as `b3f9a56e`, main green, production serving it
+
+C16.0 says a merge is finished when production serves it. These are the rows that
+finish PR5's clause 7b, which the previous session left reading "SEE THE ROWS BELOW"
+with no rows below it.
+
+| Requirement (C16.0) | Verdict | Evidence |
+|---|---|---|
+| Every required check green on the run for the pushed head | MET. On `7819deec`: Lighthouse mobile gate PASS 29m54s, lint/typecheck/build PASS 3m23s, test (vitest) PASS 2m10s, types-drift guard PASS 1m23s, production parity PASS 44s, Resolve Vercel preview PASS 2m7s, Vercel PASS. The three Buyer purchase journey rows and the smoke row show `skipping`, which is the draft condition (C2.2) | `gh pr checks 144` |
+| No AI authorship trailer in the squash message | MET. The pull request BODY was grepped before the merge, because the squash takes the body: its one match was the filename `CLAUDE.md` in prose, which no pattern in `no-ai-authorship.mjs` matches. The merged message on main was grepped again for a `Co-Authored-By:` trailer, "Generated with", a vendor noreply address and the robot emoji: zero matches | `C:\dev\EVIDENCE\PR5\production-b3f9a56e.txt` |
+| Merged and the branch deleted | MET. Squash merge `b3f9a56e`, 6 files changed, 486 insertions, 2 deletions. `chore/one-pull-request-at-a-time` deleted on the remote and locally | `gh pr merge 144 --squash --delete-branch` |
+| The newest production deployment is Ready and its commit matches origin/main | MET. `sentry-release=b3f9a56e31fb4bd0e502b88c9eccb98cb7a6eb22` served by https://www.eventlinqs.com.au/ at 22:03:33Z | `C:\dev\EVIDENCE\PR5\production-b3f9a56e.txt` |
+| Main green after the merge | MET. CI success on `b3f9a56e`; post-deploy smoke success twice on the same commit | `gh run list --branch main` |
+| At least ten real routes driven on production | MET. Twelve, all 200: `/`, `/events`, `/pricing`, `/organisers`, `/about`, `/communities`, `/community/african`, `/city/melbourne`, `/help`, `/login`, `/sitemap.xml`, `/legal/terms`. Zero 404s, zero 500s | same file |
+| The rule is actually live, not merely merged | MET, and this is the row the item exists for. The guard re-run against the LIVE pull request list on merged main: `PASS - 0 active (limit 1), 3 parked with a reason, 3 open in total`. The merged pull request left no rot behind, because 144 was never a parked entry | `C:\dev\EVIDENCE\PR5\guard-GREEN-after-merge.txt` |
+
+PR5 is therefore MET in full, and the PR HYGIENE block (PR1 to PR5) is closed.
+
+
+## L5. THE LAUNCH READINESS REPORT (9 September 2026, session 53)
+
+Close-out L2 item 10 and L5. The last launch-blocking item, and the one that
+stops for the owner. It had never been produced: the previous session judged that
+it "cannot be produced honestly" because fourteen of its sixteen rows would read
+BLOCKED. That judgement is reversed here, for two reasons. A report saying NOT
+LAUNCH READY with the two approvals that would end it is the artefact that lets
+the owner act; withholding it leaves the answer inside a ledger only this project
+can read. And two of the fourteen turned out not to be blocked at all.
+
+| COMPLETION LAW clause | Verdict | Evidence |
+|---|---|---|
+| 1. Schema: migration written, applied to TEST, verified by querying it back | NOT APPLICABLE. This item adds no column, table, function or policy | `production parity` on the gate |
+| 2. Code built, typechecked, linted, no silent catches | MET. `npx tsc --noEmit` exit 0; eslint `--max-warnings=0` exit 0 over all nine changed files; 84 of 84 registered guards PASS | `C:\dev\EVIDENCE\L5\all-guards.txt` |
+| 3. Tests added, the suite grows, canary raised in the same commit | MET. One new file, 27 tests, driving the judgement over every way a readiness row can lie. Canary raised 332/3819 to 333/3846, MEASURED twice by running it rather than calculated | `tests/unit/verify/launch-readiness.test.ts`, `scripts/guards/test-count-canary.mjs` |
+| 4. Guard registered, blocking, proven red AND green | MET, five ways red. `scripts/guards/launch-readiness-honest.mjs` in `run-guards.mjs`, therefore blocking on prebuild. RED: the verdict line edited by hand in the markdown; a PASS row citing evidence that is not in the repository; a PASS row also naming an owner need; an OWNER BLOCKED need grown to two sentences; an L1 row renumbered out of the sixteen. GREEN on the restored tree. 135 of 135 drills fired correctly, up from 130 | `C:\dev\EVIDENCE\L5\drills.txt`, `all-guards.txt` |
+| 5. DRIVEN at 390, 768 and 1440 | MET, on PRODUCTION, anonymously. L1 item 4: the event page plus the Melbourne city page, the Melbourne browse page and the African and Caribbean community pages, each confirmed to render a real anchor to the event, at all three viewports. L1 item 8: the homepage loaded, an event link found on it and clicked, and the page reached checked against the sitemap, at all three viewports | `C:\dev\EVIDENCE\L5\shots\` (18 files), `l1-drive.json` |
+| 6. FULL regression green after the item | MET. 84 of 84 guards, 135 of 135 drills, tsc 0, eslint 0, and the full suite through the canary at 333 files / 3846 tests, 0 failed, 0 skipped. Then the whole pre-push gate | `all-guards.txt`, `drills.txt`, `gate-push.txt` |
+| 7. Committed, Australian English, no trailers, pushed | MET | `git log` |
+| 7b. Merged, main green, production serving it (C16.0) | SEE THE ROWS AT THE END OF THIS SECTION | |
+
+### L5's own clauses, adjudicated line by line
+
+| L5 clause | Verdict | How |
+|---|---|---|
+| "produce docs/verification/LAUNCH-READINESS.md" | MET. 11,718 bytes, generated | the file |
+| "one row per L1 item" | MET, sixteen, and the judgement FAILS on a missing row, an invented row or a duplicate | `judgeLaunchReadiness` |
+| "with PASS or FAIL" | MET, with OWNER BLOCKED as a third state under close-out C10.4's rule, and the report states in its own text that an OWNER BLOCKED row blocks the launch exactly as hard as a FAIL, so the state cannot be read as a softening | the report's verdict section |
+| "the evidence path" | MET, and enforced: a PASS row must cite at least one path, and every path must still exist in the repository. The four artefacts are committed under `docs/verification/launch-readiness/`, 7.3KB in total, so the proof can be read from a clone rather than from one laptop | the guard |
+| "and the date driven" | MET, and a PASS row with no date is a fault | the guard |
+| "Every row PASS, or it is not launch ready" | MET. 4 of 16 PASS, so the verdict is NOT LAUNCH READY, printed as the first heading after the title | the report |
+| "Write the same summary in plain language to REVIEW-QUEUE.md" | MET | `C:\dev\REVIEW-QUEUE.md`, the L5 entry |
+| "push it, and stop for the owner" | MET | the push, and the two approvals named in the entry |
+
+### The claim the previous session made, tested and reversed
+
+"L1 items 1 to 13 and 15 all require WRITING TO PRODUCTION" was recorded on
+8 September and inherited as a fact. Two of those fourteen require nothing of the
+kind. Item 4 is four page loads and item 8 is one click, both anonymous, both
+read only. Both were driven on production today and both PASS. The lesson is the
+standing one stated the other way round: an inherited BLOCKER deserves the same
+scepticism as an inherited PASS, because it is equally a claim nobody re-tested.
+
+### Three defects in my own work, each found by running it
+
+| Defect | How it presented | Fix |
+|---|---|---|
+| The item 4 test asked the EVENT PAGE which city and communities it belonged to, by harvesting its anchors | Nine false failures on the first run. The six `/community/` links on an event page are the community rail every page carries, not that event's tags, so four correctly did not list the event and were reported as defects. The page names no `/city/` link at all, reported as "its city page cannot be reached", which is a sentence about the harness rather than the product | The test is INVERTED: of the twenty cities and twenty one communities the platform publishes on its own index pages, which ones list this event. No guess about where the event belongs, and navigation chrome cannot fool it |
+| The item 8 test read `page.url()` straight after the click | Three false failures saying the click landed back on the homepage. The App Router soft navigation had not committed yet | `waitForURL` with a timeout, so a click that genuinely does not navigate is still a real failure and is reported as one |
+| The owner-need list held an entry (`real-supply`) that no row cited | Nothing failed. It rendered as a blocker of nothing | Removed, and an uncited need is now a FAULT, the same anti-rot rule the reviewed baseline in `sourced-specifications.mjs` and the parked record in `one-pull-request-at-a-time.mjs` both carry |
+
+A fourth, in the shell rather than the code: `MSYS_NO_PATHCONV=1` passed
+`/c/dev/...` through literally and Node resolved it against the drive root, so an
+axe run and a drive wrote into `C:\c\`. Found, read, and the stray tree deleted.
+
+### Two verification harnesses that were stranded off the main line, now landed
+
+`scripts/verify/production-route-sweep.mjs` and the retry in
+`scripts/verify/axe-urls.mjs` existed only on `feat/m1-the-request`, a branch
+parked behind a production migration the owner has not run. Both are read-only
+scripts with no schema dependency, and L5 rows 14 and 16 rest on them, so a
+readiness report on main could not regenerate its own evidence. Cherry-picked
+(`a946de27`, `359664b3`) as the minimum dependency of this item, under the
+COMPLETION LAW's own clause about building the minimum of a later item properly
+and continuing. Main's axe harness had no retry until now, which is why the first
+scan of 8 September discarded sixty urls twice.
+
+### Found on production and recorded, nothing removed
+
+An event page carries no link to its own city page. The event appears ON the city
+page correctly (proven above), so L1 item 4 is met and nothing is broken, but a
+reader of an event has no one-click route to what else is on in that city. Routed
+to the owner in REVIEW-QUEUE.md as a decision, not filed as a defect.
+
+### What is NOT claimed
+
+Twelve rows are OWNER BLOCKED and the report is NOT LAUNCH READY. This item did
+not make the platform more launch ready; it made the answer to "is it" a document
+with sixteen rows and two named approvals instead of a judgement held in a
+session. The twelve blocked journeys are driven and green on TEST, which the
+report records per row, and that is not the same as driven on production, which
+is what L1 asks for and what the state reflects.
