@@ -80,10 +80,11 @@
  * removed on the way out, green or red.
  */
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { calibrationReport } from '../ci/lighthouse-calibration.mjs'
 import { gitEnv } from '../lib/git-env.mjs'
 import { PARITY_SINK_PORT } from '../verify/sentry-parity-sink.mjs'
 
@@ -549,6 +550,35 @@ async function runIndexingDrive(env) {
   }
 }
 
+/**
+ * Every report this collection wrote, parsed.
+ *
+ * Read from disk rather than kept in memory because collectLikeLhci retries a
+ * failed run and deletes the report it wrote, so the files on disk are the
+ * authoritative set of runs that counted. Exported for the unit test.
+ *
+ * A report that will not parse is skipped rather than thrown on: this runs on
+ * the FAILURE path, where the job is to add a diagnosis, and a diagnosis that
+ * can crash would replace the failure the reader came for.
+ */
+export function readCollectedReports(dir = LHCI_DIR) {
+  if (!existsSync(dir)) return []
+  const out = []
+  for (const name of readdirSync(dir)) {
+    if (!name.startsWith('lhr-') || !name.endsWith('.json')) continue
+    try {
+      out.push(JSON.parse(readFileSync(join(dir, name), 'utf8')))
+    } catch (error) {
+      // Skipped, not thrown on: this runs on the FAILURE path and a diagnosis
+      // that can crash would replace the failure the reader came for. It is
+      // still SAID, because an unreadable report means the machine reading for
+      // that run is missing from the verdict below.
+      console.warn(`[gate] could not read ${name} for the machine reading: ${error.message}`)
+    }
+  }
+  return out
+}
+
 async function runLighthouse(env) {
   if (!existsSync(join(ROOT, '.next', 'BUILD_ID'))) {
     console.error('[gate] no production build under .next (no BUILD_ID). The build step produces it; run the whole gate.')
@@ -637,7 +667,21 @@ async function runLighthouse(env) {
     exec(NODE, ['scripts/ci/lighthouse-truth-table.mjs', '.lighthouseci'], env)
     const seo = exec(NODE, ['scripts/ci/assert-seo-audits.mjs', '.lighthouseci'], env)
     if (seo !== 0) return seo
-    return exec(NODE, [NPX_CLI, '--yes', LHCI_SPEC, 'assert', '--config=./lighthouserc.json'], env)
+    const asserted = exec(NODE, [NPX_CLI, '--yes', LHCI_SPEC, 'assert', '--config=./lighthouserc.json'], env)
+    // A RED SCORE HAS TWO POSSIBLE CAUSES AND THE NUMBERS CANNOT TELL THEM
+    // APART. Either the page got slower, or this laptop did. Until 9 September
+    // 2026 the step reported only the first, and on 8 September that sent a
+    // whole session after the product and then after the floors, for a
+    // collection taken on a machine running at 41% of the speed the floors were
+    // confirmed at. scripts/ci/lighthouse-calibration.mjs reads the machine
+    // Lighthouse recorded for itself in each report and says which it was.
+    //
+    // IT CANNOT CHANGE THE VERDICT: `asserted` is returned untouched either way.
+    if (asserted !== 0) {
+      console.error('')
+      console.error(calibrationReport(readCollectedReports()))
+    }
+    return asserted
   } finally {
     killTree(server)
     killTree(stub)

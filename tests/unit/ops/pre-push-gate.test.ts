@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { STEPS, classifyPush, judgeLighthouseRun, killTree, parseEnvFile } from '../../../scripts/ops/pre-push-gate.mjs'
+import { STEPS, classifyPush, judgeLighthouseRun, killTree, parseEnvFile, readCollectedReports } from '../../../scripts/ops/pre-push-gate.mjs'
 
 /**
  * THE GATE RUNS WHAT CI RUNS, AND SKIPS ONLY WHAT SENDS NOTHING.
@@ -228,5 +229,33 @@ describe('killTree', () => {
     expect(ran).toBe(0)
     expect(c.calls.kill).toEqual(['SIGTERM'])
     expect(c.calls.unref).toBe(1)
+  })
+})
+
+describe('readCollectedReports', () => {
+  /*
+   * It runs on the FAILURE path, to add the machine reading beside a red score.
+   * A diagnosis that can throw would replace the failure the reader came for, so
+   * every shape it can meet on disk is pinned here rather than assumed.
+   */
+  const dir = mkdtempSync(join(tmpdir(), 'el-lhr-'))
+
+  test('reads every lhr-*.json and ignores everything else', () => {
+    writeFileSync(join(dir, 'lhr-1.json'), JSON.stringify({ environment: { benchmarkIndex: 2700 } }))
+    writeFileSync(join(dir, 'lhr-2.json'), JSON.stringify({ environment: { benchmarkIndex: 1100 } }))
+    writeFileSync(join(dir, 'flags-gate.json'), JSON.stringify({ formFactor: 'mobile' }))
+    writeFileSync(join(dir, 'notes.txt'), 'not a report')
+    const found = readCollectedReports(dir)
+    expect(found.map((r: { environment?: { benchmarkIndex?: number } }) => r.environment?.benchmarkIndex).sort()).toEqual([1100, 2700])
+  })
+
+  test('skips an unparseable report instead of throwing', () => {
+    writeFileSync(join(dir, 'lhr-3.json'), '{ truncated')
+    expect(() => readCollectedReports(dir)).not.toThrow()
+    expect(readCollectedReports(dir)).toHaveLength(2)
+  })
+
+  test('answers empty for a directory that is not there', () => {
+    expect(readCollectedReports(join(dir, 'gone'))).toEqual([])
   })
 })

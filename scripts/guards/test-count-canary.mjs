@@ -968,8 +968,17 @@ const ROOT = join(HERE, '..', '..')
  * files rather than one character:
  * 329 files / 3767, as the canary measured.
  */
-const MIN_FILES = 329
-const MIN_TESTS = 3767
+/*
+ * Close-out P0.7 (9 September 2026), one new file and sixteen new tests: the
+ * gate now says WHICH of a red score's two causes it was, the page or the
+ * laptop. tests/unit/ci/lighthouse-calibration pins the judgement in all three
+ * states from the real readings on both days (13), and three more in
+ * tests/unit/ops/pre-push-gate cover the report reader on the failure path,
+ * where a diagnosis that threw would replace the failure the reader came for:
+ * 330 files / 3783, as the canary measured.
+ */
+const MIN_FILES = 330
+const MIN_TESTS = 3783
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
