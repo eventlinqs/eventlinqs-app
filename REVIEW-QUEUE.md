@@ -1670,3 +1670,108 @@ local server I start alongside it. That is a complete answer and costs nothing.
 If you ever create a throwaway Sentry project and give me its key, the check
 would additionally exercise the real sending path the live site uses, which the
 local stand-in cannot. Not needed. Just better, if it is ever free to you.
+
+### What is still not met, said plainly
+
+Your scope asks for the initial JavaScript on a page to be under 200 KB. It was
+439 KB on the event page. It is now 307 KB. That is a third less, and it is not
+under 200 KB, so that target is NOT met and I am not going to describe it as met.
+
+What is left is two things, and neither is a tuning change:
+
+- React itself, 75 KB. That only comes down by changing how pages are rendered.
+- The error reporting, another 91 KB. That only comes down by giving up error
+  reports on pages nobody clicks on.
+
+Both are decisions rather than fixes, so I have written them down rather than
+made them. The speed check passes comfortably either way now.
+
+## The speed work is finished, and the gate has been raised behind it
+
+### What the independent check said
+
+The speed check that runs on GitHub, the one that has been emailing you a failure
+for every pull request, finished green on this branch. Thirteen pages, five
+measurements each, the middle one taken.
+
+    /legal/terms  98        /login                     96
+    /events       97        /signup                    96
+    /community/african 97   /events/artist-layer...    96
+    /pricing      97        /events/arena-sessions...  95
+    /help         96        /events/cat-indie...       95
+    /organisers   96        the homepage               93
+    /events/browse/melbourne 96
+
+Accessibility scored a perfect 100 on every page on every run, and so did best
+practices. Nothing shifted on screen while loading, anywhere.
+
+For comparison, the page that started all this was scoring 75 a few hours ago and
+is now 95. The one that made you say the site felt slow, the events list, was 70
+and is now 97.
+
+**I am not going to tell you the 95 standard is met.** Eleven of those thirteen
+are at or above 95, but that is the test environment, not your live site, and my
+own machine measures the same code 4 to 8 points lower. The honest statement is:
+the site is a great deal faster, it comfortably passes the bar it is held to, and
+the 95 standard on the live site is still work I have queued for after launch.
+
+### The one page I would look at next
+
+The homepage is now the SLOWEST of the thirteen at 93, and it is doing roughly
+twice as much work in the browser as any other page. Every other page finished
+its work in 61 to 138 milliseconds; the homepage takes 233. That is the next
+thing worth an hour, and I am writing it down rather than quietly moving on.
+
+### The gate has been raised so this cannot be given back
+
+The bar was 80 for every page. Every page now clears it by 13 points or more,
+which means somebody could let the site get a lot slower again and the check
+would still say "fine". So the bar has been raised to just under what each page
+actually measures, page by page:
+
+    the three event pages            80  ->  85
+    the city pages                   80  ->  86
+    log in and sign up               80  ->  87
+    the community pages              80  ->  88
+    the events list and organisers   80  ->  88
+    the homepage           not enforced  ->  88
+    pricing, help, terms             80  ->  91
+
+Nothing was lowered. Every number went up, and the homepage went from "we notice
+but do not act" to properly enforced. The excuse that was sitting on the homepage
+turned out to be wrong, by the way: it blamed image loading on Vercel, and the
+real cause was error-reporting code loading while the page was still drawing. The
+excuse and its expiry date are both deleted.
+
+### And a guard so it stays raised
+
+A number in a settings file is one edit away from being put back, and the edit
+that puts it back looks identical to the edit that earned it: somebody in a hurry
+with a red build. So the numbers are now written into a check that fails the build
+if any of them is lowered, loosened, deleted, downgraded to a warning, or quietly
+improved without being recorded. I broke it five different ways on purpose and it
+caught all five, then put the file back exactly as it was.
+
+It is honest about its own limit: somebody determined could still edit both places
+at once. What is now impossible is doing it by accident, or doing it quietly.
+
+### Nothing here needed you
+
+No dashboard clicks, no manual steps. It is one command, `npm run gate:push`, and
+it runs on every push whether anyone remembers it or not.
+
+### Still waiting on you, unchanged from yesterday
+
+- Pull request 139, the positioning wording, open and not merged.
+- The migration command, `npm run migrate:production`, which is still holding two
+  finished branches.
+- The three approvals the launch readiness report needs: a test account on the
+  live site, a real card put through and refunded, and real events on production.
+- The firewall decision (`npm run firewall:bypass`).
+
+### Still not met, said plainly
+
+Your scope asks for the JavaScript on a page to be under 200 KB. It was 439 KB on
+the event page, it is now 307 KB, and that is not under 200 KB. What is left is
+React itself and the error reporting, and both are decisions rather than fixes, so
+I have written them down instead of making them on your behalf.

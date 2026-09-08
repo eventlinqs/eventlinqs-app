@@ -1278,3 +1278,61 @@ violation is an artefact of a synthetic DSN with no Sentry ingest host.
 |---|---|---|
 | A throwaway Sentry project whose DSN the local gate could use instead of the parity sink | IMPOSSIBLE for a machine: a DSN does not exist until a dashboard mints it. It is an OFFER rather than a request. The sink is a complete answer and costs nothing; a real DSN would additionally exercise the tunnel path locally, which the sink cannot | REVIEW-QUEUE.md |
 | Everything else in H3 | SCRIPTED. `npm run gate:push` runs it all; the cost table is `node scripts/perf/chunk-cost-table.mjs --base <url>` | none |
+
+## P0.7 and L3. THE RATCHET: THE FLOOR RAISED, AND HELD (8 September 2026, session 47)
+
+H3 asked for one thing to be true before the branch lands: "Every gated URL must
+pass 0.80 at MEDIAN with headroom." It is, on both environments that judge it,
+and the floor has been raised behind it so the headroom cannot be spent.
+
+### H3's own acceptance criterion
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| Every gated URL passes 0.80 at MEDIAN with headroom, on the runner | MET. Run 34205369458 on 6824d3dc, Lighthouse 12.6.1, mobile, median of five, 13 URLs and 65 reports against the Vercel preview. Medians 93 to 98, the lowest single run anywhere 0.89, accessibility 1.00 and best practices 1.00 on every run of every URL, layout shift 0.000 everywhere. The narrowest headroom is the homepage at 13 points | C:\dev\EVIDENCE\H3\ci-lighthouse-run-34205369458.txt |
+| The same, on the local gate, which is the harsher environment | MET twice. GREEN 14 of 14 in 2,149 s on 6824d3dc and again in 2,625 s on 2ef19246. Medians 88 to 94 both times | gate-green-14-of-14.txt, gate-green-14-of-14-run2.txt |
+| P0.2 local and CI must agree | MET, and the direction is the safe one: local runs 4 to 8 points BELOW the runner on the same commit, so a local pass is a conservative claim about CI rather than an optimistic one. The blind-bundle defect that made local flatter than CI was fixed earlier on this branch | the two tables in BUILD-LOG.md |
+
+### P0.7 and L3, the ratchet
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| L3: set the error-level performance floor at the measured median minus a small variance allowance, on EVERY gated URL | MET. Seven floors, per URL rather than one platform number: general 0.85, /events/browse/[city] 0.86, auth 0.87, /community/[community] 0.88, /events and /organisers 0.88, the homepage 0.88, and /help, /pricing, /legal/terms 0.91. Each is min(two independent local medians) minus 3, minus 1 more where that URL's run spread exceeded 5 points | lighthouserc.json `_derivation`; BUILD-LOG.md 2026-09-08 18:50 |
+| The allowance is measured, not guessed | MET. Two independent local median-of-five collections on consecutive commits drift by at most 1 point per URL, so 3 points is three times the observed drift. The full 13-row comparison is in the log | gate-truth-table-after.txt, gate-green-14-of-14-run2.txt |
+| L3: DELETE the warn-level waivers on the homepage and the community pages | MET. The community waiver went on 7 September (it matched no route). The homepage waiver and its `_expiresOn: 2026-11-01` are deleted here, and the note that blamed the image optimiser is replaced by what the cause turned out to be. `[lh-exemption-expiry] found 0 expired exemptions, 0 dated exemptions in force`; the two entries that remain are the permanent SEO design decisions and they waive no floor | lighthouse-exemption-expiry output in the log |
+| P0.7: the gain can never be given back | MET by a registered blocking guard rather than by prose. `scripts/guards/lighthouse-floor-ratchet.mjs` holds the high-water mark for all 43 assertions in the matrix and refuses six shapes: a floor lowered, a budget loosened, a check moved off error, a check deleted, a check added undeclared, and an improvement left unrecorded so the mark cannot silently trail the gate | guard-ratchet-drills.txt |
+| Never lower a threshold, never move an assertion to warn, never add a waiver (P0, H5, C16.5) | MET, and now enforced. Nothing was lowered anywhere: seven floors rose, one moved warn to error, and the drills prove each direction is refused | as above |
+
+### P0.7 against the COMPLETION LAW
+
+| Law | Verdict | Evidence |
+|---|---|---|
+| 1. Schema | NOT APPLICABLE. No database change; production untouched | production parity green in the gate |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc 0, eslint 0 on all four changed files, 80 of 80 guards PASS | the guard run in BUILD-LOG.md |
+| 3. Tests added, canary raised in the same commit | MET. `tests/unit/ci/lighthouse-floor-ratchet.test.ts`, 19 tests: the seven floors pinned as literals, no performance floor off error level anywhere, none below 0.85, accessibility and best practices still at 1, no dated exemption in force, and the guard's ruling driven in all six directions it must refuse. Canary 328/3748 to 329/3767, measured by running it, not guessed | vitest 19 of 19; scripts/guards/test-count-canary.mjs |
+| 4. Guard proven red and green | MET. Five drills against the REAL lighthouserc.json, each restoring it byte for byte, each fired RED: a floor lowered, a check made advisory, a check deleted, a budget loosened, a floor added undeclared. Guard exit 0 on the restored tree, SHA identical before and after | C:\dev\EVIDENCE\H3\guard-ratchet-drills.txt |
+| 5. Driven at 390, 768 and 1440 | NOT APPLICABLE as three viewports: nothing here renders. The driven equivalent is that every number in it came from running the gate, twice locally and once on the runner, at mobile emulation, and the guard was driven against the real config rather than a fixture | the three collections |
+| 6. Full regression green after the item | MET on the code side at the time of writing and being re-proven by the push, which runs the whole gate again INCLUDING the raised floors. That run is the proof the ratchet holds on the environment that judges it | the push gate |
+| 7. Committed, no trailers, pushed, production deploys green | IN PROGRESS. Committed as ddc855c6 with no trailer. Pushed only through the gate. The merge and the production deploy follow, and per C16.0 production is watched to Ready before the next item begins | git log |
+| Fix every defect found before the next task | MET. Two in my own work this session: a work-report label that pluralised the wrong head noun, and a guard whose ruling ran at module scope so importing it from a test executed it and could turn a green suite red | BUILD-LOG.md |
+
+### What is NOT claimed
+
+The runner puts eleven of thirteen URLs at or above 95. That is not the 95 mobile
+standard being met and it is not reported as such: the standard is production,
+the local gate measures the same commit 4 to 8 points lower, and C8 stays in the
+post-launch queue as the ratchet towards it. The homepage is now the slowest
+gated page at 93 with a 233 ms blocking time, and that is named here as the next
+target rather than left to be found later.
+
+Scope v5's sub-200 KB initial bundle is still NOT MET: 307.3 KB of total script
+on the event route against a 200 KB target, with the in-document set at 207.9 KB.
+Recorded in docs/perf/CHUNK-COST-TABLE-2026-09-08.md with what remains and why
+neither remaining item is a tuning change.
+
+### Founder steps (Law 10)
+
+| Step | Verdict | Command |
+|---|---|---|
+| Everything in P0.7 | SCRIPTED. `npm run gate:push` runs the whole gate; `node scripts/guards/lighthouse-floor-ratchet.mjs` runs the ratchet guard alone | none |
+| Merging pull request 142 and watching production to Ready | MINE, not his, under C16.0 | none |

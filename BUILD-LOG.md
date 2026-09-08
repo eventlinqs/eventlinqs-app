@@ -5354,3 +5354,172 @@ on every single page.
 
 The runner's own verdict is pull request 142, and P0.7's ratchet is set from
 THOSE numbers, not these.
+
+## 2026-09-08 18:50 to 20:10 (H3 close, session 47) the runner's verdict, and the floor raised so the gain cannot be given back
+
+### The runner agreed, and by more than the local gate did
+
+The Lighthouse job on pull request 142 finished on 6824d3dc: run 34205369458,
+Lighthouse 12.6.1, mobile, MEDIAN of five runs, against the Vercel preview
+`eventlinqs-fdaod8b10`. Thirteen URLs, sixty five reports, every category
+assertion green.
+
+| URL | performance (median, spread) | LCP | TBT | CLS | script |
+|---|---|---|---|---|---|
+| `/legal/terms` | 98 (97 to 98) | 2,295 ms | 104 ms | 0.000 | 266 KB |
+| `/events` | 97 (89 to 97) | 2,423 ms | 118 ms | 0.000 | 286 KB |
+| `/community/african` | 97 (96 to 97) | 2,491 ms | 87 ms | 0.000 | 273 KB |
+| `/pricing` | 97 (97 to 98) | 2,426 ms | 102 ms | 0.000 | 263 KB |
+| `/help` | 96 (95 to 98) | 2,614 ms | 102 ms | 0.000 | 265 KB |
+| `/organisers` | 96 (95 to 97) | 2,447 ms | 138 ms | 0.000 | 272 KB |
+| `/events/browse/melbourne` | 96 (93 to 98) | 2,723 ms | 103 ms | 0.000 | 286 KB |
+| `/login` | 96 (96 to 98) | 2,569 ms | 112 ms | 0.000 | 335 KB |
+| `/signup` | 96 (95 to 96) | 2,570 ms | 119 ms | 0.000 | 337 KB |
+| `/events/artist-layer-...` | 96 (95 to 96) | 2,724 ms | 116 ms | 0.000 | 307 KB |
+| `/events/arena-sessions-...` | 95 (95 to 96) | 2,801 ms | 109 ms | 0.000 | 307 KB |
+| `/events/cat-indie-...` | 95 (95 to 97) | 2,726 ms | 118 ms | 0.000 | 307 KB |
+| `/` | 93 (90 to 94) | 2,412 ms | 233 ms | 0.000 | 277 KB |
+
+Accessibility 1.00 and best practices 1.00 on all thirteen, on all five runs
+each. Layout shift zero everywhere. The page that started this branch,
+`/events/cat-indie-...`, went from a 0.75 median on the runner to 0.95.
+
+Evidence: `C:\dev\EVIDENCE\H3\ci-lighthouse-run-34205369458.txt`.
+
+**Two things about that table, rather than letting it read as a victory lap.**
+First, eleven of the thirteen are at or above 95, which is the founder's standing
+mobile standard, on the runner. That is NOT a claim the 95 standard is met: the
+standard is production, the local gate measures 4 to 8 points lower on the same
+commit, and C8 remains the post-launch ratchet. Second, the homepage is now the
+LOWEST of the thirteen at 93, with a 233 ms blocking time against everything
+else's 61 to 138 ms. That is the next honest target, named rather than left to be
+discovered later.
+
+### A second local collection, which is what made the ratchet a measurement
+
+The push of 2ef19246 ran the whole gate again: GREEN 14 of 14 in 2,625 s
+(typecheck 35, lint 41, copy 1, critical-path 0, exemptions 0, guards 76,
+types-drift 56, production-parity 5, fixture 0, suite 59, build 174, indexing
+315, Lighthouse 1,862). Evidence:
+`C:\dev\EVIDENCE\H3\gate-green-14-of-14-run2.txt`.
+
+That gave a SECOND independent local median-of-five per URL, and the pair is what
+the ratchet is derived from rather than a single sample:
+
+| URL | local 1 | local 2 | drift | runner |
+|---|---|---|---|---|
+| `/` | 92 | 92 | 0 | 93 |
+| `/community/african` | 92 | 92 | 0 | 97 |
+| `/events` | 92 | 91 | 1 | 97 |
+| `/events/browse/melbourne` | 90 | 89 | 1 | 96 |
+| `/organisers` | 91 | 91 | 0 | 96 |
+| `/help` | 94 | 94 | 0 | 96 |
+| `/legal/terms` | 94 | 94 | 0 | 98 |
+| `/pricing` | 94 | 94 | 0 | 97 |
+| `/login` | 90 | 90 | 0 | 96 |
+| `/signup` | 90 | 90 | 0 | 96 |
+| `/events/arena-sessions-...` | 88 | 88 | 0 | 95 |
+| `/events/artist-layer-...` | 88 | 88 | 0 | 96 |
+| `/events/cat-indie-...` | 88 | 89 | 1 | 95 |
+
+Median-to-median drift is at most 1 point. That is the number the variance
+allowance is set from.
+
+### P0.7 and L3: the floor rises, per URL
+
+L3 asks for the error-level floor at "the measured median MINUS a small variance
+allowance, on EVERY gated URL". Per URL rather than one platform-wide number,
+because a single floor set for the slowest page lets every faster page give back
+eight or nine points with the gate silent.
+
+    floor = min(the two local medians) - 3, and - 1 more where that URL's
+            run spread exceeded 5 points
+
+The local gate is the binding environment. It measures a warmed local production
+server and runs 4 to 8 points BELOW the runner on the same commit, so a floor
+derived from the runner's numbers would refuse every push on this machine. Three
+points is three times the observed median drift.
+
+| entry | was | now |
+|---|---|---|
+| general, bound by the three event pages | error 0.80 | **error 0.85** |
+| `/events/browse/[city]` | error 0.80 | **error 0.86** |
+| `/login`, `/signup` | error 0.80 | **error 0.87** |
+| `/community/[community]` | error 0.80 | **error 0.88** |
+| `/events`, `/organisers` | error 0.80 | **error 0.88** |
+| the homepage | **warn** 0.80 | **error 0.88** |
+| `/help`, `/pricing`, `/legal/terms` | error 0.80 | **error 0.91** |
+
+`/community/african` and the homepage take the extra point of allowance: their
+local run spreads reached 8 points (85 to 93, and 87 to 95) where every other URL
+sat within 4.
+
+**The homepage waiver is deleted, and so is its clock.** It read "restore
+performance to error-level when the underlying cold-cache fix lands" and blamed
+the Vercel image optimiser. The cause was not the optimiser. It was 217.8 KB of
+error-reporting SDK and its rrweb recorder loading inside the paint window, which
+this branch removed, and the homepage now measures 92, 92 and 93. No dated
+exemption is left anywhere in the file:
+`[lh-exemption-expiry] found 0 expired exemptions, 0 dated exemptions in force`.
+The two remaining entries are the permanent SEO design decisions, reprinted on
+every run, and they waive no floor.
+
+### The guard, because a number in a JSON file is one edit from being handed back
+
+The edit that hands the gain back looks exactly like the edit that earned it: a
+number in `lighthouserc.json` moving, in a commit about something else, to make a
+red push green. Close-out says "never lower a threshold" four separate times,
+which is how you can tell it is the thing that keeps happening, and every one of
+those sentences is prose in a document.
+
+`scripts/guards/lighthouse-floor-ratchet.mjs` is registered and blocking. It
+holds the high-water mark for all 43 assertions in the matrix, not only the seven
+performance floors, and refuses six shapes:
+
+  - a floor LOWERED
+  - a budget LOOSENED (a `maxNumericValue` rising to meet the page)
+  - a check WEAKENED from error to warn or off
+  - a check DELETED outright
+  - a check added UNDECLARED, so a new route cannot arrive at warn 0.50
+  - an improvement left unrecorded, so the mark can never silently trail the gate
+
+Five drills against the real file, each restoring it byte for byte:
+
+    RED  a floor LOWERED (homepage 0.88 -> 0.80)                exit=1
+    RED  a check made ADVISORY (homepage error -> warn)         exit=1
+    RED  a check DELETED (the city-browse floor removed)        exit=1
+    RED  a budget LOOSENED (event script 480 KB -> 675 KB)      exit=1
+    RED  a floor ADDED UNDECLARED (a new route at warn 0.50)    exit=1
+    tree restored: YES     guard on the restored tree: exit=0
+    5 of 5 drills fired RED
+
+Evidence: `C:\dev\EVIDENCE\H3\guard-ratchet-drills.txt`.
+
+**What it cannot do, said rather than implied.** The mark is source and source can
+be edited. Nothing in a repository stops somebody lowering the config and the mark
+in one commit. What it makes impossible is doing it quietly: the lowering now
+takes three files, one of which says in its header that it must never happen, and
+`tests/unit/ci/lighthouse-floor-ratchet.test.ts` pins the seven floors a second
+time as literals. Two layers, the same shape Law 8 uses for the authorship trailer
+and for the same reason.
+
+### Two defects in my own work, found by running it rather than by reading it
+
+  - The guard's work-report label printed `0 weakened ors unrecorded assertion`.
+    The pluraliser pluralises the HEAD NOUN and had been handed a phrase whose
+    head noun was not first. Renamed to `assertion weakened or left unrecorded`.
+  - Importing the guard from the test also EXECUTED it, because the ruling ran at
+    module scope. A guard that sets `process.exitCode` inside a test run turns a
+    green suite red for a reason no test names. Wrapped in the main-module check,
+    with `pathToFileURL` rather than a hand-built `file://` string: on Windows
+    Node's own href is `file:///C:/...` and a hand-built one is a slash short, so
+    the check silently never matches. That exact slip cost a run earlier on this
+    same branch.
+
+### The state at the end of this entry
+
+80 of 80 guards pass, `tsc --noEmit` 0, eslint 0 on every changed file, the suite
+329 files / 3767 tests with 0 failed and 0 skipped, and the canary raised
+328/3748 to 329/3767 in the same commit, measured rather than guessed. Committed
+as ddc855c6 with no trailer. The push is running the whole gate again, which is
+the proof that the raised floors hold on the environment that judges them.
