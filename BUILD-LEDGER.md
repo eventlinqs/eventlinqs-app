@@ -1146,6 +1146,40 @@ plainly is better than reporting three viewport widths that would mean nothing.
 | The guard exited 3221226505 with a libuv assertion | A guard that CRASHES rather than fails sends its reader looking for a bug in Node. The build was still blocked, so nothing would have caught it | `process.exitCode` and let the loop drain, everywhere a gate reads the code |
 | The refusal to smoke the wrong build borrowed the wrong-status sentence | Blamed a site that was serving perfectly | A sixth outcome, `wrong-build`, with its own sentence |
 
+### A seventh defect, found by CI rather than by me
+
+| Defect | What it did | Fix |
+|---|---|---|
+| The guard read `.vercel/project.json` unconditionally | That file is gitignored. The local gate has it, no runner does, so 78 guards passed here and the build died with ENOENT on CI run 34185330141 | The ids resolve from the environment first and the file second, which is what `preview-deployment-state.mjs` and `production-parity.mjs` already do and what `ci.yml` already sets them for. Driven in all three states, including the one where clause 4 skips loudly |
+
+**And the gap it exposes, named because it is a class.** A build-time script
+reading a path git does not track passes locally and fails on every runner, and
+the pre-push gate is structurally unable to catch it: it runs on a tree that has
+the file. `vercelignore-covers-guard-reads.mjs` exists because the same shape
+happened three times through `.vercelignore`; this is the `.gitignore` door.
+The clause that would close it belongs on that same guard, whose
+gitignore-semantics evaluator is already written. NOT built here. It is its own
+item, H3 is next, and it is recorded rather than left as a lesson nobody wrote
+down.
+
+### H2 CLOSED
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| H2. Fix it, and confirm the workflow passes on main | **MET.** Squash-merged as 5cd985a7 (pull request 141), no trailer. On main after the deploy the smoke ran twice and passed twice: 34190246301 (deployment_status) and 34190416861 (workflow_run). CI on main 34190094346 SUCCESS. Production serves `sentry-release=5cd985a7...` | C:\dev\EVIDENCE\H2\on-main-smoke-34190246301.txt |
+| Required checks on the pull request | MET. `lint typecheck build`, `test (vitest)` and `production parity` all pass, plus the types-drift guard | pull request 141 |
+| The advisory Lighthouse gate | FAILED, and NOT caused by this branch. One URL at median 0.79 against 0.80 (runs 0.74, 0.87, 0.77, 0.79, 0.91). This branch changes zero files under `src/`, so no runtime byte moved. The 25 August ruling makes it advisory for exactly this reason, and H3 is the item that fixes it | run 34188084768 |
+
+**H2.3 proved itself on its first real deploy, by accident.** The
+deployment_status run polled while the build was still being promoted:
+
+    poll 1: live commit unmarked (dpl_AkVmFD78mPp1D7NaoCnp8XX89Ro3)
+    poll 2: live commit 5cd985a77f46411aaf16d47430310e3f315ada28
+
+The old workflow could not distinguish that state from a settled one, which is
+precisely how it came to smoke the previous build on 7 September. This one waited
+one poll and then judged the right commit.
+
 ### Founder step (Law 10)
 
 | Step | Verdict | Command |

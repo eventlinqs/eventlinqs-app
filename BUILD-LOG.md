@@ -4999,6 +4999,61 @@ and what that class of failure means. Closed with a note saying it was a drill.
     the refusal to smoke the wrong build borrowed the wrong-status sentence and
         blamed a site that was serving perfectly.
 
+### The seventh defect, and the gap in the local gate that let it through
+
+CI run 34185330141 died with `ENOENT: no such file or directory, open
+'.../.vercel/project.json'` in the new guard, after every other guard had
+passed. That file is gitignored, so it exists on this laptop and on nobody's
+runner, and **the pre-push gate cannot see the difference**: it runs the same
+guards, in the same order, on a working tree that has the file.
+
+The repository already had the answer and I had not looked for it.
+`preview-deployment-state.mjs` and `production-parity.mjs` both resolve those
+ids from the ENVIRONMENT first and fall back to the file, and `ci.yml` sets
+`VERCEL_PROJECT_ID` and `VERCEL_ORG_ID` beside `VERCEL_TOKEN` with a comment
+saying exactly why. The guard and the ops script now follow that convention
+rather than inventing a third one, and clause 4 was driven in all three states:
+with the link file, with the ids in the environment and the file moved away, and
+with neither, where it SKIPS loudly by name rather than passing or crashing.
+
+**The gap is worth naming, because it is a class and not an incident.** A
+build-time script that reads a path git does not track passes locally and kills
+the build on every runner. `scripts/guards/vercelignore-covers-guard-reads.mjs`
+exists because the same shape happened three times with `docs/` and the
+`.vercelignore` upload; this is that shape arriving through `.gitignore`
+instead. The guard that would close it is a clause on that same file: a
+build-time script may not read a gitignored path unconditionally, and its
+gitignore-semantics evaluator is already written. It is NOT built here, because
+it is its own item and H3 is next. Routed, not hidden.
+
+### H2 CLOSED: merged, and the new smoke green on main against the real deploy
+
+Squash-merged as **5cd985a7** (pull request 141), no trailer. All three required
+checks green on the pull request (`lint typecheck build`, `test (vitest)`,
+`production parity`), and the types-drift guard green beside them.
+
+**The advisory Lighthouse gate failed, and this branch did not cause it.** One
+URL, `/events/cat-indie-sounds-live-at-the-enmore-sydney`, median 0.79 against a
+floor of 0.80, with runs spanning 0.74, 0.87, 0.77, 0.79, 0.91. This branch
+changes **zero files under `src/`** (`git diff --stat origin/main...HEAD -- src/`
+is empty), so no runtime byte moved. That is the runner variance the 25 August
+advisory ruling describes, it is H3's item, and it is the email the owner is
+receiving.
+
+**On main, after the deploy, the new smoke ran twice and passed twice:**
+34190246301 (deployment_status) and 34190416861 (workflow_run), and CI on main
+34190094346 succeeded. Production serves `sentry-release=5cd985a7...`.
+
+The first of those runs proved H2.3 on its first real deploy, by accident:
+
+    poll 1: live commit unmarked (dpl_AkVmFD78mPp1D7NaoCnp8XX89Ro3)
+    poll 2: live commit 5cd985a77f46411aaf16d47430310e3f315ada28 (dpl_AkVmFD...)
+
+The build was mid-promotion when the smoke arrived and the release marker was not
+readable yet. The OLD workflow could not tell that state apart from a settled
+one, which is exactly how it came to smoke the previous build on 7 September.
+This one waited one poll and then judged the right commit.
+
 ### The state of the tree
 
 tsc 0, eslint 0, 78 of 78 guards (the two database guards pass against TEST

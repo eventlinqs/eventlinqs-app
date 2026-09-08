@@ -1548,6 +1548,37 @@ its check as PASSED, which would have been the original bug with a new face. And
 the new safety check I wrote crashed instead of failing cleanly, which was caught
 by the test I wrote to try to break it.
 
+### One more thing I got wrong, and it is worth you knowing the shape of it
+
+The safety check I wrote read a small configuration file that lives on my
+machine but is deliberately not stored in the repository. Everything passed
+here, and then the build failed on GitHub's servers because that file does not
+exist there.
+
+That is a category, not a one-off: **the local pre-push check cannot catch this
+class of mistake**, because it runs on my machine, which has the file. There is
+already a guard in the project for the same shape arriving a different way
+(something the deployment upload excludes), written after it happened three
+times. The extension that would close this door is small and belongs on that
+same guard. I have not built it, because it is its own piece of work and the
+performance item is next in your list, but I have written down exactly what it
+is so it is not lost.
+
+### It is merged and live, and I watched it work
+
+The fix is on the live site. After it deployed, the health check ran twice by
+itself and passed both times, and it caught its own point on the first try: the
+first time it looked, the new version had not finished going live, so it waited
+and looked again instead of reporting on the old one. That is the exact mistake
+that caused yesterday's false alarm, happening again, and being handled properly.
+
+**One thing you will still see, and it is not this.** The speed check on the
+pull request failed on a single page by one hundredth of a point (0.79 where it
+wants 0.80), with individual measurements ranging from 0.74 to 0.91 on the same
+unchanged code. This piece of work changed nothing the site actually runs, so it
+cannot have caused it. That is the measurement noise your 25 August decision
+already accounts for, and it is the next item on your list.
+
 ### Still waiting on you, unchanged from this morning
 
 - Pull request 139, the positioning wording, open and not merged.
