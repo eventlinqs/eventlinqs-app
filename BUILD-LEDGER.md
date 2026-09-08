@@ -1336,3 +1336,17 @@ neither remaining item is a tuning change.
 |---|---|---|
 | Everything in P0.7 | SCRIPTED. `npm run gate:push` runs the whole gate; `node scripts/guards/lighthouse-floor-ratchet.mjs` runs the ratchet guard alone | none |
 | Merging pull request 142 and watching production to Ready | MINE, not his, under C16.0 | none |
+
+## H3 CLOSED (8 September 2026, session 47): merged as c9a12d92, main green, production serving it
+
+| C16.0 requirement | Verdict | Evidence |
+|---|---|---|
+| origin/main CI green | MET. Run 34219552922 on c9a12d92: types-drift guard, test (vitest), lint/typecheck/build and production parity all success. THE FIRST ATTEMPT WAS NOT GREEN and is recorded rather than quietly re-run: the types-drift job was CANCELLED at 11:18:45 inside "Setup Node", five minutes into a step that normally takes seconds, with the other three jobs already finished. Not a concurrency cancellation (only one CI run exists on main for this commit, checked from the API rather than assumed) and not a product failure, since no step of the guard ever ran. A runner-side fault. Re-run of the failed job alone: success | gh run view 34219552922 |
+| The newest production deployment reads Ready and its commit matches origin/main | MET. Deployment 6326359769, state success, commit c9a12d92, environment_url eventlinqs-j0w7hnlqk | gh api deployments/6326359769/statuses |
+| The live site serves that commit | MET, and not by inference. The post-deploy smoke reads the live commit and the deployment id back off production before it judges anything: "The deployment under test is live: commit c9a12d92d47e52ebb5701549edfe66eddca1f221 as dpl_HCkqhYgcjYZ64oXugpgw4yQhbwwR", then five checks, five requests, 0 failures, every one answered on the first attempt | run 34219768468 |
+| The post-deploy smoke workflow passes | MET. 34219768468, success, on main at c9a12d92 | as above |
+| The runner passes the RAISED floors, not only the old ones | MET. Run 34216666264 on ddc855c6, five runs per URL, medians 93 to 98 against floors of 0.85 to 0.91: / 93, /community/african 96, /events 96, /events/browse/melbourne 96, the three event pages 95, 96, 95, /help 96, /legal/terms 97, /login 96, /organisers 96, /pricing 98, /signup 97. Accessibility and best practices 1.00 throughout, layout shift 0.000 throughout | C:\dev\EVIDENCE\H3\ci-lighthouse-ratchet-34216666264.txt |
+| A third local collection, after the floors were raised | MET. The push of ddc855c6 ran the whole gate against the new floors: GREEN 14 of 14 in 2,253 s. Medians 88 to 94, every URL clearing its own floor by 3 to 4 points. Across three local collections now, no median has moved by more than 1 point, which is the assumption the allowance was built on holding on its own evidence | C:\dev\EVIDENCE\H3\gate-green-14-of-14-ratchet.txt |
+| Branch hygiene | MET. perf/h3-initial-bundle deleted on the remote by the merge and pruned locally; `git branch -a` carries no ref to it | git branch -a |
+
+H3's own condition, "Land that ONE branch. Every gated URL must pass 0.80 at MEDIAN with headroom", is MET, and the floor now stands at 0.85 to 0.91 rather than 0.80, held by a registered guard and a test.
