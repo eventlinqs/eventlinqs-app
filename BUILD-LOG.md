@@ -6211,3 +6211,115 @@ until the line above could be printed. Three pull requests remain open (104, 97,
 69) and every one of them is open by a recorded decision rather than by neglect,
 so the guard is built around a reviewed parked record that cannot rot, not around
 a bare count that would fail the build on its first run.
+
+---
+
+## 2026-09-09, session 52. PR5: one open pull request at a time, and the record that makes the rule survivable.
+
+Governing laws stated before the first edit, per Law 0: Law 8 (authorship, no AI
+trailer), Law 9 (current by default), Verification and gates (a registered
+blocking guard, proven both ways; the pre-push gate is the merge authority;
+pull requests open as drafts), the Definition of Done, and the COMPLETION LAW.
+
+### The item
+
+Close-out PR HYGIENE, PR5, verbatim: "From now on, one open pull request at a
+time. Open the next only when the previous is merged or closed. Register a guard
+or a check that reports when more than two pull requests are open at once."
+
+### What was built
+
+`scripts/guards/one-pull-request-at-a-time.mjs`, registered in `run-guards.mjs`
+and therefore blocking on `prebuild`. It counts ACTIVE = open minus parked and
+fails above ONE, which is PR5's actual rule and stricter than the "more than
+two" reporting threshold the sentence asks for. The total open count is printed
+on every run, so "more than two open" is visible whether or not it fails.
+
+### Why it is not a bare count, which is the part worth recording
+
+The PR1 audit of 9 September left THREE pull requests open BY DECISION, each
+carrying files that exist on main nowhere and are still wanted, because close-out
+PR2 forbids closing one that does. A guard that failed at "more than two open"
+would have failed the build on the day it was written, for three pull requests
+the owner had been told in writing would stay open. That is a gate somebody
+switches off inside a week, and CLAUDE.md already names the same decay twice, for
+`no-ai-authorship` and for `branch-protection-required`.
+
+So parking is legitimate and parking must be EXPLAINED.
+`scripts/guards/lib/parked-pull-requests.json` carries one entry per held pull
+request with a `why` and an `unblockedBy`, printed in full on every run, and the
+record is itself checked for rot in three ways, each a fault:
+
+  1. an entry naming a pull request that is not open any more (the record
+     outlived its subject);
+  2. an entry whose branch no longer matches the open pull request's head (the
+     entry is about something else now);
+  3. an entry with no `why` or no `unblockedBy` (parking with no stated end is
+     abandonment with better manners).
+
+The three entries were not taken from the earlier audit on trust. Each was
+re-verified against the tree before it was written down: `git cat-file -e
+origin/main:<path>` reports `docs/marketing/CONTENT-PLAN.md`,
+`docs/marketing/OUTREACH-TEMPLATES.md` and `docs/SHOT-LIST.md` all ABSENT from
+main, and `git diff --name-status origin/main...origin/<branch>` confirms each
+branch adds them.
+
+### Where this is a real gate, said plainly rather than implied
+
+It reads GitHub with the gh CLI login or `GITHUB_TOKEN`, and SKIPs in capitals
+with the remedy when neither is present. The CI verify job carries no
+`GITHUB_TOKEN` and that was left alone deliberately: the same variable would
+reach `branch-protection-required.mjs`, whose protection reads need admin rights
+the default Actions token does not have, so wiring it would turn that guard red
+for a permission rather than a fault. This is not a loss, because the rule is
+about the moment a pull request is about to be OPENED, and that moment is on the
+machine running the pre-push gate, where gh is logged in. On the Vercel build
+host neither credential exists and the guard SKIPs, so it can never block a
+deploy for want of a token.
+
+### A defect found in my own work and fixed before moving on
+
+The first red drill printed `declareWork`'s "DID NOTHING: parked record entry
+checked came back zero" over an EMPTY parked record. An empty record is the goal
+state of this rule, not a failure, and a guard that shouts at the best possible
+outcome trains its reader to stop looking. Fixed with a `zeroIsFine` reason
+before the drill was registered.
+
+A second, smaller one: the listing takes GitHub's maximum page of 100 with no
+pagination. At a limit of one active that can never bind, but a cap read as a
+finding is exactly the failure the claim contract exists for, so the guard now
+declares TRUNCATED by name if the listing ever fills the page.
+
+### Proven both ways
+
+RED, twice, against the REAL live list rather than a fixture, because the unit
+tests already drive every shape offline and what cannot be tested offline is that
+the guard is pointed at the right repository:
+
+  - the parked record emptied: `3 pull requests are open and unaccounted for, and
+    the rule is 1 at a time (close-out PR5): #104 (docs/marketing-and-merge-103-evidence),
+    #97 (chore/photo-shot-list), #69 (feat/genre-data-layer)`, exit 1
+  - a parked entry moved onto a CLOSED pull request, count still legal so the rot
+    check fires alone: `the parked record names #143 (feat/genre-data-layer) and
+    that pull request is not open any more`, exit 1
+
+Both are registered in `scripts/verify/guard-failure-drills.mjs`, and both aim
+themselves: the anchor is the LAST entry's number read out of the record, and the
+closed pull request is found live (`gh api .../pulls?state=closed&per_page=1`),
+for the same reason the effective migrations in that harness are computed rather
+than pinned. A number written down here rots the day that entry is unparked, and
+a drill aimed at nothing reports "DID NOT FAIL" for ever.
+
+GREEN: `PASS - 0 active (limit 1), 3 parked with a reason, 3 open in total`
+against the live list.
+
+The whole harness: `130/130 drills fired correctly`, and all guards PASS on the
+restored tree. Registered guards: 82 to 83, all PASS.
+
+### Evidence
+
+  C:\dev\EVIDENCE\PR5\guard-RED-count.txt
+  C:\dev\EVIDENCE\PR5\guard-RED-rot.txt
+  C:\dev\EVIDENCE\PR5\guard-GREEN.txt
+  C:\dev\EVIDENCE\PR5\drills-full.txt
+  C:\dev\EVIDENCE\PR5\all-guards.txt

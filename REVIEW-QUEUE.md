@@ -2194,3 +2194,44 @@ to refuse them.
 - The firewall decision (`npm run firewall:bypass`).
 - Whether the local speed check should push a temporary branch so it measures a
   real Vercel preview. "Do the scratch branch" or "leave it".
+
+---
+
+## PR5. The pull request list can never become a graveyard again (9 September 2026)
+
+**What is different now.** The build refuses to run if more than one pull request
+is open without a written reason. On 8 September there were twenty two open, most
+of them months old, and eighteen turned out to be work that was already on main
+or had been replaced. Somebody had to read all twenty two, file by file, to find
+that out. That cannot recur silently: the next time a second unexplained pull
+request is open, the build stops and names it.
+
+**The part you need to know about.** Three pull requests are open on purpose right
+now, and the build knows that and allows it. They are 104 (the marketing content
+plan and outreach templates), 97 (the photo-day shot list) and 69 (the genre and
+music data layer). Each is held because it carries files that are on main nowhere
+and are still wanted, so closing it would lose them. Each one is now written down
+with why it is held and, more importantly, WHAT ENDS THE HOLD:
+
+  - 104 is unblocked by re-reading both marketing documents against the locked
+    positioning, since the 7 September ruling retired the strapline they were
+    written around, and then landing it.
+  - 97 is unblocked by photo day being scheduled, and its slot counts re-checked
+    against the approved community record rather than the older taxonomy.
+  - 69 is unblocked by the post-photos taxonomy mission that CLAUDE.md already
+    names.
+
+If any of those three is closed or merged and its entry is left behind, the build
+fails and says so. The list cannot quietly rot into an allowlist nobody reads.
+
+**Nothing for you to decide here.** This is process plumbing. The three parked
+entries above are the ones already agreed; if you want any of them closed instead
+of held, say so and it takes one line.
+
+**Evidence:** C:\dev\EVIDENCE\PR5\
+
+### One thing carried forward, unchanged from the last entry
+
+CI measures Lighthouse on MOBILE only and does not measure desktop at all, against
+a standing law of 95 on both. Found while auditing pull request 95, recorded so it
+does not die with that branch. It does not block the launch, and it is still open.

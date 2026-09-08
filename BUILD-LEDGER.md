@@ -1555,3 +1555,58 @@ that finish it.
 | The ruling is actually live, not merely merged | MET, and this is the row the item exists for. Production's served homepage HTML now carries **zero** occurrences of the retired strapline and **zero** occurrences of the words "ticketing platform". Its Organization JSON-LD description reads "The place events get made, for every community. Find your suppliers, sell your t..." where on 7 September it read "The ticketing platform built for every community" | same file |
 
 PR4 is therefore MET in full. PR5 may begin.
+
+
+## PR5 (9 September 2026, session 52): one open pull request at a time, and the reviewed record that makes the rule survivable
+
+Close-out PR HYGIENE, PR5, verbatim: "From now on, one open pull request at a
+time. Open the next only when the previous is merged or closed. Register a guard
+or a check that reports when more than two pull requests are open at once."
+
+| COMPLETION LAW clause | Verdict | Evidence |
+|---|---|---|
+| 1. Schema: migration written, applied to TEST, verified by querying it back | NOT APPLICABLE. This item adds no column, table, function or policy. `production parity` PASS on the gate confirms 116 in the tree, 116 applied, 0 pending on this branch | `C:\dev\EVIDENCE\PR5\gate-push.txt`, step `production-parity` |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc 0 in 7 s, eslint `--max-warnings=0` 0 in 3 s, copy gate clean over 958 files, `next build` PASS, 83 of 83 registered guards PASS. The one catch in the new guard reports what could not be read and why, so `no-silent-catch` passes it | `gate-push.txt` steps `typecheck`, `lint`, `copy`, `guards`, `build`; `C:\dev\EVIDENCE\PR5\all-guards.txt` |
+| 3. Tests added, the suite grows, canary raised in the same commit | MET. One new file, eleven tests: eight drive the pure judgement over every shape the rule can take, three hold the SHIPPED parked record itself. Canary raised 331/3808 to 332/3819, MEASURED by running it rather than calculated | `test-count-canary.mjs`; `gate-push.txt` step `suite` PASS 45 s |
+| 4. Guard registered, blocking, proven red AND green | MET, both directions, against the REAL live pull request list rather than a fixture. RED on the count: `3 pull requests are open and unaccounted for, and the rule is 1 at a time (close-out PR5): #104 (docs/marketing-and-merge-103-evidence), #97 (chore/photo-shot-list), #69 (feat/genre-data-layer)`, exit 1. RED on record rot, with the count still legal so the rot check fires alone: `the parked record names #143 (feat/genre-data-layer) and that pull request is not open any more`, exit 1. GREEN: `PASS - 0 active (limit 1), 3 parked with a reason, 3 open in total`. Both registered in the drill harness: `130/130 drills fired correctly`, all guards PASS on the restored tree | `guard-RED-count.txt`, `guard-RED-rot.txt`, `guard-GREEN.txt`, `drills-full.txt` |
+| 5. DRIVEN at 390, 768 and 1440 | NOT APPLICABLE AS THREE VIEWPORTS, and said plainly rather than quietly skipped: nothing here renders. A guard over a pull request list has no surface at any width. The driven equivalent is the guard run against the LIVE GitHub list at each of the three states the rule has: zero active (before the pull request existed), one active (its own pull request 144, at exactly the limit), and the two refusals above. All four are real reads of the real repository, not fixtures | `guard-GREEN.txt`, and the 4-open run recorded in BUILD-LOG.md |
+| 6. FULL regression green after the item | MET. `npm run gate:push` as the pre-push hook on `7819deec`: GREEN 14 of 14 steps in 2408 s. Includes 65 Lighthouse reports over 13 URLs, medians 88 to 94, CLS 0.000 on every URL, taken at BenchmarkIndex median 2755 (2729 to 2770), inside the 2,665 to 2,755 band the floors were derived at | `gate-push.txt`, the step table and the truth table |
+| 7. Committed, Australian English, no trailers, pushed | MET. `7819deec` on `chore/one-pull-request-at-a-time`. `core.hooksPath` confirmed `.githooks` before the commit so `commit-msg` judged it; no `Co-Authored-By`, no "Generated with", no robot emoji. Pushed only through the green gate | `git log`, the push output in `gate-push.txt` |
+| C2.2. Opened as a DRAFT, worked, then marked ready so CI runs once | MET. Pull request 144 opened `--draft`, then `gh pr ready 144` | pull request 144 |
+| Fix every defect found before starting the next task | MET. Two found in my own work and fixed before the drill was registered, both recorded in BUILD-LOG.md rather than quietly corrected | BUILD-LOG.md |
+| 7b. Merged, main green, production serving it (C16.0) | SEE THE ROWS BELOW | |
+
+### The requirement PR5 actually states, adjudicated line by line
+
+| PR5 clause | Verdict | How |
+|---|---|---|
+| "one open pull request at a time" | MET, and enforced at exactly that number. ACTIVE = open minus parked, failing above 1 | `MAX_ACTIVE = 1` |
+| "Open the next only when the previous is merged or closed" | MET. The build refuses while a second unexplained pull request is open, which is the moment the next one would be opened, on the machine that opens it | the `guards` step of the pre-push gate |
+| "Register a guard or a check" | MET. Registered in `run-guards.mjs`, therefore blocking on `prebuild` | guard count 82 to 83 |
+| "that reports when more than two pull requests are open at once" | MET, and exceeded. The TOTAL open count is printed on every run whether or not the guard fails, so "more than two open" is always visible; the failure threshold is stricter than the reporting one the clause asks for | `3 open in total` on the green run, `4 open in total` with its own pull request |
+
+### The design decision worth recording, because a future session will be tempted to simplify it
+
+A bare "more than two open" threshold would have failed the build on the day it
+was written. The PR1 audit left THREE pull requests open by decision, each
+carrying files that are on main nowhere, because close-out PR2 forbids closing
+one that does. A gate that cannot go green is a gate somebody switches off, and
+it goes on CLAIMING to be protection for as long as it takes anyone to notice.
+CLAUDE.md names that decay twice already.
+
+So parking is legitimate and parking must be EXPLAINED, in a record that is
+printed in full on every run and is itself checked for rot in three ways. The
+three entries were re-verified against the tree rather than inherited from the
+audit: `git cat-file -e origin/main:<path>` reports CONTENT-PLAN.md,
+OUTREACH-TEMPLATES.md and SHOT-LIST.md all ABSENT from main.
+
+### What is NOT claimed
+
+The guard SKIPs where it has no GitHub credential, which includes the CI verify
+job and the Vercel build host. `GITHUB_TOKEN` was deliberately not wired into
+that job: the same variable reaches `branch-protection-required.mjs`, whose
+protection reads need admin rights the default Actions token does not have, so
+wiring it would turn that guard red for a permission rather than a fault. The
+rule is therefore enforced on the machine that runs the pre-push gate, which is
+the machine that opens pull requests, and it is not enforced in CI. That is
+stated rather than implied.
