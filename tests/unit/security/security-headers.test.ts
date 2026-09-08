@@ -128,3 +128,35 @@ describe('the report-only policy names every origin the venue finder talks to', 
     expect(reportOnly.match(/"script-src[^"]*"/)?.[0] ?? '').toContain('https://maps.googleapis.com')
   })
 })
+
+describe('the parity DSN can only ever widen the policy on a loopback origin', () => {
+  /*
+   * Close-out P0.2 gives the LOCAL gate a client DSN so its builds carry the SDK
+   * that deploys. That DSN has no Sentry ingest host, so no tunnel URL can be
+   * derived from it and the SDK posts straight to it, which is a connect-src
+   * violation Chrome files as an Inspector Issue and Lighthouse scores.
+   *
+   * The widening that fixes it must be invisible on every deployed build. This
+   * asserts the shape of the rule rather than the value, because the value is
+   * computed from an environment variable at build time and a test that pinned
+   * the value would only pin whatever this machine happened to have set.
+   */
+  const helper = config.match(/function sentryParityConnectSrc\(\)[\s\S]*?\n}/)?.[0] ?? ''
+
+  it('only ever returns an origin for loopback', () => {
+    expect(helper).toContain("origin.hostname === '127.0.0.1'")
+    expect(helper).toContain("origin.hostname === 'localhost'")
+    expect(helper).toMatch(/return loopback \? .* : ''/)
+  })
+
+  it('returns nothing when there is no DSN at all', () => {
+    expect(helper).toMatch(/if \(!dsn\) return ''/)
+  })
+
+  it('is applied to connect-src and to nothing else', () => {
+    const uses = [...config.matchAll(/SENTRY_PARITY_CONNECT_SRC/g)]
+    // The declaration, the comment beside connect-src, and the one use.
+    expect(uses.length).toBeGreaterThanOrEqual(2)
+    expect(config).toMatch(/"connect-src[^"]*" \+\s*\n\s*SENTRY_PARITY_CONNECT_SRC,/)
+  })
+})

@@ -1506,6 +1506,60 @@ const DRILLS = [
     replace: '"expectedSourceIps": ["3.18.12.63"]',
     expect: 'not installed',
   },
+  /*
+   * sentry-off-the-paint-path (close-out P0.5, 8 September 2026): the four ways
+   * the error-reporting SDK gets back into the paint window. Each is one edit
+   * and each reads as a tidy-up in review; the measured cost of any of them is
+   * 217.8 KB and 644 ms landing inside the Largest Contentful Paint.
+   */
+  {
+    name: 'the SDK goes back to booting on the load event itself',
+    guard: `${GUARDS}/sentry-off-the-paint-path.mjs`,
+    file: 'instrumentation-client.ts',
+    find: "  else window.addEventListener('load', armTimer, { once: true })",
+    replace: "  else window.addEventListener('load', boot, { once: true })",
+    expect: 'the load event does not boot the SDK directly',
+  },
+  {
+    name: 'Session Replay goes back to arming on an idle callback',
+    guard: `${GUARDS}/sentry-off-the-paint-path.mjs`,
+    file: 'src/lib/observability/sentry-client-boot.ts',
+    find: '  for (const name of REPLAY_INTERACTION_EVENTS) window.addEventListener(name, onFirstInteraction, { passive: true })',
+    replace: '  window.requestIdleCallback(load, { timeout: 5000 })',
+    expect: 'Session Replay is not armed on an idle callback',
+  },
+  {
+    name: 'the @sentry/nextjs barrel is reached by a dynamic import again, which drags rrweb back in',
+    guard: `${GUARDS}/sentry-off-the-paint-path.mjs`,
+    file: 'src/lib/observability/sentry-client-boot.ts',
+    find: "    import('./sentry-session-replay')",
+    replace: "    import('@sentry/nextjs')",
+    expect: 'no dynamic import of the @sentry/nextjs barrel',
+  },
+  {
+    name: 'one interaction signal is quietly dropped from the scheduler',
+    guard: `${GUARDS}/sentry-off-the-paint-path.mjs`,
+    file: 'instrumentation-client.ts',
+    find: "const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'wheel'] as const",
+    replace: "const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'touchstart'] as const",
+    expect: 'schedules on wheel',
+  },
+  {
+    name: 'a held error stops booting the SDK at once, so a report can be lost',
+    guard: `${GUARDS}/sentry-off-the-paint-path.mjs`,
+    file: 'instrumentation-client.ts',
+    find: "  boot('error')\n}",
+    replace: '  void 0\n}',
+    expect: 'a held error boots the SDK at once',
+  },
+  {
+    name: 'Session Replay is deleted rather than deferred',
+    guard: `${GUARDS}/sentry-off-the-paint-path.mjs`,
+    file: 'src/lib/observability/sentry-session-replay.ts',
+    find: '    replayIntegration({',
+    replace: '    noRecorderAtAll({',
+    expect: 'Session Replay is still wired at all',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

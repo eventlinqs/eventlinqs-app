@@ -85,6 +85,7 @@ import { createServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { gitEnv } from '../lib/git-env.mjs'
+import { PARITY_SINK_PORT } from '../verify/sentry-parity-sink.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..', '..')
@@ -101,6 +102,47 @@ const LHCI_DIR = join(ROOT, '.lighthouseci')
 const ZERO_SHA = /^0{40}$/
 
 const nonEmpty = (v) => typeof v === 'string' && v.trim().length > 0
+
+/**
+ * THE CLIENT-SDK PARITY DSN. Close-out P0.2: "If local says pass and CI says
+ * fail, the local gate is lying and that is a defect in the gate."
+ *
+ * It was lying, and this is the mechanism. `NEXT_PUBLIC_SENTRY_DSN` is inlined
+ * into the CLIENT bundle at build time, and instrumentation-client.ts refuses
+ * to load the SDK at all when it is empty. On the founder's machine .env.local
+ * carries `NEXT_PUBLIC_SENTRY_DSN=""`, so every local gate build shipped a
+ * browser bundle with no error-reporting SDK in it, while every Vercel preview
+ * CI measures ships one.
+ *
+ * MEASURED, 8 September 2026, on the deployed preview of main's tree
+ * (scripts/perf/chunk-cost-table.mjs, run 34188084768's preview): the SDK and
+ * its Session Replay recorder are 217.8 KB of the event page's 439.0 KB of
+ * script, arrive by dynamic import, and carry 644 ms of script evaluation. The
+ * local gate could not see one byte of it. That is the whole of the 5 to 15
+ * point gap this repository kept recording between the local gate and the
+ * runner, and it meant the local Lighthouse step could go green on a build
+ * nobody deploys.
+ *
+ * WHY A SYNTHETIC ONE AND NOT THE REAL ONE. The cost being measured is bytes
+ * and main-thread evaluation, which the SDK pays identically whatever the DSN
+ * points at. A real DSN would send this machine's audit traffic to the
+ * founder's production Sentry project, which is the exact failure
+ * shouldInitSentry() was written to prevent.
+ *
+ * WHY IT POINTS AT LOCALHOST AND NOT AT AN UNRESOLVABLE HOST. The first attempt
+ * used an RFC 2606 `.invalid` host, on the reasoning that a name which can never
+ * resolve can never receive anything. THE GATE REFUSED IT, and was right: the
+ * SDK opens a session envelope on every page load, the request failed with
+ * ERR_NAME_NOT_RESOLVED, Chrome logged "Failed to load resource", and
+ * Lighthouse's `errors-in-console` audit took best practices from 1.00 to 0.93
+ * on all thirteen gated URLs on all five runs. A parity fix that introduces a
+ * difference of its own is not parity. scripts/verify/sentry-parity-sink.mjs
+ * answers this address so the send SUCCEEDS, nothing leaves the machine, and no
+ * console error is logged.
+ *
+ * A DSN ALREADY IN THE ENVIRONMENT ALWAYS WINS. This only fills a hole.
+ */
+export const PARITY_SENTRY_DSN = `http://0000000000000000000000000000000a@127.0.0.1:${PARITY_SINK_PORT}/1`
 
 /**
  * The repository's env-file shape, the same parse C:\dev\serve.ps1 and the
@@ -124,15 +166,29 @@ export function parseEnvFile(text) {
   return out
 }
 
-/** The environment a step runs in: git variables cleared, and .env.local for the steps that read the database. */
-function envFor(kind) {
-  const base = { ...gitEnv(), NEXT_TELEMETRY_DISABLED: '1' }
+/**
+ * The environment a step runs in: git variables cleared, and .env.local for the
+ * steps that read the database.
+ *
+ * @param {string} kind 'local' to merge .env.local, anything else for a plain shell.
+ * @param {{ root?: string, shell?: Record<string, string | undefined> }} [options]
+ *   Injection seams for the tests: which tree's .env.local to read, and what to
+ *   treat as the ambient shell. Neither is passed in real use.
+ * @returns {Record<string, string | undefined>}
+ */
+export function envFor(kind, { root = ROOT, shell = /** @type {Record<string, string | undefined>} */ (gitEnv()) } = {}) {
+  const base = { ...shell, NEXT_TELEMETRY_DISABLED: '1' }
   if (kind !== 'local') return base
-  const file = join(ROOT, '.env.local')
-  if (!existsSync(file)) return base
-  for (const [name, value] of Object.entries(parseEnvFile(readFileSync(file, 'utf8')))) {
-    if (base[name] === undefined) base[name] = value
+  const file = join(root, '.env.local')
+  if (existsSync(file)) {
+    for (const [name, value] of Object.entries(parseEnvFile(readFileSync(file, 'utf8')))) {
+      if (base[name] === undefined) base[name] = value
+    }
   }
+  // See PARITY_SENTRY_DSN. Without this the local build ships a browser bundle
+  // CI never measures, and the local Lighthouse step judges a page that is
+  // 217.8 KB lighter than the one that deploys.
+  if (!nonEmpty(base.NEXT_PUBLIC_SENTRY_DSN)) base.NEXT_PUBLIC_SENTRY_DSN = PARITY_SENTRY_DSN
   return base
 }
 
@@ -511,6 +567,15 @@ async function runLighthouse(env) {
     env: { ...env, PORT: String(stubPort) },
     stdio: ['ignore', fd, fd],
   })
+  // The endpoint the parity DSN names. Without it the SDK's session envelope
+  // fails to connect, Chrome logs it, and Lighthouse's errors-in-console audit
+  // takes best practices from 1.00 to 0.93 on every gated URL. See
+  // PARITY_SENTRY_DSN and scripts/verify/sentry-parity-sink.mjs.
+  const sentrySink = spawn(NODE, ['scripts/verify/sentry-parity-sink.mjs'], {
+    cwd: ROOT,
+    env,
+    stdio: ['ignore', fd, fd],
+  })
   const server = spawn(NODE, ['node_modules/next/dist/bin/next', 'start', '--port', String(appPort)], {
     cwd: ROOT,
     env: {
@@ -530,6 +595,19 @@ async function runLighthouse(env) {
       return 1
     }
     console.log(`[gate] production build answering on ${base} (server log: .tmp/gate-server.log)`)
+
+    // The sink is CHECKED, not assumed. If it is not answering, every audited
+    // page logs a failed telemetry request and best practices drops to 0.93 on
+    // all thirteen URLs, which reads like a product regression and is not one.
+    const sinkUp = await waitForServer(`http://127.0.0.1:${PARITY_SINK_PORT}`, sentrySink, 20_000)
+    if (sinkUp) {
+      console.error(`[gate] the Sentry parity sink is not answering on 127.0.0.1:${PARITY_SINK_PORT}: ${sinkUp}`)
+      console.error('[gate] Something else is probably on that port. Free it and re-run; without the sink')
+      console.error('[gate] this step measures a console error the deployed build does not have.')
+      console.error(tailOf(SERVER_LOG))
+      return 1
+    }
+    console.log(`[gate] Sentry parity sink answering on 127.0.0.1:${PARITY_SINK_PORT}`)
 
     const resolved = spawnSync(NODE, ['scripts/ci/resolve-gate-urls.mjs'], {
       cwd: ROOT,
@@ -563,6 +641,7 @@ async function runLighthouse(env) {
   } finally {
     killTree(server)
     killTree(stub)
+    killTree(sentrySink)
     closeSync(fd)
     rmSync(LHCI_DIR, { recursive: true, force: true })
     rmSync(GATE_URLS, { force: true })
@@ -805,6 +884,12 @@ async function main() {
   console.log('='.repeat(72))
   console.log(`[gate] pre-push gate on ${headLine()}, node ${process.versions.node}`)
   console.log('='.repeat(72))
+  if (envFor('local').NEXT_PUBLIC_SENTRY_DSN === PARITY_SENTRY_DSN) {
+    console.log('[gate] no NEXT_PUBLIC_SENTRY_DSN in the environment, so the build uses the parity DSN')
+    console.log(`[gate]   ${PARITY_SENTRY_DSN} (RFC 2606 reserved, cannot resolve, sends nothing anywhere)`)
+    console.log('[gate]   The client SDK therefore loads and evaluates here exactly as it does on a preview,')
+    console.log('[gate]   which is what CI measures. Without it this gate judges a bundle nobody deploys.')
+  }
   const push = classifyPush(refsText, treeHasPackageJson)
   if (push.verdict === 'skip') {
     console.log(`[gate] SKIPPED: ${push.reason}`)

@@ -95,7 +95,7 @@ trimming that shell component by component on a checkout-bearing page, or moving
 the Sentry boot off `window.load` onto idle.
 
 **The second is explicitly forbidden by this ruling.** `instrumentation-client.ts`
-and `docs/perf/sentry-client-surface.md` record a deliberate decision: the SDK is
+and `docs/roast/sentry-client-surface-2026-08-05.md` record a deliberate decision: the SDK is
 deferred to `load` rather than to idle so Session Replay arms as early as it can
 while the synchronous capture shim guarantees no error is lost. Trading that for
 0.02 of a score measured on a runner is the wrong trade.

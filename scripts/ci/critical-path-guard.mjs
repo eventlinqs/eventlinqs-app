@@ -204,7 +204,10 @@ if (!fs.existsSync(sentryBoot)) {
         `        That statically bundles rrweb (~304KB unminified) into the main\n` +
         `        client chunk on EVERY route. Measured cost when it was there:\n` +
         `        187KB transferred, 1,047ms evaluation, LCP render delay 3,071ms.\n` +
-        `        Fix: arm it after load via armSessionReplay() in the same file.`,
+        `        Fix: arm it on the first interaction via armSessionReplay() in\n` +
+        `        the same file (close-out P0.5: "after load" was itself measured\n` +
+        `        at 123.2KB and 413ms INSIDE the LCP window on 8 September 2026;\n` +
+        `        scripts/guards/sentry-off-the-paint-path.mjs holds the schedule).`,
       )
     }
   } else {
