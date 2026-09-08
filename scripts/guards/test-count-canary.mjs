@@ -960,8 +960,16 @@ const ROOT = join(HERE, '..', '..')
  * origin so it can never widen the deployed policy:
  * 328 files / 3748, as the canary measured.
  */
-const MIN_FILES = 328
-const MIN_TESTS = 3748
+/*
+ * Close-out P0.7 and L3, the ratchet (8 September 2026), one new file and
+ * nineteen new tests: tests/unit/ci/lighthouse-floor-ratchet, which pins the
+ * seven performance floors now in force as literals and drives the guard's
+ * ruling in all six directions it must refuse, so lowering a floor takes three
+ * files rather than one character:
+ * 329 files / 3767, as the canary measured.
+ */
+const MIN_FILES = 329
+const MIN_TESTS = 3767
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

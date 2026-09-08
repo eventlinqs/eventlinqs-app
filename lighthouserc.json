@@ -49,7 +49,7 @@
             "categories:performance": [
               "error",
               {
-                "minScore": 0.8,
+                "minScore": 0.85,
                 "aggregationMethod": "median"
               }
             ],
@@ -144,7 +144,7 @@
             "categories:performance": [
               "error",
               {
-                "minScore": 0.8,
+                "minScore": 0.87,
                 "aggregationMethod": "median"
               }
             ],
@@ -196,15 +196,67 @@
           }
         },
         {
-          "_note": "Homepage / mobile cold-cache image-optimiser race - same class as /culture/* per Issue #42 and CLAUDE.md docs/perf/v2/closure-report.md ('Mobile homepage and /events have known cold-cache measurement issue to be revisited with production warm-cache data, do not block on it'). The homepage hero is a heavy priority-painted raster on mobile and trips the same Vercel image optimiser cold-start race already documented for /culture/*. Observed in this PR's run (median-of-3): perf 0.76 on /, while /culture/african produced null/NaN for perf/LCP/TBT in the same run - both routes are stuck below the 0.80 floor for the same documented reason. Performance is gated at warn-level so the score stays visible in CI without blocking deploys; accessibility, best-practices, and CLS remain at the full error-level. SEO is no longer asserted as a category here: it moved to the per-audit entry at the top of this matrix on 16 August 2026, which applies to this URL too and holds the same bar audit by audit. Restore performance to error-level when the underlying cold-cache fix lands (same fix horizon as Issue #42). /events is also flagged in CLAUDE.md as having the same issue but is left at error-level for now because the current run still measured it above 0.80 - relax it only when it actually fails.",
-          "matchingUrlPattern": "^https?://[^/]+/?$",
-          "_expiresOn": "2026-11-01",
-          "_expiryReason": "Homepage cold-cache image-optimiser race, same class as Issue #42. Performance is warn-level here only. scripts/ci/lighthouse-exemption-expiry.mjs FAILS the build once this date passes.",
+          "_note": "THE RATCHET, PER URL (close-out P0.7 and L3, 8 September 2026). The general entry above carries the platform-wide floor of 0.85, which is bound by the three event-detail pages, the slowest gated URLs. A single floor set for the slowest page lets every faster page give back eight or nine points without the gate noticing, so each faster URL carries its own floor here. assertMatrix entries are additive: a URL matched by several entries has every matching assertion evaluated, so these are strictly stronger than the general floor and nothing below is relaxed by them.",
+          "_derivation": "floor = the LOWER of two independent local median-of-five collections, minus 3 points, minus 1 more where that URL run spread exceeded 5 points. The local gate is the binding environment: it measures a warmed local production server and runs 4 to 8 points BELOW the runner on the same commit, so a floor derived from the runner numbers would refuse every push. Measured 8 September 2026 at commits 6824d3dc and 2ef19246, Lighthouse 12.6.1, mobile, median of five. local 1 / local 2 / runner: / 92/92/93, /community/african 92/92/97, /events 92/91/97, /events/browse/melbourne 90/89/96, /organisers 91/91/96, /help 94/94/96, /legal/terms 94/94/98, /pricing 94/94/97, /login 90/90/96, /signup 90/90/96, and the three /events/[slug] pages 88 or 89 locally against 95 or 96 on the runner. Median-to-median drift between the two local collections was at most 1 point, so a 3 point allowance is three times the observed drift rather than a guess. Evidence: C:\\dev\\EVIDENCE\\H3\\gate-truth-table-after.txt, gate-green-14-of-14-run2.txt and ci-lighthouse-run-34205369458.txt.",
+          "_ratchet": "THE FLOOR ONLY EVER RISES. After every measured improvement, raise the number here to just below the new median. Never lower one, never move one back to warn, and never add a waiver without a date and a reason.",
+          "matchingUrlPattern": "/(help|pricing|legal/terms)$",
           "assertions": {
             "categories:performance": [
-              "warn",
+              "error",
               {
-                "minScore": 0.8,
+                "minScore": 0.91,
+                "aggregationMethod": "median"
+              }
+            ]
+          }
+        },
+        {
+          "_note": "The ratchet, per URL. Derivation and evidence in the entry above. /events measured 92 then 91 locally and 97 on the runner; /organisers 91 then 91 locally and 96 on the runner.",
+          "matchingUrlPattern": "/(events|organisers)$",
+          "assertions": {
+            "categories:performance": [
+              "error",
+              {
+                "minScore": 0.88,
+                "aggregationMethod": "median"
+              }
+            ]
+          }
+        },
+        {
+          "_note": "The ratchet, per URL. Derivation and evidence two entries above. /community/african measured 92 and 92 locally and 97 on the runner. Its local run spread reached 8 points (85 to 93), so it takes the extra allowance and lands on 0.88 rather than 0.89. The pattern covers every community landing page, not only the audited one, so a community URL added to the gate set inherits this floor instead of falling back to the general one.",
+          "matchingUrlPattern": "/community/[^/]+$",
+          "assertions": {
+            "categories:performance": [
+              "error",
+              {
+                "minScore": 0.88,
+                "aggregationMethod": "median"
+              }
+            ]
+          }
+        },
+        {
+          "_note": "The ratchet, per URL. Derivation and evidence three entries above. /events/browse/melbourne measured 90 then 89 locally and 96 on the runner. The pattern covers every city, so a city added to the gate set inherits this floor.",
+          "matchingUrlPattern": "/events/browse/[^/]+$",
+          "assertions": {
+            "categories:performance": [
+              "error",
+              {
+                "minScore": 0.86,
+                "aggregationMethod": "median"
+              }
+            ]
+          }
+        },
+        {
+          "_note": "THE HOMEPAGE IS ENFORCED AT ERROR LEVEL, and the Issue #42 waiver that used to sit here is DELETED (close-out P0.7 and L3, 8 September 2026). It was written when the homepage measured 0.76 against a 0.80 floor and it read 'restore performance to error-level when the underlying cold-cache fix lands'. The cause turned out not to be the image optimiser at all: it was 217.8 KB of error-reporting SDK and its rrweb recorder loading inside the paint window, removed on the H3 branch. Measured after that, median of five: 92 and 92 on two independent local collections (run spreads 87 to 95 and 88 to 92) and 93 on the runner against the Vercel preview (spread 90 to 94). The floor here is 0.88, the lower local median minus a 4 point allowance, because the local gate is the harsher of the two environments and the homepage carries the widest run spread of any gated URL. Accessibility, best-practices and CLS were already error-level and are unchanged. SEO is asserted audit by audit in the entry at the top of this matrix, which covers this URL too. THE FLOOR ONLY EVER RISES: raise it after the next measured improvement, never lower it, and never move it back to warn.",
+          "matchingUrlPattern": "^https?://[^/]+/?$",
+          "assertions": {
+            "categories:performance": [
+              "error",
+              {
+                "minScore": 0.88,
                 "aggregationMethod": "median"
               }
             ],

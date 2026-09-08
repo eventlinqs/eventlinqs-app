@@ -146,6 +146,10 @@
  *                              recorder is never fetched before a first interaction:
  *                              measured at 217.8 KB and 644 ms inside the LCP window
  *                              when it was scheduled on `load` (close-out P0.5)
+ *   lighthouse-floor-ratchet  every Lighthouse assertion is at or above its recorded
+ *                              high-water mark: a floor may never be lowered, a budget
+ *                              never loosened, a check never moved from error to warn
+ *                              and never deleted (close-out P0.7, H5)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -856,6 +860,12 @@ const GUARDS = [
   // thread, evaluating at 3,180 ms and 4,079 ms against an LCP of 4,382 ms. That
   // page scored 0.79 against the gate's 0.80 floor. Drilled red and green.
   'scripts/guards/sentry-off-the-paint-path.mjs',
+  // The gate the platform just rose to meet is one JSON edit away from being
+  // handed back, and that edit looks exactly like the one that earned it. The
+  // high-water mark lives in the guard, beside the rule, and every drill fires:
+  // a floor lowered, a check made advisory, a check deleted, a budget loosened,
+  // and a new floor added undeclared. Close-out P0.7 and H5.
+  'scripts/guards/lighthouse-floor-ratchet.mjs',
 ]
 
 /**
