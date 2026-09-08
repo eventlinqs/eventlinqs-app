@@ -85,6 +85,7 @@ import { createServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { gitEnv } from '../lib/git-env.mjs'
+import { PARITY_SINK_PORT } from '../verify/sentry-parity-sink.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..', '..')
@@ -126,13 +127,22 @@ const nonEmpty = (v) => typeof v === 'string' && v.trim().length > 0
  * and main-thread evaluation, which the SDK pays identically whatever the DSN
  * points at. A real DSN would send this machine's audit traffic to the
  * founder's production Sentry project, which is the exact failure
- * shouldInitSentry() was written to prevent. `.invalid` is reserved by RFC 2606
- * and can never resolve, so the SDK loads, parses, evaluates and arms exactly
- * as it does in production, and its first attempt to send goes nowhere.
+ * shouldInitSentry() was written to prevent.
+ *
+ * WHY IT POINTS AT LOCALHOST AND NOT AT AN UNRESOLVABLE HOST. The first attempt
+ * used an RFC 2606 `.invalid` host, on the reasoning that a name which can never
+ * resolve can never receive anything. THE GATE REFUSED IT, and was right: the
+ * SDK opens a session envelope on every page load, the request failed with
+ * ERR_NAME_NOT_RESOLVED, Chrome logged "Failed to load resource", and
+ * Lighthouse's `errors-in-console` audit took best practices from 1.00 to 0.93
+ * on all thirteen gated URLs on all five runs. A parity fix that introduces a
+ * difference of its own is not parity. scripts/verify/sentry-parity-sink.mjs
+ * answers this address so the send SUCCEEDS, nothing leaves the machine, and no
+ * console error is logged.
  *
  * A DSN ALREADY IN THE ENVIRONMENT ALWAYS WINS. This only fills a hole.
  */
-export const PARITY_SENTRY_DSN = 'https://0000000000000000000000000000000a@sdk-parity.invalid/1'
+export const PARITY_SENTRY_DSN = `http://0000000000000000000000000000000a@127.0.0.1:${PARITY_SINK_PORT}/1`
 
 /**
  * The repository's env-file shape, the same parse C:\dev\serve.ps1 and the
@@ -557,6 +567,15 @@ async function runLighthouse(env) {
     env: { ...env, PORT: String(stubPort) },
     stdio: ['ignore', fd, fd],
   })
+  // The endpoint the parity DSN names. Without it the SDK's session envelope
+  // fails to connect, Chrome logs it, and Lighthouse's errors-in-console audit
+  // takes best practices from 1.00 to 0.93 on every gated URL. See
+  // PARITY_SENTRY_DSN and scripts/verify/sentry-parity-sink.mjs.
+  const sentrySink = spawn(NODE, ['scripts/verify/sentry-parity-sink.mjs'], {
+    cwd: ROOT,
+    env,
+    stdio: ['ignore', fd, fd],
+  })
   const server = spawn(NODE, ['node_modules/next/dist/bin/next', 'start', '--port', String(appPort)], {
     cwd: ROOT,
     env: {
@@ -576,6 +595,19 @@ async function runLighthouse(env) {
       return 1
     }
     console.log(`[gate] production build answering on ${base} (server log: .tmp/gate-server.log)`)
+
+    // The sink is CHECKED, not assumed. If it is not answering, every audited
+    // page logs a failed telemetry request and best practices drops to 0.93 on
+    // all thirteen URLs, which reads like a product regression and is not one.
+    const sinkUp = await waitForServer(`http://127.0.0.1:${PARITY_SINK_PORT}`, sentrySink, 20_000)
+    if (sinkUp) {
+      console.error(`[gate] the Sentry parity sink is not answering on 127.0.0.1:${PARITY_SINK_PORT}: ${sinkUp}`)
+      console.error('[gate] Something else is probably on that port. Free it and re-run; without the sink')
+      console.error('[gate] this step measures a console error the deployed build does not have.')
+      console.error(tailOf(SERVER_LOG))
+      return 1
+    }
+    console.log(`[gate] Sentry parity sink answering on 127.0.0.1:${PARITY_SINK_PORT}`)
 
     const resolved = spawnSync(NODE, ['scripts/ci/resolve-gate-urls.mjs'], {
       cwd: ROOT,
@@ -609,6 +641,7 @@ async function runLighthouse(env) {
   } finally {
     killTree(server)
     killTree(stub)
+    killTree(sentrySink)
     closeSync(fd)
     rmSync(LHCI_DIR, { recursive: true, force: true })
     rmSync(GATE_URLS, { force: true })

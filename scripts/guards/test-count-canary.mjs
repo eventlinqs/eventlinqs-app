@@ -950,16 +950,16 @@ const ROOT = join(HERE, '..', '..')
  * 325 files / 3701, as the canary measured.
  */
 /*
- * Close-out H3 / P0.5 (8 September 2026), one file and seven tests:
- * tests/unit/ci/gate-client-sdk-parity (six: the local gate can never again
+ * Close-out H3 / P0.5 (8 September 2026), one new file and eight new tests:
+ * tests/unit/ci/gate-client-sdk-parity (seven: the local gate can never again
  * build a browser bundle CI does not measure), and one added to
  * tests/unit/security/pii-egress asserting that replayIntegration() is
  * constructed in exactly ONE file, so a security test can never again be
  * pointed at a file that has stopped deciding anything:
- * 328 files / 3744, as the canary measured.
+ * 328 files / 3745, as the canary measured.
  */
 const MIN_FILES = 328
-const MIN_TESTS = 3744
+const MIN_TESTS = 3745
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

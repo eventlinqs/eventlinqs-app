@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { envFor, PARITY_SENTRY_DSN } from '../../../scripts/ops/pre-push-gate.mjs'
+import { PARITY_SINK_PORT } from '../../../scripts/verify/sentry-parity-sink.mjs'
 
 /**
  * THE LOCAL GATE MUST MEASURE THE BUNDLE THAT DEPLOYS.
@@ -64,14 +65,29 @@ describe('the pre-push gate environment', () => {
     })
   })
 
-  test('the parity DSN can never resolve and can never reach a real project', () => {
-    // RFC 2606 reserves .invalid precisely so a name like this is guaranteed
-    // never to exist. A DSN that COULD resolve would send this machine's audit
-    // traffic somewhere, which is the failure shouldInitSentry() exists to stop.
-    const host = new URL(PARITY_SENTRY_DSN).hostname
-    expect(host.endsWith('.invalid')).toBe(true)
+  test('the parity DSN can never leave this machine, and answers locally', () => {
+    // It points at loopback, so nothing it sends can reach a real project, which
+    // is the failure shouldInitSentry() exists to stop.
+    const url = new URL(PARITY_SENTRY_DSN)
+    expect(url.hostname).toBe('127.0.0.1')
     expect(PARITY_SENTRY_DSN).not.toMatch(/sentry\.io/)
     // Shape-valid, or the SDK refuses to init and the parity is worthless.
-    expect(PARITY_SENTRY_DSN).toMatch(/^https:\/\/[0-9a-f]+@[^/]+\/\d+$/)
+    expect(PARITY_SENTRY_DSN).toMatch(/^https?:\/\/[0-9a-f]+@127\.0\.0\.1:\d+\/\d+$/)
+  })
+
+  test('the DSN names the port the sink listens on, so the two cannot drift', () => {
+    /*
+     * THE FIRST ATTEMPT USED AN UNRESOLVABLE `.invalid` HOST AND THE GATE
+     * REFUSED IT. The SDK opens a session envelope on every page load; the
+     * request failed with ERR_NAME_NOT_RESOLVED; Chrome logged it; Lighthouse's
+     * errors-in-console audit took best practices from 1.00 to 0.93 on all
+     * thirteen gated URLs on all five runs. A parity fix that introduces a
+     * difference of its own is not parity.
+     *
+     * The DSN is inlined at BUILD time, so the port cannot be chosen later. It
+     * is fixed, and this test is what stops the constant and the server that
+     * answers it drifting apart.
+     */
+    expect(new URL(PARITY_SENTRY_DSN).port).toBe(String(PARITY_SINK_PORT))
   })
 })

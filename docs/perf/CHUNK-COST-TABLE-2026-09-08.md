@@ -128,11 +128,20 @@ runner, and it meant the local Lighthouse step could go green on a build nobody
 deploys.
 
 The fix is `PARITY_SENTRY_DSN` in `scripts/ops/pre-push-gate.mjs`: when the
-environment carries no DSN, the gate builds with a shape-valid one whose host is
-`.invalid` (RFC 2606, can never resolve). The SDK loads, parses, evaluates and
-arms exactly as it does in production, and its first attempt to send goes
-nowhere. A real DSN in the shell or in `.env.local` always wins.
+environment carries no DSN, the gate builds with a shape-valid one pointing at
+loopback, and `scripts/verify/sentry-parity-sink.mjs` answers it. The SDK loads,
+parses, evaluates, arms and sends exactly as it does in production; nothing
+leaves the machine. A real DSN in the shell or in `.env.local` always wins.
 `tests/unit/ci/gate-client-sdk-parity.test.ts` holds it.
+
+**The first attempt at this was wrong, and the gate caught it.** It used an
+RFC 2606 `.invalid` host, on the reasoning that a name which can never resolve
+can never receive anything. It cannot, and that is the problem: the SDK opens a
+session envelope on every page load, the request failed with
+ERR_NAME_NOT_RESOLVED, Chrome logged it, and Lighthouse's `errors-in-console`
+audit took BEST PRACTICES from 1.00 to 0.93 on all thirteen gated URLs on all
+five runs. The push was refused. A parity fix that introduces a difference of
+its own is not parity.
 
 What that fix did to the local numbers, median of 5, same build, mobile, warmed:
 
