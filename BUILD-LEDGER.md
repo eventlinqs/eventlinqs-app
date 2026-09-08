@@ -1186,3 +1186,95 @@ one poll and then judged the right commit.
 |---|---|---|
 | Exempt Stripe's 15 published webhook addresses from Vercel system mitigation | SCRIPTED, and RESERVED for him because it changes production infrastructure. The script fetches the list from Stripe rather than remembering it, refuses without `--apply`, is idempotent, never prints the token, verifies by re-reading, and rewrites the record the guard compares against | `npm run firewall:bypass` (plan), then `npm run firewall:bypass -- --apply` |
 | Everything else in H2 | SCRIPTED. Nothing else here needs him | none |
+
+## H3. THE PERFORMANCE BRANCH: THE PLATFORM RISES TO MEET ITS OWN GATE (8 September 2026, session 46)
+
+H2 closed and merged as 5cd985a7, so the HALT section puts H3 next: "Land that
+ONE branch. Every gated URL must pass 0.80 at MEDIAN with headroom." P0.3 and
+P0.4 were delivered on 7 September under C8 CORRECTED, so this branch is P0.2,
+P0.5, P0.6, P0.7 and P0.8. Branch `perf/h3-initial-bundle`, pull request 142.
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| P0.3 Lighthouse 12.6.1 so the gate can name the LCP element | ALREADY MET, 7 September (C8.1). Not re-done, and said so rather than re-claimed | docs/perf/LIGHTHOUSE-12.6.1-REBASELINE-2026-09-07.md |
+| P0.4 median aggregation, 5 runs, the dead /culture/* waiver | ALREADY MET, 7 September (C8.2, C8.3) | lighthouserc.json |
+| P0.5 build the cost table BEFORE touching anything: every chunk by transferred size, evaluation time, whether it is on the critical path, what it serves, ordered by cost | MET. `scripts/perf/chunk-cost-table.mjs` DRIVES each pinned gate route and reads the bytes rather than a manifest, because a `<script noModule>` polyfill is 110 KB nothing fetches, the biggest chunk on the page is in no manifest, and transferred size is not file size | docs/perf/CHUNK-COST-TABLE-2026-09-08.md |
+| P0.5 investigate the recorder chunk FIRST and decide whether it earns its cost | MET. 123.2 KB transferred, 413 ms evaluation, 70% never executed, a 270 ms long task at 4,079 ms against an LCP of 4,382 ms whose Render Delay was 2,403 ms. Attribution READ from the deployed bytes, never inferred from a filename | the cost table |
+| P0.5 remove it or move it strictly off the critical path so it costs nothing before first interaction | MET, MOVED, nothing removed (L6). Armed on the first pointerdown, keydown, touchstart or wheel | src/lib/observability/sentry-session-replay.ts |
+| P0.5 measure before and after and report the delta | MET, per RUN as well as per median, because a median hides a spread | C:\dev\EVIDENCE\H3\lighthouse-before-median5-local.txt, lighthouse-after-median5-local.txt |
+| P0.2 the local gate runs the SAME measurement CI runs | MET, and it was NOT: `NEXT_PUBLIC_SENTRY_DSN` is empty in .env.local, so every local build shipped a browser bundle with no SDK (17 requests, 207.8 KB) while every preview CI measures ships one (21, 439.0 KB). That is the entire 5 to 15 point gap this repository kept blaming on runner noise | tests/unit/ci/gate-client-sdk-parity.test.ts (7 tests) |
+| P0.6 towards the Scope v5 sub-200KB initial bundle | PARTIALLY MET, and stated as such. Total script on the event route 440.0 to 295.8 KB, a 33% cut; the in-document set is 195.6 KB. On the stricter reading of "initial bundle" as total script the 200 KB target is NOT met and the remaining gap is named | the cost table |
+| P0.7 ratchet the floor UP once every gated URL passes at median with headroom | PENDING the runner's own numbers on pull request 142. The local gate measures 88 to 94 with the lowest single run at 0.87; the ratchet is set from the RUNNER, not from this machine, because the two disagree by design | pull request 142 |
+| P0.8 the preview deployment failure at 718d93b: read the build log, name the cause | MET, named from the log itself: `community-layer-protected.mjs` read `docs/scope/community-layer-approved.json` unconditionally and `.vercelignore` excludes `docs/`. Already fixed by that same branch 47 minutes later (4455104f READY, merged 15ccce5c); twenty consecutive READY deployments since, read back from the Vercel API | dpl_7Y5XfF1s7nrkFHwuQvkXpuFQQM8V build log |
+
+### The three changes, and the one that actually mattered
+
+1. Session Replay arms on the first interaction, not on an idle callback that
+   fires while the hero is still painting.
+2. The SDK core boots at the earliest of a held error, a first interaction, or
+   3,000 ms after load.
+3. **Neither worked on its own.** Driven, the recorder was still fetched at
+   4,323 ms with no input, 50 ms behind the core, on 2 of 2 runs, while its own
+   arming mark correctly waited until 10,301 ms. A dynamic import of the
+   `@sentry/nextjs` BARREL is a namespace import, cannot be tree-shaken, and
+   drags rrweb into that chunk group. Both barrel imports are gone.
+
+Deferring the ARM while the BYTES still arrive buys nothing.
+
+### The measured result
+
+Script on the event page, driven, same route, same machine: 440.0 KB to
+**295.8 KB** over 20 requests, of which 195.6 KB is named in the document.
+
+Lighthouse, median of five, mobile, warmed, the honest local gate:
+
+| route | before | after | LCP before | LCP after |
+|---|---|---|---|---|
+| `/events/cat-indie-...-sydney` | 0.76 | **0.87** | 4,639 ms | 3,667 ms |
+| `/events/artist-layer-...-geelong` | 0.80 | **0.88** | 4,420 ms | 3,739 ms |
+| `/events` | 0.70 | **0.92** | 6,182 ms | 3,270 ms |
+
+The gate's own collection, all thirteen URLs, five runs each: medians 88 to 94,
+the lowest single run anywhere 0.87, blocking time 61 to 116 ms against a 600 ms
+cap, layout shift zero, and script weight down on every page.
+
+### H3 against the COMPLETION LAW
+
+| Law | Verdict | Evidence |
+|---|---|---|
+| 1. Schema | NOT APPLICABLE. No migration; production untouched | production parity green in the gate |
+| 2. Code built, typechecked, linted, no silent catches | MET. tsc 0, eslint 0, 79 of 79 guards, the production build green. The no-silent-catch guard refused two catches in the new reporter and both were given a voice | C:\dev\EVIDENCE\H3\gate-green-14-of-14.txt |
+| 3. Tests added, canary raised in the same commit | MET. 11 new tests across three files (gate-client-sdk-parity 7, pii-egress 1, security-headers 3); canary 325/3701 to 328/3748, measured, never guessed | scripts/guards/test-count-canary.mjs |
+| 4. Guard proven red and green | MET. `sentry-off-the-paint-path.mjs` registered and blocking, 20 scheduling properties, SIX drills: the load-event boot, idle-callback arming, the barrel import, a dropped interaction signal, a held error that no longer boots, and the recorder deleted rather than deferred. 119 of 119 drills fire and the tree restores clean | C:\dev\EVIDENCE\H3\guard-drills-full.txt |
+| 5. Driven at 390, 768 and 1440 | NOT APPLICABLE as three viewports: nothing this branch changes renders. The driven equivalent is that every claim was made by running it - the recorder's absence before input on 3 of 3 runs with a REAL pointer input through the browser's own input pipeline, the byte counts from a driven browser rather than a manifest, the console read on the rebuilt tree, and the deployed preview driven to settle what the tunnel actually does | replay-window-after.txt, chunk-cost-after-local.txt |
+| 6. Full regression green after the item | MET. The pre-push gate GREEN 14 of 14 in 2,149s. It REFUSED the push twice before that, both times correctly, and both causes are recorded rather than quietly fixed | gate-green-14-of-14.txt |
+| 7. Committed, no trailers, pushed, production deploys green | PARTIAL at the time of writing: three commits (8f42e932, fb1c763b, 6824d3dc), none carrying a trailer, pushed only after the gate went green. Pull request 142 open and ready; the merge and the production deploy follow CI | git log |
+| Fix every defect found before the next task | MET. Fixed: the blind local gate; the recorder on the paint path; the barrel import; the parity DSN's console error; the parity DSN's CSP violation; the sink's Windows main-module check; a stale `docs/perf/sentry-client-surface.md` path in three files pointing at a file that does not exist; the PII egress test left asserting against a file that had stopped constructing the integration | this ledger |
+
+### The gate refused this branch twice, and both times it was right
+
+**First refusal**, best practices 0.93 on all thirteen URLs on all five runs. My
+own parity DSN pointed at an RFC 2606 `.invalid` host; the SDK opens a session
+envelope on every page load; the request failed with `ERR_NAME_NOT_RESOLVED`;
+Chrome logged it; `errors-in-console` scored it. A parity fix that introduces a
+difference of its own is not parity. Fixed with a loopback sink that answers.
+
+**Second refusal**, best practices 0.96, `inspector-issues`, a CSP violation
+naming that sink. Fixed by adding the origin to `connect-src` only when the DSN
+is loopback, so the deployed policy is unchanged to the byte.
+
+### One correction I made to my own reasoning, in public
+
+When the CSP violation appeared I called it a production defect: the report-only
+`connect-src` names no Sentry origin, so the day it is enforced browser error
+reporting would die silently. Then I drove the deployed preview instead of
+reasoning about it, and it POSTs to `/api/monitoring` and is answered 200. The
+tunnel works, `'self'` covers it, and there is no production defect. The
+violation is an artefact of a synthetic DSN with no Sentry ingest host.
+
+### Founder steps (Law 10)
+
+| Step | Verdict | What it is |
+|---|---|---|
+| A throwaway Sentry project whose DSN the local gate could use instead of the parity sink | IMPOSSIBLE for a machine: a DSN does not exist until a dashboard mints it. It is an OFFER rather than a request. The sink is a complete answer and costs nothing; a real DSN would additionally exercise the tunnel path locally, which the sink cannot | REVIEW-QUEUE.md |
+| Everything else in H3 | SCRIPTED. `npm run gate:push` runs it all; the cost table is `node scripts/perf/chunk-cost-table.mjs --base <url>` | none |

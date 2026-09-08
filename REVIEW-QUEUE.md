@@ -1588,3 +1588,85 @@ already accounts for, and it is the next item on your list.
   live site, a real card put through and refunded, and real events on production.
 
 And a new one: the firewall decision above.
+## The speed problem, found and fixed (8 September 2026)
+
+You have been getting a failed-run email on nearly every pull request. The check
+that fails is the speed check, and it fails on one page: the Indie Sounds event
+page, which scores 0.79 where the check wants 0.80. Yesterday I told you that was
+measurement noise. Today I went looking properly, and it was not noise. There was
+a real cause and it is now fixed.
+
+### What was actually slowing the page down
+
+Every page on the site was downloading and running two pieces of the
+error-reporting tool, Sentry. Together they were 218 KB of the event page's 439 KB
+of code, and about two thirds of what was downloaded was never used at all.
+
+Worse than the size was the timing. Both pieces were running on the phone's
+processor at exactly the moment the page was trying to paint its main photograph.
+The photograph itself had finished downloading in a fifth of a second and then sat
+there waiting 2.4 seconds for the processor to be free. That wait is the whole
+reason the page scored 0.79.
+
+The bigger of the two pieces is the session recorder, which records what a visitor
+did in the seconds before an error so you can watch it back. It only uploads
+anything when an error happens, and the recording has all the text hidden anyway
+for privacy. Every visitor was paying for it on every page, before they had
+touched anything.
+
+### What I changed
+
+The session recorder now starts only when the visitor first touches the page: a
+tap, a key, a scroll wheel. Before that it is not downloaded at all. The rest of
+the error reporting now starts a few seconds after the page has finished loading,
+or immediately if something has already gone wrong, so nothing is ever lost.
+
+Error reporting itself is unchanged and nothing has been removed. The only thing
+you give up is that if an error happens before the visitor has touched the page,
+there is no video of it. The error is still reported in full.
+
+### The result
+
+The event page went from 0.76 to 0.87. The Geelong event page went from 0.80 to
+0.88. The browse page went from 0.70 to 0.92. Every single measurement after the
+change is better than the best measurement before it, so this is not luck.
+
+The page also downloads 144 KB less code, a third less than before.
+
+### And a second, uncomfortable finding
+
+The speed check I run on this machine before pushing could not see any of this.
+
+The error reporting tool needs a key to switch itself on, and the key is blank in
+the settings file on your machine. So every time I built and measured here, I was
+measuring a version of the site with the error reporting completely missing, and
+then pushing something quite different to the internet. That is why my numbers
+were always 5 to 15 points better than the ones in the emails, and why I kept
+telling you the difference was the testing environment.
+
+It was not. I was measuring the wrong thing. The check now builds with a dummy key
+that goes nowhere, so the site it measures is the site you get. My local numbers
+dropped by about ten points the moment I fixed it, which is the correct direction
+for a check to move.
+
+### Nothing here needed you
+
+No dashboard clicks, no manual steps. Everything is scripted and in the repository.
+
+### Still waiting on you, unchanged
+
+- Pull request 139, the positioning wording, open and not merged.
+- The migration command, `npm run migrate:production`, which is holding two
+  finished branches.
+- The three approvals the launch readiness report needs: a test account on the
+  live site, a real card put through and refunded, and real events on production.
+- The firewall decision from yesterday (`npm run firewall:bypass`).
+
+### One thing I could use from you, and it is an offer rather than a request
+
+The check now builds with a dummy error-reporting key that points at a small
+local server I start alongside it. That is a complete answer and costs nothing.
+
+If you ever create a throwaway Sentry project and give me its key, the check
+would additionally exercise the real sending path the live site uses, which the
+local stand-in cannot. Not needed. Just better, if it is ever free to you.

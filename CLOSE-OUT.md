@@ -1610,3 +1610,24 @@ limit. Prove an alert arrives by deliberately failing the smoke once.
 
 Re-run the smoke on main and show it green. Then deliberately break it once and show
 the alert arriving. Both captured, evidence paths in the ledger.
+
+## H2.6 A DRILL MUST ANNOUNCE ITSELF AS A DRILL.
+
+The alert drill fired correctly on 8 September against https://smoke-drill.invalid
+and the email reached the owner. Good. But the subject line read "EventLinqs
+production homepage smoke FAILED" with nothing to say it was a test, and the owner
+reasonably read it as a real production failure.
+
+An alert that cannot be told apart from a real one trains the reader to panic or to
+ignore. Both destroy the value of the channel.
+
+Fix:
+  - Any drill run must set the subject to begin with "[DRILL]" and the body to open
+    with a line stating plainly that this is a scheduled test of the alerting path
+    and no action is required.
+  - The drill must state the target it used, so smoke-drill.invalid is visible as
+    the reason it failed.
+  - A real alert must NEVER carry the drill marker.
+  - Register a guard: an alert generated from a drill target must carry the drill
+    marker, and an alert generated from the real production URL must not. Prove it
+    fails as well as passes.

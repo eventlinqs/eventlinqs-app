@@ -5062,3 +5062,295 @@ including five new ones, 3739 tests with nothing failing and nothing skipped, an
 the full pre-push gate GREEN 14 of 14 in 2699s before anything was pushed. Local
 Lighthouse mobile on this build ran 0.83 to 0.95 across the gated set, which is
 the runner gap the advisory ruling describes and is H3's problem, not this one.
+
+## H3. THE PERFORMANCE BRANCH: THE COST TABLE, AND THE GATE THAT COULD NOT SEE THE COST (8 September 2026, session 46)
+
+Branch `perf/h3-initial-bundle`. H2 is closed and merged (5cd985a7), so the HALT
+section's order puts H3 next: P0.3 and P0.4 were already delivered under C8
+CORRECTED on 7 September, so what remains is P0.5 (the chunk cost table, then the
+recorder chunk), P0.6 (towards the scope's sub-200KB initial bundle) and P0.7 (the
+ratchet). One branch, as H3 requires.
+
+### What the gate was actually failing on, read from the runner's own report
+
+Run 34188084768 on the H2 branch, five runs per URL, Lighthouse 12.6.1, medians:
+
+| URL | perf | LCP | TBT | CLS | script |
+|---|---|---|---|---|---|
+| `/pricing` | 96 | 2,270 ms | 176 ms | 0 | 395 KB |
+| `/help` | 94 | 2,475 ms | 200 ms | 0 | 396 KB |
+| `/community/african` | 93 | 2,418 ms | 237 ms | 0 | 406 KB |
+| `/legal/terms` | 93 | 2,295 ms | 268 ms | 0 | 398 KB |
+| `/signup` | 92 | 2,571 ms | 256 ms | 0 | 469 KB |
+| `/organisers` | 92 | 2,420 ms | 261 ms | 0 | 405 KB |
+| `/events/browse/melbourne` | 91 | 2,644 ms | 287 ms | 0 | 418 KB |
+| `/login` | 91 | 2,574 ms | 276 ms | 0 | 469 KB |
+| `/` | 85 | 2,415 ms | 474 ms | 0 | 409 KB |
+| `/events/arena-sessions-...` | 85 | 3,352 ms | 294 ms | 0 | 439 KB |
+| `/events` | 82 | 2,744 ms | 300 ms | 0 | 418 KB |
+| `/events/artist-layer-...-geelong` | 80 | 4,113 ms | 341 ms | 0 | 440 KB |
+| **`/events/cat-indie-...-sydney`** | **79** | **4,206 ms** | 310 ms | 0 | 440 KB |
+
+One URL fails. Blocking time is inside its band everywhere, layout shift is zero
+everywhere. **The whole failure is paint timing on the event pages**, and the
+report says where it goes:
+
+    LCP 4,382 ms = TTFB 630 + Load Delay 1,159 + Load Time 191 + Render Delay 2,403
+
+The hero raster downloads in 191 ms and then waits 2.4 seconds for the main
+thread. `/community/african` carries the same script and scores 93 with a Render
+Delay of 126 ms, so this is sequencing, not weight alone.
+
+### P0.5: the cost table, driven rather than derived
+
+`scripts/perf/chunk-cost-table.mjs` (new, a reporter, never a verdict) drives each
+route in headless Chromium on the mobile profile with the gate's own audit cookie,
+records every script request with its transferred size, and attributes each chunk
+by reading the bytes. Routes come from `lighthouse-gate-urls.json`, so it and the
+gate always speak about the same pages; no slug is guessed.
+
+It is driven rather than derived because three facts here are invisible to any
+manifest: a `<script noModule>` polyfill bundle is 110 KB in the HTML that no
+modern browser fetches; the biggest thing on the page is in no manifest at all
+because it arrives by dynamic import; and transferred size is not file size (the
+top three chunks are 414/340/242 KB on disk and 123/95/75 KB over the wire).
+
+The full table is in `docs/perf/CHUNK-COST-TABLE-2026-09-08.md`. The finding:
+
+| rank | chunk | transferred | evaluation | unused | serves |
+|---|---|---|---|---|---|
+| 1 | `0b1jd370isqgk.js` | 123.2 KB | 413 ms | 70% | **Session Replay (rrweb)** |
+| 2 | `3uq570333emgk.js` | 94.6 KB | 231 ms | 63% | **error reporting SDK** |
+| 3 | `2wdcogt80jtt3.js` | 74.5 KB | 580 ms | 32% | React DOM |
+| 4+ | eighteen more | none above 31 KB | | | |
+
+**Ranks 1 and 2 are one feature: 217.8 KB of the page's 439.0 KB and 644 ms of
+main thread.** Attribution was not inferred from a filename: the deployed bytes
+were fetched and read (`0b1jd...` carries `rrweb` nine times and
+`recordCrossOriginIframes` eight; `3uq57...` carries `__SENTRY__` sixteen times
+and no rrweb marker). And the long tasks from those two files land at 3,180 ms and
+4,079 ms against an LCP of 4,382 ms. That is the 2,403 ms of Render Delay.
+
+### The defect that had to be fixed before anything could be measured (P0.2)
+
+**The local Lighthouse gate could not see one byte of that 217.8 KB.**
+
+`NEXT_PUBLIC_SENTRY_DSN` is inlined into the browser bundle at build time and
+`instrumentation-client.ts` loads no SDK when it is empty. `.env.local` on this
+machine carries `NEXT_PUBLIC_SENTRY_DSN=""`. So every local gate build shipped a
+browser bundle with no SDK in it, while every Vercel preview CI measures ships
+one. Driven, same route, same tree:
+
+| | script requests | transferred |
+|---|---|---|
+| local build, before the fix | 17 | 207.8 KB |
+| deployed preview | 21 | 439.0 KB |
+| local build, after the fix | 21 | 440.0 KB |
+
+That is P0.2 word for word: "If local says pass and CI says fail, the local gate
+is lying and that is a defect in the gate. Fix it." It is also the entire 5 to 15
+point local-versus-runner gap this repository kept recording and attributing to
+runner noise, and it meant the local Lighthouse step could go green on a build
+nobody deploys.
+
+`PARITY_SENTRY_DSN` in `scripts/ops/pre-push-gate.mjs` fills the hole with a
+shape-valid DSN on an RFC 2606 `.invalid` host, which can never resolve, so the
+SDK loads, parses, evaluates and arms exactly as in production and its first send
+goes nowhere. A real DSN in the shell or `.env.local` always wins. The gate prints
+which one it used on every run. Six tests hold it
+(`tests/unit/ci/gate-client-sdk-parity.test.ts`).
+
+Local medians of five on the honest gate, against the runner:
+
+| route | local (before this branch's code change) | runner |
+|---|---|---|
+| `/events/cat-indie-...-sydney` | 0.76 (0.82, 0.76, 0.77, 0.76, 0.75) | 0.79 |
+| `/events/artist-layer-...-geelong` | 0.80 (0.80, 0.76, 0.81, 0.77, 0.81) | 0.80 |
+| `/events` | 0.70 (0.73, 0.70, 0.70, 0.70, 0.69) | 0.82 |
+
+The local gate now reproduces the failure instead of hiding it.
+
+### P0.5, the change, and the mechanism the first attempt missed
+
+Two changes were designed from the table, and a third was found only by driving
+the first two.
+
+**1. Session Replay arms on the visitor's first interaction.** It armed on
+`requestIdleCallback` with a 5,000 ms timeout, which reads as "off the critical
+path" and is not: an idle callback fires during the quiet a throttled device has
+WHILE the hero is still painting. It now arms on the first `pointerdown`,
+`keydown`, `touchstart` or `wheel`. The cost, stated rather than buried: an error
+before the visitor touches the page has no replay attached. The error still
+reports in full, with its stack. That is P0.5's own bar, "costs nothing before
+first interaction".
+
+**2. The SDK core boots at the earliest of an error, a first interaction, or a
+timer after load.** `load` is not off the paint path on a throttled mobile. A
+held error boots it at once, because the whole safety argument for deferring is
+that nothing is lost, and an error held in a page the visitor then closes IS
+lost. A visitor who only reads a page still gets reporting, at load + 3,000 ms.
+
+**3. The barrel import, which is the one that actually mattered.** Changes 1 and
+2 alone DID NOT WORK, and only driving them showed it. With Session Replay
+correctly armed on first interaction, the recorder chunk was still fetched at
+4,323 ms with no input at all, 50 ms behind the core, on 2 of 2 runs. The
+`el:sentry-replay-armed` mark did not appear until the input at 10,301 ms, so the
+arming was right and the 123.2 KB arrived anyway.
+
+The cause was two `import('@sentry/nextjs')` calls. **A dynamic import of a
+barrel is a NAMESPACE import**: the bundler must assume any property of the
+namespace might be read, so it cannot tree-shake, so each of those lines pulled
+the whole SDK surface including rrweb into its chunk group. The same files'
+STATIC named imports shake perfectly, which is exactly why it was invisible - the
+core chunk looked clean. One of the two existed purely to fetch
+`captureRouterTransitionStart`.
+
+Both are gone. `captureRouterTransitionStart` is re-exported from
+`sentry-client-boot.ts` (a named static import into a chunk already being
+fetched), and the recorder moved to `src/lib/observability/sentry-session-replay.ts`,
+reached by `import('./sentry-session-replay')` with named imports inside it, so it
+has a chunk of its own that nothing else can pull in.
+
+**Deferring the ARM while the BYTES still arrive buys nothing.** The cost P0.5
+names is the transfer and the evaluation, not the recording.
+
+### Driven proof
+
+`scripts/verify/sentry-replay-window.mjs` was rewritten to answer the law rather
+than only the window: it waits 9,000 ms with NO input (past the SDK's own 3,000 ms
+timer), records what arrived, then performs a REAL pointer input through the
+browser's input pipeline (not a `dispatchEvent`, which is untrusted and would
+prove nothing about a visitor) and records what arrives after.
+
+    run 1: load 1451ms | sdk chunk 4470ms | replay chunk 10492ms | before any input: no
+    run 2: load 1422ms | sdk chunk 4438ms | replay chunk 10444ms | before any input: no
+    run 3: load  961ms | sdk chunk 3973ms | replay chunk  9984ms | before any input: no
+
+    MEDIAN  load 1422 ms | SDK core 4438 ms | recorder 10444 ms
+            recorder measured from the input: 9 ms
+
+Three of three: the recorder is not requested at all until a person touches the
+page. And **the no-buffer window got SMALLER, not larger** - 9 ms after the
+input, because the core is already in memory when the recorder is asked for.
+
+### The numbers
+
+Script on the event page, driven, same route, same machine:
+
+| | requests | transferred | in the document | by dynamic import |
+|---|---|---|---|---|
+| before | 21 | 440.0 KB | 195.6 KB | 244.6 KB |
+| after | 20 | **295.8 KB** | 195.6 KB | **100.2 KB** |
+
+144.2 KB less script on every page load, a 33% cut, and the recorder's 413 ms of
+evaluation is gone from the load entirely. The core shrank too, 106.0 to 92.9 KB,
+because the barrel is no longer dragging surface behind it.
+
+Lighthouse, median of 5, mobile, warmed, the honest local gate, the only variable
+being the code:
+
+| route | before | after | LCP before | LCP after |
+|---|---|---|---|---|
+| `/events/cat-indie-...-sydney` | **0.76** | **0.87** | 4,639 ms | 3,667 ms |
+| `/events/artist-layer-...-geelong` | **0.80** | **0.88** | 4,420 ms | 3,739 ms |
+| `/events` | **0.70** | **0.92** | 6,182 ms | 3,270 ms |
+
+Every run, because a median can hide a spread:
+
+    before  cat-indie  0.82, 0.76, 0.77, 0.76, 0.75      after  0.89, 0.87, 0.86, 0.87, 0.88
+    before  geelong    0.80, 0.76, 0.81, 0.77, 0.81      after  0.89, 0.88, 0.88, 0.86, 0.88
+    before  /events    0.73, 0.70, 0.70, 0.70, 0.69      after  0.92, 0.89, 0.92, 0.91, 0.92
+
+The WORST run after is better than the BEST run before, on the page that was
+failing the gate.
+
+### P0.8, named from its own build log rather than assumed
+
+The preview failure P0.8 names (`docs/c18-final-community-layer` at 718d93b,
+7 September 10:04 UTC, `dpl_7Y5XfF1s7nrkFHwuQvkXpuFQQM8V`):
+
+    Error: ENOENT: no such file or directory, open
+      '/vercel/path0/docs/scope/community-layer-approved.json'
+      at scripts/guards/community-layer-protected.mjs:61
+    [guards] 1 of 75 guard(s) FAILED. Build blocked.
+
+`.vercelignore` excludes `docs/` and that guard read a file under it
+unconditionally: it passed on every machine that has the file and killed the only
+machine that does not. Already fixed, and not by this branch - the same branch
+shipped it 47 minutes later (preview 4455104f READY at 10:50, merged as
+15ccce5c), with `vercelignore-covers-guard-reads.mjs` added so the shape cannot
+return. Twenty consecutive deployments since have been READY, read back from the
+Vercel API. MET by observation.
+
+### The gate refused this branch twice, and both times it was right
+
+**First refusal.** Step 14 of 14, best practices 0.93 rather than 1.00, on all
+thirteen URLs, on all five runs. The cause was my own P0.2 fix: the parity DSN
+pointed at an RFC 2606 `.invalid` host, on the reasoning that a name which can
+never resolve can never receive anything. It cannot, and that is the problem. The
+SDK opens a session envelope on EVERY page load, the request failed with
+`ERR_NAME_NOT_RESOLVED`, Chrome logged "Failed to load resource", and
+Lighthouse's `errors-in-console` audit scored it. **A parity fix that introduces a
+difference of its own is not parity**: a build that logs a console error is not
+the build that deploys.
+
+Fixed by `scripts/verify/sentry-parity-sink.mjs`, a loopback endpoint that
+answers the envelope so the send SUCCEEDS and nothing leaves the machine. It is
+started beside the Upstash stub and CHECKED before the collection rather than
+assumed, because a sink that failed to start would put the console error straight
+back and read as a product regression. Found while building it: its main-module
+check built a `file://` URL by hand, which on Windows is one slash short of
+Node's `file:///C:/...`, so the first run exited 0 having started nothing.
+`pathToFileURL` now.
+
+**Second refusal.** Best practices 0.96, again on all thirteen, and the audit was
+`inspector-issues`: a Content Security Policy violation naming the sink.
+
+**My first reading of that was wrong, and driving it is what corrected me.** I
+took it for a production defect - the report-only `connect-src` names no Sentry
+origin, so the day it is enforced, error reporting dies silently. Then I drove the
+deployed preview instead of reasoning about it:
+
+    [req POST] https://<preview>/api/monitoring?o=4511144322203648&p=45111443...
+    [res 200 ]
+
+The tunnel works. On a deployed build the browser never talks to Sentry directly
+and `connect-src 'self'` already covers it. There is no production defect. The
+tunnel URL is derived from the org and project ids the SDK parses out of a REAL
+Sentry ingest host, and the parity DSN has no such host, so no tunnel URL can
+exist locally and the SDK posts straight to the DSN.
+
+So the fix is scoped to exactly that artefact: `next.config.ts` adds an origin to
+`connect-src` only when the configured DSN is loopback. Every deployed build has
+a DSN that is not, so **the production policy is unchanged to the byte**. Three
+tests assert the shape of the rule rather than its value, because the value comes
+from an environment variable and pinning it would only pin what this machine
+happens to have set.
+
+### The gate, green, 14 of 14 in 2,149s, and what it measured
+
+| URL | perf (median, spread) | LCP | TBT | script | was |
+|---|---|---|---|---|---|
+| `/pricing` | 94 (94 to 94) | 3,032 ms | 81 ms | 281 KB | 96, 395 KB |
+| `/help` | 94 (93 to 94) | 3,045 ms | 85 ms | 281 KB | 94, 396 KB |
+| `/legal/terms` | 94 (93 to 94) | 3,031 ms | 88 ms | 284 KB | 93, 398 KB |
+| `/` | 92 (88 to 92) | 3,221 ms | 103 ms | 294 KB | 85, 409 KB |
+| `/community/african` | 92 (90 to 93) | 3,283 ms | 69 ms | 292 KB | 93, 406 KB |
+| `/events` | 92 (89 to 92) | 3,353 ms | 74 ms | 305 KB | 82, 418 KB |
+| `/organisers` | 91 (90 to 91) | 3,422 ms | 104 ms | 290 KB | 92, 405 KB |
+| `/events/browse/melbourne` | 90 (89 to 91) | 3,624 ms | 61 ms | 305 KB | 91, 418 KB |
+| `/login` | 90 (89 to 93) | 3,507 ms | 107 ms | 355 KB | 91, 469 KB |
+| `/signup` | 90 (90 to 90) | 3,506 ms | 96 ms | 356 KB | 92, 469 KB |
+| `/events/arena-sessions-...` | 88 (87 to 88) | 3,756 ms | 108 ms | 329 KB | 85, 439 KB |
+| `/events/artist-layer-...` | 88 (88 to 89) | 3,752 ms | 116 ms | 329 KB | 80, 440 KB |
+| **`/events/cat-indie-...`** | **88 (87 to 89)** | 3,620 ms | 114 ms | 329 KB | **79, 440 KB** |
+
+The "was" column is the RUNNER's medians on the H2 branch, so it is not a
+like-for-like environment; the local column is like-for-like against the local
+before-run recorded above. Both say the same thing. Every URL now clears the 0.80
+floor with at least eight points of headroom, the lowest spread value anywhere is
+0.87, blocking time is 61 to 116 ms against a 600 ms cap, and script weight fell
+on every single page.
+
+The runner's own verdict is pull request 142, and P0.7's ratchet is set from
+THOSE numbers, not these.
