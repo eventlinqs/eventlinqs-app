@@ -2836,3 +2836,116 @@ For what it is worth, nothing in today's work adds any JavaScript to a public
 page. Every new piece runs on the server, and the one new interactive form is
 inside the organiser dashboard behind a login. That is a reason to expect no
 change, not evidence that there is none.
+
+---
+
+## The platform now tells you what is happening (10 September 2026)
+
+### What you can do now that you could not before
+
+An organiser signs up, connects Stripe, publishes an event or sells a ticket, and
+**you get an email within a minute**, with their name, the event, the money, and
+one link straight to that exact record in your admin console. Every one of them
+also appears as a feed on **/admin/notifications**, so you can catch up on a
+morning away without going through an inbox.
+
+That is the thing that was missing on 8 September, when a real organiser built
+and published a paid event on your live site and you found out by opening the
+website the next day.
+
+### How I made sure it cannot quietly stop working
+
+I did not add a "send an email" line to the code that publishes an event. That
+kind of line gets forgotten the next time somebody adds a second way to publish,
+and this codebase has already been bitten by exactly that twice.
+
+Instead the **database itself** writes the record, in the same breath as the
+change. It cannot be skipped, by any route, by any future code. There is then a
+separate job that does the sending, so a slow mail server can never hold up a
+ticket sale.
+
+If an email fails, it is recorded as failed, retried three times, and then pushed
+to a device you have armed. If both fail, the notification turns **red on the
+notifications screen** with the reason written out. Silence never means healthy.
+
+### Something I broke and then caught, which is worth you knowing about
+
+My first version of this had a typo: it asked the database for a column called
+"city" on a table where the column is called "venue_city". Nothing complained.
+The migration applied, the type checker passed, all 4,000 tests passed, all 92
+checks passed, the build succeeded.
+
+**And no event could be created at all.** An organiser pressing Publish would
+have got "Failed to create event". I only found it because I opened a browser and
+walked the wizard like a person.
+
+It is fixed, and I have added a check that catches the whole class of it before a
+build finishes, so it cannot happen again. I have also made the notification code
+physically unable to block an event or an order even if it does go wrong: the
+worst it can now do is tell you a bit less about what happened.
+
+### Two other things I fixed on the way
+
+- **Your admin sign-in used to freeze.** If the server had a problem, the button
+  said "Signing in..." for ever and told you nothing. It now says something you
+  can act on.
+- A local tool for checking emails was hiding the admin links, so I could read
+  the subject of your notifications but not the link. Fixed.
+
+### Three things I could NOT test, and they are all one thing
+
+**Your Stripe test key has expired.** Both of the keys stored on this machine
+answer "api_key_expired", and the key stored on Vercel is marked as secret, which
+means even Vercel will not hand it back to me. So I could not test:
+
+- Stripe onboarding being started
+- Stripe onboarding completing
+- a paid order
+
+The code for all three is written and the database side is proven, but I will not
+tell you they work when I have not seen them work.
+
+**It is one command from you:**
+
+```
+stripe login
+```
+
+Then tell me and I will re-run the proof and report all five.
+
+### One thing for you to press, once
+
+Notifications go out by email. The backup, for when email fails, is a push to a
+device. Open **/admin/notifications** on your phone or laptop and press **"Arm
+backup alerts on this device"**. Until you do, the screen tells you plainly that
+nothing is armed, in amber, so you are never wrong about it.
+
+### Your laptop was on battery, and that was the speed problem all along
+
+The mobile speed check has failed for two sessions and I found the reason: **the
+machine was unplugged.** On battery it runs at 57% of the speed the targets were
+set at. It went onto mains power part way through this session and the same
+measurement jumped from 1539 to 2069, with nothing else changed.
+
+I then re-ran the speed gate, and it **PASSED**: 13 pages, 65 runs, every target
+cleared.
+
+So the pages were never slow. Two sessions were spent reporting mobile speed as
+unmeasured, and one of them went looking at the site. It was the power lead. If
+that check ever goes red again, plug the machine in and re-run before believing
+it:
+
+```
+npm run gate:push -- --only lighthouse
+```
+
+### Still waiting on you, from before
+
+The database changes still need your one command before any of this can reach the
+live site:
+
+```
+npm run migrate:production
+```
+
+This item adds three more migrations to that list.

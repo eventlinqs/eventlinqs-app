@@ -2414,3 +2414,105 @@ as three migrations behind; that is resolved, and the only gap is today's.
   refused the build. It was right, and the guard now derives them.
 - **Six unused imports**, caught by the push gate because it lints the WHOLE
   TREE while I had linted the files I believed I had changed.
+
+---
+
+## UX3 REQUIREMENT LEDGER, 10 September 2026 (session 58)
+
+Adjudicated clause by clause against what was observed, not against what was
+built. "MET" means something was driven and read back; anything else says so.
+
+| Clause | Verdict | Evidence |
+|---|---|---|
+| UX3.1 a new organiser account is created | **MET** | driven at 390/768/1440 through `/signup` and the real organisation form; row read back with the admin link, the organiser name and `pending`. `C:\dev\EVIDENCE\UX3\<viewport>\ux3-drive-report.json` |
+| UX3.1 Stripe Connect onboarding is started | **NOT EXERCISED** | `STRIPE_SECRET_KEY` empty here; both Stripe CLI keys answer 401 `api_key_expired` (driven); every `STRIPE_SECRET_KEY` on the Vercel project is stored `sensitive` and will not decrypt (driven). Founder step: `stripe login` |
+| UX3.1 onboarding completes and charges are enabled | **NOT EXERCISED** | same blocker, one step further on: the account cannot be created, so it cannot be enabled |
+| UX3.1 an event is published | **MET** | driven at 390/768/1440 through the create-event wizard; row read back naming which event and linking to `/admin/events/<id>` |
+| UX3.1 every paid order | **NOT EXERCISED** | same Stripe blocker: no card can be taken on this machine, so no order can reach `confirmed`. The trigger, its WHEN clause and its payload are covered by the suite and by `trigger-columns-exist` |
+| UX3.1 each carries what happened, who, which event, a direct admin link | **MET** | the four facts are asserted per kind in `platform-policy.test.ts` and read out of the real console inbox: `link https://www.eventlinqs.com.au/admin/organisers/c742663e-...` |
+| UX3.2 recorded as sent or failed | **MET** | every path writes `attempts`, `last_attempt_at`, `last_error` before returning; driven on the no-mail server, rows read back |
+| UX3.2 a failure is retried | **MET** | three cron ticks: retried 2, retried 2, failed 2 |
+| UX3.2 a persistent failure raises through the second channel | **PARTIAL** | the escalation DECISION and the failure of both channels are driven; the push channel's success path is unit-driven only, because the VAPID keys are empty on this machine. They are present on preview and production (checked) |
+| UX3.2 drill the failure path, not only the success | **MET** | that is the only half this machine could drive, and it was |
+| UX3.3 individual until a configurable daily count, then a digest | **MET (built), NOT DRIVEN** | `PLATFORM_ORDER_ALERTS_PER_DAY`, one named constant; the boundary is drilled in the suite (Nth individual, (N+1)th held). Driving it needs 21 real card purchases, which the Stripe blocker forbids |
+| UX3.3 the threshold is one named constant | **MET** | one export, no second copy; `routeFor` derives from it and the tests read it rather than a literal |
+| UX3.4 the admin Notifications screen shows the same events as a readable feed | **MET** | 28 of 28 checks at 390/768/1440, each row linking to its own admin path, plus axe 0 at every impact level |
+| Guard: no state change in that list of five can complete without a record | **MET** | six triggers, and `platform-notifications-installed` asks the build's own database for 14 flags |
+| Guard: prove it refuses as well as passes | **MET** | RED on a disabled trigger, RED on a dropped one naming the state change that would go silent, GREEN restored |
+
+### THE DEFECT THIS ITEM SHIPPED AND THEN CAUGHT
+
+`new.city` on a table whose columns are `venue_city` and `city_primary`. It
+applied cleanly, passed tsc, the suite, 92 guards and the build, and made event
+creation impossible. Found by the browser drive, fixed in `20260909000004`, and
+the CLASS is now caught at build time by `trigger-columns-exist` (23 triggers, 85
+record fields), drilled red and green.
+
+The deeper mistake is recorded because it generalises: the exception handler was
+one frame too low. Arguments are evaluated in the caller, so a handler inside the
+callee can never see a fault in composing them.
+
+### THREE DEFECTS FOUND ON THE WAY, NONE OF THEM REPORTED BY ANYONE
+
+1. The admin sign-in left its button reading "Signing in..." for ever and said
+   nothing when the Server Action threw. Caught and named now.
+2. The local console inbox dropped every `/admin/` link, for the third time that
+   filter has been too narrow.
+3. My own feed proof raced on an EMPTY `[role=alert]` and reported a working
+   sign-in as refused three times. Corrected in the harness, and the wrong
+   diagnosis it produced is corrected in the log rather than deleted.
+
+### WHAT IS NOT CLAIMED
+
+- The three Stripe legs are NOT proven on this machine, and no substitute was
+  accepted. A SQL update would have made the trigger fire and would have proved
+  nothing about a journey a person takes.
+- The push channel has not delivered a real message from here.
+- Mobile Lighthouse is MEASURED and PASSES, and the two sessions that could not
+  measure it were beaten by a power lead. On battery the machine benchmarks 1539
+  against the 2700 the floors were confirmed at, below the calibration floor of
+  2000, so no collection from there is comparable. On AC power it benchmarks 2069
+  and the step passes: 13 URLs, 65 runs, every assertion cleared, 1705s. No floor
+  was touched at any point.
+
+### FOLLOW-UPS NAMED RATHER THAN DONE
+
+- **Thirteen client components share the shape that broke the admin login**: an
+  awaited Server Action inside a handler with no `try`. Listed in REVIEW-QUEUE.
+  None has been driven to a failure, so none is claimed as a defect; the shape is
+  decidable and `no-silent-submit` could learn it as a fourth pattern.
+- **Nine private `escapeHtml` helpers** that do not agree (three escape `& < >`,
+  three add `"`, three add `'`). New code uses `src/lib/email/escape.ts`;
+  collapsing the nine changes the bytes of live transactional mail on the money
+  path and needs its own proof.
+- **The Lighthouse calibration report should say when the machine is on
+  battery.** It sent two sessions after the wrong cause. One `Win32_Battery` read
+  would have answered it in a line, and this session proved the connection: 1539
+  unplugged, 2069 plugged in, on the same tree minutes apart.
+- **The suite runs one `git check-ignore` per path in three other places?** Not
+  checked. The one found here went from 16.2s to 1.1s with a single `--stdin`
+  call; whether the same shape exists elsewhere was not swept, and is not
+  claimed either way.
+
+### THE SUITE FAILURE, AND MY FIRST DIAGNOSIS OF IT WAS WRONG
+
+The pre-push suite went red naming nothing and the same tree went green three
+times standalone. I called it a spawn flake, fixed that, and it reproduced
+immediately. The second diagnosis is the one the numbers support: the canary now
+NAMES the failing test (it had the whole report and printed a count), the name
+led to `tests/unit/guards/gitignore.test.ts:147`, an error at a test's
+DECLARATION line with no assertion in it is a TIMEOUT, and that test spawned
+`git check-ignore` once per dropped path and took **16.2 seconds alone**. One
+`--stdin` call: **1.1 seconds, same 18 tests, same per-path resolution.**
+
+Both changes are kept: the spawn-versus-verdict separation is correct on its own
+terms, and it is recorded here that it did not cure anything.
+
+### THE GATE, AS IT STANDS
+
+    13 of 14 steps PASS, including lighthouse (13 URLs, 65 runs, 1705s) and the
+    suite at 352 files / 4121 tests / 0 failed / 0 skipped, all 93 guards.
+
+    production-parity FAILS by design: production is BEHIND by four migrations
+    (20260909000001 to 20260909000004). Schema first, then code. Nothing was
+    pushed, and the founder's one command clears it: `npm run migrate:production`.

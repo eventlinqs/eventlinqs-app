@@ -7984,3 +7984,293 @@ client-side JavaScript to a public page. Every new module is server-only
 no public route. The venue pin change is inside an existing client path. That is
 an argument about the shape of the change, and it is NOT a substitute for the
 measurement.
+
+---
+
+## 10 September 2026, session 58. UX3: the platform tells its owner what happened.
+
+### WHAT THE ITEM IS
+
+Close-out UX3, the highest priority of the UX items. On 8 September a real
+outside organiser created an account, built an event, uploaded a video, set a
+price and published it on production. The organiser's own emails were delivered
+correctly. **The owner received nothing** and found out by opening the website by
+chance the next day.
+
+### THE DESIGN DECISION, AND IT IS THE WHOLE ITEM
+
+The close-out asks for a guarantee, in as many words: "no state change in that
+list of five can complete without a notification record being written."
+
+A call added to `publishEvent` is not that guarantee. It is a promise that every
+future writer of that state remembers to make the same call, and this repository
+already holds the receipts for what that promise is worth: discount usage was
+recorded in the free branch of checkout and not the paid one, so `max_uses` went
+unenforced on exactly the orders that take money; `payout_status` was written by
+the deauthorize handler and not by `account.updated`, so it became a one-way door
+that stranded an organiser. Both were one missing call at one write site.
+
+So the record is written by **six database triggers**
+(`20260909000002_platform_notifications.sql`), inside the same transaction as the
+state change, for the server action, the webhook, the cron, a psql session and a
+code path nobody has written yet:
+
+    platform_notify_organiser_created          organisations, AFTER INSERT
+    platform_notify_connect_transitions        organisations, AFTER UPDATE
+    platform_notify_event_published            events, AFTER UPDATE into published
+    platform_notify_event_published_insert     events, AFTER INSERT already published
+    platform_notify_order_paid                 orders, AFTER UPDATE into confirmed, total > 0
+    platform_notify_order_paid_insert          orders, AFTER INSERT already confirmed
+
+Nothing in that file sends anything. A trigger that reached the network would put
+Resend's availability inside a checkout transaction and turn a slow mail server
+into a failed ticket sale. Delivery is a separate worker
+(`src/lib/notifications/platform-send.ts`, `/api/cron/platform-notify`, every
+minute).
+
+### THE DEFECT THIS SHIPPED, AND THE GUARD THAT NOW CATCHES IT
+
+`20260909000002` gave `events` a trigger reading `new.city`. There is no `city`
+column on events; the columns are `venue_city` and `city_primary`. plpgsql
+resolves a record field at RUNTIME, so:
+
+    the migration applied cleanly
+    npx tsc --noEmit                 exit 0
+    the whole suite                  green
+    all 92 registered guards         PASS
+    npx next build                   exit 0
+
+and the platform could not create an event at all. The wizard answered:
+
+    Failed to create event: record "new" has no field "city"
+
+Found on the first browser drive, at 1440, on the Review step. Every static gate
+in this repository was green while event creation was broken.
+
+**The real defect was not the column name.** `20260909000002` put its exception
+handler in `record_platform_notification` and argued, in its own header, that
+this made the trigger unable to throw into a checkout. That argument was wrong:
+the ARGUMENTS to a function are evaluated in the CALLER, so
+`jsonb_build_object(..., new.city)` raises before the handler can ever be
+entered. A safety net one frame too low is not a safety net.
+
+`20260909000004_platform_notifications_never_block.sql` fixes both. Every trigger
+function now handles its own faults in three steps: record the full notification;
+if composing it raised, record a DEGRADED one carrying the same kind, the same
+admin link and the error text, so the owner still hears that the thing happened;
+and only if that also raised, warn to the Postgres log and let the state change
+complete. Swallowing alone would have turned this into a silence, which is the
+failure UX3 exists to end. Blocking alone turns a typo into an outage on the
+money path.
+
+`scripts/guards/trigger-columns-exist.mjs` is the cheap check that catches the
+class at build time: for every trigger currently installed, it takes the last
+definition of its function, pulls out every `new.<field>` and `old.<field>`, and
+checks each against `src/types/database.ts`. It reads no database, so it runs on
+the Vercel build host. **23 installed triggers, 85 record fields, all real.**
+Drilled RED by putting `new.city` back (2 faults, exit 1, naming both triggers
+and what each would break) and GREEN after.
+
+### THE GUARD THE CLOSE-OUT ASKED FOR, PROVEN BOTH WAYS
+
+`scripts/guards/platform-notifications-installed.mjs`, registered and blocking,
+asks the project the build will run against, through one read-only RPC
+(`platform_notification_guards()`, migration `20260909000003`), for 14 named
+flags. Nothing else in the gate set reads a database, so nothing else could ever
+have seen this silence.
+
+    GREEN   14 flags true on vkapkibzokmfaxqogypq
+    RED     trigger DISABLED   "at least one platform_notify trigger is present
+                               but DISABLED, which looks installed and fires nothing"
+    RED     trigger DROPPED    "trigger_order_paid (an order can be confirmed with
+                               no record written)"
+    GREEN   restored
+
+Evidence: `C:\dev\EVIDENCE\UX3\guard-drill-1-disabled.txt`,
+`guard-drill-3-dropped.txt`, `guard-drill-5-restored.txt`.
+
+### DRIVEN, AT 390, 768 AND 1440
+
+`scripts/verify/ux3-owner-notified-proof.mjs`. Nothing is seeded. A person signs
+up through `/signup`, confirms from the console inbox, creates their organisation
+through the real form, walks the create-event wizard and publishes. Every
+assertion is then a READ of what the database recorded on its own.
+
+**11 of 11 checks pass at every viewport**, three legs NOT EXERCISED (below).
+Each notification carries what happened, who, which event, and the direct admin
+link:
+
+    recorded without any application code asking:
+      "New organiser: Northside Sound 7424343" -> /admin/organisers/c742663e-...
+      "Event published: Northside Sound Launch 7424343" -> /admin/events/09b6d796-...
+
+The worker then delivered them, read out of the console inbox the way a person
+reads an inbox:
+
+    to      hello@eventlinqs.com
+    subject EventLinqs: New organiser: Northside Sound 7424343
+    link    https://www.eventlinqs.com.au/admin/organisers/c742663e-1fde-41a5-b2af-bb4d3a6afea6
+
+### UX3.2, THE FAILURE PATH, DRIVEN RATHER THAN ASSERTED
+
+A second production server on 3312 with no mail transport and an empty
+`RESEND_API_KEY`, so `sendEmail` throws for real. Three cron ticks:
+
+    attempt 1   considered 2, sent 0, retried 2
+    attempt 2   considered 2, sent 0, retried 2
+    attempt 3   considered 2, sent 0, failed 2
+
+and the rows read back:
+
+    event_published   | failed | attempts 3 | channel null |
+      email failed 3 time(s): RESEND_API_KEY is not configured;
+      push: push is not configured on this deployment (VAPID keys absent)
+
+Recorded, retried, escalated, and loud, with BOTH reasons named. The admin screen
+renders those two rows in red under a banner that says so.
+
+### UX3.4, THE FEED, WITH axe
+
+`scripts/verify/ux3-admin-feed-proof.mjs`. An admin signs in through the REAL
+`/admin/login` flow (the product's own documented first-login bootstrap: an
+un-enrolled admin is signed in and sent to enrolment, and `issueTwoFactorProof`
+still runs). No gate is bypassed; the account is deleted afterwards.
+
+**28 of 28 checks pass**, at 390, 768 and 1440: the feed section, three named
+rows readable on screen, each linking straight to its own admin path, the backup
+channel control, and **axe 0 violations at every impact level** on all three.
+
+### THREE MORE DEFECTS, EACH FOUND BY RUNNING SOMETHING
+
+1. **The admin sign-in said nothing when it failed.** With no
+   `ADMIN_TOTP_ENC_KEY` the login Server Action threw, answered HTTP 500, and the
+   `await` inside `startTransition` REJECTED with nothing catching it. The
+   transition never completed, `pending` stayed true, and the button read
+   "Signing in..." for ever. Sixty seconds of that is indistinguishable from a
+   dead network. Now caught and named.
+2. **The local console inbox dropped every `/admin/` link.** Its filter matched
+   `confirm|token|ticket|order|verify|reset|watch|/t/`, so the owner
+   notifications' one link was invisible to a driven proof. `/admin/orders/<id>`
+   happened to match on "order", which is the kind of accident that makes a
+   filter look like it works. This is the third time that filter has been too
+   narrow; the file records all three.
+3. **My own harness accused the product.** The feed proof raced on
+   `[role=alert]` EXISTING, and an empty one is already on the login page, so the
+   race resolved instantly and reported "admin sign-in refused: NOTHING SHOWN"
+   three times against a sign-in that works. It now waits for an alert with text
+   in it. The first diagnosis in this log was wrong for one run because of it and
+   is corrected here rather than quietly.
+
+### WHAT IS NOT EXERCISED, AND EXACTLY WHY
+
+None of these is a claim about the platform. Each is a credential this machine
+does not have.
+
+    ux3.1.connect_onboarding_started   STRIPE_SECRET_KEY is empty here
+    ux3.1.connect_charges_enabled      so the account cannot even be created
+    ux3.1.order_paid                   so no card can be taken
+
+Both keys the Stripe CLI holds answer **401 api_key_expired** (driven), and every
+`STRIPE_SECRET_KEY` record on the Vercel project is stored `sensitive`, which the
+API will not decrypt back to any client on any scope (driven, listed). There is
+no path to a working key from here. **Founder step: `stripe login`.**
+
+The push channel's SUCCESS path is unit-driven only: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+and `VAPID_PRIVATE_KEY` are empty in `.env.local` for the same reason. They ARE
+present on preview and production (checked through the API), so the second
+channel has its keys where it matters; what it still needs is one device armed
+from `/admin/notifications`, and the screen says so in amber when none is.
+
+The UX3.3 digest boundary is drilled exhaustively in the suite (the Nth order
+individual, the (N+1)th held, one digest email for all held rows, a failed digest
+escalating as ONE push). It is NOT driven, because driving it needs 21 real card
+purchases in one day, which the Stripe blocker above forbids twice over.
+
+### THE MACHINE IS ON BATTERY, AND THAT IS THE LIGHTHOUSE ANSWER
+
+`Win32_Battery` reports **BatteryStatus 1 (discharging), 66%**, on the Balanced
+power scheme. The Lighthouse BenchmarkIndex measures **1539 (1506 to 1572)** with
+every one of my own processes stopped, against the **2700** the floors were
+confirmed at yesterday. That is 57%, it is stable rather than transient, and it
+explains both this session's red step and the previous session's.
+
+This is recorded as a cause, not an excuse: no floor was touched, and the step's
+verdict is reported as it came.
+
+
+### THE BATTERY WAS THE ANSWER, AND THE PROOF IS THE STEP GOING GREEN
+
+Mid-session the machine went onto AC power (`BatteryStatus` 1 -> 2, 66% -> 78%)
+and the BenchmarkIndex moved **1539 -> 2069** with nothing else changed. 2069 is
+above the calibration floor of 2000, so a collection taken from there is
+comparable with the one the floors came from.
+
+    [gate] lighthouse              PASS      1705
+
+**13 URLs, 65 runs, every assertion cleared.** The pages were never the problem.
+Two sessions reported mobile performance as unmeasured and one of them was sent
+looking at the product; the cause was the power lead.
+
+### THE SUITE FAILURE THAT WAS NOT A FLAKE
+
+The gate's suite step went red naming nothing, and the same tree went green three
+times standalone. The canary had the whole vitest report in hand and printed a
+count, so the first two passes had nothing to work with. Making it NAME the test
+(close-out F1.1 in miniature) answered it in one run:
+
+    tests/unit/guards/gitignore.test.ts > the walk, against git itself ...
+      Error: STACK_TRACE_ERROR
+        at tests/unit/guards/gitignore.test.ts:147:3
+
+An error at the test's DECLARATION line with no assertion in it is a timeout.
+That test spawned `git check-ignore` once per dropped path and took **16.2
+seconds on its own**; inside a 352-file run on a machine at 57% it ran out of
+test timeout. One `--stdin` call instead of N spawns: **16.2s to 1.1s, same 18
+tests, same per-path resolution**. A spawn that could not START is now separated
+from a verdict about the tree, because `status: null` read as "git says not
+ignored" is the opposite of what happened.
+
+I was wrong once on the way: my first fix treated it as a spawn flake and it
+reproduced immediately afterwards. The second diagnosis is the one the numbers
+support.
+
+### THE GATE, STEP BY STEP
+
+    disk                   PASS
+    typecheck              PASS      tsc over the whole tree, exit 0
+    lint                   PASS      eslint over the whole tree, 0 warnings
+    copy                   PASS
+    critical-path          PASS
+    lighthouse-exemptions  PASS
+    guards                 PASS      all 93, including both new ones
+    types-drift            PASS
+    production-parity      FAIL      BY DESIGN, see below
+    fixture                PASS
+    suite                  PASS      352 files, 4121 tests, 0 failed, 0 skipped
+    build                  PASS      263s
+    indexing               PASS      289s
+    lighthouse             PASS      1705s, on a calibrated machine
+
+### WHY NOTHING WAS PUSHED, AND IT IS ONE COMMAND
+
+`production-parity` FAILS because production is BEHIND this tree by four
+migrations:
+
+    20260909000001_event_tags_case_distinct.sql            (session 57, UX1.3)
+    20260909000002_platform_notifications.sql
+    20260909000003_platform_notification_guards.sql
+    20260909000004_platform_notifications_never_block.sql
+
+That is the designed behaviour, not a defect: schema first, then code. A merge
+before the schema lands would take the platform down, which is why the gate
+refuses. The founder's one command, in PowerShell from the repo:
+
+    npm run migrate:production
+
+**Apply all four, in one command, which is what that script does.** There is a
+sub-second window inside it in which 20260909000002 is applied and
+20260909000004 is not, and in that window the publish trigger carries the
+`new.city` defect. I did NOT edit 20260909000002 to remove it, because that file
+has already run against TEST and rewriting it would make the repository lie about
+what TEST executed. The window is one command's internal sequence; a quiet minute
+closes it entirely.
