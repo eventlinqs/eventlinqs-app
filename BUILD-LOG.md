@@ -6724,3 +6724,162 @@ something the change cannot affect.
 Disk at start 24.4 GB free, at end 24.3 GB. Laptop is on mains power
 (`PowerLineStatus: Online`), which is the founder step the previous session was
 waiting on.
+
+## 2026-09-09, session 55. F1.2, F1.3 and F1.4: CI judges what Vercel judges.
+
+Commit `eb419adc`. Three close-out items done as one, because they are one
+property and doing F1.3 alone would have turned CI red for want of F1.2's
+credentials.
+
+### Governing laws stated before editing
+
+`docs/ENV-DOCTRINE.md` (AUTHORITY on the environment contract, and its section 7
+procedure for adding a variable), Law 7 (both platform behaviour claims fetched
+and cited), Law 9 (nothing pinned backwards), Law 10 (the founder step split from
+the scripted part), Verification and gates, and the COMPLETION LAW.
+
+### F1.2. CI carried a placeholder database
+
+The whole cost is in the log of run 34290357211, verbatim:
+
+    [public-env] WARNING (not blocking - local build): 4 critical public var(s) empty/malformed
+    [pricing-lock] WARNING only (local build); this WOULD block on Vercel.
+    [schema-ahead-of-code] SKIP: NEXT_PUBLIC_SUPABASE_URL is not a real Supabase project URL (27 characters)
+    [community-layer-protected] SKIP (categories) - no real Supabase project URL in this build
+    [door-live-published] SKIP - project example: no real Supabase project URL in this build
+
+Four repository secrets now hold what the verify job needs:
+`CI_SUPABASE_URL`, `CI_SUPABASE_ANON_KEY`, `CI_STRIPE_PUBLISHABLE_KEY`,
+`CI_GOOGLE_MAPS_API_KEY`. The project is TEST `vkapkibzokmfaxqogypq`; the key is
+the ANON key, which every visitor's browser already holds. No service-role key,
+no production ref, and `SUPABASE_ENV_ISOLATION` is alwaysBlocking and would refuse
+one anyway. All four are declared in `src/lib/env/manifest.mjs` with
+`githubActions: true`, so the env locks fail if any goes missing.
+
+The other two are NEXT_PUBLIC values already compiled into every page of the
+production bundle, so a repository secret adds no exposure. They are there because
+a job that blocks on "the key is missing" while the key is missing only from its
+own workflow file is measuring itself, not the product.
+
+### What still skips in CI, measured rather than guessed
+
+The whole guard set was run in a materialised CI environment (`env -i`, `CI=true`,
+`GITHUB_ACTIONS=true`, the four values, no service key, no gh login). Evidence:
+`C:\dev\_guards-cisim.txt`.
+
+NOW JUDGING where they skipped: `schema-ahead-of-code` (PASS: every schema object
+the code names exists on vkapkibzokmfaxqogypq), `curated-categories-exist` (PASS:
+all 9 curated homepage categories exist), `community-layer-protected` (PASS: 21
+communities x 20 cities, 22 categories, the category half no longer skipped).
+
+STILL SKIPPING, and not one of them for want of a database:
+
+| Guard | Why, in its own words |
+|---|---|
+| `door-live-published` | no SUPABASE_SERVICE_ROLE_KEY, and the probe is not granted to anon. F1.2 forbids CI that key |
+| `event-lifecycle-installed` | the same |
+| `geocoding-key-posture` | GOOGLE_MAPS_API_KEY is not set, so server geocoding is OFF by decision (close-out C9, the owner has not minted the server key) |
+| `pre-push-gate-wired` | CI and Vercel have no local hooks to run |
+| migration-collision remote half | needs `--remote` and a linked project |
+| `branch-protection-required`, `one-pull-request-at-a-time` | no GitHub credentials, DELIBERATELY: the header of the second says the default Actions token lacks the admin rights the first needs, and a 403 would fail builds for a permission rather than a fault |
+| `machine-callers-reachable` | needs a Vercel token. That is F1.6 and is the next item |
+
+### F1.3. The gate believed a hosted runner was a laptop
+
+`src/lib/health/build-scope.mjs` decides the scope once, three ways, from what
+each vendor publishes:
+
+  vercel  VERCEL or VERCEL_ENV. Vercel publishes `VERCEL=1` at build and runtime
+          (https://vercel.com/docs/environment-variables/system-environment-variables,
+          fetched 2026-09-09)
+  ci      GITHUB_ACTIONS, or CI. GitHub publishes GITHUB_ACTIONS as "always set to
+          true when GitHub Actions is running the workflow"
+          (https://docs.github.com/en/actions/reference/variables-reference,
+          fetched 2026-09-09)
+  local   everything else, which may legitimately be a fresh clone
+
+Vercel is tested FIRST and the reason is on the same Vercel page: it publishes
+`CI=1` at build time, so testing CI first would call every deployment a runner and
+lose the scope that carries the real project.
+
+Both prebuild scripts now print the verdict and the variable that decided it,
+because the old mistake was invisible precisely because nothing ever said what it
+had concluded:
+
+    [public-env] scope=ci (decided by GITHUB_ACTIONS); a configured machine, so a failure here BLOCKS
+    [public-env] BUILD BLOCKED on ci. 4 build-critical rule(s) failed:
+
+Driven at all three scopes, outside the repository tree so `loadEnvConfig` could
+not quietly supply `.env.local`: CI with the new values exits 0 with every rule ok;
+CI with the old placeholders exits 1 naming four; a bare laptop warns and then
+stops on the one named build-stopper it always stopped on.
+
+### The contradiction inside F1.2 and F1.3, and how it was resolved
+
+The pricing lock could not have blocked in CI at all. It read `pricing_rules` with
+the service-role key ALONE, and F1.2 forbids CI to hold that key, so the two
+instructions contradicted each other and the lock would have blocked every CI build
+for a credential it was told not to have.
+
+`readLiveRules` now falls back to the anon key and REPORTS which key the verdict
+rests on. Sound for this query specifically, and DRIVEN rather than argued: the
+query is the region-default scope (`organisation_id IS NULL`, `event_id IS NULL`),
+the only restricting policy is "Org pricing overrides visible to owning org" which
+by definition matches rows that have an organisation_id, and all three locked rule
+types were fetched against TEST with the anon key and with the service-role key:
+
+    platform_fee_percentage      anon == service: YES
+    platform_fee_fixed           anon == service: YES
+    processing_fee_pass_through  anon == service: YES
+
+    [pricing-lock] ok  PRICING_LOCKED_VALUES  project vkapkibzokmfaxqogypq, read as anon
+
+### F1.4. The pricing bypass, proven absent
+
+`scripts/guards/no-build-guard-bypass.mjs`, registered and blocking. It DERIVES its
+subject list from the manifest (every entry forbidden on all three Vercel scopes
+whose name begins with `ALLOW_`) rather than retyping it, prints the list on every
+run, and fails when any of them is set on a configured machine. It also fails when
+the derived list stops containing `ALLOW_PRICING_DRIFT`, so a rename cannot leave
+it green while guarding nothing.
+
+    [no-build-guard-bypass] FAIL: ALLOW_PRICING_DRIFT is set on a ci build.
+    [no-build-guard-bypass] FAIL: ALLOW_PRICING_DRIFT is not in the derived list, so this guard is guarding nothing.
+
+### A defect in my own drill, found by running it
+
+The pricing drill reported DID NOT FAIL. It overrode `NEXT_PUBLIC_SUPABASE_URL`
+while `readLiveRules` prefers `NEXT_PUBLIC_SUPABASE_URL_PREVIEW`, which `.env.local`
+holds, so the guard read the real project and passed. Fixed by overriding both, and
+the comment says why, because that is the exact shape of a drill that verifies
+nothing while looking green.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `gate:push --only guards` | PASS, all 86 guards, 81s |
+| full suite | 336 files / 3898 tests, 0 failed, 0 skipped |
+| `guard-failure-drills` | 142/142 fired correctly, up from 138; all guards PASS on the restored tree |
+| CI simulation, whole guard set | `C:\dev\_guards-cisim.txt` |
+| `tsc --noEmit` | exit 0 |
+| `eslint --max-warnings=0` over ten changed files | exit 0 |
+| canary | raised 335/3876 to 336/3898, MEASURED |
+
+No 390/768/1440 driven proof applies: no user surface changed.
+
+### FOUND AND NOT FIXED HERE, because it is an owner decision
+
+`node scripts/generate-env-state.mjs` was last committed on 16 August, three weeks
+ago, and regenerating it surfaced six open findings the stale snapshot was hiding:
+
+  GOOGLE_MAPS_API_KEY  readable rather than sensitive on production and on preview,
+                       and present on Development, which the platform cannot store
+                       sensitively at all
+  PEXELS_API_KEY       the same three, and nothing on Vercel reads it
+
+Both are founder ruling R3 in `docs/ENV-DOCTRINE.md` section 3.2. The fix is a
+write to the production configuration store, which is not mine to make unasked.
+Raised in REVIEW-QUEUE.md with the split Law 10 asks for.
+
+Disk 24.2 GB free.

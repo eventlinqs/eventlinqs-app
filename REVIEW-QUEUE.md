@@ -2392,3 +2392,67 @@ readiness rows still waiting on your two approvals are exactly as they were.
 
 **Thank you for the plug.** The laptop is on mains power now, which is what the
 last session was waiting for.
+
+## 9 September 2026, session 55. The build server was testing a fake database, and calling itself your laptop.
+
+**What was wrong, in plain terms.** Every time a change is pushed, GitHub runs the
+same safety checks that Vercel runs before it puts the site live. Except it was not
+running the same checks. GitHub was pointed at a made-up database address
+(`example.supabase.co`), so about six of the checks quietly said "nothing to look
+at here" and skipped. Vercel is pointed at the real thing and checks all of them.
+
+That is how a change passed on GitHub and then failed on Vercel yesterday. The two
+machines were marking different exams.
+
+On top of that, when a check did find a problem, it printed "not blocking, local
+build" while running on a GitHub server. It thought it was your laptop. A laptop
+gets forgiven because someone might have just downloaded the project and not set it
+up yet. A build server has no such excuse, and it is the machine whose entire job is
+to stop a bad change.
+
+**What I changed.** GitHub now reads the real TEST database, using the same public
+key every visitor's browser already has. Never the live database, never an
+administrator key. The checks that used to skip now genuinely run, and I proved it
+by building a copy of the GitHub environment on this laptop and running all of them
+in it.
+
+The "am I a laptop" question is now answered once, properly, in one place, and every
+check PRINTS which machine it decided it was on. The old mistake was invisible
+precisely because nothing ever said what it had concluded.
+
+**Two checks still skip on GitHub, and I am telling you rather than hiding it.**
+They need an administrator database key, and the instruction was explicit that
+GitHub must never hold one. That is the right call and I kept it. Both of those
+checks still run on this laptop and on Vercel, where the key exists.
+
+**A bypass switch is now impossible to leave on.** There is an emergency switch that
+turns off the pricing check. Used once and forgotten, it would let the site charge a
+fee that disagrees with the published one, and nothing would say so. A new check now
+refuses any build on GitHub or Vercel that has that switch on, and it fails if
+somebody renames the switch to get around it. Proven both ways.
+
+**Evidence:** `C:\dev\_guards-cisim.txt`
+
+---
+
+### ONE THING FOR YOU TO DECIDE, and it is a two-minute job
+
+While doing the above I regenerated the record of every password and key the
+platform holds. It had not been regenerated since 16 August, and it was hiding six
+findings:
+
+- **The Google Maps key** is stored on Vercel in a way that anyone with access to
+  the project can read in plain text, on the live site and on previews. It is also
+  stored on the "Development" area, which Vercel cannot protect at all. You ruled on
+  exactly this on 3 August: keys that can cost money go in a local file, not there.
+- **The Pexels key** (stock photos, used only by my seeding scripts) has the same
+  three problems, and nothing on Vercel reads it at all.
+
+Neither is an active breach. Both are keys sitting more readable than your own rule
+allows.
+
+I have not touched them, because fixing it means deleting and re-adding records in
+your live Vercel configuration, and that is a change to the running site's settings.
+Say the word and I will write the one command that does it, refuses if anything
+looks wrong, never prints a key, and checks the result afterwards rather than
+trusting itself.

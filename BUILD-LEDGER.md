@@ -1831,3 +1831,35 @@ machine), F1.4 (the ALLOW_PRICING_DRIFT bypass proven absent), F1.2 (CI reads a
 real TEST database so its guards judge what Vercel judges), F1.6 second half
 (machine-callers-reachable has two different skip reasons on two machines),
 F1.9.2 PART ONE and PART TWO reconciled against the authoritative text.
+
+## F1.2, F1.3, F1.4. CI JUDGES WHAT VERCEL JUDGES (9 September 2026, session 55)
+
+Commit `eb419adc`.
+
+| # | Requirement, quoted from close-out | Verdict | Evidence |
+|---|---|---|---|
+| 1 | F1.2 "Give CI the TEST project vkapkibzokmfaxqogypq and its anon key as repository secrets so CI reads a real database" | MET | `CI_SUPABASE_URL` and `CI_SUPABASE_ANON_KEY` set via `gh secret set`, mapped in `.github/workflows/ci.yml`, declared in the manifest with `githubActions: true` |
+| 2 | F1.2 "Never production, never the service role key" | MET | the URL is the TEST ref; the key is the anon key; `SUPABASE_ENV_ISOLATION` is alwaysBlocking and refuses the production ref on any non-production target |
+| 3 | F1.2 "every guard that currently SKIPS in CI must judge" | MET for every database skip | `schema-ahead-of-code`, `curated-categories-exist` and `community-layer-protected` all judge in the CI simulation (`C:\dev\_guards-cisim.txt`) |
+| 4 | F1.2 "a SKIP branch must be reachable only when a database is genuinely absent" | MET | `check-public-env` now BLOCKS in CI on a URL or key that fails its declared shape, so the placeholder that reached those SKIP branches cannot exist on a configured machine |
+| 5 | F1.3 "It must read the CI and VERCEL environment variables" | MET | `src/lib/health/build-scope.mjs`, both vendors' published variables, both citations fetched 2026-09-09 |
+| 6 | F1.3 "print the scope it decided it is on" | MET | `[public-env] scope=ci (decided by GITHUB_ACTIONS)` and the same line from `[pricing-lock]`, on every run |
+| 7 | F1.3 "block in CI on anything it would block on in production" | MET | driven at all three scopes from outside the tree: CI blocks, Vercel blocks, a laptop warns |
+| 8 | F1.4 "Register a blocking guard that fails if that variable is set in CI or in any Vercel environment" | MET | `scripts/guards/no-build-guard-bypass.mjs`, registered in `run-guards.mjs`, derived from the manifest |
+| 9 | F1.4 "prove it fails as well as passes" | MET | two drills, both firing; green run printed above them |
+| 10 | Tests added, suite grows, canary raised in the same commit | MET | 336 files / 3898 tests; canary 335/3876 to 336/3898, measured |
+| 11 | Full regression green | MET | 86/86 guards, 142/142 drills, tsc 0, eslint 0 |
+
+PARTIAL, and named rather than hidden: two guards still SKIP in CI for want of the
+SERVICE-ROLE key, which requirement 2 forbids CI to hold. `door-live-published` and
+`event-lifecycle-installed` both say so in their own SKIP line, and both judge on
+the local gate and on Vercel, where the key exists. The two instructions cannot
+both be satisfied for those two guards and the credential rule is the one that
+wins.
+
+FOUND, NOT FIXED, RAISED: six open findings in the regenerated env snapshot.
+`GOOGLE_MAPS_API_KEY` and `PEXELS_API_KEY` are stored readable rather than
+sensitive on production and preview, and both sit on Development where the platform
+cannot hold them sensitively at all. That is founder ruling R3 in
+`docs/ENV-DOCTRINE.md` 3.2. The fix writes to the production configuration store,
+so it is offered rather than taken.
