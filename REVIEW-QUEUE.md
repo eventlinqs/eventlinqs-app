@@ -3131,3 +3131,102 @@ npm run migrate:production
 
 That one command is still the only thing standing between all of this and the
 live site.
+
+## 10 September 2026. Nobody could edit an event once it had sold a ticket.
+
+I went looking at how ticket sales are recorded, because the next thing on the
+list needs that. I did not get there. I found this first, and it was live on
+Mikhaell's event.
+
+### What was actually happening
+
+Every time an organiser pressed **Save Changes** on an event, the platform
+deleted all of their ticket types and created them again from scratch. Not just
+the ones they had changed. All of them, every time, even if they had only fixed a
+typo in the description.
+
+On an event that has sold **nothing**, that quietly worked, and quietly threw
+away the waitlist, any group bookings, any access codes and any automatic pricing
+rules attached to those tickets. Nobody was told.
+
+On an event that has sold **anything at all**, the database refused, correctly,
+because throwing away a ticket type would orphan the ticket somebody had paid
+for. Nobody checked whether it had refused. The platform carried on, tried to
+create the tickets it had failed to delete, hit the obvious collision, and showed
+the organiser this:
+
+> Failed to update ticket tiers: duplicate key value violates unique constraint
+> "ticket_tiers_event_id_name_key"
+
+In plain terms: **the moment an organiser sold one ticket, they could never
+change a price, a capacity or a ticket name on that event again**, and the reason
+they were given was the name of a database rule. Their event details still saved,
+so it half worked, which is worse.
+
+Mikhaell's event has one paid order on it. This was his experience if he had
+tried to change anything.
+
+### What a real person can now do that they could not before
+
+**An organiser can edit an event that has sold tickets.** The save now works out
+what actually changed. A ticket type that stayed keeps its identity and is
+updated in place. A new one is added. One that was genuinely removed is removed.
+Nothing is thrown away and re-made.
+
+**Their waitlist, group bookings, access codes and pricing rules survive an
+edit.** These were being deleted silently on any event that had not sold yet.
+
+**Price history now works properly on an edited event.** Because the ticket keeps
+its identity, the record of what its price was before actually follows it. It
+could not before, because the ticket the history pointed at stopped existing on
+every save.
+
+**Three things the platform now refuses, in words, instead of failing:**
+
+1. Removing a ticket type people have already bought. It says so, names the
+   ticket, and tells them the thing to do instead: set its sale end date in the
+   past to stop new sales, and everyone holding one keeps their ticket.
+2. Setting a capacity lower than the number already sold.
+3. Giving two ticket types the same name (including the same name in different
+   capitals, which would have quietly merged their price histories).
+
+None of those three sentences contains a database word. That was the point.
+
+### How I know, rather than believe
+
+I signed up as a new organiser through the real signup form, built and published
+a real event through the real wizard, signed up as a second person, took a real
+ticket from the public event page, and then went back and edited the event. Then
+I did the same at phone, tablet and desktop size. Twenty six checks at each,
+all passing.
+
+Then, on the same event, I replayed the two database statements the old code ran
+and wrote down exactly what came back: the delete refused with 23514, and the
+insert then failed with the duplicate-key message word for word. So the
+before-and-after is on the record rather than in my description of it.
+
+Evidence: `C:\dev\EVIDENCE\D0\`.
+
+### Two more things I found on the way, both fixed
+
+**Six fields on the ticket step shared their names with each other.** If an
+organiser added a second ticket type, five of the labels on it pointed at the
+FIRST ticket type's field. Clicking "Sale Ends" on ticket two put the cursor in
+ticket one. Anyone using a screen reader heard two different fields announced by
+the same name. I fixed all six and added a check that fails the build if it ever
+comes back.
+
+**One of the existing tests had a gap that this change fell straight into**, which
+is how I found it in the first minute rather than in production. It is stricter
+now than it was.
+
+### Still waiting on you, and it is the same one command
+
+Nothing from this session or the last two can reach the live site until the
+database changes are applied. There are six of them now:
+
+```
+npm run migrate:production
+```
+
+Everything else is ready and green behind it.

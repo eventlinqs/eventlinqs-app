@@ -8508,3 +8508,229 @@ and it is not to add an entry: "If a script has started reading something the
 build host lacks and does not need to, the fix is to stop reading it." The grammar
 moved into `scripts/lib/alert-classes.mjs`, which depends on nothing, and the
 runbook paths stayed with the only thing that prints them.
+
+# 10 September 2026, session 60. The ticket type that was deleted and re-created on every save.
+
+Started by reading CLOSE-OUT.md and BUILD-BRIEF.md end to end, then establishing
+where the build actually stood rather than trusting the ledger: branch
+`verify/l5-launch-readiness`, tree clean, eleven commits unpushed, and
+`production-parity` red because production is behind this tree. The F, H, P, PR
+and L families the brief points at are all closed; the newest unbuilt items in
+the close-out are D1, the slot ledger, and D2, the recovery engine.
+
+**GOVERNING LAWS, stated before the first edit (Law 0.2):** Law 0, the Definition
+of Done, Law 1 (no generic), Law 5 (zero dead links and no dead-end controls),
+Law 7 (research before recommending), Law 8 (authorship), Law 9 (current by
+default), Law 10 (script the founder's step), Copy and banned content, the
+Migrations rule under Verification and gates, and the COMPLETION LAW in
+BUILD-BRIEF.md.
+
+**VERIFY-FIRST, stated before the first edit:** every claim below is settled by
+executing something. The schema by reading it back out of `pg_proc`; the
+behaviour by driving the real forms in a real browser at three viewports; the
+guard by breaking the tree five ways and reading it go red each time; the
+regression by the gate.
+
+## THE ITEM WAS NOT D1. IT WAS WHAT READING FOR D1 TURNED UP.
+
+D1 needs a stable identity for the thing it calls an INVENTORY CLASS, and on this
+platform that is `ticket_tiers.id`. So the first question was who writes that
+table. The answer was one line in `updateEvent`:
+
+    await admin.from('ticket_tiers').delete().eq('event_id', input.eventId)
+
+with no error check, followed by a re-insert of everything the form submitted.
+The form holds each tier's id and drops it on the way to the server, so the
+server had no way to tell which submitted ticket type was which.
+
+**The foreign keys decide how bad that is, and they were read rather than
+assumed.** Eight tables name `ticket_tiers`: four with `ON DELETE SET NULL`
+(`tickets`, `order_items`, `seats`, `ticket_price_history`) and four with
+`ON DELETE CASCADE` (`waitlist`, `squads`, `tier_access_codes`,
+`dynamic_pricing_rules`).
+
+**Then it was driven, and the drive was more interesting than the reading.** The
+first run of `scripts/verify/tier-identity-proof.mjs` against the UNCHANGED tree
+built a real event, took a real free ticket on it, edited the event and read the
+database back. The tier ids were unchanged, which looked like good news for about
+ten seconds, until the message on screen was read:
+
+    Failed to update ticket tiers: duplicate key value violates unique
+    constraint "ticket_tiers_event_id_name_key"
+
+So the delete had not been refused by chance; it had been REFUSED BY THE
+DATABASE, and nothing had read the refusal. Probed directly with the service
+role, the delete answers **23514**: `order_items` carries
+`CHECK ((item_type = 'ticket' AND ticket_tier_id IS NOT NULL) OR ...)` and the
+`SET NULL` breaks it. The insert then answers **23505** on the rows that were
+never removed.
+
+**The consequence, in one sentence: the moment an event sold one ticket, its
+organiser could never change a price, a capacity or a ticket name again, and what
+they were told was the name of a database constraint.** The event body still
+saved, so it half worked.
+
+It was live for the first real outside organiser: the Afro-Fusion event on
+production carries one confirmed order, `EL-9HE57YNV`, read from production
+read-only through the Management API.
+
+**Nothing in the tree could have seen it.** Every unit test passed with the
+defect in place, because nothing in the suite has a foreign key. The 211-route
+sweep passed, because the page answers 200. Only pressing Save on an event that
+has sold something finds it, which is UX2.5's point made again in a different
+place.
+
+## WHAT WAS BUILT
+
+**One database function, therefore one transaction.**
+`public.save_event_ticket_tiers(uuid, jsonb)` reconciles rather than replaces:
+what stayed keeps its id and is updated in place, what is new is inserted, what
+was genuinely removed is deleted only when nothing depends on it. The same shape
+and the same reason as `save_dynamic_pricing` in 20260904000002, whose own header
+says it: one transaction so the deferred price-history triggers judge the final
+state once.
+
+Three things it refuses, and it RETURNS A VERDICT rather than raising, so the
+sentence a person reads is written in TypeScript where the copy gate can see it:
+
+    sold           a ticket type somebody has already bought cannot be removed
+    capacity       capacity cannot be cut below what is already sold or held
+    repeated_name  two ticket types cannot share a name
+
+The third is judged case-insensitively, which is STRICTER than the unique
+constraint. `record_tier_price_history` keys history on `lower(tier_name)`, so
+"VIP" beside "vip" would silently share one price history; and the platform
+already ruled on this exact shape for tags on 9 September. Without it the
+organiser reaches the same duplicate-key message by a different road.
+
+**The names are parked before they are set.** `UNIQUE (event_id, name)` is
+checked per statement, so renaming A to B while B still exists collides even
+inside one transaction. Each kept row's name is parked on its own id first, which
+is unique by construction and which nobody outside the transaction can see.
+
+**The form carries the identity, and says which kind it is.** A tier drafted in
+this session carries `unsaved-` in front of its client-minted id, so a
+client-minted id and a database id can never be confused, and only a saved id is
+sent. A prefix rather than an absent id because the form needs a stable React key
+for rows being typed, and without a marker the server would have to guess.
+
+## THE OTHER TWO DEFECTS THIS TURNED UP, BOTH FIXED
+
+**Six form controls inside a list carried a hardcoded id.** `type-21`,
+`sale-starts-24`, `sale-ends-25`, `min-per-order-26`, `max-per-order-27` and
+`description-optional-28` all sit inside
+`formData.ticket_tiers.map((tier, idx) => ...)`. With one ticket type the form is
+correct. Add a second and the document carries two elements with each of those
+ids, so five labels point at the FIRST tier's control whichever tier they sit
+beside: pressing "Sale Ends" on tier two focuses tier one, and a screen reader
+announces two different fields by the same name. Found because the drive needed
+to set the type of a second tier and the selector was ambiguous.
+
+`labels-name-the-right-control` gained a fourth rule for it. Its first run
+accused three pairs in the seat manager that are perfectly correct, because that
+file renders `{movingId === seat.id && (...)}` inside its map and only one
+instance is ever in the document. Deciding WHICH conditions pin a single item
+would mean reading intent, so any condition between the control and the `map()`
+now buys the benefit of the doubt: conservative is the right direction for a rule
+that blocks a build, and what remains is exactly the defect it was written for.
+
+**`update-event-idor` had no `rpc` on its admin mock**, so the success path died
+with "admin.rpc is not a function" the moment the reconciliation landed. That is
+how the regression announced itself, in the first canary run rather than in
+production. The mock now answers `rpc` and RECORDS it as a privileged write, so
+the test is stricter than it was: a caller who fails the ownership gate and
+reaches `save_event_ticket_tiers` now fails it.
+
+## A SECOND ROUTE INTO TEST, BECAUSE THERE WAS NONE (Law 10)
+
+`apply-migration-to-test.mjs` needs a Postgres password and this machine has
+none: no `.env.test` here, no `SUPABASE_DB_URL` in `.env.local`. The preflight
+refuses before it can judge anything, which is correct and was not softened. What
+it left was a machine that could READ TEST all day through the Management API and
+could not apply one migration to it, which makes "applied to TEST first"
+impossible to satisfy and pushes a session towards proving what it has not run.
+
+`--via-api` runs the same SQL and writes the same ledger row through
+`POST /v1/projects/{ref}/database/query`. The ref is the hardcoded TEST constant
+in that file, never a resolved value and never an argument, so no input to that
+route can name another project. Production migrations still go through
+`supabase db push --linked`, run by Lawal, untouched.
+
+`supabase db push --linked` could not be used for a second reason worth
+recording: TEST carries four migrations, 20260908000001 to 000004, whose FILES
+are not on this branch. They are the C10 and M1 work on
+`feat/c10-scope-audit-and-series` and `feat/m1-the-request`, which the PR5 record
+parks deliberately, and the CLI refuses a push while remote versions have no
+local file. That is the CLI being right.
+
+## DRIVEN, NOT ASSERTED
+
+A real organiser signs up through `/signup`, builds and publishes a real event
+through the real wizard, a real second person takes a real free ticket from the
+public event page, and then the organiser edits the event. Twenty six checks, at
+390, 768 and 1440, all passing at each:
+
+    the edit saves and shows NOTHING that reads like a fault      the check that
+                                                                  separates this
+                                                                  tree from the
+                                                                  broken one
+    the ticket capacity the organiser typed is what is stored     120
+    the ticket type keeps its id                                  same uuid
+    sold_count survives                                           1 -> 1
+    the sold ticket still names its ticket type                   1 of 1
+    the order item still names it                                 1 of 1
+    the price history row still names it                          1 of 1
+    a second ticket type can be added                             2 types
+    two types cannot share a name                                 refused, named
+    the sold type cannot be removed                               refused, named
+    and nothing is lost by that refusal                           2 types, 1 of 1
+    the UNSOLD type CAN be removed                                1 type left
+    the OLD save, replayed on the same event                      23514 then 23505
+
+The last line is the red direction executed rather than remembered: the two
+statements the old code ran are replayed against the event the drive just built,
+and what the database answers is written down. Safe by construction, because the
+event has a sale and the delete is therefore refused, which is the point.
+
+Evidence: `C:\dev\EVIDENCE\D0\`.
+
+## GUARDS, DRILLED IN BOTH DIRECTIONS
+
+    tier-identity-preserved   five clauses, every one drilled red and green:
+                              the bulk delete returns; the action stops calling
+                              the reconciliation; either of the two named
+                              refusals is removed from the function; the form
+                              drops the tier id again
+    labels-name-the-right-control  the new REPEATED-ID rule, drilled red by
+                              restoring one fixed id and green again
+
+The second clause caught its own first draft. `text.includes(RPC)` went green on
+an action renamed to `save_event_ticket_tiers_GONE`, because the new name
+CONTAINS the old one. The drill found it on its first run; the clause now matches
+the quoted name inside an `rpc(` call.
+
+## THE GATE, ACROSS THE FINAL TREE
+
+    disk                   PASS
+    typecheck              PASS
+    lint                   PASS
+    copy                   PASS
+    critical-path          PASS
+    lighthouse-exemptions  PASS
+    guards                 PASS      96 registered, all pass, one new
+    types-drift            PASS
+    production-parity      FAIL      BY DESIGN, six migrations behind
+    fixture                PASS
+    suite                  PASS      356 files, 4215 tests, 0 failed, 0 skipped
+    build                  PASS
+    indexing               PASS
+    lighthouse             PASS      13 URLs, 65 runs, 1651s, on AC power
+
+Thirteen of fourteen, green in 2265s on the exact tree that is committed.
+`production-parity` refuses because production is BEHIND this tree, which is the
+designed behaviour rather than a defect: schema first, then code. It was five
+migrations before this item and is six now: 122 in the tree, 116 applied.
+
+**The founder's one command clears it, and clears UX3 and UX4 with it:**
+
+    npm run migrate:production

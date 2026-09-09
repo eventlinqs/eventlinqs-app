@@ -2671,3 +2671,104 @@ Thirteen of fourteen. `production-parity` refuses because production is BEHIND
 this tree by five migrations, which is the designed behaviour, not a defect:
 schema first, then code. The founder's one command clears it and clears UX3 with
 it: `npm run migrate:production`.
+
+## D0. THE TICKET TYPE THAT WAS DELETED AND RE-CREATED ON EVERY SAVE (10 September 2026, session 60)
+
+Not a close-out item. Found while reading the write paths the D1 slot ledger has
+to hook into, and worked first because the ledger needs a stable identity for the
+thing it calls an inventory class, and there was not one.
+
+### WHAT WAS FOUND, AND HOW IT WAS ESTABLISHED
+
+`updateEvent` saved an edit like this, on every save of every event:
+
+    await admin.from('ticket_tiers').delete().eq('event_id', input.eventId)
+    ... then re-insert the tiers from the form
+
+The form held each tier's id and dropped it on the way to the server, so the
+server could not tell which submitted ticket type was which and replaced the lot.
+The error from that delete was never read.
+
+Two failures came out of that one line, and BOTH were driven rather than argued.
+
+| Failure | What actually happens | How it was established |
+|---|---|---|
+| **A sold event cannot be edited at all** | `order_items` carries `CHECK ((item_type = 'ticket' AND ticket_tier_id IS NOT NULL) OR ...)`, and the `ON DELETE SET NULL` on `order_items.ticket_tier_id` breaks it, so Postgres raises **23514** and removes nothing. The re-insert then collides with the surviving rows and raises **23505**. The organiser is shown `duplicate key value violates unique constraint "ticket_tiers_event_id_name_key"` and every ticket edit is discarded | Driven on TEST through the real wizard and the real edit form, and replayed statement by statement in `old-save-replayed.txt` |
+| **An unsold event loses everything hanging off its tiers** | the delete succeeds and cascades: `waitlist`, `squads`, `tier_access_codes` and `dynamic_pricing_rules` all name `ticket_tiers` with `ON DELETE CASCADE` | The four foreign keys read out of `pg_constraint` on TEST |
+
+**It was live for the first real outside organiser.** The Afro-Fusion event on
+production carries one confirmed order (`EL-9HE57YNV`), so MKL Studios could not
+have changed a price, a capacity or a ticket name on it, and what they would have
+been shown is the name of a database constraint.
+
+**Nothing in the tree could see it.** Every unit test passed with the defect in
+place, because nothing in the suite has a foreign key. The route sweep passed,
+because the page answers 200. The only thing that finds it is pressing Save on an
+event that has sold something.
+
+### THE REQUIREMENT LEDGER
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| **Schema** written, applied to TEST, verified by querying it back | MET. `20260910000001_ticket_tiers_keep_their_identity.sql` defines `public.save_event_ticket_tiers(uuid, jsonb)`, applied to TEST and read back from `pg_proc`: SECURITY DEFINER, `service_role=X` only | migration file; `pg_proc` read 2026-09-10 |
+| The save is ATOMIC | MET. One function, therefore one transaction, so a rename that swaps two names never shows a half state and a failure part way through leaves nothing behind. Same shape and same reason as `save_dynamic_pricing` (20260904000002) | migration header |
+| A ticket type somebody has bought cannot be removed | MET, and asked four ways (`sold_count`, `reserved_count`, an `order_items` row, a `tickets` row) because the first two are stored counts and the rows are the fact | `d0.remove.refused_in_words` |
+| Capacity cannot be cut below what is sold or held | MET. Newly reachable BECAUSE of this fix: before it, no edit of a sold event got far enough for anything to have to refuse it | migration, refusal two |
+| Two ticket types cannot share a name | MET, judged case-insensitively, which is stricter than the unique constraint. `record_tier_price_history` keys history on `lower(tier_name)`, so "VIP" beside "vip" would silently share one history, and the platform already ruled on this shape for tags on 9 September | `d0.repeated_name.refused` |
+| **Code**: the form carries the identity | MET. `UNSAVED_TIER_PREFIX` marks a tier drafted in this session, so a client-minted id and a database id can never be confused, and only a saved id is sent | `src/lib/events/save-tiers.ts` |
+| The refusal words live in TypeScript, not in Postgres | MET. The function returns a verdict; `describeTierRefusal` writes the sentence, so the copy gate can see it and a test can drive it | `save-tiers.ts` |
+| A save that quietly did nothing is never reported as success | MET. An unrecognised verdict is a fault with its own words, not a pass | `readTierSaveVerdict` returns null; test |
+| **Tests** added, and the canary baseline raised in the same commit | MET. One new file, twenty tests. 355/4195 to 356/4215, with the reason written on the constant | `tests/unit/events/save-tiers.test.ts` |
+| **Guard**, registered and blocking, proven both ways | MET. `tier-identity-preserved` (five clauses) all drilled RED and GREEN | `C:\dev\EVIDENCE\D0\guard-tier-identity-drill.txt` |
+| **Driven** at 390, 768 and 1440 | MET. 26 of 26 checks at each viewport, through the real signup, the real wizard, a real free ticket taken by a real second account, and the real edit form | `C:\dev\EVIDENCE\D0\{mobile-390,tablet-768,desktop-1440}\report.txt` |
+| The RED direction, executed rather than remembered | MET. The drive replays the two statements the old save ran, against the event it just built, and records what the database answers: 23514 then 23505 | `old-save-replayed.txt` |
+| **Regression** | see the gate section of BUILD-LOG for this session |
+| **Pushed** | NOT DONE, and it is the same block UX3 and UX4 are behind. `production-parity` refuses because production is now SIX migrations behind this tree. One founder command clears it: `npm run migrate:production` | `production-parity` output |
+
+### TWO MORE DEFECTS FOUND WHILE FIXING THIS ONE, BOTH FIXED
+
+1. **Six form controls inside a list carried a hardcoded id.** `type-21`,
+   `sale-starts-24`, `sale-ends-25`, `min-per-order-26`, `max-per-order-27` and
+   `description-optional-28` all sat inside
+   `formData.ticket_tiers.map((tier, idx) => ...)`. With one ticket type the form
+   was correct. Add a second and the document carried two elements with each of
+   those ids, so five labels pointed at the FIRST tier's control whichever tier
+   they sat beside, and a screen reader announced two different fields by the
+   same name. Every one is now indexed by its row.
+2. **`update-event-idor` had no `rpc` on its admin mock.** The success path died
+   with "admin.rpc is not a function" the moment the reconciliation landed, which
+   is how the regression announced itself. The mock now answers `rpc` and RECORDS
+   it as a privileged write, so the test got STRICTER: a caller who fails the
+   ownership gate and reaches `save_event_ticket_tiers` now fails it.
+
+### THE GUARD THAT WOULD HAVE CAUGHT THE FIRST OF THOSE, ADDED
+
+`labels-name-the-right-control` gained a fourth rule, REPEATED-ID: a control
+rendered UNCONDITIONALLY once per list item may not carry a literal id. Its first
+run accused three pairs in the seat manager that are perfectly correct, because
+that file renders `{movingId === seat.id && (...)}` inside its map and only one
+instance is ever in the document. Rather than decide which conditions pin a
+single item, which would mean reading intent, ANY condition between the control
+and the `map()` now buys the benefit of the doubt. Conservative is the right
+direction for a rule that blocks a build, and what remains is exactly the defect
+it was written for. Drilled red on one restored id and green again.
+
+### A SECOND ROUTE INTO TEST, BECAUSE THERE WAS NONE
+
+`apply-migration-to-test.mjs` needs a Postgres password, and this machine has
+none: there is no `.env.test` here and `.env.local` carries no `SUPABASE_DB_URL`,
+so the preflight refuses before it can judge anything. That refusal is correct
+and was not softened. What it left was a machine that could READ TEST all day
+through the Management API and could not apply one migration to it, which makes
+"applied to TEST first" impossible to satisfy and pushes a session towards
+proving things it has not run. `--via-api` runs the same SQL and writes the same
+ledger row through `POST /v1/projects/{ref}/database/query`. The ref is the
+hardcoded TEST constant in that file, never a resolved value and never an
+argument, so no input to that route can name another project.
+
+`supabase db push --linked` could not be used for a second reason worth
+recording: TEST carries four migrations (20260908000001 to 000004) whose FILES
+are not on this branch. They are the C10 and M1 work, sitting on
+`feat/c10-scope-audit-and-series` and `feat/m1-the-request`, which the PR5 record
+parks deliberately. The CLI refuses a push while remote versions have no local
+file, which is correct of it.
