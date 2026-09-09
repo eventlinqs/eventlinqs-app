@@ -2720,3 +2720,93 @@ thing you said you want to press yourself.
 
 **Everything else on this branch is green:** disk, types, linting, the copy
 rules, the critical path, all 89 guards, and the types-drift check.
+
+## 9 September 2026, later. The four things from your second read of that page.
+
+### The legal one, which was the biggest
+
+Your ABN was typed out by hand in **twelve different places** in the code, in
+three different formats, next to **two different postal addresses**. One says PO
+Box 141 Newcomb, the other says Geelong. When your Pty Ltd is registered and the
+number changes, that is twelve edits, and the one somebody misses is on a tax
+invoice.
+
+It is now written down **once**. Every page, the footer and both emails read it
+from that one place.
+
+**The part worth knowing about.** In four of those files the number had been
+split across two lines by ordinary text wrapping, like this:
+
+```
+... trading as EventLinqs, ABN 30 837
+447 587, PO Box 141, Newcomb VIC 3219 ...
+```
+
+If you or anyone else had searched the code for "30 837 447 587" to change it,
+those four would not have shown up. You would have found and fixed nine, and
+three legal pages would have quietly kept the old number. The check I built
+joins the lines back together before it looks, and I proved it: a normal search
+finds **zero** in that file, and the check finds it.
+
+It also verifies your ABN against the official ATO check-digit formula. The
+platform already refuses an organiser's ABN if it fails that test; its own had
+never been checked. It passes.
+
+**Still yours to confirm:** whether that is your current registered number, and
+which of the two addresses is the right one. Once you say, it is a one-line
+change.
+
+### The map pin
+
+The venue was a small gold dot with no label, while every shop and cafe around
+it had a proper labelled marker. The one point on the map that matters was the
+hardest to see. It now shows the venue name in a navy and gold plate, and it is
+set to take priority over Google's own labels so it never gets hidden behind a
+cafe.
+
+**I could not photograph it working, and I want to be straight about why.** Your
+Google Maps key is locked to specific web addresses and my machine is not one of
+them, so Google refuses to draw any map locally at all. That is a setting in
+your Google Cloud console. It also means nobody can see a map while developing,
+which is worth fixing for its own sake. I proved the pin itself with eight tests
+on the exact thing it builds, but that is not the same as seeing it.
+
+### The rail crashing into the footer
+
+Found it: the section had spacing at the top and none at the bottom, so whichever
+column was longer ran straight into the dark band. There is now proper space, and
+I measured it rather than eyeballing it: **64 pixels** on phone, tablet and
+desktop, where there was zero before.
+
+### The two email domains
+
+Your site is eventlinqs.com.au and every contact address on it said
+eventlinqs.com. There were about forty of them typed out by hand across seven
+different addresses.
+
+They all now come from one place, so changing the domain is a single edit.
+
+**I have not changed it, on purpose.** Your email currently sends from
+eventlinqs.com because that is the domain verified with Resend. If I switched the
+addresses to .com.au today, your ticket emails would stop being delivered, not
+degrade gracefully. You already have a note in the code about alerts@eventlinqs.com
+hard-bouncing in August, which is what that failure looks like.
+
+**So this is a decision plus a task for you:** pick the domain, and add the DNS
+records Resend gives you for it. Tell me when it is verified and the switch is one
+line. There are also five email templates that live inside Supabase rather than
+in the code, and those have to be updated by hand in the dashboard; the check
+lists them by name so they cannot be forgotten.
+
+### Something I got wrong
+
+My first test run reported six failures. All six were my test being wrong, not
+your site: it was reading the full stop at the end of a sentence as part of the
+email domain, and it was flagging the privacy regulator's own email address,
+which your privacy policy is legally required to publish. Fixed the test, not the
+site, and wrote down why so it does not happen again.
+
+### Still waiting on you
+
+The database change from earlier today still needs your one command before any
+of this can reach the live site: `npm run migrate:production`.

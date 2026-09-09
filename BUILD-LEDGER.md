@@ -2371,3 +2371,46 @@ the work to get past a gate.
 
 Note that production is otherwise fully caught up. An earlier session recorded it
 as three migrations behind; that is resolved, and the only gap is today's.
+
+---
+
+## UX2 REQUIREMENT LEDGER, 9 September 2026 (session 57)
+
+| # | The close-out asked for | Verdict | Evidence |
+|---|---|---|---|
+| UX2.1a | "Read that number from ONE source, so it changes everywhere at once." | **MET** | `src/lib/legal/platform-entity.ts`. Twelve literals across nine files removed; zero remain outside it. Driven proof row `abn-single-value`: every surface published the same ABN. |
+| UX2.1b | "a guard must fail the build if the displayed ABN and the configured entity disagree" | **MET** | `scripts/guards/one-platform-entity.mjs`, registered and blocking. Drilled RED twice (a line-broken literal that a grep reports as clean; a one-digit typo failing the ATO checksum) and GREEN after. |
+| UX2.1c | "The entity taking ticket money must match the ABN displayed and the Stripe account entity." | **PARTIAL** | Repository half enforced at build time. Stripe half is `scripts/verify/platform-entity-matches-stripe.mjs`, which cannot be a build guard because the Vercel host has no key (F2.1). It has NOT been run against the live account here: `STRIPE_SECRET_KEY` is empty in this checkout, and it prints "Nothing was checked, and nothing is claimed" rather than passing vacuously. |
+| UX2.1d | "Owner is verifying the current number at abr.business.gov.au." | **RESERVED (founder)** | The value is his. The number in the tree passes the ATO modulus-89 check, which is a statement about its structure and NOT a statement that it is his current registration. |
+| UX2.2a | "Give it the venue name, brand colour, and visual weight above the surrounding POIs." | **MET** | `createVenuePin`: the name as real text, brand navy plate with a gold border and dot, `collisionBehavior: REQUIRED_AND_HIDES_OPTIONAL` and `zIndex: 10`. The collision value is Google's own published mechanism, cited at the call site. |
+| UX2.2b | "Drive it at 390, 768 and 1440." | **NOT MET, and blocked** | The Google browser key is referrer-restricted and localhost is not on the allowed list: a local run answers `RefererNotAllowedMapError` and paints no map at all, at any viewport. The pin element is proved exhaustively in `tests/component/venue-pin.test.tsx` (8 tests), but that is a DOM test, not a driven one, and it is recorded as such. |
+| UX2.3 | "Close the rail properly at every viewport." | **MET** | The section carried `pt` and no `pb`. MEASURED at all three viewports: 64px between the last painted content box and the footer, where it was 0 by construction. `loading.tsx` carries the identical class so hydration does not shift. |
+| UX2.4a | "Pick one domain, use it in every surface and every outbound email" | **PARTIAL** | Every surface now DERIVES from one domain (88 addresses through `contactAddress`/`contactMailto`; zero literals remain). Which domain wins is not picked, and deliberately so: see below. |
+| UX2.4b | "guard that the two never diverge again" | **MET** | `scripts/guards/one-contact-domain.mjs`, registered and blocking, drilled red. It derives both domains from their own one-sources rather than carrying copies. |
+| UX2.5 | "L1 must carry a HUMAN READ of the five launch screens... Add it as a named L1 row with its own evidence." | **NOT DONE** | Not yet added to the launch-readiness report. Named here so it is not lost. |
+
+### THE TWO THINGS RESERVED FOR THE FOUNDER, WITH LAW 10 VERDICTS
+
+1. **The Google Maps key referrer allowlist.** VERDICT: **IMPOSSIBLE for an
+   agent.** It is a Google Cloud console setting and no credential for it exists
+   in this environment. Consequence beyond UX2.2: *no local development or local
+   proof on this platform can ever display a map*, which is worth knowing
+   independently of this item.
+2. **Which email domain wins.** VERDICT: **RESERVED**, plus an **IMPOSSIBLE**
+   part. The choice is the founder's; verifying `eventlinqs.com.au` at Resend
+   needs DNS records at the registrar, which no agent here can add. Everything
+   on this side of that line is SCRIPTED: the flip is one edit to
+   `DEFAULT_SENDER_DOMAIN` and a guard proves nothing is left behind.
+
+### WHAT I GOT WRONG, AND HOW IT WAS CAUGHT
+
+- **My own test assertions, twice.** The first UX2 run reported six failures and
+  all six were the test being wrong, not the product: a regex swallowing a
+  sentence-ending full stop, and `enquiries@oaic.gov.au` (the privacy regulator,
+  whose address an APP-compliant privacy policy is required to publish). Fixed in
+  the assertion, with the reasons written into the script.
+- **A guard that carried its own copy of the value it polices.** The first draft
+  of `one-contact-domain` typed the two domains as literals. `canonical-host.mjs`
+  refused the build. It was right, and the guard now derives them.
+- **Six unused imports**, caught by the push gate because it lints the WHOLE
+  TREE while I had linted the files I believed I had changed.

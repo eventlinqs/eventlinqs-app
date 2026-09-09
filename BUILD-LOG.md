@@ -7766,3 +7766,187 @@ that owns them, pushed my migration alone (`db push` skipped theirs, as they are
 already in `schema_migrations`), and removed them again. Nothing of another
 branch's is committed here. **TEST's schema is ahead of main by four migrations
 from unmerged work, and that is worth the founder knowing.**
+
+---
+
+## 9 September 2026, session 57 continued. UX2: the owner's live read.
+
+### UX2.1 LEGAL, AND THE TRAP INSIDE IT
+
+The ABN was hand-written in **twelve places across nine files**, in three
+formats, beside **two different postal addresses** (`PO Box 141, Newcomb VIC
+3219` on the legal pages, `Geelong VIC` in both transactional emails) and three
+descriptions of the entity.
+
+**The trap, and it is the reason the guard is not a grep.** In FOUR of those
+files ordinary prose wrapping had split the number across two source lines:
+
+    EventLinqs is operated by Lawal Adams, trading as EventLinqs, ABN 30 837
+    447 587, PO Box 141, Newcomb VIC 3219, Australia. In these terms,
+
+A line-based search finds nine of twelve, reports a clean tree, and leaves three
+wrong on the legal pages. The drill is recorded because it is the whole
+argument:
+
+    -- a plain line-based grep for the whole number finds:
+    0  <- a grep sees NOTHING
+    -- the guard sees:
+    [one-platform-entity] FAIL - 1 fault(s):
+        src/app/legal/terms/page.tsx carries an ABN of its own: 30 837 447 587
+
+`src/lib/legal/platform-entity.ts` is the one source (legal name, trading name,
+entity type, ABN, formatted ABN, postal address, locality).
+`scripts/guards/one-platform-entity.mjs` is registered and blocking, and does
+two things: no ABN outside the one source, and the one source's own number must
+pass the **ATO modulus-89 check**. Drilled RED both ways (a line-broken literal;
+a one-digit typo) and GREEN after.
+
+The allowlist keeps the scan BROAD on purpose. Narrowing it to the current
+declared number would pass a tree where the founder changed the ABN and a STALE
+OLD copy survived elsewhere, which is precisely the failure being prevented. The
+one reviewed entry is `51 824 753 556`, the Australian Business Register's own
+published worked example, used in the checksum docblock and as the field
+placeholder.
+
+**The third leg cannot be a build guard.**
+`scripts/verify/platform-entity-matches-stripe.mjs` compares the displayed
+entity against the live Stripe account. It is a verification script, not a
+prebuild guard, because it needs a key the Vercel build host does not have
+(F2.1). It reports **NOT COMPARABLE** rather than PASS when the account carries
+no `company.tax_id`, which is normal for a sole trader.
+
+### UX2.2 THE PIN, WITH ITS SOURCE CITED
+
+`createBrandPin` rendered a 20px gold dot whose only label was a `title`
+attribute: a hover tooltip, which does not exist on a phone. Every surrounding
+commercial POI carried a labelled marker.
+
+`createVenuePin` now renders a solid navy plate with a gold border and the venue
+NAME as real text. Law 7 satisfied with the primary source rather than an
+inference (Google, Maps JavaScript API, `CollisionBehavior`,
+https://developers.google.com/maps/documentation/javascript/reference/marker,
+fetched 2026-09-09):
+
+> `REQUIRED_AND_HIDES_OPTIONAL` - "Always display the marker regardless of
+> collision, and hide any OPTIONAL_AND_HIDES_LOWER_PRIORITY markers or labels
+> that would overlap with the marker."
+
+The basemap's POI labels are that optional class, so that value is the published
+mechanism for "visual weight above the surrounding POIs".
+
+**IT COULD NOT BE DRIVEN LOCALLY, AND THE REASON IS DIAGNOSED RATHER THAN
+SHRUGGED AT.** A local run answers:
+
+    Google Maps JavaScript API error: RefererNotAllowedMapError
+
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is restricted by HTTP referrer and localhost
+is not on the allowed list, so **no local run of any kind can paint a map**.
+That is a Google Cloud console setting and therefore the founder's. The pin
+element is pure DOM and is proved exhaustively in
+`tests/component/venue-pin.test.tsx` (8 tests: the name as real text, the
+tooltip retained, solid not translucent, brand gold, long names bounded, the
+empty-name fallback, the plain dot unchanged for multi-point maps, and the
+bottom-centre anchor).
+
+### UX2.3 MEASURED, NOT EYEBALLED
+
+Cause: `<section className="bg-canvas pt-12 sm:pt-16">` carried **top padding
+only**. The two columns end at different points, so whichever ran longer closed
+straight into the dark footer.
+
+Fixed on the rhythm it opens on, and `loading.tsx` carries the identical class
+so hydration does not shift the page. The proof reads bounding boxes rather
+than taking a screenshot, because a collision and a near miss look identical at
+390:
+
+    390-UX2.3   64px between the last content box and the footer (was 0 by construction)
+    768-UX2.3   64px
+    1440-UX2.3  64px
+
+### UX2.4 ONE DOMAIN, AND THE CONSTRAINT THAT DECIDES IT
+
+Seven local parts (hello, support, organisers, privacy, legal, press, careers)
+in about forty hand-written literals, all at `eventlinqs.com` while the site is
+served from `eventlinqs.com.au`. They derive from the sending domain now; **88
+addresses** resolve through `contactAddress()` / `contactMailto()`.
+
+**The flip is the founder's and the reason is deliverability, not preference.**
+`EMAIL_FROM`'s manifest entry describes eventlinqs.com as "the apex domain
+VERIFIED AT RESEND". Sending from an unverified domain does not degrade, it
+fails, and `alerts@eventlinqs.com` hard-bouncing on 2026-08-03 is already on the
+record as what that looks like. Verifying eventlinqs.com.au needs DNS records at
+the registrar. It is now a ONE-LINE change to `DEFAULT_SENDER_DOMAIN`, and the
+test asserts the whole platform moves with it.
+
+`scripts/guards/one-contact-domain.mjs` is registered and blocking, drilled red.
+It reads BOTH domains out of their own one-sources rather than carrying copies,
+because the first draft typed them and `canonical-host.mjs` refused it - a guard
+about single sources holding its own copy of the value is the defect it exists
+to stop. The five static Supabase auth `.html` templates are listed with their
+reason, so whoever flips the domain is TOLD that changing the constant will not
+change what Supabase sends.
+
+### TWO ASSERTIONS OF MY OWN THAT WERE WRONG, FOUND BY RUNNING THEM
+
+The first UX2 run reported six failures. All six were the TEST being wrong:
+
+1. `eventlinqs.com.` - my regex swallowed a sentence-ending full stop and read
+   it as a different domain.
+2. `enquiries@oaic.gov.au` - the Office of the Australian Information
+   Commissioner, cited in the privacy policy because an APP-compliant policy has
+   to tell people how to complain to the regulator. Flagging that would have
+   been flagging compliance.
+
+Both corrected in the assertion, not in the product, and the reasons written
+into the script so the next person does not re-learn them.
+
+### THE PROOF
+
+`scripts/verify/ux2-surfaces-proof.mjs`, 390 / 768 / 1440, against a local
+production build on TEST. **31 of 31 exercised checks pass, 3 NOT EXERCISED**
+(the map, for the referrer reason above). The single most important row is not a
+per-page check but the cross-page one:
+
+    abn-single-value   every surface published the same ABN: 30 837 447 587
+
+which is what "one source" actually means. Screenshots in `C:\dev\EVIDENCE\UX2\`.
+
+### STATE OF THE GATES
+
+`tsc` 0, eslint over the WHOLE TREE 0, **347 test files / 4057 tests, 0
+failures**, canary raised to 347/4057, **all 91 guards PASS**, `next build` 0.
+
+### UX2.5 AND A FLAKE THAT WAS ALWAYS THERE
+
+**The seventeenth L1 row.** UX2.5 asked for a HUMAN READ carried as a named L1
+row with its own evidence, never covered by the sweep. The argument is in the
+numbers: the route sweep drove **211 routes with zero errors** and found **none**
+of the six defects the owner found by reading one page, because every one of
+those pages answered 200.
+
+The five screens are NAMED in the row (homepage, /events, an event detail page,
+/pricing, /organisers) rather than left to interpretation, because a row whose
+scope is a guess cannot be adjudicated. Its state is OWNER BLOCKED on a new
+third need, `release-on-production`: until the migration lands, a read of the
+live screens reads the OLD code.
+
+`L1_ITEM_COUNT` is a named constant now. The literal 16 was in seven places
+across the generator and its tests, and five tests failed the moment a
+seventeenth row existed. Adding a row without moving the constant fails, and
+moving the constant without adding a row fails too.
+
+**The flake.** `tests/unit/cron/reservation-expire.test.ts` set `expires_at`
+FIVE MILLISECONDS in the future, and the model reads `Date.now()` again when the
+route runs. Inside a 348-file suite those five milliseconds elapse in between,
+the hold expires, and the test fails for a reason unrelated to the predicate it
+names. Green three times on its own; red in the suite. Pre-existing, not caused
+by this work, and fixed rather than re-run until it passed.
+
+Only `Date` is faked, never the timers, so nothing awaiting a real timer can
+hang. With the clock still, `expires_at` can be EXACTLY now, which is what the
+test is named for and what a moving clock can never express.
+
+**Gate state after UX2:** tsc 0, eslint over the whole tree 0, **348 files /
+4065 tests, 0 failures**, canary raised, **all 91 guards PASS**, gate steps
+`build` PASS (122s) and `indexing` PASS (251s) run explicitly because the
+production-parity block means the gate never reaches them.
