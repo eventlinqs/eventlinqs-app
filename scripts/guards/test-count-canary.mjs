@@ -1280,7 +1280,40 @@ if (!reportedSuccess) {
   problems.push('vitest reported success=false for this run.')
 }
 if (failed > 0) {
-  problems.push(`${failed} test(s) FAILED. This runs the suite, so it reports failures too.`)
+  /*
+   * NAME THEM. Close-out F1.1 in miniature, found on 10 September 2026: this
+   * guard reported "1 test(s) FAILED" and nothing else, and the run it reported
+   * was a FLAKE that did not reproduce standalone. A count with no name sends the
+   * next person to re-run the whole suite and hope, which is exactly the two
+   * wasted log reads F1.1 was written about. The report is already in hand and it
+   * carries every assertion, so there is no reason to withhold the name.
+   */
+  const failing = (Array.isArray(report.testResults) ? report.testResults : []).flatMap(r =>
+    (r.assertionResults ?? [])
+      .filter(a => a.status === 'failed')
+      .map(a => {
+        const file = (r.name ?? '').replace(/\\/g, '/').replace(ROOT.replace(/\\/g, '/') + '/', '')
+        /*
+         * MORE THAN THE FIRST LINE. vitest 4's JSON reporter opens a failure
+         * message with the literal "Error: STACK_TRACE_ERROR" and puts the
+         * assertion underneath it, so a one-line excerpt is guaranteed to say
+         * nothing at all. Twelve lines is enough for the expected/received pair
+         * that names the actual disagreement.
+         */
+        const why = ((a.failureMessages ?? [])[0] ?? 'no message')
+          .split('\n')
+          .slice(0, 12)
+          .map(l => `        ${l}`)
+          .join('\n')
+        return `      ${file} > ${a.fullName ?? a.title}\n${why}`
+      }),
+  )
+  problems.push(
+    `${failed} test(s) FAILED. This runs the suite, so it reports failures too.\n` +
+      (failing.length > 0
+        ? failing.join('\n')
+        : '      (the report named none, which means the failure is at suite level)'),
+  )
 }
 if (files < MIN_FILES) {
   problems.push(

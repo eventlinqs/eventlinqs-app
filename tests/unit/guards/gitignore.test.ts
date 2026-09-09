@@ -156,12 +156,43 @@ describe('the walk, against git itself, on this repository', () => {
      * matching four levels deep, so six tracked skill files were being dropped
      * by the walk and were NOT force-added at all.
      */
+    /*
+     * ONE GIT PROCESS, NOT ONE PER PATH, AND A SPAWN FAILURE IS NOT A VERDICT.
+     *
+     * Found on 10 September 2026. The suite went red inside the pre-push gate,
+     * naming this test, and green three times standalone on the same tree. It was
+     * never a flake: this test spawned `git check-ignore` once per dropped path
+     * and took 16.2 seconds ON ITS OWN. Inside a 352-file run on a machine
+     * throttled to 57% (it was on battery), it simply ran out of test timeout,
+     * and vitest reports a timeout as an error at the test's declaration line
+     * with no assertion in it, which is why two passes went looking for a missing
+     * force-add that was never missing.
+     *
+     * `--stdin` takes every path in one call and PRINTS the ones that are
+     * ignored, so the per-path resolution is unchanged and the process count
+     * drops from N to 1. `-z` on both sides, because a repository path may
+     * contain anything a filename may contain.
+     *
+     * The spawn is also separated from the verdict: `spawnSync` reports a process
+     * that could not be STARTED as `status: null`, and reading that as "git says
+     * not ignored" would be the opposite of what happened.
+     */
     const droppedByWalk = tracked.filter((f) => !walked.has(f))
-    const notForceAdded: string[] = []
-    for (const f of droppedByWalk) {
-      const r = spawnSync('git', ['check-ignore', '-q', '--no-index', f], { cwd: root, encoding: 'utf8', env: gitEnv() })
-      if (r.status !== 0) notForceAdded.push(f)
-    }
+    const ask = spawnSync('git', ['check-ignore', '--stdin', '-z', '--no-index'], {
+      cwd: root,
+      encoding: 'utf8',
+      env: gitEnv(),
+      input: droppedByWalk.join('\0'),
+      maxBuffer: 64 * 1024 * 1024,
+    })
+    // Exit 0 means at least one path is ignored, 1 means none are; anything else
+    // (or a null status) is git failing to answer, which is not a verdict.
+    expect(
+      ask.error ? `${ask.error.message}` : ask.status === 0 || ask.status === 1 ? null : `git exited ${ask.status}: ${ask.stderr}`,
+      'git check-ignore could not be run, so nothing here is a verdict about the tree',
+    ).toBeNull()
+    const ignored = new Set((ask.stdout ?? '').split('\0').filter(Boolean))
+    const notForceAdded = droppedByWalk.filter((f) => !ignored.has(f))
     expect(notForceAdded).toEqual([])
     // and there really are some, so this test is not passing on an empty set
     expect(droppedByWalk.length).toBeGreaterThan(0)
