@@ -7373,3 +7373,70 @@ because the two numbers disagreeing IS the signal.
 **THE PUSH LANDED** on a rested machine: 14 of 14 green in 2,204 seconds,
 `f7aa5d91..e985dd8c`, with the two pages that failed measuring 0.86 to 0.89. The
 floor was never touched.
+
+### F2 PROVED ON THE REAL VERCEL BUILD HOST, deployment of `e985dd8c`
+
+`dpl_BpQM8P9EtvFx2BMa5aRwSF9VtbL8`, 10 September 2026 08:22 to 08:25 UTC. The
+whole of F2 is about a build that passes CI and fails Vercel, so a local run is
+not the evidence. This is.
+
+**IT BUILT AND DEPLOYED.** `[guards] all 87 guards PASS`, `Build Completed in
+/vercel/output [2m]`, `Deployment completed`. The build that died on
+`git ls-files -z` now finishes.
+
+**The host is still the shape the sentence describes**, four lines from the top
+of its own removal list, so nothing about this is inferred:
+
+    Found .vercelignore
+    Removed 4459 ignored files defined in .vercelignore
+      /.git/config
+      /.git/description
+      /.git/FETCH_HEAD
+      /.git/HEAD
+
+**F2.2, on the host itself:**
+
+    [excluded-reads-survive-the-upload] scope=vercel (decided by VERCEL); a configured machine, so a failure here BLOCKS
+    [excluded-reads-survive-the-upload] SKIP - this IS the build host. Simulating the upload from inside the upload is circular: the tree it would materialise is the tree it is already running in.
+
+**F2.1 and F2.4, on the host itself:**
+
+    [build-host-needs-declared] did 94 prebuild entry points scanned, 18 entry points needing the host, 7 git readers sharing one sentence, 10 needing docs, 7 needing git, 4 needing token
+    [build-host-needs-declared] found 0 undeclared or stale declarations
+    [build-host-needs-declared] PASS - 18 of 94 ... every one declared, and nothing declared that is not used.
+    [build-host-needs-declared] 7 build-time script(s) read git, and every one of them reaches scripts/guards/lib/git-availability.mjs, so all 7 say the same sentence when there is no repository (close-out F2.4).
+
+That list includes `scripts/verify/payment-critical-doctrine.mjs` and
+`scripts/pricing-derive.mjs`, two of the six entry points that were invisible to
+this machinery until this session.
+
+**F2.4's one sentence, printed by four scripts on the host it was written for:**
+
+    [preview-state] NO GIT REPOSITORY: there is a .git directory here and it holds no HEAD, which is the Vercel build host shape ... the branch under test is therefore NOT JUDGED here, rather than judged and found absent.
+    [preview-state] ... the commit under test is therefore NOT JUDGED here ...
+    [migration-collision] ... every local and remote branch is therefore NOT JUDGED here ...
+    [no-ai-authorship] ... the recent commit messages is therefore NOT JUDGED here ...
+
+Against what the same guards said on the build that failed:
+
+    [branch-protection-required] no origin remote could be read (...)
+    [preview-state] git could not name the branch here (...)
+    [migration-collision] SKIP - git unavailable: Error: ...
+    [no-ai-authorship] SKIP - no git history in this environment (a Vercel build unpacks a source tarball with no .git).
+
+The last of those was not merely differently worded, it was WRONG, and its
+wrongness is the mechanism that cost the deployment.
+
+### ONE MORE DEFECT, found by reading that log rather than by assuming it
+
+Two lines from `branch-protection-required` arrived side by side on the host,
+contradicting each other about one fact:
+
+    [branch-protection-required] SKIP - no GitHub repository could be determined (no GITHUB_REPOSITORY, no origin remote).
+    [branch-protection-required] NO GIT REPOSITORY: there is a .git directory here and it holds no HEAD ...
+
+A missing REMOTE and a missing REPOSITORY send a reader to different places, and
+printing both is worse than printing either. Fixed in `b22a5023`, both branches
+driven: on the Vercel shape it now reads "there is no git repository here to read
+a remote from", and in a real checkout with no remote it still reads "this
+checkout has no origin remote".
