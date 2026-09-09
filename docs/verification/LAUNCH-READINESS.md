@@ -165,7 +165,7 @@ Re-run on the current release across every public URL that answered 200 to an an
 
 ## What this report does not claim
 
-A row that is OWNER BLOCKED is not a row that was never built or never tested. Twelve of them
-carry a line saying where the journey HAS been driven, and in every case that is TEST or a local
+A row that is OWNER BLOCKED is not a row that was never built or never tested. 12 of them carry
+a line saying where the journey HAS been driven, and in every case that is TEST or a local
 production build rather than production. L1 asks for production, so production is what the state
-reflects. The gap is an approval, not an absence of work, and it is exactly three approvals wide.
+reflects. The gap is an approval, not an absence of work, and it is exactly 2 approvals wide.

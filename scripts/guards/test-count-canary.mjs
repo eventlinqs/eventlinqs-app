@@ -1082,9 +1082,20 @@ const ROOT = join(HERE, '..', '..')
  * a FILE, which is what each of this repository's nine linked worktrees has) and
  * one asserts the materialised upload now carries the same empty skeleton, so
  * the simulation is of the build host rather than of somewhere else.
+ *
+ * 2026-09-09: raised 338/3921 -> 338/3924, MEASURED. No new file: three tests
+ * joined tests/unit/verify/launch-readiness.test.ts after the shipped report was
+ * found saying the gap was "exactly three approvals wide" while OWNER_NEEDS held
+ * TWO. The third had been removed when the anti-rot rule found the list holding a
+ * need no row cited, and the prose was never touched. Both numbers in that
+ * paragraph are derived now, and the tests fail if either goes back to being
+ * typed: one counts the approvals from the rows, one moves the sentence when a
+ * third need appears, one counts the rows that record where they HAVE been
+ * driven. A hand-written count in that document is a second place a claim can
+ * live, which is the exact thing the report exists to prevent.
  */
 const MIN_FILES = 338
-const MIN_TESTS = 3921
+const MIN_TESTS = 3924
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -201,6 +201,47 @@ describe('renderMarkdown', () => {
   it('says an OWNER BLOCKED row blocks as hard as a FAIL, so the state cannot read as a softening', () => {
     expect(render()).toContain('blocks the launch exactly as hard as a FAIL')
   })
+
+  /*
+   * THE CLOSING PARAGRAPH'S NUMBERS ARE DERIVED, and these tests exist because
+   * one of them was not and had gone stale. On 9 September 2026 the shipped
+   * report said the gap was "exactly three approvals wide" while OWNER_NEEDS held
+   * TWO entries: the third had been removed when the anti-rot rule found the list
+   * holding a need no row cited, and the prose was never touched. A hand-written
+   * count in this document is a second place a claim can live, which is the exact
+   * thing the whole report is built to prevent.
+   */
+  it('counts the approvals from the rows rather than from a sentence somebody typed', () => {
+    const distinct = new Set(
+      ITEMS.filter((i) => i.state === 'OWNER BLOCKED')
+        .map((i) => i.needs)
+        .filter(Boolean),
+    ).size
+    expect(render()).toContain(`exactly ${distinct} approval`)
+  })
+
+  it('a third need appearing in the rows moves the sentence, so it cannot go stale again', () => {
+    const items = ITEMS.map((i, index) =>
+      index === 0 && i.state === 'OWNER BLOCKED' ? { ...i, needs: 'a-third-need' } : i,
+    )
+    const { counts, launchReady } = judgeLaunchReadiness({
+      items,
+      evidenceExists: always,
+      ownerNeeds: { ...OWNER_NEEDS, 'a-third-need': 'Approval for a third thing, invented by this test.' },
+    })
+    const md = renderMarkdown({
+      items,
+      counts,
+      launchReady,
+      ownerNeeds: { ...OWNER_NEEDS, 'a-third-need': 'Approval for a third thing, invented by this test.' },
+    })
+    expect(md).toContain('exactly 3 approvals wide')
+  })
+
+  it('counts the rows that record where they HAVE been driven, rather than saying twelve', () => {
+    const driven = ITEMS.filter((i) => i.state === 'OWNER BLOCKED' && i.drivenElsewhere).length
+    expect(render()).toContain(`${driven} of them carr`)
+  })
 })
 
 describe('the reviewed owner-need list cannot rot', () => {

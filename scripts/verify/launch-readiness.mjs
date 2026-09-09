@@ -383,9 +383,9 @@ export function countSentences(text) {
 /**
  * Byte-stable rendering of the judgement. The guard re-renders and compares.
  *
- * @param {{ items?: ReadinessRow[], counts: Record<string, number>, launchReady: boolean }} input
+ * @param {{ items?: ReadinessRow[], counts: Record<string, number>, launchReady: boolean, ownerNeeds?: Record<string,string> }} input
  */
-export function renderMarkdown({ items = ITEMS, counts, launchReady }) {
+export function renderMarkdown({ items = ITEMS, counts, launchReady, ownerNeeds = OWNER_NEEDS }) {
   const L = []
   L.push('# LAUNCH READINESS')
   L.push('')
@@ -411,10 +411,10 @@ export function renderMarkdown({ items = ITEMS, counts, launchReady }) {
     L.push('')
     L.push('| Need | Rows it unblocks |')
     L.push('|---|---|')
-    for (const key of Object.keys(OWNER_NEEDS)) {
+    for (const key of Object.keys(ownerNeeds)) {
       const rows = blocked.filter((i) => i.needs === key).map((i) => i.n)
       if (rows.length === 0) continue
-      L.push(`| ${OWNER_NEEDS[key]} | ${rows.join(', ')} |`)
+      L.push(`| ${ownerNeeds[key]} | ${rows.join(', ')} |`)
     }
     L.push('')
   }
@@ -442,7 +442,7 @@ export function renderMarkdown({ items = ITEMS, counts, launchReady }) {
       L.push('')
     }
     if (i.needs) {
-      L.push(`Needs: ${OWNER_NEEDS[i.needs]}`)
+      L.push(`Needs: ${ownerNeeds[i.needs]}`)
       L.push('')
     }
     if (i.drivenElsewhere) {
@@ -450,12 +450,32 @@ export function renderMarkdown({ items = ITEMS, counts, launchReady }) {
       L.push('')
     }
   }
+  /*
+   * EVERY NUMBER IN THIS PARAGRAPH IS DERIVED, and it is derived because two of
+   * them were not and one of those went stale.
+   *
+   * On 9 September 2026 this paragraph said the gap was "exactly three approvals
+   * wide" while OWNER_NEEDS held TWO entries. The third had been removed when the
+   * anti-rot rule found the list holding a need no row cited, and the prose was
+   * not touched. That is precisely the shape this whole report exists to make
+   * impossible: a sentence claiming something the adjudication does not say,
+   * inside the one document the owner reads to decide whether the platform
+   * launches. A hand-written count is a second place a claim can live.
+   */
+  const blockedRows = items.filter((i) => i.state === 'OWNER BLOCKED')
+  const withDrivenElsewhere = blockedRows.filter((i) => i.drivenElsewhere).length
+  const approvals = new Set(blockedRows.map((i) => i.needs).filter(Boolean)).size
+  const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`
   L.push('## What this report does not claim')
   L.push('')
-  L.push('A row that is OWNER BLOCKED is not a row that was never built or never tested. Twelve of them')
-  L.push('carry a line saying where the journey HAS been driven, and in every case that is TEST or a local')
+  L.push(
+    `A row that is OWNER BLOCKED is not a row that was never built or never tested. ${plural(withDrivenElsewhere, 'of them carries', 'of them carry')}`,
+  )
+  L.push('a line saying where the journey HAS been driven, and in every case that is TEST or a local')
   L.push('production build rather than production. L1 asks for production, so production is what the state')
-  L.push('reflects. The gap is an approval, not an absence of work, and it is exactly three approvals wide.')
+  L.push(
+    `reflects. The gap is an approval, not an absence of work, and it is exactly ${plural(approvals, 'approval', 'approvals')} wide.`,
+  )
   L.push('')
   return L.join('\n')
 }
