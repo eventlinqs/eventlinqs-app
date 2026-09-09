@@ -1111,9 +1111,29 @@ const ROOT = join(HERE, '..', '..')
  * compared path for path with `git ls-files`, and every git-declaring entry
  * point is required to reach the shared availability module. Both would go quiet
  * rather than red if somebody deleted them, which is what this canary is for.
+ *
+ * 2026-09-10: raised 348/4065 -> 352/4121, MEASURED. Close-out UX3, four new
+ * files:
+ *
+ *   tests/unit/notifications/platform-policy.test.ts   what the owner is told
+ *                                              and when, including the daily
+ *                                              ceiling AT ITS BOUNDARY: the Nth
+ *                                              paid order is individual and the
+ *                                              (N+1)th is held for the digest
+ *   tests/unit/notifications/platform-send.test.ts     delivery: recorded,
+ *                                              retried, escalated to the second
+ *                                              channel, and loud when both fail
+ *   tests/unit/cron/platform-notify.test.ts    the worker refuses an
+ *                                              unauthenticated caller before it
+ *                                              reads anything, and reports a
+ *                                              failure as a failure
+ *   tests/unit/guards/platform-notifications-installed.test.ts  the guard that
+ *                                              refuses a build whose database
+ *                                              could let a state change go
+ *                                              unrecorded
  */
-const MIN_FILES = 348
-const MIN_TESTS = 4065
+const MIN_FILES = 352
+const MIN_TESTS = 4121
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

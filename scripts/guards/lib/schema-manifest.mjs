@@ -68,4 +68,10 @@ export const SCHEMA_THE_CODE_NAMES = [
     migration: '20260906000002_event_lifecycle_archive_delete.sql',
     readBy: 'src/proxy.ts (a deleted event answers 410 Gone from its tombstone), and the delete action calls event_money_record_counts from the same migration',
   },
+  {
+    table: 'platform_notifications',
+    column: 'delivery_state',
+    migration: '20260909000002_platform_notifications.sql',
+    readBy: 'src/lib/notifications/platform-send.ts (the worker and the admin feed), /api/cron/platform-notify, the admin Notifications screen; the five triggers that write the rows come from the same migration',
+  },
 ]

@@ -2580,6 +2580,100 @@ export type Database = {
           },
         ]
       }
+      platform_notifications: {
+        Row: {
+          actor_label: string | null
+          actor_user_id: string | null
+          admin_path: string
+          attempts: number
+          channel: string | null
+          created_at: string
+          dedupe_key: string
+          delivery_state: Database["public"]["Enums"]["platform_notification_state"]
+          detail: Json
+          event_id: string | null
+          event_title: string | null
+          id: string
+          kind: Database["public"]["Enums"]["platform_notification_kind"]
+          last_attempt_at: string | null
+          last_error: string | null
+          occurred_at: string
+          order_id: string | null
+          organisation_id: string | null
+          organisation_name: string | null
+          sent_at: string | null
+          summary: string
+        }
+        Insert: {
+          actor_label?: string | null
+          actor_user_id?: string | null
+          admin_path: string
+          attempts?: number
+          channel?: string | null
+          created_at?: string
+          dedupe_key: string
+          delivery_state?: Database["public"]["Enums"]["platform_notification_state"]
+          detail?: Json
+          event_id?: string | null
+          event_title?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["platform_notification_kind"]
+          last_attempt_at?: string | null
+          last_error?: string | null
+          occurred_at?: string
+          order_id?: string | null
+          organisation_id?: string | null
+          organisation_name?: string | null
+          sent_at?: string | null
+          summary: string
+        }
+        Update: {
+          actor_label?: string | null
+          actor_user_id?: string | null
+          admin_path?: string
+          attempts?: number
+          channel?: string | null
+          created_at?: string
+          dedupe_key?: string
+          delivery_state?: Database["public"]["Enums"]["platform_notification_state"]
+          detail?: Json
+          event_id?: string | null
+          event_title?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["platform_notification_kind"]
+          last_attempt_at?: string | null
+          last_error?: string | null
+          occurred_at?: string
+          order_id?: string | null
+          organisation_id?: string | null
+          organisation_name?: string | null
+          sent_at?: string | null
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_notifications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_notifications_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pricing_rules: {
         Row: {
           country_code: string
@@ -5021,6 +5115,23 @@ export type Database = {
         }
         Returns: string
       }
+      record_platform_notification: {
+        Args: {
+          p_actor_label?: string
+          p_actor_user_id?: string
+          p_admin_path: string
+          p_dedupe_key: string
+          p_detail?: Json
+          p_event_id?: string
+          p_event_title?: string
+          p_kind: Database["public"]["Enums"]["platform_notification_kind"]
+          p_order_id?: string
+          p_organisation_id?: string
+          p_organisation_name?: string
+          p_summary: string
+        }
+        Returns: undefined
+      }
       record_tier_price_history: {
         Args: { p_hint: string; p_tier_id: string }
         Returns: undefined
@@ -5163,6 +5274,18 @@ export type Database = {
         | "refund_pending"
         | "refunded"
         | "refund_failed"
+      platform_notification_kind:
+        | "organiser_created"
+        | "connect_onboarding_started"
+        | "connect_charges_enabled"
+        | "event_published"
+        | "order_paid"
+      platform_notification_state:
+        | "pending"
+        | "sent"
+        | "held_for_digest"
+        | "escalated"
+        | "failed"
       queue_status: "waiting" | "admitted" | "expired" | "abandoned"
       refund_initiator: "buyer" | "organiser" | "admin" | "system"
       refund_reason:
@@ -5386,6 +5509,20 @@ export const Constants = {
         "refund_pending",
         "refunded",
         "refund_failed",
+      ],
+      platform_notification_kind: [
+        "organiser_created",
+        "connect_onboarding_started",
+        "connect_charges_enabled",
+        "event_published",
+        "order_paid",
+      ],
+      platform_notification_state: [
+        "pending",
+        "sent",
+        "held_for_digest",
+        "escalated",
+        "failed",
       ],
       queue_status: ["waiting", "admitted", "expired", "abandoned"],
       refund_initiator: ["buyer", "organiser", "admin", "system"],

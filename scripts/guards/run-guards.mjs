@@ -197,6 +197,15 @@
  *                              OrganiserProse or stripMarkdown and never raw, because
  *                              the first real outside organiser's bio shipped to
  *                              production reading **MKL Studios** (close-out UX1.1)
+ *   trigger-columns-exist    no installed trigger reads a record field that is not a
+ *                              column of the table it sits on. plpgsql resolves those at
+ *                              runtime, so a typo applies cleanly and then breaks the
+ *                              write it was watching (close-out UX3)
+ *   platform-notifications-installed  the build's own database carries the six triggers
+ *                              that record a new organiser, a Stripe onboarding, a
+ *                              published event and a paid order, so none of the five can
+ *                              complete in silence the way a real organiser's launch did
+ *                              on 8 September 2026 (close-out UX3)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -984,6 +993,24 @@ const GUARDS = [
   // bypass on every Vercel STORE; this reads the process environment the build
   // actually has, so an inline one is caught as well as a stored one.
   'scripts/guards/no-build-guard-bypass.mjs',
+
+  // Close-out UX3. On 8 September 2026 a real outside organiser signed up, built
+  // an event, set a price and published it on production, and the owner received
+  // nothing. Five state changes now write a notification record inside their own
+  // transaction, enforced by six database triggers, and this asks the project the
+  // build will run against whether those triggers are actually there. Nothing
+  // else in the gate set reads a database, so nothing else could ever have seen
+  // that silence. Drilled red by disabling a trigger on TEST.
+  'scripts/guards/platform-notifications-installed.mjs',
+
+  // Close-out UX3, the second guard, added after the first one shipped a defect
+  // this would have caught for nothing. 20260909000002 gave events a trigger
+  // reading new.city, which does not exist; plpgsql resolves a record field at
+  // RUNTIME, so it applied cleanly, every gate here went green, and NO EVENT
+  // COULD BE CREATED until a browser drive found it. This checks every installed
+  // trigger's record fields against the committed types. Drilled red by putting
+  // new.city back.
+  'scripts/guards/trigger-columns-exist.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

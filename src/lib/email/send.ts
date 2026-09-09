@@ -188,7 +188,15 @@ export function printConsoleEmail(input: { to: string; subject: string; html?: s
     // and the livestream watch link contain neither "ticket" nor "order", so the
     // console inbox printed the order link and silently dropped the two links
     // a journey most needs to read.
-    .filter((u) => /confirm|token|ticket|order|verify|reset|watch|\/t\//i.test(u))
+    //
+    // `/admin/` was added on 10 September 2026 for the same reason, a third
+    // time. The owner notifications (close-out UX3) carry ONE link and it is
+    // /admin/organisers/<id> or /admin/events/<id>; neither contains any word
+    // above, so the driven proof could read the subject and not the link that is
+    // the whole point of the message. /admin/orders/<id> happened to match on
+    // "order", which is exactly the kind of accident that makes a filter look
+    // like it works.
+    .filter((u) => /confirm|token|ticket|order|verify|reset|watch|\/t\/|\/admin\//i.test(u))
   console.log('[email:console] ---------------------------------------------')
   console.log(`[email:console] to      ${input.to}`)
   console.log(`[email:console] subject ${input.subject}`)
