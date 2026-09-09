@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { describeOutcome, renderFailures } from '../../../scripts/guards/lib/guard-run-report.mjs'
+import { describeOutcome, renderFailures, thrownFrom } from '../../../scripts/guards/lib/guard-run-report.mjs'
 
 /**
  * THE GATE MUST NAME WHAT IT CAUGHT. Close-out F1.1.
@@ -41,9 +41,51 @@ describe('describeOutcome, against real child processes', () => {
     expect(describeOutcome(result)).toEqual({ ok: false, reason: 'exit 3' })
   })
 
-  test('a guard that throws is a failure, not a crash the runner swallows', () => {
+  /*
+   * CLOSE-OUT F2.3. This test used to assert `exit 1`, which is what a guard
+   * that THREW and a guard that printed a considered FAIL both looked like. They
+   * are opposite faults: one says the law was broken, the other says the guard
+   * is broken, and on the build host the second nearly always means it was
+   * written for a machine it was never run on. The runner now captures stderr
+   * so the two can be told apart at all.
+   */
+  test('a guard that throws says so, and carries what it threw', () => {
     const result = runScript('throw new Error("the guard itself is broken")\n')
+    const outcome = describeOutcome(result)
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error('unreachable')
+    expect(outcome.reason).toBe('threw, exit 1')
+    expect(outcome.thrown?.message).toBe('Error: the guard itself is broken')
+    expect(outcome.thrown?.frame).toMatch(/^at /)
+  })
+
+  test('a guard that DECIDES to fail is not reported as a throw, so the two stay two', () => {
+    const result = runScript('console.error("[x] FAIL: a real violation")\nprocess.exit(1)\n')
     expect(describeOutcome(result)).toEqual({ ok: false, reason: 'exit 1' })
+  })
+
+  /*
+   * THE SHAPE THE BUILD HOST ACTUALLY PRODUCES. Close-out F2's log begins
+   * "Error: Command failed: git ls-files -z", which is what execFileSync raises
+   * when git is absent, and it is the exception that killed the preview build of
+   * ffded236. A synthesised Error would prove the assertion matches the
+   * fabrication; this runs the real call in a directory that is not a checkout.
+   */
+  test('the git-absent exception that killed a real deployment is attributed', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'not-a-checkout-'))
+    const result = runScript(
+      "import { execFileSync } from 'node:child_process'\n" +
+        `execFileSync('git', ['ls-files', '-z'], { cwd: ${JSON.stringify(outside)} })\n`,
+    )
+    const outcome = describeOutcome(result)
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error('unreachable')
+    expect(outcome.reason).toBe('threw, exit 1')
+    expect(outcome.thrown?.message).toContain('git ls-files')
+  })
+
+  test('stderr the runner never captured leaves the verdict at the exit code, never a false throw', () => {
+    expect(describeOutcome({ status: 1, signal: null })).toEqual({ ok: false, reason: 'exit 1' })
   })
 
   test('a guard that is not on disk is reported as unstartable, never as "it failed"', () => {
@@ -111,5 +153,62 @@ describe('renderFailures', () => {
     expect(mixed.some((l) => l.includes('a.mjs  (exit 2)'))).toBe(true)
     expect(mixed.some((l) => l.includes('b.mjs  (killed by signal SIGKILL)'))).toBe(true)
     expect(mixed.some((l) => l.includes('c.mjs  (could not be started: spawn ENOENT)'))).toBe(true)
+  })
+
+  /*
+   * ATTRIBUTED TO THE GUARD THAT RAISED IT. Close-out F2.3 asks for the
+   * exception "printed with its message and the first line of its stack", and
+   * the word ATTRIBUTED is the requirement: the message has to arrive under the
+   * name of the file it came out of, not somewhere else in a log that a CI web
+   * view truncates and a Vercel build log paginates.
+   */
+  test('a throw prints its message and first frame directly under the guard that raised it', () => {
+    const lines = renderFailures({
+      failures: [
+        { guard: 'quiet.mjs', reason: 'exit 1' },
+        {
+          guard: 'broken.mjs',
+          reason: 'threw, exit 1',
+          thrown: { message: 'Error: Command failed: git ls-files -z', frame: 'at genericNodeError (node:internal/errors:983:15)' },
+        },
+      ],
+      total: 2,
+      runtime: 'Node 24',
+    })
+    const at = lines.findIndex((l) => l.includes('broken.mjs  (threw, exit 1)'))
+    expect(at).toBeGreaterThan(-1)
+    expect(lines[at + 1]).toContain('it threw: Error: Command failed: git ls-files -z')
+    expect(lines[at + 2]).toContain('first frame: at genericNodeError')
+    // and the guard that merely decided gets no throw lines invented for it
+    const quietAt = lines.findIndex((l) => l.includes('quiet.mjs  (exit 1)'))
+    expect(lines[quietAt + 1]).not.toContain('it threw')
+  })
+})
+
+describe('thrownFrom', () => {
+  test('no stack frames means the guard decided rather than broke', () => {
+    expect(thrownFrom('[x] FAIL: three violations\n[x] fix them\n')).toBeNull()
+    expect(thrownFrom('')).toBeNull()
+  })
+
+  test("the message is the error line, not the source line Node echoes above it", () => {
+    const stderr = [
+      'file:///repo/scripts/guards/x.mjs:12',
+      "  throw new Error('no repository here')",
+      '        ^',
+      '',
+      'Error: no repository here',
+      '    at file:///repo/scripts/guards/x.mjs:12:9',
+      '    at ModuleJob.run (node:internal/modules/esm/module_job:271:25)',
+    ].join('\n')
+    expect(thrownFrom(stderr)).toEqual({
+      message: 'Error: no repository here',
+      frame: 'at file:///repo/scripts/guards/x.mjs:12:9',
+    })
+  })
+
+  test('the FIRST frame is taken, because the last one is always node internals', () => {
+    const stderr = 'Error: boom\n    at theGuard (/repo/a.mjs:1:1)\n    at node:internal/main/run_main_module:36:49'
+    expect(thrownFrom(stderr)?.frame).toBe('at theGuard (/repo/a.mjs:1:1)')
   })
 })

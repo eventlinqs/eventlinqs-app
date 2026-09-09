@@ -1826,6 +1826,31 @@ const DRILLS = [
     expect: '[guards]   scripts/guards/no-control-characters.mjs  (exit 1)',
   },
   /*
+   * THE SAME RUNNER, THE OTHER FAULT. Close-out F2.3: "Prove it by making one
+   * guard throw deliberately and reading its name back."
+   *
+   * The drill above plants `process.exit(1)`, which is a guard DECIDING. This
+   * one plants a throw, which is a guard BREAKING, and before F2.3 the runner
+   * reported both as `exit 1` because it inherited the child's streams and so
+   * could not read what the child had printed. The two demand opposite
+   * responses, so the assertion here is the word that tells them apart plus the
+   * exception's own message, attributed to the file that raised it.
+   *
+   * It plants the throw in the same guard as the drill above so the two are
+   * comparable line for line, and it costs a second full guard pass for the
+   * same reason that one does: the rendering is unit-tested, and this is the
+   * half that cannot be faked.
+   */
+  {
+    name: 'a guard throws and the runner will not say which one, or what it threw',
+    guard: `${GUARDS}/run-guards.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace:
+      "const ROOT = process.cwd()\nthrow new Error('planted by the F2.3 drill, restored in the finally')",
+    expect: "it threw: Error: planted by the F2.3 drill, restored in the finally",
+  },
+  /*
    * CLOSE-OUT F1.2, F1.3 AND F1.4. Four drills for one property: a machine that
    * builds for other people judges what Vercel judges, and cannot excuse itself.
    */

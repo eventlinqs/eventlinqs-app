@@ -987,6 +987,23 @@ const CI_EQUIVALENT = CONTRACT !== null && RUNNING === CONTRACT
  */
 const failures = []
 
+/*
+ * STDERR IS CAPTURED RATHER THAN INHERITED, and that is the whole of close-out
+ * F2.3's remaining half. An inherited stream reaches the log and reaches
+ * NOBODY ELSE: this process cannot read what its child printed, so a guard that
+ * threw an uncaught exception and a guard that printed a considered FAIL and
+ * exited 1 arrived here as the same fact, `status === 1`, and were reported
+ * identically. Those are opposite faults. One says the law was broken; the
+ * other says the guard is broken, which on the build host nearly always means
+ * it was written for a machine it was never run on.
+ *
+ * The cost of capturing is that a guard's output appears when it FINISHES
+ * rather than as it runs. Guards run sequentially and each takes about a
+ * second, so the log still fills incrementally; the ordering of stdout against
+ * stderr WITHIN one guard is the thing genuinely lost, and it is worth it. Both
+ * streams are echoed verbatim below, so nothing disappears from the build log
+ * that used to be in it.
+ */
 for (const guard of GUARDS) {
   // env: gitEnv() SEVERS THE INCIDENT CLASS AT THE ROOT rather than at the leaves.
   // This one line fans an environment out to every registered guard, three of
@@ -995,11 +1012,15 @@ for (const guard of GUARDS) {
   // that survives. The per-guard clearing stays as well: this is the belt, that
   // is the braces, and neither is load-bearing alone.
   const result = spawnSync(process.execPath, [join(ROOT, guard)], {
-    stdio: 'inherit',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
     env: gitEnv(),
+    maxBuffer: 64 * 1024 * 1024,
   })
+  if (result.stdout) process.stdout.write(result.stdout)
+  if (result.stderr) process.stderr.write(result.stderr)
   const outcome = describeOutcome(result)
-  if (!outcome.ok) failures.push({ guard, reason: outcome.reason })
+  if (!outcome.ok) failures.push({ guard, reason: outcome.reason, thrown: outcome.thrown })
 }
 
 const runtime = CI_EQUIVALENT
