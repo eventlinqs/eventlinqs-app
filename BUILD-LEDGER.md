@@ -2200,3 +2200,81 @@ which no agent may do unasked:
 
 So the sentinel condition is not met, the close-out forbids writing it at this
 point regardless, and it has not been written.
+
+
+### THE SELF-AUDIT FOUND TWO MORE DEFECTS, AND ONE OF THEM WAS MINE (session 56)
+
+Both were caught by the brief-roast gate after the item already looked finished
+and the pull request was already green. Recorded because the pattern is the point:
+the report was about to be written before either was known.
+
+#### 1. THE UPLOAD SIMULATION WAS HOLLOW FOR SEVEN OF ITS NINETEEN SUBJECTS
+
+`excluded-reads-survive-the-upload.mjs` launched each subject from its REAL path
+with `cwd` pointed at the materialised upload. That works for a script rooted at
+`process.cwd()` and does NOTHING AT ALL for one rooted at
+
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+
+which resolves to the real repository no matter what `cwd` says. Seven of the
+nineteen are rooted that way:
+
+    no-plaintext-credential, one-fee-copy, one-pull-request-at-a-time,
+    positioning-lock, pre-push-gate-wired, sourced-specifications, pricing-derive
+
+Every one of them was scanning the whole tree while the guard reported it had run
+them in the stripped upload, and it reported PASS the entire time. This is a
+pre-existing defect that I inherited and then quoted as evidence without checking,
+which is worse than inheriting it.
+
+Fixed: subjects run from INSIDE the upload, which is what Vercel does, and a
+subject the upload does not carry now FAILS rather than being run from elsewhere.
+Re-run, 19 of 19 still exit 0, so nothing was hiding behind it. The proof the fix
+is real is a number that changed: `sourced-specifications` scans 1,542 files in
+the upload against 1,756 locally. Before, it scanned 1,756 in both.
+
+#### 2. THE DEFECT THAT NEARLY FOLLOWED, and it would have been a security one
+
+Reading the Vercel build log, two guards said:
+
+    [no-plaintext-credential] 3 reviewed entry(ies) no longer match anything - delete the line
+    [sourced-specifications] 1 reviewed entry(ies) match nothing now - delete the line
+
+naming four `docs/` paths. Those are SECURITY EXEMPTIONS with written reasons, and
+the guards were asking for their deletion. I was one edit from doing it.
+
+They are all alive. Locally the same guards report 12 and 1 reviewed locations
+with no staleness at all. The message is an artefact of the stripped tree: the
+baselines name `docs/` paths, `.vercelignore` strips them, the scan cannot see the
+files, and "I cannot see it" was being reported as "it has rotted, delete it".
+
+That is the exact class F1.9 and F2 exist to close, one hour after the machinery
+against it was built, and it would have removed four live security exemptions on
+the strength of a tree that was missing the evidence.
+
+Both guards now ask the shared stripped-or-deleted determination. A STRIPPED entry
+reads NOT JUDGED; a genuinely DELETED one still reads stale, so a developer or a
+CI runner removing the file is still told. The count of build-time scripts sharing
+that determination rose from 1 to 3, derived from the import graph and printed on
+every run.
+
+#### AND A GAP, NAMED RATHER THAN FIXED
+
+**No drill harness is wired into the pre-push gate or into CI.** Neither
+`scripts/verify/guard-failure-drills.mjs` (152 drills) nor
+`scripts/verify/stripped-or-deleted-drill.mjs` (5 cases) runs on a push. Both are
+hand-run.
+
+That is how case 5 of the strip drill sat stale through three green gates today:
+F2.2 changed the sentence the guard prints when it stands aside on Vercel, from
+"this tree is not a git checkout" to "this IS the build host", and the drill went
+on expecting the old one. The guard's behaviour was correct throughout; the drill
+was asserting a string that no longer existed. Found by running it by hand as part
+of the self-audit, fixed, and 5 of 5 now pass.
+
+Wiring both harnesses into the gate would add roughly twenty-five minutes to every
+push. That is a change to the gate's shape and therefore the founder's call, not
+one to make unilaterally. It is named here so it is not lost.
+
+The full ledger, adjudication and adversarial pass:
+`docs/roast/f2-build-host-2026-09-09.md`.
