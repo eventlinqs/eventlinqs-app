@@ -178,11 +178,27 @@ describe('reservation-expire cron: expiry boundary', () => {
   test('a hold exactly at the boundary (expires_at == now) is NOT expired', async () => {
     const w = h.world!
     w.tiers.set('tier_b', { id: 'tier_b', reserved_count: 1 })
-    // expires_at slightly in the future so the strict `< now` predicate excludes it.
+
+    // THE CLOCK IS PINNED, and it has to be for this test to mean anything.
+    //
+    // This read `Date.now() + 5`, five milliseconds in the future, and the model
+    // reads `Date.now()` again when the route runs. Under a full-suite run those
+    // five milliseconds elapse in between, the hold expires, and the test fails
+    // for a reason that has nothing to do with the predicate. Caught on
+    // 9 September 2026: green on its own three times in a row, red inside the
+    // whole suite.
+    //
+    // Only Date is faked, never the timers, so nothing that awaits a real timer
+    // can hang. With the clock still, `expires_at` can be EXACTLY now, which is
+    // what the test is named for and what a moving clock can never express.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const frozen = new Date('2026-09-09T12:00:00.000Z')
+    vi.setSystemTime(frozen)
+
     w.reservations.push({
       id: 'r_edge',
       status: 'active',
-      expires_at: new Date(Date.now() + 5).toISOString(),
+      expires_at: frozen.toISOString(),
       items: [{ ticket_tier_id: 'tier_b', quantity: 1 }],
     })
     const res = await GET(makeReq('Bearer sekret'))
@@ -190,6 +206,7 @@ describe('reservation-expire cron: expiry boundary', () => {
     expect(body.released).toBe(0)
     expect(w.reservations[0].status).toBe('active')
     expect(w.tiers.get('tier_b')!.reserved_count).toBe(1)
+    vi.useRealTimers()
   })
 
   test('reserved_count never goes negative (GREATEST clamp)', async () => {

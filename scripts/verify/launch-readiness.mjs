@@ -7,8 +7,8 @@
  * row PASS, or it is not launch ready."
  *
  * WHY THE REPORT IS GENERATED AND THE ADJUDICATION LIVES IN CODE. A hand-typed
- * readiness table is a claim about sixteen journeys, written once, that nothing
- * afterwards can contradict. Here the sixteen items are declared once, the state
+ * readiness table is a claim about seventeen journeys, written once, that nothing
+ * afterwards can contradict. Here the seventeen items are declared once, the state
  * of each is adjudicated against evidence that must still be on disk, and the
  * markdown is a rendering of that judgement rather than a second assertion able
  * to disagree with it. scripts/guards/launch-readiness-honest.mjs re-renders it
@@ -88,11 +88,27 @@ export const STATES = ['PASS', 'OWNER BLOCKED', 'FAIL']
  * to discovery, and it lives in REVIEW-QUEUE.md where it is not pretending to
  * gate an L1 journey.
  */
+/**
+ * HOW MANY L1 JOURNEYS THERE ARE.
+ *
+ * Sixteen until 9 September 2026, when close-out UX2.5 added the seventeenth:
+ * a HUMAN READ of the five launch screens. It is a real L1 item, not a note,
+ * because the sweep that drove 211 routes with zero errors found NONE of the six
+ * defects the owner found by reading one page - every one of those pages
+ * answered 200.
+ *
+ * The count is a named constant so the bound and the rows cannot drift: adding a
+ * row without moving this fails, and moving this without adding a row fails too.
+ */
+export const L1_ITEM_COUNT = 17
+
 export const OWNER_NEEDS = {
   'test-account':
     'Approval to create one test organiser account and one test event on PRODUCTION, because every organiser journey below writes to the live database and L1 requires them driven there rather than on TEST.',
   'real-card':
     'Approval to put one real card through a low-price live event and refund it, because it is real money on the live Stripe account and no other path proves the buyer journey end to end.',
+  'release-on-production':
+    'Apply the pending migration with `npm run migrate:production`, because production is one migration behind this tree and until it lands the fixed release cannot reach production, so a read of the live screens reads the old code.',
 }
 
 /**
@@ -257,6 +273,28 @@ export const ITEMS = [
     note:
       'Re-run on the current release across every public URL that answered 200 to an anonymous visitor, at 390 and 1440, at every impact level. The URL list was enumerated from the route sweep own results rather than typed.',
   },
+  {
+    // CLOSE-OUT UX2.5. This row exists because a sweep and a person do not see
+    // the same page. On 9 September 2026 the route sweep drove 211 routes with
+    // ZERO errors and found none of the six defects the owner found by reading
+    // one page: a bio rendering `**MKL Studios**`, a venue name printed twice,
+    // two tags differing only by case, a hero cropping the poster title, an
+    // unlabelled map pin, and a rail closing into the footer with no gap.
+    //
+    // Every one of those is a 200. A status code cannot see any of them.
+    //
+    // THE FIVE SCREENS ARE NAMED HERE rather than left to interpretation,
+    // because "the launch screens" is not defined anywhere else and a row whose
+    // scope is a guess cannot be adjudicated.
+    n: 17,
+    group: 'PLATFORM',
+    requirement:
+      'A HUMAN READ of the five launch screens - the homepage, browse at /events, an event detail page, /pricing and /organisers - at 390, 768 and 1440. Read for what a status code cannot see: unrendered markup, duplicated text, invisible controls, and elements colliding. The route sweep is NEVER reported as covering this.',
+    state: 'OWNER BLOCKED',
+    needs: 'release-on-production',
+    drivenElsewhere:
+      'Read at 390, 768 and 1440 on a local production build of this tree, which is how the composed-cover crop defect was found while its own assertion was green (close-out UX1.4). It cannot be read on PRODUCTION as this release yet, because production is one migration behind and still serves the code that carries the six defects.',
+  },
 ]
 
 /**
@@ -359,17 +397,17 @@ export function judgeLaunchReadiness({ items, evidenceExists, ownerNeeds = OWNER
     }
   }
 
-  for (let n = 1; n <= 16; n += 1) {
-    if (!seen.has(n)) faults.push(`L1 item ${n} has no row. All sixteen are adjudicated or the report is not the report.`)
+  for (let n = 1; n <= L1_ITEM_COUNT; n += 1) {
+    if (!seen.has(n)) faults.push(`L1 item ${n} has no row. All ${L1_ITEM_COUNT} are adjudicated or the report is not the report.`)
   }
   for (const n of seen) {
-    if (n < 1 || n > 16) faults.push(`item ${n} is outside L1, which has sixteen items`)
+    if (n < 1 || n > L1_ITEM_COUNT) faults.push(`item ${n} is outside L1, which has ${L1_ITEM_COUNT} items`)
   }
 
   const counts = {}
   for (const s of STATES) counts[s] = (items ?? []).filter((i) => i.state === s).length
 
-  return { faults, counts, launchReady: counts.PASS === 16 && faults.length === 0 }
+  return { faults, counts, launchReady: counts.PASS === L1_ITEM_COUNT && faults.length === 0 }
 }
 
 /** One sentence means one terminating full stop, at the end. */
@@ -397,7 +435,7 @@ export function renderMarkdown({ items = ITEMS, counts, launchReady, ownerNeeds 
   L.push('')
   L.push(`## VERDICT: ${launchReady ? 'LAUNCH READY' : 'NOT LAUNCH READY'}`)
   L.push('')
-  L.push(`${counts.PASS} of 16 rows PASS. ${counts['OWNER BLOCKED']} are OWNER BLOCKED. ${counts.FAIL} FAIL.`)
+  L.push(`${counts.PASS} of ${L1_ITEM_COUNT} rows PASS. ${counts['OWNER BLOCKED']} are OWNER BLOCKED. ${counts.FAIL} FAIL.`)
   L.push('')
   if (!launchReady) {
     L.push('An OWNER BLOCKED row blocks the launch exactly as hard as a FAIL. It is a separate state only')
@@ -419,7 +457,7 @@ export function renderMarkdown({ items = ITEMS, counts, launchReady, ownerNeeds 
     L.push('')
   }
 
-  L.push('## The sixteen rows')
+  L.push(`## The ${L1_ITEM_COUNT} rows`)
   L.push('')
   L.push('| # | Group | L1 requirement | State | Evidence | Driven |')
   L.push('|---|---|---|---|---|---|')
@@ -487,7 +525,7 @@ if (invokedDirectly) {
   const evidenceExists = (p) => existsSync(join(ROOT, p))
   const { faults, counts, launchReady } = judgeLaunchReadiness({ items: ITEMS, evidenceExists })
 
-  console.log(`${TAG} 16 L1 items adjudicated: ${counts.PASS} PASS, ${counts['OWNER BLOCKED']} OWNER BLOCKED, ${counts.FAIL} FAIL`)
+  console.log(`${TAG} ${L1_ITEM_COUNT} L1 items adjudicated: ${counts.PASS} PASS, ${counts['OWNER BLOCKED']} OWNER BLOCKED, ${counts.FAIL} FAIL`)
   for (const i of ITEMS) {
     console.log(`  ${String(i.n).padStart(2)}  ${i.state.padEnd(13)}  ${i.requirement.slice(0, 78)}`)
   }

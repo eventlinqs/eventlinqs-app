@@ -57,7 +57,11 @@ describe('the labelled venue pin', () => {
       name: 'The Extremely Long Community Hall And Performance Centre Of West Melbourne',
     })
     expect(pin.style.maxWidth).toBe('260px')
-    expect(pin.style.overflow || pin.querySelector('span:last-child')?.style.overflow).toBeTruthy()
+    // querySelector returns Element, which has no style. The label is an
+    // HTMLElement and the cast says so rather than the test asserting nothing.
+    const label = pin.querySelector('span:last-child') as HTMLElement | null
+    expect(label?.style.overflow).toBe('hidden')
+    expect(label?.style.textOverflow).toBe('ellipsis')
   })
 
   test('falls back to the plain dot when there is no name to show', () => {

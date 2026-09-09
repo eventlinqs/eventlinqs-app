@@ -8,7 +8,7 @@ Every row PASS, or it is not launch ready.
 
 ## VERDICT: NOT LAUNCH READY
 
-4 of 16 rows PASS. 12 are OWNER BLOCKED. 0 FAIL.
+4 of 17 rows PASS. 13 are OWNER BLOCKED. 0 FAIL.
 
 An OWNER BLOCKED row blocks the launch exactly as hard as a FAIL. It is a separate state only
 because it carries the one sentence that ends the blocking, which a bare FAIL would hide.
@@ -19,8 +19,9 @@ because it carries the one sentence that ends the blocking, which a bare FAIL wo
 |---|---|
 | Approval to create one test organiser account and one test event on PRODUCTION, because every organiser journey below writes to the live database and L1 requires them driven there rather than on TEST. | 1, 2, 3, 5, 6, 7, 13, 15 |
 | Approval to put one real card through a low-price live event and refund it, because it is real money on the live Stripe account and no other path proves the buyer journey end to end. | 9, 10, 11, 12 |
+| Apply the pending migration with `npm run migrate:production`, because production is one migration behind this tree and until it lands the fixed release cannot reach production, so a read of the live screens reads the old code. | 17 |
 
-## The sixteen rows
+## The 17 rows
 
 | # | Group | L1 requirement | State | Evidence | Driven |
 |---|---|---|---|---|---|
@@ -40,6 +41,7 @@ because it carries the one sentence that ends the blocking, which a bare FAIL wo
 | 14 | PLATFORM | Every route enumerated from src/app returns its expected status on production. Zero unexpected 404s. Zero 500s anywhere. | **PASS** | `docs/verification/launch-readiness/route-sweep-2026-09-09.json` | 2026-09-09 |
 | 15 | PLATFORM | Every transactional and confirmation email actually sends and renders. | **OWNER BLOCKED** | - | - |
 | 16 | PLATFORM | axe-core zero on every public surface. | **PASS** | `docs/verification/launch-readiness/axe-2026-09-09.json` | 2026-09-09 |
+| 17 | PLATFORM | A HUMAN READ of the five launch screens - the homepage, browse at /events, an event detail page, /pricing and /organisers - at 390, 768 and 1440. Read for what a status code cannot see: unrendered markup, duplicated text, invisible controls, and elements colliding. The route sweep is NEVER reported as covering this. | **OWNER BLOCKED** | - | - |
 
 ## Row by row
 
@@ -163,9 +165,17 @@ Where it HAS been driven: Rendered and sent on TEST across the transactional set
 
 Re-run on the current release across every public URL that answered 200 to an anonymous visitor, at 390 and 1440, at every impact level. The URL list was enumerated from the route sweep own results rather than typed.
 
+### 17. A HUMAN READ of the five launch screens - the homepage, browse at /events, an event detail page, /pricing and /organisers - at 390, 768 and 1440. Read for what a status code cannot see: unrendered markup, duplicated text, invisible controls, and elements colliding. The route sweep is NEVER reported as covering this.
+
+**OWNER BLOCKED**
+
+Needs: Apply the pending migration with `npm run migrate:production`, because production is one migration behind this tree and until it lands the fixed release cannot reach production, so a read of the live screens reads the old code.
+
+Where it HAS been driven: Read at 390, 768 and 1440 on a local production build of this tree, which is how the composed-cover crop defect was found while its own assertion was green (close-out UX1.4). It cannot be read on PRODUCTION as this release yet, because production is one migration behind and still serves the code that carries the six defects.
+
 ## What this report does not claim
 
-A row that is OWNER BLOCKED is not a row that was never built or never tested. 12 of them carry
+A row that is OWNER BLOCKED is not a row that was never built or never tested. 13 of them carry
 a line saying where the journey HAS been driven, and in every case that is TEST or a local
 production build rather than production. L1 asks for production, so production is what the state
-reflects. The gap is an approval, not an absence of work, and it is exactly 2 approvals wide.
+reflects. The gap is an approval, not an absence of work, and it is exactly 3 approvals wide.

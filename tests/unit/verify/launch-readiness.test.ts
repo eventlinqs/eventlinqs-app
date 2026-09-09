@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   ITEMS,
+  L1_ITEM_COUNT,
   OWNER_NEEDS,
   STATES,
   countSentences,
@@ -20,9 +21,14 @@ import {
 const always = () => true
 const never = () => false
 
-/** A minimal legal set of sixteen rows, so each test can break exactly one thing. */
-const sixteen = (override: Record<number, unknown> = {}) =>
-  Array.from({ length: 16 }, (_, i) => ({
+/**
+ * A minimal legal set of rows, one per L1 item, so each test can break exactly
+ * one thing. Sized from L1_ITEM_COUNT rather than a literal: close-out UX2.5
+ * added a seventeenth item and five of these tests failed on a hardcoded 16,
+ * which is the drift this now cannot have.
+ */
+const everyRow = (override: Record<number, unknown> = {}) =>
+  Array.from({ length: L1_ITEM_COUNT }, (_, i) => ({
     n: i + 1,
     group: 'PLATFORM',
     requirement: `requirement ${i + 1}`,
@@ -49,16 +55,16 @@ describe('judgeLaunchReadiness', () => {
   it('passes the shipped adjudication with its real evidence present', () => {
     const { faults, counts } = judgeLaunchReadiness({ items: ITEMS, evidenceExists: always })
     expect(faults).toEqual([])
-    expect(counts.PASS + counts['OWNER BLOCKED'] + counts.FAIL).toBe(16)
+    expect(counts.PASS + counts['OWNER BLOCKED'] + counts.FAIL).toBe(L1_ITEM_COUNT)
   })
 
-  it('is NOT launch ready unless all sixteen rows pass', () => {
+  it('is NOT launch ready unless every row passes', () => {
     const { launchReady } = judgeLaunchReadiness({ items: ITEMS, evidenceExists: always })
     expect(launchReady).toBe(false)
 
-    const allPass = sixteen(
+    const allPass = everyRow(
       Object.fromEntries(
-        Array.from({ length: 16 }, (_, i) => [
+        Array.from({ length: L1_ITEM_COUNT }, (_, i) => [
           i + 1,
           { state: 'PASS', needs: undefined, evidence: ['docs/x.json'], driven: '2026-09-09' },
         ]),
@@ -74,13 +80,13 @@ describe('judgeLaunchReadiness', () => {
   })
 
   it('fails a PASS row that cites no evidence', () => {
-    const items = sixteen({ 4: { state: 'PASS', needs: undefined, driven: '2026-09-09' } })
+    const items = everyRow({ 4: { state: 'PASS', needs: undefined, driven: '2026-09-09' } })
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
     expect(faults.join('\n')).toContain('claims PASS and cites no evidence')
   })
 
   it('fails a PASS row whose evidence is not on disk', () => {
-    const items = sixteen({
+    const items = everyRow({
       4: { state: 'PASS', needs: undefined, evidence: ['docs/gone.json'], driven: '2026-09-09' },
     })
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: never })
@@ -88,13 +94,13 @@ describe('judgeLaunchReadiness', () => {
   })
 
   it('fails a PASS row with no date driven, which L5 asks for by name', () => {
-    const items = sixteen({ 4: { state: 'PASS', needs: undefined, evidence: ['docs/x.json'] } })
+    const items = everyRow({ 4: { state: 'PASS', needs: undefined, evidence: ['docs/x.json'] } })
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
     expect(faults.join('\n')).toContain('carries no date driven')
   })
 
   it('fails a PASS row that also names an owner need, which is the C10.4 shape', () => {
-    const items = sixteen({
+    const items = everyRow({
       4: { state: 'PASS', needs: 'real-card', evidence: ['docs/x.json'], driven: '2026-09-09' },
     })
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
@@ -102,19 +108,19 @@ describe('judgeLaunchReadiness', () => {
   })
 
   it('fails an OWNER BLOCKED row that names no need', () => {
-    const items = sixteen({ 4: { needs: undefined } })
+    const items = everyRow({ 4: { needs: undefined } })
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
     expect(faults.join('\n')).toContain('names no need')
   })
 
   it('fails an OWNER BLOCKED row naming a need outside the reviewed list', () => {
-    const items = sixteen({ 4: { needs: 'a-pony' } })
+    const items = everyRow({ 4: { needs: 'a-pony' } })
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
     expect(faults.join('\n')).toContain('which is not in the reviewed list')
   })
 
   it('fails an OWNER BLOCKED need written as more than one sentence', () => {
-    const items = sixteen({ 4: { needs: 'wordy' } })
+    const items = everyRow({ 4: { needs: 'wordy' } })
     const { faults } = judgeLaunchReadiness({
       items,
       evidenceExists: always,
@@ -124,37 +130,40 @@ describe('judgeLaunchReadiness', () => {
   })
 
   it('fails an OWNER BLOCKED row that cites evidence as if it were driven', () => {
-    const items = sixteen({ 4: { evidence: ['docs/x.json'] } })
+    const items = everyRow({ 4: { evidence: ['docs/x.json'] } })
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
     expect(faults.join('\n')).toContain('cites evidence as if it were driven')
   })
 
   it('fails a FAIL row that says nothing about what failed', () => {
-    const items = sixteen({ 4: { state: 'FAIL', needs: undefined } })
+    const items = everyRow({ 4: { state: 'FAIL', needs: undefined } })
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
     expect(faults.join('\n')).toContain('says nothing about what failed')
   })
 
   it('fails a missing L1 row', () => {
-    const items = sixteen().filter((i) => i.n !== 9)
+    const items = everyRow().filter((i) => i.n !== 9)
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
     expect(faults.join('\n')).toContain('L1 item 9 has no row')
   })
 
-  it('fails a row outside the sixteen', () => {
-    const items = [...sixteen(), { n: 17, group: 'X', requirement: 'invented', state: 'PASS', evidence: ['docs/x.json'], driven: '2026-09-09' }]
+  it('fails a row outside the declared count', () => {
+    const items = [
+      ...everyRow(),
+      { n: L1_ITEM_COUNT + 1, group: 'X', requirement: 'invented', state: 'PASS', evidence: ['docs/x.json'], driven: '2026-09-09' },
+    ]
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
-    expect(faults.join('\n')).toContain('item 17 is outside L1')
+    expect(faults.join('\n')).toContain(`item ${L1_ITEM_COUNT + 1} is outside L1`)
   })
 
   it('fails a duplicated row rather than silently taking the last one', () => {
-    const items = [...sixteen(), sixteen()[3]]
+    const items = [...everyRow(), everyRow()[3]]
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
     expect(faults.join('\n')).toContain('appears more than once')
   })
 
   it('refuses a state outside the three', () => {
-    const items = sixteen({ 4: { state: 'PROBABLY FINE' } })
+    const items = everyRow({ 4: { state: 'PROBABLY FINE' } })
     const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
     expect(faults.join('\n')).toContain('is not one of')
     expect(STATES).toEqual(['PASS', 'OWNER BLOCKED', 'FAIL'])
@@ -162,8 +171,8 @@ describe('judgeLaunchReadiness', () => {
 })
 
 describe('the shipped adjudication', () => {
-  it('carries exactly the sixteen L1 items, numbered 1 to 16', () => {
-    expect(ITEMS.map((i) => i.n)).toEqual(Array.from({ length: 16 }, (_, i) => i + 1))
+  it('carries exactly the L1 items, numbered 1 to L1_ITEM_COUNT', () => {
+    expect(ITEMS.map((i) => i.n)).toEqual(Array.from({ length: L1_ITEM_COUNT }, (_, i) => i + 1))
   })
 
   it('states every owner need in exactly one sentence', () => {
@@ -235,7 +244,12 @@ describe('renderMarkdown', () => {
       launchReady,
       ownerNeeds: { ...OWNER_NEEDS, 'a-third-need': 'Approval for a third thing, invented by this test.' },
     })
-    expect(md).toContain('exactly 3 approvals wide')
+    // Derived, not typed: the whole point of the test is that this sentence
+    // MOVES with the number of needs. A literal here goes stale the moment a
+    // real third need is added, which is exactly what happened on 9 September
+    // 2026 when 'release-on-production' joined the map.
+    const needCount = Object.keys({ ...OWNER_NEEDS, 'a-third-need': '' }).length
+    expect(md).toContain(`exactly ${needCount} approvals wide`)
   })
 
   it('counts the rows that record where they HAVE been driven, rather than saying twelve', () => {
@@ -246,7 +260,7 @@ describe('renderMarkdown', () => {
 
 describe('the reviewed owner-need list cannot rot', () => {
   it('fails a declared need that no row cites', () => {
-    const items = sixteen()
+    const items = everyRow()
     const { faults } = judgeLaunchReadiness({
       items,
       evidenceExists: always,
