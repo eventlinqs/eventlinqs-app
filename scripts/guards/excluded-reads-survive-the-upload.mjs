@@ -51,7 +51,7 @@ import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
 import { entriesThatReadThroughTheIgnore, excludedTopLevels } from './lib/build-time-scripts.mjs'
 import { readVercelIgnore } from './lib/vercelignore.mjs'
-import { holdsNoFile, isGitCheckout, materialiseVercelUpload, removeUpload } from './lib/vercel-upload.mjs'
+import { isGitCheckout, materialiseVercelUpload, removeUpload } from './lib/vercel-upload.mjs'
 
 const ROOT = process.cwd()
 const TAG = '[excluded-reads-survive-the-upload]'
@@ -62,9 +62,24 @@ const fail = (m) => {
   console.error(`${TAG} FAIL: ${m}`)
 }
 
-if (!isGitCheckout(ROOT) && holdsNoFile(join(ROOT, 'docs/roast'))) {
+/*
+ * ONE FACT, AND IT IS THE RIGHT ONE. This guard's whole method is to enumerate
+ * the tracked files with git and rebuild the tree from them, so the only
+ * question that decides whether it can run is whether git can work here. Nothing
+ * about docs/ enters into it.
+ *
+ * The first version of this test asked TWO questions, the second of which was
+ * whether an excluded docs/ directory held no file, and the preview build of
+ * ffded236 died on it: `isGitCheckout` was `existsSync('.git')`, `.vercelignore`
+ * names `.git`, and Vercel strips the FILES inside a matched directory and leaves
+ * the DIRECTORY. So `.git` was present and empty, the guard believed it was on a
+ * developer machine, called `git ls-files`, and got "fatal: not a git repository".
+ * The predicate is fixed in lib/vercel-upload.mjs and this test is now the single
+ * fact it always should have been.
+ */
+if (!isGitCheckout(ROOT)) {
   console.log(
-    `${TAG} SKIP - this tree is already the stripped upload (no git checkout, and an excluded docs/ directory holds no file), so there is nothing to simulate and no git to enumerate from.`,
+    `${TAG} SKIP - this tree is not a git checkout, so it is already the stripped upload: there is nothing to simulate and no git to enumerate from.`,
   )
   console.log(`${TAG}   This guard is a real gate on the pre-push gate and in CI, where the whole tree is present.`)
   process.exit(0)

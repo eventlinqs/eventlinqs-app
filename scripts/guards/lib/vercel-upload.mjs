@@ -46,7 +46,7 @@
  *   - Untracked files are absent, because Vercel clones from git.
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, linkSync, copyFileSync, mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs'
+import { existsSync, linkSync, copyFileSync, mkdirSync, readdirSync, rmSync, statSync, symlinkSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { gitEnv } from '../../lib/git-env.mjs'
 import { makeJudgeIgnored, readVercelIgnore } from './vercelignore.mjs'
@@ -118,6 +118,28 @@ export function materialiseVercelUpload({ root, dest, files, linkNodeModules = t
     kept += 1
   }
 
+  /*
+   * THE EMPTY .git SKELETON, because the build host has one and this simulation
+   * did not. Vercel removes the FILES `.vercelignore` matches and leaves the
+   * DIRECTORIES; `.git` is matched, so the build host carries an empty `.git`
+   * tree. `git ls-files` never mentions `.git`, so nothing above reproduced it,
+   * and the simulation was missing the one shape that broke the preview build of
+   * ffded236: a tree where `.git` exists and git still refuses to work in it.
+   *
+   * Reproduced by walking the real `.git` and creating its DIRECTORIES only.
+   */
+  const realGit = join(root, '.git')
+  if (existsSync(realGit) && statSync(realGit).isDirectory()) {
+    const stack = ['.git']
+    while (stack.length > 0) {
+      const rel = stack.pop()
+      ensureDir(rel)
+      for (const entry of readdirSync(join(root, rel), { withFileTypes: true })) {
+        if (entry.isDirectory()) stack.push(`${rel}/${entry.name}`)
+      }
+    }
+  }
+
   if (linkNodeModules && existsSync(join(root, 'node_modules')) && !existsSync(join(dest, 'node_modules'))) {
     symlinkSync(join(root, 'node_modules'), join(dest, 'node_modules'), 'junction')
   }
@@ -149,35 +171,55 @@ export function holdsNoFile(absDir) {
 }
 
 /**
- * Is this tree a git checkout?
+ * Is this tree a git checkout that git can actually use?
  *
- * The exact discriminator between a developer machine or a CI runner, both of
- * which hold the whole repository, and the Vercel build host, which unpacks a
- * source tarball with no .git at all. Every git-reading guard in this repository
- * printed "fatal: not a git repository" in the build log of 7564b40, which is
- * what makes this observable rather than inferred. no-ai-authorship.mjs already
- * skips on the same signal.
+ * THE VERSION BEFORE THIS ONE WAS `existsSync('.git')` AND IT WAS WRONG ON THE
+ * ONE HOST IT WAS WRITTEN FOR. It was never run there. On 9 September 2026 the
+ * preview build of ffded236 died proving it: the guard that keys on this did not
+ * skip, called `git ls-files`, and got
+ *
+ *     fatal: not a git repository (or any of the parent directories): .git
+ *     Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+ *
+ * Both facts at once, and they are only a contradiction if you believe the old
+ * test. `.vercelignore` names `.git`, so Vercel removes the FILES inside it and
+ * leaves the DIRECTORY standing - the same mechanism this whole module exists to
+ * model, applied to `.git` itself, and the build log for 7564b40 says so by
+ * enumerating /.git/config and the hook samples as removed. So `.git` exists on
+ * the build host and is empty, `existsSync` answered yes, and git answered no.
+ *
+ * The test is now what git itself needs:
+ *   - `.git` is a FILE: a linked worktree, which this repository has nine of.
+ *   - `.git` is a directory holding HEAD: an ordinary checkout.
+ *   - `.git` is a directory with no HEAD: the Vercel shape. Not a checkout.
  *
  * @param {string} root
  */
 export function isGitCheckout(root) {
-  return existsSync(join(root, '.git'))
+  const dotGit = join(root, '.git')
+  if (!existsSync(dotGit)) return false
+  if (!statSync(dotGit).isDirectory()) return true
+  return existsSync(join(dotGit, 'HEAD'))
 }
 
 /**
  * Remove a materialised upload.
  *
- * Safe against the obvious accident: it refuses a path that is not the one this
- * module built, because rmSync(recursive) pointed at a repository would delete
- * a repository. The marker is the absence of a .git directory plus the presence
- * of the sentinel this module writes.
+ * Safe against the obvious accident: `rmSync(recursive)` pointed at a repository
+ * would delete a repository, so this refuses anything that IS one.
+ *
+ * THE MARKER IS isGitCheckout, NOT existsSync('.git'), and the difference is not
+ * pedantry: the upload this module builds now carries an empty `.git` skeleton,
+ * because the build host has one and a simulation that does not have one is a
+ * simulation of somewhere else. `existsSync` would refuse to clean up every
+ * upload it had just built.
  *
  * @param {string} dest
  */
 export function removeUpload(dest) {
   if (!dest || !existsSync(dest)) return
-  if (existsSync(join(dest, '.git'))) {
-    throw new Error(`refusing to remove ${dest}: it contains a .git directory, so it is a real repository`)
+  if (isGitCheckout(dest)) {
+    throw new Error(`refusing to remove ${dest}: it is a real git checkout, not a materialised upload`)
   }
   rmSync(dest, { recursive: true, force: true })
 }

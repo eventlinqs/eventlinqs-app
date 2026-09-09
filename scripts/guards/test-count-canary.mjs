@@ -1071,9 +1071,20 @@ const ROOT = join(HERE, '..', '..')
  * shared-determination count. Four hold the walk-down being DERIVED rather than
  * described, because doing that derivation by hand is what lost one of the other
  * three deployments. The remaining test moved inside vercel-upload.test.ts.
+ *
+ * 2026-09-09: raised 338/3917 -> 338/3921, MEASURED. No new file: four tests
+ * joined tests/unit/guards/vercel-upload.test.ts after the preview build of
+ * ffded236 died on isGitCheckout, which was existsSync('.git') and had never
+ * been run on the one host it was written for. .vercelignore names `.git`, so
+ * Vercel strips the FILES inside it and leaves the DIRECTORY: `.git` was present
+ * and empty, existsSync said checkout, git said "fatal: not a git repository".
+ * Three pin the three shapes apart (empty directory, directory holding HEAD, and
+ * a FILE, which is what each of this repository's nine linked worktrees has) and
+ * one asserts the materialised upload now carries the same empty skeleton, so
+ * the simulation is of the build host rather than of somewhere else.
  */
 const MIN_FILES = 338
-const MIN_TESTS = 3917
+const MIN_TESTS = 3921
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

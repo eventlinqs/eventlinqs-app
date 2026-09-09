@@ -19,6 +19,9 @@
  *                excluded it, so it cannot have been stripped: it must FAIL.
  *   4. DELETED, on a laptop. The same removal with no Vercel variables. It must
  *                FAIL there too, which is the whole point of the guard.
+ *   5. THE EXECUTOR run inside the upload. It must recognise that it IS the
+ *                upload and stand aside rather than calling git. That is the
+ *                regression that killed the preview build of ffded236.
  *
  * Run: node scripts/verify/stripped-or-deleted-drill.mjs
  */
@@ -70,8 +73,8 @@ function upload(ignoreTextFrom) {
   }
 }
 
-function run(cwd, env) {
-  const r = spawnSync(process.execPath, [GUARD], {
+function run(cwd, env, script = GUARD) {
+  const r = spawnSync(process.execPath, [script], {
     cwd,
     encoding: 'utf8',
     env: { ...process.env, ...env },
@@ -127,6 +130,25 @@ try {
     wantCode: 1,
     wantText: `${REPORT} is DELETED`,
   })
+
+  /*
+   * CASE 5 IS THE REGRESSION THAT KILLED THE PREVIEW BUILD OF ffded236, and it is
+   * here because it is the only case that could not be caught in the repository
+   * tree. The executor must recognise that it IS the upload and stand aside. It
+   * used to decide that with existsSync('.git'), and .vercelignore names `.git`,
+   * so Vercel strips the FILES inside it and leaves the DIRECTORY: `.git` was
+   * present and empty, the guard believed it was on a laptop, ran `git ls-files`,
+   * and got "fatal: not a git repository".
+   *
+   * The materialised upload now carries the same empty `.git` skeleton, so this
+   * case is a real reproduction rather than an argument about one.
+   */
+  cases.push({
+    name: '5. the executor is run INSIDE the upload and must stand aside, not call git',
+    ...run(dest2, VERCEL_ENV_VARS, join(ROOT, 'scripts/guards/excluded-reads-survive-the-upload.mjs')),
+    wantCode: 0,
+    wantText: 'SKIP - this tree is not a git checkout',
+  })
 } finally {
   removeUpload(dest1)
   removeUpload(dest2)
@@ -137,7 +159,8 @@ let failed = 0
 for (const c of cases) {
   const codeOk = c.code === c.wantCode
   const textOk = c.out.includes(c.wantText)
-  const line = c.out.split('\n').find((l) => l.includes(REPORT))?.trim() ?? '(no verdict line)'
+  const line =
+    c.out.split(/\r?\n/).find((l) => l.includes(REPORT) || l.includes('SKIP -'))?.trim() ?? '(no verdict line)'
   if (codeOk && textOk) {
     console.log(`  OK    ${c.name}`)
     console.log(`        exit ${c.code}: ${line}\n`)

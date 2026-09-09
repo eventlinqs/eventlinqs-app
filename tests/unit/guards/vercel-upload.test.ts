@@ -161,7 +161,10 @@ describe('materialising the upload', () => {
   test('removeUpload refuses a path that is a real repository', () => {
     const root = scratch()
     try {
-      mkdirSync(join(root, '.git'), { recursive: true })
+      // A REAL checkout, which now means a .git holding HEAD. An empty .git is
+      // the build host's shape and removeUpload must be able to clean that up,
+      // because it is what this module builds.
+      writeTree(root, { '.git/HEAD': 'ref: refs/heads/main\n' })
       expect(() => removeUpload(root)).toThrow(/refusing to remove/)
     } finally {
       // Remove the marker first so the helper will act, then clean up.
@@ -224,6 +227,65 @@ describe('telling the build host from a developer machine', () => {
       expect(isGitCheckout(root)).toBe(false)
     } finally {
       removeUpload(root)
+    }
+  })
+
+  /*
+   * THE SHAPE THAT KILLED THE PREVIEW BUILD OF ffded236, and the reason this
+   * predicate is not `existsSync('.git')` any more.
+   *
+   * .vercelignore names `.git`. Vercel strips the FILES a rule matches and leaves
+   * the DIRECTORY, which is the same mechanism the whole of this module models,
+   * applied to `.git` itself. So the build host carries a `.git` that exists and
+   * is empty: existsSync said "this is a checkout", git said "fatal: not a git
+   * repository", and the guard that believed the first one called `git ls-files`
+   * and threw. The old test was never run on the one host it was written for.
+   */
+  test('an empty .git directory is NOT a checkout, which is exactly the build host', () => {
+    const root = scratch()
+    try {
+      mkdirSync(join(root, '.git', 'hooks'), { recursive: true })
+      mkdirSync(join(root, '.git', 'refs', 'heads'), { recursive: true })
+      expect(existsSync(join(root, '.git'))).toBe(true)
+      expect(isGitCheckout(root)).toBe(false)
+    } finally {
+      removeUpload(root)
+    }
+  })
+
+  test('a .git directory holding HEAD is a checkout', () => {
+    const root = scratch()
+    try {
+      writeTree(root, { '.git/HEAD': 'ref: refs/heads/main\n' })
+      expect(isGitCheckout(root)).toBe(true)
+    } finally {
+      // removeUpload refuses a real checkout, which is the point of it.
+      expect(() => removeUpload(root)).toThrow(/real git checkout/)
+      execFileSync('node', ['-e', 'require("fs").rmSync(process.argv[1],{recursive:true,force:true})', root])
+    }
+  })
+
+  test('a .git FILE is a checkout, because that is what a linked worktree has', () => {
+    const root = scratch()
+    try {
+      writeTree(root, { '.git': 'gitdir: ../../.git/worktrees/example\n' })
+      expect(isGitCheckout(root)).toBe(true)
+    } finally {
+      execFileSync('node', ['-e', 'require("fs").rmSync(process.argv[1],{recursive:true,force:true})', root])
+    }
+  })
+
+  test('the materialised upload carries the empty .git skeleton the build host has', () => {
+    const dest = scratch()
+    try {
+      materialiseVercelUpload({ root: ROOT, dest, linkNodeModules: false })
+      // Present, as on Vercel, and holding no file, as on Vercel. A simulation
+      // without it is a simulation of somewhere else.
+      expect(existsSync(join(dest, '.git'))).toBe(true)
+      expect(holdsNoFile(join(dest, '.git'))).toBe(true)
+      expect(isGitCheckout(dest)).toBe(false)
+    } finally {
+      removeUpload(dest)
     }
   })
 
