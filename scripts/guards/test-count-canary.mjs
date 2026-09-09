@@ -1151,8 +1151,30 @@ const ROOT = join(HERE, '..', '..')
  *   grammar, the drill verdict, and the push-only condition that lets ci.yml's
  *   main-red alert exist without running on a draft
  */
-const MIN_FILES = 355
-const MIN_TESTS = 4195
+/*
+ * The ticket types that were deleted and re-created on every save (found
+ * 10 September 2026 while reading the write paths a slot ledger would hook
+ * into), one new file and twenty tests: tests/unit/events/save-tiers. Three
+ * drive which ticket type is which (a client-minted id, a database id, an empty
+ * one); six drive the payload the database function reads (dollars to cents
+ * once, a price a person could type, a saved id carried, a new one sent empty,
+ * a blank sale window that must not become the word null, and the array
+ * position standing in for a missing sort order); five read the verdict back,
+ * including the three refusals and the shape it must REFUSE to read rather than
+ * assume success; and six hold the words an organiser reads, one of which
+ * asserts no database word ever reaches them, because what they were shown was
+ * `duplicate key value violates unique constraint
+ * "ticket_tiers_event_id_name_key"`.
+ *
+ * tests/unit/security/update-event-idor also grew no tests but got stricter:
+ * the admin mock now answers rpc and RECORDS it as a privileged write, so a
+ * caller who fails the ownership gate and reaches save_event_ticket_tiers fails
+ * that test. Before this it had no rpc at all and the success path died with
+ * "admin.rpc is not a function", which is how the regression announced itself:
+ * 356 files / 4215, as the canary measured.
+ */
+const MIN_FILES = 356
+const MIN_TESTS = 4215
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

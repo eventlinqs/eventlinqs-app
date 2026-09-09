@@ -78,6 +78,21 @@ const adminClient = {
     if (table === 'organisation_members') return thenable({ data: h.membership, error: null }, h.adminWrite)
     return thenable({ data: { id: 'x' }, error: null }, h.adminWrite)
   },
+  /*
+   * THE TICKET TYPES ARE SAVED THROUGH AN RPC NOW, and it is a privileged write
+   * like any other, so it is recorded as one. Added 10 September 2026 with
+   * migration 20260910000001, which replaced `delete every tier then re-insert`
+   * with a reconciliation inside one transaction.
+   *
+   * Counting it through h.adminWrite makes this test STRICTER rather than
+   * looser: a caller who fails the ownership gate and reaches
+   * save_event_ticket_tiers is the same IDOR this file exists to stop, and the
+   * refusal case asserts h.adminWrite was never called at all.
+   */
+  rpc: async (fn: string) => {
+    h.adminWrite(`rpc:${fn}`)
+    return { data: { ok: true, removed: 0, updated: 0, created: 0 }, error: null }
+  },
 }
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => sessionClient }))

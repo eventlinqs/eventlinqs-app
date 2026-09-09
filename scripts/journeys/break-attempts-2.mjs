@@ -129,7 +129,7 @@ async function wizardOmitting(p, omit, title) {
     if (await p.$('button:has-text("Add Ticket Tier")')) {
       await fillIf(p, '#tier-name-0, input[placeholder^="e.g. General Admission"]', 'General admission')
       if (omit !== 'price') {
-        const typeSel = await p.$('#type-21, select')
+        const typeSel = await p.$('#tier-type-0, #type-21, select')
         if (typeSel) await typeSel.selectOption('free').catch(() => {})
       }
       await fillIf(p, '#tier-capacity-0', '100')

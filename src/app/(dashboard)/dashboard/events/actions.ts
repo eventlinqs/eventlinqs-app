@@ -28,6 +28,7 @@ import type { EventStatus, EventVisibility, EventType, TicketTierType, FeePassTy
 import { actionRateLimit } from '@/lib/rate-limit/action'
 import { readStreamLink, writeStreamLink } from '@/lib/stream/link'
 import { livestreamNeedsLink, coerceAccessMode, STREAM_LINK_REQUIRED_MESSAGE } from '@/lib/stream/publish-rule'
+import { tierSavePayload, readTierSaveVerdict, describeTierRefusal } from '@/lib/events/save-tiers'
 import { normaliseCountryCodes } from '@/lib/stream/countries'
 import { normaliseTags } from '@/lib/events/normalise-tags'
 
@@ -79,6 +80,19 @@ function generateSlug(title: string): string {
 }
 
 export type TicketTierInput = {
+  /**
+   * The row this ticket type already is, when the organiser is editing rather
+   * than creating. ABSENT means new.
+   *
+   * It used to be absent always: the form held the id and dropped it on the way
+   * to the server, so updateEvent could not tell which submitted ticket type was
+   * which and deleted every one of them on every save. On a sold event the
+   * database refused that delete and the organiser was shown a unique-constraint
+   * name; on an unsold one it succeeded and took the waitlist, the squads, the
+   * access codes and the pricing rules with it. See
+   * supabase/migrations/20260910000001_ticket_tiers_keep_their_identity.sql.
+   */
+  id?: string
   name: string
   description: string
   tier_type: TicketTierType
@@ -699,29 +713,45 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
   const vault = await writeStreamLink(admin, input.eventId, input.event_type === 'in_person' ? null : input.stream_url)
   if (!vault.ok) return { error: vault.error }
 
-  // Replace ticket tiers: delete existing, re-insert
-  await admin.from('ticket_tiers').delete().eq('event_id', input.eventId)
+  /*
+   * RECONCILE THE TICKET TYPES. This was `delete every tier, then re-insert`,
+   * and both halves of that were wrong (the whole account is in the migration
+   * header, 20260910000001):
+   *
+   *   on a SOLD event the database refused the delete, because order_items
+   *   carries CHECK (item_type = 'ticket' AND ticket_tier_id IS NOT NULL) and
+   *   the ON DELETE SET NULL would break it. The error was never read, the
+   *   re-insert then collided with the rows that were never removed, and the
+   *   organiser was shown `duplicate key value violates unique constraint
+   *   "ticket_tiers_event_id_name_key"`. In plain terms: one sale made an event
+   *   permanently uneditable, and the explanation was a constraint name.
+   *
+   *   on an UNSOLD event the delete succeeded and cascaded, so fixing a typo
+   *   emptied the waitlist, cancelled every squad, voided every access code and
+   *   deleted every dynamic pricing rule.
+   *
+   * One database function, one transaction, and the result is a verdict this
+   * turns into a sentence rather than a Postgres message.
+   */
+  const { data: tierVerdictRaw, error: tierRpcError } = await admin.rpc('save_event_ticket_tiers', {
+    p_event_id: input.eventId,
+    p_tiers: tierSavePayload(
+      input.ticket_tiers.map((tier, i) => ({
+        ...tier,
+        access_mode: coerceAccessMode(input.event_type, tier.access_mode),
+        sort_order: tier.sort_order ?? i,
+      })),
+    ),
+  })
+  if (tierRpcError) return { error: `Your tickets could not be saved: ${tierRpcError.message}` }
 
-  if (input.ticket_tiers.length > 0) {
-    const tiers = input.ticket_tiers.map((tier, i) => ({
-      event_id: input.eventId,
-      name: tier.name,
-      description: tier.description || null,
-      tier_type: tier.tier_type,
-      access_mode: coerceAccessMode(input.event_type, tier.access_mode),
-      price: Math.round(tier.price * 100),
-      currency: tier.currency,
-      total_capacity: tier.total_capacity,
-      sale_start: tier.sale_start || null,
-      sale_end: tier.sale_end || null,
-      min_per_order: tier.min_per_order,
-      max_per_order: tier.max_per_order,
-      sort_order: tier.sort_order ?? i,
-    }))
-
-    const { error: tiersError } = await admin.from('ticket_tiers').insert(tiers)
-    if (tiersError) return { error: `Failed to update ticket tiers: ${tiersError.message}` }
+  const tierVerdict = readTierSaveVerdict(tierVerdictRaw)
+  if (!tierVerdict) {
+    // A save that quietly did nothing is the failure this replaced. It is never
+    // reported as success.
+    return { error: 'Your tickets could not be saved, and the platform could not tell why. Nothing was changed.' }
   }
+  if (!tierVerdict.ok) return { error: describeTierRefusal(tierVerdict) ?? 'Your tickets could not be saved.' }
 
   // Re-materialise seats if seat map changed or reserved seating was just enabled
   const seatMapChanged =

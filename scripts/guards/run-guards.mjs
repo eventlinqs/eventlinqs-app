@@ -217,6 +217,13 @@
  *                              all three are rulings about the subject line: the inbox
  *                              was loud about the harmless and silent about the dangerous
  *                              (close-out UX4.3, UX4.5, H2.6)
+ *   tier-identity-preserved  an event's ticket types are reconciled on save, never
+ *                              deleted and re-created. The delete-everything version
+ *                              made an event permanently uneditable the moment it sold
+ *                              one ticket, and told the organiser the name of a database
+ *                              constraint; on an unsold event it cascaded away the
+ *                              waitlist, the squads, the access codes and the pricing
+ *                              rules while every unit test stayed green
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -1035,6 +1042,18 @@ const GUARDS = [
   // dispatch declares which class it belongs to so an outage never again reads
   // like a branch gate in the inbox. Drilled red by adding a branch dispatch.
   'scripts/guards/alert-routing.mjs',
+
+  // Found on 10 September 2026 while reading the write paths a slot ledger would
+  // hook into. Saving an event deleted EVERY one of its ticket types and
+  // re-inserted them. On a sold event the database refused that delete (the
+  // order_items CHECK), the error was never read, the re-insert collided, and the
+  // organiser was shown `duplicate key value violates unique constraint
+  // "ticket_tiers_event_id_name_key"`: one sale made an event permanently
+  // uneditable. On an unsold one the delete succeeded and cascaded away the
+  // waitlist, the squads, the access codes and the pricing rules. Every unit test
+  // passed throughout, because nothing in the suite has a foreign key. All four
+  // clauses drilled red and green (C:\dev\EVIDENCE\D0\guard-tier-identity-drill.txt).
+  'scripts/guards/tier-identity-preserved.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

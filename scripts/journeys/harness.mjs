@@ -427,7 +427,7 @@ export async function createEventThroughWizard(j, page, opts) {
 
     if (onTicketing) {
       await fillIf(page, '#tier-name-0, input[placeholder^="e.g. General Admission"]', 'General admission')
-      const typeSel = await page.$('#type-21, select')
+      const typeSel = await page.$('#tier-type-0, #type-21, select')
       if (typeSel) {
         const want = price === null || price === 0 ? 'free' : 'general_admission'
         // page.evaluate takes ONE argument; a second is a hard error.
