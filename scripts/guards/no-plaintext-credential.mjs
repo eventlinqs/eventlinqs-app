@@ -33,6 +33,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { stateOf } from './lib/stripped-or-deleted.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -217,7 +218,34 @@ if (reviewedHit.size) {
   console.log('')
 }
 
-const staleReviewed = Object.keys(REVIEWED).filter((r) => !reviewedHit.has(r))
+
+/*
+ * A BASELINE ENTRY THAT MATCHES NOTHING IS ONLY STALE IF THE FILE IS STILL THERE.
+ *
+ * Close-out F2, found on the build host. On Vercel this guard printed a list of
+ * reviewed entries "no longer match anything - delete the line", and every one of
+ * them was ALIVE. They name paths under docs/, which .vercelignore strips from the
+ * upload, so the scan never saw the files and concluded the exemptions had rotted.
+ * Acting on that message would have deleted live exemptions on the strength of a
+ * tree missing the evidence, which is the exact class of defect the whole of F1.9
+ * and F2 exists to prevent - and it very nearly happened, one hour after the
+ * machinery against it was built.
+ *
+ * So the question is asked properly, through the one shared determination:
+ * STRIPPED means this host cannot see and the entry is not judged; DELETED means
+ * the file is genuinely gone and the entry really has rotted. A developer or a CI
+ * runner deleting the file still gets told, which is the whole point of the notice.
+ */
+const unmatchedReviewed = Object.keys(REVIEWED).filter((r) => !reviewedHit.has(r))
+const unseenReviewed = unmatchedReviewed.filter((r) => stateOf(r).state === 'stripped')
+const staleReviewed = unmatchedReviewed.filter((r) => stateOf(r).state !== 'stripped')
+if (unseenReviewed.length) {
+  console.log(
+    `[no-plaintext-credential] ${unseenReviewed.length} reviewed entry(ies) NOT JUDGED here: .vercelignore strips them from this tree, so whether they still match is unknown. They are judged on any machine holding the whole tree.`,
+  )
+  for (const r of unseenReviewed.sort()) console.log(`    ${r}`)
+  console.log('')
+}
 if (staleReviewed.length) {
   console.log(`[no-plaintext-credential] ${staleReviewed.length} reviewed entry(ies) no longer match anything - delete the line:`)
   for (const r of staleReviewed) console.log(`    ${r}`)

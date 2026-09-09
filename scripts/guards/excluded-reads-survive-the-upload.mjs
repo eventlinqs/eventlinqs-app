@@ -64,7 +64,7 @@
  * Run: node scripts/guards/excluded-reads-survive-the-upload.mjs
  */
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
@@ -154,7 +154,37 @@ try {
   )
 
   for (const { entry, because } of subjects) {
-    const run = spawnSync(process.execPath, [join(ROOT, entry)], {
+    /*
+     * RUN FROM INSIDE THE UPLOAD, NOT FROM THE REAL TREE WITH cwd POINTED AT IT.
+     *
+     * Close-out F2, found while auditing this guard's own claims. It used to
+     * launch `join(ROOT, entry)` - the script at its REAL path - with `cwd` set
+     * to the materialised upload. That works for a script whose root is
+     * `process.cwd()`, and does NOTHING AT ALL for one whose root is
+     * `path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')`,
+     * which resolves to the real repository no matter what cwd says.
+     *
+     * SEVEN OF THIS GUARD'S NINETEEN SUBJECTS resolve their root that way:
+     * no-plaintext-credential, one-fee-copy, one-pull-request-at-a-time,
+     * positioning-lock, pre-push-gate-wired, sourced-specifications and
+     * pricing-derive. Every one of them was being scanned against the whole tree
+     * while this guard reported it had been run in the stripped upload. The
+     * simulation was hollow for more than a third of its subjects, and it
+     * reported PASS the entire time.
+     *
+     * Vercel runs the scripts that are IN the upload, so the simulation does the
+     * same. `scripts/` is not stripped, so the upload carries them, and both root
+     * styles now resolve to the upload rather than one of them escaping it.
+     */
+    const inside = join(dest, entry)
+    if (!existsSync(inside)) {
+      fail(
+        `${entry} is a prebuild entry point and .vercelignore strips it from the upload, so the Vercel build ` +
+          `cannot run it at all. Re-include it, or stop registering it in the prebuild chain.`,
+      )
+      continue
+    }
+    const run = spawnSync(process.execPath, [inside], {
       cwd: dest,
       encoding: 'utf8',
       env: { ...process.env, VERCEL: '1', VERCEL_ENV: 'preview', VERCEL_UPLOAD_SIMULATION: '1' },
