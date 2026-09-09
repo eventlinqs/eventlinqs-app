@@ -7050,3 +7050,97 @@ confirms that session's diagnosis exactly:
 battery measured 1,908. The homepage came in at 0.94 median and /events at 0.90,
 against the 0.88 and 0.91 that failed at 71% machine speed. Nothing about the page
 changed; the cable did.
+
+## 2026-09-09, session 55. The empty .git the build host has, which existsSync called a checkout.
+
+Commit `f7aa5d91`, pushed on a second 14 of 14 gate.
+
+### The gate named it on the first read, which is the whole point of F1.1
+
+The preview build of `ffded236` failed. Yesterday that question cost two full log
+reads across three passes. Today the answer was the last line of the build log:
+
+    [guards] 1 of 86 guard(s) FAILED. Build blocked.
+    [guards] the guard(s) that failed, in the order they ran:
+    [guards]   scripts/guards/excluded-reads-survive-the-upload.mjs  (exit 1)
+    [guards] FAILED: scripts/guards/excluded-reads-survive-the-upload.mjs
+
+### The cause: the same mechanism, applied to .git itself
+
+`isGitCheckout` was `existsSync('.git')`. `.vercelignore` names `.git`, so Vercel
+removes the FILES a rule matches and leaves the DIRECTORY standing. The build log
+of THIS deployment says so in its own removal list, four lines from the top:
+
+    Found .vercelignore
+    Removed 4459 ignored files defined in .vercelignore
+      /.git/config
+      /.git/description
+      /.git/FETCH_HEAD
+      /.git/HEAD
+
+`/.git/HEAD` is removed and `.git/` stays. So `existsSync` said "this is a
+checkout", the guard did not stand aside, called `git ls-files`, and got:
+
+    fatal: not a git repository (or any parent up to mount point /vercel)
+    Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+
+Both facts at once, and they only contradict each other if you believe the old
+test. The previous session QUOTED that removal list while writing a predicate that
+contradicts it, and never ran it on the one host it was written for. That is
+F1.9.1's failure class, committed by me this time, one day after writing the law
+against it.
+
+### The fix, three parts
+
+`isGitCheckout` now asks what git needs: a `.git` FILE is a linked worktree (this
+repository has nine), a `.git` directory holding HEAD is an ordinary checkout, and
+a `.git` directory with no HEAD is the Vercel shape and is not a checkout.
+
+`materialiseVercelUpload` now REPRODUCES the empty `.git` skeleton, by walking the
+real one and creating its directories only. `git ls-files` never mentions `.git`,
+so the simulation had never carried it, and was therefore missing the exact shape
+that broke the build. `removeUpload`'s safety marker moved from
+`existsSync('.git')` to `isGitCheckout` so it can still clean up what it builds.
+
+The executor's skip test is now ONE fact and the right one: it enumerates tracked
+files with git, so whether git works here is the whole question. The second
+clause, about a docs/ directory holding no file, is gone; it was the clause that
+made this fail.
+
+### Driven, in the shape that broke it
+
+Case 5 of `scripts/verify/stripped-or-deleted-drill.mjs` runs the executor INSIDE
+a materialised upload, which now carries the same empty `.git`:
+
+    OK  5. the executor is run INSIDE the upload and must stand aside, not call git
+        exit 0: SKIP - this tree is not a git checkout, so it is already the stripped upload
+
+5 of 5 cases correct. Four tests pin the three `.git` shapes apart and assert the
+upload carries the skeleton.
+
+### WHAT THAT DEPLOYMENT PROVED, which is most of the item
+
+The build failed, and everything before the failure is the evidence F1.9.2 asked
+for. `C:\dev\EVIDENCE\F1.9.2\part-one-vercel-deployment-ffded236.txt`:
+
+    [launch-readiness-honest] docs/verification/LAUNCH-READINESS.md is PRESENT: it is on disk.
+    [launch-readiness-honest] 16 L1 rows: 4 PASS, 12 OWNER BLOCKED, 0 FAIL. Verdict: NOT LAUNCH READY
+    [launch-readiness-honest] PASS - the report is the judgement, and every PASS row cites evidence that is still on disk.
+
+That is PART ONE proved on a real Vercel deployment, in the words the close-out
+asked for: "reading launch-readiness-honest PASS on Vercel". Four other items were
+proved on the same host in the same run:
+
+| Line from the Vercel build | Item |
+|---|---|
+| `[public-env] scope=vercel (decided by VERCEL); a configured machine, so a failure here BLOCKS` | F1.3 |
+| `[pricing-lock] ok PRICING_LOCKED_VALUES ... project vkapkibzokmfaxqogypq, read as service role` | F1.2, and the key is reported |
+| `[no-build-guard-bypass] PASS - 4 declared bypass(es), none set on a vercel build` | F1.4 |
+| `[machine-callers-reachable] clause 4 ...: NOT JUDGED [no-token] on scope=vercel (decided by VERCEL)` | F1.6 |
+| `[vercelignore-covers-guard-reads]   included  docs/verification/LAUNCH-READINESS.md` | F1.9.2 PART ONE |
+
+### Verification
+
+Suite 338 files / 3921 tests, canary 3917 to 3921, measured. 86/86 guards, tsc 0,
+eslint 0. THE FULL GATE 14 of 14 GREEN in 2,193 seconds, and the push landed
+`ffded236..f7aa5d91`.

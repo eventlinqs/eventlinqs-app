@@ -1922,3 +1922,26 @@ PART TWO's derived guard exists to catch: the folder is re-included whole, so a
 new dated artefact needs no edit, and a new evidence path anywhere else fails the
 local gate before a deploy is attempted, printing the lines to add. Both halves
 are now in place rather than one instead of the other.
+
+### F1.9.2 PART ONE, the Vercel half, CLOSED (9 September 2026, session 55)
+
+Row 2 of the F1.9.2 table above said PENDING the deployment. It is now MET.
+
+The preview build of `ffded236` carried the report and its artefacts and judged
+them on the host:
+
+    [launch-readiness-honest] docs/verification/LAUNCH-READINESS.md is PRESENT: it is on disk.
+    [launch-readiness-honest] PASS - the report is the judgement, and every PASS row cites evidence that is still on disk.
+
+Evidence: `C:\dev\EVIDENCE\F1.9.2\part-one-vercel-deployment-ffded236.txt`
+
+That same build then failed on a SECOND defect, mine, fixed in `f7aa5d91` and
+recorded in BUILD-LOG.md: `isGitCheckout` was `existsSync('.git')`, and
+`.vercelignore` names `.git`, so the build host carries a `.git` that exists and
+is empty. The predicate was a claim, never run on the host it was written for,
+one day after the law against exactly that was written. Fixed, the upload
+simulation now carries the same empty skeleton, and case 5 of the strip drill runs
+the guard inside it.
+
+F1.1 is what made that a one-read diagnosis instead of a three-pass one: the
+Vercel build log named the failing guard on its last line.
