@@ -7567,3 +7567,202 @@ one to make unilaterally. It is named here so it is not lost.
 
 The full ledger, adjudication and adversarial pass:
 `docs/roast/f2-build-host-2026-09-09.md`.
+
+---
+
+## 9 September 2026, session 57. UX1: the defects on the first real organiser event.
+
+**Where the close-out actually stood at the start.** F1 and F2 are closed, H1/H2
+green, H3/H4/H5 held, P0 held, PR5 held, L5 present and honest at 4 PASS / 12
+OWNER BLOCKED / 0 FAIL. Checked by reading the record rather than assumed. That
+leaves **UX1, UX2, UX3 and UX4 completely untouched** - no entry in the log, the
+ledger or the review queue names any of them. They are the remaining
+launch-blocking work, and UX1 is this entry.
+
+### THE DEFECTS WERE CONFIRMED ON PRODUCTION FIRST, NOT TAKEN ON TRUST
+
+Fetched the reported event page (HTTP 200, 228,649 bytes) and grepped the served
+HTML. All three reported rendering defects are live, byte for byte:
+
+    **MKL Studios**
+    Quakers Centre, Quakers Centre, 484 William Street, West Melbourne, VIC, Australia
+    African x12   african x12
+
+Evidence: `C:\dev\EVIDENCE\UX1\production-defects-confirmed.txt`.
+
+### UX1.1 THE ONE RULE FOR ORGANISER PROSE
+
+Decided: **prose surfaces RENDER a restricted markdown subset; plain-text and
+machine surfaces STRIP it; both come out of ONE parser.** The syntax is never
+displayed either way. `stripMarkdown` walks the same tree the renderer walks
+rather than running its own regexes, because two implementations drift and the
+drift stays invisible until an organiser hits it.
+
+`src/lib/prose/markdown-subset.ts` + `src/components/ui/organiser-prose.tsx`.
+The renderer emits REACT NODES, never an HTML string, so `dangerouslySetInnerHTML`
+is never reached and there is no sanitiser to misconfigure. That preserves the
+posture the event description already took. Link targets pass a scheme
+allowlist; a refused target keeps its words and loses its href. Organiser links
+carry `nofollow` as well as `noreferrer`, because a bio field on an indexable
+page is where link spam lands first.
+
+**A real bug the tests caught before anything shipped:** `venue_manager_key`
+rendered as `venuemanagerkey`. Intraword underscores were being treated as
+emphasis. CommonMark forbids that for underscore and allows it for asterisk; the
+parser now does the same. Fixed the parser, not the test.
+
+**Three defects found while wiring it, none of them reported, all shipped:**
+- `buildEventMetaDescription` stripped HTML tags and NOT markdown, so a bolded
+  organiser name reached the **Google search snippet** as asterisks.
+- The Event JSON-LD description did the same into **structured data**.
+- `kit-artefacts.ts` carried the summary onto a **printed A4 poster** and a
+  story card, so markdown would have been asterisks in ink. Law 6 renders what
+  the organiser supplies; it does not render their syntax.
+
+Each fixed at its formatter, so every caller inherits the fix.
+
+**Guard:** `scripts/guards/organiser-prose-one-rule.mjs`, registered, blocking.
+Drilled RED against the exact line that shipped to production and GREEN after.
+It carries a reviewed list of the three legitimately raw reads (two form states
+and one fixture) with a written reason each, and reports entries that stop
+matching, so the allowlist cannot rot unexamined.
+
+### UX1.1(b) THE DEFECT BEHIND THE DEFECT: THE ORGANISER COULD NOT FIX THEIR OWN BIO
+
+While wiring the above: `createOrganisation` and `updateOrganisationTaxDetails`
+were the **only** writers on `organisations` an organiser could reach. A business
+name, bio, website, contact email and phone were set once inside the event wizard
+and frozen for ever. The only edit-looking link on the organisation screen points
+at `/dashboard/organisation/create`, which makes a SECOND organisation.
+
+So the organiser whose bio shipped as `**MKL Studios**` **could not have corrected
+it if they had wanted to.** Built `updateOrganisationProfile` (same
+`assertCallerMayActForOrganisation` ownership gate as the tax action, since the
+organisation id arrives from a form field) and
+`src/components/organisation/organisation-profile-form.tsx`, now on
+`/dashboard/organisation` in place of the read-only list. It carries a LIVE
+PREVIEW of the rendered bio, because the bio is the one field whose stored text
+and rendered output legitimately differ. Slug is deliberately NOT editable: a
+slug is a shared, indexed, poster-printed URL, and CLAUDE.md is explicit that
+changing one is a migration with redirects.
+
+### UX1.2 ONE VENUE ADDRESS FORMATTER
+
+Root cause found, and it was two lines that were each individually correct.
+The event page composed `fullAddress` as
+`[venue_name, venue_address, venue_city, venue_state, venue_country]`, and
+`KnowBeforeYouGo` then rendered `[venueName, fullAddress]`. Neither was wrong
+alone; the pair printed the name twice. That is the signature of a missing
+formatter: the composition rule lived nowhere, so it was reinvented per call site.
+
+`src/lib/venues/format-venue-address.ts` owns it now, with two exports (name +
+address, and address alone). A segment appears at most once, compared on a
+normalised form, but a SUBSTRING is not a duplicate: "West Melbourne" beside
+"Melbourne" keeps both, because dropping a suburb because its city name appears
+inside it would delete real information. The displayed line and the Maps query
+are now the SAME string, so the words and the pin cannot disagree.
+
+**Guard:** `scripts/guards/one-venue-address-format.mjs`, registered, blocking,
+drilled both ways. It found **six more hand-joined addresses**, every one fixed:
+the venues dashboard, checkout, the order confirmation, the event form, the
+sold-out panel, and the **ticket confirmation email**. The guard deliberately
+does NOT flag the short "Name, City" LABEL shape, which twelve surfaces build
+and which has no duplication problem; it requires a street, state, country or
+postcode before it calls a join an address.
+
+### UX1.3 TWO TAGS MAY NEVER DIFFER ONLY BY CASE
+
+Cause: `Array.from(new Set([...]))` in the event form. A JavaScript Set compares
+exactly, so `African` and `african` are two members and the deduplication that
+looked like it was happening never was.
+
+Normalised at the SERVER ACTION (`src/lib/events/normalise-tags.ts`), the boundary
+a form cannot bypass: trim, strip a leading hash people type by habit, drop
+empties, remove case-insensitive duplicates **keeping the first spelling** so
+`RnB` and `First Nations` survive, and cap count and length.
+
+And enforced in the DATABASE, which no writer of any kind can bypass. Migration
+`20260909000001_event_tags_case_distinct.sql` applied to TEST
+(`vkapkibzokmfaxqogypq`, ref read back before the push). Verified BY QUERYING IT
+BACK, both directions:
+
+    conname=events_tags_normalised  convalidated=true
+    UPDATE ... tags='["African","african"]'
+      -> ERROR 23514 violates check constraint "events_tags_normalised"
+    event_tags_normalised('["African","Soul"]') -> true
+
+**The migration repairs before it validates, and the reason is recorded in the
+file.** TEST holds 80 events with tags and 0 collisions; PRODUCTION holds at
+least one colliding row (the event that reported this). A constraint added first
+would have passed on TEST and failed the founder's production push. That is
+exactly the divergence class this repository keeps paying for.
+
+### UX1.4 THE HERO CROP NO LONGER CUTS THE POSTER TITLE
+
+`HeroMedia` defaults to `50% 30%`, biased upward, and that is correct for what it
+was tuned on: crowd PHOTOGRAPHS, where a centred crop lops off the top row of
+heads. An organiser's cover is a POSTER, portrait, with the event name at the top.
+Any anchor above 0% eats the title first.
+
+`ORGANISER_COVER_OBJECT_POSITION = '50% 0%'` in the ONE resolver
+(`getFeaturedHeroBackground`), so all four hero surfaces inherit it. It is not a
+tuned guess: 0% is the only value that GUARANTEES the supplied image's top edge
+survives the crop, which is what "respect a safe area" means when the safe area
+is the top.
+
+**Caught by LOOKING at the 390 capture while the assertion beside it was green:**
+a platform-COMPOSED cover (Law 6's typographic fallback) is not organiser artwork
+- it carries the event title as its own artwork, laid out for the frame - so
+top-anchoring it pushes its headline up behind the page headline. `FeaturedHero`
+already knew this and kept the helper private; the EVENT PAGE never had it.
+`isComposedCover` now has one definition, in the shared resolver. Same one-source
+lesson as UX1.2, found the same day.
+
+### DRIVEN PROOF, AND AN HONEST LIMIT ON HALF OF IT
+
+`scripts/verify/ux1-public-render-proof.mjs`, against a local production build on
+TEST, at 390, 768 and 1440, on a REAL published event with a REAL organiser-
+uploaded cover. The slug was ENUMERATED from the database, never guessed.
+**15 of 15 exercised checks pass**, screenshots in `C:\dev\EVIDENCE\UX1\`:
+
+    390/768/1440-UX1.2       The Wool Exchange, 44 Moorabool Street, Geelong, Australia
+    390/768/1440-UX1.2-maps  the same string in the Maps query
+    390/768/1440-UX1.4       organiser cover object-position: 50% 0%
+
+**3 checks report NOT EXERCISED rather than PASS, deliberately.** No organisation
+row on TEST carries a bold marker in its description, so the UX1.1 page assertion
+had nothing to fail on and was passing vacuously. A check that cannot fail proves
+nothing, so the script now inspects its subject first and says so. UX1.1 rests
+on 31 unit tests, the drilled guard, and the production HTML that shows the
+defect live.
+
+**The signed-in half is NOT yet driven, and the reason is a law, not a
+shortcut.** `auth-signup` and `auth-login` are `failClosed: true` on the rate
+limiter by doctrine, and a local checkout has no Upstash, so signup is refused
+locally with "a service we depend on is unavailable". I did not weaken the
+policy. `scripts/verify/ux1-organiser-surfaces-proof.mjs` is written and runs the
+full journey - signup, wizard, markdown bio through the real form, colliding tags
+typed into the real form, then the public pages at three viewports - and it will
+be run against the deployed preview, which has real Upstash and writes to TEST.
+
+### STATE OF THE GATES
+
+- `npx tsc --noEmit` exit 0.
+- eslint on every new and changed file, exit 0.
+- Full suite: **345 files, 4040 tests, 0 failures**. Canary baseline raised
+  341/3981 to 345/4040 in the same commit.
+- **All 89 registered guards PASS**, including both new ones.
+- `npx next build` exit 0.
+
+### A DIVERGENCE FOUND, NOT CAUSED BY THIS WORK, AND NOT PAPERED OVER
+
+`supabase db push` refused: TEST carries four migrations
+(`20260908000001` to `20260908000004`) that exist on `feat/m1-the-request` and
+`feat/c10-scope-audit-and-series` and are on NEITHER main nor this branch.
+Someone applied them to TEST from an unmerged branch. I did **not** run
+`migration repair --status reverted`, which would have recorded them as
+un-applied when they are applied. I materialised the four files from the branch
+that owns them, pushed my migration alone (`db push` skipped theirs, as they are
+already in `schema_migrations`), and removed them again. Nothing of another
+branch's is committed here. **TEST's schema is ahead of main by four migrations
+from unmerged work, and that is worth the founder knowing.**

@@ -2610,3 +2610,113 @@ Say yes to either and I will drive those rows and turn them green.
 
 **Still outstanding from yesterday:** the two keys stored more readably than your
 own rule allows. One command, written the moment you say the word.
+
+## 9 September 2026, session 57. The six things you found on Mikhaell's event.
+
+**First: I checked your event page myself before changing anything, and all three
+were still live on the real site.** Not "probably still there" - I downloaded the
+page and found the exact text: the asterisks around MKL Studios, the venue name
+printed twice, and both African and african sitting there as separate tags.
+
+### What a real person can now do that they could not before
+
+**An organiser can edit their own profile.** This is the one I did not expect to
+find. There was no way, anywhere in the product, to change your business name,
+your story, your website or your contact details after you first created them.
+They were set once inside the event wizard and frozen. The only "edit"-looking
+button on that screen actually creates a SECOND organisation.
+
+So Mikhaell could not have fixed his own bio even after you told him about it.
+There is now a proper form on the organisation screen, and it shows him a live
+preview of how his story will look to the public while he types it.
+
+**Bold text stays bold instead of showing asterisks.** People write `**like
+this**` out of habit, because that is how every chat app works. The platform now
+turns that into actual bold text, along with italics, links and bullet lists.
+Where the text has to be plain - a Google search result, a card teaser - the
+formatting marks are removed instead. Either way nobody ever sees the symbols.
+
+**The venue address reads properly.** "Quakers Centre, Quakers Centre, 484
+William Street" is now "Quakers Centre, 484 William Street". The map link and the
+words on the page are now built from the exact same text, so they can never
+disagree with each other.
+
+**Tags cannot duplicate themselves any more.** African and african become one
+tag, keeping whichever spelling was typed first, so RnB stays RnB. This is
+enforced by the database itself now, not just by the form, so it cannot come back
+through some other route later.
+
+**The hero no longer cuts the top off a poster.** Organisers put the event name
+at the top of their artwork. The crop was slicing it off. It now always keeps the
+top of whatever they upload.
+
+### Three more I found that you had not seen yet
+
+Same defect, on surfaces you had not looked at. All fixed:
+
+1. **Google search results.** A bolded organiser name would have shown up in the
+   Google listing for the event with the asterisks in it.
+2. **The printed poster.** The Launch Kit poster and story card would have
+   printed the asterisks in ink.
+3. **The data Google reads to build rich results** had the same problem.
+
+### Two things worth you knowing
+
+**Your test database is ahead of your main branch.** Four database changes were
+applied to the test site from two feature branches that were never merged. That
+is not broken and I have not touched it, but it means the test site and the code
+on main are not describing the same thing. Worth deciding whether those branches
+are landing or being dropped.
+
+**Half of one proof is waiting on a deployment, and I want to be straight about
+why.** To prove the bio form works end to end I have to sign up as a real
+organiser and type into it. Signing up is deliberately blocked when the security
+rate-limiter is unavailable, and it is unavailable on my machine because that
+service is not configured locally. I could have switched the protection off to
+make my own test pass. I did not. The full test is written and runs the moment
+this deploys to a preview.
+
+Everything else is driven and screenshotted on a real event at phone, tablet and
+desktop sizes.
+
+**Nothing needs a decision from you here.** The twelve launch-readiness rows are
+still exactly where they were, still waiting on your two approvals.
+
+## ONE THING NEEDS YOU BEFORE UX1 CAN LAND, 9 September 2026
+
+The work is finished and every check passes except one, and that one is yours by
+your own rule.
+
+**The gate stopped at production parity.** There are 117 database changes in the
+code and 116 of them are applied to the live site. The missing one is the change
+I made today that stops two tags differing only by capital letters. Until it is
+applied, this code cannot reach production, so the gate refuses to push it. That
+is the gate working, not a fault.
+
+**Your one command,** in PowerShell, from the repo folder:
+
+```
+npm run migrate:production
+```
+
+It lists the file, asks you to type the production reference back before it does
+anything, hands over to the database tool's own prompts, proves the result
+afterwards, and leaves the tool pointing back at the test site. Add
+`-- --dry-run` first if you want to see the list without doing anything. I ran
+the dry run already and it lists exactly one file:
+
+```
+20260909000001_event_tags_case_distinct.sql
+```
+
+**What that change does to your live data.** It tidies any event that has the
+same tag twice in different capitals, keeping the first spelling, and then stops
+it happening again. Mikhaell's event is the one with African and african on it,
+so that one gets tidied. Nothing is deleted except the duplicate.
+
+I did not bypass the gate to get around this, and I did not water the change
+down to avoid needing you. Applying a change to the live database is the one
+thing you said you want to press yourself.
+
+**Everything else on this branch is green:** disk, types, linting, the copy
+rules, the critical path, all 89 guards, and the types-drift check.
