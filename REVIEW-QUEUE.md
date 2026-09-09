@@ -3096,3 +3096,38 @@ npm run migrate:production
 
 That one command applies all five, in order. Everything else is ready and green
 behind it.
+
+### I checked my own work afterwards and found three things
+
+**One.** The outage email described itself as "something a visitor can see is
+broken right now". Then I drove the main-is-red version of it, and its body said,
+correctly, that the site was still up and it was the road to the next release
+that was broken. Both sentences were true and together they read as a
+contradiction. Reworded.
+
+**Two.** The test drives write their screenshots into a folder named for a date,
+and the date is fixed in the code. So every time anybody re-runs a drive, it
+quietly overwrites an older folder with newer content, and anyone reading that
+folder later would think they were looking at that day's evidence. My own re-run
+did exactly that. I put the old file back and made the folder something a drive
+can choose, without renaming anything, because hundreds of files and a lot of
+older documents point at the current name.
+
+**Three.** An earlier draft of my report to you said the email channel "works". I
+have not sent an email from this laptop and I cannot, so I deleted the claim
+rather than softening it. What I did instead was prove the **backup** channel for
+real, three times, and read each one back.
+
+### The full check, end to end
+
+Thirteen of the fourteen checks pass on exactly the code that is committed. The
+fourteenth is the one that has been red since yesterday and it is red on purpose:
+it refuses because the live database is five changes behind this code, and it
+would rather stop than let a merge take the site down.
+
+```
+npm run migrate:production
+```
+
+That one command is still the only thing standing between all of this and the
+live site.

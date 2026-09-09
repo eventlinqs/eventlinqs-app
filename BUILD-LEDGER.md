@@ -2602,3 +2602,72 @@ against the close-out text, with the evidence path beside each.
   the same founder command. Both carry `workflow_dispatch`.
 - **The founder's launcher has not been switched.** `RUN-BUILD20.ps1` is written
   and is one command; the file that runs is his.
+
+### THE ROAST GATE FOR UX4 AND H2.6
+
+    Requirements: 50.
+    MET: 42.  PARTIAL: 4.  NOT MET: 0.  NOT EXERCISED: 3.  BLOCKED (push): 1.
+    Adversarial findings unresolved: 0.
+    Ledger: docs/roast/ux4-notification-routing-2026-09-10.md
+
+The four PARTIALs share two causes and neither is a defect in what was built:
+
+- rows 11, 12 and 26, the stall alert. The judgement is driven at four points
+  either side of the boundary in both callers' modes. What is not armed is the
+  WATCHDOG path, because the launcher is the founder's file and `RUN-BUILD20.ps1`
+  is offered rather than switched in. The cloud path arms itself once this is on
+  main and says plainly, in its own body, that it could not confirm the build was
+  meant to be running.
+- row 28, "fail main and confirm both channels". The alert was driven with the
+  job's own class, target and body and produced GitHub issue #148 reading
+  `EventLinqs OUTAGE: CI is RED on main` with no drill marker. Main was NOT made
+  red on purpose: doing that deliberately would break the branch this whole build
+  exists to keep green. Both channels could not be confirmed because there is no
+  Resend key on this machine.
+
+The three NOT EXERCISED are the Stripe legs of UX4.4, blocked by an expired
+credential that only `stripe login` clears, exactly as session 58 recorded.
+
+### THE FOUR DRIVES THE CLOSE-OUT NAMES, RECORDED
+
+| Drive | What it actually proved |
+|---|---|
+| Stall the watchdog on purpose | The clock was moved against a REAL last-push timestamp read from the live API. Cloud mode: silent 5.9h, SPEAKS 6.2h, silent 8h, SPEAKS 12.4h. Watchdog mode: speaks 7h, silent 9h, speaks 13h, state file written between each. A test asserts an hourly check speaks exactly four times across a full day |
+| Fail a branch, no email, one line in the digest | Two REAL branch failures appear as two digest lines, one naming `preview-deployment-state.mjs`. No dispatch in this repository is reachable from a branch failure, and a guard holds it |
+| Fail main, confirm both channels | PARTIAL. Issue #148 carries the exact subject and body the job produces. Main was not made red, deliberately. Resend could not be confirmed from here |
+| Publish on TEST, confirm the business notification | RE-DRIVEN in this session, not cited: 11 of 11 checks pass through a real signup, the real organisation form and the real event wizard, with the rows read back |
+
+### THREE CORRECTIONS THE SELF-AUDIT FOUND, NOT A GATE
+
+1. The outage class said "something a visitor can see is broken right now", and
+   the main-red alert's own body said production was still serving. Both true,
+   together a contradiction. Reworded to what is true of all three causes.
+2. `makeJourney` writes into `docs/verification/journeys-2026-08-28`, a hardcoded
+   date, so re-driving any journey rewrites a directory named for a different
+   day. The re-drive did exactly that and the file was restored. The root is now
+   overridable by `JOURNEY_OUT_ROOT` and is deliberately NOT renamed, because
+   hundreds of committed files sit under it.
+3. An earlier draft of the report said the email channel "works". It has not been
+   driven from this machine and the claim was deleted rather than softened.
+
+### THE GATE, ACROSS THE FINAL TREE
+
+    disk                   PASS      every step below re-run on the FINAL commit
+    typecheck              PASS
+    lint                   PASS
+    copy                   PASS
+    critical-path          PASS
+    lighthouse-exemptions  PASS
+    guards                 PASS      all 95, re-run on the final commit
+    types-drift            PASS
+    production-parity      FAIL      BY DESIGN, five migrations behind
+    fixture                PASS
+    suite                  PASS      355 files, 4195 tests, 0 failed, 0 skipped
+    build                  PASS      re-run on the final commit
+    indexing               PASS
+    lighthouse             PASS      13 URLs, 65 runs, 1681s, on AC power, on the final commit
+
+Thirteen of fourteen. `production-parity` refuses because production is BEHIND
+this tree by five migrations, which is the designed behaviour, not a defect:
+schema first, then code. The founder's one command clears it and clears UX3 with
+it: `npm run migrate:production`.
