@@ -2299,3 +2299,66 @@ That is proven by five deliberate breakages, including someone changing the
 verdict line to LAUNCH READY.
 
 **Evidence:** `C:\dev\EVIDENCE\L5\` and `docs/verification/launch-readiness/`
+
+
+---
+
+## 9 September 2026, session 54. The deploy was broken by a guard that was wrong about Vercel, and it is the fourth time.
+
+**What was wrong.** The launch readiness pull request could not deploy. Every
+preview build failed, and CI failed behind it. Nothing about the report was wrong
+and nothing about the platform was broken: one of our own safety checks was wrong
+about what Vercel does with our files.
+
+**In plain terms.** We tell Vercel not to upload the `docs` folder, because it is
+large and the website does not need it. One of our checks reads a file in there,
+so it was written to say "if the docs folder is missing, I am on Vercel, so do
+nothing". Vercel does not remove the FOLDER. It removes the FILES and leaves the
+empty folder behind. So the check saw an empty folder, decided somebody had
+deleted the report on purpose, and refused to let the site build.
+
+**How I know that is what happened, rather than think it.** Vercel's own build log
+lists the files it removed, and it lists files inside `.git`, a folder we told it
+to skip entirely. Then I rebuilt that exact tree on this laptop and ran the check
+in it, and it failed with the same five messages, word for word, before I changed
+anything.
+
+**What I changed.** The check now identifies Vercel by two things that are true
+only there, and it still fails properly on my machine and in CI if the report is
+genuinely deleted.
+
+**The part that is worth more than the fix.** This is the fourth time a deploy has
+died this way. After the third, a guard was added to catch it. That guard lets a
+script be marked "this one copes fine when the docs folder is gone", with a written
+reason. The reason for this script was simply wrong, and nothing ever tested it, so
+the guard built for the first three failures watched the fourth go past. A written
+reason is not evidence.
+
+So there is now a check that BUILDS a copy of exactly what Vercel receives and RUNS
+every one of those scripts inside it, before anything leaves this machine. If one
+of them would fail on Vercel, the push is refused here first. It takes about five
+seconds and it is proven by deliberately putting the broken code back and watching
+it refuse.
+
+**Nothing was weakened to get past this.** No check was skipped, no threshold
+lowered, no guard disabled.
+
+**Nothing changed for you.** No page, no button, no journey. The twelve launch
+readiness rows still waiting on your two approvals are exactly as they were.
+
+**Evidence:** `C:\dev\EVIDENCE\VERCEL-UPLOAD\`
+
+**One thing I need from you, and it is a plug.** The fix is written, committed and
+green on thirteen of the fourteen checks. The fourteenth is the speed check, and
+it refused because this laptop is running on battery: it is benchmarking at 59% of
+the speed those speed limits were set at, while sitting idle. I changed the Windows
+power mode to Best Performance, which recovered part of it, and the rest is mains
+power.
+
+Plug the laptop in and I will re-run it and push. I did not lower a single limit to
+get around this, and I did not push unchecked. Nothing about the site changed in
+this commit: it is ten files, all of them test and safety-check code, so there is
+no way it made a page slower.
+
+Meanwhile the live site is healthy: main is green, the production deployment is
+Ready, and www.eventlinqs.com.au is serving that exact commit.

@@ -6442,3 +6442,181 @@ names. So the sentinel is not written, and BUILD-COMPLETE.txt is not created.
   C:\dev\EVIDENCE\L5\all-guards.txt, drills.txt
   docs/verification/LAUNCH-READINESS.md
   docs/verification/launch-readiness/ (4 artefacts)
+
+
+---
+
+## 2026-09-09, session 54. The fourth deployment lost to .vercelignore, and the guard that read a sentence instead of running a program.
+
+Governing laws stated before the first edit, per Law 0: C16.0 (the halt rule, and
+an item is not finished until production serves it), C16.1 (name the mechanism
+when the pull request checks pass and the deployment fails), C16.5 (no shortcuts
+to green), Law 8 (authorship), Law 9 (never resolve a version or an environment
+mismatch by going backwards), the Definition of Done, the COMPLETION LAW, and
+Verification and gates (a registered blocking guard, proven both ways).
+
+### The item in flight was red, so nothing else could begin
+
+Pull request 145 carried the L5 launch readiness report and was open with two
+checks failing: the Vercel preview deployment of `7564b40` in ERROR, and CI's
+`lint / typecheck / build` red behind it. Under C16.0 that is the only work, and
+under the COMPLETION LAW item L5 was not finished, because a merge is finished
+when production serves it.
+
+### The cause, read out of the deployment's own log rather than guessed
+
+`1 of 84 guard(s) FAILED` on Vercel, and the guard was
+`launch-readiness-honest.mjs`, reporting five faults: four PASS rows citing
+evidence "not in the repository", and the report itself "missing, and
+docs/verification is present, so it was deleted rather than stripped".
+
+The guard skips when `docs/verification` is absent, on the belief that
+`.vercelignore` strips docs/ and therefore the directory does not arrive. THE
+DIRECTORY ARRIVES. The same build log says so, four lines from the top:
+
+    Found .vercelignore
+    Removed 4464 ignored files defined in .vercelignore
+      /.git/config
+      /.git/description
+      /.git/hooks/applypatch-msg.sample
+
+`.vercelignore` names `.git`, a DIRECTORY, and the removal step enumerated the
+FILES inside it. Vercel deletes matched files and leaves the directory tree. So
+`docs/verification` was present and empty, its report was gone, and the guard
+called that a deletion.
+
+### Reproduced before anything was changed
+
+The theory was not left as a reading of a log. `scripts/guards/lib/vercel-upload.mjs`
+materialises the upload shape from `git ls-files`: every tracked path's
+DIRECTORIES created, and only the files `.vercelignore` keeps hard-linked in.
+Running the guard in that tree produced the same five faults, byte for byte,
+including the sentence about the directory being present. 2,168 files kept, 4,437
+stripped, 797 directories left standing.
+
+### The fix, and why it is not "check for the file differently"
+
+The skip test is now the two facts that identify the build host, neither inferred:
+the tree is NOT a git checkout (Vercel unpacks a tarball with no `.git`, which is
+why every git-reading guard printed "fatal: not a git repository" in that same
+log, and which `no-ai-authorship.mjs` already keys on), AND `docs/verification`
+holds no file at any depth. Both together are the upload and nothing else. Delete
+the report on a developer machine or in CI and the guard still fails, because
+both still have a `.git`.
+
+The alternative was to re-include the report and its artefacts in `.vercelignore`
+so the guard runs for real on Vercel. Rejected, and the reason is written into the
+module: every future PASS row citing a new evidence path would have to be
+re-included too, or the deploy dies for a file it was never sent. That is a rot
+trap in the build, and Vercel adds no enforcement the pre-push gate and CI do not
+already have with the whole tree.
+
+### The half that matters: a rationale is now executed
+
+`vercelignore-covers-guard-reads.mjs` was written after the THIRD occurrence and
+it judges REQUIRED reads statically. For a script declared TOLERANT of an absent
+docs/ it accepts a WRITTEN RATIONALE. This one's rationale was wrong and nothing
+ran it, so the guard built for the first three failures watched the fourth walk
+past. Prose does not run.
+
+`scripts/guards/tolerant-guards-survive-the-upload.mjs` materialises the upload
+and RUNS every tolerant script inside it, failing on any non-zero exit, in the
+same prebuild chain. Six scripts, about five seconds. Its first drill is this
+regression restored exactly: put the `existsSync` test back and the guard names
+the script, quotes its last six lines, and refuses the push.
+
+Both guards now read one registry (`scripts/guards/lib/vercelignore-registry.mjs`)
+so the required and tolerant halves cannot rot apart, and the ignore grammar moved
+to `scripts/guards/lib/vercelignore.mjs`, which can be imported without running a
+guard.
+
+### The C16.1 question, answered in one sentence
+
+The pull request checks passed and the deployment failed because the pre-push gate
+and CI both run the guards against the WHOLE checkout, and no local runner
+reproduced the `.vercelignore`-stripped tree. One does now, and it is blocking.
+
+### A defect in my own work, found by running the gate
+
+`tests/unit/guards/vercel-upload.test.ts` shelled out to `git show` without
+clearing the inherited environment, and `no-inherited-git-env.mjs` went red on it.
+That guard exists because a fixture once wrote `core.bare=true` into the shared
+worktree config and broke `git status` in all nine worktrees. Fixed in the same
+pass, which is the COMPLETION LAW's own rule about defects found mid-item.
+
+### Proven both ways
+
+RED, twice: the real regression restored (`exits 1 in the stripped upload`, with
+the failing guard's own output quoted), and registry rot (a reviewed entry
+outliving the script it reviews). GREEN on the restored tree: six tolerant scripts
+run in a materialised upload, every one exiting 0.
+
+`137/137 drills fired correctly`, up from 135. Registered guards 84 to 85. The
+full suite 334 files / 3,866 tests, 0 failed, 0 skipped; canary raised 333/3846 to
+334/3866, MEASURED by running it. `tsc --noEmit` exit 0, eslint `--max-warnings=0`
+exit 0 over all ten changed files.
+
+### Evidence
+
+  C:\dev\EVIDENCE\VERCEL-UPLOAD\cause.txt
+  C:\dev\EVIDENCE\VERCEL-UPLOAD\guard-RED-real-regression.txt
+  C:\dev\EVIDENCE\VERCEL-UPLOAD\guard-RED-registry-rot.txt
+  C:\dev\EVIDENCE\VERCEL-UPLOAD\guard-GREEN.txt
+  C:\dev\EVIDENCE\VERCEL-UPLOAD\all-guards.txt
+
+### The gate ran and BLOCKED, and it was right to
+
+The push was refused. 13 of the 14 gate steps passed: disk, typecheck, lint, copy,
+critical-path, lighthouse-exemptions, guards, types-drift, production-parity,
+fixture, suite, build and indexing. The 14th, Lighthouse, failed after 2,034
+seconds and NOTHING was pushed.
+
+The gate named its own instrument, which is what `gate-names-the-instrument` was
+built for: `Machine calibration: DEGRADED. BenchmarkIndex median 1908 (979 to
+2705), 71% of the 2700 the floors were confirmed at`. Two URLs missed, both
+narrowly: the homepage at 0.82 against 0.88, and /pricing at 0.88 against 0.91.
+
+Diagnosed rather than assumed:
+
+  - The machine is IDLE. 11% CPU load across 12 logical processors, no stray
+    Chrome, no node.
+  - It is nonetheless slow. `node scripts/perf/machine-speed.mjs`: median 1238.
+  - It is RUNNING ON BATTERY. `PowerLineStatus: Offline`, `Discharging: True`,
+    93% remaining, read from System.Windows.Forms.SystemInformation.PowerStatus
+    and from root\wmi BatteryStatus, which agree.
+  - Setting the Windows power mode overlay to Best Performance moved it 1238 to
+    1586, stable across two measurements twenty seconds apart. That is 59% of
+    2700, and the rest of the gap is mains power.
+
+And the reason a regression is not the explanation: `git diff --name-only
+7564b40b HEAD` is ten files, every one under `scripts/` or `tests/`. Not one byte
+of `src/`, `public/`, `next.config.ts` or `package.json` changed, so the page
+inputs are byte-identical to `7564b40`, which cleared this same gate on 9
+September at a calibrated speed.
+
+NOTHING WAS LOWERED. No floor moved, no assertion went from error to warn, no
+waiver was added, and `--no-verify` was not used. Close-out H5 and C16.5.
+
+FOUNDER STEP, and it is the IMPOSSIBLE class under Law 10: a machine cannot plug
+in a power cable. Put the laptop on mains power. Everything else is scripted and
+ready:
+
+  npm run gate:push -- --only lighthouse    the step on its own, to confirm
+  git push origin verify/l5-launch-readiness   the hook then runs the whole gate
+
+One machine change was made and is reversible: the Windows power mode overlay is
+now Best Performance (it was on the Balanced scheme). It is a slider, not a
+setting the platform depends on, and it can go back with
+`powercfg /overlaysetactive 0`.
+
+### Production health while the push waits, confirmed rather than assumed
+
+  - origin/main at `b3f9a56e`: CI success, post-deploy smoke success twice.
+  - Newest production deployment `dpl_HX4Ua96M6kqnxjXykrLnhJVZ8DT1`: READY, and
+    its commit IS origin/main.
+  - https://www.eventlinqs.com.au returns 200 and serves
+    `sentry-release=b3f9a56e31fb4bd0e502b88c9eccb98cb7a6eb22`.
+
+So the C16.0 halt condition is NOT triggered: main is green and production is
+serving it. The only thing in ERROR is the PREVIEW of `7564b40` on the pull
+request branch, which is the defect this commit fixes.

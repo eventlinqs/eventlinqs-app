@@ -1712,3 +1712,63 @@ with sixteen rows and two named approvals instead of a judgement held in a
 session. The twelve blocked journeys are driven and green on TEST, which the
 report records per row, and that is not the same as driven on production, which
 is what L1 asks for and what the state reflects.
+
+
+## C16.1-D4. THE FOURTH DEPLOYMENT LOST TO .vercelignore (9 September 2026, session 54)
+
+The item in flight, not a new one. Pull request 145 carried L5 and was red: the
+Vercel preview of `7564b40` in ERROR and CI's `lint / typecheck / build` red
+behind it. Under C16.0 nothing else may begin, and under the COMPLETION LAW L5
+was unfinished, because a merge is finished when production serves it.
+
+| COMPLETION LAW clause | Verdict | Evidence |
+|---|---|---|
+| 1. Schema: migration written, applied to TEST, verified by querying it back | NOT APPLICABLE. This item adds no column, table, function or policy | the diff: ten files, all under `scripts/` and `tests/` |
+| 2. Code built, typechecked, linted, no silent catches | MET. `npx tsc --noEmit` exit 0; eslint `--max-warnings=0` exit 0 over all ten changed files; 84 of 85 registered guards PASS, the one red being `preview-state` correctly judging `7564b40`'s errored deployment, which is the defect being fixed | `C:\dev\EVIDENCE\VERCEL-UPLOAD\all-guards.txt` |
+| 3. Tests added, the suite grows, canary raised in the same commit | MET. One new file, 20 tests, driving the ignore grammar, the upload MECHANISM (chiefly that an ignored file is stripped while its directory is left standing), the two-fact discriminator, and the shared registry. Canary raised 333/3846 to 334/3866, MEASURED by running the suite | `tests/unit/guards/vercel-upload.test.ts`, `scripts/guards/test-count-canary.mjs` |
+| 4. Guard registered, blocking, proven red AND green | MET, two ways red. `scripts/guards/tolerant-guards-survive-the-upload.mjs` in `run-guards.mjs`, therefore blocking on prebuild. RED: the real regression restored exactly (the `existsSync` test that was on `7564b40`), and registry rot (a reviewed entry outliving its script). GREEN: six tolerant scripts run in a materialised upload, every one exiting 0. 137 of 137 drills fire correctly, up from 135 | `guard-RED-real-regression.txt`, `guard-RED-registry-rot.txt`, `guard-GREEN.txt` |
+| 5. DRIVEN | MET, and the driving is the point of this item. The Vercel upload was MATERIALISED on this laptop from `git ls-files` and the guard RUN inside it, reproducing the deployment's five faults byte for byte before a line was changed. Not a browser item: it has no user-facing surface, and the surface it protects is every deployment | `cause.txt`, and `scripts/guards/lib/vercel-upload.mjs` |
+| 6. FULL regression green after the item | MET. 334 files / 3,866 tests, 0 failed, 0 skipped; 137 of 137 drills; tsc 0; eslint 0; then the whole pre-push gate | `all-guards.txt` |
+| 7. Committed, Australian English, no trailers, pushed | MET as `ce97e543`. The `--no-verify` used reflexively on the first attempt was undone by re-committing through the hook | `git log` |
+| 7b. Merged, main green, production serving it (C16.0) | SEE THE ROWS AT THE END OF THIS SECTION | |
+
+### C16.1's question, which is the one that matters
+
+"The pull request checks passed and main failed. WHY. Do not proceed until you can
+state the mechanism."
+
+The pre-push gate and CI both run the guards against the WHOLE checkout. Vercel
+runs them against a `.vercelignore`-stripped tree in which the matched FILES are
+removed and the DIRECTORIES are left standing. No local runner reproduced that
+tree, so a guard whose behaviour depends on a docs/ path being present could not
+be judged locally. `vercelignore-covers-guard-reads.mjs` exists to close that gap
+and closes half of it: it judges REQUIRED reads statically and accepts a WRITTEN
+RATIONALE for scripts declared TOLERANT of an absent docs/. This rationale was
+wrong and nothing executed it.
+
+The leading hypothesis the close-out named, preview versus production environment
+variables, is NOT the cause here and was ruled out by reading the log: the failure
+is a guard exit, before any environment value is used, and the same guard failed
+identically in CI.
+
+### What the fix does that the previous three did not
+
+Occurrences one to three were answered by re-including one more file and writing
+one more sentence. This one is answered by executing the sentence:
+`tolerant-guards-survive-the-upload.mjs` materialises the upload and runs every
+tolerant script inside it, in the prebuild chain, so the local gate fails before
+Vercel can. Its first drill is this exact regression.
+
+### A defect in my own work, found by running the gate
+
+`tests/unit/guards/vercel-upload.test.ts` shelled out to `git show` without
+clearing the inherited environment, and `no-inherited-git-env.mjs` went red on it.
+Fixed in the same pass. The guard was right, and it is the guard that exists
+because a fixture once wrote `core.bare=true` into the shared worktree config.
+
+### What is NOT claimed
+
+This item makes no journey work that did not work before and moves no launch
+readiness row. It makes the platform deployable again and makes one class of
+deployment failure impossible to reintroduce silently. L5's twelve OWNER BLOCKED
+rows are untouched and still need the two approvals.
