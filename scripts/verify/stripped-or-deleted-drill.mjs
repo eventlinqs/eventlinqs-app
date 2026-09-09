@@ -142,12 +142,25 @@ try {
    *
    * The materialised upload now carries the same empty `.git` skeleton, so this
    * case is a real reproduction rather than an argument about one.
+   *
+   * CLOSE-OUT F2.2 CHANGED WHY IT STANDS ASIDE, and this drill went stale for a
+   * few hours because of it. The guard used to skip here because it could not
+   * find a git repository, which is an ACCIDENT: the moment the enumeration
+   * stopped needing git, that accident would have silently reversed and the
+   * guard would have begun simulating Vercel from inside Vercel. It now skips by
+   * BUILD SCOPE, which is a decision, so the sentence it prints changed. The
+   * behaviour this case exists to pin is unchanged and still the point: run
+   * inside the upload, it stands aside and does not call git.
+   *
+   * Worth recording: no gate caught the staleness, because neither this drill nor
+   * scripts/verify/guard-failure-drills.mjs is wired into the pre-push gate or
+   * into CI. Both are hand-run. That is a real gap and it is named in BUILD-LOG.
    */
   cases.push({
     name: '5. the executor is run INSIDE the upload and must stand aside, not call git',
     ...run(dest2, VERCEL_ENV_VARS, join(ROOT, 'scripts/guards/excluded-reads-survive-the-upload.mjs')),
     wantCode: 0,
-    wantText: 'SKIP - this tree is not a git checkout',
+    wantText: 'SKIP - this IS the build host',
   })
 } finally {
   removeUpload(dest1)
