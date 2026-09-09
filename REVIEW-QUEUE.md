@@ -2949,3 +2949,24 @@ npm run migrate:production
 ```
 
 This item adds three more migrations to that list.
+
+### One more thing I checked rather than assumed
+
+I claimed the notification code cannot break an event or an order even if it goes
+wrong. I had not actually proved that, so I broke it on purpose: I put the faulty
+version back on the test database and published an event through the wizard.
+
+**The event published, and you were still told**, with the fault written into the
+message. That is the behaviour I wanted.
+
+Doing it also found something I had got wrong. When it falls back like that, the
+record was not carrying the event it was about, so it would have shown up in your
+feed unattached to anything. Fixed, re-tested, and it now carries it.
+
+### The count of database changes waiting on you is now five
+
+```
+npm run migrate:production
+```
+
+That one command applies all five, in order.

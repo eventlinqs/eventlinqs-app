@@ -2516,3 +2516,30 @@ terms, and it is recorded here that it did not cure anything.
     production-parity FAILS by design: production is BEHIND by four migrations
     (20260909000001 to 20260909000004). Schema first, then code. Nothing was
     pushed, and the founder's one command clears it: `npm run migrate:production`.
+
+### THE ROAST GATE, AFTER THE FINDING IT RAISED WAS CLOSED
+
+    Requirements: 35.  MET: 28.  PARTIAL: 4.  NOT MET: 0.  BLOCKED: 3.
+    Adversarial findings unresolved: 0.
+    Ledger: docs/roast/ux3-owner-notifications-2026-09-10.md
+
+The one unresolved finding (the never-block wrapping had never been driven to an
+actual raise) was driven and closed, and the drill found a real weakness in the
+fallback that the reasoning had missed: the degraded row carried no ids and so
+could not be joined to its own event. Fixed in
+`20260909000005_degraded_notification_keeps_its_subject.sql`, re-drilled, guards
+and suite green after it.
+
+The four PARTIALs and three BLOCKED rows are unchanged and none is finishable
+here: two wait on `stripe login`, one on `npm run migrate:production`, one on the
+first of those.
+
+### PRODUCTION IS NOW BEHIND BY FIVE MIGRATIONS
+
+    20260909000001_event_tags_case_distinct.sql              (session 57)
+    20260909000002_platform_notifications.sql
+    20260909000003_platform_notification_guards.sql
+    20260909000004_platform_notifications_never_block.sql
+    20260909000005_degraded_notification_keeps_its_subject.sql
+
+One command, and it applies them in order: `npm run migrate:production`.

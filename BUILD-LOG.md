@@ -8274,3 +8274,39 @@ sub-second window inside it in which 20260909000002 is applied and
 has already run against TEST and rewriting it would make the repository lie about
 what TEST executed. The window is one command's internal sequence; a quiet minute
 closes it entirely.
+
+### THE ROAST'S OWN FINDING, DRIVEN AND CLOSED
+
+The self-audit named one unresolved item: the never-block wrapping added in
+`20260909000004` had never been driven to an actual raise. It was run rather than
+left. `notify_event_published` was reinstalled on TEST carrying the original
+`new.city` defect, wrapping intact, and an event was published through the real
+wizard:
+
+    ux3.event.published    PASS   the event went live
+    the row written              "Event published, details unavailable:
+                                  record "new" has no field "city""
+
+The guarantee holds in both directions.
+
+**The drill then found what the reasoning had not.** The fallback passed four
+arguments, so the degraded row carried NULL for `event_id`, `organisation_id` and
+`order_id`. The link still worked, but the row could not be JOINED to its subject.
+`20260909000005_degraded_notification_keeps_its_subject.sql` passes the ids that
+come straight off the trigger's own NEW record, which cannot be what raised.
+Re-drilled: the event publishes, the degraded row is written, and it carries its
+event. Restored, both guards green, and `guards`, `suite` and `build` re-run
+green after the fifth migration (93 guards, 352 files / 4121 tests).
+
+**Two drive-tooling facts, both of which cost time here.**
+
+  A stale `next start` kept port 3311 while two rebuilds replaced `.next`
+  underneath it. The browser then requested chunk filenames that no longer
+  existed, React never hydrated, and every form's submit stayed disabled. It
+  reads exactly like a broken page. Kill by OWNING PROCESS on the port
+  (`Get-NetTCPConnection -LocalPort 3311`), never by a command-line match: the
+  child is `node .../next/dist/bin/next` and does not carry "next start".
+
+  After `npm run gate:push`, `.next` is the GATE'S build and carries the parity
+  Sentry DSN (`127.0.0.1:9411`) the gate deliberately injects. It is not a build
+  to drive against. Rebuild with `build-with-env.ps1` first.
