@@ -1838,3 +1838,390 @@ Add to CLAUDE.md and register a blocking guard for it:
 Report at the end: the four occurrences named, the lines added to .vercelignore, proof
 the derived guard goes red on 7564b40, the count of guards that distinguish stripped
 from deleted, and launch-readiness-honest passing on a real Vercel deployment.
+
+### F1.9 CLOSED. Already fixed by the build in commit 6e61c65f. DO NOT REDO IT.
+
+The build reached this cause independently and its diagnosis is the correct one:
+Vercel deletes the FILES matched by .vercelignore and leaves the DIRECTORIES
+standing, so docs/verification was empty rather than absent and the guard's skip
+test could never fire. Proven from Vercel's own build log enumerating /.git/config
+inside a .git that .vercelignore names.
+
+The structural fix in F1.9.2 Part Two is also already built: a guard that
+materialises the upload and runs every tolerant script inside it, in the prebuild
+chain, proven red by restoring the broken code.
+
+Do not re-open F1.1 through F1.9. Push 6e61c65f, land PR 145, and continue with the
+launch-blocking list.
+
+## UX1. SIX DEFECTS ON THE FIRST REAL ORGANISER EVENT, FOUND ON PRODUCTION.
+
+Seen on https://www.eventlinqs.com.au/events/afro-fusion-music-showcase-with-mikhaell-friends-a-l1vcpz
+by the owner on 9 September 2026. The first real outside organiser event on the
+platform. Four of the six are platform defects that will hit every organiser.
+
+UX1.1 The organiser bio renders raw markdown. The MKL Studios bio displays
+      **MKL Studios** with the asterisks visible. Decide one rule and apply it
+      everywhere an organiser or artist writes prose: render markdown, or strip it.
+      Never display the syntax. Guard it, drilled on a bio containing bold, italic,
+      a link and a list.
+
+UX1.2 The venue name is duplicated in Getting there: "Quakers Centre, Quakers
+      Centre, 484 William Street, West Melbourne, VIC, Australia". The venue name is
+      being concatenated with a formatted address that already carries it. Fix at the
+      formatter, not the page, and prove it on a venue whose name is and is not part
+      of its address.
+
+UX1.3 Tags are not case normalised. The same event carries #African and #african.
+      Normalise at write time, migrate existing rows, and guard that two tags
+      differing only by case cannot both exist.
+
+UX1.4 The homepage hero crop cuts the top of the organiser's poster. Organisers put
+      the event name at the top of a poster. Either respect a safe area or choose a
+      focal point rather than a fixed crop. Drive it at 390, 768 and 1440 on this
+      event.
+
+Also recorded, not platform faults, for the owner to raise with the organiser:
+  the description begins "oin Mikhaell & Friends", missing the J
+  the ticket name is lowercase "general admission" while the page is title case
+
+Verify separately and report: the Google venue map renders on production with a real
+pin, which suggests NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is present. Name which key is
+serving it and whether it is set on preview as well as production.
+
+## UX2. FOUR MORE DEFECTS FROM THE OWNER'S LIVE READ, PLUS A LEGAL CHECK.
+
+Same event page, 9 September 2026. The route sweep drove 211 routes with zero errors
+and found none of these, because a sweep reads status codes and a person reads a page.
+
+UX2.1 LEGAL, HIGHEST PRIORITY. The footer publishes ABN 30 837 447 587. Read that
+      number from ONE source, so it changes everywhere at once. The entity taking
+      ticket money must match the ABN displayed and the Stripe account entity. When
+      the Pty Ltd is registered the number changes, and a guard must fail the build
+      if the displayed ABN and the configured entity disagree. Owner is verifying
+      the current number at abr.business.gov.au.
+
+UX2.2 The venue map pin is an unlabelled dot. Every surrounding commercial POI
+      carries a labelled marker with an icon; the venue, the only point that matters,
+      does not. Give it the venue name, brand colour, and visual weight above the
+      surrounding POIs. Drive it at 390, 768 and 1440.
+
+UX2.3 The right rail collides with the footer. The last rail card abuts the dark
+      footer with no terminal spacing because the two columns end at different
+      points. Close the rail properly at every viewport.
+
+UX2.4 The public contact address is hello@eventlinqs.com on a site served from
+      eventlinqs.com.au. Split domains hurt trust and email authentication. Pick one
+      domain, use it in every surface and every outbound email, and guard that the
+      two never diverge again.
+
+### UX2.5 THE PROCESS CHANGE THIS PROVES.
+
+L1 must carry a HUMAN READ of the five launch screens, not only a driven sweep.
+A sweep proves a page answers. It cannot see an invisible pin, a bio rendering
+asterisks, or a rail crashing into a footer. Add it as a named L1 row with its own
+evidence, and never report the sweep as covering it.
+
+## UX3. THE PLATFORM TELLS ITS OWNER NOTHING. HIGHEST PRIORITY OF THE UX ITEMS.
+
+On 8 September 2026 a real outside organiser created an account, built an event,
+uploaded a video, set a price and published it on production. The organiser's own
+emails were delivered correctly. The owner received nothing and found out by
+opening the website by chance the next day.
+
+UX3.1 Five owner notifications, each proven by driving the real action on TEST,
+      never by asserting that a code path exists:
+        a new organiser account is created
+        Stripe Connect onboarding is started
+        Stripe Connect onboarding completes and charges are enabled
+        an event is published
+        every paid order
+      Each carries what happened, who, which event, and a direct link into the admin
+      console for that record.
+
+UX3.2 The notification path may not be able to fail silently. H2 already proved an
+      alert channel can drop itself. Every notification is recorded as sent or failed,
+      a failure is retried, and a persistent failure raises through the second channel
+      exactly as the smoke alert does. Drill the failure path, not only the success.
+
+UX3.3 Volume control from the start, so this is not ripped out later. Order
+      notifications are individual until a configurable daily count, then a digest.
+      The threshold is one named constant, and the digest is drilled at the boundary.
+
+UX3.4 The admin Notifications screen must show the same events as a readable feed,
+      so the owner can see what happened while away without searching an inbox.
+
+Guard: no state change in that list of five can complete without a notification
+record being written. Prove it refuses as well as passes.
+
+## UX4. NOTIFICATION ROUTING. THE INBOX IS LOUD ABOUT THE HARMLESS AND SILENT ABOUT THE DANGEROUS.
+
+Proof from the owner's own inbox, 9 September 2026: the build was stalled from 00:23
+to 09:28, six runs killed, nothing pushed for nine hours, and NOT ONE EMAIL was sent,
+because nothing failed. Meanwhile six emails arrived for branch gates doing their job,
+and zero arrived when a real organiser published a paid event on production.
+
+Nothing here reduces what the owner knows. It replaces noise with the signal that was
+missing.
+
+UX4.1 THE DAILY STATE EMAIL. Once a day, at a fixed time, WHETHER OR NOT anything is
+      wrong. Main green and its commit; production Ready and the commit it serves;
+      what landed in 24 hours; what is open and for how long; WHEN THE BUILD LAST
+      PUSHED; each failing branch in one line with its guard named; events live,
+      tickets sold, new organisers. It must arrive on a quiet day, because its
+      absence is itself the alert.
+
+UX4.2 THE STALL ALERT. If the watchdog is running and nothing has been pushed in six
+      hours, alert immediately. This is the condition that cost a full day and that no
+      failure notification can ever detect, because a stall produces silence.
+
+UX4.3 IMMEDIATE, OUTAGE ONLY. Main red, a production deployment failed, or the
+      post-deploy smoke failed. Distinguishable at a glance from a branch gate, which
+      today it is not.
+
+UX4.4 IMMEDIATE, BUSINESS. New organiser, Stripe onboarding started and completed,
+      event published, every paid order. This is UX3, the half that does not exist.
+
+UX4.5 BRANCH GATE FAILURES stop being email. They stay in the run log and on the pull
+      request, and they appear as one line in the daily email. Never silence the gate
+      itself.
+
+Prove every one by driving it: stall the watchdog on purpose and confirm the alert;
+fail a branch and confirm no email but a line in the digest; fail main and confirm
+both channels; publish on TEST and confirm the business notification. Record all four.
+
+## F2. THE GUARD BUILT TO STOP THE FOURTH FAILURE CAUSED THE FIFTH.
+
+Vercel preview of ffded23, 9 September 2026 at 03:42 UTC:
+  Error: Command failed: git ls-files -z
+  [guards] 1 of 86 guard(s) FAILED. Build blocked.
+  [guards] FAILED:
+  Error: Command "npm run build" exited with 1
+
+.vercelignore names .git on its last line. The Vercel build container has no git
+repository. A guard shells out to git ls-files, it throws, and the deploy dies.
+
+### F2.1 THE CLASS HAS BEEN NAMED TOO NARROWLY. FIX THE GENERALISATION FIRST.
+
+Five failures now share one cause and it is not "docs get stripped". It is:
+
+    THE VERCEL BUILD HOST IS NOT A DEVELOPER MACHINE.
+    No docs. No git. No Vercel token. No developer environment of any kind.
+
+Every build-time script must declare which of those it needs, and the registry must
+carry that declaration. A script that needs git, docs, or a token, and does not
+declare it, fails the local gate. Prove it by adding an undeclared dependency and
+watching the gate go red before a push.
+
+### F2.2 THE UPLOAD-MATERIALISING GUARD MUST NOT RUN ON VERCEL AT ALL.
+
+Its purpose is to predict what Vercel will see. Running it on Vercel is circular:
+the thing it simulates is the thing it is running inside. It belongs on the local
+pre-push gate and in CI, where the whole tree exists and the comparison is possible.
+
+Make it CI and local only, and while doing so remove its dependence on git ls-files:
+derive the file list by walking the filesystem and applying the .vercelignore rules,
+so it works in any checkout, shallow or otherwise. Prove both: it runs and judges in
+CI, and it does not execute on Vercel.
+
+### F2.3 F1.1 IS HALF DONE. A GUARD THAT THROWS MUST STILL BE NAMED.
+
+In CI, where the guard returned a verdict, F1.1 named it correctly:
+  [guards] FAILED: scripts/guards/preview-deployment-state.mjs
+On Vercel, where the guard THREW, the name was lost:
+  [guards] FAILED:
+
+A crash is exactly when the name matters most. Wrap every guard invocation so an
+exception is caught, attributed to the guard that raised it, and printed with its
+message and the first line of its stack. Prove it by making one guard throw
+deliberately and reading its name back.
+
+### F2.4 EVERY GUARD THAT READS GIT, ENUMERATED AND MADE HONEST.
+
+The same log shows four more git calls failing quietly:
+  git rev-parse --abbrev-ref HEAD
+  git rev-parse HEAD
+  git for-each-ref --format=%(refname:short)
+  git remote get-url origin
+Those degrade rather than throw, which means they are running blind on Vercel while
+reporting normally. Enumerate every guard that reads git, make each state plainly
+when there is no repository to read, and report how many there are.
+
+Report at the end: the guard that threw, the count of guards reading git, proof the
+upload guard no longer executes on Vercel, and a deliberate throw naming itself.
+
+## D1  The sales ledger
+Priority: immediately after UX6. Do not start D1 while any UX6 item is open.
+
+WHY
+The database stores current state and overwrites it. "Sold 240" cannot say when those 240 sold, at what price, or how many people tried and gave up. That history cannot be reconstructed later. It is also the input D2 needs, so D2 cannot exist without it.
+
+WHAT IT SHIPS TO THE ORGANISER
+A panel on the organiser dashboard, "How your tickets sold": cumulative sales against days out, the price at each point, and how many people reached checkout and did not finish.
+
+WHAT TO BUILD
+One append only table. Rows are INSERTed, never UPDATEd or DELETEd. A refund is a new negative row, never an edit. Current state tables stay exactly as they are.
+
+Five row types, nothing more:
+1. SALE. timestamp, event id, tier, quantity, price paid, days out at sale, referrer and utm, device, hashed buyer id, first time or returning.
+2. PRICE CHANGE. timestamp, event id, tier, old price, new price.
+3. INVENTORY. timestamp, event id, tier, action (open, close, hold, release, capacity change), quantity.
+4. REFUND. timestamp, event id, tier, quantity, amount.
+5. DEMAND. timestamp, event id, action (page view, checkout started, checkout abandoned, waitlist join, sold out page view), hashed visitor id, email if one was entered.
+
+Plus one row per event at close: final sold, final revenue, fill percentage, scanned, no shows.
+
+The email field on the DEMAND row is required, not optional. Without it D2 cannot contact anyone and the whole recovery engine is dead on arrival.
+
+Backfill from existing completed orders on production so the first pace curve is not empty. Backfill only what was genuinely recorded. Invent nothing.
+
+ACCEPTANCE, ALL REQUIRED
+- Migration applied on TEST first. Production only on explicit approval from Lawal.
+- Every write path emits its row: checkout, refund, tier open and close, price edit, hold, release.
+- Demand events fire from the event page and every step of checkout, including abandonment.
+- Tests covering each of the five row types plus the backfill.
+- A registered blocking guard asserting no code path issues UPDATE or DELETE against the ledger. Proven to fail as well as pass.
+- Driven proof: pull the complete pace curve for the Afro-Fusion event including order EL-9HE57YNV and render it in the organiser dashboard. Captured at 390, 768 and 1440, obeying the UX6 no overflow rule.
+- Full regression green.
+
+REVERSAL CONDITION, EVALUATED BY THE BUILD
+Measure checkout latency at the 95th percentile before and after. If the ledger write adds more than 50ms, move it off the request path to a queue. Never drop fields to make it cheaper. If the queue cannot be built inside this item, ship sales and refunds only, defer demand events, and say so plainly rather than shipping a slow checkout.
+
+## D2  The recovery engine.  This is Fillrate v0 and it makes money on day one.
+Priority: immediately after D1. Requires the D1 DEMAND rows including the email field.
+
+WHY
+Between 60 and 80 percent of people who start a checkout do not finish, and on mobile it is over 85 percent. Up to 20 percent of those are recoverable by an automated email sequence. This needs no forecast, no model and no history. It works on the first event. It is the smallest thing that proves acting on a slot adds revenue that would otherwise have been lost.
+
+WHAT TO BUILD, THREE THINGS ONLY
+
+1. ABANDONED CHECKOUT RECOVERY
+A person entered an email at checkout and did not complete. Send a three message sequence: at 2 hours, at 24 hours, at 72 hours. Stop immediately if they buy, if the tier sells out, if the event is cancelled, or if the event starts. Every message names the event, the tier, the price, and links straight back into a resumable checkout. No discount in v0. Scarcity and a working link only.
+
+2. WAITLIST ACTIVATION
+A tier is sold out and a person joins the waitlist. When a refund or a release frees inventory, notify the waitlist in join order with a time limited hold so the first person gets a fair chance before the next. If the hold expires, it passes down the list automatically.
+
+3. THE PROOF PANEL
+On the organiser dashboard: how many abandoned, how many were emailed, how many came back, and how much revenue was recovered, in dollars. This panel is the product. It is what makes an organiser believe, and it is what a customer of a standalone Fillrate would be paying for.
+
+MEASUREMENT
+Record on every recovered sale that it was recovered, which message recovered it, and how long after abandonment. Report raw recovery rate: of N abandoned checkouts, M returned and bought.
+
+Do NOT build a holdout yet. At current volume a holdout would withhold from two or three people and prove nothing. Add the holdout automatically once the platform passes 300 abandoned checkouts, and register that threshold in code so it is not forgotten.
+
+RULES
+- Only ever email a person about the specific event they themselves started buying a ticket for. Never about any other event, never any other organiser.
+- Every message carries a working one click unsubscribe and the sender identity already used on the ticket email.
+- The organiser can switch recovery off per event. Default on.
+- Suppress anyone who has unsubscribed, refunded, or already bought.
+
+ACCEPTANCE, ALL REQUIRED
+- Driven proof of the full sequence on TEST: abandon a checkout, receive message one, come back, buy, and confirm messages two and three are suppressed.
+- Driven proof of waitlist activation: sell out a tier, join the waitlist, refund a ticket, confirm the waitlist email fires and the hold expires correctly to the next person.
+- Unsubscribe proven to work and proven to suppress.
+- The proof panel renders real numbers, captured at 390, 768 and 1440, no overflow.
+- Tests on the send, the stop conditions, the suppression list and the hold expiry.
+- A registered blocking guard asserting no path can email a person about an event they never engaged with. Proven to fail as well as pass.
+- Full regression green.
+
+REVERSAL CONDITION, EVALUATED BY THE BUILD
+Track unsubscribe rate and spam complaint rate on the recovery sequence. If unsubscribes exceed 2 percent or complaints exceed 0.1 percent of sends, cut the sequence from three messages to one at 2 hours and report it. If complaints exceed 0.3 percent, stop all sends immediately and report, because sender reputation damage would also take down the ticket emails, which are the thing buyers actually need.
+
+## D1  The slot ledger.  Built category general from the first line.
+Priority: immediately after UX6. Do not start while any UX6 item is open.
+
+WHY IT IS NOT CALLED THE TICKET LEDGER
+This ledger is the foundation of a business that will later run for gyms, clinics, tour operators, studios and venues. If it speaks ticketing it will have to be rebuilt to leave ticketing. It speaks the general language from the first migration and EventLinqs adapts into it.
+
+VOCABULARY, BINDING
+- SLOT: any dated unit of perishable capacity. An event, a class, an appointment, a departure, a session.
+- INVENTORY CLASS: a priced bucket within a slot. A ticket tier, a membership rate, a concession, a cabin grade.
+- UNIT: one sellable place within an inventory class.
+- SOURCE SYSTEM: which platform the row came from. "eventlinqs" for now.
+Nothing in the ledger schema, the column names, the enums or the engine may use the words event, ticket or tier.
+
+WHAT TO BUILD
+One append only table. Rows are INSERTed, never UPDATEd or DELETEd. A refund is a new negative row. Current state tables are untouched.
+
+Every row carries: source system, slot id, organisation id, timestamp.
+Every slot carries: category and subcategory as required fields, not derived. Capacity, on sale timestamp, slot timestamp, derived days out, postcode.
+
+Five row types:
+1. SALE. inventory class, quantity, price paid, days out, referrer and utm, device, hashed buyer id, first time or returning.
+2. PRICE CHANGE. inventory class, old price, new price.
+3. INVENTORY. inventory class, action (open, close, hold, release, capacity change), quantity.
+4. REFUND. inventory class, quantity, amount.
+5. DEMAND. action (page view, checkout started, checkout abandoned, waitlist join, sold out view), hashed visitor id, email if one was entered.
+
+Plus one closing row per slot: final sold, final revenue, fill percentage, attended, no shows.
+
+The email on the DEMAND row is required, not optional. Without it D2 cannot contact anyone.
+
+THE ADAPTER
+EventLinqs writes to the ledger through a single adapter module that maps event to slot, tier to inventory class, ticket to unit. Nothing else in the codebase writes to the ledger directly. A registered guard must assert this, because the adapter boundary is the entire portability of the business and it will erode within a month if nothing defends it.
+
+Backfill from existing completed orders on production through the same adapter. Backfill only what was genuinely recorded. Invent nothing.
+
+WHAT IT SHIPS TO THE ORGANISER
+A dashboard panel, "How your tickets sold": cumulative sales against days out, price at each point, and how many reached checkout and did not finish.
+
+ACCEPTANCE, ALL REQUIRED
+- Migration applied on TEST first. Production only on explicit approval from Lawal.
+- Every write path emits its row through the adapter.
+- Demand events fire from the slot page and every checkout step including abandonment.
+- Tests on all five row types, the adapter mapping and the backfill.
+- Guard one: no code path issues UPDATE or DELETE against the ledger.
+- Guard two: no ledger column, enum or engine file contains the words event, ticket or tier.
+- Guard three: no module outside the adapter writes to the ledger.
+- All three guards proven to fail as well as pass.
+- Driven proof: pull the complete curve for the Afro-Fusion slot including order EL-9HE57YNV and render it. Captured at 390, 768 and 1440, no overflow.
+- Full regression green.
+
+REVERSAL CONDITION, EVALUATED BY THE BUILD
+Measure checkout latency at the 95th percentile before and after. If the ledger write adds more than 50ms, move it off the request path to a queue. Never drop fields to make it cheaper. If the queue cannot be built inside this item, ship sales and refunds only, defer demand events, and report it rather than shipping a slow checkout.
+
+## D2  The recovery engine.  Fillrate v0.  Makes money on day one.
+Priority: immediately after D1. Requires D1 DEMAND rows including email.
+
+WHY
+Between 60 and 80 percent of people who start a checkout do not finish, over 85 percent on mobile. Up to 20 percent of those are recoverable by an automated sequence. No forecast, no model, no history needed. It works on the first slot.
+
+BINDING CONSTRAINT
+The engine reads the ledger and nothing else. It must never import from, query, or reference an EventLinqs table, model or type. If it cannot be pointed at a gym's ledger rows tomorrow with only a new adapter, it is built wrong. A registered guard asserts this.
+
+All customer facing copy is parameterised by slot category. The word for a unit comes from a category lookup: ticket, class, appointment, seat, place, booking. No user facing string hard codes "ticket".
+
+WHAT TO BUILD, THREE THINGS ONLY
+
+1. ABANDONED CHECKOUT RECOVERY
+Email entered, checkout not completed. Three messages: 2 hours, 24 hours, 72 hours. Stop on purchase, sell out, cancellation, or slot start. Each names the slot, the inventory class, the price, and links to a resumable checkout. No discount in v0.
+
+2. WAITLIST ACTIVATION
+Inventory class sold out, person joins waitlist. A refund or release frees a unit, the waitlist is notified in join order with a time limited hold that passes down the list on expiry.
+
+3. THE PROOF PANEL
+On the organiser dashboard: how many abandoned, how many emailed, how many returned, and revenue recovered in dollars. This panel is the product. It is what a future standalone Fillrate customer pays for.
+
+MEASUREMENT
+Every recovered sale records that it was recovered, which message did it, and the delay. Report raw recovery rate.
+Do NOT build a holdout yet. At current volume it would withhold from two or three people and prove nothing. Add it automatically at 300 cumulative abandonments and register that threshold in code.
+
+RULES
+- Only ever contact a person about the specific slot they themselves started buying. Never another slot, never another organisation.
+- Working one click unsubscribe and the same sender identity as the confirmation email.
+- Organiser can switch it off per slot. Default on.
+- Suppress the unsubscribed, the refunded and anyone who already bought.
+
+ACCEPTANCE, ALL REQUIRED
+- Driven proof on TEST: abandon, receive message one, return, buy, confirm two and three suppressed.
+- Driven proof of waitlist: sell out, join, refund, confirm the email fires and the hold expires to the next person.
+- Unsubscribe proven to work and to suppress.
+- Proof panel renders real numbers at 390, 768 and 1440, no overflow.
+- Tests on send, stop conditions, suppression and hold expiry.
+- Guard: no path can contact a person about a slot they never engaged with.
+- Guard: the engine imports nothing from EventLinqs domain code.
+- Both proven to fail as well as pass.
+- Full regression green.
+
+REVERSAL CONDITION, EVALUATED BY THE BUILD
+Track unsubscribe and complaint rates. Above 2 percent unsubscribes or 0.1 percent complaints, cut to a single message at 2 hours and report. Above 0.3 percent complaints, stop all sends immediately and report, because sender reputation damage would also take down the confirmation emails buyers actually need.

@@ -8310,3 +8310,201 @@ green after the fifth migration (93 guards, 352 files / 4121 tests).
   After `npm run gate:push`, `.next` is the GATE'S build and carries the parity
   Sentry DSN (`127.0.0.1:9411`) the gate deliberately injects. It is not a build
   to drive against. Rebuild with `build-with-env.ps1` first.
+
+
+---
+
+## 10 September 2026, session 59. UX4 and H2.6: the inbox stops being loud about the harmless.
+
+Free disk at the start: 20.0 GB.
+
+### THE STATE I INHERITED, READ RATHER THAN ASSUMED
+
+UX3 (session 58) is code complete and gate green on thirteen of fourteen steps.
+`production-parity` refuses, correctly: production is BEHIND this tree by five
+migrations and the founder's one command has not been run. That blocks the push,
+not the work, and it blocks this session's push for exactly the same reason.
+
+The previous session stopped rather than start UX4, on the completion law. I read
+that as the right call for it and the wrong call for me: an item that is complete
+except for an owner action is OWNER BLOCKED, not partly built, and stalling every
+session behind one command would stall the build indefinitely. UX4 went onto the
+same branch, so the same push carries both and the same one command clears both.
+
+### A DEFECT FOUND BEFORE UX4 BEGAN, AND FIXED
+
+`src/app/api/cron/queue-admit/route.ts` says in its own header:
+
+    Cron route: runs every minute via Vercel Crons.
+
+and had **no entry in `vercel.json`**. Nineteen cron route directories, eighteen
+schedules. So the virtual-queue admission batch **had never run once**: anybody
+placed in a high-demand queue waited for ever, and `admitted` entries whose
+window had elapsed were never expired.
+
+Nothing anywhere could see it, and that is the whole shape of the failure. A page
+nobody renders 404s. A cron nobody invokes emits no error, writes no row, and
+passes every test that calls the handler directly.
+
+Fixed with the missing entry, and held by `cron-routes-scheduled.mjs`, which
+judges BOTH directions: a route with no schedule never runs, and a schedule with
+no route is a 404 on every tick. Drilled red on the exact pre-fix `vercel.json`
+and green after. Vercel allows 100 cron jobs per project on every plan
+(https://vercel.com/docs/cron-jobs/usage-and-pricing, fetched 2026-09-10), so the
+nineteenth is not near anything.
+
+### UX4.1 THE DAILY STATE, AND WHY IT HAS TO ARRIVE ON A QUIET DAY
+
+`scripts/lib/state-report.mjs` judges and renders, purely, and is tested without a
+network or a clock. `scripts/ops/state-report.mjs` collects. Seven sections, in
+the order UX4.1 lists them, and the message says in its own second paragraph that
+its absence is the alert.
+
+Three sources, every one verified live before it was written down:
+
+    GitHub REST   main's colour and commit, what landed in 24 hours, open pull
+                  requests and their age, the branches that went red WITH THE
+                  GUARD THEY NAMED, and the last push to any ref, from /activity.
+    Vercel REST   the production deployment's ready state and the commit it serves.
+    The platform  GET /api/ops/state, new, cron-secret authed, read only.
+
+**The endpoint mints no credential.** `CRON_SECRET` is already a repository
+secret, so the daily email costs the founder no new environment variable, no
+dashboard visit and no rotation procedure. It sits under `/api/ops` rather than
+`/api/cron` so the new cron guard keeps one rule with no exceptions to argue
+about.
+
+**TWO THINGS ABOUT THE GUARD NAME WERE FOUND BY DRIVING, NOT BY READING.** The
+first pass reported "no guard named in the log" for a run whose log plainly
+carried the line. The job-log endpoint answers **415** to `Accept: text/plain`,
+and the 302 it returns points at a signed blob host that **refuses a forwarded
+`Authorization` header**. `fetch` forwards headers across a redirect and curl
+strips them, which is exactly why the same request worked by hand and returned
+nothing in code. Both are written into the source beside the request.
+
+Close-out F1.1 made `run-guards.mjs` print `[guards] FAILED: <path>` on its way
+out. This is the reader that makes that line pay: a branch failure is now one
+digest line naming what caught it.
+
+### UX4.2 THE STALL, AND THE ONE HONEST SENTENCE IN IT
+
+Six hours, in one named constant. It alerts once per six-hour BAND, so a full day
+of silence costs four messages rather than twenty four, and the message says
+which band, so the owner watches the stall get older rather than reading the same
+line four times.
+
+Two dedupe paths, because the two callers genuinely have different information
+and pretending otherwise would make one of them wrong:
+
+- the hourly cloud check knows how often it runs, so it speaks only when the band
+  is higher now than it was one check ago. No state anywhere, nothing to drift.
+- the watchdog loop runs at irregular intervals, so it keeps a state file.
+
+**And it says what it could not see.** A cloud run has no view of the build
+machine, so the message states that plainly and tells the reader that a
+deliberately stopped build is the reason to ignore it. A run invoked BY the
+watchdog says the loop is alive, because the loop is what invoked it. That is
+proof by construction, and it is the only honest way to satisfy "if the watchdog
+is running" from a machine that cannot see the machine.
+
+### UX4.3 AND UX4.5, WHICH ARE ONE RULING ABOUT THE SUBJECT LINE
+
+Four classes, four openings, all beginning with the platform name so they filter
+together:
+
+    EventLinqs OUTAGE:          main red, a failed production deploy, a failed smoke
+    EventLinqs BUILD STALLED:   nothing pushed in six hours
+    EventLinqs daily state:     the once-a-day state of everything
+    EventLinqs:                 business, sent by the product itself (UX3)
+
+Main going red now raises its own OUTAGE alert, which it never did: it produced
+only GitHub's own "Run failed: CI" mail, the same shape a branch gate sends. A
+FAILED production deployment now raises one too, and it was the quietest of the
+three outages, because the smoke job only ever ran on `state == 'success'`.
+
+**UX4.5 is the `push` condition on that same job.** A branch gate raises nothing
+from this repository, deliberately, and `alert-routing.mjs` fails the build if
+that is ever loosened. What this repository CANNOT do is stop GitHub emailing the
+actor when a run fails: that is an account setting, it is the founder's, and it is
+named in the review queue with its exact path and with the reason nothing is lost
+by turning it off.
+
+### H2.6, WHICH WAS NEVER BUILT, AND IS IN THE H FAMILY THIS SESSION WAS TOLD TO WORK
+
+A drill must announce itself. The 8 September drill fired correctly against
+`https://smoke-drill.invalid` and arrived reading "EventLinqs production homepage
+smoke FAILED", with nothing to say it was a test.
+
+The marker is **derived from the target**, never from a flag somebody has to
+remember, because forgetting is exactly what happened. RFC 2606 reserves
+`.invalid` for names that are sure to be invalid
+(https://www.rfc-editor.org/rfc/rfc2606.html, fetched 2026-09-10), so a host in it
+cannot be a real production smoke. `force_failure` therefore marks its own alert
+with no second switch, and there is no flag that takes the marker off.
+
+### DRIVEN, NOT ASSERTED
+
+    the stall boundary, cloud mode      silent at 5.9h, SPEAKS at 6.2h, silent at
+                                        8h, SPEAKS again at 12.4h
+    the stall boundary, watchdog mode   speaks at 7h, silent at 9h, speaks at 13h,
+                                        with the state file written between each
+    an hourly check over a full day     speaks exactly four times, held by a test
+    GET /api/ops/state                  401 with no credential, 401 with a wrong
+                                        one, 200 with the real one: 206 events
+                                        live, 213 tickets sold, 13 new organisers
+                                        in 24 hours, against TEST
+    the daily state end to end          composed from the real GitHub, the real
+                                        Vercel and the real database, captured at
+                                        390, 768 and 1440
+    channel two, for real               GitHub issue #146, opened carrying
+                                        [DRILL] EventLinqs OUTAGE: ... with the
+                                        banner in its first line naming the target
+    a real target                       issue #147, EventLinqs daily state: ...,
+                                        NO marker, and the second channel opened
+                                        because the first had failed, which proves
+                                        the on-failure escalation as well
+    both drill issues closed            with a comment saying what they were
+
+Evidence: `C:\dev\EVIDENCE\UX4\`.
+
+### THE ONE THING THAT COULD NOT BE DRIVEN HERE, STATED PLAINLY
+
+**No email was sent from this machine, because there is no Resend key on it.**
+`.env.local` carries `RESEND_API_KEY=""`, one of the sensitive values Vercel
+refuses to hand back to this token, and a previous session recorded the same
+thing about the Stripe key. The dispatcher reports it correctly rather than
+pretending, and the second channel delivered for real, twice. The email channel is
+the same code H2.4 proved delivering on 8 September; nothing in it changed except
+the subject and the body.
+
+**And the cloud schedule cannot fire until this is on main.** A GitHub Actions
+schedule only runs on the default branch. Both jobs carry `workflow_dispatch` for
+the moment it lands.
+
+### GUARDS, BOTH DRILLED IN BOTH DIRECTIONS
+
+    cron-routes-scheduled   red on the pre-fix vercel.json naming queue-admit,
+                            green after; also red on a schedule pointing at a
+                            route that does not exist, and on a stale exemption
+    alert-routing           five clauses. Four drilled by hand: a branch gate
+                            dispatch (red), a dispatch with no --class (red), a
+                            broken drill verdict (red, naming both halves), and a
+                            script caller that forgot its class (red). Green after
+                            each restore
+
+`workflows-skip-drafts` learned one thing: a job that requires
+`github.event_name == 'push'` cannot run on a pull request at all, so demanding
+the draft clause on top would be a test for an event it has already excluded. The
+exact string is matched, both quote styles, and four broader shapes are asserted
+NOT to qualify.
+
+### A RESTRUCTURE THE REGISTRY ASKED FOR, RATHER THAN A DECLARATION
+
+`build-host-needs-declared` reported that `alert-routing.mjs` depended on docs and
+on a token. It was right: the guard imported the dispatcher in order to EXECUTE
+the drill verdict, and that dragged in a `GITHUB_TOKEN` read and two
+`docs/observability` runbook literals. Its own header says what to do about that,
+and it is not to add an entry: "If a script has started reading something the
+build host lacks and does not need to, the fix is to stop reading it." The grammar
+moved into `scripts/lib/alert-classes.mjs`, which depends on nothing, and the
+runbook paths stayed with the only thing that prints them.

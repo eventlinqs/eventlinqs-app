@@ -2543,3 +2543,62 @@ first of those.
     20260909000005_degraded_notification_keeps_its_subject.sql
 
 One command, and it applies them in order: `npm run migrate:production`.
+
+
+## UX4 AND H2.6 REQUIREMENT LEDGER, 10 September 2026 (session 59)
+
+Close-out UX4 (notification routing) and close-out H2.6 (a drill must announce
+itself), plus one defect found while auditing them. Adjudicated line by line
+against the close-out text, with the evidence path beside each.
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| **UX4.1** Once a day, at a fixed time, WHETHER OR NOT anything is wrong | MET. `.github/workflows/state-report.yml` job `daily`, cron `10 21 * * *`, which is 07:10 Melbourne on AEST and 08:10 on AEDT. Unconditional: no `if` on failure anywhere in it | `.github/workflows/state-report.yml` |
+| UX4.1 Main green and its commit | MET. Read from the head of main plus the CI run for that exact sha; when no run matches it says so rather than guessing | `C:\dev\EVIDENCE\UX4\daily-state-1440.png`, `daily-state.json` |
+| UX4.1 Production Ready and the commit it serves | MET. Vercel REST, `state` and `meta.githubCommitSha`, with the deployment age | same |
+| UX4.1 What landed in 24 hours | MET. `/repos/{r}/commits?sha=main&since=` | same |
+| UX4.1 What is open and for how long | MET. Four open pull requests, oldest first, ages in days | same |
+| UX4.1 WHEN THE BUILD LAST PUSHED | MET. `/repos/{r}/activity`, filtered to push and force_push. This is the fact no failure notification can produce | same |
+| UX4.1 Each failing branch in one line with its guard named | MET, and it took two fixes to be true. The job-log endpoint answers 415 to `Accept: text/plain`, and its 302 points at a blob host that refuses a forwarded `Authorization` header. Both found by driving; the first pass reported "no guard named in the log" for a run whose log carried the line | `daily-state-1440.png` shows `caught by scripts/guards/preview-deployment-state.mjs` |
+| UX4.1 Events live, tickets sold, new organisers | MET. `GET /api/ops/state`, new, cron-secret authed, read only, driven against TEST: 206 events live, 213 tickets sold, 13 new organisers in 24 hours | `C:\dev\EVIDENCE\UX4\ops-state-drive.txt` |
+| UX4.1 It must arrive on a quiet day, because its absence is itself the alert | MET, and the message says so in its own second paragraph, in both the text and the HTML. A test asserts both carry the sentence | `tests/unit/ops/state-report.test.ts` |
+| **UX4.2** Alert immediately when nothing has been pushed in six hours | MET. `STALL_THRESHOLD_HOURS = 6`, one named constant. Driven across the boundary in both callers' modes: silent at 5.9h, speaks at 6.2h, silent at 8h, speaks at 12.4h | `C:\dev\EVIDENCE\UX4\stall-drive.txt` |
+| UX4.2 If the watchdog is running | MET, in the only honest form available. `--from-watchdog` is proof by construction, because the loop is what invoked the process. A cloud run cannot see the build machine and the message SAYS SO rather than implying a certainty it does not have | `stall-drive.txt`, both modes |
+| UX4.2 The alert armed on the founder's machine | SCRIPTED, awaiting one command. `C:\dev\RUN-BUILD20.ps1` is RUN-BUILD19 plus the tick, and switching launchers is his decision (Law 10). The hourly cloud job arms with no action from him once this is on main | `C:\dev\RUN-BUILD20.ps1` |
+| **UX4.3** Main red raises an immediate alert | MET. `ci.yml` job `main-red-alert`, `needs` all four jobs, `if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'`. Before this, main going red produced only GitHub's own "Run failed: CI" mail | `.github/workflows/ci.yml` |
+| UX4.3 A failed production deployment raises one | MET. New job `deploy-failed` in the smoke workflow, on `deployment_status` with `state` failure or error on Production. The smoke job only ever ran on `success`, so this was the quietest of the three outages | `.github/workflows/post-deploy-smoke.yml` |
+| UX4.3 The post-deploy smoke failure raises one | ALREADY MET (H2.4), now reclassed so its subject reads `EventLinqs OUTAGE:` | same |
+| UX4.3 Distinguishable at a glance from a branch gate | MET. Four classes, four openings, none a prefix of another, all beginning with the platform name so they filter together. A guard asserts the grammar | `scripts/lib/alert-classes.mjs`, `tests/unit/guards/alert-routing.test.ts` |
+| **UX4.4** Business immediate: new organiser, Stripe onboarding started and completed, event published, every paid order | MET by UX3 (session 58) and RE-VERIFIED here rather than rebuilt: the installed-triggers guard answers 14 enforcement flags true on TEST | `platform-notifications-installed`, run 2026-09-10 |
+| **UX4.5** Branch gate failures stop being email, from this repository | MET. `alert-routing.mjs` clause 2 fails the build if any job that can run on a pull request dispatches an alert. Drilled red on exactly that | guard drill, `alert-routing.test.ts` |
+| UX4.5 They appear as one line in the daily email | MET, with the guard named | `daily-state-1440.png` |
+| UX4.5 Never silence the gate itself | MET. No gate was touched, no threshold moved, no job made optional | `git diff` on this commit |
+| UX4.5 The GitHub account notification that produced the six emails | OWNER STEP, named with its exact path. github.com/settings/notifications, the Actions section, clear the email checkbox. A machine cannot change his account preferences (Law 10: IMPOSSIBLE, and named rather than left unstated) | `docs/observability/state-report.md` |
+| **H2.6** A drill subject begins with a drill marker | MET, and DERIVED from the target rather than from a flag. A `.invalid` host cannot be a real production smoke (RFC 2606) | GitHub issue #146, `channel2-drill.txt` |
+| H2.6 The body opens saying it is a test and no action is required | MET, three lines, first in the body | issue #146 |
+| H2.6 The drill states the target it used | MET. "Target used: smoke-drill.invalid" | issue #146 |
+| H2.6 A real alert never carries the marker | MET, driven on a real target rather than asserted | issue #147, which carried none |
+| H2.6 Register a guard, proven to fail as well as pass | MET. `alert-routing.mjs` clause 3 EXECUTES both judgements on every build; drilled red by breaking the verdict, which named both halves | guard drill output |
+| **Defect found** `/api/cron/queue-admit` had never run once | FIXED. Nineteen cron route directories, eighteen schedules, and the route's own header said it ran every minute. Anybody in a virtual queue waited for ever | `vercel.json` |
+| The defect cannot return | MET. `cron-routes-scheduled.mjs`, registered and blocking, judges both directions and refuses a stale exemption. Drilled red on the exact pre-fix file | guard drill, `cron-routes-scheduled.test.ts` |
+| **Schema** | NOT REQUIRED. This item adds no table and no column. The one new surface is a read-only count endpoint | |
+| **Tests** | MET. Suite 352 to 355 files, 4121 to 4195 tests, 0 failed, 0 skipped, and the canary baseline raised in the same commit with the reason written on it | `C:\dev\EVIDENCE\UX4\canary-3.txt` |
+| **Guards** | MET. 95 registered, all pass. Two new, both drilled red and green | guard run 2026-09-10 |
+| **Driven at 390, 768 and 1440** | MET. The daily email is the deliverable and it is read on a phone; captured at all three from a report composed out of the real GitHub, the real Vercel and a real database | `daily-state-390.png`, `-768.png`, `-1440.png` |
+| **Full regression** | see the gate section of BUILD-LOG for this session |
+| **Pushed** | NOT DONE, and it is the same block UX3 is behind. `production-parity` refuses because production is five migrations behind this tree. One founder command clears it: `npm run migrate:production` | `production-parity` output |
+
+### NOT DONE HERE, AND WHY, WITH NO SOFTENING
+
+- **No email was sent from this machine.** `.env.local` carries
+  `RESEND_API_KEY=""`. Vercel stores that value sensitive and will not decrypt it
+  for this token, the same wall a previous session hit on the Stripe key. The
+  dispatcher reports the absence correctly rather than pretending, and the SECOND
+  channel was driven for real twice, so the dispatch path either side of the
+  Resend call is proven. The email channel itself is unchanged code that H2.4
+  proved delivering on 8 September.
+- **The cloud schedule has not fired.** A GitHub Actions schedule only runs on the
+  default branch, so neither job can run until this reaches main, which is behind
+  the same founder command. Both carry `workflow_dispatch`.
+- **The founder's launcher has not been switched.** `RUN-BUILD20.ps1` is written
+  and is one command; the file that runs is his.

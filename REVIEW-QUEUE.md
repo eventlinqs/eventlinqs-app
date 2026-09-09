@@ -2970,3 +2970,129 @@ npm run migrate:production
 ```
 
 That one command applies all five, in order.
+
+
+---
+
+## 10 September 2026. You will now hear when it matters, and stop hearing when it does not.
+
+### The problem, in your own words
+
+On 9 September the build sat stuck from 00:23 to 09:28. Six runs were killed.
+Nothing was pushed for nine hours. **You got no email at all**, because nothing
+technically failed. In the same week you got six emails about branch checks doing
+their job, and nothing when a real organiser published a paid event.
+
+Everything the platform could send you was a "something broke" email. A stall
+does not break anything. It just goes quiet, and quiet looks exactly like a good
+day.
+
+### What you will get from now on
+
+**One email every morning, around 7am, whether or not anything is wrong.** It
+carries:
+
+- whether the main branch is green, and which version
+- whether the live site is up to date, and which version it is serving
+- what shipped in the last 24 hours
+- **when the build last pushed anything**
+- what is open and how long it has been open
+- any branch that went red, one line each, naming the exact check that caught it
+- events live, tickets sold, paid orders, new organisers
+
+**If that email does not arrive, that is the alarm.** It means the thing that
+sends it has stopped.
+
+**An immediate email if nothing has been pushed for six hours.** This is the one
+that would have caught the nine hours. It sends once every six hours of silence,
+not once an hour, so a long stall is four messages, not twenty four.
+
+**An immediate email if something is actually broken**: the main branch red, a
+failed deploy to the live site, or the live site failing its check. Those three
+now say **OUTAGE** at the front of the subject, so you can tell them apart from
+everything else at a glance without opening anything.
+
+Four kinds of message, four different openings:
+
+```
+EventLinqs OUTAGE:          something a visitor can see is broken now
+EventLinqs BUILD STALLED:   the build has gone quiet
+EventLinqs daily state:     the once-a-day summary
+EventLinqs:                 somebody did something on the platform
+```
+
+### A test email will now say it is a test
+
+On 8 September I ran a drill of the alerting and you got an email reading
+"EventLinqs production homepage smoke FAILED" with nothing to say it was a test.
+That was my fault and it is fixed. A test now arrives as:
+
+```
+[DRILL] EventLinqs OUTAGE: the production homepage smoke FAILED
+```
+
+with a box at the top of the message saying it is a scheduled test and no action
+is required. **A real one can never carry that marker**, and I proved both by
+raising two real alerts and reading them back rather than assuming.
+
+### Something I found that had never worked, and fixed
+
+The platform has a virtual queue for high-demand events. The code that lets
+people through the queue was written to run every minute, and **it was never
+switched on**. Anybody who was ever put in a queue would have waited for ever.
+
+Nobody could have noticed. A page that is broken gives an error. A job that is
+never started just does nothing, which looks the same as a job with nothing to
+do. It is now scheduled, and a check refuses the build if any scheduled job ever
+loses its schedule again.
+
+### One thing for you to press, once
+
+The six emails about branch checks come from **GitHub**, not from the platform,
+and they come from a setting on **your account** that I have no way to change.
+
+Turn them off here:
+
+> **github.com/settings/notifications**, the **Actions** section, clear the email
+> checkbox.
+
+**You lose nothing by doing it.** Every branch failure now appears in your
+morning email as one line naming the exact check that caught it, and every real
+outage is sent by the platform on two separate channels that have nothing to do
+with that setting.
+
+### One thing you may want to switch, once
+
+The stall alert works from the cloud on its own once this is live. It works
+*faster* if the loop that keeps the build running also checks, because that loop
+is on your laptop and can see things the cloud cannot. I have written that
+version and not touched the file you actually run:
+
+```
+C:\dev\RUN-BUILD20.ps1
+```
+
+It is your current launcher plus one line. Switch to it whenever you like.
+
+### What I could not do from this machine, and I am not going to pretend otherwise
+
+**I could not send you a real email.** There is no Resend key on this laptop
+(`RESEND_API_KEY` is empty, and Vercel will not hand it back). I proved the whole
+path either side of it, and I proved the **backup** channel for real twice by
+raising two GitHub alerts and reading them back, then closing them. The email
+channel itself is the same code that delivered your drill on 8 September.
+
+**The morning email cannot start arriving until this is live**, because GitHub
+only runs scheduled jobs from the main branch.
+
+### Still waiting on you, and it is the same one command
+
+Nothing from this session or the last one can reach the live site until the
+database changes are applied:
+
+```
+npm run migrate:production
+```
+
+That one command applies all five, in order. Everything else is ready and green
+behind it.
