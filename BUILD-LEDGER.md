@@ -1945,3 +1945,87 @@ the guard inside it.
 
 F1.1 is what made that a one-read diagnosis instead of a three-pass one: the
 Vercel build log named the failing guard on its last line.
+
+
+## CLOSE-OUT F2, ADJUDICATED (9 September 2026, session 56)
+
+Commits `1a8d7c95` (F2.3), `de4330ca` (F2.1 + F2.2), `13718bb4` (F2.4), plus
+`5373e59c` closing the in-flight launch-readiness defect from session 55.
+
+| # | The close-out asks | State | Evidence |
+|---|---|---|---|
+| 1 | F2.1 "Every build-time script must declare which of those it needs" | MET | `scripts/guards/lib/build-host-needs.mjs`, 18 of 94 entry points declare; the uses are detected from source and the import closure, never listed |
+| 2 | F2.1 "the registry must carry that declaration" | MET | the registry is the file above; `build-host-needs-declared.mjs` is registered in `run-guards.mjs` and blocking on prebuild |
+| 3 | F2.1 "A script that needs git, docs, or a token, and does not declare it, fails the local gate" | MET | driven three times, one per capability, each planted into a real registered guard and each caught; now five permanent drills in `guard-failure-drills.mjs` |
+| 4 | F2.1 "Prove it by adding an undeclared dependency and watching the gate go red before a push" | MET | `OK git / OK docs / OK token`, baseline green before and green after restore |
+| 5 | F2.2 "Make it CI and local only ... it does not execute on Vercel" | MET | keyed on `resolveBuildScope`, not on git being absent. `VERCEL=1` -> `SKIP - this IS the build host`, exit 0, nothing materialised |
+| 6 | F2.2 "Prove both: it runs and judges in CI" | MET | `GITHUB_ACTIONS=true` -> `scope=ci`, 6,629 files enumerated, 19 entry points executed, PASS. Both halves are permanent drills |
+| 7 | F2.2 "remove its dependence on git ls-files ... walking the filesystem ... so it works in any checkout" | MET | `scripts/guards/lib/gitignore.mjs`, full gitignore semantics, 99 rules read from three ignore files, 0 unreadable. Driven inside the empty-`.git` upload: 2,155 files enumerated where `git ls-files` throws |
+| 8 | F2.3 "a guard that THREW ... attributed ... with its message and the first line of its stack" | MET | the runner captures stderr; `(threw, exit 1)` plus `it threw:` plus `first frame:`, and a guard that merely decided still reads `exit 1` |
+| 9 | F2.3 "Prove it by making one guard throw deliberately and reading its name back" | MET | driven on the real runner with a real plant; now a permanent drill |
+| 10 | F2.4 "Enumerate every guard that reads git" | MET | SEVEN, derived from the registry and printed on every run of `build-host-needs-declared` |
+| 11 | F2.4 "make each state plainly when there is no repository to read" | MET | one shared module, four named shapes, one sentence. Five print it; two never reach git at all and say so |
+| 12 | F2.4 "report how many there are" | MET | `7 build-time script(s) read git, and every one of them reaches scripts/guards/lib/git-availability.mjs` |
+| 13 | Full regression green | MET | 87/87 guards, drills, suite 341 files / 3981 tests, canary raised measured, tsc 0, eslint 0, full push gate |
+
+### THE PREMISE OF F2.3 IS CORRECTED, not quietly worked around
+
+F2.3 states that on Vercel the failing guard's name was lost. It was not. The
+Vercel log viewer wraps at about 72 columns; the name is on the continuation
+line. `C:\dev\vercel-fail2.txt` lines 2144 to 2151 carry it in full. F1.1 held on
+the build host, which is what F1.1 was built to do.
+
+The other half of F2.3's sentence was genuinely unmet and is what got built.
+
+### THE FINDING THIS ITEM PRODUCED, which was not in the close-out
+
+`runnableEntries()` enumerated two DIRECTORIES, so SIX registered prebuild entry
+points were invisible to every scan built on it:
+
+| Entry point | Why it matters |
+|---|---|
+| `scripts/verify/payment-critical-doctrine.mjs` | the guard behind the SECOND lost deployment, invisible to the machinery built to prevent that class |
+| `scripts/verify/migration-collision-guard.mjs` | the one the Vercel log caught calling `git for-each-ref` and degrading quietly |
+| `scripts/security/rls-exposure-scan.mjs` | |
+| `scripts/security/revoked-column-reads.mjs` | |
+| `scripts/security/entrypoint-authz-audit.mjs` | |
+| `scripts/pricing-derive.mjs` | reads `docs/PRICING.md`, the first lost deployment's file |
+
+F1.9.2 had already fixed this exact reasoning error one layer down, for MODULES,
+by following the import graph rather than adding a directory. The same answer is
+now applied to ENTRY POINTS: they are derived from the registration list in
+`run-guards.mjs` and the prebuild chain in `package.json`.
+
+Three undeclared dependencies fell out of the widening. All nineteen subjects
+were then run inside a materialised upload and every one exits 0, so no sixth
+deployment was hiding behind the gap.
+
+### THE ONE LIMIT, measured rather than assumed
+
+A filesystem walk cannot see a FORCE-ADDED file: `git add -f` is a fact that
+lives only in the index, and the ignore rules say the opposite. On this
+repository:
+
+    tracked but not walked                        333
+    of those, surviving .vercelignore              34
+    of those, under public/ and therefore shipped  16
+
+So the walk is the FLOOR (it needs no git, which is F2.2's requirement) and the
+index is a CORRECTION where it can be read. Both deltas print on every run rather
+than being folded away.
+
+### TWO BUGS IN THIS WORK, both found by running things
+
+- The pattern translator appended "and everything beneath" to every rule, which
+  double-counted with the ancestor walk and broke the `dir/*` form. `.claude/*`
+  matched four levels deep and six tracked skill files vanished from the
+  simulation. Found by asking `git check-ignore` rather than by re-reading the
+  code.
+- The throw detector required a NAME before `Error`, so `TypeError:` matched and
+  a bare `Error:` never did. The git-absent case therefore reported the wrong
+  line. Found by a test written against a real child process.
+
+Three further defects were caught by guards that already existed:
+`no-inherited-git-env` on four git spawns in the new tests (one genuinely
+dangerous inside the pre-push hook), and `no-silent-catch` on three catches that
+would have produced an incomplete file list in silence.

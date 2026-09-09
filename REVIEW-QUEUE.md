@@ -2512,3 +2512,72 @@ twelve launch readiness rows waiting on your approvals are exactly as they were.
 **The one thing still waiting on you** is the two keys stored more readable than
 your own rule allows, from the earlier note today. Say the word and I will write
 the one command.
+
+
+## 9 September 2026, session 56. The deploy checks now know they are running on a deploy server.
+
+**Nothing changed on the site.** No page, no button, no journey, no price. This
+was another session on the machinery that stops broken deploys, and it is the
+last one of these for a while.
+
+**The pattern behind five failed deploys, named properly at last.** Every time a
+deploy has died this month, the cause has been described as "the documents do not
+get sent to the deploy server". That is true, and it is one example of something
+bigger. The real sentence is:
+
+> The deploy server is not a developer's laptop. No documents. No project
+> history. No passwords. None of the things a laptop quietly has.
+
+The fifth failure proved the narrow description was the problem: everything built
+after the fourth was about documents, and the fifth arrived through the project
+history instead, and not one of those safeguards could see it coming.
+
+**So every safety check now declares what it needs from a laptop**, and the
+declaration is checked in both directions: a check that starts needing something
+and does not say so fails before you can push, and a declaration that stops being
+true also fails. I proved it by breaking it three times on purpose, once for each
+of the three things, and watching it go red each time.
+
+**Something I did not expect to find.** Six of the safety checks were completely
+invisible to the machinery meant to protect them, because that machinery looked
+in two folders and these six live in a third. One of them is the check behind the
+SECOND failed deploy back in August. It has been unprotected the whole time.
+
+They are all visible now, and the scan works out what runs by reading the actual
+list of what runs rather than by looking in folders. Three more hidden
+dependencies fell out immediately. I then ran all nineteen on a copy of exactly
+what the deploy server receives: every one of them is fine. There was no sixth
+failure waiting.
+
+**When a check breaks, it now says so differently from when it catches
+something.** Those are opposite situations. One means your code has a problem;
+the other means the check itself has a problem, which on the deploy server nearly
+always means nobody ever ran it there. Until now both looked identical in the
+log. I proved it by deliberately breaking one and reading its name, its error and
+the exact line back out of the real output.
+
+**A correction, because it matters more than being right.** The note said a
+failed deploy refused to name which check caught it. It did name it. The Vercel
+log wraps long lines at about seventy characters and the name was on the next
+line down. I checked the raw log before building anything, because fixing a
+problem that does not exist is worse than leaving it alone. The other half of
+that note was a genuine gap and that is what got built.
+
+**Seven checks reach for the project history and the deploy server has none.**
+They were saying it in five different ways, and two of them said "no remote could
+be read", which sends you looking for a missing remote when there is no project
+history at all. One of them stated something that is simply not true any more,
+and that untruth is what caused the fifth failed deploy. They all say the same
+sentence now, and a new one cannot invent a sixth.
+
+**Five mistakes of my own, every one caught by a check rather than by me.** Two
+bugs in the new code, found by asking git what it thought instead of re-reading
+what I had written; and three refusals from checks that already existed, one of
+which would have quietly broken a test in a way that still reported green. That
+is the system working, and it is worth more than a clean run.
+
+**Still waiting on you:** the two keys stored more readably than your own rule
+allows, from yesterday. Say the word and I will write the one command that does
+it, refuses if anything looks wrong, never prints a key, and checks the result
+afterwards. And the twelve launch-readiness rows are exactly as they were, still
+waiting on your two approvals.

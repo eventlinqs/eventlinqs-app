@@ -7144,3 +7144,177 @@ proved on the same host in the same run:
 Suite 338 files / 3921 tests, canary 3917 to 3921, measured. 86/86 guards, tsc 0,
 eslint 0. THE FULL GATE 14 of 14 GREEN in 2,193 seconds, and the push landed
 `ffded236..f7aa5d91`.
+
+## 2026-09-09, session 56. The build host is not a developer machine, and seven scripts had been pretending otherwise.
+
+Close-out F2, all four clauses. Commits `5373e59c`, `1a8d7c95`, `de4330ca`,
+`13718bb4`.
+
+### F2.3 first, and a correction to its premise
+
+F2.3 says the guard name was lost on Vercel: `[guards] FAILED:` with nothing
+after it. **It was not lost.** The Vercel log viewer wraps at about 72 columns and
+the name is on the continuation line. The raw log, `C:\dev\vercel-fail2.txt`
+lines 2144 to 2151, reads:
+
+    [guards] the guard(s) that failed, in the order
+    they ran:
+    [guards]
+    scripts/guards/excluded-reads-survive-the-upload.mjs  (exit 1)
+    ...
+    [guards] FAILED:
+    scripts/guards/excluded-reads-survive-the-upload.mjs
+
+F1.1 held on the build host. Building a fix on a defect that does not exist would
+have been the wrong work, so this is recorded rather than quietly skipped.
+
+**The rest of F2.3's sentence was genuinely missing**, and it is the half that
+matters: a guard that THREW and a guard that printed a considered FAIL and exited
+1 arrived identically, as `exit 1`. Those are opposite faults. One says the law
+was broken; the other says the guard is broken, which on the build host almost
+always means it was written for a machine nobody ran it on.
+
+The runner now CAPTURES stderr rather than inheriting it, because an inherited
+stream reaches the log and reaches nobody else. Driven, on the real runner, with a
+real throw planted in a real registered guard:
+
+    [guards]   scripts/guards/no-control-characters.mjs  (threw, exit 1)
+    [guards]       it threw: Error: planted by the F2.3 drill, restored in the finally
+    [guards]       first frame: at file:///C:/dev/.../no-control-characters.mjs:33:7
+    [guards]   scripts/guards/curated-categories-exist.mjs  (exit 1)
+
+The three beneath it decided; the first broke, and the two now read differently.
+
+A test caught a real bug in the detector while it was being written: the regular
+expression required a NAME before `Error`, so `TypeError:` matched and a bare
+`Error:` never did, and the git-absent case reported the line underneath instead.
+
+### F2.1 the generalisation, and what it found
+
+    THE VERCEL BUILD HOST IS NOT A DEVELOPER MACHINE.
+    No docs. No git. No token.
+
+Three capabilities, detected from source and the import closure, declared in
+`scripts/guards/lib/build-host-needs.mjs`, enforced BOTH WAYS by
+`build-host-needs-declared.mjs`: an undeclared use fails, and a declaration the
+code no longer backs fails. Driven, all three, each planted and each caught:
+
+    OK  git:   uses git and does not declare it
+    OK  docs:  uses docs and does not declare it
+    OK  token: uses token and does not declare it
+
+The declaration is not a tolerance. It COSTS a run: every declaring script is
+executed inside a materialised upload with no docs and no usable git.
+
+**The detector had a false-positive class and it mattered.** Every guard here
+explains itself by quoting the code it is about, so `no-inherited-git-env.mjs`
+was reported as needing git because its header quotes the call site it forbids.
+Whole-line comments are excluded now; a declaration for a dependence that exists
+only in prose is a false claim in the registry, which is the thing the registry
+exists to stop.
+
+### The finding: SIX registered entry points were invisible
+
+`runnableEntries()` enumerated two DIRECTORIES. Six registered prebuild entry
+points live elsewhere and no scan built on it had ever seen them:
+
+    scripts/verify/migration-collision-guard.mjs
+    scripts/verify/payment-critical-doctrine.mjs      <- the SECOND lost deployment
+    scripts/security/rls-exposure-scan.mjs
+    scripts/security/revoked-column-reads.mjs
+    scripts/security/entrypoint-authz-audit.mjs
+    scripts/pricing-derive.mjs
+
+The machinery built to stop the docs-stripping class could not see the guard from
+occurrence two. F1.9.2 fixed exactly this reasoning error one layer down, for
+MODULES, by following the import graph instead of adding a directory. This is the
+same answer applied to ENTRY POINTS: they are derived from the registration list
+in `run-guards.mjs` and the prebuild chain in `package.json`, which is where "what
+runs" is actually written down.
+
+Three undeclared dependencies fell out immediately, and all nineteen subjects were
+then run in the upload: every one exits 0. No sixth deployment was hiding.
+
+### F2.2 the upload guard, both halves driven
+
+**It does not run on Vercel, by DECISION rather than by accident.** It used to
+stand aside there only because Vercel has no usable git, and once the git
+dependence was removed that accident would have silently reversed: the guard
+would have started simulating Vercel from inside Vercel. The test is the build
+scope now.
+
+    AS VERCEL:  scope=vercel (decided by VERCEL)
+                SKIP - this IS the build host. Simulating the upload from inside
+                the upload is circular.
+    AS CI:      scope=ci (decided by GITHUB_ACTIONS)
+                enumerated 6629 file(s) ... 19 entry points ... PASS
+
+**The git dependence is removed.** A new evaluator with full gitignore semantics
+(`*`, `?`, character classes, globstar, negation, directory-only, nested ignore
+files) walks the filesystem; this repository's `.gitignore` carries 44 patterns
+the existing narrow evaluator refuses, and that narrow one was left untouched
+because `stripped-or-deleted.mjs` depends on its refusals. Driven in the exact
+tree that killed the deployment:
+
+    isGitCheckout(upload): false   <- the empty .git skeleton the build host has
+    filesForUpload inside it -> 2155 file(s)
+    source: a filesystem walk applying every .gitignore (emptied .git)
+    git ls-files there: THREW: Command failed: git ls-files -z
+
+**One limit, measured and printed rather than assumed.** A pure walk cannot see a
+FORCE-ADDED file, because `git add -f` is a fact that lives only in the index and
+the rules say the opposite:
+
+    tracked but not walked                        333
+    of those, surviving .vercelignore              34
+    of those, under public/ and therefore shipped  16
+
+Sixteen shipped rasters. So the walk is the FLOOR and the index is a CORRECTION
+where it can be read, and both deltas print on every run.
+
+**A real bug, found by asking git rather than by reading my own code.** The first
+pattern translator appended "and everything beneath", which double-counted with
+the ancestor walk and broke the `dir/*` form: `.claude/*` matched four levels
+deep, the directory-only re-inclusion did not apply to a FILE, and six tracked
+skill files vanished from the simulation. `git check-ignore` disagreed, and it was
+right.
+
+### F2.4 seven git readers, enumerated and made honest
+
+The Vercel log carries five phrasings of one fact. Two said the REMOTE was
+missing on a host with no repository at all. One stated a mechanism that is the
+opposite of the truth that killed that build: "a source tarball with no .git",
+when the host HAS a `.git` and it is empty.
+
+One shared module, four named shapes (`checkout`, `worktree`, `emptied`,
+`absent`), one sentence. Driven, all seven, in the empty-`.git` tree:
+
+    exit 0  branch-protection-required      NO GIT REPOSITORY: ... holds no HEAD ...
+    exit 0  one-pull-request-at-a-time      NO GIT REPOSITORY: ...
+    exit 0  preview-deployment-state        NO GIT REPOSITORY: ...
+    exit 0  no-ai-authorship                NO GIT REPOSITORY: ...
+    exit 0  migration-collision-guard       NO GIT REPOSITORY: ...
+    exit 0  pre-push-gate-wired             (skips before reaching git, by name)
+    exit 0  excluded-reads-survive-...      (skips by build scope, F2.2)
+
+**THE COUNT IS SEVEN**, derived from the registry and printed on every run, and a
+guard clause fails the build when a git-declaring script does not reach the shared
+module, so the eighth cannot write a sixth sentence.
+
+### Three defects of my own, all caught by existing guards rather than by me
+
+- `no-inherited-git-env` refused four git spawns in the new tests. One was real:
+  a temp-directory `git ls-files` that, run inside the pre-push hook where
+  `GIT_DIR` is set, would have hit the REAL repository and stopped reproducing
+  the throw while still reporting green.
+- `no-silent-catch` refused three new catches: two `readdirSync` failures
+  swallowed mid-walk, which would silently produce an INCOMPLETE file list, and
+  an unparseable `package.json` which would silently shorten the entry-point
+  list. All three now say something.
+- The upload guard failed because the new modules were uncommitted, so the
+  simulation correctly did not have them. That is the fidelity working.
+
+### Verification
+
+87/87 guards, 32 test files / 398 tests under tests/unit/guards, suite 341 files /
+3981 tests, canary raised 338/3924 to 341/3981 measured, tsc 0, eslint 0.
