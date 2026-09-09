@@ -1808,3 +1808,26 @@ This item makes no journey work that did not work before and moves no launch
 readiness row. It makes the platform deployable again and makes one class of
 deployment failure impossible to reintroduce silently. L5's twelve OWNER BLOCKED
 rows are untouched and still need the two approvals.
+
+## F1.1. THE GATE MUST NAME WHAT IT CAUGHT (9 September 2026, session 55)
+
+Commit `b7d48eaa`.
+
+| # | Requirement, from close-out F1.1 and F1.6 | Verdict | Evidence |
+|---|---|---|---|
+| 1 | `run-guards.mjs` must print a final line naming every guard that failed | MET | the last line is `[guards] FAILED: <path>, <path>, ...`; unit-tested as `lines.at(-1)` in `tests/unit/guards/guard-run-report.test.ts` |
+| 2 | and exit naming them | MET | the block prints before `process.exit(1)`; driven at `C:\dev\EVIDENCE-F1.1-drill.txt` |
+| 3 | Prove it by making one guard fail on purpose and reading the name back out | MET | `no-control-characters.mjs` made to exit 1, real runner ran all 85, name returned; drill 138 |
+| 4 | F1.5: report the name of the guard that failed on 7564b40 | MET | CI: `preview-deployment-state`, correctly reporting the Vercel preview in ERROR. Vercel: `launch-readiness-honest`, fixed in `6e61c65f` |
+| 5 | Tests added, suite grows, canary raised in the same commit | MET | 10 tests, 1 file; canary 334/3866 to 335/3876, measured |
+| 6 | Full regression green | MET | 85/85 guards, 335 files / 3876 tests 0 failed 0 skipped, 138/138 drills, tsc 0, eslint 0 |
+
+NOT CLAIMED: this changes no user surface, so there is no 390/768/1440 driven
+proof. Saying so is the honest report the COMPLETION LAW asks for, rather than
+attaching screenshots of a page the change cannot reach.
+
+REMAINING IN F1, in order: F1.3 (check-public-env believes CI is a local
+machine), F1.4 (the ALLOW_PRICING_DRIFT bypass proven absent), F1.2 (CI reads a
+real TEST database so its guards judge what Vercel judges), F1.6 second half
+(machine-callers-reachable has two different skip reasons on two machines),
+F1.9.2 PART ONE and PART TWO reconciled against the authoritative text.

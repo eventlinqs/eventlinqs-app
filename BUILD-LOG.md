@@ -6620,3 +6620,107 @@ setting the platform depends on, and it can go back with
 So the C16.0 halt condition is NOT triggered: main is green and production is
 serving it. The only thing in ERROR is the PREVIEW of `7564b40` on the pull
 request branch, which is the defect this commit fixes.
+
+## 2026-09-09, session 55. F1.1: the gate that would not say which guard it caught.
+
+Commit `b7d48eaa` on `verify/l5-launch-readiness`.
+
+### Governing laws stated before editing
+
+CLAUDE.md Law 0 (read the constitution first), Verification and gates (the gate
+set and the pre-push gate), Law 8 (authorship), and the COMPLETION LAW in
+BUILD-BRIEF.md. Close-out F1.1 and F1.6, which promotes F1.1 to "the whole job".
+
+### The defect, reproduced on this laptop before anything was changed
+
+    node scripts/guards/run-guards.mjs
+    [guards] 2 of 85 guard(s) FAILED. Build blocked.
+    [guards] runtime: Node 24.19.0 (CI-EQUIVALENT: matches the .nvmrc contract of 24)
+
+That is the whole of what it said. Two guards had failed and the runner would not
+name either. It is the same sentence CI run 34290357211 and Vercel preview
+p3ls50uhh ended with on 8 September, and recovering the name from those two cost
+two full log reads across three passes.
+
+The cause is one line. The loop counted into an integer:
+
+    if (result.status !== 0) failed += 1
+
+It held the guard's path in its hand on every iteration and discarded it.
+
+### The fix
+
+`scripts/guards/lib/guard-run-report.mjs` holds two functions so the behaviour
+can be driven rather than read out of a build once and believed. `describeOutcome`
+turns a spawnSync result into a verdict; `renderFailures` turns the collected
+failures into the lines the runner prints last. The runner now collects
+`{ guard, reason }` and prints:
+
+    [guards] 3 of 85 guard(s) FAILED. Build blocked.
+    [guards] runtime: Node 24.19.0 (CI-EQUIVALENT: matches the .nvmrc contract of 24)
+
+    [guards] the guard(s) that failed, in the order they ran:
+    [guards]   scripts/guards/no-control-characters.mjs  (exit 1)
+    [guards]   scripts/guards/curated-categories-exist.mjs  (exit 1)
+    [guards]   scripts/guards/schema-ahead-of-code.mjs  (exit 1)
+
+    [guards] re-run one of them on its own to read what it caught:  node scripts/guards/no-control-characters.mjs
+    [guards] FAILED: scripts/guards/no-control-characters.mjs, scripts/guards/curated-categories-exist.mjs, scripts/guards/schema-ahead-of-code.mjs
+
+The last line names them all, because a build log is read from the bottom and a
+CI web view truncates the middle.
+
+### Three faults that used to read as one
+
+A guard that exits non-zero, a guard killed by a signal, and a guard that could
+not be started at all were all "the guard failed". The third already mattered:
+the runner has a separate up-front check for a registered guard missing from
+disk precisely because `spawnSync` on a missing file yields a status that reads
+like an ordinary failure. That distinction now survives into the report.
+
+### DRIVEN, which is what F1.1 asks for
+
+"Prove it by making one guard fail on purpose and reading the name back out of
+the output." A real registered guard, `no-control-characters.mjs`, was made to
+exit 1, the real runner ran all eighty-five, and the name came back. Output at
+`C:\dev\EVIDENCE-F1.1-drill.txt`. The tree was restored and verified clean.
+
+It is now drill 138 in `scripts/verify/guard-failure-drills.mjs`, the only drill
+whose subject is the runner itself, so it costs a full guard pass of about eighty
+seconds. That is the price of driving the thing rather than unit-testing a
+rendering function and calling the build log proved.
+
+### The answer F1.5 asks for, found while doing this
+
+The guard that failed in CI on `7564b40` was **preview-deployment-state**:
+
+    [preview-state] FAILED: the deployment of 7564b40 on verify/l5-launch-readiness is in ERROR.
+
+It was right, and F1.6 says so: the original fault was on Vercel, it was
+`launch-readiness-honest`, and it is fixed in `6e61c65f`. The same CI log also
+carries the F1.2 and F1.3 evidence verbatim, and those are the next items:
+
+    [public-env] WARNING (not blocking - local build): 4 critical public var(s) empty/malformed
+    [pricing-lock] WARNING only (local build); this WOULD block on Vercel.
+    [schema-ahead-of-code] SKIP: NEXT_PUBLIC_SUPABASE_URL is not a real Supabase project URL (27 characters)
+    [community-layer-protected] SKIP (categories) - no real Supabase project URL in this build
+    [machine-callers-reachable] SKIP (loudly) - Vercel answered 404 for the System Bypass rules
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `gate:push --only guards` | PASS, all 85 guards, 80s |
+| `gate:push --only suite` | PASS, 335 files / 3876 tests, 0 failed, 0 skipped |
+| `guard-failure-drills` | 138/138 fired correctly, up from 137; all guards PASS on the restored tree |
+| `tsc --noEmit` | exit 0 |
+| `eslint --max-warnings=0` over the five changed files | exit 0 |
+| canary | raised 334/3866 to 335/3876, MEASURED by running the suite |
+
+No driven browser proof at 390/768/1440 applies: this item changes the build gate
+and renders no user surface. Said plainly rather than padded with screenshots of
+something the change cannot affect.
+
+Disk at start 24.4 GB free, at end 24.3 GB. Laptop is on mains power
+(`PowerLineStatus: Online`), which is the founder step the previous session was
+waiting on.

@@ -2362,3 +2362,33 @@ no way it made a page slower.
 
 Meanwhile the live site is healthy: main is green, the production deployment is
 Ready, and www.eventlinqs.com.au is serving that exact commit.
+
+## 9 September 2026, session 55. The safety check that refused to say what it caught.
+
+**What was wrong.** The platform runs eighty-five automatic safety checks before
+anything can be built or deployed. When one of them stopped a build, the only
+thing it printed was "1 of 84 checks FAILED" - it would not say WHICH one. Both
+the build server and the deploy host did this on the same day, and finding the
+answer meant reading several thousand lines of log twice.
+
+**What I changed.** It now names every check that failed, says how each one
+failed, and hands back the one command that shows what that check caught. The
+names are on the very last line as well, because a build log is read from the
+bottom and the middle gets cut off.
+
+**How I proved it.** I deliberately broke one of the eighty-five checks, ran the
+whole set for real, and read its name back out of the output. That is now a
+permanent rehearsal that runs with the other 137, so this cannot quietly come
+back.
+
+**It also answered the open question.** The check that stopped the build on the
+pull request was the one that watches the deploy host, and it was right: the real
+failure was on Vercel and it was fixed yesterday. So nothing new is broken.
+
+**Nothing changed for you.** No page, no button, no journey. The twelve launch
+readiness rows still waiting on your two approvals are exactly as they were.
+
+**Evidence:** `C:\dev\EVIDENCE-F1.1-drill.txt`
+
+**Thank you for the plug.** The laptop is on mains power now, which is what the
+last session was waiting for.
