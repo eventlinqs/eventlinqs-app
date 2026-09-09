@@ -7950,3 +7950,37 @@ test is named for and what a moving clock can never express.
 4065 tests, 0 failures**, canary raised, **all 91 guards PASS**, gate steps
 `build` PASS (122s) and `indexing` PASS (251s) run explicitly because the
 production-parity block means the gate never reaches them.
+
+### THE LIGHTHOUSE STEP FAILED, AND IT IS NOT COMPARABLE. NOTHING WAS EXCUSED.
+
+Run explicitly, because the production-parity block means the gate never reaches
+step 14. Result: **FAIL after 2122s**, and the gate's own calibration check
+says why:
+
+    Machine calibration: DEGRADED. BenchmarkIndex median 1843 (868 to 2077),
+    68% of the 2700 the floors were confirmed at on 2026-09-09.
+
+    A collection taken this far below the derivation band is NOT comparable with
+    the one the floors came from.
+
+Re-measured after the run, with the local server stopped and every leftover
+automation Chrome cleared (there were none): **median 1226**, which is 45% of
+the derivation band. The load is the owner's own applications - MuseHub, Wispr
+Flow, Chrome and OneDrive sync are the top CPU consumers - and none of those is
+mine to close.
+
+**So the honest statement is that mobile performance is UNMEASURED on this tree,
+not that it passed.** The floors are unchanged, the exit code is unchanged, and
+this is recorded as a gap rather than a green. It needs one re-run on a quiet
+machine:
+
+    npm run gate:push -- --only lighthouse
+
+**What can be said without a measurement.** Nothing in UX1 or UX2 adds
+client-side JavaScript to a public page. Every new module is server-only
+(`organiser-prose`, `markdown-subset`, `format-venue-address`, `platform-entity`,
+`normalise-tags`); the single new client component
+(`organisation-profile-form`) is dashboard-only, behind auth, and reachable from
+no public route. The venue pin change is inside an existing client path. That is
+an argument about the shape of the change, and it is NOT a substitute for the
+measurement.

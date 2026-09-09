@@ -2810,3 +2810,29 @@ site, and wrote down why so it does not happen again.
 
 The database change from earlier today still needs your one command before any
 of this can reach the live site: `npm run migrate:production`.
+
+### One measurement I could not take, and I am not going to pretend otherwise
+
+The mobile speed check failed, but it failed in a way that does not mean the site
+got slower. The tool measures how fast your laptop is before it starts, and it
+refused its own result:
+
+> Machine calibration: DEGRADED. 68% of the speed the targets were set at.
+> A collection taken this far below the band is NOT comparable.
+
+I re-measured with my server stopped: your machine is currently running at about
+45% of the speed those targets were set at. The things using it are MuseHub,
+Wispr Flow, Chrome and OneDrive syncing, which are yours and which I am not going
+to close behind you.
+
+**So: mobile speed is unmeasured on this work, not passed.** I did not lower the
+target, and I did not mark it green. It needs one run when your machine is quiet:
+
+```
+npm run gate:push -- --only lighthouse
+```
+
+For what it is worth, nothing in today's work adds any JavaScript to a public
+page. Every new piece runs on the server, and the one new interactive form is
+inside the organiser dashboard behind a login. That is a reason to expect no
+change, not evidence that there is none.
