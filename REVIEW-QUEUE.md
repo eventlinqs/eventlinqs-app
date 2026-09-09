@@ -2581,3 +2581,32 @@ allows, from yesterday. Say the word and I will write the one command that does
 it, refuses if anything looks wrong, never prints a key, and checks the result
 afterwards. And the twelve launch-readiness rows are exactly as they were, still
 waiting on your two approvals.
+
+## 9 September 2026, session 56, closing note. Everything I can do without you is done.
+
+**Pull request #145 is completely green** and waiting on you. Every check passed on
+the exact commit: the build, the tests, the type checks, the production parity
+check, and the performance gate. Nothing is red anywhere. I have not merged it,
+because merging is yours.
+
+**Two things, and only two things, are stopping the launch readiness report from
+being all green.** Both are decisions only you can make, because both mean
+writing to the live site:
+
+1. **May I create one test organiser account and one test event on the live
+   site?** That unblocks eight of the twelve rows: sign-up, creating an event,
+   pricing and publishing, the Launch Kit, pause/archive/restore/delete,
+   attendees and the GST report, payouts, and the transactional emails. All eight
+   have already been driven end to end on the test site. The report says
+   production because that is what the standard asks for, not because the work is
+   missing.
+
+2. **May I put one real card through a cheap live event and then refund it?**
+   That unblocks the other four: the purchase, the refund, the group/waitlist
+   path, and scanning at the door. It is real money on your live Stripe account,
+   which is exactly why I am asking rather than doing.
+
+Say yes to either and I will drive those rows and turn them green.
+
+**Still outstanding from yesterday:** the two keys stored more readably than your
+own rule allows. One command, written the moment you say the word.

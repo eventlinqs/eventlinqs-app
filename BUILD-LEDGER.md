@@ -2151,3 +2151,52 @@ printing both is worse than printing either. Fixed in `b22a5023`, both branches
 driven: on the Vercel shape it now reads "there is no git repository here to read
 a remote from", and in a real checkout with no remote it still reads "this
 checkout has no origin remote".
+
+**The follow-up deployment is READY too.** `dpl_7w64ZFqq8vKBHnGoa2PBVPzNyBwv`,
+commit `b22a5023`, state READY. Two consecutive Vercel previews green on the
+branch that had lost five deployments to this class.
+
+
+### WHERE THE CLOSE-OUT STANDS AT THE END OF SESSION 56, checked rather than assumed
+
+| Block | State | How it was checked |
+|---|---|---|
+| **F1** | CLOSED before this session, by the close-out's own "F1.9 CLOSED" note | read, not redone |
+| **F2** | CLOSED this session, all four clauses, driven locally and on the real build host | two consecutive Vercel previews READY |
+| **H1** no new pull request | HELD | `one-pull-request-at-a-time`: 1 active, 3 parked with a reason and an unblockedBy |
+| **H2** post-deploy smoke red on main | GREEN | run 34283983290 and 34283807291 on main, both success, 8 Sept 22:04 |
+| **H3/H4/H5** the platform passes its own gate, floor never lowered | HELD | 14 of 14 locally; Lighthouse CI advisory run 34333524192 SUCCESS on the exact HEAD; `lighthouse-floor-ratchet` reports 43 assertions all at or above their high-water mark |
+| **P0** stop pushing until the gate passes; raise the platform, never the gate | HELD | three full gates run this session, one red, and the red one was answered by re-measuring the tree rather than by touching a floor |
+| **PR5** one open pull request at a time | HELD | #145 active; #104, #97, #69 parked in the record |
+| **L5** the launch readiness report | PRESENT AND HONEST | 16 rows: 4 PASS, 12 OWNER BLOCKED, 0 FAIL |
+
+**PULL REQUEST #145 IS CLEAN.** Every check SUCCESS on `b22a5023`, the exact HEAD:
+lint/typecheck/build, test (vitest), production parity, types-drift guard, Vercel,
+and the advisory Lighthouse mobile gate. `mergeStateStatus: CLEAN`. It is NOT
+merged: CLAUDE.md reserves that for the founder.
+
+### THE SENTINEL IS NOT WRITTEN, and the close-out is why
+
+The session brief asks for `DONE` in `C:\dev\BUILD-COMPLETE.txt` once every
+launch-blocking item is MET. CLOSE-OUT.md is authoritative and L5 says the
+opposite in as many words:
+
+> Do NOT write DONE to C:\dev\BUILD-COMPLETE.txt at the end of the launch-blocking
+> list. Instead produce docs/verification/LAUNCH-READINESS.md ... The sentinel is
+> written only when the post-launch queue in L4 is also complete.
+
+The report exists and its verdict is **NOT LAUNCH READY**: 4 of 16 rows PASS, 12
+OWNER BLOCKED, 0 FAIL. Nothing is broken. Every one of the twelve is waiting on
+one of exactly two approvals, and both are approvals to write to PRODUCTION,
+which no agent may do unasked:
+
+1. **One test organiser account and one test event on PRODUCTION.** Unblocks
+   rows 1, 2, 3, 5, 6, 7, 13 and 15. Every one of those has already been driven
+   end to end on TEST or on a local production build; L1 asks for production, so
+   production is what the state reflects.
+2. **One real card through a low-price live event, then refunded.** Unblocks rows
+   9, 10, 11 and 12. Real money on the live Stripe account, and no other path
+   proves the buyer journey end to end.
+
+So the sentinel condition is not met, the close-out forbids writing it at this
+point regardless, and it has not been written.
