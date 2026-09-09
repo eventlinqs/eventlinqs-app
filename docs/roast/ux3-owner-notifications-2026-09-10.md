@@ -167,3 +167,39 @@ migration, and one is a consequence of the Stripe blocker.
 
 Gate verdict: **UNFULFILLED**, reported at the top of the report with the
 unmet rows first.
+
+---
+
+## Phase 4 addendum: the unresolved finding, closed
+
+The gate above named one unresolved finding and said the drill was one statement
+against TEST. It was run rather than left.
+
+**The drill.** `notify_event_published` was reinstalled on TEST carrying the
+original `new.city` defect, with the never-block wrapping intact, and an event was
+published through the real wizard at 1440.
+
+    ux3.event.published    PASS   northside-sound-launch-2693451-ux6qok is published
+    platform_notifications        "Event published, details unavailable:
+                                   record "new" has no field "city""
+
+So the guarantee holds in both directions: the organiser publishes, and the owner
+is still told, with the fault named in the message.
+
+**And the drill found something the reasoning had not.** The fallback passed four
+arguments and nothing else, so the degraded row carried NULL for `event_id`,
+`organisation_id` and `order_id`. The `admin_path` still pointed at the right
+record, so a person could click through, but the row could not be JOINED to its
+subject: a query for "every notification about this event" would have missed it.
+`20260909000005_degraded_notification_keeps_its_subject.sql` passes the ids that
+come straight off the trigger's own NEW record, which cannot be what raised.
+
+Re-drilled after the fix: the event publishes, the degraded row is written, and
+it now carries its event (`ux3.1.event_published` PASS with the degraded summary
+and the right `event_id`). Restored, and both guards re-read green against TEST.
+
+**Adversarial findings unresolved: 0.**
+
+The four PARTIALs and three BLOCKED rows stand exactly as adjudicated. None is
+finishable on this machine: `stripe login` and `npm run migrate:production` are
+the founder's, and the digest boundary waits on the first of those.
