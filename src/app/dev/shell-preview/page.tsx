@@ -34,6 +34,7 @@ import { LoadingState } from '@/components/ui/LoadingState'
 import { FileQuestion } from 'lucide-react'
 import { PreviewForm } from './PreviewForm'
 import { assertPreviewRouteAllowed } from '@/lib/dev/preview-route'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 function BlockLabel({ number, name }: { number: number; name: string }) {
   return (
@@ -115,7 +116,7 @@ export default function ShellPreviewPage() {
           <p>
             For help with a specific order, visit{' '}
             <Link href="/help">the Help Centre</Link> or email{' '}
-            <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a>.
+            <a href={contactMailto('hello')}>{contactAddress('hello')}</a>.
             We reply within 24 hours, Monday to Friday.
           </p>
         </Prose>

@@ -183,6 +183,13 @@
  *                              read out of the import graph rather than listed, and fails
  *                              both ways: an undeclared use, and a declaration the code no
  *                              longer backs (close-out F2.1)
+ *   one-contact-domain       every published contact address derives from the sending
+ *                              domain, so the site cannot invite people to write to a domain
+ *                              it is not served from (close-out UX2.4)
+ *   one-platform-entity      the platform's own ABN is written down once and passes the ATO
+ *                              checksum. It was hand-copied into twelve places, and in four of
+ *                              them prose wrapping split it across two source lines where a
+ *                              grep could not see it (close-out UX2.1, LEGAL)
  *   one-venue-address-format  every venue address is composed by one formatter, because
  *                              two call sites each adding the venue name printed it twice
  *                              on the first real organiser event (close-out UX1.2)
@@ -748,6 +755,13 @@ const GUARDS = [
   // build on a third. Drilled red against the exact line that shipped.
   // UX1.2: the composition rule for a venue address lived nowhere, so it was
   // reinvented per call site and two of them each added the name. Drilled red.
+  // UX2.1 is LEGAL. The entity taking ticket money must match the ABN
+  // displayed, and the number changes when the Pty Ltd is registered. Drilled
+  // red against a literal split across two lines, which a grep reports as clean.
+  // UX2.4: the site is served from eventlinqs.com.au and invited people to
+  // write to eventlinqs.com, in about forty hand-written literals. Drilled red.
+  'scripts/guards/one-contact-domain.mjs',
+  'scripts/guards/one-platform-entity.mjs',
   'scripts/guards/one-venue-address-format.mjs',
   'scripts/guards/organiser-prose-one-rule.mjs',
   'scripts/guards/no-glassmorphism.mjs',

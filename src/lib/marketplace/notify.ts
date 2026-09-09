@@ -6,6 +6,7 @@ import { chooseChannel, DEFAULT_PREFS, type NotificationPrefs } from '@/lib/noti
 import { isPushConfigured, sendWebPush, type StoredSubscription } from '@/lib/notifications/web-push'
 import type { GigRow } from './gigs'
 import { PERFORMANCE_TYPE_LABELS } from './gigs'
+import { contactAddress } from '@/lib/email/sender'
 
 /**
  * Marketplace notifications ride the EXISTING alert rails (push-first, email
@@ -125,7 +126,7 @@ export async function dispatchMarketplaceAlert(
         to,
         subject: input.title,
         html: marketplaceEmailHtml(payload, input.ctaLabel, manageUrl),
-        text: `${payload.body}\n\n${payload.url}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, hello@eventlinqs.com`,
+        text: `${payload.body}\n\n${payload.url}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, ${contactAddress('hello')}`,
       })
       delivered = 'email'
     } catch {
@@ -194,7 +195,7 @@ function marketplaceEmailHtml(
       <a href="${escapeAttr(payload.url)}" style="display:inline-block;background:#0A1628;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px">${escapeHtml(ctaLabel)}</a>
     </div>
     <p style="margin:18px 4px 0;font-size:11px;color:#8b919c">You are receiving this because of your performer marketplace activity on EventLinqs. <a href="${escapeAttr(manageUrl)}" style="color:#6b7280;text-decoration:underline">Manage or turn off these alerts</a>.</p>
-    <p style="margin:8px 4px 0;font-size:11px;color:#8b919c">EventLinqs, hello@eventlinqs.com</p>
+    <p style="margin:8px 4px 0;font-size:11px;color:#8b919c">EventLinqs, ${contactAddress('hello')}</p>
   </div></body></html>`
 }
 

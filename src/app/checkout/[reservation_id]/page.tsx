@@ -10,6 +10,7 @@ import { CheckoutTrustSignals } from '@/components/features/checkout/CheckoutTru
 import { Button } from '@/components/ui/Button'
 import type { FeePassType, TicketTier, EventAddon } from '@/types/database'
 import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { contactAddress } from '@/lib/email/sender'
 
 type Props = {
   params: Promise<{ reservation_id: string }>
@@ -304,7 +305,7 @@ export default async function CheckoutPage({ params }: Props) {
             <Button href={`/checkout/${reservation_id}`}>Try again</Button>
             <Button href="/events" variant="secondary">Back to events</Button>
             <Button
-              href={`mailto:hello@eventlinqs.com?subject=Checkout%20error%20${encodeURIComponent(reservation_id)}`}
+              href={`mailto:${contactAddress('hello')}?subject=Checkout%20error%20${encodeURIComponent(reservation_id)}`}
               variant="secondary"
             >
               Email support

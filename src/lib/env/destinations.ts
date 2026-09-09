@@ -1,3 +1,4 @@
+import { contactAddress } from '@/lib/email/sender'
 /**
  * WHERE PLATFORM MAIL GOES. One definition, read by every call site.
  *
@@ -53,7 +54,7 @@
  * this file exists to prevent, arriving by a different door: an alert
  * destination is only ever changed by someone who has tested that it receives.
  */
-export const PLATFORM_INBOX = 'hello@eventlinqs.com'
+export const PLATFORM_INBOX = contactAddress('hello')
 
 /** Where payment and health faults are delivered. */
 export function alertDestination(): string {

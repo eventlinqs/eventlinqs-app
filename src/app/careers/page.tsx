@@ -4,6 +4,7 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Careers | EventLinqs',
@@ -231,12 +232,12 @@ export default function CareersPage() {
 
           <div className="flex flex-col gap-3 sm:flex-row md:flex-col">
             <Button
-              href="mailto:careers@eventlinqs.com?subject=Career%20interest"
+              href={contactMailto('careers', 'Career interest')}
               variant="primary"
               size="lg"
               className="w-full sm:w-auto"
             >
-              Email careers@eventlinqs.com
+              Email {contactAddress('careers')}
             </Button>
             <Link
               href="/about"

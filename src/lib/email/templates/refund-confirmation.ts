@@ -20,6 +20,7 @@
 
 import { refundArrivalSentenceWithReversal } from '@/lib/refunds/arrival-timeframe'
 import { formatMoney } from '@/lib/money/format'
+import { entityFooterLine } from '@/lib/legal/platform-entity'
 
 export type RefundConfirmationProps = {
   /** Buyer's display name; null falls back to "there" in the greeting. */
@@ -188,7 +189,7 @@ ${customBlock}
         <tr>
           <td style="padding:20px 32px;border-top:1px solid #e5e7eb;background:#FAFAF7;">
             <p style="margin:0;color:#6B7280;font-size:12px;line-height:1.5;">
-              EventLinqs, Geelong VIC, Australia. ABN 30 837 447 587. All-in pricing. No surprise fees.
+              ${entityFooterLine()} All-in pricing. No surprise fees.
             </p>
           </td>
         </tr>
@@ -235,7 +236,7 @@ export function buildRefundConfirmationText(props: RefundConfirmationProps): str
     customBlock,
     supportLine,
     ``,
-    `EventLinqs, Geelong VIC, Australia. ABN 30 837 447 587.`,
+    entityFooterLine(),
     `All-in pricing. No surprise fees.`,
   ]
     .join('\n')

@@ -973,8 +973,13 @@ export default async function EventDetailPage({ params }: Props) {
           </Reveal>
         )}
 
-        {/* Content column + Ticket panel */}
-        <section className="bg-canvas pt-12 sm:pt-16">
+        {/* Content column + Ticket panel.
+            UX2.3: this carried pt only. The two columns end at different points,
+            so whichever ran longer closed straight into the dark footer with no
+            terminal spacing at all. It now closes on the rhythm it opens on, and
+            loading.tsx carries the identical class so hydration does not shift
+            the page. */}
+        <section className="bg-canvas pb-12 pt-12 sm:pb-16 sm:pt-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className={seatedActive ? 'space-y-10' : 'flex flex-col gap-10 lg:flex-row'}>
               <div className={seatedActive ? '' : 'flex-1 min-w-0'}>

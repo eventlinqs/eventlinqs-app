@@ -12,6 +12,7 @@ import { formatMoney } from '@/lib/money/format'
 import { formatSeatLabel } from '@/lib/seating/format'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
+import { entityFooterLine } from '@/lib/legal/platform-entity'
 
 // ---------------------------------------------------------------------------
 // Order confirmation email (shared by the paid Stripe webhook and the free /
@@ -407,7 +408,7 @@ export function buildConfirmationEmailHtml(
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">The EventLinqs team. ${BRAND_STRAPLINE}</p>
   <p style="margin:0 0 4px;color:#6B7280;font-size:13px;"><strong style="color:#0A1628;">Refunds:</strong> ${escapeHtml(describeRefundPolicy(policyFromEvent(event), event.is_free ?? false))}</p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Your tax invoice or receipt, and the refund controls, are on <a href="${orderUrl}" style="color:#9CA3AF;">your order page</a>. Platform terms: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">${canonicalHost()}/legal/refunds</a></p>
-  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.</p>
+  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">${entityFooterLine()}</p>
   <p style="margin:0;color:#9CA3AF;font-size:12px;">You received this because you bought tickets on EventLinqs.</p>
 
 </div>
@@ -509,7 +510,7 @@ export function buildConfirmationEmailText(
    */
   lines.push(`Your tax invoice or receipt, and the refund controls: ${orderUrl}`)
   lines.push(`Platform terms: ${siteUrl}/legal/refunds`)
-  lines.push('EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.')
+  lines.push(entityFooterLine())
   lines.push('You received this because you bought tickets on EventLinqs.')
 
   return lines.join('\n')

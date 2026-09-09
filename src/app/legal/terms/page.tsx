@@ -2,6 +2,8 @@ import { canonicalHost, getSiteUrl } from '@/lib/site-url'
 import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
+import { entityLegalLine } from '@/lib/legal/platform-entity'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Terms of Service | EventLinqs',
@@ -64,8 +66,7 @@ export default async function TermsOfServicePage() {
         If you do not agree, please do not use the platform.
       </p>
       <p>
-        EventLinqs is operated by Lawal Adams, trading as EventLinqs, ABN 30 837
-        447 587, PO Box 141, Newcomb VIC 3219, Australia. In these terms,
+        EventLinqs is operated by {entityLegalLine()}. In these terms,
         &ldquo;EventLinqs&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo; and
         &ldquo;our&rdquo; mean that entity, and &ldquo;you&rdquo; means the
         person or organisation using the platform.
@@ -137,7 +138,7 @@ export default async function TermsOfServicePage() {
         out through your account, unless it results from our own failure. If you
         believe your account has been accessed without your permission, tell us
         promptly at{' '}
-        <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a> so we can
+        <a href={contactMailto('hello')}>{contactAddress('hello')}</a> so we can
         secure it.
       </p>
       <p>
@@ -283,7 +284,7 @@ export default async function TermsOfServicePage() {
         We may remove content that breaches these terms, infringes someone
         else&apos;s rights, or exposes us to legal risk. If you believe content on
         EventLinqs infringes your copyright, contact{' '}
-        <a href="mailto:legal@eventlinqs.com">legal@eventlinqs.com</a> with enough
+        <a href={contactMailto('legal')}>{contactAddress('legal')}</a> with enough
         detail to identify the material.
       </p>
 
@@ -427,7 +428,7 @@ export default async function TermsOfServicePage() {
       <h2 id="disputes">Disputes and Governing Law</h2>
       <p>
         If you have a problem, contact us first at{' '}
-        <a href="mailto:legal@eventlinqs.com">legal@eventlinqs.com</a>. Most
+        <a href={contactMailto('legal')}>{contactAddress('legal')}</a>. Most
         matters are resolved quickly this way, and we ask that you raise it with
         us before starting a formal process.
       </p>
@@ -460,15 +461,15 @@ export default async function TermsOfServicePage() {
       <h2 id="contact">Contact</h2>
       <p>
         General support:{' '}
-        <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a>
+        <a href={contactMailto('hello')}>{contactAddress('hello')}</a>
       </p>
       <p>
         Ticket and refund enquiries:{' '}
-        <a href="mailto:support@eventlinqs.com">support@eventlinqs.com</a>
+        <a href={contactMailto('support')}>{contactAddress('support')}</a>
       </p>
       <p>
         Legal notices:{' '}
-        <a href="mailto:legal@eventlinqs.com">legal@eventlinqs.com</a>, or by post
+        <a href={contactMailto('legal')}>{contactAddress('legal')}</a>, or by post
         to PO Box 141, Newcomb VIC 3219, Australia.
       </p>
 

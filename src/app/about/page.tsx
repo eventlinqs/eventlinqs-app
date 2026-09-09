@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { HeroMedia } from '@/components/media'
 import { MarketingMedia } from '@/components/media/MarketingMedia'
 import { ABOUT_PHOTOS } from '@/lib/images/about-photos'
+import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
 
 export const metadata: Metadata = {
   title: 'About | EventLinqs',
@@ -222,8 +223,8 @@ export default function AboutPage() {
                 to put on community events that mattered.
               </p>
               <p>
-                The platform is operated as an Australian sole trader (ABN
-                30 837 447 587) and will convert to a Pty Ltd structure once
+                The platform is operated as an {PLATFORM_ENTITY.entityType} (ABN{' '}
+                {PLATFORM_ENTITY.abnFormatted}) and will convert to a Pty Ltd structure once
                 investor onboarding or revenue justifies it. Every line of
                 code, every brand decision, and every pricing rule sits
                 inside that single accountable entity.

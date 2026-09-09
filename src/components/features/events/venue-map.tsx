@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { getGoogleMapsLoader, GOOGLE_MAPS_MAP_ID } from '@/lib/maps/google-maps-loader'
-import { createBrandPin } from '@/lib/maps/brand-pin'
+import { createVenuePin } from '@/lib/maps/brand-pin'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 
 interface Props {
@@ -135,12 +135,27 @@ export function VenueMap({
         mapRef.current = map
 
         // AdvancedMarkerElement replaces the deprecated google.maps.Marker.
-        // The pin is the shared brand dot, so all four maps stay identical.
+        //
+        // UX2.2: this was the shared brand DOT, whose only label was a `title`
+        // attribute, i.e. a hover tooltip that does not exist on a phone. Every
+        // surrounding commercial POI carried a labelled marker, so the one point
+        // the page is about was the least legible thing on the map. It is a
+        // labelled plate now, carrying the venue name as real text.
+        //
+        // collisionBehavior is the PUBLISHED mechanism for outranking the
+        // basemap's own labels, not a guess (Google, Maps JavaScript API,
+        // CollisionBehavior, fetched 2026-09-09):
+        //   REQUIRED_AND_HIDES_OPTIONAL - "Always display the marker regardless
+        //   of collision, and hide any OPTIONAL_AND_HIDES_LOWER_PRIORITY markers
+        //   or labels that would overlap with the marker."
         markerRef.current = new AdvancedMarkerElement({
           position: center,
           map,
           title: venueName ?? undefined,
-          content: createBrandPin({ title: venueName }),
+          content: createVenuePin({ name: venueName }),
+          collisionBehavior:
+            google.maps.CollisionBehavior.REQUIRED_AND_HIDES_OPTIONAL,
+          zIndex: 10,
         })
         setInteractive(true)
       } catch (err) {

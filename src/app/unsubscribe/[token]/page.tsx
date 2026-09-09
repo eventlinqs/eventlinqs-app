@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unsubscribeFromOrganiserAction } from '@/app/actions/consent'
+import { contactAddress } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Unsubscribe | EventLinqs',
@@ -47,7 +48,7 @@ export default async function UnsubscribePage({ params }: Props) {
               <h1 className="font-display text-2xl font-bold text-ink-900">This link is not valid</h1>
               <p className="mt-3 text-sm text-ink-600">
                 This unsubscribe link could not be found. It may have already been used. If you keep
-                getting emails you did not ask for, contact us at hello@eventlinqs.com.
+                getting emails you did not ask for, contact us at {contactAddress('hello')}.
               </p>
             </>
           ) : withdrawn ? (

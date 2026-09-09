@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
+import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Cookie Policy | EventLinqs',
@@ -38,7 +40,7 @@ export default function CookiesPage() {
       <h2 id="how-we-use-them">How We Use Cookies</h2>
       <p>
         EventLinqs (operated by Lawal Adams trading as EventLinqs,
-        ABN 30 837 447 587, PO Box 141, Newcomb VIC 3219, Australia) sets
+        ABN {PLATFORM_ENTITY.abnFormatted}, {PLATFORM_ENTITY.postalAddress}) sets
         cookies only where they are essential: keeping your session
         secure, completing checkout, remembering a few interface
         preferences, and preventing abuse. Our analytics are cookieless
@@ -165,7 +167,7 @@ export default function CookiesPage() {
       <h2 id="contact">Contact</h2>
       <p>
         Questions about cookies or how we handle your data?{' '}
-        <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a>.
+        <a href={contactMailto('hello')}>{contactAddress('hello')}</a>.
       </p>
     </LegalPageShell>
   )

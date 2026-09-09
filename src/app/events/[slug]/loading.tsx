@@ -43,7 +43,7 @@ export default function EventDetailLoading() {
       </section>
 
       {/* Content - light, two-column with sticky ticket panel */}
-      <section className="bg-canvas pt-12 sm:pt-16">
+      <section className="bg-canvas pb-12 pt-12 sm:pb-16 sm:pt-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-10 lg:flex-row">
             {/* Main column */}

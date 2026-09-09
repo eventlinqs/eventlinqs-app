@@ -82,3 +82,77 @@ export function getNoReplyFrom(): string {
 export function getReplyToAddress(): string {
   return `${LOCAL_PARTS.hello}@${getSenderDomain()}`
 }
+
+/**
+ * THE PUBLIC CONTACT ADDRESSES (close-out UX2.4).
+ *
+ * WHY THESE LIVE HERE. Until 9 September 2026 the platform published seven
+ * different local parts - hello, careers, organisers, legal, privacy, support,
+ * press - hand-written as `mailto:` literals in about thirty-eight places across
+ * the legal pages, the press page, the careers page, checkout and the contact
+ * form. None of them derived from anything. The SENDING identity above had one
+ * source and a guard; the addresses printed on the site had neither, so the two
+ * halves of the platform's email identity could drift apart without any check
+ * noticing.
+ *
+ * THE SPLIT THE CLOSE-OUT REPORTED. Every one of those addresses is at
+ * `eventlinqs.com` while the site is served from `eventlinqs.com.au`. That is
+ * the defect: a visitor reads a contact address on a different domain from the
+ * site they are on, which reads as careless at best.
+ *
+ * WHY IT IS NOT SIMPLY FLIPPED HERE. `EMAIL_FROM`'s manifest entry
+ * (src/lib/env/manifest.mjs) describes eventlinqs.com as "the apex domain
+ * VERIFIED AT RESEND". Sending from a domain Resend has not verified does not
+ * degrade, it fails, and this repository already has `alerts@eventlinqs.com`
+ * hard-bouncing on 2026-08-03 on the record as what that looks like. Verifying
+ * eventlinqs.com.au needs DNS records at the registrar, which no agent here
+ * holds a credential for.
+ *
+ * So the flip is ONE EDIT to `DEFAULT_SENDER_DOMAIN` above, the moment the
+ * founder verifies the domain at Resend. Everything derives from it, and
+ * `scripts/guards/one-contact-domain.mjs` fails the build if any surface starts
+ * publishing an address that does not.
+ */
+
+/** Every public-facing local part, one per role. Never written at a call site. */
+const CONTACT_LOCAL_PARTS = {
+  /** General enquiries and the address on the legal pages. */
+  hello: 'hello',
+  /** Refunds, orders and anything a buyer needs a human for. */
+  support: 'support',
+  /** Organiser-facing enquiries, named in the organiser terms. */
+  organisers: 'organisers',
+  /** Privacy requests, named in the privacy policy. */
+  privacy: 'privacy',
+  /** Legal notices, named in the terms. */
+  legal: 'legal',
+  /** Press and brand-asset requests. */
+  press: 'press',
+  /** Hiring. */
+  careers: 'careers',
+} as const
+
+export type ContactRole = keyof typeof CONTACT_LOCAL_PARTS
+
+/**
+ * A public contact address for one role, on the one domain.
+ *
+ * Deliberately derived from `getSenderDomain()` rather than from a second
+ * constant: the address a visitor is invited to write to and the address the
+ * platform sends from must be the same domain, or the reply lands nowhere and
+ * the domain's authentication record covers only half the traffic.
+ */
+export function contactAddress(role: ContactRole): string {
+  return `${CONTACT_LOCAL_PARTS[role]}@${getSenderDomain()}`
+}
+
+/** `mailto:` href for a contact role, with an optional subject. */
+export function contactMailto(role: ContactRole, subject?: string): string {
+  const base = `mailto:${contactAddress(role)}`
+  return subject ? `${base}?subject=${encodeURIComponent(subject)}` : base
+}
+
+/** Every published contact address, for the guard and for tests. */
+export function allContactAddresses(): string[] {
+  return (Object.keys(CONTACT_LOCAL_PARTS) as ContactRole[]).map(contactAddress)
+}

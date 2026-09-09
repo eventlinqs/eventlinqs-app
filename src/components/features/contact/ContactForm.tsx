@@ -5,7 +5,7 @@
  *
  * Receives `initialSubject` pre-computed by the server from ?topic= and ?interest= params.
  *
- * ON SUBMIT IT OPENS A `mailto:` to hello@eventlinqs.com with the subject and
+ * ON SUBMIT IT OPENS A `mailto:` to {contactAddress('hello')} with the subject and
  * body pre-filled, then shows the inline success state. It does NOT post to an
  * API and it does NOT console.log; the header said "console.logs" until
  * 15 August 2026 and that was simply false, which is worse than no comment.
@@ -26,6 +26,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { FormField } from '@/components/ui/FormField'
 import { Button } from '@/components/ui/Button'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 function TwitterIcon() {
   return (
@@ -67,7 +68,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
     e.preventDefault()
     setSubmitting(true)
     const body = `${message}\n\n---\nFrom: ${name}\nReply-to: ${email}`
-    const mailto = `mailto:hello@eventlinqs.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    const mailto = `mailto:${contactAddress('hello')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
     if (typeof window !== 'undefined') {
       window.location.href = mailto
     }
@@ -181,10 +182,10 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
             <dt className="font-semibold text-[var(--text-primary)]">Email</dt>
             <dd className="mt-1">
               <a
-                href="mailto:hello@eventlinqs.com"
+                href={contactMailto('hello')}
                 className="text-[var(--text-secondary)] underline underline-offset-2 decoration-transparent hover:text-[var(--brand-accent)] hover:decoration-[var(--brand-accent)] transition-colors"
               >
-                hello@eventlinqs.com
+                {contactAddress('hello')}
               </a>
             </dd>
           </div>

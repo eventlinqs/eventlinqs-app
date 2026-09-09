@@ -3,6 +3,8 @@ import { FirstNationsFlags } from '@/components/features/home/first-nations-flag
 import { FooterAccordion } from '@/components/layout/footer-accordion'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
+import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -316,12 +318,12 @@ export function SiteFooter() {
           </div>
 
           <div className="mt-3 flex flex-col gap-1 text-xs text-white/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
-            <span>ABN 30 837 447 587</span>
+            <span>ABN {PLATFORM_ENTITY.abnFormatted}</span>
             <span aria-hidden className="hidden sm:inline">·</span>
-            <span>Geelong VIC, Australia</span>
+            <span>{PLATFORM_ENTITY.locality.replace(/\.$/, '')}</span>
             <span aria-hidden className="hidden sm:inline">·</span>
-            <a href="mailto:hello@eventlinqs.com" className="inline-flex min-h-11 items-center transition-colors hover:text-white/80">
-              hello@eventlinqs.com
+            <a href={contactMailto('hello')} className="inline-flex min-h-11 items-center transition-colors hover:text-white/80">
+              {contactAddress('hello')}
             </a>
             <span aria-hidden className="hidden sm:inline">·</span>
             <span>© {year} EventLinqs</span>

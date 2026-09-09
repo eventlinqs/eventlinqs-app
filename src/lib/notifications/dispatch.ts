@@ -11,6 +11,7 @@ import {
   type NotificationPrefs,
 } from './policy'
 import { isPushConfigured, sendWebPush, type StoredSubscription } from './web-push'
+import { contactAddress } from '@/lib/email/sender'
 
 type Admin = SupabaseClient<Database>
 
@@ -102,7 +103,7 @@ export async function dispatchAlert(input: DispatchInput): Promise<DispatchResul
         to,
         subject: `${payload.title}: ${ctx.eventTitle}`,
         html: alertEmailHtml(payload, manageUrl),
-        text: `${payload.body}\n\n${payload.url}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, hello@eventlinqs.com`,
+        text: `${payload.body}\n\n${payload.url}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, ${contactAddress('hello')}`,
       })
       delivered = 'email'
     } catch {
@@ -141,7 +142,7 @@ function alertEmailHtml(payload: { title: string; body: string; url: string }, m
       <a href="${escapeAttr(payload.url)}" style="display:inline-block;background:#0A1628;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px">View the event</a>
     </div>
     <p style="margin:18px 4px 0;font-size:11px;color:#8b919c">You are receiving this because you turned on event alerts on EventLinqs. <a href="${escapeAttr(manageUrl)}" style="color:#6b7280;text-decoration:underline">Manage or turn off these alerts</a>.</p>
-    <p style="margin:8px 4px 0;font-size:11px;color:#8b919c">EventLinqs, hello@eventlinqs.com</p>
+    <p style="margin:8px 4px 0;font-size:11px;color:#8b919c">EventLinqs, ${contactAddress('hello')}</p>
   </div></body></html>`
 }
 
