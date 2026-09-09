@@ -213,7 +213,10 @@ describe('filesForUpload', () => {
     writeFileSync(join(fake, 'ignored.txt'), 'x')
 
     const r = filesForUpload(fake)
-    expect(r.source).toContain('no git repository here')
+    // The source NAMES the shape (close-out F2.4): `emptied` is the Vercel host,
+    // which is a different fact from `absent`, and conflating the two is what
+    // killed the ffded236 deployment.
+    expect(r.source).toContain('emptied .git')
     expect(r.files).toContain('src/a.ts')
     expect(r.files).not.toContain('ignored.txt')
     // and it never claims a correction it could not have made

@@ -1093,9 +1093,27 @@ const ROOT = join(HERE, '..', '..')
  * third need appears, one counts the rows that record where they HAVE been
  * driven. A hand-written count in that document is a second place a claim can
  * live, which is the exact thing the report exists to prevent.
+ *
+ * 2026-09-09, later: raised 338/3924 -> 341/3981, MEASURED. Close-out F2, three
+ * new files:
+ *
+ *   tests/unit/guards/build-host.test.ts       F2.1, the three capabilities the
+ *                                              Vercel build host does not have
+ *                                              and the registry that declares them
+ *   tests/unit/guards/gitignore.test.ts        F2.2, enumerating a tree with no
+ *                                              git, tested against git itself
+ *   tests/unit/guards/git-availability.test.ts F2.4, the four shapes .git takes
+ *                                              and the one sentence all seven
+ *                                              git readers print
+ *
+ * Two of those files are worth the canary knowing about specifically, because
+ * they assert against the REAL repository rather than a fixture: the walk is
+ * compared path for path with `git ls-files`, and every git-declaring entry
+ * point is required to reach the shared availability module. Both would go quiet
+ * rather than red if somebody deleted them, which is what this canary is for.
  */
-const MIN_FILES = 338
-const MIN_TESTS = 3924
+const MIN_FILES = 341
+const MIN_TESTS = 3981
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
