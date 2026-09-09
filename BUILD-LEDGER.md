@@ -1863,3 +1863,62 @@ sensitive on production and preview, and both sit on Development where the platf
 cannot hold them sensitively at all. That is founder ruling R3 in
 `docs/ENV-DOCTRINE.md` 3.2. The fix writes to the production configuration store,
 so it is offered rather than taken.
+
+## F1.6. ONE GUARD, THREE MACHINES, ONE SENTENCE SHAPE (9 September 2026, session 55)
+
+Commit `b8b7de64`.
+
+| # | Requirement, quoted from close-out F1.6 | Verdict | Evidence |
+|---|---|---|---|
+| 1 | "Make its skip conditions identical and named" | MET | a CLOSED set of five codes in `scripts/guards/lib/clause-verdict.mjs`, rendered in one line with the build scope |
+| 2 | The set cannot grow at a call site | MET | the renderer throws on an unknown code; tested |
+| 3 | A refusal says WHY, not just a status | MET | Vercel's own error code is quoted; driven live and produced `forbidden: Not authorized` |
+| 4 | Tests added, canary raised in the same commit | MET | 7 tests; 336/3898 to 337/3905, measured |
+| 5 | Drilled, and the right way round | MET | drill 143 asserts the guard STAYS GREEN while naming the code, because the dangerous failure here is the false negative |
+
+NOT CLAIMED: the CI 404 itself is not diagnosed yet. It cannot be from here
+without the CI token, and the fix makes the NEXT CI run answer it in Vercel's own
+words rather than leaving it for a third log read.
+
+## F1.9.2 AND F1.9.3. THE FOURTH DEPLOYMENT LOST TO .vercelignore (9 September 2026, session 55)
+
+Commit `ffded236`. Pushed after a 14 of 14 green gate.
+
+| # | Requirement, quoted from close-out | Verdict | Evidence |
+|---|---|---|---|
+| 1 | PART ONE "Re-include what is read and ONLY what is read ... naming only docs/verification/LAUNCH-READINESS.md, docs/verification/launch-readiness/ and the four JSON artefacts inside it" | MET | `.vercelignore` walks both down; a test asserts a sibling directory under docs/verification still arrives empty, so the 382 MB of screenshots stay out |
+| 2 | PART ONE "Prove it by deploying the branch and reading launch-readiness-honest PASS on Vercel" | PENDING the deployment | proven locally in a materialised upload (case 1 of the PART THREE drill, exit 0, PRESENT and judged). The Vercel half is read off the preview of `ffded236` |
+| 3 | PART TWO "DERIVE the required .vercelignore re-inclusions ... printing the exact lines to add" | MET | `reinclusionLines()` derives the walk-down; the failure prints the lines verbatim |
+| 4 | PART TWO "No allowlist. No review record. No human judgement about tolerance" | MET | `TOLERANT_FILES` deleted; the executor derives its subject from the import graph |
+| 5 | PART TWO "Then DELETE the TOLERANT review list" | MET | a test fails if anybody adds a second export back to the registry |
+| 6 | PART TWO "Prove ... against commit 7564b40 unchanged. It must go RED and name docs/verification/LAUNCH-READINESS.md" | MET | `C:\dev\EVIDENCE\F1.9.2\part-two-red-on-7564b40.txt`, and the same regression is drill 141 |
+| 7 | PART THREE "Replace it with a determination: evaluate the path against .vercelignore, and when the path is excluded and the build is running on Vercel it is STRIPPED" | MET | `scripts/guards/lib/stripped-or-deleted.mjs` |
+| 8 | PART THREE "Prove both verdicts: a genuinely stripped tree SKIPS naming the reason, a genuinely deleted file FAILS" | MET | four driven cases in real uploads, all correct: `C:\dev\EVIDENCE\F1.9.2\part-three-stripped-vs-deleted.txt` |
+| 9 | PART THREE "Enumerate them and report how many there are" | MET | 1, enumerated from the import graph by `callersOf()` and printed on every run |
+| 10 | F1.9.3 "Add to CLAUDE.md and register a blocking guard for it" | MET | the rule is in Verification and gates and in the constitution map; the two existing guards enforce it, generalised from `docs/` to every excluded top level, rather than a third guard repeating them |
+| 11 | Full regression green | MET | 14 of 14 gate steps, 143/143 drills, 86/86 guards, 338 files / 3917 tests |
+
+THE FOUR OCCURRENCES, named as the close-out asks:
+
+| # | Path | Guard | When |
+|---|---|---|---|
+| 1 | `docs/PRICING.md` | check-pricing-lock | recorded in .vercelignore's header |
+| 2 | `docs/security/CREDENTIAL-ROTATION.md` | payment-critical-doctrine | 12 Aug 2026 |
+| 3 | `docs/scope/community-layer-approved.json` | community-layer-protected | 7 Sep 2026 |
+| 4 | `docs/verification/LAUNCH-READINESS.md` | launch-readiness-honest | 8 Sep 2026 |
+
+LINES ADDED TO `.vercelignore`:
+
+    !docs/verification/
+    docs/verification/*
+    !docs/verification/LAUNCH-READINESS.md
+    !docs/verification/launch-readiness/
+
+A DEVIATION FROM THE PREVIOUS SESSION, recorded because it reverses a written
+decision. Session 54 REJECTED PART ONE and fixed the skip test instead, on the
+grounds that re-including evidence paths is a rot trap. The close-out is
+authoritative and it asked for PART ONE, and the rot the rejection feared is what
+PART TWO's derived guard exists to catch: the folder is re-included whole, so a
+new dated artefact needs no edit, and a new evidence path anywhere else fails the
+local gate before a deploy is attempted, printing the lines to add. Both halves
+are now in place rather than one instead of the other.

@@ -6883,3 +6883,170 @@ write to the production configuration store, which is not mine to make unasked.
 Raised in REVIEW-QUEUE.md with the split Law 10 asks for.
 
 Disk 24.2 GB free.
+
+## 2026-09-09, session 55. F1.6: one guard, three machines, one sentence shape.
+
+Commit `b8b7de64`.
+
+### The defect, quoted from the close-out
+
+"on Vercel machine-callers-reachable skipped for want of a VERCEL_TOKEN, while in
+CI the same guard skipped on a 404 from the System Bypass endpoint. One guard, two
+different skip reasons, two machines, and neither is the reason it would skip
+locally. Make its skip conditions identical and named."
+
+Three shapes for one question. Noticing that they were even about the same clause
+took two full log reads.
+
+### The fix
+
+`scripts/guards/lib/clause-verdict.mjs` holds a CLOSED set of verdict codes and
+the one line that renders them, with the build scope attached. The three machines
+now produce three lines that line up and diff:
+
+    clause 4 (the live System Bypass rules): JUDGED [judged] on scope=local - read with the Vercel CLI login; live rules: none
+    clause 4 (the live System Bypass rules): NOT JUDGED [no-token] on scope=local - no VERCEL_TOKEN in the environment and no Vercel CLI login on this machine
+    clause 4 (the live System Bypass rules): NOT JUDGED [http-403] on scope=ci - Vercel refused the read for project prj_YIH... using VERCEL_TOKEN from the environment, and said: forbidden: Not authorized
+
+The set is `judged`, `no-token`, `no-project-ids`, `http-<status>`,
+`network-error`, and it is closed: the renderer THROWS on a sixth shape invented
+at a call site rather than printing it.
+
+### The part that answers the actual open question
+
+A refusal now quotes Vercel's own error code. The read endpoint documents 401, 403
+and 404 beside each other
+(https://vercel.com/docs/rest-api/sdk/security/read-system-bypass, fetched
+2026-09-09), so a bare status never said whether the token is wrong, unscoped, or
+pointed at a project it cannot see. The next CI run answers CI's 404 in Vercel's
+own words instead of leaving it for a third log read.
+
+Driven all three ways on this machine, including a live refusal from Vercel using
+a token it rejects, which produced `forbidden: Not authorized`.
+
+### Verification
+
+143/143 drills (up from 142), 86/86 guards, suite 337 files / 3905 tests, canary
+raised 336/3898 to 337/3905, tsc 0, eslint 0. The canary edit landed one line
+outside its own comment block and the suite step caught it immediately, which is
+the gate working; fixed in the same pass.
+
+## 2026-09-09, session 55. F1.9.2 and F1.9.3: the fourth lost deployment, closed three ways.
+
+Commit `ffded236`.
+
+### PART ONE. The report now reaches the build host
+
+`.vercelignore` re-includes `docs/verification/LAUNCH-READINESS.md` and the
+`launch-readiness/` folder of artefacts its PASS rows cite, walked down level by
+level. The report is 12 KB, the folder is 7 KB, and the 382 MB of screenshots
+elsewhere under `docs/verification` stay excluded, which a test asserts directly
+by requiring a sibling directory to arrive empty.
+
+The folder is re-included WHOLE rather than by four dated filenames. That is the
+answer to the rot the previous session feared: driving the report again drops new
+dated artefacts into it and they arrive without an edit to the ignore file.
+
+`launch-readiness-honest` now JUDGES on Vercel instead of standing aside.
+
+### PART TWO. The tolerance list is deleted, and the subject is derived
+
+It named scripts "reviewed as coping when docs/ is gone", each with a written
+reason. F1.9.1 is the record of what that cost: one reason was wrong, nothing had
+executed it, and the guard built after the third lost deployment watched the
+fourth walk past.
+
+`scripts/guards/excluded-reads-survive-the-upload.mjs` (renamed from
+`tolerant-guards-survive-the-upload.mjs`, because the name has to be true) DERIVES
+its subject from the import graph: every prebuild entry point whose own code, or
+the code of anything it imports, names a path under a top level `.vercelignore`
+excludes. Nine of them, run inside a materialised upload, every one exiting 0.
+
+FOLLOWING IMPORTS IS THE PART THAT MATTERED. The old scan was a list of
+DIRECTORIES, and `scripts/verify` was not among them, so
+`scripts/verify/launch-readiness.mjs` was invisible to it while being imported by
+a registered guard, and it is the file holding the two literals this whole item is
+about.
+
+The failure now prints the EXACT lines to add, derived from the path:
+
+    Add these exact lines to .vercelignore, in this order, after the docs/* line:
+      !docs/verification/
+      docs/verification/*
+      !docs/verification/LAUNCH-READINESS.md
+
+Doing that walk-down by hand, wrongly, is what cost the second deployment.
+
+### PART TWO's proof, against 7564b40 unchanged
+
+`git show 7564b40b:.vercelignore` was checked out into the tree and the new guard
+judged it. It went RED and named the path, exactly as the close-out demands:
+
+    FAIL: docs/verification/LAUNCH-READINESS.md does not survive .vercelignore
+          (its directory docs/verification/ is excluded and never re-included)
+
+Evidence: `C:\dev\EVIDENCE\F1.9.2\part-two-red-on-7564b40.txt`
+
+### PART THREE. Stripped is determined, never guessed
+
+`scripts/guards/lib/stripped-or-deleted.mjs` evaluates the path against
+`.vercelignore` with the same evaluator the ignore guard uses, and asks the shared
+scope resolver whether this is Vercel. Excluded AND on Vercel is STRIPPED; anything
+else missing was DELETED and fails.
+
+Four cases driven in real materialised uploads, all correct:
+
+| Case | Verdict |
+|---|---|
+| the report re-included, on Vercel | PRESENT, judged, exit 0 |
+| commit 7564b40's ignore file, on Vercel | STRIPPED, skipped naming the reason, exit 0 |
+| re-included but removed, on Vercel | DELETED, exit 1 |
+| re-included but removed, on a laptop | DELETED, exit 1 |
+
+Evidence: `C:\dev\EVIDENCE\F1.9.2\part-three-stripped-vs-deleted.txt`
+
+Guards sharing the determination: **1**, enumerated from the import graph rather
+than from a list, and printed on every run.
+
+### F1.9.3. The standing rule
+
+Added to CLAUDE.md in Verification and gates, and to the constitution map. It is
+enforced by the two guards above rather than by a third that would repeat them,
+and the scan generalised from `docs/` to every top level `.vercelignore` excludes,
+read out of the ignore file itself: `docs, design-captures, research, audit-v2,
+.git`. The next exclusion is covered the day it is added.
+
+### Two defects in my own work, both found by running things
+
+`no-inherited-git-env` went red on the new drill script, which spawned git without
+clearing the inherited environment. That guard exists because a fixture once wrote
+`core.bare=true` into the shared worktree config.
+
+And the drill itself was wrong the first time: it restored the repository's
+`.vercelignore` while the materialised upload held a HARD LINK to it, so the upload
+carried rules it had not been built from and case 2 reported the wrong verdict. The
+comment in the file says so, because that is exactly the shape of a drill that
+verifies nothing while looking green.
+
+### Verification, and the push that had been waiting on a power cable
+
+143/143 drills, 86/86 guards, suite 338 files / 3917 tests, canary raised
+337/3905 to 338/3917, tsc 0, eslint 0.
+
+THE FULL GATE, 14 of 14 GREEN in 2,436 seconds, and the push landed
+`7564b40b..ffded236`:
+
+    disk PASS, typecheck PASS 7s, lint PASS 58s, copy PASS, critical-path PASS,
+    lighthouse-exemptions PASS, guards PASS 77s, types-drift PASS 15s,
+    production-parity PASS 5s, fixture PASS, suite PASS 50s, build PASS 213s,
+    indexing PASS 236s, lighthouse PASS 1773s
+
+The machine calibration is the difference from the previous session, and it
+confirms that session's diagnosis exactly:
+
+    Machine speed while collecting: BenchmarkIndex median 2698 (2673 to 2720 across URLs), desktop class
+
+2,698 against the 2,700 the floors were confirmed at, where the same laptop on
+battery measured 1,908. The homepage came in at 0.94 median and /events at 0.90,
+against the 0.88 and 0.91 that failed at 71% machine speed. Nothing about the page
+changed; the cable did.

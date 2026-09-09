@@ -2456,3 +2456,59 @@ your live Vercel configuration, and that is a change to the running site's setti
 Say the word and I will write the one command that does it, refuses if anything
 looks wrong, never prints a key, and checks the result afterwards rather than
 trusting itself.
+
+## 9 September 2026, session 55. The deploy problem is closed properly this time, and the branch is pushed.
+
+**Thank you for plugging the laptop in.** That was the only thing standing between
+the work and the push. The speed check went from 71% of normal to 2,698 against a
+2,700 baseline, the homepage measured 0.94 instead of 0.82, and all fourteen checks
+passed. Nothing about the site changed between the two runs; the power cable was
+the whole difference. The branch is on GitHub.
+
+**The deploy problem, in plain terms.** When the site is deployed, a stripped-down
+copy of the project is sent to the deploy host: the code goes, the documents mostly
+do not, because there are hundreds of megabytes of screenshots in there. Four times
+now, a safety check has tried to read a document that never made the trip, found it
+missing, and stopped the deploy. Every time it looked fine on my machine.
+
+The fourth was yesterday, and it was the launch readiness report.
+
+**What I did about it, three things rather than one.**
+
+1. The report and its four evidence files are now SENT with the deploy. They are 19
+   kilobytes between them. The screenshots still stay behind, and there is a test
+   that fails if that ever stops being true.
+
+2. There was a list saying "these checks are fine when the documents are missing",
+   with a written reason beside each. One of those reasons was simply wrong, and
+   nothing had ever tested it, so the safeguard built after the third failure
+   watched the fourth go past. The list is deleted. Every check that reads a
+   document is now actually RUN against a copy of exactly what the deploy host
+   receives, before anything is pushed. Nine of them, every time.
+
+3. When a file IS missing, the check no longer guesses whether it was left out on
+   purpose or deleted by mistake. It works it out from the rules, and it says which.
+   I proved both answers by building the real thing four different ways.
+
+**And a rule you can hold me to.** It is written into CLAUDE.md now: a check may
+never read a file outside the code folder unless it is sent with the deploy AND
+somebody has proved how it behaves when it is not. Local green is not evidence for
+the deploy host. A written reason is not evidence for anything.
+
+**The safety checks also stopped being vague.** Yesterday a build failed with "1 of
+84 checks FAILED" and refused to say which. It now names every one, on the last
+line, with the command to see what it caught.
+
+**Two mistakes of my own, both caught by the checks rather than by me.** One of my
+new scripts called git the unsafe way that once broke every worktree on this
+machine, and a guard refused it. And my own test for the deploy problem was wrong
+the first time and quietly reported a pass; running it is what showed me.
+
+**Evidence:** `C:\dev\EVIDENCE\F1.9.2\`
+
+**Still nothing changed for you on the site.** No page, no button, no journey. The
+twelve launch readiness rows waiting on your approvals are exactly as they were.
+
+**The one thing still waiting on you** is the two keys stored more readable than
+your own rule allows, from the earlier note today. Say the word and I will write
+the one command.
