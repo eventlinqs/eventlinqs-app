@@ -1061,9 +1061,19 @@ const ROOT = join(HERE, '..', '..')
  * rather than printing; four prove the rendered line always carries the code AND
  * the build scope, and that a not-judged verdict always carries the remedy, so a
  * skip is never a dead end.
+ *
+ * 2026-09-09: raised 337/3905 -> 338/3917, MEASURED by running the suite. One
+ * file, tests/unit/guards/stripped-or-deleted.test.ts, 11 tests, holds close-out
+ * F1.9.2 PART THREE, the fourth deployment lost to .vercelignore. Six drive the
+ * determination against REAL trees on disk rather than a fake filesystem, one
+ * per combination of excluded and on-Vercel, including the exact shape that cost
+ * the deployment: a directory left standing with the file gone. One holds the
+ * shared-determination count. Four hold the walk-down being DERIVED rather than
+ * described, because doing that derivation by hand is what lost one of the other
+ * three deployments. The remaining test moved inside vercel-upload.test.ts.
  */
-const MIN_FILES = 337
-const MIN_TESTS = 3905
+const MIN_FILES = 338
+const MIN_TESTS = 3917
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

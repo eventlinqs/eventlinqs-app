@@ -63,6 +63,7 @@ silently follow the stale doc.
 | Seed or demo data | `seed-events` skill, Law 3, Media architecture |
 | Links, routes, navigation | Law 5 (zero dead links) |
 | A migration or the database | Verification and gates (Migrations) |
+| A build-time script (a guard, a `check-*`, anything `prebuild` runs) reading a file outside `src/` | Verification and gates (What a build-time script may read). Re-include it in `.vercelignore` AND prove the behaviour against the stripped tree. Four deployments have been lost to this |
 | An event status change, archive, restore or delete, or what a deleted or archived event URL answers | `docs/EVENT-LIFECYCLE.md` (AUTHORITY: the total state machine, the money-records delete rule the database enforces, the 410 and 404 rules), `src/lib/event-lifecycle.ts` (the table the code runs), `scripts/guards/event-lifecycle-total.mjs` and `event-lifecycle-installed.mjs` (the gates) |
 | An environment variable, a secret, a store scope, a sender or alert address | `docs/ENV-DOCTRINE.md`, `src/lib/env/manifest.mjs` (declare it there and the guards pick it up), Verification and gates |
 | A rate limit: adding one, changing a cap, or flipping fail-open to fail-closed | `docs/RATE-LIMIT-DOCTRINE.md` (AUTHORITY on the fail-open decision and on the `launch-compose` ruling), `src/lib/rate-limit/policies.ts` (the table), `scripts/verify/rate-limit-audit.mjs` (run it BEFORE claiming what a policy costs or what it is keyed by) |
@@ -1114,6 +1115,43 @@ archive, parser, codec):
    path owns the LCP.
 
 The executable form of this law is `tests/unit/security/image-pipeline-format.test.ts`.
+
+**What a build-time script may read (locked 2026-09-09, close-out F1.9.3)**
+
+> A build-time script may never read a file outside `src/` unless
+> `.vercelignore` re-includes it AND a drill has proved that script's behaviour
+> against a tree stripped exactly as `.vercelignore` strips it. Local green is
+> not evidence for Vercel. A review record is not evidence for anything.
+
+FOUR deployments have been lost to one mistake, and `.vercelignore` documents all
+four in its own header: `docs/PRICING.md` (the pricing lock), then
+`docs/security/CREDENTIAL-ROTATION.md`, then
+`docs/scope/community-layer-approved.json`, then
+`docs/verification/LAUNCH-READINESS.md` on 8 September 2026. Each time a prebuild
+script read a file that was never uploaded, each time the local gate was green,
+and each time the guard was right about what it could see and wrong about the
+world.
+
+The FOURTH is why the second sentence exists. A guard written after the third
+accepted a WRITTEN RATIONALE that a script coped when `docs/` was gone. The
+rationale was wrong, nothing had ever executed it, and the guard built to stop
+the fourth watched it walk past. Prose does not run.
+
+Two registered blocking guards enforce it, and neither holds a review list:
+
+- `scripts/guards/vercelignore-covers-guard-reads.mjs` judges every declared read
+  against the ignore rules and, when one does not survive, prints the EXACT lines
+  to add rather than describing the walk-down.
+- `scripts/guards/excluded-reads-survive-the-upload.mjs` materialises the upload
+  from `git ls-files` and RUNS every prebuild entry point whose code names a path
+  under a top level `.vercelignore` excludes, failing on any non-zero exit. Both
+  subject lists are derived from the import graph, so they cannot rot apart.
+
+Whether a missing file was STRIPPED by Vercel or DELETED by a person is a
+DETERMINATION, never a guess about directory shapes:
+`scripts/guards/lib/stripped-or-deleted.mjs` evaluates the path against
+`.vercelignore` and the build scope. Every guard that draws that distinction uses
+it, and they report how many do.
 
 **Delivery**
 

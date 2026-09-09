@@ -131,12 +131,15 @@
  *                              22 categories match the approved record in both directions;
  *                              the routes and the sitemap still publish them (close-out C18 FINAL)
  *   vercelignore-covers-guard-reads every docs/ file a prebuild script reads survives
- *                              .vercelignore, walked down level by level, and every docs/
- *                              literal in a build-time script is required or reviewed (C18 FINAL)
- *   tolerant-guards-survive-the-upload  and every script that guard reviews as TOLERANT of
- *                              an absent docs/ is EXECUTED in a materialised .vercelignore
- *                              upload, because a rationale is prose and prose does not run:
- *                              one of them was wrong and blocked the deployment of 7564b40
+ *                              .vercelignore, walked down level by level, and a failure
+ *                              prints the exact lines to add rather than describing the
+ *                              walk-down (close-out C18 FINAL, F1.9.2)
+ *   excluded-reads-survive-the-upload  and every prebuild entry point whose code names a
+ *                              docs/ path is EXECUTED in a materialised .vercelignore
+ *                              upload. There is no reviewed-tolerant list any more: one
+ *                              of its rationales was wrong, nothing had ever run it, and
+ *                              it blocked the deployment of 7564b40. Prose does not run,
+ *                              and the subject is derived from the import graph (F1.9.2)
  *   indexing-policy           every page route is classified in the indexing policy, every
  *                              never route resolves to noindex, every indexable page names
  *                              its own canonical, the root layout names none, and the
@@ -902,7 +905,7 @@ const GUARDS = [
   // accepts a WRITTEN RATIONALE for a script declared tolerant of an absent docs/,
   // one of those rationales was wrong, and the deployment of 7564b40 died on it.
   // This one materialises the upload and RUNS each tolerant script inside it.
-  'scripts/guards/tolerant-guards-survive-the-upload.mjs',
+  'scripts/guards/excluded-reads-survive-the-upload.mjs',
   // Close-out C19 (8 September 2026): the indexing policy is the one place that says
   // what may be indexed, and the tree must keep agreeing with it. Google Search
   // Console had been reporting the disagreement back for weeks.

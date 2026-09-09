@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -12,7 +12,11 @@ import {
   materialiseVercelUpload,
   removeUpload,
 } from '../../../scripts/guards/lib/vercel-upload.mjs'
-import { REQUIRED_READS, TOLERANT_FILES } from '../../../scripts/guards/lib/vercelignore-registry.mjs'
+import { REQUIRED_READS } from '../../../scripts/guards/lib/vercelignore-registry.mjs'
+import {
+  entriesThatReadThroughTheIgnore,
+  excludedTopLevels,
+} from '../../../scripts/guards/lib/build-time-scripts.mjs'
 import { gitEnv } from '../../../scripts/lib/git-env.mjs'
 
 /**
@@ -165,14 +169,22 @@ describe('materialising the upload', () => {
     }
   })
 
-  test('the repository upload strips docs/verification and keeps the two required reads', () => {
+  test('the repository upload keeps every required read and strips the screenshots beside them', () => {
     const dest = scratch()
     try {
       materialiseVercelUpload({ root: ROOT, dest, linkNodeModules: false })
-      expect(holdsNoFile(join(dest, 'docs/verification'))).toBe(true)
       for (const required of Object.keys(REQUIRED_READS)) {
-        expect(existsSync(join(dest, required)), required).toBe(true)
+        const onDisk = required.endsWith('/') ? required.slice(0, -1) : required
+        expect(existsSync(join(dest, onDisk)), required).toBe(true)
       }
+      /*
+       * PART ONE re-included the report and its evidence folder, and ONLY those.
+       * docs/verification also holds hundreds of megabytes of screenshots, and
+       * the re-inclusion walks down to two names rather than opening the tree, so
+       * a sibling directory under docs/verification must still arrive empty.
+       */
+      expect(holdsNoFile(join(dest, 'docs/verification/system-pass'))).toBe(true)
+      expect(existsSync(join(dest, 'docs/verification/LAUNCH-READINESS.md'))).toBe(true)
       expect(isGitCheckout(dest)).toBe(false)
     } finally {
       removeUpload(dest)
@@ -226,24 +238,41 @@ describe('telling the build host from a developer machine', () => {
 describe('the registry the two guards share', () => {
   test('every REQUIRED read exists in the tree', () => {
     for (const path of Object.keys(REQUIRED_READS)) {
-      expect(existsSync(join(ROOT, path)), path).toBe(true)
+      const onDisk = path.endsWith('/') ? path.slice(0, -1) : path
+      expect(existsSync(join(ROOT, onDisk)), path).toBe(true)
     }
   })
 
-  test('every TOLERANT entry names a script that exists', () => {
-    for (const path of Object.keys(TOLERANT_FILES)) {
-      expect(existsSync(join(ROOT, path)), path).toBe(true)
-    }
+  test('the report and its evidence folder are required, which is what PART ONE re-included', () => {
+    expect(Object.keys(REQUIRED_READS)).toContain('docs/verification/LAUNCH-READINESS.md')
+    expect(Object.keys(REQUIRED_READS)).toContain('docs/verification/launch-readiness/')
   })
 
-  test('no path is both required and tolerant, which would be two answers to one question', () => {
-    for (const path of Object.keys(TOLERANT_FILES)) {
-      expect(Object.hasOwn(REQUIRED_READS, path), path).toBe(false)
-    }
+  /*
+   * THE SECOND LIST IS GONE. It named scripts "reviewed as tolerant of an absent
+   * docs/", each with a written reason, and close-out F1.9.1 is the record of
+   * what that cost: one reason was wrong, nothing executed it, and the guard
+   * built after the third lost deployment watched the fourth go past. This test
+   * fails if anybody adds it back.
+   */
+  test('there is no reviewed-tolerant list any more, because a rationale does not run', async () => {
+    const registry = await import('../../../scripts/guards/lib/vercelignore-registry.mjs')
+    expect(Object.keys(registry)).toEqual(['REQUIRED_READS'])
+  })
+
+  test('the tolerance is DERIVED and EXECUTED instead: every entry point that reads through the ignore file is named', () => {
+    const { rules } = parseVercelIgnore(readFileSync(join(ROOT, '.vercelignore'), 'utf8'))
+    const derived = entriesThatReadThroughTheIgnore(ROOT, excludedTopLevels(rules)).map(
+      (e: { entry: string }) => e.entry,
+    )
+    expect(derived).toContain('scripts/guards/launch-readiness-honest.mjs')
+    expect(derived).toContain('scripts/guards/one-fee-copy.mjs')
+    // Reached only through an import, which is the hole the directory-based scan had.
+    expect(derived).toContain('scripts/check-pricing-lock.mjs')
   })
 
   test('every reason is a sentence a reader can act on, not a placeholder', () => {
-    for (const [path, reason] of [...Object.entries(REQUIRED_READS), ...Object.entries(TOLERANT_FILES)]) {
+    for (const [path, reason] of Object.entries(REQUIRED_READS)) {
       expect(reason.length, path).toBeGreaterThan(40)
     }
   })

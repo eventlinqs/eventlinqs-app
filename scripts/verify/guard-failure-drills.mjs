@@ -304,9 +304,10 @@ const DRILLS = [
     expect: 'L1 item 15 has no row',
   },
   /*
-   * vercelignore-covers-guard-reads (close-out C18 FINAL), two drills: the approved
-   * record's re-inclusion lost from .vercelignore, and a build-time guard naming a
-   * docs/ path that is neither required-and-re-included nor in a reviewed file.
+   * vercelignore-covers-guard-reads (close-out C18 FINAL, rewritten for F1.9.2),
+   * three drills: the approved record's re-inclusion lost, THE FOURTH LOST
+   * DEPLOYMENT RESTORED EXACTLY (commit 7564b40 had no docs/verification lines at
+   * all), and a required entry that has rotted away from any reader.
    */
   {
     name: 'the approved record is excluded from the Vercel upload again',
@@ -314,40 +315,46 @@ const DRILLS = [
     file: '.vercelignore',
     find: '!docs/scope/community-layer-approved.json',
     replace: '!docs/scope/community-layer-approved.json.retired',
-    expect: 'docs/scope/community-layer-approved.json is EXCLUDED by .vercelignore',
+    expect: 'docs/scope/community-layer-approved.json does not survive .vercelignore',
   },
   {
-    name: 'a build-time guard reads a docs path nobody re-included',
+    /*
+     * THE FOURTH OCCURRENCE, put back byte for byte. These four lines are the
+     * whole difference between this tree and 7564b40, whose preview build died
+     * on launch-readiness-honest.mjs. The guard was separately run against
+     * 7564b40's own .vercelignore, unchanged, as close-out F1.9.2 PART TWO asks:
+     * C:\\dev\\EVIDENCE\\F1.9.2\\part-two-red-on-7564b40.txt
+     */
+    name: 'the launch readiness report is excluded from the upload again (commit 7564b40)',
     guard: `${GUARDS}/vercelignore-covers-guard-reads.mjs`,
-    file: 'scripts/guards/community-layer-protected.mjs',
-    find: "const APPROVED = 'docs/scope/community-layer-approved.json'",
-    replace: "const APPROVED = 'docs/scope/community-layer-approved-v2.json'",
-    expect: 'docs/scope/community-layer-approved-v2.json is read by scripts/guards/community-layer-protected.mjs',
+    file: '.vercelignore',
+    find: '!docs/verification/\ndocs/verification/*\n!docs/verification/LAUNCH-READINESS.md\n!docs/verification/launch-readiness/',
+    replace: '# the four lines 7564b40 did not have',
+    expect: 'docs/verification/LAUNCH-READINESS.md does not survive .vercelignore',
+  },
+  {
+    name: 'a required docs read outlives every script that reads it',
+    guard: `${GUARDS}/vercelignore-covers-guard-reads.mjs`,
+    file: 'scripts/guards/lib/vercelignore-registry.mjs',
+    find: 'export const REQUIRED_READS = {',
+    replace:
+      "export const REQUIRED_READS = {\n  'docs/EVENT-LIFECYCLE.md':\n    'a drill entry naming a real file that no build-time script reads',",
+    expect: 'is named by no build-time script; the registry entry has rotted',
   },
   /*
-   * tolerant-guards-survive-the-upload (8 September 2026), two drills. The first
-   * is the real regression, restored exactly: launch-readiness-honest.mjs testing
-   * for an ABSENT docs/verification instead of the two facts that identify the
-   * build host. That is the code that was on 7564b40, and it killed the preview
-   * deployment while the local gate stayed green, which is the whole reason this
-   * guard exists. The second is registry rot, the failure mode every reviewed
-   * list in this repository is drilled for.
+   * excluded-reads-survive-the-upload (8 September 2026, derived for F1.9.2). The
+   * regression is a prebuild entry point that reads a docs/ path the upload does
+   * not carry: exactly what killed 7564b40's preview while the local gate stayed
+   * green. Pointing the report at docs/verification/system-pass, which is NOT
+   * re-included, reproduces it without touching the guard's own logic.
    */
   {
-    name: 'a tolerant guard goes back to testing for an absent directory, and dies on the real upload',
-    guard: `${GUARDS}/tolerant-guards-survive-the-upload.mjs`,
-    file: 'scripts/guards/launch-readiness-honest.mjs',
-    find: 'if (!isGitCheckout(ROOT) && holdsNoFile(join(ROOT, DOCS_DIR))) {',
-    replace: 'if (!existsSync(join(ROOT, DOCS_DIR))) {',
-    expect: 'exits 1 in the stripped upload',
-  },
-  {
-    name: 'a reviewed-tolerant entry outlives the script it reviews',
-    guard: `${GUARDS}/tolerant-guards-survive-the-upload.mjs`,
-    file: 'scripts/guards/lib/vercelignore-registry.mjs',
-    find: "  'scripts/guards/one-fee-copy.mjs':",
-    replace: "  'scripts/guards/one-fee-copy-renamed-and-nobody-updated-this.mjs':",
-    expect: 'names a file that is not in the tree',
+    name: 'a prebuild guard reads a docs path the upload does not carry',
+    guard: `${GUARDS}/excluded-reads-survive-the-upload.mjs`,
+    file: 'scripts/verify/launch-readiness.mjs',
+    find: "export const REPORT_PATH = 'docs/verification/LAUNCH-READINESS.md'",
+    replace: "export const REPORT_PATH = 'docs/verification/system-pass/LAUNCH-READINESS.md'",
+    expect: 'in the stripped upload',
   },
   /*
    * community-layer-protected (close-out C18 FINAL), two drills: a faith page lost

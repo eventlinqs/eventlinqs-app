@@ -36,42 +36,40 @@
  *   5. ALL SIXTEEN ARE THERE, AND ONLY THOSE SIXTEEN. A missing row is a journey
  *      nobody adjudicated, and an extra row is a journey L1 does not contain.
  *
- * WHERE IT DOES NOT RUN, said plainly, and this paragraph is the second version
- * of itself because the first one was wrong and blocked a deployment.
+ * WHERE IT RUNS, and this paragraph is the THIRD version of itself, because the
+ * first was wrong and blocked a deployment and the second only stopped it
+ * happening again.
  *
- * The report lives under docs/, which .vercelignore strips from the deployment
- * upload, so on the Vercel build host the file is legitimately absent. The test
- * used to be "is the docs/verification DIRECTORY absent", on the assumption that
- * an ignored directory does not arrive. IT DOES ARRIVE. Vercel deletes the
- * matched FILES and leaves the directory tree standing, which its own build log
- * says in as many words: .vercelignore names `.git`, and the removal enumerated
- * /.git/config, /.git/description and the hook samples INSIDE it. So on 8
- * September 2026 the deployment of 7564b40 found docs/verification present and
- * empty, read that as "somebody deleted the report", and blocked the build.
+ * IT NOW RUNS EVERYWHERE, INCLUDING ON VERCEL. Close-out F1.9.2 PART ONE:
+ * .vercelignore re-includes docs/verification/LAUNCH-READINESS.md and the
+ * launch-readiness/ folder of artefacts beside it, so the report and its evidence
+ * arrive on the build host and this guard judges them there for real instead of
+ * standing aside.
  *
- * The test is now the two facts that actually distinguish the two environments,
- * neither of them inferred:
- *   - the tree is not a git checkout (the Vercel host unpacks a tarball with no
- *     .git; every git-reading guard printed "fatal: not a git repository" in that
- *     same build log), AND
- *   - docs/verification holds no file at any depth (the stripped shape).
- * Both together are the upload and nothing else. A developer or a CI runner
- * deleting the report still has a .git, so it still FAILS there, which is the
- * whole point of the guard.
+ * THE HISTORY, kept because it is the reason the determination below is not a
+ * test somebody invented. The guard used to ask whether the docs/verification
+ * DIRECTORY existed, on the assumption that an ignored directory does not arrive.
+ * IT ARRIVES. Vercel deletes the matched FILES and leaves the directory tree
+ * standing, which its own build log says in as many words: .vercelignore names
+ * `.git`, and the removal enumerated /.git/config, /.git/description and the hook
+ * samples INSIDE it. So on 8 September 2026 the deployment of 7564b40 found
+ * docs/verification present and empty, read that as "somebody deleted the
+ * report", and blocked the build.
  *
- * This file is registered as TOLERANT in vercelignore-covers-guard-reads.mjs
- * rather than re-included, because the fault it catches is committed on a
- * developer machine and caught by the pre-push gate and by CI, both of which
- * hold the whole tree. Vercel would add nothing and could only fail for a file
- * it was never sent. That claim is no longer prose: it is executed against a
- * materialised upload by tolerant-guards-survive-the-upload.mjs.
+ * MISSING IS NOW DETERMINED, NEVER GUESSED. scripts/guards/lib/stripped-or-deleted.mjs
+ * answers the only two questions that decide it: does .vercelignore exclude this
+ * exact path, evaluated with the same evaluator the ignore guard uses, and is
+ * this the Vercel build host. Excluded AND on Vercel is STRIPPED, and the guard
+ * says so by name. Anything else missing was DELETED, and that fails, which is
+ * the whole point of the guard. Since PART ONE the path is not excluded at all,
+ * so on Vercel a missing report is a deletion there too.
  *
  * Run: node scripts/guards/launch-readiness-honest.mjs
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
-import { holdsNoFile, isGitCheckout } from './lib/vercel-upload.mjs'
+import { callersOf, stateOf } from './lib/stripped-or-deleted.mjs'
 import {
   ITEMS,
   REPORT_PATH,
@@ -81,7 +79,6 @@ import {
 
 const ROOT = process.cwd()
 const TAG = '[launch-readiness-honest]'
-const DOCS_DIR = 'docs/verification'
 
 const faults = []
 const fail = (m) => {
@@ -89,10 +86,20 @@ const fail = (m) => {
   console.error(`${TAG} FAIL: ${m}`)
 }
 
-if (!isGitCheckout(ROOT) && holdsNoFile(join(ROOT, DOCS_DIR))) {
-  console.log(
-    `${TAG} SKIP - this tree is not a git checkout and ${DOCS_DIR} holds no file at any depth, which is the Vercel build host: .vercelignore strips docs/ from the upload and leaves the empty directories behind.`,
-  )
+/*
+ * THE DETERMINATION, before anything else is judged. A STRIPPED report is a
+ * guard that cannot see and says so; a DELETED one is evidence that has gone and
+ * the build must fail. The shared module answers which, from .vercelignore and
+ * the build scope, rather than from the shape of a directory.
+ */
+const report = stateOf(REPORT_PATH, { root: ROOT })
+const sharing = callersOf(ROOT)
+console.log(
+  `${TAG} ${REPORT_PATH} is ${report.state.toUpperCase()}: ${report.why}. ` +
+    `(${sharing.length} build-time script(s) share this determination.)`,
+)
+if (report.state === 'stripped') {
+  console.log(`${TAG} SKIP - the report was never uploaded to this host, so there is nothing here to judge.`)
   console.log(`${TAG}   This guard is a real gate on the pre-push gate and in CI, where the whole tree is present.`)
   process.exit(0)
 }
@@ -101,9 +108,9 @@ const evidenceExists = (p) => existsSync(join(ROOT, p))
 const { faults: judgementFaults, counts, launchReady } = judgeLaunchReadiness({ items: ITEMS, evidenceExists })
 for (const f of judgementFaults) fail(f)
 
-if (!existsSync(join(ROOT, REPORT_PATH))) {
+if (report.state === 'deleted') {
   fail(
-    `${REPORT_PATH} is missing from a tree the strip test did not excuse, so it was deleted rather than stripped. ` +
+    `${REPORT_PATH} is DELETED, not stripped: ${report.why}. ` +
       'Close-out L5 requires it. Run: node scripts/verify/launch-readiness.mjs --write',
   )
 } else {
