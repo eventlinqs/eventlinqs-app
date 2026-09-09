@@ -87,7 +87,7 @@ export function repositoryFromEnvOrGit() {
      * one module, for every git-reading build-time script.
      */
     if (!gitAvailability().usable) {
-      console.warn(noGitLine(TAG, 'the repository name from the origin remote'))
+      console.log(noGitLine(TAG, 'the repository name from the origin remote'))
     } else {
       console.warn(`${TAG} no origin remote could be read (${error.message})`)
     }
@@ -199,7 +199,19 @@ if (invokedDirectly) {
 
   const repo = repositoryFromEnvOrGit()
   if (!repo) {
-    console.log(`${TAG} SKIP - no GitHub repository could be determined (no GITHUB_REPOSITORY, no origin remote).`)
+    /*
+     * THE SKIP NAMES THE RIGHT ABSENCE (close-out F2.4). On the Vercel build
+     * host this line used to read "no origin remote", printed directly beside a
+     * line saying there is no repository at all - two sentences contradicting
+     * each other about one fact, which is the exact confusion F2.4 exists to
+     * end. A missing REMOTE and a missing REPOSITORY send the reader to
+     * different places.
+     */
+    console.log(
+      gitAvailability().usable
+        ? `${TAG} SKIP - no GitHub repository could be determined: GITHUB_REPOSITORY is unset and this checkout has no origin remote.`
+        : `${TAG} SKIP - no GitHub repository could be determined: GITHUB_REPOSITORY is unset and there is no git repository here to read a remote from.`,
+    )
     process.exit(0)
   }
   const source = credentialSource()
