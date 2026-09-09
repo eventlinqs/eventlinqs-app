@@ -350,6 +350,7 @@
 import { spawnSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
+import { describeOutcome, renderFailures } from './lib/guard-run-report.mjs'
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -964,7 +965,13 @@ const CONTRACT = contractMajor()
 const RUNNING = Number.parseInt(process.versions.node.split('.')[0], 10)
 const CI_EQUIVALENT = CONTRACT !== null && RUNNING === CONTRACT
 
-let failed = 0
+/**
+ * NAMES, NOT A COUNT. Close-out F1.1: on 9 September 2026 this runner ended two
+ * builds with "1 of 84 guard(s) FAILED" and never said which one, on two
+ * different machines, and the name was recoverable only by reading several
+ * thousand lines of PASS output. It had the name the whole time. Keep it.
+ */
+const failures = []
 
 for (const guard of GUARDS) {
   // env: gitEnv() SEVERS THE INCIDENT CLASS AT THE ROOT rather than at the leaves.
@@ -977,16 +984,16 @@ for (const guard of GUARDS) {
     stdio: 'inherit',
     env: gitEnv(),
   })
-  if (result.status !== 0) failed += 1
+  const outcome = describeOutcome(result)
+  if (!outcome.ok) failures.push({ guard, reason: outcome.reason })
 }
 
 const runtime = CI_EQUIVALENT
   ? `Node ${process.versions.node} (CI-EQUIVALENT: matches the .nvmrc contract of ${CONTRACT})`
   : `Node ${process.versions.node} (NOT CI-EQUIVALENT: .nvmrc pins ${CONTRACT}, CI runs that, this is ${RUNNING})`
 
-if (failed > 0) {
-  console.error(`\n[guards] ${failed} of ${GUARDS.length} guard(s) FAILED. Build blocked.`)
-  console.error(`[guards] runtime: ${runtime}\n`)
+if (failures.length > 0) {
+  for (const line of renderFailures({ failures, total: GUARDS.length, runtime })) console.error(line)
   process.exit(1)
 }
 

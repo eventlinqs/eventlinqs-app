@@ -1796,6 +1796,28 @@ const DRILLS = [
     replace: '    noRecorderAtAll({',
     expect: 'Session Replay is still wired at all',
   },
+  /*
+   * THE RUNNER ITSELF. Close-out F1.1 asks for the naming to be proved "by
+   * making one guard fail on purpose and reading the name back out of the
+   * output", and that is exactly what this drill does: a real registered guard
+   * is made to exit 1, the REAL runner runs all of them, and the assertion is
+   * that the runner's output contains the path of the guard that failed.
+   *
+   * It is the only drill whose `guard` is the runner, so it costs a full guard
+   * pass (about eighty seconds). That is the price of driving the thing rather
+   * than unit-testing a rendering function and calling the build log proved. The
+   * rendering function is unit-tested as well, in
+   * tests/unit/guards/guard-run-report.test.ts; this is the half that could not
+   * be faked.
+   */
+  {
+    name: 'a guard fails and the runner will not say which one',
+    guard: `${GUARDS}/run-guards.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace: 'const ROOT = process.cwd()\nprocess.exit(1) // planted by the F1.1 drill, restored in the finally',
+    expect: '[guards]   scripts/guards/no-control-characters.mjs  (exit 1)',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

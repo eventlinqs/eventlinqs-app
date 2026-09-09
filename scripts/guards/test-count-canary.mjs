@@ -1031,9 +1031,20 @@ const ROOT = join(HERE, '..', '..')
  * "the directory is absent" was the wrong test for the build host; five prove
  * the two-fact discriminator that replaced it; and four hold the shared registry
  * the two guards read, so the required and the tolerant halves cannot rot apart.
+ *
+ * 2026-09-09: raised 334/3866 -> 335/3876, MEASURED by running the suite, not
+ * calculated. One file, tests/unit/guards/guard-run-report.test.ts, 10 tests,
+ * added with close-out F1.1, the gate that would not name the guard it caught.
+ * Five drive REAL child processes rather than hand-written spawnSync shapes,
+ * because the thing under test is what Node actually hands back for a script
+ * that exits non-zero, and they hold the three faults apart that used to read as
+ * one: a guard that exited non-zero, a guard killed by a signal, and a guard
+ * that could not be started at all. Five hold the report itself, chiefly that
+ * the LAST line names every guard that failed, because a build log is read from
+ * the bottom, and that the count and the names can never disagree.
  */
-const MIN_FILES = 334
-const MIN_TESTS = 3866
+const MIN_FILES = 335
+const MIN_TESTS = 3876
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
