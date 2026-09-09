@@ -7318,3 +7318,58 @@ module, so the eighth cannot write a sixth sentence.
 
 87/87 guards, 32 test files / 398 tests under tests/unit/guards, suite 341 files /
 3981 tests, canary raised 338/3924 to 341/3981 measured, tsc 0, eslint 0.
+
+### A MEASUREMENT FINDING, recorded rather than worked around (session 56)
+
+The gate was run twice on the SAME commit, `e985dd8c`, twenty-five minutes apart.
+It passed the first time and failed at Lighthouse the second.
+
+| URL | hand run, medians | push run, medians | floor |
+|---|---|---|---|
+| `/events/arena-sessions-large-room-performance-test` | 0.87 | 0.83 | 0.85 |
+| `/events/cat-indie-sounds-live-at-the-enmore-sydney` | 0.87 | 0.83 | 0.85 |
+
+Every one of the ten runs in the second collection was three to five points below
+its counterpart in the first. **Not one runtime file changed this session**: the
+whole diff against `f7aa5d91` is build-time guard scripts and tests, nothing under
+`src/`, `public/`, `next.config.ts` or `package.json`, so the bundle Lighthouse
+measured is byte-identical to a commit already green on the remote.
+
+**THE FLOOR WAS NOT TOUCHED.** H5 is explicit and it is right. The tree was
+re-measured instead, after letting the machine sit idle until it reported 6% CPU:
+
+    arena-sessions:   0.88 0.88 0.89 0.87 0.87   median 0.88
+    cat-indie-sounds: 0.88 0.88 0.88 0.87 0.89   median 0.88
+
+Both above 0.85, and the Lighthouse step passed on its own in 1,617 seconds. The
+failure was the laptop, and resting it was the whole fix.
+
+**THE PART WORTH KEEPING, because the instrument said the opposite.** The
+calibration built for exactly this question reported:
+
+    Machine calibration: OK. BenchmarkIndex median 2683 (1995 to 2762),
+    99% of the 2700 the floors were confirmed at on 2026-09-09.
+
+and concluded the failure was "about the product and not about the laptop". It
+was not. BenchmarkIndex is a short CPU burst, taken at the start of a run; it does
+not see a machine that has been running Chrome continuously for eighty minutes
+across two full sweeps and a drill harness. So there is a case the instrument
+cannot currently distinguish: **a cold machine and a heat-soaked one benchmark the
+same and score four points apart.**
+
+That is a gap in the calibration, not in the floor, and it is the same shape as
+the incident that created the calibration on 8 September: a session went after a
+floor that was never wrong. This one did not, because the tree was re-measured
+first.
+
+**ROUTED, NOT FIXED HERE.** Widening `gate-names-the-instrument` to record
+sustained load as well as burst speed is a change to the performance gate, which
+belongs to P0.7 and the C8 ratchet, not to close-out F2. Naming it and leaving it
+is the COMPLETION LAW working, not an omission. The one-line version for whoever
+picks it up: the calibration should record how long the machine has been
+collecting, or re-take BenchmarkIndex at the END of a sweep as well as the start,
+because the two numbers disagreeing IS the signal.
+
+**THE PUSH LANDED** on a rested machine: 14 of 14 green in 2,204 seconds,
+`f7aa5d91..e985dd8c`, with the two pages that failed measuring 0.86 to 0.89. The
+floor was never touched.
