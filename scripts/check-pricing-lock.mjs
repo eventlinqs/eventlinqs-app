@@ -3,18 +3,36 @@
  * docs/PRICING.md.
  *
  * Runs in `prebuild`, beside check-public-env.mjs, and follows the same
- * operating contract: BLOCKING on Vercel, WARNING on a local build (so gates and
- * fresh clones still build without a service key), with a documented emergency
- * bypass. The difference from the env guard is that this one reads the database,
- * because the value it protects lives in data rather than in an environment
- * variable, which is precisely why it drifted unnoticed.
+ * operating contract: BLOCKING on every configured machine, Vercel AND a CI
+ * runner, WARNING on a developer machine (so fresh clones still build without a
+ * key), with a documented emergency bypass. The difference from the env guard is
+ * that this one reads the database, because the value it protects lives in data
+ * rather than in an environment variable, which is precisely why it drifted
+ * unnoticed.
  *
- * Emergency bypass: ALLOW_PRICING_DRIFT=1. Use it only to ship a fix.
+ * CI USED TO BE EXCUSED AS A LAPTOP (close-out F1.2 and F1.3). On 8 September
+ * 2026 this printed, inside GitHub Actions:
+ *
+ *     pricing_rules could not be read, so the locked values are UNVERIFIED.
+console.warn(`${message}\n[pricing-lock] WARNING only (${bypass ? 'ALLOW_PRICING_DRIFT=1 is set' : `${scope} build`}); this WOULD block on Vercel and in CI.\n`)
+ *
+ * It could not read pricing_rules because the workflow carried
+ * https://example.supabase.co, and it excused itself because everything that was
+ * not Vercel was called a laptop. Both halves are fixed: CI now carries the TEST
+ * project, and the scope comes from the one shared resolver in
+ * src/lib/health/build-scope.mjs and is printed with the variable that decided it.
+ *
+ * Emergency bypass: ALLOW_PRICING_DRIFT=1. Use it only to ship a fix, and
+ * scripts/guards/no-build-guard-bypass.mjs refuses it on any configured
+ * machine (close-out F1.4).
  */
 import { PRICING_LOCK_RULE, PRICING_DOC } from '../src/lib/health/pricing-lock.mjs'
+import { describeBuildScope, resolveBuildScope } from '../src/lib/health/build-scope.mjs'
 
-const onVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV)
+const { scope, blocks } = resolveBuildScope(process.env)
 const bypass = process.env.ALLOW_PRICING_DRIFT === '1'
+
+console.log(`[pricing-lock] ${describeBuildScope(process.env)}`)
 
 let result
 try {
@@ -23,7 +41,8 @@ try {
   if (result.ok) {
     console.log(
       `[pricing-lock] ok       ${PRICING_LOCK_RULE.name}  (${PRICING_LOCK_RULE.describe})` +
-        (facts.live.ref ? `  project ${facts.live.ref}` : ''),
+        (facts.live.ref ? `  project ${facts.live.ref}` : '') +
+        (facts.live.readAs ? `, read as ${facts.live.readAs}` : ''),
     )
   }
 } catch (e) {
@@ -50,10 +69,12 @@ const message =
   `         Apply supabase/migrations/20260727000001_pricing_locked_values.sql.\n` +
   `    Emergency bypass (only to ship a fix): ALLOW_PRICING_DRIFT=1\n`
 
-if (onVercel && !bypass) {
+if (blocks && !bypass) {
   console.error(`${message}\n[pricing-lock] BUILD BLOCKED.\n`)
   process.exit(1)
 }
 
-console.warn(`${message}\n[pricing-lock] WARNING only (${onVercel ? 'bypass set' : 'local build'}); this WOULD block on Vercel.\n`)
+console.warn(
+  `${message}\n[pricing-lock] WARNING only (${bypass ? 'ALLOW_PRICING_DRIFT=1 is set' : `${scope} build`}); this WOULD block on Vercel and in CI.\n`,
+)
 process.exit(0)

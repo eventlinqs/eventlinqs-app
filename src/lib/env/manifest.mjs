@@ -1047,6 +1047,85 @@ export const ENV_MANIFEST = [
     githubActions: true,
     publicVar: false,
   },
+  /*
+   * THE TEST PROJECT CI READS, so CI judges what Vercel judges (close-out F1.2).
+   *
+   * Until 9 September 2026 the CI workflow carried
+   * NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co and
+   * NEXT_PUBLIC_SUPABASE_ANON_KEY=ci-placeholder-anon-key, and the consequences
+   * are all visible in the log of run 34290357211: community-layer-protected
+   * skipped its category half, check-pricing-lock could not read pricing_rules
+   * and reported UNVERIFIED, schema-ahead-of-code skipped, door-live-published
+   * skipped, event-lifecycle-installed skipped, and check-public-env reported
+   * four critical public variables missing or malformed. Vercel carries the real
+   * project and judges every one of them, so CI could pass a commit Vercel then
+   * refused, which is exactly what happened.
+   *
+   * THE TEST PROJECT, NEVER PRODUCTION, AND NEVER THE SERVICE ROLE KEY. The
+   * anon key is the key an anonymous browser already holds, so CI gains no
+   * ability a visitor does not have. Pointing CI at production is already
+   * IMPOSSIBLE rather than merely discouraged: SUPABASE_ENV_ISOLATION in
+   * src/lib/health/critical-env.mjs is alwaysBlocking, resolves the target as
+   * 'local' where VERCEL_ENV is unset (which is every CI runner), and refuses
+   * any tree whose resolved NEXT_PUBLIC_SUPABASE_URL carries the production ref.
+   *
+   * FORBIDDEN ON EVERY VERCEL SCOPE. These are the CI runner's copy. A Vercel
+   * scope resolves its own NEXT_PUBLIC_SUPABASE_URL, and a second name for the
+   * same idea sitting in a deployment store is how two answers to one question
+   * get into a build.
+   */
+  {
+    name: 'CI_SUPABASE_URL',
+    describe: 'The TEST Supabase project URL the CI workflow builds and judges against',
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview', 'development'],
+    optionalOn: [],
+    mustBeSensitive: false,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.supabaseUrl,
+    paymentCritical: false,
+    githubActions: true,
+    publicVar: false,
+  },
+  {
+    name: 'CI_SUPABASE_ANON_KEY',
+    describe: 'The TEST project anon key the CI workflow reads the database with',
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview', 'development'],
+    optionalOn: [],
+    mustBeSensitive: true,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.supabaseAnonKey,
+    paymentCritical: false,
+    githubActions: true,
+    publicVar: false,
+  },
+  {
+    name: 'CI_STRIPE_PUBLISHABLE_KEY',
+    describe: 'The TEST-mode Stripe publishable key the CI build bakes into its discarded bundle',
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview', 'development'],
+    optionalOn: [],
+    mustBeSensitive: false,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.stripePublishableAny,
+    paymentCritical: false,
+    githubActions: true,
+    publicVar: false,
+  },
+  {
+    name: 'CI_GOOGLE_MAPS_API_KEY',
+    describe: 'The Google Maps browser key the CI build judges for shape, never called at build time',
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview', 'development'],
+    optionalOn: [],
+    mustBeSensitive: false,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.googleApiKey,
+    paymentCritical: false,
+    githubActions: true,
+    publicVar: false,
+  },
 
   // ── THE FORBIDDEN SET. Every entry here is a flag that, left set on a
   // deployment scope, PERMANENTLY DISABLES one of the guards that protect the

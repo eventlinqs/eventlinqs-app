@@ -1818,6 +1818,51 @@ const DRILLS = [
     replace: 'const ROOT = process.cwd()\nprocess.exit(1) // planted by the F1.1 drill, restored in the finally',
     expect: '[guards]   scripts/guards/no-control-characters.mjs  (exit 1)',
   },
+  /*
+   * CLOSE-OUT F1.2, F1.3 AND F1.4. Four drills for one property: a machine that
+   * builds for other people judges what Vercel judges, and cannot excuse itself.
+   */
+  {
+    name: 'a guard bypass is left switched on in CI',
+    guard: `${GUARDS}/no-build-guard-bypass.mjs`,
+    env: { ALLOW_PRICING_DRIFT: '1', GITHUB_ACTIONS: 'true' },
+    expect: 'ALLOW_PRICING_DRIFT is set on a ci build',
+  },
+  {
+    name: 'the bypass list rots until it no longer covers the pricing bypass',
+    guard: `${GUARDS}/no-build-guard-bypass.mjs`,
+    file: 'src/lib/env/manifest.mjs',
+    find: `    describe: 'Bypass of the pricing lock, which holds the live fee to docs/PRICING.md',
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview', 'development'],`,
+    replace: `    describe: 'Bypass of the pricing lock, which holds the live fee to docs/PRICING.md',
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview'],`,
+    expect: 'is not in the derived list, so this guard is guarding nothing',
+  },
+  {
+    name: 'CI calls itself a local build and waves through a malformed public key',
+    guard: 'scripts/check-public-env.mjs',
+    env: { GITHUB_ACTIONS: 'true', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'ci-placeholder-anon-key' },
+    expect: '[public-env] BUILD BLOCKED on ci',
+  },
+  {
+    name: 'CI cannot read pricing_rules and calls the locked values verified anyway',
+    guard: 'scripts/check-pricing-lock.mjs',
+    /*
+     * BOTH URL VARIABLES, and the first version of this drill got it wrong,
+     * which is the harness doing its job. readLiveRules prefers
+     * NEXT_PUBLIC_SUPABASE_URL_PREVIEW over the base name, .env.local holds one,
+     * and a drill that overrode only the base name changed nothing: the guard
+     * read the real TEST project, passed, and the drill reported DID NOT FAIL.
+     */
+    env: {
+      GITHUB_ACTIONS: 'true',
+      NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+      NEXT_PUBLIC_SUPABASE_URL_PREVIEW: 'https://example.supabase.co',
+    },
+    expect: '[pricing-lock] BUILD BLOCKED',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

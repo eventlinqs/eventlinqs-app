@@ -1042,9 +1042,19 @@ const ROOT = join(HERE, '..', '..')
  * that could not be started at all. Five hold the report itself, chiefly that
  * the LAST line names every guard that failed, because a build log is read from
  * the bottom, and that the count and the names can never disagree.
+ *
+ * 2026-09-09: raised 335/3876 -> 336/3898, MEASURED by running the suite. One
+ * file, tests/unit/ci/build-scope.test.ts, 10 tests, holds the three-way scope
+ * that close-out F1.3 asked for: chiefly that a CI runner BLOCKS rather than
+ * warning, and that a Vercel build carrying CI=1 is still judged as Vercel,
+ * because Vercel publishes CI=1 on its own builds and testing CI first would
+ * call every deployment a runner. The other twelve are the manifest contract
+ * tests, which iterate the manifest itself: four CI_ entries were declared, so
+ * the suite grew without a line of test code being written for them, which is
+ * the manifest doing its job.
  */
-const MIN_FILES = 335
-const MIN_TESTS = 3876
+const MIN_FILES = 336
+const MIN_TESTS = 3898
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

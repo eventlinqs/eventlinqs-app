@@ -29,12 +29,12 @@
 > authenticated `gh`. If either is unavailable the file is left untouched rather
 > than rewritten from a partial read.
 
-Manifest: **41 variables**, **7 cross-variable rules**.
-Store records read: **90**.
+Manifest: **47 variables**, **7 cross-variable rules**.
+Store records read: **93**.
 
-- PRESENT AND CORRECT: **41**
+- PRESENT AND CORRECT: **45**
 - PRESENT BUT WRONG SCOPE: **0**
-- PRESENT BUT READABLE (must be sensitive, is not): **0**
+- PRESENT BUT READABLE (must be sensitive, is not): **2**
 - MISSING: **0**
 
 ## Every variable
@@ -61,17 +61,19 @@ build and a serving deployment can both see the real value.
 | `STRIPE_WEBHOOK_SECRETS` | PRESENT AND CORRECT | production, preview | none | preview, preview (feat/walkthrough-defects), production | withheld on read | - | YES | not required |
 | `STRIPE_WEBHOOK_SECRET` | PRESENT AND CORRECT | none | none | preview, preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), production | withheld on read | - | no | not required |
 | `CRON_SECRET` | PRESENT AND CORRECT | production | none | preview, preview (feat/broadcast-layer), preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), production | withheld on read | - | YES | required, present |
+| `ORDER_ACCESS_SECRET` | PRESENT AND CORRECT | production | none | production | withheld on read | - | no | not required |
 | `QUEUE_SECRET` | PRESENT AND CORRECT | production | none | preview (release/launch-line), production | withheld on read | - | no | not required |
 | `RESEND_API_KEY` | PRESENT AND CORRECT | production, preview | none | preview, production | withheld on read | - | YES | required, present |
 | `EMAIL_FROM` | PRESENT AND CORRECT | production | none | development, preview, preview (feat/broadcast-layer), preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), production | READABLE on preview, development, production | preview:d6ba72dc development:d6ba72dc production:28217c69 | no | not required |
 | `PAYMENT_ALERT_EMAIL` | PRESENT AND CORRECT | production | none | preview (feat/launch-kit), production | withheld on read | - | no | not required |
 | `SUPPORT_INBOX_EMAIL` | PRESENT AND CORRECT | production | none | production | withheld on read | - | no | not required |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | PRESENT AND CORRECT | production, preview | none | preview, production | withheld on read | - | no | not required |
-| `GOOGLE_MAPS_API_KEY` | PRESENT AND CORRECT | production, preview | none | development, preview, production | READABLE on production, preview, development | production:3dcc7ad8 preview:3dcc7ad8 development:3dcc7ad8 | no | not required |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | PRESENT AND CORRECT | production, preview | none | preview, production | READABLE on preview, production | preview:3dcc7ad8 production:3dcc7ad8 | no | not required |
+| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | PRESENT AND CORRECT | production, preview | none | preview, production | READABLE on preview, production | preview:7aff1603 production:7aff1603 | no | not required |
+| `GOOGLE_MAPS_API_KEY` | PRESENT BUT READABLE | production, preview | none | development, preview, production | READABLE on production, preview, development | production:3dcc7ad8 preview:3dcc7ad8 development:3dcc7ad8 | no | not required |
 | `UPSTASH_REDIS_REST_URL` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | YES | not required |
 | `UPSTASH_REDIS_REST_TOKEN` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | YES | not required |
 | `ADMIN_TOTP_ENC_KEY` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | no | not required |
-| `NEXT_PUBLIC_SITE_URL` | PRESENT AND CORRECT | none | none | production | withheld on read | - | no | not required |
+| `NEXT_PUBLIC_SITE_URL` | PRESENT AND CORRECT | none | none | production | READABLE on production | production:9606bc2e | no | not required |
 | `NEXT_PUBLIC_APP_URL` | PRESENT AND CORRECT | none | none | production | READABLE on production | production:9606bc2e | no | not required |
 | `WEBHOOK_CANONICAL_HOST` | PRESENT AND CORRECT | none | none | preview (feat/launch-kit) | withheld on read | - | no | not required |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | no | not required |
@@ -84,8 +86,12 @@ build and a serving deployment can both see the real value.
 | `SENTRY_PROJECT` | PRESENT AND CORRECT | none | none | preview, production | READABLE on preview, production | preview:63ccb835 production:63ccb835 | no | not required |
 | `SENTRY_AUTH_TOKEN` | PRESENT AND CORRECT | none | none | preview, production | withheld on read | - | no | not required |
 | `HEALTH_CHECK_TOKEN` | PRESENT AND CORRECT | none | none | preview (release/launch-line), production | withheld on read | - | no | not required |
-| `PEXELS_API_KEY` | PRESENT AND CORRECT | none | none | development, preview, production | READABLE on development, preview, production | development:d78fb89b preview:d78fb89b production:d78fb89b | no | not required |
+| `PEXELS_API_KEY` | PRESENT BUT READABLE | none | none | development, preview, production | READABLE on development, preview, production | development:d78fb89b preview:d78fb89b production:d78fb89b | no | not required |
 | `SUPABASE_ACCESS_TOKEN` | PRESENT AND CORRECT | none | production, preview, development | none | unknown | - | no | required, present |
+| `CI_SUPABASE_URL` | PRESENT AND CORRECT | none | production, preview, development | none | unknown | - | no | required, present |
+| `CI_SUPABASE_ANON_KEY` | PRESENT AND CORRECT | none | production, preview, development | none | unknown | - | no | required, present |
+| `CI_STRIPE_PUBLISHABLE_KEY` | PRESENT AND CORRECT | none | production, preview, development | none | unknown | - | no | required, present |
+| `CI_GOOGLE_MAPS_API_KEY` | PRESENT AND CORRECT | none | production, preview, development | none | unknown | - | no | required, present |
 | `HOMEPAGE_SEED_FIXTURE` | PRESENT AND CORRECT | none | production | preview | withheld on read | - | no | not required |
 | `ALLOW_EMPTY_PUBLIC_ENV` | PRESENT AND CORRECT | none | production, preview, development | none | unknown | - | no | not required |
 | `ALLOW_PRODUCTION_SUPABASE` | PRESENT AND CORRECT | none | production, preview, development | none | unknown | - | no | not required |
@@ -107,18 +113,20 @@ build and a serving deployment can both see the real value.
 | `STRIPE_WEBHOOK_SECRETS` | whsec_ followed by the signing secret body |
 | `STRIPE_WEBHOOK_SECRET` | whsec_ followed by the signing secret body |
 | `CRON_SECRET` | a single-token secret of at least 32 characters |
+| `ORDER_ACCESS_SECRET` | a single-token secret of at least 32 characters |
 | `QUEUE_SECRET` | a single-token secret of at least 32 characters |
 | `RESEND_API_KEY` | re_ followed by the Resend key body |
 | `EMAIL_FROM` | an address at eventlinqs.com, the apex domain verified at Resend, optionally with a display name |
 | `PAYMENT_ALERT_EMAIL` | any non-empty value with no leading or trailing whitespace |
 | `SUPPORT_INBOX_EMAIL` | any non-empty value with no leading or trailing whitespace |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | AIza followed by the Google API key body (about 39 characters) |
+| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | a Google Cloud Map ID, never the literal DEMO_MAP_ID |
 | `GOOGLE_MAPS_API_KEY` | AIza followed by the Google API key body (about 39 characters) |
 | `UPSTASH_REDIS_REST_URL` | https://<instance>.upstash.io |
 | `UPSTASH_REDIS_REST_TOKEN` | any non-empty value with no leading or trailing whitespace |
 | `ADMIN_TOTP_ENC_KEY` | a single-token secret of at least 32 characters |
-| `NEXT_PUBLIC_SITE_URL` | an https origin on an eventlinqs.com or eventlinqs.com.au host |
-| `NEXT_PUBLIC_APP_URL` | an https origin on an eventlinqs.com or eventlinqs.com.au host |
+| `NEXT_PUBLIC_SITE_URL` | the canonical production origin, https://www.eventlinqs.com.au, and nothing else |
+| `NEXT_PUBLIC_APP_URL` | the canonical production origin, https://www.eventlinqs.com.au, and nothing else |
 | `WEBHOOK_CANONICAL_HOST` | a bare hostname, no scheme and no path |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | a base64url VAPID public key (87 characters) |
 | `VAPID_PRIVATE_KEY` | a base64url VAPID private key |
@@ -132,6 +140,10 @@ build and a serving deployment can both see the real value.
 | `HEALTH_CHECK_TOKEN` | any non-empty value with no leading or trailing whitespace |
 | `PEXELS_API_KEY` | any non-empty value with no leading or trailing whitespace |
 | `SUPABASE_ACCESS_TOKEN` | any non-empty value with no leading or trailing whitespace |
+| `CI_SUPABASE_URL` | https://<project-ref>.supabase.co |
+| `CI_SUPABASE_ANON_KEY` | a legacy eyJ JWT or an sb_publishable_ key |
+| `CI_STRIPE_PUBLISHABLE_KEY` | pk_test_ or pk_live_ followed by the key body |
+| `CI_GOOGLE_MAPS_API_KEY` | AIza followed by the Google API key body (about 39 characters) |
 | `HOMEPAGE_SEED_FIXTURE` | any non-empty value with no leading or trailing whitespace |
 | `ALLOW_EMPTY_PUBLIC_ENV` | any non-empty value with no leading or trailing whitespace |
 | `ALLOW_PRODUCTION_SUPABASE` | any non-empty value with no leading or trailing whitespace |
@@ -140,16 +152,26 @@ build and a serving deployment can both see the real value.
 
 ## Open findings
 
-_None. Every manifest expectation holds across both stores._
+- **GOOGLE_MAPS_API_KEY** [production]: must be stored as SENSITIVE but 1 record(s) on the production scope (scope-wide) can be read back in plain text by anyone with project access. Google Maps server key: geocoding at seed and publish time. Fix: remove the record and re-add it with --sensitive, because --force does NOT change an existing record's sensitivity.
+- **GOOGLE_MAPS_API_KEY** [preview]: must be stored as SENSITIVE but 1 record(s) on the preview scope (scope-wide) can be read back in plain text by anyone with project access. Google Maps server key: geocoding at seed and publish time. Fix: remove the record and re-add it with --sensitive, because --force does NOT change an existing record's sensitivity.
+- **GOOGLE_MAPS_API_KEY** [development]: is a SECRET and 1 record(s) exist on the development scope, which the platform refuses to store sensitively, so the value is readable in plain text by anyone with project access and no setting can change that. Google Maps server key: geocoding at seed and publish time. Fix: delete it from this scope (vercel env rm GOOGLE_MAPS_API_KEY development) and put it in a local .env.local instead. See docs/ENV-DOCTRINE.md.
+- **PEXELS_API_KEY** [production]: must be stored as SENSITIVE but 1 record(s) on the production scope (scope-wide) can be read back in plain text by anyone with project access. Stock imagery key used only by the local seeding scripts. Fix: remove the record and re-add it with --sensitive, because --force does NOT change an existing record's sensitivity.
+- **PEXELS_API_KEY** [preview]: must be stored as SENSITIVE but 1 record(s) on the preview scope (scope-wide) can be read back in plain text by anyone with project access. Stock imagery key used only by the local seeding scripts. Fix: remove the record and re-add it with --sensitive, because --force does NOT change an existing record's sensitivity.
+- **PEXELS_API_KEY** [development]: is a SECRET and 1 record(s) exist on the development scope, which the platform refuses to store sensitively, so the value is readable in plain text by anyone with project access and no setting can change that. Stock imagery key used only by the local seeding scripts. Fix: delete it from this scope (vercel env rm PEXELS_API_KEY development) and put it in a local .env.local instead. See docs/ENV-DOCTRINE.md.
 
 ## GitHub Actions repository secrets
 
 Read live via `gh secret list`. Only names are ever listed; GitHub does not
 reveal a secret value to anyone, including its owner.
 
+- `CI_GOOGLE_MAPS_API_KEY`
+- `CI_STRIPE_PUBLISHABLE_KEY`
+- `CI_SUPABASE_ANON_KEY`
+- `CI_SUPABASE_URL`
 - `CRON_SECRET`
 - `RESEND_API_KEY`
 - `SUPABASE_ACCESS_TOKEN`
+- `VERCEL_TOKEN`
 
 ## Cross-variable rules
 

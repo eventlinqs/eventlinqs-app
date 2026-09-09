@@ -171,6 +171,10 @@
  *                              byte for byte, a PASS row must cite evidence that is still on
  *                              disk and carry the date driven, and an OWNER BLOCKED row must
  *                              name what is needed in one sentence (close-out L5, C10.4)
+ *   no-build-guard-bypass      no declared guard bypass is set on a machine that builds
+ *                              for other people. The list is derived from the manifest,
+ *                              never retyped, and a bypass removes the report rather than
+ *                              reporting a problem (close-out F1.4)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -937,6 +941,13 @@ const GUARDS = [
   // records the machine it was taken on and a red assertion says which of its
   // two causes it was. Evidence: C:\dev\EVIDENCE\P0.7-D.
   'scripts/guards/gate-names-the-instrument.mjs',
+
+  // Close-out F1.4. A bypass left switched on does not report a problem, it
+  // removes the report, and ALLOW_PRICING_DRIFT=1 lets a build ship whose live
+  // fee disagrees with docs/PRICING.md. The manifest forbids each declared
+  // bypass on every Vercel STORE; this reads the process environment the build
+  // actually has, so an inline one is caught as well as a stored one.
+  'scripts/guards/no-build-guard-bypass.mjs',
 ]
 
 /**
