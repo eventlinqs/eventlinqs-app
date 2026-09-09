@@ -201,6 +201,14 @@ jobs:
         # H2.4. TWO channels that share no rate limit, and a loud failure if
         # both are silent. The old step was `curl ... || echo "::warning::"`,
         # which is how the one alert that mattered was lost.
+        #
+        # H2.6. The TARGET is passed as well as the report, so the drill marker
+        # survives a run that failed before the report was written. The marker
+        # itself is derived from the host, never from this line: a `.invalid`
+        # target cannot be a real production smoke (RFC 2606).
+        #
+        # UX4.3. `--class outage` writes the subject, so this can never again be
+        # confused in the inbox with a branch gate doing its job.
         if: failure()
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -209,10 +217,17 @@ jobs:
           COMMIT_SHA: ${{ steps.under_test.outputs.sha }}
           REF_SHA: ${{ github.sha }}
           EVENT: ${{ github.event_name }}
+          FORCE_FAILURE: ${{ github.event.inputs.force_failure }}
         run: |
           set -u
+          TARGET="$PROD_URL"
+          if [ "${FORCE_FAILURE:-false}" = "true" ]; then
+            TARGET="https://smoke-drill.invalid"
+          fi
           node scripts/ops/alert-dispatch.mjs \
-            --subject "EventLinqs production homepage smoke FAILED" \
+            --class outage \
+            --target "$TARGET" \
+            --subject "the production homepage smoke FAILED" \
             --report smoke-report.json
 
       - name: Keep the evidence
@@ -225,3 +240,56 @@ jobs:
             transport-probe.json
           if-no-files-found: ignore
           retention-days: 14
+
+  deploy-failed:
+    # UX4.3, IMMEDIATE, OUTAGE ONLY. A production deployment that FAILS is one
+    # of the three outages the owner asked to hear about immediately, and until
+    # now it was the quietest of the three: the smoke job above only ever ran on
+    # `state == 'success'`, so a build that never became a deployment produced
+    # no alert from this repository at all. GitHub's own "deployment failed"
+    # mail looks like every other Actions mail, which is UX4.3's complaint.
+    #
+    # Both `failure` and `error` are accepted because they are two different
+    # GitHub deployment states and a provider may report either.
+    name: production deployment failed
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      ${{ github.event_name == 'deployment_status'
+       && github.event.deployment.environment == 'Production'
+       && (github.event.deployment_status.state == 'failure'
+           || github.event.deployment_status.state == 'error') }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Alert
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.event.deployment_status.target_url }}
+          COMMIT_SHA: ${{ github.event.deployment.sha }}
+          REF_SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+          STATE: ${{ github.event.deployment_status.state }}
+          DESCRIPTION: ${{ github.event.deployment_status.description }}
+        run: |
+          set -u
+          {
+            echo "The production deployment did not become live."
+            echo "State reported: ${STATE}"
+            echo "Description: ${DESCRIPTION:-none given}"
+            echo "Commit: ${COMMIT_SHA}"
+            echo ""
+            echo "Production is still serving the previous deployment. Nothing has been"
+            echo "taken down, but nothing new has gone out either, so anything you were"
+            echo "waiting to see live is not live."
+          } > deploy-failed.txt
+          node scripts/ops/alert-dispatch.mjs \
+            --class outage \
+            --target "https://www.eventlinqs.com.au" \
+            --subject "the production deployment FAILED" \
+            --body-file deploy-failed.txt

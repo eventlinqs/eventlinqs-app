@@ -301,3 +301,61 @@ jobs:
 
       - name: Test
         run: npm test
+
+  main-red-alert:
+    # UX4.3, IMMEDIATE, OUTAGE ONLY. Main going red used to produce exactly one
+    # thing: GitHub's own "Run failed: CI" email, which is the same shape as the
+    # email a branch gate sends when it is doing its job. Six of those arrived
+    # for one pull request on 5 September and the one that mattered would have
+    # looked identical.
+    #
+    # UX4.5 IS THE OTHER HALF OF THIS JOB, and it is the `push` condition. A
+    # BRANCH gate failing raises nothing here, deliberately: it stays in the run
+    # log and on the pull request, and it appears as one line in the daily state
+    # email. scripts/guards/alert-routing.mjs fails the build if that condition
+    # is ever loosened.
+    name: main is red
+    needs: [verify, types-drift-guard, production-parity, test]
+    if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Alert
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          REF_SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+          VERIFY: ${{ needs.verify.result }}
+          DRIFT: ${{ needs.types-drift-guard.result }}
+          PARITY: ${{ needs.production-parity.result }}
+          SUITE: ${{ needs.test.result }}
+        run: |
+          set -u
+          {
+            echo "CI is RED on main. The next production deployment cannot go out until it is green."
+            echo ""
+            echo "lint / typecheck / build : ${VERIFY}"
+            echo "types-drift guard        : ${DRIFT}"
+            echo "production parity        : ${PARITY}"
+            echo "test (vitest)            : ${SUITE}"
+            echo ""
+            echo "Production is still serving the last deployment that went out, so the site"
+            echo "is up. What is broken is the road between here and the next release."
+          } > main-red.txt
+          node scripts/ops/alert-dispatch.mjs \
+            --class outage \
+            --target "https://www.eventlinqs.com.au" \
+            --subject "CI is RED on main" \
+            --body-file main-red.txt

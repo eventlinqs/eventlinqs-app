@@ -206,6 +206,17 @@
  *                              published event and a paid order, so none of the five can
  *                              complete in silence the way a real organiser's launch did
  *                              on 8 September 2026 (close-out UX3)
+ *   cron-routes-scheduled    every /api/cron route has a vercel.json entry, and every
+ *                              entry has a route. /api/cron/queue-admit documented itself
+ *                              as running every minute and had no schedule at all, so the
+ *                              virtual-queue admission batch had never run once. A cron
+ *                              that is never invoked looks exactly like a cron with
+ *                              nothing to do, which is why nothing could see it
+ *   alert-routing            no branch gate may email, every alert declares its class,
+ *                              and a drill announces itself. Read in one place because
+ *                              all three are rulings about the subject line: the inbox
+ *                              was loud about the harmless and silent about the dangerous
+ *                              (close-out UX4.3, UX4.5, H2.6)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -1011,6 +1022,19 @@ const GUARDS = [
   // trigger's record fields against the committed types. Drilled red by putting
   // new.city back.
   'scripts/guards/trigger-columns-exist.mjs',
+
+  // Found while auditing the notification routing for close-out UX4:
+  // /api/cron/queue-admit documented itself as running every minute and had no
+  // entry in vercel.json, so the virtual-queue admission batch had never run
+  // once. A cron that is never invoked looks exactly like a cron with nothing to
+  // do, which is why nothing could see it. Drilled red on the pre-fix vercel.json.
+  'scripts/guards/cron-routes-scheduled.mjs',
+
+  // Close-out UX4.5. Branch gate failures stop being email. Nothing in this
+  // repository may dispatch an alert for a ref that is not main, and every
+  // dispatch declares which class it belongs to so an outage never again reads
+  // like a branch gate in the inbox. Drilled red by adding a branch dispatch.
+  'scripts/guards/alert-routing.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

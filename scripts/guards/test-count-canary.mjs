@@ -1131,9 +1131,28 @@ const ROOT = join(HERE, '..', '..')
  *                                              refuses a build whose database
  *                                              could let a state change go
  *                                              unrecorded
+ *
+ * 2026-09-10: 355 files / 4195 tests. Close-out UX4 and H2.6, the notification
+ * ROUTING, plus one defect found while auditing it.
+ *   tests/unit/ops/state-report.test.ts        the stall judged at the six hour
+ *                                              boundary in both callers' modes,
+ *                                              the guard named out of a failing
+ *                                              run log, and a daily report that
+ *                                              says the same thing in text and
+ *                                              in HTML
+ *   tests/unit/guards/alert-routing.test.ts    no branch gate may email, every
+ *                                              dispatch declares its class, and
+ *                                              a drill announces itself
+ *   tests/unit/guards/cron-routes-scheduled.test.ts  /api/cron/queue-admit had a
+ *                                              route handler, a header saying it
+ *                                              ran every minute, and no schedule
+ *                                              at all
+ *   the alert-dispatch and workflows-skip-drafts files also grew, with the class
+ *   grammar, the drill verdict, and the push-only condition that lets ci.yml's
+ *   main-red alert exist without running on a draft
  */
-const MIN_FILES = 352
-const MIN_TESTS = 4121
+const MIN_FILES = 355
+const MIN_TESTS = 4195
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
