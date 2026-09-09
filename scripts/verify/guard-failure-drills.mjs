@@ -1863,6 +1863,29 @@ const DRILLS = [
     },
     expect: '[pricing-lock] BUILD BLOCKED',
   },
+  /*
+   * CLOSE-OUT F1.6. The dangerous failure here is the FALSE NEGATIVE: the clause
+   * cannot see, says so in whatever words it feels like, and three machines
+   * produce three sentences nobody can line up. So this drill asserts the guard
+   * STAYS GREEN (it cannot see, which is not a fault) while reporting the named
+   * code, which is what makes the three machines comparable.
+   *
+   * It calls Vercel for real, with a token Vercel will refuse, because the whole
+   * point is what the guard does with a refusal. Offline, the code becomes
+   * network-error and this drill fails saying so, which is correct: the harness
+   * should not report a network-shaped pass as proof of an http-shaped one.
+   */
+  {
+    name: 'a refused Vercel read is reported as a bare status again',
+    guard: `${GUARDS}/machine-callers-reachable.mjs`,
+    env: {
+      GITHUB_ACTIONS: 'true',
+      VERCEL_TOKEN: 'not_a_real_token',
+      VERCEL_PROJECT_ID: 'prj_YIHLHcjuQfg4RmtNt7JekkcTVznJ',
+      VERCEL_ORG_ID: 'team_yPo8T18zSl5VczJfWIIrNqly',
+    },
+    expectPass: 'NOT JUDGED [http-',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

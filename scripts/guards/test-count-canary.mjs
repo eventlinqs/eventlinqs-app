@@ -1052,9 +1052,18 @@ const ROOT = join(HERE, '..', '..')
  * tests, which iterate the manifest itself: four CI_ entries were declared, so
  * the suite grew without a line of test code being written for them, which is
  * the manifest doing its job.
+ *
+ * 2026-09-09: raised 336/3898 -> 337/3905, MEASURED by running the suite. One
+ * file, tests/unit/guards/clause-verdict.test.ts, 7 tests, holds close-out
+ * F1.6: one guard that skipped for a different reason in a different sentence
+ * shape on each of the three machines that ran it. Three prove the vocabulary is
+ * a CLOSED set, including that an invented sixth shape throws at the call site
+ * rather than printing; four prove the rendered line always carries the code AND
+ * the build scope, and that a not-judged verdict always carries the remedy, so a
+ * skip is never a dead end.
  */
-const MIN_FILES = 336
-const MIN_TESTS = 3898
+const MIN_FILES = 337
+const MIN_TESTS = 3905
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
