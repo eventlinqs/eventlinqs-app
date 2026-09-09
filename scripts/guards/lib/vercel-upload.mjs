@@ -49,6 +49,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, linkSync, copyFileSync, mkdirSync, readdirSync, rmSync, statSync, symlinkSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { gitEnv } from '../../lib/git-env.mjs'
+import { describeNoGit, gitAvailability } from './git-availability.mjs'
 import { walkTrackedFiles } from './gitignore.mjs'
 import { makeJudgeIgnored, readVercelIgnore } from './vercelignore.mjs'
 
@@ -106,9 +107,13 @@ export function listTrackedFiles(root) {
 export function filesForUpload(root) {
   const walked = walkTrackedFiles(root)
   if (!isGitCheckout(root)) {
+    // ONE SENTENCE, SHARED (close-out F2.4). Every build-time script that reaches
+    // for git says this, in these words, so five different phrasings for one fact
+    // cannot appear in one build log again.
+    console.log(describeNoGit({ root, wanted: 'the force-added files only the index holds' }))
     return {
       files: walked,
-      source: 'a filesystem walk applying every .gitignore (no git repository here)',
+      source: `a filesystem walk applying every .gitignore (${gitAvailability(root).shape} .git)`,
       addedByIndex: [],
       droppedAsUntracked: [],
     }
@@ -272,10 +277,11 @@ export function holdsNoFile(absDir) {
  * @param {string} root
  */
 export function isGitCheckout(root) {
-  const dotGit = join(root, '.git')
-  if (!existsSync(dotGit)) return false
-  if (!statSync(dotGit).isDirectory()) return true
-  return existsSync(join(dotGit, 'HEAD'))
+  // ONE DEFINITION OF THE THREE SHAPES, in lib/git-availability.mjs, because two
+  // copies of this predicate is exactly how the wrong one gets fixed (close-out
+  // F2.4). The reasoning above is why the test is what it is; the test itself
+  // now lives in one place and every git-reading script asks it.
+  return gitAvailability(root).usable
 }
 
 /**

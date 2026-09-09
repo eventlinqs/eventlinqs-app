@@ -199,7 +199,7 @@ export function parseGitignore(text, base = '') {
  *
  * @param {string} root
  * @param {string[]} names which ignore files to read, e.g. ['.gitignore']
- * @returns {{ rules: GitignoreRule[], errors: string[], files: string[] }}
+ * @returns {{ rules: GitignoreRule[], errors: string[], files: string[], unreadable: string[] }}
  */
 export function collectIgnoreRules(root, names = ['.gitignore']) {
   /** @type {GitignoreRule[]} */
@@ -208,6 +208,8 @@ export function collectIgnoreRules(root, names = ['.gitignore']) {
   const errors = []
   /** @type {string[]} */
   const files = []
+  /** @type {string[]} */
+  const unreadable = []
 
   /** Read the ignore files in one directory, then recurse into its children. */
   const visit = (rel, depth) => {
@@ -223,7 +225,11 @@ export function collectIgnoreRules(root, names = ['.gitignore']) {
     let entries
     try {
       entries = readdirSync(join(root, rel), { withFileTypes: true })
-    } catch {
+    } catch (error) {
+      // NOT SILENT. A directory that cannot be read means ignore files inside it
+      // were never seen, so the rule set is incomplete and every judgement built
+      // on it is quietly wrong. Say so; do not simply stop.
+      unreadable.push(`${rel || '.'}: ${error instanceof Error ? error.message : String(error)}`)
       return
     }
     for (const entry of entries) {
@@ -236,7 +242,11 @@ export function collectIgnoreRules(root, names = ['.gitignore']) {
   }
   visit('', 0)
 
-  return { rules, errors, files }
+  for (const u of unreadable) {
+    console.warn(`[gitignore] a directory could not be read while collecting ignore files, so any rules inside it are missing: ${u}`)
+  }
+
+  return { rules, errors, files, unreadable }
 }
 
 /**
@@ -288,7 +298,13 @@ export function walkTrackedFiles(root, { judge } = {}) {
     let entries
     try {
       entries = readdirSync(join(root, rel), { withFileTypes: true })
-    } catch {
+    } catch (error) {
+      // NOT SILENT, for the same reason: an unreadable directory is a hole in
+      // the enumeration, and a hole produces a materialised upload that is
+      // missing files Vercel would have.
+      console.warn(
+        `[gitignore] a directory could not be walked, so its files are missing from this enumeration: ${rel || '.'}: ${error instanceof Error ? error.message : String(error)}`,
+      )
       continue
     }
     for (const entry of entries) {

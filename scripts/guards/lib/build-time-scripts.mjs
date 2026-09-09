@@ -25,23 +25,85 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 
 /**
- * THE THINGS `prebuild` ACTUALLY INVOKES. A module is not here: it is reached
- * through the entry point that imports it, which is also how Vercel reaches it.
+ * THE THINGS `prebuild` ACTUALLY INVOKES.
+ *
+ * DERIVED FROM WHAT RUNS, NOT FROM WHERE FILES LIVE, and that correction is
+ * close-out F2.4. This function used to enumerate two DIRECTORIES -
+ * scripts/guards and scripts/check-* - plus one named file. Six registered
+ * prebuild entry points live somewhere else and were therefore invisible to
+ * every scan built on this:
+ *
+ *     scripts/verify/migration-collision-guard.mjs
+ *     scripts/verify/payment-critical-doctrine.mjs
+ *     scripts/security/rls-exposure-scan.mjs
+ *     scripts/security/revoked-column-reads.mjs
+ *     scripts/security/entrypoint-authz-audit.mjs
+ *     scripts/pricing-derive.mjs
+ *
+ * The second of those is the guard behind the SECOND lost deployment
+ * (docs/security/CREDENTIAL-ROTATION.md), so the machinery built to stop that
+ * class could not see the script it was built for. And the first is the one the
+ * Vercel log of ffded236 caught calling `git for-each-ref` and degrading quietly.
+ *
+ * F1.9.2 already fixed the same reasoning error one layer down: a MODULE outside
+ * those directories used to be invisible, and the answer was to follow the import
+ * graph rather than to add a directory. This is that answer applied to ENTRY
+ * POINTS. The registration list in run-guards.mjs and the prebuild chain in
+ * package.json are where "what runs" is actually written down, so they are what
+ * gets read. Adding a directory would have fixed six files and left the
+ * reasoning wrong.
+ *
+ * The scripts/guards directory glob is KEPT as well, so a guard file that exists
+ * but has not been registered yet is still scanned. It is a superset, never a
+ * substitute.
+ *
+ * A module is not here: it is reached through the entry point that imports it,
+ * which is also how Vercel reaches it.
  */
 export function runnableEntries(root) {
-  const out = []
-  const guards = join(root, 'scripts', 'guards')
-  if (existsSync(guards)) {
-    for (const name of readdirSync(guards)) if (name.endsWith('.mjs')) out.push(`scripts/guards/${name}`)
-  }
-  const scripts = join(root, 'scripts')
-  if (existsSync(scripts)) {
-    for (const name of readdirSync(scripts)) {
-      if (name.startsWith('check-') && name.endsWith('.mjs')) out.push(`scripts/${name}`)
+  const out = new Set()
+
+  /* Every path `node <path>` in the prebuild and postbuild chains. */
+  const pkgPath = join(root, 'package.json')
+  if (existsSync(pkgPath)) {
+    let scripts = {}
+    try {
+      scripts = JSON.parse(readFileSync(pkgPath, 'utf8')).scripts ?? {}
+    } catch (error) {
+      // NOT SILENT. package.json is where the prebuild chain is written down; if
+      // it cannot be read, this function silently returns a SHORTER list of entry
+      // points and every scan built on it reports fewer problems than exist.
+      console.warn(
+        `[build-time-scripts] package.json could not be read, so the prebuild chain contributed no entry points: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      scripts = {}
+    }
+    for (const key of ['prebuild', 'postbuild', 'guards']) {
+      const line = scripts[key]
+      if (typeof line !== 'string') continue
+      for (const m of line.matchAll(/node\s+(scripts\/[A-Za-z0-9_./-]+\.mjs)/g)) out.add(m[1])
     }
   }
-  if (existsSync(join(root, 'scripts/prebuild-fixture.mjs'))) out.push('scripts/prebuild-fixture.mjs')
-  return out.sort()
+
+  /* Every guard the runner registers, read out of the runner's own list. */
+  const runner = join(root, 'scripts', 'guards', 'run-guards.mjs')
+  if (existsSync(runner)) {
+    const src = readFileSync(runner, 'utf8')
+    const start = src.indexOf('const GUARDS = [')
+    if (start !== -1) {
+      const end = src.indexOf('\n]', start)
+      const body = src.slice(start, end === -1 ? undefined : end)
+      for (const m of body.matchAll(/'(scripts\/[A-Za-z0-9_./-]+\.mjs)'/g)) out.add(m[1])
+    }
+  }
+
+  /* And the guards directory, so an unregistered guard file is still scanned. */
+  const guards = join(root, 'scripts', 'guards')
+  if (existsSync(guards)) {
+    for (const name of readdirSync(guards)) if (name.endsWith('.mjs')) out.add(`scripts/guards/${name}`)
+  }
+
+  return [...out].filter((rel) => existsSync(join(root, rel))).sort()
 }
 
 /** Only RELATIVE imports are followed: a package is not this repository's code. */

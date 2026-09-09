@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { describeOutcome, renderFailures, thrownFrom } from '../../../scripts/guards/lib/guard-run-report.mjs'
+import { gitEnv } from '../../../scripts/lib/git-env.mjs'
 
 /**
  * THE GATE MUST NAME WHAT IT CAUGHT. Close-out F1.1.
@@ -73,9 +74,16 @@ describe('describeOutcome, against real child processes', () => {
    */
   test('the git-absent exception that killed a real deployment is attributed', () => {
     const outside = mkdtempSync(join(tmpdir(), 'not-a-checkout-'))
+    /*
+     * env: gitEnv() IS LOAD-BEARING HERE, not hygiene. Inside a git hook GIT_DIR
+     * is set and an inheriting child ignores cwd when choosing a repository, so
+     * this call would succeed against the REAL repository and the test would stop
+     * reproducing a throw while still reporting green. The suite is run BY the
+     * pre-push hook, which is the one context nobody develops in.
+     */
     const result = runScript(
       "import { execFileSync } from 'node:child_process'\n" +
-        `execFileSync('git', ['ls-files', '-z'], { cwd: ${JSON.stringify(outside)} })\n`,
+        `execFileSync('git', ['ls-files', '-z'], { cwd: ${JSON.stringify(outside)}, env: ${JSON.stringify(gitEnv())} })\n`,
     )
     const outcome = describeOutcome(result)
     expect(outcome.ok).toBe(false)

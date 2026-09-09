@@ -34,6 +34,7 @@
 import { declareWork } from '../lib/work-report.mjs'
 import { CAPABILITIES, CAPABILITY_NAMES, describeUse, scanBuildTimeScripts } from './lib/build-host.mjs'
 import { DECLARED } from './lib/build-host-needs.mjs'
+import { importClosure } from './lib/build-time-scripts.mjs'
 
 const ROOT = process.cwd()
 const TAG = '[build-host-needs-declared]'
@@ -45,6 +46,7 @@ const fail = (m) => {
 }
 
 const scanned = scanBuildTimeScripts(ROOT)
+const onDiskEntries = new Set(scanned.map((s) => s.entry))
 const counts = Object.fromEntries(CAPABILITY_NAMES.map((c) => [c, 0]))
 let declaring = 0
 
@@ -82,13 +84,44 @@ for (const { entry, uses } of scanned) {
 }
 
 /*
+ * EVERY GIT READER SAYS THE SAME SENTENCE. Close-out F2.4.
+ *
+ * Seven build-time scripts reach for git, and on the Vercel build log of
+ * ffded236 they degraded in five different sets of words for one fact. Two of
+ * them said the REMOTE was missing when there was no repository at all, and one
+ * stated a mechanism - "a source tarball with no .git" - that is the exact
+ * opposite of the truth that killed that deployment.
+ *
+ * So a script that declares a git need must REACH lib/git-availability.mjs, and
+ * this fails the build when one does not. Without the clause the module is a
+ * suggestion, and the eighth git reader writes a sixth sentence.
+ *
+ * Judged over the import CLOSURE, not the file, so a script that reaches it
+ * through a helper satisfies this the same way Vercel would reach it.
+ */
+const AVAILABILITY = 'scripts/guards/lib/git-availability.mjs'
+let gitReaders = 0
+for (const [entry, needs] of Object.entries(DECLARED)) {
+  if (!needs.git) continue
+  if (!onDiskEntries.has(entry)) continue
+  gitReaders += 1
+  if (importClosure(ROOT, [entry]).includes(AVAILABILITY)) continue
+  fail(
+    `${entry} declares a git need and never reaches ${AVAILABILITY}.\n` +
+      `      Every git-reading build-time script says the SAME sentence when there is no repository, because on\n` +
+      `      9 September 2026 five of them said it five different ways in one build log, two of them claiming a\n` +
+      `      missing REMOTE on a host with no repository at all.\n` +
+      `      Import it and print noGitLine(TAG, what you wanted) on the path where git cannot answer.`,
+  )
+}
+
+/*
  * AN ENTRY FOR A SCRIPT THAT NO LONGER EXISTS. Not covered by the loop above,
  * which walks the scripts that ARE on disk, so a renamed or deleted guard would
  * leave its declaration behind silently.
  */
-const onDisk = new Set(scanned.map((s) => s.entry))
 for (const entry of Object.keys(DECLARED)) {
-  if (onDisk.has(entry)) continue
+  if (onDiskEntries.has(entry)) continue
   fail(
     `scripts/guards/lib/build-host-needs.mjs declares ${entry}, which is not a prebuild entry point on disk. ` +
       `It was renamed or removed; delete the entry.`,
@@ -105,6 +138,7 @@ declareWork('build-host-needs-declared', {
   did: {
     'prebuild entry point scanned': scanned.length,
     'entry point needing the host': declaring,
+    'git reader sharing one sentence': gitReaders,
     ...Object.fromEntries(CAPABILITY_NAMES.map((c) => [`entry point needing ${c}`, counts[c]])),
   },
   found: { 'undeclared or stale declaration': faults.length },
@@ -126,4 +160,8 @@ if (faults.length > 0) {
 console.log(
   `${TAG} PASS - ${declaring} of ${scanned.length} prebuild entry point(s) need something the build host lacks, ` +
     `every one declared, and nothing declared that is not used. The uses are read out of the import graph, never listed.`,
+)
+console.log(
+  `${TAG} ${gitReaders} build-time script(s) read git, and every one of them reaches ${AVAILABILITY}, ` +
+    `so all ${gitReaders} say the same sentence when there is no repository (close-out F2.4).`,
 )

@@ -96,6 +96,14 @@ const BASELINE = [
     reason: 'this guard. Its own detector patterns match its own subject matter.',
   },
   {
+    file: 'tests/unit/guards/build-host.test.ts',
+    reason:
+      'the test for the build-host capability detector (close-out F2.1), whose whole '
+      + 'subject is recognising a spawn of git in source. Its fixtures are strings fed '
+      + 'to that detector and its one assertion quotes the pattern back; it starts no '
+      + 'process at all, so there is no environment to clear.',
+  },
+  {
     file: 'tests/unit/guards/no-inherited-git-env.test.ts',
     reason:
       'the drill for this guard. It writes UNGUARDED call sites into a scratch file ' +

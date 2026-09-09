@@ -11,6 +11,7 @@ import {
   walkTrackedFiles,
 } from '../../../scripts/guards/lib/gitignore.mjs'
 import { filesForUpload, listTrackedFiles } from '../../../scripts/guards/lib/vercel-upload.mjs'
+import { gitEnv } from '../../../scripts/lib/git-env.mjs'
 
 /**
  * ENUMERATING A TREE WITHOUT GIT. Close-out F2.2.
@@ -158,7 +159,7 @@ describe('the walk, against git itself, on this repository', () => {
     const droppedByWalk = tracked.filter((f) => !walked.has(f))
     const notForceAdded: string[] = []
     for (const f of droppedByWalk) {
-      const r = spawnSync('git', ['check-ignore', '-q', '--no-index', f], { cwd: root, encoding: 'utf8' })
+      const r = spawnSync('git', ['check-ignore', '-q', '--no-index', f], { cwd: root, encoding: 'utf8', env: gitEnv() })
       if (r.status !== 0) notForceAdded.push(f)
     }
     expect(notForceAdded).toEqual([])
@@ -172,6 +173,7 @@ describe('the walk, against git itself, on this repository', () => {
     const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard', '-z'], {
       cwd: root,
       encoding: 'utf8',
+      env: gitEnv(),
       maxBuffer: 64 * 1024 * 1024,
     })
       .split('\0')

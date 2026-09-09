@@ -57,6 +57,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
+import { describeNoGit, gitAvailability } from '../guards/lib/git-availability.mjs'
 
 const DIR = 'supabase/migrations'
 const REMOTE = process.argv.includes('--remote')
@@ -187,7 +188,10 @@ console.log('\n--- d. no version is claimed by different files on different bran
       .filter(Boolean)
       .filter((r) => !r.endsWith('/HEAD'))
   } catch (err) {
-    console.log(`  [migration-collision] SKIP - git unavailable: ${String(err).slice(0, 100)}`)
+    // Close-out F2.4: one sentence shape when there is no repository, and the
+    // exception only when there IS one and it still refused.
+    if (!gitAvailability().usable) console.log(`  ${describeNoGit({ wanted: 'every local and remote branch' })}`)
+    else console.log(`  [migration-collision] git refused to list refs: ${String(err).slice(0, 100)}`)
     skipped.push('d. cross-branch: git could not list refs, so no other branch was read')
   }
 

@@ -61,6 +61,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
 import { gitEnv } from '../lib/git-env.mjs'
+import { gitAvailability, noGitLine } from './lib/git-availability.mjs'
 
 const TAG = '[one-pull-request-at-a-time]'
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -79,7 +80,17 @@ export function repositoryFromEnvOrGit() {
     const m = url.match(/github\.com[:/]([^/]+)\/([^/.]+)(?:\.git)?$/)
     if (m) return `${m[1]}/${m[2]}`
   } catch (error) {
-    console.warn(`${TAG} no origin remote could be read (${error.message})`)
+    /*
+     * NO REPOSITORY IS NOT A MISSING REMOTE. Close-out F2.4: this used to say
+     * "no origin remote could be read", which sends the reader looking for a
+     * remote on a host that has no repository at all. One sentence shape, from
+     * one module, for every git-reading build-time script.
+     */
+    if (!gitAvailability().usable) {
+      console.warn(noGitLine(TAG, 'the repository name from the origin remote'))
+    } else {
+      console.warn(`${TAG} no origin remote could be read (${error.message})`)
+    }
   }
   return null
 }

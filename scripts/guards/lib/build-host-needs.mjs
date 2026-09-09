@@ -80,6 +80,21 @@ export const DECLARED = {
   'scripts/guards/sourced-specifications.mjs': {
     docs: 'its reviewed baseline names docs/security/AUDIT-2026-08-08-SECTIONS-2-8.md, whose third-party version claims already carry their advisory links.',
   },
+  /*
+   * THE THREE THAT WERE INVISIBLE UNTIL CLOSE-OUT F2.4, kept together and
+   * labelled, because their absence is the finding rather than their presence.
+   * The scan enumerated two directories, these live in a third, and one of them
+   * is the guard behind the SECOND lost deployment.
+   */
+  'scripts/pricing-derive.mjs': {
+    docs: 'recomputes every worked fee figure in docs/PRICING.md from that document own PRICING-LOCK block, which is the whole check. Registered in run-guards.mjs from scripts/, so the old directory-shaped scan never saw it.',
+  },
+  'scripts/verify/migration-collision-guard.mjs': {
+    git: 'asks git for-each-ref for every local and remote branch, to catch two branches claiming one migration version. On the build host it SKIPs by name, which the Vercel log of ffded236 shows it already doing.',
+  },
+  'scripts/verify/payment-critical-doctrine.mjs': {
+    docs: 'judges every paymentCritical variable against docs/security/CREDENTIAL-ROTATION.md. This is the SECOND lost deployment, and until F2.4 widened the entry-point scan the machinery built to prevent that class could not see the script it was built for.',
+  },
   'scripts/guards/vercelignore-covers-guard-reads.mjs': {
     docs: 'scripts/guards/lib/vercelignore-registry.mjs IS the list of docs/ paths that must survive the upload, so naming them is this guard entire subject.',
   },

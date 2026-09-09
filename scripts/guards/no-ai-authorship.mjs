@@ -37,6 +37,7 @@
 import { execFileSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
+import { noGitLine } from './lib/git-availability.mjs'
 
 /**
  * The boundary. Every commit descending from this must be clean.
@@ -214,11 +215,21 @@ function hasGitHistory() {
 }
 
 if (!hasGitHistory()) {
+  /*
+   * THE OLD SENTENCE STATED A MECHANISM THAT IS NOT TRUE, and it appeared in the
+   * build log of the very deployment the untruth helped cost. It read "a Vercel
+   * build unpacks a source tarball with no .git". The build host HAS a .git: it
+   * is a directory with its files removed, because .vercelignore names `.git`
+   * and Vercel strips matched FILES while leaving DIRECTORIES. A guard elsewhere
+   * tested `existsSync('.git')`, believed that sentence's opposite, called git,
+   * threw, and killed the build. Close-out F2.4: one shared sentence, and it
+   * names the shape rather than guessing at the mechanism.
+   */
+  console.log(noGitLine('[no-ai-authorship]', 'the recent commit messages'))
   console.log(
-    '[no-ai-authorship] SKIP - no git history in this environment (a Vercel build\n' +
-      '                  unpacks a source tarball with no .git). Nothing to assert.\n' +
-      '                  Law 8 still gated by .githooks/commit-msg at commit time and\n' +
-      '                  by this guard in CI, where the checkout is a real repository.',
+    '[no-ai-authorship]   Law 8 is still gated by .githooks/commit-msg at commit time and by\n' +
+      '[no-ai-authorship]   this guard in CI, where the checkout is a real repository. A commit only\n' +
+      '[no-ai-authorship]   reaches a Vercel build after CI has run this guard over it.',
   )
   process.exit(0)
 }

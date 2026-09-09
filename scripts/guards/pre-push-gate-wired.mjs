@@ -31,6 +31,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { gitEnv } from '../lib/git-env.mjs'
+import { gitAvailability, noGitLine } from './lib/git-availability.mjs'
 import { declareWork } from '../lib/work-report.mjs'
 
 export const HOOK = '.githooks/pre-push'
@@ -108,7 +109,8 @@ function main() {
       const mode = entry.split(/\s+/)[0]
       if (mode !== '100755') problems.push(`${HOOK} is mode ${mode || '(absent from the index)'} in the index; it must be 100755 or git will not execute it on a clone`)
     } catch (error) {
-      console.log(`[pre-push-gate-wired] SKIP the index-mode check: git unavailable (${error.message.split(/\r?\n/)[0]})`)
+      if (!gitAvailability(root).usable) console.log(noGitLine('[pre-push-gate-wired]', 'the index mode of the hook', root))
+      else console.log(`[pre-push-gate-wired] SKIP the index-mode check: git refused (${error.message.split(/\r?\n/)[0]})`)
     }
     checks += 1
     try {
@@ -119,7 +121,8 @@ function main() {
       if (error.status === 1 && !nonEmpty(error.stderr)) {
         problems.push(`core.hooksPath is not set in this repository, so git never runs ${HOOK}`)
       } else {
-        console.log(`[pre-push-gate-wired] SKIP the core.hooksPath check: git unavailable (${(error.message || '').split(/\r?\n/)[0]})`)
+        if (!gitAvailability(root).usable) console.log(noGitLine('[pre-push-gate-wired]', 'core.hooksPath', root))
+        else console.log(`[pre-push-gate-wired] SKIP the core.hooksPath check: git refused (${(error.message || '').split(/\r?\n/)[0]})`)
       }
     }
   }

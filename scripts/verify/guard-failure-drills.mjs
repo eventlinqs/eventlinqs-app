@@ -1868,7 +1868,11 @@ const DRILLS = [
     guard: `${GUARDS}/build-host-needs-declared.mjs`,
     file: 'scripts/guards/no-control-characters.mjs',
     find: 'const ROOT = process.cwd()',
-    replace: "const ROOT = process.cwd()\nconst _drill = () => execFileSync('git', ['status'])",
+    // The planted call carries an `env` option so it satisfies
+    // no-inherited-git-env as well: this drill's own source would otherwise
+    // read as an unguarded call site, and exempting a file is worse than
+    // writing the safe version.
+    replace: "const ROOT = process.cwd()\nconst _drill = () => execFileSync('git', ['status'], { env: {} })",
     expect: 'uses git and does not declare it',
   },
   {
@@ -1902,6 +1906,21 @@ const DRILLS = [
     find: 'export const DECLARED = {\n',
     replace: "export const DECLARED = {\n  'scripts/guards/renamed-away.mjs': { git: 'planted by the F2.1 rot drill; this file does not exist.' },\n",
     expect: 'which is not a prebuild entry point on disk',
+  },
+  /*
+   * CLOSE-OUT F2.4. Seven build-time scripts read git, and on the build log of
+   * ffded236 five of them degraded in five different sets of words for one fact.
+   * Two claimed a missing REMOTE on a host with no repository at all. They now
+   * share one sentence, and this drill is what stops the eighth writing a sixth:
+   * a git-declaring script that does not reach the shared module fails the gate.
+   */
+  {
+    name: 'a git-reading script stops sharing the one sentence and invents its own',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/no-ai-authorship.mjs',
+    find: "import { noGitLine } from './lib/git-availability.mjs'",
+    replace: "const noGitLine = (tag) => `${tag} something went wrong with git, probably`",
+    expect: 'declares a git need and never reaches',
   },
   /*
    * CLOSE-OUT F1.2, F1.3 AND F1.4. Four drills for one property: a machine that
