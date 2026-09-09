@@ -1729,7 +1729,7 @@ was unfinished, because a merge is finished when production serves it.
 | 4. Guard registered, blocking, proven red AND green | MET, two ways red. `scripts/guards/tolerant-guards-survive-the-upload.mjs` in `run-guards.mjs`, therefore blocking on prebuild. RED: the real regression restored exactly (the `existsSync` test that was on `7564b40`), and registry rot (a reviewed entry outliving its script). GREEN: six tolerant scripts run in a materialised upload, every one exiting 0. 137 of 137 drills fire correctly, up from 135 | `guard-RED-real-regression.txt`, `guard-RED-registry-rot.txt`, `guard-GREEN.txt` |
 | 5. DRIVEN | MET, and the driving is the point of this item. The Vercel upload was MATERIALISED on this laptop from `git ls-files` and the guard RUN inside it, reproducing the deployment's five faults byte for byte before a line was changed. Not a browser item: it has no user-facing surface, and the surface it protects is every deployment | `cause.txt`, and `scripts/guards/lib/vercel-upload.mjs` |
 | 6. FULL regression green after the item | MET. 334 files / 3,866 tests, 0 failed, 0 skipped; 137 of 137 drills; tsc 0; eslint 0; then the whole pre-push gate | `all-guards.txt` |
-| 7. Committed, Australian English, no trailers, pushed | MET as `ce97e543`. The `--no-verify` used reflexively on the first attempt was undone by re-committing through the hook | `git log` |
+| 7. Committed, Australian English, no trailers, pushed | COMMITTED as `6e61c65f`, NOT PUSHED. The `--no-verify` used reflexively on the first attempt was undone by re-committing through the hook, which is why the SHA is not the one that attempt produced. The push was REFUSED by the gate at the Lighthouse step: 13 of 14 steps passed and the machine benchmarked at 59% of the speed the floors were confirmed at, because the laptop is running on battery. No floor was lowered and `--no-verify` was not used on the push. See the section below | `git log`, and the gate output in this section |
 | 7b. Merged, main green, production serving it (C16.0) | SEE THE ROWS AT THE END OF THIS SECTION | |
 
 ### C16.1's question, which is the one that matters
@@ -1765,6 +1765,42 @@ Vercel can. Its first drill is this exact regression.
 clearing the inherited environment, and `no-inherited-git-env.mjs` went red on it.
 Fixed in the same pass. The guard was right, and it is the guard that exists
 because a fixture once wrote `core.bare=true` into the shared worktree config.
+
+### The gate blocked the push, and the reason is the machine, not the tree
+
+13 of 14 steps PASS: disk, typecheck, lint, copy, critical-path,
+lighthouse-exemptions, guards, types-drift, production-parity, fixture, suite,
+build, indexing. Lighthouse FAILED after 2,034 seconds and nothing was pushed.
+
+The gate named its own instrument: `Machine calibration: DEGRADED. BenchmarkIndex
+median 1908 (979 to 2705), 71% of the 2700 the floors were confirmed at`. Two URLs
+missed narrowly, the homepage at 0.82 against 0.88 and /pricing at 0.88 against
+0.91.
+
+| Question | Answer | How it was established |
+|---|---|---|
+| Is the machine busy? | No. 11% load across 12 logical processors, no stray Chrome, no node | `Get-Process` CPU deltas over 5 seconds |
+| Is it slow anyway? | Yes. BenchmarkIndex median 1238 | `node scripts/perf/machine-speed.mjs` |
+| Why? | It is on BATTERY | `PowerLineStatus: Offline`, `Discharging: True`, 93% remaining, from two independent APIs that agree |
+| Can that be fixed from here? | Partly. The Windows power mode overlay set to Best Performance moved it 1238 to 1586, stable over two measurements | `powercfg /overlaysetactive`, then re-measured |
+| Could this commit have made a page slower? | No. `git diff --name-only 7564b40b HEAD` is ten files, every one under `scripts/` or `tests/`; not one byte of `src/`, `public/`, `next.config.ts` or `package.json`. The page inputs are byte-identical to `7564b40`, which cleared this same gate at a calibrated speed | the diff |
+
+FOUNDER STEP, Law 10, the IMPOSSIBLE class: a machine cannot plug in a power
+cable. Put the laptop on mains power and the push resumes with one command. One
+reversible machine change was made and is recorded: the power mode overlay, back
+with `powercfg /overlaysetactive 0`.
+
+### Production health while the push waits
+
+| Check | State |
+|---|---|
+| origin/main CI | success at `b3f9a56e` |
+| post-deploy smoke on main | success, twice |
+| newest production deployment | `dpl_HX4Ua96M6kqnxjXykrLnhJVZ8DT1` READY, commit IS origin/main |
+| www.eventlinqs.com.au | 200, serving `sentry-release=b3f9a56e...` |
+
+So C16.0's halt condition is NOT triggered. The only thing in ERROR is the preview
+of `7564b40` on the pull request branch, which is the defect this commit fixes.
 
 ### What is NOT claimed
 
