@@ -178,6 +178,11 @@
  *                              for other people. The list is derived from the manifest,
  *                              never retyped, and a bypass removes the report rather than
  *                              reporting a problem (close-out F1.4)
+ *   build-host-needs-declared  every prebuild entry point declares which of the three
+ *                              things the build host lacks it needs - docs, git, a token -
+ *                              read out of the import graph rather than listed, and fails
+ *                              both ways: an undeclared use, and a declaration the code no
+ *                              longer backs (close-out F2.1)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -951,6 +956,13 @@ const GUARDS = [
   // bypass on every Vercel STORE; this reads the process environment the build
   // actually has, so an inline one is caught as well as a stored one.
   'scripts/guards/no-build-guard-bypass.mjs',
+
+  // Close-out F2.1. The generalisation of five lost deployments: the build host
+  // is not a developer machine, and every build-time script says which of docs,
+  // git and a token it needs. Registered LAST on purpose - it reads the source
+  // of every other guard in this list, so running it after them means a guard
+  // added in the same pass is already on disk to be read.
+  'scripts/guards/build-host-needs-declared.mjs',
 ]
 
 /**

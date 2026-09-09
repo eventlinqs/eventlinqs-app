@@ -28,17 +28,36 @@
  * WHAT IT DOES NOT CHECK, said plainly rather than implied:
  *   - It does not judge whether a script's OUTPUT is right in the upload, only
  *     that the script does not FAIL there. That is the claim being tested.
- *   - It reproduces the upload from `git ls-files`, which is what Vercel clones.
- *     An untracked file a script depends on would not be seen here and would not
- *     be on Vercel either, so that is fidelity rather than a gap.
+ *   - It reproduces the upload by WALKING THE FILESYSTEM and applying every
+ *     .gitignore governing the tree, so it needs no git and works in a shallow
+ *     clone, a worktree or an unzipped directory (close-out F2.2). Where the
+ *     index IS readable it is used as a correction, because being force-added is
+ *     a fact only the index holds and 16 shipped rasters under public/ are
+ *     force-added. Both deltas are printed rather than folded away.
  *
  * VERCEL=1 IS SET IN THE CHILD ENVIRONMENT, deliberately. The tree the child runs
  * in IS the Vercel upload, so a script asking "am I on the build host" must get
  * the same answer it would get there. Without it, a script that distinguishes a
  * STRIPPED file from a DELETED one would be tested in a state that exists nowhere.
  *
- * WHERE IT DOES NOT RUN. On the Vercel build host itself, where there is nothing
- * to simulate and no git to enumerate from. It skips by name there.
+ * WHERE IT DOES NOT RUN: ON VERCEL, BY SCOPE, NEVER AS A SIDE EFFECT.
+ *
+ * Close-out F2.2: "Its purpose is to predict what Vercel will see. Running it on
+ * Vercel is circular: the thing it simulates is the thing it is running inside."
+ *
+ * It used to stand aside there for a DIFFERENT reason - it could not find a git
+ * repository - and that is an accident, not a decision. The accident broke: the
+ * predicate was `existsSync('.git')`, .vercelignore names `.git`, Vercel strips
+ * the FILES and leaves the DIRECTORY, so the guard believed it was on a laptop,
+ * called git, threw, and killed the preview build of ffded236. Now that the
+ * enumeration no longer needs git at all, that accident would have SILENTLY
+ * REVERSED: the guard would have started running on Vercel, simulating Vercel,
+ * inside Vercel.
+ *
+ * So the test is the build scope, from the shared resolver, and it is a decision:
+ * this guard is a real gate on the pre-push gate and in CI, where the whole tree
+ * exists and the comparison is possible, and it does not execute on the build
+ * host at all.
  *
  * Drilled both ways in scripts/verify/guard-failure-drills.mjs.
  *
@@ -51,7 +70,9 @@ import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
 import { entriesThatReadThroughTheIgnore, excludedTopLevels } from './lib/build-time-scripts.mjs'
 import { readVercelIgnore } from './lib/vercelignore.mjs'
-import { isGitCheckout, materialiseVercelUpload, removeUpload } from './lib/vercel-upload.mjs'
+import { filesForUpload, materialiseVercelUpload, removeUpload } from './lib/vercel-upload.mjs'
+import { describeBuildScope, resolveBuildScope } from '../../src/lib/health/build-scope.mjs'
+import { DECLARED } from './lib/build-host-needs.mjs'
 
 const ROOT = process.cwd()
 const TAG = '[excluded-reads-survive-the-upload]'
@@ -63,29 +84,50 @@ const fail = (m) => {
 }
 
 /*
- * ONE FACT, AND IT IS THE RIGHT ONE. This guard's whole method is to enumerate
- * the tracked files with git and rebuild the tree from them, so the only
- * question that decides whether it can run is whether git can work here. Nothing
- * about docs/ enters into it.
+ * ONE QUESTION, AND IT IS A DECISION RATHER THAN AN ACCIDENT: WHICH MACHINE IS
+ * THIS? Close-out F2.2.
  *
- * The first version of this test asked TWO questions, the second of which was
- * whether an excluded docs/ directory held no file, and the preview build of
- * ffded236 died on it: `isGitCheckout` was `existsSync('.git')`, `.vercelignore`
- * names `.git`, and Vercel strips the FILES inside a matched directory and leaves
- * the DIRECTORY. So `.git` was present and empty, the guard believed it was on a
- * developer machine, called `git ls-files`, and got "fatal: not a git repository".
- * The predicate is fixed in lib/vercel-upload.mjs and this test is now the single
- * fact it always should have been.
+ * The previous test asked whether git worked here, which stood aside on Vercel
+ * only because Vercel happens to have no usable repository. That is a side
+ * effect, and the whole of F2.2 is that this guard must not run on Vercel FOR A
+ * REASON: it exists to predict what the build host will see, and running it
+ * there means simulating a tree from inside that tree. Now that the enumeration
+ * needs no git, the old test would have quietly started saying yes.
  */
-if (!isGitCheckout(ROOT)) {
+const scope = resolveBuildScope(process.env)
+console.log(`${TAG} ${describeBuildScope(process.env)}`)
+if (scope.scope === 'vercel') {
   console.log(
-    `${TAG} SKIP - this tree is not a git checkout, so it is already the stripped upload: there is nothing to simulate and no git to enumerate from.`,
+    `${TAG} SKIP - this IS the build host. Simulating the upload from inside the upload is circular: ` +
+      `the tree it would materialise is the tree it is already running in.`,
   )
-  console.log(`${TAG}   This guard is a real gate on the pre-push gate and in CI, where the whole tree is present.`)
+  console.log(
+    `${TAG}   This guard is a real gate on the pre-push gate and in CI, where the whole tree exists and the comparison is possible.`,
+  )
   process.exit(0)
 }
 
-const subjects = entriesThatReadThroughTheIgnore(ROOT, excludedTopLevels(readVercelIgnore(ROOT).rules))
+/*
+ * THE SUBJECTS: EVERY SCRIPT THAT DECLARES A BUILD-HOST NEED, NOT ONLY THE ONES
+ * THAT NAME A STRIPPED PATH.
+ *
+ * Close-out F2.1 made every build-time script declare which of docs, git and a
+ * token it needs. This is what makes that declaration cost something instead of
+ * being bookkeeping: a script that declares ANY of the three is RUN here, on a
+ * tree with no docs, no usable git and no token, and must exit 0. The docs-literal
+ * scan stays as well, so a script that reads a stripped path without declaring it
+ * is still executed rather than slipping through on a missing declaration.
+ */
+const byLiteral = entriesThatReadThroughTheIgnore(ROOT, excludedTopLevels(readVercelIgnore(ROOT).rules))
+const byDeclaration = Object.entries(DECLARED).map(([entry, needs]) => ({
+  entry,
+  because: `declares ${Object.keys(needs).sort().join(' and ')} (close-out F2.1)`,
+}))
+const subjects = [...byLiteral]
+for (const d of byDeclaration) {
+  if (!subjects.some((s) => s.entry === d.entry)) subjects.push(d)
+}
+subjects.sort((a, b) => a.entry.localeCompare(b.entry))
 let dest = ''
 /** @type {{ kept: number, stripped: number, directories: number, ignoreErrors: string[] }} */
 let shape = { kept: 0, stripped: 0, directories: 0, ignoreErrors: [] }
@@ -93,9 +135,20 @@ const results = []
 
 try {
   dest = mkdtempSync(join(tmpdir(), 'vercel-upload-'))
-  shape = materialiseVercelUpload({ root: ROOT, dest })
+  const enumerated = filesForUpload(ROOT)
+  shape = materialiseVercelUpload({ root: ROOT, dest, files: enumerated.files })
   for (const e of shape.ignoreErrors) fail(`.vercelignore ${e}`)
 
+  console.log(`${TAG} enumerated ${enumerated.files.length} file(s) from ${enumerated.source}.`)
+  if (enumerated.addedByIndex.length > 0 || enumerated.droppedAsUntracked.length > 0) {
+    // PRINTED, NEVER FOLDED AWAY. The walk alone cannot see a force-added file,
+    // and 16 of those are shipped rasters under public/. Saying how far the two
+    // disagreed is the only way that limit stays visible.
+    console.log(
+      `${TAG}   the index corrected the walk by ${enumerated.addedByIndex.length} force-added file(s) it cannot see, ` +
+        `and ${enumerated.droppedAsUntracked.length} untracked file(s) Vercel would not clone.`,
+    )
+  }
   console.log(
     `${TAG} materialised the upload at a temporary root: ${shape.kept} file(s) kept, ${shape.stripped} stripped, ${shape.directories} directories left standing.`,
   )
@@ -152,5 +205,7 @@ if (faults.length > 0) {
   process.exit(1)
 }
 console.log(
-  `${TAG} PASS - ${results.length} prebuild entry point(s) that read through .vercelignore, run in a materialised Vercel upload, every one exiting 0. The subject list is derived from the import graph, not reviewed.`,
+  `${TAG} PASS - ${results.length} prebuild entry point(s) that read through .vercelignore or declare a build-host need, ` +
+    `run in a materialised Vercel upload, every one exiting 0. The subject list is derived from the import graph and the ` +
+    `needs registry, never reviewed.`,
 )

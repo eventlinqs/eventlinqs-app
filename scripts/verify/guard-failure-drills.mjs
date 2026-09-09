@@ -1851,6 +1851,59 @@ const DRILLS = [
     expect: "it threw: Error: planted by the F2.3 drill, restored in the finally",
   },
   /*
+   * CLOSE-OUT F2.1, FIVE DRILLS. "Prove it by adding an undeclared dependency
+   * and watching the gate go red before a push."
+   *
+   * One per capability the build host lacks, because the five lost deployments
+   * were four of one kind and one of another, and the fourth safeguard could
+   * only see the first kind. Then two more for the registry rotting, which is
+   * how a declaration stops being true without anybody editing it: a claim the
+   * code no longer backs, and a claim about a script that no longer exists.
+   *
+   * The subject is a real registered guard rather than a scratch file, because
+   * the scan walks the prebuild entry points and a scratch file is not one.
+   */
+  {
+    name: 'a build-time script starts calling git and does not declare it',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace: "const ROOT = process.cwd()\nconst _drill = () => execFileSync('git', ['status'])",
+    expect: 'uses git and does not declare it',
+  },
+  {
+    name: 'a build-time script starts reading a stripped path and does not declare it',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace: "const ROOT = process.cwd()\nconst _drill = 'docs/verification/LAUNCH-READINESS.md'",
+    expect: 'uses docs and does not declare it',
+  },
+  {
+    name: 'a build-time script starts reading a token and does not declare it',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace: 'const ROOT = process.cwd()\nconst _drill = process.env.VERCEL_TOKEN',
+    expect: 'uses token and does not declare it',
+  },
+  {
+    name: 'the needs registry declares a dependence the code no longer has',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/lib/build-host-needs.mjs',
+    find: "  'scripts/check-pricing-lock.mjs': {\n",
+    replace: "  'scripts/check-pricing-lock.mjs': {\n    git: 'planted by the F2.1 rot drill; nothing in that script calls git.',\n",
+    expect: 'declares git and its code no longer uses it',
+  },
+  {
+    name: 'the needs registry outlives the script it describes',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/lib/build-host-needs.mjs',
+    find: 'export const DECLARED = {\n',
+    replace: "export const DECLARED = {\n  'scripts/guards/renamed-away.mjs': { git: 'planted by the F2.1 rot drill; this file does not exist.' },\n",
+    expect: 'which is not a prebuild entry point on disk',
+  },
+  /*
    * CLOSE-OUT F1.2, F1.3 AND F1.4. Four drills for one property: a machine that
    * builds for other people judges what Vercel judges, and cannot excuse itself.
    */
@@ -1917,6 +1970,28 @@ const DRILLS = [
       VERCEL_ORG_ID: 'team_yPo8T18zSl5VczJfWIIrNqly',
     },
     expectPass: 'NOT JUDGED [http-',
+  },
+  /*
+   * CLOSE-OUT F2.2, BOTH DIRECTIONS. "Prove both: it runs and judges in CI, and
+   * it does not execute on Vercel."
+   *
+   * The guard predicts what the build host will see. Running it ON the build
+   * host is circular, and it used to stand aside there only because Vercel
+   * happens to have no usable git - an accident, not a decision. Removing the
+   * git dependence would have silently reversed that accident, so the skip is
+   * now keyed on the build scope and both halves are drilled.
+   */
+  {
+    name: 'the upload simulation runs on the build host, simulating the tree it is inside',
+    guard: `${GUARDS}/excluded-reads-survive-the-upload.mjs`,
+    env: { VERCEL: '1', VERCEL_ENV: 'preview' },
+    expectPass: 'SKIP - this IS the build host',
+  },
+  {
+    name: 'the upload simulation stands aside in CI, where it is a real gate',
+    guard: `${GUARDS}/excluded-reads-survive-the-upload.mjs`,
+    env: { GITHUB_ACTIONS: 'true' },
+    expectPass: 'scope=ci (decided by GITHUB_ACTIONS)',
   },
 ]
 
