@@ -22,6 +22,7 @@ import { OrganiserProfileHero } from '@/components/features/organisers/organiser
 import { EventVideo } from '@/components/features/events/event-video'
 import { StructuredRequestButton } from '@/components/marketplace/structured-request-button'
 import { getCityPhoto } from '@/lib/images/city-photo'
+import { stripMarkdown } from '@/lib/prose/markdown-subset'
 
 export const revalidate = 300
 
@@ -49,7 +50,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${artist.name} | Artists | EventLinqs`,
     description:
-      artist.bio?.slice(0, 155) ?? `${artist.name} on EventLinqs: upcoming shows and tickets.`,
+      stripMarkdown(artist.bio).slice(0, 155) ||
+      `${artist.name} on EventLinqs: upcoming shows and tickets.`,
     alternates: { canonical: `/artists/${artist.slug}` },
   }
 }
@@ -125,8 +127,9 @@ export default async function ArtistProfilePage({ params }: Props) {
   const typeLine = showcase?.performance_types.length
     ? showcase.performance_types.map((t) => PERFORMANCE_TYPE_LABELS[t]).join(' · ')
     : null
+  // A hero subtitle is a plain-text slot, not a prose block (UX1.1).
   const subtitle =
-    artist.bio ??
+    stripMarkdown(artist.bio) ||
     (typeLine
       ? `${typeLine} on EventLinqs.`
       : `${artist.name} on EventLinqs: their shows, their lineups, and tickets in one place.`)

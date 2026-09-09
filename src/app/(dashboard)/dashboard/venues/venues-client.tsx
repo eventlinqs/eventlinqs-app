@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createVenue, updateVenue, deleteVenue, type VenueInput, type VenueRow } from './actions'
+import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 
 interface Venue {
   id: string
@@ -354,7 +355,7 @@ export function VenuesClient({ venues: initialVenues }: Props) {
                   <div className="min-w-0">
                     <h3 className="text-base font-semibold text-ink-900 truncate">{venue.name}</h3>
                     <p className="text-sm text-ink-400 mt-0.5">
-                      {[venue.city, venue.state, venue.country].filter(Boolean).join(', ')}
+                      {formatVenueAddress({ name: venue.name, city: venue.city, state: venue.state, country: venue.country })}
                       {venue.capacity ? ` · Capacity: ${venue.capacity.toLocaleString('en-AU')}` : ''}
                     </p>
                     {venue.description && (

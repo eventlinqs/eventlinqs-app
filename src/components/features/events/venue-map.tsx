@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { getGoogleMapsLoader, GOOGLE_MAPS_MAP_ID } from '@/lib/maps/google-maps-loader'
 import { createBrandPin } from '@/lib/maps/brand-pin'
+import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 
 interface Props {
   venueName: string | null
@@ -79,7 +80,9 @@ export function VenueMap({
   const mapsLink = hasCoords
     ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsLinkQuery)}`
-  const fullAddress = [address, city, state, country].filter(Boolean).join(', ')
+  // UX1.2: one formatter composes every venue address on the platform, so a
+  // city typed into the address field is not printed twice beside the map.
+  const fullAddress = formatVenueAddress({ name: venueName, address, city, state, country }) ?? ''
 
   useEffect(() => {
     if (!hasLocation) return

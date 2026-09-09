@@ -183,6 +183,13 @@
  *                              read out of the import graph rather than listed, and fails
  *                              both ways: an undeclared use, and a declaration the code no
  *                              longer backs (close-out F2.1)
+ *   one-venue-address-format  every venue address is composed by one formatter, because
+ *                              two call sites each adding the venue name printed it twice
+ *                              on the first real organiser event (close-out UX1.2)
+ *   organiser-prose-one-rule  organiser and artist prose reaches a screen through
+ *                              OrganiserProse or stripMarkdown and never raw, because
+ *                              the first real outside organiser's bio shipped to
+ *                              production reading **MKL Studios** (close-out UX1.1)
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -736,6 +743,13 @@ const GUARDS = [
   // on a variant nothing used, and a launch readiness audit found it by reading.
   // Translucency without a filter stays legal, so this only fails on an APPLIED
   // filter, never on a /95 badge, a comment, or an inert transition property list.
+  // UX1.1: the first real outside organiser published on production and their
+  // bio rendered its asterisks. One rule now, two doors, and this fails the
+  // build on a third. Drilled red against the exact line that shipped.
+  // UX1.2: the composition rule for a venue address lived nowhere, so it was
+  // reinvented per call site and two of them each added the name. Drilled red.
+  'scripts/guards/one-venue-address-format.mjs',
+  'scripts/guards/organiser-prose-one-rule.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
   // organiser form, stored on the anon-readable events row, and shown to nobody.

@@ -81,6 +81,7 @@ function renderBackground(
         videoSrc={priority ? media.videoSrc : undefined}
         kenBurns={priority && media.kenBurns}
         priority={priority}
+        objectPosition={media.objectPosition}
       />
       <div
         className="absolute inset-0"

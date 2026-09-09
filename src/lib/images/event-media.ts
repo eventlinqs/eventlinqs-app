@@ -1,4 +1,5 @@
 import { getCategoryPhoto } from './category-photo'
+import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
 
 // M6+: add in-app curated image library for organisers. Until then, branded
 // placeholder is the only fallback in tile contexts - no Pexels stock.
@@ -153,6 +154,54 @@ export interface HeroBackgroundMedia {
   videoSrc?: string
   /** When true, ken-burns scale runs on the post-LCP ambient layer. */
   kenBurns?: boolean
+  /**
+   * The crop anchor for this raster, when it must differ from the HeroMedia
+   * default. Set for organiser-supplied covers only. See
+   * ORGANISER_COVER_OBJECT_POSITION.
+   */
+  objectPosition?: string
+}
+
+/**
+ * THE CROP ANCHOR FOR AN ORGANISER'S OWN COVER IMAGE (close-out UX1.4).
+ *
+ * HeroMedia defaults to `50% 30%`, biased upward, and that value is right for
+ * what it was tuned on: PHOTOGRAPHS of crowds, where a centred crop lops off
+ * the top row of heads.
+ *
+ * An organiser's cover is not that kind of image. It is usually a POSTER, it is
+ * usually portrait, and the event name is at the TOP of it, because that is
+ * where every poster in history puts it. Dropped into a wide, short hero box,
+ * `cover` crops vertically, and any anchor above 0% eats the title first. On
+ * 9 September 2026 the homepage hero cut the top off the first real outside
+ * organiser's poster for exactly this reason.
+ *
+ * `50% 0%` is not a taste decision and not a tuned guess. It is the only value
+ * that GUARANTEES the top edge of the supplied image survives the crop, which
+ * is what "respect a safe area" means when the safe area is the top. What it
+ * gives up is the bottom of the image, which on a poster is the venue and date
+ * block - information the page states in text directly beside the hero.
+ *
+ * Law 6 applies here: we RENDER what the organiser supplies. Choosing a crop
+ * that destroys their headline is not rendering it faithfully.
+ */
+export const ORGANISER_COVER_OBJECT_POSITION = '50% 0%'
+
+/**
+ * A COMPOSED cover is the platform's own typographic fallback (Law 6's answer
+ * to an organiser with no artwork), not something the organiser supplied. It
+ * carries the event title as its artwork, laid out for the frame it was
+ * rendered at, so the top-anchor above is exactly wrong for it: anchoring a
+ * composition to the top pushes its own headline up behind the page's headline.
+ *
+ * Found by LOOKING at the 390 capture during the UX1 proof rather than by
+ * reading the assertion, which was green. FeaturedHero already knew this
+ * distinction and kept it to itself; it lives here now so the event page,
+ * which never had it, inherits the same answer. That is the same one-source
+ * lesson UX1.2 is about.
+ */
+export function isComposedCover(url: string | null | undefined): boolean {
+  return typeof url === 'string' && url.includes(`/${GENERATED_COVER_PREFIX}/`)
 }
 
 const HERO_RASTER_DIR = '/images/hero'
@@ -228,11 +277,15 @@ export async function getFeaturedHeroBackground(
   if (isRealCover(event.cover_image_url)) {
     const image = event.cover_image_url
 
+    // The top anchor is for artwork the ORGANISER supplied. A composed cover is
+    // ours, laid out for this frame, and keeps HeroMedia's default.
+    const objectPosition = isComposedCover(image) ? undefined : ORGANISER_COVER_OBJECT_POSITION
+
     if (event.video_url) {
-      return { image, alt, videoSrc: event.video_url }
+      return { image, alt, videoSrc: event.video_url, objectPosition }
     }
 
-    return { image, alt, kenBurns: true }
+    return { image, alt, kenBurns: true, objectPosition }
   }
 
   // Priority 2: pre-generated category raster (fast LCP, no remote fetch).

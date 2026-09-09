@@ -47,6 +47,7 @@ import type {
   FeePassType,
   VenueGeocodeSource,
 } from '@/types/database'
+import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -2078,7 +2079,7 @@ export function EventForm({
             {formData.venue_name && <p className="text-sm text-ink-600">{formData.venue_name}</p>}
             {formData.venue_city && (
               <p className="text-xs text-ink-400">
-                {[formData.venue_city, formData.venue_state, formData.venue_country].filter(Boolean).join(', ')}
+                {formatVenueAddress({ city: formData.venue_city, state: formData.venue_state, country: formData.venue_country })}
               </p>
             )}
           </div>

@@ -25,6 +25,7 @@ import { venueSlugify } from '@/lib/venues/resolver'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { stripMarkdown } from '@/lib/prose/markdown-subset'
 
 export const revalidate = 300
 
@@ -155,8 +156,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const baseUrl = getSiteUrl()
   const title = `${organisation.name} - Events & Profile - EventLinqs`
-  const description = (organisation.description
-    ? organisation.description.slice(0, 155)
+  // A meta description is a PLAIN-TEXT surface: strip the syntax so a bold
+  // organiser name never reaches a search result as asterisks (UX1.1).
+  const description = (stripMarkdown(organisation.description)
+    ? stripMarkdown(organisation.description).slice(0, 155)
     : `${organisation.name} on EventLinqs. Browse upcoming events, follow new releases, and stay connected.`)
     .slice(0, 155)
 

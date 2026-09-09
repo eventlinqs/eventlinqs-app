@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import type { AuthResponse } from '@supabase/supabase-js'
 import { joinWaitlist } from '@/app/actions/waitlist'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
+import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 
 /**
  * EventSoldOut - full sold-out UX for an event detail page.
@@ -196,7 +197,7 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
     month: 'short',
     timeZone: 'UTC',
   })
-  const locationLabel = [event.venue_city, event.venue_country].filter(Boolean).join(', ') || null
+  const locationLabel = formatVenueAddress({ city: event.venue_city, country: event.venue_country })
   const priceLabel =
     event.from_price_cents != null && event.currency
       ? event.from_price_cents === 0

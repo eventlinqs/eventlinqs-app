@@ -1112,8 +1112,8 @@ const ROOT = join(HERE, '..', '..')
  * point is required to reach the shared availability module. Both would go quiet
  * rather than red if somebody deleted them, which is what this canary is for.
  */
-const MIN_FILES = 341
-const MIN_TESTS = 3981
+const MIN_FILES = 345
+const MIN_TESTS = 4040
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

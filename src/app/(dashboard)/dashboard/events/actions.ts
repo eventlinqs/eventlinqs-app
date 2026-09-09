@@ -29,6 +29,7 @@ import { actionRateLimit } from '@/lib/rate-limit/action'
 import { readStreamLink, writeStreamLink } from '@/lib/stream/link'
 import { livestreamNeedsLink, coerceAccessMode, STREAM_LINK_REQUIRED_MESSAGE } from '@/lib/stream/publish-rule'
 import { normaliseCountryCodes } from '@/lib/stream/countries'
+import { normaliseTags } from '@/lib/events/normalise-tags'
 
 // Resolve the organiser media fields from a create/update input into the columns
 // the events table stores. Validates the video URL against the provider allowlist
@@ -315,7 +316,10 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
       summary: input.summary || null,
       description: input.description || null,
       category_id: input.category_id || null,
-      tags: input.tags,
+      // UX1.3: normalised HERE, at the boundary a form cannot bypass. The
+      // form's own Set compared exactly, so #African and #african both
+      // reached production on the first real outside organiser event.
+      tags: normaliseTags(input.tags),
       start_date: input.start_date,
       end_date: input.end_date,
       timezone: input.timezone,
@@ -620,7 +624,10 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       summary: input.summary || null,
       description: input.description || null,
       category_id: input.category_id || null,
-      tags: input.tags,
+      // UX1.3: normalised HERE, at the boundary a form cannot bypass. The
+      // form's own Set compared exactly, so #African and #african both
+      // reached production on the first real outside organiser event.
+      tags: normaliseTags(input.tags),
       start_date: input.start_date,
       end_date: input.end_date,
       timezone: input.timezone,

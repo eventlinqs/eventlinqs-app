@@ -11,6 +11,7 @@ import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
 import { formatMoney } from '@/lib/money/format'
 import { formatSeatLabel } from '@/lib/seating/format'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
+import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 
 // ---------------------------------------------------------------------------
 // Order confirmation email (shared by the paid Stripe webhook and the free /
@@ -145,7 +146,7 @@ function formatEventDateShort(event: EmailEvent): string {
 function venueLines(event: EmailEvent): string[] {
   const lines: string[] = []
   if (event.venue_name) lines.push(event.venue_name)
-  const locality = [event.venue_city, event.venue_country].filter(Boolean).join(', ')
+  const locality = formatVenueAddress({ city: event.venue_city, country: event.venue_country }) ?? ''
   if (locality) lines.push(locality)
   return lines
 }

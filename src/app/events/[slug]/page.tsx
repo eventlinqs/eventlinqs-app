@@ -79,10 +79,13 @@ import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { venueSlugify } from '@/lib/venues/resolver'
+import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 import { isVideoProvider } from '@/lib/media/video-embed'
 import { describeCountries } from '@/lib/stream/countries'
 
 import { getSiteUrl } from '@/lib/site-url'
+import { stripMarkdown } from '@/lib/prose/markdown-subset'
+import { OrganiserProse } from '@/components/ui/organiser-prose'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
 // from Postgres). Personalisation that previously made this dynamic
@@ -694,9 +697,17 @@ export default async function EventDetailPage({ params }: Props) {
   const priceLabel = cheapestPrice(priceTiersForDisplay)
   const shortDate = formatShortDate(event.start_date, event.timezone)
   const venueLabelShort = [event.venue_name, event.venue_city].filter(Boolean).join(' · ') || null
-  const fullAddress = [event.venue_name, event.venue_address, event.venue_city, event.venue_state, event.venue_country]
-    .filter(Boolean)
-    .join(', ')
+  // UX1.2: this used to lead with `event.venue_name` and KnowBeforeYouGo then
+  // prepended the name AGAIN, which is how production read
+  // "Quakers Centre, Quakers Centre, 484 William Street, ...". The composition
+  // rule now lives in one formatter and the name appears exactly once.
+  const fullAddress = formatVenueWithAddress({
+    name: event.venue_name,
+    address: event.venue_address,
+    city: event.venue_city,
+    state: event.venue_state,
+    country: event.venue_country,
+  }) ?? ''
 
   const tierInventoryEntries = await Promise.all(
     enrichedAllTiers.map(async t => [t.id, await getTierInventoryStatic(t.id)] as const),
@@ -847,6 +858,7 @@ export default async function EventDetailPage({ params }: Props) {
               alt={event.cover_image_alt || media.alt}
               videoSrc={media.videoSrc}
               kenBurns={media.kenBurns}
+              objectPosition={media.objectPosition}
             />
             <div
               className="absolute inset-0"
@@ -979,18 +991,24 @@ export default async function EventDetailPage({ params }: Props) {
                 {(event.summary || event.description) && (
                   <div>
                     <SectionHeader eyebrow="The details" title="About this event" />
-                    {event.summary && (
-                      <p className="mt-5 text-base leading-relaxed text-ink-600">{event.summary}</p>
+                    {/* The lede is a single line, so it takes the strip
+                        direction of the one prose rule (UX1.1). */}
+                    {stripMarkdown(event.summary) && (
+                      <p className="mt-5 text-base leading-relaxed text-ink-600">
+                        {stripMarkdown(event.summary)}
+                      </p>
                     )}
-                    {event.description && (
-                      // Organiser description is free-text from a plain textarea, not
-                      // sanitised HTML. Render it as escaped text (React-escaped) with
-                      // line breaks preserved, never via dangerouslySetInnerHTML, so an
-                      // organiser cannot inject stored XSS into the public event page.
-                      <div className="type-measure mt-5 text-pretty whitespace-pre-line text-base leading-relaxed text-ink-600">
-                        {event.description}
-                      </div>
-                    )}
+                    {/* Organiser description is free-text from a plain textarea, not
+                        sanitised HTML. It renders through OrganiserProse, which emits
+                        REACT NODES and never an HTML string, so there is still no
+                        dangerouslySetInnerHTML on this path and an organiser still
+                        cannot inject stored XSS into the public event page. What
+                        changed (UX1.1) is that the markdown people type by reflex now
+                        renders as formatting instead of showing its asterisks. */}
+                    <OrganiserProse
+                      text={event.description}
+                      className="type-measure mt-5 space-y-4 text-pretty text-base leading-relaxed text-ink-600"
+                    />
                   </div>
                 )}
 
@@ -1144,8 +1162,15 @@ export default async function EventDetailPage({ params }: Props) {
                         {event.organisation.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        {event.organisation.description && (
-                          <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
+                        {/* A three-line clamped teaser is a PLAIN-TEXT surface,
+                            so it takes the strip direction of the one prose
+                            rule (UX1.1). Rendering blocks here would defeat the
+                            clamp, and leaving the text raw is what put
+                            `**MKL Studios**` on production. */}
+                        {stripMarkdown(event.organisation.description) && (
+                          <p className="text-sm text-ink-600 line-clamp-3">
+                            {stripMarkdown(event.organisation.description)}
+                          </p>
                         )}
                       </div>
                       {/* Demand-graph follow: their next event lands in the

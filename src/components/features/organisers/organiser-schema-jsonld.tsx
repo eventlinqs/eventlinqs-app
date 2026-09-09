@@ -13,6 +13,8 @@
  * picking a wrong sub-type per organiser.
  */
 
+import { stripMarkdown } from '@/lib/prose/markdown-subset'
+
 interface UpcomingEventLite {
   slug: string
   title: string
@@ -85,7 +87,9 @@ export function OrganiserSchemaJsonLd({ organisation, upcomingEvents, baseUrl }:
     '@type': 'Organization',
     name: organisation.name,
     url: profileUrl,
-    description: organisation.description ?? undefined,
+    // Structured data is machine-read plain text. Markdown syntax in a
+    // Schema.org description is syntax a search engine shows verbatim.
+    description: stripMarkdown(organisation.description) || undefined,
     logo: organisation.logo_url ?? undefined,
     image: organisation.logo_url ?? undefined,
     // email and telephone are deliberately absent. Founder ruling 2026-08-08:
