@@ -11,7 +11,7 @@ import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
 import { formatMoney } from '@/lib/money/format'
 import { formatSeatLabel } from '@/lib/seating/format'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
-import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 
 // ---------------------------------------------------------------------------
 // Order confirmation email (shared by the paid Stripe webhook and the free /

@@ -1113,7 +1113,7 @@ const ROOT = join(HERE, '..', '..')
  * rather than red if somebody deleted them, which is what this canary is for.
  */
 const MIN_FILES = 345
-const MIN_TESTS = 4040
+const MIN_TESTS = 4042
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

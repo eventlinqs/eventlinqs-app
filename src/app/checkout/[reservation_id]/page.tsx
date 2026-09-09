@@ -9,7 +9,7 @@ import { getGuestSessionId } from '@/lib/auth/guest-session'
 import { CheckoutTrustSignals } from '@/components/features/checkout/CheckoutTrustSignals'
 import { Button } from '@/components/ui/Button'
 import type { FeePassType, TicketTier, EventAddon } from '@/types/database'
-import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 
 type Props = {
   params: Promise<{ reservation_id: string }>

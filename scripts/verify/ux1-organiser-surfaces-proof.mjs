@@ -213,7 +213,6 @@ for (const vp of VIEWPORTS) {
   const res = await g.goto(`${BASE}/events/${slug}`, { waitUntil: 'networkidle', timeout: 90000 })
   check(`${vp.label}-event-200`, res?.status() === 200, `GET /events/${slug} -> ${res?.status()}`)
   await g.waitForTimeout(1200)
-  const html = await g.content()
   const text = await g.locator('body').innerText()
 
   // UX1.1 - no raw markdown anywhere a reader can see it.

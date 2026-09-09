@@ -47,7 +47,7 @@ import type {
   FeePassType,
   VenueGeocodeSource,
 } from '@/types/database'
-import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

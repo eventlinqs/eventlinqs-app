@@ -18,7 +18,7 @@ import { getRefundPanelState } from '@/lib/refunds/panel-state'
 import { verifyOrderAccessToken } from '@/lib/orders/order-access'
 import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
 import { describeRefundPolicy, policyFromEvent } from '@/lib/refunds/policy'
-import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 
 export const runtime = 'nodejs'
 

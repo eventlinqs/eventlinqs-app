@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createVenue, updateVenue, deleteVenue, type VenueInput, type VenueRow } from './actions'
-import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 
 interface Venue {
   id: string

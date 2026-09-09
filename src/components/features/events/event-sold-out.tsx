@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import type { AuthResponse } from '@supabase/supabase-js'
 import { joinWaitlist } from '@/app/actions/waitlist'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
-import { formatVenueAddress, formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 
 /**
  * EventSoldOut - full sold-out UX for an event detail page.
