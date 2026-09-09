@@ -987,8 +987,11 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 )}
 
-                {/* About */}
-                {(event.summary || event.description) && (
+                {/* About. Tested against the STRIPPED text, not the raw column:
+                    a description of nothing but markdown punctuation is truthy
+                    and renders nothing, which would leave the heading standing
+                    over an empty block (UX1.1). */}
+                {(stripMarkdown(event.summary) || stripMarkdown(event.description)) && (
                   <div>
                     <SectionHeader eyebrow="The details" title="About this event" />
                     {/* The lede is a single line, so it takes the strip
