@@ -31,7 +31,10 @@ export const ALERT_CLASSES = {
   outage: {
     prefix: 'EventLinqs OUTAGE: ',
     secondChannel: 'always',
-    meaning: 'Something a visitor can see is broken right now.',
+    // True of all THREE outage causes. It read 'something a visitor can see is
+    // broken' until the main-red alert was driven and the body underneath it
+    // said, correctly, that production was still serving the last deployment.
+    meaning: 'The live site, or the road between the code and the live site, is broken right now.',
   },
   stall: {
     prefix: 'EventLinqs BUILD STALLED: ',
