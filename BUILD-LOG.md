@@ -9994,3 +9994,63 @@ does, `npm run gate:push -- --only guards`, and all 107 pass. Verified by runnin
 it, not assumed.
 
 Commit `375355a1`. DISK at end: 21.4 GB free.
+
+### The self-audit, and the housekeeping it caught me excusing
+
+`docs/roast/session-63-launch-readiness-2026-09-11.md`, commit `9e2577f7`.
+29 requirements adjudicated. NOT MET 0, PARTIAL 0, BLOCKED 6.
+
+**The silent drop it found.** The housekeeping rule fires "every time an item
+closes". No CLOSE-OUT item closed this session, so the trigger never fired and the
+first draft of the report did not mention housekeeping at all. That is exactly the
+reasoning that lets a requirement disappear: a rule read narrowly enough to excuse
+itself. The same brief says C1 to C10 and the F items are historical and closed,
+and their whole bodies were still in CLOSE-OUT.md against a stated purpose of
+keeping that file short enough to keep reading.
+
+**Done, with the ranges verified before anything was cut.** Four blocks moved to
+CLOSE-OUT-DONE.md: C1 to C7, C9 and C10, F1, and F2. Each range was checked
+against its expected first line and the script REFUSED to cut unless all four
+matched. CLOSE-OUT.md 2340 lines to 2009; CLOSE-OUT-DONE.md 46 to 406.
+
+**Proved nothing was lost.** All 1,767 non-blank lines of the original file are
+present in one of the two files afterwards; 0 missing. Nothing was lost from
+CLOSE-OUT-DONE.md either.
+
+**Every cited commit hash verified to exist**, rather than copied out of the
+ledger and trusted: `4587489f` (C1), `6e61c65f` (F1), `1a8d7c95`, `de4330ca`,
+`13718bb4` (F2). Each subject line matches the item it is cited for. Where no
+commit is recorded, the stub says so plainly and points at the ledger section
+instead of carrying an invented hash.
+
+**C8 was deliberately NOT moved.** The owner decision of 7 September 2026 took it
+off the launch gate and put it in the L4 post-launch queue as a ratchet. Deferred
+is not done, and a DONE stub over it would have been a false claim. All three of
+its sections stay.
+
+### Two pieces of interpretation drift, recorded rather than smoothed over
+
+1. The COMPLETION LAW asks for driven proof at 390, 768 and 1440. The
+   launch-readiness item has no rendered surface, so the registry drill going red
+   and then green is offered in its place. Said out loud so the founder can
+   disagree with the substitution, rather than the requirement being reworded.
+2. Real effort went into UX2.2b trying to make a map render locally, after its own
+   recorded verdict already read IMPOSSIBLE for an agent. Drift toward a more
+   interesting problem. Stopped, and it left one fact worth keeping.
+
+### The fact UX2.2b left behind
+
+Driven in a real Chromium at 390 against a local server, with both keys read out
+of `.env.local`:
+
+    BROWSER KEY  gm_authFailure fired: true   tiles loaded: false   RefererNotAllowedMapError
+    SERVER  KEY  gm_authFailure fired: true   tiles loaded: false   RefererNotAllowedMapError
+
+The ledger recorded the blocker as the BROWSER key's referrer allowlist. The
+server key is refused identically, so there is no second key to fall back on and
+the blocker is broader than what was written down. The probe also independently
+confirms session 62's fix mechanism: `gm_authFailure` really does fire on a
+refused key, which is what makes the designed fallback plate possible.
+
+Guards re-run with the new document present: 107 of 107 PASS, copy gate PASS.
+Commits `375355a1` and `9e2577f7`. DISK at end: 22 GB free.

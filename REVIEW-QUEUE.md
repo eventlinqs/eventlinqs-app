@@ -3893,3 +3893,46 @@ I re-checked the other route out of it rather than repeating what the notes said
 the Stripe test key on this machine still answers "expired" to Stripe itself. So
 `stripe login` is still the alternative, and the key is still not something I can
 mint.
+
+### The tidy-up, and the rule I nearly talked myself out of
+
+Your housekeeping rule says to file an item away "every time an item closes".
+Nothing closed today, so strictly the rule never fired, and my first draft of this
+report did not mention it at all. That is the shape of how a requirement goes
+missing: read a rule narrowly enough and it excuses itself.
+
+Your brief also says, in the same breath, that C1 to C10 and the F items are
+history. Their full text was still sitting in CLOSE-OUT.md, which is the file you
+asked to be kept short enough to keep reading. So it is filed now.
+
+CLOSE-OUT.md is down from 2,340 lines to 2,009. Nothing was deleted. I checked
+that every single non-blank line of the old file is still present in one of the
+two files, and it is: 1,767 of 1,767. Each item leaves a line behind saying where
+its body went.
+
+I left **C8 alone on purpose.** It is the mobile speed work, and your decision of
+7 September moved it to the post-launch queue rather than finishing it. Deferred
+is not done, and stamping DONE on it would have been a small lie in a file you
+rely on.
+
+One more thing on the same theme: where the old records did not name a commit, I
+wrote "no commit hash is recorded for it" rather than putting in a plausible one.
+Every hash that does appear I checked exists and matches the right piece of work.
+
+### One thing worth knowing about the maps
+
+While checking something else I drove both Google keys in a real browser. The map
+key is restricted to the live site, which we knew. The **other** key, the server
+one, is refused in exactly the same way. So there is no spare key to test maps
+with locally, and nobody working on this can see a map on their own machine until
+localhost is added in the Google console, which only you can do.
+
+That is not urgent and it does not affect the live site, where maps work. It is
+worth knowing because it means map changes cannot be eyeballed locally by anyone,
+and that will keep costing time quietly.
+
+### The one command, unchanged
+
+Twenty-three commits waiting. Every check passes except the one that needs you:
+
+    npm run migrate:production

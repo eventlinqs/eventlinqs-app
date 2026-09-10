@@ -3419,3 +3419,46 @@ not counted. Bypassing with `--no-verify` was available and was not used.
 rather than trusting the note in CLOSE-OUT: `GET /v1/balance` with the CLI's
 stored test key answers **401**. The outstanding legs of UX6, D1 and D2 are
 therefore still genuinely blocked and still not mine to close.
+
+### SESSION 63 SELF-AUDIT, and the housekeeping row it caught
+
+`docs/roast/session-63-launch-readiness-2026-09-11.md`, commit `9e2577f7`.
+29 requirements adjudicated: NOT MET 0, PARTIAL 0, BLOCKED 6, unresolved
+adversarial findings 0.
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| HOUSEKEEPING: fully-MET CLOSE-OUT items moved out, one line left behind | **NOT MET when drafted, then MET** | Four blocks moved: C1 to C7, C9 and C10, F1, F2. CLOSE-OUT.md 2340 to 2009 lines; CLOSE-OUT-DONE.md 46 to 406. All 1,767 non-blank lines of the original present afterwards, 0 missing, and 0 lost from CLOSE-OUT-DONE.md |
+| The move cannot cut the wrong lines | **MET** | The script verifies all four ranges against their expected first line and REFUSES to cut unless every one matches. It printed "all four ranges verified" before touching anything |
+| A stub may not carry an invented commit hash | **MET** | Every cited hash checked with `git cat-file -t` and its subject read back: `4587489f` C1, `6e61c65f` F1, `1a8d7c95` `de4330ca` `13718bb4` F2. Where the ledger records no commit, the stub says so and points at the ledger section |
+| C8 must not be marked done | **MET** | Deliberately not moved. The owner decision of 7 September 2026 put it in the L4 post-launch ratchet, so it is deferred rather than done, and a DONE stub over it would have been a false claim |
+
+### THE BLOCKER ON UX2.2b IS BROADER THAN THIS LEDGER RECORDED
+
+The UX2 ledger above records UX2.2b as blocked by the BROWSER key's referrer
+allowlist. Driven today in a real Chromium at 390, against a local server, with
+both keys read out of `.env.local` rather than typed:
+
+    BROWSER KEY   gm_authFailure: true   tiles: false   RefererNotAllowedMapError
+    SERVER  KEY   gm_authFailure: true   tiles: false   RefererNotAllowedMapError
+
+The server key is refused identically. There is no second key to fall back on, so
+the recorded consequence ("no local proof on this platform can ever display a
+map") holds for BOTH keys and not just one. The Law 10 verdict is unchanged and
+still IMPOSSIBLE for an agent: it is a Google Cloud console setting and no
+credential for it exists here.
+
+The same probe independently confirms the mechanism session 62 built on:
+`gm_authFailure` does fire on a refused key, which is what lets the designed
+fallback plate replace Google's own developer panel.
+
+### THE TWO PIECES OF INTERPRETATION DRIFT, NAMED
+
+1. **The COMPLETION LAW's three widths.** The launch-readiness item has no
+   rendered surface, being a build-time adjudication and a markdown artefact. The
+   registry drill going red and then green is offered in place of a capture. This
+   is a SUBSTITUTION and it is stated as one; the founder can reject it. A
+   screenshot of a markdown file would have been evidence theatre.
+2. **UX2.2b.** Effort went into it after its own verdict already read IMPOSSIBLE.
+   That is drift toward the more interesting problem, it was stopped, and the one
+   fact it produced is recorded above rather than used to justify the detour.
