@@ -1297,9 +1297,21 @@ const ROOT = join(HERE, '..', '..')
  * four map surfaces share - the hook is installed, installed only once, never
  * overwrites somebody else's, flips the flag, tells every subscriber, survives a
  * surface mounting AFTER the refusal, and unsubscribes cleanly.
+ *
+ * And 375/4516 for the launch readiness report, which for two days told the
+ * owner that production was "one migration behind this tree" while NINE were
+ * pending. The number was prose in the adjudication, and the guard that judges
+ * the report re-renders that same prose from the same constant it compares the
+ * file against, so it agreed with itself on every run. No file changed on the
+ * day the sentence stopped being true, which is exactly how a version pin rots
+ * (Law 9). The six tests hold the clause that now refuses it: the exact sentence
+ * that shipped, a digit count as well as a spelled one, a count hidden in a row
+ * rather than in a need, the fault naming where it was written, the shipped
+ * adjudication staying green, and the negative case that keeps the clause alive
+ * by proving an UNCOUNTED mention of migrations still stands.
  */
 const MIN_FILES = 375
-const MIN_TESTS = 4510
+const MIN_TESTS = 4516
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

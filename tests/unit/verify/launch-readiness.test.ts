@@ -274,3 +274,66 @@ describe('the reviewed owner-need list cannot rot', () => {
     expect(faults).toEqual([])
   })
 })
+
+/**
+ * THE REPORT MAY NOT COUNT HOW FAR PRODUCTION IS BEHIND.
+ *
+ * These exist because the report DID. It shipped "production is one migration
+ * behind this tree" on 9 September 2026 and still said it on 11 September with
+ * nine pending, and nothing could notice: the guard re-renders the sentence from
+ * the same constant it compares the file against, so it agreed with itself every
+ * time it ran. The count is a live fact about a database this render has no
+ * token for, which makes it a memory rather than a measurement.
+ *
+ * The last test is the one that keeps the clause alive. A guard that fires on
+ * every mention of a migration gets switched off inside a week, so the narrowing
+ * is proved to hold rather than asserted.
+ */
+describe('the adjudication cannot state how far production is behind', () => {
+  const need = (text: string) =>
+    judgeLaunchReadiness({
+      items: ITEMS,
+      evidenceExists: always,
+      ownerNeeds: { ...OWNER_NEEDS, 'release-on-production': text },
+    }).faults.join('\n')
+
+  it('refuses the exact sentence that went stale for two days', () => {
+    expect(
+      need(
+        'Apply the pending migration with `npm run migrate:production`, because production is one migration behind this tree and until it lands the fixed release cannot reach production, so a read of the live screens reads the old code.',
+      ),
+    ).toContain('which counts how far production is behind this tree')
+  })
+
+  it('refuses a digit count just as readily as a spelled one', () => {
+    expect(need('Apply the 9 migrations that are pending on production, because the release cannot land without them.')).toContain(
+      'which counts how far production is behind this tree',
+    )
+  })
+
+  it('names where the count was written, so the fault points at the sentence', () => {
+    expect(need('Production is three migrations behind and the release cannot land.')).toContain(
+      'the owner need "release-on-production"',
+    )
+  })
+
+  it('refuses a count written into a row rather than a need', () => {
+    const items = ITEMS.map((i) =>
+      i.n === L1_ITEM_COUNT ? { ...i, drivenElsewhere: `${i.drivenElsewhere} Production is 9 migrations behind.` } : i,
+    )
+    const { faults } = judgeLaunchReadiness({ items, evidenceExists: always })
+    expect(faults.join('\n')).toContain(`item ${L1_ITEM_COUNT} drivenElsewhere`)
+  })
+
+  it('leaves the shipped adjudication green, which is the state it is in now', () => {
+    expect(judgeLaunchReadiness({ items: ITEMS, evidenceExists: always }).faults).toEqual([])
+  })
+
+  it('lets an UNCOUNTED mention of migrations stand, which is what the report has to be able to say', () => {
+    expect(
+      need(
+        'Apply the pending migrations with `npm run migrate:production`, because production stays behind this tree until they land and a read of the live screens reads the old code until it does.',
+      ),
+    ).toBe('')
+  })
+})

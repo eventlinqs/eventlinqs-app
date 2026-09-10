@@ -70,7 +70,7 @@ export const EVIDENCE_DIR = 'docs/verification/launch-readiness'
  * rendered markdown is byte-stable, which is what lets the guard compare the file
  * on disk against a fresh render and call any difference a fault.
  */
-export const GENERATED = '2026-09-09'
+export const GENERATED = '2026-09-11'
 
 export const STATES = ['PASS', 'OWNER BLOCKED', 'FAIL']
 
@@ -108,7 +108,7 @@ export const OWNER_NEEDS = {
   'real-card':
     'Approval to put one real card through a low-price live event and refund it, because it is real money on the live Stripe account and no other path proves the buyer journey end to end.',
   'release-on-production':
-    'Apply the pending migration with `npm run migrate:production`, because production is one migration behind this tree and until it lands the fixed release cannot reach production, so a read of the live screens reads the old code.',
+    'Apply the pending migrations with `npm run migrate:production`, because production stays behind this tree until they land, the fixed release cannot reach production before they do, and a read of the live screens reads the old code until it does.',
 }
 
 /**
@@ -293,7 +293,7 @@ export const ITEMS = [
     state: 'OWNER BLOCKED',
     needs: 'release-on-production',
     drivenElsewhere:
-      'Read at 390, 768 and 1440 on a local production build of this tree, which is how the composed-cover crop defect was found while its own assertion was green (close-out UX1.4). It cannot be read on PRODUCTION as this release yet, because production is one migration behind and still serves the code that carries the six defects.',
+      'Read at 390, 768 and 1440 on a local production build of this tree by scripts/verify/launch-screens-read.mjs, which resolves the event slug from the database rather than typing one, and which is how the Google Maps developer panel on the event page was found (close-out UX2.5, 11 September 2026). It cannot be read on PRODUCTION as this release yet, because the pending migrations have not landed and production still serves the code the owner read those defects on.',
   },
 ]
 
@@ -393,6 +393,47 @@ export function judgeLaunchReadiness({ items, evidenceExists, ownerNeeds = OWNER
       faults.push(
         `the owner need "${key}" is declared and no row cites it. ` +
           'Delete it: a reviewed list that can hold something nothing points at is a list that stops being read.',
+      )
+    }
+  }
+
+  /*
+   * NO SENTENCE HERE MAY COUNT HOW FAR PRODUCTION IS BEHIND.
+   *
+   * This render runs on a laptop, in CI and on the Vercel build host, and not
+   * one of them can read what production has applied without a token the guard
+   * does not hold. So a sentence naming a number of migrations is not a
+   * measurement, it is the memory of one, and it goes stale the moment the tree
+   * gains a migration with nothing anywhere able to notice.
+   *
+   * IT ALREADY DID, which is why this is a clause and not a convention. The
+   * report shipped "production is one migration behind this tree" on 9 September
+   * 2026 and still said it on 11 September with NINE pending, because the guard
+   * re-renders the sentence from the same constant it compares against and
+   * therefore agrees with itself no matter how wrong it is. The file above
+   * already learned this lesson once for the count of owner approvals, which is
+   * derived from the rows for exactly this reason, and missed it here.
+   *
+   * The production-parity step of `npm run gate:push` reads the real number and
+   * names every pending file. It is the only thing entitled to state one.
+   */
+  const QUANTIFIED_MIGRATIONS =
+    /\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\s+migrations?\b/i
+  const prose = [
+    ...Object.entries(ownerNeeds).map(([key, text]) => [`the owner need "${key}"`, text]),
+    ...(items ?? []).flatMap((i) => [
+      [`item ${i.n} requirement`, i.requirement],
+      [`item ${i.n} note`, i.note],
+      [`item ${i.n} drivenElsewhere`, i.drivenElsewhere],
+    ]),
+  ]
+  for (const [where, text] of prose) {
+    const hit = String(text ?? '').match(QUANTIFIED_MIGRATIONS)
+    if (hit) {
+      faults.push(
+        `${where} says "${hit[0]}", which counts how far production is behind this tree. ` +
+          'This render cannot read production, so the number is a memory rather than a measurement and it goes stale in silence. ' +
+          'State the condition, not the count, and leave the count to the production-parity step, which reads it.',
       )
     }
   }
