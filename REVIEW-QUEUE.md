@@ -3535,3 +3535,133 @@ start that until I know whether the QR is the whole of UX5 or the beginning of i
 WHAT I NEED FROM YOU: one line on what UX5 is. If it is just "you cannot scan the
 2FA setup", it is already written and I will drive it at 390, 768 and 1440 and
 commit it. If it is more than that, tell me and I will build the rest with it.
+
+---
+
+## 11 September 2026, session 62. The gate still will not let anything out, and it is the same one command
+
+**FIRST, THE THING THAT NEEDS YOU, because it has now been the answer three
+sessions running and it is holding a deadline.**
+
+There are now EIGHTEEN commits on `verify/l5-launch-readiness` that have never
+reached GitHub. I ran the full push gate on them as the first action of this
+session, rather than assuming the previous session's note was still true.
+Fourteen of its fifteen steps pass. The fifteenth refuses:
+
+    production-parity FAIL: production is BEHIND this tree by 9 migration(s)
+
+That is the gate doing exactly what it was built to do. Applying a migration to
+production is yours, by your ruling of 26 August, and it will not let a tree
+reach main that production could not then serve.
+
+    npm run migrate:production
+
+It lists the nine files, asks you to type the production ref back, hands over to
+the Supabase CLI's own prompts, proves the result and leaves the CLI resting on
+TEST. Add `-- --dry-run` to see the list without applying anything.
+
+**What that one command releases.** Not just the eighteen commits. It is also
+the last outstanding leg of THREE finished items, because the push it allows
+builds a git preview that carries the Stripe TEST key:
+
+  - UX6, the mobile checkout, which carries your 24 September deadline and
+    blocks all paid advertising for the 10 October event
+  - D1, the slot ledger, which needs its production tables before the
+    Afro-Fusion order can join its own curve
+  - D2, the recovery engine, whose refund half is Stripe's
+
+`stripe login` would clear the Stripe half on its own, without the migrations.
+
+I re-checked the Stripe position today against Stripe's own API rather than
+trusting the note, because a stale blocker is worse than no blocker. Both keys
+in the CLI config answer `api_key_expired`, and `STRIPE_SECRET_KEY` in the local
+env file is empty. So the payment step genuinely cannot run on this machine, and
+it is not for want of looking.
+
+---
+
+## UX5 is built, driven and committed, and I still do not know if it was all of UX5
+
+You listed the 2FA enrolment page as item four. It is not in CLOSE-OUT.md or any
+other file here, and the last session asked what its scope was and did not get an
+answer. Rather than stop on that, I did the part that is a defect under EVERY
+reading of it, and the scope question is still open below.
+
+**What was wrong.** The page told every new administrator, in its own words:
+
+    "Open your authenticator and scan the QR code from your password manager"
+
+and drew no QR code. Its header comment said so deliberately, reasoning that
+copy and paste works on every modern app. That is only true if you are enrolling
+on the same machine you are reading the page on. An authenticator lives on a
+PHONE. So what that sentence actually asked of you was to type a 32 character
+secret off a laptop screen into a handset, on the one screen where a typo locks
+you out of the admin console.
+
+Nothing we have could have caught it. The route sweep reads status codes and that
+page answers 200. No test was wrong about a function. Only a person reading the
+sentence next to the empty space finds this, which is exactly the point you made
+in UX2.5.
+
+**What it does now.** It draws the QR, server-side, the same way the door ticket
+already does. The secret and the URI stay on the page underneath, because
+somebody whose authenticator has no camera must never be left with only a
+picture.
+
+**And it is proven by reading it, not by photographing it.** A screenshot of a QR
+proves a picture exists. It does not prove a phone can read it, and it does not
+prove that what the phone reads is the secret the server is about to check. So
+the drive rasterises the QR exactly as the browser paints it, decodes it the way
+a camera would, checks the result is the URI printed below it character for
+character, then computes a real 6-digit code from what it decoded and types it
+into the actual form. It is accepted at 390, 768 and 1440. 74 of 74 checks, and
+zero accessibility problems at any severity.
+
+### Two more things turned up by driving it, both fixed
+
+**1. Every recovery code we have ever issued was missing a third of itself.**
+The codes are meant to read `abcd-efg-hij`. They were actually coming out as
+`oafj-don-3`: the last group was a single character, because the generator asked
+for five bytes of randomness and the encoding of five bytes is eight characters,
+not the ten it was slicing for. Three places described this format and no two
+agreed: the code did one thing, its own comment claimed another, and the login
+box showed you a third. All three had been wrong since it was written.
+
+It now issues the shape the login box has always advertised, and it is a stronger
+code for it. Codes already handed out still work.
+
+While I was there I drove the promise that screen makes: "each code works once".
+Nobody had ever tested it, and it is the entire way back in if you lose your
+phone. It works, and the same code is correctly refused the second time.
+
+**2. A pale strip across the bottom of every admin page on a phone.** I noticed
+it on the screenshot and then measured it: 64 pixels of light background sitting
+under the dark console. The cause was nowhere near the admin console. The site
+reserves 64 pixels at the bottom of every page for the mobile tab bar, and that
+bar is deliberately hidden on ten sections, including admin, the organiser
+dashboard and checkout, none of which has the footer that fills that gap
+everywhere else. So the platform was holding space open for a bar it never draws.
+Now it reserves it only where the bar is.
+
+**One thing worth telling you about how that was fixed**, because it is the kind
+of thing that quietly does not happen. My first fix was a single CSS rule. I
+wrote it, built it, and drove it, and the measurement still said 64 pixels. The
+stylesheet the build produced did not contain the rule at all: the build had
+thrown it away without a word. If the measurement had not been in the harness, I
+would have committed that as a fix, it would have looked like a fix, and it would
+have fixed nothing.
+
+### What I still need from you on UX5
+
+One line. If UX5 was "you cannot scan the 2FA setup", it is done. If it was
+bigger, say what it is and I will build the rest. The readings I can see that
+would change what I do next are: a redesign of that screen, recovery codes as a
+separate feature, or moving 2FA onto the ORGANISER account rather than only the
+admin console.
+
+### A decision waiting from last session, still waiting
+
+The recovery messages are on by default for every event, which is what D2 asks
+for, and an organiser can switch them off per event. The setting exists and
+defaults to on, but nobody has put a toggle on the organiser's own screen yet.
+Say the word and it becomes one.

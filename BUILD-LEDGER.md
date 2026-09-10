@@ -2950,3 +2950,132 @@ a drive that unsubscribed somebody on every run, manufactured a 15.7 percent
 unsubscribe rate against its own sends, and read its own footprint as four product
 failures; the sequence is now exercised at a stated healthy rate and the CUT is
 proved separately against the real numbers.
+
+---
+
+## UX5. THE TWO-FACTOR ENROLMENT PAGE. 11 September 2026.
+
+Not an item in CLOSE-OUT.md. It was named as item four in the run brief with no
+body, and session 61 asked what its scope was and got no answer. The reading
+taken here is the one that is true under EVERY reading, and it is stated as an
+assumption rather than smuggled in: the page had a defect on its face, that
+defect is fixed and driven, and the scope question is asked again in
+REVIEW-QUEUE.md rather than answered by guessing.
+
+THE DEFECT, in the page's own words. `/admin/enrol-2fa` told every new
+administrator "Open your authenticator and scan the QR code from your password
+manager" and drew no QR code. Its header comment said so out loud: "QR rendering
+is intentionally not in A1 - copy and paste into the authenticator works on every
+modern app." That is only true of somebody enrolling on the same machine they are
+reading it on. An authenticator lives on a PHONE. What the instruction actually
+asked for was a person typing a 32 character base32 secret off a laptop screen
+into a handset, on the one screen where a typo locks them out of the admin
+console.
+
+Nothing on this platform could have seen it. A route sweep reads status codes and
+that page answered 200. No unit test was wrong about a function. Only a person
+reading the sentence next to the empty space could catch it, and people are what
+a launch runs out of.
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| The page draws what it tells you to scan | **MET** | Server-rendered inline SVG through `qrcode`, the same shape `/t/[code]` already uses for the door ticket, so no raw `<img>` and no media exemption. A one-time secret is never routed through an optimiser or a CDN. |
+| The picture carries what the page prints | **MET, DECODED, NOT SCREENSHOTTED** | The QR is rasterised as painted and read back with jsQR, which is a camera's job done in software, at all three widths. `qr.matches-uri`: the decoded string is the otpauth URI printed below it, character for character. `qr.secret-matches`: the secret inside the QR is the secret printed beside it. |
+| The secret in the picture actually works | **MET** | A TOTP is computed from the DECODED payload by the harness's own RFC 6238 implementation, never the application's, and submitted to the real enrolment form. Accepted at 390, 768 and 1440. `enrol.persisted`: the `admin_users` row carries an encrypted secret and an enrolment timestamp, read back from TEST. |
+| A person who cannot scan is not left with only a picture | **MET** | The base32 secret and the otpauth URI both stay on the page, and a failed render is caught so the page still shows them. Held by clause 2 of the guard, drilled red both ways. |
+| The QR is big enough to scan | **MET** | Painted 222x222 CSS px at every width, against an asserted floor of 160. Pinned in the markup rather than left to the SVG: `qrcode` emits a viewBox and NO width or height, so an unsized SVG falls back to the CSS replaced-element default of 300x150 and the white plate sizes to that instead of to the symbol. |
+| No overflow at 390, 768, 1440 | **MET** | `scrollWidth` equals `innerWidth` at every width, on the enrolment screen and again on the recovery-codes screen. |
+| Accessibility | **MET** | axe 0 violations at EVERY impact level, not only serious and critical, at all three widths. |
+| The route refuses re-entry once enrolled | **MET** | An enrolled admin returning to `/admin/enrol-2fa` lands on `/admin`. |
+| Guard, proven to fail as well as pass | **MET** | `scripts/guards/scannable-instruction-has-a-qr.mjs`, registered in `run-guards.mjs`, blocking on prebuild. Three clauses, six drills, all behaving. |
+| Tests | **MET** | 2 new files plus 8 tests on an existing one. Suite 371/4464 to 373/4499, 0 failed, 0 skipped; canary baseline raised with the reason written on it. |
+| Driven proof at 390, 768, 1440 | **MET** | 74 of 74 checks. `C:\dev\EVIDENCE\UX5\` |
+
+### THE GUARD, AND THE FALSE POSITIVE THAT SHAPED IT
+
+`scannable-instruction-has-a-qr` fails the build when a surface tells a person to
+scan a code and draws none, when the enrolment page stops printing either typed
+fallback, or when the QR is built from anything other than the same expression
+the page prints. That last clause is the one worth having: a QR that encodes
+something OTHER than the URI beside it is worse than no QR, because it silently
+enrols the wrong secret and the person finds out when they are locked out.
+
+Its first draft failed the build on `src/lib/help-content.ts`, which answers "One
+person can scan multiple QR codes from the same phone". That is a statement of
+fact about the door, not an instruction to point a camera at a help article, and
+a guard that fires on it gets switched off within a week. The narrowing is that
+an auxiliary or a modal in front of the verb makes it descriptive, and nothing in
+front makes it an order addressed to the reader, which is exactly what shipped.
+The drill file carries a NEGATIVE case asserting that descriptive prose STAYS
+green, so the narrowing is proved to hold rather than asserted.
+
+### TWO MORE DEFECTS FOUND BY DRIVING IT, BOTH FIXED IN THE ITEM
+
+**1. Every recovery code the platform ever issued was missing a third of itself.**
+`formatRecoveryCode` was called with `randomBytes(5)`. Base32 of five bytes is
+EXACTLY eight characters, so `slice(7, 10)` returned ONE character and every code
+came out shaped like `oafj-don-3`. Meanwhile the function's own comment claimed
+"5 bytes -> 10 hex chars -> grouped 4-4-4", which is not hex, not ten and not
+4-4-4, and the admin login field advertised `abcd-efg-hij`. The system issued one
+shape, its comment claimed a second and the form promised a third, and all three
+had been wrong since the day it was written.
+
+Seven bytes encodes to twelve characters, so taking ten is a clean 4-3-3 with no
+stub group, and it lifts a recovery code from 40 bits of entropy to 50. Codes
+already issued keep working, because `verifyRecoveryCode` strips the hyphens and
+lowercases before comparing, so it never depended on the grouping. A test now
+reads the placeholder out of `login-form.tsx` and asserts it against the
+generator, because that placeholder is a literal in a CLIENT component which
+cannot import the module without pulling `node:crypto` into the browser bundle,
+and a test is the only thing that can see both halves at once.
+
+The page's other promise is driven now too, because it is the entire escape route
+from a locked admin console: a recovery code taken off the enrolment screen signs
+the admin in from a browser that has never seen this site, and the SAME code is
+refused the second time. `recovery.code-works-once`, both halves.
+
+**2. Sixty-four pixels of pale canvas under every admin page on a phone.** Read
+off the 390 capture by eye, then MEASURED rather than judged from a picture: the
+console's dark shell ended at 1217 and the document was 1281 tall, so a 64px band
+of `rgb(250,250,247)` sat across the bottom of a dark surface, which on a phone is
+the strip a thumb rests on.
+
+The cause was not in the admin console at all. `src/app/layout.tsx` reserved
+`MobileBottomNav`'s height with `pb-16 md:pb-0` on the wrapper around
+EVERYTHING, unconditionally, and that bar returns null on TEN route prefixes:
+/checkout, /dashboard, /admin, /login, /signup, /forgot-password, /queue, /squad,
+/orders and /verify-email-sent. Not one of those ten renders `SiteFooter`, which
+is the component that paints that strip everywhere else - it fixed this same 64px
+band on the public site with `-mb-16 pb-16`, and its own comment says so. So the
+platform held 64px open on ten prefixes for a bar that is never drawn, and the
+page background showed through it.
+
+Fixed at the cause rather than per shell. `MainContentFrame` reads the pathname
+and reserves the strip only where the bar exists, from the SAME prefix list the
+bar itself uses, now exported so there is one copy of the decision. The
+alternative was the footer's two classes repeated in seven shells and a bet that
+the eighth remembered.
+
+**AND THE FIX THAT SILENTLY DID NOT SHIP, which is the part worth recording.**
+The first attempt was CSS: `#main-content:not(:has(~ [data-mobile-bottom-nav]))`
+in `globals.css`. It was written, built and DRIVEN, and the drive still reported
+64px. The emitted stylesheet contained ZERO occurrences of `:has(`: the build
+discarded the rule entirely and said nothing about it. Had the measurement not
+been in the harness, that change would have been committed as a fix, reviewed as
+a fix, and fixed nothing. It is the reason the clearance now has both directions
+asserted in the drive and 27 tests behind it, because losing the reservation
+where the bar IS drawn would put the tab bar on top of the footer's last row,
+which is worse than the band it replaced.
+
+### THREE DEFECTS IN THE HARNESS, WHICH IS WHY THE EARLY RUNS WERE NOT EVIDENCE
+
+A recovery-code count read off every `ul li` on the page, which swept up the
+admin shell's own navigation and reported 14 codes at 390 and 4 at 1440 against
+10 on the row: a harness reading the furniture and accusing the product of losing
+codes it had stored correctly. An expectation that the mobile bar is ABSENT at
+1440, when it is in the DOM at every width and hidden by CSS above `md`, so
+presence and visibility are now asked separately. And a first run that reported
+the login refused at all three widths, which was neither the harness nor the
+product: the server log named `ADMIN_TOTP_ENC_KEY env var is not set`, a local
+environment gap, closed with the TEST-ONLY marker value that `.env.example`
+documents for exactly this.

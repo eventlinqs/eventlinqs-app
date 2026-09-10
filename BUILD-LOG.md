@@ -9647,3 +9647,76 @@ runs with every assertion met.
 `production-parity` refuses the push, as it did this morning and for the same
 reason: production is now EIGHT migrations behind, two of them this work's.
 Seventeen commits are waiting on one founder command.
+
+---
+
+## Session 62, 11 September 2026. UX5, the two-factor enrolment page.
+
+**First action, as briefed: the unpushed commits.** Seventeen on
+`verify/l5-launch-readiness`. The brief said they were left by a session that
+lost its connection; the gate says otherwise, and the gate was run rather than
+the note trusted. Fourteen of fifteen steps pass. `production-parity` refuses:
+production is BEHIND this tree by NINE migrations (eight last session, plus
+`20260910000004_recovery_holds` from D2). Nothing was pushed. `npm run
+migrate:production` is the founder's one command and it is unchanged.
+
+**Stripe re-checked rather than inherited.** Both keys in the Stripe CLI config
+were tested against Stripe's own `/v1/balance`: both answer HTTP 401
+`api_key_expired`. `STRIPE_SECRET_KEY` in `.env.local` is an empty string. So the
+payment leg of UX6, D1 and D2 genuinely cannot run here, confirmed today, not
+carried forward on a note.
+
+**Order of work.** UX6, D1 and D2 are each complete except for a leg that is the
+founder's to clear, so the first item in the priority list that this machine can
+actually finish is UX5. It is not in CLOSE-OUT.md and its scope was asked for
+last session and not answered, so the reading taken is the one true under every
+reading: the page carries a defect on its face. Stated as an assumption in
+REVIEW-QUEUE.md, and the scope question asked again rather than answered by
+guessing.
+
+### What shipped
+
+`4ecd0da0` The page that said "scan the QR code" and drew nothing, and the two
+things found behind it.
+
+- `src/app/admin/(authed)/enrol-2fa/page.tsx` renders the QR server-side through
+  `qrcode`, the shape `/t/[code]` already uses, sized deterministically because
+  the library emits a viewBox and no width or height.
+- `scripts/guards/scannable-instruction-has-a-qr.mjs`, registered and blocking.
+  Three clauses, six drills including a NEGATIVE one.
+- `scripts/verify/ux5-drive.mjs` + `ux5-enrol-2fa-proof.mjs`: the QR decoded with
+  jsQR at 390, 768, 1440; a TOTP computed independently from the decoded payload
+  and accepted by the real form; the row read back from TEST.
+- `src/lib/admin/totp.ts`: recovery codes issue at 4-3-3 and 50 bits instead of
+  4-3-1 and 40.
+- `src/components/layout/main-content-frame.tsx` + the exported prefix list on
+  `mobile-bottom-nav.tsx`: the mobile bar's 64px is reserved only where the bar
+  renders.
+
+### Numbers
+
+| | |
+|---|---|
+| Driven checks | 74 of 74 at 390, 768, 1440 |
+| axe | 0 violations at EVERY impact level, all three widths |
+| Guards | 106, all pass (105 before) |
+| Suite | 373 files / 4499 tests, 0 failed, 0 skipped (371 / 4464 before) |
+| Guard drills | 6, each behaving: 5 red-then-green, 1 stayed green as required |
+| Lighthouse mobile gate | PASS, 13 URLs, 65 runs |
+| indexing / checkout-viewport | PASS |
+| Gate steps green | 14 of 15; production-parity is the founder's |
+
+### Environment gap closed on this machine
+
+`ADMIN_TOTP_ENC_KEY` was empty in `.env.local`, so the enrolment page threw and
+the first drive reported the login refused at all three widths. The server log
+named it. Set to the TEST-ONLY marker value `.env.example` documents for exactly
+this purpose; not a code change and not committed, since `.env.local` is ignored.
+
+### The one worth remembering
+
+The 64px clearance fix was first written as a CSS `:not(:has(~ ...))` rule. It
+built clean and the drive still measured 64px. The emitted stylesheet contained
+ZERO occurrences of `:has(` - the build had discarded the rule silently. A fix
+that depends on the toolchain keeping a selector it is willing to throw away is
+not a fix, and only the measurement in the harness caught it.
