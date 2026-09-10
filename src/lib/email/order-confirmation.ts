@@ -61,6 +61,17 @@ type EmailOrder = {
   order_number: string
   total_cents: number
   currency: string
+  /*
+   * WHETHER THIS BUYER HAS AN ACCOUNT AT ALL (close-out UX6.4).
+   *
+   * The footer used to tell every buyer their tickets "are always at
+   * /tickets when you are signed in". Guest checkout creates no account, so
+   * for a guest that sentence names a page that redirects them to a login
+   * they cannot pass, and every buyer arriving from advertising is a guest.
+   * Null means guest, and the guest is pointed at their signed order link,
+   * which carries every ticket and needs no sign in.
+   */
+  user_id?: string | null
 }
 
 type EmailEvent = {
@@ -268,6 +279,31 @@ export async function sendConfirmationEmail(
   }
 }
 
+/*
+ * "LOST THIS EMAIL?", ANSWERED DIFFERENTLY FOR A GUEST (close-out UX6.4).
+ *
+ * A buyer with an account is sent to their wallet at /tickets, which is the
+ * right answer for them and only for them. A GUEST has no account and cannot
+ * make one for a purchase already made, so /tickets can only redirect them to a
+ * login. They are given the signed order link instead: it opens with no sign in,
+ * it carries every ticket on the order, and it is the same link the receipt line
+ * below already uses. Exported so tests/unit/email/guest-ticket-recovery.test.ts
+ * can assert both branches without sending mail.
+ */
+export function lostThisEmailHtml(order: EmailOrder, siteUrl: string, orderUrl: string): string {
+  if (order.user_id) {
+    return `Lost this email? Your tickets are always at <a href="${siteUrl}/tickets" style="color:#0A1628;">${canonicalHost()}/tickets</a> when you are signed in, or use a ticket link above.`
+  }
+  return `Lost this email? You bought as a guest, so no account is needed: <a href="${escapeHtml(orderUrl)}" style="color:#0A1628;">open your order</a> to see every ticket, or use a ticket link above.`
+}
+
+export function lostThisEmailText(order: EmailOrder, siteUrl: string, orderUrl: string): string {
+  if (order.user_id) {
+    return `Lost this email? Your tickets are always at ${siteUrl}/tickets when you are signed in, or use a ticket link above.`
+  }
+  return `Lost this email? You bought as a guest, so no account is needed. Open your order to see every ticket: ${orderUrl}`
+}
+
 export function buildConfirmationEmailHtml(
   order: EmailOrder,
   event: EmailEvent,
@@ -399,7 +435,7 @@ export function buildConfirmationEmailHtml(
   ${hr}
 
   <p style="margin:0 0 10px;color:#374151;font-size:14px;">Any questions, just reply to this email and a real person will help you.</p>
-  <p style="margin:0;color:#6B7280;font-size:13px;">Lost this email? Your tickets are always at <a href="${siteUrl}/tickets" style="color:#0A1628;">${canonicalHost()}/tickets</a> when you are signed in, or use a ticket link above.</p>
+  <p style="margin:0;color:#6B7280;font-size:13px;">${lostThisEmailHtml(order, siteUrl, orderUrl)}</p>
 
   ${hr}
 
@@ -487,9 +523,7 @@ export function buildConfirmationEmailText(
   lines.push(rule)
   lines.push('')
   lines.push('Any questions, just reply to this email and a real person will help you.')
-  lines.push(
-    `Lost this email? Your tickets are always at ${siteUrl}/tickets when you are signed in, or use a ticket link above.`
-  )
+  lines.push(lostThisEmailText(order, siteUrl, orderUrl))
   lines.push('')
   lines.push(rule)
   lines.push('')

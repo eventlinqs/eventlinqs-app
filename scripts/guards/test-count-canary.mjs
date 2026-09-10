@@ -1172,9 +1172,21 @@ const ROOT = join(HERE, '..', '..')
  * that test. Before this it had no rpc at all and the success path died with
  * "admin.rpc is not a function", which is how the regression announced itself:
  * 356 files / 4215, as the canary measured.
+ *
+ * 2026-09-10: raised 356/4215 -> 358/4237. Close-out UX6, the mobile checkout
+ * layout. tests/unit/checkout/viewport-fit-rule holds the rule that decides
+ * whether a buyer surface fits its viewport, including that its three exemptions
+ * stay conjunctive so `aria-hidden` cannot launder a real control past the
+ * check, and that `html, body { overflow-x: clip }` is still in globals.css,
+ * because that rule is the whole reason the box-level assertion exists.
+ * tests/unit/email/guest-ticket-recovery holds both branches of the sentence
+ * that used to send every guest buyer to a login they could not pass. Two more
+ * tests landed on viewport-fit-rule as the drive found what the rule could not
+ * yet see (a control PUSHED past the edge rather than parked there, and Tailwind
+ * v4's standalone `translate` property), taking it to 4239.
  */
-const MIN_FILES = 356
-const MIN_TESTS = 4215
+const MIN_FILES = 358
+const MIN_TESTS = 4239
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

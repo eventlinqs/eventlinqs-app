@@ -248,7 +248,7 @@ export function KitArtefacts({ code, canDownload = false }: { code: string | nul
             Each one built to the size that platform actually publishes, so
             nothing important gets cropped off.
           </p>
-          <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {CARDS.map(card => (
               <figure key={card.format} className="min-w-0">
                 <CardImage code={code} format={card.format} label={card.label} version={coverVersion} />
@@ -309,7 +309,7 @@ export function KitCaptions({ captions }: { captions: Caption[] }) {
           One for each place you post. Written for that channel, not the same
           words six times.
         </p>
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
           {captions.map(caption => (
             <CaptionCard key={caption.platform} caption={caption} />
           ))}

@@ -228,11 +228,32 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
           transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       >
+        {/*
+         * WHY THE CHROME SWITCHES AT lg AND THE SEARCH PILL AT xl (close-out
+         * UX6, measured 10 September 2026 on production as well as locally).
+         *
+         * The desktop header needs, and cannot shrink below:
+         *     logo 125 + nav 384 + account 311 + three 20px gaps = 880
+         * plus 48 to 64 of horizontal padding. Both the nav and the account
+         * group are `shrink-0`, and the search pill has a fixed width, so
+         * nothing in the row gives. At md (768) that row needed 1240 in a
+         * content box of 720, and the account group - the location picker,
+         * Sign in and Get Started - was laid out at a right edge of 1264, off
+         * the screen entirely. `overflow-x: clip` meant no scrollbar reached it.
+         * The same measurement on www.eventlinqs.com.au returned the same
+         * numbers at 768, 820, 900, 960, 1024 and 1100: on any window narrower
+         * than about 1272 a visitor could not sign in or sign up from the header.
+         *
+         * So the mobile chrome, which is a drawer and fits at any width, now
+         * runs up to lg (1024), where 880 fits inside 960. The search pill needs
+         * another 20 + its own width on top of that, so it appears at xl (1280),
+         * and it carries min-w-0 so it can never push the row again.
+         */}
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-5 px-4 sm:px-6 lg:px-8">
 
           <EventlinqsLogo asLink size="md" variant="inverted" />
 
-          <nav aria-label="Primary navigation" className="hidden md:flex items-center gap-6 shrink-0">
+          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-6 shrink-0">
             {NAV_LINKS.map(link => (
               <Link
                 key={link.href}
@@ -253,7 +274,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
            *  axe-recommended remedy for aria-hidden-focus violations. */}
           <div
             className={[
-              'hidden md:flex flex-1 justify-center',
+              'hidden xl:flex min-w-0 flex-1 justify-center',
               'transition-opacity duration-300 motion-reduce:transition-none',
               stateB ? 'opacity-100' : 'pointer-events-none opacity-0',
             ].join(' ')}
@@ -264,18 +285,18 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
             <HeaderSearchTrigger variant="desktop-pill" />
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto md:ml-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto xl:ml-0">
             {/* Mobile search icon - always visible */}
-            <div className="md:hidden">
+            <div className="xl:hidden">
               <HeaderSearchTrigger variant="mobile-icon" />
             </div>
 
-            <div className="hidden md:block">
+            <div className="hidden lg:block">
               <LocationPicker currentLocation={displayLocation} cities={cities} variant="onDark" />
             </div>
 
             {dropdownUser ? (
-              <div className="hidden md:flex items-center">
+              <div className="hidden lg:flex items-center">
                 <SiteHeaderAccountDropdown user={dropdownUser} size="header" isAdmin={isAdmin} />
               </div>
             ) : (
@@ -283,7 +304,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
                 <Link
                   href="/login"
                   prefetch={false}
-                  className="hidden md:inline-flex items-center h-11 px-3 text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
+                  className="hidden lg:inline-flex items-center h-11 px-3 text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
                 >
                   Sign in
                 </Link>
@@ -295,7 +316,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
 
             {/* Mobile avatar (authenticated only) - sits left of the hamburger so the nav drawer remains the canonical mobile-nav surface. */}
             {dropdownUser ? (
-              <div className="md:hidden">
+              <div className="lg:hidden">
                 <SiteHeaderAccountDropdown user={dropdownUser} size="header" isAdmin={isAdmin} />
               </div>
             ) : null}
@@ -308,7 +329,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
               aria-expanded={isOpen}
               aria-controls="mobile-nav-sheet"
               className={[
-                'md:hidden flex h-11 w-11 items-center justify-center rounded-lg',
+                'lg:hidden flex h-11 w-11 items-center justify-center rounded-lg',
                 'text-white/90 hover:bg-white/10 hover:text-[var(--brand-accent)] transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2',
                 'focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]',
@@ -338,7 +359,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
       {/* Mobile sheet backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-ink-900/60 md:hidden"
+          className="fixed inset-0 z-40 bg-ink-900/60 lg:hidden"
           aria-hidden="true"
           onClick={closeSheet}
         />
@@ -350,7 +371,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
           (its containing block is the viewport), so the panel is `absolute`
           inside this fixed inset-0 clip container instead. pointer-events-none on
           the wrapper lets backdrop clicks through; the panel re-enables them. */}
-      <div className="pointer-events-none fixed inset-0 z-50 overflow-x-clip md:hidden">
+      <div className="pointer-events-none fixed inset-0 z-50 overflow-x-clip lg:hidden">
       <div
         id="mobile-nav-sheet"
         ref={sheetRef}

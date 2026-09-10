@@ -34,7 +34,7 @@ export default function CheckoutErrorBoundary({ error, reset }: ErrorPageProps) 
           <Link
             href="/"
             aria-label="EventLinqs home"
-            className="font-display text-lg font-extrabold tracking-tight text-ink-900 hover:text-gold-600"
+            className="font-display text-lg font-extrabold tracking-tight text-ink-900 hover:text-gold-700"
           >
             EVENTLINQS<span aria-hidden className="text-gold-500">.</span>
           </Link>
@@ -77,7 +77,7 @@ export default function CheckoutErrorBoundary({ error, reset }: ErrorPageProps) 
             </button>
             <Link
               href="/account/tickets"
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-ink-200 bg-white px-6 text-sm font-semibold text-ink-900 transition hover:border-gold-500 hover:text-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-ink-200 bg-white px-6 text-sm font-semibold text-ink-900 transition hover:border-gold-500 hover:text-gold-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
             >
               My tickets
             </Link>

@@ -92,7 +92,7 @@ export default function PressPage() {
       />
 
       <ContentSection surface="base" width="default">
-        <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-16">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-16">
           <div>
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Company at a glance
@@ -182,7 +182,7 @@ export default function PressPage() {
             What journalists have asked us about.
           </h2>
         </div>
-        <ul className="mt-12 grid gap-8 md:grid-cols-2">
+        <ul className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-2">
           {STORYLINES.map(story => (
             <li
               key={story.title}
@@ -213,7 +213,7 @@ export default function PressPage() {
             within one business day.
           </p>
         </div>
-        <ul className="mt-12 grid gap-6 md:grid-cols-3">
+        <ul className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
           {ASSETS.map(asset => (
             <li
               key={asset.title}
@@ -236,7 +236,7 @@ export default function PressPage() {
       </ContentSection>
 
       <ContentSection surface="alt" width="default">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr] md:items-end">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:items-end">
           <div>
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Press contact

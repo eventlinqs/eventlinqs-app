@@ -364,7 +364,7 @@ export default async function EventViewPage({ params }: Props) {
       </nav>
 
       {/* ─── Overview tab body ──────────────────────────────────────────── */}
-      <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+      <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           <div className="rounded-xl border border-ink-100 bg-white p-6">
             <h2 className="text-base font-semibold text-ink-900">About this event</h2>

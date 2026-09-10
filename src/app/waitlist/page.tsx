@@ -122,7 +122,7 @@ export default async function WaitlistPage() {
 
       {/* ── 3. Organiser invitation band (image-rich, Law 4) ─────────────── */}
       <ContentSection surface="alt" width="wide" topBorder reveal>
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <div>
             <div className="relative aspect-[5/4] overflow-hidden rounded-2xl shadow-[0_24px_60px_-24px_rgba(10,22,40,0.35)] ring-1 ring-black/5">
               <MarketingMedia

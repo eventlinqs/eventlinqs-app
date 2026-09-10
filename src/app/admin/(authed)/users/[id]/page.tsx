@@ -76,7 +76,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         <AdminStatTile label="Last sign in" value={date(user.lastSignInAt)} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
           <h2 className="font-display text-lg font-semibold text-white">Identity</h2>
           <dl className="mt-4 space-y-2 text-sm">

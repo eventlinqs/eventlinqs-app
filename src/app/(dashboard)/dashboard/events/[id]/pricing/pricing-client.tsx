@@ -186,13 +186,13 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
 
           {/* Steps */}
           <div className="space-y-3 mb-4">
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium text-ink-400 px-1">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 text-xs font-medium text-ink-400 px-1">
               <span>Up to % sold</span>
               <span>Price ({tier.currency})</span>
               <span />
             </div>
             {steps.map((step, i) => (
-              <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center">
                 {/* Percent field - text input, digits only, clamped 1-100 on blur */}
                 <div className="relative">
                   <input

@@ -101,7 +101,7 @@ export default async function EditEventPage({ params }: Props) {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <EventForm
           userId={user.id}
           organisationId={event.organisation_id}

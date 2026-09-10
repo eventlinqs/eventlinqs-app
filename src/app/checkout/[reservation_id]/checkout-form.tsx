@@ -89,7 +89,11 @@ function PaymentForm({
   }
 
   return (
-    <div className="space-y-6">
+    /* min-w-0: this div is the grid ITEM on the payment step (Elements renders no
+       DOM of its own), and a grid item's default min-width:auto lets a wide child
+       - the Stripe payment iframe - push its own box past the track. The track is
+       floored by grid-cols-1; this floors the item inside it. Close-out UX6.1. */
+    <div className="min-w-0 space-y-6">
       <form method="post" onSubmit={handlePay} className="rounded-2xl border border-ink-200 bg-white p-6">
         <h3 className="text-base font-semibold text-ink-900 mb-4">Payment</h3>
         <PaymentElement options={{ layout: 'tabs' }} />
@@ -286,7 +290,7 @@ export function CheckoutForm({
         </nav>
 
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
             <Elements
               stripe={stripePromise}
               options={{
@@ -306,12 +310,14 @@ export function CheckoutForm({
               />
             </Elements>
 
-            <CheckoutSummary
-              fees={fees}
-              eventTitle={eventTitle}
-              eventDate={eventDate}
-              venue={venue}
-            />
+            <div className="min-w-0">
+              <CheckoutSummary
+                fees={fees}
+                eventTitle={eventTitle}
+                eventDate={eventDate}
+                venue={venue}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -337,8 +343,8 @@ export function CheckoutForm({
         )}
 
         <form method="post" onSubmit={handleSubmit}>
-          <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-            <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0 space-y-6">
               {/* Buyer info */}
               <div className="rounded-2xl border border-ink-200 bg-white p-6">
                 <h3 className="text-base font-semibold text-ink-900 mb-4">Your Details</h3>
@@ -452,18 +458,18 @@ export function CheckoutForm({
                   before this step (ACCC all-in display). */}
               <p className="type-measure mx-auto mt-3 text-pretty text-center text-xs text-ink-400">
                 By completing this order you agree to our{' '}
-                <a href="/legal/terms" className="underline hover:text-gold-600">Terms</a>
+                <a href="/legal/terms" className="underline hover:text-gold-700">Terms</a>
                 {', '}
-                <a href="/legal/refunds" className="underline hover:text-gold-600">Refund and Ticket Policy</a>
+                <a href="/legal/refunds" className="underline hover:text-gold-700">Refund and Ticket Policy</a>
                 {' '}and{' '}
-                <a href="/legal/privacy" className="underline hover:text-gold-600">Privacy Policy</a>.
+                <a href="/legal/privacy" className="underline hover:text-gold-700">Privacy Policy</a>.
               </p>
             </div>
 
             {/* Sidebar: order summary, with the trust panel directly under
                 the total (close-out C14.9), beside the Continue button on
                 desktop and right after it on mobile. */}
-            <div className="space-y-6">
+            <div className="min-w-0 space-y-6">
               <CheckoutSummary
                 fees={fees}
                 eventTitle={eventTitle}

@@ -93,7 +93,13 @@ export function CheckoutSummary({ fees, eventTitle, eventDate, venue }: Checkout
 
       <div className="mt-3 border-t-2 border-ink-900 pt-3 flex justify-between items-baseline">
         <span className="text-sm font-bold uppercase tracking-wider text-ink-900">Total</span>
-        <span className="text-2xl font-extrabold text-ink-900 tabular-nums">{formatCents(bd.total, currency)}</span>
+        {/* data-order-total is the hook the driven viewport proof reads
+            (close-out UX6, requirement 3): the buyer must be able to SEE
+            the total they are about to pay, inside the viewport box, at
+            390. scripts/guards/order-total-is-marked.mjs fails the build if
+            this attribute is removed, because a proof that cannot find its
+            subject passes silently. */}
+        <span data-order-total className="text-2xl font-extrabold text-ink-900 tabular-nums">{formatCents(bd.total, currency)}</span>
       </div>
 
       {fees.fee_pass_type === 'absorb' && (

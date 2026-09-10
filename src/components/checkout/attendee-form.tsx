@@ -105,7 +105,10 @@ export function AttendeeForm({
           <button
             type="button"
             onClick={useMyDetails ? clearFill : fillWithBuyerDetails}
-            className="text-sm text-gold-500 hover:text-gold-600 font-medium"
+            // gold-800 on white is 7.12:1; gold-500 was 2.37:1, which axe caught on the
+            // checkout at every width during the UX6 drive. Hover goes to gold-700
+            // (5.04:1), the strong tier's own hover, so both states pass AA.
+            className="text-sm text-gold-800 hover:text-gold-700 font-medium"
           >
             {useMyDetails ? 'Clear' : 'Use my details for all tickets'}
           </button>

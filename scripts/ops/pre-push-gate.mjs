@@ -29,6 +29,7 @@
  *   fixture                 CI > test (pretest)                the seeded fixture npm test builds
  *   suite                   CI > test > Test                   vitest, through the test-count canary
  *   build                   CI > verify > Build                npm run build
+ *   checkout-viewport       local only: the buyer's surfaces at 390, 768 and 1440 (UX6)
  *   lighthouse              Lighthouse CI > Lighthouse mobile gate, on THIS build served locally
  *
  * THE LIGHTHOUSE STEP IS THE SAME GATE, NOT A LOOKALIKE. It starts the
@@ -99,6 +100,7 @@ const TMP = join(ROOT, '.tmp')
 const GATE_URLS = join(TMP, 'gate-urls.txt')
 const SERVER_LOG = join(TMP, 'gate-server.log')
 const INDEXING_LOG = join(TMP, 'gate-indexing-server.log')
+const CHECKOUT_LOG = join(TMP, 'gate-checkout-server.log')
 const LHCI_DIR = join(ROOT, '.lighthouseci')
 const ZERO_SHA = /^0{40}$/
 
@@ -551,6 +553,53 @@ async function runIndexingDrive(env) {
 }
 
 /**
+ * THE BUYER'S SURFACES, AT 390, 768 AND 1440 (close-out UX6).
+ *
+ * The static half of UX6 is two registered guards in the registry above
+ * (grid-track-cannot-blow-out, buyer-total-is-marked), so CI runs it in the
+ * build. Neither can see a laid-out page, and UX6 is a LAYOUT defect: the owner
+ * bought a ticket on a phone and could not see the total he was paying, on a
+ * page whose markup was, and still is, entirely reasonable to read.
+ *
+ * So this serves the production build and WALKS it, twice per width, once on a
+ * free event through to a real issued ticket and once on a paid event as far as
+ * a live Stripe TEST key allows, measuring every stop.
+ *
+ * Its own server, for the reason the indexing step gives: a red step should name
+ * the thing that failed.
+ *
+ * It is a LOCAL step, like the indexing drive, because CI runs against a
+ * placeholder database and cannot buy a ticket.
+ */
+async function runCheckoutViewportDrive(env) {
+  if (!existsSync(join(ROOT, '.next', 'BUILD_ID'))) {
+    console.error('[gate] no production build under .next (no BUILD_ID). The build step produces it; run the whole gate.')
+    return 1
+  }
+  mkdirSync(TMP, { recursive: true })
+  const appPort = await freePort()
+  const base = `http://127.0.0.1:${appPort}`
+  const fd = openSync(CHECKOUT_LOG, 'w')
+  const server = spawn(NODE, ['node_modules/next/dist/bin/next', 'start', '--port', String(appPort)], {
+    cwd: ROOT,
+    env: { ...env, PORT: String(appPort), EMAIL_TRANSPORT: 'console' },
+    stdio: ['ignore', fd, fd],
+  })
+  try {
+    const notUp = await waitForServer(base, server, 120_000)
+    if (notUp) {
+      console.error(`[gate] ${notUp}. Server log tail (.tmp/gate-checkout-server.log):`)
+      console.error(tailOf(CHECKOUT_LOG))
+      return 1
+    }
+    return exec(NODE, ['scripts/verify/ux6-checkout-viewport-proof.mjs', base], env)
+  } finally {
+    killTree(server)
+    closeSync(fd)
+  }
+}
+
+/**
  * Every report this collection wrote, parsed.
  *
  * Read from disk rather than kept in memory because collectLikeLhci retries a
@@ -802,6 +851,14 @@ export const STEPS = [
     mirrors: [],
     env: 'local',
     run: runIndexingDrive,
+  },
+  {
+    id: 'checkout-viewport',
+    ci: 'local only: the driven half of close-out UX6 (the static half is two registered guards, so CI runs them in the build)',
+    title: "the buyer's surfaces measured at 390, 768 and 1440, on this build",
+    mirrors: [],
+    env: 'local',
+    run: runCheckoutViewportDrive,
   },
   {
     id: 'lighthouse',

@@ -102,7 +102,7 @@ export default async function OrganiserGigsPage() {
         <span className="text-sm text-ink-600">{org.name as string}</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_460px]">
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_460px]">
         <div className="order-2 xl:order-1">
           <div className="rounded-xl border border-ink-200 bg-white">
             <div className="border-b border-ink-200 px-5 py-4">

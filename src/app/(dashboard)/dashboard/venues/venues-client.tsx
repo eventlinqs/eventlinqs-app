@@ -74,7 +74,7 @@ function VenueForm({
 
   return (
     <div className="rounded-xl border border-ink-200 bg-white p-6 space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label htmlFor="venues-venue-name" className="block text-sm font-medium text-ink-600 mb-1">
             Venue Name <span className="text-red-500">*</span>

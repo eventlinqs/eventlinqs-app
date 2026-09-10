@@ -68,14 +68,18 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
           type="button"
           onClick={() => setOpen(true)}
           className={[
-            'group inline-flex h-11 w-[360px] items-center gap-3 rounded-full border border-white/15 bg-white/10 px-5 text-sm text-white/80 transition hover:border-white/30 hover:bg-white/15',
+            // w-full up to a 360px cap, not a fixed 360 (close-out UX6). A fixed width
+            // cannot shrink, and at xl the row has 316px to spare, not 360, so a
+            // fixed pill would push the whole header 44px past the right edge at
+            // exactly 1280. The cap keeps it identical at 1440 and wider.
+            'group inline-flex h-11 w-full max-w-[360px] min-w-0 items-center gap-3 rounded-full border border-white/15 bg-white/10 px-5 text-sm text-white/80 transition hover:border-white/30 hover:bg-white/15',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]',
             className,
           ].join(' ')}
           aria-label="Open search"
         >
           <Search className="h-4 w-4 text-white/65 group-hover:text-white" aria-hidden />
-          <span className="flex-1 text-left">What are you in the mood for?</span>
+          <span className="min-w-0 flex-1 truncate text-left">What are you in the mood for?</span>
           {/* font-display: the kbd element inherits the mono stack from the
               preflight, which put a third family on the page for one glyph.
               text-xs and rounded-lg keep it on the type scale and radius set. */}

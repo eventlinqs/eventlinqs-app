@@ -106,7 +106,7 @@ export default function CareersPage() {
       />
 
       <ContentSection surface="base" width="default">
-        <div className="grid gap-12 md:grid-cols-2 md:gap-16">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
           <div>
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               The pitch
@@ -132,7 +132,7 @@ export default function CareersPage() {
             </div>
           </div>
 
-          <ul className="grid gap-6 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             {PILLARS.map(pillar => (
               <li
                 key={pillar.title}
@@ -163,7 +163,7 @@ export default function CareersPage() {
             Small team, strong defaults, no theatre.
           </h2>
         </div>
-        <ul className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           {HOW_WE_WORK.map(item => (
             <li key={item.title}>
               <h3 className="font-display text-base font-bold text-[var(--text-primary)]">
@@ -215,7 +215,7 @@ export default function CareersPage() {
       </ContentSection>
 
       <ContentSection surface="alt" width="default">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr] md:items-end">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:items-end">
           <div>
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Register interest

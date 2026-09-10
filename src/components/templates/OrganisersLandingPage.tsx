@@ -140,7 +140,7 @@ const HOW_IT_WORKS = [
 function FeatureBandRow({ band }: { band: FeatureBand }) {
   return (
     <ContentSection surface={band.reverse ? 'alt' : 'base'} width="wide" reveal>
-      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+      <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
         {/* Image */}
         <div className={band.reverse ? 'lg:order-2' : ''}>
           <div className="relative aspect-[5/4] overflow-hidden rounded-2xl shadow-[0_24px_60px_-24px_rgba(10,22,40,0.35)] ring-1 ring-black/5">
@@ -204,7 +204,7 @@ function PricingClarityBand({
         </p>
       </div>
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
         {/* Free */}
         <div className="flex flex-col rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-7">
           <p className="font-display text-sm font-bold uppercase tracking-[0.14em] text-[var(--text-primary)]">Free events</p>
@@ -332,7 +332,7 @@ function FoundingOfferBand() {
             }}
           />
         </div>
-        <div className="relative grid gap-8 p-8 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center lg:gap-12 lg:p-12">
+        <div className="relative grid grid-cols-1 gap-8 p-8 sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-12 lg:p-12">
           <div>
             <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
               {FOUNDING_OFFER.eyebrow}
@@ -381,7 +381,7 @@ function TestimonialsBand() {
           Organisers on EventLinqs.
         </h2>
       </div>
-      <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {ORGANISER_TESTIMONIALS.map(t => (
           <figure
             key={`${t.name}-${t.organisation}`}
@@ -543,7 +543,7 @@ export async function OrganisersLandingPage() {
             className="pointer-events-none absolute left-0 right-0 top-6 hidden h-px lg:block"
             style={{ background: 'linear-gradient(90deg, transparent, rgba(212,160,23,0.45) 12%, rgba(212,160,23,0.45) 88%, transparent)' }}
           />
-          <Reveal stagger as="ol" className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+          <Reveal stagger as="ol" className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {HOW_IT_WORKS.map(({ step, title, detail }) => (
               <li key={step} className="relative">
                 <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[var(--brand-accent)]/40 bg-[var(--surface-0)] font-display text-lg font-bold text-[var(--brand-accent-strong)] shadow-sm">

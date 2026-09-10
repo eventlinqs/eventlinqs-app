@@ -337,7 +337,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                       <p className="mt-0.5 text-xs text-ink-600">{tier.description}</p>
                     )}
                     {salePending && tier.sale_start && (
-                      <p className="mt-1 text-xs font-medium text-gold-600">
+                      <p className="mt-1 text-xs font-medium text-gold-800">
                         Sale opens {formatEventDateTimeCompact(tier.sale_start, eventTimezone)}
                       </p>
                     )}
@@ -381,7 +381,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                       )}
                     </div>
                   ) : salePending ? (
-                    <span className="inline-flex items-center rounded-md bg-gold-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-600 shrink-0">
+                    <span className="inline-flex items-center rounded-md bg-gold-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-800 shrink-0">
                       Starts soon
                     </span>
                   ) : !isTicketingSuspended && (
@@ -487,14 +487,14 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
               </div>
               <div className="flex justify-between text-base font-bold text-ink-900 pt-1.5 border-t border-ink-100">
                 <span>Total</span>
-                <span className="tabular-nums">{formatPrice(allInTotalCents, currency)}</span>
+                <span data-order-total className="tabular-nums">{formatPrice(allInTotalCents, currency)}</span>
               </div>
             </>
           ) : (
             <>
               <div className="flex justify-between text-base font-bold text-ink-900 pt-1.5 border-t border-ink-100">
                 <span>Total</span>
-                <span className="tabular-nums">{formatPrice(allInTotalCents, currency)}</span>
+                <span data-order-total className="tabular-nums">{formatPrice(allInTotalCents, currency)}</span>
               </div>
               <p className="text-[11px] text-ink-400">Fee included in the ticket price</p>
             </>

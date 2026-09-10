@@ -251,7 +251,17 @@ export function SiteFooter() {
 
         {/* Mobile: brand strip + 2-col accordion grid */}
         <div className="md:hidden">
-          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
+          {/*
+           * STACKED BELOW 640, side by side above it (close-out UX6.2, driven
+           * 10 September 2026). Five 44px social targets plus their four 16px
+           * gaps are 284px, and the logo is 113px: side by side inside px-4 that
+           * needs 413px and a 390 viewport offers 358. The row overflowed by
+           * 51px, and because html/body carry `overflow-x: clip` there was no
+           * horizontal scroll, so the last two links were clipped and
+           * unreachable on every mobile page of the platform, checkout included.
+           * Shrinking the targets was not an option: 44px is the floor.
+           */}
+          <div className="flex flex-col items-start gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
             <EventlinqsLogo size="md" variant="inverted" />
             <SocialRow />
           </div>

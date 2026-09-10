@@ -154,6 +154,14 @@
  *                              recorder is never fetched before a first interaction:
  *                              measured at 217.8 KB and 644 ms inside the LCP window
  *                              when it was scheduled on `load` (close-out P0.5)
+ *   grid-track-cannot-blow-out  every grid declares a column template its own content cannot
+ *                              widen: a base grid-cols-* beside every breakpoint one, and no
+ *                              bare fr track. Driven on checkout at 390: one 520px child took
+ *                              the track from 358px to 520px and the order summary's right
+ *                              edge from 374 to 536, with no scrollbar to reach it (UX6.1-6.3)
+ *   buyer-total-is-marked     every buyer-facing total carries data-order-total, so the driven
+ *                              viewport proof can find the figure it exists to measure. A
+ *                              driven check that cannot find its subject passes in silence (UX6)
  *   lighthouse-floor-ratchet  every Lighthouse assertion is at or above its recorded
  *                              high-water mark: a floor may never be lowered, a budget
  *                              never loosened, a check never moved from error to warn
@@ -1054,6 +1062,14 @@ const GUARDS = [
   // passed throughout, because nothing in the suite has a foreign key. All four
   // clauses drilled red and green (C:\dev\EVIDENCE\D0\guard-tier-identity-drill.txt).
   'scripts/guards/tier-identity-preserved.mjs',
+
+  // Close-out UX6 (10 September 2026). The owner bought a ticket on a phone and
+  // could not see the total he was paying: a grid track widened by one of its own
+  // children dragged the order summary 146px off the right of a 390 screen, and
+  // `overflow-x: clip` meant there was no scrollbar to reach it with. Measured on
+  // the real page, not reasoned about. Both drilled red and green.
+  'scripts/guards/grid-track-cannot-blow-out.mjs',
+  'scripts/guards/buyer-total-is-marked.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

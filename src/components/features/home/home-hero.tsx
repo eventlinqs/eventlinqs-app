@@ -107,7 +107,7 @@ export async function HomeHero({ featuredEvent }: Props) {
       />
 
       <div className="relative mx-auto max-w-7xl px-4 pt-10 pb-16 sm:px-6 sm:pt-14 sm:pb-20 lg:px-8 lg:pt-20 lg:pb-28">
-        <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16">
           <div className="lg:col-span-7 lg:pt-4">
             <div className="flex items-center gap-3">
               <span

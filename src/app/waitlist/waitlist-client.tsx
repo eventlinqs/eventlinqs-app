@@ -69,7 +69,7 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-12">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-12">
       {/* ── City tiles ──────────────────────────────────────────────────── */}
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3" aria-label="Choose your city">
         {cities.map(city => {

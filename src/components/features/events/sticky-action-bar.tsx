@@ -93,7 +93,7 @@ export function StickyActionBar({
 
             <div className="hidden md:flex md:items-center md:gap-3">
               {priceLabel && (
-                <span className="font-display text-sm font-bold text-gold-600">{priceLabel}</span>
+                <span className="font-display text-sm font-bold text-gold-800">{priceLabel}</span>
               )}
             </div>
 
@@ -102,7 +102,7 @@ export function StickyActionBar({
                 type="button"
                 onClick={handleShare}
                 aria-label="Share event"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-600 transition-colors hover:border-gold-400 hover:text-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-600 transition-colors hover:border-gold-400 hover:text-gold-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
               >
                 <Share2 className="h-4 w-4" />
               </button>
@@ -112,8 +112,8 @@ export function StickyActionBar({
                 aria-label={saved ? 'Remove from saved' : 'Save event'}
                 className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 ${
                   saved
-                    ? 'border-gold-500 bg-gold-500/15 text-gold-600'
-                    : 'border-ink-200 bg-white text-ink-600 hover:border-gold-400 hover:text-gold-600'
+                    ? 'border-gold-500 bg-gold-500/15 text-gold-800'
+                    : 'border-ink-200 bg-white text-ink-600 hover:border-gold-400 hover:text-gold-700'
                 }`}
               >
                 <Heart className={`h-4 w-4 ${saved ? 'fill-gold-500' : ''}`} />
@@ -128,7 +128,7 @@ export function StickyActionBar({
             </div>
           </div>
           {shared && (
-            <p className="mx-auto max-w-7xl px-4 pb-1 text-xs text-gold-600 sm:px-6 lg:px-8">
+            <p className="mx-auto max-w-7xl px-4 pb-1 text-xs text-gold-800 sm:px-6 lg:px-8">
               Link copied to clipboard
             </p>
           )}
@@ -148,8 +148,13 @@ export function StickyActionBar({
               <p className="font-display text-sm font-bold leading-tight text-ink-900 truncate">
                 {title}
               </p>
+              {/* gold-800, not gold-600. Measured by axe on the mobile buy bar during
+                  the UX6 drive: #B88612 on white is 3.25:1 against the 4.5:1 that 12px
+                  text needs. This is the PRICE, on the bar a phone buyer taps. The
+                  Design system already says gold text on a light surface is
+                  --brand-accent-strong; this was not following it. */}
               {priceLabel && (
-                <p className="mt-0.5 text-xs font-semibold text-gold-600">{priceLabel}</p>
+                <p className="mt-0.5 text-xs font-semibold text-gold-800">{priceLabel}</p>
               )}
             </div>
             <Link

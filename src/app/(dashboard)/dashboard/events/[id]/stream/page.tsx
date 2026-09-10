@@ -138,7 +138,7 @@ export default async function StreamRoomPage({ params, searchParams }: Props) {
         </div>
       ) : (
         <>
-          <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-ink-200 bg-white p-5">
               <p className="text-xs uppercase tracking-wider text-ink-600">Stream link</p>
               <p className="mt-1 text-sm font-semibold text-ink-900">{classified.ok ? classified.label : 'Not added yet'}</p>
@@ -162,7 +162,7 @@ export default async function StreamRoomPage({ params, searchParams }: Props) {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <section aria-labelledby="questions-heading" className="rounded-xl border border-ink-200 bg-white p-5">
               <h2 id="questions-heading" className="text-base font-semibold text-ink-900">Questions</h2>
               <p className="mt-1 text-xs text-ink-600">Your answer appears under the question in every viewer&apos;s room.</p>
