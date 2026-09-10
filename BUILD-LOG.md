@@ -9720,3 +9720,90 @@ built clean and the drive still measured 64px. The emitted stylesheet contained
 ZERO occurrences of `:has(` - the build had discarded the rule silently. A fix
 that depends on the toolchain keeping a selector it is willing to throw away is
 not a fix, and only the measurement in the harness caught it.
+
+---
+
+## Session 62 continued, 11 September 2026. UX1, the last PARTIAL clause.
+
+**The stale blocker.** UX1's one open clause was the signed-in organiser journey,
+recorded as PARTIAL because `auth-signup`/`auth-login` are `failClosed: true` and
+"a local checkout has no Upstash", deferred to the deployed preview. Correct when
+written; untrue since 10 September, when `startGateServer` was extracted so every
+served-build step gets the in-memory Upstash stub and the console mail transport.
+Nothing about the ledger row changed on the day it stopped being true, and the
+preview it deferred to still cannot be built because the push gate refuses on
+production parity. `scripts/verify/ux1-drive.mjs` runs it here instead.
+
+**Result:** 31 of 31 checks, at 390, 768 and 1440, on three separate end-to-end
+journeys, nothing seeded.
+
+### What shipped
+
+`ef32a2ba` The organiser card that named an organiser and led nowhere, and the
+badge nobody could read.
+
+| | |
+|---|---|
+| Driven checks | 31 of 31, three journeys, three widths |
+| Guards | 107, all pass (106 before) |
+| Suite | 374 files / 4503 tests, 0 failed, 0 skipped |
+| Guard drills | 4, each behaving: 3 red-then-green, 1 negative stayed green |
+| checkout-viewport | PASS (was FAIL, and the failure was real) |
+| indexing | PASS |
+| Lighthouse mobile gate | PASS, 13 URLs, 65 runs |
+| Gate steps green | 14 of 15; production-parity is the founder's |
+
+### The product defect the journey found
+
+`src/app/events/[slug]/page.tsx`: the "Organised by" card named the organiser,
+drew their initials, clamped their bio and linked NOWHERE, while
+`event-schema-jsonld.tsx` was already publishing `organizer.url` as
+`/organisers/${organisation.slug}` to search engines. Page and structured data
+disagreed about whether that URL was worth pointing at.
+
+Now linked, with the Follow control kept a SIBLING of the anchor rather than a
+child (a `<button>` inside an `<a>` is invalid HTML), an accessible name that
+CONTAINS the visible label per WCAG 2.5.3, and 4 tests including one asserting
+the page and its own JSON-LD name the same URL.
+
+### The contrast sweep, which the gate caught
+
+`checkout-viewport` went red on the free event at all three widths, reporting a
+COUNT and no nodes. Making it name them produced
+`text-coral-600 (#E63E2C) on bg-coral-100 (#FFE4DF) = 3.42:1`: the "Selling Fast"
+badge, live on every event 50% sold or more. Surfaced only because this session's
+events changed which event the proof picks.
+
+`tests/unit/a11y/light-surface-text-tokens.test.ts` was written for exactly this
+shape and bans coral text across a hand-listed TWO files. The badge is a third.
+
+Measuring the whole tree found **28 pairs under AA** in two combinations:
+`text-gold-600` on `bg-gold-100` at 2.95:1 (15 places) and `text-ink-400` on
+`bg-ink-100` at 4.13:1 (11 places), several of them text badges on the dashboard,
+squad page, orders table and refund list.
+
+Fixed with existing tokens (gold-800 = 6.47:1, ink-600 = 7.57:1) plus one new
+`--color-coral-700: #B8321E` (4.96:1 on coral-100, 5.98:1 on white, 5.72:1 on
+canvas, so one token covers all three). 21 files, 207 solid pairs, all at or
+above 4.5:1.
+
+`scripts/guards/tinted-text-meets-contrast.mjs` replaces the list with a
+computation: it reads the token table out of `globals.css` rather than carrying a
+copy, and names what it cannot see (336 composite pairs left to axe, printed on
+every run) rather than guessing.
+
+### Two harness defects, both of which would have lied
+
+Resolved the organiser as the first `/organisers/` anchor, which on a real event
+page is `/organisers/signup` - 200, no bio, so "no markdown syntax" passed
+VACUOUSLY and the render check blamed the product. Static siblings are enumerated
+from the route tree now, plus a check that the page reached is the organiser's
+own. And it counted `ul li` document-wide (64 items of chrome), so it would have
+read "list rendered" with the list gone; scoped to `OrganiserProse`'s own classes
+and asserting the exact bullet count, derived from the fixture.
+
+### Also improved
+
+`scripts/verify/ux6-checkout-viewport-proof.mjs` now prints the axe node targets
+and failure summaries rather than a count, because a count sent this session
+chasing the wrong change for ten minutes.

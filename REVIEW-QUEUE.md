@@ -3665,3 +3665,91 @@ The recovery messages are on by default for every event, which is what D2 asks
 for, and an organiser can switch them off per event. The setting exists and
 defaults to on, but nobody has put a toggle on the organiser's own screen yet.
 Say the word and it becomes one.
+
+---
+
+## The organiser card that led nowhere, and a badge nobody could read (11 September 2026)
+
+Two more items closed after UX5. Both were found the same way: by running a test
+that had been written and never run.
+
+### 1. Your organisers' profiles had no link from their own events
+
+UX1 had one clause left open, and it was the signed-in organiser journey: a real
+person signing up, publishing an event, writing a bio with bold and bullets in
+it, and typing tags that differ only by case. It was written weeks ago and never
+actually run, because at the time the sign-in path could not work on this machine
+without a piece of infrastructure that was missing. That stopped being true on
+10 September and nobody noticed, which is the quiet kind of blocker: nothing about
+it changes on the day it stops applying.
+
+It runs now, and everything you reported on Mikhaell's event is confirmed fixed on
+a real page a stranger loads: no asterisks in the bio, the venue named once, the
+tags collapsed to "African, Soul", and the poster no longer cropped at the top.
+31 of 31 checks at phone, tablet and desktop width.
+
+**And it found something none of us had seen.** The "Organised by" card at the
+bottom of every event page shows the organiser's name, their initials, three lines
+of their bio and a Follow button, and it linked NOWHERE. You could not click
+through to the organiser from their own event.
+
+That matters more than it sounds:
+
+- The organiser's public profile page had no link pointing at it from the one page
+  a buyer actually reads. It was effectively an orphan.
+- The full bio, the one that renders bold and bullets and a proper link, only
+  exists on that profile page. Fixing the asterisks was worth doing, and almost
+  nobody could get to the result.
+- On a phone, a card with a name and an avatar that does nothing when you tap it
+  is exactly the dead end we have a rule against.
+- And the page was already telling Google that profile existed, in the invisible
+  structured data. So we published the address to a search engine and never linked
+  it ourselves.
+
+It links now.
+
+### 2. "Selling Fast" was unreadable, on exactly the events that sell
+
+This one the automated check caught, and it is worth telling you how narrowly.
+
+After the change above I re-ran the checkout checks and they went red on the event
+page. The obvious assumption was that the link I had just added had a colour
+problem. It did not. The check only reported "2 problems" without saying where, so
+I made it name them, and it pointed at the **"Selling Fast" badge** - the little
+coral pill that appears once an event is half sold.
+
+The text on it was too pale against its own background to meet the accessibility
+standard. It has always been that way. It only showed up now because the events on
+the test database changed and one of them crossed 50 percent sold for the first
+time. In other words: a defect that only appears on your best-selling events, and
+therefore would have appeared for the first time on a night that was going well.
+
+**There was already a test meant to catch this.** It was written a week ago after a
+similar problem, and it checks two named files. The badge is in a third file. A
+list of files can never contain the file nobody added to it.
+
+So instead of adding a third file to the list, I measured the whole platform, and
+found **28 more** text-on-background combinations below the standard, in two
+repeated pairs. Several are things people read: badges on your dashboard, the
+squad page, the orders table, the refund list, and "Sold Out" in the same badge.
+
+All 28 are fixed, using colours the design system already had, and one new darker
+coral for the badge. Nothing was invented and nothing looks different in kind, only
+darker enough to read.
+
+**And the list is gone.** There is now a check that calculates the contrast for
+every colour pair on the platform from the stylesheet itself, so it follows a
+colour when it changes and cannot miss a file. It is honest about what it cannot
+measure - semi-transparent colours depend on what is behind them, so those are left
+to the accessibility scanner - and it prints how many it skipped rather than
+quietly ignoring them.
+
+### Still the same one command
+
+Nineteen commits are now waiting. The gate passes 14 of its 15 steps, including
+the full accessibility and speed checks. The fifteenth refuses because production
+is nine migrations behind, and that is yours:
+
+    npm run migrate:production
+
+It is also what closes the last leg of UX6, D1 and D2.

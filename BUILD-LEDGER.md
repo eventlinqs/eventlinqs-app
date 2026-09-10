@@ -3079,3 +3079,166 @@ the login refused at all three widths, which was neither the harness nor the
 product: the server log named `ADMIN_TOTP_ENC_KEY env var is not set`, a local
 environment gap, closed with the TEST-ONLY marker value that `.env.example`
 documents for exactly this.
+
+---
+
+## UX1, THE ONE PARTIAL CLAUSE, CLOSED. 11 September 2026.
+
+The UX1 ledger recorded everything MET except one clause, and it recorded WHY:
+
+> One clause is **PARTIAL**: the signed-in journey (an organiser typing a
+> markdown bio and colliding tags through the real forms) is written but not yet
+> run, because `auth-signup` and `auth-login` are `failClosed: true` on the rate
+> limiter by doctrine and a local checkout has no Upstash. I did not weaken the
+> policy to make a proof pass. It runs against the deployed preview.
+
+That reasoning was right when it was written and it had since stopped being true,
+which is the more dangerous kind of blocker: nothing about it changes on the day
+it stops being true. `startGateServer` was extracted on 10 September precisely so
+every served-build step gets the in-memory Upstash stub and the console mail
+transport, after three steps spawned their own servers and two of them handed the
+server no Redis. The limiter has a backend on this machine now, so the journey
+runs here, with no policy weakened and nothing deferred to a preview that the
+push gate will not let us build.
+
+`scripts/verify/ux1-drive.mjs` is the orchestrator, the same shape as the D2 and
+UX5 drives, and it borrows the gate's server rather than making a fourth copy of
+the mistake `gate-servers-carry-a-limiter` exists to stop.
+
+**Result: 31 of 31 checks, at 390, 768 and 1440, on three separate journeys.**
+Each run signs a real organiser up through `/signup`, confirms from the console
+inbox, builds and publishes an event through the wizard, writes a markdown bio
+through the organisation form and types colliding tags, then asserts against the
+public page a stranger loads. Nothing is seeded.
+
+| Clause | Verdict | What the drive read |
+|---|---|---|
+| UX1.1 no markdown syntax on the rendered page | **MET, DRIVEN** | `no ** ** syntax on the rendered page`, all three widths |
+| UX1.1 the bio RENDERS rather than merely not showing syntax | **MET, DRIVEN** | `bold=1 proseListItems=3 (expected 3) nofollowLinks=1` on the organiser's own profile |
+| UX1.1 the organiser can edit their own bio, with a live preview | **MET, DRIVEN** | the field exists, the preview shows the formatting, and the save confirms |
+| UX1.2 the venue is named once | **MET, DRIVEN** | `venue named once`, all three widths |
+| UX1.3 colliding tags normalise | **MET, DRIVEN** | typed `African, african, #Soul, soul`, page shows `African, Soul` |
+| UX1.4 the hero does not crop the top off the poster | **MET, DRIVEN** | `hero object-position: 50% 0%` |
+
+### THE DEFECT THE JOURNEY FOUND, WHICH IS WHY IT WAS WORTH RUNNING
+
+**The "Organised by" card on every event page led nowhere.** It printed the
+organiser's name, drew their initials, clamped their bio to three lines, offered
+a Follow button, and carried no link to the organiser at all.
+
+What makes it more than a missing link is that the SAME PAGE was already
+publishing that profile URL to search engines.
+`src/components/features/events/event-schema-jsonld.tsx` emits `organizer.url` as
+`${baseUrl}/organisers/${organisation.slug}`. So the structured data told Google
+about a page the document itself never pointed at. Three consequences, all real:
+
+- the organiser's public profile had NO inbound link from the one page a buyer
+  actually reads, which is the surface the whole data-ownership pitch rests on
+  and the internal linking the growth plan's SEO engine depends on;
+- the fully rendered bio - the bold, the list, the `nofollow` link that UX1.1
+  exists to produce - was unreachable from an event, so the thing UX1.1 fixed
+  could only be seen by someone who already knew the URL;
+- on a phone, a card-shaped block with an avatar and a name that does nothing
+  when a thumb lands on it is the dead-end tile Law 5 names explicitly.
+
+The card now links to `/organisers/<slug>`. The Follow control stays a SIBLING of
+the anchor rather than a child, because a `<button>` inside an `<a>` is invalid
+HTML and the browser resolves the conflict however it likes; a test asserts the
+anchor closes before the Follow control opens. The accessible name is
+`View profile: <name>`, which CONTAINS the visible label "View profile" so voice
+control can activate what a person can read (WCAG 2.5.3).
+
+`tests/unit/events/organiser-card-links-to-the-organiser.test.ts`, 4 tests,
+including one that asserts the page and its own structured data name the same
+URL, since their disagreement is what produced this.
+
+### TWO DEFECTS IN THE HARNESS, BOTH OF WHICH WOULD HAVE LIED
+
+Neither was found by reading the harness. Both were found by running it, which is
+the whole argument for running a proof rather than shipping it.
+
+**1. It was measuring the wrong page.** The profile was resolved as the first
+anchor matching `a[href^="/organisers/"]` on the event page, and on a real event
+page that is `/organisers/signup`: the "run your own events, it is free to start"
+call to action, which is the invite-an-organiser growth loop and belongs there.
+That page answers 200, so the status check passed. It has no bio, so "shows no
+markdown syntax" passed VACUOUSLY. It has no bold and no list, so the render
+check FAILED and pointed the finger at the product. Three of the four assertions
+on that surface were about the wrong document. The profile route's static
+siblings are now enumerated from the route tree rather than typed, so a new
+marketing page cannot become "the organiser" again, and a new check asserts the
+resolved page is the organiser's own and carries their name - so "no markdown
+syntax" can never again pass on a page with no bio.
+
+**2. It was counting the furniture.** The rendered-bio check counted `ul li`
+across the whole document, which is 64 items of site navigation and footer on any
+page. It would have read "the list rendered" even if the bio's list had been
+dropped entirely. It is now scoped to the classes `OrganiserProse` actually emits
+and asserts the EXACT number of bullets, derived from the fixture bio rather than
+typed.
+
+**Regression:** 106 guards, 374 files / 4503 tests, 0 failed, 0 skipped,
+typecheck, lint, copy, build, indexing, checkout-viewport, Lighthouse mobile.
+
+### AND A THIRD DEFECT, WHICH THE GATE CAUGHT AND WHICH WAS NOT MINE
+
+Re-running `checkout-viewport` after the organiser-link change turned it RED, on
+`free/1-event-page` and `free/2-ticket-select`, at all three widths. The obvious
+reading was that the link I had just added had failed contrast. It had not.
+
+The step reported only a COUNT - `axe serious "color-contrast" on 2 node(s)` -
+so the first thing done was to make it name the nodes, because a check that
+cannot say what it saw sends the next reader guessing. It then said:
+
+    text-coral-600 (#E63E2C) on bg-coral-100 (#FFE4DF) = 3.42:1
+
+That is `SocialProofBadge`, the **"Selling Fast" badge**, and it is a live WCAG
+AA failure on the buying path shown on **every event that is 50 percent sold or
+more** - precisely the events that matter commercially. It had been there all
+along; it surfaced now only because the events this session created on TEST
+changed which event the proof picks, and the previous one was under 50 percent
+sold. A defect that appears when a threshold is crossed is invisible until the
+day it matters most.
+
+**WHY NOTHING CAUGHT IT, WHICH IS THE PART WORTH KEEPING.** A test existed for
+exactly this shape. `tests/unit/a11y/light-surface-text-tokens.test.ts` was
+written on 5 September after axe found coral text at 3.28:1 and 4.13:1, and it
+asserts that no text is painted coral - across a HAND-LISTED TWO FILES. The
+badge was not on the list. No list ever contains the file nobody added to it.
+
+**SO THE WHOLE TREE WAS MEASURED RATHER THAN THE LIST EXTENDED.** Computing WCAG
+contrast for every solid token text colour painted on a solid token background
+found **28 pairs under AA**, in only two repeated combinations:
+
+    text-gold-600 (#B88612) on bg-gold-100 (#FBF4DC) = 2.95:1   15 places
+    text-ink-400  (#6B7280) on bg-ink-100  (#EFEDE8) = 4.13:1   11 places
+
+Several were text badges a person reads: the squad page, the orders table, the
+refund request list, the organiser events table, "Sold Out" in the same badge
+component. None was on any list.
+
+**The fix used tokens the design system already had**, so no new colour was
+invented (Law 1): gold-800 on gold-100 is 6.47:1, ink-600 on ink-100 is 7.57:1.
+Coral had no such member, so `--color-coral-700: #B8321E` was added for the same
+reason gold-700/800 and `--color-error-strong` already exist - it measures
+4.96:1 on coral-100, 5.98:1 on white and 5.72:1 on canvas, so ONE token is safe
+on all three surfaces and a second is not needed. coral-500/600 stay the fill,
+the dot and the on-dark value. 21 files, 207 solid pairs, all now at or above
+4.5:1.
+
+**And the list was replaced by a computation.**
+`scripts/guards/tinted-text-meets-contrast.mjs` is registered and blocking. It
+reads the token table out of `globals.css` rather than carrying a copy, so a
+colour changed in the stylesheet is followed rather than missed, and it computes
+the ratio instead of holding an opinion about which colours are allowed where.
+
+It names what it CANNOT see rather than hiding it: opacity modifiers
+(`text-white/60`) and gradients depend on what is behind them, which a source
+file does not know, so they are left to axe, and the count of those skipped is
+printed on every run (336 of them). A guard that guessed at a composite colour
+would be a guard somebody switches off.
+
+Four drills, in `scripts/verify/ux1-contrast-guard-drills.mjs`: the exact
+regression red, the ink half red, a token lightened in `globals.css` red (which
+proves the table is READ and not held), and a NEGATIVE drill asserting an
+opacity modifier stays green.
