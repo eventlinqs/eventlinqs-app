@@ -1215,9 +1215,37 @@ const ROOT = join(HERE, '..', '..')
  * period nobody measured, and the panel was telling that lie on its behalf.
  * tests/component/sales-pace-panel holds the four states apart, including that
  * a REAL zero is still shown.
+ *
+ * And 371/4455 for close-out D2, the recovery engine. Five new files and one
+ * grown one. Every case in them is a way a REAL PERSON is written to when they
+ * should not be, which is the only kind of defect in this feature that costs
+ * something that cannot be bought back: waitlist (19) holds the queue order, the
+ * hold that runs out and passes down the list, and the person who let their turn
+ * lapse not being offered the same place for ever; message (20) holds that the
+ * copy comes from the slot's own category, so a gym reads "class" and this
+ * platform reads "ticket" out of one function; engine (13) holds that the send
+ * record is written BEFORE the message leaves, that no message goes without a
+ * working unsubscribe, and that a failed send is counted rather than swallowed;
+ * proof (10) holds the four numbers the organiser's panel claims, including that
+ * a sale BEFORE the message is not a recovery and that three messages to one
+ * person is one person; the component test (11) holds that a slot nobody
+ * abandoned reads as nothing to recover rather than as zero recovered, which is
+ * the exact defect the sales pace panel was caught in the day before.
+ *
+ * The three added to the existing files follow the sender: the waiting-list
+ * message moved into the engine so one freed unit produces one message, so
+ * sender-domains grew the assertion that the engine reaches the one sender
+ * module through the shared transport rather than by building its own client.
+ *
+ * And 4464 for what DRIVING the engine found, which no unit test would have:
+ * a rate over sixteen sends cutting the whole sequence to one message on a
+ * single unsubscribe (six tests on the minimum a rate needs to be a rate), and
+ * an attribution query appended AFTER a fragment, so the parameters were never
+ * parameters and the link stopped landing on the ticket selector (three tests
+ * on where a query goes).
  */
-const MIN_FILES = 365
-const MIN_TESTS = 4350
+const MIN_FILES = 371
+const MIN_TESTS = 4464
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

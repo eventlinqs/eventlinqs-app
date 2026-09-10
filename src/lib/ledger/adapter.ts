@@ -29,7 +29,6 @@
  * DEMAND row is required, not optional. Without it D2 cannot contact anyone and
  * the whole recovery engine is dead on arrival." You cannot email a hash.
  */
-import { createHash, createHmac } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { SOURCE_SYSTEM, type DemandAction, type InventoryAction, type Slot } from './types'
 import { diffBuckets, type PricedBucket } from './inventory-diff'
@@ -231,35 +230,19 @@ export async function slotFromEvent(event: EventForLedger): Promise<Slot> {
 }
 
 /**
- * THE KEY THE HASHES ARE TAKEN WITH.
+ * ONE PERSON, TOLD APART FROM ANOTHER. Re-exported from `./identity`, which is
+ * where it now lives.
  *
- * Derived from ORDER_ACCESS_SECRET rather than being a new environment variable,
- * because a new one is a value the founder has to mint and propagate to four
- * places (Law 10 would call that IMPOSSIBLE-for-a-machine, and it would hold up
- * the whole item). Domain separation by a fixed label means the derived key
- * cannot be used against the secret's own purpose.
- *
- * With no secret at all the hash is still stable within a deployment and still
- * distinguishes one person from another, which is all the ledger asks of it; it
- * is simply not resistant to a dictionary attack by someone who already has the
- * database. That case is reported once rather than passed over.
+ * It moved out of this file on 11 September 2026 for close-out D2: the recovery
+ * engine has to ask whether the person who abandoned a checkout later bought,
+ * and that is an address compared against a `buyer_hash`. The engine may not
+ * import from a file that speaks this platform's vocabulary, and this one does,
+ * so the hash moved to a neutral module and both sides use the one function.
+ * Re-exported here because every existing caller reaches it through the adapter.
  */
-let warnedAboutKey = false
-function hashKey(): Buffer {
-  const secret = process.env.ORDER_ACCESS_SECRET ?? ''
-  if (!secret && !warnedAboutKey) {
-    warnedAboutKey = true
-    console.warn('[ledger] ORDER_ACCESS_SECRET is not set, so buyer hashes are unsalted on this deployment.')
-  }
-  return createHash('sha256').update(`eventlinqs.ledger.identity.v1:${secret}`).digest()
-}
+export { identityHash } from './identity'
 
-/** One person, told apart from another, without the ledger knowing who they are. */
-export function identityHash(value: string | null | undefined): string | null {
-  const normalised = (value ?? '').trim().toLowerCase()
-  if (!normalised) return null
-  return createHmac('sha256', hashKey()).update(normalised).digest('hex').slice(0, 32)
-}
+import { identityHash } from './identity'
 
 /** Where a person came from, as much as the request can say. */
 export type Attribution = {
@@ -379,6 +362,10 @@ async function recordDemandImpl(input: {
   visitorId?: string | null
   tierId?: string | null
   tierName?: string | null
+  /** How many places they asked for. The recovery engine offers exactly this many. */
+  quantity?: number | null
+  /** What one place cost at that moment, so a recovery message can name a price. */
+  unitAmountCents?: number | null
   occurredAt?: string
   attribution?: Attribution
 }): Promise<WriteOutcome> {
@@ -391,6 +378,8 @@ async function recordDemandImpl(input: {
     visitorHash: identityHash(input.visitorId),
     inventoryClass: input.tierName ?? null,
     inventoryClassRef: input.tierId ?? null,
+    quantity: input.quantity ?? undefined,
+    unitAmountCents: input.unitAmountCents ?? undefined,
     referrer: input.attribution?.referrer ?? null,
     utmSource: input.attribution?.utmSource ?? null,
     utmMedium: input.attribution?.utmMedium ?? null,
@@ -728,13 +717,62 @@ async function recordAbandonedCheckoutsImpl(sinceHours = 48): Promise<{ written:
 
   const { data: lapsed } = await admin
     .from('reservations')
-    .select('id, event_id, updated_at, converted_at, status')
+    .select('id, event_id, updated_at, converted_at, status, items')
     .in('status', ['expired', 'cancelled'])
     .is('converted_at', null)
     .gte('updated_at', since)
 
-  const rows = (lapsed ?? []) as Array<{ id: string; event_id: string; updated_at: string }>
+  const rows = (lapsed ?? []) as Array<{
+    id: string
+    event_id: string
+    updated_at: string
+    items: unknown
+  }>
   if (rows.length === 0) return { written: 0, considered: 0 }
+
+  /*
+   * WHAT THEY WERE ABOUT TO BUY, AND WHAT IT COST. Close-out D2 requires the
+   * recovery message to name "the slot, the inventory class, the price". The
+   * `checkout_started` row cannot carry either: it is written the moment the
+   * address is typed, which is BEFORE the cart is priced in
+   * `processCheckout`, so at that point neither the tier nor the resolved
+   * price exists yet.
+   *
+   * The reservation itself holds both, so they are read here, in the ADAPTER,
+   * which is the one file allowed to know what a reservation and a ticket tier
+   * are. A row with no priced line keeps a null price and the message says
+   * less rather than inventing a number.
+   */
+  const reservedTierIds = new Set<string>()
+  const linesByReservation = new Map<string, { tierId: string; quantity: number }>()
+  for (const reservation of rows) {
+    const items = Array.isArray(reservation.items) ? reservation.items : []
+    let biggest: { tierId: string; quantity: number } | null = null
+    for (const raw of items) {
+      const line = raw as { ticket_tier_id?: unknown; quantity?: unknown }
+      const tierId = typeof line.ticket_tier_id === 'string' ? line.ticket_tier_id : null
+      if (!tierId) continue
+      const quantity = typeof line.quantity === 'number' ? line.quantity : 1
+      if (!biggest || quantity > biggest.quantity) biggest = { tierId, quantity }
+    }
+    if (biggest) {
+      linesByReservation.set(reservation.id, biggest)
+      reservedTierIds.add(biggest.tierId)
+    }
+  }
+  const bucketByTierId = new Map<string, { name: string; unitAmountCents: number | null }>()
+  if (reservedTierIds.size > 0) {
+    const { data: tiers } = await admin
+      .from('ticket_tiers')
+      .select('id, name, price')
+      .in('id', [...reservedTierIds])
+    for (const raw of (tiers ?? []) as Array<{ id: string; name: string | null; price: number | null }>) {
+      bucketByTierId.set(raw.id, {
+        name: raw.name ?? '',
+        unitAmountCents: typeof raw.price === 'number' ? raw.price : null,
+      })
+    }
+  }
 
   // The started rows carry the address and the attribution. No started row means
   // nobody ever typed an address, which is a page view rather than an abandoned
@@ -775,6 +813,9 @@ async function recordAbandonedCheckoutsImpl(sinceHours = 48): Promise<{ written:
       .maybeSingle()
     if (!event) continue
 
+    const reserved = linesByReservation.get(reservation.id)
+    const bucket = reserved ? bucketByTierId.get(reserved.tierId) : undefined
+
     const outcome = await write(await slotFromEvent(event as unknown as EventForLedger), {
       kind: 'demand',
       occurrenceKey: `demand:checkout_abandoned:${reservation.id}`,
@@ -782,8 +823,10 @@ async function recordAbandonedCheckoutsImpl(sinceHours = 48): Promise<{ written:
       demandAction: 'checkout_abandoned',
       contactEmail: start.contact_email,
       visitorHash: start.visitor_hash,
-      inventoryClass: start.inventory_class,
-      inventoryClassRef: start.inventory_class_ref,
+      inventoryClass: bucket?.name || start.inventory_class,
+      inventoryClassRef: reserved?.tierId ?? start.inventory_class_ref,
+      quantity: reserved?.quantity,
+      unitAmountCents: bucket?.unitAmountCents ?? undefined,
       referrer: start.referrer,
       utmSource: start.utm_source,
       utmMedium: start.utm_medium,

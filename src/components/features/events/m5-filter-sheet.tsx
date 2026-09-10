@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { usePortalReady } from '@/lib/hooks/use-portal-ready'
 import { X } from 'lucide-react'
 
 type Props = {
@@ -38,9 +40,25 @@ export function FilterSheet({ open, onClose, title, children, footer }: Props) {
     }
   }, [open, onClose])
 
+
+  // `document` does not exist while this renders on the server; the portal below
+  // needs it, and this is the one definition of that question.
+  const portalReady = usePortalReady()
+
   if (!open) return null
 
-  return (
+  if (!portalReady) return null
+
+  /*
+   * PORTALLED TO THE BODY (close-out D2, 11 September 2026). A full-page dialog
+   * rendered where it sits is trapped in the stacking context of any ancestor
+   * carrying a transform, and then it PAINTS correctly and cannot be clicked at
+   * all. Found on the waiting-list dialog by asking the browser what was
+   * actually at the centre of its own submit button: the hero section, not the
+   * button. No z-index can fix it, because the number only applies inside the
+   * trapped context. `overlays-are-portalled` fails the build if it comes back.
+   */
+  return createPortal(
     <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50">
       <button
         type="button"
@@ -75,6 +93,7 @@ export function FilterSheet({ open, onClose, title, children, footer }: Props) {
           </footer>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

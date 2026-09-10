@@ -88,6 +88,10 @@
     {
       "path": "/api/cron/slot-close",
       "schedule": "20 * * * *"
+    },
+    {
+      "path": "/api/cron/recovery-sweep",
+      "schedule": "35 * * * *"
     }
   ]
 }

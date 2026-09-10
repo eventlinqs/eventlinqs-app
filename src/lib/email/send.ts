@@ -183,7 +183,11 @@ function consoleTransportRefusalReason(): string | null {
  */
 export function printConsoleEmail(input: { to: string; subject: string; html?: string }): void {
   const links = [...String(input.html ?? '').matchAll(/https?:\/\/[^"'\s<>]+/g)]
-    .map((m) => m[0])
+    // `&` inside an href is written `&amp;`, correctly, so a link lifted straight
+    // out of the HTML carries entities a browser would never see. Printing it raw
+    // means a drive that opens what the inbox shows is opening a different URL
+    // from the one the recipient clicks. Decoded here, once, for every sender.
+    .map((m) => m[0].replace(/&amp;/g, '&'))
     // `/t/` and `watch` were added on 3 September 2026: the bearer ticket link
     // and the livestream watch link contain neither "ticket" nor "order", so the
     // console inbox printed the order link and silently dropped the two links
@@ -196,7 +200,13 @@ export function printConsoleEmail(input: { to: string; subject: string; html?: s
     // the whole point of the message. /admin/orders/<id> happened to match on
     // "order", which is exactly the kind of accident that makes a filter look
     // like it works.
-    .filter((u) => /confirm|token|ticket|order|verify|reset|watch|\/t\/|\/admin\//i.test(u))
+    //
+    // `/events/` and `unsubscribe` were added on 11 September 2026, a FOURTH
+    // time, for close-out D2. A recovery message carries exactly two links: the
+    // resumable checkout, which is /events/<slug>#tickets, and the stop link,
+    // which is /unsubscribe/recovery/<token>. Neither matched, so the whole
+    // point of the D2 drive would have been invisible in the console inbox.
+    .filter((u) => /confirm|token|ticket|order|verify|reset|watch|\/t\/|\/admin\/|\/events\/|unsubscribe/i.test(u))
   console.log('[email:console] ---------------------------------------------')
   console.log(`[email:console] to      ${input.to}`)
   console.log(`[email:console] subject ${input.subject}`)

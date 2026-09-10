@@ -1095,22 +1095,30 @@ const DRILLS = [
     expect: 'provider registries disagree',
   },
   {
+    /*
+     * REPOINTED 11 September 2026. These two were anchored on
+     * src/lib/waitlist/promote.ts, which built its own mail client until
+     * close-out D2 moved the waiting-list message into the recovery engine so
+     * that one freed unit produces exactly one message. The anchor went with it.
+     * They are repointed at a sender that still has that shape rather than
+     * deleted: what they prove is unchanged.
+     */
     name: 'sender address literal reintroduced',
     guard: `${GUARDS}/sender-single-source.mjs`,
-    file: 'src/lib/waitlist/promote.ts',
-    find: '        from: getNoReplyFrom(),',
-    replace: "        from: 'EventLinqs <noreply@eventlinqs.com>',",
+    file: 'src/lib/payouts/email.ts',
+    find: '      from: getNoReplyFrom(),',
+    replace: "      from: 'EventLinqs <noreply@eventlinqs.com>',",
     expect: 'a literal sender address on a from/replyTo property',
   },
   {
     name: 'sender address hidden in a FROM constant',
     guard: `${GUARDS}/sender-single-source.mjs`,
-    file: 'src/lib/waitlist/promote.ts',
-    find: '        from: getNoReplyFrom(),',
+    file: 'src/lib/payouts/email.ts',
+    find: '      from: getNoReplyFrom(),',
     // The guard is a text scanner, so the intermediate need not compile; the
     // harness restores the file in a `finally` either way.
     replace:
-      "        const MAIL_FROM = 'EventLinqs <noreply@eventlinqs.com>'\n        from: MAIL_FROM,",
+      "      const MAIL_FROM = 'EventLinqs <noreply@eventlinqs.com>'\n      from: MAIL_FROM,",
     expect: 'a literal sender address assigned to a FROM constant',
   },
   {
@@ -2011,6 +2019,100 @@ const DRILLS = [
     guard: `${GUARDS}/excluded-reads-survive-the-upload.mjs`,
     env: { GITHUB_ACTIONS: 'true' },
     expectPass: 'scope=ci (decided by GITHUB_ACTIONS)',
+  },
+
+  /*
+   * CLOSE-OUT D2, THE RECOVERY ENGINE. Six drills across two guards, and each
+   * one breaks the thing the guard exists for rather than something adjacent.
+   *
+   * The engine is the part of this platform with value outside ticketing, and
+   * every line it holds is invisible: an import that couples it to this domain
+   * breaks nothing on the day it is typed, and a send with no receipt looks
+   * exactly like a send with one until somebody complains to their provider.
+   */
+  {
+    name: 'the recovery engine imports this platform domain code',
+    guard: `${GUARDS}/fillrate-reads-only-the-ledger.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find: "import { createAdminClient } from '@/lib/supabase/admin'",
+    replace:
+      "import { createAdminClient } from '@/lib/supabase/admin'\nimport { LEDGER_EVENT_COLUMNS } from '@/lib/ledger/adapter'\nvoid LEDGER_EVENT_COLUMNS",
+    expect: 'is not on the engine',
+  },
+  {
+    name: 'the recovery engine queries a table belonging to the source system',
+    guard: `${GUARDS}/fillrate-reads-only-the-ledger.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find: "    .from('recovery_suppressions')\n    .select('contact_email')",
+    replace: "    .from('profiles')\n    .select('contact_email')",
+    expect: 'which is not the ledger',
+  },
+  {
+    name: 'a user facing string in the engine names one industry',
+    guard: `${GUARDS}/fillrate-reads-only-the-ledger.mjs`,
+    file: 'src/lib/fillrate/message.ts',
+    find: '  const subject = `A ${noun} just opened up for ${facts.slotName}`',
+    replace: '  const subject = `A ticket just opened up for ${facts.slotName}`',
+    expect: 'The engine speaks no industry',
+  },
+  {
+    name: 'a recovery message is recorded without naming what authorised it',
+    guard: `${GUARDS}/recovery-only-writes-to-people-who-asked.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find: '    demand_entry_id: send.demandEntryId,',
+    replace: '    unit_amount_cents: send.unitAmountCents,',
+    expect: 'without naming demand_entry_id',
+  },
+  {
+    name: 'the database stops requiring a receipt on every recovery message',
+    guard: `${GUARDS}/recovery-only-writes-to-people-who-asked.mjs`,
+    file: 'supabase/migrations/20260910000003_recovery_engine.sql',
+    find: '  demand_entry_id bigint not null references public.ledger_entries(id),',
+    replace: '  demand_entry_id bigint references public.ledger_entries(id),',
+    expect: 'no longer declares recovery_sends.demand_entry_id',
+  },
+  {
+    name: 'the sequence stops refusing somebody whose money already came back',
+    guard: `${GUARDS}/recovery-only-writes-to-people-who-asked.mjs`,
+    file: 'src/lib/fillrate/due.ts',
+    find: "      refuse(row, 'their money came back, so chasing them would be the worst message we could send')",
+    replace: "      refuse(row, 'not written to')",
+    expect: 'no longer refuses somebody whose money came back',
+  },
+  {
+    /*
+     * CLOSE-OUT D2, THE DEFECT NOTHING ELSE COULD SEE. The join dialog painted
+     * correctly, centred, over the page, and could not be clicked: it was
+     * trapped in the stacking context of an ancestor carrying a transform. The
+     * drill removes the portal from one real dialog, which is exactly how it
+     * was written before 11 September 2026.
+     */
+    name: 'a full-page dialog goes back to rendering where it sits',
+    guard: `${GUARDS}/overlays-are-portalled.mjs`,
+    file: 'src/components/waitlist/join-waitlist-modal.tsx',
+    find: "import { createPortal } from 'react-dom'",
+    replace: "const createPortal = (node: unknown) => node",
+    expect: 'never reaches react-dom',
+  },
+  {
+    /*
+     * AND THE REVIEWED LIST CANNOT ROT. An exception that outlives the file it
+     * describes is a statement nobody can check.
+     */
+    name: 'the reviewed exception list outlives the file it describes',
+    guard: `${GUARDS}/overlays-are-portalled.mjs`,
+    file: 'scripts/guards/overlays-are-portalled.mjs',
+    find: "    'src/components/admin/admin-mobile-nav.tsx',",
+    replace: "    'src/components/admin/renamed-away.tsx',",
+    expect: 'is not on disk any more',
+  },
+  {
+    name: 'a recovery message is allowed to go with no working way to stop it',
+    guard: `${GUARDS}/recovery-only-writes-to-people-who-asked.mjs`,
+    file: 'src/lib/fillrate/engine.ts',
+    find: "    count('no unsubscribe link could be minted, so nothing was sent')",
+    replace: "    count('no link, carrying on anyway')",
+    expect: 'unsubscribe link in 1 of its 2 send path(s)',
   },
 ]
 

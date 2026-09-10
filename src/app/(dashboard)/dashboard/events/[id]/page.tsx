@@ -32,6 +32,8 @@ import {
   type DeleteEligibility,
 } from '@/lib/events/delete-eligibility'
 import { SalesPacePanel } from '@/components/dashboard/sales-pace-panel'
+import { RecoveryProofPanel } from '@/components/dashboard/recovery-proof-panel'
+import { proofForSourceRef } from '@/lib/fillrate/proof'
 import { paceForSlot } from '@/lib/ledger/pace'
 type Props = {
   params: Promise<{ id: string }>
@@ -122,6 +124,12 @@ export default async function EventViewPage({ params }: Props) {
    * role, so the caller's authority has to be settled first (close-out D1).
    */
   const paceCurve = await paceForSlot(id)
+  /*
+   * WHAT THE RECOVERY ENGINE WON BACK (close-out D2). Read after the same gate
+   * and for the same reason: the engine's send record carries other
+   * organisations' rows and this read runs on the service role.
+   */
+  const recoveryProof = await proofForSourceRef(id)
 
   const { data: org } = await admin
     .from('organisations')
@@ -385,6 +393,9 @@ export default async function EventViewPage({ params }: Props) {
           {/* How the sales actually came in, read out of the slot ledger and
               nowhere else (close-out D1). */}
           <SalesPacePanel curve={paceCurve} />
+
+          {/* What was won back from the people who did not finish (close-out D2). */}
+          {recoveryProof && <RecoveryProofPanel proof={recoveryProof} />}
 
           <div className="rounded-xl border border-ink-100 bg-white">
             <header className="flex items-center justify-between border-b border-ink-100 px-5 py-4">

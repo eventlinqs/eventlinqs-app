@@ -32,6 +32,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
+import { industryWordsIn } from './lib/industry-words.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -42,34 +43,14 @@ const ENGINE_DIR = join(ROOT, 'src', 'lib', 'ledger')
 const THE_BOUNDARY = 'adapter.ts'
 const MIGRATION = join(ROOT, 'supabase', 'migrations', '20260910000002_slot_ledger.sql')
 
-/** The words the close-out names. */
-const BANNED = new Set(['event', 'events', 'ticket', 'tickets', 'tier', 'tiers'])
-
 /**
- * THE WORDS IN A PIECE OF TEXT, SPLIT THE WAY IDENTIFIERS ARE ACTUALLY WRITTEN.
- *
- * The first version of this matched on `\b(event|ticket|tier)\b`, and its own
- * drill caught it in one run: an underscore is a WORD character, so `\b` does
- * NOT sit between `ticket` and `_hash`, and a column renamed `ticket_hash`
- * walked straight past a guard written to catch exactly that. The same hole
- * swallows `eventId`, where the boundary is a case change rather than a
- * separator.
- *
- * So: split on anything that is not a letter, split again at every lower-to-upper
- * transition, and compare whole words.
- *
- * `eventlinqs` is removed FIRST. It is the source system's own name, it is a
- * legitimate VALUE in this schema, and camel-splitting `EventLinqs` would
- * otherwise report the brand as a breach on every line that names it.
+ * THE WORDS, AND HOW THEY ARE FOUND IN AN IDENTIFIER, both moved to
+ * `lib/industry-words.mjs` on 11 September 2026 so close-out D2's guard on the
+ * recovery engine could hold the same line with the same reading. It is
+ * re-exported here because this file is where the rule was first written down,
+ * and because the D1 drill asserts against this name.
  */
-export function industryWordsIn(text) {
-  return String(text)
-    .replace(/eventlinqs/gi, ' ')
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .split(/[^A-Za-z]+/)
-    .map(w => w.toLowerCase())
-    .filter(w => BANNED.has(w))
-}
+export { industryWordsIn, BANNED_INDUSTRY_WORDS as BANNED } from './lib/industry-words.mjs'
 
 const problems = []
 let filesRead = 0

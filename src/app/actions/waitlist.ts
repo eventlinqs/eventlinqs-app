@@ -107,6 +107,19 @@ export async function joinWaitlist(input: JoinWaitlistInput): Promise<JoinWaitli
         .eq('id', user.id)
         .maybeSingle()
       const email = (profile as { email?: string | null } | null)?.email ?? user.email ?? null
+      /*
+       * WHAT THEY ASKED FOR AND WHAT IT COSTS, on the row itself. Close-out D2
+       * offers exactly the number of places somebody asked for and names the
+       * price in the message, and neither is recoverable later: a tier can be
+       * renamed and repriced between the join and the day a unit frees up, and
+       * the offer must describe what they queued for.
+       */
+      const { data: tier } = await adminClient
+        .from('ticket_tiers')
+        .select('name, price')
+        .eq('id', parsed.data.ticket_tier_id)
+        .maybeSingle()
+      const tierRow = tier as { name: string | null; price: number | null } | null
       if (slotEvent && email) {
         // After the answer, by D1's reversal condition. They are on the list
         // either way, which is the thing they came for.
@@ -118,6 +131,9 @@ export async function joinWaitlist(input: JoinWaitlistInput): Promise<JoinWaitli
             email,
             visitorId: user.id,
             tierId: parsed.data.ticket_tier_id ?? null,
+            tierName: tierRow?.name ?? null,
+            quantity: parsed.data.quantity,
+            unitAmountCents: tierRow?.price ?? null,
           }),
         )
       }

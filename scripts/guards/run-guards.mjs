@@ -236,6 +236,17 @@
  *   ledger-speaks-no-industry  not one ledger column, enum or engine file says event,
  *                              ticket or tier, so the engine can be pointed at a gym's
  *                              rows tomorrow without rebuilding it and losing the history
+ *   fillrate-reads-only-the-ledger  the recovery engine imports nothing from this
+ *                             platform's domain, queries only the ledger and its
+ *                             own tables, and speaks no industry (close-out D2).
+ *   overlays-are-portalled    a full-page dialog leaves its ancestors' stacking
+ *                             contexts, because one trapped inside a transformed
+ *                             ancestor PAINTS correctly and cannot be clicked, and
+ *                             nothing else on this platform can see that.
+ *   recovery-only-writes-to-people-who-asked  every recovery message names the
+ *                             recorded engagement that authorised it, the six
+ *                             refusals still exist, and no message goes without a
+ *                             working unsubscribe (close-out D2).
  *   ledger-writes-through-the-adapter  one door into the ledger, and every
  *                              order-confirmation site walks through it
  *   tier-identity-preserved  an event's ticket types are reconciled on save, never
@@ -1117,6 +1128,36 @@ const GUARDS = [
   'scripts/guards/ledger-append-only.mjs',
   'scripts/guards/ledger-speaks-no-industry.mjs',
   'scripts/guards/ledger-writes-through-the-adapter.mjs',
+
+  // Close-out D2, the recovery engine, two guards because the close-out asks for
+  // exactly two and each holds a line nothing else can see.
+  //
+  // fillrate-reads-only-the-ledger: the engine imports nothing from this
+  // platform's domain, queries no table but the ledger's and its own, and says
+  // no word from one industry. The engine is the part of this business with
+  // value outside ticketing and the boundary that gives it that value is
+  // invisible: nothing breaks the day somebody imports a domain type into it.
+  //
+  // recovery-only-writes-to-people-who-asked: every send and every offer names
+  // the recorded engagement that authorised it, enforced in the database by a
+  // NOT NULL foreign key and in the source by one door; the six refusals in
+  // due.ts still exist by name; and a message with no working unsubscribe is
+  // refused rather than degraded.
+  //
+  // Both drilled red and green (C:\dev\EVIDENCE\D2\guard-recovery-drill.txt).
+  'scripts/guards/fillrate-reads-only-the-ledger.mjs',
+  'scripts/guards/recovery-only-writes-to-people-who-asked.mjs',
+
+  // Close-out D2, found by driving the waiting list on 11 September 2026. A
+  // full-page dialog rendered where it sits is trapped in the stacking context
+  // of any ancestor carrying a transform: it PAINTS correctly and cannot be
+  // clicked at all. The join dialog was in exactly that state, and the browser
+  // said so when asked what was at the centre of its own submit button (the
+  // hero section). Nothing else on this platform can see it: the component
+  // renders, the screenshot looks right, the unit tests pass and axe passes.
+  //
+  // Drilled red on nine real overlays, all nine now portalled, then green.
+  'scripts/guards/overlays-are-portalled.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,
