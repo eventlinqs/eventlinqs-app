@@ -3338,3 +3338,36 @@ Everything else is ready and green behind it.
   card screen), because the preview it builds carries a working Stripe test key.
   The alternative for that one screen only is `stripe login` on this machine;
   both of the stored test keys expired in July.
+
+## D1, the slot ledger (10 September 2026)
+
+- **The thing that records how your tickets actually sell is built, and it is on
+  your dashboard.** Open any event and there is a panel, "How your tickets sold":
+  the sales adding up as the days count down, what one ticket cost on each of
+  those days, and how many people reached checkout without finishing. Nothing on
+  this platform could answer any of that before, because the numbers it would
+  have needed were overwritten as they changed.
+- **It does not speak ticketing anywhere inside it, on purpose.** Not one column
+  or file says event, ticket or tier. It says slot, inventory class and unit. If
+  this ever runs for a gym or a clinic it is a new adapter and nothing else, and
+  the history comes with it. A build-blocking check fails if anybody writes one
+  of those words into it.
+- **Driving it found five real defects, and one of them would have emailed your
+  customers by mistake.** Half of all purchases were recording no buyer at all,
+  because a signed-in buyer is stored differently from a guest and only the guest
+  was being read. The recovery engine's whole safety rule is "never contact
+  someone who already bought", and it cannot skip a buyer it never recorded.
+- **One of the five was the panel lying to you.** It showed "Reached checkout 0,
+  Did not finish 0, Looked at the page 0" next to 28 real sales. None of that was
+  true: nobody was recording those things until now. It says that in words
+  instead.
+- **The checkout is not slower for any of this.** Measured properly: writing the
+  history was adding about a third of a second to the response at the worst end.
+  It now happens after the buyer has their answer, with nothing dropped to get
+  there, and it was measured five more times afterwards to be sure.
+- **STILL NEEDS YOU, and it is the same one command:
+  `npm run migrate:production`.** Sixteen commits are now waiting on it. For this
+  item specifically it is also what puts your real Afro-Fusion order into the
+  ledger: I have proved exactly what it will contain (order EL-9HE57YNV, one
+  general admission, 18.00, on 9 September) by reading production without writing
+  to it, but the table itself cannot exist there until you run that command.

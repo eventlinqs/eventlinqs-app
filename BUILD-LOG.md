@@ -9295,3 +9295,146 @@ key on this machine) where before it never got past the reservation. Before and
 after: `C:\dev\EVIDENCE\D1\gate-checkout-before.txt` and `-after.txt`.
 
 All 99 registered guards pass with the new one. Committed as `14fe7fab`.
+
+## D1, THE SLOT LEDGER. Committed f053f7fc.
+
+Started from the parked branch rather than from scratch, as instructed. It
+carried a real body of work: the migration, the adapter, three guards, five test
+files, the backfill, the dashboard panel and every call site. It had never been
+run through the guard registry, the suite, a build or a browser, and every one of
+those found something.
+
+**GOVERNING LAWS, stated before the first edit:** Law 0, the Definition of Done,
+Law 5, Law 7, Law 8, Law 10, the Migrations rule, the Design system (the panel is
+a surface), Motion (it renders no JavaScript at all), and the COMPLETION LAW.
+
+**WHAT THE LEDGER IS.** One append-only table in the general vocabulary, so the
+same engine can be pointed at a gym's rows tomorrow with a new adapter and the
+history comes with it. Append-only is enforced by the DATABASE (two triggers that
+raise, the UPDATE and DELETE grants revoked from the service role, RLS on with no
+policies), not by anyone remembering. Six row kinds behind CHECK constraints. One
+writer function, idempotent on an occurrence key, deriving days_out from the slot
+so no caller can compute it differently. And `ledger_guards()`, so a build can
+ASK a database whether the ledger is really installed.
+
+### THE FIVE DEFECTS THE DRIVING FOUND
+
+**1. Half the buyers were not being recorded.** `recordConfirmedOrderImpl` read
+`orders.guest_email` and nothing else. A count against TEST answered the question
+the code could not: 138 of 294 orders have a `user_id` and no `guest_email`,
+because that is what a signed-in purchase looks like. So for roughly half of
+every sale the ledger wrote no buyer hash and no first-time-or-returning flag.
+Both are named on the sale row by the close-out, and D2's suppression rule is
+"never contact anyone who already bought": a buyer the ledger cannot identify is
+a buyer it cannot suppress, which is a recovery email to somebody holding a
+ticket. The buyer is now resolved through the profile when the order names a
+user, so one person buying once as a guest and once signed in hashes to ONE
+value, which is the whole reason the hash is keyed on the address rather than on
+whichever id the row happened to carry.
+
+The fake admin client had no `.or()`, so the fixed code threw, was swallowed by
+the adapter's guard and came back as null. The suite caught it as `expected
+undefined to be false`, which is exactly the shape of a field that has silently
+stopped being recorded.
+
+**2. The backfill overstated what it did.** A second run over 244 confirmed
+orders printed "wrote 264 row(s)". It had written 34. `write` returns ok for the
+idempotent path as well as for a real insert and the recorders counted both into
+one number. This repository's standing rule is that a save which quietly did
+nothing is never reported as success; the inverse is the same defect wearing the
+other coat, and a backfill is the worst place for it. The recorders now return
+`{written, alreadyThere, failed}` and a re-run reads "wrote 0 row(s), 264 row(s)
+were already recorded and were left alone", which is both the honest sentence and
+the idempotency proof.
+
+**3. The panel told a lie the backfill refuses to tell.** Driven at 390 against a
+real slot with 28 backfilled sales, it read "Reached checkout 0, Did not finish
+0, Looked at the page 0" beside "28 sold, $665 taken". Not one of those zeros was
+true. The backfill writes NO demand rows on purpose, and says why in its own
+header: "writing zero abandonment for a period nobody measured would be a lie the
+recovery engine would then act on". The panel was telling that lie on its behalf,
+in the one place an organiser reads it. A slot with sales and no demand rows of
+any kind can only predate the recording, because a live sale writes a
+checkout_started row on its way through, so the two cases are distinguishable and
+now say different things. A REAL zero is still shown, because "nobody abandoned"
+is a real and good answer.
+
+**4. Five catch blocks swallowed an error from outside the process**, one of them
+the read that resolves the address D2 will contact a person on. Every one now
+speaks.
+
+**5. `publish-requires-cover` accused the ledger adapter of publishing events.**
+It asked two separate questions of a whole file, "does it mention
+`.from('events')`" and "does it contain `.update(` anywhere", and the adapter
+derives a keyed hash with `createHash('sha256').update(...)`. The guard offers an
+ALLOWANCE list for exactly this, and taking it would have been worse than the
+false positive: it would have signed a statement about the ledger adapter's
+publish behaviour in order to silence a bug in the guard. The write must now
+appear within the same chain, the guard says out loud what it still cannot see (a
+builder stored in a variable and written to far away), and it was drilled red on
+a real publish site and green again afterwards. Four publish sites, three gated,
+one reviewed allowance: unchanged coverage, minus the false positive.
+
+### THE REVERSAL CONDITION, MEASURED IN BOTH DIRECTIONS
+
+D1 asks for the 95th percentile before and after, with a 50ms threshold. Two arms
+of the SAME endpoint that differ by exactly the ledger write, forty interleaved
+pairs per run, against this tree's production build. The BEFORE was executed on a
+build with the write on the response path rather than quoted from memory:
+
+    BEFORE   the write adds p50 194.6ms, p95 310.2ms
+    AFTER    p95 of -31.7, 24.5, 31.0, 49.5 and 81.9ms across five runs
+
+So it moved off the request path. Not to a queue: Next's `after` runs a callback
+once the response is finished and its own reference names this exact use, so
+there is no infrastructure and no delivery semantics to get wrong, and NOT ONE
+FIELD is dropped, which the same sentence forbids. Every ledger write on
+somebody's request now runs after they have their answer: the checkout-started
+row, both confirmed-order sites, the free registration, the waitlist join, the
+demand beacon, both webhook recorders and both organiser-save recorders. The
+crons keep theirs inline, because nobody is waiting on a cron.
+
+The AFTER is reported as a BAND, because that is what it is: four of five under
+the threshold and one over, on a harness whose control arm alone moves by 40ms of
+p95 between runs. What is established rather than inferred is that the work no
+longer happens before the response, and the proof of that is that the measurement
+had to grow a settle poll: the rows arrive after the responses do.
+
+### AND TWO HARNESS DEFECTS, WHICH IS WHY THE FIRST RUNS WERE NOT EVIDENCE
+
+**Playwright wants the viewport nested.** `newContext({ ...{width, height} })` is
+not a viewport, so Playwright used its 1280x720 default and the 390 run reported
+`doc.scrollWidth 1280/1280`, "0 clipped", and a panel whose right edge was at 904
+"against a 390 viewport". A green run that proves the opposite of what it says is
+worse than a red one, so the drive now reads the width back off the page and a
+mismatch is a fault.
+
+**A re-run of the latency harness measured eighty no-ops.** Same forty addresses,
+same agents, same day, so the same forty occurrence keys, and the ledger
+correctly wrote nothing. The harness reported "arm A wrote no rows" and I very
+nearly filed it as `after()` silently dropping work on a production server. It
+was the idempotency doing its job. A dev-server probe and then a `next start`
+probe settled it by execution rather than by argument, and the run stamp now
+feeds the visitor hash.
+
+### THE DRIVEN PROOF, AND THE ONE LEG THAT IS NOT MINE
+
+15 of 15 checks at 390, 768 and 1440. The densest real slot on TEST is enumerated
+from the database rather than typed, backfilled through the same adapter a live
+sale uses, and its panel opened by a real signed-in organiser in a real browser:
+28 units and $665 on screen, compared against the ledger the page read them from,
+over six distinct days out, fitting the viewport box at every width. Plus a REAL
+free purchase through the real public checkout writing a real sale row, and a
+real event page writing a real page_view demand row.
+
+The close-out asks for the Afro-Fusion slot INCLUDING order EL-9HE57YNV. That
+order is real and it is on PRODUCTION, and production has no ledger tables:
+20260910000002 is one of six migrations still pending. So the exact rows it will
+carry are established instead, without writing one and without the process ever
+holding a credential that could: the backfill's own `--dry-run` judgement, over a
+read-only Management API connection, with a `db` shim that implements reads and
+has no insert, update, upsert or rpc on it to call.
+
+    EL-9HE57YNV  general admission x1  18.00  at 2026-09-09 14:19:41
+
+That is what appears the moment `npm run migrate:production` runs.

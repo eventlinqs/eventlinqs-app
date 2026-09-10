@@ -2053,6 +2053,48 @@ upload guard no longer executes on Vercel, and a deliberate throw naming itself.
 ## D1  The slot ledger.  Built category general from the first line.
 Priority: immediately after UX6. Do not start while any UX6 item is open.
 
+STATE, 10 September 2026, commit f053f7fc. BUILT, DRIVEN AND GREEN, WITH ONE
+LEG OUTSTANDING THAT IS NOT MINE TO CLOSE.
+
+  schema            Applied on TEST. ledger_guards() answers 10 of 10 true
+                    there. Append only enforced by the database: two triggers
+                    that RAISE, the UPDATE and DELETE grants revoked from
+                    service_role, RLS on with no policies.
+  adapter, guards   One door in. Three registered guards, six clauses, each
+                    drilled RED then GREEN on this tree.
+  tests             6 files, 102 tests. Canary 359/4247 to 365/4350.
+  backfill          264 rows from 244 confirmed orders on TEST; a re-run wrote
+                    0 and left 264 alone. NO demand rows backfilled, on
+                    purpose. PRODUCTION backfill NOT DONE: production has no
+                    ledger tables and a production write is Lawal's approval.
+  reversal          Measured both ways on a real build. On the response path it
+                    added p95 310.2ms against a 50ms threshold, so it moved
+                    behind next/server after(), dropping no field. Five
+                    readings after: p95 -31.7, 24.5, 31.0, 49.5, 81.9ms.
+  driven            15 of 15 checks at 390, 768 and 1440, on real data: 28
+                    units and $665 over six distinct days out, every number on
+                    screen compared against the ledger the page read it from,
+                    no overflow at any width. Plus a real free purchase writing
+                    a real sale row and a real event page writing a real
+                    page_view row.
+  regression        Green: 102 guards, 365 files / 4350 tests, build, the
+                    indexing drive, the checkout drive, the Lighthouse mobile
+                    gate (13 URLs, 65 runs).
+
+  FIVE DEFECTS FOUND BY DRIVING IT, all fixed in the item: half of all buyers
+  recorded as nobody (guest_email only, null for 138 of 294 orders on TEST);
+  the backfill reporting 264 written on a run that wrote 34; the panel showing
+  three false zeros beside 28 real sales; five swallowed errors; and
+  publish-requires-cover accusing the adapter of publishing events because it
+  read a crypto .update() as a database write.
+
+  TO CLOSE: npm run migrate:production. It creates the ledger on production,
+  which is the only thing standing between the Afro-Fusion slot and its curve.
+  What that order will produce is already established, read-only:
+      EL-9HE57YNV  general admission x1  18.00  at 2026-09-09 14:19:41
+
+  Evidence C:\dev\EVIDENCE\D1\. Ledger rows in C:\dev\BUILD-LEDGER.md.
+
 WHY IT IS NOT CALLED THE TICKET LEDGER
 This ledger is the foundation of a business that will later run for gyms, clinics, tour operators, studios and venues. If it speaks ticketing it will have to be rebuilt to leave ticketing. It speaks the general language from the first migration and EventLinqs adapts into it.
 

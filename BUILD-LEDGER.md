@@ -2822,3 +2822,53 @@ file, which is correct of it.
 | Completion law 6: full regression green | MET for everything this machine can run. 99 of 99 registered guards PASS through the gate's own environment | gate `--only guards` |
 | Completion law 7: committed, Australian English, no trailers | MET. `14fe7fab`, accepted by the commit-msg hook | |
 | Pushed | NOT DONE. Same `production-parity` block | |
+
+## D1, the slot ledger (10 September 2026, commit f053f7fc)
+
+| Item | Requirement | Verdict | Evidence |
+|---|---|---|---|
+| D1 | Migration applied on TEST first; production only on explicit approval | MET. `20260910000002_slot_ledger.sql` is applied on vkapkibzokmfaxqogypq and `ledger_guards()` answers 10 of 10 true there. Production is UNTOUCHED and the backfill refuses it by construction | `supabase db query --linked "select * from public.ledger_guards()"` |
+| D1 | Rows are INSERTed, never UPDATEd or DELETEd; a refund is a new negative row | MET, and the DATABASE enforces it rather than convention: two triggers that RAISE, the UPDATE and DELETE grants revoked from service_role, RLS on with no policies, and a CHECK that a refund carries negative quantity and negative amount | the migration, `ledger_guards()` |
+| D1 | Nothing in the schema, columns, enums or engine uses event, ticket or tier | MET. 77 schema identifiers and 5 engine files judged on every run | `ledger-speaks-no-industry` |
+| D1 | Five row types plus one closing row per slot, with the fields the close-out names | MET, each behind a CHECK so a malformed row cannot exist. The demand row's address is REQUIRED on every action that can carry one, which is what D2 depends on | `tests/unit/ledger/row-types.test.ts` (16) |
+| D1 | Every write path emits its row through the adapter, and nothing else writes | MET. One door, held by a registered guard whose second clause also fails the build if a `confirm_order` site forgets the call | `ledger-writes-through-the-adapter` |
+| D1 | Demand events fire from the slot page and every checkout step including abandonment | MET. page_view and sold_out_view from a beacon (the page is cached, so a render-time count would be counted once per cache lifetime); checkout_started inside `processCheckout`; checkout_abandoned from the reservation-expire sweep, which is the first moment the absence can be observed; waitlist_join from the real form | `src/app/api/ledger/demand/route.ts`, `checkout.ts`, `reservation-expire`, `waitlist.ts` |
+| D1 | Backfill from existing completed orders through the same adapter, inventing nothing | MET on TEST: 264 rows from 244 confirmed orders, and a re-run wrote 0 and left 264 alone. NO demand rows are backfilled at all, because nobody recorded them and writing zero abandonment for a period nobody measured would be a lie D2 would act on | `C:\dev\EVIDENCE\D1\backfill-test.txt` |
+| D1 | Backfill on PRODUCTION | NOT DONE and not mine. Production has no ledger tables (20260910000002 is one of six pending) and a production write needs Lawal's approval. What it WOULD write is established instead, read-only and without this process holding a credential that could write: `EL-9HE57YNV general admission x1 18.00 at 2026-09-09` | `C:\dev\EVIDENCE\D1\production-dry-run.txt` |
+| D1 | A dashboard panel: cumulative sales against days out, price at each point, how many reached checkout and did not finish | MET. Two plots sharing one x-domain (never two y-axes on one plot), a real table underneath, no JavaScript and no charting library on a page the Lighthouse mobile gate blocks on | `src/components/dashboard/sales-pace-panel.tsx` |
+| D1 | Tests on all five row types, the adapter mapping and the backfill | MET. 6 files, 102 tests. Canary 359/4247 to 365/4350 in the same commit | `tests/unit/ledger/`, `tests/component/sales-pace-panel.test.tsx` |
+| D1 | Three guards, all proven to fail as well as pass | MET. Six clauses, each drilled RED then GREEN on this tree | `C:\dev\EVIDENCE\D1\guard-ledger-drill.txt` |
+| D1 | Driven proof: the complete curve, rendered, captured at 390, 768 and 1440, no overflow | MET on real data: 15 of 15 checks at each width. The densest real slot enumerated from the database, 28 units and $665 over six distinct days out, every number on screen compared against the ledger the page read it from, panel right edge 374/390, 744/768, 1416/1440 | `C:\dev\EVIDENCE\D1\{mobile-390,tablet-768,desktop-1440}\`, `proof-run.txt` |
+| D1 | Reversal condition: measure p95 before and after; over 50ms means off the request path | MET, measured on this tree's production build with two arms of one endpoint differing by exactly the ledger write. BEFORE p50 194.6ms / p95 310.2ms. Moved behind `next/server` `after()`, keeping every field, which the same sentence requires. AFTER p95 of -31.7, 24.5, 31.0, 49.5 and 81.9ms across five runs | `C:\dev\EVIDENCE\D1\latency.txt`, `latency-BEFORE.txt`, `latency-AFTER*.txt` |
+| Completion law 2: code typechecked, linted, no silent catches | MET. tsc 0, eslint 0. `no-silent-catch` refused five swallowed errors in this work and every one now speaks | `C:\dev\EVIDENCE\D1\gate-front.txt` |
+| Completion law 6: full regression green | MET for everything this machine can run: typecheck, lint, copy, critical-path, lighthouse-exemptions, types-drift, 102 guards, fixture, suite (365 files / 4350 tests, 0 failed, 0 skipped), build, the indexing drive, the checkout drive (0 faults at 3 widths, 37 axe scans) and the Lighthouse mobile gate (13 URLs, 65 runs, all assertions) | `C:\dev\EVIDENCE\D1\{guards,suite,gate-front,gate-drives,lighthouse}.txt` |
+| Completion law 7: committed, Australian English, no trailers, pushed | PARTIAL by design. Committed as f053f7fc. The PUSH is refused by `production-parity`: six migrations pending, and applying them is the founder's | |
+
+### FIVE DEFECTS FOUND BY DRIVING D1, ALL FIXED IN IT
+
+1. **Half the buyers were not recorded at all.** The order recorders read
+   `orders.guest_email`, null for 138 of 294 orders on TEST because a signed-in
+   buyer carries `user_id`. So half of every sale row had no buyer hash and no
+   first-time-or-returning flag, and D2's suppression rule is "never contact
+   anyone who already bought".
+2. **The backfill overstated what it did**, reporting "wrote 264 row(s)" on a
+   run that wrote 34, because the idempotent path also returns ok.
+3. **The panel told a lie the backfill refuses to tell**: three zeros for a slot
+   whose demand was never recorded, beside 28 real sales.
+4. **Five catch blocks swallowed an error from outside the process**, including
+   the one that resolves the address D2 will contact a person on.
+5. **`publish-requires-cover` accused the ledger adapter of publishing events**,
+   because it matched `createHash('sha256').update(...)` as a database write. The
+   guard was tightened rather than an ALLOWANCE added, and it was drilled red and
+   green on a real publish site afterwards.
+
+### AND TWO IN THE HARNESS, WHICH IS WHY THE FIRST RUNS WERE NOT EVIDENCE
+
+- **Playwright wants the viewport nested.** `newContext({ ...{width, height} })`
+  is not a viewport, so the 390 run reported "0 clipped" while the page was laid
+  out at 1280 and the panel's right edge sat at 904 "against a 390 viewport". The
+  drive now reads the width back off the page and a mismatch is a fault.
+- **A re-run of the latency harness measured eighty no-ops.** Same addresses,
+  same agents, same day, so the same occurrence keys, and the ledger correctly
+  wrote nothing. It reported "arm A wrote no rows" and very nearly became a filed
+  defect against `after()`. The run stamp now feeds the visitor hash.
