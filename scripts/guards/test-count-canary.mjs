@@ -1282,9 +1282,24 @@ const ROOT = join(HERE, '..', '..')
  * a SIBLING of the Follow control rather than its ancestor (a button inside an
  * anchor is invalid HTML), hold that the page and its own structured data name
  * the same URL, and hold the accessible name against WCAG 2.5.3.
+ *
+ * And 375/4510 for close-out UX2.5, the human read of the five launch screens.
+ * Where the venue map belongs, the event page was showing Google's own grey
+ * panel: "Sorry! Something went wrong. This page didn't load Google Maps
+ * correctly. See the JavaScript console for technical details." A third-party
+ * developer message, with an exclamation mark, telling somebody buying a ticket
+ * to open a console.
+ *
+ * Every map already HAD a designed fallback and it was being hidden, because an
+ * auth failure still resolves importLibrary and still constructs a Map: the
+ * component saw a Map, called itself interactive, dropped its own plate, and
+ * Google painted the panel underneath. The seven tests hold the contract the
+ * four map surfaces share - the hook is installed, installed only once, never
+ * overwrites somebody else's, flips the flag, tells every subscriber, survives a
+ * surface mounting AFTER the refusal, and unsubscribes cleanly.
  */
-const MIN_FILES = 374
-const MIN_TESTS = 4503
+const MIN_FILES = 375
+const MIN_TESTS = 4510
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

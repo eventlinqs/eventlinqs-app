@@ -169,6 +169,12 @@ const DETECTOR_FILES = new Set([
   // out changeme / placeholder / todo / fixme. It was reported for containing
   // the words it exists to reject.
   'scripts/lib/db-credentials.mjs',
+  // Added 2026-09-11, the same joke again (close-out UX2.5). The launch-screens
+  // read asserts that none of the five launch screens carries placeholder copy,
+  // so its PLACEHOLDERS list necessarily spells out "coming soon", "lorem
+  // ipsum" and "sample event". It was reported for containing the words it
+  // exists to catch on a shipped page.
+  'scripts/verify/launch-screens-read.mjs',
 ])
 
 function walk(dir, out = []) {
