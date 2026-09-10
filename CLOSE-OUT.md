@@ -2148,6 +2148,54 @@ Measure checkout latency at the 95th percentile before and after. If the ledger 
 ## D2  The recovery engine.  Fillrate v0.  Makes money on day one.
 Priority: immediately after D1. Requires D1 DEMAND rows including email.
 
+STATE, 11 September 2026, commit 35b47532. BUILT, DRIVEN AND GREEN, WITH ONE
+LEG OUTSTANDING THAT IS NOT MINE TO CLOSE.
+
+  schema            Applied on TEST (20260910000003 and 20260910000004).
+                    recovery_guards() answers 14 of 14 true there. Sends are
+                    append only by trigger and by grant; a hold may be completed
+                    but never rewritten; every send and every offer names the
+                    ledger row that authorised it, NOT NULL, by foreign key.
+  the engine        10 files in src/lib/fillrate. Not one imports a table, a
+                    type or a noun belonging to this platform. The word for a
+                    place comes from the slot's own category, so the same three
+                    messages read "your class" for a gym.
+  guards            Three registered (105 total, from 102), nine clauses, each
+                    drilled RED then GREEN. Two of the first six drills came
+                    back DID NOT FAIL and both were real holes in the guards.
+  tests             5 files, 102 tests, plus 11 on the panel. Canary 4455 to
+                    4464 in the same commit.
+  driven            150 of 150. 41 checks at each of 390, 768 and 1440 on the
+                    abandonment sequence, plus 27 on the waiting list, built
+                    from nothing through the interface: a real organiser signs
+                    up, publishes an event with one free place, a real attendee
+                    takes it, two more join the queue, the freed place goes to
+                    the first with a hold, the hold runs out, and it passes to
+                    the second and not back to the first.
+  regression        Green: 105 guards, 371 files / 4464 tests, build, indexing,
+                    checkout-viewport, and the Lighthouse mobile gate (13 URLs,
+                    65 runs, every assertion).
+
+  THREE DEFECTS FOUND BY DRIVING IT, all fixed in the item:
+  the Join Waitlist dialog painted perfectly and could not be clicked, trapped
+  in the stacking context of a transformed ancestor (nine more overlays were one
+  transform from the same fate, all ten now portalled, with a registered guard);
+  one unsubscribe out of sixteen sends cut the whole platform's sequence to a
+  single message; and the resume link put its query string after its fragment,
+  so the parameters were never parameters and it stopped landing on the tickets.
+
+  NOT DONE, NOT ASSERTED: the payment step of an abandonment, and Stripe's own
+  half of the refund that frees a place. Both keys in the Stripe CLI answer
+  api_key_expired against Stripe's own API, re-checked 11 September, and every
+  STRIPE_SECRET_KEY on Vercel is sensitive. Everything either would trigger IS
+  driven; only Stripe's half is not.
+
+  TO CLOSE: npm run migrate:production, or stripe login. The same command that
+  closes UX6 and D1.
+
+  Evidence C:\dev\EVIDENCE\D2\. Ledger rows in C:\dev\BUILD-LEDGER.md.
+
+
 WHY
 Between 60 and 80 percent of people who start a checkout do not finish, over 85 percent on mobile. Up to 20 percent of those are recoverable by an automated sequence. No forecast, no model, no history needed. It works on the first slot.
 
@@ -2252,3 +2300,53 @@ REQUIRED FIX, STRUCTURAL NOT COSMETIC
 
 REVERSAL CONDITION, EVALUATED BY THE BUILD
 If the width guard proves flaky on Vercel because webfonts load late, fix it by awaiting document.fonts.ready. Never weaken the assertion, never raise the tolerance, never exempt a page.
+
+## S1  Connected account health, done properly.  Replaces a false alarm with a real check.
+Priority: after D2. Do not start while UX6, D1 or D2 is open.
+
+THE FALSE ALARM TO REMOVE
+The daily heartbeat compares the organiser display name on EventLinqs with the legal entity name on the Stripe connected account and reports a discrepancy when they differ. Stripe holds these as two separate fields by design. KYC requires the legal entity name of the person or company receiving funds. business_profile.name is the public trading name. For a sole trader organiser they will almost always differ, correctly. MKLStudios trading under the legal name Michael Mirindi MWIKIZA is a correctly configured account, not a fault.
+Left in place, this check fires for nearly every organiser forever and trains the owner to ignore the daily email, which destroys the value of every other line in it.
+DELETE the name comparison check entirely. Do not soften it, do not downgrade it to informational. Remove it.
+
+WHAT REPLACES IT
+For every connected account, read and report the fields that actually determine whether money moves:
+- charges_enabled
+- payouts_enabled
+- requirements.disabled_reason
+- requirements.currently_due, listed by name, not just counted
+- requirements.past_due, listed by name
+- requirements.pending_verification
+- requirements.current_deadline, reported as days remaining
+- future_requirements.currently_due and future_requirements.current_deadline
+
+Severity rules, exact:
+- RED if any account has charges_enabled false, or payouts_enabled false, or a disabled_reason set, or anything in past_due.
+- AMBER if anything is in currently_due, or a current_deadline falls inside 14 days, or anything sits in pending_verification for more than 3 days.
+- GREEN only when every account can take charges, can be paid out, and has nothing currently due.
+Name the organiser and the account id on every non green line, and say in plain words what the organiser must do to clear it.
+
+THE STATEMENT DESCRIPTOR, THE REAL DEFECT
+Stripe falls back through business_profile.name, then business_profile.url, then the legal entity name when settings.payments.statement_descriptor is not set. For direct charges and for destination charges with on_behalf_of, the buyer's bank statement shows the CONNECTED ACCOUNT'S descriptor. A buyer who sees an organiser's personal legal name on their statement does not recognise it and disputes the charge.
+
+1. Determine and record in the ledger which Stripe charge type this platform uses, direct, destination, or separate charges and transfers, and whether on_behalf_of is set. Do not assume. Read it from the code.
+2. Set the platform's own statement descriptor to EVENTLINQS.
+3. At connected account creation, always set business_profile.name to the organiser display name and always set settings.card_payments.statement_descriptor_prefix explicitly, derived from that display name, never left to Stripe's fallback. business_profile.name has the highest precedence, so setting it at creation prevents the legal name fallback for every future organiser automatically.
+4. Backfill the existing account acct_1UDGtEKFmbMwdHmT the same way, so the Afro-Fusion buyers see a name they recognise.
+5. Add to the daily heartbeat a check that no connected account's effective statement descriptor contains the legal entity name when business_profile.name is set and differs from it.
+
+GUARDS, EACH PROVEN TO FAIL AS WELL AS PASS
+- No connected account can be created without business_profile.name and a statement descriptor prefix set in the same call.
+- The heartbeat contains no check that compares a display name to a legal entity name.
+
+ACCEPTANCE, ALL REQUIRED
+- The name comparison is gone from the code and from the email template.
+- The new account health check runs against the live connected accounts and prints the real fields.
+- Driven proof on TEST: create a connected account with requirements outstanding and confirm the heartbeat goes AMBER and names them. Disable charges on a test account and confirm it goes RED.
+- The existing production account is read and its real state reported, including its effective statement descriptor.
+- Migration or update applied to acct_1UDGtEKFmbMwdHmT only with explicit approval from Lawal before any write to a live Stripe account.
+- The heartbeat email renders correctly at 390, 768 and 1440 with no overflow.
+- Full regression green.
+
+REVERSAL CONDITION, EVALUATED BY THE BUILD
+If reading requirements for every connected account makes the daily heartbeat run longer than 30 seconds, cache the account objects for 10 minutes rather than dropping any field from the check. Never reduce the field list to make it faster. If Stripe rate limits the account list, page it and report the page count, do not sample.

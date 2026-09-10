@@ -3424,3 +3424,74 @@ payment step of the UX6 drive still cannot run on this machine. `stripe login`
 would also clear it.
 
 I am carrying on with D2, the recovery engine, which needs neither.
+
+---
+
+## D2, the recovery engine. Built, driven, committed. 11 September 2026.
+
+WHAT A REAL PERSON CAN NOW DO THAT THEY COULD NOT BEFORE.
+
+Somebody who starts buying a ticket, types their email and then does not finish
+now hears from us. Three times: two hours later, a day later, and three days
+later, and then never again. Each message names the event, the ticket type and
+the price, and links straight back to the ticket selector. One click stops all of
+it for ever, and stopping is honoured on the very next sweep.
+
+Somebody who joins a waiting list on a sold-out ticket now actually gets told
+when a place frees up. They get fifteen minutes to take it, and if they do not,
+it passes to the next person in the queue rather than sitting with them.
+
+And you get a panel on every event that says what it won back: how many people
+left a checkout part way, how many we wrote to, how many came back and bought,
+and the money. It calls its own recovery rate RAW, out loud, because there is no
+control group yet, and it says when there will be.
+
+THREE THINGS THAT WERE BROKEN AND ARE NOT ANY MORE, all found by driving it.
+
+1. THE JOIN WAITLIST BUTTON DID NOTHING. Not "sometimes", not "on mobile". The
+   dialog opened, looked perfect, and the button inside it could not be clicked
+   at all, because the dialog was trapped underneath the hero image in a way no
+   screenshot can show. I asked the browser what was actually at the centre of
+   that button and it answered "the hero". Nine other pop-ups on the platform
+   were one transform away from the same fate, including the photo lightbox, the
+   squad invite, the mobile filters and the city picker. All ten are fixed, and
+   there is now a check that fails the build if any new one is built the old way.
+
+2. ONE PERSON UNSUBSCRIBING WOULD HAVE CUT EVERYBODY'S MESSAGES. There is a
+   safety rule that says: if too many people unsubscribe, stop sending so much.
+   Sensible. But at our size, one person out of sixteen is 6 percent, and the
+   rule fired on them and quietly reduced everyone to a single message. It now
+   waits until there are at least fifty sends before it believes a rate. Spam
+   COMPLAINTS still act immediately at any size, because those are the ones that
+   can take our sending domain down and take every buyer's ticket email with it.
+
+3. THE LINK IN THE MESSAGE WOULD NOT HAVE LANDED ON THE TICKETS. A punctuation
+   mistake in how the link was built meant it pointed at the page but not at the
+   ticket section, and none of the tracking would have reached your analytics.
+
+WHAT IS NOT DONE, AND IT IS THE SAME ONE THING AS EVERYWHERE ELSE.
+
+I could not exercise the actual card payment, and I could not pull the actual
+Stripe refund that frees a waiting-list place. Both need a working Stripe TEST
+key. I checked again today rather than trusting yesterday's note: both keys on
+this machine are expired, and every Stripe key stored on Vercel is marked
+sensitive, which means nothing can read it back. Everything either of those would
+have triggered IS driven; only Stripe's own half is not.
+
+NOTHING IS PUSHED YET, and it is still the same one command.
+
+The gate passes every step it can reach and stops at the same place it stopped
+this morning: production is EIGHT migrations behind, now including the two this
+work added. Seventeen commits are waiting.
+
+    npm run migrate:production
+
+That one command releases all seventeen, closes the last leg of UX6, closes the
+last leg of D1, and turns the recovery engine on for real.
+
+A DECISION FOR YOU, WHEN YOU HAVE A MOMENT.
+
+The recovery messages are on by default for every event, which is what D2 asks
+for, and an organiser can switch them off per event. Nobody has built the switch
+into the organiser's own screen yet: the setting exists and defaults to on. Say
+the word and it becomes a toggle on the event edit page.

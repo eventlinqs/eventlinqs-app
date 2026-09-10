@@ -9493,3 +9493,157 @@ either founder command, not by anything I can build.
 `supabase/.temp/project-ref` reads `vkapkibzokmfaxqogypq`. TEST. Production was
 read exactly twice today, both times read-only: the types-drift generator and the
 parity step's migration list.
+
+---
+
+## 11 September 2026, D2, the recovery engine. Commit 35b47532.
+
+Between 60 and 80 percent of people who start a checkout do not finish, over 85
+percent on mobile, and until today nothing on this platform wrote to a single one
+of them. It does now, and the part of it that matters most is not the sending: it
+is everything that refuses to send.
+
+### THE ENGINE READS THE LEDGER AND NOTHING ELSE, AND A GUARD SAYS SO
+
+Ten files in `src/lib/fillrate`, and the boundary is not held by care. On every
+run `fillrate-reads-only-the-ledger` judges 10 engine files, 19 imports and 25
+table references against a DECLARED allowed list: a database client, a mail
+transport, the site URL, the ledger's vocabulary and its identity hash. Nothing
+else. Add `@/lib/ledger/adapter` to any of them and the build stops.
+
+The word for a place comes from the slot's own category, which the ledger carries
+as data, so the same `compose` returns "Your ticket for Lineup Loop Proof Night is
+still here" here and "A class just opened up" for a gym, with no line of the
+composer changing. That is not a claim, it is two assertions in
+`message.test.ts`.
+
+### THE PART THAT COULD ONLY BE FOUND BY DRIVING IT
+
+A DIALOG THAT PAINTED PERFECTLY AND COULD NOT BE CLICKED.
+
+The waiting-list leg opens the real Join Waitlist dialog and presses its button.
+Playwright's click timed out. Twice. Its own call log said "element is visible,
+enabled and stable", then "scrolling into view if needed", and then nothing.
+
+So the drive stopped using Playwright's click and did what a person does: it read
+the button's box, asked `document.elementFromPoint` what was actually at the
+centre of it, and pressed the mouse there. The answer came back:
+
+    covered by div "ArtsQueue Proof Night mtvl1v4o04vThursda" at 720,651
+
+The hero section. At the centre of a button drawn on top of it. The dialog is
+rendered from inside the ticket panel, an ancestor of which carries a transform,
+and a transformed ancestor becomes the containing block for `position: fixed` AND
+creates a stacking context. Its `z-50` only ever meant 50 inside that trap. The
+number was already there and it made no difference.
+
+NINE MORE OVERLAYS were one transform away from the same fate, and I did not go
+looking for them by hand: I wrote the guard first and let it enumerate them. The
+lightbox, the squad modal, the surprise-me modal, the dashboard confirm dialog,
+the mobile filter drawer and the filter sheet, the city picker, the seat-chart
+sync dialog and the admin audit dialog. All ten now portal to `document.body`
+through one shared `usePortalReady`, which uses `useSyncExternalStore` rather
+than the mount-flag-in-an-effect that `react-hooks/set-state-in-effect` correctly
+refuses.
+
+WHY IT IS WORTH A BUILD-FAILING GATE, written into the guard so it is not
+mistaken for taste: nothing else on this platform can see it. The component
+renders. The screenshot is correct. Its unit tests pass, because the component is
+fine. axe passes, because the markup is correct. The link crawler is not looking
+at a link. Only a finger on the button, or a machine asking what is at that pixel,
+can tell.
+
+The guard's own first draft was caught by its own drill: it asked only whether a
+file contained `createPortal(`, and a drill that replaced the import with a local
+`const createPortal = node => node` walked straight past it.
+
+### A RATE OVER SIXTEEN SENDS IS NOT A RATE
+
+The drive unsubscribed one person. One, out of sixteen sends. The reversal
+condition read 6.25 percent, correctly applied the rule the close-out states, and
+cut the sequence to a single message for every person on the platform.
+
+The condition was doing exactly what it says. The arithmetic was the problem, and
+it is the same problem the close-out already names about the holdout: "at current
+volume it would withhold from two or three people and prove nothing."
+
+`REVERSAL_MINIMUM_SENDS = 50`, and it is derived rather than chosen. At the 2
+percent threshold, one unsubscribe in 50 is exactly 2 percent, which does not
+exceed it; in 49 it is 2.04 percent, which does. So 50 is the smallest number of
+sends at which one person pressing a link cannot on their own cut the sequence.
+
+The COMPLAINT thresholds are deliberately NOT given a floor. The close-out's
+reason for the complaint stop is that "sender reputation damage would also take
+down the confirmation emails buyers actually need", and one spam complaint really
+is a warning about that whatever the denominator. A minimum there would be a
+licence to keep sending through exactly the early complaints that matter most.
+
+### A QUERY STRING AFTER A FRAGMENT
+
+The resume link read `/events/<slug>#tickets?utm_source=eventlinqs&...`.
+Everything after the hash is the fragment. So the parameters were never
+parameters, the organiser's analytics would have seen none of them, and the
+fragment stopped matching the `id="tickets"` element, which is the one thing the
+link exists to do. Found by opening the link the drive read out of a real message.
+
+### TWO RULES THAT WOULD HAVE LOOKED CORRECT AND NEVER FIRED
+
+A money row in the ledger carries a keyed `buyer_hash` and never an address, by
+design: a sale records that somebody paid, not who they are. The first draft of
+the engine's reader asked for `contact_email` off the sale rows, which is null on
+every one of them, so "do not write to somebody who already bought" and "do not
+chase somebody whose money came back" would have read perfectly and never once
+suppressed anybody. `identityHash` moved out of the adapter into a neutral module
+so the engine can hash an address and compare like with like.
+
+### THE DRIVEN PROOF
+
+150 of 150 checks. 41 at each of 390, 768 and 1440 on the abandonment sequence,
+and 27 on the waiting list.
+
+The abandonment is real, not seeded. A real buyer opens a real paid event, chooses
+a ticket, fills the real checkout form and presses Continue to payment. The
+recorded state that leaves behind is identical to a person who looked at the card
+form and closed the tab, and it is the only state the engine can see.
+
+The waiting list is built from nothing through the interface, because TEST carries
+no sold-out tier at all and every nearly-sold-out one is paid: a real organiser
+signs up at /signup, publishes an event through the real wizard with ONE free
+place, a real attendee takes it, two more sign up and join the real queue, the
+freed place goes to the first of them with a fifteen minute hold, the hold runs
+out, and it passes to the second and not back to the first.
+
+### AND FOUR HARNESS DEFECTS, WHICH IS WHY THE EARLY RUNS WERE NOT EVIDENCE
+
+An event chosen without asking whether its organiser could take a charge, so the
+page correctly said "Tickets not yet on sale" and the drive reported a missing
+quantity control as though the product had lost one.
+
+A reachability check that measured the button with Playwright's frame coordinates
+and then asked `elementFromPoint`, which is viewport-relative. Two coordinate
+spaces, and a check that indicted the hero for covering a button it was nowhere
+near. It now measures inside the page, and THAT is the run that found the real
+defect.
+
+A join given five seconds and then counted. The row arrived at about six, so the
+drive recorded a good join as failed and then credited that row to the next
+person, who had never submitted anything.
+
+And a drive that unsubscribed somebody on every single run, manufactured a 15.7
+percent unsubscribe rate against its own sends, and read its own footprint as four
+product failures. The sequence is now exercised at a stated healthy rate that is
+named out loud, and the CUT is proved separately against the real numbers in the
+database, so both directions of the reversal condition are asserted rather than
+one of them being tripped over.
+
+### THE REGRESSION, AND THE ONE STEP THAT IS NOT MINE
+
+Green for everything this machine can run: disk, typecheck, lint, copy,
+critical-path, lighthouse-exemptions, 105 guards, types-drift, the fixture, the
+suite (371 files, 4464 tests, 0 failed, 0 skipped), the build, the indexing drive,
+the checkout-viewport drive, and the Lighthouse mobile gate over 13 URLs and 65
+runs with every assertion met.
+
+`production-parity` refuses the push, as it did this morning and for the same
+reason: production is now EIGHT migrations behind, two of them this work's.
+Seventeen commits are waiting on one founder command.

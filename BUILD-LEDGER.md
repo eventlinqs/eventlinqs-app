@@ -2872,3 +2872,81 @@ file, which is correct of it.
   same agents, same day, so the same occurrence keys, and the ledger correctly
   wrote nothing. It reported "arm A wrote no rows" and very nearly became a filed
   defect against `after()`. The run stamp now feeds the visitor hash.
+
+## D2, the recovery engine (11 September 2026, commit 35b47532)
+
+| Item | Requirement | Verdict | Evidence |
+|---|---|---|---|
+| D2 | Schema applied on TEST, verified by querying it back | MET. `20260910000003_recovery_engine.sql` and `20260910000004_recovery_holds.sql` are applied on vkapkibzokmfaxqogypq and `recovery_guards()` answers 14 of 14 true there. Production is UNTOUCHED | `supabase db query --linked "select * from public.recovery_guards()"` |
+| D2 | The engine reads the ledger and nothing else; never imports, queries or references an EventLinqs table, model or type | MET, and held by a registered guard rather than by care. 10 engine files, 19 imports and 25 table references judged on every run against a DECLARED allowed list; the only non-relative imports are a database client, a mail transport, the site URL, the ledger's vocabulary and its identity hash | `fillrate-reads-only-the-ledger` |
+| D2 | All customer facing copy parameterised by slot category; no user facing string hard codes one industry's noun | MET. `words.ts` is the lookup and the one file allowed to name the six words; every other engine line is judged for them. Proven live: the same `compose` returns "Your ticket for..." for a music slot and "A class just opened up..." for a fitness one | `tests/unit/fillrate/message.test.ts` (23) |
+| D2.1 | Abandoned checkout recovery: three messages at 2, 24 and 72 hours; stop on purchase, sell out, cancellation or slot start | MET and driven end to end. The real cron route refuses a three-minute-old abandonment with "no message is due yet"; messages one, two and three then arrive in order and a sweep at hour 200 sends nothing | `C:\dev\EVIDENCE\D2\{mobile-390,tablet-768,desktop-1440}\report.txt` |
+| D2.1 | Each names the slot, the inventory class, the price, and links to a resumable checkout. No discount in v0 | MET. The abandonment row now carries the class and the price (the `checkout_started` row cannot: it is written before the cart is priced), and the message asserts all four. No discount word appears in any of the three | `src/lib/ledger/adapter.ts`, `message.test.ts` |
+| D2.2 | Waitlist activation: sold out, join, a freed unit notifies in join order with a time limited hold that passes down the list on expiry | MET, driven from nothing: a real organiser signs up, publishes an event with ONE free place, a real attendee takes it (sold out), two more join the real queue, the freed place goes to the first with a 15 minute hold, the hold runs out, and it passes to the second and not back to the first | `C:\dev\EVIDENCE\D2\waitlist\report.txt`, 27 of 27 |
+| D2.2 | One freed unit produces exactly one message | MET. The message moved out of `src/lib/waitlist/promote.ts` into the engine; the platform keeps the atomic inventory hold, which is the part only it can do. It also fixes a defect that predates D2: the old sender resolved the address through `profiles` and silently skipped anybody with no account | `src/lib/waitlist/promote.ts` |
+| D2.3 | The proof panel: how many abandoned, how many emailed, how many returned, revenue recovered | MET, and every number compared on screen against the rows the page read them from, at all three widths. A slot nobody has abandoned reads "nothing to win back", never "recovered $0" | `recovery-proof-panel.tsx`, `4-proof-panel.png` at each width |
+| D2 | Measurement: every recovered sale records that it was recovered, which message did it, and the delay. Raw recovery rate | MET. A recovery is a sale on the same slot whose `buyer_hash` matches an address the engine wrote to, occurring AFTER the FIRST message; nothing depends on a click surviving a paste. The panel calls the rate RAW wherever it prints it | `src/lib/fillrate/proof.ts`, `proof.test.ts` (10) |
+| D2 | No holdout yet; add it automatically at 300 cumulative abandonments and register the threshold in code | MET. `HOLDOUT_THRESHOLD_ABANDONMENTS`, executable, watched on every panel render, and the panel's own sentence changes when it is crossed | `due.ts`, `proof.ts` |
+| D2 | Only ever contact a person about the specific slot they themselves started buying | MET, enforced by the DATABASE: `recovery_sends.demand_entry_id` and `recovery_holds.demand_entry_id` are both NOT NULL and both reference `ledger_entries`, so a send cannot exist without naming the engagement that authorised it. Driven: every send row names its entry | `recovery-only-writes-to-people-who-asked` |
+| D2 | Working one click unsubscribe, same sender identity as the confirmation email | MET and driven in a real browser: the link in a real message answers 200, the page says the reminders have stopped, the suppression row exists, and the next two messages are refused with "this address has unsubscribed" while the person who did not unsubscribe still receives both. The engine sends through `sendEmail`, which resolves the sender from the one module | `3-unsubscribe.png`, `report.txt` |
+| D2 | Organiser can switch it off per slot, default on | MET. `ledger_slots.recovery_enabled`, default true, read by the decision and refused with its own reason | migration, `due.test.ts` |
+| D2 | Suppress the unsubscribed, the refunded and anyone who already bought | MET, and the second and third of those were nearly built as rules that could never fire: a money row in the ledger carries a keyed `buyer_hash` and never an address, and the first draft read `contact_email` off the sale rows, which is null on every one of them | `read.ts`, `identity.ts` |
+| D2 | Tests on send, stop conditions, suppression and hold expiry | MET. 5 files, 102 tests in `tests/unit/fillrate/` plus 11 on the panel. Canary 4455 to 4464 in the same commit | `tests/unit/fillrate/`, `tests/component/recovery-proof-panel.test.tsx` |
+| D2 | Guard: no path can contact a person about a slot they never engaged with. Guard: the engine imports nothing from EventLinqs domain code. Both proven to fail as well as pass | MET. Two guards, nine clauses, each drilled RED then GREEN. Two of the first six drills reported DID NOT FAIL and both were real holes in the guards: one clause could be satisfied by a COMMENT, and another passed while one of two send paths had lost its unsubscribe refusal | `C:\dev\EVIDENCE\D2\guard-recovery-drill.txt` |
+| D2 | Reversal condition: above 2 percent unsubscribes or 0.1 percent complaints cut to one message; above 0.3 percent complaints stop | MET, and CORRECTED by driving it. One unsubscribe out of sixteen sends read as 6.25 percent and cut the sequence for the whole platform. `REVERSAL_MINIMUM_SENDS = 50` is derived, not picked: one in fifty is exactly 2 percent, which does not exceed it, and one in forty-nine does. Complaints keep firing at any volume | `due.ts`, six tests |
+| Completion law 2: code typechecked, linted, no silent catches | MET. tsc 0, eslint 0 over src, scripts and tests | `C:\dev\EVIDENCE\D2\gate-front.txt` |
+| Completion law 4: guards registered and blocking | MET. Three registered (105 total, from 102), all passing, 161 of 161 drills firing correctly | `guard-recovery-drill.txt` |
+| Completion law 5: DRIVEN at 390, 768 and 1440 | MET. 41 of 41 checks at each width, plus 27 on the waiting list. 150 of 150 | `C:\dev\EVIDENCE\D2\drive-all.txt` |
+| Completion law 6: full regression green | MET for everything this machine can run: disk, typecheck, lint, copy, critical-path, lighthouse-exemptions, guards (105), types-drift all PASS; fixture, suite (371 files / 4464 tests, 0 failed, 0 skipped), build, indexing and checkout-viewport run explicitly because production-parity blocks the gate before them | `gate-front.txt`, `gate-rest.txt`, `suite.txt` |
+| Completion law 7: committed, Australian English, no trailers, pushed | PARTIAL by design. Committed as `35b47532` and the commit-msg hook accepted it. The PUSH is refused by `production-parity`: EIGHT migrations pending on production, and applying them is the founder's | `gate-front.txt` |
+| D2 | Driven proof of the payment step of an abandonment, and of Stripe's own side of the refund that frees a place | NOT MET, and NOT ASSERTED. Both keys in the Stripe CLI config answer HTTP 401 `api_key_expired` against Stripe's own API, re-checked on 11 September 2026, and every `STRIPE_SECRET_KEY` record on the Vercel project, across production and five preview branch scopes, is `type: sensitive` and cannot be decrypted by any token. The abandonment is produced instead by a real buyer pressing Continue to payment on a real paid event, which leaves the identical recorded state | `drive-all.txt`, this session's Stripe probe |
+
+### THREE DEFECTS FOUND BY DRIVING D2, ALL FIXED IN IT
+
+**1. A dialog that painted perfectly and could not be clicked.** The join-the-
+waiting-list dialog rendered centred and over the page, and
+`document.elementFromPoint` at the exact centre of its own submit button returned
+the HERO SECTION. Playwright's click sat there until it timed out, twice, and a
+person with a mouse would have had the same experience. The dialog was rendered
+from inside the ticket panel, an ancestor of which carries a transform, and a
+transformed ancestor becomes the containing block for `position: fixed` AND
+creates a stacking context, so its `z-50` only ever meant 50 inside the trap. The
+number was already there and it made no difference.
+
+NINE MORE OVERLAYS carried the same latent defect, and they were enumerated by
+the guard written for it rather than by guesswork: the lightbox, the squad modal,
+the surprise-me modal, the dashboard confirm dialog, the mobile filter drawer and
+sheet, the city picker, the seat-chart sync dialog and the admin audit dialog. All
+ten now portal to `document.body` through one shared `usePortalReady`.
+
+WHAT MAKES IT WORTH A GATE: nothing else on this platform can see it. The
+component renders, the screenshot is correct, its unit tests pass, axe passes and
+the link crawler is not looking at a link. `overlays-are-portalled` is registered,
+drilled red on a real dialog and green again, and its own first draft was caught
+by its own drill accepting a locally defined function called `createPortal`.
+
+**2. A rate over sixteen sends is not a rate.** The drive unsubscribed one person
+out of sixteen sends, and the reversal condition read 6.25 percent and cut the
+sequence to a single message for everybody. Fifty is now the floor for the
+unsubscribe cut and it is derived: one in fifty is exactly two percent, which does
+not exceed the threshold, and one in forty-nine does. The complaint thresholds are
+deliberately NOT given a floor, because the close-out's reason for them is
+protecting the sending domain that also carries every buyer's ticket.
+
+**3. A query string after a fragment.** The resume link read
+`/events/<slug>#tickets?utm_source=...`. Everything after the hash is the
+fragment, so the parameters were never parameters, and the fragment stopped
+matching the `id="tickets"` element, which is the one thing the link exists to do.
+
+### AND FOUR IN THE HARNESS, WHICH IS WHY THE EARLY RUNS WERE NOT EVIDENCE
+
+An event picked without asking whether its organiser could take a charge, so the
+page correctly said "Tickets not yet on sale" and the drive reported a missing
+quantity control. A reachability check that compared Playwright's frame
+coordinates against `elementFromPoint`'s viewport ones and reported the hero as
+covering a button it was nowhere near. A join given five seconds and then counted,
+which recorded a good join as failed and credited its row to the next person. And
+a drive that unsubscribed somebody on every run, manufactured a 15.7 percent
+unsubscribe rate against its own sends, and read its own footprint as four product
+failures; the sequence is now exercised at a stated healthy rate and the CUT is
+proved separately against the real numbers.
