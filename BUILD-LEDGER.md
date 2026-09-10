@@ -3358,3 +3358,64 @@ reports the same number for every page is not measuring the thing it names.
 
 **Regression:** 107 guards, 375 files / 4510 tests, 0 failed, 0 skipped,
 typecheck, lint, copy, build, indexing, checkout-viewport, Lighthouse mobile.
+
+## THE LAUNCH READINESS REPORT COULD NOT READ THE NUMBER IT WAS STATING. 11 September 2026 (session 63), commit 375355a1.
+
+Not an item in CLOSE-OUT.md. Found while reading L5, which is item 6 in the run
+brief's priority order, to establish what was still open. The report is the
+document close-out L5 exists to produce and the one the owner reads to decide
+whether the platform launches.
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| The report may not state a fact it has no way to read | **MET** | The pending-migration count was prose in the adjudication and had been wrong since 9 September. It now states the condition; the count belongs to `production-parity`, which measures it and names every pending file. |
+| The class cannot return | **MET** | A clause in `judgeLaunchReadiness` refuses a quantified migration count, spelled or in digits, in any owner need and in any row's `requirement`, `note` or `drivenElsewhere`. |
+| Guard, proven to fail as well as pass | **MET** | `scripts/guards/launch-readiness-honest.mjs` at the registry: **exit 1** on the exact sentence that shipped stale, **exit 0** on the fix. Four pure drills: RED on the stale sentence, RED on a digit count in a row, GREEN on the fixed tree, GREEN on an uncounted mention. |
+| The narrowing is proved, not asserted | **MET** | The negative drill and a named test hold that an UNCOUNTED mention of migrations stays green, which is what the report has to be able to say. Without it the clause fires on every mention and gets switched off. |
+| Row 17 states what has actually been driven | **MET** | It cited UX1.4 and claimed production "still serves the code that carries the six defects". It now cites `scripts/verify/launch-screens-read.mjs` and the UX2.5 read of 11 September 2026. |
+| Tests | **MET** | 6 tests in `tests/unit/verify/launch-readiness.test.ts`. Suite 375/4510 to 375/4516, 0 failed, 0 skipped. Canary baseline raised in the same commit with the reason written on it. |
+| Full regression green | **MET, WITH ONE STEP THE FOUNDER OWNS** | 12 of 12 gate steps plus 107 of 107 guards. `production-parity` red: production is behind this tree, which is `npm run migrate:production`. |
+| Driven proof at 390, 768, 1440 | **NOT APPLICABLE, STATED RATHER THAN SKIPPED** | The change has no rendered surface. It is a build-time adjudication and a markdown artefact, and the thing that proves it is the guard drilling red and green, which it does. Inventing a screenshot here would be evidence theatre. |
+
+### THE DRILL THAT CAME BACK GREEN, AND WHY IT IS IN THE LEDGER
+
+The first drill of the new clause reported **0 faults against the exact sentence
+that had been wrong for two days**. It was recorded as a hole rather than read as
+a pass, which is the only reason it was fixed.
+
+The regex reached the file with its backslashes stripped: `\b` became a literal
+backspace byte, visible only under `cat -A` as `^H`, and `\d` and `\s` became the
+letters `d` and `s`. The clause was therefore matching nothing at all while
+looking entirely correct in the source. Rebuilt with the backslash constructed
+from a character code.
+
+This is the second time on this project that a drill returning DID NOT FAIL has
+been a real hole rather than a clean tree (close-out D2 found two of six). The
+lesson holds: a drill that does not go red has not proved the guard works, it has
+raised a question about the guard.
+
+### WHAT THIS SAYS ABOUT THE REPORT AS AN INSTRUMENT
+
+The guard's own header says the readiness report is "the single most tempting
+document in the repository to improve by hand", and it defends that by rendering
+the file from the adjudication and comparing byte for byte. That defence is real
+and it worked. What it cannot do is notice that the ADJUDICATION itself contains a
+claim about the world, because it compares the file against the adjudication and
+not the adjudication against production.
+
+So the byte-for-byte comparison guarantees the report says what the code says. It
+guarantees nothing about whether the code is still right. Every live fact written
+into that file is subject to the same silence, and the clause added here closes
+the one that had already rotted.
+
+### THE OTHER TWO THINGS ESTABLISHED THIS SESSION, BOTH BY DRIVING
+
+**The push is blocked and it is not a defect.** 21 commits were pushed through the
+normal gate and the gate refused at `production-parity` after 8 passing steps.
+Nine migrations pending, enumerated from the tree against production read-only,
+not counted. Bypassing with `--no-verify` was available and was not used.
+
+**The Stripe TEST key is still expired.** Re-checked against Stripe's own API
+rather than trusting the note in CLOSE-OUT: `GET /v1/balance` with the CLI's
+stored test key answers **401**. The outstanding legs of UX6, D1 and D2 are
+therefore still genuinely blocked and still not mine to close.

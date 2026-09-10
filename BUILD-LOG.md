@@ -9875,3 +9875,122 @@ box in `main`, which a full-height wrapper reaches by construction, so it read
 ipsum" - inside the list of placeholder strings it exists to detect on a shipped
 page. Added to `DETECTOR_FILES`, which is the sanctioned mechanism and is printed
 on every run, alongside the five detectors already there for the same joke.
+
+---
+
+## Session 63, 11 September 2026, 07:20 to 08:35. The launch readiness report, and the count it could not read.
+
+DISK at start: 21.5 GB free. Well above the floor. Nothing reclaimed, nothing
+deleted. Machine on AC, which the Lighthouse step needs.
+
+### FIRST ACTION: the unpushed commits
+
+21 commits sat on `verify/l5-launch-readiness` from a session that lost its
+connection. Pushed through the normal gate. The gate REFUSED, correctly, and
+nothing was pushed:
+
+    [gate] production-parity       FAIL      5
+    [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+Nine migrations are pending on production, enumerated rather than counted:
+
+    20260909000001_event_tags_case_distinct.sql
+    20260909000002_platform_notifications.sql
+    20260909000003_platform_notification_guards.sql
+    20260909000004_platform_notifications_never_block.sql
+    20260909000005_degraded_notification_keeps_its_subject.sql
+    20260910000001_ticket_tiers_keep_their_identity.sql
+    20260910000002_slot_ledger.sql
+    20260910000003_recovery_engine.sql
+    20260910000004_recovery_holds.sql
+
+Applying them is the founder's step by his own ruling of 26 August 2026
+(CLAUDE.md, Verification and gates, Migrations). It was NOT bypassed with
+`--no-verify`. The eight steps before it all passed.
+
+### The Stripe key, re-checked rather than remembered
+
+UX6, D1 and D2 each carry one outstanding leg that needs a working Stripe TEST
+key. Re-checked against Stripe's own API rather than trusting the note:
+`GET /v1/balance` with the CLI's stored test key answers **401**. Still expired.
+The leg is still genuinely blocked and is still not mine to close.
+
+### THE DEFECT FOUND, AND FIXED
+
+`docs/verification/LAUNCH-READINESS.md` is the document the owner reads to decide
+whether the platform launches. It said:
+
+> production is one migration behind this tree
+
+It has said that since 9 September. Nine were pending.
+
+**Why nothing caught it.** The count was prose inside the adjudication in
+`scripts/verify/launch-readiness.mjs`. `scripts/guards/launch-readiness-honest.mjs`
+judges the report by re-rendering that same prose from that same constant and
+comparing byte for byte. So it agreed with itself on every run, however wrong the
+sentence was. No file changed on the day the claim stopped being true. That is
+exactly the shape Law 9 clause 4 names: a stale claim is a defect, not a neutral
+fact, and it goes stale in silence.
+
+**The fix.** The number is a live fact about a database this render has no token
+for. It runs on a laptop, in CI and on the Vercel build host, and not one of them
+can read what production has applied. The sentence now states the CONDITION and
+leaves the COUNT to the production-parity step, which measures it and names every
+pending file. A clause in `judgeLaunchReadiness` refuses a quantified migration
+count in any owner need or any row, spelled or in digits.
+
+The file had already learned this lesson once. The count of owner approvals is
+derived from the rows rather than typed, with a test named "counts the approvals
+from the rows rather than from a sentence somebody typed". It missed this one.
+
+Row 17 also understated what had been driven. It cited UX1.4 and claimed
+production "still serves the code that carries the six defects". It now cites
+`scripts/verify/launch-screens-read.mjs` and the UX2.5 read of 11 September.
+
+### THE DRILL THAT CAME BACK GREEN AND SHOULD NOT HAVE
+
+The first drill of the new clause reported **0 faults on the exact sentence that
+shipped stale**. That was a hole, not a pass.
+
+The cause: the regex reached the file with its backslashes stripped, so `\b` was
+a literal backspace byte (0x08, visible as `^H` under `cat -A`) and `\d` and `\s`
+were the letters `d` and `s`. Rebuilt with the backslash constructed from a char
+code. It now drills:
+
+    A  the exact sentence that shipped stale     RED, 1 fault, names the need
+    B  a digit count written into a row          RED, 1 fault, names the row
+    C  the fixed tree                            GREEN, 0 faults
+    D  an UNCOUNTED mention of migrations        GREEN, 0 faults
+
+D is the one that keeps the clause alive. A guard that fires on every mention of
+a migration gets switched off inside a week.
+
+At the registry, the guard exits **1** on the stale sentence and **0** on the fix.
+
+### REGRESSION
+
+    typecheck              PASS      8s
+    lint                   PASS     57s
+    copy                   PASS      1s
+    critical-path          PASS      0s
+    lighthouse-exemptions  PASS      0s
+    guards                 PASS     91s     107 of 107
+    types-drift            PASS     18s
+    fixture                PASS      0s
+    suite                  PASS     58s     375 files / 4516 tests, 0 failed, 0 skipped
+    build                  PASS    153s
+    indexing               PASS    226s
+    checkout-viewport      PASS    224s
+    lighthouse             PASS   1661s     13 URLs, 65 runs, every assertion
+
+Only `production-parity` is red, and it is the founder's command.
+
+**A note on running guards by hand.** `node scripts/guards/run-guards.mjs` from a
+bare shell failed three guards (`curated-categories-exist`, `schema-ahead-of-code`,
+`excluded-reads-survive-the-upload`). None was a tree defect: the bare shell has no
+`NEXT_PUBLIC_SUPABASE_URL` and those guards refuse rather than skip when they
+cannot see the database, which is correct behaviour. Run them the way the gate
+does, `npm run gate:push -- --only guards`, and all 107 pass. Verified by running
+it, not assumed.
+
+Commit `375355a1`. DISK at end: 21.4 GB free.

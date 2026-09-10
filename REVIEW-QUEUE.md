@@ -3830,3 +3830,66 @@ Twenty commits are now waiting, and the gate passes 14 of its 15 steps. The
 fifteenth refuses because production is nine migrations behind:
 
     npm run migrate:production
+
+---
+
+## The launch report was telling you production was one migration behind. Nine were. (11 September 2026)
+
+The launch readiness report is the page you would read to decide whether to go
+live. Since 9 September it has carried this sentence:
+
+> production is one migration behind this tree
+
+Nine were pending when I read it this morning. The sentence had been wrong for
+two days.
+
+**Why nobody noticed, and this is the part worth your time.** That report is
+generated, and there is a check whose whole job is to stop anyone editing it by
+hand. It works by regenerating the report and comparing it letter for letter with
+the file. So it compares the report against the code that writes the report, and
+those two agreed perfectly. Neither of them ever looks at production. The
+sentence could be any number at all and the check would still pass, because it
+was only ever asking whether the file matched the code, never whether the code
+was still true.
+
+Nothing changed on the day that sentence became wrong. That is what makes this
+kind of thing dangerous: there is no moment where it breaks, it just quietly
+stops being true.
+
+**What I changed.** The report no longer states the number, because it has no way
+to read it. It states the situation, and the number now comes from the push gate,
+which actually checks production and lists every pending migration by name. And I
+added a rule that refuses to let a count like that back into the report, whether
+it is written as a word or as a digit.
+
+I also found the report was underselling itself in one row: it said production
+"still serves the code that carries the six defects" and pointed at an older piece
+of work. It now points at the read of the five launch screens I did yesterday.
+
+**One thing I got wrong, and caught.** My first test of the new rule came back
+clean against the very sentence that had been wrong for two days. That should have
+been impossible. It turned out the rule had been written into the file with some
+characters silently mangled, so it was matching nothing while looking perfectly
+correct on screen. I treated the clean result as a fault rather than a pass, found
+it, and rebuilt it. It now fails on the bad sentence and passes on the good one,
+and I have proved both.
+
+### Where things stand
+
+Twenty-two commits are now waiting. The gate passes every step it can reach: the
+typecheck, the linting, all 107 checks, the full test suite, the build, the
+indexing, the checkout layout checks and the full speed and accessibility run.
+
+It stops at one step, and always the same one. Production is nine migrations
+behind this tree, and applying them is yours by your own rule:
+
+    npm run migrate:production
+
+That one command releases the twenty-two commits and closes the last outstanding
+piece of three finished items: the mobile checkout (UX6), the slot ledger (D1) and
+the recovery engine (D2).
+
+I re-checked the other route out of it rather than repeating what the notes said:
+the Stripe test key on this machine still answers "expired" to Stripe itself. So
+`stripe login` is still the alternative, and the key is still not something I can
+mint.
