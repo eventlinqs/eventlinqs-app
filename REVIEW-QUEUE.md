@@ -3495,3 +3495,43 @@ The recovery messages are on by default for every event, which is what D2 asks
 for, and an organiser can switch them off per event. Nobody has built the switch
 into the organiser's own screen yet: the setting exists and defaults to on. Say
 the word and it becomes a toggle on the event edit page.
+
+---
+
+## UX5 is not in CLOSE-OUT.md, and the page it names has a defect I have fixed but not yet driven
+
+You listed UX5, the 2FA enrolment page, as item four. It is not in CLOSE-OUT.md,
+and it is not in BUILD-BRIEF.md or any other file in C:\dev. So I do not know its
+scope, and different readings would send me in different directions: a QR code, a
+redesign, recovery codes, or moving 2FA onto the ORGANISER owner role rather than
+the admin console.
+
+WHAT I FOUND ON THAT PAGE WITHOUT NEEDING THE SPEC.
+
+`/admin/enrol-2fa` tells you, in its own words:
+
+    "Open your authenticator and scan the QR code from your password manager"
+
+and it draws no QR code. Its header comment says so out loud: "QR rendering is
+intentionally not in A1 - copy and paste into the authenticator works on every
+modern app." That is only true if you are enrolling on the same machine you are
+reading it on. An authenticator lives on a PHONE. What that instruction actually
+asks for is a person typing a 32 character secret off a laptop screen into a
+handset, on the one screen where a typo locks them out of the admin console.
+
+It costs nothing to fix. `qrcode` is already a dependency and already renders
+server-side for the Launch Kit, and the platform already has a house pattern for
+this exact thing: the door ticket at /t/[code] renders an inline SVG QR with
+role="img" and a label, deliberately not a raw <img>, so the media rules are
+satisfied with no exemption. The enrolment page now does the same. The secret and
+the URI stay on the page, because somebody who cannot use a camera must never be
+left with only a picture, and a failed render still shows them.
+
+IT IS IN THE WORKING TREE AND IT IS NOT COMMITTED, because I have not driven it
+yet. Reaching that page needs an admin session that has not enrolled, which means
+resetting an admin on TEST and signing in through the real admin login. I did not
+start that until I know whether the QR is the whole of UX5 or the beginning of it.
+
+WHAT I NEED FROM YOU: one line on what UX5 is. If it is just "you cannot scan the
+2FA setup", it is already written and I will drive it at 390, 768 and 1440 and
+commit it. If it is more than that, tell me and I will build the rest with it.
