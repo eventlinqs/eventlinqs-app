@@ -3296,3 +3296,45 @@ Everything else is ready and green behind it.
   Both test keys the Stripe tool stores expired in July and Vercel will not hand
   the real one back. Either command works; the migration one is more useful
   because it also releases the commits.
+- **The gate then caught one more, and it is the kind that quietly costs Google
+  traffic.** An organiser profile page that is real and live answered "page not
+  found" to our own sitemap, once, because the connection to the database
+  dropped for that one request. To Google that is not "try again", it is "remove
+  this page from search". The page now retries the connection, and if it still
+  cannot reach the database it says "something went wrong, try again" instead of
+  "this does not exist". I checked the rest of the site for the same mistake and
+  found one more, on the worst possible page: the squad payment page, where the
+  same dropped connection would have told someone mid-payment that their payment
+  link was dead. Both fixed.
+
+## 10 September 2026, session 61
+
+- **The thing that was left behind by a dropped connection is committed and
+  green.** The organiser page that told Google "this page does not exist" when
+  the database connection dropped, and the squad payment page that would have
+  told someone mid-payment their link was dead, are both fixed, tested and
+  through the whole local suite (4247 tests, none failing, none skipped).
+- **Then the gate itself turned out to be broken, and it was blaming the
+  checkout.** The automated check that drives a real purchase at phone, tablet
+  and desktop widths reported six failures: the buyer could not reach checkout,
+  and the free registration never completed. None of it was true. The check
+  starts its own copy of the site to drive, and it was starting it without the
+  small local stand-in for our rate limiter. With no rate limiter present, the
+  site correctly refuses anything that touches money, which is exactly what we
+  want in production and exactly what makes the check impossible to pass.
+  Somebody would have spent a day on a checkout that was fine.
+- **It is fixed in the place that stops it coming back.** There were three
+  copies of "start the site to drive it", and only one of them had the stand-in
+  (the one that never buys anything). There is one copy now, and a build-blocking
+  check that fails if a fourth is ever added, or if the stand-in is ever handed
+  over without being checked that it actually answers. The whole thing was
+  broken six different ways on purpose to watch the check catch each one; two of
+  those attempts found real holes in the check itself, which were fixed before it
+  was trusted.
+- **STILL NEEDS YOU, unchanged and now blocking fourteen commits:
+  `npm run migrate:production`.** Nothing can be pushed until production has the
+  six migrations the code expects. It is one command and it is yours by your own
+  ruling. It also gives me the one checkout screen I still cannot drive here (the
+  card screen), because the preview it builds carries a working Stripe test key.
+  The alternative for that one screen only is `stripe login` on this machine;
+  both of the stored test keys expired in July.

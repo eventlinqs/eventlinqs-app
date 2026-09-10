@@ -2796,3 +2796,29 @@ file, which is correct of it.
 | UX6 | Completion law 6: full regression green | MET except the two steps that cannot run here. disk, typecheck, lint, copy, critical-path, lighthouse-exemptions, guards (155), types-drift all PASS; fixture, suite (358 files / 4239 tests, 0 failed, 0 skipped), build, indexing and checkout-viewport run explicitly because production-parity blocks the gate before them. axe: 37 scans in the drive plus 8 shared-chrome scans at 1440, 1024, 768 and 390, all zero | C:\dev\EVIDENCE\UX6\gate-1.txt, gate-2.txt, axe-shared-chrome.txt |
 | UX6 | Completion law 7: committed, Australian English, no trailers, pushed | PARTIAL by design. Committed as e94840d6 and the commit-msg hook accepted the message. The PUSH is refused by production-parity: production is six migrations behind and applying them is the founder's, under Law 10 and the Migrations rule | C:\dev\EVIDENCE\UX6\gate-1.txt |
 | UX6 | UX6.4 driven, not only unit tested | MET. The free path completes a real guest purchase and the server sends the real email: 2 bearer ticket links, 2 signed order links, and ZERO /tickets links across every confirmation the drive sent, where before this change every guest email carried one. The bearer link is then opened by the drive in a fresh browser context with no session, HTTP 200 at all three widths | C:\dev\EVIDENCE\UX6\drive-run.txt, the console transport in .tmp-serve.log |
+
+## The read that could not ask, committed (10 September 2026, commit 73fcf9f0)
+
+| Item | Requirement | Verdict | Evidence |
+|---|---|---|---|
+| UX6 tail | A page may never answer "this does not exist" because it could not ask | MET. Both organiser reads go through `withBuildRetry`, and a read that still fails THROWS: a 500 says "ask again", a 404 says something false and permanent | `src/app/organisers/[handle]/page.tsx` |
+| UX6 tail | The class measured rather than guessed at | MET. 23 public routes read the database and can call `notFound()`; 5 used the retry primitive; one other folded a read error into "not found" and it was `/squad/[token]/pay/[member_id]`, a person mid-payment. Only `PGRST116` now means the member is not there | `src/app/squad/[token]/pay/[member_id]/page.tsx` |
+| UX6 tail | Tests, canary raised in the same commit | MET. 8 tests, one file; canary 358/4239 to 359/4247 | `tests/unit/seo/read-failure-is-not-not-found.test.ts` |
+| UX6 tail | Regression | MET. suite 359 files / 4247 tests, 0 failed, 0 skipped; typecheck 0; lint 0; 155 guards; build exit 0; the indexing drive that CAUGHT this now PASSES | `C:\dev\EVIDENCE\PUSH-2026-09-10\gate-rest.txt` |
+| UX6 tail | Pushed | NOT DONE. `production-parity` refuses: production is six migrations behind this tree. One founder command clears it: `npm run migrate:production` | `C:\dev\EVIDENCE\PUSH-2026-09-10\push-gate.txt` |
+
+## The gate that accused the product (10 September 2026, commit 14fe7fab)
+
+| Item | Requirement | Verdict | Evidence |
+|---|---|---|---|
+| Gate defect | Diagnose the six red checkout faults before changing product code | MET. The step's own server log carried `[redis] UPSTASH_REDIS_REST_URL ... not set` fifty times. `checkout-reserve` is `failClosed: true` and covers reservation, checkout and squad payment-intent creation, so under `next start` with no backend all three are refused before any product code runs | `.tmp/gate-checkout-server.log`, `src/lib/rate-limit/policies.ts` |
+| Gate defect | Fix the class, not the instance | MET. Three steps each spawned `next start`; only the Lighthouse one (which buys nothing) had the stub. One `startGateServer` now, used by all three | `scripts/ops/pre-push-gate.mjs` |
+| Gate defect | A URL pointing at nothing is not a limiter | MET. `startGateServer` PINGs the stub and refuses to hand back a base URL until it answers PONG | `pingUpstashStub` |
+| Completion law 1: schema | n/a. A gate change; no migration | | |
+| Completion law 2: code typechecked, linted, no silent catches | MET. tsc 0, eslint 0 | |
+| Completion law 3: tests | n/a for the guard itself; the guard IS the test, and its drills are the proof. No test-count change, so no canary move | |
+| Completion law 4: guard proven red and green | MET. `gate-servers-carry-a-limiter`, registered and blocking, six clauses, each drilled RED then GREEN. Two drills failed on the first pass and both were real defects in the guard and the drill | `C:\dev\EVIDENCE\D1\guard-gate-server-drill.txt` |
+| Completion law 5: driven at 390, 768 and 1440 | MET. The same gate step on the same build: 0 faults across three widths where it reported 6, 37 axe scans, the free path completing a real purchase, the paid path now reaching the payment step | `C:\dev\EVIDENCE\D1\gate-checkout-{before,after}.txt` |
+| Completion law 6: full regression green | MET for everything this machine can run. 99 of 99 registered guards PASS through the gate's own environment | gate `--only guards` |
+| Completion law 7: committed, Australian English, no trailers | MET. `14fe7fab`, accepted by the commit-msg hook | |
+| Pushed | NOT DONE. Same `production-parity` block | |

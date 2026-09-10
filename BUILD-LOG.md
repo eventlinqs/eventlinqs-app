@@ -9157,3 +9157,141 @@ change every guest email carried one. And the bearer link is opened by the drive
 itself, in a fresh browser context with no session, as surface `6-ticket-view`:
 HTTP 200 at 390, 768 and 1440. That is "a ticket link that works with no sign in",
 driven rather than asserted.
+
+### THE GATE THEN CAUGHT A DEFECT OF ITS OWN, AND IT IS THE THIRD OF ITS CLASS
+
+The indexing step went red on one line:
+
+    [indexing-drive] FAIL: RULE 2: /organisers/kit-presents-029298 is in the
+                           sitemap and answered 404
+
+The organisation is real, `status = 'active'`, with a published event still to
+come, and the same URL answers 200 on the next request. It was not re-run until
+it passed. The gate's own server log carries the cause, twice on the one request,
+once for the metadata and once for the render:
+
+    [organiser-profile] status gate failed for kit-presents-029298:
+      TypeError: fetch failed
+      Caused by: SocketError: other side closed (UND_ERR_SOCKET)
+
+A stale pooled socket to Supabase. The read did not come back empty, it did not
+come back at all, and the page turned that into `notFound()`. To a crawler
+following our own sitemap that is not "try again later", it is "delete this from
+the index", and the SEO compounding engine the growth plan runs on is made of
+exactly these pages.
+
+**It is the third occurrence, and the file's own header records the first two.**
+"A discarded error here is what turned a permission problem into a silent 404 on
+every organiser profile", it says, and the fix at the time was to make the error
+VISIBLE. It still answered 404. Making an error visible and making it honest are
+different jobs.
+
+**The fix invents nothing.** `src/lib/supabase/build-retry.ts` already exists for
+this, four discovery routes already use it, and its `isTransientPoolError`
+already matches `fetch failed` and `ECONNRESET`. Both organiser reads go through
+it, so a dropped keep-alive socket is retried rather than believed. And when a
+read still fails it now THROWS: a 500 says "ask again", which is true, where a
+404 says something false and permanent. An organisation that is genuinely absent
+or inactive still returns null and still 404s, because that answer is the truth.
+
+**The class was then measured rather than guessed at.** 23 public page routes
+both read the database and can call `notFound()`; 5 use the retry primitive. One
+other visibly folded a read error into "not found", and it is the worst possible
+one to get wrong: `/squad/[token]/pay/[member_id]`, a person mid-payment, where
+`.single()` returns an error for BOTH "no rows" and "the socket dropped". Only
+`PGRST116` now means the member is not there.
+
+Eight tests hold the distinction on both routes and hold that the retry primitive
+still refuses to retry a real query fault (`42501`, `PGRST116`).
+
+# 10 September 2026, session 61. The gate that accused the product of its own missing Redis.
+
+Started, as instructed, by looking for work a lost connection had left behind.
+Thirteen commits sat unpushed on `verify/l5-launch-readiness`, and the working
+tree held a finished-but-uncommitted fix: the organiser profile that answered
+404 to our own sitemap because a socket dropped, plus the same class on the
+squad payment page, plus eight tests and the canary bump. Typecheck 0, lint 0,
+the eight tests green. Committed as `73fcf9f0`.
+
+**GOVERNING LAWS, stated before the first edit (Law 0.2):** Law 0, the
+Definition of Done, Law 5 (zero dead links), Law 7 (research before
+recommending), Law 8 (authorship), Law 10 (script the founder's step), the
+Migrations rule under Verification and gates, and the COMPLETION LAW in
+BUILD-BRIEF.md.
+
+**VERIFY-FIRST, stated before the first edit:** the push would be attempted
+through the real hook rather than reasoned about; the gate steps the hook could
+not reach would be run explicitly; and any red step would be diagnosed from what
+the machine wrote down, never from what it looked like.
+
+## THE PUSH, ATTEMPTED RATHER THAN ASSUMED
+
+`git push origin verify/l5-launch-readiness` ran the whole gate and stopped where
+the ledger said it would:
+
+    disk PASS, typecheck PASS, lint PASS, copy PASS, critical-path PASS,
+    lighthouse-exemptions PASS, guards PASS (155), types-drift PASS,
+    production-parity FAIL
+
+Six migrations are pending on production (20260909000001 through 000005 and
+20260910000001) and `npm run migrate:production` is the founder's one command.
+Nothing was pushed. That is the gate working, and it is the same block UX3, UX4,
+D0 and UX6 are behind.
+
+The steps behind that block were then run explicitly: fixture PASS, suite PASS
+(359 files / 4247 tests, 0 failed, 0 skipped), build PASS, indexing PASS.
+
+## THEN THE CHECKOUT STEP WENT RED, AND IT WAS NOT THE PRODUCT
+
+    FAIL: paid @ 390: "Checkout - AUD 53.73" did not reach checkout
+    FAIL: free @ 390: after submitting, the buyer is on /checkout/... rather
+                      than a confirmation
+
+Six faults across 390, 768 and 1440, on the item that is holding paid
+advertising. Before touching a line of product code, the server log that step
+writes was read. It carried the answer fifty times over:
+
+    [redis] UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN not set
+
+`checkout-reserve` is `failClosed: true` and its own rationale covers
+"reservation + checkout + squad payment-intent creation". Under `next start`
+with no limiter backend it refuses all three before any product code runs. The
+drive was measuring the absence of a Redis and reporting it as a buyer who
+cannot pay.
+
+**THE SHAPE OF THE MISTAKE IS THE PART WORTH KEEPING.** Three gate steps served
+the production build, and each spawned `next start` in its own near-identical
+block. Exactly one of them pointed the server at the in-memory Upstash stub, and
+that one explained why in its own comment: "The rate limiter on the money path
+is fail-closed under NODE_ENV=production". That comment sat on the LIGHTHOUSE
+step, which never buys anything. The step that buys a ticket did not have the
+stub. The knowledge was in the file and the copy that needed it was the copy
+that did not get it.
+
+**One door now.** `startGateServer` starts the stub and the server, and the
+indexing drive, the checkout drive and the Lighthouse gate all go through it. It
+also PROVES the stub answers before handing back a base URL, because a URL
+pointing at a process that never started fails closed identically to no URL at
+all, and that failure would read exactly like this one did.
+
+`gate-servers-carry-a-limiter` is registered and blocking. Six clauses: one
+`next start` spawn, inside `startGateServer`, both Upstash variables set, the
+stub pinged, the stub file present, and `checkout-reserve` still `failClosed` so
+the guard is still protecting something rather than standing there looking busy.
+
+**TWO OF THE SIX DRILLS FAILED ON THE FIRST PASS AND BOTH WERE REAL.** The
+backend-probe clause stayed GREEN when the probe was deleted, because it matched
+the word `PONG` anywhere in the function body and the body it was handed carried
+the NEXT function's doc comment. The fail-open clause could not break its target
+at all, because it matched a five-line block with `\n` against a CRLF file. A
+drill that cannot break what it aims at is counted as a fault here rather than a
+pass, which is the only reason either was found. Both fixed, then all six red
+and green.
+
+**DRIVEN, on the same build:** 0 faults across 390, 768 and 1440, 37 axe scans,
+0 serious or critical, the free path completing a real purchase, and the paid
+path now REACHING the payment step (0 measured, 3 NOT EXERCISED, no Stripe TEST
+key on this machine) where before it never got past the reservation. Before and
+after: `C:\dev\EVIDENCE\D1\gate-checkout-before.txt` and `-after.txt`.
+
+All 99 registered guards pass with the new one. Committed as `14fe7fab`.
