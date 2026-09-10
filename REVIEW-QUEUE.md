@@ -3371,3 +3371,56 @@ Everything else is ready and green behind it.
   ledger: I have proved exactly what it will contain (order EL-9HE57YNV, one
   general admission, 18.00, on 9 September) by reading production without writing
   to it, but the table itself cannot exist there until you run that command.
+
+---
+
+## 11 September 2026, first action of session 61: the sixteen commits cannot be pushed, and it is one command of yours
+
+I checked for work a dropped session had left behind. There are SIXTEEN commits
+on `verify/l5-launch-readiness` that have never reached GitHub, including UX6
+(the mobile checkout), D0 (the ticket type that was deleted on every save), D1
+(the slot ledger) and the two gate fixes.
+
+I ran the full push gate on them. Eight of its fifteen steps pass:
+
+    disk PASS  typecheck PASS  lint PASS  copy PASS  critical-path PASS
+    lighthouse-exemptions PASS  guards PASS (110)  types-drift PASS
+
+The ninth refuses, and it is not a defect in the work:
+
+    production-parity FAIL: production is behind this tree by EIGHT migrations.
+
+Applying a migration to production is yours, by your own ruling of 26 August and
+by the constitution. The gate is doing exactly what it was built to do: refusing
+to push a tree that would go red on main and fail to deploy.
+
+ONE COMMAND CLEARS IT, in PowerShell, in the repo:
+
+    npm run migrate:production
+
+It lists the eight files, asks you to type the production ref back, hands over to
+the Supabase CLI's own prompts, proves the result and leaves the CLI resting on
+TEST. Add `-- --dry-run` to see the list without applying anything.
+
+The eight:
+
+    20260909000001_event_tags_case_distinct
+    20260909000002_platform_notifications
+    20260909000003_platform_notification_guards
+    20260909000004_platform_notifications_never_block
+    20260909000005_degraded_notification_keeps_its_subject
+    20260910000001_ticket_tiers_keep_their_identity
+    20260910000002_slot_ledger
+    20260910000003_recovery_engine
+
+That same command also closes the last leg of UX6 and the last leg of D1, because
+the push it releases builds a git preview that carries the Stripe TEST key.
+
+I re-verified the Stripe position today rather than trusting the note: both keys
+in the Stripe CLI config answer `api_key_expired` from Stripe's own API, and
+every `STRIPE_SECRET_KEY` record on Vercel, on preview and on production, is
+marked `sensitive`, which means it cannot be read back by any token. So the
+payment step of the UX6 drive still cannot run on this machine. `stripe login`
+would also clear it.
+
+I am carrying on with D2, the recovery engine, which needs neither.

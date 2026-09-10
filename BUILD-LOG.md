@@ -9438,3 +9438,58 @@ has no insert, update, upsert or rpc on it to call.
     EL-9HE57YNV  general admission x1  18.00  at 2026-09-09 14:19:41
 
 That is what appears the moment `npm run migrate:production` runs.
+
+---
+
+## 11 September 2026, session 61. The push gate, run first, and where it stops.
+
+FIRST ACTION, as instructed: look for commits a dropped session left behind.
+Sixteen of them, none on GitHub, from `93ca123c` through `f053f7fc`.
+
+Pushed them through the normal gate. It got eight steps in and stopped:
+
+    disk                    PASS       0s
+    typecheck               PASS       7s
+    lint                    PASS      59s
+    copy                    PASS       1s
+    critical-path           PASS       0s
+    lighthouse-exemptions   PASS       0s
+    guards                  PASS     110s   (110 registered)
+    types-drift             PASS      22s
+    production-parity       FAIL       6s
+    fixture / suite / build / indexing / checkout-viewport / lighthouse   not run
+
+    [gate] BLOCKED at production-parity (exit 1). Nothing was pushed.
+
+The reason is stated by the step itself: 124 migrations in the tree, 116 applied
+on `gndnldyfudbytbboxesk`, EIGHT pending. A production build of this tree would
+be refused by the schema guards, exactly as main was on 6 September. The step
+also read the production environment store and found it clean: 34 records listed,
+47 manifest entries judged, 0 faults.
+
+Applying a migration to production is the founder's step, and the gate names the
+one command that does it. This is not a defect and there is nothing to fix here.
+
+Evidence: `C:\dev\EVIDENCE\SESSION-2026-09-10\push-gate.txt`.
+
+### The Stripe position, re-established by execution rather than quoted
+
+UX6's outstanding leg is the payment step, and the record says no working TEST
+key exists here. Rather than repeat the claim I re-ran it:
+
+  - both `test_mode_api_key` values in `~/.config/stripe/config.toml` were sent to
+    `https://api.stripe.com/v1/balance`. Both answer HTTP 401,
+    `code: api_key_expired`.
+  - every `STRIPE_SECRET_KEY` record on the Vercel project, across production and
+    all five preview branch scopes, is `type: sensitive`. A sensitive record
+    cannot be decrypted by any token, which is what makes `vercel env pull` write
+    `[SENSITIVE]` for it.
+
+So the payment step remains not exercisable on this machine, and it is closed by
+either founder command, not by anything I can build.
+
+### The CLI's resting place, checked before any database work
+
+`supabase/.temp/project-ref` reads `vkapkibzokmfaxqogypq`. TEST. Production was
+read exactly twice today, both times read-only: the types-drift generator and the
+parity step's migration list.
