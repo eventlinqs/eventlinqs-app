@@ -44,7 +44,7 @@ export function QuickActionsPanel() {
           const Icon = action.icon
           const inner = (
             <div className="flex items-center gap-3 px-5 py-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold-100 text-gold-600">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold-100 text-gold-800">
                 <Icon className="h-4 w-4" aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">

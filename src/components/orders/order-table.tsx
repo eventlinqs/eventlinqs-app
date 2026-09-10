@@ -33,7 +33,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-700' },
   refunded: { label: 'Refunded', className: 'bg-ink-100 text-ink-600' },
   partially_refunded: { label: 'Part Refunded', className: 'bg-orange-100 text-orange-700' },
-  expired: { label: 'Expired', className: 'bg-ink-100 text-ink-400' },
+  expired: { label: 'Expired', className: 'bg-ink-100 text-ink-600' },
 }
 
 export function OrderTable({ orders, eventId }: OrderTableProps) {

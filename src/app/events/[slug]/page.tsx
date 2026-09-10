@@ -1167,21 +1167,44 @@ export default async function EventDetailPage({ params }: Props) {
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
                     <div className="flex flex-wrap items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-ink-900 text-sm font-bold text-gold-400">
-                        {event.organisation.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        {/* A three-line clamped teaser is a PLAIN-TEXT surface,
-                            so it takes the strip direction of the one prose
-                            rule (UX1.1). Rendering blocks here would defeat the
-                            clamp, and leaving the text raw is what put
-                            `**MKL Studios**` on production. */}
-                        {stripMarkdown(event.organisation.description) && (
-                          <p className="text-sm text-ink-600 line-clamp-3">
-                            {stripMarkdown(event.organisation.description)}
-                          </p>
-                        )}
-                      </div>
+                      {/* THE CARD LINKS TO THE ORGANISER (close-out UX1, found
+                          by driving the journey on 11 September 2026).
+                          It named the organiser, drew their initials, clamped
+                          their bio to three lines and led NOWHERE, while this
+                          same page's JSON-LD told Google the organiser has a
+                          profile at /organisers/<slug>. So the structured data
+                          published a URL the page itself never linked to: the
+                          organiser's own profile had no inbound link from the
+                          one page a buyer reads, the full bio rendered there
+                          was unreachable, and a card that reads as tappable did
+                          nothing on a phone (Law 5, no dead-end tiles).
+                          The Follow control stays a SIBLING, never nested, so
+                          this is one link and one button rather than a button
+                          inside an anchor. */}
+                      <Link
+                        href={`/organisers/${event.organisation.slug}`}
+                        aria-label={`View profile: ${event.organisation.name}`}
+                        className="group flex min-w-0 flex-1 items-start gap-4 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+                      >
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-ink-900 text-sm font-bold text-gold-400 transition-transform duration-200 ease-out group-hover:scale-[1.03]">
+                          {event.organisation.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          {/* A three-line clamped teaser is a PLAIN-TEXT surface,
+                              so it takes the strip direction of the one prose
+                              rule (UX1.1). Rendering blocks here would defeat the
+                              clamp, and leaving the text raw is what put
+                              `**MKL Studios**` on production. */}
+                          {stripMarkdown(event.organisation.description) && (
+                            <p className="text-sm text-ink-600 line-clamp-3">
+                              {stripMarkdown(event.organisation.description)}
+                            </p>
+                          )}
+                          <span className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--brand-accent-strong)] transition-colors duration-200 group-hover:text-[var(--brand-accent-strong-hover)]">
+                            View profile
+                          </span>
+                        </div>
+                      </Link>
                       {/* Demand-graph follow: their next event lands in the
                           follower's feed and alerts the moment it goes live.
                           ONE control, deliberately ungated.

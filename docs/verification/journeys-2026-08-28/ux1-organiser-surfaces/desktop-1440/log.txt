@@ -1,0 +1,14 @@
+UX1: the four defects on the first real organiser event
+=======================================================
+01. Signed up and confirmed
+      ux1.organiser.2963985@example.com -> /login
+02. Organiser signed up
+      ux1.organiser.2963985@example.com
+03. Made a cover
+      the platform composed one
+04. Event published
+      http://127.0.0.1:49675/dashboard/events/e56dd540-2bc5-419a-a77f-28b2215863e5/launch-kit?published=1
+05. Event slug
+      afro-fusion-showcase-2963985-emc88t
+06. Tags typed
+      African, african, #Soul, soul

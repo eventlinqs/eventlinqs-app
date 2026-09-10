@@ -12,11 +12,11 @@ interface Props {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  waiting:  { label: 'Waiting',   className: 'bg-gold-100 text-gold-600' },
+  waiting:  { label: 'Waiting',   className: 'bg-gold-100 text-gold-800' },
   notified: { label: 'Your turn', className: 'bg-amber-100 text-amber-800 animate-pulse' },
   converted:{ label: 'Converted', className: 'bg-green-100 text-green-700' },
-  expired:  { label: 'Expired',   className: 'bg-ink-100 text-ink-400' },
-  removed:  { label: 'Removed',   className: 'bg-ink-100 text-ink-400' },
+  expired:  { label: 'Expired',   className: 'bg-ink-100 text-ink-600' },
+  removed:  { label: 'Removed',   className: 'bg-ink-100 text-ink-600' },
 }
 
 function formatDate(iso: string) {

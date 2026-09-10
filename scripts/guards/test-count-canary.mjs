@@ -1271,9 +1271,20 @@ const ROOT = join(HERE, '..', '..')
  * there is covered the moment it is added, and they hold BOTH directions:
  * losing the reservation where the bar IS drawn would put the tab bar on top of
  * the footer's last row, which is worse than the band.
+ *
+ * And 374/4503 for close-out UX1, whose signed-in organiser journey had been
+ * WRITTEN AND NEVER RUN. It was recorded as blocked on the rate limiter having
+ * no Upstash locally, which stopped being true when `startGateServer` was
+ * extracted on 10 September. Running it found that the "Organised by" card on
+ * every event page named the organiser, drew their initials, clamped their bio
+ * and LINKED NOWHERE, while the same page's JSON-LD published
+ * `/organisers/<slug>` to Google. The four tests hold the link, hold that it is
+ * a SIBLING of the Follow control rather than its ancestor (a button inside an
+ * anchor is invalid HTML), hold that the page and its own structured data name
+ * the same URL, and hold the accessible name against WCAG 2.5.3.
  */
-const MIN_FILES = 373
-const MIN_TESTS = 4499
+const MIN_FILES = 374
+const MIN_TESTS = 4503
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

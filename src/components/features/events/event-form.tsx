@@ -1136,7 +1136,7 @@ export function EventForm({
               onClick={() => chooseEventType(type)}
               className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium capitalize transition-colors ${
                 formData.event_type === type
-                  ? 'border-gold-500 bg-gold-100 text-gold-600'
+                  ? 'border-gold-500 bg-gold-100 text-gold-800'
                   : 'border-ink-200 text-ink-600 hover:border-ink-400'
               }`}
             >

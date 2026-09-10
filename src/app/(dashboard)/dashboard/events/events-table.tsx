@@ -18,7 +18,7 @@ type EventRow = Event & {
 
 const STATUS_BADGE: Record<EventStatus, string> = {
   draft: 'bg-ink-100 text-ink-600',
-  scheduled: 'bg-gold-100 text-gold-600',
+  scheduled: 'bg-gold-100 text-gold-800',
   published: 'bg-green-100 text-green-700',
   paused: 'bg-amber-100 text-amber-700',
   postponed: 'bg-orange-100 text-orange-700',
@@ -179,7 +179,7 @@ export function EventsTable({
     }
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-14 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-600">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-800">
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" />
           </svg>

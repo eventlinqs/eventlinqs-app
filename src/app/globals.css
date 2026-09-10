@@ -83,6 +83,17 @@
   --color-coral-100: #FFE4DF;
   --color-coral-500: #FF4E3A;
   --color-coral-600: #E63E2C;
+  /* Coral as TEXT on the coral tint, exactly as gold-700/800 and
+     --color-error-strong exist for the same reason on gold and red.
+     coral-600 on coral-100 measures 3.42:1, under the 4.5:1 AA floor for
+     normal text, and that is what the "Selling Fast" badge shipped: a live
+     WCAG AA failure on the buying path, shown on every event that is 50%
+     sold or more, which is precisely the events that matter most (close-out
+     UX1, found 11 September 2026 by the checkout viewport proof).
+     coral-700 measures 4.96:1 on coral-100, 5.98:1 on white and 5.72:1 on
+     canvas, so ONE token is safe on all three and no second one is needed.
+     coral-500/600 stay the fill, the dot and the on-dark value. */
+  --color-coral-700: #B8321E;
 
   /* ── Deep navy (hero base) ── */
   --color-navy-950: #0A0E1A;

@@ -19,7 +19,7 @@
  *   BASE=http://localhost:3311 node --env-file=.env.local \
  *     scripts/verify/ux1-organiser-surfaces-proof.mjs --out C:/dev/EVIDENCE/UX1
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readdirSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
 import {
@@ -44,6 +44,19 @@ if (/gndnldyfudbytbboxesk/.test(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '')) {
   process.exit(1)
 }
 
+/**
+ * Every /organisers/... path that is NOT an organiser, read out of the route
+ * tree rather than listed. `/organisers/[handle]` is the profile; its static
+ * siblings are marketing surfaces, and one of them (`/organisers/signup`) sits
+ * ABOVE the organiser's own link on a real event page.
+ */
+const STATIC_ORGANISER_PATHS = [
+  '/organisers',
+  ...readdirSync(join(process.cwd(), 'src/app/organisers'), { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('['))
+    .map((e) => `/organisers/${e.name}`),
+]
+
 const stamp = String(Date.now()).slice(-7)
 const mint = () => randomBytes(12).toString('base64url') + '-Aa1'
 const ORGANISER = {
@@ -52,6 +65,9 @@ const ORGANISER = {
   password: mint(),
 }
 const TITLE = `Afro Fusion Showcase ${stamp}`
+// One value, used by the wizard that creates it and by the check that the
+// profile page really is this organiser's.
+const ORG_NAME = `MKL Studios ${stamp}`
 
 /**
  * The bio the close-out named: bold, italic, a link and a list. Written the way
@@ -68,6 +84,9 @@ const BIO = [
   '',
   'More at [our site](https://mklstudios.example.com).',
 ].join('\n')
+
+/** Derived from BIO, never typed: the number of bullets the bio actually has. */
+const BIO_LIST_ITEMS = BIO.split('\n').filter(l => l.startsWith('- ')).length
 
 /** The colliding tags, typed exactly as the reporting organiser typed them. */
 const TAGS = 'African, african, #Soul, soul'
@@ -101,7 +120,7 @@ const wizard = await createEventThroughWizard(j, page, {
   summary: 'Three acts, one room, doors at seven.',
   description: 'A night of afro fusion in West Melbourne.',
   capacity: '80',
-  orgName: `MKL Studios ${stamp}`,
+  orgName: ORG_NAME,
   wantCover: true,
 })
 if (!wizard.reachedReview) {
@@ -257,23 +276,63 @@ for (const vp of VIEWPORTS) {
 
   await g.screenshot({ path: join(out, `event-${vp.label}.png`), fullPage: false })
 
-  // --- the organiser profile, where the bio is a full prose block ---
-  const orgHref = await g.evaluate(() => {
-    const a = [...document.querySelectorAll('a[href^="/organisers/"]')][0]
+  /*
+   * --- the organiser profile, where the bio is a full prose block ---
+   *
+   * THE FIRST /organisers/ LINK ON AN EVENT PAGE IS NOT THE ORGANISER.
+   *
+   * This took the first anchor matching `a[href^="/organisers/"]`, and on a real
+   * event page that is `/organisers/signup`: the "run your own events, it is
+   * free to start" call to action, which is the invite-an-organiser growth loop
+   * and belongs there. That page answers 200, so the status check passed; it has
+   * no bio, so "shows no markdown syntax" passed VACUOUSLY; and it has no bold,
+   * no list and no nofollow link, so the render check failed and pointed at the
+   * product. Three of the four assertions on this surface were measuring the
+   * wrong page, and nothing noticed because this journey had never been run.
+   *
+   * The profile route is `/organisers/[handle]`, so its siblings are the static
+   * children of that directory. They are ENUMERATED FROM THE SOURCE TREE rather
+   * than typed here, so a new static sibling cannot silently become "the
+   * organiser" again.
+   */
+  const orgHref = await g.evaluate((notTheOrganiser) => {
+    const a = [...document.querySelectorAll('a[href^="/organisers/"]')].find((el) => {
+      const href = (el.getAttribute('href') ?? '').split(/[?#]/)[0].replace(/\/$/, '')
+      return href.startsWith('/organisers/') && !notTheOrganiser.includes(href)
+    })
     return a?.getAttribute('href') ?? null
-  })
+  }, STATIC_ORGANISER_PATHS)
   if (orgHref) {
     const r2 = await g.goto(`${BASE}${orgHref}`, { waitUntil: 'networkidle', timeout: 90000 })
     check(`${vp.label}-organiser-200`, r2?.status() === 200, `GET ${orgHref} -> ${r2?.status()}`)
+    // NOT VACUOUS. "No markdown syntax" is trivially true of a page with no bio,
+    // which is exactly how a marketing page passed this check for months. The
+    // surface has to be the organiser's own profile, carrying their name.
     const orgText = await g.locator('body').innerText()
+    check(
+      `${vp.label}-organiser-is-the-profile`,
+      !STATIC_ORGANISER_PATHS.includes(orgHref.split(/[?#]/)[0].replace(/\/$/, '')) &&
+        orgText.includes(ORG_NAME),
+      `${orgHref} is the organiser's own profile and names ${ORG_NAME}`,
+    )
     check(`${vp.label}-UX1.1-bio`, !/\*\*|\b_[a-z]/.test(orgText), 'bio shows no markdown syntax')
     const strongCount = await g.locator('strong:has-text("MKL Studios")').count()
-    const listCount = await g.locator('ul li').count()
+    /*
+     * SCOPED TO THE PROSE, AND COUNTED EXACTLY.
+     *
+     * This was `ul li` across the whole document, which is 64 items of site
+     * navigation and footer on any page, so it would have read "list rendered"
+     * even if the bio's list had been dropped entirely. `OrganiserProse` emits
+     * its lists with `list-disc`/`list-decimal`, which nothing else on the page
+     * uses, and BIO contains exactly three items - so the number is asserted
+     * rather than merely being positive.
+     */
+    const listCount = await g.locator('ul.list-disc li, ol.list-decimal li').count()
     const linkCount = await g.locator('a[rel*="nofollow"]').count()
     check(
       `${vp.label}-UX1.1-rendered`,
-      strongCount > 0 && listCount > 0 && linkCount > 0,
-      `bold=${strongCount} listItems=${listCount} nofollowLinks=${linkCount}`,
+      strongCount > 0 && listCount === BIO_LIST_ITEMS && linkCount > 0,
+      `bold=${strongCount} proseListItems=${listCount} (expected ${BIO_LIST_ITEMS}) nofollowLinks=${linkCount}`,
     )
     await g.screenshot({ path: join(out, `organiser-${vp.label}.png`), fullPage: false })
   } else {

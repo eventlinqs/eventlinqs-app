@@ -189,7 +189,21 @@ function makePage(page, width, label) {
         .analyze()
       const bad = axe.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
       for (const v of bad) {
-        fail(`${label}/${surface} @ ${width}: axe ${v.impact} "${v.id}" on ${v.nodes.length} node(s): ${v.help}`)
+        /*
+         * NAME THE NODES. This reported only a COUNT, and a count sends the
+         * next reader guessing at which of a page's several hundred elements
+         * axe meant - which is exactly what happened on 11 September 2026, when
+         * "color-contrast on 2 node(s)" was pinned on a link added the same
+         * hour and turned out to be neither that link nor that change. A check
+         * that cannot say what it saw is half a check.
+         */
+        const where = v.nodes
+          .slice(0, 4)
+          .map((n) => `${(n.target ?? []).join(' ')} :: ${(n.failureSummary ?? '').replace(/\s+/g, ' ').slice(0, 200)}`)
+          .join(' || ')
+        fail(
+          `${label}/${surface} @ ${width}: axe ${v.impact} "${v.id}" on ${v.nodes.length} node(s): ${v.help} -> ${where}`,
+        )
       }
       const lesser = axe.violations.filter((v) => v.impact !== 'serious' && v.impact !== 'critical')
       for (const v of lesser) {

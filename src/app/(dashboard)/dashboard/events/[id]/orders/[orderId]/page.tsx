@@ -27,7 +27,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   // Was MISSING, so a partly refunded order fell through to the raw enum and
   // badged the literal string "partially_refunded" at the organiser.
   partially_refunded: { label: 'Partly refunded', className: 'bg-ink-100 text-ink-600' },
-  expired: { label: 'Expired', className: 'bg-ink-100 text-ink-400' },
+  expired: { label: 'Expired', className: 'bg-ink-100 text-ink-600' },
 }
 
 /*

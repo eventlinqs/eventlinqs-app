@@ -214,6 +214,11 @@
  *                              one, keeps the typed fallbacks beside it, and builds the
  *                              picture from the same value it prints. /admin/enrol-2fa
  *                              said "scan the QR code" and drew nothing (close-out UX5)
+ *   tinted-text-meets-contrast  every solid token text colour painted on a solid token
+ *                              background meets WCAG AA, with the ratio COMPUTED from
+ *                              globals.css rather than held as a list of banned colours
+ *                              in named files, which is how 28 pairs under AA survived
+ *                              a test written for exactly that shape (close-out UX1)
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -835,6 +840,13 @@ const GUARDS = [
   // drilled GREEN on descriptive prose about scanning, which is the false
   // positive that would otherwise get this guard switched off.
   'scripts/guards/scannable-instruction-has-a-qr.mjs',
+  // UX1: the "Selling Fast" badge painted coral-600 on coral-100 at 3.42:1, on
+  // every event 50% sold or more, and the a11y test written for exactly this
+  // shape could not see it because it banned coral across a hand-listed TWO
+  // files. Probing the tree found 28 pairs under AA in two repeated
+  // combinations. This computes the ratio from globals.css instead of holding a
+  // list. Drilled red on a real pair and green again.
+  'scripts/guards/tinted-text-meets-contrast.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
   // organiser form, stored on the anon-readable events row, and shown to nobody.

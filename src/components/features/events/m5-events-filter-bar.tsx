@@ -195,7 +195,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
               className={
                 'inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                 (moreFiltersActiveCount > 0
-                  ? 'border-gold-500 bg-gold-100 text-gold-600'
+                  ? 'border-gold-500 bg-gold-100 text-gold-800'
                   : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400')
               }
             >

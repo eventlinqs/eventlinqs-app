@@ -41,7 +41,7 @@ type Props = {
 
 const STATUS_COPY: Record<EventStatus, { label: string; className: string }> = {
   draft:      { label: 'Draft',      className: 'bg-ink-100 text-ink-600' },
-  scheduled:  { label: 'Scheduled',  className: 'bg-gold-100 text-gold-600' },
+  scheduled:  { label: 'Scheduled',  className: 'bg-gold-100 text-gold-800' },
   published:  { label: 'Live',       className: 'bg-emerald-100 text-emerald-700' },
   paused:     { label: 'Paused',     className: 'bg-amber-100 text-amber-700' },
   postponed:  { label: 'Postponed',  className: 'bg-orange-100 text-orange-700' },

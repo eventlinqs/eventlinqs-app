@@ -97,7 +97,7 @@ export default async function OrganisationPage({
     active: 'bg-green-100 text-green-700',
     pending: 'bg-amber-100 text-amber-700',
     suspended: 'bg-red-100 text-red-700',
-    deactivated: 'bg-ink-100 text-ink-400',
+    deactivated: 'bg-ink-100 text-ink-600',
   }
 
   return (
@@ -115,7 +115,7 @@ export default async function OrganisationPage({
           <h1 className="text-2xl font-bold text-ink-900">{org.name}</h1>
           <p className="mt-1 text-sm text-ink-400">{canonicalHost()}/{org.slug}</p>
         </div>
-        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${statusColour[org.status] ?? 'bg-ink-100 text-ink-400'}`}>
+        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${statusColour[org.status] ?? 'bg-ink-100 text-ink-600'}`}>
           {org.status}
         </span>
       </div>
