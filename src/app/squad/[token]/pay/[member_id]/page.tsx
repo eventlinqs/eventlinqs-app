@@ -38,7 +38,20 @@ export default async function SquadPayPage({ params }: Props) {
     .eq('id', member_id)
     .single()
 
-  if (error || !member) notFound()
+  /*
+   * The read failing and the row being absent are not the same answer
+   * (close-out UX6, the organiser-profile 404 the gate caught on
+   * 10 September 2026). `.single()` returns an error for BOTH "no rows" and
+   * "the socket dropped", so the two are separated here: a squad member who is
+   * not there is a 404, and a database that could not be reached is a 500,
+   * which tells the buyer and any crawler to try again rather than that their
+   * payment link is dead. This one is a person mid-payment.
+   */
+  if (error && error.code !== 'PGRST116') {
+    console.error('[squad-pay] could not read member %s:', member_id, error)
+    throw new Error(`[squad-pay] could not read member ${member_id}; answering 500 rather than 404`)
+  }
+  if (!member) notFound()
 
   const squad = (member.squad as unknown) as {
     id: string

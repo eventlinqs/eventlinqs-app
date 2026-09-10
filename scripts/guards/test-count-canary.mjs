@@ -1184,9 +1184,18 @@ const ROOT = join(HERE, '..', '..')
  * tests landed on viewport-fit-rule as the drive found what the rule could not
  * yet see (a control PUSHED past the edge rather than parked there, and Tailwind
  * v4's standalone `translate` property), taking it to 4239.
+ *
+ * And 359/4247 in the same item, for the defect the GATE found while UX6 was
+ * being closed: the indexing drive caught an organiser profile in the sitemap
+ * answering 404, and the server log named a dropped socket to Supabase. A page
+ * may never answer "this does not exist" because it could not ask.
+ * tests/unit/seo/read-failure-is-not-not-found holds that distinction on the two
+ * routes that were folding the two answers together, and holds that the shared
+ * retry primitive still recognises the socket class without swallowing a real
+ * query fault.
  */
-const MIN_FILES = 358
-const MIN_TESTS = 4239
+const MIN_FILES = 359
+const MIN_TESTS = 4247
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
