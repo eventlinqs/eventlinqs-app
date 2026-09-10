@@ -2050,83 +2050,6 @@ when there is no repository to read, and report how many there are.
 Report at the end: the guard that threw, the count of guards reading git, proof the
 upload guard no longer executes on Vercel, and a deliberate throw naming itself.
 
-## D1  The sales ledger
-Priority: immediately after UX6. Do not start D1 while any UX6 item is open.
-
-WHY
-The database stores current state and overwrites it. "Sold 240" cannot say when those 240 sold, at what price, or how many people tried and gave up. That history cannot be reconstructed later. It is also the input D2 needs, so D2 cannot exist without it.
-
-WHAT IT SHIPS TO THE ORGANISER
-A panel on the organiser dashboard, "How your tickets sold": cumulative sales against days out, the price at each point, and how many people reached checkout and did not finish.
-
-WHAT TO BUILD
-One append only table. Rows are INSERTed, never UPDATEd or DELETEd. A refund is a new negative row, never an edit. Current state tables stay exactly as they are.
-
-Five row types, nothing more:
-1. SALE. timestamp, event id, tier, quantity, price paid, days out at sale, referrer and utm, device, hashed buyer id, first time or returning.
-2. PRICE CHANGE. timestamp, event id, tier, old price, new price.
-3. INVENTORY. timestamp, event id, tier, action (open, close, hold, release, capacity change), quantity.
-4. REFUND. timestamp, event id, tier, quantity, amount.
-5. DEMAND. timestamp, event id, action (page view, checkout started, checkout abandoned, waitlist join, sold out page view), hashed visitor id, email if one was entered.
-
-Plus one row per event at close: final sold, final revenue, fill percentage, scanned, no shows.
-
-The email field on the DEMAND row is required, not optional. Without it D2 cannot contact anyone and the whole recovery engine is dead on arrival.
-
-Backfill from existing completed orders on production so the first pace curve is not empty. Backfill only what was genuinely recorded. Invent nothing.
-
-ACCEPTANCE, ALL REQUIRED
-- Migration applied on TEST first. Production only on explicit approval from Lawal.
-- Every write path emits its row: checkout, refund, tier open and close, price edit, hold, release.
-- Demand events fire from the event page and every step of checkout, including abandonment.
-- Tests covering each of the five row types plus the backfill.
-- A registered blocking guard asserting no code path issues UPDATE or DELETE against the ledger. Proven to fail as well as pass.
-- Driven proof: pull the complete pace curve for the Afro-Fusion event including order EL-9HE57YNV and render it in the organiser dashboard. Captured at 390, 768 and 1440, obeying the UX6 no overflow rule.
-- Full regression green.
-
-REVERSAL CONDITION, EVALUATED BY THE BUILD
-Measure checkout latency at the 95th percentile before and after. If the ledger write adds more than 50ms, move it off the request path to a queue. Never drop fields to make it cheaper. If the queue cannot be built inside this item, ship sales and refunds only, defer demand events, and say so plainly rather than shipping a slow checkout.
-
-## D2  The recovery engine.  This is Fillrate v0 and it makes money on day one.
-Priority: immediately after D1. Requires the D1 DEMAND rows including the email field.
-
-WHY
-Between 60 and 80 percent of people who start a checkout do not finish, and on mobile it is over 85 percent. Up to 20 percent of those are recoverable by an automated email sequence. This needs no forecast, no model and no history. It works on the first event. It is the smallest thing that proves acting on a slot adds revenue that would otherwise have been lost.
-
-WHAT TO BUILD, THREE THINGS ONLY
-
-1. ABANDONED CHECKOUT RECOVERY
-A person entered an email at checkout and did not complete. Send a three message sequence: at 2 hours, at 24 hours, at 72 hours. Stop immediately if they buy, if the tier sells out, if the event is cancelled, or if the event starts. Every message names the event, the tier, the price, and links straight back into a resumable checkout. No discount in v0. Scarcity and a working link only.
-
-2. WAITLIST ACTIVATION
-A tier is sold out and a person joins the waitlist. When a refund or a release frees inventory, notify the waitlist in join order with a time limited hold so the first person gets a fair chance before the next. If the hold expires, it passes down the list automatically.
-
-3. THE PROOF PANEL
-On the organiser dashboard: how many abandoned, how many were emailed, how many came back, and how much revenue was recovered, in dollars. This panel is the product. It is what makes an organiser believe, and it is what a customer of a standalone Fillrate would be paying for.
-
-MEASUREMENT
-Record on every recovered sale that it was recovered, which message recovered it, and how long after abandonment. Report raw recovery rate: of N abandoned checkouts, M returned and bought.
-
-Do NOT build a holdout yet. At current volume a holdout would withhold from two or three people and prove nothing. Add the holdout automatically once the platform passes 300 abandoned checkouts, and register that threshold in code so it is not forgotten.
-
-RULES
-- Only ever email a person about the specific event they themselves started buying a ticket for. Never about any other event, never any other organiser.
-- Every message carries a working one click unsubscribe and the sender identity already used on the ticket email.
-- The organiser can switch recovery off per event. Default on.
-- Suppress anyone who has unsubscribed, refunded, or already bought.
-
-ACCEPTANCE, ALL REQUIRED
-- Driven proof of the full sequence on TEST: abandon a checkout, receive message one, come back, buy, and confirm messages two and three are suppressed.
-- Driven proof of waitlist activation: sell out a tier, join the waitlist, refund a ticket, confirm the waitlist email fires and the hold expires correctly to the next person.
-- Unsubscribe proven to work and proven to suppress.
-- The proof panel renders real numbers, captured at 390, 768 and 1440, no overflow.
-- Tests on the send, the stop conditions, the suppression list and the hold expiry.
-- A registered blocking guard asserting no path can email a person about an event they never engaged with. Proven to fail as well as pass.
-- Full regression green.
-
-REVERSAL CONDITION, EVALUATED BY THE BUILD
-Track unsubscribe rate and spam complaint rate on the recovery sequence. If unsubscribes exceed 2 percent or complaints exceed 0.1 percent of sends, cut the sequence from three messages to one at 2 hours and report it. If complaints exceed 0.3 percent, stop all sends immediately and report, because sender reputation damage would also take down the ticket emails, which are the thing buyers actually need.
-
 ## D1  The slot ledger.  Built category general from the first line.
 Priority: immediately after UX6. Do not start while any UX6 item is open.
 
@@ -2225,3 +2148,65 @@ ACCEPTANCE, ALL REQUIRED
 
 REVERSAL CONDITION, EVALUATED BY THE BUILD
 Track unsubscribe and complaint rates. Above 2 percent unsubscribes or 0.1 percent complaints, cut to a single message at 2 hours and report. Above 0.3 percent complaints, stop all sends immediately and report, because sender reputation damage would also take down the confirmation emails buyers actually need.
+
+## UX6  Mobile checkout layout.  BLOCKS ALL PAID ADVERTISING.
+
+STATE, 10 September 2026, commit e94840d6. EVERY DEFECT FIXED AT THE CAUSE AND
+DRIVEN, WITH ONE LEG OUTSTANDING THAT IS NOT MINE TO CLOSE.
+
+  UX6.1, UX6.2, UX6.3   MET at the cause. The blow-out mechanism was measured on
+                        the real page (a 520px child took the track from 358px to
+                        520px and the order summary's right edge from 374 to 536
+                        on a 390 screen); fixed on 45 grids platform-wide; two
+                        registered blocking guards, six drills red then green.
+  UX6.4                 MET and driven: zero /tickets links in every guest
+                        confirmation the drive sent, and the bearer link opened
+                        in a fresh context with no session, HTTP 200 at 390, 768
+                        and 1440.
+  requirement 1         PARTIAL. Six of the seven surfaces driven at all three
+                        widths, twice over, plus the chrome at 1024, 1100, 1280
+                        and 1366. The PAYMENT step is NOT EXERCISED: no working
+                        Stripe TEST key exists on this machine (both CLI keys
+                        answer 401 api_key_expired, every Vercel record is
+                        sensitive) and a CLI preview deploy fails on Vercel's own
+                        client-side file selection.
+  requirements 2, 3, 4  MET.
+
+  TO CLOSE, either founder command does it:
+      npm run migrate:production   releases the thirteen unpushed commits, and
+                                   the push builds a git preview carrying the
+                                   TEST Stripe key
+      stripe login                 a working key here, and the drive reaches the
+                                   payment step locally
+
+  Also found by driving and fixed in the same item, neither reported before:
+  two of five footer social links unreachable on every mobile page; and the
+  shared header laying its account controls out at a right edge of 1264 on a 768
+  screen, measured identically on production at 768, 820, 900, 960, 1024 and
+  1100, so no window under about 1272 could sign in from the header. Plus two
+  live WCAG AA failures on the buying path, one of them the price.
+
+  Evidence C:\dev\EVIDENCE\UX6\. Ledger rows in C:\dev\BUILD-LEDGER.md.
+
+Business deadline: 24 September 2026. Paid traffic for the 10 October event cannot start until this is closed.
+
+FOUND
+9 September 2026, by the owner driving a real purchase on a phone. Order EL-9HE57YNV, ticket EL-RDHV-JQY2, AUD 18.00. The payment succeeded and the ticket email arrived correctly. The failure is layout, and it is costing sales.
+
+WHY IT IS A BLOCKER AND NOT A COSMETIC
+Published checkout abandonment runs 60 to 80 percent across industries and over 85 percent on mobile, the worst performing device. The eighth most common stated reason for abandoning a checkout is being unable to see the total before paying. That is exactly this defect, on exactly the worst device. Every dollar of advertising spent while this is open is spent sending people to a checkout they cannot complete.
+
+UX6.1 BLOCKER. The payment summary is cropped off the right edge at 390 wide. The buyer cannot see the total they are about to pay.
+UX6.2 BLOCKER. Multiple checkout boxes do not fit the mobile grid. Content is clipped at the right edge.
+UX6.3 BLOCKER. Clipped content is unreachable. No horizontal scroll, no other route to it. Where content genuinely cannot fit it must scroll inside its own container, never be silently clipped.
+UX6.4 The ticket email tells the buyer their tickets are at /tickets "when you are signed in". That purchase was a guest checkout with no account, and every buyer arriving from advertising will be a guest. Guest ticket recovery must not require an account.
+
+REQUIRED FIX, STRUCTURAL NOT COSMETIC
+1. Drive every checkout and ticket surface at 390, 768 and 1440 and capture each: event page, ticket select, checkout, payment, confirmation, ticket view, /tickets.
+2. Assert at each width that document.documentElement.scrollWidth is less than or equal to window.innerWidth. Any surface failing this fails the build.
+3. Assert the order total element sits inside the viewport box at 390 and its text is non empty.
+4. Register both as blocking guards, proven to fail as well as pass, so this class cannot return.
+5. UX6.4 is a copy and routing fix. The email must give a guest a ticket link that works with no sign in, and the sign in sentence must appear only for buyers who have an account.
+
+REVERSAL CONDITION, EVALUATED BY THE BUILD
+If the width guard proves flaky on Vercel because webfonts load late, fix it by awaiting document.fonts.ready. Never weaken the assertion, never raise the tolerance, never exempt a page.

@@ -8734,3 +8734,426 @@ migrations before this item and is six now: 122 in the tree, 116 applied.
 **The founder's one command clears it, and clears UX3 and UX4 with it:**
 
     npm run migrate:production
+
+---
+
+# 10 September 2026, session 61. UX6: the total the buyer could not see.
+
+Started by reading `C:\dev\CLOSE-OUT.md` and `C:\dev\BUILD-BRIEF.md` end to end,
+then establishing where the build actually stood rather than trusting the ledger.
+
+**GOVERNING LAWS, stated before the first edit (Law 0.2):** Law 0, the Definition
+of Done, Law 1 (no generic), Law 2 (evidence-driven), Law 5 (zero dead links and
+no dead-end controls), Law 7 (research before recommending), Law 8 (authorship),
+Law 9, Law 10 (script the founder's step), the Design system (container, cards,
+spacing, touch targets), Motion, Copy and banned content, Verification and gates,
+and the COMPLETION LAW in `BUILD-BRIEF.md`.
+
+**VERIFY-FIRST, stated before the first edit:** nothing below is asserted from
+reading. The defect is settled by measuring element boxes in a real browser at
+390, the fix by re-measuring the same boxes, the guards by breaking the tree five
+ways and reading each go red, and the regression by the gate.
+
+## THE FIRST ACTION WAS THE PUSH, AND THE PUSH IS BLOCKED
+
+Twelve commits sit unpushed on `verify/l5-launch-readiness` (`93ca123c` through
+`29cf7619`), left behind by a session that lost its connection. They cannot be
+pushed, and the reason is by design rather than a fault:
+
+    [production-parity] schema: 122 migration(s) in the tree, 116 applied on
+                        gndnldyfudbytbboxesk, 6 pending
+    [production-parity] FAIL - this tree is not at parity with production
+
+The six are `20260909000001_event_tags_case_distinct` through
+`20260910000001_ticket_tiers_keep_their_identity`. The gate refuses the push
+because a merge of this tree would go red on main and fail to deploy: schema
+first, then code. Applying a migration to production is RESERVED to the founder
+(Law 10, and the Migrations rule under Verification and gates), so this is not
+mine to clear.
+
+**The founder's one command clears it and unblocks all twelve commits:**
+
+    npm run migrate:production
+
+Nothing was bypassed, `--no-verify` was not used, and no threshold was touched.
+Work continued rather than stalling, per the brief.
+
+## UX6. THE DEFECT WAS NOT WHERE THE MARKUP SAID IT WAS
+
+The owner's report is precise: at 390, on a real phone, "the payment summary is
+cropped off the right edge", "multiple checkout boxes do not fit the mobile
+grid", and "clipped content is unreachable, no horizontal scroll". Order
+EL-9HE57YNV, AUD 18.00, 9 September 2026.
+
+Reading the checkout markup finds nothing wrong. The cards are `w-full`, the
+summary truncates its own long strings, the fields are 16px so iOS never
+zoom-jumps. Driving it at 390 on the real build finds nothing wrong either:
+
+    checkout details @ 390   innerWidth 390   documentElement.scrollWidth 390
+
+**So the first honest finding is that the assertion UX6 asks for cannot go red
+on this codebase.** `src/app/globals.css` carries
+
+    html, body { overflow-x: clip }
+
+and `overflow-x: clip` makes an element's `scrollWidth` equal its `clientWidth`
+by definition. Content wider than the viewport is not scrolled to, it is CUT OFF.
+`documentElement.scrollWidth <= window.innerWidth` therefore reports a tidy 390
+while a buyer stares at half a price, which is UX6.3 word for word: "Clipped
+content is unreachable. No horizontal scroll, no other route to it."
+
+The clip rule is not the defect and was not removed: it is load-bearing for the
+closed mobile drawer and the bleeding rails. What changed is where the
+measurement is taken. The truth is in the element boxes, so that is what is
+measured, and the scrollWidth assertion is kept beside it verbatim because it is
+still the right check for the ordinary case.
+
+### THE MECHANISM, MEASURED ON THE REAL PAGE
+
+On the live checkout at 390, one child inserted into the order-summary grid, the
+size of the Stripe payment iframe that sits there on the payment step:
+
+    BEFORE   grid-template-columns: 358px    order summary right edge  374
+    AFTER    grid-template-columns: 520px    order summary right edge  536
+             document.documentElement.scrollWidth  390   (unchanged)
+             document.body.scrollWidth             536
+
+The order summary is 146px off the right of a 390 screen and there is no
+scrollbar. That is UX6.1, UX6.2 and UX6.3, all three, from one cause:
+
+    className="grid gap-6 lg:grid-cols-[1fr_360px]"
+
+Two CSS defaults conspire. With no BASE column template the mobile case falls to
+the implicit `grid-auto-columns: auto`, and an `auto` track sizes to its content,
+so ONE wide child widens the track and every other item in that grid is stretched
+with it. And a bare `1fr` is `minmax(auto, 1fr)`, whose minimum is min-content, so
+the breakpoint case has the same failure for the same reason. The order summary
+was never too wide. It was dragged.
+
+### THE SECOND DEFECT, WHICH THE DRIVE FOUND AND NOBODY HAD REPORTED
+
+The same measurement, run over the whole page rather than the checkout card, put
+this on EVERY mobile page of the platform including the checkout:
+
+    footer > div.mx-auto.max-w-7xl > div.md:hidden > div.flex.items-center.justify-between
+      > div.flex.items-center.gap-4
+      left 157   width 284   right 441   on a 390 viewport
+
+Five 44px social links and their four 16px gaps are 284px, the logo is 113px, and
+`px-4` leaves 358px. Side by side that needs 413px. The row overflowed by 51px,
+and `overflow-x: clip` meant the last two links were clipped and unreachable: a
+finger could not land on them and no scroll could reach them. That is the
+interactive-affordance law (Law 5) as well as UX6.
+
+Shrinking the targets was never an option: 44px is the floor. The row stacks
+below `sm` and sits side by side above it, using the standard scale, no new
+breakpoint invented.
+
+### THE FIX, STRUCTURAL RATHER THAN COSMETIC, AND PLATFORM-WIDE
+
+The cause is a CSS default, not a checkout bug, so it was fixed where it lives:
+
+    every grid gets an explicit mobile column     45 grids, 29 files
+      `grid-cols-1` is Tailwind's `repeat(1, minmax(0, 1fr))`, which is the floor
+    every arbitrary track gets a zero floor       30 templates, 20 files
+      `1fr` -> `minmax(0,1fr)`
+    every checkout grid ITEM gets `min-w-0`       so a wide child overflows nothing
+
+UX6 asks that "this class cannot return". The class was latent on 45 grids across
+marketing, dashboard and admin surfaces on the day it was found on checkout.
+Scoping the repair to the one screen that has already failed is how the same
+defect arrives on the next screen, so the sweep is platform-wide and so is the
+guard.
+
+### UX6.4, THE EMAIL THAT SENT A GUEST TO A LOGIN
+
+The confirmation email ended: "Your tickets are always at eventlinqs.com.au/
+tickets when you are signed in". The owner's purchase was a guest checkout, and
+`/tickets` answers a guest with `redirect('/login?redirect=/tickets')`: there is
+nothing for them to sign in to. Every buyer arriving from paid advertising is a
+guest, so the sentence was wrong for the majority of the people reading it, at
+exactly the moment they were hunting for a ticket they had paid for.
+
+`orders.user_id` is the whole distinction and it was already on the row. Present
+means an account exists and the wallet is the right answer; absent means a guest,
+and they now get the signed order link, which opens with no sign in and carries
+every ticket on the order. The per-ticket bearer links were always there and are
+unchanged: `/t/<code>?k=<secret>`, the same pair the QR encodes.
+
+Seven tests hold both branches (`tests/unit/email/guest-ticket-recovery.test.ts`),
+including that the only difference between them is that one field.
+
+### THE GUARDS, DRILLED IN BOTH DIRECTIONS
+
+Two registered blocking guards, so CI runs them in the build, plus a driven gate
+step, because neither guard can see a laid-out page and UX6 is a layout defect.
+
+    grid-track-cannot-blow-out   488 files, 193 grid containers, 30 templates
+      drilled red: a bare fr track returns to the checkout grid
+      drilled red: the base mobile column is dropped for an implicit auto track
+    buyer-total-is-marked        21 buyer-path files, 4 labels, 4 marks
+      drilled red: the mark is stripped off the checkout summary total
+      drilled red: a COMMENT naming the mark is offered in place of the mark
+      drilled red: a buyer path the guard points at no longer exists
+      drilled red: the whole buyer path is renamed out from under it
+
+**The fourth drill caught the guard's own first draft**, and it is worth writing
+down. `data-order-total` was matched as a bare name, and this guard's own
+explanatory comment inside `checkout-summary.tsx` NAMES it. The file therefore
+counted two marks for one attribute, and stripping the real attribute still left
+the count level: the guard went green on the exact edit it exists to refuse.
+Comments are now removed before anything is counted, and the attribute is matched
+only inside an opening tag.
+
+**The build caught the second draft.** `no-silent-catch` refused a `catch {}`
+around `readdirSync` that returned an empty list, which is precisely how a guard
+reports PASS on a directory renamed out from under it. The error is now recorded
+and turned into a fault, and that path is the fifth drill.
+
+### WHAT THE DRIVE MEASURES, AND WHAT IT REFUSES TO CALL A PASS
+
+`scripts/verify/ux6-checkout-viewport-proof.mjs` walks the buyer path twice per
+width, at 390, 768 and 1440: a free event through to a real issued ticket, and a
+paid event as far as a live Stripe TEST key allows. Seven stops, measured rather
+than looked at, with the event slugs ENUMERATED from the database rather than
+typed in. It refuses to run against production, because it buys tickets.
+
+Wired into the push gate as the `checkout-viewport` step, in the same shape as
+the `indexing` step and for the same stated reason: the static half is two
+registered guards that CI runs in the build, and neither can see a laid-out page.
+
+**The payment step cannot be reached on this machine and the run says so in the
+verdict, not in a footnote.** Both Stripe TEST keys the CLI stores answer HTTP
+401 `api_key_expired` against `GET /v1/balance`, and every `STRIPE_SECRET_KEY` on
+Vercel is stored `sensitive`, so `vercel env pull --environment=preview` writes
+`[SENSITIVE]` for 19 values including that one. Both were re-probed today rather
+than taken from the note. So no PaymentIntent can be created here, and without
+one there is no payment step to measure.
+
+The harness therefore reports `PASS, WITH THE STRIPE PAYMENT STEP NOT EXERCISED`
+and prints the count. Where a Stripe key IS present, or `UX6_REQUIRE_PAYMENT_STEP=1`
+says the SERVER has one, not reaching that step is a FAULT instead: the surface
+UX6.1 is actually about would otherwise be the one surface the proof never looks
+at, and the run would go green on it. The flag only makes the run stricter, which
+is the only direction a flag on a gate may point.
+
+### THE FILES
+
+    src/app/checkout/[reservation_id]/checkout-form.tsx    both grids floored, items min-w-0
+    src/app/checkout/[reservation_id]/loading.tsx          the skeleton mirrors the fixed grid
+    src/components/layout/site-footer.tsx                  the mobile brand row stacks below sm
+    src/components/checkout/checkout-summary.tsx           data-order-total on the figure
+    src/components/checkout/ticket-selector.tsx            data-order-total on both all-in totals
+    src/components/checkout/tax-invoice-panel.tsx          data-order-total on Total paid
+    src/lib/email/order-confirmation.ts                    the guest branch, and EmailOrder.user_id
+    + 42 files, one class of grid track, swept
+
+    scripts/verify/lib/viewport-fit.mjs                    the rule, in one place
+    scripts/verify/ux6-checkout-viewport-proof.mjs         the drive
+    scripts/guards/grid-track-cannot-blow-out.mjs          registered, blocking
+    scripts/guards/buyer-total-is-marked.mjs               registered, blocking
+    scripts/ops/pre-push-gate.mjs                          the checkout-viewport step
+    scripts/guards/test-count-canary.mjs                   356/4215 -> 358/4237
+    tests/unit/checkout/viewport-fit-rule.test.ts          15 tests
+    tests/unit/email/guest-ticket-recovery.test.ts         7 tests
+
+### THE PREVIEW, BECAUSE ONE SURFACE CANNOT BE DRIVEN ANY OTHER WAY
+
+The Vercel preview environment holds the Stripe TEST key this machine does not,
+reads the same TEST database, and carries no deployment protection (checked, not
+assumed: password, SSO and trusted-IP protection are all disabled on the
+project). A previous session already used a preview for exactly this reason and
+recorded it, so it is the established route on this project rather than a new
+one. The branch cannot be pushed, so the preview is deployed from the local tree
+with the Vercel CLI, which also answers the Definition of Done's "a green local
+build that Vercel rejects is not a finished item".
+
+### THE DRIVE FOUND A THIRD DEFECT, AND IT IS LIVE ON PRODUCTION RIGHT NOW
+
+The first full run at 768 went red on the shared header, and chasing it turned up
+something considerably worse than a tablet layout problem. Measured, on the local
+build and then on www.eventlinqs.com.au, which returned the same numbers:
+
+    the header row, at 768 / 820 / 900 / 960 / 1024 / 1100
+
+    w  125  right   149   logo
+    w  384  right   552   nav          shrink-0
+    w  360  right   932   search pill  flex 1 1 0%, but a fixed width, so it never shrank
+    w  311  right  1264   location picker, Sign in, Get Started    shrink-0
+
+**The account group is laid out at a right edge of 1264 on a 768 screen.** Not
+clipped: entirely off it. Nothing in the row can shrink, so on any browser window
+narrower than about 1272 a visitor cannot sign in, cannot sign up, and cannot
+change their city from the header, and `overflow-x: clip` means no scrollbar
+reaches them. The first inside-the-viewport reading is at 1280.
+
+**And my own rule was hiding it.** The exemption for a box entirely off-canvas
+was written for the closed mobile drawer, and it exempted this too, on position
+alone, while dutifully reporting the search box beside it. A control PUSHED past
+the edge is worse than a clipped one, being invisible as well as unreachable. The
+exemption now requires a non-identity TRANSFORM as well as the position, which is
+exactly what separates a drawer parked at `translate-x-full` from a control shoved
+out by a row that does not fit. Two tests hold it.
+
+**The fix, from the measurement rather than from taste.** The desktop row cannot
+go below 880 plus 48 to 64 of padding. So the mobile chrome, which is a drawer
+and fits at any width, now runs up to `lg` (1024), where 880 fits inside 960; and
+the search pill, which needs another 20 plus its own width, appears at `xl`
+(1280) and carries `min-w-0` so it can never push the row again. No new
+breakpoint was invented and no control was shrunk below 44px. The arithmetic is
+written into the component beside the change.
+
+### AND A HOLE IN THE MIDDLE OF THE GATE, CLOSED IN THE SAME PASS
+
+The header defect was laid out off the edge at 768 and at 820, 900, 960, 1024 and
+1100, and came inside the viewport only at 1280. UX6 names 390, 768 and 1440, so
+a regression re-introduced at 1100 would sit in the gap between two of the three
+widths and pass. The drive now sweeps the shared chrome at 1024, 1100, 1280 and
+1366 as well: a page LOAD per width rather than a walk, so closing the hole costs
+seconds instead of doubling the step. 1024 and 1280 are the two breakpoints the
+chrome now switches on, 1100 is where nothing switches and the old header was
+172px past the edge, and 1366 is a common laptop width.
+
+The search pill needed the same treatment for the same reason. `w-[360px]` cannot
+shrink, and at xl the row has 316px to spare, not 360, so a fixed pill would have
+pushed the header 44px past the right edge at exactly 1280: the fix creating the
+next instance of the defect it was fixing. It is now `w-full max-w-[360px]
+min-w-0`, identical at 1440 and wider, shrinking below that.
+
+### THE CHECKOUT HAD NO ACCESSIBILITY COVERAGE AT ALL, AND NOW IT DOES
+
+`scripts/axe-overnight.mjs` scans eighteen public paths and cannot scan checkout,
+the confirmation or a bearer ticket: each needs a real reservation, a real order
+or a real ticket secret, and it holds none of them. This drive holds all three,
+so every stop it makes is now scanned with axe-core against WCAG 2.0 and 2.1 A
+and AA. serious and critical fail the run; moderate and minor are printed rather
+than swallowed, so a lower-impact finding is visible without being attributed to
+this item.
+
+`scripts/axe-shared-chrome.mjs` gained tablet 768 and laptop 1024 for the same
+reason the drive gained its chrome sweep: the header's desktop and mobile chrome
+now swap at 1024, and a scan that reads only 390 and 1440 never looks at the
+widths where that swap happens, which is exactly where an aria-hidden or a
+focus-order mistake would land.
+
+### WHAT THE FIRST CLEAN RUN OF THE DRIVE THEN FOUND
+
+Two more, both real, and one of them is the drive catching my own rule.
+
+**The rule reported the closed mobile drawer as a control pushed off the screen,
+on every mobile page.** The exemption I had just tightened asks for a non-identity
+TRANSFORM, and the drawer has none: Tailwind v4 compiles `translate-x-full` to
+the standalone `translate` property, not to `transform`. Measured rather than
+argued: `transform: none, translate: 100%`. Both properties are read now, and
+that is a test.
+
+**Two live WCAG AA failures on the buyer's own surfaces, on surfaces nothing had
+ever scanned.** Computed against white:
+
+    gold-500  #D4A017   2.38:1
+    gold-600  #B88612   3.25:1     both below the 4.5:1 that small text needs
+    gold-700  #8B6A0E   5.04:1
+    gold-800  #6F5409   7.12:1
+
+    the mobile buy bar's PRICE          text-gold-600 on white   3.25:1
+    "Use my details for all tickets"    text-gold-500 on white   2.37:1
+
+The first is the price a phone buyer reads on the bar they tap. The Design
+system already says gold text on a light surface is `--brand-accent-strong`
+(gold-800), so neither was a new rule, both were the rule not being followed.
+Fixed to gold-800, with hover states on gold-700 (5.04:1) rather than gold-600.
+A third, `text-gold-600` on the `bg-gold-100` sold-out badge, measures 2.95:1 and
+was fixed in the same pass although axe had not rendered it.
+
+**The wider finding is recorded rather than swept:** `text-gold-600` appears at
+79 sites across the tree, many on tints or hovers outside this item's surfaces.
+Only the buyer path was changed here. The rest is in REVIEW-QUEUE.md as its own
+piece of work, with its size stated, because quietly repainting 79 sites inside a
+checkout item is how an item stops being reviewable.
+
+A second pass on the same file found the DESKTOP half of the same bar carrying
+the same price in the same gold at the same 3.25:1, which the 390 run could not
+see because that half is `hidden md:flex`. Two viewports found two halves of one
+defect, which is the argument for driving three rather than one. The clipboard
+confirmation, the saved-state heart and two hover states in the same component
+went to the strong tier with it.
+
+**Worth stating plainly about the gate:** CLAUDE.md records that axe is not a CI
+job and is run by hand per surface. The scan added to this drive is therefore the
+first axe coverage on this platform that RUNS AUTOMATICALLY, and it covers the
+surfaces that had none at all. `axe-overnight` (eighteen public paths) and
+`axe-shared-chrome` (now four widths) remain hand-run, and that gap is unchanged
+by this item.
+
+### THE PREVIEW ROUTE TO THE PAYMENT STEP DOES NOT EXIST ON THIS PROJECT
+
+The Vercel preview environment holds the Stripe TEST key this machine lacks,
+reads the same TEST database and carries no deployment protection (checked
+through the API, not assumed: password, SSO and trusted-IP are all disabled). A
+previous session used a preview for exactly this and recorded it. The branch
+cannot be pushed, so the only route left was the Vercel CLI.
+
+**It fails, twice, and not because of this tree.** `vercel deploy --yes` and
+`vercel deploy --yes --archive=tgz` both died at `npm run build` on four guards,
+every one of them a missing file under `docs/`:
+
+    community-layer-protected  THREW  ENOENT /vercel/path0/docs/scope/community-layer-approved.json
+    payment-critical-doctrine  exit 1
+    launch-readiness-honest    exit 1
+    vercelignore-covers-guard-reads  exit 1
+
+`.vercelignore` re-includes each of those, walked down level by level, and the
+repository's own proof for exactly this question passes on this commit:
+`excluded-reads-survive-the-upload` materialises the upload from `git ls-files`
+plus `.vercelignore` and RUNS every prebuild entry point inside it, and reports
+**20 entry points, 2258 files kept, 4439 stripped, every one exiting 0.** The
+CLI's client-side file selection is not the git integration's, and the
+re-inclusions do not survive it.
+
+**And that guard told me the other thing first, which is worth writing down.**
+Run without an environment it reported one upload failure, `check-pricing-lock`
+exiting 1 with BUILD BLOCKED. That was this shell carrying the PRODUCTION
+Supabase URL, so the check read production's rates against `docs/PRICING.md`. Run
+through `clean-env.sh` with `.env.local` it passes. A guard is only as honest as
+the environment it is handed, and I nearly filed a live pricing drift that does
+not exist.
+
+**I made a mess and cleaned it up.** The two failed CLI deployments attached
+themselves to commit `e94840d6`, and `preview-deployment-state` reads by sha, so
+it went red on my own commit: "the deployment of e94840d is in ERROR". Both were
+removed and it is back to SKIP. Recorded rather than quietly tidied, because
+anyone repeating the attempt will hit it.
+
+**So the Stripe payment step remains NOT EXERCISED, with two named ways to close
+it, both the founder's:**
+
+    stripe login                  a working TEST key on this machine, then the
+                                  drive reaches the payment step locally
+    npm run migrate:production    releases the twelve commits, the push builds a
+                                  git-based preview, and the drive runs against
+                                  it with UX6_REQUIRE_PAYMENT_STEP=1
+
+### THE SHARED CHROME, SCANNED AT THE WIDTHS IT NOW SWITCHES ON
+
+    desktop 1440   full 0 violations   header+footer 0
+    laptop  1024   full 0 violations   header+footer 0
+    tablet   768   full 0 violations   header+footer 0
+    mobile   390   full 0 violations   header+footer 0
+
+Evidence: `C:\dev\EVIDENCE\UX6\axe-shared-chrome.txt`.
+
+### UX6.4, DRIVEN RATHER THAN ONLY UNIT-TESTED
+
+The free path of the drive completes a REAL guest purchase on TEST and the
+server sends the real confirmation email through the console transport. What it
+carried, per order:
+
+    2 x  /t/<code>?k=<secret>                     the bearer ticket links
+    2 x  /orders/<id>/confirmation?t=<signed>     the new guest sentence and the receipt line
+    0 x  /tickets                                 the wallet link, correctly absent for a guest
+
+Zero `/tickets` links across every confirmation the drive sent, where before this
+change every guest email carried one. And the bearer link is opened by the drive
+itself, in a fresh browser context with no session, as surface `6-ticket-view`:
+HTTP 200 at 390, 768 and 1440. That is "a ticket link that works with no sign in",
+driven rather than asserted.
