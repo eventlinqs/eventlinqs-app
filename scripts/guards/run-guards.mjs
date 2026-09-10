@@ -94,6 +94,11 @@
  *                              on ready_for_review, so CI runs once, after the local gate
  *   pre-push-gate-wired       .githooks/pre-push runs the whole of scripts/ops/pre-push-gate.mjs,
  *                              npm run gate:push is the same command, and git is pointed at it
+ *   gate-servers-carry-a-limiter  every gate step that serves the production build starts it
+ *                              through one function, which hands it a rate-limit backend and
+ *                              proves the backend answers. Without it the money-path limiter
+ *                              fails closed and a drive reports the gate's own gap as a
+ *                              product defect
  *   card-raster-traced        every route that reaches the card rasteriser (derived from the
  *                              import graph, never listed) pins the resvg binary and the brand
  *                              fonts in next.config.ts, judged with Next's own matcher; and as
@@ -866,6 +871,17 @@ const GUARDS = [
   // the drills in scripts/verify/guard-failure-drills.mjs and green after.
   'scripts/guards/workflows-skip-drafts.mjs',
   'scripts/guards/pre-push-gate-wired.mjs',
+  // 10 September 2026, found by the gate failing on itself. Three gate steps
+  // served the production build and each spawned `next start` in its own block.
+  // Only the Lighthouse one handed the server a rate-limit backend, and it is
+  // the one that never buys anything; the UX6 checkout drive, which does, had
+  // none, so `checkout-reserve` (failClosed) refused every reservation and every
+  // checkout submit and the drive reported six product defects that were not
+  // product defects. One door now, startGateServer(), which also PROVES the stub
+  // answers, because a URL pointing at nothing fails closed identically to no
+  // URL. Five clauses, all drilled red and green
+  // (C:\dev\EVIDENCE\D1\guard-gate-server-drill.txt).
+  'scripts/guards/gate-servers-carry-a-limiter.mjs',
   // 6 September 2026 (close-out C3, the eighteen social cards). The rasteriser
   // reads the resvg WebAssembly binary and the brand fonts from disk at run
   // time, and next.config.ts pins them per route in outputFileTracingIncludes
