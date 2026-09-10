@@ -3242,3 +3242,119 @@ Four drills, in `scripts/verify/ux1-contrast-guard-drills.mjs`: the exact
 regression red, the ink half red, a token lightened in `globals.css` red (which
 proves the table is READ and not held), and a NEGATIVE drill asserting an
 opacity modifier stays green.
+
+---
+
+## UX2.5. THE HUMAN READ OF THE FIVE LAUNCH SCREENS. 11 September 2026.
+
+**First, a correction to this ledger.** The UX2 row above records UX2.5 as
+**NOT DONE**, "Not yet added to the launch-readiness report". That is STALE and
+has been since 9 September. The row exists: `L1_ITEM_COUNT` is 17, item 17 is
+`PLATFORM`, and it names the five screens explicitly rather than leaving them to
+interpretation - the homepage, browse at `/events`, an event detail page,
+`/pricing` and `/organisers`. The count is a named constant precisely so a row
+cannot be added without moving it or the other way round. So the REQUIREMENT
+("add it as a named L1 row with its own evidence") was already met.
+
+What had not been done was the READ. It is done now, on this tree, and it is the
+part that matters, because the whole reason UX2.5 exists is that the sweep which
+drove 211 routes with zero errors found none of the six defects the owner found
+by reading one page.
+
+`scripts/verify/launch-screens-read.mjs` serves this tree's production build,
+resolves the event detail slug FROM THE DATABASE rather than typing one, and
+captures all five screens at 390, 768 and 1440. It splits the work honestly: the
+mechanical half is asserted, the READ is the pictures, and the script says in its
+own output that it has not done the reading.
+
+**Mechanical: 75 of 75.** Every screen 200; `scrollWidth <= innerWidth` at every
+width; no raw markdown reaching a screen; no placeholder copy; axe 0
+serious/critical, and 0 at EVERY impact level, on all fifteen.
+
+### THE ONE REAL DEFECT THE READ FOUND
+
+On the event detail page, where the venue map belongs, the page showed Google's
+own grey panel:
+
+    "Sorry! Something went wrong.
+     This page didn't load Google Maps correctly. See the JavaScript console for
+     technical details."
+
+A third-party developer message, carrying an exclamation mark, telling a person
+buying a ticket to open a developer console, on the highest-intent surface the
+platform has. Generic by definition (Law 1).
+
+**And every map component already HAD a designed fallback** - the gold-tinted
+plate with the pin, the venue name and the full address - which was being hidden.
+An authentication failure still resolves `importLibrary` and still constructs a
+`Map`, so the component saw a Map, set `interactive`, dropped its own plate, and
+Google painted the panel into the container underneath it.
+
+**The mechanism is Google's own, fetched rather than remembered** (Law 7). Maps
+JavaScript API, Handle authentication errors: "If the following global function
+is defined it will be called when the authentication fails.
+`function gm_authFailure() { }`"
+(https://developers.google.com/maps/documentation/javascript/events#auth-errors,
+fetched 2026-09-11). The first page consulted, the error-messages reference, does
+NOT carry the callback, and that is recorded here rather than smoothed over.
+
+Registered ONCE in `src/lib/maps/google-maps-loader.ts`, not in a component,
+because four surfaces load maps - the venue map, its lazy wrapper, the city map
+and the events cluster map - and a refused key is a property of the KEY, not of
+any one of them. The venue map reads it through `useSyncExternalStore`, which is
+what a module-level flag with a subscribe and a snapshot actually is; the
+`useEffect` + `setState` form was written first and `react-hooks/set-state-in-effect`
+refused it, correctly.
+
+**Driven both ways.** This is one of the few things that is EASIER to prove
+locally than on production: the browser key is referrer-restricted and localhost
+is not on the allow list, so `RefererNotAllowedMapError` is the everyday case
+here (close-out UX2.2b). Before: Google's grey panel. After, captured at 390: the
+platform's own plate carrying the pin, "Enmore Theatre", the full address, and
+the working "Open in Maps" button beneath it. 7 unit tests hold the hook
+contract, including that it never overwrites a hook something else installed and
+that a surface mounting AFTER the refusal still learns about it.
+
+### TWO THINGS THAT LOOKED EXACTLY LIKE DEFECTS AND WERE NOT
+
+Both are recorded because either would have been reported as a launch blocker by
+a session that trusted its own capture, and the second one nearly was.
+
+**1. Roughly 1,100px of blank on the homepage.** The first full-page capture
+showed a large empty band between the music rail and the community band. It read
+as a section that had failed to render.
+
+**2. Eight of fourteen homepage sections reporting NO CONTENT AT ALL.** A probe
+written to find empty sections said sections 5 to 9 and 11 to 13 had zero text.
+Every single one of them had 150 to 176 descendants and 10 to 14 images inside
+it. Scrolling to the bottom and asking again moved the "empty" ones to whichever
+sections were now off screen, which is the tell.
+
+**The cause of both is `cv-section`**, which is `content-visibility: auto` with a
+480px intrinsic size, applied to every rail section by close-out C8 to get the
+mobile Lighthouse score up. The browser renders the first viewport and reserves
+an estimate for the rest. So a `fullPage` screenshot paints nothing where a
+section is skipped, and `innerText` - which is the RENDERED text - returns the
+empty string for the same reason.
+
+Content-visibility is now disabled FOR THE CAPTURE ONLY, in the page, never in
+the product, and the reason is written at the top of the script in a block headed
+"read this before believing a full-page capture of this site". Re-captured, the
+homepage renders every rail: categories, what's happening near you, your people,
+music, trending now, arts and theatre, nightlife, free events, sounds, the
+community band, browse by city, just added, where the city goes. No blank bands.
+
+**And two checks were written here and REMOVED**, which looks like a weakening and
+is the opposite. "No visible element past the right edge" flagged 24 things and
+not one was a defect: the mobile nav sheet parked off-canvas by a transform, rail
+cards beyond the fold (which IS the next-card peek the design system asks for),
+the full-bleed hero raster, and decorative overlays. A naive right-edge test does
+not understand an overflow container, and `ux6-checkout-viewport-proof.mjs`
+already carries the exemption taxonomy that does. "The last section does not close
+flush against the footer" measured from the bottom-most box in `main`, and a
+full-height wrapper reaches the footer by construction, so it read 0px on all
+fifteen; UX2.3 measures the last PAINTED box and is already MET. A check that
+reports the same number for every page is not measuring the thing it names.
+
+**Regression:** 107 guards, 375 files / 4510 tests, 0 failed, 0 skipped,
+typecheck, lint, copy, build, indexing, checkout-viewport, Lighthouse mobile.

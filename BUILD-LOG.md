@@ -9807,3 +9807,71 @@ and asserting the exact bullet count, derived from the fixture.
 `scripts/verify/ux6-checkout-viewport-proof.mjs` now prints the axe node targets
 and failure summaries rather than a count, because a count sent this session
 chasing the wrong change for ten minutes.
+
+---
+
+## Session 62 continued, 11 September 2026. UX2.5, the human read.
+
+**A stale ledger row corrected first.** BUILD-LEDGER recorded UX2.5 as NOT DONE
+("not yet added to the launch-readiness report"). The row has existed since
+9 September: `L1_ITEM_COUNT = 17`, item 17, which names the five screens
+explicitly. The requirement was met; the READ had never been performed.
+
+### What shipped
+
+`56aa3d8c` Where the venue map belongs, a ticket buyer was told to open the
+JavaScript console.
+
+- `scripts/verify/launch-screens-read.mjs`: serves this tree's build, resolves
+  the event slug from the DATABASE, captures all five screens at 390/768/1440,
+  asserts the mechanical half and hands over the pictures for the half a machine
+  cannot do. It says so in its own output.
+- `src/lib/maps/google-maps-loader.ts`: registers Google's documented
+  `gm_authFailure` once, with a subscribe/snapshot pair, so all four map surfaces
+  learn about a refused key.
+- `src/components/features/events/venue-map.tsx`: reads it through
+  `useSyncExternalStore` and keeps its own designed plate up.
+- `tests/unit/maps/auth-failure-hook.test.ts`: 7 tests on the hook contract.
+
+| | |
+|---|---|
+| Mechanical checks | 75 of 75 across 5 screens x 3 widths |
+| axe | 0 violations at EVERY impact level, all 15 |
+| Guards | 107 |
+| Suite | 375 files / 4510 tests, 0 failed, 0 skipped |
+| indexing / checkout-viewport / Lighthouse | PASS |
+| Gate steps green | 14 of 15; production-parity is the founder's |
+
+### THE TRAP WORTH REMEMBERING
+
+`cv-section` is `content-visibility: auto` on every rail section (close-out C8,
+for the mobile Lighthouse score). Two consequences, and both look exactly like a
+broken page:
+
+1. A `fullPage` screenshot shows BLANK BANDS wherever a section is skipped. The
+   first homepage capture had ~1100px of nothing in the middle.
+2. `innerText` on a skipped section returns THE EMPTY STRING. A probe reported
+   EIGHT of fourteen homepage sections as having no content; every one held
+   150-176 descendants and 10-14 images. Scrolling to the bottom moved the
+   "empty" ones to whatever was now off screen, which is the tell.
+
+The capture now disables content-visibility in the page for the capture only,
+under a comment headed "READ THIS BEFORE BELIEVING A FULL-PAGE CAPTURE OF THIS
+SITE". Every rail renders.
+
+### TWO CHECKS WRITTEN AND REMOVED
+
+Recorded because removing a check looks like weakening and this was not.
+"Nothing past the right edge" flagged 24 items, none a defect: the off-canvas nav
+sheet, rail cards beyond the fold (the next-card peek the design system asks
+for), the full-bleed hero raster, decorative overlays. `ux6-checkout-viewport-proof`
+already owns that exemption taxonomy. "Footer gap" measured from the bottom-most
+box in `main`, which a full-height wrapper reaches by construction, so it read
+0px on all fifteen; UX2.3 measures the last PAINTED box and is already MET.
+
+### One guard exemption added
+
+`no-partial-builds` flagged `launch-screens-read.mjs` for containing "lorem
+ipsum" - inside the list of placeholder strings it exists to detect on a shipped
+page. Added to `DETECTOR_FILES`, which is the sanctioned mechanism and is printed
+on every run, alongside the five detectors already there for the same joke.

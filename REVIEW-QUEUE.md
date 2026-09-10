@@ -3753,3 +3753,80 @@ is nine migrations behind, and that is yours:
     npm run migrate:production
 
 It is also what closes the last leg of UX6, D1 and D2.
+
+---
+
+## I read the five launch screens, and one of them was telling buyers to open a developer console (11 September 2026)
+
+UX2.5 was your rule after Mikhaell's event: the launch check must include a
+person READING the five main screens, not just a sweep confirming they answer.
+Your reason was exact - the sweep drove 211 routes with zero errors and found
+none of the six things you found by reading one page.
+
+The row for it was already in the launch report. What had never happened was the
+reading. It has now, on the homepage, /events, an event page, /pricing and
+/organisers, at phone, tablet and desktop width.
+
+**The mechanical half is clean:** 75 of 75. Every screen loads, nothing spills
+sideways at any width, no stray formatting characters on any page, no
+placeholder text anywhere, and zero accessibility problems at any severity on all
+fifteen screens.
+
+### What the reading found
+
+On the event page, where the venue map should be, the page was showing Google's
+own grey error box:
+
+> Sorry! Something went wrong. This page didn't load Google Maps correctly. See
+> the JavaScript console for technical details.
+
+Someone buying a ticket was being told to open a developer console.
+
+We already had a proper fallback designed for this - the soft gold panel with the
+pin, the venue name and the address - and it was being covered up. When Google
+refuses the key, it still hands the page a map object, so the page assumed the
+map had worked, put its own panel away, and Google drew the error box underneath.
+
+It is fixed at the source, so all four maps on the platform behave the same way,
+and it now shows our panel with the address and a working "Open in Maps" button.
+
+**When this actually matters.** On the live site the map works, so you would not
+see this today. You would see it the day the Maps billing lapses, or the quota is
+hit on a busy night, or a buyer is behind a corporate network that blocks Google.
+That is precisely when you would least want your event pages saying "something
+went wrong".
+
+### Two things that looked broken and were not
+
+I am telling you these because either one would have been reported to you as a
+serious defect by a session that trusted its own screenshots, and the second one
+nearly was.
+
+The homepage capture came back with a big empty gap in the middle. Then a check
+insisted that eight of the fourteen homepage sections contained nothing at all.
+
+Both were false. Every one of those "empty" sections had 150 to 176 elements and
+a dozen images in it. The cause is a speed optimisation we added for the mobile
+score: the browser is told it may skip laying out sections that are off screen,
+which is exactly what makes the page fast. A screenshot of the whole page
+therefore comes back blank in those places, and asking the browser for the text
+of a section it has not drawn returns nothing.
+
+The capture now switches that off while taking pictures only, never on the real
+site, and there is a note at the top of the file in capital letters so the next
+session does not lose an afternoon to it. Re-captured, the homepage is full:
+every rail, every city, every community, right down to the footer.
+
+I also deleted two checks I had written here, and I want to be clear that this
+was not softening anything. One flagged 24 "problems" that were all correct
+behaviour - the slide-out menu parked off screen, the deliberate peek of the next
+card in a rail, the full-width hero. The other reported the same wrong number for
+every page. A check that is wrong every time gets ignored, and then it is worse
+than nothing.
+
+### Still the same one command
+
+Twenty commits are now waiting, and the gate passes 14 of its 15 steps. The
+fifteenth refuses because production is nine migrations behind:
+
+    npm run migrate:production
