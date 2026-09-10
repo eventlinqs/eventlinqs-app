@@ -66,11 +66,31 @@ function computeCode(secretBase32: string, counter: number): string {
 
 const RECOVERY_CODE_COUNT = 10
 
+/**
+ * The shape a recovery code is ISSUED in, written down once (close-out UX5).
+ *
+ * It exists because the three places that described this format all described
+ * it differently. `formatRecoveryCode` was called with `randomBytes(5)`, whose
+ * comment said "5 bytes -> 10 hex chars -> grouped 4-4-4". Base32 of 5 bytes is
+ * exactly 8 characters, not 10 and not hex, so `slice(7, 10)` returned ONE
+ * character and every code the platform ever issued looked like `oafj-don-3`.
+ * Meanwhile the admin login field advertised `abcd-efg-hij`. The system issued
+ * one shape, its own comment claimed a second, and the form promised a third.
+ *
+ * Seven bytes is 56 bits, which base32-encodes to 12 characters, so taking ten
+ * of them is a clean 4-3-3 and no group is a stub. It also lifts a recovery
+ * code from 40 bits of entropy to 50. Codes already issued keep working:
+ * `verifyRecoveryCode` strips the hyphens and lowercases before comparing, so
+ * it never depended on the grouping.
+ */
+export const RECOVERY_CODE_EXAMPLE = 'abcd-efg-hij'
+export const RECOVERY_CODE_PATTERN = /^[a-z2-7]{4}-[a-z2-7]{3}-[a-z2-7]{3}$/
+
 export function generateRecoveryCodes(): { plain: string[]; hashed: string[] } {
   const plain: string[] = []
   const hashed: string[] = []
   for (let i = 0; i < RECOVERY_CODE_COUNT; i++) {
-    const code = formatRecoveryCode(randomBytes(5))
+    const code = formatRecoveryCode(randomBytes(7))
     plain.push(code)
     hashed.push(hashRecoveryCode(code))
   }
@@ -100,7 +120,8 @@ export function verifyRecoveryCode(code: string, hashed: string): boolean {
 }
 
 function formatRecoveryCode(buf: Buffer): string {
-  // 5 bytes -> 10 hex chars -> grouped 4-4-4 with hyphens lowercased base32
+  // 7 bytes -> 12 base32 chars -> the first 10, lowercased, grouped 4-3-3.
+  // See RECOVERY_CODE_PATTERN for why the byte count is seven and not five.
   const b32 = base32Encode(buf).slice(0, 10).toLowerCase()
   return `${b32.slice(0, 4)}-${b32.slice(4, 7)}-${b32.slice(7, 10)}`
 }

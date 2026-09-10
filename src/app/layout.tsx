@@ -3,6 +3,7 @@ import { Manrope, Archivo } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
+import { MainContentFrame } from '@/components/layout/main-content-frame'
 import { HeaderScrollSentinel } from '@/components/layout/header-scroll-sentinel'
 import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
@@ -205,9 +206,11 @@ export default function RootLayout({
         <SiteSchemaJsonLd baseUrl={SITE_URL} />
         <HeroPresenceProvider>
           <HeaderScrollSentinel />
-          <div id="main-content" className="pb-16 md:pb-0">
-            {children}
-          </div>
+          {/* The bar's height is reserved where the bar exists, and nowhere
+           *  else. It used to be reserved on every page, including the ten
+           *  prefixes the bar is hidden on, none of which has a footer to
+           *  paint the strip (close-out UX5). */}
+          <MainContentFrame>{children}</MainContentFrame>
           <MobileBottomNav />
           {/* First-touch attribution capture (acquisition loop). Renders null
            *  and runs only in a post-paint effect, so it never costs LCP. */}

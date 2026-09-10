@@ -210,6 +210,10 @@
  *                              OrganiserProse or stripMarkdown and never raw, because
  *                              the first real outside organiser's bio shipped to
  *                              production reading **MKL Studios** (close-out UX1.1)
+ *   scannable-instruction-has-a-qr  a surface that tells a person to scan a code draws
+ *                              one, keeps the typed fallbacks beside it, and builds the
+ *                              picture from the same value it prints. /admin/enrol-2fa
+ *                              said "scan the QR code" and drew nothing (close-out UX5)
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -823,6 +827,14 @@ const GUARDS = [
   'scripts/guards/one-platform-entity.mjs',
   'scripts/guards/one-venue-address-format.mjs',
   'scripts/guards/organiser-prose-one-rule.mjs',
+  // UX5: /admin/enrol-2fa told every new administrator to "scan the QR code"
+  // and drew nothing to scan, so the real instruction was to type a 32
+  // character base32 secret off a laptop into a phone, on the one screen where
+  // a typo locks you out of the admin console. A route sweep saw a 200 and no
+  // unit test saw a wrong function. Drilled red on all three clauses, and
+  // drilled GREEN on descriptive prose about scanning, which is the false
+  // positive that would otherwise get this guard switched off.
+  'scripts/guards/scannable-instruction-has-a-qr.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
   // organiser form, stored on the anon-readable events row, and shown to nobody.

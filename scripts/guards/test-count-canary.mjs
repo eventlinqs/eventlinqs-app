@@ -1243,9 +1243,37 @@ const ROOT = join(HERE, '..', '..')
  * an attribution query appended AFTER a fragment, so the parameters were never
  * parameters and the link stopped landing on the ticket selector (three tests
  * on where a query goes).
+ *
+ * And 373/4499 for close-out UX5, the two-factor enrolment page. Two new files
+ * and eight tests added to an existing one, and every one of them exists
+ * because of something a screenshot could not have told anybody.
+ *
+ * tests/unit/admin/enrol-2fa-qr holds the QR at the SOURCE: the picture decodes
+ * back to exactly the URI it was built from, its secret is the one printed
+ * beside it, and that secret is a working RFC 6238 secret computed
+ * independently and verified by the application. A QR that decodes perfectly to
+ * a secret nothing accepts is still a lockout.
+ *
+ * The eight in tests/unit/admin/totp are for a defect three separate places
+ * described three different ways. `formatRecoveryCode(randomBytes(5))` base32-
+ * encodes to EIGHT characters, so `slice(7, 10)` returned ONE, and every
+ * recovery code the platform ever issued looked like `oafj-don-3` at 40 bits,
+ * while its own comment claimed "10 hex chars grouped 4-4-4" and the admin
+ * login field advertised `abcd-efg-hij`. Seven bytes makes all three agree at
+ * 50 bits, and one of the tests now reads the placeholder out of the login form
+ * so the form and the generator can never disagree again.
+ *
+ * tests/component/layout/bottom-nav-clearance holds the 64px the root layout
+ * reserved for a bar that ten route prefixes never draw. None of those ten
+ * renders SiteFooter, which is what paints that strip everywhere else, so the
+ * admin console ended in a band of pale canvas under a dark surface at 390.
+ * The tests read the prefix list out of the bar's own source, so a prefix added
+ * there is covered the moment it is added, and they hold BOTH directions:
+ * losing the reservation where the bar IS drawn would put the tab bar on top of
+ * the footer's last row, which is worse than the band.
  */
-const MIN_FILES = 371
-const MIN_TESTS = 4464
+const MIN_FILES = 373
+const MIN_TESTS = 4499
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
