@@ -97,7 +97,23 @@ function stats(samples) {
   }
 }
 
-/** One measured POST. The address varies so every iteration is a new visitor. */
+/*
+ * EVERY RUN IS A NEW SET OF VISITORS, NOT JUST EVERY ITERATION.
+ *
+ * The address varied per iteration from the first version, which made each
+ * iteration inside ONE run a distinct visitor. It did not make the SECOND run
+ * distinct from the first: same forty addresses, same forty agents, same day,
+ * so the same forty occurrence keys, and the ledger correctly wrote nothing.
+ * The harness then reported "arm A wrote no rows" and I very nearly filed it as
+ * `after()` silently dropping work on a production server. It was the
+ * idempotency doing exactly its job.
+ *
+ * So the run stamp goes into the user agent, which feeds `visitorHash` beside
+ * the address. A re-run now measures real work rather than eighty no-ops.
+ */
+const RUN = `${Date.now().toString(36)}`
+
+/** One measured POST. The visitor is unique per run and per iteration. */
 async function post(eventId, i) {
   const started = performance.now()
   const res = await fetch(`${BASE}/api/ledger/demand`, {
@@ -107,7 +123,7 @@ async function post(eventId, i) {
       // 198.51.100.0/24 is TEST-NET-2 (RFC 5737), reserved for documentation
       // and examples, so no iteration can name a real address.
       'x-forwarded-for': `198.51.100.${i % 254}`,
-      'user-agent': `d1-latency/${i}`,
+      'user-agent': `d1-latency/${RUN}/${i}`,
     },
     body: JSON.stringify({ eventId, action: 'page_view' }),
   })
@@ -170,7 +186,38 @@ for (let i = 0; i < N; i += 1) {
   without.push(b.ms)
 }
 
-const { count: after } = await db.from('ledger_entries').select('id', { count: 'exact', head: true }).eq('kind', 'demand')
+/*
+ * WAIT FOR WORK THAT IS SUPPOSED TO OUTLIVE THE RESPONSE.
+ *
+ * Once the ledger write moved behind `after()`, counting the rows the instant
+ * the last response landed found ZERO of eighty, and the first reading of that
+ * was "after() is not running". It was: the rows arrive after the responses do,
+ * which is the entire point, and the measurement was asking the wrong moment.
+ *
+ * So the count SETTLES: poll until it stops rising, with a ceiling. A run where
+ * it never rises still fails below, because a row that never arrives is a real
+ * fault and this must never become a wait that hides one.
+ */
+async function settledDemandCount(from) {
+  const deadline = Date.now() + 60_000
+  let last = from
+  let stableFor = 0
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1000))
+    const { count } = await db.from('ledger_entries').select('id', { count: 'exact', head: true }).eq('kind', 'demand')
+    const now = count ?? 0
+    if (now === last) {
+      stableFor += 1
+      if (stableFor >= 3 && now > from) return now
+      if (stableFor >= 10) return now
+    } else {
+      stableFor = 0
+      last = now
+    }
+  }
+  return last
+}
+const after = await settledDemandCount(before ?? 0)
 
 const A = stats(withWrite)
 const B = stats(without)
@@ -178,7 +225,7 @@ const addedP95 = +(A.p95 - B.p95).toFixed(1)
 const addedP50 = +(A.p50 - B.p50).toFixed(1)
 
 say('')
-say(`${TAG} demand rows platform-wide: ${before} -> ${after} (+${(after ?? 0) - (before ?? 0)})`)
+say(`${TAG} demand rows platform-wide: ${before} -> ${after} (+${after - (before ?? 0)}), counted after the deferred work settled`)
 say(`${TAG} non-200 iteration pairs: ${badStatus}`)
 say('')
 say(`${TAG} ARM A, with the ledger write     n=${A.n}  min ${A.min}ms  p50 ${A.p50}ms  p95 ${A.p95}ms  max ${A.max}ms`)
@@ -209,7 +256,7 @@ writeFileSync(
  * THE EXIT CODE SAYS WHAT WAS MEASURED, NOT WHETHER IT WAS CONVENIENT. A run
  * that wrote no rows measured nothing and must never read as a pass.
  */
-if ((after ?? 0) <= (before ?? 0)) {
+if (after <= (before ?? 0)) {
   console.error(`${TAG} FAIL: arm A wrote no rows, so nothing was measured.`)
   process.exit(1)
 }

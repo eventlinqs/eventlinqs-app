@@ -76,6 +76,15 @@ const adminClient = {
   from: (table: string) => {
     if (table === 'organisations') return thenable({ data: h.owned, error: null }, h.adminWrite)
     if (table === 'organisation_members') return thenable({ data: h.membership, error: null }, h.adminWrite)
+    /*
+     * A LIST READ ANSWERS WITH A LIST. `.select().eq()` with no `.single()`
+     * returns an array from Postgres, and every other branch here answers with
+     * one object because every other read in this file ends in `.maybeSingle()`.
+     * The ticket types are read as a list on either side of the save so the
+     * slot ledger can record what actually moved, and answering that read with
+     * an object made the ledger call throw on `before.map` rather than run.
+     */
+    if (table === 'ticket_tiers') return thenable({ data: [], error: null }, h.adminWrite)
     return thenable({ data: { id: 'x' }, error: null }, h.adminWrite)
   },
   /*

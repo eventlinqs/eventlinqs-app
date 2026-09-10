@@ -153,6 +153,45 @@ const files = []
   }
 })(join(ROOT, 'src'))
 
+/**
+ * DOES THIS FILE WRITE TO `events`?
+ *
+ * WHY IT IS A WINDOW AND NOT TWO INDEPENDENT TESTS, 10 September 2026. The
+ * first version asked two separate questions of the whole file: does it mention
+ * `.from('events')`, and does it contain `.update(`, `.insert(` or `.upsert(`
+ * anywhere. `src/lib/ledger/adapter.ts` reads events four times and writes them
+ * never, and it was accused of publishing events because it derives a keyed
+ * hash:
+ *
+ *     createHash('sha256').update(`eventlinqs.ledger.identity.v1:${secret}`)
+ *
+ * A crypto `.update()` is not a database write, and the guard could not tell
+ * because it never looked at where the two things sat relative to each other.
+ * Suppressing that with an ALLOWANCE would have been worse than the false
+ * positive: it would have signed a statement about the ledger adapter's publish
+ * behaviour to silence a bug in this file.
+ *
+ * So the write must appear WITHIN the same chain: inside `WINDOW` characters
+ * after a `.from('events')`, which covers the chained builder idiom this
+ * repository uses everywhere.
+ *
+ * WHAT IT CANNOT SEE, said out loud rather than left implied: a builder stored
+ * in a variable and written to far away (`const q = admin.from('events'); ...;
+ * q.update(...)`). No file in this repository does that today, and the guard
+ * prints how many candidate files it judged so a reader can tell it is still
+ * looking at something.
+ */
+const WINDOW = 600
+export function writesEvents(src) {
+  const from = /\.from\(\s*'events'\s*\)/g
+  let m
+  while ((m = from.exec(src)) !== null) {
+    const chain = src.slice(m.index, m.index + WINDOW)
+    if (/\.(update|insert|upsert)\(/.test(chain)) return true
+  }
+  return false
+}
+
 const allowanceHits = new Map(ALLOWANCES.map((a) => [a.file, 0]))
 const publishSites = []
 let gatedSites = 0
@@ -160,9 +199,7 @@ let gatedSites = 0
 for (const full of files) {
   const src = readFileSync(full, 'utf8')
   const name = rel(full)
-  const writesEvents =
-    /\.from\(\s*'events'\s*\)/.test(src) && /\.(update|insert|upsert)\(/.test(src)
-  if (!writesEvents) continue
+  if (!writesEvents(src)) continue
   if (!/'published'/.test(src)) continue
   publishSites.push(name)
 

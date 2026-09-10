@@ -72,14 +72,24 @@ const args = process.argv.slice(2)
 let out = 'C:/dev/EVIDENCE/D1'
 for (let i = 0; i < args.length; i += 1) if (args[i] === '--out') out = args[++i]
 
+/*
+ * PLAYWRIGHT WANTS THE VIEWPORT NESTED, and the first run of this drive proved
+ * what happens when it is not: `newContext({ ...{width, height} })` is not a
+ * viewport at all, Playwright silently used its 1280x720 default, and the 390
+ * run reported `doc.scrollWidth 1280/1280` and a panel whose right edge was at
+ * 904 "against a 390 viewport". A measurement that names a width it never set
+ * is worse than no measurement, so the width is read back off the page below
+ * and a mismatch is a FAULT rather than a footnote.
+ */
 const VIEWPORTS = {
-  'mobile-390': { width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
-  'tablet-768': { width: 768, height: 1024, isMobile: false, hasTouch: true, deviceScaleFactor: 1 },
-  'desktop-1440': { width: 1440, height: 1000, isMobile: false, hasTouch: false, deviceScaleFactor: 1 },
+  'mobile-390': { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
+  'tablet-768': { viewport: { width: 768, height: 1024 }, isMobile: false, hasTouch: true, deviceScaleFactor: 1 },
+  'desktop-1440': { viewport: { width: 1440, height: 1000 }, isMobile: false, hasTouch: false, deviceScaleFactor: 1 },
 }
 const viewportName = process.env.JOURNEY_VIEWPORT ?? 'desktop-1440'
-const viewport = VIEWPORTS[viewportName]
-if (!viewport) {
+const context = VIEWPORTS[viewportName]
+const viewport = context?.viewport
+if (!context) {
   console.error(`${TAG} JOURNEY_VIEWPORT must be one of ${Object.keys(VIEWPORTS).join(', ')}`)
   process.exit(1)
 }
@@ -231,15 +241,46 @@ async function fillByLabel(page, rx, value) {
   return false
 }
 
-/** Measure the whole document against the viewport, the UX6 way, and shoot it. */
+/**
+ * Measure the whole document against the viewport, the UX6 way, and shoot it.
+ *
+ * INVOKED, not merely evaluated: `page.evaluate` given a STRING treats it as an
+ * expression, so handing it the arrow function's source returns the FUNCTION and
+ * serialises it to undefined. The UX6 drive's own comment records dying on
+ * exactly this, and so did the first run of this one.
+ *
+ * `judgeSurface` returns an ARRAY of fault sentences, empty when the surface is
+ * clean. It is not a verdict object.
+ */
 async function measure(page, label) {
-  await page.evaluate(() => document.fonts.ready).catch(() => {})
+  await page.evaluate(() => document.fonts.ready.then(() => true)).catch(() => {})
   await page.waitForTimeout(500)
-  const fit = await page.evaluate(MEASURE_VIEWPORT_FIT)
-  const verdict = judgeSurface({ label, width: viewport.width, fit, totals: [], totalRequired: false })
+  const fit = await page.evaluate(`(${MEASURE_VIEWPORT_FIT})()`)
+  /*
+   * THE WIDTH THE BROWSER ACTUALLY USED, checked against the width this run
+   * claims to be measuring. Without this the drive reported "0 clipped" at 390
+   * while the page was laid out at 1280, which is a green run that proves the
+   * opposite of what it says.
+   */
+  if (fit.innerWidth !== viewport.width) {
+    check(
+      `viewport-was-actually-set@${viewport.width}`,
+      false,
+      `${label}: the browser reports innerWidth ${fit.innerWidth}, not ${viewport.width}. Nothing measured here is about ${viewport.width}.`,
+    )
+  }
+  const faults = judgeSurface({ label, width: viewport.width, fit, totals: [], totalRequired: false })
   const shot = join(out, `${label}.png`)
   await page.screenshot({ path: shot, fullPage: true })
-  return { verdict, shot, fit }
+  return {
+    ok: faults.length === 0,
+    detail:
+      faults.length === 0
+        ? `doc.scrollWidth ${fit.docScrollWidth}/${fit.innerWidth}, 0 clipped, ${fit.exempt?.length ?? 0} exempt`
+        : faults.join(' // '),
+    shot,
+    fit,
+  }
 }
 
 /* -------------------------------------------------------------------------
@@ -293,7 +334,7 @@ const { error: pwError } = await db.auth.admin.updateUserById(picked.org.owner_i
 check('owner-can-be-signed-in', !pwError, pwError ? pwError.message : `password set on ${picked.owner.email} (TEST)`)
 
 const browser = await chromium.launch()
-const ctx = await browser.newContext({ ...viewport, locale: 'en-AU' })
+const ctx = await browser.newContext({ ...context, locale: 'en-AU' })
 const page = await ctx.newPage()
 const shots = []
 
@@ -340,7 +381,7 @@ try {
     )
     const m = await measure(page, '1-event-page')
     shots.push(m.shot)
-    check(`fit-1-event-page@${viewport.width}`, m.verdict.ok, m.verdict.detail)
+    check(`fit-1-event-page@${viewport.width}`, m.ok, m.detail)
   } else {
     check('live-page-view-demand-row', false, 'no published public event exists to open')
   }
@@ -348,20 +389,25 @@ try {
   /* ---- LIVE LEG B: a real free ticket writes a real sale row ---- */
   const { data: freeTiers } = await db
     .from('ticket_tiers')
-    .select('id, name, price, event_id, total_capacity, sold_count')
+    .select('id, name, price, event_id, total_capacity, sold_count, reserved_count, max_per_order, is_active, is_visible')
     .eq('price', 0)
+    .eq('is_active', true)
+    .eq('is_visible', true)
     .limit(200)
   let freeEvent = null
   for (const t of freeTiers ?? []) {
     const { data: e } = await db
       .from('events')
-      .select('id, slug, title, status, visibility, seating_type, start_date')
+      .select('id, slug, title, status, visibility, seat_map_id, start_date')
       .eq('id', t.event_id)
       .maybeSingle()
     if (!e || e.status !== 'published' || e.visibility !== 'public' || !e.slug) continue
-    if (e.seating_type && e.seating_type !== 'general') continue
+    // `seating_type` does not exist on this table; `seat_map_id` is how a
+    // reserved-seating event is told apart, which is what the UX6 drive uses.
+    if (e.seat_map_id) continue
     if (new Date(e.start_date).getTime() < Date.now()) continue
-    if ((t.total_capacity ?? 0) - (t.sold_count ?? 0) < 1) continue
+    if ((t.total_capacity ?? 0) <= 0) continue
+    if ((t.total_capacity ?? 0) - (t.sold_count ?? 0) - (t.reserved_count ?? 0) < 2) continue
     freeEvent = { event: e, tier: t }
     break
   }
@@ -489,7 +535,7 @@ try {
 
   const m = await measure(page, '2-organiser-dashboard-pace-panel')
   shots.push(m.shot)
-  check(`fit-2-dashboard@${viewport.width}`, m.verdict.ok, m.verdict.detail)
+  check(`fit-2-dashboard@${viewport.width}`, m.ok, m.detail)
 } finally {
   await browser.close()
 }

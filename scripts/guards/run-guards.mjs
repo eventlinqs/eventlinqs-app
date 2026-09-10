@@ -230,6 +230,14 @@
  *                              all three are rulings about the subject line: the inbox
  *                              was loud about the harmless and silent about the dangerous
  *                              (close-out UX4.3, UX4.5, H2.6)
+ *   ledger-append-only        nothing edits the slot ledger, in the source and on the
+ *                              project this build will run against. One UPDATE makes every
+ *                              number derived from it an assertion, invisibly
+ *   ledger-speaks-no-industry  not one ledger column, enum or engine file says event,
+ *                              ticket or tier, so the engine can be pointed at a gym's
+ *                              rows tomorrow without rebuilding it and losing the history
+ *   ledger-writes-through-the-adapter  one door into the ledger, and every
+ *                              order-confirmation site walks through it
  *   tier-identity-preserved  an event's ticket types are reconciled on save, never
  *                              deleted and re-created. The delete-everything version
  *                              made an event permanently uneditable the moment it sold
@@ -1079,6 +1087,7 @@ const GUARDS = [
   // clauses drilled red and green (C:\dev\EVIDENCE\D0\guard-tier-identity-drill.txt).
   'scripts/guards/tier-identity-preserved.mjs',
 
+
   // Close-out UX6 (10 September 2026). The owner bought a ticket on a phone and
   // could not see the total he was paying: a grid track widened by one of its own
   // children dragged the order summary 146px off the right of a 390 screen, and
@@ -1086,6 +1095,28 @@ const GUARDS = [
   // the real page, not reasoned about. Both drilled red and green.
   'scripts/guards/grid-track-cannot-blow-out.mjs',
   'scripts/guards/buyer-total-is-marked.mjs',
+
+  // Close-out D1, the slot ledger, three guards because the close-out asks for
+  // three and each defends a different thing.
+  //
+  // ledger-append-only: nothing edits history, checked in the source AND on the
+  // project this build will run against. One UPDATE and every number derived
+  // from the table becomes an assertion, with no way to notice afterwards.
+  //
+  // ledger-speaks-no-industry: not one column, enum or engine file may say
+  // event, ticket or tier. The ledger is the foundation of something that will
+  // later run for gyms, clinics and tour operators, and a ledger that speaks one
+  // industry has to be REBUILT to leave it, which loses the history.
+  //
+  // ledger-writes-through-the-adapter: one door in, and every order-confirmation
+  // site uses it. The second clause exists because this repository has twice
+  // shipped one write site that forgot a call the others made (discount usage on
+  // the paid path, payout_status on account.updated).
+  //
+  // All three drilled red and green (C:\dev\EVIDENCE\D1\guard-ledger-drill.txt).
+  'scripts/guards/ledger-append-only.mjs',
+  'scripts/guards/ledger-speaks-no-industry.mjs',
+  'scripts/guards/ledger-writes-through-the-adapter.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

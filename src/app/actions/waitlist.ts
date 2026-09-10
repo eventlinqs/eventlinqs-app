@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { recordDemand, LEDGER_EVENT_COLUMNS, type EventForLedger } from '@/lib/ledger/adapter'
+import { afterResponse } from '@/lib/after-response'
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -82,6 +84,45 @@ export async function joinWaitlist(input: JoinWaitlistInput): Promise<JoinWaitli
 
     if (!result.success) {
       return { success: false, error: result.error ?? 'Failed to join the waitlist. Please try again.' }
+    }
+
+    /*
+     * THE WAITLIST JOIN, INTO THE LEDGER. Close-out D1.
+     *
+     * This is demand the platform can put a name to: somebody wanted a place and
+     * there was not one. It carries the address because the recovery engine (D2)
+     * activates a waitlist when a refund frees a unit, and it cannot notify a
+     * person it has no way of reaching. Never fatal: they are on the list either
+     * way, which is the thing they came for.
+     */
+    try {
+      const { data: slotEvent } = await adminClient
+        .from('events')
+        .select(LEDGER_EVENT_COLUMNS)
+        .eq('id', parsed.data.event_id)
+        .maybeSingle()
+      const { data: profile } = await adminClient
+        .from('profiles')
+        .select('email')
+        .eq('id', user.id)
+        .maybeSingle()
+      const email = (profile as { email?: string | null } | null)?.email ?? user.email ?? null
+      if (slotEvent && email) {
+        // After the answer, by D1's reversal condition. They are on the list
+        // either way, which is the thing they came for.
+        afterResponse('the waitlist-join demand row', () =>
+          recordDemand({
+            event: slotEvent as unknown as EventForLedger,
+            action: 'waitlist_join',
+            occurrenceKey: result.waitlist_id ?? `${parsed.data.event_id}:${user.id}`,
+            email,
+            visitorId: user.id,
+            tierId: parsed.data.ticket_tier_id ?? null,
+          }),
+        )
+      }
+    } catch (ledgerErr) {
+      console.error('[waitlist] ledger demand row failed (non-fatal):', ledgerErr)
     }
 
     revalidatePath('/dashboard/my-waitlists')

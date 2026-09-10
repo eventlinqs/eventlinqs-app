@@ -25,6 +25,7 @@ export type PolicyName =
   | 'media-upload'
   | 'share-link-mint'
   | 'share-track'
+  | 'ledger-demand'
   | 'waitlist-join'
   | 'newsletter-subscribe'
   | 'ai-chat'
@@ -169,6 +170,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Broadcast view beacon per IP. Views are deduped per link per visitor per day server-side, so this cap only bounds junk traffic. Fail-open; losing a view beacon never breaks a page.',
+  },
+  'ledger-demand': {
+    keyPrefix: 'ledger-dmd',
+    limit: 60,
+    windowSec: 60,
+    rationale:
+      'The slot ledger demand beacon per IP. The two anonymous actions only (a page view and a sold-out view); every action that carries an address is written server side by the code that observed it, so this endpoint cannot be used to invent a contactable person. Rows are deduped per visitor per slot per day by their occurrence key, so this cap only bounds junk traffic. FAIL-OPEN, the same posture as share-track: losing a view beacon to a Redis blip is a gap in a history table, and refusing one would be a failed request on an event page.',
   },
   'newsletter-subscribe': {
     keyPrefix: 'nl-sub',

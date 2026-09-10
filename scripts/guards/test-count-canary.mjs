@@ -1193,9 +1193,31 @@ const ROOT = join(HERE, '..', '..')
  * routes that were folding the two answers together, and holds that the shared
  * retry primitive still recognises the socket class without swallowing a real
  * query fault.
+ *
+ * And 364/4345 for close-out D1, the slot ledger. Five files: adapter-mapping
+ * drives the mapping through the order-level recorders every money path really
+ * reaches (35), row-types holds all five row shapes and the closing row against
+ * the database's own CHECK constraints (16), pace-curve holds the reader that
+ * draws the organiser's panel (16), inventory-diff holds what a save did to the
+ * ticket types (9), backfill holds that a re-run writes nothing twice and that
+ * a production write is refused (12). Four of adapter-mapping's are the buyer
+ * the ledger could not see: `guest_email` is null for 138 of 294 orders on TEST
+ * because a signed-in buyer carries `user_id`, so half of every sale row was
+ * recording no buyer and no first-time-or-returning flag at all. One more, 4346,
+ * for the count the backfill printed: `write` returns ok for the idempotent path
+ * as well as for a real insert, so a second run over 244 orders reported "wrote
+ * 264 row(s)" having written 34.
+ *
+ * And 365/4350 for the panel itself, found by DRIVING it rather than reading
+ * it: against a real slot with 28 backfilled sales it read "Reached checkout 0,
+ * Did not finish 0, Looked at the page 0" beside "28 sold, $665 taken". Not one
+ * of those zeros was true. The backfill refuses to invent demand rows for a
+ * period nobody measured, and the panel was telling that lie on its behalf.
+ * tests/component/sales-pace-panel holds the four states apart, including that
+ * a REAL zero is still shown.
  */
-const MIN_FILES = 359
-const MIN_TESTS = 4247
+const MIN_FILES = 365
+const MIN_TESTS = 4350
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

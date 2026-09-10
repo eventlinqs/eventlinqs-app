@@ -31,6 +31,8 @@ import {
   readMoneyRecordCounts,
   type DeleteEligibility,
 } from '@/lib/events/delete-eligibility'
+import { SalesPacePanel } from '@/components/dashboard/sales-pace-panel'
+import { paceForSlot } from '@/lib/ledger/pace'
 type Props = {
   params: Promise<{ id: string }>
 }
@@ -113,6 +115,13 @@ export default async function EventViewPage({ params }: Props) {
    */
   const access = await resolveEventAccess(id)
   if (!access.allowed) notFound()
+
+  /*
+   * THE SALES HISTORY. Read AFTER the access gate and never before it: the
+   * ledger carries other organisations' rows and the read runs on the service
+   * role, so the caller's authority has to be settled first (close-out D1).
+   */
+  const paceCurve = await paceForSlot(id)
 
   const { data: org } = await admin
     .from('organisations')
@@ -372,6 +381,10 @@ export default async function EventViewPage({ params }: Props) {
               {event.summary || event.description || 'No description yet. Edit the event to add one.'}
             </p>
           </div>
+
+          {/* How the sales actually came in, read out of the slot ledger and
+              nowhere else (close-out D1). */}
+          <SalesPacePanel curve={paceCurve} />
 
           <div className="rounded-xl border border-ink-100 bg-white">
             <header className="flex items-center justify-between border-b border-ink-100 px-5 py-4">

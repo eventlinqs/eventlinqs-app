@@ -515,7 +515,7 @@ function collectLikeLhci(urls, env) {
  * Returns `{ base, stop }` on success, or `{ error }` with the log already
  * tailed to stderr.
  */
-async function startGateServer(env, logPath, { also = [] } = {}) {
+export async function startGateServer(env, logPath, { also = [] } = {}) {
   mkdirSync(TMP, { recursive: true })
   const stubPort = await freePort()
   const appPort = await freePort()

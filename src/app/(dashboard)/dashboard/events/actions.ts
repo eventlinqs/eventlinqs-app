@@ -29,6 +29,8 @@ import { actionRateLimit } from '@/lib/rate-limit/action'
 import { readStreamLink, writeStreamLink } from '@/lib/stream/link'
 import { livestreamNeedsLink, coerceAccessMode, STREAM_LINK_REQUIRED_MESSAGE } from '@/lib/stream/publish-rule'
 import { tierSavePayload, readTierSaveVerdict, describeTierRefusal } from '@/lib/events/save-tiers'
+import { recordTierChanges, TIER_COLUMNS, LEDGER_EVENT_COLUMNS, type EventForLedger } from '@/lib/ledger/adapter'
+import { afterResponse } from '@/lib/after-response'
 import { normaliseCountryCodes } from '@/lib/stream/countries'
 import { normaliseTags } from '@/lib/events/normalise-tags'
 
@@ -438,6 +440,25 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
       console.error('Ticket tiers insert error:', tiersError)
       return { error: 'Event created but failed to save ticket tiers.' }
     }
+
+    /*
+     * THE INVENTORY OPENS. Close-out D1: the first row about this slot's ticket
+     * types, so the pace curve has a starting price and a starting capacity to
+     * measure everything else against. Never fatal: the event is created.
+     */
+    const { data: opened } = await admin.from('ticket_tiers').select(TIER_COLUMNS).eq('event_id', input.eventId)
+    const { data: slotEvent } = await admin.from('events').select(LEDGER_EVENT_COLUMNS).eq('id', input.eventId).maybeSingle()
+    if (slotEvent) {
+      // After the answer (close-out D1's reversal condition): the organiser is
+      // waiting on Save, and this is history about what they saved.
+      afterResponse('the opening inventory rows', () =>
+        recordTierChanges({
+          event: slotEvent as unknown as EventForLedger,
+          before: [],
+          after: (opened ?? []) as Array<{ id: string; name: string; price: number; total_capacity: number; updated_at: string }>,
+        }),
+      )
+    }
   }
 
   // Materialise seats if reserved seating is enabled and a seat map is selected
@@ -733,6 +754,13 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
    * One database function, one transaction, and the result is a verdict this
    * turns into a sentence rather than a Postgres message.
    */
+  // What the ticket types were, read BEFORE the save, so the ledger can record
+  // what actually moved rather than what was submitted (close-out D1).
+  const { data: tiersBefore } = await admin
+    .from('ticket_tiers')
+    .select(TIER_COLUMNS)
+    .eq('event_id', input.eventId)
+
   const { data: tierVerdictRaw, error: tierRpcError } = await admin.rpc('save_event_ticket_tiers', {
     p_event_id: input.eventId,
     p_tiers: tierSavePayload(
@@ -752,6 +780,33 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
     return { error: 'Your tickets could not be saved, and the platform could not tell why. Nothing was changed.' }
   }
   if (!tierVerdict.ok) return { error: describeTierRefusal(tierVerdict) ?? 'Your tickets could not be saved.' }
+
+  /*
+   * WHAT THE SAVE DID TO THE TICKET TYPES, INTO THE LEDGER. Close-out D1.
+   *
+   * A price that moved, a capacity that moved, a type that opened and one that
+   * closed. A save that changed only the description writes nothing, so the
+   * inventory history is a record of real moves rather than of button presses.
+   * Never fatal: the organiser's event is saved either way.
+   */
+  {
+    const { data: tiersAfter } = await admin
+      .from('ticket_tiers')
+      .select(TIER_COLUMNS)
+      .eq('event_id', input.eventId)
+    const { data: slotEvent } = await admin.from('events').select(LEDGER_EVENT_COLUMNS).eq('id', input.eventId).maybeSingle()
+    if (slotEvent) {
+      // After the answer, same reason: an organiser pressing Save should not
+      // wait on a row that describes what the Save did.
+      afterResponse('the inventory rows for this save', () =>
+        recordTierChanges({
+          event: slotEvent as unknown as EventForLedger,
+          before: (tiersBefore ?? []) as Array<{ id: string; name: string; price: number; total_capacity: number; updated_at: string }>,
+          after: (tiersAfter ?? []) as Array<{ id: string; name: string; price: number; total_capacity: number; updated_at: string }>,
+        }),
+      )
+    }
+  }
 
   // Re-materialise seats if seat map changed or reserved seating was just enabled
   const seatMapChanged =

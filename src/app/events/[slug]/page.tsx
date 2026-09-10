@@ -817,6 +817,7 @@ export default async function EventDetailPage({ params }: Props) {
         category={event.category?.name ?? 'Uncategorised'}
         venueCity={event.venue_city ?? 'Unknown'}
         priceRange={priceLabel ?? 'Free'}
+        soldOut={isSoldOut}
       />
       <ShareViewBeacon />
       {/* A buyer whose hold expired mid-payment is returned HERE now, to the
