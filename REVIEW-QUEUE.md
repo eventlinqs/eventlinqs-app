@@ -4500,3 +4500,28 @@ thing a machine cannot do is plug the lead in. If you would rather run it
 yourself later:
 
     powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\push-when-on-mains.ps1
+
+
+## The branch is green again on every host, and D2's last two legs need one more Stripe login, not the one you renewed
+
+The push went through at 07:54 once the laptop was back on mains: fifteen of
+fifteen gate steps, and on GitHub the CI run is green and the Vercel preview
+of ee3d3408 is READY (Lighthouse CI's verdict is recorded in BUILD-LOG.md).
+
+On D2: the Stripe key you renewed is for the main Eventlinqs account
+(acct_1T8WBhGuiZ9cvxuu). The TEST platform does not run there. Every
+organiser on TEST is onboarded in your "Eventlinqs Sandbox"
+(acct_1T8WBzGqHIQtgS8t), the previews pay through it, and its key in the
+Stripe CLI is the one that is still expired. The two legs that remain on D2
+both end in a webhook from that sandbox reaching the current preview, so the
+renewed key cannot drive them and I have not pretended otherwise.
+
+The one thing only you can do, in PowerShell:
+
+    stripe login --project-name "eventlinqs sandbox"
+
+Everything after that is scripted and waiting: the dry run and then the move
+of the sandbox's webhook endpoints to the current preview
+(scripts/ops/point-stripe-test-webhook.mjs), and the D2 drive's payment and
+refund legs against it. Until then D2 stays open on exactly those two legs,
+and I have moved on down the priority order.

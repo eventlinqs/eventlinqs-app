@@ -12600,3 +12600,173 @@ resting on TEST vkapkibzokmfaxqogypq.
   push-attempt.log under the usual header. Started now in the background so
   the push happens the moment the lead is in; the one line the founder needs
   is: plug the laptop in and leave it alone for forty minutes.
+
+- MAINS RETURNED at 07:51:45 and push-when-on-mains.ps1 started the push at
+  07:54:46 after its three quiet minutes (push-attempt.log, the attempt headed
+  2026-09-11T21:54:46Z, line 70610 on). ALL FIFTEEN STEPS PASS: "[gate] GREEN:
+  15 of 15 step(s) passed in 2756s." Machine speed while collecting:
+  "BenchmarkIndex median 2608 (1911 to 2683 across URLs)", inside the band the
+  floors were confirmed at, against 1890 on battery an hour earlier on the same
+  tree. "0fe8c238..ee3d3408  verify/l5-launch-readiness -> verify/l5-launch-readiness",
+  PUSH EXIT CODE: 0. Re-fetched: origin at ee3d3408, 0 ahead, 0 behind. Both
+  commits (d7d37743, ee3d3408) are on origin; nothing exists only on this
+  machine.
+
+- THE WATCH on ee3d3408 started at 08:44: CI run 34655051768 and Lighthouse CI
+  run 34655051883 in progress; the purchase runs skipped as they do on a branch
+  push; no Vercel deployment record for the commit yet at that minute. The
+  verdicts are the next entry.
+
+- SECOND ACTION, git status: clean. Nothing uncommitted, nothing to park.
+
+- PRIORITY ORDER, (1) UX6. Confirmed against every acceptance line rather than
+  taken on trust: docs/roast/ux6-preview-2026-09-12.md carries 22 rows, 22 MET,
+  0 partial, 0 not met, each with its evidence path (UX6.1 to UX6.4, the five
+  required fixes, the reversal condition, the run brief's READY-preview clause,
+  completion laws 2 to 7, the standing copy and TEST-only clauses, and the
+  housekeeping row); BUILD-LEDGER.md "UX6 ON THE PREVIEW" holds the payment
+  step driven at 390, 768 and 1440 on the READY preview of a90c085a. The body
+  is already in CLOSE-OUT-DONE.md with the one-line DONE entry left in
+  CLOSE-OUT.md (12 September, commits e94840d6, c4086acf, a90c085a). Nothing
+  to redo; the housekeeping rule was applied by the session that closed it.
+
+- PRIORITY ORDER, (2) D1. Open on the render leg only: the curve of the
+  Afro-Fusion slot renders on the organiser's own dashboard on production,
+  which belongs to MKLStudios, an outside organiser, and no credential on this
+  machine opens it; the panel was driven on TEST at all three widths on
+  10 September. REVIEW-QUEUE.md already says so once, in plain words, in the
+  D1 entry of session 91 ("D1 stays open on that one leg only"), with the
+  numbers the founder would see if he has a way in. Per the brief, said once
+  and moved on. D1 stays in CLOSE-OUT.md on exactly that leg.
+
+- PRIORITY ORDER, (3) D2, the recovery engine. The brief says its payment and
+  refund legs "can now be driven with the renewed Stripe CLI key". Checked
+  against the real environment before planning anything, and the answer is
+  no, for a reason nobody had written down: THE RENEWED KEY OPENS THE WRONG
+  ACCOUNT. Read, never printed (the account id is embedded in characters 9 to
+  26 of every Stripe key, so keys are matched by fragment):
+    - `stripe balance retrieve` answers: the CLI's [default] profile works.
+      `stripe get /v1/account` (with MSYS_NO_PATHCONV=1, because Git Bash
+      turns /v1/account into a Program Files path) names it
+      acct_1T8WBhGuiZ9cvxuu, "Eventlinqs", AU. Its TEST mode holds ONE webhook
+      endpoint, DISABLED, on eventlinqs-staging.vercel.app.
+    - the [eventlinqs sandbox] profile, acct_1T8WBzGqHIQtgS8t, still answers
+      "The API key provided has expired".
+    - .env.local: STRIPE_SECRET_KEY is EMPTY, both webhook secrets empty, and
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is pk_test_51T8WBzGqHIQtgS8t..., the
+      SANDBOX's. It is the only publishable key anywhere in the tree (two
+      occurrences, both the sandbox's).
+    - the TEST database's connected accounts with charges enabled,
+      acct_1TkU40K8xX6c0qfB and acct_1TpM2qGd7gIG9zbn, do NOT exist on the main
+      account: "The provided key ... does not have access to account ... (or
+      that account does not exist)". So every organiser on TEST is onboarded
+      in the SANDBOX, every preview pays through the sandbox, and the probe
+      order of 05:03 (febc5ead) confirmed 7 seconds after creation because the
+      sandbox's webhook reached the July alias, exactly as d7d37743 says; it
+      has NO ledger row (ledger_entries holds nothing for it), which is what
+      July code leaves.
+    - every Stripe value on Vercel is sensitive or envelope-encrypted, and the
+      publishable key is inlined only into the /checkout/[reservation_id]
+      chunk, so neither store nor bundle names the previews' account; the
+      connected-account check above settles it instead.
+  WHAT FOLLOWS. Both open legs end in a webhook that must be processed by the
+  code under test: payment_intent.succeeded (return and BUY, then two and
+  three suppressed) and charge.refunded (Stripe's half of the refund that
+  frees a place). A local drive needs a publishable and a secret key of the
+  SAME account: the main account's secret is here and its publishable is not;
+  the sandbox's publishable is here and its secret is expired. A preview drive
+  needs the sandbox's endpoints moved to the current preview
+  (scripts/ops/point-stripe-test-webhook.mjs), which needs the sandbox's key.
+  Every road runs through the sandbox login.
+  THE FOUNDER STEP, with its Law 10 verdict: `stripe login --project-name
+  "eventlinqs sandbox"` is a browser approval and IMPOSSIBLE for a machine
+  here. Everything after it is already scripted or is the existing drive:
+  point-stripe-test-webhook.mjs (dry run first) with the sandbox key, then the
+  D2 drive's two legs on the current preview. Said once in REVIEW-QUEUE.md,
+  and moved on, as the brief does for D1. D2 stays in CLOSE-OUT.md on exactly
+  those two legs.
+
+- A SLIP OF MINE, RECORDED PLAINLY. Running UX2.1c's read-only Stripe entity
+  check (scripts/verify/platform-entity-matches-stripe.mjs) with the CLI's
+  main-account TEST key, my awk that read the key out of `stripe config
+  --list` failed to stop at the sandbox section and handed the script BOTH
+  sk_test keys joined by a newline. fetch() refused the malformed header and
+  Node printed the header value, both keys in full, in the exception; `tee`
+  wrote that line to C:\dev\EVIDENCE\UX2\2026-09-12\platform-entity-vs-stripe-test-mode.txt.
+  Done within the same minute: the file overwritten with zeros and removed;
+  a sweep of C:\dev\EVIDENCE finds 0 files carrying an sk_test; the re-run
+  used one key and its evidence file carries none (grep count 0). What remains
+  outside my reach: the harness transcript of this session on this laptop
+  holds the two values (both TEST-mode: the main account's test secret and the
+  sandbox's already-expired one; no live key was ever printed). The founder
+  step, Law 10 verdict IMPOSSIBLE for a machine: roll the main account's TEST
+  secret key in the Stripe Dashboard (Developers, API keys), then `stripe
+  login` again so the CLI holds the new one. Nothing about the live account
+  is affected.
+
+- UX2.1c's Stripe half, run read-only with the working key. TEST mode of the
+  main account (acct_1T8WBhGuiZ9cvxuu): country AU matches; business name
+  ABSENT on Stripe against "EventLinqs" in the repository; company.tax_id
+  ABSENT, so "NOT COMPARABLE ... UNCONFIRMED rather than confirmed"; the
+  script's own verdict is PASS (nothing displayed DISAGREES) and its own
+  caveat stands: a TEST account does not settle who takes the money. The LIVE
+  attempt with the CLI's rk_live_ restricted key: "Stripe answered 401.
+  Nothing was compared." So UX2.1c stays PARTIAL, with the reason sharpened:
+  the live comparison needs a live key with account read permission, which
+  the CLI's restricted key is not. Evidence
+  C:\dev\EVIDENCE\UX2\2026-09-12\platform-entity-vs-stripe-live-mode.txt and
+  -test-mode.txt (the second re-run, key-free).
+
+- UX2.2b, THE VENUE PIN DRIVEN AT 390, 768 AND 1440: attempted on the READY
+  preview of ee3d3408 and BLOCKED THERE TOO, for the same reason it was
+  blocked locally. A probe (C:\dev\EVIDENCE\UX2\preview-ee3d3408\venue-pin-probe.mjs,
+  run from .tmp so it resolves playwright) opened an event enumerated from
+  TEST (persona-c-comedy-gala-5wl7te, venue "Persona C Hall", Geelong,
+  coordinates present), scrolled the Venue section into view so the map's
+  IntersectionObserver fired, and waited twenty seconds: at 390 and 1440 the
+  console carries "Google Maps JavaScript API error: RefererNotAllowedMapError"
+  and the component's own line "[maps] Google refused this API key for this
+  referrer; every map is showing its designed fallback"; no gm-style element,
+  no tiles, no pin, at any width (venue-pin-probe-run.txt, venue-map-390/768/
+  1440.png showing the designed fallback). So the browser key's allowed
+  referrers are production's host and not *.vercel.app, which is a Google
+  Cloud console setting. The one host that can paint the pin is
+  www.eventlinqs.com.au, which today serves July code without the pin. The
+  drive therefore moves to production, straight after the merge below, with
+  the same probe pointed at a production slug enumerated from the production
+  sitemap. Recorded as the plan, not as done.
+
+- THE WATCH ON ee3d3408 CLOSED GREEN ON EVERY HOST at 09:13: Vercel preview
+  dpl_7xFU5PbgEJfjSgz8Dn66MXwDunPa READY
+  (eventlinqs-9c770nrai-lawals-projects-c20c0be8.vercel.app); CI run
+  34655051768 success (production parity, lint/typecheck/build with all 112
+  guards, types-drift, vitest); Lighthouse CI run 34655051883 success (the
+  preview resolved in 2m36s, the mobile gate green). The tip is red on no
+  host. ZERO ACTION is complete: read, quoted, fixed at both causes, proven
+  red then green, pushed, watched.
+
+- MERGING, per the brief's rule, which was met in full: CI, Lighthouse CI and
+  the Vercel preview green on the branch tip, and the pull request's own
+  checks all SUCCESS or SKIPPED (mergeStateStatus CLEAN, 12 checks, 0
+  failures, 0 pending). Before the merge: the 53 commits the squash would
+  carry were read for any attribution; one match, and it is the file name
+  CLAUDE.md in prose inside ffded236, not a trailer; 0 em or en dashes.
+  `gh pr merge 145 --squash` at 09:14, the same method every merge on main
+  has used. main is at 011a9cd8 "The launch readiness report, and the two
+  rows nobody had tested were blocked (#145)", its body the 53 messages
+  (1876 lines), 0 trailers. Production deployment
+  dpl_DDkwTt3idDSc2dnHh36PRBYawujs BUILDING at 09:15, target production. This
+  is the merge that puts every September fix, UX6 first, in front of real
+  buyers; production had been serving July code.
+
+- THE PRODUCTION SMOKE, prepared while the build runs, read only, 390 first
+  (C:\dev\EVIDENCE\PRODUCTION-2026-09-12\smoke-production.sh, one command
+  taking the production sha): the official post-deploy-smoke.mjs pinned to
+  the sha; the venue pin probe on production at 390, 768 and 1440 (UX2.2b,
+  on the one host the browser key allows), on the event enumerated from the
+  production sitemap (afro-fusion-music-showcase-with-mikhaell-friends-a-l1vcpz,
+  venue "Quakers Centre" read from its page); the UX2 surfaces proof (ABN
+  from one source, the rail and footer gap measured) at the three widths;
+  axe at every impact level at 390 and 1440 on the seven public launch
+  screens; and the full declared-route sweep (L1.14). Nothing in it signs in,
+  posts or reserves.

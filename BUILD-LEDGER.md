@@ -2586,7 +2586,7 @@ against the close-out text, with the evidence path beside each.
 | **Guards** | MET. 95 registered, all pass. Two new, both drilled red and green | guard run 2026-09-10 |
 | **Driven at 390, 768 and 1440** | MET. The daily email is the deliverable and it is read on a phone; captured at all three from a report composed out of the real GitHub, the real Vercel and a real database | `daily-state-390.png`, `-768.png`, `-1440.png` |
 | **Full regression** | see the gate section of BUILD-LOG for this session |
-| **Pushed** | NOT DONE, and it is the same block UX3 is behind. `production-parity` refuses because production is five migrations behind this tree. One founder command clears it: `npm run migrate:production` | `production-parity` output |
+| **Pushed** | **MET, 11 and 12 September 2026** (was NOT DONE behind production-parity until the founder applied the migrations on the night of 11 September) | on origin with the rest of the branch at 0a195454 (push-attempt.log lines 42727 to 46557), and at ee3d3408 since 08:41 on 12 September, 0 ahead, 0 behind |
 
 ### NOT DONE HERE, AND WHY, WITH NO SOFTENING
 
@@ -2723,7 +2723,7 @@ event that has sold something.
 | **Driven** at 390, 768 and 1440 | MET. 26 of 26 checks at each viewport, through the real signup, the real wizard, a real free ticket taken by a real second account, and the real edit form | `C:\dev\EVIDENCE\D0\{mobile-390,tablet-768,desktop-1440}\report.txt` |
 | The RED direction, executed rather than remembered | MET. The drive replays the two statements the old save ran, against the event it just built, and records what the database answers: 23514 then 23505 | `old-save-replayed.txt` |
 | **Regression** | see the gate section of BUILD-LOG for this session |
-| **Pushed** | NOT DONE, and it is the same block UX3 and UX4 are behind. `production-parity` refuses because production is now SIX migrations behind this tree. One founder command clears it: `npm run migrate:production` | `production-parity` output |
+| **Pushed** | **MET, 11 and 12 September 2026** (was NOT DONE behind production-parity until the migrations landed) | on origin at 0a195454 (push-attempt.log lines 42727 to 46557), and at ee3d3408 since 08:41 on 12 September, 0 ahead, 0 behind |
 
 ### TWO MORE DEFECTS FOUND WHILE FIXING THIS ONE, BOTH FIXED
 
@@ -3589,7 +3589,7 @@ argument was load-bearing. Now a guard clause does.
 | axe zero at every impact level | **MET** | 0 violations on all three widths, `axe-390.json`, `axe-768.json`, `axe-1440.json` |
 | No overflow at any width | **MET** | `document.documentElement.scrollWidth <= window.innerWidth` asserted per viewport |
 | Full regression | **MET** | see the gate section of BUILD-LOG for this session |
-| Pushed | **NOT DONE**, and it is the same block every item since 9 September is behind | `production-parity` refuses: 9 migrations pending on production. One founder command clears it: `npm run migrate:production` |
+| Pushed | **MET, 11 and 12 September 2026** (was NOT DONE behind production-parity) | on origin at 0a195454 and at ee3d3408, 0 ahead, 0 behind (push-attempt.log lines 42727 to 46557, and the attempt headed 2026-09-11T21:54:46Z) |
 
 ### WHAT THE GUARD'S FIRST DRAFT GOT WRONG, RECORDED BECAUSE IT IS THE COMMON FAILURE
 
@@ -3735,7 +3735,7 @@ into the assessment rather than dying with the check that happened to host it.
 | Tests, canary raised in the same commit | **MET** | 376/4522 to 378/4567, 0 failed, 0 skipped, with the reason written on the constant |
 | Driven proof at 390, 768, 1440 | **MET** | 56 of 56. `C:\dev\EVIDENCE\S1\` |
 | Full regression | **MET except production-parity** | see the gate section of BUILD-LOG for this session |
-| Pushed | **NOT DONE**, the same block every item since 9 September is behind | `production-parity` refuses: 9 migrations pending on production. One founder command: `npm run migrate:production` |
+| Pushed | **MET, 11 and 12 September 2026** (was NOT DONE behind production-parity) | on origin at 0a195454 and at ee3d3408, 0 ahead, 0 behind (push-attempt.log lines 42727 to 46557, and the attempt headed 2026-09-11T21:54:46Z) |
 
 ### FOUR DEFECTS FOUND BY DRIVING IT, NONE OF THEM STRIPE'S
 
@@ -3826,7 +3826,7 @@ Both narrowings carry a NEGATIVE drill asserting they stay green.
 | Complete terminal output appended to push-attempt.log, timestamp first | MET: 1,545 lines, "=== 2026-09-11 14:18:58 +1000 PUSH ATTEMPT ===" first | C:\dev\push-attempt.log |
 | Refusal quoted exactly in BUILD-LOG.md | MET | BUILD-LOG.md, Session 66 |
 | Fix the cause properly, push again | FOUNDER RESERVED. The cause is 10 migrations pending on production; applying them is Lawal's step (CLAUDE.md Migrations; ruling 26 August 2026; the brief's own production-write prohibition). The command: npm run migrate:production | BUILD-LOG.md, Session 66 |
-| Origin holds every local commit | NOT MET: 27 commits held on this machine, blocked on the founder command above | git rev-list |
+| Origin holds every local commit | **MET, 11 and 12 September 2026**: the 27 (then 29, then 31) commits went to origin at 0a195454, 49e97c34, 6f172972, 0fe8c238 and ee3d3408; 0 ahead, 0 behind at ee3d3408 | git rev-list --left-right --count, 12 September 08:41 |
 | Start anything else | CORRECTLY NOT STARTED, per the brief's halt rule | this session |
 | Re-attempted, session 67 at 14:29 and session 68 at 14:33 | REFUSED IDENTICALLY at production-parity, step 9 of 15, on the same ten migrations; steps 1 to 8 PASS both times including all 110 guards; environment half PASS (34 records, 47 entries, 0 faults); production read live each time; origin still 27 behind after each; no gate step touched, no bypass | C:\dev\push-attempt.log lines 1546 to 3089 and 3091 to 4634; BUILD-LOG.md, Sessions 67 and 68 |
 | Fix the cause | STILL FOUNDER RESERVED: npm run migrate:production. Exempting a feature-branch push from parity was considered and rejected (C16.2.1 places parity in the pre-push gate; the brief forbids exempting a gate step) | BUILD-LOG.md, Session 68 |
@@ -3912,8 +3912,9 @@ the local gate catch the class, proven red then green.
 | Guard registered and blocking | **MET** | excluded-reads-survive-the-upload is already registered in run-guards.mjs and blocking on prebuild and in the gate; the registration is unchanged | scripts/guards/run-guards.mjs line 1090 |
 | Every drill still fires | **MET** | 164 of 164 guard failure drills fired correctly, 0 DID NOT FAIL, all guards PASS on the restored tree | guard-failure-drills.txt |
 | Driven at 390, 768 and 1440 | n/a, and said so | Nothing here renders; the gate's own checkout-viewport and indexing drives run on the build | push-attempt.log, the attempt headed 20:21Z |
-| Full regression green (the gate) | PENDING at the time of writing | The push of ee3d3408 through all fifteen steps | push-attempt.log, the attempt headed 20:21Z |
-| Committed, Australian English, no trailers, PUSHED | PENDING at the time of writing | Committed ee3d3408 06:20, hook accepted; the push is running | git log; push-attempt.log |
-| The pushed commit watched to READY and green on every host | PENDING at the time of writing | | |
+| Full regression green (the gate) | **MET** | The push of ee3d3408 on mains: GREEN 15 of 15 steps in 2756s, BenchmarkIndex median 2608; the earlier attempt on battery (1890) refused at Lighthouse and is recorded below | push-attempt.log, the attempt headed 2026-09-11T21:54:46Z (line 70610 on) |
+| Committed, Australian English, no trailers, PUSHED | **MET** | ee3d3408 committed 06:20, hook accepted; pushed 07:54 to 08:41, "0fe8c238..ee3d3408", origin at ee3d3408, 0 ahead, 0 behind | git log; push-attempt.log line 74438 |
+| The pushed commit watched to READY and green on every host | **MET, 09:13** | Vercel preview dpl_7xFU5PbgEJfjSgz8Dn66MXwDunPa READY; CI run 34655051768 success; Lighthouse CI run 34655051883 success; the tip red on no host |
+| MERGING (the brief): the pull request merges only when CI, Lighthouse CI and the preview are green on the tip and its own checks pass | **MET, 09:14** | mergeStateStatus CLEAN, 12 checks SUCCESS or SKIPPED; `gh pr merge 145 --squash`; main at 011a9cd8, 53 commits, 0 trailers (one prose mention of the file name CLAUDE.md, not an attribution); production deployment dpl_DDkwTt3idDSc2dnHh36PRBYawujs building | gh pr view 145; git log origin/main -1 |
 | The push of ee3d3408, 06:21 to 07:14 | REFUSED at step 15 of 15, Lighthouse, after steps 1 to 14 passed (all 112 guards, parity 126/126/0, suite 4628, build, indexing, checkout-viewport). Six performance floors missed by 0.01 to 0.05 with the gate reporting "Machine calibration: DEGRADED. BenchmarkIndex median 1890 ... 70% of the 2700 the floors were confirmed at ... free this machine and run the step again". Read, not assumed: the laptop was on battery (PowerOnline False, 65 percent) and in use; no node process of this session left; no src file changed since the last green gate on mains. No floor lowered, no step skipped, no bypass | C:\dev\push-attempt.log, the attempt headed 2026-09-11T20:21Z; BUILD-LOG.md Session 92 |
 | The founder step named with its Law 10 verdict, and everything around it scripted | MET. Plugging the lead in: IMPOSSIBLE for a machine. C:\dev\push-when-on-mains.ps1 waits for mains, three quiet minutes, then runs the exact push (the hook runs the whole gate) and logs it; started in the background | C:\dev\push-when-on-mains.ps1; REVIEW-QUEUE.md |
