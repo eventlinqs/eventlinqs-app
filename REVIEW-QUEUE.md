@@ -4415,3 +4415,35 @@ Two things to know, nothing to decide:
 
 Next in the priority order: D1, the slot ledger, whose only open leg is the
 one production backfill you approved on 11 September.
+
+
+## D1: the ledger backfill you approved has been run on production, once, and it is proved
+
+At 03:19 today the slot ledger was backfilled on production with the one run
+you approved on 11 September. Before it there were no ledger rows. The first
+run wrote three, which are exactly the ticket lines of the two confirmed
+production orders (your EL-9HE57YNV, and EL-UGPM3FQV for two), at the prices
+recorded on them. The second run wrote nothing and left the three alone. No
+demand rows were invented, because nobody recorded who reached checkout before
+the ledger existed. Nothing else on production was touched.
+
+The run went through one command that refuses without your approval named on
+it and without the shell's own approval, reads the key it needs from Supabase
+and never prints it, and checks the ledger before and after. The same command
+is what a future backfill on another project would use.
+
+One thing it found about itself, already answered: the run's shell did not
+carry the production ORDER_ACCESS_SECRET, so those three rows' buyer hashes
+were made without it, while every live sale on production is made with it. The
+ledger cannot be edited by design, so the rows stay as they are; the recovery
+engine now asks "did this person already buy" with both shapes, so the two
+buyers on that event are still protected from a recovery email they should
+never get. From now on the command refuses to write without that secret in
+the shell.
+
+What you can see, and I cannot: the Afro-Fusion organiser's dashboard now has
+its "How your tickets sold" curve, 3 tickets and $54 over two days (31 and 30
+days out). That page belongs to MKLStudios, the outside organiser, so I could
+not open it to capture it at phone, tablet and desktop widths, and there is no
+admin view of it. If you have a way to see it, the numbers above are what it
+should show. D1 stays open on that one leg only.

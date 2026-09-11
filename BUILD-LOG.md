@@ -12300,3 +12300,110 @@ first time any run has held a live Stripe TEST key.
   one line left in CLOSE-OUT.md.
 
 DISK at end: 18 GB free, on AC power.
+
+
+## Session 91, continued. D1: the one approved production write, done once and proved; the hash it wrote without its key, found and answered; one leg left that is not mine to drive.
+
+02:55 to 04:59. UX6 closed and on origin (49e97c34), the priority order moved
+to D1. Its single open leg was the production backfill the founder approved on
+11 September: once, only after the slot ledger migration is on production,
+only what was genuinely recorded, reporting the count written and the count a
+second run writes, which must be 0. The migration is on production since last
+night (parity 126/126/0).
+
+- READ FIRST, read only. scripts/verify/d1-production-dry-run.mjs through the
+  Management API query endpoint: ledger tables present on production
+  (ledger_entries, ledger_slots), 2 confirmed orders, would write 3 sale rows
+  (EL-9HE57YNV x1 and EL-UGPM3FQV x2, general admission, 18.00 each), 0
+  already recorded (C:\dev\EVIDENCE\D1\2026-09-12\production-dry-run.txt;
+  the 10 September file kept beside it as production-dry-run-2026-09-10.txt).
+
+- THE ONE COMMAND (Law 10), scripts/ops/backfill-slot-ledger-production-once.mjs.
+  It refuses before it acts (no approval named: refused; approval named but no
+  ALLOW_PRODUCTION_SUPABASE in the shell: refused; the backfill itself pointed
+  at production with the approval named but no shell approval: REFUSED BY THE
+  PRODUCTION WRITE PREFLIGHT before any client existed; refusal-a, -b, -c
+  files), observes the ledger before, reads the service_role key from the
+  Management API (GET /v1/projects/{ref}/api-keys?reveal=true, documented,
+  scope secrets:read; held in memory for the child only, never printed),
+  runs the real scripts/ops/backfill-slot-ledger.mjs through the real adapter
+  twice, observes after, and refuses to call it a success unless the ledger
+  grew by exactly what the first run reported and the second wrote 0.
+  scripts/ops/backfill-slot-ledger.mjs itself now takes
+  --approved-by-founder "<who, and the date>" (judgeBackfillTarget allows a
+  production write only with it) and calls assertNotProduction() first, so
+  the shared preflight decides whether THIS shell may write. Three tests on
+  the judgement.
+
+- THE DRY RUN of the runner: before 0, would write 3, after 0, PASS
+  (runner-dry-run-console-2.txt). Its first attempt died on a type mismatch
+  in the proof query (uuid = text, 42883) and was fixed before anything was
+  written.
+
+- THE WRITE, 03:19, approved by "Lawal Adams, 11 September 2026", named on the
+  command line: BEFORE 0 entries, 0 slots. Run 1 wrote 3 row(s), 0 already
+  recorded. Run 2 wrote 0 row(s), 3 already recorded and left alone. AFTER 3
+  entries (sale 3), 1 slot. The slot of EL-9HE57YNV carries 3 rows: sale
+  2026-09-09 days_out 31 x1 18.00, sale 2026-09-10 days_out 30 x1 18.00,
+  sale 2026-09-10 days_out 30 x1 18.00. 0 assertions failed. PASS
+  (C:\dev\EVIDENCE\D1\2026-09-12\production-backfill.txt,
+  runner-write-console.txt). Nothing else on production was written.
+
+- THE CURVE, from production's rows through the product's own buildCurve
+  (production-curve.txt): points days_out 31 (1 unit, 18.00 cumulative) and
+  30 (2 units, 54.00 cumulative), totals 3 units and 54.00, no price moves,
+  demand all zero because nobody recorded it (the backfill invents no demand
+  rows, on purpose), close null.
+
+- WHAT THE WRITE FOUND ABOUT ITSELF, and the answer. The child printed
+  "[ledger] ORDER_ACCESS_SECRET is not set, so buyer hashes are unsalted on
+  this deployment". The adapter keys every buyer_hash with that secret; this
+  shell held none; production's live rows are keyed with production's. So the
+  three rows are right in every recorded fact and carry the hash shape a
+  deployment WITHOUT the key writes. The ledger is append only by law (UPDATE
+  and DELETE revoked, triggers RAISE), so the rows stay. The consequence, had
+  it been left: the engine's "never anyone who already bought" compares the
+  keyed hash of an abandoning address with the sale rows' hashes, so those two
+  buyers, on that slot, would have been eligible for a recovery message they
+  should never get. ANSWERED in the same commit: identityFingerprints in
+  src/lib/ledger/identity.ts returns every hash shape an address can carry,
+  keyed first, and the due and waitlist rules ask with all of them
+  (fingerprintsOf in read.ts, wired by engine.ts). Nothing is stored in the
+  weaker shape by this change. Three tests on the fingerprints, one each on
+  the two rules, both shown RED on the committed rules (rules-red.txt: exactly
+  the two new tests fail) and green after. The runner now refuses a WRITE
+  without ORDER_ACCESS_SECRET in the shell, so the next project's backfill
+  cannot repeat it; the founder supplies production's value for that one run.
+
+- REGRESSION on the tree: tsc 0, eslint 0, all 111 guards PASS (the new
+  runner satisfies no-unguarded-production-write by carrying the preflight),
+  suite 381 files / 4614 tests, 0 failed, 0 skipped; committed as 6f172972,
+  pushed through the full gate (see the push line below).
+
+- THE ONE LEG NOT MINE TO DRIVE, said plainly. D1's acceptance reads "pull the
+  complete curve for the Afro-Fusion slot including order EL-9HE57YNV and
+  render it. Captured at 390, 768 and 1440, no overflow." The curve is pulled
+  from production and computed with the panel's own arithmetic (above). The
+  RENDER of that curve lives on /dashboard/events/34a15c3a-c881-42f5-8ff2-d515232e966e
+  on production, which is the organiser's dashboard: the event belongs to
+  MKLStudios, whose one member is an outside organiser (a gmail address, not
+  the founder's). No credential on this machine can open it, and no admin
+  surface renders the panel. The panel's render was driven on TEST on 10
+  September at all three widths on a denser real slot (15 of 15 checks). D1
+  therefore stays in CLOSE-OUT.md on exactly that leg, with the URL and the
+  numbers the founder or the organiser would see.
+
+DISK at end: 18 GB free, on AC power.
+
+- THE PUSH of 6f172972 was refused once at the suite step (push-attempt.log,
+  the attempt headed 04:03): one test, tests/unit/guards/gitignore.test.ts
+  "the walk never invents a file git would not have", reported one path git
+  had neither tracked nor listed as untracked, shown only as "[ Array(1) ]".
+  The same tree passed the whole suite three times afterwards (381 files,
+  4614 tests). The walk is taken when the file loads and git is asked seconds
+  later, in a suite whose other workers create and remove files inside the
+  repository, so a file present for one and gone for the other is a race in
+  the test, not the evaluator. Fixed in 0fe8c238: a path is held against the
+  evaluator only if it is still on disk when the verdict is taken, and the
+  assertion names every path it holds. Pushed together: all fifteen steps
+  PASS; origin at 0fe8c238, 0 ahead, 0 behind.
