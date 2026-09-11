@@ -34,9 +34,36 @@
  *    rather than a message. If BOTH channels fail this script exits non-zero
  *    and says so loudly, because a failed alert must never be a warning.
  *
+ * TWO LATER RULINGS ARE ALSO SERVED HERE, because both are about the SUBJECT
+ * LINE and splitting them across two files would have meant two grammars.
+ *
+ * CLOSE-OUT H2.6, a drill must announce itself as a drill. The 8 September
+ * drill fired correctly against https://smoke-drill.invalid and the email
+ * arrived reading "EventLinqs production homepage smoke FAILED", with nothing
+ * to say it was a test. The owner reasonably read it as a real outage. The
+ * marker is now DERIVED from the target rather than from a flag somebody has
+ * to remember: a host in the reserved `.invalid` domain cannot be a real
+ * production smoke. RFC 2606 puts it plainly: ".invalid" is intended for use
+ * in online construction of domain names that are sure to be invalid and which
+ * it is obvious at a glance are invalid
+ * (https://www.rfc-editor.org/rfc/rfc2606.html, fetched 2026-09-10).
+ *
+ * CLOSE-OUT UX4.3, an outage must be distinguishable at a glance from a branch
+ * gate. Every alert now declares its CLASS and the class writes the subject, so
+ * the four things the owner can be told apart before opening anything:
+ *
+ *   EventLinqs OUTAGE: ...          main red, a failed production deploy, a
+ *                                   failed post-deploy smoke. Both channels.
+ *   EventLinqs BUILD STALLED: ...   nothing pushed in six hours (UX4.2).
+ *   EventLinqs daily state: ...     the once-a-day state of everything (UX4.1).
+ *   EventLinqs: ...                 business, sent by the product itself (UX3).
+ *
  * Usage:
  *   node scripts/ops/alert-dispatch.mjs --subject "..." [--report report.json]
  *                                       [--body-file file.txt] [--dry-run]
+ *                                       [--class outage|stall|daily]
+ *                                       [--target https://...] [--drill]
+ *                                       [--second-channel always|on-failure]
  *
  * Environment:
  *   RESEND_API_KEY      channel 1. Absent means channel 1 is unavailable,
@@ -59,6 +86,14 @@
 
 import { readFileSync } from 'node:fs'
 import { declareWork } from '../lib/work-report.mjs'
+import {
+  ALERT_CLASSES,
+  DRILL_MARKER,
+  judgeDrill,
+  alertSubject,
+  drillBanner,
+  secondChannelWanted,
+} from '../lib/alert-classes.mjs'
 
 /**
  * ADDRESS BOUNDARY, stated because it looks like a duplicate of
@@ -76,6 +111,28 @@ const DEFAULT_FROM = 'EventLinqs Smoke <noreply@eventlinqs.com>'
 
 const RESEND_ATTEMPTS = 4
 const GITHUB_ATTEMPTS = 3
+
+/**
+ * THE SUBJECT GRAMMAR AND THE DRILL VERDICT live in scripts/lib/alert-classes.mjs,
+ * a module that depends on nothing, so scripts/guards/alert-routing.mjs can
+ * EXECUTE them without dragging this file GITHUB_TOKEN read and its runbook
+ * paths into a guard that also runs on the Vercel build host (close-out F2.1).
+ *
+ * Re-exported here because this is where a reader looks for them.
+ */
+export { ALERT_CLASSES, DRILL_MARKER, judgeDrill, alertSubject, drillBanner, secondChannelWanted }
+
+/**
+ * Where a reader is sent, per class. This is the ONLY thing in the alert path
+ * that names a documentation file, and it stays here rather than in the class
+ * table for exactly that reason.
+ */
+const RUNBOOKS = {
+  outage: 'docs/observability/post-deploy-smoke.md',
+  stall: 'docs/observability/state-report.md',
+  daily: 'docs/observability/state-report.md',
+  business: 'docs/observability/state-report.md',
+}
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -252,8 +309,17 @@ export function renderFailureLines(report) {
   return lines
 }
 
-function parseArgs(argv) {
-  const out = { subject: null, report: null, bodyFile: null, dryRun: false }
+export function parseArgs(argv) {
+  const out = {
+    subject: null,
+    report: null,
+    bodyFile: null,
+    dryRun: false,
+    cls: 'outage',
+    target: null,
+    drill: false,
+    secondChannel: null,
+  }
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     const next = () => argv[(i += 1)]
@@ -261,9 +327,19 @@ function parseArgs(argv) {
     else if (arg === '--report') out.report = next()
     else if (arg === '--body-file') out.bodyFile = next()
     else if (arg === '--dry-run') out.dryRun = true
+    else if (arg === '--class') out.cls = next()
+    else if (arg === '--target') out.target = next()
+    else if (arg === '--drill') out.drill = true
+    else if (arg === '--second-channel') out.secondChannel = next()
     else return { error: `unrecognised argument ${arg}` }
   }
   if (!out.subject) return { error: 'a --subject is required' }
+  if (!Object.prototype.hasOwnProperty.call(ALERT_CLASSES, out.cls)) {
+    return { error: `--class ${out.cls} is not one of ${Object.keys(ALERT_CLASSES).join(', ')}` }
+  }
+  if (out.secondChannel !== null && out.secondChannel !== 'always' && out.secondChannel !== 'on-failure') {
+    return { error: `--second-channel ${out.secondChannel} is not always or on-failure` }
+  }
   return out
 }
 
@@ -308,11 +384,27 @@ async function main() {
   const commit = process.env.COMMIT_SHA ?? ''
   const refSha = process.env.REF_SHA ?? ''
   const event = process.env.EVENT ?? ''
-  const detail = renderFailureLines(report)
+
+  // H2.6: the target decides, and the report's own `site` is the target
+  // whenever there is a report, so the smoke's drill switch marks its alert
+  // without anybody having to remember a second flag.
+  const target = args.target ?? report?.site ?? null
+  const verdict = judgeDrill({ target, forced: args.drill })
+  const table = ALERT_CLASSES[args.cls]
+  const subject = alertSubject({ cls: args.cls, drill: verdict.drill, subject: args.subject })
+
+  // A body file with no report is the WHOLE detail, not a footnote to
+  // "no smoke report was produced": the daily state and the stall alert have
+  // no smoke report and never will.
+  const detail = report || !extra ? renderFailureLines(report) : extra.split(/\r?\n/)
+  const banner = verdict.drill ? drillBanner(verdict) : []
+  const footnote = report && extra ? extra : ''
 
   const markdown = [
-    `**${args.subject}**`,
+    `**${subject}**`,
     '',
+    ...(banner.length > 0 ? [...banner.map((line) => `> ${line}`), ''] : []),
+    `- Class: \`${args.cls}\`. ${table.meaning}`,
     `- Trigger: \`${event || 'unknown'}\``,
     `- Commit under test: \`${commit || 'none pinned'}\``,
     `- Ran from: \`${refSha || 'unknown ref'}\``,
@@ -321,30 +413,53 @@ async function main() {
     '```',
     ...detail,
     '```',
-    extra ? `\n${extra}` : '',
+    footnote ? `\n${footnote}` : '',
     '',
-    'Runbook: `docs/observability/post-deploy-smoke.md`',
+    `Runbook: \`${RUNBOOKS[args.cls]}\``,
   ].join('\n')
 
   const html = [
-    `<h2>${args.subject}</h2>`,
+    `<h2>${subject}</h2>`,
+    ...(banner.length > 0
+      ? [`<p style="padding:12px;border:2px solid #b45309;background:#fffbeb"><b>${banner[0]}</b><br>${banner.slice(1).join('<br>')}</p>`]
+      : []),
     '<ul>',
+    `  <li><b>Class:</b> ${args.cls}. ${table.meaning}</li>`,
     `  <li><b>Trigger:</b> ${event || 'unknown'}</li>`,
     `  <li><b>Commit under test:</b> <code>${commit || 'none pinned'}</code></li>`,
     `  <li><b>Ran from:</b> <code>${refSha || 'unknown ref'}</code></li>`,
     runUrl ? `  <li><b>Run:</b> <a href="${runUrl}">${runUrl}</a></li>` : '  <li><b>Run:</b> unknown</li>',
     '</ul>',
     `<pre>${detail.join('\n')}</pre>`,
-    '<p>Runbook: <code>docs/observability/post-deploy-smoke.md</code></p>',
+    footnote ? `<pre>${footnote}</pre>` : '',
+    `<p>Runbook: <code>${RUNBOOKS[args.cls]}</code></p>`,
   ].join('\n')
 
-  console.log(`alert-dispatch: ${args.subject}`)
+  console.log(`alert-dispatch: ${subject}`)
+  console.log(`  class ${args.cls}; drill ${verdict.drill ? 'YES' : 'no'} (${verdict.reason})`)
   for (const line of detail) console.log(`  ${line}`)
 
-  const results = await Promise.all([
-    sendViaResend({ subject: args.subject, html, dryRun: args.dryRun }),
-    raiseGithubIssue({ subject: args.subject, markdown, dryRun: args.dryRun }),
-  ])
+  // An OUTAGE opens both channels AT ONCE, because the whole point of a second
+  // channel that shares no rate limit is that it is not waiting behind the
+  // first one's backoff. A daily state opens the issue only if the email could
+  // not be delivered, because a digest that files an issue every morning is
+  // exactly the noise close-out UX4 exists to remove.
+  const bothAtOnce = secondChannelWanted({ cls: args.cls, override: args.secondChannel, firstChannelFailed: false })
+  let results
+  if (bothAtOnce) {
+    results = await Promise.all([
+      sendViaResend({ subject, html, dryRun: args.dryRun }),
+      raiseGithubIssue({ subject, markdown, dryRun: args.dryRun }),
+    ])
+  } else {
+    const first = await sendViaResend({ subject, html, dryRun: args.dryRun })
+    results = [first]
+    if (secondChannelWanted({ cls: args.cls, override: args.secondChannel, firstChannelFailed: !first.ok })) {
+      results.push(await raiseGithubIssue({ subject, markdown, dryRun: args.dryRun }))
+    } else {
+      console.log(`  github-issue: held back; class ${args.cls} opens an issue only when the first channel fails, and it did not`)
+    }
+  }
 
   for (const result of results) {
     console.log(`${result.ok ? 'DELIVERED' : 'FAILED   '} ${result.channel}: ${result.reason}`)

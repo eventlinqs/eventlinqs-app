@@ -61,6 +61,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
 import { gitEnv } from '../lib/git-env.mjs'
+import { gitAvailability, noGitLine } from './lib/git-availability.mjs'
 
 const TAG = '[one-pull-request-at-a-time]'
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -79,7 +80,17 @@ export function repositoryFromEnvOrGit() {
     const m = url.match(/github\.com[:/]([^/]+)\/([^/.]+)(?:\.git)?$/)
     if (m) return `${m[1]}/${m[2]}`
   } catch (error) {
-    console.warn(`${TAG} no origin remote could be read (${error.message})`)
+    /*
+     * NO REPOSITORY IS NOT A MISSING REMOTE. Close-out F2.4: this used to say
+     * "no origin remote could be read", which sends the reader looking for a
+     * remote on a host that has no repository at all. One sentence shape, from
+     * one module, for every git-reading build-time script.
+     */
+    if (!gitAvailability().usable) {
+      console.log(noGitLine(TAG, 'the repository name from the origin remote'))
+    } else {
+      console.warn(`${TAG} no origin remote could be read (${error.message})`)
+    }
   }
   return null
 }
@@ -188,7 +199,19 @@ if (invokedDirectly) {
 
   const repo = repositoryFromEnvOrGit()
   if (!repo) {
-    console.log(`${TAG} SKIP - no GitHub repository could be determined (no GITHUB_REPOSITORY, no origin remote).`)
+    /*
+     * THE SKIP NAMES THE RIGHT ABSENCE (close-out F2.4). On the Vercel build
+     * host this line used to read "no origin remote", printed directly beside a
+     * line saying there is no repository at all - two sentences contradicting
+     * each other about one fact, which is the exact confusion F2.4 exists to
+     * end. A missing REMOTE and a missing REPOSITORY send the reader to
+     * different places.
+     */
+    console.log(
+      gitAvailability().usable
+        ? `${TAG} SKIP - no GitHub repository could be determined: GITHUB_REPOSITORY is unset and this checkout has no origin remote.`
+        : `${TAG} SKIP - no GitHub repository could be determined: GITHUB_REPOSITORY is unset and there is no git repository here to read a remote from.`,
+    )
     process.exit(0)
   }
   const source = credentialSource()

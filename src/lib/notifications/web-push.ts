@@ -1,5 +1,19 @@
 import webpush from 'web-push'
-import type { AlertPayload } from './policy'
+import { contactMailto } from '@/lib/email/sender'
+
+/**
+ * The only fields public/push-sw.js reads off a push message: title, body, url
+ * and the coalescing tag. Typed here rather than as the attendee-lifecycle
+ * `AlertPayload`, because the platform-owner alerts (close-out UX3) send through
+ * the same transport and carry no attendee `type`. Widening the parameter is
+ * safe by inspection of the service worker, which never reads any other key.
+ */
+export type PushPayload = {
+  title: string
+  body: string
+  url: string
+  tag: string
+}
 
 /**
  * Web Push transport (Web Push Protocol + VAPID). Configured lazily from env so
@@ -19,7 +33,7 @@ export function isPushConfigured(): boolean {
   if (configured !== null) return configured
   const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   const priv = process.env.VAPID_PRIVATE_KEY
-  const subject = process.env.VAPID_SUBJECT ?? 'mailto:hello@eventlinqs.com'
+  const subject = process.env.VAPID_SUBJECT ?? contactMailto('hello')
   if (!pub || !priv) {
     configured = false
     return false
@@ -44,7 +58,7 @@ export type WebPushResult = {
 
 export async function sendWebPush(
   sub: StoredSubscription,
-  payload: AlertPayload,
+  payload: PushPayload,
 ): Promise<WebPushResult> {
   if (!isPushConfigured()) return { ok: false, statusCode: null, gone: false }
   try {

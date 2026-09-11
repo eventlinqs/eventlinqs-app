@@ -1002,9 +1002,409 @@ const ROOT = join(HERE, '..', '..')
  * was written in, and an audit date that is a date, so its age is visible
  * rather than assumed:
  * 332 files / 3819, as the canary measured.
+ *
+ * Close-out L5 (9 September 2026), one new file and twenty seven new tests:
+ * tests/unit/verify/launch-readiness. Three drive the one-sentence rule the
+ * OWNER BLOCKED state inherits from C10.4, including a full stop inside a path
+ * and inside a version number; fourteen drive the judgement over every way a
+ * readiness row can lie (a PASS with no evidence, with evidence that is not on
+ * disk, with no date driven, or naming an owner need beside it; an OWNER BLOCKED
+ * with no need, an unreviewed need, a two sentence need, or evidence cited as if
+ * it were driven; a FAIL saying nothing; a missing row, an invented row, a
+ * duplicate row, a state outside the three); two hold the anti-rot rule on the
+ * owner-need list, added after the list was found holding an entry no row cited;
+ * three hold the SHIPPED adjudication (sixteen rows numbered one to sixteen,
+ * every owner need one sentence, and every OWNER BLOCKED row naming where it HAS
+ * been driven so blocked never reads as untested); and four hold the rendering,
+ * including that it is byte-stable, which is the property the guard's comparison
+ * depends on:
+ * 333 files / 3846, as the canary measured.
+ *
+ * 2026-09-09: raised 333/3846 -> 334/3866, MEASURED by running the suite, not
+ * calculated. One file, tests/unit/guards/vercel-upload.test.ts, 20 tests, added
+ * with the fix for the fourth deployment lost to .vercelignore. Six prove the
+ * ignore grammar (a bare name at any depth, the rule that a file inside an
+ * excluded directory can never be re-included, the walk-down that actually
+ * re-includes one, comments, and a refusal for every pattern outside the
+ * grammar); four prove the MECHANISM that cost the deployment, chiefly that an
+ * ignored file is stripped while its DIRECTORY is left standing, which is why
+ * "the directory is absent" was the wrong test for the build host; five prove
+ * the two-fact discriminator that replaced it; and four hold the shared registry
+ * the two guards read, so the required and the tolerant halves cannot rot apart.
+ *
+ * 2026-09-09: raised 334/3866 -> 335/3876, MEASURED by running the suite, not
+ * calculated. One file, tests/unit/guards/guard-run-report.test.ts, 10 tests,
+ * added with close-out F1.1, the gate that would not name the guard it caught.
+ * Five drive REAL child processes rather than hand-written spawnSync shapes,
+ * because the thing under test is what Node actually hands back for a script
+ * that exits non-zero, and they hold the three faults apart that used to read as
+ * one: a guard that exited non-zero, a guard killed by a signal, and a guard
+ * that could not be started at all. Five hold the report itself, chiefly that
+ * the LAST line names every guard that failed, because a build log is read from
+ * the bottom, and that the count and the names can never disagree.
+ *
+ * 2026-09-09: raised 335/3876 -> 336/3898, MEASURED by running the suite. One
+ * file, tests/unit/ci/build-scope.test.ts, 10 tests, holds the three-way scope
+ * that close-out F1.3 asked for: chiefly that a CI runner BLOCKS rather than
+ * warning, and that a Vercel build carrying CI=1 is still judged as Vercel,
+ * because Vercel publishes CI=1 on its own builds and testing CI first would
+ * call every deployment a runner. The other twelve are the manifest contract
+ * tests, which iterate the manifest itself: four CI_ entries were declared, so
+ * the suite grew without a line of test code being written for them, which is
+ * the manifest doing its job.
+ *
+ * 2026-09-09: raised 336/3898 -> 337/3905, MEASURED by running the suite. One
+ * file, tests/unit/guards/clause-verdict.test.ts, 7 tests, holds close-out
+ * F1.6: one guard that skipped for a different reason in a different sentence
+ * shape on each of the three machines that ran it. Three prove the vocabulary is
+ * a CLOSED set, including that an invented sixth shape throws at the call site
+ * rather than printing; four prove the rendered line always carries the code AND
+ * the build scope, and that a not-judged verdict always carries the remedy, so a
+ * skip is never a dead end.
+ *
+ * 2026-09-09: raised 337/3905 -> 338/3917, MEASURED by running the suite. One
+ * file, tests/unit/guards/stripped-or-deleted.test.ts, 11 tests, holds close-out
+ * F1.9.2 PART THREE, the fourth deployment lost to .vercelignore. Six drive the
+ * determination against REAL trees on disk rather than a fake filesystem, one
+ * per combination of excluded and on-Vercel, including the exact shape that cost
+ * the deployment: a directory left standing with the file gone. One holds the
+ * shared-determination count. Four hold the walk-down being DERIVED rather than
+ * described, because doing that derivation by hand is what lost one of the other
+ * three deployments. The remaining test moved inside vercel-upload.test.ts.
+ *
+ * 2026-09-09: raised 338/3917 -> 338/3921, MEASURED. No new file: four tests
+ * joined tests/unit/guards/vercel-upload.test.ts after the preview build of
+ * ffded236 died on isGitCheckout, which was existsSync('.git') and had never
+ * been run on the one host it was written for. .vercelignore names `.git`, so
+ * Vercel strips the FILES inside it and leaves the DIRECTORY: `.git` was present
+ * and empty, existsSync said checkout, git said "fatal: not a git repository".
+ * Three pin the three shapes apart (empty directory, directory holding HEAD, and
+ * a FILE, which is what each of this repository's nine linked worktrees has) and
+ * one asserts the materialised upload now carries the same empty skeleton, so
+ * the simulation is of the build host rather than of somewhere else.
+ *
+ * 2026-09-09: raised 338/3921 -> 338/3924, MEASURED. No new file: three tests
+ * joined tests/unit/verify/launch-readiness.test.ts after the shipped report was
+ * found saying the gap was "exactly three approvals wide" while OWNER_NEEDS held
+ * TWO. The third had been removed when the anti-rot rule found the list holding a
+ * need no row cited, and the prose was never touched. Both numbers in that
+ * paragraph are derived now, and the tests fail if either goes back to being
+ * typed: one counts the approvals from the rows, one moves the sentence when a
+ * third need appears, one counts the rows that record where they HAVE been
+ * driven. A hand-written count in that document is a second place a claim can
+ * live, which is the exact thing the report exists to prevent.
+ *
+ * 2026-09-09, later: raised 338/3924 -> 341/3981, MEASURED. Close-out F2, three
+ * new files:
+ *
+ *   tests/unit/guards/build-host.test.ts       F2.1, the three capabilities the
+ *                                              Vercel build host does not have
+ *                                              and the registry that declares them
+ *   tests/unit/guards/gitignore.test.ts        F2.2, enumerating a tree with no
+ *                                              git, tested against git itself
+ *   tests/unit/guards/git-availability.test.ts F2.4, the four shapes .git takes
+ *                                              and the one sentence all seven
+ *                                              git readers print
+ *
+ * Two of those files are worth the canary knowing about specifically, because
+ * they assert against the REAL repository rather than a fixture: the walk is
+ * compared path for path with `git ls-files`, and every git-declaring entry
+ * point is required to reach the shared availability module. Both would go quiet
+ * rather than red if somebody deleted them, which is what this canary is for.
+ *
+ * 2026-09-10: raised 348/4065 -> 352/4121, MEASURED. Close-out UX3, four new
+ * files:
+ *
+ *   tests/unit/notifications/platform-policy.test.ts   what the owner is told
+ *                                              and when, including the daily
+ *                                              ceiling AT ITS BOUNDARY: the Nth
+ *                                              paid order is individual and the
+ *                                              (N+1)th is held for the digest
+ *   tests/unit/notifications/platform-send.test.ts     delivery: recorded,
+ *                                              retried, escalated to the second
+ *                                              channel, and loud when both fail
+ *   tests/unit/cron/platform-notify.test.ts    the worker refuses an
+ *                                              unauthenticated caller before it
+ *                                              reads anything, and reports a
+ *                                              failure as a failure
+ *   tests/unit/guards/platform-notifications-installed.test.ts  the guard that
+ *                                              refuses a build whose database
+ *                                              could let a state change go
+ *                                              unrecorded
+ *
+ * 2026-09-10: 355 files / 4195 tests. Close-out UX4 and H2.6, the notification
+ * ROUTING, plus one defect found while auditing it.
+ *   tests/unit/ops/state-report.test.ts        the stall judged at the six hour
+ *                                              boundary in both callers' modes,
+ *                                              the guard named out of a failing
+ *                                              run log, and a daily report that
+ *                                              says the same thing in text and
+ *                                              in HTML
+ *   tests/unit/guards/alert-routing.test.ts    no branch gate may email, every
+ *                                              dispatch declares its class, and
+ *                                              a drill announces itself
+ *   tests/unit/guards/cron-routes-scheduled.test.ts  /api/cron/queue-admit had a
+ *                                              route handler, a header saying it
+ *                                              ran every minute, and no schedule
+ *                                              at all
+ *   the alert-dispatch and workflows-skip-drafts files also grew, with the class
+ *   grammar, the drill verdict, and the push-only condition that lets ci.yml's
+ *   main-red alert exist without running on a draft
  */
-const MIN_FILES = 332
-const MIN_TESTS = 3819
+/*
+ * The ticket types that were deleted and re-created on every save (found
+ * 10 September 2026 while reading the write paths a slot ledger would hook
+ * into), one new file and twenty tests: tests/unit/events/save-tiers. Three
+ * drive which ticket type is which (a client-minted id, a database id, an empty
+ * one); six drive the payload the database function reads (dollars to cents
+ * once, a price a person could type, a saved id carried, a new one sent empty,
+ * a blank sale window that must not become the word null, and the array
+ * position standing in for a missing sort order); five read the verdict back,
+ * including the three refusals and the shape it must REFUSE to read rather than
+ * assume success; and six hold the words an organiser reads, one of which
+ * asserts no database word ever reaches them, because what they were shown was
+ * `duplicate key value violates unique constraint
+ * "ticket_tiers_event_id_name_key"`.
+ *
+ * tests/unit/security/update-event-idor also grew no tests but got stricter:
+ * the admin mock now answers rpc and RECORDS it as a privileged write, so a
+ * caller who fails the ownership gate and reaches save_event_ticket_tiers fails
+ * that test. Before this it had no rpc at all and the success path died with
+ * "admin.rpc is not a function", which is how the regression announced itself:
+ * 356 files / 4215, as the canary measured.
+ *
+ * 2026-09-10: raised 356/4215 -> 358/4237. Close-out UX6, the mobile checkout
+ * layout. tests/unit/checkout/viewport-fit-rule holds the rule that decides
+ * whether a buyer surface fits its viewport, including that its three exemptions
+ * stay conjunctive so `aria-hidden` cannot launder a real control past the
+ * check, and that `html, body { overflow-x: clip }` is still in globals.css,
+ * because that rule is the whole reason the box-level assertion exists.
+ * tests/unit/email/guest-ticket-recovery holds both branches of the sentence
+ * that used to send every guest buyer to a login they could not pass. Two more
+ * tests landed on viewport-fit-rule as the drive found what the rule could not
+ * yet see (a control PUSHED past the edge rather than parked there, and Tailwind
+ * v4's standalone `translate` property), taking it to 4239.
+ *
+ * And 359/4247 in the same item, for the defect the GATE found while UX6 was
+ * being closed: the indexing drive caught an organiser profile in the sitemap
+ * answering 404, and the server log named a dropped socket to Supabase. A page
+ * may never answer "this does not exist" because it could not ask.
+ * tests/unit/seo/read-failure-is-not-not-found holds that distinction on the two
+ * routes that were folding the two answers together, and holds that the shared
+ * retry primitive still recognises the socket class without swallowing a real
+ * query fault.
+ *
+ * And 364/4345 for close-out D1, the slot ledger. Five files: adapter-mapping
+ * drives the mapping through the order-level recorders every money path really
+ * reaches (35), row-types holds all five row shapes and the closing row against
+ * the database's own CHECK constraints (16), pace-curve holds the reader that
+ * draws the organiser's panel (16), inventory-diff holds what a save did to the
+ * ticket types (9), backfill holds that a re-run writes nothing twice and that
+ * a production write is refused (12). Four of adapter-mapping's are the buyer
+ * the ledger could not see: `guest_email` is null for 138 of 294 orders on TEST
+ * because a signed-in buyer carries `user_id`, so half of every sale row was
+ * recording no buyer and no first-time-or-returning flag at all. One more, 4346,
+ * for the count the backfill printed: `write` returns ok for the idempotent path
+ * as well as for a real insert, so a second run over 244 orders reported "wrote
+ * 264 row(s)" having written 34.
+ *
+ * And 365/4350 for the panel itself, found by DRIVING it rather than reading
+ * it: against a real slot with 28 backfilled sales it read "Reached checkout 0,
+ * Did not finish 0, Looked at the page 0" beside "28 sold, $665 taken". Not one
+ * of those zeros was true. The backfill refuses to invent demand rows for a
+ * period nobody measured, and the panel was telling that lie on its behalf.
+ * tests/component/sales-pace-panel holds the four states apart, including that
+ * a REAL zero is still shown.
+ *
+ * And 371/4455 for close-out D2, the recovery engine. Five new files and one
+ * grown one. Every case in them is a way a REAL PERSON is written to when they
+ * should not be, which is the only kind of defect in this feature that costs
+ * something that cannot be bought back: waitlist (19) holds the queue order, the
+ * hold that runs out and passes down the list, and the person who let their turn
+ * lapse not being offered the same place for ever; message (20) holds that the
+ * copy comes from the slot's own category, so a gym reads "class" and this
+ * platform reads "ticket" out of one function; engine (13) holds that the send
+ * record is written BEFORE the message leaves, that no message goes without a
+ * working unsubscribe, and that a failed send is counted rather than swallowed;
+ * proof (10) holds the four numbers the organiser's panel claims, including that
+ * a sale BEFORE the message is not a recovery and that three messages to one
+ * person is one person; the component test (11) holds that a slot nobody
+ * abandoned reads as nothing to recover rather than as zero recovered, which is
+ * the exact defect the sales pace panel was caught in the day before.
+ *
+ * The three added to the existing files follow the sender: the waiting-list
+ * message moved into the engine so one freed unit produces one message, so
+ * sender-domains grew the assertion that the engine reaches the one sender
+ * module through the shared transport rather than by building its own client.
+ *
+ * And 4464 for what DRIVING the engine found, which no unit test would have:
+ * a rate over sixteen sends cutting the whole sequence to one message on a
+ * single unsubscribe (six tests on the minimum a rate needs to be a rate), and
+ * an attribution query appended AFTER a fragment, so the parameters were never
+ * parameters and the link stopped landing on the ticket selector (three tests
+ * on where a query goes).
+ *
+ * And 373/4499 for close-out UX5, the two-factor enrolment page. Two new files
+ * and eight tests added to an existing one, and every one of them exists
+ * because of something a screenshot could not have told anybody.
+ *
+ * tests/unit/admin/enrol-2fa-qr holds the QR at the SOURCE: the picture decodes
+ * back to exactly the URI it was built from, its secret is the one printed
+ * beside it, and that secret is a working RFC 6238 secret computed
+ * independently and verified by the application. A QR that decodes perfectly to
+ * a secret nothing accepts is still a lockout.
+ *
+ * The eight in tests/unit/admin/totp are for a defect three separate places
+ * described three different ways. `formatRecoveryCode(randomBytes(5))` base32-
+ * encodes to EIGHT characters, so `slice(7, 10)` returned ONE, and every
+ * recovery code the platform ever issued looked like `oafj-don-3` at 40 bits,
+ * while its own comment claimed "10 hex chars grouped 4-4-4" and the admin
+ * login field advertised `abcd-efg-hij`. Seven bytes makes all three agree at
+ * 50 bits, and one of the tests now reads the placeholder out of the login form
+ * so the form and the generator can never disagree again.
+ *
+ * tests/component/layout/bottom-nav-clearance holds the 64px the root layout
+ * reserved for a bar that ten route prefixes never draw. None of those ten
+ * renders SiteFooter, which is what paints that strip everywhere else, so the
+ * admin console ended in a band of pale canvas under a dark surface at 390.
+ * The tests read the prefix list out of the bar's own source, so a prefix added
+ * there is covered the moment it is added, and they hold BOTH directions:
+ * losing the reservation where the bar IS drawn would put the tab bar on top of
+ * the footer's last row, which is worse than the band.
+ *
+ * And 374/4503 for close-out UX1, whose signed-in organiser journey had been
+ * WRITTEN AND NEVER RUN. It was recorded as blocked on the rate limiter having
+ * no Upstash locally, which stopped being true when `startGateServer` was
+ * extracted on 10 September. Running it found that the "Organised by" card on
+ * every event page named the organiser, drew their initials, clamped their bio
+ * and LINKED NOWHERE, while the same page's JSON-LD published
+ * `/organisers/<slug>` to Google. The four tests hold the link, hold that it is
+ * a SIBLING of the Follow control rather than its ancestor (a button inside an
+ * anchor is invalid HTML), hold that the page and its own structured data name
+ * the same URL, and hold the accessible name against WCAG 2.5.3.
+ *
+ * And 375/4510 for close-out UX2.5, the human read of the five launch screens.
+ * Where the venue map belongs, the event page was showing Google's own grey
+ * panel: "Sorry! Something went wrong. This page didn't load Google Maps
+ * correctly. See the JavaScript console for technical details." A third-party
+ * developer message, with an exclamation mark, telling somebody buying a ticket
+ * to open a console.
+ *
+ * Every map already HAD a designed fallback and it was being hidden, because an
+ * auth failure still resolves importLibrary and still constructs a Map: the
+ * component saw a Map, called itself interactive, dropped its own plate, and
+ * Google painted the panel underneath. The seven tests hold the contract the
+ * four map surfaces share - the hook is installed, installed only once, never
+ * overwrites somebody else's, flips the flag, tells every subscriber, survives a
+ * surface mounting AFTER the refusal, and unsubscribes cleanly.
+ *
+ * And 375/4516 for the launch readiness report, which for two days told the
+ * owner that production was "one migration behind this tree" while NINE were
+ * pending. The number was prose in the adjudication, and the guard that judges
+ * the report re-renders that same prose from the same constant it compares the
+ * file against, so it agreed with itself on every run. No file changed on the
+ * day the sentence stopped being true, which is exactly how a version pin rots
+ * (Law 9). The six tests hold the clause that now refuses it: the exact sentence
+ * that shipped, a digit count as well as a spelled one, a count hidden in a row
+ * rather than in a need, the fault naming where it was written, the shipped
+ * adjudication staying green, and the negative case that keeps the clause alive
+ * by proving an UNCOUNTED mention of migrations still stands.
+ *
+ * And 376/4522 for the push opt-in (close-out UX3.2). Every FIRST press of the
+ * owner's backup-alert control failed, on a fresh profile, in silence:
+ * `register()` resolves before the worker is running, so
+ * `pushManager.subscribe()` threw "Subscription failed - no active Service
+ * Worker", and the catch reported it as 'idle', which is the state an unpressed
+ * control shows. A SECOND press always worked, which is why it survived: anybody
+ * debugging it presses twice. The six tests hold both halves - subscribe waits
+ * for 'activated', a worker gone 'redundant' ends the wait instead of hanging
+ * the button, and a refused press never lands in the same state as a press that
+ * never happened. All six were drilled RED against the pre-fix hook and returned
+ * the browser's own sentence.
+ */
+/*
+ * RAISED 11 September 2026, close-out S1: 376 files / 4522 tests to 378 / 4567.
+ *
+ * Two files added and one rewritten.
+ *
+ * tests/unit/stripe/account-health.test.ts asserts S1's severity table exactly
+ * as S1 writes it - RED on charges_enabled false, payouts_enabled false, a
+ * disabled_reason or anything past_due; AMBER on currently_due, a deadline
+ * inside 14 days, or pending_verification older than 3 days; GREEN only when an
+ * account can charge, can be paid out and owes nothing - plus the ONE narrowing
+ * and the account on TEST that forced it. acct_1U2EYNGsSxcPFPRu is an abandoned
+ * signup: never onboarded, so RED on four counts under the literal rule, and RED
+ * maps to an email every thirty minutes for ever. It is AMBER, and a test holds
+ * that an account which DID onboard and then broke is still RED, which is the
+ * whole point of the narrowing.
+ *
+ * tests/unit/health/heartbeat-email.test.ts asserts the daily email itself,
+ * through the product's own builder rather than a copy, because S1's premise is
+ * that a monitor which is wrong about nearly every organiser destroys the value
+ * of every other line in that email.
+ *
+ * tests/unit/stripe-business-profile.test.ts lost the five assertions about the
+ * DELETED name comparison and gained seven about the connected account's
+ * descriptor prefix, which S1 requires to be set explicitly at creation and
+ * never left to Stripe's fallback.
+ *
+ * Then 4567 to 4574, same commit, after the self-audit caught a requirement the
+ * first pass had dropped. S1's reversal condition says "page it and report the
+ * page count, do not sample", and the replacement had inherited
+ * `/v1/accounts?limit=100` with no paging from the check it replaced. On the
+ * 101st connected organiser it would have gone on reporting green with an
+ * unknown number of accounts never looked at. Seven tests on the paging loop,
+ * including the cursor Stripe's own page documents and the runaway stop.
+ *
+ * Then 378/4584 to 379/4602 on 12 September 2026, the types-cover-migrations
+ * guard. The first push after the founder applied ten migrations to production
+ * was refused by the types-drift guard with 285 unexplained differences, every
+ * one an object the tree's own migrations create: five migrations had been
+ * committed without regenerating src/types/database.ts, and the drift guard
+ * could not see it while production was equally behind. Eighteen tests in
+ * tests/unit/guards/types-cover-migrations.test.ts drive the replay (create,
+ * rename, drop, trigger functions excluded, runtime-built names skipped) and
+ * the judgement, and the last two run it over the real migrations and the real
+ * committed types, so the suite itself now refuses a stale types file.
+ *
+ * Then 379/4602 to 380/4606, 12 September 2026, close-out UX6 driven on the
+ * first preview to hold a live Stripe TEST key. At 390 the buyer landed on the
+ * Pay button with every card field above the screen: Chrome's scroll anchoring
+ * followed Stripe's skeleton and then its frame as they inserted above the
+ * fold (scrollY 145 to 381 to 890, measured). Four tests in
+ * tests/component/checkout-payment-step.test.tsx hold the fix: the step opts
+ * out of scroll anchoring, starts at the top, and focuses its heading.
+ *
+ * Then 380/4606 to 380/4609, 12 September 2026, close-out D1. The backfill
+ * learns the founder's named approval for the one production run; three
+ * tests in tests/unit/ledger/backfill.test.ts hold that a production write is
+ * refused without it, allowed with it (naming the approval and deferring to
+ * the shell preflight), and refused again when the approval is blank.
+ *
+ * Then 380/4609 to 381/4614, same day, after the approved run had written.
+ * The child ran with no ORDER_ACCESS_SECRET in its shell, so its three
+ * production rows carry a buyer_hash keyed with the empty secret while every
+ * live row is keyed with the real one, and the engine's "never anyone who
+ * already bought" would have missed those two buyers for ever. The engine now
+ * asks with every shape a row can carry (identityFingerprints): three tests in
+ * tests/unit/ledger/identity.test.ts, one each in the due and waitlist rules.
+ *
+ * Then 381/4614 to 382/4624, same day. Three on the schema probe's bounded
+ * retry (the preview build of 0fe8c238 was lost to two 504s among ten probes
+ * that answered 200 a minute later), and seven on the script that moves
+ * Stripe's TEST webhook endpoints to the current preview, after every TEST
+ * webhook of the day was found landing on the July alias of another branch.
+ *
+ * Then 382/4624 to 382/4628, 12 September. Four on the environment the upload
+ * simulation hands each entry point (buildHostEnv): CI on 0fe8c238 ran
+ * preview-deployment-state inside the simulated upload with the parent's
+ * VERCEL_TOKEN and pull request payload, the child judged the real deployment,
+ * and the simulation blamed .vercelignore for a failure that had nothing to do
+ * with the upload. The child now gets the build host's environment: no CI
+ * identity, no credential, no CLI login.
+ */
+const MIN_FILES = 382
+const MIN_TESTS = 4628
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
@@ -1151,7 +1551,40 @@ if (!reportedSuccess) {
   problems.push('vitest reported success=false for this run.')
 }
 if (failed > 0) {
-  problems.push(`${failed} test(s) FAILED. This runs the suite, so it reports failures too.`)
+  /*
+   * NAME THEM. Close-out F1.1 in miniature, found on 10 September 2026: this
+   * guard reported "1 test(s) FAILED" and nothing else, and the run it reported
+   * was a FLAKE that did not reproduce standalone. A count with no name sends the
+   * next person to re-run the whole suite and hope, which is exactly the two
+   * wasted log reads F1.1 was written about. The report is already in hand and it
+   * carries every assertion, so there is no reason to withhold the name.
+   */
+  const failing = (Array.isArray(report.testResults) ? report.testResults : []).flatMap(r =>
+    (r.assertionResults ?? [])
+      .filter(a => a.status === 'failed')
+      .map(a => {
+        const file = (r.name ?? '').replace(/\\/g, '/').replace(ROOT.replace(/\\/g, '/') + '/', '')
+        /*
+         * MORE THAN THE FIRST LINE. vitest 4's JSON reporter opens a failure
+         * message with the literal "Error: STACK_TRACE_ERROR" and puts the
+         * assertion underneath it, so a one-line excerpt is guaranteed to say
+         * nothing at all. Twelve lines is enough for the expected/received pair
+         * that names the actual disagreement.
+         */
+        const why = ((a.failureMessages ?? [])[0] ?? 'no message')
+          .split('\n')
+          .slice(0, 12)
+          .map(l => `        ${l}`)
+          .join('\n')
+        return `      ${file} > ${a.fullName ?? a.title}\n${why}`
+      }),
+  )
+  problems.push(
+    `${failed} test(s) FAILED. This runs the suite, so it reports failures too.\n` +
+      (failing.length > 0
+        ? failing.join('\n')
+        : '      (the report named none, which means the failure is at suite level)'),
+  )
 }
 if (files < MIN_FILES) {
   problems.push(

@@ -272,7 +272,7 @@ function NotStartedView({
 }) {
   return (
     <div className="space-y-4">
-      <ul className="grid gap-2 text-sm text-ink-700 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-2">
         <BulletItem text="Transparent fees, no hidden charges" />
         <BulletItem text="Payouts begin three days after the event" />
         <BulletItem text="Bank verification is done by Stripe, not us" />

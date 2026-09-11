@@ -73,9 +73,27 @@ const SERVER_LOG = process.env.SERVER_LOG ?? '.tmp-serve.log'
  * the harness's own default, which is desktop 1440, so an unlabelled run is
  * recorded as what it actually was rather than as an unmarked directory.
  */
+/**
+ * WHERE A JOURNEY WRITES, and why it is overridable now.
+ *
+ * The root below is a DATE, and it is hardcoded, so every re-drive of any
+ * journey silently rewrites a directory named for 28 August with content from
+ * whatever day it actually ran. Found on 10 September while re-driving the UX3
+ * proof for close-out UX4: the run rewrote the committed
+ * `ux3-owner-notified/desktop-1440/log.txt` with new identifiers, and a reader
+ * citing that path would have cited the wrong day's evidence.
+ *
+ * The root is NOT renamed, deliberately: hundreds of committed files sit under
+ * it and every handover document that cites one would break. Instead a drive
+ * that wants its own directory says so, and the default is unchanged.
+ *
+ *   JOURNEY_OUT_ROOT=C:/dev/EVIDENCE/UX4/journey  node scripts/journeys/j1.mjs
+ */
+const JOURNEY_OUT_ROOT = () => process.env.JOURNEY_OUT_ROOT ?? 'docs/verification/journeys-2026-08-28'
+
 export function makeJourney(id, title, _viewport = { width: 1440, height: 1000 }) {
   const viewportLabel = process.env.JOURNEY_VIEWPORT ?? 'desktop-1440'
-  const OUT = `docs/verification/journeys-2026-08-28/${id}/${viewportLabel}`
+  const OUT = `${JOURNEY_OUT_ROOT()}/${id}/${viewportLabel}`
   mkdirSync(OUT, { recursive: true })
   writeFileSync(`${OUT}/log.txt`, `${title}\n${'='.repeat(title.length)}\n`)
   return { OUT, title, step: 0, errors: [], blockers: [], unclear: [] }
@@ -409,7 +427,7 @@ export async function createEventThroughWizard(j, page, opts) {
 
     if (onTicketing) {
       await fillIf(page, '#tier-name-0, input[placeholder^="e.g. General Admission"]', 'General admission')
-      const typeSel = await page.$('#type-21, select')
+      const typeSel = await page.$('#tier-type-0, #type-21, select')
       if (typeSel) {
         const want = price === null || price === 0 ? 'free' : 'general_admission'
         // page.evaluate takes ONE argument; a second is a hard error.

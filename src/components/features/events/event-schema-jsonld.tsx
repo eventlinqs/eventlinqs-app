@@ -15,6 +15,7 @@
  */
 
 import type { Event, TicketTier, Organisation } from '@/types/database'
+import { stripMarkdown } from '@/lib/prose/markdown-subset'
 
 type EventStatus = 'upcoming' | 'sold-out' | 'cancelled' | 'postponed' | 'past'
 
@@ -219,8 +220,13 @@ export function buildEventSchemaPayload({
             : {}),
         },
     image: event.cover_image_url ? [event.cover_image_url] : undefined,
-    description: event.summary
-      ?? (event.description ? event.description.replace(/<[^>]*>/g, '').slice(0, 500) : undefined),
+    // Structured data is machine-read plain text: markdown syntax here reaches
+    // a search result verbatim. Tags were stripped, markdown was not (UX1.1).
+    description:
+      stripMarkdown(event.summary) ||
+      (event.description
+        ? stripMarkdown(event.description.replace(/<[^>]*>/g, '')).slice(0, 500)
+        : undefined),
     organizer: {
       '@type': 'Organization',
       name: organisation.name,

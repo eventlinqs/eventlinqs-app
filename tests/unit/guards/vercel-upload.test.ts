@@ -1,0 +1,435 @@
+import { describe, expect, test } from 'vitest'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { makeJudgeIgnored, parseVercelIgnore } from '../../../scripts/guards/lib/vercelignore.mjs'
+import {
+  buildHostEnv,
+  holdsNoFile,
+  isGitCheckout,
+  listTrackedFiles,
+  materialiseVercelUpload,
+  removeUpload,
+} from '../../../scripts/guards/lib/vercel-upload.mjs'
+import { resolveVercelToken, vercelCliAuthCandidates } from '../../../scripts/lib/vercel-login.mjs'
+import { REQUIRED_READS } from '../../../scripts/guards/lib/vercelignore-registry.mjs'
+import {
+  entriesThatReadThroughTheIgnore,
+  excludedTopLevels,
+} from '../../../scripts/guards/lib/build-time-scripts.mjs'
+import { gitEnv } from '../../../scripts/lib/git-env.mjs'
+
+/**
+ * THE SHAPE OF THE TREE VERCEL BUILDS IN, PROVEN RATHER THAN ASSUMED.
+ *
+ * Four deployments have now been lost to one mistake: reasoning about the
+ * .vercelignore upload from a comment instead of from the thing itself. The
+ * fourth, on 8 September 2026, was the belief that an ignored DIRECTORY does not
+ * arrive on the build host. It arrives. Vercel deletes the matched FILES and
+ * leaves the directory tree, which its own build log for that deployment says
+ * plainly: .vercelignore names `.git`, and the removal enumerated /.git/config,
+ * /.git/description and the hook samples inside it.
+ *
+ * So the first group of tests below is about the MECHANISM, not the guard: given
+ * an ignore file and a set of tracked paths, what does the materialised tree
+ * look like. The empty-directory case is the one that cost the deployment and it
+ * is asserted directly.
+ *
+ * The second group is the discriminator the guards now use to tell the build
+ * host from a developer machine, because "the directory is missing" was the
+ * wrong test and something had to replace it.
+ *
+ * Nothing here touches the repository tree. Every fixture is a throwaway
+ * directory under the OS temp directory, built from paths given by name, so no
+ * test depends on what happens to be committed today.
+ */
+
+const ROOT = join(__dirname, '..', '..', '..')
+
+function scratch(): string {
+  return mkdtempSync(join(tmpdir(), 'vercel-upload-test-'))
+}
+
+function writeTree(root: string, files: Record<string, string>) {
+  for (const [rel, body] of Object.entries(files)) {
+    const abs = join(root, rel)
+    mkdirSync(join(abs, '..'), { recursive: true })
+    writeFileSync(abs, body, 'utf8')
+  }
+}
+
+describe('the .vercelignore grammar', () => {
+  test('a bare name matches that segment at any depth, as gitignore does', () => {
+    const { rules, errors } = parseVercelIgnore('research\n')
+    expect(errors).toEqual([])
+    const judge = makeJudgeIgnored(rules)
+    expect(judge('research/a.md').ignored).toBe(true)
+    expect(judge('src/research/a.md').ignored).toBe(true)
+    expect(judge('src/researcher/a.md').ignored).toBe(false)
+  })
+
+  test('a file inside an excluded directory can never be re-included, and the reason names the ancestor', () => {
+    const { rules } = parseVercelIgnore('docs/*\n!docs/security/CREDENTIAL-ROTATION.md\n')
+    const judge = makeJudgeIgnored(rules)
+    const verdict = judge('docs/security/CREDENTIAL-ROTATION.md')
+    expect(verdict.ignored).toBe(true)
+    expect(verdict.by).toContain('docs/security/')
+  })
+
+  test('walking each level down is what actually re-includes it', () => {
+    const { rules } = parseVercelIgnore(
+      'docs/*\n!docs/security/\ndocs/security/*\n!docs/security/CREDENTIAL-ROTATION.md\n',
+    )
+    const judge = makeJudgeIgnored(rules)
+    expect(judge('docs/security/CREDENTIAL-ROTATION.md').ignored).toBe(false)
+    expect(judge('docs/security/OTHER.md').ignored).toBe(true)
+    expect(judge('docs/PRICING.md').ignored).toBe(true)
+  })
+
+  test('a file directly under an excluded parent is re-includable without a walk-down', () => {
+    const { rules } = parseVercelIgnore('docs/*\n!docs/PRICING.md\n')
+    expect(makeJudgeIgnored(rules)('docs/PRICING.md').ignored).toBe(false)
+  })
+
+  test('comments and blank lines are not rules', () => {
+    const { rules, errors } = parseVercelIgnore('# docs/*\n\n   \n')
+    expect(errors).toEqual([])
+    expect(rules).toHaveLength(0)
+  })
+
+  test('a pattern outside the grammar is REFUSED, never guessed at', () => {
+    for (const pattern of ['docs/**/x.md', 'docs/[ab].md', 'docs/?.md', 'docs/{a,b}.md', 'do*cs/x.md']) {
+      const { errors } = parseVercelIgnore(`${pattern}\n`)
+      expect(errors, pattern).toHaveLength(1)
+    }
+  })
+
+  test('the repository .vercelignore parses with no refusals', () => {
+    const { errors } = parseVercelIgnore(
+      execFileSync('git', ['show', 'HEAD:.vercelignore'], { cwd: ROOT, encoding: 'utf8', env: gitEnv() }),
+    )
+    expect(errors).toEqual([])
+  })
+})
+
+describe('materialising the upload', () => {
+  test('an ignored file is stripped and its DIRECTORY is left standing, which is the defect that cost the deployment', () => {
+    const root = scratch()
+    const dest = scratch()
+    try {
+      writeTree(root, {
+        '.vercelignore': 'docs/*\n!docs/PRICING.md\n',
+        'docs/PRICING.md': 'kept',
+        'docs/verification/LAUNCH-READINESS.md': 'stripped',
+        'src/app.ts': 'code',
+      })
+      const shape = materialiseVercelUpload({
+        root,
+        dest,
+        files: ['.vercelignore', 'docs/PRICING.md', 'docs/verification/LAUNCH-READINESS.md', 'src/app.ts'],
+        linkNodeModules: false,
+      })
+
+      expect(existsSync(join(dest, 'docs/verification'))).toBe(true)
+      expect(existsSync(join(dest, 'docs/verification/LAUNCH-READINESS.md'))).toBe(false)
+      expect(existsSync(join(dest, 'docs/PRICING.md'))).toBe(true)
+      expect(existsSync(join(dest, 'src/app.ts'))).toBe(true)
+      expect(shape.kept).toBe(3)
+      expect(shape.stripped).toBe(1)
+      expect(shape.ignoreErrors).toEqual([])
+    } finally {
+      removeUpload(root)
+      removeUpload(dest)
+    }
+  })
+
+  test('a kept file arrives with its real contents', () => {
+    const root = scratch()
+    const dest = scratch()
+    try {
+      writeTree(root, { '.vercelignore': 'docs/*\n', 'src/a.ts': 'the real bytes' })
+      materialiseVercelUpload({ root, dest, files: ['.vercelignore', 'src/a.ts'], linkNodeModules: false })
+      expect(execFileSync('node', ['-p', 'require("fs").readFileSync(process.argv[1],"utf8")', join(dest, 'src/a.ts')], {
+        encoding: 'utf8',
+      }).trim()).toBe('the real bytes')
+    } finally {
+      removeUpload(root)
+      removeUpload(dest)
+    }
+  })
+
+  test('removeUpload refuses a path that is a real repository', () => {
+    const root = scratch()
+    try {
+      // A REAL checkout, which now means a .git holding HEAD. An empty .git is
+      // the build host's shape and removeUpload must be able to clean that up,
+      // because it is what this module builds.
+      writeTree(root, { '.git/HEAD': 'ref: refs/heads/main\n' })
+      expect(() => removeUpload(root)).toThrow(/refusing to remove/)
+    } finally {
+      // Remove the marker first so the helper will act, then clean up.
+      execFileSync('node', ['-e', 'require("fs").rmSync(process.argv[1],{recursive:true,force:true})', root])
+    }
+  })
+
+  test('the repository upload keeps every required read and strips the screenshots beside them', () => {
+    const dest = scratch()
+    try {
+      materialiseVercelUpload({ root: ROOT, dest, linkNodeModules: false })
+      for (const required of Object.keys(REQUIRED_READS)) {
+        const onDisk = required.endsWith('/') ? required.slice(0, -1) : required
+        expect(existsSync(join(dest, onDisk)), required).toBe(true)
+      }
+      /*
+       * PART ONE re-included the report and its evidence folder, and ONLY those.
+       * docs/verification also holds hundreds of megabytes of screenshots, and
+       * the re-inclusion walks down to two names rather than opening the tree, so
+       * a sibling directory under docs/verification must still arrive empty.
+       */
+      expect(holdsNoFile(join(dest, 'docs/verification/system-pass'))).toBe(true)
+      expect(existsSync(join(dest, 'docs/verification/LAUNCH-READINESS.md'))).toBe(true)
+      expect(isGitCheckout(dest)).toBe(false)
+    } finally {
+      removeUpload(dest)
+    }
+  })
+})
+
+describe('telling the build host from a developer machine', () => {
+  test('holdsNoFile is true for an absent directory', () => {
+    expect(holdsNoFile(join(tmpdir(), 'no-such-directory-ab12cd34'))).toBe(true)
+  })
+
+  test('holdsNoFile is true for a tree of empty directories, which is the stripped shape', () => {
+    const root = scratch()
+    try {
+      mkdirSync(join(root, 'a', 'b', 'c'), { recursive: true })
+      expect(holdsNoFile(root)).toBe(true)
+    } finally {
+      removeUpload(root)
+    }
+  })
+
+  test('holdsNoFile is false for one file at any depth', () => {
+    const root = scratch()
+    try {
+      writeTree(root, { 'a/b/c/only.txt': 'x' })
+      expect(holdsNoFile(root)).toBe(false)
+    } finally {
+      removeUpload(root)
+    }
+  })
+
+  test('isGitCheckout separates this repository from a bare temp directory', () => {
+    const root = scratch()
+    try {
+      expect(isGitCheckout(ROOT)).toBe(true)
+      expect(isGitCheckout(root)).toBe(false)
+    } finally {
+      removeUpload(root)
+    }
+  })
+
+  /*
+   * THE SHAPE THAT KILLED THE PREVIEW BUILD OF ffded236, and the reason this
+   * predicate is not `existsSync('.git')` any more.
+   *
+   * .vercelignore names `.git`. Vercel strips the FILES a rule matches and leaves
+   * the DIRECTORY, which is the same mechanism the whole of this module models,
+   * applied to `.git` itself. So the build host carries a `.git` that exists and
+   * is empty: existsSync said "this is a checkout", git said "fatal: not a git
+   * repository", and the guard that believed the first one called `git ls-files`
+   * and threw. The old test was never run on the one host it was written for.
+   */
+  test('an empty .git directory is NOT a checkout, which is exactly the build host', () => {
+    const root = scratch()
+    try {
+      mkdirSync(join(root, '.git', 'hooks'), { recursive: true })
+      mkdirSync(join(root, '.git', 'refs', 'heads'), { recursive: true })
+      expect(existsSync(join(root, '.git'))).toBe(true)
+      expect(isGitCheckout(root)).toBe(false)
+    } finally {
+      removeUpload(root)
+    }
+  })
+
+  test('a .git directory holding HEAD is a checkout', () => {
+    const root = scratch()
+    try {
+      writeTree(root, { '.git/HEAD': 'ref: refs/heads/main\n' })
+      expect(isGitCheckout(root)).toBe(true)
+    } finally {
+      // removeUpload refuses a real checkout, which is the point of it.
+      expect(() => removeUpload(root)).toThrow(/real git checkout/)
+      execFileSync('node', ['-e', 'require("fs").rmSync(process.argv[1],{recursive:true,force:true})', root])
+    }
+  })
+
+  test('a .git FILE is a checkout, because that is what a linked worktree has', () => {
+    const root = scratch()
+    try {
+      writeTree(root, { '.git': 'gitdir: ../../.git/worktrees/example\n' })
+      expect(isGitCheckout(root)).toBe(true)
+    } finally {
+      execFileSync('node', ['-e', 'require("fs").rmSync(process.argv[1],{recursive:true,force:true})', root])
+    }
+  })
+
+  test('the materialised upload carries the empty .git skeleton the build host has', () => {
+    const dest = scratch()
+    try {
+      materialiseVercelUpload({ root: ROOT, dest, linkNodeModules: false })
+      // Present, as on Vercel, and holding no file, as on Vercel. A simulation
+      // without it is a simulation of somewhere else.
+      expect(existsSync(join(dest, '.git'))).toBe(true)
+      expect(holdsNoFile(join(dest, '.git'))).toBe(true)
+      expect(isGitCheckout(dest)).toBe(false)
+    } finally {
+      removeUpload(dest)
+    }
+  })
+
+  test('listTrackedFiles returns committed paths and nothing untracked', () => {
+    const tracked = listTrackedFiles(ROOT)
+    expect(tracked).toContain('.vercelignore')
+    expect(tracked).toContain('docs/PRICING.md')
+    expect(tracked.some((p) => p.startsWith('node_modules/'))).toBe(false)
+  })
+})
+
+describe('the registry the two guards share', () => {
+  test('every REQUIRED read exists in the tree', () => {
+    for (const path of Object.keys(REQUIRED_READS)) {
+      const onDisk = path.endsWith('/') ? path.slice(0, -1) : path
+      expect(existsSync(join(ROOT, onDisk)), path).toBe(true)
+    }
+  })
+
+  test('the report and its evidence folder are required, which is what PART ONE re-included', () => {
+    expect(Object.keys(REQUIRED_READS)).toContain('docs/verification/LAUNCH-READINESS.md')
+    expect(Object.keys(REQUIRED_READS)).toContain('docs/verification/launch-readiness/')
+  })
+
+  /*
+   * THE SECOND LIST IS GONE. It named scripts "reviewed as tolerant of an absent
+   * docs/", each with a written reason, and close-out F1.9.1 is the record of
+   * what that cost: one reason was wrong, nothing executed it, and the guard
+   * built after the third lost deployment watched the fourth go past. This test
+   * fails if anybody adds it back.
+   */
+  test('there is no reviewed-tolerant list any more, because a rationale does not run', async () => {
+    const registry = await import('../../../scripts/guards/lib/vercelignore-registry.mjs')
+    expect(Object.keys(registry)).toEqual(['REQUIRED_READS'])
+  })
+
+  test('the tolerance is DERIVED and EXECUTED instead: every entry point that reads through the ignore file is named', () => {
+    const { rules } = parseVercelIgnore(readFileSync(join(ROOT, '.vercelignore'), 'utf8'))
+    const derived = entriesThatReadThroughTheIgnore(ROOT, excludedTopLevels(rules)).map(
+      (e: { entry: string }) => e.entry,
+    )
+    expect(derived).toContain('scripts/guards/launch-readiness-honest.mjs')
+    expect(derived).toContain('scripts/guards/one-fee-copy.mjs')
+    // Reached only through an import, which is the hole the directory-based scan had.
+    expect(derived).toContain('scripts/check-pricing-lock.mjs')
+  })
+
+  test('every reason is a sentence a reader can act on, not a placeholder', () => {
+    for (const [path, reason] of Object.entries(REQUIRED_READS)) {
+      expect(reason.length, path).toBeGreaterThan(40)
+    }
+  })
+})
+
+describe('the environment the simulation hands each entry point', () => {
+  /*
+   * THE BUILD HOST HAS NO TOKEN, AND THE SIMULATION USED TO HAND IT ONE.
+   *
+   * 11 September 2026, CI on 0fe8c238. The preview of that commit was in ERROR
+   * (a gateway blink, answered in the schema probe), so preview-deployment-state
+   * refused the build, correctly. Then excluded-reads-survive-the-upload ran the
+   * SAME guard inside its materialised upload with the parent's whole
+   * environment, VERCEL_TOKEN, GITHUB_ACTIONS and the pull request payload
+   * included, so the child judged the same real deployment, failed for the same
+   * real reason, and the simulation reported a SECOND fault that blamed
+   * .vercelignore: "Every Vercel build will fail on it while the local gate
+   * stays green. Either re-include what it reads". Nothing about the upload was
+   * wrong. Locally the same simulation passes every time, because the commit at
+   * HEAD has no deployment to judge, which is why the gate could never see it.
+   *
+   * The guard's own header promises a tree "with no docs, no usable git and no
+   * token". These hold the third promise: the child gets the environment the
+   * build host has, and no credential the parent happens to hold.
+   */
+  test('no CI identity and no credential survives into the child', () => {
+    const dest = scratch()
+    try {
+      const env = buildHostEnv(
+        {
+          PATH: 'kept',
+          TEMP: 'kept',
+          CI: 'true',
+          GITHUB_ACTIONS: 'true',
+          GITHUB_SHA: '0fe8c238',
+          GITHUB_EVENT_PATH: '/home/runner/event.json',
+          GITHUB_TOKEN: 'ghs_secret',
+          GH_TOKEN: 'gho_secret',
+          RUNNER_OS: 'Linux',
+          ACTIONS_RUNTIME_TOKEN: 'secret',
+          VERCEL_TOKEN: 'secret',
+        },
+        dest,
+      )
+      const leaked = Object.keys(env).filter((k) => /^(GITHUB_|GH_|RUNNER_|ACTIONS_)/i.test(k) || k.toUpperCase() === 'VERCEL_TOKEN')
+      expect(leaked).toEqual(['GH_CONFIG_DIR'])
+      expect(env.PATH).toBe('kept')
+      expect(env.TEMP).toBe('kept')
+      expect(env.VERCEL).toBe('1')
+      expect(env.VERCEL_ENV).toBe('preview')
+      expect(env.VERCEL_UPLOAD_SIMULATION).toBe('1')
+      expect(Object.values(env)).not.toContain('secret')
+      expect(Object.values(env)).not.toContain('ghs_secret')
+      expect(Object.values(env)).not.toContain('gho_secret')
+    } finally {
+      removeUpload(dest)
+    }
+  })
+
+  test('every place a CLI keeps a login resolves under the upload, and holds nothing', () => {
+    const dest = scratch()
+    try {
+      const env = buildHostEnv(process.env, dest)
+      const home = env.HOME as string
+      expect(home.startsWith(dest)).toBe(true)
+      expect(existsSync(home)).toBe(true)
+      expect(env.USERPROFILE).toBe(home)
+      for (const candidate of vercelCliAuthCandidates(env, home)) {
+        expect(candidate.startsWith(dest), candidate).toBe(true)
+        expect(existsSync(candidate), candidate).toBe(false)
+      }
+      const gh = env.GH_CONFIG_DIR as string
+      expect(gh.startsWith(dest)).toBe(true)
+      expect(existsSync(join(gh, 'hosts.yml'))).toBe(false)
+    } finally {
+      removeUpload(dest)
+    }
+  })
+
+  test('THE CLASS: the resolver that finds a token for the parent finds none for the child', () => {
+    const dest = scratch()
+    try {
+      const child = resolveVercelToken(buildHostEnv(process.env, dest))
+      expect(child.token).toBeNull()
+      expect('reason' in child ? child.reason : 'a token was found').toContain('no VERCEL_TOKEN in the environment and no Vercel CLI login')
+    } finally {
+      removeUpload(dest)
+    }
+  })
+
+  test('the guard spawns every subject with that environment, never with its own', () => {
+    const src = readFileSync(join(ROOT, 'scripts/guards/excluded-reads-survive-the-upload.mjs'), 'utf8')
+    expect(src).toContain('buildHostEnv(process.env, dest)')
+    expect(src).not.toContain('...process.env')
+  })
+})

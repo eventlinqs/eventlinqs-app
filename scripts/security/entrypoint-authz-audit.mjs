@@ -161,6 +161,8 @@ const PUBLIC_BY_DESIGN = {
   'api/home/surprise/GET': 'returns a random published event',
   'api/ai/status/GET': 'reports whether the assistant is configured',
   'api/broadcast/track/POST': 'anonymous view beacon, deduped server-side',
+  'api/ledger/demand/POST':
+    'anonymous demand beacon for the slot ledger. It accepts ONLY the two actions that carry no person (a page view and a sold-out view); every demand action that carries an address is written server side by the code that observed it. The slot is resolved from the database and a draft, private or cancelled event is refused exactly as its page would be, so it cannot be used to learn that an unpublished event exists. Deduped per visitor per slot per day and rate limited.',
   'api/tickets/[code]/qr/GET': 'BEARER auth: (ticket_code, secret) pair is the credential',
   'api/stream/[code]/messages/GET':
     'BEARER auth: the (ticket_code, secret) pair is the credential, verified by resolveStreamAccess together with the ticket status, the tier access mode and the viewer country before the service role reads the room (Scope v5 3.11)',

@@ -104,7 +104,7 @@ export function ChannelPrefs() {
         />
       </label>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label className="block">
           <span className="text-xs font-medium text-ink-600">Quiet from</span>
           <select

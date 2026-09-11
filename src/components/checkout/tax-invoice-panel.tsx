@@ -63,7 +63,7 @@ export function TaxInvoicePanel({ invoice }: { invoice: TaxInvoice }) {
         <p className="text-sm text-ink-400">Order {invoice.orderNumber}</p>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Sold by</p>
           {/* REQUIREMENT 2: the seller's identity. */}
@@ -127,7 +127,11 @@ export function TaxInvoicePanel({ invoice }: { invoice: TaxInvoice }) {
       <div className="mt-4 border-t border-ink-200 pt-4">
         <div className="flex justify-between">
           <span className="text-sm font-semibold text-ink-900">Total paid</span>
-          <span className="text-sm font-bold text-ink-900">
+          {/* data-order-total: the same hook the driven viewport proof reads on
+              checkout (close-out UX6, requirement 3). The confirmation is where
+              the buyer checks what they were charged, so the figure has to sit
+              inside the viewport box at 390 there too. */}
+          <span data-order-total className="text-sm font-bold text-ink-900">
             {money(invoice.totalCents, invoice.currency)}
           </span>
         </div>

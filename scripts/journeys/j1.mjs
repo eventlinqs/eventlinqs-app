@@ -214,7 +214,7 @@ try {
     // Free. Continue does not advance without it.
     if (await page.$('button:has-text("Add Ticket Tier")')) {
       await fill('#tier-name-0, input[placeholder^="e.g. General Admission"]', 'General admission')
-      const typeSel = await page.$('select#type-21, select')
+      const typeSel = await page.$('#tier-type-0, select#type-21, select')
       if (typeSel) {
         const hasFree = await page.evaluate(
           (s) => [...s.options].some((o) => o.value === 'free'),

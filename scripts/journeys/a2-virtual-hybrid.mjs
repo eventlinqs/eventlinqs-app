@@ -211,7 +211,7 @@ async function createHybridEvent(p) {
     return null
   }
   await fillIf(p, '#tier-name-0', 'In the room')
-  const t0 = await p.$('#type-21, select#type-21')
+  const t0 = await p.$('#tier-type-0, #type-21, select#type-21')
   if (t0) await t0.selectOption('free').catch(() => {})
   await fillIf(p, '#tier-capacity-0', '80')
   const admits0 = p.locator('#tier-admits-0')

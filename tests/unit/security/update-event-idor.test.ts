@@ -76,7 +76,31 @@ const adminClient = {
   from: (table: string) => {
     if (table === 'organisations') return thenable({ data: h.owned, error: null }, h.adminWrite)
     if (table === 'organisation_members') return thenable({ data: h.membership, error: null }, h.adminWrite)
+    /*
+     * A LIST READ ANSWERS WITH A LIST. `.select().eq()` with no `.single()`
+     * returns an array from Postgres, and every other branch here answers with
+     * one object because every other read in this file ends in `.maybeSingle()`.
+     * The ticket types are read as a list on either side of the save so the
+     * slot ledger can record what actually moved, and answering that read with
+     * an object made the ledger call throw on `before.map` rather than run.
+     */
+    if (table === 'ticket_tiers') return thenable({ data: [], error: null }, h.adminWrite)
     return thenable({ data: { id: 'x' }, error: null }, h.adminWrite)
+  },
+  /*
+   * THE TICKET TYPES ARE SAVED THROUGH AN RPC NOW, and it is a privileged write
+   * like any other, so it is recorded as one. Added 10 September 2026 with
+   * migration 20260910000001, which replaced `delete every tier then re-insert`
+   * with a reconciliation inside one transaction.
+   *
+   * Counting it through h.adminWrite makes this test STRICTER rather than
+   * looser: a caller who fails the ownership gate and reaches
+   * save_event_ticket_tiers is the same IDOR this file exists to stop, and the
+   * refusal case asserts h.adminWrite was never called at all.
+   */
+  rpc: async (fn: string) => {
+    h.adminWrite(`rpc:${fn}`)
+    return { data: { ok: true, removed: 0, updated: 0, created: 0 }, error: null }
   },
 }
 

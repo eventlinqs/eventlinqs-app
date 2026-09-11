@@ -147,11 +147,19 @@ describe('sender domain resolution', () => {
    * some third variable, would pass the guard and fail here.
    */
   test('every transactional call site reads the single source and names no address', () => {
+    /*
+     * src/lib/waitlist/promote.ts LEFT THIS LIST on 11 September 2026, and the
+     * reason is written here rather than in a commit message: close-out D2 moved
+     * the waiting-list message into the recovery engine so that one freed unit
+     * produces exactly one message, and that engine sends through `sendEmail`,
+     * which resolves the sender through `resolveFrom()` and therefore through
+     * the same one module. The site did not stop reading the single source; it
+     * stopped building its own client. The test below holds that path.
+     */
     const sites = [
       'src/lib/email/order-confirmation.ts',
       'src/app/api/webhooks/stripe/route.ts',
       'src/lib/payouts/email.ts',
-      'src/lib/waitlist/promote.ts',
     ]
     for (const file of sites) {
       const src = readFileSync(resolvePath(process.cwd(), file), 'utf8')
@@ -168,5 +176,31 @@ describe('sender domain resolution', () => {
       expect(literals, `${file} has gone back to a literal sender: ${literals.join(', ')}`)
         .toEqual([])
     }
+  })
+
+  /**
+   * THE SENDER THAT DOES NOT BUILD ITS OWN CLIENT, held the same way.
+   *
+   * The recovery engine (close-out D2) is a transactional sender: it writes to a
+   * real buyer about a real purchase they started. It reaches the one sender
+   * module through `sendEmail`, not directly, so the assertion above cannot see
+   * it. Without this, a call site could quietly move to its own transport and
+   * both checks would stay green.
+   */
+  test('the recovery engine sends through the one transport, which resolves the one sender', () => {
+    const engine = readFileSync(resolvePath(process.cwd(), 'src/lib/fillrate/engine.ts'), 'utf8')
+    expect(engine, 'the recovery engine no longer sends through the shared transport')
+      .toMatch(/from '@\/lib\/email\/send'/)
+    expect(engine, 'the recovery engine imports the transport but never calls it').toMatch(/sendEmail\(/)
+
+    const transport = readFileSync(resolvePath(process.cwd(), 'src/lib/email/send.ts'), 'utf8')
+    expect(transport, 'the shared transport no longer resolves the sender from the one module')
+      .toMatch(/resolveFrom\(\)/)
+
+    const literals = [
+      ...[...engine.matchAll(/\b(?:from|replyTo):\s*'([^']*@[^']*)'/g)].map(m => m[1]),
+      ...[...engine.matchAll(/const\s+[A-Z_]*FROM[A-Z_]*\s*=\s*'([^']*@[^']*)'/g)].map(m => m[1]),
+    ]
+    expect(literals, `the recovery engine names a sender of its own: ${literals.join(', ')}`).toEqual([])
   })
 })

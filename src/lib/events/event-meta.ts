@@ -10,6 +10,8 @@
  * field), venue, date and category - so every event detail page ships a real
  * meta description and the SEO category scores 1.0.
  */
+import { stripMarkdown } from '@/lib/prose/markdown-subset'
+
 export function buildEventMetaDescription(input: {
   title: string
   summary?: string | null
@@ -19,8 +21,12 @@ export function buildEventMetaDescription(input: {
   dateLabel?: string | null
   categoryName?: string | null
 }): string {
-  const summarySource =
-    input.summary ?? (input.description ? input.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '')
+  // A search snippet is plain text. HTML tags were already stripped here;
+  // MARKDOWN was not, so an organiser who bolded their name put asterisks in
+  // the Google result (close-out UX1.1). Both go now, at the one formatter.
+  const summarySource = stripMarkdown(
+    input.summary ?? (input.description ? input.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : ''),
+  ).replace(/\s+/g, ' ').trim()
   const cityLine = input.venueCity ? `In ${input.venueCity}. ` : ''
   const primary = (cityLine + summarySource).trim()
   if (primary) return primary.slice(0, 155)

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
+import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Accessibility | EventLinqs',
@@ -106,7 +108,7 @@ export default function AccessibilityPage() {
         If you need a reasonable adjustment to use EventLinqs, including
         alternative formats, additional time, or a different way of completing
         a checkout or organiser onboarding flow, contact us at
-        <a href="mailto:hello@eventlinqs.com"> hello@eventlinqs.com</a> with
+        <a href={contactMailto('hello')}> {contactAddress('hello')}</a> with
         the subject line &quot;Accessibility request&quot;. We aim to respond
         within one business day, Australian Eastern time.
       </p>
@@ -119,7 +121,7 @@ export default function AccessibilityPage() {
       <p>
         If you encounter a barrier on the platform, please report it. We need
         to know about it so we can fix it. Email
-        <a href="mailto:hello@eventlinqs.com"> hello@eventlinqs.com</a> with
+        <a href={contactMailto('hello')}> {contactAddress('hello')}</a> with
         the subject line &quot;Accessibility barrier&quot; and as much of the
         following as you can share:
       </p>
@@ -136,8 +138,8 @@ export default function AccessibilityPage() {
 
       <h2 id="legal">Legal context</h2>
       <p>
-        EventLinqs is operated by an Australian sole trader (ABN 30 837 447
-        587) registered in Geelong, Victoria. We are subject to the
+        EventLinqs is operated by an {PLATFORM_ENTITY.entityType} (ABN{' '}
+        {PLATFORM_ENTITY.abnFormatted}) registered in Geelong, Victoria. We are subject to the
         Disability Discrimination Act 1992 (Cth) in Australia, and we align
         our accessibility practice with the World Wide Web Consortium&apos;s
         Web Content Accessibility Guidelines 2.1 at Level AA.

@@ -1,3 +1,4 @@
+import { contactAddress } from '@/lib/email/sender'
 /**
  * help-content.ts - Help Centre content data.
  *
@@ -287,7 +288,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'I think someone else has accessed my account. What should I do?',
-        a: "Change your password immediately from Account Settings. If you used Google Sign-In, review your Google account security and check for any sign-in activity you do not recognise. Then contact us at hello@eventlinqs.com so we can review your account activity and take any necessary action.",
+        a: `Change your password immediately from Account Settings. If you used Google Sign-In, review your Google account security and check for any sign-in activity you do not recognise. Then contact us at ${contactAddress('hello')} so we can review your account activity and take any necessary action.`,
       },
       {
         q: 'What are my privacy rights under Australian law and the GDPR?',

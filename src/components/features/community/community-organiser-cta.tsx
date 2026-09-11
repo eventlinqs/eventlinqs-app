@@ -79,7 +79,7 @@ export function CommunityOrganiserCtaPanel({
         aria-hidden
       />
       <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-2 lg:gap-14">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-14">
           <div>
             <p className={`mb-3 text-xs font-semibold uppercase tracking-[0.2em] ${c.eyebrow}`}>
               For organisers

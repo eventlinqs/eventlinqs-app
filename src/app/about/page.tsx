@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { HeroMedia } from '@/components/media'
 import { MarketingMedia } from '@/components/media/MarketingMedia'
 import { ABOUT_PHOTOS } from '@/lib/images/about-photos'
+import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
 
 export const metadata: Metadata = {
   title: 'About | EventLinqs',
@@ -114,7 +115,7 @@ export default function AboutPage() {
       </section>
 
       <ContentSection surface="base" width="default">
-        <div className="grid gap-12 md:grid-cols-3 md:gap-16">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-16">
           <div className="md:col-span-2">
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Our mission
@@ -186,7 +187,7 @@ export default function AboutPage() {
             Six rules we keep coming back to.
           </h2>
         </div>
-        <ul className="mt-12 grid gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-12 grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
           {VALUES.map(v => (
             <li key={v.title}>
               <div
@@ -205,7 +206,7 @@ export default function AboutPage() {
       </ContentSection>
 
       <ContentSection surface="base" width="default">
-        <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
           <div>
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Founder
@@ -222,8 +223,8 @@ export default function AboutPage() {
                 to put on community events that mattered.
               </p>
               <p>
-                The platform is operated as an Australian sole trader (ABN
-                30 837 447 587) and will convert to a Pty Ltd structure once
+                The platform is operated as an {PLATFORM_ENTITY.entityType} (ABN{' '}
+                {PLATFORM_ENTITY.abnFormatted}) and will convert to a Pty Ltd structure once
                 investor onboarding or revenue justifies it. Every line of
                 code, every brand decision, and every pricing rule sits
                 inside that single accountable entity.
@@ -252,7 +253,7 @@ export default function AboutPage() {
       </ContentSection>
 
       <ContentSection surface="alt" width="wide">
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr] lg:items-end lg:gap-16">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
           <div>
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Get involved

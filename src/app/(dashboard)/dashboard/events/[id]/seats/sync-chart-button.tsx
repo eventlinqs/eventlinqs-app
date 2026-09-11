@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { createPortal } from 'react-dom'
+import { usePortalReady } from '@/lib/hooks/use-portal-ready'
 import { useRouter } from 'next/navigation'
 import { Lock, X } from 'lucide-react'
 import { previewChartSync, syncChartChanges } from './actions'
@@ -22,6 +24,7 @@ function refLabel(ref: DiffSeatRef): string {
 function SampleList({ refs, max = 6 }: { refs: DiffSeatRef[]; max?: number }) {
   if (refs.length === 0) return null
   const shown = refs.slice(0, max)
+
   return (
     <span className="text-ink-400" style={{ fontVariantNumeric: 'tabular-nums' }}>
       {shown.map(refLabel).join(', ')}
@@ -63,6 +66,10 @@ export function SyncChartButton({ eventId }: { eventId: string }) {
     })
   }
 
+  // `document` does not exist while this renders on the server; the portal below
+  // needs it, and this is the one definition of that question.
+  const portalReady = usePortalReady()
+
   const protectedCount = diff ? diff.protectedSeats.length + diff.protectedMissing.length : 0
   const nothingChanges =
     diff && diff.added.length === 0 && diff.moved.length === 0 && diff.removed.length === 0
@@ -81,7 +88,7 @@ export function SyncChartButton({ eventId }: { eventId: string }) {
         <span aria-live="polite" className="text-xs text-ink-600">{notice}</span>
       )}
 
-      {diff && (
+      {diff && portalReady && createPortal(
         <div
           role="dialog"
           aria-modal="true"
@@ -179,7 +186,8 @@ export function SyncChartButton({ eventId }: { eventId: string }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

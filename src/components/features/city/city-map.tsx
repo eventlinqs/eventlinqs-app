@@ -156,7 +156,7 @@ export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
       <div className="rounded-2xl border border-ink-200 bg-white p-6">
         <p className="font-display text-sm font-bold text-ink-900">Events on the map</p>
         <p className="mt-1 text-xs text-ink-600">Map preview unavailable. Browse the events below.</p>
-        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+        <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {pins.slice(0, 6).map(p => (
             <li key={p.id}>
               <Link href={`/events/${p.slug}`} className="flex items-center justify-between gap-3 rounded-lg border border-ink-100 px-3 py-2 text-sm text-ink-800 transition-colors hover:border-gold-400">

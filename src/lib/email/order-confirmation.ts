@@ -11,6 +11,8 @@ import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
 import { formatMoney } from '@/lib/money/format'
 import { formatSeatLabel } from '@/lib/seating/format'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
+import { formatVenueAddress } from '@/lib/venues/format-venue-address'
+import { entityFooterLine } from '@/lib/legal/platform-entity'
 
 // ---------------------------------------------------------------------------
 // Order confirmation email (shared by the paid Stripe webhook and the free /
@@ -59,6 +61,17 @@ type EmailOrder = {
   order_number: string
   total_cents: number
   currency: string
+  /*
+   * WHETHER THIS BUYER HAS AN ACCOUNT AT ALL (close-out UX6.4).
+   *
+   * The footer used to tell every buyer their tickets "are always at
+   * /tickets when you are signed in". Guest checkout creates no account, so
+   * for a guest that sentence names a page that redirects them to a login
+   * they cannot pass, and every buyer arriving from advertising is a guest.
+   * Null means guest, and the guest is pointed at their signed order link,
+   * which carries every ticket and needs no sign in.
+   */
+  user_id?: string | null
 }
 
 type EmailEvent = {
@@ -145,7 +158,7 @@ function formatEventDateShort(event: EmailEvent): string {
 function venueLines(event: EmailEvent): string[] {
   const lines: string[] = []
   if (event.venue_name) lines.push(event.venue_name)
-  const locality = [event.venue_city, event.venue_country].filter(Boolean).join(', ')
+  const locality = formatVenueAddress({ city: event.venue_city, country: event.venue_country }) ?? ''
   if (locality) lines.push(locality)
   return lines
 }
@@ -264,6 +277,31 @@ export async function sendConfirmationEmail(
   } catch (err) {
     console.error('Failed to send confirmation email:', err)
   }
+}
+
+/*
+ * "LOST THIS EMAIL?", ANSWERED DIFFERENTLY FOR A GUEST (close-out UX6.4).
+ *
+ * A buyer with an account is sent to their wallet at /tickets, which is the
+ * right answer for them and only for them. A GUEST has no account and cannot
+ * make one for a purchase already made, so /tickets can only redirect them to a
+ * login. They are given the signed order link instead: it opens with no sign in,
+ * it carries every ticket on the order, and it is the same link the receipt line
+ * below already uses. Exported so tests/unit/email/guest-ticket-recovery.test.ts
+ * can assert both branches without sending mail.
+ */
+export function lostThisEmailHtml(order: EmailOrder, siteUrl: string, orderUrl: string): string {
+  if (order.user_id) {
+    return `Lost this email? Your tickets are always at <a href="${siteUrl}/tickets" style="color:#0A1628;">${canonicalHost()}/tickets</a> when you are signed in, or use a ticket link above.`
+  }
+  return `Lost this email? You bought as a guest, so no account is needed: <a href="${escapeHtml(orderUrl)}" style="color:#0A1628;">open your order</a> to see every ticket, or use a ticket link above.`
+}
+
+export function lostThisEmailText(order: EmailOrder, siteUrl: string, orderUrl: string): string {
+  if (order.user_id) {
+    return `Lost this email? Your tickets are always at ${siteUrl}/tickets when you are signed in, or use a ticket link above.`
+  }
+  return `Lost this email? You bought as a guest, so no account is needed. Open your order to see every ticket: ${orderUrl}`
 }
 
 export function buildConfirmationEmailHtml(
@@ -397,7 +435,7 @@ export function buildConfirmationEmailHtml(
   ${hr}
 
   <p style="margin:0 0 10px;color:#374151;font-size:14px;">Any questions, just reply to this email and a real person will help you.</p>
-  <p style="margin:0;color:#6B7280;font-size:13px;">Lost this email? Your tickets are always at <a href="${siteUrl}/tickets" style="color:#0A1628;">${canonicalHost()}/tickets</a> when you are signed in, or use a ticket link above.</p>
+  <p style="margin:0;color:#6B7280;font-size:13px;">${lostThisEmailHtml(order, siteUrl, orderUrl)}</p>
 
   ${hr}
 
@@ -406,7 +444,7 @@ export function buildConfirmationEmailHtml(
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">The EventLinqs team. ${BRAND_STRAPLINE}</p>
   <p style="margin:0 0 4px;color:#6B7280;font-size:13px;"><strong style="color:#0A1628;">Refunds:</strong> ${escapeHtml(describeRefundPolicy(policyFromEvent(event), event.is_free ?? false))}</p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Your tax invoice or receipt, and the refund controls, are on <a href="${orderUrl}" style="color:#9CA3AF;">your order page</a>. Platform terms: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">${canonicalHost()}/legal/refunds</a></p>
-  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.</p>
+  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">${entityFooterLine()}</p>
   <p style="margin:0;color:#9CA3AF;font-size:12px;">You received this because you bought tickets on EventLinqs.</p>
 
 </div>
@@ -485,9 +523,7 @@ export function buildConfirmationEmailText(
   lines.push(rule)
   lines.push('')
   lines.push('Any questions, just reply to this email and a real person will help you.')
-  lines.push(
-    `Lost this email? Your tickets are always at ${siteUrl}/tickets when you are signed in, or use a ticket link above.`
-  )
+  lines.push(lostThisEmailText(order, siteUrl, orderUrl))
   lines.push('')
   lines.push(rule)
   lines.push('')
@@ -508,7 +544,7 @@ export function buildConfirmationEmailText(
    */
   lines.push(`Your tax invoice or receipt, and the refund controls: ${orderUrl}`)
   lines.push(`Platform terms: ${siteUrl}/legal/refunds`)
-  lines.push('EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.')
+  lines.push(entityFooterLine())
   lines.push('You received this because you bought tickets on EventLinqs.')
 
   return lines.join('\n')

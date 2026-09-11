@@ -38,10 +38,36 @@ jobs:
 
     env:
       NEXT_TELEMETRY_DISABLED: 1
-      # Build-time env. Real secrets live in Vercel - these placeholders
-      # only satisfy `next build`'s client-bundle validation.
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      # THE TEST PROJECT, SO CI JUDGES WHAT VERCEL JUDGES (close-out F1.2).
+      #
+      # These two carried https://example.supabase.co and ci-placeholder-anon-key
+      # until 9 September 2026, and the cost is written in the log of run
+      # 34290357211: community-layer-protected skipped its category half,
+      # check-pricing-lock could not read pricing_rules and reported UNVERIFIED,
+      # schema-ahead-of-code, door-live-published and event-lifecycle-installed
+      # all skipped, and check-public-env reported four critical public variables
+      # missing or malformed. Vercel carries the real project and judges every one
+      # of them, so this job could pass a commit the deploy then refused. It did.
+      #
+      # The values are the TEST project vkapkibzokmfaxqogypq and its ANON key,
+      # which is the key an anonymous browser already holds. Never production,
+      # never the service role key. Both are declared in src/lib/env/manifest.mjs
+      # with githubActions: true, so the env locks fail if either goes missing,
+      # and SUPABASE_ENV_ISOLATION (alwaysBlocking) refuses any build here whose
+      # resolved URL carries the production ref.
+      #
+      # THE OTHER TWO ARE HERE FOR THE SAME REASON (close-out F1.3). Both are
+      # NEXT_PUBLIC values, already compiled into every page of the production
+      # bundle, so a repository secret adds no exposure. They are here because
+      # F1.3 requires this job to BLOCK on anything it would block on in
+      # production, and a job that blocks on "the key is missing" while the key
+      # is missing only from its own workflow file is measuring itself. The
+      # Stripe key is TEST mode; the maps key is never called at build time,
+      # only shape-checked.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CI_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CI_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.CI_STRIPE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.CI_GOOGLE_MAPS_API_KEY }}
       # The CANONICAL host. This was https://eventlinqs.com, which is one of the
       # hosts the canonical 301 redirects, and a placeholder that names the wrong
       # host is how the wrong host gets copied into the next thing.
@@ -275,3 +301,61 @@ jobs:
 
       - name: Test
         run: npm test
+
+  main-red-alert:
+    # UX4.3, IMMEDIATE, OUTAGE ONLY. Main going red used to produce exactly one
+    # thing: GitHub's own "Run failed: CI" email, which is the same shape as the
+    # email a branch gate sends when it is doing its job. Six of those arrived
+    # for one pull request on 5 September and the one that mattered would have
+    # looked identical.
+    #
+    # UX4.5 IS THE OTHER HALF OF THIS JOB, and it is the `push` condition. A
+    # BRANCH gate failing raises nothing here, deliberately: it stays in the run
+    # log and on the pull request, and it appears as one line in the daily state
+    # email. scripts/guards/alert-routing.mjs fails the build if that condition
+    # is ever loosened.
+    name: main is red
+    needs: [verify, types-drift-guard, production-parity, test]
+    if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Alert
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          REF_SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+          VERIFY: ${{ needs.verify.result }}
+          DRIFT: ${{ needs.types-drift-guard.result }}
+          PARITY: ${{ needs.production-parity.result }}
+          SUITE: ${{ needs.test.result }}
+        run: |
+          set -u
+          {
+            echo "CI is RED on main. The next production deployment cannot go out until it is green."
+            echo ""
+            echo "lint / typecheck / build : ${VERIFY}"
+            echo "types-drift guard        : ${DRIFT}"
+            echo "production parity        : ${PARITY}"
+            echo "test (vitest)            : ${SUITE}"
+            echo ""
+            echo "Production is still serving the last deployment that went out, so the site"
+            echo "is up. What is broken is the road between here and the next release."
+          } > main-red.txt
+          node scripts/ops/alert-dispatch.mjs \
+            --class outage \
+            --target "https://www.eventlinqs.com.au" \
+            --subject "CI is RED on main" \
+            --body-file main-red.txt

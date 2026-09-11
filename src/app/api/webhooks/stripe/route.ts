@@ -37,6 +37,8 @@ import { sendPayoutEmail, type PayoutEmailKind } from '@/lib/payouts/email'
 import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
 import { recordDiscountUse } from '@/lib/payments/discount-usage'
+import { recordConfirmedOrder, recordRefundedOrder } from '@/lib/ledger/adapter'
+import { afterResponse } from '@/lib/after-response'
 
 export const dynamic = 'force-dynamic'
 
@@ -320,6 +322,20 @@ async function handlePaymentSucceeded(
   // Each is independently idempotent or fire-and-forget and MUST NOT throw
   // out of the handler: re-running the whole webhook to retry, say, a Redis
   // refresh would resend the confirmation email. Faults are captured.
+
+  /*
+   * THE SALE REACHES THE LEDGER. Close-out D1.
+   *
+   * Here rather than inside confirm_order, because the mapping from event to
+   * slot lives in ONE place (src/lib/ledger/adapter.ts) and putting it in a
+   * database function would put this platform's vocabulary inside a ledger that
+   * has to be pointable at a gym's rows tomorrow.
+   *
+   * Idempotent on the order item, so a Stripe redelivery is not a second sale,
+   * and it never throws: the buyer has paid and holds a valid ticket, and
+   * history about that is worth nothing measured against it.
+   */
+  afterResponse(`the sale rows for order ${order_id}`, () => recordConfirmedOrder(order_id))
 
   /*
    * DISCOUNT USAGE ON THE PAID PATH.
@@ -1422,6 +1438,17 @@ async function postReconcileSideEffects(
     .eq('stripe_refund_id', stripeRefund.id)
     .maybeSingle()
   if (!refund?.order_id) return
+
+  /*
+   * THE REFUND REACHES THE LEDGER. Close-out D1.
+   *
+   * One NEGATIVE row per unit that actually came back, so a sum over the ledger
+   * is the net with no special case in any reader, and a partial refund is
+   * recorded as what it was rather than apportioned across inventory classes it
+   * did not touch. Idempotent per (refund, unit), so a Stripe redelivery cannot
+   * credit the same seat twice, and never fatal: the money has already moved.
+   */
+  afterResponse(`the refund rows for refund ${refund.id}`, () => recordRefundedOrder(refund.id as string))
 
   const { data: order } = await adminClient
     .from('orders')

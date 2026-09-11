@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
+import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Organiser Agreement | EventLinqs',
@@ -61,13 +63,13 @@ export default async function OrganiserAgreementPage() {
       </p>
       <p>
         It is a binding agreement between you (the organiser) and Lawal Adams,
-        trading as EventLinqs, ABN 30 837 447 587, PO Box 141, Newcomb VIC 3219,
-        Australia. By publishing an event you accept it.
+        trading as {PLATFORM_ENTITY.tradingName}, ABN {PLATFORM_ENTITY.abnFormatted},{' '}
+        {PLATFORM_ENTITY.postalAddress}. By publishing an event you accept it.
       </p>
       <p>
         We have written it in plain language on purpose. If anything here is
         unclear, ask us at{' '}
-        <a href="mailto:organisers@eventlinqs.com">organisers@eventlinqs.com</a>{' '}
+        <a href={contactMailto('organisers')}>{contactAddress('organisers')}</a>{' '}
         before you publish.
       </p>
 
@@ -353,7 +355,7 @@ export default async function OrganiserAgreementPage() {
       <ul>
         <li>
           <strong>Tell us immediately</strong> at{' '}
-          <a href="mailto:organisers@eventlinqs.com">organisers@eventlinqs.com</a>,
+          <a href={contactMailto('organisers')}>{contactAddress('organisers')}</a>,
           and in any event within <strong>24 hours</strong> of the decision. Do not
           announce a cancellation to attendees before telling us, so that refund
           messaging is accurate.
@@ -627,16 +629,16 @@ export default async function OrganiserAgreementPage() {
       <h2 id="contact">Contact</h2>
       <p>
         Organiser support:{' '}
-        <a href="mailto:organisers@eventlinqs.com">organisers@eventlinqs.com</a>
+        <a href={contactMailto('organisers')}>{contactAddress('organisers')}</a>
       </p>
       <p>
         Cancellations and urgent event changes:{' '}
-        <a href="mailto:organisers@eventlinqs.com">organisers@eventlinqs.com</a>,
+        <a href={contactMailto('organisers')}>{contactAddress('organisers')}</a>,
         marked urgent.
       </p>
       <p>
         Legal notices:{' '}
-        <a href="mailto:legal@eventlinqs.com">legal@eventlinqs.com</a>, or by post to
+        <a href={contactMailto('legal')}>{contactAddress('legal')}</a>, or by post to
         PO Box 141, Newcomb VIC 3219, Australia.
       </p>
 

@@ -1,0 +1,104 @@
+{
+  "l1Item": 4,
+  "requirement": "The event appears on /events/[slug], on browse, on its city page, and on any community it belongs to.",
+  "producedBy": "scripts/verify/launch-readiness-drive.mjs",
+  "base": "https://www.eventlinqs.com.au",
+  "driven": "2026-09-08T22:16:48.789Z",
+  "eventPath": "/events/afro-fusion-music-showcase-with-mikhaell-friends-a-l1vcpz",
+  "howTheEventWasChosen": "the first /events/<slug> the platform publishes in its own sitemap.xml",
+  "citiesPublished": 20,
+  "communitiesPublished": 21,
+  "listedOn": {
+    "city": [
+      "/city/melbourne"
+    ],
+    "browse": [
+      "/events/browse/melbourne"
+    ],
+    "community": [
+      "/community/african",
+      "/community/caribbean"
+    ]
+  },
+  "renderedInBrowser": {
+    "390": {
+      "eventStatus": 200,
+      "h1": "Afro-Fusion Music Showcase with Mikhaell & Friends at The Quakers",
+      "surfaces": [
+        {
+          "path": "/city/melbourne",
+          "status": 200,
+          "renderedLinks": 2
+        },
+        {
+          "path": "/events/browse/melbourne",
+          "status": 200,
+          "renderedLinks": 2
+        },
+        {
+          "path": "/community/african",
+          "status": 200,
+          "renderedLinks": 1
+        },
+        {
+          "path": "/community/caribbean",
+          "status": 200,
+          "renderedLinks": 1
+        }
+      ]
+    },
+    "768": {
+      "eventStatus": 200,
+      "h1": "Afro-Fusion Music Showcase with Mikhaell & Friends at The Quakers",
+      "surfaces": [
+        {
+          "path": "/city/melbourne",
+          "status": 200,
+          "renderedLinks": 2
+        },
+        {
+          "path": "/events/browse/melbourne",
+          "status": 200,
+          "renderedLinks": 2
+        },
+        {
+          "path": "/community/african",
+          "status": 200,
+          "renderedLinks": 1
+        },
+        {
+          "path": "/community/caribbean",
+          "status": 200,
+          "renderedLinks": 1
+        }
+      ]
+    },
+    "1440": {
+      "eventStatus": 200,
+      "h1": "Afro-Fusion Music Showcase with Mikhaell & Friends at The Quakers",
+      "surfaces": [
+        {
+          "path": "/city/melbourne",
+          "status": 200,
+          "renderedLinks": 2
+        },
+        {
+          "path": "/events/browse/melbourne",
+          "status": 200,
+          "renderedLinks": 2
+        },
+        {
+          "path": "/community/african",
+          "status": 200,
+          "renderedLinks": 1
+        },
+        {
+          "path": "/community/caribbean",
+          "status": 200,
+          "renderedLinks": 1
+        }
+      ]
+    }
+  },
+  "verdict": "PASS"
+}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { recordAbandonedCheckouts } from '@/lib/ledger/adapter'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +40,26 @@ export async function GET(request: NextRequest) {
 
     const released = (releasedCount as number) ?? 0
     console.log(`[cron/reservation-expire] released ${released} stale reservations`)
+
+    /*
+     * THE ABANDONED CHECKOUTS, INTO THE LEDGER. Close-out D1.
+     *
+     * Abandonment is the ABSENCE of something: a person entered their address
+     * and then nothing happened, and nothing happening fires no code. This is
+     * the first moment the platform can say so, so it is the only honest place
+     * to record it. Idempotent per reservation and never fatal to the sweep:
+     * the inventory this cron releases is the thing that must not be held up.
+     */
+    try {
+      const abandoned = await recordAbandonedCheckouts()
+      if (abandoned.written > 0) {
+        console.log(
+          `[cron/reservation-expire] recorded ${abandoned.written} abandoned checkout(s) of ${abandoned.considered} considered`,
+        )
+      }
+    } catch (ledgerErr) {
+      console.error('[cron/reservation-expire] abandoned-checkout ledger sweep failed (non-fatal):', ledgerErr)
+    }
 
     // Reserved seating: seats held by expired or cancelled reservations go
     // back to 'available' (sold seats untouched). Runs after the tier sweeper

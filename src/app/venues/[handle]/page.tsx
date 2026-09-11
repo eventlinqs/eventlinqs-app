@@ -21,6 +21,7 @@ import { VenueMobileStickyBar } from '@/components/features/venues/venue-mobile-
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 
 export const revalidate = 300
 
@@ -162,7 +163,15 @@ export default async function VenueProfilePage({ params }: Props) {
   // Similar venues - same city, similar capacity.
   const similar = await fetchSimilarVenues(handle, venue.city, venue.capacity)
 
-  const fullAddress = [venue.address, venue.city, venue.state, venue.country].filter(Boolean).join(', ') || null
+  // UX1.2: the venue name is already the page heading, so this is the
+  // address-only form, composed by the one formatter.
+  const fullAddress = formatVenueAddress({
+    name: venue.name,
+    address: venue.address,
+    city: venue.city,
+    state: venue.state,
+    country: venue.country,
+  })
 
   const directionsUrl = (() => {
     if (typeof venue.latitude === 'number' && typeof venue.longitude === 'number') {

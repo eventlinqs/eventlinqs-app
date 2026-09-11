@@ -25,7 +25,7 @@ export default async function MyWaitlistsPage() {
 
       {waitlists.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-14 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-600">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-800">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
             </svg>

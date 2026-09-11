@@ -86,3 +86,85 @@ export function createClusterBubble(count: number): HTMLElement {
   el.textContent = String(count)
   return el
 }
+
+/**
+ * The brand navy, for the venue label plate. Matches --color-navy-950 in
+ * globals.css. A JS map config cannot read a CSS variable, which is why the
+ * gold above is pinned here too rather than looked up.
+ */
+const BRAND_NAVY = '#0A1628'
+
+/**
+ * THE VENUE PIN: a labelled marker, not a bare dot (close-out UX2.2).
+ *
+ * WHY. On the first real organiser event the venue rendered as an unlabelled
+ * 20px gold dot whose only label was a `title` attribute, which is a hover
+ * tooltip and therefore does not exist on a phone. Every surrounding commercial
+ * POI on the basemap carried a labelled marker with an icon, so the one point on
+ * the map that the page is actually about was the least legible thing on it.
+ *
+ * The plate carries the venue NAME as real text, in the brand navy with the gold
+ * dot beside it, so it reads at a glance and reads on touch. Use this for the
+ * single venue on an event or venue page; the multi-point city and events maps
+ * keep the plain dot, because forty labelled plates is a worse map, not a better
+ * one.
+ *
+ * COLLISION. Google publishes the mechanism for winning against basemap labels
+ * (Maps JavaScript API, CollisionBehavior,
+ * https://developers.google.com/maps/documentation/javascript/reference/marker,
+ * fetched 2026-09-09):
+ *
+ *   REQUIRED_AND_HIDES_OPTIONAL - "Always display the marker regardless of
+ *   collision, and hide any OPTIONAL_AND_HIDES_LOWER_PRIORITY markers or labels
+ *   that would overlap with the marker."
+ *
+ * The basemap's own POI labels are that optional class, so the caller sets that
+ * value alongside this content. It is published behaviour, not an inference.
+ */
+export function createVenuePin(options: { name?: string | null } = {}): HTMLElement {
+  const name = options.name?.trim()
+  if (!name) return createBrandPin()
+
+  const wrap = document.createElement('div')
+  wrap.style.display = 'flex'
+  wrap.style.alignItems = 'center'
+  wrap.style.gap = '8px'
+  wrap.style.padding = '7px 12px 7px 9px'
+  wrap.style.borderRadius = '9999px'
+  // Solid, never translucent: CLAUDE.md bans glassmorphism, and a label over
+  // satellite imagery has to stay readable regardless of what is beneath it.
+  wrap.style.background = BRAND_NAVY
+  wrap.style.border = `2px solid ${BRAND_GOLD}`
+  wrap.style.boxShadow = '0 6px 16px rgba(10, 22, 40, 0.35)'
+  wrap.style.boxSizing = 'border-box'
+  wrap.style.maxWidth = '260px'
+  wrap.style.cursor = 'default'
+  wrap.title = name
+
+  const dot = document.createElement('span')
+  dot.style.flex = '0 0 auto'
+  dot.style.width = '10px'
+  dot.style.height = '10px'
+  dot.style.borderRadius = '9999px'
+  dot.style.background = BRAND_GOLD
+  wrap.appendChild(dot)
+
+  const text = document.createElement('span')
+  text.textContent = name
+  text.style.color = '#FFFFFF'
+  text.style.fontSize = '13px'
+  text.style.fontWeight = '600'
+  text.style.lineHeight = '1.2'
+  text.style.whiteSpace = 'nowrap'
+  text.style.overflow = 'hidden'
+  text.style.textOverflow = 'ellipsis'
+  // The overlay pane is outside our stylesheet, so the stack is named here.
+  text.style.fontFamily = 'Manrope, Arial, sans-serif'
+  wrap.appendChild(text)
+
+  // An advanced marker anchors its content by the BOTTOM CENTRE. The plate is
+  // centred ON the coordinate rather than sitting above it, so the dot inside
+  // it marks the point, exactly as the bare pin does.
+  wrap.style.transform = 'translateY(50%)'
+  return wrap
+}

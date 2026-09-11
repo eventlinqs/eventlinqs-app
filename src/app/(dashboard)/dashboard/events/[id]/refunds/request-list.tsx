@@ -43,7 +43,7 @@ const STATUS_TONE: Record<string, string> = {
   refunded: 'bg-emerald-600/10 text-emerald-800',
   declined: 'bg-ink-100 text-ink-600',
   failed: 'bg-warning/15 text-warning',
-  cancelled: 'bg-ink-100 text-ink-400',
+  cancelled: 'bg-ink-100 text-ink-600',
 }
 
 const money = (c: number | null, cur: string | null) =>

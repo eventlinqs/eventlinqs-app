@@ -36,7 +36,7 @@ function getBadge(inventory: InventoryData, createdAt: string): BadgeVariant {
 const BADGE_CONFIG = {
   sold_out: {
     label: 'Sold Out',
-    className: 'bg-ink-100 text-ink-400',
+    className: 'bg-ink-100 text-ink-600',
     dot: 'bg-ink-400',
   },
   only_x_left: {
@@ -51,7 +51,12 @@ const BADGE_CONFIG = {
   },
   selling_fast: {
     label: 'Selling Fast',
-    className: 'bg-coral-100 text-coral-600',
+    // coral-700, not coral-600: on the coral-100 tint, coral-600 measures
+    // 3.42:1 against a 4.5:1 floor, so this badge was a live WCAG AA failure
+    // on the buying path for every event 50% sold or more (close-out UX1).
+    // The dot stays coral-500: it is decorative and repeats the label beside
+    // it, so it carries no meaning of its own.
+    className: 'bg-coral-100 text-coral-700',
     dot: 'bg-coral-500',
   },
   just_listed: {

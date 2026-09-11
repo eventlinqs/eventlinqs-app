@@ -31,7 +31,21 @@ import { Home, LayoutGrid, Search, Heart, User } from 'lucide-react'
  * stickies sit at bottom-16 z-50 and assume this bar fills bottom-0.
  */
 
-const HIDDEN_PREFIXES = [
+/**
+ * The prefixes this bar does not appear on. EXPORTED, because the root layout
+ * has to reserve the bar's height and until 11 September 2026 it reserved that
+ * height unconditionally, on the wrapper around everything, while this
+ * component returned null on all ten of these prefixes.
+ *
+ * The result, measured on /admin/enrol-2fa at 390: the console's dark shell
+ * ended at 1217 and the document was 1281 tall, leaving 64px of pale canvas
+ * across the bottom of every admin page on a phone. None of these ten prefixes
+ * renders SiteFooter, which is what paints that strip everywhere else.
+ *
+ * So the list is the single source and `MainContentFrame` reads the same one.
+ * Two copies of this decision is exactly how they would drift apart again.
+ */
+export const BOTTOM_NAV_HIDDEN_PREFIXES = [
   '/checkout',
   '/dashboard',
   '/admin',
@@ -42,7 +56,12 @@ const HIDDEN_PREFIXES = [
   '/squad',
   '/orders',
   '/verify-email-sent',
-]
+] as const
+
+/** Is the bottom bar absent on this path? The one answer, asked twice. */
+export function bottomNavHiddenOn(pathname: string): boolean {
+  return BOTTOM_NAV_HIDDEN_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))
+}
 
 // Batch 11.0 fix: `/search` and `/saved` previously 404'd (no routes
 // shipped at those paths). Search now routes to `/events?focus=1` (the
@@ -80,8 +99,7 @@ export function MobileBottomNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [lastY])
 
-  const isHidden = HIDDEN_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))
-  if (isHidden) return null
+  if (bottomNavHiddenOn(pathname)) return null
 
   return (
     <nav

@@ -42,6 +42,25 @@ export const DRAFT_CONDITION = 'github.event.pull_request.draft == false'
 export const READY_EVENT = 'ready_for_review'
 const WORKFLOWS = '.github/workflows'
 
+/**
+ * A condition that cannot run on a pull request AT ALL is stronger than the
+ * draft condition, and demanding the draft clause on top of it would force a
+ * job to carry a test for an event it has already excluded.
+ *
+ * Added 10 September 2026 for close-out UX4.3's `main-red-alert` job, which
+ * runs only on a push to main. Reading `github.event_name == 'push'` as
+ * satisfying the rule is not a loosening: `push` and `pull_request` are
+ * different events, so a job requiring one can never fire on the other, draft
+ * or ready. The string is matched exactly, both quote styles, so nothing
+ * broader than that equality sneaks through.
+ */
+export const PULL_REQUEST_IMPOSSIBLE = ["github.event_name == 'push'", 'github.event_name == "push"']
+
+/** Does this job's condition already make a pull-request run impossible? */
+export function cannotRunOnAPullRequest(condition) {
+  return PULL_REQUEST_IMPOSSIBLE.some((needle) => condition.includes(needle))
+}
+
 const indentOf = (line) => line.length - line.trimStart().length
 const isBlank = (line) => line.trim() === '' || line.trim().startsWith('#')
 
@@ -165,9 +184,9 @@ export function analyseWorkflow(text) {
     }
     if (jobs.length === 0) problems.push('no job could be read under jobs:, so nothing here is known to skip a draft')
     for (const job of jobs) {
-      if (!job.condition.includes(DRAFT_CONDITION)) {
-        problems.push(`job "${job.name}" would run on a draft pull request: its if: does not carry  ${DRAFT_CONDITION}`)
-      }
+      if (job.condition.includes(DRAFT_CONDITION)) continue
+      if (cannotRunOnAPullRequest(job.condition)) continue
+      problems.push(`job "${job.name}" would run on a draft pull request: its if: does not carry  ${DRAFT_CONDITION}`)
     }
   }
   return { pullRequest: trigger.present, types: trigger.types, jobs, problems }

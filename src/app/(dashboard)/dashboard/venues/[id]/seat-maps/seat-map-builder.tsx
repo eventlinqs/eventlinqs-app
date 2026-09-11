@@ -1147,7 +1147,7 @@ export function SeatMapBuilder({
         </span>
       </div>
 
-      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* ── The sheet ── */}
         <div className="relative self-start">
           <SeatCanvas

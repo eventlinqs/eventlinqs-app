@@ -183,7 +183,7 @@ export default function HelpPage() {
 
       {/* Ask the assistant */}
       <ContentSection surface="alt" width="wide">
-        <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[1fr_1.2fr]">
+        <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
           <div>
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
               Ask EventLinqs

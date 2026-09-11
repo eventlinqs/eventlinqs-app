@@ -18,6 +18,7 @@ import { getRefundPanelState } from '@/lib/refunds/panel-state'
 import { verifyOrderAccessToken } from '@/lib/orders/order-access'
 import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
 import { describeRefundPolicy, policyFromEvent } from '@/lib/refunds/policy'
+import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 
 export const runtime = 'nodejs'
 
@@ -149,7 +150,11 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
     timeZoneName: 'short',
   })
 
-  const location = [event.venue_name, event.venue_city, event.venue_country].filter(Boolean).join(', ')
+  const location = formatVenueWithAddress({
+    name: event.venue_name,
+    city: event.venue_city,
+    country: event.venue_country,
+  }) ?? ''
 
   const _ticketItems = fullOrder.order_items.filter(i => i.item_type === 'ticket')
 

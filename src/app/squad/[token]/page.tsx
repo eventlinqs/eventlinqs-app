@@ -133,7 +133,7 @@ export default async function SquadPage({ params }: Props) {
                   Expired
                 </span>
               ) : (
-                <span className="inline-flex items-center rounded-full bg-gold-100 px-3 py-1 text-xs font-semibold text-gold-600">
+                <span className="inline-flex items-center rounded-full bg-gold-100 px-3 py-1 text-xs font-semibold text-gold-800">
                   Forming
                 </span>
               )}
@@ -175,8 +175,8 @@ export default async function SquadPage({ params }: Props) {
                       isPaid
                         ? 'bg-emerald-500 border-emerald-500 text-white'
                         : isInvited
-                        ? 'bg-gold-100 border-gold-400 text-gold-600'
-                        : 'bg-ink-100 border-dashed border-ink-200 text-ink-400'
+                        ? 'bg-gold-100 border-gold-400 text-gold-800'
+                        : 'bg-ink-100 border-dashed border-ink-200 text-ink-600'
                     }`}
                     aria-label={
                       isPaid

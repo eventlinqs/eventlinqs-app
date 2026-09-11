@@ -9,6 +9,8 @@ import { getGuestSessionId } from '@/lib/auth/guest-session'
 import { CheckoutTrustSignals } from '@/components/features/checkout/CheckoutTrustSignals'
 import { Button } from '@/components/ui/Button'
 import type { FeePassType, TicketTier, EventAddon } from '@/types/database'
+import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
+import { contactAddress } from '@/lib/email/sender'
 
 type Props = {
   params: Promise<{ reservation_id: string }>
@@ -277,7 +279,11 @@ export default async function CheckoutPage({ params }: Props) {
     timeZoneName: 'short',
   })
 
-  const venue = [event.venue_name, event.venue_city, event.venue_country].filter(Boolean).join(', ') || null
+  const venue = formatVenueWithAddress({
+    name: event.venue_name,
+    city: event.venue_city,
+    country: event.venue_country,
+  })
 
   // [FIX-CHECKOUT 2026-05-28] If fee calculation failed, render a clean
   // handled state instead of asserting initialFees! and crashing through
@@ -299,7 +305,7 @@ export default async function CheckoutPage({ params }: Props) {
             <Button href={`/checkout/${reservation_id}`}>Try again</Button>
             <Button href="/events" variant="secondary">Back to events</Button>
             <Button
-              href={`mailto:hello@eventlinqs.com?subject=Checkout%20error%20${encodeURIComponent(reservation_id)}`}
+              href={`mailto:${contactAddress('hello')}?subject=Checkout%20error%20${encodeURIComponent(reservation_id)}`}
               variant="secondary"
             >
               Email support

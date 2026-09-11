@@ -29,6 +29,7 @@
  *   fixture                 CI > test (pretest)                the seeded fixture npm test builds
  *   suite                   CI > test > Test                   vitest, through the test-count canary
  *   build                   CI > verify > Build                npm run build
+ *   checkout-viewport       local only: the buyer's surfaces at 390, 768 and 1440 (UX6)
  *   lighthouse              Lighthouse CI > Lighthouse mobile gate, on THIS build served locally
  *
  * THE LIGHTHOUSE STEP IS THE SAME GATE, NOT A LOOKALIKE. It starts the
@@ -99,6 +100,7 @@ const TMP = join(ROOT, '.tmp')
 const GATE_URLS = join(TMP, 'gate-urls.txt')
 const SERVER_LOG = join(TMP, 'gate-server.log')
 const INDEXING_LOG = join(TMP, 'gate-indexing-server.log')
+const CHECKOUT_LOG = join(TMP, 'gate-checkout-server.log')
 const LHCI_DIR = join(ROOT, '.lighthouseci')
 const ZERO_SHA = /^0{40}$/
 
@@ -484,6 +486,135 @@ function collectLikeLhci(urls, env) {
 }
 
 /**
+ * ONE PLACE THAT DECIDES WHAT A SERVED-BUILD GATE STEP NEEDS.
+ *
+ * WHY IT EXISTS, 10 September 2026, found by the gate failing on itself. Three
+ * steps served the production build and each spawned `next start` itself, in
+ * three near-identical blocks. Two of them handed the server no Redis. The
+ * Lighthouse one did, and said why in its own comment:
+ *
+ *     "The rate limiter on the money path is fail-closed under
+ *      NODE_ENV=production, so the app is pointed at the in-memory Upstash stub
+ *      the drives use, never at a shared instance."
+ *
+ * That is exactly right, and it was on the step that never buys anything. The
+ * step that DOES buy a ticket, the UX6 checkout drive, had no stub, so under
+ * `next start` every reservation and every checkout submit was refused by
+ * `checkout-reserve` (`failClosed: true`) before it reached a line of product
+ * code. The drive then reported six faults across three widths that read as
+ * product defects and were not one: `.tmp/gate-checkout-server.log` carried
+ * `[redis] UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN not set` fifty
+ * times over.
+ *
+ * A gate that fails for its own reasons is worse than no gate, because somebody
+ * spends a day on the product it accused. So the decision lives here once,
+ * every served-build step goes through it, and
+ * `scripts/guards/gate-servers-carry-a-limiter.mjs` fails the build if a fourth
+ * one is ever born outside it.
+ *
+ * `mail` chooses the transport, and it is an option rather than a constant
+ * because two kinds of step need opposite things. Every journey step needs
+ * `console`, which prints the message so the harness can read a confirmation
+ * link out of the log. The UX3.2 escalation drive needs the opposite: it proves
+ * what happens when email FAILS three times and the second channel carries the
+ * alert instead, and a transport that always succeeds can never show that. The
+ * limiter is not part of this choice and is handed over either way.
+ *
+ * Returns `{ base, stop }` on success, or `{ error }` with the log already
+ * tailed to stderr.
+ */
+export async function startGateServer(env, logPath, { also = [], mail = 'console' } = {}) {
+  mkdirSync(TMP, { recursive: true })
+  const stubPort = await freePort()
+  const appPort = await freePort()
+  const base = `http://127.0.0.1:${appPort}`
+  const fd = openSync(logPath, 'w')
+  // EMAIL_TRANSPORT=console refuses a production project, and the Upstash stub
+  // is in-memory and local only: never a shared instance.
+  const stub = spawn(NODE, ['scripts/verify/upstash-local-stub.mjs'], {
+    cwd: ROOT,
+    env: { ...env, PORT: String(stubPort) },
+    stdio: ['ignore', fd, fd],
+  })
+  // Anything else this step needs beside the server, on the same log, so one
+  // file carries the whole picture when a step goes red.
+  const extras = also.map((args) => spawn(NODE, args, { cwd: ROOT, env, stdio: ['ignore', fd, fd] }))
+  const server = spawn(NODE, ['node_modules/next/dist/bin/next', 'start', '--port', String(appPort)], {
+    cwd: ROOT,
+    env: {
+      ...env,
+      PORT: String(appPort),
+      // 'console' prints what would have been sent, which is how the journey
+      // harness reads a confirmation link. 'real' leaves EMAIL_TRANSPORT
+      // unset so the REAL transport runs, which on a machine with no
+      // RESEND_API_KEY throws - and that is the only way a step can drive what
+      // the platform does when email FAILS (close-out UX3.2, the second
+      // channel). A step that needs a confirmation link must never ask for it.
+      ...(mail === 'console' ? { EMAIL_TRANSPORT: 'console' } : { EMAIL_TRANSPORT: '' }),
+      UPSTASH_REDIS_REST_URL: `http://127.0.0.1:${stubPort}`,
+      UPSTASH_REDIS_REST_TOKEN: 'local',
+    },
+    stdio: ['ignore', fd, fd],
+  })
+  const stop = () => {
+    killTree(server)
+    for (const extra of extras) killTree(extra)
+    killTree(stub)
+    closeSync(fd)
+  }
+  /*
+   * THE STUB IS PROVEN TO ANSWER, NOT ASSUMED TO BE THERE.
+   *
+   * Handing the server a URL and never checking it is the same failure one
+   * layer along: an unreachable limiter backend is indistinguishable from no
+   * backend, so the money path fails closed exactly as it did with no stub at
+   * all, and the drive blames the product again. It is checked here, once, for
+   * every step, and a failure names the stub rather than the checkout.
+   */
+  const pong = await pingUpstashStub(stubPort)
+  if (pong) {
+    console.error(`[gate] the Upstash stub is not answering on 127.0.0.1:${stubPort}: ${pong}`)
+    console.error('[gate] Without it the money-path limiter (checkout-reserve, failClosed) refuses every')
+    console.error('[gate] reservation under NODE_ENV=production, and a drive would report that as a product defect.')
+    console.error(tailOf(logPath))
+    stop()
+    return { error: pong }
+  }
+
+  const notUp = await waitForServer(base, server, 120_000)
+  if (notUp) {
+    console.error(`[gate] ${notUp}. Server log tail (${logPath}):`)
+    console.error(tailOf(logPath))
+    stop()
+    return { error: notUp }
+  }
+  return { base, stop, extras, logPath }
+}
+
+/** PING the in-memory stub until it says PONG. Returns null when it did. */
+async function pingUpstashStub(port, timeoutMs = 20_000) {
+  const deadline = Date.now() + timeoutMs
+  let last = 'never answered'
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(['PING']),
+        signal: AbortSignal.timeout(5_000),
+      })
+      const body = await res.json()
+      if (body?.result === 'PONG') return null
+      last = `answered ${res.status} with ${JSON.stringify(body).slice(0, 80)}`
+    } catch (error) {
+      last = error.message
+    }
+    await sleep(500)
+  }
+  return `${last} within ${timeoutMs / 1000}s`
+}
+
+/**
  * The Lighthouse mobile gate, on this tree's production build, served locally.
  * Every script here is the one the workflow runs; the only substitution is the
  * host.
@@ -507,22 +638,10 @@ async function runIndexingDrive(env) {
     console.error('[gate] no production build under .next (no BUILD_ID). The build step produces it; run the whole gate.')
     return 1
   }
-  mkdirSync(TMP, { recursive: true })
-  const appPort = await freePort()
-  const base = `http://127.0.0.1:${appPort}`
-  const fd = openSync(INDEXING_LOG, 'w')
-  const server = spawn(NODE, ['node_modules/next/dist/bin/next', 'start', '--port', String(appPort)], {
-    cwd: ROOT,
-    env: { ...env, PORT: String(appPort), EMAIL_TRANSPORT: 'console' },
-    stdio: ['ignore', fd, fd],
-  })
+  const started = await startGateServer(env, INDEXING_LOG)
+  if (started.error) return 1
+  const { base, stop } = started
   try {
-    const notUp = await waitForServer(base, server, 120_000)
-    if (notUp) {
-      console.error(`[gate] ${notUp}. Server log tail (.tmp/gate-indexing-server.log):`)
-      console.error(tailOf(INDEXING_LOG))
-      return 1
-    }
     const drive = exec(NODE, ['scripts/verify/indexing-drive.mjs', base], env)
     if (drive !== 0) return drive
     /*
@@ -545,8 +664,41 @@ async function runIndexingDrive(env) {
      */
     return exec(NODE, ['scripts/verify/internal-reachability.mjs', base], env)
   } finally {
-    killTree(server)
-    closeSync(fd)
+    stop()
+  }
+}
+
+/**
+ * THE BUYER'S SURFACES, AT 390, 768 AND 1440 (close-out UX6).
+ *
+ * The static half of UX6 is two registered guards in the registry above
+ * (grid-track-cannot-blow-out, buyer-total-is-marked), so CI runs it in the
+ * build. Neither can see a laid-out page, and UX6 is a LAYOUT defect: the owner
+ * bought a ticket on a phone and could not see the total he was paying, on a
+ * page whose markup was, and still is, entirely reasonable to read.
+ *
+ * So this serves the production build and WALKS it, twice per width, once on a
+ * free event through to a real issued ticket and once on a paid event as far as
+ * a live Stripe TEST key allows, measuring every stop.
+ *
+ * Its own server, for the reason the indexing step gives: a red step should name
+ * the thing that failed.
+ *
+ * It is a LOCAL step, like the indexing drive, because CI runs against a
+ * placeholder database and cannot buy a ticket.
+ */
+async function runCheckoutViewportDrive(env) {
+  if (!existsSync(join(ROOT, '.next', 'BUILD_ID'))) {
+    console.error('[gate] no production build under .next (no BUILD_ID). The build step produces it; run the whole gate.')
+    return 1
+  }
+  const started = await startGateServer(env, CHECKOUT_LOG)
+  if (started.error) return 1
+  const { base, stop } = started
+  try {
+    return exec(NODE, ['scripts/verify/ux6-checkout-viewport-proof.mjs', base], env)
+  } finally {
+    stop()
   }
 }
 
@@ -584,46 +736,17 @@ async function runLighthouse(env) {
     console.error('[gate] no production build under .next (no BUILD_ID). The build step produces it; run the whole gate.')
     return 1
   }
-  mkdirSync(TMP, { recursive: true })
-  const stubPort = await freePort()
-  const appPort = await freePort()
-  const base = `http://127.0.0.1:${appPort}`
-  const fd = openSync(SERVER_LOG, 'w')
-  // The rate limiter on the money path is fail-closed under NODE_ENV=production,
-  // so the app is pointed at the in-memory Upstash stub the drives use, never at
-  // a shared instance. EMAIL_TRANSPORT=console refuses a production project.
-  const stub = spawn(NODE, ['scripts/verify/upstash-local-stub.mjs'], {
-    cwd: ROOT,
-    env: { ...env, PORT: String(stubPort) },
-    stdio: ['ignore', fd, fd],
+  // The Sentry sink is the endpoint the parity DSN names. Without it the SDK's
+  // session envelope fails to connect, Chrome logs it, and Lighthouse's
+  // errors-in-console audit takes best practices from 1.00 to 0.93 on every
+  // gated URL. See PARITY_SENTRY_DSN and scripts/verify/sentry-parity-sink.mjs.
+  const started = await startGateServer(env, SERVER_LOG, {
+    also: [['scripts/verify/sentry-parity-sink.mjs']],
   })
-  // The endpoint the parity DSN names. Without it the SDK's session envelope
-  // fails to connect, Chrome logs it, and Lighthouse's errors-in-console audit
-  // takes best practices from 1.00 to 0.93 on every gated URL. See
-  // PARITY_SENTRY_DSN and scripts/verify/sentry-parity-sink.mjs.
-  const sentrySink = spawn(NODE, ['scripts/verify/sentry-parity-sink.mjs'], {
-    cwd: ROOT,
-    env,
-    stdio: ['ignore', fd, fd],
-  })
-  const server = spawn(NODE, ['node_modules/next/dist/bin/next', 'start', '--port', String(appPort)], {
-    cwd: ROOT,
-    env: {
-      ...env,
-      PORT: String(appPort),
-      EMAIL_TRANSPORT: 'console',
-      UPSTASH_REDIS_REST_URL: `http://127.0.0.1:${stubPort}`,
-      UPSTASH_REDIS_REST_TOKEN: 'local',
-    },
-    stdio: ['ignore', fd, fd],
-  })
+  if (started.error) return 1
+  const { base, stop, extras } = started
+  const [sentrySink] = extras
   try {
-    const notUp = await waitForServer(base, server, 120_000)
-    if (notUp) {
-      console.error(`[gate] ${notUp}. Server log tail (.tmp/gate-server.log):`)
-      console.error(tailOf(SERVER_LOG))
-      return 1
-    }
     console.log(`[gate] production build answering on ${base} (server log: .tmp/gate-server.log)`)
 
     // The sink is CHECKED, not assumed. If it is not answering, every audited
@@ -683,10 +806,7 @@ async function runLighthouse(env) {
     }
     return asserted
   } finally {
-    killTree(server)
-    killTree(stub)
-    killTree(sentrySink)
-    closeSync(fd)
+    stop()
     rmSync(LHCI_DIR, { recursive: true, force: true })
     rmSync(GATE_URLS, { force: true })
   }
@@ -802,6 +922,14 @@ export const STEPS = [
     mirrors: [],
     env: 'local',
     run: runIndexingDrive,
+  },
+  {
+    id: 'checkout-viewport',
+    ci: 'local only: the driven half of close-out UX6 (the static half is two registered guards, so CI runs them in the build)',
+    title: "the buyer's surfaces measured at 390, 768 and 1440, on this build",
+    mirrors: [],
+    env: 'local',
+    run: runCheckoutViewportDrive,
   },
   {
     id: 'lighthouse',

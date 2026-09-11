@@ -31,13 +31,17 @@ import {
   readMoneyRecordCounts,
   type DeleteEligibility,
 } from '@/lib/events/delete-eligibility'
+import { SalesPacePanel } from '@/components/dashboard/sales-pace-panel'
+import { RecoveryProofPanel } from '@/components/dashboard/recovery-proof-panel'
+import { proofForSourceRef } from '@/lib/fillrate/proof'
+import { paceForSlot } from '@/lib/ledger/pace'
 type Props = {
   params: Promise<{ id: string }>
 }
 
 const STATUS_COPY: Record<EventStatus, { label: string; className: string }> = {
   draft:      { label: 'Draft',      className: 'bg-ink-100 text-ink-600' },
-  scheduled:  { label: 'Scheduled',  className: 'bg-gold-100 text-gold-600' },
+  scheduled:  { label: 'Scheduled',  className: 'bg-gold-100 text-gold-800' },
   published:  { label: 'Live',       className: 'bg-emerald-100 text-emerald-700' },
   paused:     { label: 'Paused',     className: 'bg-amber-100 text-amber-700' },
   postponed:  { label: 'Postponed',  className: 'bg-orange-100 text-orange-700' },
@@ -113,6 +117,19 @@ export default async function EventViewPage({ params }: Props) {
    */
   const access = await resolveEventAccess(id)
   if (!access.allowed) notFound()
+
+  /*
+   * THE SALES HISTORY. Read AFTER the access gate and never before it: the
+   * ledger carries other organisations' rows and the read runs on the service
+   * role, so the caller's authority has to be settled first (close-out D1).
+   */
+  const paceCurve = await paceForSlot(id)
+  /*
+   * WHAT THE RECOVERY ENGINE WON BACK (close-out D2). Read after the same gate
+   * and for the same reason: the engine's send record carries other
+   * organisations' rows and this read runs on the service role.
+   */
+  const recoveryProof = await proofForSourceRef(id)
 
   const { data: org } = await admin
     .from('organisations')
@@ -364,7 +381,7 @@ export default async function EventViewPage({ params }: Props) {
       </nav>
 
       {/* ─── Overview tab body ──────────────────────────────────────────── */}
-      <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+      <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           <div className="rounded-xl border border-ink-100 bg-white p-6">
             <h2 className="text-base font-semibold text-ink-900">About this event</h2>
@@ -372,6 +389,13 @@ export default async function EventViewPage({ params }: Props) {
               {event.summary || event.description || 'No description yet. Edit the event to add one.'}
             </p>
           </div>
+
+          {/* How the sales actually came in, read out of the slot ledger and
+              nowhere else (close-out D1). */}
+          <SalesPacePanel curve={paceCurve} />
+
+          {/* What was won back from the people who did not finish (close-out D2). */}
+          {recoveryProof && <RecoveryProofPanel proof={recoveryProof} />}
 
           <div className="rounded-xl border border-ink-100 bg-white">
             <header className="flex items-center justify-between border-b border-ink-100 px-5 py-4">

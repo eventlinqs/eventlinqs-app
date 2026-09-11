@@ -235,3 +235,88 @@ export async function updateOrganisationTaxDetails(
       : 'Saved. Your buyers receive receipts; turn on GST registration to issue tax invoices.',
   }
 }
+
+/**
+ * The organiser's own profile: name, story, website and contact.
+ *
+ * WHY THIS EXISTS. Until 9 September 2026 `createOrganisation` and
+ * `updateOrganisationTaxDetails` were the ONLY writers on this table reachable
+ * by an organiser, so a business name, a bio, a website or a contact address
+ * was set once at creation and could never be changed. The only edit-looking
+ * link on the organisation screen pointed at /dashboard/organisation/create,
+ * which makes ANOTHER organisation.
+ *
+ * It was found while closing UX1.1, and it is the other half of that defect:
+ * the first real outside organiser's bio rendered as `**MKL Studios**` on
+ * production, and they had no way to correct it even after being told.
+ *
+ * SLUG IS DELIBERATELY NOT EDITABLE HERE. A slug is a public URL that is
+ * shared, indexed and printed onto Launch Kit artefacts; CLAUDE.md is explicit
+ * that changing one is a migration with redirects, never a text edit.
+ */
+const OrganisationProfileSchema = z.object({
+  organisationId: z.string().uuid('That business could not be identified.'),
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100),
+  description: z.string().max(500, 'Keep your story under 500 characters.').optional(),
+  website: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  email: z.string().email('Must be a valid email').optional().or(z.literal('')),
+  phone: z.string().max(30).optional(),
+})
+
+export async function updateOrganisationProfile(
+  _prev: { error?: string; ok?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; ok?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const parsed = OrganisationProfileSchema.safeParse({
+    organisationId: formData.get('organisationId'),
+    name: formData.get('name') ?? '',
+    description: formData.get('description') ?? '',
+    website: formData.get('website') ?? '',
+    email: formData.get('email') ?? '',
+    phone: formData.get('phone') ?? '',
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Those details could not be read.' }
+  }
+
+  // OWNERSHIP FIRST. The organisation id arrives from a form field, so it is an
+  // id the caller chose. Without this gate, editing somebody else's business
+  // name and public story would be one crafted request away.
+  const allowed = await assertCallerMayActForOrganisation(
+    user.id,
+    parsed.data.organisationId,
+    'owner_or_manager',
+  )
+  if (!allowed.ok) return { error: 'You cannot edit that business.' }
+
+  const { data: updated, error } = await createAdminClient()
+    .from('organisations')
+    .update({
+      name: parsed.data.name.trim(),
+      description: parsed.data.description?.trim() || null,
+      website: parsed.data.website?.trim() || null,
+      email: parsed.data.email?.trim() || null,
+      phone: parsed.data.phone?.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', parsed.data.organisationId)
+    .select('slug')
+    .single()
+
+  if (error) {
+    console.error('[organisation] profile update failed:', error)
+    return { error: 'Those details could not be saved. Please try again.' }
+  }
+
+  // The organiser's story is public on their profile and beside every event
+  // they run, so both have to be re-rendered or the fix is invisible until
+  // something else happens to invalidate them.
+  revalidatePath('/dashboard/organisation')
+  if (updated?.slug) revalidatePath(`/organisers/${updated.slug}`)
+
+  return { ok: 'Saved. Your public profile is updated.' }
+}

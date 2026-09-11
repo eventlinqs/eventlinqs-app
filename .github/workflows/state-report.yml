@@ -1,0 +1,141 @@
+name: state report
+
+# THE DAILY STATE EMAIL AND THE STALL ALERT. Close-out UX4.1 and UX4.2.
+#
+# WHY THIS FILE EXISTS. From 00:23 to 09:28 on 9 September 2026 the build was
+# stalled, six runs were killed, nothing was pushed for nine hours, and NOT ONE
+# EMAIL was sent, because nothing failed. Every alerting mechanism this platform
+# had was a FAILURE notification, and a stall produces silence. Silence is
+# indistinguishable from a quiet healthy day unless something also arrives on a
+# quiet healthy day.
+#
+# So there are two jobs and they answer two different questions:
+#
+#   daily  once a day at a fixed time, WHETHER OR NOT anything is wrong. Its
+#          ABSENCE is itself the alert, which only works if it is unconditional.
+#   stall  every hour, and it says something only when nothing has been pushed
+#          for six hours. It alerts once per six-hour band, so a stall that
+#          lasts a day produces four messages rather than twenty four.
+#
+# A SCHEDULE ONLY FIRES ON THE DEFAULT BRANCH. That is GitHub's rule, not a
+# choice made here, and it means neither job runs until this file is on main.
+# Until then `workflow_dispatch` is the way to run either of them.
+#
+# SECRETS, all of which already exist on this repository, so this workflow costs
+# the owner no new credential and no dashboard visit (Law 10):
+#   RESEND_API_KEY   the email channel.
+#   VERCEL_TOKEN     to read the production deployment state.
+#   CRON_SECRET      to ask production for the four platform counts.
+#   GITHUB_TOKEN     supplied by Actions; reads runs, commits and pull requests,
+#                    and is the second alert channel when the email fails.
+
+on:
+  schedule:
+    # 21:10 UTC is 07:10 in Melbourne during AEST and 08:10 during AEDT, so it
+    # lands in the morning either way without the workflow having to know which
+    # half of the year it is. Ten past, not on the hour: GitHub's own scheduling
+    # documentation warns that runs on the hour are the most contended.
+    - cron: '10 21 * * *'
+    # And hourly, for the stall check only.
+    - cron: '25 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Which report to run'
+        type: choice
+        options: [daily, stall]
+        default: daily
+      dry_run:
+        description: 'Compose and print it without sending'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  # The second alert channel. For the daily state it is held back unless the
+  # email fails, because a digest that opens an issue every morning is exactly
+  # the noise this item exists to remove.
+  issues: write
+
+concurrency:
+  group: state-report-${{ github.event.schedule || github.event.inputs.mode }}
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    name: the daily state
+    if: ${{ github.event.schedule == '10 21 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'daily') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Compose and send
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
+          REF_SHA: ${{ github.sha }}
+          DRY: ${{ github.event.inputs.dry_run }}
+        run: |
+          set -u
+          if [ "${DRY:-false}" = "true" ]; then
+            node scripts/ops/state-report.mjs --dry-run --json state.json --html state.html
+          else
+            node scripts/ops/state-report.mjs --json state.json --html state.html
+          fi
+
+      - name: Keep the evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: state-report-${{ github.run_id }}
+          path: |
+            state.json
+            state.html
+          if-no-files-found: ignore
+          retention-days: 14
+
+  stall:
+    name: the stall check
+    if: ${{ github.event.schedule == '25 * * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'stall') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Judge the silence
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
+          REF_SHA: ${{ github.sha }}
+          DRY: ${{ github.event.inputs.dry_run }}
+        run: |
+          set -u
+          # --check-period-hours 1 is the schedule above, told to the judge. It
+          # alerts only when the six-hour band is higher NOW than it was one
+          # check ago, which makes exactly one run per band the one that speaks.
+          # No state is kept anywhere and nothing parses a previous message, so
+          # there is nothing to drift.
+          #
+          # A manual dispatch passes it too, deliberately: a hand run of the
+          # stall check should behave exactly like the scheduled one, or it
+          # proves something the scheduled one does not do.
+          if [ "${DRY:-false}" = "true" ]; then
+            node scripts/ops/state-report.mjs --stall --dry-run --check-period-hours 1
+          else
+            node scripts/ops/state-report.mjs --stall --check-period-hours 1
+          fi

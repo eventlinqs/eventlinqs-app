@@ -5,8 +5,18 @@ import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000'
+/*
+ * TABLET AND LAPTOP ADDED 10 September 2026 (close-out UX6). The header's
+ * desktop and mobile chrome now swap at lg (1024) rather than md (768), because
+ * below 1024 the desktop row laid its account controls out past the right edge
+ * of the screen. A scan that only reads 390 and 1440 never sees the widths where
+ * that swap happens, and the swap is exactly where an aria-hidden or focus-order
+ * mistake would land.
+ */
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
+  { name: 'laptop', width: 1024, height: 800 },
+  { name: 'tablet', width: 768, height: 1024 },
   { name: 'mobile', width: 390, height: 844 },
 ]
 

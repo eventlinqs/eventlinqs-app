@@ -1,6 +1,7 @@
 import { REFUND_ARRIVAL_WINDOW } from '@/lib/refunds/arrival-timeframe'
 import Link from 'next/link'
 import { AlertTriangle, XCircle, CalendarClock, Clock, Archive } from 'lucide-react'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 export type EventBannerState = 'cancelled' | 'postponed' | 'past' | 'archived'
 
@@ -46,8 +47,8 @@ export function EventStateBanner({ state, newDate, originalDate, organiserHandle
               Refunds are processed automatically to the original payment method within{' '}
               {REFUND_ARRIVAL_WINDOW}.
               For questions, contact{' '}
-              <a href="mailto:support@eventlinqs.com" className="underline hover:no-underline">
-                support@eventlinqs.com
+              <a href={contactMailto('support')} className="underline hover:no-underline">
+                {contactAddress('support')}
               </a>.
             </p>
           </div>

@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { analyseWorkflow, DRAFT_CONDITION, READY_EVENT } from '../../../scripts/guards/workflows-skip-drafts.mjs'
+import {
+  analyseWorkflow,
+  cannotRunOnAPullRequest,
+  DRAFT_CONDITION,
+  READY_EVENT,
+} from '../../../scripts/guards/workflows-skip-drafts.mjs'
 
 /**
  * THE DRAFT RULE HAS TWO HALVES AND BOTH DIE QUIETLY.
@@ -95,6 +100,26 @@ describe('analyseWorkflow', () => {
     expect(a.pullRequest).toBe(true)
     expect(a.problems.some((p) => p.includes(READY_EVENT))).toBe(true)
     expect(a.problems.some((p) => p.includes('job "a"'))).toBe(true)
+  })
+
+  test('a job that can only run on a push is not asked for the draft clause', () => {
+    // Close-out UX4.3 added ci.yml's main-red-alert, which fires only on a push
+    // to main. `push` and `pull_request` are different events, so that job can
+    // never see a draft, and demanding the draft test on top of it would be a
+    // test for an event it has already excluded.
+    const a = analyseWorkflow(
+      'on:\n  pull_request:\n    types: [opened, ready_for_review]\n\njobs:\n' +
+        "  a:\n    if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}\n    runs-on: ubuntu-latest\n",
+    )
+    expect(a.problems).toEqual([])
+  })
+
+  test('nothing broader than the exact push equality gets that exemption', () => {
+    expect(cannotRunOnAPullRequest("github.event_name == 'push'")).toBe(true)
+    expect(cannotRunOnAPullRequest('github.event_name == "push"')).toBe(true)
+    expect(cannotRunOnAPullRequest("github.event_name != 'push'")).toBe(false)
+    expect(cannotRunOnAPullRequest("contains(github.event_name, 'push')")).toBe(false)
+    expect(cannotRunOnAPullRequest('always()')).toBe(false)
   })
 
   test('pull_request_target is not mistaken for pull_request', () => {

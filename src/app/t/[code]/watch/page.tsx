@@ -164,7 +164,7 @@ export default async function WatchPage({ params, searchParams }: Props) {
         </div>
       </header>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section aria-label="The stream" className="min-w-0">
           {link.ok && (link.kind === 'youtube' || link.kind === 'vimeo') ? (
             <div className="overflow-hidden rounded-2xl border border-ink-200 bg-[var(--color-navy-950)] shadow-sm">

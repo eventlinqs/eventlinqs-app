@@ -3,6 +3,8 @@ import { FirstNationsFlags } from '@/components/features/home/first-nations-flag
 import { FooterAccordion } from '@/components/layout/footer-accordion'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
+import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -249,7 +251,17 @@ export function SiteFooter() {
 
         {/* Mobile: brand strip + 2-col accordion grid */}
         <div className="md:hidden">
-          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
+          {/*
+           * STACKED BELOW 640, side by side above it (close-out UX6.2, driven
+           * 10 September 2026). Five 44px social targets plus their four 16px
+           * gaps are 284px, and the logo is 113px: side by side inside px-4 that
+           * needs 413px and a 390 viewport offers 358. The row overflowed by
+           * 51px, and because html/body carry `overflow-x: clip` there was no
+           * horizontal scroll, so the last two links were clipped and
+           * unreachable on every mobile page of the platform, checkout included.
+           * Shrinking the targets was not an option: 44px is the floor.
+           */}
+          <div className="flex flex-col items-start gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
             <EventlinqsLogo size="md" variant="inverted" />
             <SocialRow />
           </div>
@@ -316,12 +328,12 @@ export function SiteFooter() {
           </div>
 
           <div className="mt-3 flex flex-col gap-1 text-xs text-white/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
-            <span>ABN 30 837 447 587</span>
+            <span>ABN {PLATFORM_ENTITY.abnFormatted}</span>
             <span aria-hidden className="hidden sm:inline">·</span>
-            <span>Geelong VIC, Australia</span>
+            <span>{PLATFORM_ENTITY.locality.replace(/\.$/, '')}</span>
             <span aria-hidden className="hidden sm:inline">·</span>
-            <a href="mailto:hello@eventlinqs.com" className="inline-flex min-h-11 items-center transition-colors hover:text-white/80">
-              hello@eventlinqs.com
+            <a href={contactMailto('hello')} className="inline-flex min-h-11 items-center transition-colors hover:text-white/80">
+              {contactAddress('hello')}
             </a>
             <span aria-hidden className="hidden sm:inline">·</span>
             <span>© {year} EventLinqs</span>

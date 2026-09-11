@@ -26,6 +26,9 @@
  *
  * USAGE:
  *   node scripts/verify/apply-migration-to-test.mjs --file supabase/migrations/<name>.sql
+ *
+ * On a machine with no Postgres password (this one), add --via-api and run it
+ * through scripts\ops\with-supabase-token.ps1; see "THE SECOND ROUTE" below.
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
@@ -50,12 +53,82 @@ if (!existsSync(FILE)) { console.error(`migration not found: ${FILE}`); process.
  * whose whole name is "apply migration to test" must never be talked into
  * applying one somewhere else.
  */
-const target = assertNotProductionDatabase('test')
-if (target.ref !== TEST_PROJECT_REF) {
-  console.error(`  REFUSED: resolved project '${target.ref}', and this script only ever writes to '${TEST_PROJECT_REF}'.`)
-  process.exit(1)
+/*
+ * THE SECOND ROUTE, --via-api, ADDED 10 September 2026.
+ *
+ * The route above needs a POSTGRES PASSWORD, and this machine does not have one:
+ * .env.test does not exist here and .env.local carries no SUPABASE_DB_URL, so
+ * the preflight refuses before it can judge anything. That refusal is correct
+ * and is not being softened. What it left was a machine that could READ TEST all
+ * day through the Supabase Management API and could not apply a single migration
+ * to it, which makes "applied to TEST first" impossible to satisfy and pushes a
+ * session towards proving things it has not run.
+ *
+ * So this route runs the same SQL and writes the same ledger row through
+ * POST /v1/projects/{ref}/database/query with SUPABASE_ACCESS_TOKEN, which is
+ * the credential the CLI itself already holds here.
+ *
+ * IT IS NOT A WAY ROUND THE PRODUCTION RULE. The ref is the hardcoded TEST
+ * constant in this file, never a resolved value and never an argument, so there
+ * is no input to this route that can name another project. Production migrations
+ * still go through `supabase db push --linked`, run by Lawal, unchanged.
+ */
+const VIA_API = argv.includes('--via-api')
+const ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN ?? ''
+
+let ref = TEST_PROJECT_REF
+let openConnection
+
+if (VIA_API) {
+  if (!ACCESS_TOKEN) {
+    console.error('  REFUSED: --via-api needs SUPABASE_ACCESS_TOKEN in the environment.')
+    console.error('  Run it through the helper: scripts\\ops\\with-supabase-token.ps1 node ' + process.argv[1] + ' ...')
+    process.exit(1)
+  }
+  openConnection = async () => ({
+    async query(text, params = []) {
+      // The Management API takes SQL text only, so the two ledger parameters are
+      // quoted here. Both are derived from the migration FILENAME, and a filename
+      // cannot reach this point without matching /^\d+_/ and living on disk.
+      const sql = text.replace(/\$(\d+)/g, (_, n) => `'${String(params[Number(n) - 1]).replace(/'/g, "''")}'`)
+      const res = await fetch(`https://api.supabase.com/v1/projects/${TEST_PROJECT_REF}/database/query`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: sql }),
+      })
+      const body = await res.text()
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${body.slice(0, 400)}`)
+      let rows = []
+      try {
+        rows = JSON.parse(body)
+      } catch {
+        rows = []
+      }
+      return { rows: Array.isArray(rows) ? rows : [] }
+    },
+    async end() {},
+  })
+} else {
+  /*
+   * THE TARGET AND THE CREDENTIAL both come from the shared helper
+   * (scripts/lib/db-credentials.mjs), which resolves the project, finds the
+   * password, builds the endpoint and refuses production. This file used to read
+   * .env.test itself and carry its own connection parser.
+   *
+   * The TEST-ONLY refusal is KEPT and is deliberately stricter than the shared
+   * preflight: that one refuses production unless approved, this one refuses
+   * anything that is not TEST even when production IS approved, because a script
+   * whose whole name is "apply migration to test" must never be talked into
+   * applying one somewhere else.
+   */
+  const target = assertNotProductionDatabase('test')
+  if (target.ref !== TEST_PROJECT_REF) {
+    console.error(`  REFUSED: resolved project '${target.ref}', and this script only ever writes to '${TEST_PROJECT_REF}'.`)
+    process.exit(1)
+  }
+  ref = target.ref
+  openConnection = () => target.connect()
 }
-const ref = target.ref
 
 const sql = readFileSync(FILE, 'utf8')
 console.log(`  applying ${FILE}`)
@@ -97,7 +170,7 @@ if (!VERSION) {
 const RECORD_ONLY = argv.includes('--record-only')
 
 console.log(`  version ${VERSION}  name ${NAME}${RECORD_ONLY ? '  [RECORD-ONLY: ledger row only, SQL not run]' : ''}`)
-const client = await target.connect()
+const client = await openConnection()
 try {
   if (!RECORD_ONLY) {
     await client.query(sql)

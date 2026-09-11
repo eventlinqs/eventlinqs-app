@@ -34,6 +34,7 @@
  * key-absent case and checks that both actions call it and return its refusal.
  */
 import type { VenueCoordinates } from './venue-coordinates'
+import { contactAddress } from '@/lib/email/sender'
 
 export type DeploymentEnvironment = 'production' | 'preview' | 'development'
 
@@ -77,7 +78,7 @@ export function judgeVenueSave(input: VenueSaveInput): VenueSaveVerdict {
       kind: 'configuration',
       error:
         'This environment cannot place a typed address on the map: GOOGLE_MAPS_API_KEY is not configured for server geocoding. ' +
-        'Pick the venue from the suggestions so it carries its own coordinates, or contact hello@eventlinqs.com so we can fix the configuration.',
+        `Pick the venue from the suggestions so it carries its own coordinates, or contact ${contactAddress('hello')} so we can fix the configuration.`,
       nextAction: null,
     }
   }

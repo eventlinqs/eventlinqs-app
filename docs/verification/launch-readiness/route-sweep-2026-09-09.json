@@ -1,0 +1,29 @@
+{
+  "l1Item": 14,
+  "requirement": "Every route enumerated from src/app returns its expected status on production. Zero unexpected 404s. Zero 500s anywhere.",
+  "producedBy": "scripts/verify/production-route-sweep.mjs",
+  "base": "https://www.eventlinqs.com.au",
+  "driven": "2026-09-08T22:07:16.914Z",
+  "requests": 211,
+  "byStatus": {
+    "200": 70,
+    "400": 1,
+    "401": 24,
+    "404": 27,
+    "405": 16,
+    "307 -> 200": 70,
+    "308 -> 200": 1,
+    "303 -> 200": 1,
+    "302 -> 200": 1
+  },
+  "defects": [],
+  "routesEnumerated": {
+    "staticPages": 76,
+    "dynamicPages": 54,
+    "staticHandlers": 48,
+    "dynamicHandlers": 12,
+    "notDeployed": 0
+  },
+  "publicPatternsWithNoAnonymousValue": 18,
+  "verdict": "PASS"
+}

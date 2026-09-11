@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { withBuildRetry } from '@/lib/supabase/build-retry'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
@@ -25,6 +26,7 @@ import { venueSlugify } from '@/lib/venues/resolver'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { stripMarkdown } from '@/lib/prose/markdown-subset'
 
 export const revalidate = 300
 
@@ -85,33 +87,82 @@ const PUBLIC_ORGANISATION_COLUMNS = 'id, name, slug, description, logo_url, webs
  * column lockdown continues to be enforced by the database on the fields that
  * actually get rendered.
  */
+/**
+ * A PAGE MAY NEVER ANSWER "THIS DOES NOT EXIST" BECAUSE IT COULD NOT ASK.
+ * Close-out UX6, found by the gate on 10 September 2026.
+ *
+ * The indexing drive reported `/organisers/kit-presents-029298` in the sitemap
+ * and answering 404. The organisation is real, `status = 'active'`, with a
+ * published event still to come, and the same URL answers 200 on the next
+ * request. The gate's own server log carries the cause, twice on the one
+ * request, once for the metadata and once for the render:
+ *
+ *     [organiser-profile] status gate failed for kit-presents-029298:
+ *       TypeError: fetch failed
+ *       Caused by: SocketError: other side closed (UND_ERR_SOCKET)
+ *
+ * A stale pooled socket to Supabase. The read did not come back empty, it did
+ * not come back at all, and both branches below turned that into `null`, which
+ * the caller turns into `notFound()`. To a crawler following our own sitemap
+ * that is not "try again later", it is "delete this from the index", and the
+ * SEO engine the growth plan runs on is made of exactly these pages.
+ *
+ * The header above this function records the SAME class one layer down: a
+ * discarded error becoming a silent 404 on every organiser profile. That fix
+ * made the error visible. It still answered 404.
+ *
+ * TWO CHANGES, and the first is not a new invention. `withBuildRetry` already
+ * exists for this, is already used by four discovery routes, and its
+ * `isTransientPoolError` already matches `fetch failed` and `ECONNRESET`, so a
+ * dropped keep-alive socket is retried rather than believed. And when the read
+ * STILL fails, this throws instead of returning null: a 500 says "ask again",
+ * which is true, where a 404 says something false and permanent. A genuinely
+ * missing or inactive organisation still returns null and still 404s, because
+ * that answer is the truth.
+ */
+class OrganiserReadFailed extends Error {
+  constructor(slug: string, cause: unknown) {
+    super(`[organiser-profile] could not read ${slug}; answering 500 rather than 404`)
+    this.name = 'OrganiserReadFailed'
+    this.cause = cause
+  }
+}
+
 async function fetchOrganiser(slug: string): Promise<PublicOrganisation | null> {
   const admin = createAdminClient()
-  const { data: gate, error: gateError } = await admin
-    .from('organisations')
-    .select('id, status')
-    .eq('slug', slug)
-    .maybeSingle()
+  const { data: gate, error: gateError } = await withBuildRetry(
+    () =>
+      admin
+        .from('organisations')
+        .select('id, status')
+        .eq('slug', slug)
+        .maybeSingle(),
+    { label: `organiser status gate ${slug}` },
+  )
 
   if (gateError) {
     console.error('[organiser-profile] status gate failed for %s:', slug, gateError)
-    return null
+    throw new OrganiserReadFailed(slug, gateError)
   }
   const row = gate as { id: string; status: string } | null
   if (!row || row.status !== 'active') return null
 
   const supabase = createPublicClient()
-  const { data, error } = await supabase
-    .from('organisations')
-    .select(PUBLIC_ORGANISATION_COLUMNS)
-    .eq('id', row.id)
-    .maybeSingle()
+  const { data, error } = await withBuildRetry(
+    () =>
+      supabase
+        .from('organisations')
+        .select(PUBLIC_ORGANISATION_COLUMNS)
+        .eq('id', row.id)
+        .maybeSingle(),
+    { label: `organiser public columns ${slug}` },
+  )
 
   if (error) {
     // Never swallow this again. A discarded error here is what turned a
     // permission problem into a silent 404 on every organiser profile.
     console.error('[organiser-profile] public column read failed for %s:', slug, error)
-    return null
+    throw new OrganiserReadFailed(slug, error)
   }
   return (data as PublicOrganisation | null) ?? null
 }
@@ -155,8 +206,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const baseUrl = getSiteUrl()
   const title = `${organisation.name} - Events & Profile - EventLinqs`
-  const description = (organisation.description
-    ? organisation.description.slice(0, 155)
+  // A meta description is a PLAIN-TEXT surface: strip the syntax so a bold
+  // organiser name never reaches a search result as asterisks (UX1.1).
+  const description = (stripMarkdown(organisation.description)
+    ? stripMarkdown(organisation.description).slice(0, 155)
     : `${organisation.name} on EventLinqs. Browse upcoming events, follow new releases, and stay connected.`)
     .slice(0, 155)
 

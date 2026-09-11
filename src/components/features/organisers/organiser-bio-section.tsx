@@ -1,4 +1,6 @@
 import { ContentSection } from '@/components/layout/ContentSection'
+import { OrganiserProse } from '@/components/ui/organiser-prose'
+import { stripMarkdown } from '@/lib/prose/markdown-subset'
 
 interface Props {
   organiserName: string
@@ -24,10 +26,17 @@ export function OrganiserBioSection({ organiserName, bio }: Props) {
       <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
         About {organiserName}
       </h2>
-      {bio ? (
-        <div className="mt-5 space-y-4 text-[15px] leading-[1.7] text-[var(--text-secondary)] sm:text-base sm:leading-relaxed">
-          {bio.split(/\n\n+/).map((para, i) => <p key={i}>{para}</p>)}
-        </div>
+      {/* The organiser's own words, through the one prose renderer (UX1.1).
+          This used to split on blank lines and print each paragraph raw, which
+          is how `**MKL Studios**` reached production with its asterisks. */}
+      {/* Tested against the STRIPPED text, not the raw string: a bio of only
+          markdown punctuation renders nothing, and must fall to the empty
+          state rather than leaving a styled blank block behind. */}
+      {stripMarkdown(bio) ? (
+        <OrganiserProse
+          text={bio}
+          className="mt-5 space-y-4 text-[15px] leading-[1.7] text-[var(--text-secondary)] sm:text-base sm:leading-relaxed"
+        />
       ) : (
         <p className="mt-5 text-sm text-[var(--text-secondary)]">
           {organiserName} hasn&apos;t added a bio yet. Subscribe to event updates below to get notified when new events go live.

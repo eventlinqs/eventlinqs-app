@@ -80,7 +80,7 @@ export default async function AdminOrganiserDetailPage({ params }: { params: Pro
         <AdminStatTile label="Payout status" value={org.payoutStatus} status={org.payoutStatus === 'active' ? 'ok' : 'warn'} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
           <h2 className="font-display text-lg font-semibold text-white">Verification (Stripe Connect)</h2>
           <p className="mt-1 text-xs text-white/40">Identity verification is handled by Stripe for the connected account.</p>

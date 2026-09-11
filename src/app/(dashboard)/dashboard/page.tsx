@@ -257,7 +257,7 @@ export default async function DashboardPage({
         />
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Tickets sold (30d)"
           value={ticketsSold30.toLocaleString('en-AU')}
@@ -284,7 +284,7 @@ export default async function DashboardPage({
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <UpcomingEventsPanel events={upcomingEvents} />
           <RecentActivityPanel activity={recentActivity} />

@@ -79,10 +79,13 @@ import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { venueSlugify } from '@/lib/venues/resolver'
+import { formatVenueWithAddress } from '@/lib/venues/format-venue-address'
 import { isVideoProvider } from '@/lib/media/video-embed'
 import { describeCountries } from '@/lib/stream/countries'
 
 import { getSiteUrl } from '@/lib/site-url'
+import { stripMarkdown } from '@/lib/prose/markdown-subset'
+import { OrganiserProse } from '@/components/ui/organiser-prose'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
 // from Postgres). Personalisation that previously made this dynamic
@@ -694,9 +697,17 @@ export default async function EventDetailPage({ params }: Props) {
   const priceLabel = cheapestPrice(priceTiersForDisplay)
   const shortDate = formatShortDate(event.start_date, event.timezone)
   const venueLabelShort = [event.venue_name, event.venue_city].filter(Boolean).join(' · ') || null
-  const fullAddress = [event.venue_name, event.venue_address, event.venue_city, event.venue_state, event.venue_country]
-    .filter(Boolean)
-    .join(', ')
+  // UX1.2: this used to lead with `event.venue_name` and KnowBeforeYouGo then
+  // prepended the name AGAIN, which is how production read
+  // "Quakers Centre, Quakers Centre, 484 William Street, ...". The composition
+  // rule now lives in one formatter and the name appears exactly once.
+  const fullAddress = formatVenueWithAddress({
+    name: event.venue_name,
+    address: event.venue_address,
+    city: event.venue_city,
+    state: event.venue_state,
+    country: event.venue_country,
+  }) ?? ''
 
   const tierInventoryEntries = await Promise.all(
     enrichedAllTiers.map(async t => [t.id, await getTierInventoryStatic(t.id)] as const),
@@ -806,6 +817,7 @@ export default async function EventDetailPage({ params }: Props) {
         category={event.category?.name ?? 'Uncategorised'}
         venueCity={event.venue_city ?? 'Unknown'}
         priceRange={priceLabel ?? 'Free'}
+        soldOut={isSoldOut}
       />
       <ShareViewBeacon />
       {/* A buyer whose hold expired mid-payment is returned HERE now, to the
@@ -847,6 +859,7 @@ export default async function EventDetailPage({ params }: Props) {
               alt={event.cover_image_alt || media.alt}
               videoSrc={media.videoSrc}
               kenBurns={media.kenBurns}
+              objectPosition={media.objectPosition}
             />
             <div
               className="absolute inset-0"
@@ -961,8 +974,13 @@ export default async function EventDetailPage({ params }: Props) {
           </Reveal>
         )}
 
-        {/* Content column + Ticket panel */}
-        <section className="bg-canvas pt-12 sm:pt-16">
+        {/* Content column + Ticket panel.
+            UX2.3: this carried pt only. The two columns end at different points,
+            so whichever ran longer closed straight into the dark footer with no
+            terminal spacing at all. It now closes on the rhythm it opens on, and
+            loading.tsx carries the identical class so hydration does not shift
+            the page. */}
+        <section className="bg-canvas pb-12 pt-12 sm:pb-16 sm:pt-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className={seatedActive ? 'space-y-10' : 'flex flex-col gap-10 lg:flex-row'}>
               <div className={seatedActive ? '' : 'flex-1 min-w-0'}>
@@ -975,22 +993,31 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 )}
 
-                {/* About */}
-                {(event.summary || event.description) && (
+                {/* About. Tested against the STRIPPED text, not the raw column:
+                    a description of nothing but markdown punctuation is truthy
+                    and renders nothing, which would leave the heading standing
+                    over an empty block (UX1.1). */}
+                {(stripMarkdown(event.summary) || stripMarkdown(event.description)) && (
                   <div>
                     <SectionHeader eyebrow="The details" title="About this event" />
-                    {event.summary && (
-                      <p className="mt-5 text-base leading-relaxed text-ink-600">{event.summary}</p>
+                    {/* The lede is a single line, so it takes the strip
+                        direction of the one prose rule (UX1.1). */}
+                    {stripMarkdown(event.summary) && (
+                      <p className="mt-5 text-base leading-relaxed text-ink-600">
+                        {stripMarkdown(event.summary)}
+                      </p>
                     )}
-                    {event.description && (
-                      // Organiser description is free-text from a plain textarea, not
-                      // sanitised HTML. Render it as escaped text (React-escaped) with
-                      // line breaks preserved, never via dangerouslySetInnerHTML, so an
-                      // organiser cannot inject stored XSS into the public event page.
-                      <div className="type-measure mt-5 text-pretty whitespace-pre-line text-base leading-relaxed text-ink-600">
-                        {event.description}
-                      </div>
-                    )}
+                    {/* Organiser description is free-text from a plain textarea, not
+                        sanitised HTML. It renders through OrganiserProse, which emits
+                        REACT NODES and never an HTML string, so there is still no
+                        dangerouslySetInnerHTML on this path and an organiser still
+                        cannot inject stored XSS into the public event page. What
+                        changed (UX1.1) is that the markdown people type by reflex now
+                        renders as formatting instead of showing its asterisks. */}
+                    <OrganiserProse
+                      text={event.description}
+                      className="type-measure mt-5 space-y-4 text-pretty text-base leading-relaxed text-ink-600"
+                    />
                   </div>
                 )}
 
@@ -1140,14 +1167,44 @@ export default async function EventDetailPage({ params }: Props) {
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
                     <div className="flex flex-wrap items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-ink-900 text-sm font-bold text-gold-400">
-                        {event.organisation.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        {event.organisation.description && (
-                          <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
-                        )}
-                      </div>
+                      {/* THE CARD LINKS TO THE ORGANISER (close-out UX1, found
+                          by driving the journey on 11 September 2026).
+                          It named the organiser, drew their initials, clamped
+                          their bio to three lines and led NOWHERE, while this
+                          same page's JSON-LD told Google the organiser has a
+                          profile at /organisers/<slug>. So the structured data
+                          published a URL the page itself never linked to: the
+                          organiser's own profile had no inbound link from the
+                          one page a buyer reads, the full bio rendered there
+                          was unreachable, and a card that reads as tappable did
+                          nothing on a phone (Law 5, no dead-end tiles).
+                          The Follow control stays a SIBLING, never nested, so
+                          this is one link and one button rather than a button
+                          inside an anchor. */}
+                      <Link
+                        href={`/organisers/${event.organisation.slug}`}
+                        aria-label={`View profile: ${event.organisation.name}`}
+                        className="group flex min-w-0 flex-1 items-start gap-4 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+                      >
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-ink-900 text-sm font-bold text-gold-400 transition-transform duration-200 ease-out group-hover:scale-[1.03]">
+                          {event.organisation.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          {/* A three-line clamped teaser is a PLAIN-TEXT surface,
+                              so it takes the strip direction of the one prose
+                              rule (UX1.1). Rendering blocks here would defeat the
+                              clamp, and leaving the text raw is what put
+                              `**MKL Studios**` on production. */}
+                          {stripMarkdown(event.organisation.description) && (
+                            <p className="text-sm text-ink-600 line-clamp-3">
+                              {stripMarkdown(event.organisation.description)}
+                            </p>
+                          )}
+                          <span className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--brand-accent-strong)] transition-colors duration-200 group-hover:text-[var(--brand-accent-strong-hover)]">
+                            View profile
+                          </span>
+                        </div>
+                      </Link>
                       {/* Demand-graph follow: their next event lands in the
                           follower's feed and alerts the moment it goes live.
                           ONE control, deliberately ungated.

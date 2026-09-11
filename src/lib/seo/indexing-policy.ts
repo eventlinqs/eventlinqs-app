@@ -249,6 +249,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/tickets', klass: 'never', why: 'signed in only' },
   { route: '/unsubscribe/[token]', klass: 'never', why: 'a one-time token' },
   { route: '/unsubscribe/digest/[token]', klass: 'never', why: 'a one-time token' },
+  { route: '/unsubscribe/recovery/[token]', klass: 'never', why: 'a one-time token' },
   { route: '/verify-email-sent', klass: 'never', why: 'authentication' },
   { route: '/waitlist/unsubscribe/[token]', klass: 'never', why: 'a one-time token' },
 ]

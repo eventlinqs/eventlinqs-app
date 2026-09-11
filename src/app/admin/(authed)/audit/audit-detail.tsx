@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
+import { usePortalReady } from '@/lib/hooks/use-portal-ready'
 import type { AuditLogRow } from '@/lib/admin/types'
 
 /**
@@ -12,6 +14,10 @@ import type { AuditLogRow } from '@/lib/admin/types'
  */
 export function AuditDetailButton({ row }: { row: AuditLogRow }) {
   const [open, setOpen] = useState(false)
+
+  // `document` does not exist while this renders on the server; the portal below
+  // needs it, and this is the one definition of that question.
+  const portalReady = usePortalReady()
   return (
     <>
       <button
@@ -21,7 +27,8 @@ export function AuditDetailButton({ row }: { row: AuditLogRow }) {
       >
         View
       </button>
-      {open ? (
+      {open && portalReady ? (
+        createPortal(
         <div
           role="dialog"
           aria-modal="true"
@@ -63,6 +70,7 @@ export function AuditDetailButton({ row }: { row: AuditLogRow }) {
             </div>
           </div>
         </div>
+        , document.body)
       ) : null}
     </>
   )

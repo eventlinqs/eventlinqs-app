@@ -94,6 +94,25 @@
  *                              on ready_for_review, so CI runs once, after the local gate
  *   pre-push-gate-wired       .githooks/pre-push runs the whole of scripts/ops/pre-push-gate.mjs,
  *                              npm run gate:push is the same command, and git is pointed at it
+ *   gate-servers-carry-a-limiter  every gate step that serves the production build starts it
+ *                              through one function, which hands it a rate-limit backend and
+ *                              proves the backend answers. Without it the money-path limiter
+ *                              fails closed and a drive reports the gate's own gap as a
+ *                              product defect
+ *   statement-descriptor-premise-holds  no CALLER sets on_behalf_of, so Stripe keeps using
+ *                              the PLATFORM's statement descriptor and an organiser's legal
+ *                              name cannot reach a buyer's bank statement; a connected
+ *                              account is created with BOTH its business profile and its
+ *                              descriptor prefix set; and the deleted business-name
+ *                              comparison cannot return under any of its four old names
+ *   one-door-to-the-requirement-watch  one module reads or writes the monitor's own memory
+ *                              of how long a Stripe requirement has been pending, its
+ *                              first_seen_at is never written, and a failed write degrades
+ *                              the age rather than the check
+ *   push-arming-cannot-fail-silently  the backup alert channel can actually be armed, and a
+ *                              press that fails says so. One module subscribes, it waits for
+ *                              an ACTIVE service worker first, no other worker takes scope '/',
+ *                              and both surfaces render the refusal
  *   card-raster-traced        every route that reaches the card rasteriser (derived from the
  *                              import graph, never listed) pins the resvg binary and the brand
  *                              fonts in next.config.ts, judged with Next's own matcher; and as
@@ -131,8 +150,15 @@
  *                              22 categories match the approved record in both directions;
  *                              the routes and the sitemap still publish them (close-out C18 FINAL)
  *   vercelignore-covers-guard-reads every docs/ file a prebuild script reads survives
- *                              .vercelignore, walked down level by level, and every docs/
- *                              literal in a build-time script is required or reviewed (C18 FINAL)
+ *                              .vercelignore, walked down level by level, and a failure
+ *                              prints the exact lines to add rather than describing the
+ *                              walk-down (close-out C18 FINAL, F1.9.2)
+ *   excluded-reads-survive-the-upload  and every prebuild entry point whose code names a
+ *                              docs/ path is EXECUTED in a materialised .vercelignore
+ *                              upload. There is no reviewed-tolerant list any more: one
+ *                              of its rationales was wrong, nothing had ever run it, and
+ *                              it blocked the deployment of 7564b40. Prose does not run,
+ *                              and the subject is derived from the import graph (F1.9.2)
  *   indexing-policy           every page route is classified in the indexing policy, every
  *                              never route resolves to noindex, every indexable page names
  *                              its own canonical, the root layout names none, and the
@@ -147,6 +173,14 @@
  *                              recorder is never fetched before a first interaction:
  *                              measured at 217.8 KB and 644 ms inside the LCP window
  *                              when it was scheduled on `load` (close-out P0.5)
+ *   grid-track-cannot-blow-out  every grid declares a column template its own content cannot
+ *                              widen: a base grid-cols-* beside every breakpoint one, and no
+ *                              bare fr track. Driven on checkout at 390: one 520px child took
+ *                              the track from 358px to 520px and the order summary's right
+ *                              edge from 374 to 536, with no scrollbar to reach it (UX6.1-6.3)
+ *   buyer-total-is-marked     every buyer-facing total carries data-order-total, so the driven
+ *                              viewport proof can find the figure it exists to measure. A
+ *                              driven check that cannot find its subject passes in silence (UX6)
  *   lighthouse-floor-ratchet  every Lighthouse assertion is at or above its recorded
  *                              high-water mark: a floor may never be lowered, a budget
  *                              never loosened, a check never moved from error to warn
@@ -161,6 +195,97 @@
  *                              purpose sit in scripts/guards/lib/parked-pull-requests.json
  *                              with a why and an unblockedBy, and that record is itself
  *                              checked for rot on every run (close-out PR5)
+ *   launch-readiness-honest    docs/verification/LAUNCH-READINESS.md is a rendering of the
+ *                              adjudication in scripts/verify/launch-readiness.mjs and not a
+ *                              second place a claim can live: it is re-rendered and compared
+ *                              byte for byte, a PASS row must cite evidence that is still on
+ *                              disk and carry the date driven, and an OWNER BLOCKED row must
+ *                              name what is needed in one sentence (close-out L5, C10.4)
+ *   no-build-guard-bypass      no declared guard bypass is set on a machine that builds
+ *                              for other people. The list is derived from the manifest,
+ *                              never retyped, and a bypass removes the report rather than
+ *                              reporting a problem (close-out F1.4)
+ *   build-host-needs-declared  every prebuild entry point declares which of the three
+ *                              things the build host lacks it needs - docs, git, a token -
+ *                              read out of the import graph rather than listed, and fails
+ *                              both ways: an undeclared use, and a declaration the code no
+ *                              longer backs (close-out F2.1)
+ *   one-contact-domain       every published contact address derives from the sending
+ *                              domain, so the site cannot invite people to write to a domain
+ *                              it is not served from (close-out UX2.4)
+ *   one-platform-entity      the platform's own ABN is written down once and passes the ATO
+ *                              checksum. It was hand-copied into twelve places, and in four of
+ *                              them prose wrapping split it across two source lines where a
+ *                              grep could not see it (close-out UX2.1, LEGAL)
+ *   one-venue-address-format  every venue address is composed by one formatter, because
+ *                              two call sites each adding the venue name printed it twice
+ *                              on the first real organiser event (close-out UX1.2)
+ *   organiser-prose-one-rule  organiser and artist prose reaches a screen through
+ *                              OrganiserProse or stripMarkdown and never raw, because
+ *                              the first real outside organiser's bio shipped to
+ *                              production reading **MKL Studios** (close-out UX1.1)
+ *   scannable-instruction-has-a-qr  a surface that tells a person to scan a code draws
+ *                              one, keeps the typed fallbacks beside it, and builds the
+ *                              picture from the same value it prints. /admin/enrol-2fa
+ *                              said "scan the QR code" and drew nothing (close-out UX5)
+ *   tinted-text-meets-contrast  every solid token text colour painted on a solid token
+ *                              background meets WCAG AA, with the ratio COMPUTED from
+ *                              globals.css rather than held as a list of banned colours
+ *                              in named files, which is how 28 pairs under AA survived
+ *                              a test written for exactly that shape (close-out UX1)
+ *   trigger-columns-exist    no installed trigger reads a record field that is not a
+ *                              column of the table it sits on. plpgsql resolves those at
+ *                              runtime, so a typo applies cleanly and then breaks the
+ *                              write it was watching (close-out UX3)
+ *   types-cover-migrations   the committed src/types/database.ts carries every public
+ *                              table, view, enum, callable function and added column the
+ *                              migrations create, judged from the repository alone, so a
+ *                              migration committed without regenerating the types is
+ *                              refused on that commit and not on the push two days later
+ *                              when production catches up (11 September 2026)
+ *   platform-notifications-installed  the build's own database carries the six triggers
+ *                              that record a new organiser, a Stripe onboarding, a
+ *                              published event and a paid order, so none of the five can
+ *                              complete in silence the way a real organiser's launch did
+ *                              on 8 September 2026 (close-out UX3)
+ *   cron-routes-scheduled    every /api/cron route has a vercel.json entry, and every
+ *                              entry has a route. /api/cron/queue-admit documented itself
+ *                              as running every minute and had no schedule at all, so the
+ *                              virtual-queue admission batch had never run once. A cron
+ *                              that is never invoked looks exactly like a cron with
+ *                              nothing to do, which is why nothing could see it
+ *   alert-routing            no branch gate may email, every alert declares its class,
+ *                              a drill announces itself, and a push to the session log
+ *                              never resets the stall clock. Read in one place because
+ *                              all three are rulings about the subject line: the inbox
+ *                              was loud about the harmless and silent about the dangerous
+ *                              (close-out UX4.3, UX4.5, H2.6)
+ *   ledger-append-only        nothing edits the slot ledger, in the source and on the
+ *                              project this build will run against. One UPDATE makes every
+ *                              number derived from it an assertion, invisibly
+ *   ledger-speaks-no-industry  not one ledger column, enum or engine file says event,
+ *                              ticket or tier, so the engine can be pointed at a gym's
+ *                              rows tomorrow without rebuilding it and losing the history
+ *   fillrate-reads-only-the-ledger  the recovery engine imports nothing from this
+ *                             platform's domain, queries only the ledger and its
+ *                             own tables, and speaks no industry (close-out D2).
+ *   overlays-are-portalled    a full-page dialog leaves its ancestors' stacking
+ *                             contexts, because one trapped inside a transformed
+ *                             ancestor PAINTS correctly and cannot be clicked, and
+ *                             nothing else on this platform can see that.
+ *   recovery-only-writes-to-people-who-asked  every recovery message names the
+ *                             recorded engagement that authorised it, the six
+ *                             refusals still exist, and no message goes without a
+ *                             working unsubscribe (close-out D2).
+ *   ledger-writes-through-the-adapter  one door into the ledger, and every
+ *                              order-confirmation site walks through it
+ *   tier-identity-preserved  an event's ticket types are reconciled on save, never
+ *                              deleted and re-created. The delete-everything version
+ *                              made an event permanently uneditable the moment it sold
+ *                              one ticket, and told the organiser the name of a database
+ *                              constraint; on an unsold event it cascaded away the
+ *                              waitlist, the squads, the access codes and the pricing
+ *                              rules while every unit test stayed green
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -340,6 +465,7 @@
 import { spawnSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
+import { describeOutcome, renderFailures } from './lib/guard-run-report.mjs'
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -466,6 +592,17 @@ const GUARDS = [
   // filling the field the label named produced a zero-priced ticket on a paid
   // event. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
   'scripts/guards/labels-name-the-right-control.mjs',
+  // Close-out L5 (9 September 2026): the launch readiness report is a rendering
+  // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
+  // and compared byte for byte, so a row cannot be improved by editing the
+  // markdown. A PASS row must cite evidence that is still in the repository and
+  // carry the date driven; an OWNER BLOCKED row must name what is needed in one
+  // sentence, which is close-out C10.4's rule applied for the same reason. It is
+  // the most tempting document in the tree to edit by hand, because every row is
+  // a claim about whether a journey works. SKIPS by name where docs/ has been
+  // stripped by .vercelignore, and is registered TOLERANT there. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs, four ways.
+  'scripts/guards/launch-readiness-honest.mjs',
 
   // Founder brief 2026-08-23: an event page can never ship without its
   // structured data. A production audit that day found every event page valid
@@ -702,6 +839,35 @@ const GUARDS = [
   // on a variant nothing used, and a launch readiness audit found it by reading.
   // Translucency without a filter stays legal, so this only fails on an APPLIED
   // filter, never on a /95 badge, a comment, or an inert transition property list.
+  // UX1.1: the first real outside organiser published on production and their
+  // bio rendered its asterisks. One rule now, two doors, and this fails the
+  // build on a third. Drilled red against the exact line that shipped.
+  // UX1.2: the composition rule for a venue address lived nowhere, so it was
+  // reinvented per call site and two of them each added the name. Drilled red.
+  // UX2.1 is LEGAL. The entity taking ticket money must match the ABN
+  // displayed, and the number changes when the Pty Ltd is registered. Drilled
+  // red against a literal split across two lines, which a grep reports as clean.
+  // UX2.4: the site is served from eventlinqs.com.au and invited people to
+  // write to eventlinqs.com, in about forty hand-written literals. Drilled red.
+  'scripts/guards/one-contact-domain.mjs',
+  'scripts/guards/one-platform-entity.mjs',
+  'scripts/guards/one-venue-address-format.mjs',
+  'scripts/guards/organiser-prose-one-rule.mjs',
+  // UX5: /admin/enrol-2fa told every new administrator to "scan the QR code"
+  // and drew nothing to scan, so the real instruction was to type a 32
+  // character base32 secret off a laptop into a phone, on the one screen where
+  // a typo locks you out of the admin console. A route sweep saw a 200 and no
+  // unit test saw a wrong function. Drilled red on all three clauses, and
+  // drilled GREEN on descriptive prose about scanning, which is the false
+  // positive that would otherwise get this guard switched off.
+  'scripts/guards/scannable-instruction-has-a-qr.mjs',
+  // UX1: the "Selling Fast" badge painted coral-600 on coral-100 at 3.42:1, on
+  // every event 50% sold or more, and the a11y test written for exactly this
+  // shape could not see it because it banned coral across a hand-listed TWO
+  // files. Probing the tree found 28 pairs under AA in two repeated
+  // combinations. This computes the ratio from globals.css instead of holding a
+  // list. Drilled red on a real pair and green again.
+  'scripts/guards/tinted-text-meets-contrast.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
   // organiser form, stored on the anon-readable events row, and shown to nobody.
@@ -769,6 +935,51 @@ const GUARDS = [
   // the drills in scripts/verify/guard-failure-drills.mjs and green after.
   'scripts/guards/workflows-skip-drafts.mjs',
   'scripts/guards/pre-push-gate-wired.mjs',
+  // 10 September 2026, found by the gate failing on itself. Three gate steps
+  // served the production build and each spawned `next start` in its own block.
+  // Only the Lighthouse one handed the server a rate-limit backend, and it is
+  // the one that never buys anything; the UX6 checkout drive, which does, had
+  // none, so `checkout-reserve` (failClosed) refused every reservation and every
+  // checkout submit and the drive reported six product defects that were not
+  // product defects. One door now, startGateServer(), which also PROVES the stub
+  // answers, because a URL pointing at nothing fails closed identically to no
+  // URL. Five clauses, all drilled red and green
+  // (C:\dev\EVIDENCE\D1\guard-gate-server-drill.txt).
+  'scripts/guards/gate-servers-carry-a-limiter.mjs',
+  // 11 September 2026 (close-out UX3.2). The owner's backup alert channel could
+  // not be armed at all on a device that had never armed before, and the screen
+  // said nothing. `register()` resolves before the worker is running, so
+  // `pushManager.subscribe()` threw "Subscription failed - no active Service
+  // Worker"; the catch then set 'idle', which is the state an UNPRESSED control
+  // shows, and sent the error to reportClientError, which on a production build
+  // queues into memory nobody reads. A second press always worked, which is why
+  // nobody had noticed: anybody debugging it presses twice. Five clauses, plus a
+  // premise check on public/push-sw.js, all drilled red and green including two
+  // negatives that the first draft genuinely failed
+  // (C:\dev\EVIDENCE\UX3\ux3-push-guard-drill.txt).
+  'scripts/guards/push-arming-cannot-fail-silently.mjs',
+  // S1: the daily heartbeat compared an organiser's EventLinqs name with the
+  // business name on their Stripe account and called a difference a fault.
+  // Stripe holds a public trading name and a legal entity name as two separate
+  // fields by design, so for a sole trader they differ CORRECTLY, and the check
+  // fired on healthy accounts for ever. The founder deleted it rather than
+  // softened it. Answering S1's first requirement also found the claim that
+  // justified it to organisers on /dashboard/payouts - "Stripe uses its own name
+  // on your buyers' bank statements" - to be false on this platform, which
+  // charges with separate charges and transfers and never sets on_behalf_of, so
+  // Stripe uses the PLATFORM's descriptor. That absent parameter holds up the
+  // whole argument and nothing anywhere said so. Three clauses, drilled red and
+  // green, plus a NEGATIVE drill proving the gateway pass-through exemption is
+  // checked rather than trusted.
+  'scripts/guards/statement-descriptor-premise-holds.mjs',
+  // S1: "anything sits in pending_verification for more than 3 days" needs an
+  // age, and Stripe publishes no per-requirement timestamp, so the monitor keeps
+  // its own in public.connect_requirement_watch. The whole value of that table
+  // is first_seen_at not moving. Three clauses, drilled red and green, plus two
+  // NEGATIVE drills for the two false positives the first draft produced: a
+  // header comment naming the table, and the property READ the age is computed
+  // from.
+  'scripts/guards/one-door-to-the-requirement-watch.mjs',
   // 6 September 2026 (close-out C3, the eighteen social cards). The rasteriser
   // reads the resvg WebAssembly binary and the brand fonts from disk at run
   // time, and next.config.ts pins them per route in outputFileTracingIncludes
@@ -872,6 +1083,11 @@ const GUARDS = [
   // Close-out C18 FINAL, the same day: a guard that reads under docs/ must survive
   // .vercelignore, or it passes locally and kills every Vercel build (third time).
   'scripts/guards/vercelignore-covers-guard-reads.mjs',
+  // The fourth occurrence of that same defect, 8 September 2026: the guard above
+  // accepts a WRITTEN RATIONALE for a script declared tolerant of an absent docs/,
+  // one of those rationales was wrong, and the deployment of 7564b40 died on it.
+  // This one materialises the upload and RUNS each tolerant script inside it.
+  'scripts/guards/excluded-reads-survive-the-upload.mjs',
   // Close-out C19 (8 September 2026): the indexing policy is the one place that says
   // what may be indexed, and the tree must keep agreeing with it. Google Search
   // Console had been reporting the disagreement back for weeks.
@@ -910,6 +1126,139 @@ const GUARDS = [
   // records the machine it was taken on and a red assertion says which of its
   // two causes it was. Evidence: C:\dev\EVIDENCE\P0.7-D.
   'scripts/guards/gate-names-the-instrument.mjs',
+
+  // Close-out F1.4. A bypass left switched on does not report a problem, it
+  // removes the report, and ALLOW_PRICING_DRIFT=1 lets a build ship whose live
+  // fee disagrees with docs/PRICING.md. The manifest forbids each declared
+  // bypass on every Vercel STORE; this reads the process environment the build
+  // actually has, so an inline one is caught as well as a stored one.
+  'scripts/guards/no-build-guard-bypass.mjs',
+
+  // Close-out UX3. On 8 September 2026 a real outside organiser signed up, built
+  // an event, set a price and published it on production, and the owner received
+  // nothing. Five state changes now write a notification record inside their own
+  // transaction, enforced by six database triggers, and this asks the project the
+  // build will run against whether those triggers are actually there. Nothing
+  // else in the gate set reads a database, so nothing else could ever have seen
+  // that silence. Drilled red by disabling a trigger on TEST.
+  'scripts/guards/platform-notifications-installed.mjs',
+
+  // Close-out UX3, the second guard, added after the first one shipped a defect
+  // this would have caught for nothing. 20260909000002 gave events a trigger
+  // reading new.city, which does not exist; plpgsql resolves a record field at
+  // RUNTIME, so it applied cleanly, every gate here went green, and NO EVENT
+  // COULD BE CREATED until a browser drive found it. This checks every installed
+  // trigger's record fields against the committed types. Drilled red by putting
+  // new.city back.
+  'scripts/guards/trigger-columns-exist.mjs',
+
+  // 11 September 2026. Five migrations (20260910000001 to 20260911000001) were
+  // committed without regenerating src/types/database.ts and every gate stayed
+  // green, because the types-drift guard compares the committed file with
+  // PRODUCTION and production had not been given them yet: both sides were
+  // stale in the same way, and it said IN SYNC twenty-six times. The first push
+  // after the founder applied them was refused with 285 unexplained
+  // differences, every one an object the migrations in this tree create. This
+  // replays the migrations and demands every public table, view, enum, callable
+  // function and added column from the committed types, reading nothing but the
+  // repository, so it refuses the commit that forgets rather than the push two
+  // days later. Drilled red with a table, an enum and a column added to the
+  // newest migration; proven red against the committed types of 4d0fda21 and
+  // green against the regenerated file (C:\dev\EVIDENCE\TYPES-DRIFT-2026-09-11).
+  'scripts/guards/types-cover-migrations.mjs',
+
+  // Found while auditing the notification routing for close-out UX4:
+  // /api/cron/queue-admit documented itself as running every minute and had no
+  // entry in vercel.json, so the virtual-queue admission batch had never run
+  // once. A cron that is never invoked looks exactly like a cron with nothing to
+  // do, which is why nothing could see it. Drilled red on the pre-fix vercel.json.
+  'scripts/guards/cron-routes-scheduled.mjs',
+
+  // Close-out UX4.5. Branch gate failures stop being email. Nothing in this
+  // repository may dispatch an alert for a ref that is not main, and every
+  // dispatch declares which class it belongs to so an outage never again reads
+  // like a branch gate in the inbox. Drilled red by adding a branch dispatch.
+  'scripts/guards/alert-routing.mjs',
+
+  // Found on 10 September 2026 while reading the write paths a slot ledger would
+  // hook into. Saving an event deleted EVERY one of its ticket types and
+  // re-inserted them. On a sold event the database refused that delete (the
+  // order_items CHECK), the error was never read, the re-insert collided, and the
+  // organiser was shown `duplicate key value violates unique constraint
+  // "ticket_tiers_event_id_name_key"`: one sale made an event permanently
+  // uneditable. On an unsold one the delete succeeded and cascaded away the
+  // waitlist, the squads, the access codes and the pricing rules. Every unit test
+  // passed throughout, because nothing in the suite has a foreign key. All four
+  // clauses drilled red and green (C:\dev\EVIDENCE\D0\guard-tier-identity-drill.txt).
+  'scripts/guards/tier-identity-preserved.mjs',
+
+
+  // Close-out UX6 (10 September 2026). The owner bought a ticket on a phone and
+  // could not see the total he was paying: a grid track widened by one of its own
+  // children dragged the order summary 146px off the right of a 390 screen, and
+  // `overflow-x: clip` meant there was no scrollbar to reach it with. Measured on
+  // the real page, not reasoned about. Both drilled red and green.
+  'scripts/guards/grid-track-cannot-blow-out.mjs',
+  'scripts/guards/buyer-total-is-marked.mjs',
+
+  // Close-out D1, the slot ledger, three guards because the close-out asks for
+  // three and each defends a different thing.
+  //
+  // ledger-append-only: nothing edits history, checked in the source AND on the
+  // project this build will run against. One UPDATE and every number derived
+  // from the table becomes an assertion, with no way to notice afterwards.
+  //
+  // ledger-speaks-no-industry: not one column, enum or engine file may say
+  // event, ticket or tier. The ledger is the foundation of something that will
+  // later run for gyms, clinics and tour operators, and a ledger that speaks one
+  // industry has to be REBUILT to leave it, which loses the history.
+  //
+  // ledger-writes-through-the-adapter: one door in, and every order-confirmation
+  // site uses it. The second clause exists because this repository has twice
+  // shipped one write site that forgot a call the others made (discount usage on
+  // the paid path, payout_status on account.updated).
+  //
+  // All three drilled red and green (C:\dev\EVIDENCE\D1\guard-ledger-drill.txt).
+  'scripts/guards/ledger-append-only.mjs',
+  'scripts/guards/ledger-speaks-no-industry.mjs',
+  'scripts/guards/ledger-writes-through-the-adapter.mjs',
+
+  // Close-out D2, the recovery engine, two guards because the close-out asks for
+  // exactly two and each holds a line nothing else can see.
+  //
+  // fillrate-reads-only-the-ledger: the engine imports nothing from this
+  // platform's domain, queries no table but the ledger's and its own, and says
+  // no word from one industry. The engine is the part of this business with
+  // value outside ticketing and the boundary that gives it that value is
+  // invisible: nothing breaks the day somebody imports a domain type into it.
+  //
+  // recovery-only-writes-to-people-who-asked: every send and every offer names
+  // the recorded engagement that authorised it, enforced in the database by a
+  // NOT NULL foreign key and in the source by one door; the six refusals in
+  // due.ts still exist by name; and a message with no working unsubscribe is
+  // refused rather than degraded.
+  //
+  // Both drilled red and green (C:\dev\EVIDENCE\D2\guard-recovery-drill.txt).
+  'scripts/guards/fillrate-reads-only-the-ledger.mjs',
+  'scripts/guards/recovery-only-writes-to-people-who-asked.mjs',
+
+  // Close-out D2, found by driving the waiting list on 11 September 2026. A
+  // full-page dialog rendered where it sits is trapped in the stacking context
+  // of any ancestor carrying a transform: it PAINTS correctly and cannot be
+  // clicked at all. The join dialog was in exactly that state, and the browser
+  // said so when asked what was at the centre of its own submit button (the
+  // hero section). Nothing else on this platform can see it: the component
+  // renders, the screenshot looks right, the unit tests pass and axe passes.
+  //
+  // Drilled red on nine real overlays, all nine now portalled, then green.
+  'scripts/guards/overlays-are-portalled.mjs',
+
+  // Close-out F2.1. The generalisation of five lost deployments: the build host
+  // is not a developer machine, and every build-time script says which of docs,
+  // git and a token it needs. Registered LAST on purpose - it reads the source
+  // of every other guard in this list, so running it after them means a guard
+  // added in the same pass is already on disk to be read.
+  'scripts/guards/build-host-needs-declared.mjs',
 ]
 
 /**
@@ -938,8 +1287,31 @@ const CONTRACT = contractMajor()
 const RUNNING = Number.parseInt(process.versions.node.split('.')[0], 10)
 const CI_EQUIVALENT = CONTRACT !== null && RUNNING === CONTRACT
 
-let failed = 0
+/**
+ * NAMES, NOT A COUNT. Close-out F1.1: on 9 September 2026 this runner ended two
+ * builds with "1 of 84 guard(s) FAILED" and never said which one, on two
+ * different machines, and the name was recoverable only by reading several
+ * thousand lines of PASS output. It had the name the whole time. Keep it.
+ */
+const failures = []
 
+/*
+ * STDERR IS CAPTURED RATHER THAN INHERITED, and that is the whole of close-out
+ * F2.3's remaining half. An inherited stream reaches the log and reaches
+ * NOBODY ELSE: this process cannot read what its child printed, so a guard that
+ * threw an uncaught exception and a guard that printed a considered FAIL and
+ * exited 1 arrived here as the same fact, `status === 1`, and were reported
+ * identically. Those are opposite faults. One says the law was broken; the
+ * other says the guard is broken, which on the build host nearly always means
+ * it was written for a machine it was never run on.
+ *
+ * The cost of capturing is that a guard's output appears when it FINISHES
+ * rather than as it runs. Guards run sequentially and each takes about a
+ * second, so the log still fills incrementally; the ordering of stdout against
+ * stderr WITHIN one guard is the thing genuinely lost, and it is worth it. Both
+ * streams are echoed verbatim below, so nothing disappears from the build log
+ * that used to be in it.
+ */
 for (const guard of GUARDS) {
   // env: gitEnv() SEVERS THE INCIDENT CLASS AT THE ROOT rather than at the leaves.
   // This one line fans an environment out to every registered guard, three of
@@ -948,19 +1320,23 @@ for (const guard of GUARDS) {
   // that survives. The per-guard clearing stays as well: this is the belt, that
   // is the braces, and neither is load-bearing alone.
   const result = spawnSync(process.execPath, [join(ROOT, guard)], {
-    stdio: 'inherit',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
     env: gitEnv(),
+    maxBuffer: 64 * 1024 * 1024,
   })
-  if (result.status !== 0) failed += 1
+  if (result.stdout) process.stdout.write(result.stdout)
+  if (result.stderr) process.stderr.write(result.stderr)
+  const outcome = describeOutcome(result)
+  if (!outcome.ok) failures.push({ guard, reason: outcome.reason, thrown: outcome.thrown })
 }
 
 const runtime = CI_EQUIVALENT
   ? `Node ${process.versions.node} (CI-EQUIVALENT: matches the .nvmrc contract of ${CONTRACT})`
   : `Node ${process.versions.node} (NOT CI-EQUIVALENT: .nvmrc pins ${CONTRACT}, CI runs that, this is ${RUNNING})`
 
-if (failed > 0) {
-  console.error(`\n[guards] ${failed} of ${GUARDS.length} guard(s) FAILED. Build blocked.`)
-  console.error(`[guards] runtime: ${runtime}\n`)
+if (failures.length > 0) {
+  for (const line of renderFailures({ failures, total: GUARDS.length, runtime })) console.error(line)
   process.exit(1)
 }
 

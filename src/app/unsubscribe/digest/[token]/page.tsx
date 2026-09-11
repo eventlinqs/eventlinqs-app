@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { findDigestUnsubscribeTarget } from '@/lib/consent/record'
 import { unsubscribeFromDigestAction } from '@/app/actions/consent'
+import { contactAddress } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Unsubscribe | EventLinqs',
@@ -49,7 +50,7 @@ export default async function DigestUnsubscribePage({ params }: Props) {
               <h1 className="font-display text-2xl font-bold text-ink-900">This link is not valid</h1>
               <p className="mt-3 text-sm text-ink-600">
                 This unsubscribe link could not be found. It may have already been used. If you keep
-                getting emails you did not ask for, contact us at hello@eventlinqs.com.
+                getting emails you did not ask for, contact us at {contactAddress('hello')}.
               </p>
             </>
           ) : withdrawn ? (
@@ -63,7 +64,7 @@ export default async function DigestUnsubscribePage({ params }: Props) {
                 <p className="mt-3 text-sm text-ink-600">
                   You joined through a city list, so we may still email you about that city. To
                   leave that as well, use the leave link in your confirmation email, or contact us
-                  at hello@eventlinqs.com.
+                  at {contactAddress('hello')}.
                 </p>
               )}
               <Link

@@ -64,17 +64,26 @@ export function KnowBeforeYouGo({
       value: 'Online event. Your joining link arrives with your ticket.',
     })
   } else if (venueName || fullAddress) {
+    // One string for the words and for the Maps query. `fullAddress` is already
+    // composed by formatVenueWithAddress; when a caller has only a name, fall
+    // back to it so the row still says something true.
+    const addressLine = fullAddress || venueName || ''
     rows.push({
       icon: MapPin,
       label: 'Getting there',
       value: (
         <>
-          {[venueName, fullAddress].filter(Boolean).join(', ')}
-          {fullAddress && (
+          {/* UX1.2: `fullAddress` already carries the venue name, placed once by
+              formatVenueWithAddress. This used to prepend `venueName` on top of
+              it, and the two together printed the name twice on the live page.
+              The displayed line and the Maps query are now the same string, so
+              the words and the pin can never disagree. */}
+          {addressLine}
+          {addressLine && (
             <>
               {' '}
               <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([venueName, fullAddress].filter(Boolean).join(', '))}`}
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 hover:text-ink-900"

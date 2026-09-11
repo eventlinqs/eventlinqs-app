@@ -58,7 +58,7 @@ export function PayoutCalculator({ rates, currency = 'AUD' }: Props) {
     'flex-1 rounded-control px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]'
 
   return (
-    <div className="grid gap-6 rounded-card border border-[var(--surface-2)] bg-[var(--surface-0)] p-6 shadow-[var(--shadow-card)] sm:p-8 lg:grid-cols-2 lg:gap-10">
+    <div className="grid grid-cols-1 gap-6 rounded-card border border-[var(--surface-2)] bg-[var(--surface-0)] p-6 shadow-[var(--shadow-card)] sm:p-8 lg:grid-cols-2 lg:gap-10">
       {/* Inputs */}
       <div>
         <label

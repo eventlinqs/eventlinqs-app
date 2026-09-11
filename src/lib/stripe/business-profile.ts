@@ -277,47 +277,75 @@ export function statementDescriptorSuffix(eventTitle: string | null | undefined)
   return /[A-Za-z]/.test(result) ? result : null
 }
 
-// ── Divergence between what we hold and what Stripe holds ───────────────────
-
-export type NameDivergence =
-  | { status: 'match' }
-  | { status: 'not_set' }
-  | { status: 'diverged'; platformName: string; stripeName: string }
+// ── The connected account's own statement descriptor prefix ─────────────────
 
 /**
- * Casefold and drop punctuation so "Party Pty. Ltd." and "Party Pty Ltd" are
- * treated as the same name. Deliberately does NOT strip company suffixes: the
- * gap between "Party" and "Party Pty Ltd" is a real difference in the legal
- * name a buyer sees, not noise to be smoothed away.
+ * The platform's own prefix, and the fallback when an organiser's display name
+ * yields nothing Stripe will accept.
+ *
+ * "EL" is the founder's ruling and lives in the Stripe Dashboard on the platform
+ * account; it is repeated here only as the fallback value, never as a second
+ * source of the live setting. A connected account that falls back to it reads
+ * exactly as every EventLinqs charge already reads today, so the fallback can
+ * never surprise a buyer.
  */
-export function normaliseBusinessName(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-}
+export const PLATFORM_DESCRIPTOR_PREFIX = 'EL'
 
 /**
- * Compare the organisation name the platform holds against the business name on
- * the connected Stripe account.
- *
- * An organiser can still edit the name inside Stripe's hosted form and inside
- * the Express Dashboard afterwards, so prefilling closes the hole at creation
- * but cannot keep it closed. Silent disagreement between the two records is
- * precisely what produced "Party Pty Ltd" on this platform and "Eventlinqs" at
- * Stripe, and nothing anywhere reported it. This makes it reportable.
- *
- * `not_set` is not a divergence: it means onboarding has not yet reached the
- * business-details step, which is an ordinary in-progress state.
+ * Stripe: "The static prefix must contain between 2 and 10 characters,
+ * inclusive." - https://docs.stripe.com/connect/statement-descriptors
+ * (fetched 2026-09-11)
  */
-export function businessNameDivergence(
-  platformName: string,
-  stripeName: string | null | undefined
-): NameDivergence {
-  const stripeTrimmed = (stripeName ?? '').trim()
-  if (stripeTrimmed.length === 0) return { status: 'not_set' }
-  if (normaliseBusinessName(platformName) === normaliseBusinessName(stripeTrimmed)) {
-    return { status: 'match' }
+const PREFIX_MIN = 2
+const PREFIX_MAX = 10
+
+/**
+ * Derive the connected account's `settings.card_payments.statement_descriptor_prefix`
+ * from the organiser's display name. Close-out S1, requirement 3.
+ *
+ * WHY SET IT AT ALL, GIVEN NO BUYER SEES IT TODAY. This platform charges with
+ * separate charges and transfers and never sets `on_behalf_of`, so Stripe uses
+ * the PLATFORM's static component on every buyer statement
+ * (https://docs.stripe.com/connect/statement-descriptors, fetched 2026-09-11)
+ * and this string reaches nobody's bank. Two reasons it is still set explicitly.
+ * It appears on the organiser's own Stripe records and Express Dashboard, where
+ * a prefix Stripe invented from a URL reads as somebody else's business. And the
+ * day a charge sets `on_behalf_of` it becomes buyer-facing instantly, with no
+ * code change anywhere near this file to warn anyone.
+ *
+ * WHY IT NEVER RETURNS NULL. S1 asks that it is "always set explicitly, never
+ * left to Stripe's fallback". A name that sanitises to nothing (an organiser
+ * whose display name is entirely emoji) must not make `accounts.create` throw,
+ * because that would stop the organiser onboarding at all, which is a far worse
+ * outcome than a generic prefix. So the platform prefix is the floor.
+ */
+export function connectedDescriptorPrefix(displayName: string | null | undefined): string {
+  if (!displayName) return PLATFORM_DESCRIPTOR_PREFIX
+
+  // Same whitelist as the dynamic suffix, and for the same reason recorded
+  // there: stripping only Stripe's six published characters is not enough,
+  // because an accented or emoji value is rejected or silently mangled.
+  let cleaned = displayName.normalize('NFD').replace(/[̀-ͯ]/g, '')
+  for (const [pattern, replacement] of TYPOGRAPHIC_REPLACEMENTS) {
+    cleaned = cleaned.replace(pattern, replacement)
   }
-  return { status: 'diverged', platformName: platformName.trim(), stripeName: stripeTrimmed }
+  cleaned = cleaned.replace(/[^\x20-\x7E]/g, ' ')
+  cleaned = cleaned.replace(FORBIDDEN_DESCRIPTOR_CHARS, '')
+  cleaned = cleaned.replace(/\s+/g, ' ').trim()
+
+  if (!/[A-Za-z]/.test(cleaned)) return PLATFORM_DESCRIPTOR_PREFIX
+
+  // Prefer a whole first word over a severed one. "Basement 45 Collective"
+  // becomes "Basement" rather than "Basement 4", which reads like a business
+  // rather than like a string that ran out of room. A first word longer than the
+  // budget is clipped, because there is nothing else to give.
+  let prefix = cleaned.slice(0, PREFIX_MAX)
+  if (cleaned.length > PREFIX_MAX) {
+    const boundary = prefix.lastIndexOf(' ')
+    if (boundary >= PREFIX_MIN) prefix = prefix.slice(0, boundary)
+  }
+  prefix = prefix.replace(TRAILING_PUNCTUATION, '').trim()
+
+  if (prefix.length < PREFIX_MIN || !/[A-Za-z]/.test(prefix)) return PLATFORM_DESCRIPTOR_PREFIX
+  return prefix
 }

@@ -40,6 +40,22 @@
 # it evaluates this file against every docs/ path a prebuild script reads and
 # fails the local gate before Vercel can. Nothing reads CREDENTIAL-ROTATION.md
 # at build time any more; its lines stay as history and cost nothing.
+#
+# A FOURTH time on 2026-09-08: launch-readiness-honest.mjs reads
+# docs/verification/LAUNCH-READINESS.md and the four artefacts its PASS rows cite,
+# every one of them committed, and the preview build of 7564b40 found the
+# directory present and the files gone. Vercel deletes the matched FILES and
+# leaves the DIRECTORY tree standing, which its own build log says: this file
+# names `.git`, and the removal enumerated /.git/config and the hook samples
+# inside it. The guard read an empty directory as a deletion and blocked.
+#
+# The report and its artefacts are re-included below. docs/verification also
+# holds 382 MB of screenshots, so the DIRECTORY is not re-included: only the
+# report file and the launch-readiness/ folder beside it, which is 7 KB and holds
+# nothing but the evidence JSON the report cites. A new artefact dropped in there
+# arrives on Vercel with no edit to this file; one dropped anywhere else under
+# docs/verification does not, and vercelignore-covers-guard-reads.mjs fails the
+# local gate before a deploy is attempted, printing the exact lines to add.
 docs/*
 !docs/PRICING.md
 !docs/security/
@@ -48,6 +64,10 @@ docs/security/*
 !docs/scope/
 docs/scope/*
 !docs/scope/community-layer-approved.json
+!docs/verification/
+docs/verification/*
+!docs/verification/LAUNCH-READINESS.md
+!docs/verification/launch-readiness/
 design-captures
 research
 audit-v2

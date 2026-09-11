@@ -64,7 +64,7 @@ export function FillTheRoom({
         </h2>
       </div>
 
-      <div className="grid gap-px bg-ink-100 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-px bg-ink-100 sm:grid-cols-3">
         {stats.map(stat => (
           <div key={stat.label} className="bg-white px-6 py-5">
             <p className="font-display text-3xl font-extrabold leading-none tracking-tight text-[var(--brand-accent-strong)]">

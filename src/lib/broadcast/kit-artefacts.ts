@@ -4,6 +4,7 @@ import { priceLabel } from '@/lib/events/price-label'
 import { buildShortUrl, getOrCreateShareLink, type ShareChannel } from '@/lib/broadcast/share-links'
 import type { CaptionInput, CaptionPlatform } from '@/lib/broadcast/captions'
 import type { SocialCardInput } from '@/lib/broadcast/social-cards'
+import { stripMarkdown } from '@/lib/prose/markdown-subset'
 
 /**
  * ONE source for everything the artefacts are made of.
@@ -165,7 +166,10 @@ export async function loadArtefactContext(
     city,
     placeLabel: [event.venue_name, city].filter(Boolean).join(', '),
     priceLabel: priceLabel(event.ticket_tiers ?? [], 'Free entry'),
-    summary: event.summary ?? null,
+    // Composed onto a printed poster and a story card, so markdown here is
+    // asterisks in ink. Law 6 renders what the organiser supplies; it does not
+    // render their syntax (UX1.1).
+    summary: stripMarkdown(event.summary) || null,
     categorySlug: event.category?.slug ?? null,
     categoryName,
     organiserName: event.organisation?.name ?? fallbackOrganiserName,

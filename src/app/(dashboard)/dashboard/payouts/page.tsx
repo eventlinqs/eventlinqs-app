@@ -3,9 +3,7 @@ import { redirect } from 'next/navigation'
 import { Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ALLOWED_CONNECT_COUNTRIES, getConnectedBusinessName } from '@/lib/stripe/connect'
-import { businessNameDivergence, type NameDivergence } from '@/lib/stripe/business-profile'
-import { BusinessNameMismatch } from '@/components/payouts/business-name-mismatch'
+import { ALLOWED_CONNECT_COUNTRIES } from '@/lib/stripe/connect'
 import {
   ConnectOnboardingCard,
   type ConnectOnboardingState,
@@ -51,25 +49,6 @@ function deriveState(org: Organisation): ConnectOnboardingState {
     return 'complete'
   }
   return 'in_progress'
-}
-
-/**
- * Compare the organisation name against the business name Stripe holds.
- *
- * Never throws into the render. A Stripe outage or a revoked key must degrade to
- * "we could not check", because a payouts page that 500s is a worse failure than
- * an unreported name mismatch, and this page is where an organiser goes when
- * they are already worried about their money.
- */
-async function checkBusinessName(org: Organisation): Promise<NameDivergence> {
-  if (!org.stripe_account_id) return { status: 'not_set' }
-  try {
-    const stripeName = await getConnectedBusinessName(org.stripe_account_id)
-    return businessNameDivergence(org.name, stripeName)
-  } catch (err) {
-    console.error('[payouts] business-name divergence check failed', err)
-    return { status: 'not_set' }
-  }
 }
 
 function readRequirements(value: Record<string, unknown> | null | undefined): string[] {
@@ -131,7 +110,7 @@ export default async function PayoutsPage({
       <div>
         <h1 className="mb-6 text-2xl font-bold text-ink-900">Payouts</h1>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-16 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-600">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-800">
             <Wallet className="h-6 w-6" aria-hidden="true" />
           </div>
           <h2 className="mt-5 font-display text-xl font-bold text-ink-900">
@@ -153,7 +132,6 @@ export default async function PayoutsPage({
   }
 
   const state = deriveState(org)
-  const nameCheck = await checkBusinessName(org)
   // organisations.stripe_requirements is jsonb (Stripe Account requirements
   // payload). Narrow from Json union to Record before passing.
   const requirements = readRequirements(jsonAsRecord(org.stripe_requirements))
@@ -193,16 +171,6 @@ export default async function PayoutsPage({
         <div className="mb-6">
           <RefreshStripeStatus organisationId={org.id} initialOutstanding={storedOutstanding} />
         </div>
-
-        {nameCheck.status === 'diverged' && (
-          <div className="mb-6">
-            <BusinessNameMismatch
-              platformName={nameCheck.platformName}
-              stripeName={nameCheck.stripeName}
-              organisationId={org.id}
-            />
-          </div>
-        )}
 
         <ConnectOnboardingCard
           organisationId={org.id}
@@ -269,14 +237,6 @@ export default async function PayoutsPage({
           payout_status, which is exactly the state the founder was in, and it does
           not announce itself on this screen. */}
       <RefreshStripeStatus organisationId={org.id} initialOutstanding={storedOutstanding} />
-
-      {nameCheck.status === 'diverged' && (
-        <BusinessNameMismatch
-          platformName={nameCheck.platformName}
-          stripeName={nameCheck.stripeName}
-          organisationId={org.id}
-        />
-      )}
 
       <SummaryCards summary={summary} />
 

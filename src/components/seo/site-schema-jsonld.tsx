@@ -21,6 +21,7 @@
  * ambiguity the markup exists to remove.
  */
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
+import { contactAddress } from '@/lib/email/sender'
 
 interface Props {
   baseUrl: string
@@ -63,7 +64,7 @@ export function SiteSchemaJsonLd({ baseUrl }: Props) {
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer support',
-      email: 'hello@eventlinqs.com',
+      email: contactAddress('hello'),
       areaServed: 'AU',
       availableLanguage: 'en',
     },

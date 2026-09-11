@@ -28,7 +28,7 @@ export default async function VenuesPage({
       <div className="mx-auto max-w-2xl px-4 py-10">
         <h1 className="mb-6 text-2xl font-bold text-ink-900">Venues</h1>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-16 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-600">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-800">
             <Building2 className="h-6 w-6" aria-hidden="true" />
           </div>
           <h2 className="mt-5 font-display text-xl font-bold text-ink-900">

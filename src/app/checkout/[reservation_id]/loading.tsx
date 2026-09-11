@@ -8,7 +8,7 @@
 export default function CheckoutLoading() {
   return (
     <div
-      className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_320px] lg:gap-12 lg:px-8 lg:py-12"
+      className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12 lg:px-8 lg:py-12"
       aria-busy="true"
       aria-label="Loading checkout"
     >

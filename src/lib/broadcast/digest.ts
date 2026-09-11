@@ -10,6 +10,7 @@ import {
   type DigestRecipient,
   type WaitlistAudienceRow,
 } from './digest-audience'
+import { contactAddress } from '@/lib/email/sender'
 
 /**
  * The weekly local digest (Broadcast Layer SPEC 3.2): one city-scoped email
@@ -333,7 +334,7 @@ export function buildDigestEmailHtml(input: {
       <a href="${escapeAttr(`${input.origin}/events`)}" style="display:inline-block;margin-top:20px;background:#0A1628;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px">See everything on EventLinqs</a>
     </div>
     <p style="margin:18px 4px 0;font-size:11px;color:#8b919c">You asked us to keep you posted on events in your area. <a href="${escapeAttr(input.unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">Unsubscribe with one tap</a> and this stops instantly.</p>
-    <p style="margin:8px 4px 0;font-size:11px;color:#8b919c">EventLinqs, hello@eventlinqs.com</p>
+    <p style="margin:8px 4px 0;font-size:11px;color:#8b919c">EventLinqs, ${contactAddress('hello')}</p>
   </div></body></html>`
 
   const text = [
@@ -349,7 +350,7 @@ export function buildDigestEmailHtml(input: {
     ),
     '',
     `Unsubscribe: ${input.unsubscribeUrl}`,
-    'EventLinqs, hello@eventlinqs.com',
+    `EventLinqs, ${contactAddress('hello')}`,
   ].join('\n')
 
   return { subject, html, text }

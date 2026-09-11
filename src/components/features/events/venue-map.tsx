@@ -1,9 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
-import { getGoogleMapsLoader, GOOGLE_MAPS_MAP_ID } from '@/lib/maps/google-maps-loader'
-import { createBrandPin } from '@/lib/maps/brand-pin'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  getGoogleMapsLoader,
+  GOOGLE_MAPS_MAP_ID,
+  googleMapsAuthFailed,
+  onGoogleMapsAuthFailure,
+} from '@/lib/maps/google-maps-loader'
+import { createVenuePin } from '@/lib/maps/brand-pin'
+import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 
 interface Props {
   venueName: string | null
@@ -30,6 +36,26 @@ export function VenueMap({
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
   const [interactive, setInteractive] = useState(false)
   const [inView, setInView] = useState(false)
+  /*
+   * WHEN GOOGLE REFUSES THE KEY, KEEP OUR OWN PLATE UP.
+   *
+   * An auth failure still resolves importLibrary and still constructs a Map, so
+   * `interactive` went true, this component dropped its designed fallback, and
+   * Google painted "Sorry! Something went wrong ... see the JavaScript console"
+   * into the container for a person buying a ticket to read (close-out UX2.5).
+   * The signal is Google's own gm_authFailure, registered once in the loader.
+   *
+   * useSyncExternalStore rather than useEffect + setState, because that is
+   * precisely what this is: a module-level flag outside React, with a subscribe
+   * and a snapshot. The effect form also trips react-hooks/set-state-in-effect,
+   * and the rule is right - it would cascade a render on every mount. The
+   * server snapshot is `false`: nothing has been refused before hydration.
+   */
+  const authFailed = useSyncExternalStore(
+    onGoogleMapsAuthFailure,
+    googleMapsAuthFailed,
+    () => false,
+  )
 
   const hasCoords = latitude !== null && longitude !== null
   // Address string to geocode when the event has no stored coordinates. Most
@@ -79,7 +105,9 @@ export function VenueMap({
   const mapsLink = hasCoords
     ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsLinkQuery)}`
-  const fullAddress = [address, city, state, country].filter(Boolean).join(', ')
+  // UX1.2: one formatter composes every venue address on the platform, so a
+  // city typed into the address field is not printed twice beside the map.
+  const fullAddress = formatVenueAddress({ name: venueName, address, city, state, country }) ?? ''
 
   useEffect(() => {
     if (!hasLocation) return
@@ -132,12 +160,27 @@ export function VenueMap({
         mapRef.current = map
 
         // AdvancedMarkerElement replaces the deprecated google.maps.Marker.
-        // The pin is the shared brand dot, so all four maps stay identical.
+        //
+        // UX2.2: this was the shared brand DOT, whose only label was a `title`
+        // attribute, i.e. a hover tooltip that does not exist on a phone. Every
+        // surrounding commercial POI carried a labelled marker, so the one point
+        // the page is about was the least legible thing on the map. It is a
+        // labelled plate now, carrying the venue name as real text.
+        //
+        // collisionBehavior is the PUBLISHED mechanism for outranking the
+        // basemap's own labels, not a guess (Google, Maps JavaScript API,
+        // CollisionBehavior, fetched 2026-09-09):
+        //   REQUIRED_AND_HIDES_OPTIONAL - "Always display the marker regardless
+        //   of collision, and hide any OPTIONAL_AND_HIDES_LOWER_PRIORITY markers
+        //   or labels that would overlap with the marker."
         markerRef.current = new AdvancedMarkerElement({
           position: center,
           map,
           title: venueName ?? undefined,
-          content: createBrandPin({ title: venueName }),
+          content: createVenuePin({ name: venueName }),
+          collisionBehavior:
+            google.maps.CollisionBehavior.REQUIRED_AND_HIDES_OPTIONAL,
+          zIndex: 10,
         })
         setInteractive(true)
       } catch (err) {
@@ -159,7 +202,12 @@ export function VenueMap({
       <div className="relative aspect-[2/1] bg-ink-100">
         {hasLocation ? (
           <>
-            <div ref={containerRef} className="absolute inset-0 h-full w-full" />
+            <div
+              ref={containerRef}
+              // Hidden rather than unmounted: Google has already written its own
+              // error panel in here, and unmounting mid-callback races the API.
+              className={`absolute inset-0 h-full w-full ${authFailed ? 'invisible' : ''}`}
+            />
             {/* Native lazy-img sentinel - when the browser decides this
                 pseudo-image is near the viewport it kicks off `onLoad`,
                 giving us a second independent trigger alongside the IO.
@@ -174,7 +222,7 @@ export function VenueMap({
               className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
               onLoad={() => setInView(true)}
             />
-            {!interactive && (
+            {(!interactive || authFailed) && (
               <div
                 className="absolute inset-0 flex items-center justify-center"
                 style={{

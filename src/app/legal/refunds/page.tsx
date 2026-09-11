@@ -2,6 +2,7 @@ import { REFUND_ARRIVAL_WINDOW } from '@/lib/refunds/arrival-timeframe'
 import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Refund and Ticket Policy | EventLinqs',
@@ -112,7 +113,7 @@ export default async function RefundPolicyPage() {
       <p>
         If you have heard that an event is cancelled but have not heard from us,
         please contact{' '}
-        <a href="mailto:support@eventlinqs.com">support@eventlinqs.com</a> with
+        <a href={contactMailto('support')}>{contactAddress('support')}</a> with
         your order reference so we can check the status for you.
       </p>
 
@@ -216,7 +217,7 @@ export default async function RefundPolicyPage() {
       <ul>
         <li>
           <strong>Contact EventLinqs.</strong> Email{' '}
-          <a href="mailto:support@eventlinqs.com">support@eventlinqs.com</a> with
+          <a href={contactMailto('support')}>{contactAddress('support')}</a> with
           your order reference, the event name, and a short description of what
           has happened. This is the best route for a cancellation, a reschedule,
           or anything you believe involves your consumer rights.
@@ -360,7 +361,7 @@ export default async function RefundPolicyPage() {
 
       <p>
         Questions about a refund? Email{' '}
-        <a href="mailto:support@eventlinqs.com">support@eventlinqs.com</a>. We
+        <a href={contactMailto('support')}>{contactAddress('support')}</a>. We
         respond within 2 business days.
       </p>
     </LegalPageShell>

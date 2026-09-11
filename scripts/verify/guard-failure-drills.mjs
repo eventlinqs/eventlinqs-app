@@ -257,9 +257,57 @@ const DRILLS = [
     expect: 'is not open any more',
   },
   /*
-   * vercelignore-covers-guard-reads (close-out C18 FINAL), two drills: the approved
-   * record's re-inclusion lost from .vercelignore, and a build-time guard naming a
-   * docs/ path that is neither required-and-re-included nor in a reviewed file.
+   * launch-readiness-honest (close-out L5, 9 September 2026), five drills, one
+   * per way the readiness report can be made to say something the evidence does
+   * not. The first is the one that matters and is the reason the guard exists: a
+   * report whose verdict is edited in the markdown. The others are the shapes
+   * C10.4's roast found in the scope audit, aimed at this document instead.
+   */
+  {
+    name: 'the launch readiness verdict is edited by hand in the markdown',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
+    file: 'docs/verification/LAUNCH-READINESS.md',
+    find: '## VERDICT: NOT LAUNCH READY',
+    replace: '## VERDICT: LAUNCH READY',
+    expect: 'does not match what the adjudication renders',
+  },
+  {
+    name: 'a PASS row cites evidence that is not in the repository',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
+    file: 'scripts/verify/launch-readiness.mjs',
+    find: 'route-sweep-2026-09-09.json',
+    replace: 'route-sweep-that-somebody-deleted.json',
+    expect: 'which is not in the repository',
+  },
+  {
+    name: 'a PASS row also names something the owner has to supply',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
+    file: 'scripts/verify/launch-readiness.mjs',
+    find: '    n: 14,\n',
+    replace: "    n: 14,\n    needs: 'test-account',\n",
+    expect: 'also names an owner need',
+  },
+  {
+    name: 'an OWNER BLOCKED need grows a second sentence',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
+    file: 'scripts/verify/launch-readiness.mjs',
+    find: 'L1 requires them driven there rather than on TEST.',
+    replace: 'L1 requires them driven there rather than on TEST. It would also be convenient.',
+    expect: 'C10.4 says one',
+  },
+  {
+    name: 'an L1 row is renumbered out of the sixteen and nobody adjudicates it',
+    guard: `${GUARDS}/launch-readiness-honest.mjs`,
+    file: 'scripts/verify/launch-readiness.mjs',
+    find: '    n: 15,\n',
+    replace: '    n: 17,\n',
+    expect: 'L1 item 15 has no row',
+  },
+  /*
+   * vercelignore-covers-guard-reads (close-out C18 FINAL, rewritten for F1.9.2),
+   * three drills: the approved record's re-inclusion lost, THE FOURTH LOST
+   * DEPLOYMENT RESTORED EXACTLY (commit 7564b40 had no docs/verification lines at
+   * all), and a required entry that has rotted away from any reader.
    */
   {
     name: 'the approved record is excluded from the Vercel upload again',
@@ -267,15 +315,46 @@ const DRILLS = [
     file: '.vercelignore',
     find: '!docs/scope/community-layer-approved.json',
     replace: '!docs/scope/community-layer-approved.json.retired',
-    expect: 'docs/scope/community-layer-approved.json is EXCLUDED by .vercelignore',
+    expect: 'docs/scope/community-layer-approved.json does not survive .vercelignore',
   },
   {
-    name: 'a build-time guard reads a docs path nobody re-included',
+    /*
+     * THE FOURTH OCCURRENCE, put back byte for byte. These four lines are the
+     * whole difference between this tree and 7564b40, whose preview build died
+     * on launch-readiness-honest.mjs. The guard was separately run against
+     * 7564b40's own .vercelignore, unchanged, as close-out F1.9.2 PART TWO asks:
+     * C:\\dev\\EVIDENCE\\F1.9.2\\part-two-red-on-7564b40.txt
+     */
+    name: 'the launch readiness report is excluded from the upload again (commit 7564b40)',
     guard: `${GUARDS}/vercelignore-covers-guard-reads.mjs`,
-    file: 'scripts/guards/community-layer-protected.mjs',
-    find: "const APPROVED = 'docs/scope/community-layer-approved.json'",
-    replace: "const APPROVED = 'docs/scope/community-layer-approved-v2.json'",
-    expect: 'docs/scope/community-layer-approved-v2.json is read by scripts/guards/community-layer-protected.mjs',
+    file: '.vercelignore',
+    find: '!docs/verification/\ndocs/verification/*\n!docs/verification/LAUNCH-READINESS.md\n!docs/verification/launch-readiness/',
+    replace: '# the four lines 7564b40 did not have',
+    expect: 'docs/verification/LAUNCH-READINESS.md does not survive .vercelignore',
+  },
+  {
+    name: 'a required docs read outlives every script that reads it',
+    guard: `${GUARDS}/vercelignore-covers-guard-reads.mjs`,
+    file: 'scripts/guards/lib/vercelignore-registry.mjs',
+    find: 'export const REQUIRED_READS = {',
+    replace:
+      "export const REQUIRED_READS = {\n  'docs/EVENT-LIFECYCLE.md':\n    'a drill entry naming a real file that no build-time script reads',",
+    expect: 'is named by no build-time script; the registry entry has rotted',
+  },
+  /*
+   * excluded-reads-survive-the-upload (8 September 2026, derived for F1.9.2). The
+   * regression is a prebuild entry point that reads a docs/ path the upload does
+   * not carry: exactly what killed 7564b40's preview while the local gate stayed
+   * green. Pointing the report at docs/verification/system-pass, which is NOT
+   * re-included, reproduces it without touching the guard's own logic.
+   */
+  {
+    name: 'a prebuild guard reads a docs path the upload does not carry',
+    guard: `${GUARDS}/excluded-reads-survive-the-upload.mjs`,
+    file: 'scripts/verify/launch-readiness.mjs',
+    find: "export const REPORT_PATH = 'docs/verification/LAUNCH-READINESS.md'",
+    replace: "export const REPORT_PATH = 'docs/verification/system-pass/LAUNCH-READINESS.md'",
+    expect: 'in the stripped upload',
   },
   /*
    * community-layer-protected (close-out C18 FINAL), two drills: a faith page lost
@@ -1016,22 +1095,30 @@ const DRILLS = [
     expect: 'provider registries disagree',
   },
   {
+    /*
+     * REPOINTED 11 September 2026. These two were anchored on
+     * src/lib/waitlist/promote.ts, which built its own mail client until
+     * close-out D2 moved the waiting-list message into the recovery engine so
+     * that one freed unit produces exactly one message. The anchor went with it.
+     * They are repointed at a sender that still has that shape rather than
+     * deleted: what they prove is unchanged.
+     */
     name: 'sender address literal reintroduced',
     guard: `${GUARDS}/sender-single-source.mjs`,
-    file: 'src/lib/waitlist/promote.ts',
-    find: '        from: getNoReplyFrom(),',
-    replace: "        from: 'EventLinqs <noreply@eventlinqs.com>',",
+    file: 'src/lib/payouts/email.ts',
+    find: '      from: getNoReplyFrom(),',
+    replace: "      from: 'EventLinqs <noreply@eventlinqs.com>',",
     expect: 'a literal sender address on a from/replyTo property',
   },
   {
     name: 'sender address hidden in a FROM constant',
     guard: `${GUARDS}/sender-single-source.mjs`,
-    file: 'src/lib/waitlist/promote.ts',
-    find: '        from: getNoReplyFrom(),',
+    file: 'src/lib/payouts/email.ts',
+    find: '      from: getNoReplyFrom(),',
     // The guard is a text scanner, so the intermediate need not compile; the
     // harness restores the file in a `finally` either way.
     replace:
-      "        const MAIL_FROM = 'EventLinqs <noreply@eventlinqs.com>'\n        from: MAIL_FROM,",
+      "      const MAIL_FROM = 'EventLinqs <noreply@eventlinqs.com>'\n      from: MAIL_FROM,",
     expect: 'a literal sender address assigned to a FROM constant',
   },
   {
@@ -1723,6 +1810,350 @@ const DRILLS = [
     find: '    replayIntegration({',
     replace: '    noRecorderAtAll({',
     expect: 'Session Replay is still wired at all',
+  },
+  /*
+   * THE RUNNER ITSELF. Close-out F1.1 asks for the naming to be proved "by
+   * making one guard fail on purpose and reading the name back out of the
+   * output", and that is exactly what this drill does: a real registered guard
+   * is made to exit 1, the REAL runner runs all of them, and the assertion is
+   * that the runner's output contains the path of the guard that failed.
+   *
+   * It is the only drill whose `guard` is the runner, so it costs a full guard
+   * pass (about eighty seconds). That is the price of driving the thing rather
+   * than unit-testing a rendering function and calling the build log proved. The
+   * rendering function is unit-tested as well, in
+   * tests/unit/guards/guard-run-report.test.ts; this is the half that could not
+   * be faked.
+   */
+  {
+    name: 'a guard fails and the runner will not say which one',
+    guard: `${GUARDS}/run-guards.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace: 'const ROOT = process.cwd()\nprocess.exit(1) // planted by the F1.1 drill, restored in the finally',
+    expect: '[guards]   scripts/guards/no-control-characters.mjs  (exit 1)',
+  },
+  /*
+   * THE SAME RUNNER, THE OTHER FAULT. Close-out F2.3: "Prove it by making one
+   * guard throw deliberately and reading its name back."
+   *
+   * The drill above plants `process.exit(1)`, which is a guard DECIDING. This
+   * one plants a throw, which is a guard BREAKING, and before F2.3 the runner
+   * reported both as `exit 1` because it inherited the child's streams and so
+   * could not read what the child had printed. The two demand opposite
+   * responses, so the assertion here is the word that tells them apart plus the
+   * exception's own message, attributed to the file that raised it.
+   *
+   * It plants the throw in the same guard as the drill above so the two are
+   * comparable line for line, and it costs a second full guard pass for the
+   * same reason that one does: the rendering is unit-tested, and this is the
+   * half that cannot be faked.
+   */
+  {
+    name: 'a guard throws and the runner will not say which one, or what it threw',
+    guard: `${GUARDS}/run-guards.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace:
+      "const ROOT = process.cwd()\nthrow new Error('planted by the F2.3 drill, restored in the finally')",
+    expect: "it threw: Error: planted by the F2.3 drill, restored in the finally",
+  },
+  /*
+   * CLOSE-OUT F2.1, FIVE DRILLS. "Prove it by adding an undeclared dependency
+   * and watching the gate go red before a push."
+   *
+   * One per capability the build host lacks, because the five lost deployments
+   * were four of one kind and one of another, and the fourth safeguard could
+   * only see the first kind. Then two more for the registry rotting, which is
+   * how a declaration stops being true without anybody editing it: a claim the
+   * code no longer backs, and a claim about a script that no longer exists.
+   *
+   * The subject is a real registered guard rather than a scratch file, because
+   * the scan walks the prebuild entry points and a scratch file is not one.
+   */
+  {
+    name: 'a build-time script starts calling git and does not declare it',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    // The planted call carries an `env` option so it satisfies
+    // no-inherited-git-env as well: this drill's own source would otherwise
+    // read as an unguarded call site, and exempting a file is worse than
+    // writing the safe version.
+    replace: "const ROOT = process.cwd()\nconst _drill = () => execFileSync('git', ['status'], { env: {} })",
+    expect: 'uses git and does not declare it',
+  },
+  {
+    name: 'a build-time script starts reading a stripped path and does not declare it',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace: "const ROOT = process.cwd()\nconst _drill = 'docs/verification/LAUNCH-READINESS.md'",
+    expect: 'uses docs and does not declare it',
+  },
+  {
+    name: 'a build-time script starts reading a token and does not declare it',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace: 'const ROOT = process.cwd()\nconst _drill = process.env.VERCEL_TOKEN',
+    expect: 'uses token and does not declare it',
+  },
+  {
+    name: 'the needs registry declares a dependence the code no longer has',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/lib/build-host-needs.mjs',
+    find: "  'scripts/check-pricing-lock.mjs': {\n",
+    replace: "  'scripts/check-pricing-lock.mjs': {\n    git: 'planted by the F2.1 rot drill; nothing in that script calls git.',\n",
+    expect: 'declares git and its code no longer uses it',
+  },
+  {
+    name: 'the needs registry outlives the script it describes',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/lib/build-host-needs.mjs',
+    find: 'export const DECLARED = {\n',
+    replace: "export const DECLARED = {\n  'scripts/guards/renamed-away.mjs': { git: 'planted by the F2.1 rot drill; this file does not exist.' },\n",
+    expect: 'which is not a prebuild entry point on disk',
+  },
+  /*
+   * CLOSE-OUT F2.4. Seven build-time scripts read git, and on the build log of
+   * ffded236 five of them degraded in five different sets of words for one fact.
+   * Two claimed a missing REMOTE on a host with no repository at all. They now
+   * share one sentence, and this drill is what stops the eighth writing a sixth:
+   * a git-declaring script that does not reach the shared module fails the gate.
+   */
+  {
+    name: 'a git-reading script stops sharing the one sentence and invents its own',
+    guard: `${GUARDS}/build-host-needs-declared.mjs`,
+    file: 'scripts/guards/no-ai-authorship.mjs',
+    find: "import { noGitLine } from './lib/git-availability.mjs'",
+    replace: "const noGitLine = (tag) => `${tag} something went wrong with git, probably`",
+    expect: 'declares a git need and never reaches',
+  },
+  /*
+   * CLOSE-OUT F1.2, F1.3 AND F1.4. Four drills for one property: a machine that
+   * builds for other people judges what Vercel judges, and cannot excuse itself.
+   */
+  {
+    name: 'a guard bypass is left switched on in CI',
+    guard: `${GUARDS}/no-build-guard-bypass.mjs`,
+    env: { ALLOW_PRICING_DRIFT: '1', GITHUB_ACTIONS: 'true' },
+    expect: 'ALLOW_PRICING_DRIFT is set on a ci build',
+  },
+  {
+    name: 'the bypass list rots until it no longer covers the pricing bypass',
+    guard: `${GUARDS}/no-build-guard-bypass.mjs`,
+    file: 'src/lib/env/manifest.mjs',
+    find: `    describe: 'Bypass of the pricing lock, which holds the live fee to docs/PRICING.md',
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview', 'development'],`,
+    replace: `    describe: 'Bypass of the pricing lock, which holds the live fee to docs/PRICING.md',
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview'],`,
+    expect: 'is not in the derived list, so this guard is guarding nothing',
+  },
+  {
+    name: 'CI calls itself a local build and waves through a malformed public key',
+    guard: 'scripts/check-public-env.mjs',
+    env: { GITHUB_ACTIONS: 'true', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'ci-placeholder-anon-key' },
+    expect: '[public-env] BUILD BLOCKED on ci',
+  },
+  {
+    name: 'CI cannot read pricing_rules and calls the locked values verified anyway',
+    guard: 'scripts/check-pricing-lock.mjs',
+    /*
+     * BOTH URL VARIABLES, and the first version of this drill got it wrong,
+     * which is the harness doing its job. readLiveRules prefers
+     * NEXT_PUBLIC_SUPABASE_URL_PREVIEW over the base name, .env.local holds one,
+     * and a drill that overrode only the base name changed nothing: the guard
+     * read the real TEST project, passed, and the drill reported DID NOT FAIL.
+     */
+    env: {
+      GITHUB_ACTIONS: 'true',
+      NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+      NEXT_PUBLIC_SUPABASE_URL_PREVIEW: 'https://example.supabase.co',
+    },
+    expect: '[pricing-lock] BUILD BLOCKED',
+  },
+  /*
+   * CLOSE-OUT F1.6. The dangerous failure here is the FALSE NEGATIVE: the clause
+   * cannot see, says so in whatever words it feels like, and three machines
+   * produce three sentences nobody can line up. So this drill asserts the guard
+   * STAYS GREEN (it cannot see, which is not a fault) while reporting the named
+   * code, which is what makes the three machines comparable.
+   *
+   * It calls Vercel for real, with a token Vercel will refuse, because the whole
+   * point is what the guard does with a refusal. Offline, the code becomes
+   * network-error and this drill fails saying so, which is correct: the harness
+   * should not report a network-shaped pass as proof of an http-shaped one.
+   */
+  {
+    name: 'a refused Vercel read is reported as a bare status again',
+    guard: `${GUARDS}/machine-callers-reachable.mjs`,
+    env: {
+      GITHUB_ACTIONS: 'true',
+      VERCEL_TOKEN: 'not_a_real_token',
+      VERCEL_PROJECT_ID: 'prj_YIHLHcjuQfg4RmtNt7JekkcTVznJ',
+      VERCEL_ORG_ID: 'team_yPo8T18zSl5VczJfWIIrNqly',
+    },
+    expectPass: 'NOT JUDGED [http-',
+  },
+  /*
+   * CLOSE-OUT F2.2, BOTH DIRECTIONS. "Prove both: it runs and judges in CI, and
+   * it does not execute on Vercel."
+   *
+   * The guard predicts what the build host will see. Running it ON the build
+   * host is circular, and it used to stand aside there only because Vercel
+   * happens to have no usable git - an accident, not a decision. Removing the
+   * git dependence would have silently reversed that accident, so the skip is
+   * now keyed on the build scope and both halves are drilled.
+   */
+  {
+    name: 'the upload simulation runs on the build host, simulating the tree it is inside',
+    guard: `${GUARDS}/excluded-reads-survive-the-upload.mjs`,
+    env: { VERCEL: '1', VERCEL_ENV: 'preview' },
+    expectPass: 'SKIP - this IS the build host',
+  },
+  {
+    name: 'the upload simulation stands aside in CI, where it is a real gate',
+    guard: `${GUARDS}/excluded-reads-survive-the-upload.mjs`,
+    env: { GITHUB_ACTIONS: 'true' },
+    expectPass: 'scope=ci (decided by GITHUB_ACTIONS)',
+  },
+
+  /*
+   * CLOSE-OUT D2, THE RECOVERY ENGINE. Six drills across two guards, and each
+   * one breaks the thing the guard exists for rather than something adjacent.
+   *
+   * The engine is the part of this platform with value outside ticketing, and
+   * every line it holds is invisible: an import that couples it to this domain
+   * breaks nothing on the day it is typed, and a send with no receipt looks
+   * exactly like a send with one until somebody complains to their provider.
+   */
+  {
+    name: 'the recovery engine imports this platform domain code',
+    guard: `${GUARDS}/fillrate-reads-only-the-ledger.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find: "import { createAdminClient } from '@/lib/supabase/admin'",
+    replace:
+      "import { createAdminClient } from '@/lib/supabase/admin'\nimport { LEDGER_EVENT_COLUMNS } from '@/lib/ledger/adapter'\nvoid LEDGER_EVENT_COLUMNS",
+    expect: 'is not on the engine',
+  },
+  {
+    name: 'the recovery engine queries a table belonging to the source system',
+    guard: `${GUARDS}/fillrate-reads-only-the-ledger.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find: "    .from('recovery_suppressions')\n    .select('contact_email')",
+    replace: "    .from('profiles')\n    .select('contact_email')",
+    expect: 'which is not the ledger',
+  },
+  {
+    name: 'a user facing string in the engine names one industry',
+    guard: `${GUARDS}/fillrate-reads-only-the-ledger.mjs`,
+    file: 'src/lib/fillrate/message.ts',
+    find: '  const subject = `A ${noun} just opened up for ${facts.slotName}`',
+    replace: '  const subject = `A ticket just opened up for ${facts.slotName}`',
+    expect: 'The engine speaks no industry',
+  },
+  {
+    name: 'a recovery message is recorded without naming what authorised it',
+    guard: `${GUARDS}/recovery-only-writes-to-people-who-asked.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find: '    demand_entry_id: send.demandEntryId,',
+    replace: '    unit_amount_cents: send.unitAmountCents,',
+    expect: 'without naming demand_entry_id',
+  },
+  {
+    name: 'the database stops requiring a receipt on every recovery message',
+    guard: `${GUARDS}/recovery-only-writes-to-people-who-asked.mjs`,
+    file: 'supabase/migrations/20260910000003_recovery_engine.sql',
+    find: '  demand_entry_id bigint not null references public.ledger_entries(id),',
+    replace: '  demand_entry_id bigint references public.ledger_entries(id),',
+    expect: 'no longer declares recovery_sends.demand_entry_id',
+  },
+  {
+    name: 'the sequence stops refusing somebody whose money already came back',
+    guard: `${GUARDS}/recovery-only-writes-to-people-who-asked.mjs`,
+    file: 'src/lib/fillrate/due.ts',
+    find: "      refuse(row, 'their money came back, so chasing them would be the worst message we could send')",
+    replace: "      refuse(row, 'not written to')",
+    expect: 'no longer refuses somebody whose money came back',
+  },
+  {
+    /*
+     * CLOSE-OUT D2, THE DEFECT NOTHING ELSE COULD SEE. The join dialog painted
+     * correctly, centred, over the page, and could not be clicked: it was
+     * trapped in the stacking context of an ancestor carrying a transform. The
+     * drill removes the portal from one real dialog, which is exactly how it
+     * was written before 11 September 2026.
+     */
+    name: 'a full-page dialog goes back to rendering where it sits',
+    guard: `${GUARDS}/overlays-are-portalled.mjs`,
+    file: 'src/components/waitlist/join-waitlist-modal.tsx',
+    find: "import { createPortal } from 'react-dom'",
+    replace: "const createPortal = (node: unknown) => node",
+    expect: 'never reaches react-dom',
+  },
+  {
+    /*
+     * AND THE REVIEWED LIST CANNOT ROT. An exception that outlives the file it
+     * describes is a statement nobody can check.
+     */
+    name: 'the reviewed exception list outlives the file it describes',
+    guard: `${GUARDS}/overlays-are-portalled.mjs`,
+    file: 'scripts/guards/overlays-are-portalled.mjs',
+    find: "    'src/components/admin/admin-mobile-nav.tsx',",
+    replace: "    'src/components/admin/renamed-away.tsx',",
+    expect: 'is not on disk any more',
+  },
+  {
+    name: 'a recovery message is allowed to go with no working way to stop it',
+    guard: `${GUARDS}/recovery-only-writes-to-people-who-asked.mjs`,
+    file: 'src/lib/fillrate/engine.ts',
+    find: "    count('no unsubscribe link could be minted, so nothing was sent')",
+    replace: "    count('no link, carrying on anyway')",
+    expect: 'unsubscribe link in 1 of its 2 send path(s)',
+  },
+  /*
+   * types-cover-migrations (11 September 2026), three drills, one per kind of
+   * object that was actually missing when the first push after the founder's
+   * migrations was refused with 285 unexplained differences: a table, an enum
+   * and a column, each added to the newest migration and never regenerated
+   * into src/types/database.ts. The guard must name the object AND the
+   * migration, because "285 differences" was the shape of the finding that
+   * took a session to read.
+   */
+  {
+    name: 'a migration creates a table that was never regenerated into the committed types',
+    guard: `${GUARDS}/types-cover-migrations.mjs`,
+    file: 'supabase/migrations/20260911000001_connect_requirement_watch.sql',
+    find: "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n",
+    replace:
+      "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n" +
+      'create table public.a_table_the_drill_adds (id uuid primary key);\n',
+    expect:
+      'table public.a_table_the_drill_adds is created by 20260911000001_connect_requirement_watch.sql and public.Tables.a_table_the_drill_adds is not in src/types/database.ts',
+  },
+  {
+    name: 'a migration creates an enum that was never regenerated into the committed types',
+    guard: `${GUARDS}/types-cover-migrations.mjs`,
+    file: 'supabase/migrations/20260911000001_connect_requirement_watch.sql',
+    find: "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n",
+    replace:
+      "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n" +
+      "create type public.an_enum_the_drill_adds as enum ('a');\n",
+    expect: 'enum public.an_enum_the_drill_adds is created by 20260911000001_connect_requirement_watch.sql',
+  },
+  {
+    name: 'a migration adds a column that was never regenerated into the committed types',
+    guard: `${GUARDS}/types-cover-migrations.mjs`,
+    file: 'supabase/migrations/20260911000001_connect_requirement_watch.sql',
+    find: "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n",
+    replace:
+      "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n" +
+      'alter table public.connect_requirement_watch add column a_column_the_drill_adds text;\n',
+    expect:
+      'column public.connect_requirement_watch.a_column_the_drill_adds is created by 20260911000001_connect_requirement_watch.sql and public.Tables.connect_requirement_watch.Row.a_column_the_drill_adds is not in src/types/database.ts',
   },
 ]
 

@@ -4,6 +4,8 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
+import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Press | EventLinqs',
@@ -25,11 +27,11 @@ const FACTS = [
   { label: 'Founded', value: '2026' },
   { label: 'Founder', value: 'Lawal Adams' },
   { label: 'Headquarters', value: 'Geelong, Victoria, Australia' },
-  { label: 'Business entity', value: 'Australian sole trader, ABN 30 837 447 587' },
+  { label: 'Business entity', value: `${PLATFORM_ENTITY.entityType}, ABN ${PLATFORM_ENTITY.abnFormatted}` },
   { label: 'Launch markets', value: 'Australia, United Kingdom, United States, European Union' },
   { label: 'Categories supported at launch', value: '18 community rhythms across music, festival, comedy, family, and community events' },
   { label: 'Payments', value: 'Stripe (PCI-DSS, GDPR aligned)' },
-  { label: 'Press email', value: 'press@eventlinqs.com' },
+  { label: 'Press email', value: contactAddress('press') },
 ]
 
 const ASSETS = [
@@ -38,21 +40,21 @@ const ASSETS = [
     body:
       'Logo lockups, wordmark, brand colours, and approved photography for editorial use. Available on request.',
     cta: 'Request assets',
-    href: 'mailto:press@eventlinqs.com?subject=Brand%20asset%20request',
+    href: contactMailto('press', 'Brand asset request'),
   },
   {
     title: 'Founder photography',
     body:
       'Studio and lifestyle portraits of founder Lawal Adams, with location and credit information. Available on request.',
     cta: 'Request photography',
-    href: 'mailto:press@eventlinqs.com?subject=Founder%20photography%20request',
+    href: contactMailto('press', 'Founder photography request'),
   },
   {
     title: 'Product imagery',
     body:
       'Approved screenshots of the EventLinqs web product (homepage, event detail, organiser dashboard). Available on request.',
     cta: 'Request imagery',
-    href: 'mailto:press@eventlinqs.com?subject=Product%20imagery%20request',
+    href: contactMailto('press', 'Product imagery request'),
   },
 ]
 
@@ -90,7 +92,7 @@ export default function PressPage() {
       />
 
       <ContentSection surface="base" width="default">
-        <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-16">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-16">
           <div>
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Company at a glance
@@ -110,8 +112,8 @@ export default function PressPage() {
               <p>
                 The platform is operated by sole founder Lawal Adams, who
                 is Australian-Nigerian and based in Geelong, Victoria.
-                EventLinqs is a registered Australian business (ABN 30 837
-                447 587) and processes payments through Stripe with full
+                EventLinqs is a registered Australian business (ABN{' '}
+                {PLATFORM_ENTITY.abnFormatted}) and processes payments through Stripe with full
                 PCI-DSS and GDPR alignment.
               </p>
             </div>
@@ -180,7 +182,7 @@ export default function PressPage() {
             What journalists have asked us about.
           </h2>
         </div>
-        <ul className="mt-12 grid gap-8 md:grid-cols-2">
+        <ul className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-2">
           {STORYLINES.map(story => (
             <li
               key={story.title}
@@ -211,7 +213,7 @@ export default function PressPage() {
             within one business day.
           </p>
         </div>
-        <ul className="mt-12 grid gap-6 md:grid-cols-3">
+        <ul className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
           {ASSETS.map(asset => (
             <li
               key={asset.title}
@@ -234,7 +236,7 @@ export default function PressPage() {
       </ContentSection>
 
       <ContentSection surface="alt" width="default">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr] md:items-end">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:items-end">
           <div>
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Press contact
@@ -252,12 +254,12 @@ export default function PressPage() {
 
           <div className="flex flex-col gap-3 sm:flex-row md:flex-col">
             <Button
-              href="mailto:press@eventlinqs.com"
+              href={contactMailto('press')}
               variant="primary"
               size="lg"
               className="w-full sm:w-auto"
             >
-              press@eventlinqs.com
+              {contactAddress('press')}
             </Button>
             <Link
               href="/about"

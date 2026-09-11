@@ -2,7 +2,7 @@ import { sendEmail } from '@/lib/email/send'
 import { alertDestination } from '@/lib/env/destinations'
 import { getRedisClient } from '@/lib/redis/client'
 import { getSiteUrl } from '@/lib/site-url'
-import { type HealthResult, overallStatus } from '@/lib/health/checks'
+import { type HealthResult, overallStatus } from '@/lib/health/result'
 
 /**
  * Health sentinel runner: severity routing, no-false-alarm dedupe, and the
@@ -117,20 +117,52 @@ export async function routeAlerts(results: HealthResult[]): Promise<{ alerted: b
 }
 
 /** The daily heartbeat email - green summary, or a digest of any warnings. */
-export async function sendHeartbeat(results: HealthResult[]): Promise<void> {
-  const { deployment, environment } = deployIdentity()
+export function heartbeatEmail(
+  results: HealthResult[],
+  identity: { deployment: string; environment: string; when: string },
+): { subject: string; text: string; html: string } {
+  const { deployment, environment, when } = identity
   const status = overallStatus(results)
-  const when = new Date().toISOString()
   const rows = results.map(r => `${r.ok ? 'OK  ' : (r.severity === 'critical' ? 'DOWN' : 'WARN')}  ${r.label}${r.ok ? '' : ` - ${r.detail}`}`).join('\n')
   const htmlRows = results
     .map(r => `<tr><td>${r.ok ? '🟢' : r.severity === 'critical' ? '🔴' : '🟡'}</td><td>${r.label}</td><td>${r.ok ? 'OK' : r.detail}</td></tr>`)
     .join('')
   const headline = status === 'green' ? 'All systems green' : status === 'warning' ? 'Green with warnings' : 'CRITICAL faults present'
 
-  await sendEmail({
-    to: alertRecipient(),
+  return {
     subject: `EventLinqs daily heartbeat: ${headline}`,
     text: `EventLinqs daily heartbeat.\n\nStatus: ${headline}\nEnvironment: ${environment}\nDeployment: ${deployment}\nTime: ${when}\n\n${rows}\n\nLive status: ${getSiteUrl()}/admin/health\nRunbook: docs/ops/HEALTH-ALERTS.md\n\n(If you ever stop receiving this daily note, the monitor itself may be down - treat a MISSING heartbeat as a signal.)`,
-    html: `<p><strong>EventLinqs daily heartbeat: ${headline}</strong></p><p>Environment: ${environment}<br/>Deployment: ${deployment}<br/>Time: ${when}</p><table cellpadding="4">${htmlRows}</table><p>Live status: <a href="${getSiteUrl()}/admin/health">${getSiteUrl()}/admin/health</a><br/>Runbook: docs/ops/HEALTH-ALERTS.md</p><p style="color:#666">If you ever stop receiving this daily note, the monitor itself may be down - treat a missing heartbeat as a signal.</p>`,
-  })
+    /*
+     * THE DETAIL COLUMN IS NOW LONG, AND THAT IS WHY THIS WRAPS.
+     *
+     * The check this email used to carry said "3 of 12 connected account(s)
+     * disagree". Close-out S1 replaced it with one that names the organiser, the
+     * account id and every outstanding Stripe requirement BY NAME, because a
+     * count is not something an owner can act on. Those lines are long, and an
+     * unstyled table sizes to its widest cell, so on a phone the right-hand edge
+     * of the email would sit off the screen with no way to reach it.
+     *
+     * That is exactly the defect close-out UX6 fixed on the mobile checkout,
+     * arriving on the one surface UX6 could not reach. `table-layout:fixed` with
+     * a 100% width and `overflow-wrap:break-word` keeps the longest requirement
+     * string inside the phone. Driven at 390, 768 and 1440.
+     */
+    html:
+      `<div style="max-width:100%;overflow-wrap:break-word">` +
+      `<p><strong>EventLinqs daily heartbeat: ${headline}</strong></p>` +
+      `<p>Environment: ${environment}<br/>Deployment: ${deployment}<br/>Time: ${when}</p>` +
+      `<table cellpadding="4" style="width:100%;max-width:100%;table-layout:fixed;border-collapse:collapse">${htmlRows}</table>` +
+      `<p>Live status: <a href="${getSiteUrl()}/admin/health">${getSiteUrl()}/admin/health</a><br/>Runbook: docs/ops/HEALTH-ALERTS.md</p>` +
+      `<p style="color:#666">If you ever stop receiving this daily note, the monitor itself may be down - treat a missing heartbeat as a signal.</p>` +
+      `</div>`,
+  }
+}
+
+/** The daily heartbeat email - green summary, or a digest of any warnings.
+ *  One line, so the email a drive renders and the email Resend sends are the
+ *  same value built by the same function. */
+export async function sendHeartbeat(results: HealthResult[]): Promise<void> {
+  const { deployment, environment } = deployIdentity()
+  const email = heartbeatEmail(results, { deployment, environment, when: new Date().toISOString() })
+  await sendEmail({ to: alertRecipient(), ...email })
 }

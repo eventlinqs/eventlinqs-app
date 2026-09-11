@@ -133,7 +133,7 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
         <form onSubmit={handleSubmit} className="mb-6 rounded-xl border border-ink-200 bg-white p-6">
           <h3 className="text-base font-semibold text-ink-900 mb-4">New Discount Code</h3>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="discounts-code" className="block text-xs text-ink-400 mb-1">Code *</label>
               <input id="discounts-code"

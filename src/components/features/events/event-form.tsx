@@ -6,6 +6,7 @@ import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/act
 import { EventMediaStep, type MediaImage } from './event-media-step'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { isPaidPublishBlocked } from '@/lib/events/paid-publish-blocked'
+import { UNSAVED_TIER_PREFIX, isSavedTierId } from '@/lib/events/save-tiers'
 import { STREAM_COUNTRIES, STREAM_REGIONS, normaliseCountryCodes, describeCountries } from '@/lib/stream/countries'
 import { isAcceptableStreamLink } from '@/lib/stream/embed'
 import { livestreamNeedsLink, coerceAccessMode, STREAM_LINK_REQUIRED_MESSAGE } from '@/lib/stream/publish-rule'
@@ -47,11 +48,22 @@ import type {
   FeePassType,
   VenueGeocodeSource,
 } from '@/types/database'
+import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type TicketTierInput = {
-  id: string // client-side only
+  /**
+   * The database row this ticket type IS, when the form was opened on an event
+   * that already has one. A tier the organiser has just added carries a
+   * client-minted id prefixed with UNSAVED_TIER_PREFIX so the two can never be
+   * confused, and only a saved id is sent to the server.
+   *
+   * This used to be dropped on submit, which is why updateEvent deleted and
+   * re-created every ticket type on every save. See
+   * supabase/migrations/20260910000001_ticket_tiers_keep_their_identity.sql.
+   */
+  id: string
   name: string
   description: string
   tier_type: TicketTierType
@@ -218,7 +230,7 @@ const STEPS = [
 
 function newTier(sort_order: number): TicketTierInput {
   return {
-    id: crypto.randomUUID(),
+    id: `${UNSAVED_TIER_PREFIX}${crypto.randomUUID()}`,
     name: '',
     description: '',
     tier_type: 'general_admission',
@@ -701,6 +713,11 @@ export function EventForm({
     refund_policy_absorb_fee: formData.refund_policy_absorb_fee,
     refund_policy_self_service: formData.refund_policy_self_service,
     ticket_tiers: formData.ticket_tiers.map((t, i) => ({
+      // The id goes to the server ONLY when it names a row that already exists,
+      // so updateEvent can update that ticket type in place instead of deleting
+      // it. A tier drafted in this session carries the unsaved prefix and is sent
+      // without an id, which is what tells the server it is new.
+      ...(isSavedTierId(t.id) ? { id: t.id } : {}),
       name: t.name,
       description: t.description,
       tier_type: t.tier_type,
@@ -833,7 +850,10 @@ export function EventForm({
     const application = buildDraftPatch(draft, {
       categories,
       allowedCommunitySlugs: ALL_COMMUNITIES.map(c => c.slug),
-      newId: () => crypto.randomUUID(),
+      // buildDraftPatch mints ids for TICKET TYPES only, and a draft's ticket
+      // types have never been saved, so they carry the unsaved prefix like every
+      // other tier the organiser has not written to the database yet.
+      newId: () => `${UNSAVED_TIER_PREFIX}${crypto.randomUUID()}`,
     })
     setFormData(d => {
       const next = { ...d, ...application.patch } as typeof d
@@ -1116,7 +1136,7 @@ export function EventForm({
               onClick={() => chooseEventType(type)}
               className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium capitalize transition-colors ${
                 formData.event_type === type
-                  ? 'border-gold-500 bg-gold-100 text-gold-600'
+                  ? 'border-gold-500 bg-gold-100 text-gold-800'
                   : 'border-ink-200 text-ink-600 hover:border-ink-400'
               }`}
             >
@@ -1363,8 +1383,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label htmlFor="type-21" className="block text-xs font-medium text-ink-600 mb-1">Type</label>
-              <select id="type-21"
+              <label htmlFor={`tier-type-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Type</label>
+              <select id={`tier-type-${idx}`}
                 value={tier.tier_type}
                 onChange={e => {
                   const tiers = [...formData.ticket_tiers]
@@ -1461,8 +1481,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label htmlFor="sale-starts-24" className="block text-xs font-medium text-ink-600 mb-1">Sale Starts</label>
-              <input id="sale-starts-24"
+              <label htmlFor={`tier-sale-start-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Sale Starts</label>
+              <input id={`tier-sale-start-${idx}`}
                 type="datetime-local"
                 value={tier.sale_start}
                 onChange={e => {
@@ -1475,8 +1495,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label htmlFor="sale-ends-25" className="block text-xs font-medium text-ink-600 mb-1">Sale Ends</label>
-              <input id="sale-ends-25"
+              <label htmlFor={`tier-sale-end-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Sale Ends</label>
+              <input id={`tier-sale-end-${idx}`}
                 type="datetime-local"
                 value={tier.sale_end}
                 onChange={e => {
@@ -1489,8 +1509,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label htmlFor="min-per-order-26" className="block text-xs font-medium text-ink-600 mb-1">Min per Order</label>
-              <input id="min-per-order-26"
+              <label htmlFor={`tier-min-per-order-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Min per Order</label>
+              <input id={`tier-min-per-order-${idx}`}
                 type="number"
                 min="1"
                 value={tier.min_per_order}
@@ -1504,8 +1524,8 @@ export function EventForm({
             </div>
 
             <div>
-              <label htmlFor="max-per-order-27" className="block text-xs font-medium text-ink-600 mb-1">Max per Order</label>
-              <input id="max-per-order-27"
+              <label htmlFor={`tier-max-per-order-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Max per Order</label>
+              <input id={`tier-max-per-order-${idx}`}
                 type="number"
                 min="1"
                 value={tier.max_per_order}
@@ -1519,8 +1539,8 @@ export function EventForm({
             </div>
 
             <div className="sm:col-span-2">
-              <label htmlFor="description-optional-28" className="block text-xs font-medium text-ink-600 mb-1">Description (optional)</label>
-              <input id="description-optional-28"
+              <label htmlFor={`tier-description-${idx}`} className="block text-xs font-medium text-ink-600 mb-1">Description (optional)</label>
+              <input id={`tier-description-${idx}`}
                 type="text"
                 value={tier.description}
                 onChange={e => {
@@ -2078,7 +2098,7 @@ export function EventForm({
             {formData.venue_name && <p className="text-sm text-ink-600">{formData.venue_name}</p>}
             {formData.venue_city && (
               <p className="text-xs text-ink-400">
-                {[formData.venue_city, formData.venue_state, formData.venue_country].filter(Boolean).join(', ')}
+                {formatVenueAddress({ city: formData.venue_city, state: formData.venue_state, country: formData.venue_country })}
               </p>
             )}
           </div>

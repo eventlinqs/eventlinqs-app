@@ -284,7 +284,7 @@ export function EventMediaStep({
       {cover && (
         <div>
           <p className="mb-2 text-sm font-medium text-ink-600">Cover preview</p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <figure>
               <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-ink-200 bg-ink-100">
                 <CoverImg item={cover} />

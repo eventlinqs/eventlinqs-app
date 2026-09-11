@@ -108,8 +108,35 @@ function refFromUrl(url) {
  */
 export async function readLiveRules(env, locked) {
   const url = env.NEXT_PUBLIC_SUPABASE_URL_PREVIEW || env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const key = env.SUPABASE_SERVICE_ROLE_KEY_PREVIEW || env.SUPABASE_SERVICE_ROLE_KEY || ''
-  if (!url || !key) return { reachable: false, ref: refFromUrl(url), rules: {} }
+  /*
+   * THE ANON KEY IS ENOUGH FOR THIS QUERY, AND SAYING SO IS WHAT LETS CI VERIFY
+   * ITS OWN PRICING (close-out F1.2, 9 September 2026).
+   *
+   * This used to read with the service-role key alone, so a machine holding only
+   * the public key reported "pricing_rules could not be read, so the locked
+   * values are UNVERIFIED" and, before F1.3, excused itself as a laptop. F1.2 is
+   * explicit that CI gets the TEST project and its ANON key, never the service
+   * role key, so without this fallback the two instructions contradict each
+   * other and the lock stays unverifiable on the machine that is meant to verify.
+   *
+   * IT IS SOUND FOR THIS QUERY SPECIFICALLY, AND THAT WAS DRIVEN, NOT ASSUMED.
+   * The query below is the REGION-DEFAULT scope: organisation_id IS NULL and
+   * event_id IS NULL. That set is covered by the public read policy on
+   * pricing_rules; the row-level policy that restricts anything is
+   * "Org pricing overrides visible to owning org", which by definition matches
+   * only rows with an organisation_id, and those are excluded by the filter. On
+   * 9 September 2026 both locked rule types were fetched against TEST with the
+   * anon key and with the service-role key, with the exact query below, and the
+   * two responses were byte for byte identical.
+   *
+   * The key that was used is REPORTED, so a future reader never has to guess
+   * which credential a verdict rests on.
+   */
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY_PREVIEW || env.SUPABASE_SERVICE_ROLE_KEY || ''
+  const anonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY_PREVIEW || env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  const key = serviceKey || anonKey
+  const readAs = serviceKey ? 'service role' : anonKey ? 'anon' : 'no key'
+  if (!url || !key) return { reachable: false, ref: refFromUrl(url), rules: {}, readAs }
 
   const now = new Date().toISOString()
   const rules = {}
@@ -131,10 +158,10 @@ export async function readLiveRules(env, locked) {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
       })
     } catch (e) {
-      return { reachable: false, ref: refFromUrl(url), rules: {}, error: e.message }
+      return { reachable: false, ref: refFromUrl(url), rules: {}, readAs, error: e.message }
     }
     if (!res.ok) {
-      return { reachable: false, ref: refFromUrl(url), rules: {}, error: `HTTP ${res.status}` }
+      return { reachable: false, ref: refFromUrl(url), rules: {}, readAs, error: `HTTP ${res.status} read as ${readAs}` }
     }
     const rows = await res.json()
     rules[r.key] = {
@@ -143,7 +170,7 @@ export async function readLiveRules(env, locked) {
       openRows: rows.length,
     }
   }
-  return { reachable: true, ref: refFromUrl(url), rules }
+  return { reachable: true, ref: refFromUrl(url), rules, readAs }
 }
 
 export const PRICING_LOCK_RULE = {

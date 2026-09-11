@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
 import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
+import { recordConfirmedOrder } from '@/lib/ledger/adapter'
+import { afterResponse } from '@/lib/after-response'
 
 const RegisterFreeSchema = z.object({
   event_id: z.string().uuid(),
@@ -200,6 +202,16 @@ export async function registerFreeTickets(
     console.error('[registerFreeTickets] confirm_order error:', confirmError)
     return { error: 'Order created but could not be confirmed. Please contact support.' }
   }
+
+  /*
+   * THE SALE REACHES THE LEDGER. Close-out D1.
+   *
+   * Never fatal to a confirmed order: the row is somebody's ticket and the
+   * ledger is history about it. recordConfirmedOrder swallows and reports its
+   * own failures, and scripts/guards/ledger-writes-through-the-adapter.mjs fails
+   * the build if any confirm_order site loses this call.
+   */
+  afterResponse(`the sale rows for order ${order_id}`, () => recordConfirmedOrder(order_id))
 
   // Send the confirmation email with the ticket QR, the same as the paid path.
   // Best-effort: a mail fault must never fail an already-confirmed free order.

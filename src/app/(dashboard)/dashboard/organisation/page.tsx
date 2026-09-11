@@ -15,6 +15,7 @@ import { TaxDetailsForm } from '@/components/organisation/tax-details-form'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 import { resolveLogoPlacement } from '@/lib/media/logo-pipeline'
 import { captureException } from '@/lib/observability/sentry'
+import { OrganisationProfileForm } from '@/components/organisation/organisation-profile-form'
 
 export default async function OrganisationPage({
   searchParams,
@@ -44,7 +45,7 @@ export default async function OrganisationPage({
   const { data: org } = scope.ok
     ? ((await createAdminClient()
         .from('organisations')
-        .select('id, name, slug, description, website, email, status, stripe_onboarding_complete, legal_name, abn, gst_registered')
+        .select('id, name, slug, description, website, email, phone, status, stripe_onboarding_complete, legal_name, abn, gst_registered')
         .eq('id', scope.active.id)
         .maybeSingle()) as { data: Organisation | null })
     : { data: null }
@@ -96,7 +97,7 @@ export default async function OrganisationPage({
     active: 'bg-green-100 text-green-700',
     pending: 'bg-amber-100 text-amber-700',
     suspended: 'bg-red-100 text-red-700',
-    deactivated: 'bg-ink-100 text-ink-400',
+    deactivated: 'bg-ink-100 text-ink-600',
   }
 
   return (
@@ -114,7 +115,7 @@ export default async function OrganisationPage({
           <h1 className="text-2xl font-bold text-ink-900">{org.name}</h1>
           <p className="mt-1 text-sm text-ink-400">{canonicalHost()}/{org.slug}</p>
         </div>
-        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${statusColour[org.status] ?? 'bg-ink-100 text-ink-400'}`}>
+        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${statusColour[org.status] ?? 'bg-ink-100 text-ink-600'}`}>
           {org.status}
         </span>
       </div>
@@ -136,28 +137,22 @@ export default async function OrganisationPage({
         </div>
       </div>
 
-      <div className="rounded-xl border border-ink-200 bg-white divide-y divide-ink-100">
-        {org.description && (
-          <div className="px-6 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">About</p>
-            <p className="text-sm text-ink-600">{org.description}</p>
-          </div>
-        )}
-        {org.website && (
-          <div className="px-6 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Website</p>
-            <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-sm text-gold-500 hover:underline">
-              {org.website}
-            </a>
-          </div>
-        )}
-        {org.email && (
-          <div className="px-6 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Contact</p>
-            <p className="text-sm text-ink-600">{org.email}</p>
-          </div>
-        )}
-      </div>
+      {/* EDITABLE, since 9 September 2026. This was a read-only list of About,
+          Website and Contact, and there was no writer for any of them anywhere
+          in the product: an organisation's name and story were set once inside
+          the event wizard and frozen for ever. Found while closing UX1.1, whose
+          reporting organiser had a bio rendering `**MKL Studios**` on
+          production and no way to correct it. The form carries a live preview
+          because the stored text and the rendered output legitimately differ. */}
+      <OrganisationProfileForm
+        organisationId={org.id}
+        name={org.name}
+        description={org.description ?? null}
+        website={org.website ?? null}
+        email={org.email ?? null}
+        phone={org.phone ?? null}
+        publicHref={`/organisers/${org.slug}`}
+      />
 
       {/* The organiser's own mark. It goes onto their poster, their story card
           and every post image the kit builds, at the top, where a promoter puts

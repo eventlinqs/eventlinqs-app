@@ -97,7 +97,14 @@ describe('the surfaces the ruling names', () => {
     ['the order confirmation email', 'src/lib/email/order-confirmation.ts'],
     ['the payout email', 'src/lib/payouts/email.ts'],
     ['the waitlist confirmation email', 'src/lib/waitlist/confirmation-email.ts'],
-    ['the waitlist promotion email', 'src/lib/waitlist/promote.ts'],
+    /*
+     * The waiting-list promotion message moved into the recovery engine on
+     * 11 September 2026 (close-out D2), so that one freed unit produces exactly
+     * one message. The engine has no brand by design and may not import one, so
+     * the line it signs with is SUPPLIED by the adapter, and the adapter is now
+     * the surface that has to read it from the one source.
+     */
+    ['the recovery adapter, which signs every recovery message', 'src/lib/recovery/links.ts'],
   ]
 
   it.each(surfaces)('%s reads the strapline from the one source', (_name, file) => {

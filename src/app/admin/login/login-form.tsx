@@ -47,13 +47,33 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
     if (next) fd.set('next', next)
     setError(null)
     startTransition(async () => {
-      const result = await loginAdminAction(fd)
-      if (!result.ok) {
-        setError(result.error ?? 'Sign in failed.')
-        return
+      /*
+       * THE ACTION CAN THROW, AND IT USED TO LEAVE THE OPERATOR WITH NOTHING.
+       *
+       * Found on 10 September 2026 while driving the admin console for the
+       * owner-notifications feed (close-out UX3.4). The server had no
+       * ADMIN_TOTP_ENC_KEY, so issueTwoFactorProof threw, the Server Action
+       * answered HTTP 500, and this await REJECTED. Nothing caught it: the
+       * transition never completed, so `pending` stayed true, the button read
+       * "Signing in..." for ever, and the only thing on screen was an empty red
+       * box. Sixty seconds of that is indistinguishable from a hung network.
+       *
+       * A rejected action is exactly when a person most needs to be told
+       * something, so it is now caught and named. The message says what to do
+       * rather than what went wrong internally, and the real cause is already in
+       * the server log and in Sentry.
+       */
+      try {
+        const result = await loginAdminAction(fd)
+        if (!result.ok) {
+          setError(result.error ?? 'Sign in failed.')
+          return
+        }
+        router.push(result.redirectTo ?? '/admin')
+        router.refresh()
+      } catch {
+        setError('The admin console could not complete the sign in. Try again, and if it keeps failing the server needs attention.')
       }
-      router.push(result.redirectTo ?? '/admin')
-      router.refresh()
     })
   }
 

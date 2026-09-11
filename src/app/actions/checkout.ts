@@ -14,7 +14,16 @@ import { validateDiscountCode } from './discount-codes'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { pickUnitPriceCents, resolveSeatUnitPriceCents } from '@/lib/checkout/pricing'
 import { getGuestSessionId } from '@/lib/auth/guest-session'
-import { cookies } from 'next/headers'
+import { recordConfirmedOrder, recordDemand, LEDGER_EVENT_COLUMNS, type EventForLedger } from '@/lib/ledger/adapter'
+import { afterResponse } from '@/lib/after-response'
+import {
+  decodeFirstTouch,
+  deviceFromUserAgent,
+  FIRST_TOUCH_COOKIE,
+  NO_ATTRIBUTION,
+  type VisitAttribution,
+} from '@/lib/growth/visit-attribution'
+import { cookies, headers } from 'next/headers'
 import {
   recordOrganiserMarketingConsent,
   recordPlatformDigestConsent,
@@ -137,6 +146,31 @@ async function resolveDigestCity(
   }
 }
 
+/**
+ * WHERE THIS CHECKOUT CAME FROM, read off the request while there still is one.
+ *
+ * The sale is recorded minutes later on a Stripe webhook, on a machine with no
+ * browser, no headers and no cookie jar, so this is the last moment anything
+ * can answer the question. The first-touch cookie carries the channel and the
+ * campaign; the user agent carries one word for the device.
+ *
+ * It NEVER raises. `headers()` and `cookies()` both throw outside a request
+ * scope, and an analytics field that could not be read must never be able to
+ * fail somebody's purchase. No attribution is a real answer and is recorded as
+ * one: four nulls, which read in the ledger as "we did not know", rather than a
+ * guess, which would read as a fact.
+ */
+async function whereThisCheckoutCameFrom(): Promise<VisitAttribution> {
+  try {
+    const [headerBag, jar] = await Promise.all([headers(), cookies()])
+    const firstTouch = decodeFirstTouch(jar.get(FIRST_TOUCH_COOKIE)?.value ?? null)
+    return { ...firstTouch, device: deviceFromUserAgent(headerBag.get('user-agent')) }
+  } catch (error) {
+    captureException(error, { where: 'app/actions/checkout:whereThisCheckoutCameFrom' })
+    return { ...NO_ATTRIBUTION }
+  }
+}
+
 export async function processCheckout(data: CheckoutFormData): Promise<CheckoutResult> {
   // Throttle by IP. Defends the PaymentIntent-creation path against card-testing
   // and repeated charge attempts even if a caller skips the reservation step.
@@ -192,11 +226,54 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
   // 2. Load event and ticket tiers
   const { data: event } = await supabase
     .from('events')
-    .select('id, title, slug, organisation_id, fee_pass_type')
+    // The ledger columns ride along on a read this path already makes, so the
+    // demand row below costs no extra round trip on somebody's checkout.
+    .select(`id, title, slug, organisation_id, fee_pass_type, ${LEDGER_EVENT_COLUMNS}`)
     .eq('id', reservation.event_id)
     .single()
 
   if (!event) return { error: 'Event not found' }
+
+  /*
+   * CHECKOUT STARTED, INTO THE LEDGER, WITH THE ADDRESS. Close-out D1.
+   *
+   * This is the only moment the platform has all three of: who this is, which
+   * inventory they were trying to buy, and where they came from. The sale, if it
+   * happens, lands minutes later on a Stripe webhook with none of them. If they
+   * never come back, this row is the entire basis of the recovery engine (D2),
+   * which is why the close-out calls the address required rather than optional.
+   *
+   * Keyed on the reservation, so a person who retries the form does not become
+   * two abandoned checkouts, and so recordConfirmedOrder can read the
+   * attribution back off it when the sale arrives.
+   *
+   * THE READ OF THE REQUEST IS ITS OWN RISK AND IS GUARDED SEPARATELY. The
+   * adapter cannot swallow a fault raised BEFORE it is called, and `headers()`
+   * raises outside a request scope. Unguarded, an analytics row that could not
+   * be composed would fail somebody's purchase, which is the one thing this
+   * whole table is not worth.
+   */
+  /*
+   * OFF THE REQUEST PATH, by D1's own reversal condition, measured. The ledger
+   * write added 245ms at the 95th percentile against a 50ms threshold, so it
+   * runs AFTER the buyer has their answer. Nothing is dropped to get there,
+   * which the same sentence forbids: see src/lib/after-response.ts.
+   *
+   * The attribution is read HERE, before deferring, rather than inside. It is
+   * the whole point of this row and it comes off the request, and reading it
+   * where the request certainly still exists costs nothing.
+   */
+  const checkoutAttribution = await whereThisCheckoutCameFrom()
+  afterResponse('the checkout-started demand row', () =>
+    recordDemand({
+      event: event as unknown as EventForLedger,
+      action: 'checkout_started',
+      occurrenceKey: reservation_id,
+      email: buyer_email,
+      visitorId: user?.id ?? guestSessionId ?? buyer_email,
+      attribution: checkoutAttribution,
+    }),
+  )
 
   // Organiser name for the marketing-consent wording (names the sender, per the
   // Spam Act). Best-effort: consent recording never blocks the purchase.
@@ -511,6 +588,16 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       console.error('[checkout] free confirm_order error:', confirmError)
       return { error: 'Order created but could not be confirmed. Please try again.' }
     }
+
+    /*
+     * THE SALE REACHES THE LEDGER. Close-out D1.
+     *
+     * Never fatal to a confirmed order: the row is somebody's ticket and the
+     * ledger is history about it. recordConfirmedOrder swallows and reports its
+     * own failures, and scripts/guards/ledger-writes-through-the-adapter.mjs fails
+     * the build if any confirm_order site loses this call.
+     */
+    afterResponse(`the sale rows for order ${order_id}`, () => recordConfirmedOrder(order_id))
 
     // Record discount usage. Never fatal to a confirmed order, always audible.
     await recordDiscountUse({
@@ -888,6 +975,16 @@ async function processSeatCheckout({
       console.error('[checkout-seats] free confirm_order error:', confirmError)
       return { error: 'Order created but could not be confirmed. Please try again.' }
     }
+
+    /*
+     * THE SALE REACHES THE LEDGER. Close-out D1.
+     *
+     * Never fatal to a confirmed order: the row is somebody's ticket and the
+     * ledger is history about it. recordConfirmedOrder swallows and reports its
+     * own failures, and scripts/guards/ledger-writes-through-the-adapter.mjs fails
+     * the build if any confirm_order site loses this call.
+     */
+    afterResponse(`the sale rows for order ${order_id}`, () => recordConfirmedOrder(order_id))
 
     // Mark seats as sold (seat-mode specific; confirm_order handles the order
     // confirmation, ticket issuance, and reservation conversion).

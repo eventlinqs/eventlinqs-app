@@ -1,0 +1,44 @@
+{
+  "l1Item": 8,
+  "requirement": "Find the event from the homepage without knowing the URL.",
+  "producedBy": "scripts/verify/launch-readiness-drive.mjs",
+  "base": "https://www.eventlinqs.com.au",
+  "driven": "2026-09-08T22:16:48.789Z",
+  "method": "the homepage was loaded, an event link was found on it and clicked, and the page it reached was checked against the sitemap. No URL was typed after the homepage.",
+  "perViewport": {
+    "390": {
+      "homeStatus": 200,
+      "eventLinksOnHome": 1,
+      "reached": {
+        "clicked": "/events/afro-fusion-music-showcase-with-mikhaell-friends-a-l1vcpz",
+        "navigated": true,
+        "landedPath": "/events/afro-fusion-music-showcase-with-mikhaell-friends-a-l1vcpz",
+        "landedTitle": "Afro-Fusion Music Showcase with Mikhaell & Friends at The Quakers",
+        "isRealEvent": true
+      }
+    },
+    "768": {
+      "homeStatus": 200,
+      "eventLinksOnHome": 1,
+      "reached": {
+        "clicked": "/events/afro-fusion-music-showcase-with-mikhaell-friends-a-l1vcpz",
+        "navigated": true,
+        "landedPath": "/events/afro-fusion-music-showcase-with-mikhaell-friends-a-l1vcpz",
+        "landedTitle": "Afro-Fusion Music Showcase with Mikhaell & Friends at The Quakers",
+        "isRealEvent": true
+      }
+    },
+    "1440": {
+      "homeStatus": 200,
+      "eventLinksOnHome": 1,
+      "reached": {
+        "clicked": "/events/afro-fusion-music-showcase-with-mikhaell-friends-a-l1vcpz",
+        "navigated": true,
+        "landedPath": "/events/afro-fusion-music-showcase-with-mikhaell-friends-a-l1vcpz",
+        "landedTitle": "Afro-Fusion Music Showcase with Mikhaell & Friends at The Quakers",
+        "isRealEvent": true
+      }
+    }
+  },
+  "verdict": "PASS"
+}

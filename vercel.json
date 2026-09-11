@@ -76,6 +76,22 @@
     {
       "path": "/api/cron/aggregate-reconcile",
       "schedule": "40 4 * * *"
+    },
+    {
+      "path": "/api/cron/platform-notify",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/queue-admit",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/slot-close",
+      "schedule": "20 * * * *"
+    },
+    {
+      "path": "/api/cron/recovery-sweep",
+      "schedule": "35 * * * *"
     }
   ]
 }

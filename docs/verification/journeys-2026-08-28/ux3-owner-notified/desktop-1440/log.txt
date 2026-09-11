@@ -1,0 +1,8 @@
+UX3: the platform tells its owner what happened
+===============================================
+01. Signed up and confirmed
+      ux3.organiser.2829962@example.com -> /dashboard
+02. Created the organisation
+      Northside Sound 2829962 -> /dashboard/organisation
+03. Made a cover
+      the platform composed one

@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { usePortalReady } from '@/lib/hooks/use-portal-ready'
 import { usePathname, useRouter } from 'next/navigation'
 import { reportClientError } from '@/lib/observability/client-error-report'
 
@@ -333,6 +335,10 @@ export function LocationPicker({
           'focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset',
         ].join(' ')
 
+  // `document` does not exist while this renders on the server; the portal below
+  // needs it, and this is the one definition of that question.
+  const portalReady = usePortalReady()
+
   return (
     <>
       <button
@@ -348,7 +354,15 @@ export function LocationPicker({
         <span className="truncate max-w-[140px]">{currentLocation.city}</span>
       </button>
 
-      {open && (
+      {/*
+       * PORTALLED TO THE BODY (close-out D2, 11 September 2026). A full-page dialog
+       * rendered where it sits is trapped in the stacking context of any ancestor
+       * carrying a transform, and then it PAINTS correctly and cannot be clicked at
+       * all. Found on the waiting-list dialog by asking the browser what was
+       * actually at the centre of its own submit button: the hero section, not the
+       * button. `overlays-are-portalled` fails the build if it comes back.
+      */}
+      {open && portalReady && createPortal(
         <div
           className="fixed inset-0 z-[60] flex items-start justify-center bg-ink-900/60 p-4 sm:items-center"
           role="presentation"
@@ -506,7 +520,8 @@ export function LocationPicker({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { ClaimInviteButton } from '@/components/broadcast/claim-invite-button'
+import { contactAddress } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Claim your artist profile | EventLinqs',
@@ -60,7 +61,7 @@ export default async function ClaimInvitePage({ params }: Props) {
               </h1>
               <p className="mt-3 text-sm text-ink-600">
                 It may have already been claimed. Ask the organiser who invited you for a fresh
-                link, or contact hello@eventlinqs.com.
+                link, or contact {contactAddress('hello')}.
               </p>
             </>
           ) : (

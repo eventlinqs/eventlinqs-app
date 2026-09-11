@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { usePortalReady } from '@/lib/hooks/use-portal-ready'
 import { GalleryImage } from '@/components/media'
 import type { GalleryImage as GalleryItem } from '@/lib/media/event-media-model'
 
@@ -94,7 +96,20 @@ function Lightbox({
     }
   }, [onClose, onPrev, onNext])
 
-  return (
+  // `document` does not exist while this renders on the server; the portal below
+  // needs it, and this is the one definition of that question.
+  const portalReady = usePortalReady()
+  if (!portalReady) return null
+
+  /*
+   * PORTALLED TO THE BODY (close-out D2, 11 September 2026). A full-page dialog
+   * rendered where it sits is trapped in the stacking context of any ancestor
+   * carrying a transform, and then it PAINTS correctly and cannot be clicked at
+   * all. Found on the waiting-list dialog by asking the browser what was
+   * actually at the centre of its own submit button: the hero section, not the
+   * button. `overlays-are-portalled` fails the build if it comes back.
+   */
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -150,6 +165,7 @@ function Lightbox({
         />
         {image.alt && <p className="mt-2 text-center text-sm text-white/80">{image.alt}</p>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

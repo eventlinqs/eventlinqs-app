@@ -62,6 +62,18 @@
  *      same shape as preview-deployment-state.mjs, because a guard that cannot
  *      see must say so rather than pass.
  *
+ *      ITS VERDICT IS ONE NAMED CODE ON EVERY MACHINE (close-out F1.6). On
+ *      8 September it skipped for a different reason on Vercel (no token) than
+ *      in CI (Vercel answered 404), in two different sentence shapes, and
+ *      neither was the reason it would skip on a laptop. Two full log reads
+ *      went on noticing that. The verdict is now judged / no-token /
+ *      no-project-ids / http-<status> / network-error, printed in one line with
+ *      the build scope, so the three machines produce three lines that line up.
+ *      A refusal quotes Vercel's own error code, because 404, 403 and 401 are
+ *      documented side by side on that endpoint and the status alone does not
+ *      say whether the token is wrong, unscoped, or pointed somewhere it cannot
+ *      see.
+ *
  *   It does NOT assert that bypass rules exist. Installing them changes
  *   production infrastructure and is the owner's call; the record carries the
  *   verdict PENDING-OWNER and the one command that changes it
@@ -73,6 +85,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
+import { renderVerdict } from './lib/clause-verdict.mjs'
 
 const ROOT = process.cwd()
 const TAG = '[machine-callers-reachable]'
@@ -260,6 +273,41 @@ function resolveProjectIds(env) {
   return { projectId, teamId }
 }
 
+/**
+ * ONE SKIP VOCABULARY, ON EVERY MACHINE (close-out F1.6). The closed set and the
+ * rendering live in ./lib/clause-verdict.mjs, where a test can drive them and
+ * where a call site inventing a sixth shape throws rather than printing.
+ */
+const CLAUSE_4 = 'clause 4 (the live System Bypass rules)'
+const CLAUSE_4_REMEDY = 'set VERCEL_TOKEN, or run `vercel login` once on this machine.'
+
+/** Print the one comparable line. `detail` is never a credential. */
+function reportClause4(code, detail) {
+  for (const line of renderVerdict({ tag: TAG, clause: CLAUSE_4, code, detail, remedy: CLAUSE_4_REMEDY })) {
+    console.log(line)
+  }
+}
+
+/**
+ * Vercel answers a refusal with a JSON body carrying its own error code, and
+ * quoting it is the difference between "404" and a diagnosable fact. The read
+ * endpoint documents 401 (not authorized), 403 (no permission) and 404 beside
+ * each other (https://vercel.com/docs/rest-api/sdk/security/read-system-bypass,
+ * fetched 2026-09-09), so the status alone does not say whether the token is
+ * wrong, unscoped, or pointed at a project it cannot see.
+ */
+async function vercelErrorCode(res) {
+  try {
+    const body = await res.json()
+    const code = body?.error?.code ?? body?.code
+    const message = body?.error?.message ?? body?.message
+    if (code || message) return `${code ?? 'no code'}: ${message ?? 'no message'}`
+  } catch {
+    // A refusal with no JSON body is itself worth saying, and is not an error here.
+  }
+  return 'no error body'
+}
+
 async function judgeBypassRules() {
   const token = process.env.VERCEL_TOKEN?.trim()
   let resolved = token ? { token, source: 'VERCEL_TOKEN from the environment' } : null
@@ -268,15 +316,17 @@ async function judgeBypassRules() {
     const found = mod.resolveVercelToken(process.env)
     if (found.token) resolved = { token: found.token, source: found.source }
     else {
-      console.log(`${TAG} SKIP (loudly) - the live System Bypass check needs a Vercel token: ${found.reason}.`)
-      console.log(`${TAG}        Set VERCEL_TOKEN or run \`vercel login\` once on this machine to make clause 4 real.`)
+      reportClause4('no-token', found.reason)
       return
     }
   }
 
   const { projectId, teamId } = resolveProjectIds(process.env)
   if (!projectId || !teamId) {
-    console.log(`${TAG} SKIP (loudly) - no project or team id available (VERCEL_PROJECT_ID, VERCEL_ORG_ID or .vercel/project.json), so clause 4 could not be judged.`)
+    reportClause4(
+      'no-project-ids',
+      'no VERCEL_PROJECT_ID, no VERCEL_ORG_ID and no .vercel/project.json to read them from',
+    )
     return
   }
   const url = `https://api.vercel.com/v1/security/firewall/bypass?projectId=${projectId}&teamId=${teamId}`
@@ -284,13 +334,16 @@ async function judgeBypassRules() {
   try {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${resolved.token}` }, signal: AbortSignal.timeout(20_000) })
     if (!res.ok) {
-      console.log(`${TAG} SKIP (loudly) - Vercel answered ${res.status} for the System Bypass rules, so clause 4 could not be judged.`)
+      reportClause4(
+        `http-${res.status}`,
+        `Vercel refused the read for project ${projectId} using ${resolved.source}, and said: ${await vercelErrorCode(res)}`,
+      )
       return
     }
     payload = await res.json()
   } catch (err) {
     // Never a silent catch and never a pass: an unreadable answer is reported.
-    console.log(`${TAG} SKIP (loudly) - could not read the System Bypass rules: ${err instanceof Error ? err.message : String(err)}`)
+    reportClause4('network-error', err instanceof Error ? err.message : String(err))
     return
   }
 
@@ -301,7 +354,10 @@ async function judgeBypassRules() {
   // rather than silently producing an empty list that looks like "no rules".
   const installed = rules.map((r) => r.Ip ?? r.ip ?? r.sourceIp ?? r.Domain ?? r.domain ?? JSON.stringify(r)).sort()
   const expected = [...EXPECTED_BYPASS_IPS].sort()
-  console.log(`${TAG} live System Bypass rules on the project (${resolved.source}): ${installed.length === 0 ? 'none' : installed.join(', ')}`)
+  reportClause4(
+    'judged',
+    `read with ${resolved.source}; live rules: ${installed.length === 0 ? 'none' : installed.join(', ')}`,
+  )
   const added = installed.filter((ip) => !expected.includes(ip))
   const missing = expected.filter((ip) => !installed.includes(ip))
   if (added.length > 0) {

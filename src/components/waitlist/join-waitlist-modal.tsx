@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { usePortalReady } from '@/lib/hooks/use-portal-ready'
 import { useRouter } from 'next/navigation'
 import { joinWaitlist } from '@/app/actions/waitlist'
 
@@ -30,6 +32,10 @@ export function JoinWaitlistModal({
   const [successPosition, setSuccessPosition] = useState<number | null>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const maxQty = Math.min(maxPerOrder, 10)
+
+  // `document` does not exist while this renders on the server; the portal below
+  // needs it, and this is the one definition of that question.
+  const portalReady = usePortalReady()
 
   // Focus trap: move focus to close button when modal opens
   useEffect(() => {
@@ -84,7 +90,30 @@ export function JoinWaitlistModal({
     router.refresh()
   }
 
-  return (
+  /*
+   * PORTALLED TO THE BODY, AND IT HAS TO BE. Found on 11 September 2026 by
+   * driving a real person through a real waiting list: the dialog PAINTED
+   * correctly, centred, over the page, and `document.elementFromPoint` at the
+   * exact centre of its own submit button returned the HERO SECTION. Playwright's
+   * click sat there until it timed out, twice, and a person with a mouse would
+   * have had exactly the same experience: a button that is plainly there and
+   * does nothing.
+   *
+   * The cause is stacking, and it is the classic one. This modal is rendered
+   * from inside the ticket panel, and an ancestor of that panel carries a
+   * transform (the reveal animation). A transformed ancestor creates a
+   * containing block for `position: fixed` AND a stacking context, so `z-50`
+   * here is only z-50 INSIDE that context, and the whole context sits below
+   * content that paints later. No z-index on this element can fix that, which is
+   * why the number was already 50 and it made no difference.
+   *
+   * `createPortal` to `document.body` takes the dialog out of every ancestor's
+   * stacking context, which is what a modal is for. Rendered only after mount,
+   * because `document` does not exist while the server renders this.
+   */
+  if (!portalReady) return null
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
@@ -240,6 +269,7 @@ export function JoinWaitlistModal({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }

@@ -27,7 +27,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   // Was MISSING, so a partly refunded order fell through to the raw enum and
   // badged the literal string "partially_refunded" at the organiser.
   partially_refunded: { label: 'Partly refunded', className: 'bg-ink-100 text-ink-600' },
-  expired: { label: 'Expired', className: 'bg-ink-100 text-ink-400' },
+  expired: { label: 'Expired', className: 'bg-ink-100 text-ink-600' },
 }
 
 /*
@@ -230,7 +230,7 @@ export default async function OrderDetailPage({ params }: Props) {
         </span>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
           {/* Buyer */}
           <div className="rounded-xl border border-ink-200 bg-white p-6">

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site-url'
 import { verifyOrderAccessToken } from '@/lib/orders/order-access'
+import { contactAddress } from '@/lib/email/sender'
 
 export type TransferResult = { ok: true } | { error: string }
 
@@ -110,9 +111,9 @@ export async function transferTicket(
       <p style="margin:0 0 20px;font-size:16px;line-height:1.5;color:#0A1628">Hi ${escapeHtml(name)}, a ticket to ${escapeHtml(title)} has been transferred to you. Your ticket and QR code are at the link below. The previous code no longer works.</p>
       <a href="${escapeAttr(link)}" style="display:inline-block;background:#0A1628;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px">View your ticket</a>
     </div>
-    <p style="margin:18px 4px 0;font-size:11px;color:#8b919c">EventLinqs, hello@eventlinqs.com</p>
+    <p style="margin:18px 4px 0;font-size:11px;color:#8b919c">EventLinqs, ${contactAddress('hello')}</p>
   </div></body></html>`,
-        text: `Hi ${name}, a ticket to ${title} has been transferred to you. View your ticket and QR code: ${link}\nThe previous code no longer works.\n\nEventLinqs, hello@eventlinqs.com`,
+        text: `Hi ${name}, a ticket to ${title} has been transferred to you. View your ticket and QR code: ${link}\nThe previous code no longer works.\n\nEventLinqs, ${contactAddress('hello')}`,
       })
     } catch {
       // The transfer is committed; a failed notification email is non-fatal.

@@ -3,8 +3,7 @@ import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { HeroMedia } from '@/components/media'
 import { pickCuratedHomepageHero } from '@/lib/images/homepage-hero-curated'
 import { HERO_SCRIM_GRADIENT } from './hero-scrim'
-import { getFeaturedHeroBackground } from '@/lib/images/event-media'
-import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
+import { getFeaturedHeroBackground, isComposedCover } from '@/lib/images/event-media'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { FeaturedHeroClient, type FeaturedHeroSlide } from './FeaturedHeroClient'
 import { BRAND_TAGLINE_PHRASE_BOUND } from '@/lib/brand/positioning'
@@ -47,17 +46,11 @@ function detailLine(event: BentoEvent): string {
   return parts.join('  |  ')
 }
 
-/**
- * A composed typographic cover (Law 6's no-photo fallback) carries the event's
- * own title as its artwork. Behind the hero headline that is the same title
- * twice, at display size, one on top of the other: measured on the C14
- * before-capture, where every slide on a launch-stage homepage was one. The
- * hero paints the category raster for those and the composed cover stays
- * where it was designed for, on the card.
+/*
+ * isComposedCover moved to @/lib/images/event-media on 9 September 2026 (UX1.4).
+ * It lived here as a private helper and the EVENT PAGE hero, which needed the
+ * same distinction, never had it. One definition now, imported below.
  */
-function isComposedCover(url: string | null | undefined): boolean {
-  return typeof url === 'string' && url.includes(`/${GENERATED_COVER_PREFIX}/`)
-}
 
 async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
   // getFeaturedHeroBackground guarantees a raster image (real event cover when
@@ -76,6 +69,10 @@ async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
     href: `/events/${event.slug}`,
     image: media.image,
     alt: media.alt,
+    // UX1.4: an organiser's poster anchors to the top so its title survives
+    // the wide hero crop. Curated platform rasters leave this undefined and
+    // keep HeroMedia's crowd-tuned default.
+    objectPosition: media.objectPosition,
   }
 }
 

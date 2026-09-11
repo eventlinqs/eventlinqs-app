@@ -96,6 +96,47 @@ describe('probeSchemaObject: one read-only GET with limit=0, never a row', () =>
     expect(r.state).toBe('unknown')
     expect(r.message).toBe('<html>Bad gateway</html>')
   })
+
+  /*
+   * A GATEWAY THAT BLINKS ONCE IS ASKED AGAIN; ONE THAT STAYS DOWN STILL
+   * REFUSES. On 12 September 2026 the preview build of 0fe8c238 was lost to two
+   * `504 Gateway Timeout` answers among ten probes that otherwise answered 200,
+   * against a project that answered 200 to all ten a minute later.
+   */
+  test('a 504 followed by a 200 reads PRESENT, and says it was asked twice', async () => {
+    let calls = 0
+    const fetchImpl = (async () => {
+      calls += 1
+      return calls === 1
+        ? new Response('{"message":"Gateway Timeout"}', { status: 504, headers: { 'content-type': 'application/json' } })
+        : new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })
+    }) as unknown as FetchLike
+    const r = await probeSchemaObject({ ...base, fetchImpl, pauseImpl: async () => {} })
+    expect(r).toMatchObject({ state: 'present', status: 200, attempts: 2 })
+    expect(calls).toBe(2)
+  })
+
+  test('a gateway that answers 504 every time is UNKNOWN after the last attempt, never a pass', async () => {
+    let calls = 0
+    const fetchImpl = (async () => {
+      calls += 1
+      return new Response('{"message":"Gateway Timeout"}', { status: 504, headers: { 'content-type': 'application/json' } })
+    }) as unknown as FetchLike
+    const r = await probeSchemaObject({ ...base, fetchImpl, pauseImpl: async () => {} })
+    expect(r).toMatchObject({ state: 'unknown', status: 504, attempts: 3 })
+    expect(calls).toBe(3)
+  })
+
+  test('a real answer about the schema is never asked twice', async () => {
+    let calls = 0
+    const fetchImpl = (async () => {
+      calls += 1
+      return new Response('{"code":"42703","message":"column does not exist"}', { status: 400, headers: { 'content-type': 'application/json' } })
+    }) as unknown as FetchLike
+    const r = await probeSchemaObject({ ...base, fetchImpl, pauseImpl: async () => {} })
+    expect(r).toMatchObject({ state: 'absent', attempts: 1 })
+    expect(calls).toBe(1)
+  })
 })
 
 describe('the manifest of schema the code names', () => {

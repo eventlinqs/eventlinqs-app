@@ -7,13 +7,27 @@
  * ship again. NEXT_PUBLIC_ values are baked at build time, so this is the only
  * place the empty value can be caught before it is compiled into the bundle.
  *
- * Runs in `prebuild`. Active on Vercel builds (VERCEL set); on a local build it
- * WARNS but does not block (so local gates and fresh clones still build). Set
- * ALLOW_EMPTY_PUBLIC_ENV=1 to force past it in a genuine emergency.
+ * Runs in `prebuild`. Active on Vercel builds AND on CI runners; on a developer
+ * machine it WARNS but does not block (so local gates and fresh clones still
+ * build). Set ALLOW_EMPTY_PUBLIC_ENV=1 to force past it in a genuine emergency.
+ *
+ * CI IS NOT A LAPTOP (close-out F1.3). Until 9 September 2026 the only test here
+ * was "is VERCEL set", so everything that was not Vercel was called a local
+ * build, and on 8 September this script printed
+ *
+ *     [public-env] WARNING (not blocking - local build): 4 critical public var(s) empty/malformed
+ *
+ * inside GitHub Actions, in the job whose entire purpose is to refuse a commit
+ * Vercel would refuse. A hosted runner is configured by the repository and has
+ * no fresh-clone excuse. The scope now comes from one shared resolver,
+ * src/lib/health/build-scope.mjs, and is PRINTED on every run with the variable
+ * that decided it, because the old mistake was invisible exactly because the
+ * script never said what it had concluded.
  */
 // @next/env is CommonJS, so it is imported by default export, not by name.
 import nextEnv from '@next/env'
 import { CRITICAL_ENV_RULES, evalEnvRule, ALWAYS_BLOCKING_RULES } from '../src/lib/health/critical-env.mjs'
+import { describeBuildScope, resolveBuildScope } from '../src/lib/health/build-scope.mjs'
 
 // RESOLVE THE ENV THE WAY next build WILL, before judging it.
 //
@@ -29,9 +43,12 @@ import { CRITICAL_ENV_RULES, evalEnvRule, ALWAYS_BLOCKING_RULES } from '../src/l
 // drift from the build's.
 nextEnv.loadEnvConfig(process.cwd(), false, { info: () => {}, error: () => {} })
 
-const onVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV)
+const { scope, blocks } = resolveBuildScope(process.env)
+const onVercel = scope === 'vercel'
 const bypass = process.env.ALLOW_EMPTY_PUBLIC_ENV === '1'
 const env = process.env
+
+console.log(`[public-env] ${describeBuildScope(process.env)}`)
 
 const buildRules = CRITICAL_ENV_RULES.filter(r => r.buildCritical)
 const results = buildRules.map(r => evalEnvRule(r, env))
@@ -99,11 +116,22 @@ if (alwaysBlockingFailures.length > 0) {
 }
 
 const summary = failures.map(f => `  - ${f.name}: ${f.reason}`).join('\n')
-if (onVercel && !bypass) {
+/*
+ * BLOCKS ON EVERY CONFIGURED MACHINE, NOT ONLY ON VERCEL (close-out F1.3).
+ *
+ * A CI runner's environment is written by .github/workflows/ci.yml and the
+ * repository secrets it names, so a build-critical public variable missing there
+ * is a defect in the repository, never a fresh clone. It is also the whole point
+ * of that job: it exists to refuse what Vercel would refuse, and it cannot do
+ * that while excusing itself as a laptop.
+ */
+if (blocks && !bypass) {
   console.error(
-    `\n[public-env] BUILD BLOCKED. ${failures.length} build-critical rule(s) failed:\n${summary}\n\n` +
+    `\n[public-env] BUILD BLOCKED on ${scope}. ${failures.length} build-critical rule(s) failed:\n${summary}\n\n` +
       `Why this blocks: a NEXT_PUBLIC_ value is compiled into the browser bundle at build time, so shipping it empty or malformed breaks the feature with no runtime error (the exact map failure this guard exists to prevent), and a variable that fails its declared shape in src/lib/env/manifest.mjs is wrong in a way nothing downstream will report.\n` +
-      `Fix: set the correct value in Vercel → Project → Settings → Environment Variables for this scope, then redeploy. The manifest states what each variable must look like and which scopes it belongs on.\n` +
+      (onVercel
+        ? `Fix: set the correct value in Vercel > Project > Settings > Environment Variables for this scope, then redeploy. The manifest states what each variable must look like and which scopes it belongs on.\n`
+        : `Fix: this is a CI runner, so the value comes from .github/workflows/ci.yml and the repository secrets it names. Set it with "gh secret set <NAME>" and map it into the workflow env block. Every CI_ entry in src/lib/env/manifest.mjs carries githubActions: true, so the env locks fail if one goes missing.\n`) +
       `Emergency bypass (not recommended, and it does NOT cover the always-blocking class above): set ALLOW_EMPTY_PUBLIC_ENV=1.\n`,
   )
   process.exit(1)
@@ -142,7 +170,7 @@ if (stopping.length > 0) {
 }
 
 console.warn(
-  `\n[public-env] WARNING (not blocking - ${onVercel ? 'bypass set' : 'local build'}): ${failures.length} critical public var(s) empty/malformed:\n${summary}\n` +
+  `\n[public-env] WARNING (not blocking - ${bypass ? 'ALLOW_EMPTY_PUBLIC_ENV=1 is set' : `${scope} build`}): ${failures.length} critical public var(s) empty/malformed:\n${summary}\n` +
     `  These do not stop the build. They ship a broken FEATURE with no runtime\n` +
     `  error, which is the class this guard exists for.\n`,
 )

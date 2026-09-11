@@ -53,7 +53,7 @@ export default async function AdminAnalyticsPage() {
         <AdminStatTile label="Net GMV" value={money(summary.netGmvCents)} status="ok" />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
           <h2 className="font-display text-lg font-semibold text-white">GMV by month</h2>
           {byMonth.length === 0 ? (

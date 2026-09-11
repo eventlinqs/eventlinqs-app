@@ -680,7 +680,7 @@ export function SeatSelector({
 
   return (
     <div className="scroll-mt-24 space-y-4" data-testid="seat-selector">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         {/* ── The sheet ── */}
         <div ref={sheetRef} className="relative lg:min-h-[560px]" data-testid="seat-sheet">
           <SeatCanvas

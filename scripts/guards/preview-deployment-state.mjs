@@ -74,6 +74,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 
 import { gitEnv } from '../lib/git-env.mjs'
+import { gitAvailability, noGitLine } from './lib/git-availability.mjs'
 import { resolveVercelToken } from '../lib/vercel-login.mjs'
 import { declareWork } from '../lib/work-report.mjs'
 
@@ -111,7 +112,10 @@ function gitHeadBranch() {
     const ref = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8', env: gitEnv() }).trim()
     return ref === 'HEAD' ? null : ref
   } catch (error) {
-    console.log(`${TAG} git could not name the branch here (${error.message}); the branch is reported only, never judged`)
+    // Close-out F2.4: one sentence shape for the absent repository, and the
+    // ordinary error only when there IS one.
+    if (!gitAvailability().usable) console.log(noGitLine(TAG, 'the branch under test'))
+    else console.log(`${TAG} git could not name the branch here (${error.message}); the branch is reported only, never judged`)
     return null
   }
 }
@@ -120,7 +124,8 @@ function gitHeadSha() {
   try {
     return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8', env: gitEnv() }).trim() || null
   } catch (error) {
-    console.log(`${TAG} git could not name the commit here (${error.message}): not a git checkout, so there is no local commit to judge`)
+    if (!gitAvailability().usable) console.log(noGitLine(TAG, 'the commit under test'))
+    else console.log(`${TAG} git could not name the commit here (${error.message}): there is a repository, and it could not answer`)
     return null
   }
 }

@@ -118,6 +118,18 @@ The `from` address in the alert email is `EventLinqs Smoke <noreply@eventlinqs.c
 
 If **both** channels fail, the dispatcher exits non-zero and prints `::error::Every alert channel failed`. An alert channel that silently drops is worse than no channel, because it teaches you that silence means healthy.
 
+### The class, and the drill marker (UX4.3, H2.6)
+
+Every dispatch declares a `--class`, and the class writes the subject. A failed smoke reads `EventLinqs OUTAGE: the production homepage smoke FAILED`, which cannot be confused in an inbox with a branch gate doing its job. The full table of four classes is in `docs/observability/state-report.md`.
+
+**A drill announces itself.** The 8 September drill fired correctly against `https://smoke-drill.invalid` and arrived reading "EventLinqs production homepage smoke FAILED", with nothing to say it was a test, and the owner reasonably read it as a real outage. The marker is now **derived from the target**, never from a flag someone has to remember: a host in the reserved `.invalid` domain cannot be a real production smoke (<https://www.rfc-editor.org/rfc/rfc2606.html>). So `force_failure` produces:
+
+```
+[DRILL] EventLinqs OUTAGE: the production homepage smoke FAILED
+```
+
+with a banner in the first line of the body saying it is a scheduled test, naming the target it used, and stating that no action is required. There is no flag that takes the marker off a `.invalid` target, and a real production URL can never acquire one. `scripts/guards/alert-routing.mjs` executes both of those judgements on every build.
+
 ## Machine callers and the network layer (H2.1)
 
 The 7 September reset happened during the TLS handshake, before any header was sent, so nothing that reads an HTTP request can have caused it. This project has no firewall configuration at all, so what remains is Vercel's always-on system mitigation of a shared datacentre address.

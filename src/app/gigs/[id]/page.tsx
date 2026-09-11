@@ -98,7 +98,7 @@ export default async function GigDetailPage({ params }: Props) {
             ← All gigs
           </Link>
 
-          <div className="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
+          <div className="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
             {/* The gig */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold-800">

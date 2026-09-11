@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { reportClientError } from '@/lib/observability/client-error-report'
+import { contactAddress } from '@/lib/email/sender'
 
 interface Props {
   cityName: string
@@ -96,7 +97,7 @@ export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
       )}
       {state === 'error' ? (
         <p className={`mt-2 text-xs ${c.err}`}>
-          Something went wrong. Try again or email us at hello@eventlinqs.com.
+          Something went wrong. Try again or email us at {contactAddress('hello')}.
         </p>
       ) : null}
     </div>

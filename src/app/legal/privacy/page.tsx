@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
+import { entityLegalLine } from '@/lib/legal/platform-entity'
+import { contactAddress, contactMailto } from '@/lib/email/sender'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | EventLinqs',
@@ -40,8 +42,7 @@ export default function PrivacyPolicyPage() {
     >
       <h2 id="about">About This Policy</h2>
       <p>
-        EventLinqs is operated by Lawal Adams, trading as EventLinqs, ABN 30 837
-        447 587, PO Box 141, Newcomb VIC 3219, Australia. We are bound by the
+        EventLinqs is operated by {entityLegalLine()}. We are bound by the
         Privacy Act 1988 (Cth) and the Australian Privacy Principles (APPs), and
         we handle your personal information in accordance with them.
       </p>
@@ -354,7 +355,7 @@ export default function PrivacyPolicyPage() {
       <p>
         You can change your preferences at any time in your account settings, or by
         emailing{' '}
-        <a href="mailto:privacy@eventlinqs.com">privacy@eventlinqs.com</a>. You may
+        <a href={contactMailto('privacy')}>{contactAddress('privacy')}</a>. You may
         also ask us to tell you where we obtained your information.
       </p>
 
@@ -403,7 +404,7 @@ export default function PrivacyPolicyPage() {
       <p>
         No system is perfectly secure. If you believe your account has been
         compromised, contact us immediately at{' '}
-        <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a>.
+        <a href={contactMailto('hello')}>{contactAddress('hello')}</a>.
       </p>
 
       <h2 id="retention">How Long We Keep It</h2>
@@ -450,7 +451,7 @@ export default function PrivacyPolicyPage() {
       </p>
       <p>
         <strong>To make a formal request,</strong> email{' '}
-        <a href="mailto:privacy@eventlinqs.com">privacy@eventlinqs.com</a> with the
+        <a href={contactMailto('privacy')}>{contactAddress('privacy')}</a> with the
         subject line &ldquo;Access request&rdquo; or &ldquo;Correction
         request&rdquo;, from the email address on your account, telling us what you
         need. You can also write to PO Box 141, Newcomb VIC 3219.
@@ -478,7 +479,7 @@ export default function PrivacyPolicyPage() {
       <h2 id="deletion">Deleting Your Data</h2>
       <p>
         You can ask us to delete your personal information by emailing{' '}
-        <a href="mailto:privacy@eventlinqs.com">privacy@eventlinqs.com</a> with the
+        <a href={contactMailto('privacy')}>{contactAddress('privacy')}</a> with the
         subject line &ldquo;Deletion request&rdquo;. We acknowledge within 5 business
         days and act within 30 days.
       </p>
@@ -542,7 +543,7 @@ export default function PrivacyPolicyPage() {
       <p>
         If you believe a child has given us personal information without consent,
         contact{' '}
-        <a href="mailto:privacy@eventlinqs.com">privacy@eventlinqs.com</a> and we
+        <a href={contactMailto('privacy')}>{contactAddress('privacy')}</a> and we
         will delete it promptly.
       </p>
 
@@ -554,7 +555,7 @@ export default function PrivacyPolicyPage() {
       </p>
       <p>
         <strong>Step 1: complain to us.</strong> Email{' '}
-        <a href="mailto:privacy@eventlinqs.com">privacy@eventlinqs.com</a> with the
+        <a href={contactMailto('privacy')}>{contactAddress('privacy')}</a> with the
         subject line &ldquo;Privacy complaint&rdquo;, or write to the Privacy
         Officer, EventLinqs, PO Box 141, Newcomb VIC 3219. Tell us what happened and
         what you would like us to do.
@@ -609,11 +610,11 @@ export default function PrivacyPolicyPage() {
       <h2 id="contact">Contact Us</h2>
       <p>
         Privacy questions, access, correction, deletion and complaints:{' '}
-        <a href="mailto:privacy@eventlinqs.com">privacy@eventlinqs.com</a>
+        <a href={contactMailto('privacy')}>{contactAddress('privacy')}</a>
       </p>
       <p>
         General support:{' '}
-        <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a>
+        <a href={contactMailto('hello')}>{contactAddress('hello')}</a>
       </p>
       <p>
         Post: The Privacy Officer, EventLinqs, PO Box 141, Newcomb VIC 3219,
