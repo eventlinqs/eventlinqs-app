@@ -11898,3 +11898,65 @@ before the gate ran, and the gate was run anyway because the brief orders it.
   pushed commit.
 
 DISK at end: 19 GB free, on AC power.
+
+
+## Session 88, 11 September 2026. Twenty-fourth push attempt, refused at the same step; parity read first; nothing new to find, nothing else started.
+
+17:52 to 17:58 (watchdog run 21 of RUN-BUILD22). First action: fetch, count,
+push through the normal gate. origin was 28 behind on head 4d0fda21, the tree
+clean (so the brief's second action had nothing to commit), 18.2 GB free by the
+watchdog's count and 19 GB by df, the laptop on mains (Win32_Battery status
+2). Issue #150, the Actions bot's thread from session 85, was OPEN with zero
+comments at 17:52. Parity was read first, read-only (npm run
+migrate:production -- --dry-run, 6 s, 17:52:30): 126 in the tree, 116
+applied on gndnldyfudbytbboxesk, the same 10 pending, 20260909000001 through
+20260911000001. The outcome was known before the gate ran, and the gate was
+run anyway because the brief orders it.
+
+- THE PUSH ATTEMPT, 17:52:56 to 17:55:10, appended to C:\dev\push-attempt.log
+  (lines 35546 to 37090, the timestamp header at line 35546). This session
+  ran git push directly from the repo with the header written inline in the
+  same shape the stall judge counts, rather than through the session-71
+  launcher; the judge read attempts=23 afterwards, so the shape held. Steps 1
+  to 8 PASS warm: disk 0s, typecheck 7s, lint 4s, copy 1s, critical-path 0s,
+  lighthouse-exemptions 0s, all guards 93s, types-drift 18s. Refused at step 9
+  of 15. The exact refusing lines (log lines 37008, 37009, 37063 and 37082):
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+  The environment half PASSED (log line 37060, 34 records, 0 faults). Origin
+  re-fetched at 17:55: 28 behind, head 4d0fda21. No gate step touched, no
+  bypass, no --no-verify. On the count: by the session numbering this is the
+  twenty-fourth attempt; push-attempt.log now carries twenty-three attempt
+  headers, which is the number the stall judge prints.
+
+- THE CAUSE IS FOUNDER HELD, unchanged and not re-argued. The only fix is the
+  ten migrations applied to production, which is npm run migrate:production,
+  reserved to the founder (CLAUDE.md Verification and gates, Migrations; Law
+  10's stated reservation; this run's own instruction that production is
+  never written without explicit approval, which "fix the cause properly" is
+  not). Every other route (a contiguous subset, a cherry-pick, re-targeting
+  the step) was closed from source by sessions 74, 75, 77, 79, 82, 84 and 85;
+  nothing was re-derived and nothing new was found.
+
+- THE ALERT STATE, read and left alone: stall-state.mjs --print reads 45.0
+  hours silent, band 7, lastAlertedBand 7, alert false, attempts 23. Band 7
+  was raised on all three channels by run 34574855048 (session 85), so the
+  publish below leaves STALL-STATE.json byte-identical and fires nothing, by
+  design. Band 8 begins at 20:55 AEST (48 hours after the last working push
+  at 20:55 on Wednesday 9 September); the first ledger publish after that
+  rewrites the state, the workflow fires, and the founder is written to again
+  once.
+
+- NOTHING ELSE STARTED, per the brief: origin does not hold every local
+  commit. UX6, D1, D2, UX5 and S1 stand as BUILD-LEDGER.md records them; no
+  item closed, so CLOSE-OUT.md is untouched. The ledger's sessions 66 to 87
+  section is widened to 88 with one row, and REVIEW-QUEUE.md's re-check
+  paragraph is widened by one clause. The first act after the command lands
+  is unchanged: the UX6 drive at 390 on the READY preview built from the
+  pushed commit.
+
+DISK at end: 19 GB free, on AC power.
