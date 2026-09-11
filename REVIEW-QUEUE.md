@@ -4128,3 +4128,38 @@ Both Stripe keys on this machine answer "expired", checked again today rather
 than taken from a note. It is the only thing keeping me from driving the new
 check against your real organisers' accounts, and it is the same command that
 closes the last leg of UX6, D1 and D2.
+
+## The whole build is waiting on your one command, and this session started nothing else
+
+Your brief told this session to push first and to start nothing until origin
+holds every commit. The push ran your full gate honestly: typecheck, lint, all
+110 guards, types drift, all green. It was then refused, correctly, by the
+production-parity step you had built after 6 September: production is now TEN
+migrations behind this tree, and a tree that cannot deploy to production is not
+allowed to reach origin. Nothing was bypassed and no threshold was touched. The
+complete output is in C:\dev\push-attempt.log.
+
+Applying migrations to production is yours, by your own ruling. One command, in
+PowerShell from the repo:
+
+    npm run migrate:production
+
+It lists the ten files, asks you to type the production ref back, walks you
+through the CLI's own prompts, proves the result, and leaves the CLI resting on
+TEST. Nothing else in it writes anywhere.
+
+What that single command releases, all at once:
+
+  1. The 27 finished commits on this laptop reach GitHub through the gate.
+  2. Vercel builds a preview from that push. Driving the mobile checkout at 390
+     on that preview is your own closing condition for UX6, and the 24 September
+     advertising deadline sits behind it. The next session does that drive the
+     moment the preview is READY.
+  3. D1 closes: the ledger exists on production and the Afro-Fusion sales curve,
+     including order EL-9HE57YNV, renders from real production rows.
+  4. D2 closes the same way.
+  5. S1's remaining driven legs run.
+
+Nothing here needs a decision beyond running the command. If you would rather I
+run it, that needs your explicit written approval in the next brief, because
+today it is reserved to you and I will not touch production without it.

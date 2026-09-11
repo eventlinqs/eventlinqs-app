@@ -3786,3 +3786,16 @@ writer, and accused the property READ `row.first_seen_at` - the read the whole
 age is computed from - of being a write. A guard that fires on the read it exists
 to protect, or on the sentence explaining itself, is switched off within a week.
 Both narrowings carry a NEGATIVE drill asserting they stay green.
+
+## SESSION 66. THE PUSH ATTEMPT THE BRIEF ORDERED FIRST. 11 September 2026.
+
+| Requirement (run brief) | Verdict | Evidence |
+|---|---|---|
+| Fetch origin and count unpushed commits | MET: 26 | C:\dev\push-attempt.log |
+| Uncommitted work committed on its own, named, work in progress | MET: 8e167886 "S1 connected account health, work in progress", 5 files, test file green 41 of 41 first | git log |
+| Push through the normal gate, no --no-verify, nothing lowered or skipped | ATTEMPTED AND REFUSED at production-parity, step 9 of 15; every earlier step PASS including all 110 guards; nothing bypassed | C:\dev\push-attempt.log |
+| Complete terminal output appended to push-attempt.log, timestamp first | MET: 1,545 lines, "=== 2026-09-11 14:18:58 +1000 PUSH ATTEMPT ===" first | C:\dev\push-attempt.log |
+| Refusal quoted exactly in BUILD-LOG.md | MET | BUILD-LOG.md, Session 66 |
+| Fix the cause properly, push again | FOUNDER RESERVED. The cause is 10 migrations pending on production; applying them is Lawal's step (CLAUDE.md Migrations; ruling 26 August 2026; the brief's own production-write prohibition). The command: npm run migrate:production | BUILD-LOG.md, Session 66 |
+| Origin holds every local commit | NOT MET: 27 commits held on this machine, blocked on the founder command above | git rev-list |
+| Start anything else | CORRECTLY NOT STARTED, per the brief's halt rule | this session |

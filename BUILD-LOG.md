@@ -10473,3 +10473,79 @@ found what a sweep could not, which is exactly what close-out UX2.5 was written
 about.
 
 DISK at end: 20 GB free.
+
+## Session 66, 11 September 2026. The push the brief ordered first, and the founder command it stopped at.
+
+14:18 to 14:25. The run brief's first action: fetch, count what origin does not
+have, push it through the normal gate, and start nothing else until origin holds
+every local commit.
+
+WHAT WAS FOUND. origin/verify/l5-launch-readiness was 26 commits behind this
+machine. The working tree also carried five uncommitted files from the session 65
+S1 work. Per the brief's second action they were committed on their own as
+8e167886, "S1 connected account health, work in progress", after their test file
+was run green (41 of 41), making 27 commits to push. The laptop was confirmed on
+AC power and port 3000 free before the gate started.
+
+THE PUSH ATTEMPT. 14:18:58. Complete output appended to C:\dev\push-attempt.log
+(1,545 lines), timestamp line first, as the brief requires. The pre-push gate
+ran in order: disk (19.3 GB free), typecheck, lint, copy, critical-path,
+lighthouse-exemptions, all 110 guards, types-drift, every one PASS. It stopped
+at step 9 of 15. The exact refusing lines:
+
+    [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+    [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+    [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+The ten migrations the gate named:
+    20260909000001_event_tags_case_distinct.sql
+    20260909000002_platform_notifications.sql
+    20260909000003_platform_notification_guards.sql
+    20260909000004_platform_notifications_never_block.sql
+    20260909000005_degraded_notification_keeps_its_subject.sql
+    20260910000001_ticket_tiers_keep_their_identity.sql
+    20260910000002_slot_ledger.sql
+    20260910000003_recovery_engine.sql
+    20260910000004_recovery_holds.sql
+    20260911000001_connect_requirement_watch.sql
+
+The environment half of the same step PASSED: 34 production records listed, 47
+manifest entries judged, 0 faults. The schema half is the whole of the refusal.
+
+WHY THE CAUSE IS NOT FIXED IN THIS SESSION. The fix is applying those ten
+migrations to production. That is the founder's reserved step: CLAUDE.md,
+Verification and gates, Migrations, and his ruling of 26 August 2026 that a
+production schema change is the one thing he presses himself. The run brief
+restates it: never write to production gndnldyfudbytbboxesk without explicit
+approval. No approval exists in this session. The one command, in PowerShell
+from the repo:
+
+    npm run migrate:production
+
+It lists the ten files, asks for the production ref typed back, hands over the
+CLI's own prompts, proves the result, and rests the CLI on TEST.
+
+NO SECOND PUSH WAS ATTEMPTED, AND NO GATE STEP WAS TOUCHED. The brief says fix
+the cause, then push again. The cause is founder-held, so a second attempt now
+would produce the identical refusal and prove nothing. Nothing was bypassed,
+skipped, lowered or exempted; the hook runs the whole gate on the next push.
+This is the same block session 65 recorded BY DESIGN at nine migrations; the
+S1 connect_requirement_watch migration made it ten.
+
+WHAT THE ONE COMMAND RELEASES, all at once:
+  - the 27 commits, through the gate to origin
+  - the Vercel preview built from the pushed commit, which is this brief's own
+    closing condition for UX6: driven at 390 on that preview, business deadline
+    24 September 2026
+  - D1's last acceptance line: the ledger on production, and with it the
+    Afro-Fusion curve including order EL-9HE57YNV
+  - D2's outstanding leg, the same command
+  - S1's production legs
+
+THE HALT THIS RUN OBEYS. "Only when origin holds every local commit may you
+start anything else. Nothing that exists only on this machine counts as done."
+So nothing else was started. The priority items stand exactly as BUILD-LEDGER.md
+records them from sessions 62 to 65: UX6, D1, D2, UX5 and S1 each built, driven
+and green, each with only founder-held legs.
+
+DISK at end: 19.3 GB free.
