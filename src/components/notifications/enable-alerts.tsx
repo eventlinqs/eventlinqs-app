@@ -11,7 +11,7 @@ import { usePushSubscription } from './use-push-subscription'
  * backbone regardless.
  */
 export function EnableAlerts() {
-  const { status, enable, disable } = usePushSubscription('components/notifications/enable-alerts')
+  const { status, reason, enable, disable } = usePushSubscription('components/notifications/enable-alerts')
 
   const note =
     status === 'unsupported'
@@ -20,7 +20,9 @@ export function EnableAlerts() {
         ? 'Push alerts are being switched on shortly. Email alerts are already active.'
         : status === 'denied'
           ? 'Notifications are blocked in your browser settings. Allow them to get push alerts.'
-          : null
+          : status === 'error'
+            ? `Push alerts could not be switched on: ${reason ?? 'your browser refused'}. Try again. Your email alerts are unaffected.`
+            : null
 
   return (
     <div className="rounded-xl border border-ink-200 bg-white p-5">
@@ -30,7 +32,14 @@ export function EnableAlerts() {
         and when an event is going fast. Push is instant; email is the backbone.
       </p>
 
-      {note && <p className="mt-3 text-sm text-ink-500">{note}</p>}
+      {note && (
+        <p
+          className={`mt-3 text-sm ${status === 'error' ? 'text-ink-900' : 'text-ink-500'}`}
+          role={status === 'error' ? 'alert' : undefined}
+        >
+          {note}
+        </p>
+      )}
 
       <div className="mt-4">
         {status === 'subscribed' ? (

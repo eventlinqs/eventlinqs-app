@@ -12,7 +12,7 @@ import { usePushSubscription } from '@/components/notifications/use-push-subscri
  * it says plainly what happens if nobody presses it.
  */
 export function BackupAlerts({ armed }: { armed: number }) {
-  const { status, enable, disable } = usePushSubscription(
+  const { status, reason, enable, disable } = usePushSubscription(
     'app/admin/notifications/backup-alerts',
   )
 
@@ -23,9 +23,11 @@ export function BackupAlerts({ armed }: { armed: number }) {
         ? 'Push is not configured on this deployment (the VAPID keys are absent), so the backup channel cannot be armed here.'
         : status === 'denied'
           ? 'Notifications are blocked for this site in your browser settings. Allow them, then press the button again.'
-          : armed === 0
-            ? 'No device is armed. If email delivery fails, a notification will be recorded as failed and shown in red below, and nothing will reach you until you open this page.'
-            : `${armed} device${armed === 1 ? '' : 's'} armed.`
+          : status === 'error'
+            ? `This device could not be armed: ${reason ?? 'the browser refused'}. Press the button again, and if it keeps refusing this device cannot carry the backup channel.`
+            : armed === 0
+              ? 'No device is armed. If email delivery fails, a notification will be recorded as failed and shown in red below, and nothing will reach you until you open this page.'
+              : `${armed} device${armed === 1 ? '' : 's'} armed.`
 
   return (
     <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-5">
@@ -35,7 +37,12 @@ export function BackupAlerts({ armed }: { armed: number }) {
         here instead. Push does not share a vendor, a domain or a rate limit with email, so the two
         cannot fail together for the same reason.
       </p>
-      <p className={`mt-3 text-sm ${armed === 0 ? 'text-amber-300' : 'text-white/50'}`}>{note}</p>
+      <p
+        className={`mt-3 text-sm ${status === 'error' || armed === 0 ? 'text-amber-300' : 'text-white/50'}`}
+        role={status === 'error' ? 'alert' : undefined}
+      >
+        {note}
+      </p>
       <div className="mt-4">
         {status === 'subscribed' ? (
           <button

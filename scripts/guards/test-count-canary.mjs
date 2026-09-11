@@ -1309,9 +1309,21 @@ const ROOT = join(HERE, '..', '..')
  * rather than in a need, the fault naming where it was written, the shipped
  * adjudication staying green, and the negative case that keeps the clause alive
  * by proving an UNCOUNTED mention of migrations still stands.
+ *
+ * And 376/4522 for the push opt-in (close-out UX3.2). Every FIRST press of the
+ * owner's backup-alert control failed, on a fresh profile, in silence:
+ * `register()` resolves before the worker is running, so
+ * `pushManager.subscribe()` threw "Subscription failed - no active Service
+ * Worker", and the catch reported it as 'idle', which is the state an unpressed
+ * control shows. A SECOND press always worked, which is why it survived: anybody
+ * debugging it presses twice. The six tests hold both halves - subscribe waits
+ * for 'activated', a worker gone 'redundant' ends the wait instead of hanging
+ * the button, and a refused press never lands in the same state as a press that
+ * never happened. All six were drilled RED against the pre-fix hook and returned
+ * the browser's own sentence.
  */
-const MIN_FILES = 375
-const MIN_TESTS = 4516
+const MIN_FILES = 376
+const MIN_TESTS = 4522
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

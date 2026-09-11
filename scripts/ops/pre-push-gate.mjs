@@ -512,10 +512,18 @@ function collectLikeLhci(urls, env) {
  * `scripts/guards/gate-servers-carry-a-limiter.mjs` fails the build if a fourth
  * one is ever born outside it.
  *
+ * `mail` chooses the transport, and it is an option rather than a constant
+ * because two kinds of step need opposite things. Every journey step needs
+ * `console`, which prints the message so the harness can read a confirmation
+ * link out of the log. The UX3.2 escalation drive needs the opposite: it proves
+ * what happens when email FAILS three times and the second channel carries the
+ * alert instead, and a transport that always succeeds can never show that. The
+ * limiter is not part of this choice and is handed over either way.
+ *
  * Returns `{ base, stop }` on success, or `{ error }` with the log already
  * tailed to stderr.
  */
-export async function startGateServer(env, logPath, { also = [] } = {}) {
+export async function startGateServer(env, logPath, { also = [], mail = 'console' } = {}) {
   mkdirSync(TMP, { recursive: true })
   const stubPort = await freePort()
   const appPort = await freePort()
@@ -536,7 +544,13 @@ export async function startGateServer(env, logPath, { also = [] } = {}) {
     env: {
       ...env,
       PORT: String(appPort),
-      EMAIL_TRANSPORT: 'console',
+      // 'console' prints what would have been sent, which is how the journey
+      // harness reads a confirmation link. 'real' leaves EMAIL_TRANSPORT
+      // unset so the REAL transport runs, which on a machine with no
+      // RESEND_API_KEY throws - and that is the only way a step can drive what
+      // the platform does when email FAILS (close-out UX3.2, the second
+      // channel). A step that needs a confirmation link must never ask for it.
+      ...(mail === 'console' ? { EMAIL_TRANSPORT: 'console' } : { EMAIL_TRANSPORT: '' }),
       UPSTASH_REDIS_REST_URL: `http://127.0.0.1:${stubPort}`,
       UPSTASH_REDIS_REST_TOKEN: 'local',
     },

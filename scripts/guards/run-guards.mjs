@@ -99,6 +99,10 @@
  *                              proves the backend answers. Without it the money-path limiter
  *                              fails closed and a drive reports the gate's own gap as a
  *                              product defect
+ *   push-arming-cannot-fail-silently  the backup alert channel can actually be armed, and a
+ *                              press that fails says so. One module subscribes, it waits for
+ *                              an ACTIVE service worker first, no other worker takes scope '/',
+ *                              and both surfaces render the refusal
  *   card-raster-traced        every route that reaches the card rasteriser (derived from the
  *                              import graph, never listed) pins the resvg binary and the brand
  *                              fonts in next.config.ts, judged with Next's own matcher; and as
@@ -925,6 +929,18 @@ const GUARDS = [
   // URL. Five clauses, all drilled red and green
   // (C:\dev\EVIDENCE\D1\guard-gate-server-drill.txt).
   'scripts/guards/gate-servers-carry-a-limiter.mjs',
+  // 11 September 2026 (close-out UX3.2). The owner's backup alert channel could
+  // not be armed at all on a device that had never armed before, and the screen
+  // said nothing. `register()` resolves before the worker is running, so
+  // `pushManager.subscribe()` threw "Subscription failed - no active Service
+  // Worker"; the catch then set 'idle', which is the state an UNPRESSED control
+  // shows, and sent the error to reportClientError, which on a production build
+  // queues into memory nobody reads. A second press always worked, which is why
+  // nobody had noticed: anybody debugging it presses twice. Five clauses, plus a
+  // premise check on public/push-sw.js, all drilled red and green including two
+  // negatives that the first draft genuinely failed
+  // (C:\dev\EVIDENCE\UX3\ux3-push-guard-drill.txt).
+  'scripts/guards/push-arming-cannot-fail-silently.mjs',
   // 6 September 2026 (close-out C3, the eighteen social cards). The rasteriser
   // reads the resvg WebAssembly binary and the brand fonts from disk at run
   // time, and next.config.ts pins them per route in outputFileTracingIncludes
