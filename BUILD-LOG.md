@@ -10656,3 +10656,32 @@ UX6 drive at 390 on the READY preview built from the pushed commit
 argument), then D1's acceptance lines against the production ledger.
 
 DISK at end: 20 GB free, on AC power.
+
+## Session 69, 11 September 2026. Fourth push attempt per the brief, refused at the same step, nothing else started.
+
+14:42 to 14:47. First action: fetch, count, push through the normal gate. origin
+was 27 behind, the tree clean, AC power, 19.3 GB free, port 3000 free.
+
+- THE PUSH ATTEMPT, 14:42:26, appended to C:\dev\push-attempt.log (lines 4636
+  to 6179, timestamp first). Steps 1 to 8 PASS, all 110 guards included.
+  Refused at step 9 of 15. The exact refusing lines:
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+  The same ten files, 20260909000001 through 20260911000001. Environment half
+  PASS (34 records, 0 faults). Production read live at 14:44; origin re-fetched
+  after: still 27 behind.
+- THE CAUSE IS STILL FOUNDER HELD, and this session re-verified that no other
+  path exists: no workflow under .github/workflows applies a migration, and
+  package.json carries exactly one route, npm run migrate:production, which is
+  the founder's by CLAUDE.md (Migrations), Law 10's reservation and this brief.
+  No gate step touched, no bypass, no second push (nothing changed).
+- NOTHING ELSE STARTED, per the halt. One reading for the record: UX5 has no
+  body in CLOSE-OUT.md (never had one), so the housekeeping rule has nothing to
+  move; its verdicts stand in BUILD-LEDGER.md at "UX5. THE TWO-FACTOR
+  ENROLMENT PAGE", all MET, commit 4ecd0da0, held on this machine like the rest.
+
+DISK at end: 19.3 GB free, on AC power.

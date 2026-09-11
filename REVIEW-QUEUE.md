@@ -4164,17 +4164,18 @@ Nothing here needs a decision beyond running the command. If you would rather I
 run it, that needs your explicit written approval in the next brief, because
 today it is reserved to you and I will not touch production without it.
 
-## Re-checked today at 14:29 and again at 14:33: still the same one command, and nothing else moved
+## Re-checked today at 14:29, 14:33 and 14:44: still the same one command, and nothing else moved
 
-Two more sessions re-ran your push gate from a clean tree, live against
+Three more sessions re-ran your push gate from a clean tree, live against
 production, rather than trusting the last note. Everything green through all 110
-guards both times; refused again, correctly, at production parity: production is
-still ten migrations behind, the same ten. So the state is unchanged and there
+guards every time; refused again, correctly, at production parity: production is
+still ten migrations behind, the same ten. The latest run also checked that no
+automated path applies a migration for you: there is none, only your command. So the state is unchanged and there
 is exactly one thing to run, in PowerShell from the repo:
 
     npm run migrate:production
 
-Neither session started anything else, per your halt rule. The full gate output
+None of the three sessions started anything else, per your halt rule. The full gate output
 from each attempt is appended to C:\dev\push-attempt.log.
 
 One thing worth knowing while you decide: the watchdog relaunches this brief
