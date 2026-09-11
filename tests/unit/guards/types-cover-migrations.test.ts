@@ -51,12 +51,12 @@ describe('replaying the migrations', () => {
 
   test('a renamed table moves its entry and its added columns to the new name', () => {
     const { tables, columns } = migrationSchemaObjects([
-      migration('001.sql', 'create table public.cultures (id uuid);'),
-      migration('002.sql', 'alter table public.cultures add column hero_photo text;'),
-      migration('003.sql', 'alter table public.cultures rename to communities;'),
+      migration('001.sql', 'create table public.tenants (id uuid);'),
+      migration('002.sql', 'alter table public.tenants add column hero_photo text;'),
+      migration('003.sql', 'alter table public.tenants rename to organisations;'),
     ])
-    expect([...tables.keys()]).toEqual(['public.communities'])
-    expect([...columns.keys()]).toEqual(['public.communities.hero_photo'])
+    expect([...tables.keys()]).toEqual(['public.organisations'])
+    expect([...columns.keys()]).toEqual(['public.organisations.hero_photo'])
   })
 
   test('a dropped table is no longer demanded, nor are its columns', () => {
