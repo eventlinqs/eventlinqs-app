@@ -6,12 +6,14 @@ import { join } from 'node:path'
 
 import { makeJudgeIgnored, parseVercelIgnore } from '../../../scripts/guards/lib/vercelignore.mjs'
 import {
+  buildHostEnv,
   holdsNoFile,
   isGitCheckout,
   listTrackedFiles,
   materialiseVercelUpload,
   removeUpload,
 } from '../../../scripts/guards/lib/vercel-upload.mjs'
+import { resolveVercelToken, vercelCliAuthCandidates } from '../../../scripts/lib/vercel-login.mjs'
 import { REQUIRED_READS } from '../../../scripts/guards/lib/vercelignore-registry.mjs'
 import {
   entriesThatReadThroughTheIgnore,
@@ -337,5 +339,97 @@ describe('the registry the two guards share', () => {
     for (const [path, reason] of Object.entries(REQUIRED_READS)) {
       expect(reason.length, path).toBeGreaterThan(40)
     }
+  })
+})
+
+describe('the environment the simulation hands each entry point', () => {
+  /*
+   * THE BUILD HOST HAS NO TOKEN, AND THE SIMULATION USED TO HAND IT ONE.
+   *
+   * 11 September 2026, CI on 0fe8c238. The preview of that commit was in ERROR
+   * (a gateway blink, answered in the schema probe), so preview-deployment-state
+   * refused the build, correctly. Then excluded-reads-survive-the-upload ran the
+   * SAME guard inside its materialised upload with the parent's whole
+   * environment, VERCEL_TOKEN, GITHUB_ACTIONS and the pull request payload
+   * included, so the child judged the same real deployment, failed for the same
+   * real reason, and the simulation reported a SECOND fault that blamed
+   * .vercelignore: "Every Vercel build will fail on it while the local gate
+   * stays green. Either re-include what it reads". Nothing about the upload was
+   * wrong. Locally the same simulation passes every time, because the commit at
+   * HEAD has no deployment to judge, which is why the gate could never see it.
+   *
+   * The guard's own header promises a tree "with no docs, no usable git and no
+   * token". These hold the third promise: the child gets the environment the
+   * build host has, and no credential the parent happens to hold.
+   */
+  test('no CI identity and no credential survives into the child', () => {
+    const dest = scratch()
+    try {
+      const env = buildHostEnv(
+        {
+          PATH: 'kept',
+          TEMP: 'kept',
+          CI: 'true',
+          GITHUB_ACTIONS: 'true',
+          GITHUB_SHA: '0fe8c238',
+          GITHUB_EVENT_PATH: '/home/runner/event.json',
+          GITHUB_TOKEN: 'ghs_secret',
+          GH_TOKEN: 'gho_secret',
+          RUNNER_OS: 'Linux',
+          ACTIONS_RUNTIME_TOKEN: 'secret',
+          VERCEL_TOKEN: 'secret',
+        },
+        dest,
+      )
+      const leaked = Object.keys(env).filter((k) => /^(GITHUB_|GH_|RUNNER_|ACTIONS_)/i.test(k) || k.toUpperCase() === 'VERCEL_TOKEN')
+      expect(leaked).toEqual(['GH_CONFIG_DIR'])
+      expect(env.PATH).toBe('kept')
+      expect(env.TEMP).toBe('kept')
+      expect(env.VERCEL).toBe('1')
+      expect(env.VERCEL_ENV).toBe('preview')
+      expect(env.VERCEL_UPLOAD_SIMULATION).toBe('1')
+      expect(Object.values(env)).not.toContain('secret')
+      expect(Object.values(env)).not.toContain('ghs_secret')
+      expect(Object.values(env)).not.toContain('gho_secret')
+    } finally {
+      removeUpload(dest)
+    }
+  })
+
+  test('every place a CLI keeps a login resolves under the upload, and holds nothing', () => {
+    const dest = scratch()
+    try {
+      const env = buildHostEnv(process.env, dest)
+      const home = env.HOME as string
+      expect(home.startsWith(dest)).toBe(true)
+      expect(existsSync(home)).toBe(true)
+      expect(env.USERPROFILE).toBe(home)
+      for (const candidate of vercelCliAuthCandidates(env, home)) {
+        expect(candidate.startsWith(dest), candidate).toBe(true)
+        expect(existsSync(candidate), candidate).toBe(false)
+      }
+      const gh = env.GH_CONFIG_DIR as string
+      expect(gh.startsWith(dest)).toBe(true)
+      expect(existsSync(join(gh, 'hosts.yml'))).toBe(false)
+    } finally {
+      removeUpload(dest)
+    }
+  })
+
+  test('THE CLASS: the resolver that finds a token for the parent finds none for the child', () => {
+    const dest = scratch()
+    try {
+      const child = resolveVercelToken(buildHostEnv(process.env, dest))
+      expect(child.token).toBeNull()
+      expect('reason' in child ? child.reason : 'a token was found').toContain('no VERCEL_TOKEN in the environment and no Vercel CLI login')
+    } finally {
+      removeUpload(dest)
+    }
+  })
+
+  test('the guard spawns every subject with that environment, never with its own', () => {
+    const src = readFileSync(join(ROOT, 'scripts/guards/excluded-reads-survive-the-upload.mjs'), 'utf8')
+    expect(src).toContain('buildHostEnv(process.env, dest)')
+    expect(src).not.toContain('...process.env')
   })
 })

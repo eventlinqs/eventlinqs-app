@@ -35,10 +35,23 @@
  *     a fact only the index holds and 16 shipped rasters under public/ are
  *     force-added. Both deltas are printed rather than folded away.
  *
- * VERCEL=1 IS SET IN THE CHILD ENVIRONMENT, deliberately. The tree the child runs
- * in IS the Vercel upload, so a script asking "am I on the build host" must get
- * the same answer it would get there. Without it, a script that distinguishes a
- * STRIPPED file from a DELETED one would be tested in a state that exists nowhere.
+ * THE CHILD RUNS IN THE BUILD HOST'S ENVIRONMENT, NOT THIS PROCESS'S. VERCEL=1 is
+ * set, deliberately: the tree the child runs in IS the Vercel upload, so a script
+ * asking "am I on the build host" must get the same answer it would get there.
+ * Without it, a script that distinguishes a STRIPPED file from a DELETED one
+ * would be tested in a state that exists nowhere. And since 12 September 2026
+ * the CI identity, the credentials and every CLI login are REMOVED as well
+ * (buildHostEnv in lib/vercel-upload.mjs): on 11 September this guard, in CI,
+ * handed preview-deployment-state the VERCEL_TOKEN and the pull request
+ * payload, the child judged the real deployment of 0fe8c238 (in ERROR for a
+ * reason of its own), and this guard reported a SECOND fault that blamed
+ * .vercelignore for it and told the reader to re-include a file. "No token" is
+ * this header's own promise, and the environment is where a token lives.
+ *
+ * WHEN A CHILD IS RED, THE MESSAGE SAYS WHICH FAULT IT IS. The same script is run
+ * once more from the real tree under the same build-host environment. Red there
+ * too means the files .vercelignore strips are not the cause, and the message
+ * says so instead of sending the reader to the ignore file.
  *
  * WHERE IT DOES NOT RUN: ON VERCEL, BY SCOPE, NEVER AS A SIDE EFFECT.
  *
@@ -70,7 +83,7 @@ import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
 import { entriesThatReadThroughTheIgnore, excludedTopLevels } from './lib/build-time-scripts.mjs'
 import { readVercelIgnore } from './lib/vercelignore.mjs'
-import { filesForUpload, materialiseVercelUpload, removeUpload } from './lib/vercel-upload.mjs'
+import { buildHostEnv, filesForUpload, materialiseVercelUpload, removeUpload } from './lib/vercel-upload.mjs'
 import { describeBuildScope, resolveBuildScope } from '../../src/lib/health/build-scope.mjs'
 import { DECLARED } from './lib/build-host-needs.mjs'
 
@@ -138,6 +151,14 @@ try {
   const enumerated = filesForUpload(ROOT)
   shape = materialiseVercelUpload({ root: ROOT, dest, files: enumerated.files })
   for (const e of shape.ignoreErrors) fail(`.vercelignore ${e}`)
+  // The build host's environment: no CI identity, no credential, no CLI login.
+  const hostEnv = buildHostEnv(process.env, dest)
+  const lastLines = (run) =>
+    `${run.stdout ?? ''}${run.stderr ?? ''}`
+      .split('\n')
+      .filter((l) => l.trim() !== '')
+      .slice(-6)
+      .join('\n      ')
 
   console.log(`${TAG} enumerated ${enumerated.files.length} file(s) from ${enumerated.source}.`)
   if (enumerated.addedByIndex.length > 0 || enumerated.droppedAsUntracked.length > 0) {
@@ -187,23 +208,45 @@ try {
     const run = spawnSync(process.execPath, [inside], {
       cwd: dest,
       encoding: 'utf8',
-      env: { ...process.env, VERCEL: '1', VERCEL_ENV: 'preview', VERCEL_UPLOAD_SIMULATION: '1' },
+      env: hostEnv,
       maxBuffer: 32 * 1024 * 1024,
     })
     const status = run.status ?? -1
     results.push({ entry, because, status })
     if (status !== 0) {
-      const tail = `${run.stdout ?? ''}${run.stderr ?? ''}`
-        .split('\n')
-        .filter((l) => l.trim() !== '')
-        .slice(-6)
-        .join('\n      ')
-      fail(
-        `${entry} reads through .vercelignore (${because}) and exits ${status} in the stripped upload. ` +
-          `Every Vercel build will fail on it while the local gate stays green. Either re-include what it reads in ` +
-          `.vercelignore (vercelignore-covers-guard-reads.mjs prints the exact lines), or make it cope with the file ` +
-          `being absent. Its last lines were:\n      ${tail}`,
-      )
+      const tail = lastLines(run)
+      /*
+       * WHICH FAULT IS IT? A script can be red in the upload because a file it
+       * reads was stripped, which is what this guard exists to catch, or because
+       * it is red on any build host, which is a fault of its own and nothing to
+       * do with .vercelignore. On 11 September 2026 the second was reported as
+       * the first. So the script is run once more from the REAL tree, under the
+       * SAME build-host environment, and the message names the fault it found.
+       */
+      const full = spawnSync(process.execPath, [join(ROOT, entry)], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        env: hostEnv,
+        maxBuffer: 32 * 1024 * 1024,
+      })
+      const fullStatus = full.status ?? -1
+      if (fullStatus !== 0) {
+        fail(
+          `${entry} (${because}) exits ${status} in the stripped upload AND exits ${fullStatus} in the full tree under ` +
+            `the same build-host environment (no CI identity, no credential, no CLI login), so the files .vercelignore ` +
+            `strips are NOT the cause: the script is red on any build host. Read its own lines, not the ignore file. ` +
+            `Its last lines in the upload were:\n      ${tail}\n      ` +
+            `and in the full tree:\n      ${lastLines(full)}`,
+        )
+      } else {
+        fail(
+          `${entry} reads through .vercelignore (${because}) and exits ${status} in the stripped upload, and exits 0 ` +
+            `in the full tree under the same build-host environment, so a stripped file is the cause. ` +
+            `Every Vercel build will fail on it while the local gate stays green. Either re-include what it reads in ` +
+            `.vercelignore (vercelignore-covers-guard-reads.mjs prints the exact lines), or make it cope with the file ` +
+            `being absent. Its last lines were:\n      ${tail}`,
+        )
+      }
     }
   }
 } finally {

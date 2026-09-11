@@ -1394,9 +1394,17 @@ const ROOT = join(HERE, '..', '..')
  * that answered 200 a minute later), and seven on the script that moves
  * Stripe's TEST webhook endpoints to the current preview, after every TEST
  * webhook of the day was found landing on the July alias of another branch.
+ *
+ * Then 382/4624 to 382/4628, 12 September. Four on the environment the upload
+ * simulation hands each entry point (buildHostEnv): CI on 0fe8c238 ran
+ * preview-deployment-state inside the simulated upload with the parent's
+ * VERCEL_TOKEN and pull request payload, the child judged the real deployment,
+ * and the simulation blamed .vercelignore for a failure that had nothing to do
+ * with the upload. The child now gets the build host's environment: no CI
+ * identity, no credential, no CLI login.
  */
 const MIN_FILES = 382
-const MIN_TESTS = 4624
+const MIN_TESTS = 4628
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

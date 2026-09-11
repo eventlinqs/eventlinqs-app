@@ -229,6 +229,82 @@ export function materialiseVercelUpload({ root, dest, files, linkNodeModules = t
 }
 
 /**
+ * THE ENVIRONMENT THE BUILD HOST HAS, for every script run inside the upload.
+ *
+ * 11 September 2026, CI on 0fe8c238. The preview of that commit was in ERROR
+ * (two of ten schema probes answered 504 from a gateway that blinked once), so
+ * preview-deployment-state refused the build, correctly. The upload simulation
+ * then ran the SAME guard inside the materialised tree with this process's
+ * ENTIRE environment: VERCEL_TOKEN, the GITHUB_* identity and the pull request
+ * payload included. The child judged the same real deployment, failed for the
+ * same real reason, and the simulation reported a SECOND fault that blamed
+ * .vercelignore and told the reader to re-include a file. Nothing about the
+ * upload was wrong. On a laptop the same simulation passes every time, because
+ * the commit at HEAD has no deployment to judge, which is why the pre-push gate
+ * could never see it.
+ *
+ * The simulation's own header promises a tree "with no docs, no usable git and
+ * no token". The first two are properties of the TREE and were reproduced; the
+ * third is a property of the ENVIRONMENT and was not. This is it:
+ *
+ *   - no CI identity: nothing beginning GITHUB_, GH_, RUNNER_ or ACTIONS_, so a
+ *     child cannot learn the commit under test, wait for a deployment, or read
+ *     an event payload the build host never has;
+ *   - no credential: VERCEL_TOKEN is dropped (GITHUB_TOKEN and GH_TOKEN fall
+ *     under the prefixes above);
+ *   - no CLI login: HOME, USERPROFILE, APPDATA, LOCALAPPDATA, XDG_DATA_HOME,
+ *     XDG_CONFIG_HOME and GH_CONFIG_DIR all point into an empty directory under
+ *     the upload, so the lookups the Vercel CLI and the GitHub CLI make find
+ *     nothing, which is what they find on the host;
+ *   - and VERCEL=1, VERCEL_ENV=preview, VERCEL_UPLOAD_SIMULATION=1, as before.
+ *
+ * Everything else (PATH, TEMP, the project's own variables from .env.local) is
+ * passed through, because the build host has those too. Windows treats variable
+ * names case-insensitively, so the drop and the override are matched by
+ * upper-cased name rather than by exact key.
+ *
+ * Driven in tests/unit/guards/vercel-upload.test.ts, including the one that
+ * names the class: the resolver that finds a token for the parent finds none
+ * for the child.
+ */
+export const CI_IDENTITY_PREFIX = /^(GITHUB_|GH_|RUNNER_|ACTIONS_)/
+export const DROPPED_CREDENTIALS = Object.freeze(['VERCEL_TOKEN'])
+
+/**
+ * @param {Record<string, string | undefined>} env the parent's environment
+ * @param {string} dest the materialised upload root
+ * @returns {Record<string, string>}
+ */
+export function buildHostEnv(env, dest) {
+  const home = join(dest, '.build-host-home')
+  const overrides = {
+    VERCEL: '1',
+    VERCEL_ENV: 'preview',
+    VERCEL_UPLOAD_SIMULATION: '1',
+    HOME: home,
+    USERPROFILE: home,
+    APPDATA: join(home, 'AppData', 'Roaming'),
+    LOCALAPPDATA: join(home, 'AppData', 'Local'),
+    XDG_DATA_HOME: join(home, '.local', 'share'),
+    XDG_CONFIG_HOME: join(home, '.config'),
+    GH_CONFIG_DIR: join(home, '.config', 'gh'),
+  }
+  mkdirSync(home, { recursive: true })
+  const overridden = new Set(Object.keys(overrides))
+  /** @type {Record<string, string>} */
+  const out = {}
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) continue
+    const upper = key.toUpperCase()
+    if (CI_IDENTITY_PREFIX.test(upper)) continue
+    if (DROPPED_CREDENTIALS.includes(upper)) continue
+    if (overridden.has(upper)) continue
+    out[key] = value
+  }
+  return { ...out, ...overrides }
+}
+
+/**
  * Does this directory hold no regular file, at any depth?
  *
  * The question a guard actually needs when its subject lives under docs/. An
