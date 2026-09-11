@@ -3787,7 +3787,7 @@ age is computed from - of being a write. A guard that fires on the read it exist
 to protect, or on the sentence explaining itself, is switched off within a week.
 Both narrowings carry a NEGATIVE drill asserting they stay green.
 
-## SESSION 66. THE PUSH ATTEMPT THE BRIEF ORDERED FIRST. 11 September 2026.
+## SESSIONS 66 TO 68. THE PUSH ATTEMPTS THE BRIEF ORDERED FIRST. 11 September 2026.
 
 | Requirement (run brief) | Verdict | Evidence |
 |---|---|---|
@@ -3799,3 +3799,5 @@ Both narrowings carry a NEGATIVE drill asserting they stay green.
 | Fix the cause properly, push again | FOUNDER RESERVED. The cause is 10 migrations pending on production; applying them is Lawal's step (CLAUDE.md Migrations; ruling 26 August 2026; the brief's own production-write prohibition). The command: npm run migrate:production | BUILD-LOG.md, Session 66 |
 | Origin holds every local commit | NOT MET: 27 commits held on this machine, blocked on the founder command above | git rev-list |
 | Start anything else | CORRECTLY NOT STARTED, per the brief's halt rule | this session |
+| Re-attempted, session 67 at 14:29 and session 68 at 14:33 | REFUSED IDENTICALLY at production-parity, step 9 of 15, on the same ten migrations; steps 1 to 8 PASS both times including all 110 guards; environment half PASS (34 records, 47 entries, 0 faults); production read live each time; origin still 27 behind after each; no gate step touched, no bypass | C:\dev\push-attempt.log lines 1546 to 3089 and 3091 to 4634; BUILD-LOG.md, Sessions 67 and 68 |
+| Fix the cause | STILL FOUNDER RESERVED: npm run migrate:production. Exempting a feature-branch push from parity was considered and rejected (C16.2.1 places parity in the pre-push gate; the brief forbids exempting a gate step) | BUILD-LOG.md, Session 68 |

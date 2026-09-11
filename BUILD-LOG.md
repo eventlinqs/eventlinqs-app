@@ -10597,3 +10597,62 @@ moment the command above lands and the push goes through; that drive is the
 first act of the next session.
 
 DISK at end: 19.3 GB free, on AC power.
+
+## Session 68, 11 September 2026. Third push attempt per the brief, refused at the same step, nothing else started.
+
+14:33 to 14:40. First action: fetch, count what origin does not have, push
+through the normal gate. origin/verify/l5-launch-readiness is 27 commits behind
+this machine, unchanged since session 66. The tree was clean, so the brief's
+second action (commit stray work) had nothing to do. AC power confirmed, port
+3000 free, 20 GB free before the gate started.
+
+THE PUSH ATTEMPT. 14:33:53. Complete output appended to C:\dev\push-attempt.log
+(lines 3091 to 4634), timestamp line first. Steps 1 to 8 PASS: disk (20 GB),
+typecheck, lint, copy, critical-path, lighthouse-exemptions, all 110 guards,
+types-drift. Refused at step 9 of 15. The exact refusing lines:
+
+    [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+    [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+    [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+    [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+The ten files are the identical ten sessions 66 and 67 named, 20260909000001
+through 20260911000001. The environment half of the same step PASSED: 34
+production records listed, 47 manifest entries judged, 0 faults. The parity
+step read production live at 14:37, so this is a fresh determination: the
+founder has not yet run the command. After the refusal origin was fetched and
+counted again: still 27 behind.
+
+THE CAUSE, AND WHY THIS SESSION DOES NOT FIX IT. The cause is ten migrations
+pending on production. Applying them is reserved to the founder three times
+over: CLAUDE.md, Verification and gates, Migrations ("Lawal applies it with
+supabase db push --linked"); Law 10's stated reservation (his ruling of
+26 August 2026); and this run's own brief ("never write to production
+gndnldyfudbytbboxesk without explicit approval"). No approval exists.
+REVIEW-QUEUE.md asked for it in writing at 14:25 and the brief this session ran
+under is unchanged. The one command, in PowerShell from the repo:
+
+    npm run migrate:production
+
+The other conceivable fix, exempting a feature-branch push from the parity
+step, was considered and rejected: C16.2.1 puts parity in the pre-push gate by
+the founder's own instruction, and the brief forbids exempting any gate step.
+No gate step was touched, nothing was bypassed, and no second push was
+attempted, because nothing changed between the refusal and now.
+
+WHAT THE WATCHDOG SHOWS THE FOUNDER. C:\dev\RUN-BUILD22.ps1 relaunches this
+brief 20 seconds after each run ends and prints "unpushed commits after run: 27"
+and the last eight lines of push-attempt.log to its own console every time. Each
+relaunch costs about five minutes of gate time (steps 1 to 9, reading production
+live) and proves the same thing. That is the honest behaviour under the brief,
+and it ends the moment the command above lands.
+
+THE HALT THIS RUN OBEYS. "Only when origin holds every local commit may you
+start anything else." Nothing else was started. UX6, D1, D2, UX5 and S1 stand as
+BUILD-LEDGER.md records them from sessions 62 to 65: built, driven and green,
+open only on founder-held legs. The first act after the command lands is the
+UX6 drive at 390 on the READY preview built from the pushed commit
+(scripts/verify/ux6-checkout-viewport-proof.mjs takes the base URL as its
+argument), then D1's acceptance lines against the production ledger.
+
+DISK at end: 20 GB free, on AC power.
