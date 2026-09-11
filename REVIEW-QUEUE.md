@@ -4447,3 +4447,56 @@ days out). That page belongs to MKLStudios, the outside organiser, so I could
 not open it to capture it at phone, tablet and desktop widths, and there is no
 admin view of it. If you have a way to see it, the numbers above are what it
 should show. D1 stays open on that one leg only.
+
+
+## The branch went red overnight on both hosts. Read, fixed at the cause, and pushed again
+
+At 05:51 the watchdog reported the branch tip red on GitHub and on Vercel.
+Two things had happened, one real and one a false accusation that the real
+one triggered.
+
+The real one: Vercel's build of the branch asked the TEST database ten
+read-only questions about the schema, and two of them were answered with a
+gateway timeout in the same second the other eight were answered normally.
+The guard that asks them was right to refuse a build it could not verify,
+and a whole deployment was still lost to one blink. Since d7d37743 the guard
+asks a gateway error again, twice, before refusing, and never re-asks a real
+answer, so a blink no longer costs a build and an outage still does.
+
+The false accusation: one of the build guards runs the other guards inside a
+copy of what Vercel uploads, to prove they survive the files Vercel strips.
+It promised to do that with no token, and it did not: it handed each of them
+the CI secrets, so the guard that watches the preview saw the broken preview
+from inside the simulation and failed there too, and the simulation blamed
+the ignore file for it and told the reader to re-include a file. The
+simulation now runs every guard with exactly what Vercel's build host has,
+which is no CI identity, no credential and no CLI login, and when one is
+still red it says whether the stripped files are the cause or the script is
+simply red. I reproduced the CI failure on this laptop against the old guard
+(word for word) and against the new one (clean), and added four tests so the
+gate on this machine refuses the class before a push; they failed before the
+fix and pass after. All 164 guard drills still fire.
+
+Nothing needs a decision from you here. The push of the two commits is
+running through the full gate as this is written; the outcome follows.
+
+
+## One thing for you: plug the laptop in and leave it alone for forty minutes
+
+The fix for the red branch is committed (ee3d3408) and went through fourteen
+of the fifteen gate steps. The fifteenth, the mobile Lighthouse gate, refused
+it, and the gate's own diagnosis says why: the machine, not the pages. The
+laptop came off mains during the run (it is discharging, 65 percent) and it
+is in use (your browser, Word, MuseHub), and on battery this machine
+benchmarks about a third below the speed the performance floors were set on.
+Nothing in the two waiting commits touches a page, and the same tree cleared
+all fifteen steps on mains this morning.
+
+I have not lowered a floor, skipped a step or added a waiver. A script,
+C:\dev\push-when-on-mains.ps1, is now waiting: the moment the laptop has
+been on mains for three quiet minutes it runs the push, and the whole gate
+with it, and the outcome is appended to C:\dev\push-attempt.log. The only
+thing a machine cannot do is plug the lead in. If you would rather run it
+yourself later:
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\push-when-on-mains.ps1

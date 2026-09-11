@@ -12407,3 +12407,196 @@ DISK at end: 18 GB free, on AC power.
   evaluator only if it is still on disk when the verdict is taken, and the
   assertion names every path it holds. Pushed together: all fifteen steps
   PASS; origin at 0fe8c238, 0 ahead, 0 behind.
+
+
+## Session 92, 12 September 2026. ZERO ACTION: the tip red on both hosts, read from the logs, fixed at the cause, proven red then green; the push that was cut off inside its own gate re-run.
+
+From about 05:52. C:\dev\DEPLOY-STATE.txt read first: RED at origin tip
+0fe8c238 (CI failure, Lighthouse CI failure, the two purchase runs and the
+smoke skipped). Local tip d7d37743, 1 ahead: the previous session's last
+commit, made at 05:18 and never logged here. Its push attempt at 05:18:23
+(push-attempt.log lines 63079 to 66713) ends inside the Lighthouse step with
+no gate verdict at all: "Running Lighthouse 5 time(s) on
+http://127.0.0.1:54574/events/artist-layer-launch-night-geelong" is followed
+straight away by "[pre-push] BLOCKED: the gate did not pass, so nothing was
+pushed." The gate did not fail a step; the gate process stopped. That attempt
+is therefore not a refusal to fix, and the push is made again below after the
+red is answered. DISK 18 GB free; on AC power; node 24.19.0; the Supabase CLI
+resting on TEST vkapkibzokmfaxqogypq.
+
+- THE UNLOGGED COMMIT d7d37743, recorded here so nothing exists only in a
+  commit message. It answers the preview loss below (a bounded retry in
+  scripts/guards/lib/schema-probe.mjs: a 502, 503, 504 or a failed connection
+  is asked again, twice, with a short pause; a real answer about the schema is
+  never retried; a gateway that stays down still refuses the build; three
+  tests), adds scripts/ops/point-stripe-test-webhook.mjs (the founder's one
+  command that moves Stripe's TEST-mode webhook endpoints off the July alias of
+  feat/walkthrough-defects, where every TEST webhook of 11 September was found
+  landing, onto the current preview; refuses a live key; dry run; seven tests),
+  takes .first() on the UX6 proof's Stripe frame locator (Link mounts a second
+  frame with the same title), and raises the canary 381/4614 to 382/4624.
+
+- THE RED, READ FROM THE LOGS AND QUOTED, never from memory.
+
+  The Vercel preview of 0fe8c238 (dpl_6U777uyGsXtCXNEJW3DTeMfktS8K), build
+  log at 19:00:19 UTC:
+    [schema-ahead-of-code]   UNKNOWN  events.venue_geocode_source        (504 no code: Gateway Timeout)
+    [schema-ahead-of-code]   UNKNOWN  ticket_price_history.id            (504 no code: Gateway Timeout)
+    [schema-ahead-of-code] FAIL: could not look at 2 object(s) on vkapkibzokmfaxqogypq. That is an outage or a credential
+    [schema-ahead-of-code]       problem, not a verdict on the schema, and the build is refused until it can be answered.
+    [guards] 1 of 111 guard(s) FAILED. Build blocked.
+    Error: Command "npm run build" exited with 1
+  The other eight probes answered 200 in the same second.
+
+  CI run 34636330559, job "lint · typecheck · build", step Build:
+    [preview-state] FAILED: the deployment of 0fe8c23 on verify/l5-launch-readiness is in ERROR.
+  which is correct, the preview WAS in error; and then
+    [excluded-reads-survive-the-upload] FAIL: scripts/guards/preview-deployment-state.mjs reads through .vercelignore (declares git and token (close-out F2.1)) and exits 1 in the stripped upload. Every Vercel build will fail on it while the local gate stays green. Either re-include what it reads in .vercelignore (vercelignore-covers-guard-reads.mjs prints the exact lines), or make it cope with the file being absent. Its last lines were:
+          [preview-state] found 1 settled deployment that is not READY
+          [preview-state] FAILED: the deployment of 0fe8c23 on verify/l5-launch-readiness is in ERROR.
+    [guards] 2 of 111 guard(s) FAILED. Build blocked.
+  The jobs production parity, types-drift guard and test (vitest) all passed.
+
+  Lighthouse CI run 34636330362, job "Resolve Vercel preview":
+    ##[error]No successful Vercel preview deployment found for 0fe8c23863c21cde5e37ec5df1887ea29b8211f7 within 10 minutes.
+  a consequence of the preview ERROR, not a third cause.
+
+- CAUSE ONE, THE PREVIEW: a gateway that blinked once. Two of ten read-only
+  probes of the TEST project's PostgREST answered 504 while the other eight
+  answered 200, and all ten answered 200 from this laptop a minute later. The
+  guard was right to refuse an unknown (an outage is not a verdict on the
+  schema) and a deployment was still lost to one blink. Fixed in d7d37743
+  (above). NEVER SHOWN RED IN THIS LOG, so shown now: the three retry tests run
+  against the 0fe8c238 probe (the file swapped in, then restored byte-identical
+  to HEAD): 3 failed, 40 passed (C:\dev\EVIDENCE\RED-2026-09-12\
+  probe-retry-tests-red-on-0fe8c238.txt); against the d7d37743 probe: 43
+  passed. Said plainly, what the local gate can and cannot do with this class:
+  a remote gateway's 504 cannot be reproduced on this laptop, so no local step
+  can refuse a push for it. The class is caught where it lives: the guard no
+  longer loses a build to a single blink, and the suite, which the gate runs on
+  every push, holds that behaviour.
+
+- CAUSE TWO, THE CI JOB: the upload simulation handed its child the parent's
+  credentials. excluded-reads-survive-the-upload.mjs runs 20 prebuild entry
+  points inside a materialised copy of the Vercel upload and requires each to
+  exit 0 on "a tree with no docs, no usable git and no token" (its own header).
+  It built the TREE that way and spawned each child with
+  { ...process.env, VERCEL: '1', ... }, which in CI carries VERCEL_TOKEN,
+  GITHUB_ACTIONS, GITHUB_SHA and the pull request payload. So the child
+  preview-deployment-state did inside the simulation exactly what the real one
+  did outside it: judged the real deployment of 0fe8c238, found it in ERROR,
+  exited 1. The simulation then reported that as an UPLOAD fault and told the
+  reader to re-include a file in .vercelignore. Nothing about the upload was
+  wrong. Locally the same simulation passes every time, because HEAD has no
+  deployment to judge, which is exactly why the pre-push gate could not see it:
+  excluded-reads-baseline-local-with-env.txt is 20 of 20 exit 0 on the same
+  tree CI failed. (A first baseline run without the TEST env loaded failed on
+  check-pricing-lock for want of a database URL; that was this shell, not the
+  guard, and is kept as excluded-reads-baseline-local.txt beside
+  pricing-lock-alone-with-env.txt, which passes.)
+
+  FIXED AT THE CAUSE. buildHostEnv(env, dest) in
+  scripts/guards/lib/vercel-upload.mjs builds the environment the build host
+  has: nothing beginning GITHUB_, GH_, RUNNER_ or ACTIONS_; no VERCEL_TOKEN;
+  HOME, USERPROFILE, APPDATA, LOCALAPPDATA, XDG_DATA_HOME, XDG_CONFIG_HOME and
+  GH_CONFIG_DIR pointed into an empty directory under the upload so the Vercel
+  CLI and GitHub CLI logins are not found; VERCEL=1, VERCEL_ENV=preview and
+  VERCEL_UPLOAD_SIMULATION=1 as before; everything else passed through (PATH,
+  TEMP, the project's own variables), because the host has those too. Windows
+  variable names are case-insensitive, so the drop and the override match by
+  upper-cased name. The guard spawns every subject with it. And when a child IS
+  red, the guard runs it once more from the full tree under the same
+  environment: red there too means the stripped files are not the cause, and
+  the message says so ("the script is red on any build host. Read its own
+  lines, not the ignore file") instead of pointing at .vercelignore.
+
+  PROVEN RED THEN GREEN by reproducing the CI condition on this machine:
+  GITHUB_ACTIONS=true, GITHUB_SHA=0fe8c23863c21cde5e37ec5df1887ea29b8211f7,
+  GITHUB_REF_NAME=verify/l5-launch-readiness, VERCEL_PROJECT_ID and
+  VERCEL_ORG_ID as ci.yml sets them, and the Vercel CLI login on this machine
+  standing in for the VERCEL_TOKEN secret (the resolver reads either).
+    RED, the 0fe8c238 guard (held outside the tree with its imports made
+    absolute, because a copy inside scripts/guards is itself enumerated as an
+    entry point): exit 1, "FAIL: scripts/guards/preview-deployment-state.mjs
+    reads through .vercelignore (declares git and token (close-out F2.1)) and
+    exits 1 in the stripped upload ... [preview-state] FAILED: the deployment
+    of 0fe8c23 on verify/l5-launch-readiness is in ERROR." The CI line
+    reproduced word for word (ci-condition-old-guard-0fe8c238-red.txt).
+    GREEN, the fixed guard, same environment: exit 0, PASS, 20 of 20
+    (ci-condition-new-guard-green.txt). The same child, given the host's
+    environment, skips loudly for want of a token, which is what it does on the
+    host.
+
+  THE LOCAL GATE NOW CATCHES THE CLASS. Four tests in
+  tests/unit/guards/vercel-upload.test.ts: no CI identity and no credential
+  survives into the child; every place a CLI keeps a login resolves under the
+  upload and holds nothing; "THE CLASS: the resolver that finds a token for the
+  parent finds none for the child"; and one that reads the guard's source and
+  fails if it ever spawns with its own environment again. RED before the fix:
+  4 failed, 25 passed (vercel-upload-tests-red-before-fix.txt). GREEN after: 29
+  passed (vercel-upload-tests-green-after-fix.txt). Canary 382/4624 to
+  382/4628 in the same commit. tsc 0 (one real type error in the new test,
+  found by tsc and narrowed before anything else), eslint 0 on the four changed
+  files. The plain local run of the fixed guard, as the gate runs it: PASS, 20
+  of 20 (excluded-reads-local-after-fix.txt).
+
+  NOT A DRILL, said why: the guard-failure-drills harness plants a file edit and
+  expects the guard to go red. The class here is an environment the guard hands
+  a child, and on this machine that child passes with or without the
+  credential, so no file edit makes the guard red locally. The unit test is the
+  gate for it, and it is in the suite the gate runs on every push.
+
+- REGRESSION, on the tree before the commit: the plain local run of the fixed
+  guard PASS 20 of 20 (excluded-reads-local-after-fix.txt); the guard failure
+  drills 164 of 164 fired correctly, 0 DID NOT FAIL, "all guards PASS on the
+  restored tree", 06:09:52 to 06:19:28 (guard-failure-drills.txt); tsc 0;
+  eslint 0 on the four changed files; the two touched test files 72 of 72.
+
+- COMMITTED 06:20 as ee3d3408, four files (the guard, its lib, the canary, the
+  test), the commit-msg hook accepting it, Australian English, no trailer. Two
+  commits ahead of origin: d7d37743 and ee3d3408.
+
+- THE PUSH ATTEMPT, 06:21, appended to C:\dev\push-attempt.log under the header
+  "===== PUSH ATTEMPT 2026-09-11T20:21Z ... head=ee3d3408 ahead=2 =====", the
+  whole gate, no step skipped, no bypass. The outcome is the next entry.
+
+- THE PUSH OF ee3d3408 WAS REFUSED AT STEP 15 OF 15, LIGHTHOUSE, 07:14, after
+  steps 1 to 14 passed (typecheck, lint, copy, critical-path, exemptions, all
+  112 guards including the fixed one, types-drift, production parity 126/126/0,
+  fixture, the suite through the canary at 4628, the build, indexing,
+  checkout-viewport). The refusing lines, quoted (push-attempt.log, the attempt
+  headed 20:21Z):
+    categories.performance failure for minScore assertion   /events  expected >=0.88 found 0.87  all values: 0.91, 0.86, 0.84, 0.87, 0.88
+    /community/african  expected >=0.88 found 0.86;  /events/arena-sessions-large-room-performance-test  expected >=0.85 found 0.8;
+    /events/cat-indie-sounds-live-at-the-enmore-sydney  expected >=0.85 found 0.8;  /events/artist-layer-launch-night-geelong  expected >=0.85 found 0.82;
+    /organisers  expected >=0.88 found 0.85
+    Assertion failed. Exiting with status code 1.
+    Machine calibration: DEGRADED. BenchmarkIndex median 1890 (1553 to 2016), 70% of the 2700 the floors were confirmed at on 2026-09-09 (evidence C:\dev\EVIDENCE\P0.7-D).
+    SO BEFORE READING THE FAILURE ABOVE AS A REGRESSION: free this machine and run the step again.
+    [gate] BLOCKED at lighthouse (exit 1) after 2016s. Nothing was pushed.
+
+  THE CAUSE IS THE MACHINE, READ RATHER THAN ASSUMED. At 05:53 the battery
+  class answered on AC (BatteryStatus 2). At 07:16, straight after the refusal,
+  root/wmi BatteryStatus answered PowerOnline False, Discharging True, 65
+  percent: the lead came out during the gate. The machine was also in use:
+  fifty chrome.exe processes, none headless and none with a debugging port (the
+  founder's own browser, not Lighthouse's), MuseHub, Word and the phone link
+  among the busiest processes; zero node.exe left running, so nothing of this
+  session's is loading it. The gate's own instrument line (close-out C8.2,
+  gate-names-the-instrument) says which of its two causes it was: the laptop.
+  No src file changed between the last green gate on mains (0fe8c238, all
+  fifteen steps, Lighthouse 1787s) and this tree: d7d37743 and ee3d3408 touch
+  scripts/, tests/ and the canary only, so no page can have regressed.
+
+  WHAT IS NOT DONE ABOUT IT, deliberately: no floor lowered, no step skipped,
+  no waiver added, no bypass. The floors are the ratchet (L3) and the gate is
+  measuring the machine, not the product.
+
+  THE FOUNDER STEP, with its Law 10 verdict: plugging the lead in is
+  IMPOSSIBLE for a machine. Everything around it is SCRIPTED:
+  C:\dev\push-when-on-mains.ps1 waits for PowerOnline, requires three quiet
+  minutes on mains, then runs exactly `git push origin verify/l5-launch-readiness`
+  (the hook runs the whole gate, nothing skipped) and appends the attempt to
+  push-attempt.log under the usual header. Started now in the background so
+  the push happens the moment the lead is in; the one line the founder needs
+  is: plug the laptop in and leave it alone for forty minutes.

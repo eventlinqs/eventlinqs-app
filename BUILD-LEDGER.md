@@ -3887,3 +3887,33 @@ to the completion law like any other.
 WHAT IT CANNOT SEE, said plainly: a column whose TYPE changed. The new guard
 judges presence, not shape; shape stays with the types-drift guard against a
 live database, and the two together close both halves.
+
+
+## THE RED TIP OF 11 SEPTEMBER 2026 (0fe8c238), READ, FIXED AT THE CAUSE, PROVEN RED THEN GREEN. Session 92, commit ee3d3408 (with d7d37743).
+
+Not an item in CLOSE-OUT.md. The brief's ZERO ACTION makes a red tip on origin
+the first work item, before the push and before anything else, and holds it to
+the completion law like any other: quote the failing line, fix the cause, make
+the local gate catch the class, proven red then green.
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| Read DEPLOY-STATE.txt first; if RED, the failure is the first work item | **MET** | RED at 0fe8c238 read before anything else; both failing runs read with gh run view; BUILD-LOG.md Session 92 |
+| Quote the line that failed in BUILD-LOG.md | **MET** | Three sources quoted verbatim: the Vercel build log of dpl_6U777uyGsXtCXNEJW3DTeMfktS8K (two 504 probes, the refusal, "Command npm run build exited with 1"), CI run 34636330559 (the preview-state refusal and the excluded-reads misdiagnosis, "2 of 111 guard(s) FAILED"), Lighthouse CI run 34636330362 ("No successful Vercel preview deployment found") | BUILD-LOG.md Session 92, "THE RED, READ FROM THE LOGS AND QUOTED" |
+| Cause one, the preview ERROR, fixed at the cause | **MET** | A gateway blink refused a build. d7d37743: bounded retry of a 502/503/504 or a failed connection, a real answer never retried, a gateway that stays down still refuses. Three tests | scripts/guards/lib/schema-probe.mjs; tests/unit/guards/schema-ahead-of-code.test.ts |
+| Cause one proven to fail as well as pass | **MET** | The three retry tests against the 0fe8c238 probe: 3 failed, 40 passed; against the d7d37743 probe: 43 passed; the file restored byte-identical to HEAD | C:\dev\EVIDENCE\RED-2026-09-12\probe-retry-tests-red-on-0fe8c238.txt, schema-probe-0fe8c238.mjs, schema-probe-d7d37743.mjs |
+| Cause two, the CI misdiagnosis, fixed at the cause | **MET** | The upload simulation spawned each child with the parent's whole environment (VERCEL_TOKEN, GITHUB_ACTIONS, the pull request payload) while promising "no token". buildHostEnv builds the build host's environment: no CI identity, no credential, every CLI login pointed at an empty directory under the upload. On a red child the guard runs the script once more from the full tree under the same environment and names which fault it is | scripts/guards/lib/vercel-upload.mjs, scripts/guards/excluded-reads-survive-the-upload.mjs |
+| Cause two proven to fail as well as pass | **MET** | The CI condition reproduced here (GITHUB_ACTIONS, GITHUB_SHA=0fe8c238..., the project ids, the CLI login standing in for the secret): the 0fe8c238 guard exit 1 with the CI line word for word; the fixed guard exit 0, PASS 20 of 20 | ci-condition-old-guard-0fe8c238-red.txt, ci-condition-new-guard-green.txt |
+| Make the local gate catch the class before a push, proven red then green | **MET** | Four tests in the suite the gate runs, one naming the class (the resolver that finds a token for the parent finds none for the child) and one reading the guard's source. RED before the fix: 4 failed, 25 passed. GREEN after: 29 passed | vercel-upload-tests-red-before-fix.txt, vercel-upload-tests-green-after-fix.txt |
+| What the local gate cannot catch, said plainly | **MET** | A remote gateway's 504 is not reproducible on this laptop; the class is caught in the guard (the retry) and held by the suite | BUILD-LOG.md Session 92, cause one |
+| Schema | n/a | No migration; nothing in the database changed | |
+| Code built, typechecked, linted, no silent catches | **MET** | tsc exit 0 (after one real type error in the new test was narrowed); eslint 0 on the four changed files; nothing swallowed | tsc.txt, eslint-changed.txt |
+| Tests added, canary raised in the same commit | **MET** | 4 tests; canary 382/4624 to 382/4628 in ee3d3408 | scripts/guards/test-count-canary.mjs |
+| Guard registered and blocking | **MET** | excluded-reads-survive-the-upload is already registered in run-guards.mjs and blocking on prebuild and in the gate; the registration is unchanged | scripts/guards/run-guards.mjs line 1090 |
+| Every drill still fires | **MET** | 164 of 164 guard failure drills fired correctly, 0 DID NOT FAIL, all guards PASS on the restored tree | guard-failure-drills.txt |
+| Driven at 390, 768 and 1440 | n/a, and said so | Nothing here renders; the gate's own checkout-viewport and indexing drives run on the build | push-attempt.log, the attempt headed 20:21Z |
+| Full regression green (the gate) | PENDING at the time of writing | The push of ee3d3408 through all fifteen steps | push-attempt.log, the attempt headed 20:21Z |
+| Committed, Australian English, no trailers, PUSHED | PENDING at the time of writing | Committed ee3d3408 06:20, hook accepted; the push is running | git log; push-attempt.log |
+| The pushed commit watched to READY and green on every host | PENDING at the time of writing | | |
+| The push of ee3d3408, 06:21 to 07:14 | REFUSED at step 15 of 15, Lighthouse, after steps 1 to 14 passed (all 112 guards, parity 126/126/0, suite 4628, build, indexing, checkout-viewport). Six performance floors missed by 0.01 to 0.05 with the gate reporting "Machine calibration: DEGRADED. BenchmarkIndex median 1890 ... 70% of the 2700 the floors were confirmed at ... free this machine and run the step again". Read, not assumed: the laptop was on battery (PowerOnline False, 65 percent) and in use; no node process of this session left; no src file changed since the last green gate on mains. No floor lowered, no step skipped, no bypass | C:\dev\push-attempt.log, the attempt headed 2026-09-11T20:21Z; BUILD-LOG.md Session 92 |
+| The founder step named with its Law 10 verdict, and everything around it scripted | MET. Plugging the lead in: IMPOSSIBLE for a machine. C:\dev\push-when-on-mains.ps1 waits for mains, three quiet minutes, then runs the exact push (the hook runs the whole gate) and logs it; started in the background | C:\dev\push-when-on-mains.ps1; REVIEW-QUEUE.md |
