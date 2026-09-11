@@ -1388,9 +1388,15 @@ const ROOT = join(HERE, '..', '..')
  * already bought" would have missed those two buyers for ever. The engine now
  * asks with every shape a row can carry (identityFingerprints): three tests in
  * tests/unit/ledger/identity.test.ts, one each in the due and waitlist rules.
+ *
+ * Then 381/4614 to 382/4624, same day. Three on the schema probe's bounded
+ * retry (the preview build of 0fe8c238 was lost to two 504s among ten probes
+ * that answered 200 a minute later), and seven on the script that moves
+ * Stripe's TEST webhook endpoints to the current preview, after every TEST
+ * webhook of the day was found landing on the July alias of another branch.
  */
-const MIN_FILES = 381
-const MIN_TESTS = 4614
+const MIN_FILES = 382
+const MIN_TESTS = 4624
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

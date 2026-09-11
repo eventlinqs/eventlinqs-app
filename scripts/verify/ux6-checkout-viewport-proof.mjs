@@ -398,7 +398,9 @@ async function walk({ browser, width, slug, label, complete }) {
          * painted an input, and the FIRST assertion is where the buyer is
          * looking: the Payment heading must be inside the viewport.
          */
-        const stripeFrame = page.frameLocator('iframe[title="Secure payment input frame"]')
+        // `.first()`: once Link is present Stripe mounts a second frame with the
+        // same title, and an unqualified locator is a strict-mode violation.
+        const stripeFrame = page.frameLocator('iframe[title="Secure payment input frame"]').first()
         const t = Date.now()
         const painted = await stripeFrame
           .locator('input')

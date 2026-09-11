@@ -42,7 +42,47 @@ export function interpretProbe(status, code) {
  * @param {{ url: string, key: string, table: string, column: string, fetchImpl?: typeof fetch }} input
  * @returns {Promise<ProbeResult>}
  */
-export async function probeSchemaObject({ url, key, table, column, fetchImpl = fetch }) {
+/**
+ * HOW MANY TIMES ONE PROBE IS ASKED, and why more than once.
+ *
+ * On 12 September 2026 the preview build of 0fe8c238 was refused by
+ * schema-ahead-of-code because two of its ten probes answered
+ * `504 Gateway Timeout` from the TEST project's PostgREST, in the same second
+ * that the other eight answered 200, and the same ten answered 200 from this
+ * laptop a minute later. The guard was right to refuse an UNKNOWN (an outage is
+ * not a verdict on the schema), and a deployment was still lost to a gateway
+ * that blinked once.
+ *
+ * So a gateway answer (502, 503, 504) or a failed connection is asked again,
+ * twice, with a short pause, before it is reported as UNKNOWN. A real answer
+ * about the schema (200, 400, 401, 403, 404) is never retried, so the verdict
+ * table above is untouched, and a gateway that stays down still refuses the
+ * build after the last attempt: the retry can only turn a blink into an
+ * answer, never an outage into a pass. The count of attempts is carried on the
+ * result so a verdict can say it was asked more than once.
+ */
+export const PROBE_ATTEMPTS = 3
+const RETRY_PAUSE_MS = [400, 1200]
+const GATEWAY_STATUSES = new Set([502, 503, 504])
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * @param {{ url: string, key: string, table: string, column: string, fetchImpl?: typeof fetch, attempts?: number, pauseImpl?: (ms: number) => Promise<void> }} input
+ * @returns {Promise<ProbeResult & { attempts: number }>}
+ */
+export async function probeSchemaObject({ url, key, table, column, fetchImpl = fetch, attempts = PROBE_ATTEMPTS, pauseImpl = pause }) {
+  let last = null
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    last = await probeOnce({ url, key, table, column, fetchImpl })
+    const gatewayBlink = last.code === 'FETCH_FAILED' || GATEWAY_STATUSES.has(last.status)
+    if (!gatewayBlink || attempt === attempts) return { ...last, attempts: attempt }
+    await pauseImpl(RETRY_PAUSE_MS[Math.min(attempt - 1, RETRY_PAUSE_MS.length - 1)])
+  }
+  return { ...last, attempts }
+}
+
+async function probeOnce({ url, key, table, column, fetchImpl }) {
   const base = url.replace(/\/+$/, '')
   const target = `${base}/rest/v1/${encodeURIComponent(table)}?select=${encodeURIComponent(column)}&limit=0`
   let response
