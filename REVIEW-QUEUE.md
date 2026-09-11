@@ -4226,12 +4226,57 @@ The second command, stripe login, is unchanged from yesterday's note.
 
 Re-checked at 15:03 (a sixth attempt, session 71), at 15:11 (a seventh,
 session 72), at 15:18 (an eighth, session 73), at 15:26 (a ninth, session 74),
-at 15:34 (a tenth, session 75) and at 15:42 (an eleventh, session 76): your
-push gate ran again each time, green through all 110 guards, and was refused
-at the same line by the same ten migrations. Nothing else moved and nothing
-else was started. The command is unchanged: npm run migrate:production. Later
+at 15:34 (a tenth, session 75), at 15:42 (an eleventh, session 76), and at
+15:52 and 16:09 (a twelfth and a thirteenth, session 77, the second on the new
+commit 4d0fda21): your push gate ran again each time, green through all 110
+guards, and was refused at the same line by the same ten migrations. Nothing
+else was started. The command is unchanged: npm run migrate:production. What
+session 77 did about you not having heard is the section below. Later
 re-checks that find the same state will widen this paragraph rather than add
 another section.
+
+## Session 77: why you had not heard, and the one issue that now tells you
+
+Your watchdog relaunches this brief every twenty seconds, and for ninety
+minutes it was refused at the same line twelve times. This session asked why
+you had not run the one command, and the answer is that nothing off this
+laptop had told you.
+
+- The stall alert you asked for in UX4.2 (an email and a GitHub issue when
+  nothing has been pushed for six hours) lives in the commits waiting here, so
+  GitHub has never run it.
+- Run from this laptop, it would not have fired anyway: every refused session
+  pushed its three log files to ops/session-log, and the stall check counted
+  that as the build moving. It read "pushed 9 minutes ago" across a 44 hour
+  silence. That is fixed and committed (4d0fda21), with a guard that fails the
+  build if a session-log push ever counts again.
+- So one alert went out the only way that leaves this machine: GitHub issue
+  #149, https://github.com/eventlinqs/eventlinqs-app/issues/149, which says
+  what to run and why. Email could not be sent from here because the Resend
+  key in this laptop's .env.local is empty. If you want email alerts to work
+  from this machine, paste the key into that file; nothing else changes.
+
+The command is unchanged and was dry-run today at 15:58 (it listed the ten
+files and touched nothing): npm run migrate:production, in PowerShell from the
+repo, with the laptop on mains.
+
+One decision you can make, or not. The loop as it stands costs about six
+minutes of gate and model time per relaunch and cannot get past this line
+until you run the command. C:\dev\RUN-BUILD23.ps1 is the same loop with one
+addition: it asks production every ten minutes whether the migrations have
+landed and only launches a run when they have. It is not running. Start it in
+place of RUN-BUILD22 if you want the waiting to be cheap; leave it if you
+would rather the loop keep proving the refusal.
+
+A second decision, stated once so it is on the record. The parity step
+refuses a push to a feature branch on a fact about production, and a push to a
+feature branch only builds a preview against TEST, where all 126 migrations are
+applied. Twelve sessions have declined to change that, because C16.2.1 puts
+the step in the pre-push gate in your words and the brief forbids exempting a
+gate step. If you want feature-branch pushes to proceed while production lags,
+say so in the next brief and the schema half of the step will judge the
+deployment the push actually creates, staying blocking for main and for
+marking a pull request ready. Until you say so, it stands.
 
 One question answered so you do not have to ask it: could the mobile checkout
 fix be pushed on its own, ahead of the migrations, to get it onto a preview for

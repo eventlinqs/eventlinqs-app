@@ -11077,3 +11077,139 @@ not a prediction of it.
   READY preview built from the pushed commit.
 
 DISK at end: 19.3 GB free, on AC power.
+
+## Session 77, 11 September 2026. Twelfth and thirteenth push attempts, refused at the same step; why nobody off this laptop knew, found and fixed; the founder told through a channel that leaves the machine.
+
+15:50 to 16:15. First action: fetch, count, push through the normal gate.
+origin was 27 behind, the tree clean (so the brief's second action had nothing
+to commit), 19.3 GB free, no orphaned gate, build or push process, the laptop
+on mains (Win32_Battery status 2, 100 percent).
+
+- THE PUSH ATTEMPT, 15:52:31, appended to C:\dev\push-attempt.log (lines
+  16996 to 18539, timestamp line first; the launcher is
+  C:\dev\EVIDENCE\PUSH-2026-09-11\push-attempt-session71.sh, through
+  clean-env.sh). Steps 1 to 8 PASS: disk, typecheck, lint, copy,
+  critical-path, lighthouse-exemptions, all 110 guards, types-drift. Refused
+  at step 9 of 15. The exact refusing lines:
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+  The same ten files, 20260909000001 through 20260911000001, on head
+  8e167886. The environment half PASSED (34 records, 0 faults).
+
+- THE CAUSE IS FOUNDER HELD, unchanged, and not re-argued: npm run
+  migrate:production, reserved by CLAUDE.md (Verification and gates,
+  Migrations), by Law 10's stated reservation, and by the brief's
+  production-write prohibition. Re-targeting the schema half of the parity
+  step to the deployment a feature-branch push actually creates (a preview
+  against TEST, where all 126 are applied) was considered once more and NOT
+  done: C16.2.1 puts the step in the pre-push gate in the owner's own words,
+  the brief forbids exempting a gate step, and a gate changed by the agent to
+  get past a founder-reserved choke point is the shortcut C16.5 names. The
+  question is put to the founder in REVIEW-QUEUE.md with the trade-off stated;
+  until he answers it, the step stands.
+
+- WHAT THIS SESSION DID THAT THE ELEVEN BEFORE IT HAD NOT. It asked why a
+  founder who set a watchdog to relaunch this brief every twenty seconds
+  (C:\dev\RUN-BUILD22.ps1, log C:\dev\watchdog.log) had not run a one-line
+  command in ninety minutes, and found that nothing off this laptop had told
+  him:
+
+  (a) The stall alert built for exactly this silence (UX4.2, the hourly job
+      in .github/workflows/state-report.yml) is itself in the unpushed commits
+      (a1948ebe), so GitHub has never run it: `gh run list
+      --workflow=state-report.yml` answers HTTP 404 on the default branch.
+
+  (b) Run locally, the stall judge said "the last push was 0.1 hours ago, to
+      ops/session-log; no stall alert is due". scripts/ops/state-report.mjs
+      took the newest push to ANY ref from GET /repos/{owner}/{repo}/activity,
+      and every refused session's push of its three ledger files to
+      ops/session-log reset the clock. The last 30 activity records were all
+      the session log (gh api, 15:57). The alert was blind for as long as the
+      loop kept confessing to it. A DEFECT, fixed under "fix every defect you
+      find": commit 4d0fda21.
+
+      scripts/lib/state-report.mjs: BOOKKEEPING_REFS = ['ops/session-log'];
+        pickLastPush passes those over and COUNTS them; nextLinkPath reads the
+        rel="next" cursor from the Link header (cursor paging observed on the
+        live endpoint, and
+        https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api).
+        The daily report and the stall alert both say how many bookkeeping
+        pushes were passed over.
+      scripts/ops/state-report.mjs: collectLastPush pages up to five pages of
+        100 past the bookkeeping instead of stopping at one page of 30; the gh
+        helper returns the Link header.
+      scripts/guards/alert-routing.mjs: clause 6, executed rather than read.
+        The picker handed a feed led by the session log must choose the working
+        branch behind it and must find nothing in the session log alone; the
+        collector that runs is read without its comments and must name the
+        picker. Already registered in run-guards.mjs, so blocking on prebuild.
+      DRILLED: RED 1 (the picker ignores nothing: 2 problems), RED 2 (the
+        collector bypasses the picker: 1 problem), each restored byte for byte
+        from a backup, then GREEN again.
+        C:\dev\EVIDENCE\PUSH-2026-09-11\stall-clock-guard-red1-session77.txt,
+        -red2-, -green-.
+      TESTS: 6 in tests/unit/ops/state-report.test.ts, 4 in
+        tests/unit/guards/alert-routing.test.ts; the canary rises 4574 to 4584
+        in the same commit. tsc clean; eslint clean on the three scripts.
+      REGRESSION: npm run gate:push -- --only suite: 378 files, 4584 tests,
+        0 failed, 0 skipped, PASS in 61s. --only build: GREEN in 163s with
+        every prebuild guard. Lighthouse, indexing and checkout-viewport not
+        re-run: no file under src/ changed.
+        C:\dev\EVIDENCE\PUSH-2026-09-11\regression-suite-build-session77.txt.
+        The second push attempt below then ran typecheck, lint (whole tree),
+        copy, critical-path, exemptions, all guards and types-drift on the
+        committed tree, all PASS.
+      With the fix the same local check reads the 9 September 20:07 push to
+        verify/l5-launch-readiness, 44 hours ago, band 7: a stall, alert due.
+
+  (c) THE FOUNDER WAS TOLD, 16:07, through the platform's own dispatcher
+      (scripts/ops/alert-dispatch.mjs, class stall, no drill marker because
+      none applies): GitHub issue #149,
+      https://github.com/eventlinqs/eventlinqs-app/issues/149, "EventLinqs
+      BUILD STALLED: nothing pushed to a working branch for 44 hours, blocked
+      on npm run migrate:production", carrying the cause, the one command,
+      what it releases and where the detail is (body:
+      C:\dev\EVIDENCE\PUSH-2026-09-11\stall-alert-body-session77.txt;
+      dispatcher output: stall-alert-sent-session77.txt). Channel 1 (email
+      through Resend) FAILED from this machine: RESEND_API_KEY is named in
+      .env.local with an EMPTY value (length 0, never printed), so the email
+      channel does not exist on this laptop. The harness's own notification
+      tool sent no mobile push (Remote Control inactive). One alert, one
+      issue, nothing repeated.
+
+  (d) THE FOUNDER'S COMMAND PROVEN TO ITS CONFIRMATION POINT, read-only:
+      npm run migrate:production -- --dry-run at 15:58. Token accepted by the
+      Supabase API (HTTP 200), 126 in the tree, 116 applied, the ten listed,
+      "DRY RUN - listed only. Nothing linked, nothing pushed", the CLI read
+      back on TEST vkapkibzokmfaxqogypq before and after.
+      C:\dev\EVIDENCE\PUSH-2026-09-11\migrate-production-dry-run-session77.txt.
+
+  (e) THE LOOP'S COST, scripted and offered under Law 10: RUN-BUILD22 has no
+      stop or wait for "blocked on the founder", so every relaunch spends
+      about six minutes of gate and model time reaching the same line.
+      C:\dev\RUN-BUILD23.ps1 is RUN-BUILD22 with one addition: when the last
+      push attempt was refused at production-parity it asks production (the
+      same read-only parity script, six seconds) and WAITS ten minutes while
+      migrations are pending, launching the run the moment the count is zero.
+      Nothing removed, prompt unchanged. OFFERED and NOT RUNNING; starting it
+      is his.
+
+- THE SECOND PUSH ATTEMPT, 16:09:24, on the new head 4d0fda21 (28 ahead),
+  appended at lines 18541 to 20085. Steps 1 to 8 PASS (typecheck 7s, lint
+  61s, copy, critical-path, exemptions, guards 94s, types-drift 21s). Refused
+  at step 9 of 15 by the same four lines on the same ten migrations. Origin
+  re-fetched at 16:12: 28 behind.
+
+- NOTHING ELSE STARTED, per the brief: origin does not hold every local
+  commit. UX6, D1, D2, UX5 and S1 stand as BUILD-LEDGER.md records them; no
+  item closed, so CLOSE-OUT.md is untouched. The ledger's sessions 66 to 76
+  section is widened to 77 with seven rows, and REVIEW-QUEUE.md gains one
+  plain-language section plus the widened re-check paragraph. The first act
+  after the command lands is unchanged: the UX6 drive at 390 on the READY
+  preview built from the pushed commit.
+
+DISK at end: 19.2 GB free, on AC power.
