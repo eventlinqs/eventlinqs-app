@@ -11535,3 +11535,63 @@ known before the gate ran.
   from the pushed commit.
 
 DISK at end: 18.2 GB free, on AC power.
+
+## Session 84, 11 September 2026. Twentieth push attempt, refused at the same step; the no-clean-subset fact re-enumerated from git; nothing else started.
+
+17:05 to 17:14 (watchdog run 17 of RUN-BUILD22). First action: fetch, count,
+push through the normal gate. origin was 28 behind, the tree clean (so the
+brief's second action had nothing to commit), 19 GB free, no orphaned gate,
+build or push process (no node process in the list, only the founder's own
+Chrome and three PowerShell hosts), the laptop on mains (Win32_Battery status
+2). Issue #149 (the stall alert sent at 16:07 in session 77) had no reply at
+17:05 and none at 17:10 (zero comments, state OPEN). No separate read-only
+parity read was made first: the gate's own parity step reads production live,
+and session 83 had read it two minutes before this run began.
+
+- THE PUSH ATTEMPT, 17:06:48, appended to C:\dev\push-attempt.log (lines
+  29363 to 30907, timestamp line first; the launcher is
+  C:\dev\EVIDENCE\PUSH-2026-09-11\push-attempt-session71.sh, through
+  clean-env.sh). Steps 1 to 8 PASS, warm: disk 0s, typecheck 8s, lint 4s,
+  copy 1s, critical-path 0s, lighthouse-exemptions 0s, all 110 guards 92s,
+  types-drift 19s. Refused at step 9 of 15. The exact refusing lines (log
+  lines 30825, 30826, 30880 and 30899):
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 7s. Nothing was pushed.
+
+  The same ten files, 20260909000001 through 20260911000001 (log lines 30827
+  to 30836), on head 4d0fda21. The environment half PASSED (34 records, 0
+  faults, log line 30877). Origin re-fetched at 17:09: 28 behind. No gate
+  step touched, no bypass, no --no-verify.
+
+- THE CAUSE IS FOUNDER HELD, unchanged, and not re-argued. The proper fix is
+  the ten migrations applied to production, which is the founder's reserved
+  command (npm run migrate:production; CLAUDE.md Verification and gates,
+  Migrations; Law 10's stated reservation; this run's own instruction that
+  production is never written without explicit approval). What this session
+  re-enumerated from git rather than from the notes, in one command
+  (git log origin/verify/l5-launch-readiness..HEAD -- supabase/migrations):
+  seven of the 28 unpushed commits add migration files, and the OLDEST of
+  the 28, 93ca123c, is one of them, so no run of commits from the front is
+  clear of the pending ten; and origin's tip carries exactly 116 migration
+  files against production's 116 applied, so origin itself is at parity and
+  every one of the ten arrived in these 28 commits. Session 74's finding
+  holds, now from the tree rather than from memory of it. Session 75's
+  cherry-pick conflict finding was not re-run: nothing it depends on has
+  changed (same head, same origin tip).
+
+- CHANNELS: none new. GitHub issue #149 remains the only channel that leaves
+  this laptop (RESEND_API_KEY empty in .env.local; the harness notification
+  needs Remote Control, which session 82 proved inactive). Not re-tried.
+
+- NOTHING ELSE STARTED, per the brief: origin does not hold every local
+  commit. No new defect found this session. UX6, D1, D2, UX5 and S1 stand as
+  BUILD-LEDGER.md records them; no item closed, so CLOSE-OUT.md is untouched.
+  The ledger's sessions 66 to 83 section is widened to 84 with one row, and
+  the REVIEW-QUEUE.md re-check paragraph is widened. The first act after the
+  command lands is unchanged: the UX6 drive at 390 on the READY preview built
+  from the pushed commit.
+
+DISK at end: 18.2 GB free, on AC power.
