@@ -11416,3 +11416,65 @@ was run anyway because the brief orders it.
   from the pushed commit.
 
 DISK at end: 18.2 GB free, on AC power.
+
+## Session 82, 11 September 2026. Eighteenth push attempt, refused at the same step; the parity script re-read from source; the harness notification tried and not deliverable; nothing else started.
+
+16:50 to 16:56 (watchdog run 15 of RUN-BUILD22). First action: fetch, count,
+push through the normal gate. origin was 28 behind, the tree clean (so the
+brief's second action had nothing to commit), 19.0 GB free, no orphaned gate,
+build or push process, the laptop on mains (Win32_Battery status 2). Issue
+#149 (the stall alert sent at 16:07 in session 77) had no reply at 16:50 and
+none at 16:54 (zero comments, state OPEN). No separate read-only parity read
+was made first this time: session 81 had read it seven minutes earlier, and
+the gate's own parity step reads production live in any case.
+
+- THE PUSH ATTEMPT, 16:51:52, appended to C:\dev\push-attempt.log (lines
+  26271 to 27815, timestamp line first; the launcher is
+  C:\dev\EVIDENCE\PUSH-2026-09-11\push-attempt-session71.sh, through
+  clean-env.sh). Steps 1 to 8 PASS, warm: disk 0s, typecheck 8s, lint 4s,
+  copy 1s, critical-path, lighthouse-exemptions, all 110 guards 93s,
+  types-drift 19s. Refused at step 9 of 15. The exact refusing lines:
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 6s. Nothing was pushed.
+
+  The same ten files, 20260909000001 through 20260911000001, on head
+  4d0fda21. The environment half PASSED (34 records, 0 faults). Origin
+  re-fetched at 16:54: 28 behind. No gate step touched, no bypass.
+
+- THE CAUSE IS FOUNDER HELD, unchanged, and not re-argued. The proper fix is
+  the ten migrations applied to production, and that is the founder's
+  reserved command (npm run migrate:production; CLAUDE.md Verification and
+  gates, Migrations; Law 10's stated reservation; this run's own instruction
+  that production is never written without explicit approval, which "fix the
+  cause properly" is not). What this session did that the earlier ones
+  recorded from memory: it re-read scripts/ops/production-parity.mjs itself.
+  The schema half lists what production has applied through the Management
+  API and fails on any file in supabase/migrations that production lacks,
+  with no reference to the ref being pushed, and its own header says it asks
+  the question "before a push and before a merge". So the step is doing
+  exactly what it was built to do, and the two ways past it are a production
+  write (reserved) or narrowing the step to the deployment a feature-branch
+  push creates (a gate exemption the brief forbids, already put to the
+  founder by session 77 in REVIEW-QUEUE.md). Sessions 74 and 75 closed the
+  subset and cherry-pick routes; nothing was re-derived.
+
+- ONE CHANNEL TRIED THAT SESSION 77 RECORDED AS UNAVAILABLE: the harness's
+  own notification tool was sent once, at 16:55, with the cause, the command
+  and the issue number. Answer: "Mobile push not sent (Remote Control
+  inactive)". So the channels that leave this laptop remain exactly one,
+  GitHub issue #149; email cannot be sent from here (RESEND_API_KEY empty in
+  .env.local) and the harness push needs Remote Control connected. Recorded
+  so the next session does not try it again as if it were new.
+
+- NOTHING ELSE STARTED, per the brief: origin does not hold every local
+  commit. No new defect found this session. UX6, D1, D2, UX5 and S1 stand as
+  BUILD-LEDGER.md records them; no item closed, so CLOSE-OUT.md is untouched.
+  The ledger's sessions 66 to 81 section is widened to 82 with one row, and
+  the REVIEW-QUEUE.md re-check paragraph is widened. The first act after the
+  command lands is unchanged: the UX6 drive at 390 on the READY preview built
+  from the pushed commit.
+
+DISK at end: 18.3 GB free, on AC power.

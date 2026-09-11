@@ -3787,7 +3787,7 @@ age is computed from - of being a write. A guard that fires on the read it exist
 to protect, or on the sentence explaining itself, is switched off within a week.
 Both narrowings carry a NEGATIVE drill asserting they stay green.
 
-## SESSIONS 66 TO 81. THE PUSH ATTEMPTS THE BRIEF ORDERED FIRST. 11 September 2026.
+## SESSIONS 66 TO 82. THE PUSH ATTEMPTS THE BRIEF ORDERED FIRST. 11 September 2026.
 
 | Requirement (run brief) | Verdict | Evidence |
 |---|---|---|
@@ -3821,3 +3821,4 @@ Both narrowings carry a NEGATIVE drill asserting they stay green.
 | Re-attempted, session 79 at 16:26, on head 4d0fda21 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; steps 1 to 8 PASS (typecheck 50s, lint 56s, all guards 114s, types-drift 30s); environment half PASS (34 records, 0 faults); origin 28 behind after (re-fetched 16:31); issue #149 unanswered; no gate step touched, no bypass; the owner's C16.2.1 wording re-read from CLOSE-OUT.md before the run and the step found to do exactly what it orders; nothing else started | C:\dev\push-attempt.log lines 21632 to 23177; BUILD-LOG.md, Session 79 |
 | Re-attempted, session 80 at 16:35, on head 4d0fda21 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; steps 1 to 8 PASS warm (typecheck 7s, lint 4s, all guards 93s, types-drift 19s); environment half PASS (34 records, 0 faults); origin 28 behind after (re-fetched 16:38); issue #149 unanswered; no gate step touched, no bypass; nothing re-derived, nothing else started | C:\dev\push-attempt.log lines 23179 to 24723; BUILD-LOG.md, Session 80 |
 | Re-attempted, session 81 at 16:43, on head 4d0fda21 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; steps 1 to 8 PASS warm (typecheck 8s, lint 4s, all guards 95s, types-drift 20s); environment half PASS (34 records, 0 faults); origin 28 behind after (re-fetched 16:47); issue #149 unanswered; no gate step touched, no bypass; nothing re-derived, nothing else started | C:\dev\push-attempt.log lines 24724 to 26269; BUILD-LOG.md, Session 81 |
+| Re-attempted, session 82 at 16:51, on head 4d0fda21 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; steps 1 to 8 PASS warm (typecheck 8s, lint 4s, all 110 guards 93s, types-drift 19s); environment half PASS (34 records, 0 faults); origin 28 behind after (re-fetched 16:54); issue #149 unanswered; the parity script re-read from source and found to refuse on any ref by design; the harness notification tried once and not delivered (Remote Control inactive); no gate step touched, no bypass; nothing else started | C:\dev\push-attempt.log lines 26271 to 27815; BUILD-LOG.md, Session 82 |
