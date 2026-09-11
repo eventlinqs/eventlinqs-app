@@ -4224,8 +4224,9 @@ Evidence: C:\dev\EVIDENCE\C16\probe-ten-pending-preconditions.txt.
 
 The second command, stripe login, is unchanged from yesterday's note.
 
-Re-checked at 15:03 (a sixth attempt, session 71): your push gate ran again,
-green through all 110 guards, and was refused at the same line by the same ten
-migrations. Nothing else moved and nothing else was started. The command is
-unchanged: npm run migrate:production. Later re-checks that find the same
-state will widen this paragraph rather than add another section.
+Re-checked at 15:03 (a sixth attempt, session 71) and at 15:11 (a seventh,
+session 72): your push gate ran again each time, green through all 110 guards,
+and was refused at the same line by the same ten migrations. Nothing else moved
+and nothing else was started. The command is unchanged: npm run
+migrate:production. Later re-checks that find the same state will widen this
+paragraph rather than add another section.
