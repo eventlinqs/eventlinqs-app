@@ -4327,4 +4327,12 @@ raised it stays quiet, and when a working branch is pushed it goes green and
 stops. Nothing about the code, the gate or production changed, and none of it
 runs from the laptop.
 
+What happened when it ran the first time, at 17:32: Resend accepted an email
+for hello@eventlinqs.com on the first attempt, the Actions bot opened issue
+#150 (https://github.com/eventlinqs/eventlinqs-app/issues/150) with the whole
+picture and the command, and the run failed on purpose, which is the email you
+already receive. Issue #149 is closed with a note pointing at #150, so there is
+one thread. The next message cannot come before 20:55 tonight, and only if
+nothing has been pushed by then.
+
 The command is unchanged: npm run migrate:production.

@@ -11704,3 +11704,69 @@ before the gate ran, and the gate was run anyway because the brief orders it.
   The subject is band-stable (the day, not the hour) so every band comments on
   one issue rather than opening one each; #149 keeps its old title and is
   closed from here with a pointer once the new thread exists.
+
+- DRIVEN, twice, because the first publish found a defect in the publish
+  script itself. The first publish (ops/session-log c1618a2d, 17:30) carried
+  STALL-STATE.json and the workflow but NOT the dispatcher: the Bash tool had
+  unescaped the two paths ending in \alert-... into a bell character, so
+  PowerShell's Test-Path answered "Illegal characters in path" for exactly
+  those two and the loop moved on (a known tool trap, now in the memory file).
+  Run 34574674268 (event push, actor eventlinqs, head c1618a2d) therefore
+  read the state (alert true, band 7), failed at the dispatcher step with
+  "Cannot find module .../scripts/ops/alert-dispatch.mjs", SKIPPED the
+  deliberate-failure step (its condition did not say always()), and still
+  concluded FAILURE, so the third channel fired with a stack trace for a
+  title. Two fixes: the paths repaired by byte (chr(7) to a backslash and an
+  a), and the third-channel step given always() so it speaks whatever the
+  dispatcher did. Republished as 69e95222 (eleven files, the three dispatcher
+  files present; STALL-STATE.json byte-identical, so no run fired, as
+  designed). Then dispatched by hand, gh workflow run 355579842 --ref
+  ops/session-log, since the paths filter is the point and the state had not
+  changed:
+
+  Run 34574855048, event workflow_dispatch, actor eventlinqs, ran from
+  69e95222, conclusion FAILURE by design. Steps: checkout success; "Read what
+  the laptop wrote" success (alert true, band 7, 44.6 hours, head 4d0fda21,
+  28 unpushed); setup-node success; "Tell the founder on the two channels the
+  laptop cannot reach" SUCCESS:
+
+      alert-dispatch: EventLinqs BUILD STALLED: nothing pushed to a working branch since Wednesday 9 September, blocked on npm run migrate:production
+        class stall; drill no (no target was given, and nothing declared this a drill)
+        resend attempt 1/4: 200 accepted
+      DELIVERED resend: delivered to hello@eventlinqs.com on attempt 1
+      DELIVERED github-issue: opened issue #150
+      alert-dispatch: 2 of 2 channels delivered
+
+  then "Fail this run, which is the third channel" FAILURE, on purpose, with
+  the ::error title "BUILD STALLED for 44.6 hours". So: channel 1, an email
+  accepted by Resend for hello@eventlinqs.com (delivery into the inbox is not
+  observable from here and is not claimed); channel 2, issue #150 opened by
+  app/github-actions, a different actor from the founder, carrying the whole
+  body and the command; channel 3, two failed runs (34574674268 by push,
+  34574855048 by dispatch), each of which GitHub emails to the account that
+  triggered it, which is his. Issue #149 (his own account's, never emailed)
+  is closed from here with a pointer to #150 so there is one thread. The two
+  run logs are C:\dev\EVIDENCE\PUSH-2026-09-11\stall-alert-run1-34574674268.log
+  and stall-alert-run2-34574855048.log; the state the run read is
+  C:\dev\STALL-STATE.json (band 7, lastAlertedBand 7); a second run of
+  stall-state.mjs on the same band printed "unchanged ... left
+  byte-identical", which is the pacing proven.
+
+  FROM HERE. Every later session that publishes its ledger runs the judge
+  through push-build-log.ps1 without doing anything: at 20:55 AEST the
+  silence enters band 8 and the next publish rewrites the state, fires the
+  workflow, and the founder is written to again on all three channels, once,
+  and then not until band 9. When his command lands and a working branch is
+  pushed, the next publish writes stalled false and the workflow goes green.
+  No gate step was touched, no code-tree file changed, production was not
+  written, and the twenty-eighth commit is still 4d0fda21.
+
+- NOTHING ELSE STARTED, per the brief: origin does not hold every local
+  commit. UX6, D1, D2, UX5 and S1 stand as BUILD-LEDGER.md records them; no
+  item closed, so CLOSE-OUT.md is untouched. The ledger's sessions 66 to 84
+  section is widened to 85 with three rows, and REVIEW-QUEUE.md carries a
+  new section for the founder. The first act after the command lands is
+  unchanged: the UX6 drive at 390 on the READY preview built from the pushed
+  commit.
+
+DISK at end: 19 GB free, on AC power.
