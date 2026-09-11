@@ -102,6 +102,7 @@ const STRIPE_CONFIGURED =
 let paymentStepMeasured = 0
 let paymentStepSkipped = 0
 let axeScans = 0
+let thirdPartyAxe = 0
 const fail = (m) => {
   faults.push(m)
   console.error(`${TAG} FAIL: ${m}`)
@@ -187,7 +188,36 @@ function makePage(page, width, label) {
       const axe = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze()
-      const bad = axe.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
+      /*
+       * A THIRD-PARTY FRAME IS REPORTED, NOT JUDGED.
+       *
+       * Stripe's Payment Element and its hCaptcha render inside iframes Stripe
+       * hosts. On 12 September 2026 the first run of this drive against a
+       * preview holding a live TEST key found axe critical
+       * "aria-required-children" on Stripe's own payment-method selector (a
+       * <select> inside a role that does not permit one), inside
+       * iframe[name^="__privateStripeFrame"], at 390 and 1440, and nowhere in
+       * anything this platform authors. Nothing in this repository can change
+       * that markup, so a fault there fails nothing the platform can fix, and a
+       * gate that fails on what cannot be fixed is switched off within a week.
+       *
+       * So a violation whose every node sits inside a Stripe or hCaptcha frame
+       * is PRINTED, COUNTED in the report and the verdict line, and not
+       * swallowed; everything outside those frames is judged exactly as before.
+       * The test is on the node target's first segment, which axe writes as the
+       * frame element for anything found inside a frame.
+       */
+      const insideThirdPartyFrame = (n) => /^iframe\[name="?(__privateStripe|hcaptcha)/.test((n.target ?? [])[0] ?? '')
+      const thirdParty = (v) => v.nodes.length > 0 && v.nodes.every(insideThirdPartyFrame)
+      for (const v of axe.violations.filter(thirdParty)) {
+        thirdPartyAxe += 1
+        note(
+          `${label}/${surface} @ ${width}: axe ${v.impact} "${v.id}" on ${v.nodes.length} node(s) INSIDE A THIRD-PARTY FRAME ` +
+            `(${(v.nodes[0].target ?? []).join(' ')}): ${v.help}. Stripe's own markup, reported here and not judged.`,
+        )
+      }
+      const ours = axe.violations.filter((v) => !thirdParty(v))
+      const bad = ours.filter((v) => v.impact === 'serious' || v.impact === 'critical')
       for (const v of bad) {
         /*
          * NAME THE NODES. This reported only a COUNT, and a count sends the
@@ -205,7 +235,7 @@ function makePage(page, width, label) {
           `${label}/${surface} @ ${width}: axe ${v.impact} "${v.id}" on ${v.nodes.length} node(s): ${v.help} -> ${where}`,
         )
       }
-      const lesser = axe.violations.filter((v) => v.impact !== 'serious' && v.impact !== 'critical')
+      const lesser = ours.filter((v) => v.impact !== 'serious' && v.impact !== 'critical')
       for (const v of lesser) {
         note(`${label}/${surface} @ ${width}: axe ${v.impact} "${v.id}" on ${v.nodes.length} node(s): ${v.help}`)
       }
@@ -214,7 +244,8 @@ function makePage(page, width, label) {
       const totalText = totals.map((t) => t.text).filter(Boolean).join(' | ') || 'none on this surface'
       console.log(
         `${TAG}   ${label}/${surface} @ ${width}: doc.scrollWidth ${fit.docScrollWidth}/${fit.innerWidth}, ` +
-          `${fit.faults.length} clipped, ${fit.exempt.length} exempt, ${axe.violations.length} axe, total ${totalText}`,
+          `${fit.faults.length} clipped, ${fit.exempt.length} exempt, ${ours.length} axe` +
+          `${axe.violations.length > ours.length ? ` (+${axe.violations.length - ours.length} inside third-party frames)` : ''}, total ${totalText}`,
       )
       for (const e of fit.exempt) console.log(`${TAG}       exempt: ${e.selector} (${e.why})`)
       return { fit, totals }
@@ -325,6 +356,56 @@ async function walk({ browser, width, slug, label, complete }) {
         [...document.querySelectorAll('h3')].some((h) => /^payment$/i.test(h.textContent?.trim() ?? '')),
       )
       if (onPayment) {
+        /*
+         * WAIT FOR STRIPE TO PAINT, THEN ASK WHERE THE BUYER IS LOOKING.
+         *
+         * The first run of this drive against a preview with a live key
+         * (12 September 2026) measured the step nine seconds after the click,
+         * while Stripe's frame was still laying out: at 768 the capture held
+         * a sliver of the fields, and at 390 the page had been dragged to the
+         * Pay button by scroll anchoring as the skeleton and then the frame
+         * inserted above the fold (scrollY 145 to 381 to 890, timed at 500ms
+         * intervals). A buyer on a phone was left with every card field above
+         * the top of the screen. So the step is measured only once Stripe has
+         * painted an input, and the FIRST assertion is where the buyer is
+         * looking: the Payment heading must be inside the viewport.
+         */
+        const stripeFrame = page.frameLocator('iframe[title="Secure payment input frame"]')
+        const t = Date.now()
+        const painted = await stripeFrame
+          .locator('input')
+          .first()
+          .waitFor({ state: 'visible', timeout: 45_000 })
+          .then(() => true)
+          .catch(() => false)
+        if (!painted) fail(`${label} @ ${width}: Stripe's payment frame showed no input within 45s of the step appearing`)
+        else note(`${label} @ ${width}: Stripe's payment frame painted ${Date.now() - t}ms after the step appeared`)
+        // Scroll anchoring lands within the frame that grows the content; a beat
+        // more so the measurement is of the settled page, never of the race.
+        await page.waitForTimeout(1500)
+        const where = await page.evaluate(() => {
+          const h = [...document.querySelectorAll('h3')].find((x) => /^payment$/i.test(x.textContent?.trim() ?? ''))
+          const r = h?.getBoundingClientRect()
+          return { scrollY: Math.round(window.scrollY), headingTop: r ? Math.round(r.top) : null, innerHeight: window.innerHeight }
+        })
+        if (where.headingTop === null || where.headingTop < 0 || where.headingTop >= where.innerHeight) {
+          fail(
+            `${label} @ ${width}: after Stripe painted, the Payment heading sits ${where.headingTop}px from the top of a ` +
+              `${where.innerHeight}px viewport (scrollY ${where.scrollY}). The buyer is not looking at the top of the payment ` +
+              `step: the page moved as Stripe's frame grew above the fold, and the card fields are off the screen.`,
+          )
+        } else {
+          note(`${label} @ ${width}: the buyer is looking at the top of the payment step (heading ${where.headingTop}px down, scrollY ${where.scrollY})`)
+        }
+        /*
+         * WHAT THE BUYER SEES, as a viewport capture beside the full-page one.
+         * Under mobile emulation a full-page capture does not paint the
+         * cross-origin Stripe frame beyond the viewport (observed 12 September
+         * 2026: a blank card where the fields are), so the full-page image
+         * alone would send a reader looking for a defect that is not there.
+         */
+        mkdirSync(join(OUT, `${width}`), { recursive: true })
+        await page.screenshot({ path: join(OUT, `${width}`, `${label}-5-payment-step-viewport.png`) })
         await m.measure('5-payment-step', { totalRequired: true })
         paymentStepMeasured += 1
       } else {
@@ -477,6 +558,7 @@ const report = {
   freeSlug: free.event.slug,
   stripeConfigured: STRIPE_CONFIGURED,
   axeScans,
+  thirdPartyAxe,
   paymentStepMeasured,
   paymentStepSkipped,
   notes,
@@ -489,7 +571,7 @@ console.log(
   `${TAG} payment step: ${paymentStepMeasured} measured, ${paymentStepSkipped} NOT EXERCISED ` +
     `(STRIPE_SECRET_KEY ${STRIPE_CONFIGURED ? 'present' : 'absent'})`,
 )
-console.log(`${TAG} axe: ${axeScans} scan(s), WCAG 2.0/2.1 A and AA`)
+console.log(`${TAG} axe: ${axeScans} scan(s), WCAG 2.0/2.1 A and AA; ${thirdPartyAxe} violation(s) inside third-party frames, reported and not judged`)
 if (faults.length > 0) {
   console.error(`${TAG} FAIL`)
   process.exit(1)

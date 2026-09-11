@@ -1366,9 +1366,17 @@ const ROOT = join(HERE, '..', '..')
  * rename, drop, trigger functions excluded, runtime-built names skipped) and
  * the judgement, and the last two run it over the real migrations and the real
  * committed types, so the suite itself now refuses a stale types file.
+ *
+ * Then 379/4602 to 380/4606, 12 September 2026, close-out UX6 driven on the
+ * first preview to hold a live Stripe TEST key. At 390 the buyer landed on the
+ * Pay button with every card field above the screen: Chrome's scroll anchoring
+ * followed Stripe's skeleton and then its frame as they inserted above the
+ * fold (scrollY 145 to 381 to 890, measured). Four tests in
+ * tests/component/checkout-payment-step.test.tsx hold the fix: the step opts
+ * out of scroll anchoring, starts at the top, and focuses its heading.
  */
-const MIN_FILES = 379
-const MIN_TESTS = 4602
+const MIN_FILES = 380
+const MIN_TESTS = 4606
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

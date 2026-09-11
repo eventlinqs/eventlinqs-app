@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useTransition, type ReactNode, type RefObject } from 'react'
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 import { useRouter } from 'next/navigation'
 import { loadStripe } from '@stripe/stripe-js'
@@ -55,12 +55,15 @@ function PaymentForm({
   totalCents,
   currency,
   trustSlot,
+  headingRef,
 }: {
   clientSecret: string
   orderId: string
   totalCents: number
   currency: string
   trustSlot?: ReactNode
+  /** The step heading. PaymentStep focuses it on mount, so the transition is announced and the buyer starts at the top. */
+  headingRef?: RefObject<HTMLHeadingElement | null>
 }) {
   const stripe = useStripe()
   const elements = useElements()
@@ -95,7 +98,9 @@ function PaymentForm({
        floored by grid-cols-1; this floors the item inside it. Close-out UX6.1. */
     <div className="min-w-0 space-y-6">
       <form method="post" onSubmit={handlePay} className="rounded-2xl border border-ink-200 bg-white p-6">
-        <h3 className="text-base font-semibold text-ink-900 mb-4">Payment</h3>
+        <h3 ref={headingRef} tabIndex={-1} className="text-base font-semibold text-ink-900 mb-4 outline-none">
+          Payment
+        </h3>
         <PaymentElement options={{ layout: 'tabs' }} />
 
         {payError && (
@@ -120,6 +125,104 @@ function PaymentForm({
           one-line "Secured by Stripe" note under the button said less than
           the panel does. */}
       {trustSlot}
+    </div>
+  )
+}
+
+/**
+ * THE PAYMENT STEP OWNS THE VIEWPORT IT MOUNTS INTO. Close-out UX6, driven on
+ * the preview of 0a195454 at 390 on 12 September 2026.
+ *
+ * What the phone actually showed after "Continue to payment": the buyer's
+ * viewport sat at the top of the Payment card for a moment, then Stripe's
+ * loading skeleton (+236px) and then its frame (+509px net) inserted ABOVE the
+ * content Chrome had anchored the scroll to, and the browser kept that content
+ * still by scrolling the page down by the same amount, twice. The buyer ended
+ * up looking at the Pay button and the order summary with every card field
+ * above the top of the screen (scrollY 145 to 381 to 890, measured). Nothing in
+ * the markup was wrong, which is why no static check could see it and why a
+ * driven proof on a preview with a live key was the first thing that could.
+ *
+ * Two things, both needed. `overflow-anchor: none` on the whole step, so
+ * asynchronous growth above the fold can never move the viewport (the anchor
+ * Chrome chose was in the order summary, which is why the class sits on the
+ * step and not on the form). And a deterministic start: scrolled to the top
+ * with focus on the step heading, so the transition is announced to assistive
+ * technology and every buyer begins at "Payment", card fields first.
+ *
+ * Held by tests/component/checkout-payment-step.test.tsx and asserted on a
+ * live Stripe frame by scripts/verify/ux6-checkout-viewport-proof.mjs.
+ */
+export function PaymentStep({
+  clientSecret,
+  orderId,
+  expiresAt,
+  onExpired,
+  fees,
+  currency,
+  eventTitle,
+  eventDate,
+  venue,
+  trustSlot,
+}: {
+  clientSecret: string
+  orderId: string
+  expiresAt: string
+  onExpired: () => void
+  fees: FeeBreakdown
+  currency: string
+  eventTitle: string
+  eventDate: string
+  venue: string | null
+  trustSlot?: ReactNode
+}) {
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+    headingRef.current?.focus({ preventScroll: true })
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-canvas [overflow-anchor:none]">
+      <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl flex items-center justify-between">
+          <EventlinqsLogo size="md" />
+          <CartTimer expiresAt={expiresAt} onExpired={onExpired} />
+        </div>
+      </nav>
+
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <Elements
+            stripe={stripePromise}
+            options={{
+              clientSecret,
+              appearance: {
+                theme: 'stripe',
+                variables: { colorPrimary: '#0A1628', borderRadius: '8px' },
+              },
+            }}
+          >
+            <PaymentForm
+              clientSecret={clientSecret}
+              orderId={orderId}
+              totalCents={fees.total_cents}
+              currency={currency}
+              trustSlot={trustSlot}
+              headingRef={headingRef}
+            />
+          </Elements>
+
+          <div className="min-w-0">
+            <CheckoutSummary
+              fees={fees}
+              eventTitle={eventTitle}
+              eventDate={eventDate}
+              venue={venue}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -281,46 +384,18 @@ export function CheckoutForm({
   // Once we have a client secret, show Stripe Elements
   if (clientSecret && orderId) {
     return (
-      <div className="min-h-screen bg-canvas">
-        <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl flex items-center justify-between">
-            <EventlinqsLogo size="md" />
-            <CartTimer expiresAt={expiresAt} onExpired={handleExpired} />
-          </div>
-        </nav>
-
-        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <Elements
-              stripe={stripePromise}
-              options={{
-                clientSecret,
-                appearance: {
-                  theme: 'stripe',
-                  variables: { colorPrimary: '#0A1628', borderRadius: '8px' },
-                },
-              }}
-            >
-              <PaymentForm
-                clientSecret={clientSecret}
-                orderId={orderId}
-                totalCents={fees.total_cents}
-                currency={currency}
-                trustSlot={trustSlot}
-              />
-            </Elements>
-
-            <div className="min-w-0">
-              <CheckoutSummary
-                fees={fees}
-                eventTitle={eventTitle}
-                eventDate={eventDate}
-                venue={venue}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      <PaymentStep
+        clientSecret={clientSecret}
+        orderId={orderId}
+        expiresAt={expiresAt}
+        onExpired={handleExpired}
+        fees={fees}
+        currency={currency}
+        eventTitle={eventTitle}
+        eventDate={eventDate}
+        venue={venue}
+        trustSlot={trustSlot}
+      />
     )
   }
 
