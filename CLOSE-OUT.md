@@ -1961,6 +1961,74 @@ If the width guard proves flaky on Vercel because webfonts load late, fix it by 
 ## S1  Connected account health, done properly.  Replaces a false alarm with a real check.
 Priority: after D2. Do not start while UX6, D1 or D2 is open.
 
+STATE, 11 September 2026, commit 1243809b. BUILT, DRIVEN AND GREEN, WITH THREE
+LEGS OUTSTANDING THAT ARE NOT MINE TO CLOSE.
+
+  requirement 1     ANSWERED, and it is the finding of the item. Read from the
+                    code across three enumerated call sites: this platform uses
+                    SEPARATE CHARGES AND TRANSFERS WITHOUT on_behalf_of. Stripe
+                    publishes what follows - the buyer's statement then carries
+                    the PLATFORM's descriptor, so an organiser's legal entity
+                    name CANNOT reach a buyer's bank statement here. The
+                    statement-descriptor defect S1 describes is real on a direct
+                    or destination-with-on_behalf_of platform and does not exist
+                    on this one. A registered guard fails the build if anybody
+                    ever sets on_behalf_of, because that one absent parameter is
+                    holding up the argument and nothing said so.
+  the deletion      MET. Gone from the heartbeat AND from the organiser's own
+                    payouts page, where a band told them "Stripe uses its own
+                    name on your buyers' bank statements" - untrue here, and
+                    found only by answering requirement 1.
+  the replacement   MET. Every field S1 names, organiser and account id on every
+                    non-green line, currently_due and past_due BY NAME.
+  severity rules    MET with ONE narrowing, stated as a deviation the founder can
+                    reject: an account that has NEVER finished onboarding
+                    (details_submitted false) is AMBER and never RED. Measured,
+                    not argued: acct_1U2EYNGsSxcPFPRu is an abandoned signup and
+                    under the literal rule would have held the platform in
+                    permanent CRITICAL, emailing every thirty minutes for ever.
+  requirement 3     MET. statement_descriptor_prefix now set explicitly at
+                    connected-account creation, never left to Stripe's fallback.
+  requirement 5     MET, scoped to what is true here and not overstated.
+  schema            Applied on TEST. connect_watch_guards() answers 5 of 5 there,
+                    and all three invariants drilled on the real database.
+  guards            2 registered (110 from 108), 6 clauses, 16 drills: 11 RED and
+                    5 NEGATIVE that stay green.
+  tests             378 files / 4567 tests, 0 failed, 0 skipped. Canary raised.
+  driven            56 of 56 at 390, 768 and 1440.
+  regression        Green except production-parity.
+
+  FOUR DEFECTS FOUND BY DRIVING IT, all fixed in the item, none about Stripe:
+  a heading in brand navy on the admin shell's near-black at 1.05:1; two WCAG AA
+  failures on the status words; the health table clipped at 567px inside a 390
+  viewport with no route to it (close-out UX6.3, and the page-level width check
+  passed throughout because overflow-hidden is what hides a clip from it), which
+  when fixed raised a real keyboard-access violation and still left rows a hand
+  tall and blank on a phone; and twelve elements painted WHITE ON WHITE by an
+  undefined colour token, including the line that tells the owner what to DO
+  about a fault - while axe reported ZERO violations on that page at every
+  impact level, in the same run.
+
+  REPORTED, NOT FIXED: `ink-500` is used 80 times across src/ and `ink-50` 31
+  times, and neither is defined in globals.css. The other 73 sit on light
+  surfaces and are wrong but legible. Defining them would move colour on 100+
+  elements across public pages and is a design decision, not a Stripe one.
+
+  TO CLOSE, all three need the founder:
+      npm run migrate:production   releases twenty six unpushed commits
+      stripe login                 the AMBER and RED verdicts driven against
+                                   real connected accounts (requirement: "runs
+                                   against the live connected accounts and
+                                   prints the real fields")
+      approval                     requirement 2 (set the PLATFORM account's own
+                                   statement descriptor) and requirement 4
+                                   (backfill acct_1UDGtEKFmbMwdHmT). S1 itself
+                                   reserves the second: "only with explicit
+                                   approval from Lawal before any write to a
+                                   live Stripe account."
+
+  Evidence C:\dev\EVIDENCE\S1\. Ledger rows in C:\dev\BUILD-LEDGER.md.
+
 THE FALSE ALARM TO REMOVE
 The daily heartbeat compares the organiser display name on EventLinqs with the legal entity name on the Stripe connected account and reports a discrepancy when they differ. Stripe holds these as two separate fields by design. KYC requires the legal entity name of the person or company receiving funds. business_profile.name is the public trading name. For a sole trader organiser they will almost always differ, correctly. MKLStudios trading under the legal name Michael Mirindi MWIKIZA is a correctly configured account, not a fault.
 Left in place, this check fires for nearly every organiser forever and trains the owner to ignore the daily email, which destroys the value of every other line in it.

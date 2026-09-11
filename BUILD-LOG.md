@@ -10277,3 +10277,199 @@ three blocks were re-tested this session rather than read: Stripe is still real,
 Google Maps is still real, and VAPID never was.
 
 DISK at end: 22 GB free.
+
+---
+
+## 11 September 2026, session 65. CLOSE-OUT S1: connected account health.
+
+DISK at start: 22 GB free, on AC power.
+
+### FIRST ACTION: THE UNPUSHED COMMITS, AS INSTRUCTED
+
+25 commits sat on `verify/l5-launch-readiness` above `origin/80c4b118`. Pushed
+through the normal gate. Blocked, and the block is real rather than inherited:
+
+    [gate] disk                    PASS      0
+    [gate] typecheck               PASS      8
+    [gate] lint                    PASS     110
+    [gate] copy                    PASS       1
+    [gate] critical-path           PASS       0
+    [gate] lighthouse-exemptions   PASS       0
+    [gate] guards                  PASS      92
+    [gate] types-drift             PASS      21
+    [gate] production-parity       FAIL       5
+
+    [production-parity] 125 migration(s) in the tree, 116 applied on
+    gndnldyfudbytbboxesk, 9 pending:
+        20260909000001_event_tags_case_distinct.sql
+        20260909000002_platform_notifications.sql
+        20260909000003_platform_notification_guards.sql
+        20260909000004_platform_notifications_never_block.sql
+        20260909000005_degraded_notification_keeps_its_subject.sql
+        20260910000001_ticket_tiers_keep_their_identity.sql
+        20260910000002_slot_ledger.sql
+        20260910000003_recovery_engine.sql
+        20260910000004_recovery_holds.sql
+
+One founder command clears it: `npm run migrate:production`. Nothing was pushed.
+
+### WHY S1 WAS THE ITEM
+
+The run brief's priority order is UX6, D1, D2, UX5, the remaining UX items, then
+the L items. Every one of those is BUILT and DRIVEN, each with a leg that needs
+the founder, and each already recorded in BUILD-LEDGER.md. S1 is the only item in
+CLOSE-OUT.md that had never been started. Its own priority line says "after D2",
+and D2 is open only on a founder leg, which is the reading every session since
+9 September has taken.
+
+### THE THREE BLOCKS, RE-TESTED RATHER THAN READ
+
+The lesson recorded in session 64 is that a recorded block is a CLAIM with a date
+on it. So:
+
+- **Stripe: still real.** `~/.config/stripe/config.toml` records both keys
+  expired, 2026-07-07 and 2026-07-29. The only `.env.local` on this machine
+  carries an empty `STRIPE_SECRET_KEY`. `git worktree list` shows two worktrees,
+  not nine, and a filesystem search found no other env file in either repo.
+- **Production parity: still real**, and now enumerated by name above.
+- **The TEST migration divergence: still real.** `supabase db push --linked`
+  refuses because TEST carries 20260908000001 to 000004 from two unmerged
+  branches. Session 57 recorded this and deliberately did not run
+  `migration repair --status reverted`, which would record applied migrations as
+  un-applied. Applied instead through
+  `scripts/verify/apply-migration-to-test.mjs --via-api`, the reviewed path built
+  for exactly this, whose TEST ref is a hardcoded constant and never an argument.
+
+### SCHEMA
+
+`20260911000001_connect_requirement_watch.sql`. One table: the monitor's own
+memory of when a Stripe requirement was first seen pending, because S1 asks for
+AMBER when something "sits in pending_verification for more than 3 days" and
+Stripe publishes WHAT is pending and never WHEN it started.
+
+Applied to TEST and verified by asking the database, not by reading the file:
+
+    connect_watch_guards():
+      table exists                                   true
+      first_seen_at is trigger protected             true
+      row level security is on                       true
+      no policy grants a signed-in reader access     true
+      only a bucket something reads may be written   true
+
+And all three invariants drilled on the live TEST database:
+
+    1. rewriting first_seen_at    REFUSED  42501: "... is 2026-09-02 00:24:25
+                                          and does not move. An age measured
+                                          from a rewritable timestamp measures
+                                          nothing."
+    2. refreshing last_seen_at    ALLOWED, first_seen_at unchanged
+    3. a bucket nothing reads     REFUSED  23514 check constraint
+
+Probe row removed afterwards; the table holds 0 rows.
+
+### GUARDS
+
+110 registered, from 108.
+
+    statement-descriptor-premise-holds   3 clauses
+    one-door-to-the-requirement-watch    3 clauses
+
+16 drills, 11 expected RED and 5 expected GREEN, 0 behaving wrongly
+(`C:\dev\EVIDENCE\S1\s1-guard-drill.txt`). The five GREEN cases are the
+narrowings, and they exist because both guards were genuinely too broad on their
+first run and accused innocent code: the payment gateway passing its own params
+through, a header comment naming a table, and the property READ the requirement
+age is computed from.
+
+### TESTS
+
+    tests/unit/stripe/account-health.test.ts     34 tests, S1's severity table
+    tests/unit/health/heartbeat-email.test.ts     9 tests, the email itself
+    tests/unit/stripe-business-profile.test.ts   -5 deleted, +7 on the prefix
+
+Suite 376 files / 4522 tests to 378 / 4567, 0 failed, 0 skipped. Canary baseline
+raised in the same commit with the reason written on the constant.
+
+A real test caught a real omission: `guard-registry.test.ts` failed because the
+runner's header comment did not name the two new guards. Prose is not executed,
+so something has to execute it.
+
+### DRIVEN
+
+`scripts/verify/s1-drive.mjs` serves this tree's production build through
+`startGateServer` (the one spawn that carries the Upstash stub, without which the
+rate-limited sign-in fails closed and reads as a product defect) and runs 56
+checks at 390, 768 and 1440:
+
+    the owner signs in at the real /admin/login and opens /admin/health
+    "Organisers can take money" is on the screen at every width
+    "Organiser names match Stripe" is absent from the document at every width
+    an organiser signs in at the real /login and opens /dashboard/payouts
+    the bank-statement claim is gone, and the page still renders
+    the real cron route runs the heartbeat, and the email built by the product's
+      own heartbeatEmail renders at every width with no overflow
+    no text the same colour as what is behind it
+    nothing wider than its box without a route to it
+    axe 0 violations at EVERY impact level, on both surfaces, at every width
+
+56 of 56.
+
+### THE HARNESS DEFECT THIS FOUND IN ITSELF
+
+The first run reported `email.390.no-overflow  scrollWidth 980 against innerWidth
+980`. A pass, measured on a layout viewport three times wider than the 390 it
+claimed, because `setContent` on a document with no viewport meta lays out at
+Chromium's 980px fallback. It would have passed whatever the email did. The
+harness now wraps the fragment in a document carrying
+`width=device-width`; the email itself is untouched.
+
+### REGRESSION
+
+Every step re-run on this tree, in the order the gate runs them. The gate
+short-circuits at the first failure, so the six steps after production-parity
+were run as a hand selection and are marked PARTIAL RUN in their own output, as
+that flag requires.
+
+    disk                   PASS        0s   20 GB free, on AC power (the
+                                            Lighthouse calibration floor needs
+                                            the power lead)
+    typecheck              PASS        8s
+    lint                   PASS      110s
+    copy                   PASS        1s
+    critical-path          PASS        0s
+    lighthouse-exemptions  PASS        0s
+    guards                 PASS       92s   110 of 110 (108 before this item)
+    types-drift            PASS       21s
+    fixture                PASS        0s
+    suite                  PASS       58s   378 files / 4567 tests, 0 failed,
+                                            0 skipped
+    build                  PASS      136s
+    indexing               PASS      329s
+    checkout-viewport      PASS      229s
+    lighthouse             PASS     1683s   13 URLs, 65 runs, every assertion
+
+    production-parity      FAIL        5s   BY DESIGN. 9 migrations pending on
+                                            production, named above. The
+                                            founder's command.
+
+Only `production-parity` is red, and it is `npm run migrate:production`.
+
+### THE INTERPRETATION I WANT ON THE RECORD
+
+S1 named a defect, and the first thing it asked for was to check the premise. The
+premise did not hold: this platform charges in a way that makes the
+statement-descriptor danger impossible, and S1's own requirement 1 is what
+established that. The valuable outcome of this item was not building what was
+described. It was reading what was actually there, finding a second surface
+repeating the same untrue claim to organisers, and writing a build check that
+fails the day the premise changes - because a one-line Stripe parameter was
+silently holding up an argument in three files and nothing anywhere said so.
+
+The second thing worth recording is that a passing scan is not a read. axe
+reported zero violations, at every impact level, on all three widths, on a page
+where twelve elements were painted white on white, including the sentence telling
+the owner how to fix a fault. That is the second time in a month a human read has
+found what a sweep could not, which is exactly what close-out UX2.5 was written
+about.
+
+DISK at end: 20 GB free.

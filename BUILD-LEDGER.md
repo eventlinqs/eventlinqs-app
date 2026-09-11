@@ -3593,3 +3593,196 @@ arrived on the device. It read as the product ignoring a row and was the queue d
 exactly what it says it does. The drive now drains the backlog through the real cron
 route first, reports how many it cleared, clears what those deliveries displayed, and
 matches its own message BY TAG rather than taking `shown[0]`.
+
+---
+
+## S1. CONNECTED ACCOUNT HEALTH, DONE PROPERLY. 11 September 2026 (session 65).
+
+The only item in CLOSE-OUT.md that had never been started. Commit 1243809b.
+
+### REQUIREMENT 1 IS THE FINDING, AND IT REFRAMES REQUIREMENTS 2 TO 5
+
+S1 requirement 1: "Determine and record in the ledger which Stripe charge type
+this platform uses, direct, destination, or separate charges and transfers, and
+whether on_behalf_of is set. Do not assume. Read it from the code."
+
+Read, not assumed. `src/lib/payments/create-platform-charge.ts` is the only
+charge creator; its three call sites were enumerated by grep rather than
+remembered (`src/app/actions/checkout.ts:656`, `checkout.ts:1035`,
+`src/app/actions/squad-checkout.ts:242`). It passes no `on_behalf_of`, no
+`transfer_data` and no `application_fee_amount`. `createDestinationCharge` no
+longer exists; the only surviving mention is the comment recording its removal.
+
+**VERDICT: separate charges and transfers, WITHOUT `on_behalf_of`.**
+
+Stripe's own page, fetched 2026-09-11
+(https://docs.stripe.com/connect/statement-descriptors):
+
+> "The customer's statement uses the platform account's static component for the
+> following charge types: Destination charges without on_behalf_of; Separate
+> charges and transfers without on_behalf_of"
+
+**So an organiser's legal entity name cannot reach a buyer's bank statement on
+this platform.** S1's stated "REAL DEFECT" is real on a direct or
+destination-with-on_behalf_of platform. This is not one. Requirement 1 exists
+precisely to establish that before requirements 2 to 5 are built, so it is
+reported rather than quietly built around.
+
+### THE SECOND FALSE CLAIM, FOUND BY ANSWERING REQUIREMENT 1
+
+`src/components/payouts/business-name-mismatch.tsx` told the ORGANISER, on
+`/dashboard/payouts`: "Stripe uses its own name on your buyers' bank statements
+and on your payout records, so a buyer who does not recognise it can raise a
+chargeback."
+
+Untrue on this charge type, by the page above. So the name comparison was not
+only a false alarm in the owner's daily email, it was a false alarm shown to the
+ORGANISER and justified to them with an untrue claim about their own buyers, on
+the screen that file's own comment calls the one "an organiser goes to when they
+are already worried about their money". Both instances deleted.
+
+### THE ONE NARROWING OF S1'S EXACT RULES, MEASURED RATHER THAN ARGUED
+
+S1: "RED if any account has charges_enabled false, or payouts_enabled false, or
+a disabled_reason set, or anything in past_due."
+
+Measured on TEST, not imagined. 42 organisations carry a stripe_account_id
+across 12 distinct connected accounts. One of them:
+
+    organisation          Thunderbird Freight Sessions
+    account               acct_1U2EYNGsSxcPFPRu
+    charges_enabled       false
+    payouts_enabled       false
+    onboarding_complete   false
+    disabled_reason       requirements.past_due
+    past_due              57 entries, including tos_acceptance.date,
+                          tos_acceptance.ip and external_account
+
+Somebody pressed "set up payouts" and walked away before entering anything. It
+has never worked, so it cannot have stopped working. Stripe's OWN example
+Account object in its API reference has exactly this shape for a newly created
+account. Under the literal rule it is RED on four counts; RED maps to the
+existing `critical` severity, which emails the owner immediately and re-emails
+every thirty minutes. **One abandoned signup would hold the platform in permanent
+CRITICAL** - the same defect S1 exists to delete, wearing new clothes.
+
+Stripe publishes the field that separates the two cases
+(https://docs.stripe.com/api/accounts/object, fetched 2026-09-11):
+
+> `details_submitted` (boolean): "Whether account details have been submitted.
+> ... Accounts where this is false should be directed to an onboarding flow to
+> finish submitting account details."
+
+So `details_submitted` false is AMBER and never RED, named, with "has never
+finished Stripe onboarding" as the action. Everything else keeps S1's rules
+unchanged. **This narrows RED only. It narrows no field, hides no account and
+drops no line.** A test holds that an account which DID onboard and then broke is
+still RED, which is the whole point.
+
+### WHAT SURVIVED THE DELETION, DELIBERATELY
+
+The deleted check also reported a second, unrelated fault: more than one
+organisation pointing at one connected account, so several organisers are paid
+into the same Stripe balance. That is a money fault, not a name one. It moved
+into the assessment rather than dying with the check that happened to host it.
+
+### THE REQUIREMENT LEDGER
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| 1. Determine the charge type from the code, do not assume | **MET** | separate charges and transfers, no on_behalf_of, enumerated from three call sites. Held by clause 1 of a registered guard so the premise cannot go quietly false |
+| The name comparison is gone from the code and the email template | **MET** | `connectNameDivergenceCheck`, `checkConnectProfile`, `businessNameDivergence`, `normaliseBusinessName`, `getConnectedBusinessName` and the organiser band all deleted. Driven: the label is absent from `/admin/health` and from the rendered email at all three widths |
+| The replacement reports the fields that determine whether money moves | **MET** | `src/lib/stripe/account-health.ts`: charges_enabled, payouts_enabled, disabled_reason, currently_due and past_due BY NAME, pending_verification, current_deadline in days, future_requirements. Named organiser and account id on every non-green line |
+| Severity rules, exact | **MET, with ONE narrowing stated** | 34 tests in `tests/unit/stripe/account-health.test.ts`, including both sides of every boundary. The narrowing and the account that forced it are above |
+| 2. Set the platform's own statement descriptor to EVENTLINQS | **OWNER BLOCKED** | a write to the LIVE platform Stripe account. The two fields do not conflict with the locked "EL" prefix: `settings.payments.statement_descriptor` is the full static descriptor used when a charge carries no suffix, `settings.card_payments.statement_descriptor_prefix` is the "EL" that pairs with the event-title suffix. Evidence in `stripe-adapter.ts` records the TEST platform account already reading `EVENTLINQS` without a suffix and `ELINQS* PARTY PTY LTD` with one; production is unknown without a key |
+| 3. business_profile.name and statement_descriptor_prefix always set at creation | **MET** | `business_profile` was already prefilled; `settings.card_payments.statement_descriptor_prefix` is now set from the organiser display name. `connectedDescriptorPrefix` never returns null, falling back to the platform prefix, because a rejected prefix would make `accounts.create` throw and stop an organiser onboarding at all. 7 tests, including a sweep asserting every input yields a value Stripe accepts |
+| 4. Backfill acct_1UDGtEKFmbMwdHmT | **OWNER BLOCKED** | S1 reserves it: "only with explicit approval from Lawal before any write to a live Stripe account" |
+| 5. Heartbeat check on the effective statement descriptor | **MET, scoped honestly** | reported when an account's descriptor is not derived from its own `business_profile.name`. Implemented on the trading name rather than the legal entity name because Stripe returns only a subset of `individual`/`company` for Express accounts after an Account Link, and because the observed damage was a descriptor taken from a URL (`EVENTLINQS.COM`), which this catches and a legal-name comparison would not. Never RED, and it does not claim a chargeback risk that does not exist here |
+| The new check runs against the LIVE connected accounts and prints the real fields | **OWNER BLOCKED** | both Stripe CLI keys answer 401 api_key_expired (config.toml records them expired 2026-07-07 and 2026-07-29), every Vercel STRIPE_SECRET_KEY is sensitive, and the only `.env.local` on this machine carries an empty STRIPE_SECRET_KEY. Re-verified this session rather than inherited |
+| Driven proof on TEST: AMBER and RED against a real connected account | **OWNER BLOCKED** | same key. The severity table is proved exhaustively by unit test; the live half needs `stripe login` |
+| The heartbeat email renders at 390, 768 and 1440 with no overflow | **MET** | rendered by the product's own `heartbeatEmail`, imported not copied, at all three widths. `scrollWidth` equals `innerWidth` at each |
+| Schema | **MET** | `20260911000001_connect_requirement_watch.sql` applied to TEST, `connect_watch_guards()` answers 5 of 5 there, and all three invariants drilled on the real database |
+| Guards, each proven to fail as well as pass | **MET** | 2 registered (110 total, from 108), 6 clauses, 16 drills: 11 RED and 5 NEGATIVE that stay green. `C:\dev\EVIDENCE\S1\s1-guard-drill.txt` |
+| Tests, canary raised in the same commit | **MET** | 376/4522 to 378/4567, 0 failed, 0 skipped, with the reason written on the constant |
+| Driven proof at 390, 768, 1440 | **MET** | 56 of 56. `C:\dev\EVIDENCE\S1\` |
+| Full regression | **MET except production-parity** | see the gate section of BUILD-LOG for this session |
+| Pushed | **NOT DONE**, the same block every item since 9 September is behind | `production-parity` refuses: 9 migrations pending on production. One founder command: `npm run migrate:production` |
+
+### FOUR DEFECTS FOUND BY DRIVING IT, NONE OF THEM STRIPE'S
+
+All four were on `/admin/health`, the screen the owner opens when something is
+wrong, and all four are fixed in this item.
+
+1. **The heading nobody could read.** `text-ink-900` is the brand NAVY, and the
+   admin shell paints `#0A0F1A`. 1.05:1. Every sibling admin page inherits the
+   shell's `text-white` instead; this one forced navy onto near-black.
+2. **Two WCAG AA failures on the status words.** Healthy `#1a9d5a` at 3.49:1 and
+   Degraded `#c99a10` at 2.59:1 on white, against a 4.5:1 requirement. Fixed with
+   a text tier (`#047857` 5.48:1, `#b45309` 5.02:1) while the DOT stays vivid,
+   which is the same two-tier move the constitution already makes for gold.
+   `#d12f3a` measured 5.03:1 and was left alone.
+3. **Clipped and unreachable, which is close-out UX6.3.** Measured on the built
+   tree at 390: the table lays out at 567px (System 116, Severity 90, Status 115,
+   Detail 246) inside an `overflow-hidden` wrapper, so 177px of the Detail column
+   had no route to it. **The page-level `scrollWidth` check passed throughout,
+   because `overflow-hidden` is exactly what hides a clip from it.** The Detail
+   column is where every answer this item writes ends up, and this item made
+   those answers LONGER on purpose. Fixing it immediately raised a real
+   `scrollable-region-focusable` violation (a region that scrolls by finger must
+   scroll by keyboard), fixed too. And that still left rows a hand tall and
+   almost entirely blank on a phone, so below `sm` each check is now its own card.
+   Reachable is the law; legible is the job.
+4. **The one a scanner could not see, and the worse finding.** `text-ink-500` and
+   `border-ink-50` name tokens `globals.css` does not define. An undefined
+   utility paints nothing, the element inherits, and the admin shell sets
+   `text-white`. Measured in a real browser:
+
+        colour rgb(255,255,255) on rgb(255,255,255)  "Fix: Open docs/payments/..."
+        colour rgb(255,255,255) on rgb(255,255,255)  "SystemSeverityStatusDetail"
+        colour rgb(255,255,255) on rgb(255,255,255)  "critical"
+
+   White on white. No visible column headers, a blank severity column, and the
+   **"Fix:" line - the sentence telling the owner what to DO about a fault -
+   invisible**. **axe reported ZERO violations at every impact level on that page,
+   on all three widths, in the same run that found twelve invisible elements.**
+   Drilled red and green: `C:\dev\EVIDENCE\S1\invisible-text-drill.txt`.
+
+### REPORTED, NOT FIXED, AND WHY
+
+`ink-500` is used **80 times** across `src/` and `ink-50` **31 times**, and
+neither is defined. The other 73 sit on LIGHT surfaces, where the inherited
+colour is the body navy rather than white, so they are wrong but legible. This
+page was the only admin file among them and is fixed. Defining the missing tokens
+would move colour on 100+ elements across public pages, which is a design
+decision and not one to make inside a Stripe item. The health page's banner
+colours are also off-brand, Bootstrap's rather than EventLinqs'.
+
+### A DIVERGENCE RE-CONFIRMED, NOT CAUSED HERE
+
+`supabase db push --linked` still refuses: TEST carries 20260908000001 to
+000004, whose files live on `feat/m1-the-request` and
+`feat/c10-scope-audit-and-series` and on neither main nor this branch. Session 57
+recorded this and did NOT run `migration repair --status reverted`, which would
+have recorded applied migrations as un-applied. The migration was applied through
+`scripts/verify/apply-migration-to-test.mjs --via-api`, the reviewed path for
+exactly this, whose TEST project ref is a hardcoded constant and never an
+argument. **TEST's schema is still ahead of this branch by four migrations from
+unmerged work.**
+
+### WHAT THE GUARDS' FIRST DRAFTS GOT WRONG, RECORDED BECAUSE IT IS THE COMMON FAILURE
+
+Both guards were too broad on their first run, and both accusations were fair
+warnings rather than bugs to shrug at.
+
+`statement-descriptor-premise-holds` accused `src/lib/payments/stripe-adapter.ts`
+of setting `on_behalf_of`. It can EXPRESS a destination charge, behind a runtime
+refusal demanding all three Connect fields together, but it can never ORIGINATE
+one: every `on_behalf_of` it writes is read straight off its own `params`. The
+exemption is CHECKED rather than trusted - a clause fails if the gateway ever
+sets one from anything else - and a drill proves that clause red.
+
+`one-door-to-the-requirement-watch` accused a HEADER COMMENT of being a second
+writer, and accused the property READ `row.first_seen_at` - the read the whole
+age is computed from - of being a write. A guard that fires on the read it exists
+to protect, or on the sentence explaining itself, is switched off within a week.
+Both narrowings carry a NEGATIVE drill asserting they stay green.

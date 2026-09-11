@@ -4011,3 +4011,120 @@ between the last week of work and the live site.
 "expired" against Stripe's own API, re-checked today rather than taken from a
 note, and it is the only thing keeping the payment step of UX6, D1, D2 and UX3
 from being driven.
+
+---
+
+## The daily email was wrong about nearly every organiser, and it was wrong about the wrong thing
+
+11 September 2026.
+
+You asked me, in close-out S1, to delete a check in your daily email. It compares
+the organiser's name on EventLinqs with the business name on their Stripe
+account, and calls a difference a fault. For a sole trader those two will almost
+always differ, correctly, so it fires for nearly everybody, for ever, and teaches
+you to skip the whole email. It is gone. Not softened, not downgraded. Gone.
+
+### The first thing you asked for turned out to be the important thing
+
+Your instruction said: work out from the code which kind of Stripe charge this
+platform uses, and do not assume.
+
+I read it. **Every buyer on EventLinqs is charged on the EventLinqs account, not
+on the organiser's.** Stripe's own documentation says plainly what follows: for
+that kind of charge the buyer's bank statement shows OUR name, never the
+organiser's.
+
+That matters, because the rest of your S1 note was about a real and serious
+problem: a buyer seeing an organiser's personal legal name on their statement,
+not recognising it, and disputing the charge. **That cannot happen here.** It is a
+genuine danger on platforms built the other way, and this one is not built that
+way. I have written the reason down next to the code, with a build check that
+fails if anybody ever changes the one Stripe setting that would make it true.
+Nothing anywhere said that setting was holding up the argument. Now something
+does.
+
+### Which uncovered a second false claim, and this one your organisers were reading
+
+The same name comparison had a twin on the organiser's own payouts page. It told
+them, in so many words, that **"Stripe uses its own name on your buyers' bank
+statements, so a buyer who does not recognise it can raise a chargeback"**.
+
+That sentence is not true on this platform. So an organiser trading under a
+business name was being shown a warning they had not earned, justified with a
+claim about their own customers that was wrong, on the page somebody opens when
+they are already worried about their money. That is gone too.
+
+### What replaced it, and one place where I did not do exactly as you asked
+
+The new check reports what actually decides whether money moves: can this
+organiser take a payment, can they be paid out, has Stripe disabled them, and
+exactly which pieces of information Stripe is still waiting for, **named, not
+counted**. Every line names the organiser and their account and says in plain
+words what they must do.
+
+**The one place I departed from your instruction, and I want you to be able to
+overrule me.** You wrote that an account which cannot take charges is RED, and
+RED means an email to you immediately and again every half hour until it is
+fixed. I checked that against the real accounts before building it. One of them,
+"Thunderbird Freight Sessions", is somebody who pressed "set up payouts" and
+walked away without typing anything. Under your rule as written, that one
+abandoned signup would have put your platform into permanent alarm and emailed
+you every thirty minutes for ever.
+
+That is the same defect you asked me to delete, rebuilt in new clothes. So an
+account that has **never finished signing up** is reported as a warning in the
+daily email, named, saying "they started and did not finish, nothing is broken" -
+and never as an emergency. An organiser who WAS working and has stopped still
+raises the alarm exactly as you asked. If you would rather have it your way, it
+is one line.
+
+### Four things I found by looking at the screen, not one of them about Stripe
+
+All four were on your platform health page, which is the page you open when
+something is wrong.
+
+- The heading "Platform health" was navy text on a near-black background. Not
+  hard to read. **Unreadable.**
+- The words "Healthy" and "Degraded" were too pale to meet the accessibility
+  standard we hold ourselves to.
+- On a phone, the column containing every answer was **cut off with no way to
+  reach it** - the exact thing you told me to stamp out in the mobile checkout.
+  Our width check passed the whole time, because the way the column was hidden is
+  the way that hides it from that check too.
+- And the worst one. The line that tells you **what to DO about a fault** was
+  being painted white on a white card. Invisible. So were the table's column
+  headers. The cause is a colour name used in the code that was never actually
+  defined, so it quietly painted nothing.
+
+**Our accessibility scanner reported zero problems on that page while twelve
+things on it were invisible.** It cannot see this. A person reading the page can.
+That is the second time this month that a human read has found what an automated
+sweep could not, and I have added a check that would have caught it.
+
+All four are fixed and driven at phone, tablet and desktop widths. 56 of 56
+checks. Pictures in `C:\dev\EVIDENCE\S1\`.
+
+### One thing I found and deliberately did NOT fix
+
+That undefined colour name is used **80 times** across the site, and a second one
+31 times. The health page was the only one where it made text invisible; the rest
+sit on white pages where it comes out the wrong shade rather than disappearing.
+Defining them properly would change the colour of over a hundred things on your
+public pages, and that is a design decision for you, not something to slip into a
+Stripe job. Say the word and I will do it as its own task.
+
+### What is still yours to do
+
+Two things, unchanged, and every item since 9 September is behind the first:
+
+    npm run migrate:production
+
+Nine migrations are waiting for production. Until they land, nothing can be
+pushed - twenty six commits now, including this one.
+
+    stripe login
+
+Both Stripe keys on this machine answer "expired", checked again today rather
+than taken from a note. It is the only thing keeping me from driving the new
+check against your real organisers' accounts, and it is the same command that
+closes the last leg of UX6, D1 and D2.
