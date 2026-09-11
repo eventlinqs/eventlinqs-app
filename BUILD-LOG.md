@@ -11213,3 +11213,55 @@ on mains (Win32_Battery status 2, 100 percent).
   preview built from the pushed commit.
 
 DISK at end: 19.2 GB free, on AC power.
+
+## Session 78, 11 September 2026. Fourteenth push attempt, refused at the same step; the two founder-held facts re-verified from source; nothing new to find.
+
+16:16 to 16:22. First action: fetch, count, push through the normal gate.
+origin was 28 behind, the tree clean (so the brief's second action had nothing
+to commit), 19.2 GB free, no orphaned gate, build or push process, the laptop
+on mains (Win32_Battery status 2, 100 percent). Issue #149 (the stall alert
+sent at 16:07 in session 77) has no reply. Parity was read first, read-only
+through clean-env.sh (6 s): 10 pending, so the outcome was known before the
+gate ran, and the gate was run anyway because the brief orders it.
+
+- THE PUSH ATTEMPT, 16:19:05, appended to C:\dev\push-attempt.log (lines
+  20087 to 21631, timestamp line first; the launcher is
+  C:\dev\EVIDENCE\PUSH-2026-09-11\push-attempt-session71.sh, through
+  clean-env.sh). Steps 1 to 8 PASS: disk, typecheck 8s, lint 3s, copy,
+  critical-path, lighthouse-exemptions, all guards 92s, types-drift 20s.
+  Refused at step 9 of 15. The exact refusing lines:
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 6s. Nothing was pushed.
+
+  The same ten files, 20260909000001 through 20260911000001, on head
+  4d0fda21. The environment half PASSED (34 records, 0 faults). Origin
+  re-fetched at 16:21: 28 behind. No gate step touched, no bypass.
+
+- THE CAUSE IS FOUNDER HELD, unchanged, and not re-argued: the session 77
+  entry states the reservation and the question put to the founder. Two facts
+  that decide whether any other route exists were RE-VERIFIED from source this
+  session rather than carried from memory:
+  (a) `git log --name-only origin/verify/l5-launch-readiness..HEAD --
+      supabase/migrations`: the ten pending files were added by seven of the
+      unpushed commits, the OLDEST unpushed commit 93ca123c among them
+      (20260909000001), so no prefix of the 28 pushes clean; the cherry-pick
+      route was closed in session 75 and is not re-derived.
+  (b) `.env.local` names STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and
+      STRIPE_WEBHOOK_SECRETS with EMPTY values (length 0 each, never printed),
+      so the UX6 payment leg has no local route either. Both founder commands
+      stand exactly as CLOSE-OUT.md UX6 records them: npm run
+      migrate:production (releases the 28 commits and builds the git preview
+      carrying the TEST Stripe key) or stripe login (the payment step locally).
+
+- NOTHING ELSE STARTED, per the brief: origin does not hold every local
+  commit. No new defect found this session. UX6, D1, D2, UX5 and S1 stand as
+  BUILD-LEDGER.md records them; no item closed, so CLOSE-OUT.md is untouched.
+  The ledger's sessions 66 to 77 section is widened to 78 with one row, and
+  the REVIEW-QUEUE.md re-check paragraph is widened. The first act after the
+  command lands is unchanged: the UX6 drive at 390 on the READY preview built
+  from the pushed commit.
+
+DISK at end: 19.2 GB free, on AC power.

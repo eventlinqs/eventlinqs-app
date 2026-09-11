@@ -3787,7 +3787,7 @@ age is computed from - of being a write. A guard that fires on the read it exist
 to protect, or on the sentence explaining itself, is switched off within a week.
 Both narrowings carry a NEGATIVE drill asserting they stay green.
 
-## SESSIONS 66 TO 77. THE PUSH ATTEMPTS THE BRIEF ORDERED FIRST. 11 September 2026.
+## SESSIONS 66 TO 78. THE PUSH ATTEMPTS THE BRIEF ORDERED FIRST. 11 September 2026.
 
 | Requirement (run brief) | Verdict | Evidence |
 |---|---|---|
@@ -3817,3 +3817,4 @@ Both narrowings carry a NEGATIVE drill asserting they stay green.
 | The founder's command proven to its confirmation point | MET, read-only: npm run migrate:production -- --dry-run, token accepted, ten listed, nothing linked, the CLI on TEST before and after | C:\dev\EVIDENCE\PUSH-2026-09-11\migrate-production-dry-run-session77.txt |
 | The loop's cost, scripted and offered first (Law 10) | OFFERED, NOT RUN: C:\dev\RUN-BUILD23.ps1, RUN-BUILD22 plus a ten-minute parity wait while migrations are pending, nothing removed | C:\dev\RUN-BUILD23.ps1 |
 | Re-attempted, session 77 at 16:09, on the new head 4d0fda21 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; steps 1 to 8 PASS on the committed tree (lint on the whole tree 61s, all guards 94s, types-drift 21s); origin 28 behind after (re-fetched 16:12); no gate step touched, no bypass; nothing else started | C:\dev\push-attempt.log lines 18541 to 20085; BUILD-LOG.md, Session 77 |
+| Re-attempted, session 78 at 16:19, on head 4d0fda21 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; steps 1 to 8 PASS (all guards 92s, types-drift 20s); environment half PASS (34 records, 0 faults); origin 28 behind after (re-fetched 16:21); issue #149 unanswered; no gate step touched, no bypass; the no-clean-subset fact and the empty local Stripe key re-verified from source, not memory; nothing else started | C:\dev\push-attempt.log lines 20087 to 21631; BUILD-LOG.md, Session 78 |

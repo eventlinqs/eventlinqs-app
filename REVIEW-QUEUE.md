@@ -4226,9 +4226,10 @@ The second command, stripe login, is unchanged from yesterday's note.
 
 Re-checked at 15:03 (a sixth attempt, session 71), at 15:11 (a seventh,
 session 72), at 15:18 (an eighth, session 73), at 15:26 (a ninth, session 74),
-at 15:34 (a tenth, session 75), at 15:42 (an eleventh, session 76), and at
-15:52 and 16:09 (a twelfth and a thirteenth, session 77, the second on the new
-commit 4d0fda21): your push gate ran again each time, green through all 110
+at 15:34 (a tenth, session 75), at 15:42 (an eleventh, session 76), at 15:52
+and 16:09 (a twelfth and a thirteenth, session 77, the second on the new
+commit 4d0fda21), and at 16:19 (a fourteenth, session 78, with no reply yet
+on issue #149): your push gate ran again each time, green through all 110
 guards, and was refused at the same line by the same ten migrations. Nothing
 else was started. The command is unchanged: npm run migrate:production. What
 session 77 did about you not having heard is the section below. Later
