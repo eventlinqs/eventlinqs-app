@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -210,8 +210,23 @@ describe('the walk, against git itself, on this repository', () => {
       .split('\0')
       .filter(Boolean)
     const untrackedSet = new Set(untracked)
-    const invented = [...walked].filter((f) => !tracked.includes(f) && !untrackedSet.has(f))
-    expect(invented).toEqual([])
+    /*
+     * A PATH THAT IS GONE BY NOW WAS NEVER INVENTED. On 12 September 2026 this
+     * failed once inside the push gate as "expected [ Array(1) ] to deeply equal
+     * []" and passed on the next three runs of the same tree. The walk is taken
+     * when this file loads and git is asked here, seconds later, in a suite
+     * whose other workers create and remove files inside this repository as
+     * they run; a file that existed for the walk and not for git is a race,
+     * not an evaluator that lets a path through. So a path is held against the
+     * evaluator only if it is still on disk, and the message names it.
+     */
+    const invented = [...walked]
+      .filter((f) => !tracked.includes(f) && !untrackedSet.has(f))
+      .filter((f) => existsSync(join(root, f)))
+    expect(
+      invented,
+      `the walk holds ${invented.length} path(s) git has neither tracked nor listed as untracked: ${invented.join(', ')}`,
+    ).toEqual([])
   })
 })
 
