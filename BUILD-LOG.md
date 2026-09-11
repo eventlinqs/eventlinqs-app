@@ -10054,3 +10054,226 @@ refused key, which is what makes the designed fallback plate possible.
 
 Guards re-run with the new document present: 107 of 107 PASS, copy gate PASS.
 Commits `375355a1` and `9e2577f7`. DISK at end: 22 GB free.
+
+## Session 64, 11 September 2026. UX3.2, the second channel, and the block that was not one.
+
+DISK at start: 22 GB free.
+
+### FIRST ACTION, as briefed: the unpushed commits
+
+Twenty-three commits sit unpushed on `verify/l5-launch-readiness`, `93ca123c`
+through `9e2577f7`. The branch and the count were read from git rather than from
+the handover note.
+
+    [production-parity] did 125 migrations compared against production,
+                        34 production store records judged
+    [production-parity] found 9 migrations pending on production, 0 store faults
+    [production-parity] FAIL - this tree is not at parity with production;
+                        a merge would go red on main and fail to deploy
+    [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+The environment half PASSES: every readable production store record satisfies the
+manifest. The schema half refuses, correctly, and it is the founder's one command:
+`npm run migrate:production`. Nothing was pushed and no hook was bypassed.
+
+### WHERE THE PRIORITY LIST STOOD BEFORE ANY NEW WORK
+
+Read from the ledger and then re-verified rather than trusted:
+
+  UX6, D1, D2, UX5   built, driven, green; each has ONE leg the founder holds
+  UX1, UX2.5         DONE
+  remaining UX2/3/4  every open clause recorded as blocked on a credential
+
+So I re-tested the blocks instead of inheriting them, and one of them was wrong.
+
+    Stripe   sk_test ...B6PW -> 401 api_key_expired
+             sk_test ...zjAz -> 401 api_key_expired
+             REAL. Only `stripe login` clears it.
+    VAPID    "the keys are empty on this machine" - NOT A BLOCK. A keypair is one
+             line of web-push. Generated one, and the leg opened.
+
+### WHAT ACTUALLY STOPPED THE PUSH LEG, FOUND BY DRIVING
+
+Two properties of headless browsers, neither of them a fact about this platform,
+and both named by the browser itself:
+
+    bundled Chromium   AbortError: Registration failed - push service not
+                       available          -> use Google Chrome by channel
+    default context    "Chrome currently does not support the Push API in
+                       incognito mode (https://crbug.com/41124656)"
+                       -> use launchPersistentContext
+
+With those two, headless Chrome subscribes against `fcm.googleapis.com`, takes a
+real Web Push Protocol delivery signed with our own keys, runs the REAL
+`public/push-sw.js`, and shows the notification. Proved on a standalone fixture
+before a line of product code was touched.
+
+### THE DEFECT THE DRIVE THEN FOUND, WHICH IS THE POINT OF DRIVING
+
+The admin pressed "Arm backup alerts on this device". Nothing happened. No POST,
+no error, no change on screen. The button sat exactly as it had.
+
+Asking the browser directly, in the same page, produced the answer:
+
+    register: ok (scope http://127.0.0.1:55372/) | permission: granted |
+    subscribe: ok (fcm.googleapis.com)
+
+All three steps work. So the product was doing something the manual sequence was
+not, and the difference was one line: the manual probe awaited
+`navigator.serviceWorker.ready` and the product did not. Removing that wait from
+the probe reproduced it instantly:
+
+    AbortError: Failed to execute 'subscribe' on 'PushManager':
+    Subscription failed - no active Service Worker
+
+`register()` resolves when the REGISTRATION exists, not when its worker is
+running. On a device that has never armed before the worker is still installing,
+so `subscribe()` throws. **Every first arming failed, on both surfaces the hook
+serves** - the owner's backup channel, and the attendee alert opt-in the growth
+doctrine calls the demand engine's primary channel.
+
+It survived because a SECOND press always works: by then the worker has activated
+on its own. Anybody debugging this presses twice. A first press is the only press
+most people make.
+
+**And the second half is worse than the first.** The catch set the status to
+`'idle'`, which is what the control shows before anybody presses anything, and
+sent the error to `reportClientError`, which on a production build with no Sentry
+sink queues it in memory nobody reads. A press that failed and a press that never
+happened were identical, on screen and in every log.
+
+Fixed at the cause, once, in the one hook both surfaces share: a
+`withActiveWorker()` wait that settles on `activated` AND on `redundant` (a worker
+that will never activate must not hang the button for ever), and an `error` status
+carrying the browser's own reason, rendered by both surfaces with `role="alert"`.
+
+### THE NEAR MISS, MEASURED RATHER THAN IMAGINED
+
+While reading the registration code I noticed two service workers in the tree and
+asked what happens if both take scope `/`. Driven, rather than reasoned about:
+
+    registrations now: 1 -> / active=scan-sw.js
+    push subscription after the scanner registered: STILL THERE
+    send after scanner registered: 201
+    displayed: / -> 0 notification(s)
+
+The second registration REPLACES the first. The push service still answers 201,
+the platform still records a delivery, and nothing is ever displayed. The product
+is safe: the scanner passes `{ scope: DOOR_SERVICE_WORKER_SCOPE }`, and re-driven
+with that scope both registrations coexist and the notification appears. But
+nothing anywhere said that argument was load-bearing, and deleting it would have
+passed every test on this platform. It is now clause 4 of the guard, with the
+measurement quoted in the guard's own header.
+
+### THE DRIVE, AND THE HARNESS DEFECT IT FOUND IN ITSELF
+
+`scripts/verify/ux3-push-escalation-drive.mjs` serves this tree's production build
+through `startGateServer` with a new, documented `mail: 'real'` option, so the
+console transport is not in the way and `sendEmail` throws for the real reason
+this machine has: `RESEND_API_KEY is not configured`. Nothing is stubbed and no
+product code is modified to make the failure happen.
+
+The first full run reported five failures that were all mine. The dispatcher takes
+the oldest fifty pending rows first, and TEST carried **fifty** left over from
+earlier drives, so the row under test was never considered while fifty OTHER
+notifications escalated and arrived on the device. It read exactly like the
+product ignoring a row. The drive now drains the backlog through the REAL cron
+route first, says how many it cleared, clears what those deliveries displayed, and
+matches its own message BY TAG (`platform-<row id>`) instead of taking `shown[0]`.
+
+    66 of 66 checks at 390, 768 and 1440
+
+Per viewport, in order, all read back from the database and the browser:
+
+    arm control ENABLED (not merely present: an unconfigured build renders the
+      identical label on a DISABLED button, and testing the text alone would pass
+      on a build with no key in it)
+    POST 200 /api/push/subscribe, one real row, endpoint host fcm.googleapis.com
+    51 leftover notifications drained through the real cron
+    organiser signs in, creates the organisation through the real form
+    the TRIGGER writes the row: "New organiser: ..." -> /admin/organisers/<id>
+    tick 1  -> pending, attempts 1, "email attempt 1: RESEND_API_KEY is not configured"
+    tick 2  -> pending, attempts 2
+    tick 3  -> ESCALATED, channel push, "email failed 3 time(s): ..."
+    the real service worker DISPLAYED it: title "New organiser", body = the row's
+      own summary, url = the row's own admin_path, tag = the row's own id
+    the escalated row is readable on the admin feed, no overflow, axe 0 at every
+      impact level
+
+### GUARD, DRILLED ELEVEN TIMES
+
+`scripts/guards/push-arming-cannot-fail-silently.mjs`, registered and blocking.
+Five clauses plus a premise check on `public/push-sw.js`.
+
+    9 RED drills   the wait deleted; 'redundant' removed; 'activated' removed;
+                   a failed press reported as idle again; a SECOND module learning
+                   to subscribe; the scanner losing its scope; each surface
+                   dropping the refusal; and the push worker losing its handler
+    2 NEGATIVE     a non-service-worker register() and a COMMENT describing one,
+                   both of which the FIRST DRAFT genuinely failed on
+
+The negatives are the ones that matter. The first draft accused four innocent
+lines: `store.register()` in a React context and three comments mentioning
+`instrumentation.register()`. A guard that fails the build on a comment is a guard
+somebody switches off, and then the defect it exists to stop ships again.
+
+A second clause misfired the same way: it read `setStatus('idle')` anywhere in the
+file and so accused `disable()`, which is correct code, because a disarmed device
+IS idle. It now reads only the `enable` callback's own body.
+
+### TESTS, PROVEN RED FIRST
+
+`tests/component/push-subscription.test.tsx`, 6 tests. Against the pre-fix hook,
+2 of the 6 fail and return the browser's own sentence:
+
+    [observability] reportClientError Error: Failed to execute 'subscribe' on
+    'PushManager': Subscription failed - no active Service Worker
+    × does not subscribe while the worker is still installing
+    × a worker that goes redundant ends the wait instead of hanging the button
+
+They also caught a shape worth recording: the hook reads
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY` at MODULE scope, because Next inlines a
+`NEXT_PUBLIC_` value at build time. A static import evaluates that before any
+`beforeEach` can set it, so every test read `unconfigured`. The import is dynamic,
+after the assignment, with the reason written above it.
+
+Suite 375 files / 4516 tests to 376 / 4522. Canary raised in the same commit with
+the reason on it.
+
+### REGRESSION
+
+Every step re-run on this tree, in the order the gate runs them:
+
+    disk                   PASS      22 GB free, on AC power (the Lighthouse
+                                     calibration floor needs the power lead)
+    typecheck              PASS        8s
+    lint                   PASS       56s
+    copy                   PASS        1s
+    critical-path          PASS        0s
+    lighthouse-exemptions  PASS        0s
+    guards                 PASS       93s     108 of 108 (107 before this item)
+    types-drift            PASS       19s
+    fixture                PASS        0s
+    suite                  PASS       57s     376 files / 4522 tests, 0 failed,
+                                              0 skipped
+    build                  PASS      129s
+    indexing               PASS      232s
+    checkout-viewport      PASS      218s     0 faults across 3 widths; the
+                                              Stripe payment step NOT EXERCISED
+    lighthouse             PASS     1670s     13 URLs, 65 runs, every assertion
+
+    production-parity      FAIL        5s     BY DESIGN. 9 migrations pending on
+                                              production. The founder's command.
+
+Only `production-parity` is red, and it is `npm run migrate:production`.
+
+### THE INTERPRETATION I WANT ON THE RECORD
+
+Session 58 wrote "because the VAPID keys are empty on this machine" and I inherited
+it as a blocker for a day. It was not one. The lesson is not that session 58 was
+careless; it is that a recorded block is a CLAIM with a date on it, exactly like a
+version pin under Law 9, and nothing changes on the day it stops being true. The
+three blocks were re-tested this session rather than read: Stripe is still real,
+Google Maps is still real, and VAPID never was.
+
+DISK at end: 22 GB free.

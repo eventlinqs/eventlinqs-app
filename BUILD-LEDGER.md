@@ -2432,7 +2432,7 @@ built. "MET" means something was driven and read back; anything else says so.
 | UX3.1 each carries what happened, who, which event, a direct admin link | **MET** | the four facts are asserted per kind in `platform-policy.test.ts` and read out of the real console inbox: `link https://www.eventlinqs.com.au/admin/organisers/c742663e-...` |
 | UX3.2 recorded as sent or failed | **MET** | every path writes `attempts`, `last_attempt_at`, `last_error` before returning; driven on the no-mail server, rows read back |
 | UX3.2 a failure is retried | **MET** | three cron ticks: retried 2, retried 2, failed 2 |
-| UX3.2 a persistent failure raises through the second channel | **PARTIAL** | the escalation DECISION and the failure of both channels are driven; the push channel's success path is unit-driven only, because the VAPID keys are empty on this machine. They are present on preview and production (checked) |
+| UX3.2 a persistent failure raises through the second channel | **MET** (was PARTIAL; closed 11 September 2026, commit `66189fc6`) | The success path is now DRIVEN: 66 of 66 checks at 390, 768 and 1440, with a real push displayed by the real `push-sw.js`. The "VAPID keys are empty on this machine" reason was NOT a blocker; see "UX3.2, THE SECOND CHANNEL'S SUCCESS PATH, DRIVEN" below, including the two defects driving it found in the arming control. `C:\dev\EVIDENCE\UX3\push-escalation\` |
 | UX3.2 drill the failure path, not only the success | **MET** | that is the only half this machine could drive, and it was |
 | UX3.3 individual until a configurable daily count, then a digest | **MET (built), NOT DRIVEN** | `PLATFORM_ORDER_ALERTS_PER_DAY`, one named constant; the boundary is drilled in the suite (Nth individual, (N+1)th held). Driving it needs 21 real card purchases, which the Stripe blocker forbids |
 | UX3.3 the threshold is one named constant | **MET** | one export, no second copy; `routeFor` derives from it and the tests read it rather than a literal |
@@ -2467,7 +2467,7 @@ callee can never see a fault in composing them.
 - The three Stripe legs are NOT proven on this machine, and no substitute was
   accepted. A SQL update would have made the trigger fire and would have proved
   nothing about a journey a person takes.
-- The push channel has not delivered a real message from here.
+- ~~The push channel has not delivered a real message from here.~~ CORRECTED 11 September 2026: it has, 66 of 66 checks at three widths, and getting there found two defects in the control that arms it. See the UX3.2 section below.
 - Mobile Lighthouse is MEASURED and PASSES, and the two sessions that could not
   measure it were beaten by a power lead. On battery the machine benchmarks 1539
   against the 2700 the floors were confirmed at, below the calibration floor of
@@ -3462,3 +3462,134 @@ fallback plate replace Google's own developer panel.
 2. **UX2.2b.** Effort went into it after its own verdict already read IMPOSSIBLE.
    That is drift toward the more interesting problem, it was stopped, and the one
    fact it produced is recorded above rather than used to justify the detour.
+
+---
+
+## UX3.2, THE SECOND CHANNEL'S SUCCESS PATH, DRIVEN. 11 September 2026 (session 64).
+
+Close-out UX3.2: "a persistent failure raises through the second channel exactly
+as the smoke alert does." Session 58 closed that clause **PARTIAL** with this
+reason, which stood for a day:
+
+> the escalation DECISION and the failure of both channels are driven; the push
+> channel's success path is unit-driven only, because the VAPID keys are empty on
+> this machine. They are present on preview and production (checked)
+
+### THE BLOCK WAS NOT A BLOCK, AND THAT IS THE FINDING
+
+A VAPID keypair is one line of `web-push` and belongs to whoever generates it.
+Empty keys in a file are a fact about the file. What made the leg LOOK impossible
+were two real properties of headless browsers, and both were found by driving
+rather than by reading:
+
+1. Playwright's **bundled Chromium has no push service**. `pushManager.subscribe`
+   answers `AbortError: Registration failed - push service not available`.
+   Google Chrome by channel has one.
+2. Playwright's default context is **incognito**, and Chrome refuses the Push API
+   there, in its own words: "Chrome currently does not support the Push API in
+   incognito mode (https://crbug.com/41124656)."
+
+With Chrome and `launchPersistentContext`, headless Chrome subscribes against
+`fcm.googleapis.com`, accepts a Web Push Protocol delivery signed with our own
+VAPID keys, runs the real `public/push-sw.js`, and displays the notification.
+
+The other blocks recorded beside it were **re-verified and are real**: both Stripe
+CLI keys still answer `401 api_key_expired` against Stripe's own `/v1/balance`,
+driven this session, not read from a note.
+
+### THE TWO DEFECTS THE DRIVE FOUND, BOTH IN THE ARMING CONTROL
+
+**1. Every FIRST arming failed, on both surfaces.** `register()` resolves when the
+REGISTRATION exists, not when its worker is running, so on a device that has never
+armed before the worker is still installing. `pushManager.subscribe()` then throws
+and Chrome names it exactly:
+
+    AbortError: Failed to execute 'subscribe' on 'PushManager':
+    Subscription failed - no active Service Worker
+
+Reproduced in isolation before anything was changed, by removing the
+`serviceWorker.ready` wait from a standalone probe that had been working. A SECOND
+press always succeeded, because by then the worker had activated on its own, which
+is why this survived: anybody debugging it presses twice. A first press is the only
+press most people make.
+
+**2. The failure was invisible in every direction.** The catch set the status to
+`'idle'`, which is the state the control shows before anybody presses anything, and
+sent the error to `reportClientError`, which on a production build with no Sentry
+sink queues it in memory nobody reads. So a press that failed and a press that never
+happened were indistinguishable, on screen and in every log. That is the silent
+failure UX3.2 exists to forbid, in the control that arms the channel UX3.2 exists to
+provide.
+
+Both surfaces share one hook, so both were broken and both are fixed at the cause:
+the owner's backup channel at `/admin/notifications`, and the attendee alert opt-in,
+which the growth doctrine calls the demand engine's primary channel.
+
+### THE NEAR MISS, MEASURED RATHER THAN IMAGINED
+
+Registering a second service worker at the DEFAULT scope replaces the push
+registration outright. Driven in Chrome with two workers at `/`:
+
+    registrations now: 1 -> / active=scan-sw.js
+    push subscription after the scanner registered: STILL THERE
+    send after scanner registered: 201
+    displayed: / -> 0 notification(s)
+
+The push service accepts the message, the platform records a delivery, and the
+person is told nothing, for ever. **The product is safe**, because the door scanner
+passes `{ scope: DOOR_SERVICE_WORKER_SCOPE }` - re-driven with that scope and both
+registrations coexist and the notification displays. Nothing anywhere said that one
+argument was load-bearing. Now a guard clause does.
+
+### THE REQUIREMENT LEDGER
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| UX3.2 "a persistent failure raises through the second channel" - the SUCCESS path | **MET, DRIVEN** | 66 of 66 checks at 390, 768 and 1440. `C:\dev\EVIDENCE\UX3\push-escalation\ux3-push-escalation-report.json` |
+| The email failure is real, not stubbed | **MET** | `email attempt 1: RESEND_API_KEY is not configured`, read off the row. The build is served with `mail: 'real'` so the console transport is not in the way |
+| Two attempts retry, the third escalates | **MET** | driven per viewport: `attempts 1` pending, `attempts 2` pending, then `escalated` on channel `push` after 3 |
+| A real device actually received it | **MET** | read off `registration.getNotifications()`, which is what the REAL `push-sw.js` displayed, matched BY TAG (`platform-<row id>`) so it can only be this run's message |
+| The message carries the right words and link | **MET** | title `New organiser` (the kind), body = the row's own summary, url = the row's own `admin_path`, tag = the row's own id |
+| The escalated row is readable on the admin feed | **MET** | captured at all three widths, `03-escalated-in-the-feed-*.png` |
+| Schema | **NOT REQUIRED** | no table and no column; the tables and triggers are session 58's |
+| Code | **MET** | `src/components/notifications/use-push-subscription.ts` (the wait and the reported refusal), both consuming surfaces, and one documented option on `startGateServer` |
+| Tests, canary raised in the same commit | **MET** | `tests/component/push-subscription.test.tsx`, 6 tests. Suite 375/4516 to 376/4522, canary raised with the reason written on it |
+| Tests proven RED against the pre-fix code | **MET** | 2 of 6 fail with the browser's own sentence, `Subscription failed - no active Service Worker` |
+| Guard, registered and blocking | **MET** | `scripts/guards/push-arming-cannot-fail-silently.mjs`, 5 clauses plus a premise check, registered in `run-guards.mjs` (108 guards, all pass) |
+| Guard proven to fail as well as pass | **MET** | 11 drills, 9 RED and 2 NEGATIVE that stayed green. `C:\dev\EVIDENCE\UX3\ux3-push-guard-drill.txt` |
+| axe zero at every impact level | **MET** | 0 violations on all three widths, `axe-390.json`, `axe-768.json`, `axe-1440.json` |
+| No overflow at any width | **MET** | `document.documentElement.scrollWidth <= window.innerWidth` asserted per viewport |
+| Full regression | **MET** | see the gate section of BUILD-LOG for this session |
+| Pushed | **NOT DONE**, and it is the same block every item since 9 September is behind | `production-parity` refuses: 9 migrations pending on production. One founder command clears it: `npm run migrate:production` |
+
+### WHAT THE GUARD'S FIRST DRAFT GOT WRONG, RECORDED BECAUSE IT IS THE COMMON FAILURE
+
+Clause 4 matched any `.register(` and accused four innocent lines: `store.register()`
+in a React context, and three COMMENTS mentioning `instrumentation.register()`. A
+guard that fails the build on a comment is switched off within a week, and then the
+defect it exists to stop ships again. The narrowing is now PROVED to hold by two
+negative drills that both would have caught the first draft.
+
+The clause about a silent failure also fired on `disable()`, which sets `'idle'`
+correctly, because a disarmed device IS idle. It now reads only the `enable`
+callback's own body.
+
+### WHAT IS A FIXTURE AND WHAT IS DRIVEN, SO NOTHING IS OVER-CLAIMED
+
+The two ACCOUNTS are service-role fixtures, as `ux3-admin-feed-proof.mjs` already
+does, because neither account is the thing under test and `/signup` cannot complete
+on a machine whose mail transport is deliberately broken. Everything under test is
+driven through the real interface: the organiser signs in at `/login` and creates
+the organisation through the real form (the state change the trigger watches), the
+admin signs in at `/admin/login` and presses the real arm button, and the row, its
+retries, its escalation and its delivery are all READ BACK.
+
+### THE HARNESS DEFECT THIS ITEM ALSO FOUND, IN ITSELF
+
+The first full run asserted on a row sitting behind **fifty** pending notifications
+left on TEST by earlier drives. The dispatcher takes the oldest fifty first, so the
+row under test was never considered, while fifty OTHER notifications escalated and
+arrived on the device. It read as the product ignoring a row and was the queue doing
+exactly what it says it does. The drive now drains the backlog through the real cron
+route first, reports how many it cleared, clears what those deliveries displayed, and
+matches its own message BY TAG rather than taking `shown[0]`.

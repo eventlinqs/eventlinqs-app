@@ -3936,3 +3936,78 @@ and that will keep costing time quietly.
 Twenty-three commits waiting. Every check passes except the one that needs you:
 
     npm run migrate:production
+
+---
+
+## Your backup alert channel could not be switched on, and nothing told you
+
+11 September 2026.
+
+You asked, in close-out UX3.2, that a notification which cannot be emailed reach
+you some other way. That was built last week: after three failed emails the
+platform pushes the alert to any device you have armed at `/admin/notifications`.
+
+It has never worked on a device pressing the button for the first time.
+
+I found it by driving the real button in a fresh browser. It does nothing. No
+error, no message, no change on the screen. Press it a second time and it works
+perfectly, which is why nobody caught it: anybody testing this presses twice.
+
+The cause is one line. The browser is asked to subscribe to push before the small
+background program that receives push has finished starting up, so the browser
+refuses. It says so clearly, but the platform threw that sentence away and put the
+button back exactly as it was, which is the same thing it shows before you have
+pressed anything at all. A press that failed and a press that never happened
+looked identical, on the screen and in every log we keep.
+
+**The same button, on the same code, is what an attendee presses to turn on event
+alerts.** So this was not only your backup channel. It was the demand engine's
+main channel too, for every first-time user.
+
+Both are fixed at the cause, in the one place they share. The button now waits for
+the background program to be running, and if the browser still refuses it says so
+on screen, in the browser's own words, instead of pretending nothing happened.
+
+### It is proven, not asserted
+
+I drove the whole sequence at phone, tablet and desktop widths, three times over,
+and every number below was read back out of the database or out of the browser:
+
+  - an admin signs in and presses the real button, and a real subscription is
+    saved against a real Google push address
+  - an organiser signs in and creates their organisation through the real form
+  - the database writes the "New organiser" notification on its own
+  - the platform tries to email it and fails, three times, for a real reason
+    (there is no email key on this machine)
+  - on the third failure it pushes instead, and **a real notification appears on
+    the device**, carrying the right heading, the organiser's name, and a link
+    straight to that organiser in the admin console
+  - the admin feed shows it, nothing is cut off at any width, and there are zero
+    accessibility violations
+
+66 of 66 checks. Pictures in `C:\dev\EVIDENCE\UX3\push-escalation\`.
+
+### One thing I want to flag, because it is a decision, not a defect
+
+While I was in here I measured what happens if two background programs are
+registered at the same address on your site: the second one silently replaces the
+first. Google still accepts the push, we still record it as delivered, and the
+person is told nothing, for ever.
+
+**Your platform is safe from this today**, because the door scanner registers
+itself at a narrower address. But nothing anywhere said that was important, and
+deleting it would have passed every test we have. There is now a build check that
+refuses that change, with the measurement written next to it.
+
+### What is still yours to do, unchanged
+
+    npm run migrate:production
+
+Nine migrations are waiting for production. Until they land, nothing from the last
+three days can be pushed, including this. That one command is the only thing
+between the last week of work and the live site.
+
+`stripe login` is still the other one. Both Stripe keys on this machine answer
+"expired" against Stripe's own API, re-checked today rather than taken from a
+note, and it is the only thing keeping the payment step of UX6, D1, D2 and UX3
+from being driven.
