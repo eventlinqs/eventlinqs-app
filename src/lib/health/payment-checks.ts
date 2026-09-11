@@ -1,7 +1,14 @@
 import crypto from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveWebhookSecrets } from '@/lib/payments/stripe-adapter'
-import { businessNameDivergence } from '@/lib/stripe/business-profile'
+import {
+  assessAllAccounts,
+  assessConnectedAccount,
+  type AccountOwner,
+  type ConnectedAccountFacts,
+  type HealthVerdict,
+} from '@/lib/stripe/account-health'
+import { observePendingVerification } from '@/lib/stripe/requirement-watch'
 
 /**
  * Payment-path health checks, extracted from the original webhook-sentinel
@@ -217,37 +224,46 @@ export async function driftWatchdog(): Promise<PaymentCheckResult> {
 }
 
 /**
- * Report every organisation whose name disagrees with the business name on its
- * connected Stripe account.
+ * CONNECTED ACCOUNT HEALTH. Close-out S1, replacing the business-name
+ * divergence check that used to live here.
  *
- * WHY THIS EXISTS. Prefilling `business_profile.name` at account creation closes
- * the hole at the moment it was opened, but it cannot hold it shut: Stripe lets
- * the organiser edit the name inside the hosted onboarding form and, afterwards,
- * inside the Express Dashboard. That is how production ended up with an
- * organisation called "Party Pty Ltd" whose Stripe account reads "Eventlinqs",
- * with nothing anywhere reporting the disagreement. Silent divergence is the
- * actual defect; the empty form was only how it started.
+ * WHAT WAS DELETED AND WHY. The old check compared `organisations.name` with
+ * `business_profile.name` at Stripe and reported a fault when they differed.
+ * Stripe holds a public trading name and a legal entity name as two separate
+ * fields by design, so for a sole trader they will almost always differ,
+ * correctly, and the check fired on correctly configured accounts. The founder's
+ * ruling of 11 September 2026 was to delete it outright rather than soften it or
+ * downgrade it, because a monitor that is wrong about nearly every organiser
+ * teaches its reader to skip the whole email.
  *
- * On the example itself: "Party Pty Ltd" is NOT a company and not EventLinqs'
- * legal entity. It is the founder's TEST organiser record, created with a
- * made-up name to put a real card through a $1 checkout, and it is deleted once
- * that passes. The divergence it exposed is real and this check stays; the name
- * is a fixture, so do not read it as a customer.
+ * WHAT SURVIVED THE DELETION. The old check also reported a second and unrelated
+ * fault: more than one organisation row pointing at one connected account, so
+ * several organisers are paid into the same Stripe balance. That is a money
+ * fault, not a name one, and it moves into the assessment rather than dying with
+ * the check that happened to host it.
  *
- * ONE Stripe call, not one per organisation. `/v1/accounts` returns
- * `business_profile` inline, so a platform with a hundred organisers costs a
- * single request rather than a hundred, and the sentinel stays cheap enough to
- * run on every cron tick.
+ * ONE Stripe call, not one per organisation, exactly as the deleted check did.
+ * `/v1/accounts` returns `requirements`, `future_requirements`, `settings` and
+ * `business_profile` inline, so a hundred organisers still cost a single request
+ * and the sentinel stays cheap enough to run on every cron tick.
  *
- * Reports `ok: false` at WARNING severity only. A mismatched name is a real
- * problem worth a founder's attention, but it is not an outage: tickets still
- * sell and payouts still land, so it must never be allowed to mark the payment
- * path as down or wake anyone at night.
+ * The severity rules, the fields reported and the one measured narrowing of RED
+ * all live in src/lib/stripe/account-health.ts, next to their evidence.
  */
-export async function connectNameDivergenceCheck(): Promise<PaymentCheckResult> {
-  const name = 'connect business-name divergence'
+export async function connectedAccountHealthCheck(): Promise<PaymentCheckResult & { verdict: HealthVerdict }> {
+  const name = 'connected account health'
+  const green = (detail: string): PaymentCheckResult & { verdict: HealthVerdict } => ({
+    ...emit({ name, ok: true, detail }),
+    verdict: 'green' as HealthVerdict,
+  })
+
   const key = process.env.STRIPE_SECRET_KEY
-  if (!key) return emit({ name, ok: false, detail: 'STRIPE_SECRET_KEY missing', probableCause: 'missing Stripe env' })
+  if (!key) {
+    return {
+      ...emit({ name, ok: false, detail: 'STRIPE_SECRET_KEY missing', probableCause: 'missing Stripe env' }),
+      verdict: 'red',
+    }
+  }
   try {
     const admin = createAdminClient()
     const { data: orgs, error } = await admin
@@ -255,82 +271,78 @@ export async function connectNameDivergenceCheck(): Promise<PaymentCheckResult> 
       .select('id, name, stripe_account_id')
       .not('stripe_account_id', 'is', null)
       .limit(200)
-    if (error) return emit({ name, ok: false, detail: `organisations query failed: ${error.message}`, probableCause: 'database unreachable from sentinel' })
-    if (!orgs || orgs.length === 0) return emit({ name, ok: true, detail: 'no connected organisations to compare' })
+    if (error) {
+      return {
+        ...emit({ name, ok: false, detail: `organisations query failed: ${error.message}`, probableCause: 'database unreachable from sentinel' }),
+        verdict: 'red',
+      }
+    }
+    if (!orgs || orgs.length === 0) return green('no connected organisations to assess')
 
     const res = await fetch('https://api.stripe.com/v1/accounts?limit=100', {
       headers: { authorization: `Bearer ${key}` },
       signal: AbortSignal.timeout(15000),
     })
-    const j = (await res.json()) as {
-      error?: { message?: string }
-      data?: { id: string; business_profile?: { name?: string | null } | null }[]
+    const body = (await res.json()) as { error?: { message?: string }; data?: ConnectedAccountFacts[] }
+    if (body.error) {
+      return {
+        ...emit({ name, ok: false, detail: `Stripe accounts list failed: ${body.error.message ?? 'unknown'}`, probableCause: 'Stripe API rejected the sentinel key' }),
+        verdict: 'red',
+      }
     }
-    if (j.error) return emit({ name, ok: false, detail: `Stripe accounts list failed: ${j.error.message ?? 'unknown'}`, probableCause: 'Stripe API rejected the sentinel key' })
 
-    const stripeNames = new Map<string, string | null>()
-    for (const a of j.data ?? []) stripeNames.set(a.id, a.business_profile?.name ?? null)
+    const accounts = new Map<string, ConnectedAccountFacts>()
+    for (const a of body.data ?? []) if (a?.id) accounts.set(a.id, a)
 
-    // Group BY CONNECTED ACCOUNT, not by organisation.
-    //
-    // The first cut of this check iterated organisations and reported one line
-    // per row, which on TEST produced "31 of 40 disagree" where the same seeded
-    // account appeared five times over. A monitor that reports one fault five
-    // times teaches the reader to skim past it, so the unit of a finding here is
-    // the ACCOUNT, reported once, however many organisations point at it.
-    const byAccount = new Map<string, { id: string; name: string }[]>()
+    // Group BY CONNECTED ACCOUNT, not by organisation. The first cut of the
+    // deleted check iterated organisations and reported one line per row, which
+    // on TEST produced "31 of 40 disagree" where one seeded account appeared five
+    // times over. A monitor that reports one fault five times teaches the reader
+    // to skim past it.
+    const byAccount = new Map<string, AccountOwner[]>()
     for (const org of orgs) {
-      if (!org.stripe_account_id || !stripeNames.has(org.stripe_account_id)) continue
+      if (!org.stripe_account_id || !accounts.has(org.stripe_account_id)) continue
       const list = byAccount.get(org.stripe_account_id) ?? []
       list.push({ id: org.id, name: org.name })
       byAccount.set(org.stripe_account_id, list)
     }
-
     if (byAccount.size === 0) {
-      return emit({ name, ok: true, detail: `${orgs.length} connected organisation(s), none present in the first 100 Stripe accounts - nothing compared` })
+      return green(`${orgs.length} connected organisation(s), none present in the first 100 Stripe accounts - nothing assessed`)
     }
 
-    // Two distinct faults, kept apart because they need different fixes.
-    const diverged: string[] = []
-    const shared: string[] = []
-    for (const [accountId, owners] of byAccount) {
-      // More than one organisation pointing at ONE connected account is its own
-      // defect, and a worse one than a name mismatch: every organiser sharing it
-      // is paid into the same Stripe account. Comparing names here is
-      // meaningless (at most one of them can match), so it is reported as what
-      // it is rather than as N name mismatches.
-      if (owners.length > 1) {
-        shared.push(`${accountId} is claimed by ${owners.length} organisations (${owners.slice(0, 3).map(o => `"${o.name}"`).join(', ')}${owners.length > 3 ? ', ...' : ''})`)
-        continue
-      }
-      const verdict = businessNameDivergence(owners[0].name, stripeNames.get(accountId))
-      if (verdict.status === 'diverged') {
-        diverged.push(`"${verdict.platformName}" on EventLinqs is "${verdict.stripeName}" at Stripe (${accountId})`)
-      }
+    // What is pending verification right now, recorded so the NEXT run can say
+    // how long it has been waiting. An account with an empty list is passed in
+    // deliberately: that is how a cleared requirement stops being timed.
+    const observed = new Map<string, string[]>()
+    for (const accountId of byAccount.keys()) {
+      const pending = accounts.get(accountId)?.requirements?.pending_verification
+      observed.set(accountId, Array.isArray(pending) ? pending.filter(p => typeof p === 'string') : [])
     }
+    const ages = await observePendingVerification(observed)
 
-    if (diverged.length === 0 && shared.length === 0) {
-      return emit({ name, ok: true, detail: `${byAccount.size} connected account(s) compared, every business name matches` })
-    }
+    const rolled = assessAllAccounts(
+      [...byAccount.entries()].map(([accountId, owners]) =>
+        assessConnectedAccount(accounts.get(accountId)!, owners, { pendingVerificationAges: ages.get(accountId) }),
+      ),
+    )
 
-    const parts: string[] = []
-    if (diverged.length > 0) {
-      parts.push(`${diverged.length} of ${byAccount.size} connected account(s) disagree: ${diverged.slice(0, 5).join(' | ')}${diverged.length > 5 ? ` (+${diverged.length - 5} more)` : ''}`)
+    if (rolled.verdict === 'green') {
+      return green(`${rolled.assessed} connected account(s) assessed: every one can take charges, can be paid out, and owes Stripe nothing`)
     }
-    if (shared.length > 0) {
-      parts.push(`${shared.length} connected account(s) shared by multiple organisations: ${shared.slice(0, 3).join(' | ')}${shared.length > 3 ? ` (+${shared.length - 3} more)` : ''}`)
+    return {
+      ...emit({
+        name,
+        ok: false,
+        detail: `${rolled.green} of ${rolled.assessed} connected account(s) fully healthy. ${rolled.findings.join(' | ')}`,
+        probableCause: rolled.actions[0],
+      }),
+      verdict: rolled.verdict,
     }
-    return emit({
-      name,
-      ok: false,
-      detail: parts.join(' || '),
-      probableCause:
-        shared.length > 0 && diverged.length === 0
-          ? 'more than one organisation row carries the same stripe_account_id, so payouts for several organisers route to one Stripe account'
-          : 'the organiser edited the business name inside Stripe, or the account was created before the platform prefilled business_profile.name',
-    })
   } catch (err) {
-    return emit({ name, ok: false, detail: String(err).slice(0, 160), probableCause: 'sentinel internal error' })
+    return {
+      ...emit({ name, ok: false, detail: String(err).slice(0, 160), probableCause: 'sentinel internal error' }),
+      verdict: 'red',
+    }
   }
 }
 

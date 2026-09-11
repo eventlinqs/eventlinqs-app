@@ -99,6 +99,16 @@
  *                              proves the backend answers. Without it the money-path limiter
  *                              fails closed and a drive reports the gate's own gap as a
  *                              product defect
+ *   statement-descriptor-premise-holds  no CALLER sets on_behalf_of, so Stripe keeps using
+ *                              the PLATFORM's statement descriptor and an organiser's legal
+ *                              name cannot reach a buyer's bank statement; a connected
+ *                              account is created with BOTH its business profile and its
+ *                              descriptor prefix set; and the deleted business-name
+ *                              comparison cannot return under any of its four old names
+ *   one-door-to-the-requirement-watch  one module reads or writes the monitor's own memory
+ *                              of how long a Stripe requirement has been pending, its
+ *                              first_seen_at is never written, and a failed write degrades
+ *                              the age rather than the check
  *   push-arming-cannot-fail-silently  the backup alert channel can actually be armed, and a
  *                              press that fails says so. One module subscribes, it waits for
  *                              an ACTIVE service worker first, no other worker takes scope '/',
@@ -941,6 +951,28 @@ const GUARDS = [
   // negatives that the first draft genuinely failed
   // (C:\dev\EVIDENCE\UX3\ux3-push-guard-drill.txt).
   'scripts/guards/push-arming-cannot-fail-silently.mjs',
+  // S1: the daily heartbeat compared an organiser's EventLinqs name with the
+  // business name on their Stripe account and called a difference a fault.
+  // Stripe holds a public trading name and a legal entity name as two separate
+  // fields by design, so for a sole trader they differ CORRECTLY, and the check
+  // fired on healthy accounts for ever. The founder deleted it rather than
+  // softened it. Answering S1's first requirement also found the claim that
+  // justified it to organisers on /dashboard/payouts - "Stripe uses its own name
+  // on your buyers' bank statements" - to be false on this platform, which
+  // charges with separate charges and transfers and never sets on_behalf_of, so
+  // Stripe uses the PLATFORM's descriptor. That absent parameter holds up the
+  // whole argument and nothing anywhere said so. Three clauses, drilled red and
+  // green, plus a NEGATIVE drill proving the gateway pass-through exemption is
+  // checked rather than trusted.
+  'scripts/guards/statement-descriptor-premise-holds.mjs',
+  // S1: "anything sits in pending_verification for more than 3 days" needs an
+  // age, and Stripe publishes no per-requirement timestamp, so the monitor keeps
+  // its own in public.connect_requirement_watch. The whole value of that table
+  // is first_seen_at not moving. Three clauses, drilled red and green, plus two
+  // NEGATIVE drills for the two false positives the first draft produced: a
+  // header comment naming the table, and the property READ the age is computed
+  // from.
+  'scripts/guards/one-door-to-the-requirement-watch.mjs',
   // 6 September 2026 (close-out C3, the eighteen social cards). The rasteriser
   // reads the resvg WebAssembly binary and the brand fonts from disk at run
   // time, and next.config.ts pins them per route in outputFileTracingIncludes

@@ -1322,8 +1322,34 @@ const ROOT = join(HERE, '..', '..')
  * never happened. All six were drilled RED against the pre-fix hook and returned
  * the browser's own sentence.
  */
-const MIN_FILES = 376
-const MIN_TESTS = 4522
+/*
+ * RAISED 11 September 2026, close-out S1: 376 files / 4522 tests to 378 / 4567.
+ *
+ * Two files added and one rewritten.
+ *
+ * tests/unit/stripe/account-health.test.ts asserts S1's severity table exactly
+ * as S1 writes it - RED on charges_enabled false, payouts_enabled false, a
+ * disabled_reason or anything past_due; AMBER on currently_due, a deadline
+ * inside 14 days, or pending_verification older than 3 days; GREEN only when an
+ * account can charge, can be paid out and owes nothing - plus the ONE narrowing
+ * and the account on TEST that forced it. acct_1U2EYNGsSxcPFPRu is an abandoned
+ * signup: never onboarded, so RED on four counts under the literal rule, and RED
+ * maps to an email every thirty minutes for ever. It is AMBER, and a test holds
+ * that an account which DID onboard and then broke is still RED, which is the
+ * whole point of the narrowing.
+ *
+ * tests/unit/health/heartbeat-email.test.ts asserts the daily email itself,
+ * through the product's own builder rather than a copy, because S1's premise is
+ * that a monitor which is wrong about nearly every organiser destroys the value
+ * of every other line in that email.
+ *
+ * tests/unit/stripe-business-profile.test.ts lost the five assertions about the
+ * DELETED name comparison and gained seven about the connected account's
+ * descriptor prefix, which S1 requires to be set explicitly at creation and
+ * never left to Stripe's fallback.
+ */
+const MIN_FILES = 378
+const MIN_TESTS = 4567
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -4,12 +4,13 @@ import { getRedisClient } from '@/lib/redis/client'
 import { getSiteUrl } from '@/lib/site-url'
 import { isAiConfigured } from '@/lib/ai/client'
 import { isPushConfigured } from '@/lib/notifications/web-push'
-import { selfProbe, driftWatchdog, endpointConfigCheck, connectNameDivergenceCheck } from '@/lib/health/payment-checks'
+import { selfProbe, driftWatchdog, endpointConfigCheck, connectedAccountHealthCheck } from '@/lib/health/payment-checks'
 import { senderDomainsInUse } from '@/lib/email/send'
 import { CRITICAL_ENV_RULES, evalEnvRule } from '@/lib/health/critical-env.mjs'
 import { evaluateProcessEnv, evaluateStores } from '@/lib/env/manifest-checks.mjs'
 import { githubActionsNames } from '@/lib/env/manifest.mjs'
 import { mintOrderAccessToken, verifyOrderAccessToken } from '@/lib/orders/order-access'
+import { overallStatus as rollUp, type HealthResult, type Severity } from '@/lib/health/result'
 
 /**
  * PLATFORM HEALTH SENTINEL - the check library.
@@ -21,21 +22,11 @@ import { mintOrderAccessToken, verifyOrderAccessToken } from '@/lib/orders/order
  * failure from a benign state so the monitor never cries wolf.
  */
 
-export type Severity = 'critical' | 'warning'
-
-export interface HealthResult {
-  id: string
-  label: string
-  severity: Severity
-  ok: boolean
-  detail: string
-  probableCause?: string
-  /** Plain-language, non-engineer action to resolve it. */
-  action?: string
-  durationMs?: number
-  /** True when the check could not run meaningfully in this environment (e.g. https-only on localhost) - reported as ok with a note. */
-  skipped?: boolean
-}
+// The shape and the roll-up live in ./result, which depends on nothing, so a
+// plain Node process can import them. They are re-exported here so no call site
+// moved. See that file for why.
+export type { Severity, HealthResult } from '@/lib/health/result'
+export { overallStatus } from '@/lib/health/result'
 
 /**
  * Log one check's own result and reason (2026-07-26).
@@ -102,25 +93,30 @@ async function checkPayment(origin: string): Promise<HealthResult> {
 }
 
 /**
- * Connected-account business names still agree with the organisation records.
+ * Every connected account can still take a charge and be paid out. Close-out S1.
  *
- * WARNING, not critical, and deliberately its own check rather than folded into
- * checkPayment: a name mismatch means a buyer may not recognise who charged
- * them, which invites a chargeback, but nothing is down. Rolling it into the
- * critical payment check would both wake the founder for a non-outage and, far
- * worse, report the money path as broken when it is working.
+ * SEVERITY IS NOT FIXED HERE, and that is the change. The check it replaced was
+ * pinned to WARNING because a name mismatch is never an outage. This one carries
+ * a verdict per run, because the two things it reports are not the same size: an
+ * organiser Stripe has stopped from taking charges IS an outage for that
+ * organiser, and an organiser who owes Stripe a document next month is not.
+ * RED maps to 'critical', which emails immediately; AMBER maps to 'warning',
+ * which rolls into the daily heartbeat.
+ *
+ * The one narrowing of S1's exact RED rule, and the account on TEST that forced
+ * it, are recorded in src/lib/stripe/account-health.ts beside the measurement.
  */
-async function checkConnectProfile(): Promise<HealthResult> {
-  const r = await connectNameDivergenceCheck()
+async function checkConnectHealth(): Promise<HealthResult> {
+  const r = await connectedAccountHealthCheck()
   return {
-    id: 'connect_profile',
-    label: 'Organiser names match Stripe',
-    severity: 'warning',
+    id: 'connect_health',
+    label: 'Organisers can take money',
+    severity: r.verdict === 'red' ? 'critical' : 'warning',
     ok: r.ok,
     detail: r.detail,
     probableCause: r.probableCause,
     action:
-      'Confirm which name is correct first, because the organiser may be trading under a name we have not recorded. To correct Stripe: POST /v1/accounts/{id} with business_profile[name]. Verified against a fully-onboarded Express account: the platform key is accepted, and Stripe then resets that account\'s statement descriptor to match the new name. To correct EventLinqs instead, edit the organisation name in /admin. This check never auto-corrects either side, because overwriting a deliberate trading name would be worse than reporting the difference.',
+      'Each line above names the organiser, their Stripe account and what Stripe is waiting for. Nothing here is fixed by the platform: the organiser supplies the missing information in their own Stripe dashboard, reached from Payouts in their EventLinqs dashboard. An account that has never finished onboarding is reported and is not a fault.',
   }
 }
 
@@ -683,7 +679,10 @@ async function checkManifestAgainstStore(): Promise<{ mode: string; findings: st
   }
 }
 
-export const CHECK_IDS = ['payment', 'connect_profile', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest', 'order_access'] as const
+/** Re-exported above; aliased here so this module's own uses read naturally. */
+void rollUp
+
+export const CHECK_IDS = ['payment', 'connect_health', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest', 'order_access'] as const
 export type CheckId = (typeof CHECK_IDS)[number]
 
 /**
@@ -697,7 +696,7 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
 
   const results = await Promise.all([
     timed('payment', () => checkPayment(origin)),
-    timed('connect_profile', () => checkConnectProfile()),
+    timed('connect_health', () => checkConnectHealth()),
     timed('database', () => checkDatabase()),
     timed('email', () => checkEmail()),
     timed('storage', () => checkStorage()),
@@ -725,8 +724,4 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
   })
 }
 
-export function overallStatus(results: HealthResult[]): 'green' | 'warning' | 'critical' {
-  if (results.some(r => !r.ok && r.severity === 'critical')) return 'critical'
-  if (results.some(r => !r.ok && r.severity === 'warning')) return 'warning'
-  return 'green'
-}
+

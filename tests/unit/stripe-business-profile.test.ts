@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   buildConnectBusinessProfile,
-  businessNameDivergence,
-  normaliseBusinessName,
+  connectedDescriptorPrefix,
   organiserPublicUrl,
+  PLATFORM_DESCRIPTOR_PREFIX,
   statementDescriptorSuffix,
 } from '@/lib/stripe/business-profile'
 
@@ -240,35 +240,71 @@ describe('statementDescriptorSuffix', () => {
   })
 })
 
-describe('businessNameDivergence', () => {
-  it('flags the exact production defect', () => {
-    expect(businessNameDivergence('Party Pty Ltd', 'Eventlinqs')).toEqual({
-      status: 'diverged',
-      platformName: 'Party Pty Ltd',
-      stripeName: 'Eventlinqs',
-    })
+/**
+ * THE CONNECTED ACCOUNT'S OWN DESCRIPTOR PREFIX. Close-out S1, requirement 3.
+ *
+ * "At connected account creation, always set business_profile.name to the
+ * organiser display name and always set
+ * settings.card_payments.statement_descriptor_prefix explicitly, derived from
+ * that display name, never left to Stripe's fallback."
+ *
+ * ALWAYS is the word under test. Stripe rejects a prefix outside 2 to 10
+ * characters and rejects one carrying anything outside printable ASCII, and a
+ * rejected prefix makes accounts.create throw, which would stop an organiser
+ * onboarding at all. So every case below asserts that SOMETHING valid comes out,
+ * and the fallback is the platform's own prefix rather than Stripe's generated
+ * one.
+ */
+describe('connectedDescriptorPrefix', () => {
+  const valid = (v: string) => v.length >= 2 && v.length <= 10 && /^[\x20-\x7E]+$/.test(v) && /[A-Za-z]/.test(v)
+
+  it('uses the organiser display name when it fits', () => {
+    expect(connectedDescriptorPrefix('Basement 45')).toBe('Basement')
+    expect(connectedDescriptorPrefix('MKLStudios')).toBe('MKLStudios')
   })
 
-  it('treats an unset Stripe name as not-yet-onboarded, not as a mismatch', () => {
-    expect(businessNameDivergence('Party Pty Ltd', null).status).toBe('not_set')
-    expect(businessNameDivergence('Party Pty Ltd', '').status).toBe('not_set')
-    expect(businessNameDivergence('Party Pty Ltd', '   ').status).toBe('not_set')
+  it('prefers a whole first word over a severed one', () => {
+    // "Basement 4" would read like a string that ran out of room.
+    expect(connectedDescriptorPrefix('Basement 45 Collective')).toBe('Basement')
   })
 
-  it('does not cry wolf over punctuation or casing', () => {
-    expect(businessNameDivergence('Party Pty Ltd', 'party pty ltd').status).toBe('match')
-    expect(businessNameDivergence('Party Pty Ltd', 'Party Pty. Ltd.').status).toBe('match')
-    expect(businessNameDivergence('Party Pty Ltd', '  Party  Pty  Ltd ').status).toBe('match')
+  it('clips a first word that is longer than the budget, because there is nothing else to give', () => {
+    expect(connectedDescriptorPrefix('Thunderbirds')).toBe('Thunderbir')
   })
 
-  it('still reports a genuinely different legal name', () => {
-    expect(businessNameDivergence('Party Pty Ltd', 'Party').status).toBe('diverged')
+  it('never returns Stripe a value Stripe would reject', () => {
+    for (const name of [
+      'Basement 45',
+      'Café Niño Fiesta',
+      'A',
+      'A B',
+      '  ',
+      '2026',
+      '***',
+      'Thunderbird Freight Sessions',
+      'Ωμέγα',
+      'a'.repeat(200),
+    ]) {
+      const prefix = connectedDescriptorPrefix(name)
+      expect(valid(prefix), `"${name}" produced "${prefix}"`).toBe(true)
+    }
   })
-})
 
-describe('normaliseBusinessName', () => {
-  it('casefolds and drops punctuation without swallowing real words', () => {
-    expect(normaliseBusinessName('Party Pty. Ltd.')).toBe('party pty ltd')
-    expect(normaliseBusinessName('Rosie&Co')).toBe('rosie co')
+  it('falls back to the platform prefix rather than throwing or returning nothing', () => {
+    expect(connectedDescriptorPrefix(null)).toBe(PLATFORM_DESCRIPTOR_PREFIX)
+    expect(connectedDescriptorPrefix(undefined)).toBe(PLATFORM_DESCRIPTOR_PREFIX)
+    expect(connectedDescriptorPrefix('')).toBe(PLATFORM_DESCRIPTOR_PREFIX)
+    expect(connectedDescriptorPrefix('2026')).toBe(PLATFORM_DESCRIPTOR_PREFIX)
+    // A single usable letter is below Stripe's two-character floor.
+    expect(connectedDescriptorPrefix('A')).toBe(PLATFORM_DESCRIPTOR_PREFIX)
+  })
+
+  it('transliterates rather than gutting an accented name', () => {
+    expect(connectedDescriptorPrefix('Café Niño')).toBe('Cafe Nino')
+  })
+
+  it('strips the characters Stripe forbids, including the asterisk that would fake a second separator', () => {
+    expect(connectedDescriptorPrefix('Rose*Co')).toBe('RoseCo')
+    expect(connectedDescriptorPrefix('A"B<C>D')).toBe('ABCD')
   })
 })

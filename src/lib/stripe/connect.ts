@@ -1,5 +1,5 @@
 import Stripe from 'stripe'
-import type { ConnectBusinessProfile } from './business-profile'
+import { connectedDescriptorPrefix, type ConnectBusinessProfile } from './business-profile'
 
 /**
  * Centralised Stripe Connect helpers.
@@ -189,6 +189,20 @@ export async function createExpressAccount(
       payouts: {
         schedule: { interval: 'daily', delay_days: input.payoutDelayDays },
       },
+      // Close-out S1, requirement 3: set explicitly, never left to Stripe's
+      // fallback. Stripe generates a descriptor by concatenating
+      // business_profile.name, "doing business as", business_profile.url and
+      // then the legal entity name, and sets the prefix from the first 10
+      // characters of whatever that produced
+      // (https://docs.stripe.com/connect/statement-descriptors, fetched
+      // 2026-09-11). That is how two TEST accounts ended up with the prefix
+      // "EVENTLINQS.COM", taken from a URL an organiser typed. Deriving it here
+      // from the name we already hold means it is a business name from the
+      // first moment. See connectedDescriptorPrefix for why no buyer sees this
+      // string today and why it is set anyway.
+      card_payments: {
+        statement_descriptor_prefix: connectedDescriptorPrefix(input.businessProfile.name),
+      },
     },
     metadata: {
       organisation_id: input.organisationId,
@@ -253,20 +267,6 @@ export async function createAccountLink(
 export async function retrieveAccount(accountId: string): Promise<Stripe.Account> {
   const stripe = getStripe()
   return stripe.accounts.retrieve(accountId)
-}
-
-/**
- * The customer-facing business name currently on a connected account, or null
- * when Stripe holds none yet.
- *
- * Used by the divergence check that compares this against `organisations.name`.
- * Kept as its own thin helper so the payouts page and the health sentinel read
- * the value the same way, and so a Stripe outage degrades to "unknown" at one
- * call site rather than throwing into a page render.
- */
-export async function getConnectedBusinessName(accountId: string): Promise<string | null> {
-  const account = await retrieveAccount(accountId)
-  return account.business_profile?.name ?? null
 }
 
 /**
