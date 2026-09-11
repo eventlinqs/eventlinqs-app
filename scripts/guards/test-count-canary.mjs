@@ -1402,9 +1402,20 @@ const ROOT = join(HERE, '..', '..')
  * and the simulation blamed .vercelignore for a failure that had nothing to do
  * with the upload. The child now gets the build host's environment: no CI
  * identity, no credential, no CLI login.
+ *
+ * Then 382/4628 to 383/4634, 12 September, after the first production smoke
+ * following the merge of #145 found /unsubscribe/recovery/<malformed token>
+ * answering 500: six tests on isTokenShaped and addressForToken (a malformed
+ * token is not found without the database being asked; a real failure on a
+ * well-formed one still throws).
+ *
+ * Then 383/4634 to 384/4639, the same day. Five on the gate's Upstash stub,
+ * which the first local route sweep caught answering PING without the base64
+ * encoding the client asks for, so /api/health/redis read 503 on a product
+ * that was fine (encodeForClient, wantsBase64, exec).
  */
-const MIN_FILES = 382
-const MIN_TESTS = 4628
+const MIN_FILES = 384
+const MIN_TESTS = 4639
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

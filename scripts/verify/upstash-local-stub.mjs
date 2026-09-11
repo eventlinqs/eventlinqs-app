@@ -14,14 +14,26 @@
  * Implements only what src/lib/redis/rate-limit.ts uses: INCR, EXPIRE, GET,
  * SET, DEL, and the /pipeline form. Not a Redis. Never deployed.
  *
+ * THE ENCODING THE CLIENT ASKS FOR IS HONOURED (12 September 2026). The
+ * @upstash/redis client defaults `responseEncoding` to "base64", sends
+ * `Upstash-Encoding: base64`, and base64-DECODES every string in the answer.
+ * Upstash therefore base64-ENCODES every string result when that header is
+ * present; numbers and nulls travel as they are. This stub answered PING with a
+ * plain "PONG", which the client decoded into three bytes of rubbish, so the
+ * first route sweep against the gate's own served build found
+ * /api/health/redis answering 503 with `result: "<(F"` and reported a server
+ * error on a product that was fine. The rate limiter never noticed because
+ * INCR answers a number. Now a string is encoded when asked, the way the real
+ * service does it, and the health route reads PONG.
+ *
  * Usage: PORT=54322 node scripts/verify/upstash-local-stub.mjs
  */
 import { createServer } from 'node:http'
+import { fileURLToPath } from 'node:url'
 
-const PORT = Number(process.env.PORT ?? 54322)
 const store = new Map()
 
-function exec(cmd) {
+export function exec(cmd) {
   const [nameRaw, ...args] = cmd
   const name = String(nameRaw).toUpperCase()
   const key = String(args[0] ?? '')
@@ -47,26 +59,50 @@ function exec(cmd) {
   }
 }
 
-createServer(async (req, res) => {
-  const chunks = []
-  for await (const c of req) chunks.push(c)
-  const raw = Buffer.concat(chunks).toString() || '[]'
+/**
+ * What Upstash puts on the wire for one result when the client sent
+ * `Upstash-Encoding: base64`: strings base64-encoded, arrays element by
+ * element, numbers and null untouched. Without the header, the value as is.
+ * Pure, so it is tested without a server.
+ */
+export function encodeForClient(value, wantsBase64) {
+  if (!wantsBase64) return value
+  if (typeof value === 'string') return Buffer.from(value, 'utf8').toString('base64')
+  if (Array.isArray(value)) return value.map((v) => encodeForClient(v, true))
+  return value
+}
 
-  let payload
-  try {
-    payload = JSON.parse(raw)
-  } catch {
-    // Upstash also accepts the command in the path: /incr/<key>
-    payload = req.url.split('/').filter(Boolean).map(decodeURIComponent)
-  }
+/** Does this request ask for base64 results? Header names arrive lower-cased in Node. */
+export function wantsBase64(headers) {
+  return String(headers['upstash-encoding'] ?? '').toLowerCase() === 'base64'
+}
 
-  res.writeHead(200, { 'content-type': 'application/json' })
+const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]
 
-  if (req.url?.endsWith('/pipeline') || req.url?.endsWith('/multi-exec')) {
-    res.end(JSON.stringify(payload.map((cmd) => ({ result: exec(cmd) }))))
-    return
-  }
-  res.end(JSON.stringify({ result: exec(payload) }))
-}).listen(PORT, '127.0.0.1', () => {
-  console.log(`upstash stub listening on http://127.0.0.1:${PORT} (in-memory, local only)`)
-})
+if (invokedDirectly) {
+  const PORT = Number(process.env.PORT ?? 54322)
+  createServer(async (req, res) => {
+    const chunks = []
+    for await (const c of req) chunks.push(c)
+    const raw = Buffer.concat(chunks).toString() || '[]'
+
+    let payload
+    try {
+      payload = JSON.parse(raw)
+    } catch {
+      // Upstash also accepts the command in the path: /incr/<key>
+      payload = req.url.split('/').filter(Boolean).map(decodeURIComponent)
+    }
+
+    const base64 = wantsBase64(req.headers)
+    res.writeHead(200, { 'content-type': 'application/json' })
+
+    if (req.url?.endsWith('/pipeline') || req.url?.endsWith('/multi-exec')) {
+      res.end(JSON.stringify(payload.map((cmd) => ({ result: encodeForClient(exec(cmd), base64) }))))
+      return
+    }
+    res.end(JSON.stringify({ result: encodeForClient(exec(payload), base64) }))
+  }).listen(PORT, '127.0.0.1', () => {
+    console.log(`upstash stub listening on http://127.0.0.1:${PORT} (in-memory, local only)`)
+  })
+}

@@ -279,8 +279,26 @@ export function fingerprintsOf(email: string): string[] {
   return identityFingerprints(email)
 }
 
+/**
+ * THE SHAPE OF EVERY TOKEN THE ENGINE MINTS: a uuid. recovery_contacts.token is
+ * a uuid column filled by gen_random_uuid(), so a value of any other shape
+ * cannot name anybody, and asking the database about one is how a malformed
+ * link became a 500 on production on 12 September 2026: the first route sweep
+ * after the merge asked /unsubscribe/recovery/zzzzzzzzzzzz and Postgres
+ * answered "invalid input syntax for type uuid", which addressForToken threw
+ * as an outage. A link that names nobody is NOT FOUND. Only a real failure to
+ * ask is a 500 (the read-failure rule: a 500 says ask again, a 404 says
+ * something false and permanent), and that branch is kept below.
+ */
+const TOKEN_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export function isTokenShaped(token: unknown): token is string {
+  return typeof token === 'string' && TOKEN_SHAPE.test(token.trim())
+}
+
 /** Whose token this is, or null. The unsubscribe route's only question. */
 export async function addressForToken(token: string, db: Db = createAdminClient()): Promise<string | null> {
+  // A value the column would refuse is not found, without the question.
+  if (!isTokenShaped(token)) return null
   const { data, error } = await db
     .from('recovery_contacts')
     .select('contact_email')

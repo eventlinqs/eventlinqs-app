@@ -60,7 +60,7 @@
  * allowlist.
  *
  * Usage:
- *   node scripts/verify/production-route-sweep.mjs --base https://www.eventlinqs.com.au --out <dir>
+ *   node scripts/verify/production-route-sweep.mjs --base https://www.eventlinqs.com.au --out <dir> [--all-routes]
  */
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -71,6 +71,17 @@ const args = process.argv.slice(2)
 const argOf = name => (args.includes(name) ? args[args.indexOf(name) + 1] : null)
 const BASE = (argOf('--base') ?? 'https://www.eventlinqs.com.au').replace(/\/$/, '')
 const OUT = argOf('--out')
+/*
+ * --all-routes: drive every route in THIS tree, whether or not origin/main has
+ * seen it. The default filter exists for PRODUCTION, where a route main never
+ * merged cannot answer and must not be counted against the live site. Run
+ * against a local build of this tree, that filter is exactly wrong: it skips the
+ * newest routes, which are the ones no sweep has ever driven. On 12 September
+ * 2026 the recovery engine's unsubscribe route reached production unswept and
+ * answered 500 on its first malformed token. The pre-push gate passes this
+ * flag; the production smoke does not.
+ */
+const ALL_ROUTES = args.includes('--all-routes')
 if (!OUT) {
   console.error('FAIL: --out <directory> is required')
   process.exit(1)
@@ -146,7 +157,7 @@ function enumerateRoutes() {
         const route = segs.length === 0 ? '/' : `/${segs.join('/')}`
         const isRoute =
           e.name === 'page.tsx' || e.name === 'page.ts' || e.name === 'route.ts' || e.name === 'route.tsx'
-        if (isRoute && !deployedOnMain(join(dir, e.name))) notDeployed.add(route)
+        if (isRoute && !ALL_ROUTES && !deployedOnMain(join(dir, e.name))) notDeployed.add(route)
         if (e.name === 'page.tsx' || e.name === 'page.ts') pages.push(route)
         if (e.name === 'route.ts' || e.name === 'route.tsx') handlers.push(route)
       }
@@ -212,6 +223,8 @@ const NO_ANONYMOUS_VALUE = {
   '/unsubscribe/[token]': 'an unsubscribe token, minted per recipient per send',
   '/unsubscribe/digest/[token]': 'the same, for the digest',
   '/waitlist/unsubscribe/[token]': 'the same, for a waitlist',
+  '/unsubscribe/recovery/[token]':
+    'the same, for the recovery engine (close-out D2). A malformed one answered 500 on production on 12 September 2026 and is now not found',
   '/launch/k/[code]': 'a Launch Kit code, minted when an organiser publishes',
   '/launch/with/[code]': 'the same Launch Kit code',
   '/events/[slug]/holder': 'the holder view of an event, reached with a bearer ticket',
@@ -427,13 +440,21 @@ const PER_PATTERN = 3
  * PLATFORM'S OWN output, so nothing here is a slug somebody typed.
  */
 function realValuesFor(pattern) {
-  const fromSitemap = published.filter(u => {
-    try {
-      return fits(new URL(u).pathname, pattern)
-    } catch {
-      return false
-    }
-  })
+  const fromSitemap = published
+    .filter(u => {
+      try {
+        return fits(new URL(u).pathname, pattern)
+      } catch {
+        return false
+      }
+    })
+    // The sitemap publishes absolute urls on the canonical host. Driven against
+    // a local build (--all-routes, the pre-push gate) those urls would send the
+    // sweep to production, where the local build's rows do not exist: on
+    // 12 September 2026 twelve TEST rows came back 404 from the live site and
+    // were reported as dead links. Every value is rebased onto the base under
+    // test; on production that is a no-op.
+    .map(u => `${BASE}${new URL(u).pathname}`)
   const fromAnchors = [...harvested].filter(p => fits(p, pattern)).map(p => `${BASE}${p}`)
   return [...new Set([...fromSitemap, ...fromAnchors])].slice(0, PER_PATTERN)
 }
@@ -479,7 +500,12 @@ for (const d of DELIBERATE) {
   const matched = deliberateHit.has(d.route)
   console.log(`  ${matched ? 'matched  ' : 'UNMATCHED'} ${d.route.padEnd(34)} ${d.why} (${d.source})`)
   if (!matched) {
-    defects.push(`the reviewed entry ${d.route} matched nothing this run: either the route answers 200 now and the entry is stale, or the route is gone`)
+    const sentence = `the reviewed entry ${d.route} matched nothing this run: either the route answers 200 now and the entry is stale, or the route is gone`
+    // The entries name PRODUCTION flag states. A local build under --all-routes
+    // may have the flag on, so there it is a note; against the live site it is
+    // the stale allowlist the list exists to catch.
+    if (ALL_ROUTES) console.log(`[sweep] note (local build, flags differ): ${sentence}`)
+    else defects.push(sentence)
   }
 }
 
@@ -507,6 +533,11 @@ if (unresolved.length > 0) {
   const unexplained = unresolved.filter(p => !NO_ANONYMOUS_VALUE[p])
   if (unexplained.length > 0) {
     console.log(`[sweep] ${unexplained.length} of them are UNEXPLAINED and are a real coverage gap, not a note.`)
+    // A gap nobody has explained is a defect, not a printed line: the recovery
+    // route sat in this list on 12 September 2026 while answering 500.
+    for (const p of unexplained) {
+      defects.push(`${p}: a public dynamic pattern with no real value to drive and no note in NO_ANONYMOUS_VALUE (a coverage gap)`)
+    }
   }
 }
 for (const p of Object.keys(NO_ANONYMOUS_VALUE)) {
