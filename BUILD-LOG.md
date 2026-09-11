@@ -10549,3 +10549,51 @@ records them from sessions 62 to 65: UX6, D1, D2, UX5 and S1 each built, driven
 and green, each with only founder-held legs.
 
 DISK at end: 19.3 GB free.
+
+## Session 67, 11 September 2026. The push re-attempted per the brief, refused by the same step, nothing changed.
+
+14:29 to 14:33. The run brief's first action: fetch, count what origin does not
+have, push through the normal gate. origin/verify/l5-launch-readiness is 27
+commits behind this machine, the same 27 session 66 counted; the working tree is
+clean, so the brief's second action (commit stray work) had nothing to do.
+
+THE PUSH ATTEMPT. 14:29:01. Complete output appended to C:\dev\push-attempt.log
+(lines 1546 to 3089), timestamp line first. The gate ran honestly and in order:
+disk (19.3 GB free), typecheck, lint, copy, critical-path, lighthouse-exemptions,
+all 110 guards, types-drift, every one PASS. It stopped at step 9 of 15. The
+exact refusing lines:
+
+    [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+    [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+    [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+The ten pending migrations are the identical ten session 66 named, 20260909000001
+through 20260911000001. The environment half of the same step PASSED: 34
+production records listed, 47 manifest entries judged, 0 faults. The parity step
+read production LIVE at 14:33, so this is a fresh determination, not a replay of
+the 14:25 note: the founder has not yet run the command.
+
+WHY THE CAUSE IS NOT FIXED HERE. The fix is applying those ten migrations to
+production, which is the founder's reserved step (CLAUDE.md, Verification and
+gates, Migrations; his ruling of 26 August 2026) and this run's own brief:
+never write to production gndnldyfudbytbboxesk without explicit approval. No
+approval exists. The one command, in PowerShell from the repo:
+
+    npm run migrate:production
+
+NO SECOND PUSH, NO GATE STEP TOUCHED. Nothing changed between this refusal and
+now, so a second attempt would reproduce it byte for byte and prove nothing.
+Nothing was bypassed, skipped, lowered or exempted; the hook runs the whole gate
+on the next push.
+
+THE HALT THIS RUN OBEYS. "Only when origin holds every local commit may you
+start anything else." The priority items stand exactly as BUILD-LEDGER.md
+records them from sessions 62 to 65: UX6, D1, D2, UX5 and S1 each built, driven
+and green, each open only on founder-held legs (npm run migrate:production,
+stripe login, and the two S1 approvals). BUILD-LEDGER.md is deliberately
+untouched this session: no verdict changed. UX6's closing condition, the drive
+at 390 on a READY preview built from a pushed commit, becomes possible the
+moment the command above lands and the push goes through; that drive is the
+first act of the next session.
+
+DISK at end: 19.3 GB free, on AC power.

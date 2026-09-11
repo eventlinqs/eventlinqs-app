@@ -4163,3 +4163,16 @@ What that single command releases, all at once:
 Nothing here needs a decision beyond running the command. If you would rather I
 run it, that needs your explicit written approval in the next brief, because
 today it is reserved to you and I will not touch production without it.
+
+## Re-checked today at 14:29: still the same one command, and nothing else moved
+
+This session re-ran your push gate from a clean tree, live against production,
+rather than trusting the last note. Everything green through all 110 guards;
+refused again, correctly, at production parity: production is still ten
+migrations behind, the same ten. So the state is unchanged and there is exactly
+one thing to run, in PowerShell from the repo:
+
+    npm run migrate:production
+
+The session started nothing else, per your halt rule. The full gate output from
+this attempt is appended to C:\dev\push-attempt.log.
