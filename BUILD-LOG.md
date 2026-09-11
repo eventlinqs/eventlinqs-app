@@ -12198,3 +12198,105 @@ The block that refused twenty-six sessions was gone.
   entry once the publish has run.
 
 DISK at end: 18 GB free, on AC power.
+
+
+## Session 91, continued. UX6 CLOSED on the READY preview of a90c085a: the payment step driven at 390 for the first time, the defect it exposed, and the two commits that followed.
+
+01:12 to 02:51. With origin at 0a195454 and Vercel's build of it READY
+(dpl_3XSEEesUhgdP9Gx5rEexS4URqqJj, serving the TEST project, 348 references
+to vkapkibzokmfaxqogypq in its HTML, sentry-release 0a195454), the UX6 drive
+ran against it at 390, 768 and 1440 with UX6_REQUIRE_PAYMENT_STEP=1, the
+first time any run has held a live Stripe TEST key.
+
+- WHAT THE FIRST PREVIEW DRIVE FOUND (C:\dev\EVIDENCE\UX6\preview-0a195454\).
+  The payment step was REACHED and MEASURED at all three widths (3 measured,
+  0 skipped): nothing clipped, the total AUD 53.73 visible. Two faults, both
+  axe critical "aria-required-children" INSIDE Stripe's own iframe
+  (iframe[name^="__privateStripeFrame"] .p-PaymentMethodSelector, a <select>
+  under a role that forbids one) at 390 and 1440. And the 390 full-page
+  capture showed a blank 700px card where Stripe's fields should be, with
+  "Skip to main content" painted mid-page.
+
+- WHAT WAS PROVEN RATHER THAN ASSUMED (probe-payment-step.mjs, run from the
+  repository so playwright resolves; probe-390.txt, probe-768.txt,
+  probe-390-m1.txt). Both capture oddities are artefacts: under mobile
+  emulation a full-page capture does not paint the cross-origin Stripe frame
+  beyond the viewport (the scroll-0 viewport capture and the element capture
+  of the frame show Card, Zip, Klarna, the card fields and Link, painted), and
+  the skip link is unfocused with transform translateY(-150%) at y=-59 in the
+  DOM, drawn there by the same capture. The 768 sliver was Stripe mid-layout
+  nine seconds after the click.
+
+- THE REAL DEFECT, timed at 500ms intervals. The buyer's viewport sat at the
+  top of the Payment card (scrollY 145), Stripe's loading skeleton inserted
+  236px above the content Chrome had anchored the scroll to (scrollY 381),
+  then its frame inserted 509px more net (scrollY 890, frame 747px). Chrome's
+  scroll anchoring kept the anchored content still both times, so a phone
+  buyer who tapped "Continue to payment" ended up looking at the Pay button
+  and the order summary with the card number field above the top of the
+  screen. Nothing in the markup was wrong, which is why no static gate and
+  no local drive (no Stripe key, no frame) could ever see it.
+
+- THE FIX, commit c4086acf. The payment branch is extracted into PaymentStep,
+  which carries `overflow-anchor: none` on the whole step (the anchor Chrome
+  chose was in the order summary, so the form alone would not do) and a
+  mount effect that scrolls to the top and focuses the Payment heading
+  (tabIndex -1), so the transition is announced and every buyer begins at
+  the card fields. Tailwind 4.2.2 emits the arbitrary property (compiled and
+  checked: `.[overflow-anchor:none] { overflow-anchor: none }`; present in
+  the built CSS chunk). Four component tests
+  (tests/component/checkout-payment-step.test.tsx), canary 379/4602 to
+  380/4606. The proof script now waits for Stripe to paint an input before
+  measuring the step, asserts FIRST that the Payment heading is inside the
+  viewport, captures the viewport beside the full page, and reports axe
+  violations whose every node sits inside a Stripe or hCaptcha frame as
+  third-party, counted and printed, never judged and never swallowed.
+
+- THE GATE REFUSED c4086acf AT checkout-viewport, and the page was right
+  (push-attempt.log lines 46559 to 50092). On the paid path: no quantity
+  control, no total, no way to checkout, at every width. The drive had
+  picked kit-inspection-night-635605: published, priced, 250 places, and
+  owned by an organisation with NO Stripe account, which the product answers
+  with "Tickets not yet on sale" and no selector. The picker had never asked
+  the product's first question. Commit a90c085a makes it mirror
+  isOrganiserSellable and isExternallyTicketed (sale-status.ts) and the tier
+  sale window. With that rule TEST held exactly one sellable paid event with
+  ONE place left: 80 units sat in reservations this week's drives had made,
+  which nothing on TEST ever expires (the sweep is a production cron). The
+  product's own expire_stale_reservations() was run once on
+  vkapkibzokmfaxqogypq (39 released, reserved_count 80 to 2; test-sweep.txt).
+  The step then PASSED locally (223s) and on the push (217s).
+
+- THE PUSH OF a90c085a: all fifteen steps PASS (lighthouse 1684s on mains),
+  push-attempt.log lines 50094 to 53924; origin at a90c085a, 0 ahead, 0
+  behind. Vercel built dpl_7eXtiJX56iNs4erdwYuXqHzA2eRv, READY at 02:40.
+
+- THE CLOSING DRIVE on that preview
+  (C:\dev\EVIDENCE\UX6\preview-a90c085a\drive-run.txt): PASS. 0 faults across
+  3 widths, payment step 3 measured and 0 skipped, "Stripe's payment frame
+  painted 27ms after the step appeared", "the buyer is looking at the top of
+  the payment step (heading 128px down, scrollY 0)" at 390, 768 and 1440; 40
+  axe scans, 0 outside third-party frames, 2 inside Stripe's frame reported.
+  The probe timeline at 390 (probe-390.txt): scrollY 0 throughout while the
+  frame grows 2 to 412 to 747px, document.activeElement the Payment heading,
+  computed overflow-anchor "none" on the step wrapper. The 390 viewport
+  capture read by eye: "Payment", Card / Zip / Klarna, card number, expiry,
+  CVC, country, all in the first screen.
+
+- PROVEN RED AS WELL AS GREEN. The component test with PaymentStep present
+  and the fix removed: 3 failed, 1 passed, exactly the three that hold the
+  fix (component-test-red-2.txt), the file restored and `git diff --quiet`
+  clean. The drive's new assertion against the still-deployed pre-fix
+  preview of 0a195454: "the Payment heading sits -762px from the top of a
+  844px viewport (scrollY 890)", exit 1 (assertion-red-on-0a195454/).
+
+- ROAST GATE PASSED: 22 requirements, 22 met, 0 partial, 0 not met, 0
+  adversarial findings unresolved (docs/roast/ux6-preview-2026-09-12.md).
+  The one interpretation stated: "including the payment step" is the payment
+  SURFACE, measured with a live Stripe frame; a completed real-card purchase
+  is launch item L1.9, on production. One thing outside this repository:
+  Stripe's own selector fails an ARIA rule inside Stripe's iframe; reported,
+  not fixable here. Housekeeping: the UX6 body moved to CLOSE-OUT-DONE.md,
+  one line left in CLOSE-OUT.md.
+
+DISK at end: 18 GB free, on AC power.

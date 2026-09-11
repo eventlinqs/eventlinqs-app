@@ -4382,3 +4382,36 @@ thing this session does.
 
 Nothing for you to decide here. Issue #150 is the bot's stall thread and is
 closed with a pointer to this entry.
+
+
+## UX6 is closed: a phone buyer can now see what they are paying, and, since tonight, where to type their card
+
+The mobile checkout fix has been driven on a real Vercel preview built from
+the pushed branch, at 390, 768 and 1440, with a real Stripe TEST payment
+step on the screen for the first time. Every surface fits, the total is in
+view at every width, and the paid path reaches the card fields. The 24
+September deadline for paid traffic is no longer blocked by this item.
+
+Driving the payment step for the first time found one more thing, which no
+earlier run could have seen because none of them had a Stripe key. On a
+phone, after tapping "Continue to payment", the page slid down by itself as
+Stripe's card fields loaded, and the buyer was left looking at the Pay
+button and the order summary with the card number field above the top of
+the screen. That was Chrome keeping the content it had anchored to still
+while Stripe grew above it. It is fixed: the payment step now stays put and
+starts at the top with the heading focused, and the drive checks exactly
+that on every run that has a key. The same drive was pointed at the previous
+preview to prove the check goes red on the old behaviour.
+
+Two things to know, nothing to decide:
+
+- Stripe's own payment-method dropdown fails one accessibility rule inside
+  Stripe's iframe. It is Stripe's markup, so the drive reports it and does
+  not fail on it. If you want it raised with Stripe, the exact finding is in
+  C:\dev\EVIDENCE\UX6\preview-a90c085a\drive-run.txt.
+- A completed real-card purchase is launch item 9 and is driven on production,
+  not on a preview. The payment step here is measured with a live PaymentIntent
+  up to the card fields.
+
+Next in the priority order: D1, the slot ledger, whose only open leg is the
+one production backfill you approved on 11 September.
