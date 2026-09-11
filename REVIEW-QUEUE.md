@@ -4225,13 +4225,20 @@ Evidence: C:\dev\EVIDENCE\C16\probe-ten-pending-preconditions.txt.
 The second command, stripe login, is unchanged from yesterday's note.
 
 Re-checked at 15:03 (a sixth attempt, session 71), at 15:11 (a seventh,
-session 72) and at 15:18 (an eighth, session 73): your push gate ran again each
-time, green through all 110 guards, and was refused at the same line by the same
-ten migrations. Nothing else moved and nothing else was started. The command is
-unchanged: npm run migrate:production. Later re-checks that find the same state
-will widen this paragraph rather than add another section.
+session 72), at 15:18 (an eighth, session 73) and at 15:26 (a ninth, session
+74): your push gate ran again each time, green through all 110 guards, and was
+refused at the same line by the same ten migrations. Nothing else moved and
+nothing else was started. The command is unchanged: npm run migrate:production.
+Later re-checks that find the same state will widen this paragraph rather than
+add another section.
 
-One practical thing before you run it: the laptop is on battery right now. On
-battery this machine benchmarks below the floor the Lighthouse step needs, so
-the first full push after your command would go red on the performance step
-for no reason of the product's. Plug it in first, then run the command.
+One question answered this time so you do not have to ask it: could the mobile
+checkout fix be pushed on its own, ahead of the migrations, to get it onto a
+preview for your 24 September deadline? No. The very first of the 27 waiting
+commits is the one that adds the first of the ten migrations, so there is no
+slice of this work that production is not already behind. Your one command
+releases all of it at once.
+
+The battery caution from session 73 is cleared: the laptop is back on mains
+(100 percent, charging), so the first full push after your command will run
+its Lighthouse step on a comparable machine.
