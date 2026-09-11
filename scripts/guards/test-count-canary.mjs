@@ -1355,9 +1355,20 @@ const ROOT = join(HERE, '..', '..')
  * 101st connected organiser it would have gone on reporting green with an
  * unknown number of accounts never looked at. Seven tests on the paging loop,
  * including the cursor Stripe's own page documents and the runaway stop.
+ *
+ * Then 378/4584 to 379/4602 on 12 September 2026, the types-cover-migrations
+ * guard. The first push after the founder applied ten migrations to production
+ * was refused by the types-drift guard with 285 unexplained differences, every
+ * one an object the tree's own migrations create: five migrations had been
+ * committed without regenerating src/types/database.ts, and the drift guard
+ * could not see it while production was equally behind. Eighteen tests in
+ * tests/unit/guards/types-cover-migrations.test.ts drive the replay (create,
+ * rename, drop, trigger functions excluded, runtime-built names skipped) and
+ * the judgement, and the last two run it over the real migrations and the real
+ * committed types, so the suite itself now refuses a stale types file.
  */
-const MIN_FILES = 378
-const MIN_TESTS = 4584
+const MIN_FILES = 379
+const MIN_TESTS = 4602
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

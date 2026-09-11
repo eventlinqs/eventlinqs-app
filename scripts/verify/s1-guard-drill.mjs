@@ -159,6 +159,11 @@ drill(
 console.log('')
 console.log('one-door-to-the-requirement-watch')
 
+// Since 12 September 2026 this case also covers the third narrowing: the
+// generated src/types/database.ts names the table (it names every table) and
+// is excluded by name as the schema record, not a door. Before the types were
+// regenerated it did not name the table at all, which is how the guard's first
+// green hid the stale-types defect that types-cover-migrations now refuses.
 drill('the tree as it stands is green', GUARDS.door, 'GREEN', () => {})
 
 // Clause 1. A second module touching the table in CODE.

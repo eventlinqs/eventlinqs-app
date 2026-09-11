@@ -112,7 +112,25 @@ function main() {
   const files = sourceFiles(root, join(root, 'src'))
 
   /* ---- clause 1: one door ---- */
-  const namers = files.filter(f => codeOnly(readFileSync(join(root, f), 'utf8')).includes(TABLE))
+  /*
+   * THE SCHEMA RECORD IS NOT A DOOR. src/types/database.ts is generated from
+   * the database and names every table by definition; it reads nothing and
+   * writes nothing, so it can be neither a second door nor a wound clock.
+   *
+   * It was absent from this list for the first day of the guard's life only
+   * because the types had never been regenerated for the migration that
+   * creates the table: the first push after the founder applied that migration
+   * was refused by the types-drift guard (11 September 2026), the regeneration
+   * put connect_requirement_watch into the types, and this guard promptly
+   * accused the types file. Its first green was a symptom of the defect the
+   * types-cover-migrations guard now refuses. Excluded by name, and printed on
+   * every run, so the exclusion cannot widen quietly.
+   */
+  const SCHEMA_RECORD = 'src/types/database.ts'
+  console.log(`${tag} ${SCHEMA_RECORD} is the generated schema record: it names every table and is not a door`)
+  const namers = files.filter(
+    f => f !== SCHEMA_RECORD && codeOnly(readFileSync(join(root, f), 'utf8')).includes(TABLE),
+  )
   for (const file of namers) {
     if (file === DOOR) continue
     problems.push(

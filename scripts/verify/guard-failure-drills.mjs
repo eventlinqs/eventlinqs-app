@@ -2114,6 +2114,47 @@ const DRILLS = [
     replace: "    count('no link, carrying on anyway')",
     expect: 'unsubscribe link in 1 of its 2 send path(s)',
   },
+  /*
+   * types-cover-migrations (11 September 2026), three drills, one per kind of
+   * object that was actually missing when the first push after the founder's
+   * migrations was refused with 285 unexplained differences: a table, an enum
+   * and a column, each added to the newest migration and never regenerated
+   * into src/types/database.ts. The guard must name the object AND the
+   * migration, because "285 differences" was the shape of the finding that
+   * took a session to read.
+   */
+  {
+    name: 'a migration creates a table that was never regenerated into the committed types',
+    guard: `${GUARDS}/types-cover-migrations.mjs`,
+    file: 'supabase/migrations/20260911000001_connect_requirement_watch.sql',
+    find: "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n",
+    replace:
+      "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n" +
+      'create table public.a_table_the_drill_adds (id uuid primary key);\n',
+    expect:
+      'table public.a_table_the_drill_adds is created by 20260911000001_connect_requirement_watch.sql and public.Tables.a_table_the_drill_adds is not in src/types/database.ts',
+  },
+  {
+    name: 'a migration creates an enum that was never regenerated into the committed types',
+    guard: `${GUARDS}/types-cover-migrations.mjs`,
+    file: 'supabase/migrations/20260911000001_connect_requirement_watch.sql',
+    find: "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n",
+    replace:
+      "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n" +
+      "create type public.an_enum_the_drill_adds as enum ('a');\n",
+    expect: 'enum public.an_enum_the_drill_adds is created by 20260911000001_connect_requirement_watch.sql',
+  },
+  {
+    name: 'a migration adds a column that was never regenerated into the committed types',
+    guard: `${GUARDS}/types-cover-migrations.mjs`,
+    file: 'supabase/migrations/20260911000001_connect_requirement_watch.sql',
+    find: "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n",
+    replace:
+      "-- THE MONITOR'S OWN MEMORY. Close-out S1, the one clause that needs a clock.\n" +
+      'alter table public.connect_requirement_watch add column a_column_the_drill_adds text;\n',
+    expect:
+      'column public.connect_requirement_watch.a_column_the_drill_adds is created by 20260911000001_connect_requirement_watch.sql and public.Tables.connect_requirement_watch.Row.a_column_the_drill_adds is not in src/types/database.ts',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

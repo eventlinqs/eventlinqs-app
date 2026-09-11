@@ -237,6 +237,12 @@
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
  *                              write it was watching (close-out UX3)
+ *   types-cover-migrations   the committed src/types/database.ts carries every public
+ *                              table, view, enum, callable function and added column the
+ *                              migrations create, judged from the repository alone, so a
+ *                              migration committed without regenerating the types is
+ *                              refused on that commit and not on the push two days later
+ *                              when production catches up (11 September 2026)
  *   platform-notifications-installed  the build's own database carries the six triggers
  *                              that record a new organiser, a Stripe onboarding, a
  *                              published event and a paid order, so none of the five can
@@ -1145,6 +1151,21 @@ const GUARDS = [
   // trigger's record fields against the committed types. Drilled red by putting
   // new.city back.
   'scripts/guards/trigger-columns-exist.mjs',
+
+  // 11 September 2026. Five migrations (20260910000001 to 20260911000001) were
+  // committed without regenerating src/types/database.ts and every gate stayed
+  // green, because the types-drift guard compares the committed file with
+  // PRODUCTION and production had not been given them yet: both sides were
+  // stale in the same way, and it said IN SYNC twenty-six times. The first push
+  // after the founder applied them was refused with 285 unexplained
+  // differences, every one an object the migrations in this tree create. This
+  // replays the migrations and demands every public table, view, enum, callable
+  // function and added column from the committed types, reading nothing but the
+  // repository, so it refuses the commit that forgets rather than the push two
+  // days later. Drilled red with a table, an enum and a column added to the
+  // newest migration; proven red against the committed types of 4d0fda21 and
+  // green against the regenerated file (C:\dev\EVIDENCE\TYPES-DRIFT-2026-09-11).
+  'scripts/guards/types-cover-migrations.mjs',
 
   // Found while auditing the notification routing for close-out UX4:
   // /api/cron/queue-admit documented itself as running every minute and had no

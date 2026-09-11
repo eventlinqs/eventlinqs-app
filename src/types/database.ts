@@ -547,6 +547,30 @@ export type Database = {
           },
         ]
       }
+      connect_requirement_watch: {
+        Row: {
+          bucket: string
+          first_seen_at: string
+          last_seen_at: string
+          requirement: string
+          stripe_account_id: string
+        }
+        Insert: {
+          bucket: string
+          first_seen_at?: string
+          last_seen_at?: string
+          requirement: string
+          stripe_account_id: string
+        }
+        Update: {
+          bucket?: string
+          first_seen_at?: string
+          last_seen_at?: string
+          requirement?: string
+          stripe_account_id?: string
+        }
+        Relationships: []
+      }
       digest_sends: {
         Row: {
           city_slug: string
@@ -1659,6 +1683,185 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ledger_entries: {
+        Row: {
+          amount_cents: number | null
+          attended: number | null
+          buyer_hash: string | null
+          contact_email: string | null
+          created_at: string
+          days_out: number | null
+          demand_action:
+            | Database["public"]["Enums"]["ledger_demand_action"]
+            | null
+          device: string | null
+          fill_percent: number | null
+          final_revenue_cents: number | null
+          final_sold: number | null
+          id: number
+          inventory_action:
+            | Database["public"]["Enums"]["ledger_inventory_action"]
+            | null
+          inventory_class: string | null
+          inventory_class_ref: string | null
+          kind: Database["public"]["Enums"]["ledger_entry_kind"]
+          new_price_cents: number | null
+          no_shows: number | null
+          occurred_at: string
+          occurrence_key: string
+          old_price_cents: number | null
+          organisation_id: string
+          quantity: number | null
+          referrer: string | null
+          returning_buyer: boolean | null
+          slot_id: string
+          source_system: string
+          unit_amount_cents: number | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          visitor_hash: string | null
+        }
+        Insert: {
+          amount_cents?: number | null
+          attended?: number | null
+          buyer_hash?: string | null
+          contact_email?: string | null
+          created_at?: string
+          days_out?: number | null
+          demand_action?:
+            | Database["public"]["Enums"]["ledger_demand_action"]
+            | null
+          device?: string | null
+          fill_percent?: number | null
+          final_revenue_cents?: number | null
+          final_sold?: number | null
+          id?: never
+          inventory_action?:
+            | Database["public"]["Enums"]["ledger_inventory_action"]
+            | null
+          inventory_class?: string | null
+          inventory_class_ref?: string | null
+          kind: Database["public"]["Enums"]["ledger_entry_kind"]
+          new_price_cents?: number | null
+          no_shows?: number | null
+          occurred_at?: string
+          occurrence_key: string
+          old_price_cents?: number | null
+          organisation_id: string
+          quantity?: number | null
+          referrer?: string | null
+          returning_buyer?: boolean | null
+          slot_id: string
+          source_system?: string
+          unit_amount_cents?: number | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          visitor_hash?: string | null
+        }
+        Update: {
+          amount_cents?: number | null
+          attended?: number | null
+          buyer_hash?: string | null
+          contact_email?: string | null
+          created_at?: string
+          days_out?: number | null
+          demand_action?:
+            | Database["public"]["Enums"]["ledger_demand_action"]
+            | null
+          device?: string | null
+          fill_percent?: number | null
+          final_revenue_cents?: number | null
+          final_sold?: number | null
+          id?: never
+          inventory_action?:
+            | Database["public"]["Enums"]["ledger_inventory_action"]
+            | null
+          inventory_class?: string | null
+          inventory_class_ref?: string | null
+          kind?: Database["public"]["Enums"]["ledger_entry_kind"]
+          new_price_cents?: number | null
+          no_shows?: number | null
+          occurred_at?: string
+          occurrence_key?: string
+          old_price_cents?: number | null
+          organisation_id?: string
+          quantity?: number | null
+          referrer?: string | null
+          returning_buyer?: boolean | null
+          slot_id?: string
+          source_system?: string
+          unit_amount_cents?: number | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          visitor_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ledger_slots: {
+        Row: {
+          capacity: number | null
+          category: string
+          closed_at: string | null
+          created_at: string
+          id: string
+          on_sale_at: string | null
+          on_sale_days_before: number | null
+          organisation_id: string
+          postcode: string | null
+          recovery_enabled: boolean
+          slot_at: string
+          source_ref: string
+          source_system: string
+          subcategory: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number | null
+          category: string
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          on_sale_at?: string | null
+          on_sale_days_before?: number | null
+          organisation_id: string
+          postcode?: string | null
+          recovery_enabled?: boolean
+          slot_at: string
+          source_ref: string
+          source_system?: string
+          subcategory: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number | null
+          category?: string
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          on_sale_at?: string | null
+          on_sale_days_before?: number | null
+          organisation_id?: string
+          postcode?: string | null
+          recovery_enabled?: boolean
+          slot_at?: string
+          source_ref?: string
+          source_system?: string
+          subcategory?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       marketing_consents: {
         Row: {
@@ -2857,6 +3060,171 @@ export type Database = {
           p256dh?: string
           user_agent?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      recovery_contacts: {
+        Row: {
+          contact_email: string
+          created_at: string
+          id: number
+          source_system: string
+          token: string
+        }
+        Insert: {
+          contact_email: string
+          created_at?: string
+          id?: never
+          source_system?: string
+          token?: string
+        }
+        Update: {
+          contact_email?: string
+          created_at?: string
+          id?: never
+          source_system?: string
+          token?: string
+        }
+        Relationships: []
+      }
+      recovery_holds: {
+        Row: {
+          claimed_at: string | null
+          contact_email: string
+          demand_entry_id: number
+          expires_at: string
+          id: number
+          inventory_class: string | null
+          offered_at: string
+          organisation_id: string
+          released_at: string | null
+          slot_id: string
+          source_system: string
+          units: number
+        }
+        Insert: {
+          claimed_at?: string | null
+          contact_email: string
+          demand_entry_id: number
+          expires_at: string
+          id?: never
+          inventory_class?: string | null
+          offered_at?: string
+          organisation_id: string
+          released_at?: string | null
+          slot_id: string
+          source_system?: string
+          units?: number
+        }
+        Update: {
+          claimed_at?: string | null
+          contact_email?: string
+          demand_entry_id?: number
+          expires_at?: string
+          id?: never
+          inventory_class?: string | null
+          offered_at?: string
+          organisation_id?: string
+          released_at?: string | null
+          slot_id?: string
+          source_system?: string
+          units?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_holds_demand_entry_id_fkey"
+            columns: ["demand_entry_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recovery_holds_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recovery_sends: {
+        Row: {
+          contact_email: string
+          demand_entry_id: number
+          id: number
+          inventory_class: string | null
+          message_number: number
+          organisation_id: string
+          sent_at: string
+          slot_id: string
+          source_system: string
+          unit_amount_cents: number | null
+        }
+        Insert: {
+          contact_email: string
+          demand_entry_id: number
+          id?: never
+          inventory_class?: string | null
+          message_number: number
+          organisation_id: string
+          sent_at?: string
+          slot_id: string
+          source_system?: string
+          unit_amount_cents?: number | null
+        }
+        Update: {
+          contact_email?: string
+          demand_entry_id?: number
+          id?: never
+          inventory_class?: string | null
+          message_number?: number
+          organisation_id?: string
+          sent_at?: string
+          slot_id?: string
+          source_system?: string
+          unit_amount_cents?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_sends_demand_entry_id_fkey"
+            columns: ["demand_entry_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recovery_sends_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recovery_suppressions: {
+        Row: {
+          contact_email: string
+          created_at: string
+          id: number
+          reason: Database["public"]["Enums"]["recovery_suppression_reason"]
+          source_system: string
+          token: string
+        }
+        Insert: {
+          contact_email: string
+          created_at?: string
+          id?: never
+          reason: Database["public"]["Enums"]["recovery_suppression_reason"]
+          source_system?: string
+          token?: string
+        }
+        Update: {
+          contact_email?: string
+          created_at?: string
+          id?: never
+          reason?: Database["public"]["Enums"]["recovery_suppression_reason"]
+          source_system?: string
+          token?: string
         }
         Relationships: []
       }
@@ -4841,6 +5209,13 @@ export type Database = {
         Returns: number
       }
       confirm_order: { Args: { p_order_id: string }; Returns: boolean }
+      connect_watch_guards: {
+        Args: never
+        Returns: {
+          guard: string
+          holds: boolean
+        }[]
+      }
       convert_discount_claim: {
         Args: { p_reservation_id: string }
         Returns: boolean
@@ -4945,6 +5320,7 @@ export type Database = {
         Returns: Json
       }
       event_referencing_tables: { Args: never; Returns: Json }
+      event_tags_normalised: { Args: { tags: Json }; Returns: boolean }
       events_within_distance: {
         Args: { p_lat: number; p_lng: number; p_radius_km: number }
         Returns: {
@@ -5078,6 +5454,14 @@ export type Database = {
         }
         Returns: Json
       }
+      ledger_guards: {
+        Args: never
+        Returns: {
+          detail: string
+          installed: boolean
+          name: string
+        }[]
+      }
       materialize_seats: {
         Args: { p_event_id: string; p_seat_map_id: string }
         Returns: number
@@ -5093,6 +5477,11 @@ export type Database = {
           p_organisation_id: string
         }
         Returns: number
+      }
+      platform_notification_guards: { Args: never; Returns: Json }
+      platform_trigger_on: {
+        Args: { p_table: string; p_trigger: string }
+        Returns: boolean
       }
       promote_waitlist: {
         Args: {
@@ -5115,6 +5504,10 @@ export type Database = {
         }
         Returns: string
       }
+      record_ledger_entry: {
+        Args: { p_entry: Json; p_slot: Json }
+        Returns: number
+      }
       record_platform_notification: {
         Args: {
           p_actor_label?: string
@@ -5135,6 +5528,14 @@ export type Database = {
       record_tier_price_history: {
         Args: { p_hint: string; p_tier_id: string }
         Returns: undefined
+      }
+      recovery_guards: {
+        Args: never
+        Returns: {
+          detail: string
+          installed: boolean
+          name: string
+        }[]
       }
       redeem_tier_access_codes: {
         Args: { p_code: string; p_tier_ids: string[] }
@@ -5177,6 +5578,10 @@ export type Database = {
       save_dynamic_pricing: {
         Args: { p_enabled: boolean; p_steps: Json; p_tier_id: string }
         Returns: number
+      }
+      save_event_ticket_tiers: {
+        Args: { p_event_id: string; p_tiers: Json }
+        Returns: Json
       }
       scan_ticket: {
         Args: {
@@ -5253,6 +5658,25 @@ export type Database = {
       event_type: "in_person" | "virtual" | "hybrid"
       event_visibility: "public" | "private" | "unlisted"
       fee_pass_type: "absorb" | "pass_to_buyer"
+      ledger_demand_action:
+        | "page_view"
+        | "checkout_started"
+        | "checkout_abandoned"
+        | "waitlist_join"
+        | "sold_out_view"
+      ledger_entry_kind:
+        | "sale"
+        | "price_change"
+        | "inventory"
+        | "refund"
+        | "demand"
+        | "close"
+      ledger_inventory_action:
+        | "open"
+        | "close"
+        | "hold"
+        | "release"
+        | "capacity_change"
       order_status:
         | "pending"
         | "confirmed"
@@ -5287,6 +5711,11 @@ export type Database = {
         | "escalated"
         | "failed"
       queue_status: "waiting" | "admitted" | "expired" | "abandoned"
+      recovery_suppression_reason:
+        | "unsubscribed"
+        | "complained"
+        | "bounced"
+        | "organiser_disabled"
       refund_initiator: "buyer" | "organiser" | "admin" | "system"
       refund_reason:
         | "requested_by_buyer"
@@ -5487,6 +5916,28 @@ export const Constants = {
       event_type: ["in_person", "virtual", "hybrid"],
       event_visibility: ["public", "private", "unlisted"],
       fee_pass_type: ["absorb", "pass_to_buyer"],
+      ledger_demand_action: [
+        "page_view",
+        "checkout_started",
+        "checkout_abandoned",
+        "waitlist_join",
+        "sold_out_view",
+      ],
+      ledger_entry_kind: [
+        "sale",
+        "price_change",
+        "inventory",
+        "refund",
+        "demand",
+        "close",
+      ],
+      ledger_inventory_action: [
+        "open",
+        "close",
+        "hold",
+        "release",
+        "capacity_change",
+      ],
       order_status: [
         "pending",
         "confirmed",
@@ -5525,6 +5976,12 @@ export const Constants = {
         "failed",
       ],
       queue_status: ["waiting", "admitted", "expired", "abandoned"],
+      recovery_suppression_reason: [
+        "unsubscribed",
+        "complained",
+        "bounced",
+        "organiser_disabled",
+      ],
       refund_initiator: ["buyer", "organiser", "admin", "system"],
       refund_reason: [
         "requested_by_buyer",
