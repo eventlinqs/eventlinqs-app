@@ -21,6 +21,9 @@ import {
   sectionsFor,
   renderStateReport,
   renderStallAlert,
+  pickLastPush,
+  nextLinkPath,
+  BOOKKEEPING_REFS,
   STALL_THRESHOLD_HOURS,
 } from '../../../scripts/lib/state-report.mjs'
 
@@ -231,5 +234,54 @@ describe('the stall message', () => {
   it('explains why a stall is the one thing a failure notification cannot see', () => {
     const state = { ...greenState, stall: judgeStall({ lastPushIso: hoursAgo(9), nowIso: NOW }) }
     expect(renderStallAlert(state).text).toContain('produces SILENCE')
+  })
+})
+
+// WHAT COUNTS AS A PUSH. On 11 September 2026 twelve runs of the build loop were
+// each refused at the same gate step and each pushed its ledger files to
+// ops/session-log, so the stall judge read "0.1 hours ago" across a 44 hour
+// silence on every working branch. The alert built for that silence was blind
+// for as long as the loop kept confessing to it.
+describe('what counts as a push, so the stall clock is not reset by bookkeeping', () => {
+  const log = (ts: string) => ({ activity_type: 'push', ref: 'refs/heads/ops/session-log', timestamp: ts, actor: { login: 'eventlinqs' } })
+  const work = (ts: string, ref = 'refs/heads/verify/l5-launch-readiness') => ({ activity_type: 'push', ref, timestamp: ts, actor: { login: 'eventlinqs' } })
+
+  it('passes over the session log and finds the working branch behind it, and that IS a stall', () => {
+    const pick = pickLastPush([log(hoursAgo(0.1)), log(hoursAgo(0.2)), work(hoursAgo(44))])
+    expect(pick.ref).toBe('verify/l5-launch-readiness')
+    expect(pick.when).toBe(hoursAgo(44))
+    expect(pick.bookkeepingSkipped).toBe(2)
+    expect(judgeStall({ lastPushIso: pick.when, nowIso: NOW }).stalled).toBe(true)
+  })
+
+  it('finds nothing in a feed that is only the session log, and counts what it passed over', () => {
+    const pick = pickLastPush([log(hoursAgo(0.1)), log(hoursAgo(0.2))])
+    expect(pick.when).toBeNull()
+    expect(pick.bookkeepingSkipped).toBe(2)
+  })
+
+  it('counts a force push to a working branch, and ignores records that are not pushes', () => {
+    const pick = pickLastPush([{ activity_type: 'branch_creation', ref: 'refs/heads/x', timestamp: hoursAgo(0.1) }, { ...work(hoursAgo(2)), activity_type: 'force_push' }])
+    expect(pick.ref).toBe('verify/l5-launch-readiness')
+    expect(pick.when).toBe(hoursAgo(2))
+  })
+
+  it('names the bookkeeping in the report rather than hiding it', () => {
+    const lastPush = { ...pickLastPush([log(hoursAgo(0.1)), work(hoursAgo(44))]) }
+    const state = { ...greenState, lastPush, stall: judgeStall({ lastPushIso: lastPush.when, nowIso: NOW }) }
+    const section = sectionsFor(state).find((s) => s.title === 'When the build last pushed')
+    expect(section?.lines.join('\n')).toContain('1 newer push(es) to ops/session-log were the build writing its own log')
+    expect(renderStallAlert(state).text).toContain('were the build writing its own log')
+  })
+
+  it('keeps the bookkeeping list to the session log, under ops/', () => {
+    expect(BOOKKEEPING_REFS).toEqual(['ops/session-log'])
+  })
+
+  it('reads the next cursor from a Link header and nothing from the last page', () => {
+    const link = '<https://api.github.com/repositories/1/activity?per_page=100&after=abc>; rel="next"'
+    expect(nextLinkPath(link)).toBe('/repositories/1/activity?per_page=100&after=abc')
+    expect(nextLinkPath('<https://api.github.com/x?page=1>; rel="prev"')).toBeNull()
+    expect(nextLinkPath(null)).toBeNull()
   })
 })

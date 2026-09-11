@@ -52,6 +52,9 @@ import {
   renderStateReport,
   renderStallAlert,
   hoursBetween,
+  pickLastPush,
+  nextLinkPath,
+  BOOKKEEPING_REFS,
   STALL_THRESHOLD_HOURS,
 } from '../lib/state-report.mjs'
 
@@ -153,7 +156,7 @@ async function gh(token, path, { accept = 'application/vnd.github+json', text = 
   } catch {
     parsed = null
   }
-  return { status: res.status, body: parsed, raw: body }
+  return { status: res.status, body: parsed, raw: body, link: res.headers.get('link') }
 }
 
 /** The repository this is reporting on, never guessed from a working directory. */
@@ -215,14 +218,42 @@ async function collectPullRequests(token, repo, nowIso) {
     .sort((a, b) => (b.ageHours ?? 0) - (a.ageHours ?? 0))
 }
 
+/**
+ * How many pages of the activity listing the last-push reader will turn before
+ * it gives up and says so. Five pages of a hundred is five hundred records,
+ * and on 11 September 2026 the bookkeeping pushes alone filled thirty.
+ */
+const LAST_PUSH_PAGES = 5
+
+/**
+ * When the build last pushed to a WORKING branch. Pushes to the bookkeeping
+ * refs (scripts/lib/state-report.mjs, BOOKKEEPING_REFS) are passed over and
+ * counted, and the listing is paged past them by its own cursor, because on
+ * 11 September 2026 they filled the whole first page and the stall judge read a
+ * 44 hour silence as "0.1 hours ago, to ops/session-log".
+ */
 async function collectLastPush(token, repo) {
-  const res = await gh(token, `/repos/${repo}/activity?per_page=30`)
-  if (res.status !== 200 || !Array.isArray(res.body)) {
-    return { when: null, reason: `the repository activity could not be read (HTTP ${res.status})` }
+  let path = `/repos/${repo}/activity?per_page=100`
+  let bookkeepingSkipped = 0
+  let records = 0
+  for (let page = 1; page <= LAST_PUSH_PAGES && path; page += 1) {
+    const res = await gh(token, path)
+    if (res.status !== 200 || !Array.isArray(res.body)) {
+      return { when: null, reason: `the repository activity could not be read (HTTP ${res.status})` }
+    }
+    records += res.body.length
+    const pick = pickLastPush(res.body)
+    bookkeepingSkipped += pick.bookkeepingSkipped
+    if (pick.when) return { ...pick, bookkeepingSkipped }
+    path = nextLinkPath(res.link)
   }
-  const push = res.body.find((a) => a.activity_type === 'push' || a.activity_type === 'force_push')
-  if (!push) return { when: null, reason: 'no push appears in the last 30 activity records' }
-  return { when: push.timestamp, ref: push.ref?.replace('refs/heads/', '') ?? null, actor: push.actor?.login ?? null }
+  return {
+    when: null,
+    ref: null,
+    actor: null,
+    bookkeepingSkipped,
+    reason: `no push to a working branch appears in the last ${records} activity records, and ${bookkeepingSkipped} push(es) to ${BOOKKEEPING_REFS.join(', ')} were passed over as bookkeeping`,
+  }
 }
 
 /**

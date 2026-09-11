@@ -87,6 +87,16 @@ machine, so the message says so and tells the reader that a deliberately stopped
 build is the reason to ignore it. A run invoked by the watchdog itself says the
 loop is alive, because the loop is what invoked it.
 
+**A push to the session log is not the build moving.** `BOOKKEEPING_REFS` in
+`scripts/lib/state-report.mjs` names `ops/session-log`, and the last-push reader
+passes those pushes over and pages the activity listing past them by its own
+cursor. Found 11 September 2026: twelve runs of the loop were each refused at
+the same gate step and each pushed its ledger files, so the judge read "0.1
+hours ago, to ops/session-log" across a 44 hour silence on every working branch.
+The report and the alert both say how many bookkeeping pushes were passed over.
+Clause 6 of `scripts/guards/alert-routing.mjs` executes the picker against a
+feed led by the session log and fails the build if it ever counts.
+
 ## Running it by hand
 
 ```

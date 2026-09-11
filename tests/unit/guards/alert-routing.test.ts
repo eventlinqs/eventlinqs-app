@@ -20,6 +20,7 @@ import {
   judgeScriptCallers,
   judgeDrillMarker,
   judgeClassGrammar,
+  judgeStallClock,
   classesDeclaredIn,
   withoutComments,
 } from '../../../scripts/guards/alert-routing.mjs'
@@ -153,5 +154,36 @@ describe('against the workflows as they actually stand', () => {
     expect(dispatching).toHaveLength(1)
     expect(dispatching[0].name).toBe('main-red-alert')
     expect(dispatching[0].condition).toContain("github.event_name == 'push'")
+  })
+})
+
+// Clause 6. On 11 September 2026 twelve runs of the build loop were refused at
+// the same gate step, each pushed its ledger files to ops/session-log, and the
+// stall judge read "0.1 hours ago" across a 44 hour silence on every working
+// branch. The alert built for that silence was blind while the loop confessed.
+describe('clause 6: the stall clock is not reset by bookkeeping', () => {
+  it('is intact on the real picker and the real collector', () => {
+    expect(judgeStallClock()).toEqual([])
+  })
+
+  it('FAILS a picker that lets a session-log push count as the build moving', () => {
+    const naive = (feed: Array<{ activity_type?: string; ref?: string; timestamp?: string }>) => {
+      const push = feed.find((a) => a.activity_type === 'push')
+      return { when: push?.timestamp ?? null, ref: push?.ref?.replace('refs/heads/', '') ?? null, actor: null, bookkeepingSkipped: 0 }
+    }
+    const problems = judgeStallClock({ pick: naive })
+    expect(problems.length).toBeGreaterThanOrEqual(2)
+    expect(problems.join('\n')).toContain('ops/session-log counted as the build moving')
+    expect(problems.join('\n')).toContain('only pushes to ops/session-log produced a last push')
+  })
+
+  it('FAILS a collector that no longer routes through the picker', () => {
+    const problems = judgeStallClock({ collectorSource: 'async function collectLastPush() { return { when: null } }' })
+    expect(problems.join('\n')).toContain('no longer picks the last push through pickLastPush')
+  })
+
+  it('does not mistake a comment naming the picker for the call', () => {
+    const problems = judgeStallClock({ collectorSource: withoutComments('// pickLastPush( is named here only\nasync function collectLastPush() {}') })
+    expect(problems.join('\n')).toContain('no longer picks the last push through pickLastPush')
   })
 })

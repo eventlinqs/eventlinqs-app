@@ -51,6 +51,71 @@ export function hoursBetween(earlierIso, laterIso) {
 }
 
 /**
+ * BOOKKEEPING REFS. A push to one of these is the build WRITING ITS OWN LOG,
+ * never the build moving, so it must not reset the stall clock.
+ *
+ * Found 11 September 2026 (session 77). Twelve consecutive runs of the build
+ * loop had each been refused at the same pre-push gate step, and each had then
+ * pushed its three ledger files to ops/session-log, as the brief requires. The
+ * stall judge read "the last push was 0.1 hours ago, to ops/session-log" and
+ * found no stall, while nothing had reached a working branch for 44 hours. The
+ * alert built for exactly that silence was blind for as long as the loop kept
+ * confessing to it: the last 30 records of the repository activity listing were
+ * all ops/session-log.
+ */
+export const BOOKKEEPING_REFS = ['ops/session-log']
+
+/**
+ * The newest push in one page of the repository activity listing that is not
+ * bookkeeping. Pure: the page is whatever the caller fetched. What was passed
+ * over is COUNTED, so the report can say it rather than hide it.
+ *
+ * @param {Array<{ activity_type?: string, ref?: string, timestamp?: string, actor?: { login?: string } }>} activity
+ * @param {{ ignoreRefs?: string[] }} options
+ */
+export function pickLastPush(activity, { ignoreRefs = BOOKKEEPING_REFS } = {}) {
+  const ignored = new Set(ignoreRefs.map((ref) => `refs/heads/${ref}`))
+  let bookkeepingSkipped = 0
+  for (const record of Array.isArray(activity) ? activity : []) {
+    if (record?.activity_type !== 'push' && record?.activity_type !== 'force_push') continue
+    if (ignored.has(record.ref)) {
+      bookkeepingSkipped += 1
+      continue
+    }
+    return {
+      when: record.timestamp ?? null,
+      ref: typeof record.ref === 'string' ? record.ref.replace('refs/heads/', '') : null,
+      actor: record.actor?.login ?? null,
+      bookkeepingSkipped,
+    }
+  }
+  return { when: null, ref: null, actor: null, bookkeepingSkipped }
+}
+
+/**
+ * The rel="next" target of a GitHub Link header as a path the API helper can
+ * take, or null on the last page. The activity listing pages by cursor and the
+ * cursor appears nowhere but that header
+ * (https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api,
+ * and observed on the live endpoint on 11 September 2026: rel="next" carrying
+ * `after=`).
+ */
+export function nextLinkPath(linkHeader) {
+  if (typeof linkHeader !== 'string' || linkHeader.length === 0) return null
+  for (const part of linkHeader.split(',')) {
+    const match = part.match(/<([^>]+)>\s*;\s*rel="next"/)
+    if (!match) continue
+    try {
+      const url = new URL(match[1])
+      return `${url.pathname}${url.search}`
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+/**
  * Has the build stalled, and is this the moment to say so?
  *
  * BAND, not a boolean, because a stall that lasts a day must not produce an
@@ -234,7 +299,10 @@ export function sectionsFor(state) {
     lines: [
       state.lastPush?.when
         ? `${humanAge(state.stall?.hoursSincePush)} ago, to ${state.lastPush.ref ?? 'an unknown ref'}, at ${platformDate(state.lastPush.when)}.`
-        : 'No push could be found, which is itself worth looking at.',
+        : `No push to a working branch could be found, which is itself worth looking at${state.lastPush?.reason ? `: ${state.lastPush.reason}` : ''}.`,
+      state.lastPush?.bookkeepingSkipped
+        ? `${state.lastPush.bookkeepingSkipped} newer push(es) to ${BOOKKEEPING_REFS.join(', ')} were the build writing its own log, and do not count.`
+        : null,
       state.stall?.stalled
         ? `THIS IS A STALL. ${state.stall.reason}.`
         : null,
@@ -343,7 +411,10 @@ export function renderStallAlert(state) {
     '',
     state.lastPush?.when
       ? `Last push: ${state.lastPush.ref ?? 'unknown ref'} at ${platformDate(state.lastPush.when)}.`
-      : 'No push could be found at all.',
+      : 'No push to a working branch could be found at all.',
+    state.lastPush?.bookkeepingSkipped
+      ? `${state.lastPush.bookkeepingSkipped} newer push(es) to ${BOOKKEEPING_REFS.join(', ')} were the build writing its own log, and do not count.`
+      : null,
     state.watchdog?.confirmed
       ? `The watchdog was confirmed running: ${state.watchdog.evidence}.`
       : `Whether the build is meant to be running could NOT be confirmed from here: ${state.watchdog?.evidence ?? 'this run had no way to see the watchdog'}. If the build is deliberately stopped, this line is the reason to ignore the rest.`,

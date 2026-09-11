@@ -15,7 +15,7 @@
  * homepage smoke FAILED", with nothing to say it was a test. The owner
  * reasonably read it as a real outage (H2.6).
  *
- * FIVE CLAUSES. Each one is a thing that has actually gone wrong.
+ * SIX CLAUSES. Each one is a thing that has actually gone wrong.
  *
  *   1. EVERY DISPATCH DECLARES ITS CLASS. A workflow that calls
  *      alert-dispatch.mjs without `--class` gets the default, and a default is
@@ -45,6 +45,14 @@
  *      it, and a class it forgot to pass would be invisible to clause 1, which
  *      reads YAML and nothing else.
  *
+ *   6. THE STALL CLOCK IS NOT RESET BY BOOKKEEPING (UX4.2). On 11 September
+ *      2026 twelve runs of the build loop were refused at the same gate step,
+ *      each pushed its ledger files to ops/session-log, and the stall judge read
+ *      "0.1 hours ago, to ops/session-log" across a 44 hour silence on every
+ *      working branch. The picker is EXECUTED here against a feed led by the
+ *      session log, and the collector that runs is read without its comments
+ *      and must route through that picker, or the filter is not on the path.
+ *
  * Run standalone:  node scripts/guards/alert-routing.mjs
  */
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
@@ -53,6 +61,7 @@ import { fileURLToPath } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
 import { ALERT_CLASSES, DRILL_MARKER, alertSubject, judgeDrill } from '../lib/alert-classes.mjs'
 import { cannotRunOnAPullRequest } from './workflows-skip-drafts.mjs'
+import { BOOKKEEPING_REFS, pickLastPush } from '../lib/state-report.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -252,6 +261,48 @@ export function judgeClassGrammar() {
 
 const invokedDirectly = process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('alert-routing.mjs')
 
+/**
+ * Clause 6: the stall clock is not reset by bookkeeping (UX4.2).
+ *
+ * Executed rather than read, like clause 3: the picker is handed a feed whose
+ * two newest pushes are the session log and must choose the working branch
+ * behind them; handed the session log alone it must find nothing. Then the
+ * collector that actually runs, scripts/ops/state-report.mjs, is read without
+ * its comments and must name the picker, because a filter that is correct in
+ * the library and absent from the path is the defect this clause was written
+ * for. Both dependencies are injectable so the clause can be shown failing.
+ *
+ * @param {{ pick?: typeof pickLastPush, collectorSource?: string | null }} deps
+ */
+export function judgeStallClock({ pick = pickLastPush, collectorSource = null } = {}) {
+  const problems = []
+  const feed = [
+    { activity_type: 'push', ref: 'refs/heads/ops/session-log', timestamp: '2026-09-11T05:46:25Z', actor: { login: 'eventlinqs' } },
+    { activity_type: 'push', ref: 'refs/heads/ops/session-log', timestamp: '2026-09-11T05:39:42Z', actor: { login: 'eventlinqs' } },
+    { activity_type: 'push', ref: 'refs/heads/verify/l5-launch-readiness', timestamp: '2026-09-09T10:07:38Z', actor: { login: 'eventlinqs' } },
+  ]
+  const chosen = pick(feed)
+  if (chosen?.ref !== 'verify/l5-launch-readiness') {
+    problems.push(
+      `the stall clock was reset by a push to ${chosen?.ref ?? 'nothing'}: a push to ops/session-log counted as the build moving, so a stall hides behind its own log (UX4.2)`,
+    )
+  }
+  const onlyLog = pick(feed.slice(0, 2))
+  if (onlyLog?.when) {
+    problems.push('a feed holding only pushes to ops/session-log produced a last push, so a stall would be judged from the build writing its own log (UX4.2)')
+  }
+  for (const ref of BOOKKEEPING_REFS) {
+    if (!ref.startsWith('ops/')) {
+      problems.push(`${ref} is listed as bookkeeping but is not under ops/, so pushes to a working branch would be hidden from the stall judge`)
+    }
+  }
+  const source = collectorSource ?? withoutComments(readFileSync(join(ROOT, 'scripts', 'ops', 'state-report.mjs'), 'utf8'))
+  if (!/\bpickLastPush\s*\(/.test(source)) {
+    problems.push('scripts/ops/state-report.mjs no longer picks the last push through pickLastPush, so the bookkeeping filter is not on the path that runs')
+  }
+  return problems
+}
+
 if (invokedDirectly) {
   if (!existsSync(WORKFLOWS)) {
     console.error(`${TAG} FAIL - ${WORKFLOWS} does not exist, so nothing could be judged.`)
@@ -285,6 +336,7 @@ if (invokedDirectly) {
   problems.push(...scriptVerdict.problems)
   problems.push(...judgeDrillMarker())
   problems.push(...judgeClassGrammar())
+  problems.push(...judgeStallClock())
 
   if (dispatchTotal === 0) {
     problems.push(
@@ -296,6 +348,7 @@ if (invokedDirectly) {
   console.log(`${TAG}   ${files.length} workflow(s), ${jobTotal} job(s), ${dispatchTotal} alert dispatch(es)`)
   console.log(`${TAG}   ${scriptVerdict.callers} script(s) that reach the dispatcher, out of ${scriptFiles.length} read`)
   console.log(`${TAG}   ${Object.keys(ALERT_CLASSES).length} alert class(es), drill marker executed on a .invalid and on ${PRODUCTION_HOST}`)
+  console.log(`${TAG}   the stall clock executed against a feed led by ${BOOKKEEPING_REFS.join(', ')}, and the collector read for the picker`)
 
   if (problems.length > 0) {
     console.error('')

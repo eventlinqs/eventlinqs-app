@@ -1357,7 +1357,7 @@ const ROOT = join(HERE, '..', '..')
  * including the cursor Stripe's own page documents and the runaway stop.
  */
 const MIN_FILES = 378
-const MIN_TESTS = 4574
+const MIN_TESTS = 4584
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

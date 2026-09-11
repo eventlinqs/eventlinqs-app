@@ -249,7 +249,8 @@
  *                              that is never invoked looks exactly like a cron with
  *                              nothing to do, which is why nothing could see it
  *   alert-routing            no branch gate may email, every alert declares its class,
- *                              and a drill announces itself. Read in one place because
+ *                              a drill announces itself, and a push to the session log
+ *                              never resets the stall clock. Read in one place because
  *                              all three are rulings about the subject line: the inbox
  *                              was loud about the harmless and silent about the dangerous
  *                              (close-out UX4.3, UX4.5, H2.6)
