@@ -43,6 +43,8 @@ vi.mock('@/lib/fillrate/read', () => ({
   suppressedAddresses: async () => reads.suppressed,
   tokenFor: async () => reads.token,
   hashOf: (email: string) => `h:${email.trim().toLowerCase()}`,
+  // Every shape a money row may carry, keyed first (identityFingerprints).
+  fingerprintsOf: (email: string) => [`h:${email.trim().toLowerCase()}`],
   recordSend: async (send: unknown) => {
     reads.recorded.push(send)
     return reads.recordResult

@@ -20,7 +20,7 @@
  */
 import { createAdminClient } from '@/lib/supabase/admin'
 import { SOURCE_SYSTEM } from '@/lib/ledger/types'
-import { identityHash } from '@/lib/ledger/identity'
+import { identityFingerprints, identityHash } from '@/lib/ledger/identity'
 import type { DemandRow, SlotFacts, SlotRow } from './due'
 import type { JoinRow, HoldRow } from './waitlist'
 
@@ -267,6 +267,16 @@ export async function suppress(
 /** The keyed hash of one address, so a caller can ask the money rows about it. */
 export function hashOf(email: string): string | null {
   return identityHash(email)
+}
+
+/**
+ * Every hash one address may carry on a money row, keyed first, so the
+ * "already bought" and "money came back" rules hold for rows written on a
+ * deployment that had no key (see identityFingerprints for the day that
+ * happened).
+ */
+export function fingerprintsOf(email: string): string[] {
+  return identityFingerprints(email)
 }
 
 /** Whose token this is, or null. The unsubscribe route's only question. */

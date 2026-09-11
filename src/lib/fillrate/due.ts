@@ -206,11 +206,20 @@ export function decide(input: {
    * than left to be discovered.
    */
   hash?: (email: string) => string | null
+  /**
+   * Every hash the address may carry on a money row, keyed first. When given
+   * it replaces `hash` for the two money-based refusals, so a sale row written
+   * on a deployment without the key is still recognised (see
+   * identityFingerprints in src/lib/ledger/identity.ts for the day it happened).
+   */
+  fingerprints?: (email: string) => string[]
   /** How many messages the sequence is currently allowed to send (the reversal condition cuts it to 1). */
   sequenceLength?: number
 }): { send: Decision[]; refused: Refusal[] } {
   const { slot, demand, facts, suppressed, now } = input
   const hash = input.hash ?? (() => null)
+  const fingerprints =
+    input.fingerprints ?? ((email: string) => [hash(email)].filter((h): h is string => Boolean(h)))
   const sequenceLength = input.sequenceLength ?? MESSAGE_DELAYS_HOURS.length
   const send: Decision[] = []
   const refused: Refusal[] = []
@@ -262,12 +271,12 @@ export function decide(input: {
       refuse(row, 'this address has unsubscribed')
       continue
     }
-    const fingerprint = hash(email)
-    if (fingerprint && facts.boughtHashes.has(fingerprint)) {
+    const prints = fingerprints(email)
+    if (prints.some(print => facts.boughtHashes.has(print))) {
       refuse(row, 'they already bought')
       continue
     }
-    if (fingerprint && facts.refundedHashes.has(fingerprint)) {
+    if (prints.some(print => facts.refundedHashes.has(print))) {
       refuse(row, 'their money came back, so chasing them would be the worst message we could send')
       continue
     }

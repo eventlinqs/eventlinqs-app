@@ -177,6 +177,18 @@ describe('the rules about writing to a person hold here too', () => {
     expect(passedOver[0].reason).toMatch(/already bought/)
   })
 
+  test('a sale row hashed on a deployment without the key still passes the person over', () => {
+    const unkeyed = (email: string) => `unkeyed:${email.trim().toLowerCase()}`
+    const person = join({ contactEmail: 'bought@example.com' })
+    const { toOffer, passedOver } = plan({
+      joins: [person],
+      boughtHashes: new Set([unkeyed('bought@example.com')]),
+      fingerprints: (email) => [fakeHash(email), unkeyed(email)],
+    })
+    expect(toOffer).toHaveLength(0)
+    expect(passedOver[0].reason).toMatch(/already bought/)
+  })
+
   test('an organiser who switched recovery off for the slot is obeyed', () => {
     const { toOffer, passedOver } = plan({ joins: [join()], recoveryEnabled: false })
     expect(toOffer).toHaveLength(0)

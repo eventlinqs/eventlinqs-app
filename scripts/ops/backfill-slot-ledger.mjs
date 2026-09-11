@@ -26,19 +26,32 @@
  *
  * SAFETY. It is idempotent: every row is keyed on its occurrence, so a re-run
  * writes nothing twice. `--dry-run` reads and reports without writing a row, and
- * is the only mode that may be pointed at production, which it refuses to write
- * to regardless (that refusal is the shared preflight's, not this file's).
+ * is the only mode that may be pointed at production without an approval.
+ *
+ * THE ONE PRODUCTION WRITE (close-out D1, approved 11 September 2026). A
+ * production write needs TWO things, both per run, neither parkable in a file:
+ * the founder's approval NAMED on the command line
+ * (--approved-by-founder "<who, and the date>"), which judgeBackfillTarget
+ * demands, and ALLOW_PRODUCTION_SUPABASE=1 in the shell, which the shared
+ * production write preflight demands and refuses when it came out of an env
+ * file. scripts/ops/backfill-slot-ledger-production-once.mjs is the one command
+ * that supplies both, holds the credential in memory, runs this twice and
+ * proves the ledger grew by exactly what the first run wrote and the second
+ * wrote 0.
  *
  * USAGE
- *   node --import ./scripts/lib/src-alias-loader.mjs scripts/ops/backfill-slot-ledger.mjs [--dry-run] [--limit N]
+ *   node --import ./scripts/lib/src-alias-loader.mjs scripts/ops/backfill-slot-ledger.mjs [--dry-run] [--limit N] [--approved-by-founder "..."]
  *
  * The environment must carry NEXT_PUBLIC_SUPABASE_URL and
  * SUPABASE_SERVICE_ROLE_KEY for the project being filled.
  */
 import { createClient } from '@supabase/supabase-js'
+import { assertNotProduction } from '../lib/production-write-preflight.mjs'
 
 const argv = process.argv.slice(2)
 const DRY_RUN = argv.includes('--dry-run')
+const approvedAt = argv.indexOf('--approved-by-founder')
+const APPROVED_BY = approvedAt >= 0 ? String(argv[approvedAt + 1] ?? '').trim() : ''
 const LIMIT = Number(argv[argv.indexOf('--limit') + 1]) || 500
 const TAG = '[backfill-slot-ledger]'
 const PRODUCTION = 'gndnldyfudbytbboxesk'
@@ -48,13 +61,22 @@ const PRODUCTION = 'gndnldyfudbytbboxesk'
  * database and without anybody having to point a script at production to find
  * out what it would do.
  */
-export function judgeBackfillTarget({ url: target, dryRun }) {
-  if (String(target ?? '').includes(PRODUCTION) && !dryRun) {
+export function judgeBackfillTarget({ url: target, dryRun, approvedBy = '' }) {
+  const production = String(target ?? '').includes(PRODUCTION)
+  if (production && !dryRun) {
+    const approval = String(approvedBy ?? '').trim()
+    if (!approval) {
+      return {
+        allowed: false,
+        reason:
+          'this is the PRODUCTION project and --dry-run was not given. A production backfill is ' +
+          "Lawal's decision and is run with his approval, never by default: name it with " +
+          '--approved-by-founder "<who, and the date>" and give ALLOW_PRODUCTION_SUPABASE=1 in the shell for that one run.',
+      }
+    }
     return {
-      allowed: false,
-      reason:
-        'this is the PRODUCTION project and --dry-run was not given. A production backfill is ' +
-        "Lawal's decision and is run with his approval, never by default.",
+      allowed: true,
+      reason: `a PRODUCTION write approved by the founder: ${approval}. The write preflight still decides whether this shell may proceed`,
     }
   }
   return {
@@ -145,10 +167,17 @@ if (invokedDirectly) {
     process.exit(1)
   }
 
-  const verdict = judgeBackfillTarget({ url, dryRun: DRY_RUN })
+  const verdict = judgeBackfillTarget({ url, dryRun: DRY_RUN, approvedBy: APPROVED_BY })
   if (!verdict.allowed) {
     console.error(`${TAG} REFUSED: ${verdict.reason}`)
     process.exit(1)
+  }
+  // The approval names the run; the preflight decides whether THIS shell may
+  // write to production (ALLOW_PRODUCTION_SUPABASE=1 given in the shell, never
+  // parked in a file). It refuses before any client exists.
+  if (url.includes(PRODUCTION) && !DRY_RUN) {
+    assertNotProduction()
+    console.log(`${TAG} ${verdict.reason}`)
   }
 
   const db = createClient(url, serviceKey, { auth: { persistSession: false } })

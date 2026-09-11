@@ -32,6 +32,7 @@ import {
   abandonmentsOn,
   closeHold,
   factsFor,
+  fingerprintsOf,
   hashOf,
   holdsOn,
   joinsOn,
@@ -128,6 +129,7 @@ export async function sweepAbandonedCheckouts(
       suppressed,
       now,
       hash: hashOf,
+      fingerprints: fingerprintsOf,
       sequenceLength: cut.length,
     })
     result.refused += refused.length
@@ -314,6 +316,7 @@ export async function activateWaitlist(
     suppressed,
     boughtHashes: facts.boughtHashes,
     hash: hashOf,
+    fingerprints: fingerprintsOf,
     slotStartsAt: input.slot.slotAt,
     recoveryEnabled: input.slot.recoveryEnabled,
     now,

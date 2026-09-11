@@ -29,20 +29,54 @@ import { createHash, createHmac } from 'node:crypto'
  */
 let warnedAboutKey = false
 
+function keyFrom(secret: string): Buffer {
+  return createHash('sha256').update(`eventlinqs.ledger.identity.v1:${secret}`).digest()
+}
+
 function hashKey(): Buffer {
   const secret = process.env.ORDER_ACCESS_SECRET ?? ''
   if (!secret && !warnedAboutKey) {
     warnedAboutKey = true
     console.warn('[ledger] ORDER_ACCESS_SECRET is not set, so buyer hashes are unsalted on this deployment.')
   }
-  return createHash('sha256').update(`eventlinqs.ledger.identity.v1:${secret}`).digest()
+  return keyFrom(secret)
+}
+
+function hmacWith(key: Buffer, normalised: string): string {
+  return createHmac('sha256', key).update(normalised).digest('hex').slice(0, 32)
 }
 
 /** One person, told apart from another, without the ledger knowing who they are. */
 export function identityHash(value: string | null | undefined): string | null {
   const normalised = (value ?? '').trim().toLowerCase()
   if (!normalised) return null
-  return createHmac('sha256', hashKey()).update(normalised).digest('hex').slice(0, 32)
+  return hmacWith(hashKey(), normalised)
+}
+
+/**
+ * EVERY HASH THIS ADDRESS MAY CARRY ON A MONEY ROW, keyed first.
+ *
+ * WHY, 12 September 2026, close-out D1. The one approved production backfill
+ * ran in a shell that held no ORDER_ACCESS_SECRET, so its three sale rows were
+ * hashed with the EMPTY key while every live sale on production is hashed with
+ * the real one. The ledger is append only by law, so those rows cannot be
+ * rewritten, and a comparison that knew only the keyed hash would never again
+ * recognise those two buyers: the engine's "never anyone who already bought"
+ * would have quietly stopped holding for them, on the one slot D1 names.
+ *
+ * So the question "did this person buy" is asked with BOTH shapes when a key is
+ * set: the keyed hash, and the hash a deployment without the key would have
+ * written. Nothing is stored in the weaker shape by this function, and nothing
+ * about the stored rows changes; only the comparison widens, to exactly the two
+ * shapes a row can have. With no key set there is one shape and one answer.
+ */
+export function identityFingerprints(value: string | null | undefined): string[] {
+  const normalised = (value ?? '').trim().toLowerCase()
+  if (!normalised) return []
+  const secret = process.env.ORDER_ACCESS_SECRET ?? ''
+  const keyed = hmacWith(hashKey(), normalised)
+  if (!secret) return [keyed]
+  return [keyed, hmacWith(keyFrom(''), normalised)]
 }
 
 /** Reset the one-time warning, so a test can observe it more than once. */

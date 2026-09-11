@@ -107,10 +107,18 @@ export function planWaitlist(input: {
   holdMinutes?: number
   /** The keyed hash of one address, for the same reason `decide` takes one. */
   hash?: (email: string) => string | null
+  /**
+   * Every hash the address may carry on a money row, keyed first. When given
+   * it replaces `hash` for the "already bought" test, so a sale row written on
+   * a deployment without the key is still recognised (identityFingerprints).
+   */
+  fingerprints?: (email: string) => string[]
 }): WaitlistPlan {
   const { joins, holds, suppressed, boughtHashes, now } = input
   const holdMinutes = input.holdMinutes ?? HOLD_MINUTES
   const hash = input.hash ?? (() => null)
+  const fingerprints =
+    input.fingerprints ?? ((email: string) => [hash(email)].filter((h): h is string => Boolean(h)))
   const toRelease = holds.filter(hold => hasLapsed(hold, now))
   const toOffer: Offer[] = []
   const passedOver: { contactEmail: string; reason: string }[] = []
@@ -158,8 +166,7 @@ export function planWaitlist(input: {
       passedOver.push({ contactEmail: join.contactEmail, reason: 'this address has unsubscribed' })
       continue
     }
-    const fingerprint = hash(join.contactEmail)
-    if (fingerprint && boughtHashes.has(fingerprint)) {
+    if (fingerprints(join.contactEmail).some(print => boughtHashes.has(print))) {
       passedOver.push({ contactEmail: join.contactEmail, reason: 'they already bought' })
       continue
     }

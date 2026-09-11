@@ -152,6 +152,23 @@ describe('who must never be written to', () => {
     expect(refused[0].reason).toMatch(/already bought/)
   })
 
+  /*
+   * A SALE ROW WRITTEN WITHOUT THE KEY STILL COUNTS. Close-out D1, 12 September
+   * 2026: the one approved production backfill hashed its three rows with an
+   * empty key. The caller may supply every shape an address can carry, keyed
+   * first, and the rule matches any of them; the keyed one alone would miss
+   * the row and write to somebody who already holds a ticket.
+   */
+  test('somebody whose sale row was hashed on a deployment without the key is still refused', () => {
+    const unkeyed = (email: string) => `unkeyed:${email.trim().toLowerCase()}`
+    const { send, refused } = run({
+      facts: facts({ boughtHashes: new Set([unkeyed('buyer@example.com')]) }),
+      fingerprints: (email) => [fakeHash(email), unkeyed(email)],
+    })
+    expect(send).toHaveLength(0)
+    expect(refused[0].reason).toMatch(/already bought/)
+  })
+
   test('somebody whose money came back is refused, which is not the same rule', () => {
     const { send, refused } = run({ facts: facts({ refundedHashes: new Set([fakeHash('buyer@example.com')]) }) })
     expect(send).toHaveLength(0)

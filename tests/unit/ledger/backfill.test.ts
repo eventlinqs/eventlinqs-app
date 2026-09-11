@@ -36,6 +36,31 @@ describe('what it will and will not write to', () => {
   test('a target it cannot read at all is not silently treated as production', () => {
     expect(judgeBackfillTarget({ url: undefined, dryRun: false }).allowed).toBe(true)
   })
+
+  /*
+   * THE ONE PRODUCTION WRITE, close-out D1, approved by the founder on
+   * 11 September 2026. The approval is named on the command line for that run
+   * and nowhere else. The judgement allows the write on the strength of the
+   * name and says, in the same sentence, that the shell preflight still has
+   * the last word (ALLOW_PRODUCTION_SUPABASE=1, given in the shell, never in a
+   * file). A blank approval is no approval.
+   */
+  test('a production write is allowed when the founder\'s approval is named, and the reason says the preflight still decides', () => {
+    const verdict = judgeBackfillTarget({ url: PRODUCTION, dryRun: false, approvedBy: 'Lawal Adams, 11 September 2026' })
+    expect(verdict.allowed).toBe(true)
+    expect(verdict.reason).toContain('Lawal Adams, 11 September 2026')
+    expect(verdict.reason).toContain('preflight')
+  })
+
+  test('a blank approval is no approval', () => {
+    expect(judgeBackfillTarget({ url: PRODUCTION, dryRun: false, approvedBy: '   ' }).allowed).toBe(false)
+  })
+
+  test('the refusal without an approval tells the person exactly what to supply', () => {
+    const verdict = judgeBackfillTarget({ url: PRODUCTION, dryRun: false })
+    expect(verdict.reason).toContain('--approved-by-founder')
+    expect(verdict.reason).toContain('ALLOW_PRODUCTION_SUPABASE=1')
+  })
 })
 
 /** The slice of the client the backfill reads, over rows held in memory. */

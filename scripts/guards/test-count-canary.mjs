@@ -1374,9 +1374,23 @@ const ROOT = join(HERE, '..', '..')
  * fold (scrollY 145 to 381 to 890, measured). Four tests in
  * tests/component/checkout-payment-step.test.tsx hold the fix: the step opts
  * out of scroll anchoring, starts at the top, and focuses its heading.
+ *
+ * Then 380/4606 to 380/4609, 12 September 2026, close-out D1. The backfill
+ * learns the founder's named approval for the one production run; three
+ * tests in tests/unit/ledger/backfill.test.ts hold that a production write is
+ * refused without it, allowed with it (naming the approval and deferring to
+ * the shell preflight), and refused again when the approval is blank.
+ *
+ * Then 380/4609 to 381/4614, same day, after the approved run had written.
+ * The child ran with no ORDER_ACCESS_SECRET in its shell, so its three
+ * production rows carry a buyer_hash keyed with the empty secret while every
+ * live row is keyed with the real one, and the engine's "never anyone who
+ * already bought" would have missed those two buyers for ever. The engine now
+ * asks with every shape a row can carry (identityFingerprints): three tests in
+ * tests/unit/ledger/identity.test.ts, one each in the due and waitlist rules.
  */
-const MIN_FILES = 380
-const MIN_TESTS = 4606
+const MIN_FILES = 381
+const MIN_TESTS = 4614
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
