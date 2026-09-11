@@ -10970,3 +10970,64 @@ the brief orders the push and not a prediction of it.
   READY preview built from the pushed commit.
 
 DISK at end: 19.3 GB free, on AC power.
+
+## Session 75, 11 September 2026. Tenth push attempt per the brief, refused at the same step, nothing else started.
+
+15:33 to 15:42. First action: fetch, count, push through the normal gate.
+origin was 27 behind, the tree clean (so the brief's second action had nothing
+to commit), 19.3 GB free, no orphaned gate, build or push process, no merge in
+progress, and the laptop on mains (Win32_Battery status 2, 100 percent).
+Parity was read first, read-only, in 6 s: still 10 pending, so the outcome was
+known before the run and the run was made anyway, because the brief orders the
+push and not a prediction of it.
+
+- THE PUSH ATTEMPT, 15:34:44, appended to C:\dev\push-attempt.log (lines
+  13906 to 15449, timestamp line first; the launcher is
+  C:\dev\EVIDENCE\PUSH-2026-09-11\push-attempt-session71.sh, through
+  clean-env.sh). Steps 1 to 8 PASS: disk, typecheck (8s), lint (4s), copy,
+  critical-path, lighthouse-exemptions, all 110 guards (93s), types-drift
+  (19s). Refused at step 9 of 15. The exact refusing lines:
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+  The same ten files, 20260909000001 through 20260911000001. The environment
+  half of the same step PASSED (34 production records, 0 faults). Origin
+  re-fetched after the refusal at 15:38: still 27 behind.
+
+- ONE THING CHECKED THIS SESSION, closing the gap session 74 left open.
+  Session 74 ruled out a contiguous run of commits from the front, because
+  the oldest unpushed commit adds the first pending migration. It had not
+  ruled out lifting the UX6 commit (e94840d6, no migration of its own) on its
+  own onto origin's tip, where parity is clean (origin/main..origin/verify/
+  l5-launch-readiness carries no migration file). Simulated read-only with
+  git merge-tree --write-tree --merge-base=e94840d6~1
+  origin/verify/l5-launch-readiness e94840d6: three CONFLICTS.
+  scripts/guards/run-guards.mjs and scripts/guards/test-count-canary.mjs
+  (content: the UX6 commit registered its two checkout guards and raised the
+  canary in registries the earlier unpushed commits had already changed), and
+  src/components/organisation/organisation-profile-form.tsx (modify/delete:
+  the file was added by 93ca123c, the first unpushed commit, so origin does
+  not hold it). No ref, index or working file was touched. So no side branch
+  can carry e94840d6 as the evidence cites it; resolving the conflicts would
+  be a hand-built second version of the work, outward-facing and outside the
+  brief. Not done. Recorded for the founder in REVIEW-QUEUE.md.
+
+- THE CAUSE IS FOUNDER HELD, unchanged: npm run migrate:production, reserved
+  to him by CLAUDE.md (Verification and gates, Migrations), by Law 10's stated
+  reservation, and by this brief's production-write prohibition. Session 70
+  proved the command safe against production's real rows, read-only; session
+  72 confirmed the parity step's pre-push placement is the owner's own
+  instruction (C16.2.1); neither production nor the tree has changed since.
+  No gate step touched, no bypass, no second push.
+
+- NOTHING ELSE STARTED, per the brief: origin does not hold every local
+  commit. UX6, D1, D2, UX5 and S1 stand as BUILD-LEDGER.md records them. The
+  ledger's sessions 66 to 74 section is widened by one row, and the
+  REVIEW-QUEUE.md re-check paragraph is widened rather than repeated. The
+  first act after the command lands is unchanged: the UX6 drive at 390 on the
+  READY preview built from the pushed commit.
+
+DISK at end: 19.3 GB free, on AC power.

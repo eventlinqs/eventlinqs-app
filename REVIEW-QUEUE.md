@@ -4225,20 +4225,27 @@ Evidence: C:\dev\EVIDENCE\C16\probe-ten-pending-preconditions.txt.
 The second command, stripe login, is unchanged from yesterday's note.
 
 Re-checked at 15:03 (a sixth attempt, session 71), at 15:11 (a seventh,
-session 72), at 15:18 (an eighth, session 73) and at 15:26 (a ninth, session
-74): your push gate ran again each time, green through all 110 guards, and was
-refused at the same line by the same ten migrations. Nothing else moved and
-nothing else was started. The command is unchanged: npm run migrate:production.
-Later re-checks that find the same state will widen this paragraph rather than
-add another section.
+session 72), at 15:18 (an eighth, session 73), at 15:26 (a ninth, session 74)
+and at 15:34 (a tenth, session 75): your push gate ran again each time, green
+through all 110 guards, and was refused at the same line by the same ten
+migrations. Nothing else moved and nothing else was started. The command is
+unchanged: npm run migrate:production. Later re-checks that find the same
+state will widen this paragraph rather than add another section.
 
-One question answered this time so you do not have to ask it: could the mobile
-checkout fix be pushed on its own, ahead of the migrations, to get it onto a
-preview for your 24 September deadline? No. The very first of the 27 waiting
-commits is the one that adds the first of the ten migrations, so there is no
-slice of this work that production is not already behind. Your one command
-releases all of it at once.
+One question answered so you do not have to ask it: could the mobile checkout
+fix be pushed on its own, ahead of the migrations, to get it onto a preview for
+your 24 September deadline? No, and it has now been checked two ways. The very
+first of the 27 waiting commits is the one that adds the first of the ten
+migrations, so no run of commits from the front is clear of them. And lifting
+the checkout commit out on its own, onto what origin already holds, was
+simulated this session without touching anything: it conflicts in three files
+(the guard registry, the test-count canary, and the organiser profile form,
+which the first waiting commit added), because that commit registered its two
+checkout guards into the same registry the earlier commits had already changed.
+Untangling it would mean building and pushing a second, hand-made version of
+that work, which is not what the brief asks for and would not be the commit
+the evidence cites. Your one command releases all of it at once, as it is.
 
-The battery caution from session 73 is cleared: the laptop is back on mains
-(100 percent, charging), so the first full push after your command will run
-its Lighthouse step on a comparable machine.
+The battery caution from session 73 stays cleared: the laptop is on mains
+(100 percent), so the first full push after your command will run its
+Lighthouse step on a comparable machine.
