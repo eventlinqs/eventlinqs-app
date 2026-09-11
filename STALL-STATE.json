@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-11T07:29:39.361Z",
+  "stalled": true,
+  "hoursSilent": 44.6,
+  "band": 7,
+  "lastAlertedBand": 7,
+  "alert": true,
+  "lastWorkingPush": {
+    "ref": "verify/l5-launch-readiness",
+    "when": "2026-09-09T10:55:11Z",
+    "whenLocal": "Wed, 9 Sept, 8:55 pm AEST",
+    "bookkeepingPushesPassedOver": 42
+  },
+  "branch": "verify/l5-launch-readiness",
+  "head": "4d0fda21",
+  "unpushedCommits": 28,
+  "latestAttempt": {
+    "attempts": 20,
+    "lines": [
+      30909,
+      32453
+    ],
+    "startedLocal": "2026-09-11 17:15:30",
+    "blockedLine": "[gate] BLOCKED at production-parity (exit 1) after 6s. Nothing was pushed.",
+    "failLine": "[production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards",
+    "pendingMigrations": [
+      "20260909000001_event_tags_case_distinct.sql",
+      "20260909000002_platform_notifications.sql",
+      "20260909000003_platform_notification_guards.sql",
+      "20260909000004_platform_notifications_never_block.sql",
+      "20260909000005_degraded_notification_keeps_its_subject.sql",
+      "20260910000001_ticket_tiers_keep_their_identity.sql",
+      "20260910000002_slot_ledger.sql",
+      "20260910000003_recovery_engine.sql",
+      "20260910000004_recovery_holds.sql",
+      "20260911000001_connect_requirement_watch.sql"
+    ],
+    "exitCode": 1
+  },
+  "command": "npm run migrate:production",
+  "subject": "nothing pushed to a working branch since Wednesday 9 September, blocked on npm run migrate:production",
+  "body": "Nothing has been pushed to a working branch for 44.6 hours, since verify/l5-launch-readiness at Wed, 9 Sept, 8:55 pm AEST.\n\nThe build loop on the laptop is running. It has been refused at the same pre-push gate step 20 time(s) on this log, most recently at 2026-09-11 17:15:30 local, and the refusing lines are:\n  [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards\n  [gate] BLOCKED at production-parity (exit 1) after 6s. Nothing was pushed.\n\nProduction gndnldyfudbytbboxesk lacks these 10 migration(s):\n  20260909000001_event_tags_case_distinct.sql\n  20260909000002_platform_notifications.sql\n  20260909000003_platform_notification_guards.sql\n  20260909000004_platform_notifications_never_block.sql\n  20260909000005_degraded_notification_keeps_its_subject.sql\n  20260910000001_ticket_tiers_keep_their_identity.sql\n  20260910000002_slot_ledger.sql\n  20260910000003_recovery_engine.sql\n  20260910000004_recovery_holds.sql\n  20260911000001_connect_requirement_watch.sql\n\nTHE ONE COMMAND. In PowerShell from C:\\dev\\EventLinqs\\eventlinqs-app, with the laptop on mains:\n\n    npm run migrate:production\n\nIt lists the files, asks you to type the production ref, hands you the CLI's own prompts, proves the result by observing production, and rests the CLI on TEST. Its dry run passed on 11 September, and every precondition the files depend on was checked read-only against production's real rows (one row changes: the Afro-Fusion event's duplicate tag).\n\nWHAT IT RELEASES. 28 finished commit(s) on verify/l5-launch-readiness (head 4d0fda21) push through the full gate: the UX6 mobile checkout fix for the 24 September deadline, the slot ledger (D1), the recovery engine (D2) and the connected account health work (S1). Vercel then builds the preview the UX6 drive at 390 needs.\n\nWHY YOU ARE ONLY HEARING NOW. Issue #149 was opened from the laptop by your own account, and GitHub sends \"your own updates\" by email only if you opt in, so it cannot be assumed to have reached you. This message comes from the Actions bot on the ops/session-log branch, the one branch the laptop can still push, on three channels: email, this issue, and the failed run you were emailed about.\n\nThis is band 7 of the stall (6 hours a band), so the next message cannot arrive for another 6 hours of silence. It stops by itself when a working branch is pushed.\n\nDetail on the laptop: C:\\dev\\REVIEW-QUEUE.md (the standing note), C:\\dev\\push-attempt.log lines 30909 to 32453 (the latest refusal), C:\\dev\\BUILD-LOG.md (the session entries)."
+}

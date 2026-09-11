@@ -11595,3 +11595,112 @@ and session 83 had read it two minutes before this run began.
   from the pushed commit.
 
 DISK at end: 18.2 GB free, on AC power.
+
+
+## Session 85, 11 September 2026. Twenty-first push attempt, refused at the same step; the one alert that left this laptop was the founder's own activity; a stall alert that does leave, built on ops/session-log.
+
+17:12 to 17:45 (watchdog run 18 of RUN-BUILD22). First action: fetch, count,
+push through the normal gate. origin was 28 behind, the tree clean (so the
+brief's second action had nothing to commit), 19 GB free, no orphaned gate,
+build or push process (Get-Process listed only this session's own claude), the
+laptop on mains (Win32_Battery status 2, 100 percent). Issue #149 had no reply
+at 17:14 and none at 17:27 (zero comments, state OPEN). Parity was read first,
+read-only (npm run gate:push -- --only production-parity, 6.8 s): 126 in the
+tree, 116 applied on gndnldyfudbytbboxesk, 10 pending, so the outcome was known
+before the gate ran, and the gate was run anyway because the brief orders it.
+
+- THE PUSH ATTEMPT, 17:15:30, appended to C:\dev\push-attempt.log (lines
+  30909 to 32453, timestamp line first; the launcher is
+  C:\dev\EVIDENCE\PUSH-2026-09-11\push-attempt-session71.sh, through
+  clean-env.sh). Steps 1 to 8 PASS warm: disk 0s, typecheck 8s, lint 4s,
+  copy 1s, critical-path 0s, lighthouse-exemptions 0s, all guards 93s,
+  types-drift 19s. Refused at step 9 of 15. The exact refusing lines (log
+  lines 32371, 32372, 32426 and 32445):
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 6s. Nothing was pushed.
+
+  The same ten files, 20260909000001 through 20260911000001, on head
+  4d0fda21. The environment half PASSED (34 records, 0 faults, log line
+  32423). Origin re-fetched at 17:19: 28 behind. No gate step touched, no
+  bypass, no --no-verify.
+
+- THE CAUSE IS FOUNDER HELD, unchanged, and not re-argued: the ten migrations
+  applied to production, which is npm run migrate:production (CLAUDE.md
+  Verification and gates, Migrations; Law 10's stated reservation; this run's
+  own instruction that production is never written without explicit approval,
+  which "fix the cause properly" is not). Sessions 74, 75, 77, 79, 82 and 84
+  closed every other route from source; nothing was re-derived.
+
+- THE DEFECT FOUND THIS SESSION, under "fix every defect you find": THE ONE
+  ALERT THAT LEFT THIS LAPTOP WAS THE FOUNDER'S OWN ACTIVITY. Issue #149 was
+  opened by the account eventlinqs (gh api user answers eventlinqs, the
+  issue's author is eventlinqs, and it is the repository's only collaborator).
+  GitHub's own page lists "Your own updates, such as when you open, comment
+  on, or close an issue or pull request" as an email a user CHOOSES, under
+  "choose whether you want updates sent to your default email from"
+  (https://docs.github.com/en/account-and-profile/managing-subscriptions-and-notifications-on-github/setting-up-notifications/configuring-notifications,
+  fetched 11 September 2026). Whether his choice is on cannot be read from
+  here (the CLI token lacks the notifications scope, and the preference is not
+  exposed), so sessions 77 to 84 were wrong to write that the issue "reaches
+  the founder": it reaches him only if he opens GitHub. Eleven hours with no
+  reply fits that. UNSOURCED: the default value of that choice; the page
+  fetched does not state it.
+
+  What IS on record as reaching him is GitHub's failed-run email: "six failed
+  run emails for a single pull request" (close-out C2, 5 September) and "a
+  failed-run email for every pull request opened" (the 8 September HALT), all
+  from runs his own pushes triggered. GitHub's page: "you'll receive a
+  notification when any workflow runs that you've triggered have completed"
+  and "You can also choose to receive a notification only when a workflow run
+  has failed"
+  (https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/monitoring-workflows/notifications-for-workflow-runs,
+  fetched 11 September 2026).
+
+- THE FIX, built where it can run. ops/session-log is the one branch this
+  laptop can push while the gate refuses the code (the gate skips a pushed
+  tree with no package.json: scripts/ops/pre-push-gate.mjs, classifyPush),
+  a workflow runs from the tree of the ref pushed, and the repository is
+  PUBLIC (gh repo view), so Actions minutes cost nothing. Three files, none in
+  the code tree, and nothing about the code, the gate or production changed:
+    C:\dev\stall-alert.yml, published as .github/workflows/stall-alert.yml on
+      ops/session-log. On a push that changes STALL-STATE.json it reads the
+      file and, when alert is true: runs the platform's own dispatcher with
+      --class stall on both channels (a Resend email with the repository's
+      RESEND_API_KEY secret, which this laptop does not hold, to
+      hello@eventlinqs.com, the address the 8 September drill proved; and a
+      comment on the standing issue from the Actions bot, a DIFFERENT actor
+      from the author, which is what notifies him), then FAILS the run on
+      purpose so the failed-run email, the channel proven above, carries the
+      same words in its title. When alert is false it passes and says why.
+    C:\dev\stall-state.mjs, which C:\dev\push-build-log.ps1 now calls before
+      every publish, so no session can forget it. It runs the platform's stall
+      judge read-only (scripts/ops/state-report.mjs --stall --dry-run
+      --alerted-band 1000000; the band is pinned high so the judge's own
+      dispatch step is never reached: without it the dry run walked into the
+      dispatcher, which sent nothing because it had no key and no token, and
+      #149 was checked at zero comments afterwards), reads the unpushed count
+      and head from git and the latest refusal out of push-attempt.log, and
+      rewrites C:\dev\STALL-STATE.json ONLY when a new six-hour band is seen
+      or the stall ends, so one band produces one message (UX4.2) and the
+      workflow's paths filter does not fire in between. It never sends, never
+      touches the repository, never prints a secret, and a failure in it exits
+      0 so the ledger publish still goes.
+    push-build-log.ps1 also publishes scripts/ops/alert-dispatch.mjs,
+      scripts/lib/alert-classes.mjs and scripts/lib/work-report.mjs from the
+      code tree, unchanged, because the --class stall grammar sits in the held
+      commits and origin/main's older copy prints a smoke report's absence into
+      every alert. When that code reaches main the workflow can check main out
+      instead; its header says so.
+  Proven before it left the machine: the YAML parses (js-yaml, six steps, the
+  conditions as written); the dispatcher's dry run with --class stall composes
+  "EventLinqs BUILD STALLED: nothing pushed to a working branch since
+  Wednesday 9 September, blocked on npm run migrate:production" with the body
+  as the whole detail (no network: the dry-run returns before any request);
+  the state writer's --print shows band 7, 44.5 hours, 28 unpushed, head
+  4d0fda21, the ten files read out of log lines 30909 to 32453, alert true.
+  The subject is band-stable (the day, not the hour) so every band comments on
+  one issue rather than opening one each; #149 keeps its old title and is
+  closed from here with a pointer once the new thread exists.

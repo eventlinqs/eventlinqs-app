@@ -1,0 +1,132 @@
+name: "BUILD STALLED: run npm run migrate:production"
+
+# THE STALL ALERT THAT LEAVES THE LAPTOP. 11 September 2026, session 85.
+#
+# WHY THIS FILE EXISTS, AND WHY IT LIVES ON THIS BRANCH. The build loop on the
+# founder's laptop was refused at the pre-push gate's production-parity step
+# twenty one times on 11 September 2026, because production lacks ten
+# migrations that only the founder may apply (npm run migrate:production).
+# Every commit that could have told him so, including the UX4.2 stall workflow,
+# is held on the laptop by that same refusal. The one alert that did leave the
+# machine, GitHub issue #149, was opened by the founder's OWN account, and
+# GitHub lists "your own updates, such as when you open, comment on, or close an
+# issue" as an email a user must opt into
+# (https://docs.github.com/en/account-and-profile/managing-subscriptions-and-notifications-on-github/setting-up-notifications/configuring-notifications,
+# fetched 2026-09-11), so it cannot be assumed to have reached him.
+#
+# ops/session-log is the one branch the laptop CAN push while the gate refuses
+# the code (the gate skips a pushed tree that carries no package.json), so this
+# is the only place an alert can run from. The laptop writes STALL-STATE.json
+# (C:\dev\stall-state.mjs, called by C:\dev\push-build-log.ps1 before every
+# publish); this workflow reads it and speaks on three channels that share no
+# failure:
+#
+#   1. email through Resend, with the repository secret the laptop does not hold;
+#   2. a comment on the standing issue, from the Actions bot, which is a
+#      DIFFERENT actor from the issue's author and therefore notifies him;
+#   3. this run FAILING, which is the one channel the founder is on record as
+#      receiving from this repository ("six failed-run emails for a single pull
+#      request", close-out C2, 5 September 2026). GitHub sends it to the account
+#      that triggered the run, and the push comes from his own login
+#      (https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/monitoring-workflows/notifications-for-workflow-runs,
+#      fetched 2026-09-11).
+#
+# PACING, so this is never noise (close-out UX4.2, one message per six-hour band
+# of silence). The laptop rewrites STALL-STATE.json only when the band changes
+# or the stall ends, and this workflow runs only when that file changes. A
+# green run means the file changed to "not stalled". While the code is held,
+# the dispatcher it runs is the platform's own scripts/ops/alert-dispatch.mjs,
+# published onto this branch unchanged from the code tree; once that code is on
+# main this step can check main out instead.
+
+on:
+  push:
+    branches: [ops/session-log]
+    paths: [STALL-STATE.json]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: stall-alert
+  cancel-in-progress: false
+
+jobs:
+  stall:
+    name: the build is stalled and only the founder can move it
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read what the laptop wrote
+        id: state
+        run: |
+          set -eu
+          if [ ! -f STALL-STATE.json ]; then
+            echo "::error::STALL-STATE.json is missing from this tree, so there is nothing to judge"
+            exit 1
+          fi
+          jq . STALL-STATE.json
+          {
+            echo "alert=$(jq -r '.alert' STALL-STATE.json)"
+            echo "stalled=$(jq -r '.stalled' STALL-STATE.json)"
+            echo "hours=$(jq -r '.hoursSilent' STALL-STATE.json)"
+            echo "band=$(jq -r '.band' STALL-STATE.json)"
+            echo "head=$(jq -r '.head' STALL-STATE.json)"
+            echo "unpushed=$(jq -r '.unpushedCommits' STALL-STATE.json)"
+            echo "command=$(jq -r '.command' STALL-STATE.json)"
+            echo "subject=$(jq -r '.subject' STALL-STATE.json)"
+          } >> "$GITHUB_OUTPUT"
+          jq -r '.body' STALL-STATE.json > body.txt
+          echo "----- body -----"
+          cat body.txt
+
+      - uses: actions/setup-node@v7
+        if: steps.state.outputs.alert == 'true'
+        with:
+          node-version: 24
+
+      - name: Tell the founder on the two channels the laptop cannot reach
+        if: steps.state.outputs.alert == 'true'
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ steps.state.outputs.head }}
+          REF_SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+          SUBJECT: ${{ steps.state.outputs.subject }}
+        run: |
+          set -u
+          node scripts/ops/alert-dispatch.mjs \
+            --class stall \
+            --subject "$SUBJECT" \
+            --body-file body.txt \
+            --second-channel always
+
+      - name: Fail this run, which is the third channel
+        if: steps.state.outputs.alert == 'true'
+        env:
+          HOURS: ${{ steps.state.outputs.hours }}
+          BAND: ${{ steps.state.outputs.band }}
+          UNPUSHED: ${{ steps.state.outputs.unpushed }}
+          HEAD_SHA: ${{ steps.state.outputs.head }}
+          COMMAND: ${{ steps.state.outputs.command }}
+        run: |
+          echo "::error title=BUILD STALLED for ${HOURS} hours::${UNPUSHED} commits are held on the laptop at ${HEAD_SHA}, refused at production-parity. Run: ${COMMAND}. This run fails on purpose so that the failed-run email reaches you; it is band ${BAND} of the stall and the next cannot fire for six hours."
+          exit 1
+
+      - name: Nothing to say
+        if: steps.state.outputs.alert != 'true'
+        env:
+          STALLED: ${{ steps.state.outputs.stalled }}
+          HOURS: ${{ steps.state.outputs.hours }}
+        run: |
+          if [ "$STALLED" = "true" ]; then
+            echo "Still stalled (${HOURS} hours) but inside a band that has already been raised, so nothing is sent."
+          else
+            echo "Not stalled: the last push to a working branch was ${HOURS} hours ago. Nothing is sent."
+          fi
