@@ -322,6 +322,51 @@ export function descriptorMatchesTradingName(descriptor: string, tradingName: st
   return n.startsWith(d) || d.startsWith(n)
 }
 
+/**
+ * EVERY connected account, not the first hundred. Close-out S1's reversal
+ * condition: "If Stripe rate limits the account list, page it and report the
+ * page count, do not sample."
+ *
+ * WHY THIS EXISTS AS ITS OWN FUNCTION. The check this replaced fetched
+ * `/v1/accounts?limit=100` once and stopped, and the first draft of the
+ * replacement inherited that line unchanged. Stripe caps `limit` at 100
+ * ("ranging between 1 and 100") and pages forward with `starting_after`, ending
+ * when `has_more` is false (https://docs.stripe.com/api/pagination, fetched
+ * 2026-09-11). So on the 101st connected organiser the check would have gone on
+ * reporting green while an unknown number of accounts were never looked at, and
+ * nothing would have said so. A monitor that silently stops looking is worse
+ * than no monitor, because its silence reads as health.
+ *
+ * The fetcher is injected so the paging LOOP can be tested exhaustively without
+ * Stripe. That is a test of this loop, not a claim about Stripe's behaviour; the
+ * shape it pages against is quoted above from Stripe's own page.
+ */
+export const STRIPE_LIST_LIMIT = 100
+/** A runaway stop. 50 pages is 5,000 connected accounts; a `has_more` that never
+ *  goes false would otherwise spin for ever inside a cron. Hitting it is
+ *  REPORTED rather than swallowed, because it would mean the check is sampling. */
+export const MAX_ACCOUNT_PAGES = 50
+
+export type AccountPage = { data: ConnectedAccountFacts[]; has_more?: boolean }
+
+export async function listAllConnectedAccounts(
+  fetchPage: (startingAfter: string | null) => Promise<AccountPage>,
+): Promise<{ accounts: ConnectedAccountFacts[]; pages: number; truncated: boolean }> {
+  const accounts: ConnectedAccountFacts[] = []
+  let startingAfter: string | null = null
+  let pages = 0
+
+  for (;;) {
+    const page = await fetchPage(startingAfter)
+    pages += 1
+    const rows = (page.data ?? []).filter(a => a && typeof a.id === 'string')
+    accounts.push(...rows)
+    if (!page.has_more || rows.length === 0) return { accounts, pages, truncated: false }
+    if (pages >= MAX_ACCOUNT_PAGES) return { accounts, pages, truncated: true }
+    startingAfter = rows[rows.length - 1].id
+  }
+}
+
 export type PlatformAccountHealth = {
   verdict: HealthVerdict
   /** One line per account, worst first, so a daily email reads top down. */

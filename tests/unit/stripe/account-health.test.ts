@@ -4,7 +4,10 @@ import {
   assessConnectedAccount,
   DEADLINE_AMBER_DAYS,
   descriptorMatchesTradingName,
+  listAllConnectedAccounts,
+  MAX_ACCOUNT_PAGES,
   PENDING_VERIFICATION_AMBER_DAYS,
+  STRIPE_LIST_LIMIT,
   worseOf,
   type ConnectedAccountFacts,
 } from '@/lib/stripe/account-health'
@@ -302,5 +305,80 @@ describe('rolling up many accounts', () => {
     const one = assess(healthy({ id: 'acct_1', payouts_enabled: false }), [{ id: 'a', name: 'Basement 45' }])
     const rolled = assessAllAccounts([one, one])
     expect(rolled.actions).toHaveLength(1)
+  })
+})
+
+/**
+ * PAGING, BECAUSE S1 SAYS "DO NOT SAMPLE".
+ *
+ * The reversal condition: "If Stripe rate limits the account list, page it and
+ * report the page count, do not sample."
+ *
+ * The check this replaced fetched `/v1/accounts?limit=100` once and stopped, and
+ * the first draft of the replacement inherited that line unchanged. Stripe caps
+ * `limit` at 100 and pages forward with `starting_after`, ending when `has_more`
+ * is false (https://docs.stripe.com/api/pagination, fetched 2026-09-11). So on
+ * the 101st connected organiser the check would have gone on reporting green
+ * with an unknown number of accounts never looked at, and nothing would have
+ * said so. A monitor that silently stops looking is worse than none, because its
+ * silence reads as health.
+ *
+ * The fetcher is injected, so these test THIS LOOP rather than claim anything
+ * about Stripe. The shape being paged against is quoted from Stripe's own page.
+ */
+describe('listAllConnectedAccounts', () => {
+  const page = (ids: string[], has_more = false) => ({ data: ids.map(id => ({ id })), has_more })
+
+  it('reads a single page and reports one page', async () => {
+    const r = await listAllConnectedAccounts(async () => page(['acct_1', 'acct_2']))
+    expect(r.accounts.map(a => a.id)).toEqual(['acct_1', 'acct_2'])
+    expect(r.pages).toBe(1)
+    expect(r.truncated).toBe(false)
+  })
+
+  it('follows has_more to the end and reports every page', async () => {
+    const pages = [page(['acct_1', 'acct_2'], true), page(['acct_3', 'acct_4'], true), page(['acct_5'])]
+    let n = 0
+    const r = await listAllConnectedAccounts(async () => pages[n++])
+    expect(r.accounts.map(a => a.id)).toEqual(['acct_1', 'acct_2', 'acct_3', 'acct_4', 'acct_5'])
+    expect(r.pages).toBe(3)
+    expect(r.truncated).toBe(false)
+  })
+
+  it('passes the LAST id of the page as the next cursor, which is what starting_after means', async () => {
+    const cursors: (string | null)[] = []
+    const pages = [page(['acct_1', 'acct_2'], true), page(['acct_3'])]
+    let n = 0
+    await listAllConnectedAccounts(async (startingAfter) => {
+      cursors.push(startingAfter)
+      return pages[n++]
+    })
+    expect(cursors).toEqual([null, 'acct_2'])
+  })
+
+  it('stops on an empty page even when Stripe still says has_more, rather than spinning', async () => {
+    const r = await listAllConnectedAccounts(async () => page([], true))
+    expect(r.pages).toBe(1)
+    expect(r.truncated).toBe(false)
+  })
+
+  it('reports truncation rather than sampling silently when the cap is reached', async () => {
+    let i = 0
+    const r = await listAllConnectedAccounts(async () => page([`acct_${i++}`], true))
+    expect(r.truncated).toBe(true)
+    expect(r.pages).toBe(MAX_ACCOUNT_PAGES)
+  })
+
+  it('never asks Stripe for more than Stripe allows', () => {
+    expect(STRIPE_LIST_LIMIT).toBeLessThanOrEqual(100)
+    expect(STRIPE_LIST_LIMIT).toBeGreaterThanOrEqual(1)
+  })
+
+  it('drops a malformed row rather than assessing an account with no id', async () => {
+    const r = await listAllConnectedAccounts(async () => ({
+      data: [{ id: 'acct_1' }, null as never, { charges_enabled: true } as never],
+      has_more: false,
+    }))
+    expect(r.accounts.map(a => a.id)).toEqual(['acct_1'])
   })
 })

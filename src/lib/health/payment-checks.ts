@@ -4,6 +4,8 @@ import { resolveWebhookSecrets } from '@/lib/payments/stripe-adapter'
 import {
   assessAllAccounts,
   assessConnectedAccount,
+  listAllConnectedAccounts,
+  STRIPE_LIST_LIMIT,
   type AccountOwner,
   type ConnectedAccountFacts,
   type HealthVerdict,
@@ -279,20 +281,53 @@ export async function connectedAccountHealthCheck(): Promise<PaymentCheckResult 
     }
     if (!orgs || orgs.length === 0) return green('no connected organisations to assess')
 
-    const res = await fetch('https://api.stripe.com/v1/accounts?limit=100', {
-      headers: { authorization: `Bearer ${key}` },
-      signal: AbortSignal.timeout(15000),
-    })
-    const body = (await res.json()) as { error?: { message?: string }; data?: ConnectedAccountFacts[] }
-    if (body.error) {
+    // EVERY account, not the first hundred. Stripe caps `limit` at 100 and pages
+    // with `starting_after` (https://docs.stripe.com/api/pagination, fetched
+    // 2026-09-11), and S1's reversal condition is explicit: page it and report
+    // the page count, do not sample. A list error is thrown out of the fetcher
+    // so a half-read list can never be assessed as if it were the whole one.
+    let listed
+    try {
+      listed = await listAllConnectedAccounts(async (startingAfter) => {
+        const url = new URL('https://api.stripe.com/v1/accounts')
+        url.searchParams.set('limit', String(STRIPE_LIST_LIMIT))
+        if (startingAfter) url.searchParams.set('starting_after', startingAfter)
+        const res = await fetch(url, {
+          headers: { authorization: `Bearer ${key}` },
+          signal: AbortSignal.timeout(15000),
+        })
+        const body = (await res.json()) as { error?: { message?: string }; data?: ConnectedAccountFacts[]; has_more?: boolean }
+        if (body.error) throw new Error(body.error.message ?? 'unknown')
+        return { data: body.data ?? [], has_more: body.has_more }
+      })
+    } catch (err) {
       return {
-        ...emit({ name, ok: false, detail: `Stripe accounts list failed: ${body.error.message ?? 'unknown'}`, probableCause: 'Stripe API rejected the sentinel key' }),
+        ...emit({
+          name,
+          ok: false,
+          detail: `Stripe accounts list failed: ${String(err instanceof Error ? err.message : err).slice(0, 140)}`,
+          probableCause: 'Stripe API rejected the sentinel key, or the list could not be paged to the end',
+        }),
+        verdict: 'red',
+      }
+    }
+
+    // Hitting the page cap means the check IS sampling, which is the one thing
+    // S1 forbids, so it is reported as a fault rather than quietly accepted.
+    if (listed.truncated) {
+      return {
+        ...emit({
+          name,
+          ok: false,
+          detail: `stopped after ${listed.pages} pages of connected accounts (${listed.accounts.length} read) and Stripe still reported more. Some accounts were NOT assessed.`,
+          probableCause: 'more connected accounts than the page cap allows, so this check is sampling rather than reporting',
+        }),
         verdict: 'red',
       }
     }
 
     const accounts = new Map<string, ConnectedAccountFacts>()
-    for (const a of body.data ?? []) if (a?.id) accounts.set(a.id, a)
+    for (const a of listed.accounts) accounts.set(a.id, a)
 
     // Group BY CONNECTED ACCOUNT, not by organisation. The first cut of the
     // deleted check iterated organisations and reported one line per row, which
@@ -307,7 +342,7 @@ export async function connectedAccountHealthCheck(): Promise<PaymentCheckResult 
       byAccount.set(org.stripe_account_id, list)
     }
     if (byAccount.size === 0) {
-      return green(`${orgs.length} connected organisation(s), none present in the first 100 Stripe accounts - nothing assessed`)
+      return green(`${orgs.length} connected organisation(s), none present in the ${listed.accounts.length} Stripe account(s) read over ${listed.pages} page(s) - nothing assessed`)
     }
 
     // What is pending verification right now, recorded so the NEXT run can say
@@ -327,13 +362,13 @@ export async function connectedAccountHealthCheck(): Promise<PaymentCheckResult 
     )
 
     if (rolled.verdict === 'green') {
-      return green(`${rolled.assessed} connected account(s) assessed: every one can take charges, can be paid out, and owes Stripe nothing`)
+      return green(`${rolled.assessed} connected account(s) assessed over ${listed.pages} Stripe page(s): every one can take charges, can be paid out, and owes Stripe nothing`)
     }
     return {
       ...emit({
         name,
         ok: false,
-        detail: `${rolled.green} of ${rolled.assessed} connected account(s) fully healthy. ${rolled.findings.join(' | ')}`,
+        detail: `${rolled.green} of ${rolled.assessed} connected account(s) fully healthy, read over ${listed.pages} Stripe page(s). ${rolled.findings.join(' | ')}`,
         probableCause: rolled.actions[0],
       }),
       verdict: rolled.verdict,

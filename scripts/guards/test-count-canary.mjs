@@ -1347,9 +1347,17 @@ const ROOT = join(HERE, '..', '..')
  * DELETED name comparison and gained seven about the connected account's
  * descriptor prefix, which S1 requires to be set explicitly at creation and
  * never left to Stripe's fallback.
+ *
+ * Then 4567 to 4574, same commit, after the self-audit caught a requirement the
+ * first pass had dropped. S1's reversal condition says "page it and report the
+ * page count, do not sample", and the replacement had inherited
+ * `/v1/accounts?limit=100` with no paging from the check it replaced. On the
+ * 101st connected organiser it would have gone on reporting green with an
+ * unknown number of accounts never looked at. Seven tests on the paging loop,
+ * including the cursor Stripe's own page documents and the runaway stop.
  */
 const MIN_FILES = 378
-const MIN_TESTS = 4567
+const MIN_TESTS = 4574
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
