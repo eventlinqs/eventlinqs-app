@@ -10685,3 +10685,97 @@ was 27 behind, the tree clean, AC power, 19.3 GB free, port 3000 free.
   ENROLMENT PAGE", all MET, commit 4ecd0da0, held on this machine like the rest.
 
 DISK at end: 19.3 GB free, on AC power.
+
+## Session 70, 11 September 2026. Fifth push attempt per the brief, refused at the same step; the ten migrations checked against production's real data, read-only, and every precondition holds.
+
+14:47 to 15:05. First action: fetch, count, push through the normal gate.
+origin was 27 behind, the tree clean (so the brief's second action had nothing
+to commit), AC power (Win32_Battery status 2, 100 percent), 20 GB free, port
+3000 free, no orphaned gate, build or push process.
+
+- THE PUSH ATTEMPT, 14:49:43, appended to C:\dev\push-attempt.log (lines 6181
+  to 7724, timestamp line first). Steps 1 to 8 PASS: disk, typecheck (8s),
+  lint (4s), copy, critical-path, lighthouse-exemptions, all 110 guards (88s),
+  types-drift (20s). Refused at step 9 of 15. The exact refusing lines:
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+  The same ten files, 20260909000001 through 20260911000001. The environment
+  half of the same step PASSED (34 production records, 47 manifest entries,
+  0 faults). Production was read live at 14:52; origin re-fetched after the
+  refusal: still 27 behind.
+
+- THE CAUSE IS FOUNDER HELD, unchanged: npm run migrate:production, reserved
+  to him by CLAUDE.md (Verification and gates, Migrations), by Law 10's stated
+  reservation, and by this brief. No gate step touched, no bypass, no second
+  push, because nothing changed between the refusal and now. Sessions 66 to
+  69 established that and re-ran the gate; this session did instead the one
+  part of the fix that IS mine.
+
+- WHAT IS MINE: PROVING HIS COMMAND WILL SUCCEED. The ten files were applied
+  on TEST, and TEST holds different rows from production. A migration that
+  fails halfway on production data was a risk nobody had measured, and the
+  reference for measuring it exists (C:\dev\EVIDENCE\C16\probe-migration-
+  preconditions.mjs, 7 September). So every data and catalogue precondition
+  the ten files rely on was read from production, SELECT only, read_only
+  true on every statement, through scripts/ops/with-supabase-token.ps1 (the
+  token never printed): C:\dev\EVIDENCE\C16\probe-ten-pending-preconditions.mjs,
+  29 statements, output in probe-ten-pending-preconditions.txt at 14:56.
+  Every precondition holds:
+    * Production carries 116 migrations, newest 20260906000002. The ten are
+      absent, and all ten are newer than the newest applied, so `supabase db
+      push` needs no --include-all.
+    * 20260909000001 (event tags) is the ONLY file that rewrites existing
+      rows. Production holds 5 events, all with array tags. Exactly ONE
+      violates the new invariant today: the Afro-Fusion showcase
+      (34a15c3a-c881-42f5-8ff2-d515232e966e) carrying both "African" and
+      "african", the very row the migration's own header predicted. The
+      repair changes exactly that row (drops the later "african", keeps the
+      organiser's "African" and the order of the other eleven tags) and
+      leaves ZERO rows violating, so the CHECK constraint added after the
+      repair will succeed on production. The UPDATE fires two BEFORE UPDATE
+      triggers there: update_updated_at (sets updated_at) and
+      enforce_refund_policy_one_way, whose body, read from production
+      (probe-refund-policy-trigger.txt), returns NEW when no refund policy
+      column changed. The other seven triggers on events are column-specific
+      (event_type, slug, virtual_url, organisation_id) or DELETE-only and do
+      not fire. The file carries no CREATE INDEX, so the UPDATE and the
+      constraint commit together or not at all.
+    * 20260910000001 (ticket tiers) creates one function and changes no
+      data: both enum types it casts to exist, all 16 ticket_tiers columns it
+      names exist, order_items.ticket_tier_id and tickets.ticket_tier_id
+      exist, and UNIQUE (event_id, name) exists.
+    * 20260909000002 to 000005 (owner notifications): neither enum type nor
+      the table exists yet; all 11 organisations columns, 10 events columns
+      and 10 orders columns the triggers read exist; 'published' is a label
+      of event_status and 'confirmed' of order_status; auth.users exists for
+      the actor foreign key. One note for the record: 000002's first body of
+      notify_event_published names new.city and production has no city
+      column. PL/pgSQL resolves a trigger's NEW fields at run time, so the
+      CREATE succeeds, and 000004 replaces that body seconds later in the
+      same push with coalesce(city_primary, venue_city), both of which exist.
+    * 20260910000002 to 20260911000001 (ledger, recovery, connect watch):
+      none of the 7 new tables, 4 new enum types, 18 functions or 13 triggers
+      exists on production, so no CREATE collides and no CREATE OR REPLACE
+      meets a different return type.
+    * Transaction shape, per the CLI source read on 7 September: 000002
+      (3 CREATE INDEX), slot_ledger (6), recovery_engine (4) and
+      recovery_holds (2) each run as several implicit transactions; every
+      statement in them is IF NOT EXISTS, OR REPLACE, DROP IF EXISTS, a
+      comment or a grant, so a failure mid-file is repaired by running the
+      same command again. The other six files are single implicit
+      transactions.
+    * Context: production holds 3 organisations, 3 orders, 4 tickets and
+      5 events. PostgreSQL 17.6.
+
+- NOTHING ELSE STARTED, per the halt. UX6, D1, D2, UX5 and S1 stand as
+  BUILD-LEDGER.md records them from sessions 62 to 65; no verdict changed,
+  so BUILD-LEDGER.md is untouched this session. The first act after the
+  command lands is the UX6 drive at 390 on the READY preview built from the
+  pushed commit (scripts/verify/ux6-checkout-viewport-proof.mjs takes the
+  base URL), then D1's acceptance lines against the production ledger.
+
+DISK at end: 20 GB free, on AC power.

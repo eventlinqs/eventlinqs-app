@@ -4184,3 +4184,42 @@ twenty seconds after every run, and every run re-does the first nine gate steps
 line. That loop is honest and it costs nothing you care about, but it produces
 nothing until the command above lands, and it will stop by itself the moment it
 does.
+
+## Fifth attempt, refused at the same line. So instead of running the gate a sixth time, I checked your command against production's real data
+
+Your push gate ran again at 14:49. Everything green through all 110 guards,
+then refused, correctly, at production parity: the same ten migrations are
+still not on production. Nothing was bypassed and no threshold was touched.
+The full output is in C:\dev\push-attempt.log.
+
+The command is unchanged, in PowerShell from the repo:
+
+    npm run migrate:production
+
+What is new. Nobody had checked whether those ten files will actually APPLY
+on production. They were proven on the TEST database, which holds different
+rows, and a migration that fails halfway on real data is exactly the surprise
+you should not meet at the keyboard. So I read production, read-only (29
+SELECT statements, nothing written, the token never printed), for every fact
+the ten files depend on. All of it holds:
+
+- Only one of the ten changes existing data, and it changes one row. The
+  Afro-Fusion showcase carries both "African" and "african" as tags; the
+  migration keeps the first and drops the second, and touches no other event.
+  The rule it then adds (no two tags differing only by case) passes on every
+  row once that tidy is done.
+- The other nine only add new tables, types and functions. None of them
+  exists on production yet, and every column they read from your organisers,
+  events and orders tables is there.
+- The files are in the right order for the CLI, so it needs no extra flag.
+- If the command were interrupted partway, running it again is safe: every
+  statement is written to be repeated.
+
+So the command is safe to run, and it remains the only thing between this
+laptop and: the push of 27 finished commits, the mobile checkout drive on a
+real preview (UX6, your 24 September deadline), and the production ledger
+that closes D1 and D2.
+
+Evidence: C:\dev\EVIDENCE\C16\probe-ten-pending-preconditions.txt.
+
+The second command, stripe login, is unchanged from yesterday's note.
