@@ -108,7 +108,12 @@ jobs:
             --second-channel always
 
       - name: Fail this run, which is the third channel
-        if: steps.state.outputs.alert == 'true'
+        # always(): the first live run (34574674268, 11 September) lost the
+        # dispatcher step to a missing file, and this step was SKIPPED with it,
+        # so the failed-run email carried the dispatcher's stack trace rather
+        # than the sentence below. The third channel must speak whatever the
+        # first two did.
+        if: always() && steps.state.outputs.alert == 'true'
         env:
           HOURS: ${{ steps.state.outputs.hours }}
           BAND: ${{ steps.state.outputs.band }}
