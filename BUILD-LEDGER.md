@@ -3787,7 +3787,7 @@ age is computed from - of being a write. A guard that fires on the read it exist
 to protect, or on the sentence explaining itself, is switched off within a week.
 Both narrowings carry a NEGATIVE drill asserting they stay green.
 
-## SESSIONS 66 TO 70. THE PUSH ATTEMPTS THE BRIEF ORDERED FIRST. 11 September 2026.
+## SESSIONS 66 TO 71. THE PUSH ATTEMPTS THE BRIEF ORDERED FIRST. 11 September 2026.
 
 | Requirement (run brief) | Verdict | Evidence |
 |---|---|---|
@@ -3804,3 +3804,4 @@ Both narrowings carry a NEGATIVE drill asserting they stay green.
 | Re-attempted, session 69 at 14:42 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; steps 1 to 8 PASS including all 110 guards; environment half PASS; production read live at 14:44; origin still 27 behind after. Re-verified that no workflow applies a migration and package.json carries one route only, npm run migrate:production, so no non-founder fix exists. Nothing else started | C:\dev\push-attempt.log lines 4636 to 6179; BUILD-LOG.md, Session 69 |
 | Re-attempted, session 70 at 14:49 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; steps 1 to 8 PASS including all 110 guards; environment half PASS (34 records, 47 entries, 0 faults); production read live at 14:52; origin still 27 behind after; no gate step touched, no bypass, no second push | C:\dev\push-attempt.log lines 6181 to 7724; BUILD-LOG.md, Session 70 |
 | The founder's command proven safe before he runs it (the part of "fix the cause" that is not reserved) | MET, READ-ONLY: 29 SELECT statements against production, every precondition of the ten files holds. One row changes (the Afro-Fusion event's tags, the later "african" dropped beside "African"); zero rows violate the new CHECK after that repair; the two BEFORE UPDATE triggers the repair fires pass a tags-only update; every column, enum type and status label the triggers and functions name exists; none of the 7 tables, 4 types, 18 functions or 13 triggers collides; the ten are newer than the newest applied so no --include-all; the four files that split on CREATE INDEX are re-runnable statement by statement | C:\dev\EVIDENCE\C16\probe-ten-pending-preconditions.mjs and .txt; probe-refund-policy-trigger.txt; BUILD-LOG.md, Session 70 |
+| Re-attempted, session 71 at 15:03 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; steps 1 to 8 PASS including all 110 guards; environment half PASS (34 records, 47 entries, 0 faults); production read live at 15:03; origin still 27 behind after (re-fetched 15:05); no gate step touched, no bypass, no second push; nothing else started | C:\dev\push-attempt.log lines 7726 to 9269; BUILD-LOG.md, Session 71 |
