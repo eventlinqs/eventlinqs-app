@@ -11478,3 +11478,60 @@ the gate's own parity step reads production live in any case.
   from the pushed commit.
 
 DISK at end: 18.3 GB free, on AC power.
+
+## Session 83, 11 September 2026. Nineteenth push attempt, refused at the same step; parity read first; nothing else started.
+
+16:58 to 17:03 (watchdog run 16 of RUN-BUILD22). First action: fetch, count,
+push through the normal gate. origin was 28 behind, the tree clean (so the
+brief's second action had nothing to commit), 18.3 GB free, no orphaned gate,
+build or push process (Win32_Process listed no node or git), the laptop on
+mains (Win32_Battery status 2, 100 percent). Issue #149 (the stall alert sent
+at 16:07 in session 77) had no reply at 16:58 and none at 17:02 (zero
+comments, state OPEN). The read-only parity step was run first this time
+(npm run gate:push -- --only production-parity, 6 s): 126 migrations in the
+tree, 116 applied on gndnldyfudbytbboxesk, 10 pending, so the outcome was
+known before the gate ran.
+
+- THE PUSH ATTEMPT, 16:59:28, appended to C:\dev\push-attempt.log (lines
+  27817 to 29361, timestamp line first; the launcher is
+  C:\dev\EVIDENCE\PUSH-2026-09-11\push-attempt-session71.sh, through
+  clean-env.sh). Steps 1 to 8 PASS, warm: disk 0s, typecheck 8s, lint 3s,
+  copy 1s, critical-path 0s, lighthouse-exemptions 0s, all 110 guards 91s,
+  types-drift 18s. Refused at step 9 of 15. The exact refusing lines (log
+  lines 29279, 29280, 29334 and 29353):
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 5s. Nothing was pushed.
+
+  The same ten files, 20260909000001 through 20260911000001, on head
+  4d0fda21. The environment half PASSED (34 records, 0 faults). Origin
+  re-fetched at 17:02: 28 behind. No gate step touched, no bypass, no
+  --no-verify.
+
+- THE CAUSE IS FOUNDER HELD, unchanged, and not re-argued. The proper fix is
+  the ten migrations applied to production, which is the founder's reserved
+  command (npm run migrate:production; CLAUDE.md Verification and gates,
+  Migrations; Law 10's stated reservation; this run's own instruction that
+  production is never written without explicit approval). The alternatives
+  were closed by earlier sessions from source, not memory: no contiguous
+  subset of the 28 commits is clear of the migrations (session 74), the
+  checkout commit alone conflicts in three files when lifted onto origin
+  (session 75), and narrowing the parity step to the deployment a feature
+  branch push creates is a gate exemption the brief forbids, put to the
+  founder by session 77 in REVIEW-QUEUE.md. Nothing was re-derived.
+
+- CHANNELS: none new. GitHub issue #149 remains the only channel that leaves
+  this laptop (RESEND_API_KEY empty in .env.local; the harness notification
+  needs Remote Control, which session 82 proved inactive). Not re-tried.
+
+- NOTHING ELSE STARTED, per the brief: origin does not hold every local
+  commit. No new defect found this session. UX6, D1, D2, UX5 and S1 stand as
+  BUILD-LEDGER.md records them; no item closed, so CLOSE-OUT.md is untouched.
+  The ledger's sessions 66 to 82 section is widened to 83 with one row, and
+  the REVIEW-QUEUE.md re-check paragraph is widened. The first act after the
+  command lands is unchanged: the UX6 drive at 390 on the READY preview built
+  from the pushed commit.
+
+DISK at end: 18.2 GB free, on AC power.

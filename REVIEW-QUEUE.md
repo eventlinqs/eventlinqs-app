@@ -4230,15 +4230,15 @@ at 15:34 (a tenth, session 75), at 15:42 (an eleventh, session 76), at 15:52
 and 16:09 (a twelfth and a thirteenth, session 77, the second on the new
 commit 4d0fda21), at 16:19 (a fourteenth, session 78), at 16:26 (a
 fifteenth, session 79), at 16:35 (a sixteenth, session 80), at 16:43 (a
-seventeenth, session 81), and at 16:51 (an eighteenth, session 82, still no
-reply on issue #149; a desktop and phone notification was also attempted
-from the session itself and could not be delivered because Remote Control
-is not connected): your push gate ran again each time, green through all
-110 guards, and was refused at the same line by the same ten migrations.
-Nothing else was started. The command is unchanged: npm run
-migrate:production. What session 77 did about you not having heard is the
-section below. Later re-checks that find the same state will widen this
-paragraph rather than add another section.
+seventeenth, session 81), at 16:51 (an eighteenth, session 82; a desktop and
+phone notification was also attempted from the session itself and could not
+be delivered because Remote Control is not connected), and at 16:59 (a
+nineteenth, session 83, still no reply on issue #149): your push gate ran
+again each time, green through all 110 guards, and was refused at the same
+line by the same ten migrations. Nothing else was started. The command is
+unchanged: npm run migrate:production. What session 77 did about you not
+having heard is the section below. Later re-checks that find the same state
+will widen this paragraph rather than add another section.
 
 ## Session 77: why you had not heard, and the one issue that now tells you
 
