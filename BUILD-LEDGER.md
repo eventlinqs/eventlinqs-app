@@ -3787,7 +3787,7 @@ age is computed from - of being a write. A guard that fires on the read it exist
 to protect, or on the sentence explaining itself, is switched off within a week.
 Both narrowings carry a NEGATIVE drill asserting they stay green.
 
-## SESSIONS 66 TO 90. THE PUSH ATTEMPTS THE BRIEF ORDERED FIRST. 11 September 2026.
+## SESSIONS 66 TO 91. THE PUSH ATTEMPTS THE BRIEF ORDERED FIRST. 11 to 12 September 2026.
 
 | Requirement (run brief) | Verdict | Evidence |
 |---|---|---|
@@ -3832,3 +3832,29 @@ Both narrowings carry a NEGATIVE drill asserting they stay green.
 | Re-attempted, session 88 at 17:52, on head 4d0fda21 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; parity read first (migrate:production dry run, 6 s, 10 pending) so the outcome was known before the gate; steps 1 to 8 PASS warm (typecheck 7s, lint 4s, all guards 93s, types-drift 18s); environment half PASS (34 records, 0 faults); origin 28 behind after (re-fetched 17:55); issue #150 unanswered (zero comments at 17:52 and 17:55); band 7 already alerted so the publish fires nothing; no gate step touched, no bypass; nothing else started | C:\dev\push-attempt.log lines 35546 to 37090; BUILD-LOG.md, Session 88 |
 | Re-attempted, session 89 at 17:59, on head 4d0fda21 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; parity read first (migrate:production dry run, 6 s, 10 pending, CLI resting on TEST) so the outcome was known before the gate; steps 1 to 8 PASS warm (typecheck 7s, lint 4s, all guards 91s, types-drift 19s); environment half PASS (34 records, 0 faults); origin 28 behind after (re-fetched 18:02); issue #150 unanswered (zero comments at 17:59 and 18:02); band 7 already alerted so the publish fires nothing; no gate step touched, no bypass; nothing else started | C:\dev\push-attempt.log lines 37091 to 38636; BUILD-LOG.md, Session 89 |
 | Re-attempted, session 90 at 18:07, on head 4d0fda21 | REFUSED IDENTICALLY at production-parity, step 9 of 15, same ten migrations; parity read first (migrate:production dry run, 6 s, 10 pending, CLI resting on TEST) so the outcome was known before the gate; steps 1 to 8 PASS warm (typecheck 7s, lint 4s, all guards 93s, types-drift 19s); environment half PASS (34 records, 0 faults); origin 28 behind after (re-fetched 18:09); issue #150 unanswered (zero comments at 18:06); band 7 already alerted so the publish fires nothing; no gate step touched, no bypass; nothing else started | C:\dev\push-attempt.log lines 38637 to 40182; BUILD-LOG.md, Session 90 |
+| Re-attempted, session 91 at 23:49, on head 4d0fda21 | THE BLOCK WAS GONE: parity read first answered 126 in the tree, 126 applied, 0 pending (the founder had run migrate:production). REFUSED AT A NEW STEP, types-drift, step 8 of 15: "285 of 285 difference(s) are NOT explained by any pending migration", every one an object the tree's own migrations 20260909000001 to 20260911000001 create. Cause: five migrations committed without regenerating src/types/database.ts, invisible while production was equally behind. Treated as the first work item per the brief | C:\dev\push-attempt.log lines 40184 to 42725; BUILD-LOG.md, Session 91 |
+| Fixed and re-attempted, session 91 at 00:24, on head 0a195454 (29 ahead) | ALL FIFTEEN STEPS PASS (lighthouse 1787s on mains); "80c4b118..0a195454", PUSH EXIT CODE 0; re-fetched 0 ahead, 0 behind. Origin holds every commit for the first time since Wednesday 9 September. The fix: types regenerated (457 lines added, 0 removed, tsc 0), a new registered guard types-cover-migrations proven red (19 faults on 4d0fda21) and green, three drills, 18 tests, canary 379/4602; one-door-to-the-requirement-watch corrected to exclude the generated schema record. See the section below | C:\dev\push-attempt.log lines 42727 to 46557; C:\dev\EVIDENCE\TYPES-DRIFT-2026-09-11\; BUILD-LOG.md, Session 91 |
+
+## THE TYPES-DRIFT REFUSAL OF 11 SEPTEMBER 2026, FIXED AT THE CAUSE. Session 91, commit 0a195454.
+
+Not an item in CLOSE-OUT.md. The brief makes a refusal at any gate step other
+than production-parity the first work item, and this is that item, adjudicated
+to the completion law like any other.
+
+| Requirement | Verdict | Evidence |
+|---|---|---|
+| Quote the exact refusing line in BUILD-LOG.md | **MET** | Session 91 entry: log lines 41545, 41547 and 42717 quoted verbatim |
+| Fix the cause properly, not the symptom | **MET** | The symptom (stale generated section) is regenerated from production with the guard's own CLI version, additive only. The CAUSE (nothing judged the committed types against the tree's own migrations while production lagged) is a new registered blocking guard, types-cover-migrations, that reads only the repository and would have refused the commit that introduced the staleness | C:\dev\EVIDENCE\TYPES-DRIFT-2026-09-11\committed-vs-live.diff, types-drift-green.txt, scripts/guards/types-cover-migrations.mjs |
+| Schema | n/a | No migration; the schema was right, the record of it was stale | |
+| Code built, typechecked, linted, no silent catches | **MET** | tsc exit 0 (tsc-final.txt), eslint 0 on every changed file (eslint-changed-2.txt), build PASS inside the gate; the guard reads every file and every migration and swallows nothing | gate lines 42727 to 46557 |
+| Tests added, canary raised in the same commit | **MET** | 18 tests, one file: 11 on the replay (create, temp table ignored, rename, drop, enum, trigger functions excluded, callable included, default now() inside a signature, add column with and without COLUMN, constraint is not a column, drop and rename column, runtime-built names skipped, comments stripped), 5 on the judgement, 2 over the real repository. Canary 378/4584 to 379/4602 | tests/unit/guards/types-cover-migrations.test.ts, vitest-new-file-3.txt |
+| Guard registered and blocking | **MET** | Registered in run-guards.mjs after trigger-columns-exist; "all 111 guards PASS" | all-guards-2.txt |
+| Guard proven to FAIL as well as pass | **MET** | RED: the committed types of 4d0fda21 swapped in, 19 faults (7 tables, 4 enums, 8 functions) each naming its migration, exit 1; file restored, sha1 8377b328 identical before and after. GREEN: 316 objects judged against 3653 type paths, 0 missing, exit 0. Three harness drills (a table, an enum, a column added to 20260911000001) FAIL AS EXPECTED naming the object; 164 of 164 drills fired correctly | guard-red.txt, guard-green-2.txt, guard-failure-drills.txt |
+| Fix everything found on the way | **MET** | one-door-to-the-requirement-watch accused the regenerated types file of being a second door; the generated schema record is excluded by name with the reason printed; its S1 drill 16 of 16 behaving | one-door-green.txt, s1-guard-drill.txt |
+| Driven at 390, 768 and 1440 | n/a, and said so | Nothing here renders. The gate's own checkout-viewport step (225s) and indexing drive (201s) ran on the build and passed | gate lines 42727 to 46557 |
+| Full regression green | **MET** | Every one of the 15 gate steps on the push, including the suite through the canary (379 files / 4602 tests), the build, and the Lighthouse mobile gate on mains | C:\dev\push-attempt.log lines 42727 to 46557 |
+| Committed, Australian English, no trailers, PUSHED | **MET** | 0a195454, hook accepted; origin at 0a195454, 0 ahead, 0 behind | git log; push-attempt.log line 46556 |
+
+WHAT IT CANNOT SEE, said plainly: a column whose TYPE changed. The new guard
+judges presence, not shape; shape stays with the types-drift guard against a
+live database, and the two together close both halves.

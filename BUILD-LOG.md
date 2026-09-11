@@ -12091,3 +12091,110 @@ gate was run anyway because the brief orders it.
   pushed commit.
 
 DISK at end: 19 GB free, on AC power.
+
+
+## Session 91, 11 to 12 September 2026. The migrations landed. The push was refused at a NEW step, fixed at the cause, and went through: origin holds every commit for the first time since Wednesday.
+
+23:48 to 01:11 (watchdog run 24 of RUN-BUILD22). First action: fetch, count,
+push through the normal gate. origin was 28 behind on head 4d0fda21 and 0
+ahead, the tree clean, 19 GB free by df, core.hooksPath at .githooks, no
+node.exe or git.exe alive before the run. The laptop was ON BATTERY at 23:48
+(Win32_Battery status 1, 78 percent), which matters for Lighthouse, and was
+back on mains by 00:20 (status 2). Parity was read first, read-only, and for
+the first time it answered differently: 126 in the tree, 126 applied on
+gndnldyfudbytbboxesk, 0 pending. The founder had run npm run migrate:production.
+The block that refused twenty-six sessions was gone.
+
+- THE PUSH ATTEMPT, 23:49:23, appended to C:\dev\push-attempt.log (lines
+  40184 to 42725, the timestamp header at line 40184). Steps 1 to 7 PASS.
+  REFUSED AT STEP 8 OF 15, a step that had passed twenty-six times. The exact
+  refusing lines (log lines 41545, 41547 and 42717):
+
+      [types-drift] FAIL: src/types/database.ts is out of date with the live database schema of gndnldyfudbytbboxesk.
+      [types-drift] 285 of 285 difference(s) are NOT explained by any pending migration.
+      [gate] BLOCKED at types-drift (exit 1) after 24s. Nothing was pushed.
+
+  Per the brief, a refusal at any step other than production-parity is the
+  first work item. It was.
+
+- THE CAUSE, read from the log and the tree, not guessed. Every one of the 285
+  differences was "committed absent, live present": 7 tables (ledger_entries,
+  ledger_slots, recovery_contacts, recovery_holds, recovery_sends,
+  recovery_suppressions, connect_requirement_watch), 4 enums, 8 callable
+  functions, and their columns. All of them are created by migrations
+  20260909000001 to 20260911000001, which this tree carries. The committed
+  src/types/database.ts was last regenerated at e90943eb (9 September), before
+  the ticket-tier identity function, the slot ledger, the recovery engine, the
+  recovery holds and the connect requirement watch were written. Five
+  migrations were committed over two days without regenerating the types, and
+  every gate stayed green, for a reason worth writing down: the types-drift
+  guard compares the committed file with PRODUCTION, production had not been
+  given those migrations, so the committed file and the live schema were stale
+  in exactly the same way and the guard reported IN SYNC on every one of the
+  twenty-six refused runs (it sat at step 8, before the parity refusal at step
+  9). Typecheck was clean throughout because supabase-js types an unknown
+  table name as `any`, so seven tables of new code compiled with no typed row
+  at all. The moment production caught up, the same guard saw the truth.
+
+- THE FIX, in three parts, all in commit 0a195454.
+  (1) The generated section of src/types/database.ts regenerated from
+      production (a read, permitted) with CLI 2.117.0, the version the guard
+      prints. Additive only: 457 lines added, 0 removed
+      (C:\dev\EVIDENCE\TYPES-DRIFT-2026-09-11\committed-vs-live.diff), so the
+      CLI version was not a factor. tsc exit 0 before and after; the
+      types-drift guard run locally on the spliced tree: "OK: generated
+      section matches the live schema" (types-drift-green.txt).
+  (2) THE CAUSE IS NOW REFUSED WHERE IT HAPPENS. A new registered blocking
+      guard, scripts/guards/types-cover-migrations.mjs (pure half in
+      scripts/guards/lib/types-coverage.mjs), replays the migrations in order
+      and demands every public table, view, enum, callable function and added
+      column from the committed types, reading nothing but the repository, so
+      it runs on the Vercel build host, in CI and in the pre-push gate alike
+      and fails the commit that forgets rather than the push two days later.
+      Renames, drops, trigger functions (which the generator never emits) and
+      runtime-built names (format('%I')) are handled and the last are printed
+      as SKIPPED by name. Proven RED against the committed types of 4d0fda21
+      swapped in: 19 faults, 7 tables, 4 enums, 8 functions, each naming its
+      migration (guard-red.txt); the file restored and its sha1 compared
+      (8377b328, identical). Proven GREEN on the regenerated file: 90 tables,
+      1 view, 31 enums, 70 functions, 124 added columns judged against 3653
+      type paths, 0 missing (guard-green-2.txt). Three drills added to
+      scripts/verify/guard-failure-drills.mjs, a table, an enum and a column
+      added to the newest migration: all three FAIL AS EXPECTED naming the
+      object and the migration, and the whole harness reports 164 of 164
+      drills fired correctly with all guards PASS on the restored tree
+      (guard-failure-drills.txt). Eighteen tests in
+      tests/unit/guards/types-cover-migrations.test.ts, the last two over the
+      real migrations and the real types; canary 378/4584 to 379/4602 in the
+      same commit.
+  (3) FOUND ON THE WAY. With connect_requirement_watch now in the types,
+      one-door-to-the-requirement-watch (S1) accused src/types/database.ts of
+      being a second door to the table. It names every table by definition
+      and reads and writes nothing; its first green had only ever been a
+      symptom of the same stale-types defect. Excluded by name, with the
+      reason printed on every run; the S1 drill re-run, 16 of 16 behaving
+      (s1-guard-drill.txt); all 111 guards PASS (all-guards-2.txt).
+
+- THE SECOND PUSH ATTEMPT, 00:24:48, on head 0a195454 (29 ahead), appended to
+  push-attempt.log lines 42727 to 46557. ALL FIFTEEN STEPS PASS: disk 0s,
+  typecheck 8s, lint 59s, copy 1s, critical-path 0s, lighthouse-exemptions
+  0s, guards 85s, types-drift 16s, production-parity 5s, fixture 0s, suite
+  94s, build 165s, indexing 201s, checkout-viewport 225s, lighthouse 1787s
+  (on mains). "80c4b118..0a195454 verify/l5-launch-readiness ->
+  verify/l5-launch-readiness", PUSH EXIT CODE 0. Re-fetched after: 0 ahead, 0
+  behind. Origin holds every local commit for the first time since 20:55 on
+  Wednesday 9 September. No gate step touched, no bypass, no --no-verify.
+
+- VERCEL. Deployment dpl_3XSEEesUhgdP9Gx5rEexS4URqqJj is building from
+  0a195454 (branch alias
+  eventlinqs-app-git-verify-l5-la-11db7d-lawals-projects-c20c0be8.vercel.app,
+  PR #145). The next act is the one UX6 has been waiting for: the drive at
+  390 on that READY preview, payment step included, which is the leg every
+  earlier session could not reach.
+
+- THE ALERT. The stall is over. The next ledger publish rewrites
+  STALL-STATE.json to "not stalled" and the workflow on ops/session-log goes
+  green. Issue #150 is the bot's thread and is closed with a pointer to this
+  entry once the publish has run.
+
+DISK at end: 18 GB free, on AC power.

@@ -4341,3 +4341,44 @@ one thread. The next message cannot come before 20:55 tonight, and only if
 nothing has been pushed by then.
 
 The command is unchanged: npm run migrate:production.
+
+
+## Session 91: your command landed, the push was refused at a NEW line, and that line was the most useful thing this week
+
+Between 18:11 and 23:48 you ran npm run migrate:production. Production now
+carries all 126 migrations, the twenty-six-session block is over, and this
+session started at once with the push the brief orders first.
+
+It was refused again, but at a different step and for a real reason. The gate
+step that checks the committed database types against production had said
+"in sync" twenty-six times in a row, and the moment production caught up it
+said the opposite: 285 differences, all of them tables, enums and functions
+that this branch's own migrations create. Five of the migrations you just
+applied (the slot ledger, the recovery engine, the ticket-tier function, the
+connect watch) had been committed without regenerating the types file, and
+nothing could see it, because the only check compares that file with
+production, and production was equally behind. In plain terms: the map was two
+days out of date, and the only inspector was reading the same old map.
+
+What was done, all in one commit (0a195454):
+
+- The types file was regenerated from production. Nothing removed, 457 lines
+  added, typecheck clean.
+- A new build guard now refuses any commit whose migrations create something
+  the types file does not carry, using nothing but the repository, so this is
+  caught on the day it happens and not on the day production catches up. It
+  was proven to fail on the exact file that was just refused (19 faults, each
+  naming its migration) and to pass on the fixed one, with three drills and
+  eighteen tests.
+- One of Wednesday's guards then complained about the fixed types file for
+  naming a table it watches. The types file names every table; that guard now
+  says so and excludes it by name.
+
+Then the push went through. All fifteen gate steps passed, including the
+Lighthouse gate (the laptop was back on mains). Origin holds every commit for
+the first time since Wednesday night, and Vercel is building the preview from
+it. The UX6 drive at 390 on that preview, payment step included, is the next
+thing this session does.
+
+Nothing for you to decide here. Issue #150 is the bot's stall thread and is
+closed with a pointer to this entry.
