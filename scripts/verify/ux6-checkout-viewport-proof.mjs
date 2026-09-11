@@ -123,7 +123,9 @@ async function pickEvent({ free }) {
   const { data: tiers, error } = await db
     .from('ticket_tiers')
     .select(
-      'id, name, price, total_capacity, sold_count, reserved_count, max_per_order, is_active, is_visible, event:events!inner(slug, title, status, start_date, seat_map_id)',
+      'id, name, price, total_capacity, sold_count, reserved_count, max_per_order, is_active, is_visible, sale_start, sale_end, ' +
+        'event:events!inner(slug, title, status, start_date, seat_map_id, external_ticket_url, ' +
+        'organisation:organisations!inner(stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_account_country, payout_status))',
     )
     .eq('is_active', true)
     .eq('is_visible', true)
@@ -133,13 +135,39 @@ async function pickEvent({ free }) {
     return null
   }
   const now = Date.now()
+  /*
+   * THE PICKER APPLIES THE PRODUCT'S OWN SALE RULE, or it picks a page with no
+   * ticket selector on it. On 12 September 2026 the gate's own run of this
+   * drive chose kit-inspection-night-635605: published, priced, 250 places,
+   * and owned by an organisation with no Stripe account, which the event page
+   * correctly answers with "Tickets not yet on sale" and no quantity control.
+   * The drive then failed three surfaces at every width, none of them a
+   * defect. The rule mirrored here is `isOrganiserSellable` and
+   * `isExternallyTicketed` in src/lib/payments/sale-status.ts and the tier
+   * sale window it also reads: a connected account, charges enabled, payouts
+   * enabled, an active payout status, a country on the account, no external
+   * ticket URL, and a sale window that is open. A free event needs no Stripe
+   * and is judged on the window alone.
+   */
+  const organiserCanSell = (o) =>
+    Boolean(o?.stripe_account_id) &&
+    o.stripe_charges_enabled === true &&
+    o.stripe_payouts_enabled === true &&
+    o.payout_status === 'active' &&
+    typeof o.stripe_account_country === 'string' &&
+    o.stripe_account_country.trim() !== ''
+  const windowOpen = (t) =>
+    !(t.sale_start && now < new Date(t.sale_start).getTime()) && !(t.sale_end && now > new Date(t.sale_end).getTime())
   const usable = (tiers ?? []).filter((t) => {
     const e = t.event
     if (!e || e.status !== 'published') return false
     if (e.seat_map_id) return false
+    if (typeof e.external_ticket_url === 'string' && e.external_ticket_url.trim() !== '') return false
     if (new Date(e.start_date).getTime() <= now) return false
     if (!t.name || t.name.trim() === '') return false
     if (free ? t.price !== 0 : t.price <= 0) return false
+    if (!free && !organiserCanSell(e.organisation)) return false
+    if (!windowOpen(t)) return false
     if ((t.max_per_order ?? 1) < 2) return false
     const left = (t.total_capacity ?? 0) - (t.sold_count ?? 0) - (t.reserved_count ?? 0)
     return (t.total_capacity ?? 0) > 0 && left >= 4
