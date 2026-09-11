@@ -4225,12 +4225,13 @@ Evidence: C:\dev\EVIDENCE\C16\probe-ten-pending-preconditions.txt.
 The second command, stripe login, is unchanged from yesterday's note.
 
 Re-checked at 15:03 (a sixth attempt, session 71), at 15:11 (a seventh,
-session 72), at 15:18 (an eighth, session 73), at 15:26 (a ninth, session 74)
-and at 15:34 (a tenth, session 75): your push gate ran again each time, green
-through all 110 guards, and was refused at the same line by the same ten
-migrations. Nothing else moved and nothing else was started. The command is
-unchanged: npm run migrate:production. Later re-checks that find the same
-state will widen this paragraph rather than add another section.
+session 72), at 15:18 (an eighth, session 73), at 15:26 (a ninth, session 74),
+at 15:34 (a tenth, session 75) and at 15:42 (an eleventh, session 76): your
+push gate ran again each time, green through all 110 guards, and was refused
+at the same line by the same ten migrations. Nothing else moved and nothing
+else was started. The command is unchanged: npm run migrate:production. Later
+re-checks that find the same state will widen this paragraph rather than add
+another section.
 
 One question answered so you do not have to ask it: could the mobile checkout
 fix be pushed on its own, ahead of the migrations, to get it onto a preview for

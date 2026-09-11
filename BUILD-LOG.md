@@ -11031,3 +11031,49 @@ push and not a prediction of it.
   READY preview built from the pushed commit.
 
 DISK at end: 19.3 GB free, on AC power.
+
+## Session 76, 11 September 2026. Eleventh push attempt per the brief, refused at the same step, nothing else started.
+
+15:41 to 15:46. First action: fetch, count, push through the normal gate.
+origin was 27 behind, the tree clean (so the brief's second action had nothing
+to commit), 19.3 GB free, no orphaned gate, build or push process, no merge in
+progress, and the laptop on mains (Win32_Battery status 2). Parity was read
+first, read-only, in 5 s: still 10 pending, so the outcome was known before
+the run and the run was made anyway, because the brief orders the push and
+not a prediction of it.
+
+- THE PUSH ATTEMPT, 15:42:22, appended to C:\dev\push-attempt.log (lines
+  15451 to 16994, timestamp line first; the launcher is
+  C:\dev\EVIDENCE\PUSH-2026-09-11\push-attempt-session71.sh, through
+  clean-env.sh). Steps 1 to 8 PASS: disk, typecheck (8s), lint (4s), copy,
+  critical-path, lighthouse-exemptions, all 110 guards (92s), types-drift
+  (18s). Refused at step 9 of 15. The exact refusing lines:
+
+      [production-parity] schema: 126 migration(s) in the tree, 116 applied on gndnldyfudbytbboxesk, 10 pending
+      [production-parity] FAIL schema: production gndnldyfudbytbboxesk is BEHIND this tree by 10 migration(s). A production build of this tree would be refused by the schema guards, exactly as main was on 6 September 2026:
+      [production-parity] FAIL - this tree is not at parity with production; a merge would go red on main and fail to deploy
+      [gate] BLOCKED at production-parity (exit 1) after 8s. Nothing was pushed.
+
+  The same ten files, 20260909000001 through 20260911000001, on the same
+  head 8e167886. The environment half of the same step PASSED (34 production
+  records, 0 faults). Origin re-fetched after the refusal at 15:44: still 27
+  behind.
+
+- THE CAUSE IS FOUNDER HELD, unchanged: npm run migrate:production, reserved
+  to him by CLAUDE.md (Verification and gates, Migrations), by Law 10's stated
+  reservation, and by this brief's production-write prohibition. Nothing new
+  was checked this session because nothing was left open: session 70 proved
+  the command safe against production's real rows, session 72 confirmed the
+  parity step's pre-push placement is the owner's own instruction (C16.2.1),
+  and sessions 74 and 75 closed both side-branch routes for the UX6 commit.
+  Neither production nor the tree has changed since. No gate step touched,
+  no bypass, no second push.
+
+- NOTHING ELSE STARTED, per the brief: origin does not hold every local
+  commit. UX6, D1, D2, UX5 and S1 stand as BUILD-LEDGER.md records them. The
+  ledger's sessions 66 to 75 section is widened by one row, and the
+  REVIEW-QUEUE.md re-check paragraph is widened rather than repeated. The
+  first act after the command lands is unchanged: the UX6 drive at 390 on the
+  READY preview built from the pushed commit.
+
+DISK at end: 19.3 GB free, on AC power.
