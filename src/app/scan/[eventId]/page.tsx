@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { Scanner } from '@/components/features/scanner/scanner'
 import { noIndexMetadata } from '@/lib/seo/indexing-policy'
 
@@ -34,24 +35,31 @@ export default async function ScanPage({ params }: Props) {
 
   // The event read uses the service-role client purely to resolve the org and
   // title for the authorisation decision below; it grants no access by itself.
+  // Every read on the door's way in goes through readOrThrow: a blink at the
+  // door must answer "try again", never "this event does not exist" and never
+  // "you are not authorised" (src/lib/supabase/read-or-throw.ts).
   const admin = createAdminClient()
-  const { data: event } = await admin
-    .from('events')
-    .select('id, title, organisation_id')
-    .eq('id', eventId)
-    .maybeSingle()
+  const event = await readOrThrow('door event', () =>
+    admin.from('events').select('id, title, organisation_id').eq('id', eventId).maybeSingle(),
+  )
   if (!event || !event.organisation_id) notFound()
 
-  const [{ data: owned }, { data: membership }, { data: adminRow }] = await Promise.all([
-    admin.from('organisations').select('id').eq('id', event.organisation_id).eq('owner_id', user.id).maybeSingle(),
-    admin
-      .from('organisation_members')
-      .select('role')
-      .eq('organisation_id', event.organisation_id)
-      .eq('user_id', user.id)
-      .in('role', ['owner', 'admin', 'manager'])
-      .maybeSingle(),
-    admin.from('admin_users').select('id').eq('id', user.id).is('disabled_at', null).maybeSingle(),
+  const [owned, membership, adminRow] = await Promise.all([
+    readOrThrow('door owner', () =>
+      admin.from('organisations').select('id').eq('id', event.organisation_id).eq('owner_id', user.id).maybeSingle(),
+    ),
+    readOrThrow('door membership', () =>
+      admin
+        .from('organisation_members')
+        .select('role')
+        .eq('organisation_id', event.organisation_id)
+        .eq('user_id', user.id)
+        .in('role', ['owner', 'admin', 'manager'])
+        .maybeSingle(),
+    ),
+    readOrThrow('door admin', () =>
+      admin.from('admin_users').select('id').eq('id', user.id).is('disabled_at', null).maybeSingle(),
+    ),
   ])
 
   const authorised = Boolean(owned) || Boolean(membership) || Boolean(adminRow)

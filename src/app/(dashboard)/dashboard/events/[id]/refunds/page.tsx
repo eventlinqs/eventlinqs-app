@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
 import { describeRefundPolicy, policyFromEvent } from '@/lib/refunds/policy'
 import { RefundRequestList, type RequestRow } from './request-list'
@@ -30,11 +31,14 @@ export default async function EventRefundsPage({ params }: Props) {
 
   const admin = createAdminClient()
 
-  const { data: event } = await admin
-    .from('events')
-    .select('id, title, is_free, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
-    .eq('id', eventId)
-    .maybeSingle()
+  // Through readOrThrow: a failed read answers 500, never a false 404.
+  const event = await readOrThrow('dashboard event refunds', () =>
+    admin
+      .from('events')
+      .select('id, title, is_free, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
+      .eq('id', eventId)
+      .maybeSingle(),
+  )
   if (!event) notFound()
 
   const { data: requests } = await admin

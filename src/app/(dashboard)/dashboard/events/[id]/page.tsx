@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { canonicalHost } from '@/lib/site-url'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -81,11 +82,18 @@ export default async function EventViewPage({ params }: Props) {
   // Broadcast Stage 3: the Lineup tab appears only when the stage is on.
   const artistsOn = await isFeatureEnabled('broadcast_artists')
 
-  const { data: event } = await supabase
-    .from('events')
-    .select('*, ticket_tiers(id, name, total_capacity, sold_count, price, currency)')
-    .eq('id', id)
-    .single() as { data: (Event & { ticket_tiers: TicketTier[] }) | null }
+  // Through readOrThrow: an organiser whose read blinked is told to try again,
+  // never that their own event does not exist. Only "no row" (PGRST116, which
+  // is also how RLS hides a row from them) reaches the notFound() below.
+  const event = await readOrThrow(
+    'dashboard event',
+    () =>
+      supabase
+        .from('events')
+        .select('*, ticket_tiers(id, name, total_capacity, sold_count, price, currency)')
+        .eq('id', id)
+        .single() as unknown as Read<Event & { ticket_tiers: TicketTier[] }>,
+  )
 
   if (!event) notFound()
 
@@ -131,11 +139,9 @@ export default async function EventViewPage({ params }: Props) {
    */
   const recoveryProof = await proofForSourceRef(id)
 
-  const { data: org } = await admin
-    .from('organisations')
-    .select('id, name, slug')
-    .eq('id', event.organisation_id)
-    .single()
+  const org = await readOrThrow('dashboard event organisation', () =>
+    admin.from('organisations').select('id, name, slug').eq('id', event.organisation_id).single(),
+  )
 
   if (!org) notFound()
 

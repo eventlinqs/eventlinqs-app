@@ -6,6 +6,7 @@ import Link from 'next/link'
 import QRCode from 'qrcode'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatSeatLabel } from '@/lib/seating/format'
 import { ConfirmationActions } from '@/components/orders/confirmation-actions'
@@ -70,13 +71,12 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   // Fetch order - can be by UUID or by order_number (EL-XXXXXXXX)
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order_id)
 
-  const query = adminClient
-    .from('orders')
-    .select('*, order_items(*)')
-
-  const { data: order } = isUUID
-    ? await query.eq('id', order_id).single()
-    : await query.eq('order_number', order_id).single()
+  // Through readOrThrow: a buyer arriving from the confirmation email whose read
+  // blinked is told to try again, never that their order does not exist.
+  const order = await readOrThrow('order confirmation', () => {
+    const query = adminClient.from('orders').select('*, order_items(*)')
+    return isUUID ? query.eq('id', order_id).single() : query.eq('order_number', order_id).single()
+  })
 
   if (!order) notFound()
 
@@ -111,11 +111,13 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
     await recordShareConversionForOrder({ id: fullOrder.id, event_id: fullOrder.event_id })
   }
 
-  const { data: event } = await adminClient
-    .from('events')
-    .select('title, start_date, end_date, timezone, event_type, venue_name, venue_city, venue_country, slug, has_reserved_seating, organiser_assigns_seats, status, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
-    .eq('id', fullOrder.event_id)
-    .single()
+  const event = await readOrThrow('order confirmation event', () =>
+    adminClient
+      .from('events')
+      .select('title, start_date, end_date, timezone, event_type, venue_name, venue_city, venue_country, slug, has_reserved_seating, organiser_assigns_seats, status, refund_policy_type, refund_policy_days, refund_policy_absorb_fee, refund_policy_self_service')
+      .eq('id', fullOrder.event_id)
+      .single(),
+  )
 
   if (!event) notFound()
 

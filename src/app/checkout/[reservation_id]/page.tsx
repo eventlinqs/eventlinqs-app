@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { pickUnitPriceCents, resolveSeatUnitPriceCents } from '@/lib/checkout/pricing'
@@ -23,15 +24,16 @@ export default async function CheckoutPage({ params }: Props) {
   const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Load reservation via admin client to bypass RLS (supports guest checkout)
-  const { data: reservation, error: resError } = await admin
-    .from('reservations')
-    .select('*')
-    .eq('id', reservation_id)
-    .eq('status', 'active')
-    .single()
+  // Load reservation via admin client to bypass RLS (supports guest checkout).
+  // A FAILED read is not a missing reservation: this used to fold `resError`
+  // into the redirect, so a dropped socket sent a buyer mid-payment back to the
+  // event list with "reservation not found". readOrThrow retries a blink and
+  // throws a real fault; only "no row" (PGRST116) reaches the redirect.
+  const reservation = await readOrThrow('checkout reservation', () =>
+    admin.from('reservations').select('*').eq('id', reservation_id).eq('status', 'active').single(),
+  )
 
-  if (resError || !reservation) {
+  if (!reservation) {
     // Reservation missing or already used - send user back to pick tickets again
     redirect('/events?error=reservation_not_found')
   }
@@ -67,12 +69,16 @@ export default async function CheckoutPage({ params }: Props) {
     )
   }
 
-  // Load event - must use admin client to bypass RLS for guest users
-  const { data: event } = await admin
-    .from('events')
-    .select('id, title, start_date, end_date, timezone, venue_name, venue_city, venue_country, organisation_id, fee_pass_type')
-    .eq('id', reservation.event_id)
-    .single()
+  // Load event - must use admin client to bypass RLS for guest users. Through
+  // readOrThrow, so a read that fails answers 500 and never a false 404 to a
+  // buyer who is standing on the checkout.
+  const event = await readOrThrow('checkout event', () =>
+    admin
+      .from('events')
+      .select('id, title, start_date, end_date, timezone, venue_name, venue_city, venue_country, organisation_id, fee_pass_type')
+      .eq('id', reservation.event_id)
+      .single(),
+  )
 
   if (!event) {
     notFound()

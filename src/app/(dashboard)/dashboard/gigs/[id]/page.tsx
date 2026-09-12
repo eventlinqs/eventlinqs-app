@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchArtistAttribution } from '@/lib/broadcast/artists'
 import {
@@ -52,12 +53,10 @@ export default async function GigApplicantsPage({ params }: Props) {
   const gig = await fetchGigById(admin, id)
   if (!gig) notFound()
 
-  const { data: org } = await admin
-    .from('organisations')
-    .select('id')
-    .eq('id', gig.organisation_id)
-    .eq('owner_id', user.id)
-    .maybeSingle()
+  // Through readOrThrow: a failed read answers 500, never a false 404.
+  const org = await readOrThrow('gig applicants organisation', () =>
+    admin.from('organisations').select('id').eq('id', gig.organisation_id).eq('owner_id', user.id).maybeSingle(),
+  )
   if (!org) notFound()
 
   const applications = await fetchGigApplications(admin, gig.id)

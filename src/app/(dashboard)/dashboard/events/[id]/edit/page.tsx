@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { EventForm } from '@/components/features/events/event-form'
@@ -20,11 +21,15 @@ export default async function EditEventPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: event } = await supabase
-    .from('events')
-    .select('*, ticket_tiers(*)')
-    .eq('id', id)
-    .single() as { data: (Event & { ticket_tiers: TicketTier[] }) | null }
+  // Through readOrThrow: a failed read answers 500, never a false 404 on the
+  // organiser's own event (src/lib/supabase/read-or-throw.ts).
+  const event = await readOrThrow(
+    'dashboard event edit',
+    () =>
+      supabase.from('events').select('*, ticket_tiers(*)').eq('id', id).single() as unknown as Read<
+        Event & { ticket_tiers: TicketTier[] }
+      >,
+  )
 
   if (!event) notFound()
 

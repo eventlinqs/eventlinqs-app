@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { OrderTable } from '@/components/orders/order-table'
 import { RevenueSummary } from '@/components/orders/revenue-summary'
 import { aggregateGmv } from '@/lib/admin/analytics'
@@ -52,11 +53,14 @@ export default async function EventOrdersPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: event } = await supabase
-    .from('events')
-    .select('id, title, organisation_id, waitlist_enabled, ticket_tiers(id, name, total_capacity, sold_count)')
-    .eq('id', eventId)
-    .single()
+  // Through readOrThrow: a failed read answers 500, never a false 404.
+  const event = await readOrThrow('dashboard event orders', () =>
+    supabase
+      .from('events')
+      .select('id, title, organisation_id, waitlist_enabled, ticket_tiers(id, name, total_capacity, sold_count)')
+      .eq('id', eventId)
+      .single(),
+  )
 
   if (!event) notFound()
 

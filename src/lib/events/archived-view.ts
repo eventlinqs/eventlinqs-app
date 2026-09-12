@@ -2,6 +2,7 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { ARCHIVED_STATUS } from '@/lib/event-lifecycle'
 import { SIGNED_IN_MARKER_COOKIE } from '@/lib/auth/signed-in-marker'
 
@@ -31,17 +32,15 @@ import { SIGNED_IN_MARKER_COOKIE } from '@/lib/auth/signed-in-marker'
 
 /** The archived event at this slug, when the signed-in viewer holds a ticket to it; else null. */
 async function archivedEventForViewer(slug: string): Promise<{ id: string } | null> {
+  /*
+   * EVERY READ ON THIS PATH THROWS WHEN IT FAILS. A null here is the layout's
+   * 404 and the holder's refusal, so "could not ask" must never be folded into
+   * it (src/lib/supabase/read-or-throw.ts, the fourth occurrence).
+   */
   const admin = createAdminClient()
-  const { data: archived, error } = await admin
-    .from('events')
-    .select('id')
-    .eq('slug', slug)
-    .eq('status', ARCHIVED_STATUS)
-    .maybeSingle()
-  if (error) {
-    console.error('[archived-view] could not look up', slug, error)
-    return null
-  }
+  const archived = await readOrThrow('archived-view lookup', () =>
+    admin.from('events').select('id').eq('slug', slug).eq('status', ARCHIVED_STATUS).maybeSingle(),
+  )
   if (!archived) return null
 
   /*
@@ -80,12 +79,10 @@ export async function fetchArchivedEventForHolder<T>(slug: string, select: strin
   const archived = await archivedEventForViewer(slug)
   if (!archived) return null
   const admin = createAdminClient()
-  const { data: row, error: rowError } = await admin.from('events').select(select).eq('id', archived.id).single()
-  if (rowError) {
-    console.error('[archived-view] could not read archived event', archived.id, rowError)
-    return null
-  }
-  return row as unknown as T
+  return readOrThrow(
+    'archived-view row',
+    () => admin.from('events').select(select).eq('id', archived.id).single() as unknown as Read<T>,
+  )
 }
 
 /** Does this signed-in viewer hold a ticket to this event? Pure of session concerns. */
@@ -94,17 +91,25 @@ export async function viewerHoldsTicket(
   eventId: string,
   viewer: { userId: string; email: string | null },
 ): Promise<boolean> {
-  const { count: orders } = await admin
-    .from('orders')
-    .select('id', { count: 'exact', head: true })
-    .eq('event_id', eventId)
-    .eq('user_id', viewer.userId)
+  // A count that could not be taken is not a count of zero: a failed read here
+  // would tell a real ticket holder they hold nothing, so it throws instead.
+  const orders = await readOrThrow('archived-view holder orders', async () => {
+    const { count, error } = await admin
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .eq('user_id', viewer.userId)
+    return { data: count, error }
+  })
   if ((orders ?? 0) > 0) return true
   if (!viewer.email) return false
-  const { count: tickets } = await admin
-    .from('tickets')
-    .select('id', { count: 'exact', head: true })
-    .eq('event_id', eventId)
-    .ilike('holder_email', viewer.email)
+  const tickets = await readOrThrow('archived-view holder tickets', async () => {
+    const { count, error } = await admin
+      .from('tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .ilike('holder_email', viewer.email as string)
+    return { data: count, error }
+  })
   return (tickets ?? 0) > 0
 }

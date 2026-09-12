@@ -1413,9 +1413,22 @@ const ROOT = join(HERE, '..', '..')
  * which the first local route sweep caught answering PING without the base64
  * encoding the client asks for, so /api/health/redis read 503 on a product
  * that was fine (encodeForClient, wantsBase64, exec).
+ *
+ * 2026-09-12: raised 384/4639 -> 387/4691, MEASURED. The read-failure class,
+ * fourth occurrence: the gate's checkout drive saw a published event answer 404
+ * at 768 because the events layout's existence read discarded its error.
+ * tests/unit/supabase/read-or-throw holds the one door (a row, "no row", or a
+ * throw, never a null for "could not ask"); tests/unit/guards/
+ * read-failure-is-not-not-found holds the guard's three faults and the shapes
+ * that must stay quiet, and sweeps the real tree; tests/unit/seo/
+ * read-failure-is-not-not-found grew from the organiser and squad pins to every
+ * route and helper that now reads through the door; and
+ * tests/unit/supabase/undeduped-fetch holds that every Supabase request carries
+ * its own signal, because the blink proof showed a retry inside a render was
+ * being handed the framework's memo of the first failure rather than a request.
  */
-const MIN_FILES = 384
-const MIN_TESTS = 4639
+const MIN_FILES = 387
+const MIN_TESTS = 4691
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

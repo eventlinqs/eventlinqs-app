@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { canManageOrganisationSeating } from '@/lib/organisations/access'
 import { SeatsManagementClient } from './seats-client'
 import { SyncChartButton } from './sync-chart-button'
@@ -18,13 +19,17 @@ export default async function SeatsManagementPage({ params }: Props) {
   if (!user) redirect('/login')
 
   const admin = createAdminClient()
-  const { data: event, error: eventError } = await admin
-    .from('events')
-    .select('id, title, organisation_id, has_reserved_seating, seat_map_id, organiser_assigns_seats')
-    .eq('id', eventId)
-    .single()
+  // This used to fold `eventError` into notFound(), so a blink read as a missing
+  // event; readOrThrow throws a real fault and answers null only for "no row".
+  const event = await readOrThrow('dashboard event seats', () =>
+    admin
+      .from('events')
+      .select('id, title, organisation_id, has_reserved_seating, seat_map_id, organiser_assigns_seats')
+      .eq('id', eventId)
+      .single(),
+  )
 
-  if (eventError || !event) notFound()
+  if (!event) notFound()
 
   // Owner OR owner/admin/manager member (the door-scan trust level).
   const allowed = await canManageOrganisationSeating(supabase, user.id, event.organisation_id)

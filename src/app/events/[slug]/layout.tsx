@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { fixtureEventExists } from '@/lib/dev/fixture-events'
 import { viewerMayReachArchivedEvent } from '@/lib/events/archived-view'
 
@@ -35,26 +36,40 @@ export default async function EventSlugLayout({
   // rails render. Never consulted on production deployments.
   if (await fixtureEventExists(slug)) return children
 
+  /*
+   * THE READ THAT DECIDES EXISTENCE MAY NOT DISCARD ITS ERROR. 12 September
+   * 2026, the fourth occurrence of one class: the gate's checkout drive opened a
+   * published, public event at 768 wide and this guard answered 404, once,
+   * between a 200 at 390 and a 200 at 1440. The line here was
+   * `const { data } = await ...maybeSingle()`, so a dropped socket left `data`
+   * null exactly as an empty table would, nothing was logged, and a real event
+   * was declared not to exist. readOrThrow retries a transient fault, throws a
+   * real one (a 500 says "ask again", which is true), and answers null only when
+   * the database itself said there is no row. This guard sits ABOVE the page's
+   * loading boundary, so a throw here is a real HTTP 500 and never a streamed
+   * 200 (src/lib/supabase/read-or-throw.ts).
+   */
   const supabase = createPublicClient()
-  const { data } = await supabase
-    .from('events')
-    .select('id')
-    .eq('slug', slug)
-    .maybeSingle()
+  const row = await readOrThrow('event-route', () =>
+    supabase.from('events').select('id').eq('slug', slug).maybeSingle(),
+  )
 
-  if (data) return children
+  if (row) return children
 
   /*
-   * NOTHING PUBLIC AT THIS SLUG. An ARCHIVED event is invisible to the anon
-   * read by row-level security, which is right for a stranger, but a viewer
-   * who holds a ticket to it may still reach its page (docs/EVENT-LIFECYCLE.md,
-   * close-out C13.5 and C13.6). That decision has to be made HERE, because this
-   * guard answers before the page runs: the first C13 drive found the page's
-   * own holder branch was never reached, the layout having already said 404.
-   * The session is read only on this path, so an ordinary missing slug still
-   * 404s without touching request data; for an archived slug the response is
-   * per viewer, and the proxy marks it private to the edge cache.
+   * NOTHING PUBLIC AT THIS SLUG, and the database said so. Say so in the log
+   * too, so the next blink leaves a trace instead of a bare 404. An ARCHIVED
+   * event is invisible to the anon read by row-level security, which is right
+   * for a stranger, but a viewer who holds a ticket to it may still reach its
+   * page (docs/EVENT-LIFECYCLE.md, close-out C13.5 and C13.6). That decision has
+   * to be made HERE, because this guard answers before the page runs: the first
+   * C13 drive found the page's own holder branch was never reached, the layout
+   * having already said 404. The session is read only on this path, so an
+   * ordinary missing slug still 404s without touching request data; for an
+   * archived slug the response is per viewer, and the proxy marks it private to
+   * the edge cache.
    */
+  console.warn(`[event-route] no public row for ${slug}; asking whether a ticket holder may see an archived one`)
   if (await viewerMayReachArchivedEvent(slug)) return children
 
   notFound()
