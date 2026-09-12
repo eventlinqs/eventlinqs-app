@@ -4525,3 +4525,113 @@ of the sandbox's webhook endpoints to the current preview
 (scripts/ops/point-stripe-test-webhook.mjs), and the D2 drive's payment and
 refund legs against it. Until then D2 stays open on exactly those two legs,
 and I have moved on down the priority order.
+
+
+## Production is on September code, smoked and driven; one 500 found on the way and fixed forward
+
+At 09:14 the branch was merged to main and by 09:17 production was serving
+it. Every fix since July is now in front of real buyers: the phone checkout
+that showed you the total, the venue pin with its name on the map, the ABN
+from one source, the slot ledger and its "How your tickets sold" panel, the
+recovery engine, the organiser payouts page without the false Stripe
+sentence, and every gate behind them.
+
+I drove production, read only, phone width first: the deployment under test
+is the commit that was merged; the homepage answers as a stranger and as a
+returning visitor; the venue pin on the Afro-Fusion event carries "Quakers
+Centre" on a painted map at 390, 768 and 1440 (the one host the Google key
+allows); the ABN, the contact domain and the rail-to-footer spacing hold at
+all three widths; and axe finds zero violations at every impact level on the
+seven launch screens.
+
+The full route sweep found one defect: the recovery engine's unsubscribe
+link answered 500 when given a token that was not a real one, because the
+engine asked the database about a value the database refuses. A link that
+names nobody is now simply not found; a real database failure still reads as
+one. The same sweep now runs on this laptop before every push, on the served
+build, so a route that answers 500 can no longer reach production unswept.
+Fixing that also caught the gate's own test Redis stub speaking the wrong
+encoding, which is fixed too. The push of that fix is going through the full
+gate as this is written; the merge and the production re-check follow.
+
+Nothing here needs a decision from you. The two items that do are unchanged:
+plug-in-and-leave-alone is over (the laptop is on mains), and D2's last two
+legs still need the sandbox login named above.
+
+
+## A real event answered "not found" once because a database read blinked, and the retry we thought we had was not retrying
+
+The last push was refused by our own gate: while it was buying a ticket on a
+real published event at tablet width, the event page answered 404 for one
+request, then answered normally again. The event was there the whole time.
+The line that decides whether an event page exists could not tell "the database
+said no row" from "the database did not answer", because it threw the error
+away. A buyer whose connection blinked would have been told the event did not
+exist, and Google, following our own sitemap, would have been told to drop the
+page.
+
+What changed today, on this branch:
+
+- Every place a page decides "this does not exist" from a database read now
+  goes through one shared door. It asks again on a blink, answers "not found"
+  only when the database itself says there is no row, and otherwise says "we
+  hit a snag, try again" with a 500. That is the truth, and it is what a
+  browser and a search engine both handle correctly. Twenty reads on seventeen
+  screens: the event page, the checkout, the order confirmation, the ticket a
+  guest shows at the door, the door scanner, and eleven organiser dashboard
+  screens.
+- A guard now fails the build if anyone writes the old shape again, proven to
+  fail on the code as it stood (20 faults) and to pass now.
+- Driving the fix found a second thing: our retry had never actually retried
+  inside a page. The framework hands a repeated identical request the memo of
+  the first failure. Every database request now carries its own signal, which
+  is the documented way to opt out, and also gives every read a 30 second
+  timeout it never had. Driven at phone, tablet and desktop widths: one
+  dropped read, one retry a quarter of a second later, the page renders; the
+  database down, the snag page, never "not found".
+
+Nothing here needs a decision from you. The push of these two commits is going
+through the full gate as this is written; the merge and the production re-check
+follow it, and the outcome is appended below.
+
+## Two more things the push found on its way out, both fixed, nothing for you to decide
+
+The first push went through the whole gate green, but GitHub could not merge
+the pull request: this morning's merge of the last one was a squash, so main
+carries the same work as one commit while this branch carries it as fifty
+three, and git saw both sides changing the same lines. I merged main back into
+the branch in a way that changed nothing (the tree is byte for byte the same)
+so the pull request has a merge commit GitHub can build. Every time a squash
+merge lands from this branch the same one-line fix will be needed, and it costs
+one gate run.
+
+The second push was refused by our own checkout drive after nine seconds: it
+could not find a paid event with room to buy two tickets. The event was fine.
+The drive itself had been reserving two places every time it ran since
+yesterday afternoon and nothing on the test database ever lets those
+reservations expire, so it had quietly filled the only paid event to the brim.
+It now clears expired reservations before it starts, exactly as production
+does every few minutes, and hands back what it reserved when it finishes.
+The third push is going through the gate now.
+
+
+## One thing for you again: the laptop is on battery, and the last gate step will not pass until it is plugged in
+
+The third push cleared fifteen of the sixteen gate steps, including the
+checkout drive that had refused the second push. The sixteenth, the mobile
+performance measurement, refused it, and the gate's own diagnosis says why:
+this laptop is running at 68 percent of the speed the floors were set on,
+because it came off mains around 13:20 (it read 76 percent and discharging at
+14:10). The same code passed that step at 12:56 on mains, and nothing since
+then touches a page.
+
+I have not lowered a floor, skipped a step or added a waiver. The same script
+as before is waiting: the moment the laptop has been on mains for three quiet
+minutes it pushes, the whole gate runs, and the outcome is appended to
+C:\dev\push-attempt.log. If you would rather run it yourself:
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\push-when-on-mains.ps1
+
+After that push: GitHub can now build the pull request (the earlier merge
+problem is fixed), CI and the preview run, and the merge to production follows
+the same rule as this morning.

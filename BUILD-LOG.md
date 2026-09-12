@@ -12770,3 +12770,494 @@ resting on TEST vkapkibzokmfaxqogypq.
   axe at every impact level at 390 and 1440 on the seven public launch
   screens; and the full declared-route sweep (L1.14). Nothing in it signs in,
   posts or reserves.
+
+- PRODUCTION, WATCHED TO READY AND SMOKED. dpl_DDkwTt3idDSc2dnHh36PRBYawujs
+  READY at 09:17, serving 011a9cd8. On main: CI run 34657322001 success, env
+  locks success, post-deploy smoke run 34657519911 (deployment_status)
+  success and run 34657665035 (workflow_run) success, both with production's
+  CRON_SECRET so the six-step smoke including the sentinels passed. Main is
+  green on every host. Production now serves September code: UX6's mobile
+  checkout, the slot ledger and its panel, the recovery engine, the venue
+  pin, the ABN from one source, the labelled organiser payouts, every fix
+  since July.
+
+- THE DRIVEN SMOKE ON PRODUCTION, 390 FIRST, READ ONLY, one command
+  (C:\dev\EVIDENCE\PRODUCTION-2026-09-12\smoke-production.sh, console in
+  smoke-production-console.txt):
+    1. the official post-deploy-smoke.mjs pinned to 011a9cd8: the deployment
+       under test is live as that commit; homepage anonymous 200 in 358ms;
+       homepage with the el_city cookie 200 in 481ms; the build did not
+       change underneath the run. The sentinels read NOT ASKED here (no
+       CRON_SECRET in this shell, by design; the workflow runs above asked
+       them and passed).
+    2. UX2.2b, THE VENUE PIN, DRIVEN ON PRODUCTION AT 390, 768 AND 1440 for
+       the first time: on afro-fusion-music-showcase-with-mikhaell-friends-a-l1vcpz
+       (enumerated from the production sitemap) the map paints (gm-style,
+       tiles), it is not hidden behind the auth fallback, the pin carries
+       "Quakers Centre" as its title and text, sits inside the viewport after
+       the scroll, border rgb(10, 22, 40), and no key, referrer or auth error
+       is logged. PASS at every width (venue-pin-probe-production.txt,
+       venue-pin/venue-map-390/768/1440.png). The first run of the probe
+       counted Google's benign "Attempted to load a Vector Map ... Falling
+       back to Raster" notice (headless Chromium has no WebGL) as a key error;
+       the filter was narrowed to the real ones and the run repeated.
+    3. UX2 surfaces on production at the three widths: 30 of 30 PASS: the
+       event answers 200; UX2.3 measured 3559, 3231 and 2662px between the
+       last content box and the footer; the ABN 30 837 447 587 on terms,
+       privacy, about and press; every contact address on eventlinqs.com.
+    4. axe, every impact level, 390 and 1440, on /, /events, the event page,
+       /organisers, /pricing, /login and /signup: 14 scans, 0 violations,
+       0 non-200 loads (axe-production.txt). The first run of this step
+       passed no page at all: Git Bash turned each leading-slash URL into a
+       Program Files path; re-run with MSYS_NO_PATHCONV=1.
+    5. every declared route on production, GET only (L1.14): ONE DEFECT.
+       https://www.eventlinqs.com.au/unsubscribe/recovery/zzzzzzzzzzzz
+       answers 500. The sweep also reports that pattern UNEXPLAINED in its
+       NO_ANONYMOUS_VALUE record (a new route from D2, never added). A 500 on
+       any route is a launch blocker, and the brief says fix forward
+       immediately: it is the next entry.
+
+- THE 500 ON PRODUCTION, FIXED FORWARD AT THE CAUSE, AND THE GATE THAT LET IT
+  THROUGH, FIXED TOO. Vercel's runtime error for the request: "Error: the
+  engine could not resolve that link: invalid input syntax for type uuid:
+  'zzzzzzzzzzzz'" on /unsubscribe/recovery/[token], dpl_DDkwTt3idDSc2dnHh36PRBYawujs.
+  recovery_contacts.token is a uuid column; addressForToken asked the
+  database about a value of another shape and threw Postgres's refusal as an
+  outage. The three sibling unsubscribe routes compare text columns, so a
+  malformed value there is simply no row, which is why the sweep found only
+  this one.
+  THE FIX (src/lib/fillrate/read.ts): isTokenShaped judges the uuid shape, and
+  addressForToken answers null (the page's notFound) for anything else WITHOUT
+  asking the database; a real failure on a well-formed token still throws, so
+  an outage is never a quiet not-found (the read-failure rule). Six tests in
+  tests/unit/fillrate/read.test.ts, RED on the unfixed code (3 failed: the
+  judge did not exist and the malformed token rejected with the uuid error;
+  read-test-red-before-fix.txt), GREEN after.
+  WHY THE GATE PASSED THE TREE THAT CARRIED IT, and what changed: the route
+  sweep that found the fault ran only against production after a deploy, and
+  its filter skipped every route origin/main had not merged, which is exactly
+  the newest routes. So (1) scripts/verify/production-route-sweep.mjs gains
+  --all-routes, which drives every route in the tree; rebases every sitemap
+  value onto the base under test (the local sitemap publishes absolute
+  production urls, and the first local run drove twelve TEST rows against the
+  live site and called them dead links); counts an UNEXPLAINED public pattern
+  as a defect rather than a printed line; makes a stale allowlist entry a
+  note under --all-routes (its entries name production flag states) and a
+  defect against the live site; and carries the note for the recovery route.
+  (2) The pre-push gate has a new step, route-sweep, after indexing and before
+  Lighthouse, driving the served build with --all-routes; the gate test pins
+  the order (tests/unit/ops/pre-push-gate.test.ts).
+  PROVEN RED on the build still on disk (made from ee3d3408, without the fix):
+  `npm run gate:push -- --only route-sweep`, 220 requests, "BLOCKED at
+  route-sweep", defects: /unsubscribe/recovery/zzzzzzzzzzzz server error 500
+  (the class, caught before a push for the first time) and /api/health/redis
+  server error 503 (gate-route-sweep-red-old-build-2.txt; the first run,
+  -red-old-build.txt, also showed the twelve false dead links the rebase
+  removed).
+  THE 503 WAS THE GATE'S OWN STUB, NOT THE PRODUCT: the @upstash/redis client
+  defaults to base64 responses, sends Upstash-Encoding: base64 and decodes
+  every string it gets; scripts/verify/upstash-local-stub.mjs answered PING
+  with a plain PONG, which decodes to `"<(F"`, so the health route read 503
+  locally while production reads 200. The rate limiter never noticed because
+  INCR answers a number. The stub now encodes string results when the header
+  is present, exactly as Upstash does, exported for test, and the probe under
+  the gate server reads `{"ok":true,...,"result":"PONG"}` 200. Five tests in
+  tests/unit/verify/upstash-stub-encoding.test.ts. Canary 382/4628 to
+  384/4639 across the two test files. tsc 0, eslint 0 on every changed file.
+
+## Session 93, 12 September 2026. The push refused at checkout-viewport: a live event answered 404 at 768, once; the read that decided it had discarded its error; one door, a guard, and a retry that had never left the process.
+
+From 11:05. Disk 16 GB free at the start (the brief's floor is 10 GB, the
+constitution's 5 GB); node 24.19.0; Supabase CLI linked to TEST
+vkapkibzokmfaxqogypq (read back from supabase/.temp/project-ref); core.hooksPath
+is .githooks. Nothing on production was touched at any point in this session.
+
+**GOVERNING LAWS, stated before the first edit (Law 0.2):** Law 0, the
+Definition of Done, Law 5 (a false 404 is a dead link), Law 8 (authorship), Law
+10 (script the founder's step), Verification and gates, and the COMPLETION LAW.
+Verify-first: unit tests red then green; the new guard drilled red then green on
+real files; a driven blink against the production build proving one dropped read
+answers 200 and a persistent failure answers 500 and never 404, at 390, 768 and
+1440; then the whole gate on the push.
+
+### ZERO ACTION
+
+C:\dev\DEPLOY-STATE.txt read first: VERDICT UNKNOWN, written at 10:21, because
+`gh run list` could not reach api.github.com from the watchdog ("gh : error
+connecting to api.github.com"). Checked myself at 11:06: the origin tip ee3d3408
+carries CI run 34655051768 success and Lighthouse CI run 34655051883 success
+(both pull_request, both completed), and Session 92 recorded its preview READY;
+main at 011a9cd8 (the squash of PR #145) carries CI 34657322001 success, env
+locks 34657322024 success, post-deploy smoke 34657519911 and 34657665035
+success. The tip is red on no host. Nothing to fix under ZERO ACTION.
+
+### FIRST ACTION, and the refusal that became the work item
+
+`git fetch origin`: 1 commit ahead, 2d85ce4a (Session 92's 500 fix and the
+route-sweep gate step). Its push at 2026-09-11T23:49:57Z (push-attempt.log,
+the attempt headed head=2d85ce4a) went through fourteen steps and was refused
+at the fifteenth:
+
+    [ux6] paid event: lineup-loop-proof-night-d6hcae (tier "General Admission", 2500 cents)
+    [ux6] FAIL: paid @ 768: the event page answered HTTP 404
+    [ux6] FAIL: paid @ 768: no quantity control on the event page
+    [ux6] FAIL: paid/2-ticket-select @ 768: no [data-order-total] on a surface that must show the buyer their total
+    [ux6] FAIL: paid @ 768: ticket selection offers no way to continue to checkout
+    [ux6] 4 fault(s) across 3 width(s). Evidence: C:\dev\EventLinqs\eventlinqs-app\.tmp\ux6
+    [gate] BLOCKED at checkout-viewport (exit 1) after 267s. Nothing was pushed.
+
+Four faults, one cause: the paid event's page answered 404 at 768, and the
+other three are what a drive finds on a 404 page. The same event answered 200
+at 390 a minute earlier and at 1440 a minute later, and Session 92's re-run of
+the step passed with 0 faults. A transient, on a published, public, paid event.
+Not the checkout-viewport step: a step that catches a real 404 on a real event
+is doing its job.
+
+### SECOND ACTION
+
+`git status`: one uncommitted file, tests/unit/seo/read-failure-is-not-not-found.test.ts,
+Session 92's half-written fix for exactly this refusal (three source
+assertions against the event page, written before the connection was lost).
+It belongs to the item that is next, so it was kept, finished, and committed
+with the item rather than on its own. Nothing was discarded.
+
+### THE DIAGNOSIS, read from the route rather than from the previous note
+
+Session 92's note pointed at the page's `fetchEvent`, which logged a read error
+and returned null for the caller to 404 on. Reading the route showed the read
+that actually decides existence is one layer earlier: src/app/events/[slug]/layout.tsx
+is the route's existence guard, deliberately placed ABOVE the page's loading
+boundary so its notFound() is a real 404 rather than a streamed 200, and its
+read was
+
+    const { data } = await supabase.from('events').select('id').eq('slug', slug).maybeSingle()
+    if (data) return children
+    ...
+    notFound()
+
+No error binding, no log line. A dropped socket, a pool refusal or a statement
+timeout leaves `data` null exactly as an empty table would, and the line below
+cannot tell them apart. That is also why Session 92 found "no failed read" in
+the server log: the failing read had nowhere to be written down. (The failing
+run's own server log, .tmp/gate-checkout-server.log, had already been
+overwritten by the re-run, so the cause is established from the code, and the
+class is then reproduced on purpose below.)
+
+This is the FOURTH occurrence of one class on this platform. The first two are
+in the organiser profile's own header; the third was the squad payment page
+(Session 61, 10 September). Each was fixed where it stood, and the measurement
+after the third counted only the visible fold, `if (error || !x) notFound()`,
+so the silent form walked past it.
+
+### THE MEASUREMENT
+
+A scan over every file under src/app that calls notFound(): 13 destructured
+reads whose discarded error decides a notFound() and 3 whose condition folds
+the error in, across 15 files. Reading the files found four more the pattern
+missed through a rename or a ternary: the queue page (returns `data` from a
+helper), the bearer ticket page (`const ticket = data as ...`), the door scan
+page (`if (!event || !event.organisation_id)`, plus three authorisation reads
+in a Promise.all that answered "Not authorised" on a blink), and the order
+confirmation's order lookup (an awaited ternary). Plus three helpers one layer
+down that pages 404 on: resolveEventAccess (three reads), getOrganiserEvent
+(two), fetchGigById (one), and every read on the archived-event holder path
+including two counts that answered "not a holder" on a blink. The checkout
+page's reservation read folded its error into a redirect to "reservation not
+found" for a buyer mid-payment: not a notFound(), the same harm.
+
+### THE FIX: ONE DOOR
+
+src/lib/supabase/read-or-throw.ts. `readOrThrow(label, run)` retries a
+transient fault through the existing `withBuildRetry` (which already recognises
+`fetch failed`, `ECONNRESET`, `ETIMEDOUT`, pool exhaustion and statement
+timeouts), answers null ONLY for PGRST116 (the database's own "no row", the one
+error that means "not there"), and throws `ReadFailed` for everything else
+after logging it, so the answer is a 500 ("ask again", which is true) and never
+a 404 ("this does not exist", which is false and permanent). Above a loading
+boundary that is a real HTTP 500; inside one it is the error boundary in place
+of the page (Next's documented status rule, node_modules/next/dist/docs
+loading.md "Status Codes"). Either way the reader is told to try again.
+
+Twenty decisive reads across seventeen route files now go through it: the
+events layout and page; the checkout reservation and event; the order
+confirmation's order and event; the queue; the bearer ticket; the door scan's
+event and its three authorisation reads; the dashboard event overview (event
+and organisation), edit, discounts, launch kit, orders, order detail (event and
+order), refunds, pricing, seats, gig applicants, venue seat maps. Plus the
+three helpers and the archived-event path. Every decision that used to read
+`if (!x) notFound()` still does, on the truth.
+
+One type-level detail recorded because it cost a round: inferring the ROW type
+from `data: T | null` through PromiseLike's callback against PostgREST's union
+response lands on the intersection of the arms, `never`, on every call site.
+The helper infers the whole response and indexes its `data` instead, so no call
+site needs a type argument.
+
+### THE GUARD, proven to fail as well as pass
+
+scripts/guards/read-failure-is-not-not-found.mjs, registered in run-guards.mjs
+(112 guards, blocking on prebuild and in the gate). In any file under src/app
+that can answer 404, a destructured PostgREST read whose bound value decides a
+notFound() (directly, with the negation anywhere in the condition; through an
+alias; as `if (x) return children`; or returned from a fetch helper after a
+single-row read) must bind its error and throw it. Three faults: `discarded`,
+`folded` (the notFound() condition names the error), `not thrown` (bound,
+logged, 404ed anyway). Comments are stripped first, so a post-mortem quoting the
+defect is not the defect. It says in its own header what it cannot see: a
+helper in src/lib, a decision spelled as a redirect or a rendered refusal, an
+array destructure of Promise.all; those were fixed by hand and are pinned by
+the source tests.
+
+  RED, on the tree as it stood: the guard's judge run over the seventeen files
+  read from git at HEAD 2d85ce4a reports 20 faults (17 discarded, 3 folded) and
+  exits 1 (C:\dev\EVIDENCE\READ-FAILURE-NOT-404\2026-09-12\guard-red-on-head-2d85ce4a.txt).
+  GREEN, on the fixed tree: "53 route file(s) can answer 404, 56 awaited
+  read(s) inspected, 2 decide a 404 and every one names and throws its error"
+  (the two are the squad page and the organiser profile, both of which throw).
+  DRILLS: three added to scripts/verify/guard-failure-drills.mjs, one per
+  fault, each putting the old shape back on a real route (the events layout,
+  the pricing page, the orders page). 167 of 167 drills fire correctly and all
+  guards pass on the restored tree (guard-failure-drills.txt).
+
+Two false positives were found and removed while writing it: `return (data ??
+[])` from a list helper and `return data as number | null` from a price
+resolver were being read as existence answers. The return rule now applies
+only after a single-row read and never to a value with a non-null default.
+
+A hand-run note, recorded because it cost twenty minutes: run-guards.mjs and the
+drill harness inherit the shell's environment, and this shell carries no
+Supabase variables, so a plain run reports three guards FAILED ("no database to
+check") and one drill FALSE POSITIVE. `node --env-file=.env.local <script>` is
+the form; with it, 112 of 112 and 167 of 167.
+
+### TESTS
+
+tests/unit/supabase/read-or-throw.test.ts (8): a row, "no row", an honest
+empty, a real fault throwing with its cause and never retried, one dropped
+socket retried and answered, a socket that keeps dropping throwing after the
+250, 500 and 1000ms schedule. tests/unit/guards/read-failure-is-not-not-found.test.ts
+(22): the incident verbatim, each of the three faults, each shape that must stay
+quiet (the squad shape, the door, a list, the auth read, a file that cannot
+404, the quoted post-mortem, the price resolver), and a sweep of the real tree.
+tests/unit/seo/read-failure-is-not-not-found.test.ts rewritten from Session
+92's three page assertions to hold the door itself and every route and helper
+that reads through it (22 in the file). tests/unit/supabase/undeduped-fetch.test.ts
+(7), below. Canary 384/4639 to 387/4691, MEASURED, 0 failed, 0 skipped.
+
+### THE DRIVEN PROOF, AND WHAT IT FOUND THAT NOTHING ELSE COULD
+
+scripts/verify/read-failure-blink-proof.mjs. The Supabase URL is inlined into
+the server bundle at build time (18 chunks carry the literal, none read the
+variable), so no environment can point the built server at a proxy. What can be
+reached is the global fetch, which supabase-js resolves at call time
+(resolveFetch in node_modules/@supabase/supabase-js/dist/index.cjs). So
+scripts/verify/lib/blink-fetch-preload.mjs is loaded into the production server
+with NODE_OPTIONS=--import and fails the events read for one enumerated slug on
+cue, in the exact shape the gate caught on 10 September (`TypeError: fetch
+failed`, cause `SocketError: other side closed (UND_ERR_SOCKET)`), once or
+every time, with the real TEST database behind it for everything else. The
+event is enumerated from the database (published, public, future start) and
+the first that answers 200 at baseline is driven; never a guess.
+
+THE FIRST RUN FAILED, AND THE FAILURE WAS THE FINDING. One dropped existence
+read answered 500 at every width. The injection log showed the layout's read
+`INJECTED once` and never requested again, while the server log said
+"[build-retry] event-route: transient pool error after 3 retries". Three
+retries, one network request. Next's render-time fetch deduplicator
+(node_modules/next/dist/server/lib/dedupe-fetch.js, after React's ReactFetch)
+returns the SAME promise for an identical GET within a render, a rejected
+promise included; its documented opt-out is a request carrying its own
+`signal`. Every render-time use of `withBuildRetry` since it was written (the
+discovery routes, the organiser profile, the squad page) has therefore been a
+no-op against a transient fault. The primitive's unit tests were green because
+they never ran inside a render; the guard was green because it judges text.
+Only the drive could see it.
+
+src/lib/supabase/undeduped-fetch.ts: every Supabase request carries its own
+signal (a 30 second timeout when the caller supplied none, which a database
+read should have had anyway), passed as `global.fetch` by the three client
+doors (createPublicClient, createAdminClient, the server client). Seven tests
+hold that a request with no signal gets one, a caller's signal is kept, two
+identical calls carry two different signals, and all three doors pass it.
+
+THE SECOND RUN, on the rebuilt tree, 0 faults at 390, 768 and 1440
+(C:\dev\EVIDENCE\READ-FAILURE-NOT-404\2026-09-12\blink-proof\):
+  1. baseline: 200.
+  2. one dropped existence read: `INJECTED once` then `PASSED once` for the
+     same `select=id&slug=eq.<slug>` request 252, 259 and 263ms later (the
+     primitive's first backoff), and the page answered 200.
+  3. persistent failure: four `INJECTED always` for the existence read per
+     width (one plus three retries), then HTTP 500, the designed error boundary
+     ("We hit a snag loading this page", Retry), no not-found copy, and
+     document.documentElement.scrollWidth equal to innerWidth at every width.
+     Never 404.
+  4. an unknown slug: 404, and the server log says "[event-route] no public
+     row for no-such-event-..." first. The real slug is never called absent.
+
+### REGRESSION
+
+tsc 0. eslint 0 on every changed file. 112 of 112 guards (run-guards-green.txt).
+167 of 167 drills. Suite 387 files / 4691 tests, 0 failed, 0 skipped. Build
+PASS through the gate's own step (223s). The step that refused the push,
+checkout-viewport, run by hand on the fixed build: PASS, 0 faults across 3
+widths, payment step NOT EXERCISED as before (no STRIPE_SECRET_KEY here).
+
+### REPORTED, NOT FIXED, so it is not mistaken for missed
+
+- src/app/checkout/[reservation_id]/page.tsx, the seat price resolver hands
+  back `admin.rpc('get_current_tier_price')` with its error discarded and the
+  caller falls back to the tier's list price. A value with a default, not an
+  existence answer, and the comment says the charge uses the same resolver and
+  fallback. Outside this class; named here.
+- src/proxy.ts, the queue gate's events read discards its error and, finding no
+  row, lets the request through for the layout to decide, which is right; the
+  one effect of a blink there is a high-demand event's queue redirect being
+  skipped for that request. Not a 404. Named here.
+- In the proof's logs the proxy's read appears twice per navigation, so two
+  requests pass through the proxy for one page load. Observation only.
+
+### COMMITTED
+
+6611d734 at 12:12, the hook accepted it, 8 files added and 29 modified, no
+trailer. The push started at 12:14 with the whole gate; its outcome follows.
+
+### PUSHED, 12:13 to 12:56
+
+The push of 6611d734 (with 2d85ce4a ahead of it) ran the whole gate on mains
+(BatteryStatus 2; BenchmarkIndex median 2726, desktop class): disk, typecheck,
+lint, copy, critical-path, lighthouse-exemptions, guards (98s), types-drift,
+production-parity, fixture, suite (62s), build (136s), indexing (255s),
+route-sweep (29s), checkout-viewport PASS (221s, the step that refused
+2d85ce4a), lighthouse (1688s). "GREEN: 16 of 16 step(s) passed in 2580s",
+"ee3d3408..6611d734 verify/l5-launch-readiness -> verify/l5-launch-readiness",
+PUSH EXIT CODE 0 (push-attempt.log, the attempt headed head=6611d734). Origin
+at 6611d734, 0 ahead. The pull request was opened as a draft and marked ready
+so CI runs once; the watch of CI, Lighthouse CI and the Vercel preview follows.
+
+### THE PULL REQUEST GITHUB COULD NOT MERGE, 12:57 to 13:02
+
+PR #151 opened as a draft and marked ready at 12:57. Vercel began the preview
+of 6611d734 (dpl_6gBfGFnvhLjNtdMVgVpkSyeteqUY). No pull-request workflow
+started, and `gh pr view` said why: mergeStateStatus DIRTY. GitHub could not
+create the merge commit, and a pull_request workflow runs on that merge commit.
+
+The cause is the shape of the history, not the code. #145 was squash-merged
+this morning, so main at 011a9cd8 carries the 53 commits' CONTENT as one commit
+while this branch carries the 53 commits themselves and continued from them.
+`git diff ee3d3408 origin/main` is EMPTY: the squash is byte-identical to the
+branch's old tip. But the two commits since then edit lines the squash also
+introduced relative to the fork point, so from git's side both branches changed
+the same regions differently. `git merge-tree --write-tree --name-only HEAD
+origin/main` named eight conflicting files (run-guards, the canary, the gate,
+the drills, the route sweep, the dashboard event page, the fillrate read, the
+seo test), every one a file this session or Session 92 touched.
+
+RESOLVED BY MERGING MAIN INTO THE BRANCH, FOR THE BRANCH, AND PROVING THE MERGE
+CHANGED NOTHING. Not a rebase: a rebase would rewrite 6611d734 and 2d85ce4a,
+which this log, the ledger and the evidence README all cite by hash.
+`git merge --no-ff -X ours origin/main` at b2564494; `git diff --stat HEAD~1
+HEAD` is empty (the merge commit's tree IS 6611d734's tree), and `git diff
+--stat origin/main HEAD` is 44 files, +2150 -265, exactly `git diff --stat
+ee3d3408 6611d734`. So the pull request's diff is the two commits and nothing
+else. The same shape will recur after every squash merge from this branch; the
+same merge is the answer each time, and it costs one gate run.
+
+The push of b2564494 through the whole gate started at 13:02; its outcome
+follows.
+
+### REFUSED AGAIN AT CHECKOUT-VIEWPORT, 13:02 to 13:18, AND THIS TIME THE GATE WAS FULL OF ITSELF
+
+The push of b2564494 ran fourteen steps green (guards 100s, suite 63s, build
+142s, indexing 550s, route-sweep 42s) and was refused at the fifteenth after
+NINE seconds:
+
+    [ux6] FAIL: no published, unseated, sellable PAID event with room for two on this database
+    [ux6] cannot drive without both events
+    [gate] BLOCKED at checkout-viewport (exit 1) after 9s. Nothing was pushed.
+
+Nine seconds is the picker, not the drive. Read from TEST, not guessed: the
+only sellable paid event, lineup-loop-proof-night-d6hcae, tier General
+Admission, capacity 100, sold 20, RESERVED 77, so 3 places left against the
+picker's floor of 4; and 38 reservations on TEST in status `active`, every one
+of them past its expires_at, two places each, one per width per run, at 16:44,
+17:06, 18:27, 19:29, 20:36, 22:09 yesterday and 00:04, 00:12, 02:01, 02:27
+today: this step's own paid walks, which reserve two places and stop at the
+payment step. Nothing on TEST expires them, because the sweep is a production
+cron (src/app/api/cron/reservation-expire/route.ts). Session 91 met the same
+wall (80 units, a90c085a) and ran expire_stale_reservations() by hand once. The
+product was fine both times; the gate had eaten its own inventory and refused a
+push for its own reasons.
+
+THE FIX, in the drive itself so no hand ever runs the sweep again
+(scripts/verify/ux6-checkout-viewport-proof.mjs): before it picks, it runs the
+product's own two sweeps in the cron's order (expire_stale_reservations, then
+release_expired_seat_reservations) and says how many it released; every walk
+remembers the reservation id from the checkout URL it lands on; and in the
+finally, whatever happened, it moves its own still-active reservations'
+expires_at into the past and runs the same sweep again, so the next run finds
+TEST as this one found it. The free path's reservations are converted by their
+purchase and the sweep leaves converted rows alone, as production does. Nothing
+is deleted; the production refusal at the top of the file still comes first.
+Six pins in tests/unit/ops/checkout-proof-leaves-test-as-found.test.ts.
+
+DRIVEN by hand on the b2564494 build: "sweep before the pick: 38 stale
+reservation(s) released"; the pick found the paid event again; 0 faults across
+390, 768 and 1440; "sweep after the drive: 3 stale reservation(s) released";
+"this run made 6 reservation(s); 3 still active were expired and swept, the
+rest were converted by a purchase"; checkout-viewport PASS 284s. TEST after:
+reserved_count 2, active reservations 0 (the 2 is a pre-existing drift between
+the counter and the rows, present before this session and outside it; named
+here). Canary 387/4691 to 388/4697, MEASURED. Evidence
+C:\dev\EVIDENCE\READ-FAILURE-NOT-404\2026-09-12\checkout-viewport-with-sweep.txt.
+
+Committed as 2a84de66 at 13:27, the hook accepted it, no trailer. The push of
+2a84de66 (carrying b2564494 and 6611d734) through the whole gate started at
+13:28; its outcome follows.
+
+### THE THIRD PUSH, 13:28 to 14:22: fifteen steps green, refused at Lighthouse by the machine, not the pages
+
+The push of 2a84de66 ran typecheck, lint, copy, critical-path,
+lighthouse-exemptions, guards (149s), types-drift, production-parity, fixture,
+suite (71s), build (207s), indexing (377s), route-sweep (46s) and
+checkout-viewport (274s) green. The checkout drive's own lines: "sweep before
+the pick: 0 stale reservation(s) released" (the hand run had already cleared
+them), 0 faults across 3 widths, "sweep after the drive: 3 stale
+reservation(s) released", "this run made 6 reservation(s); 3 still active were
+expired and swept, the rest were converted by a purchase". The fix for the
+second refusal held on the gate's own run.
+
+Then the sixteenth:
+
+    [gate] lighthouse              FAIL      2042
+    [gate] BLOCKED at lighthouse (exit 1) after 2042s. Nothing was pushed.
+
+Six performance floors missed: / found 0.79 against 0.88; /community/african
+0.87 against 0.88; /events/arena-sessions-large-room-performance-test 0.77
+against 0.85; /events/cat-indie-sounds-live-at-the-enmore-sydney 0.79 against
+0.85; /events/artist-layer-launch-night-geelong 0.77 against 0.85; /organisers
+0.87 against 0.88. And the gate's own diagnosis, which is the reason the floors
+carry a calibration:
+
+    Machine calibration: DEGRADED. BenchmarkIndex median 1844 (1575 to 1909),
+    68% of the 2700 the floors were confirmed at on 2026-09-09
+    ...
+    SO BEFORE READING THE FAILURE ABOVE AS A REGRESSION: free this machine and
+    run the step again.
+    NOTHING WAS PUSHED AND NOTHING WAS EXCUSED.
+
+Read, not assumed: the push header recorded power=1 (Win32_Battery
+BatteryStatus 1, discharging) at 13:27, and root/wmi BatteryStatus.PowerOnline
+read False at 13:40 (87 percent) and again at 14:10 (76 percent). The laptop
+came off mains between the second push and the third. The previous two gate
+runs today, on mains, collected at BenchmarkIndex 2726 and cleared every floor,
+and the two commits since 6611d734 touch two scripts and two test files: no
+page, no bundle. The same tree passed Lighthouse at 12:56 on mains.
+
+No floor lowered, no step skipped, no waiver, no bypass. The founder step, with
+its Law 10 verdict: plugging the lead in is IMPOSSIBLE for a machine.
+Everything around it is already scripted from Session 92:
+C:\dev\push-when-on-mains.ps1 waits until the laptop has been on mains for
+three quiet minutes, then runs exactly `git push origin
+verify/l5-launch-readiness` (the hook runs the whole gate) and appends the
+attempt to push-attempt.log. Started in the background at 14:24; its outcome
+is appended below when it lands.
