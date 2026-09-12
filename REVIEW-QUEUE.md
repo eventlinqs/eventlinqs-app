@@ -4662,3 +4662,25 @@ The 2FA enrolment page (UX5) is fixed for the defect it had on its face; the
 question from 11 September about what more you wanted from it is still open.
 The slot ledger (D1) is complete except for looking at one organiser's own
 dashboard, which only they or you can open.
+
+## Production now carries today's fix; the pull request merged; nothing here needs a decision
+
+You plugged the laptop in at 15:02 and the waiting push went through the
+whole gate at 15:52, all sixteen steps. GitHub then built the pull request,
+CI and the performance audit passed, the preview was ready, and I merged it at
+16:26. Production was serving it by 16:29 and both automated checks on the
+live site passed.
+
+I drove production again, read only, phone width first: the homepage answers
+as a stranger and as a returning visitor; the ABN, the contact domain and the
+footer spacing hold at every width; every public launch screen has zero
+accessibility violations; every route answers as it should; and the venue map
+paints with "Quakers Centre" on the pin at all three widths (the first pass at
+phone width caught Google's tiles still loading, and a second pass showed them
+painted).
+
+What a real person gets from today: if the database blinks for a moment while
+they open an event, a ticket, a checkout or an organiser screen, they now see
+"we hit a snag, try again" instead of "this does not exist", and the page asks
+again on its own before it ever shows even that. The list of what only you can
+move is unchanged from the entry above this one.

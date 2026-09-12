@@ -13313,3 +13313,81 @@ So after this push lands and is merged, nothing in the order can move without
 one of: the sandbox login, a live Stripe key with account read permission, the
 ABN and domain decisions, or the S1 approvals. That is stated in REVIEW-QUEUE.md
 in plain words, once, with the commands.
+
+### PUSHED ON MAINS, 15:04 to 15:52
+
+Mains power returned at 15:02:35 (the monitor's own line). The detached
+push-when-on-mains.ps1 waited its three quiet minutes and pushed at 15:04:38
+("on mains since 15:01:37"). The whole gate ran again on 2a84de66 and this
+time the sixteenth step held: "GREEN: 16 of 16 step(s) passed in 2875s",
+PUSH EXIT CODE 0 (push-attempt.log, the attempt headed head=2a84de66 ahead=3
+on mains). Origin at 2a84de66, 0 ahead. The same tree, the same floors, the
+same pages as the refusal an hour and a half earlier; the only thing that
+changed was the lead. Pull request #151 now has a head GitHub can build; the
+watch of CI, Lighthouse CI and the Vercel preview follows.
+
+### WATCHED GREEN ON EVERY HOST, AND MERGED, 15:52 to 16:27
+
+The push of 2a84de66 landed at 15:52 and #151's head moved with it, so
+GitHub could build the merge commit and the pull-request workflows started
+for the first time on this pull request. Watched to terminal, one line a
+minute: Vercel preview dpl_E7vzCLpACaGQd5qHtybd4pbkJ11b READY at 15:55; CI run
+34676697830 success at 15:57 (production parity, lint/typecheck/build with all
+112 guards, the new one among them, types-drift, vitest); Lighthouse CI run
+34676697824 success at 16:26 (Resolve Vercel preview 05:52:43Z, the mobile gate
+green). `gh pr view 151`: mergeStateStatus CLEAN, mergeable MERGEABLE, twelve
+checks SUCCESS or SKIPPED, none failed, none pending. The tip is red on no host.
+
+MERGING, by the brief's rule, met in full. Before the merge the 57 messages the
+squash carries were swept: one match for the attribution words, and it is the
+file name CLAUDE.md in prose inside ffded236 (the same line Session 92 judged);
+0 em dashes, 0 en dashes, 0 robot emoji. `gh pr merge 151 --squash` at 16:26,
+the method every merge on main has used. main is at d77aefce, "The existence
+read that discarded its error and called a live event absent, and the retry
+that never left the process (#151)", 0 trailers. The production deployment,
+main's CI and the post-deploy smoke are being watched; the driven smoke on
+production, 390 first, follows READY.
+
+### PRODUCTION, WATCHED TO READY AND DRIVEN, 16:27 to 16:45
+
+The production deployment for d77aefce (GitHub deployment 6406775665,
+eventlinqs-15wx1umky-lawals-projects-c20c0be8.vercel.app) reached success at
+16:29. On main: CI run 34678148458 success; post-deploy smoke 34678267316
+(deployment_status) success and 34678360541 (workflow_run) success, both with
+production's CRON_SECRET, so the six-step smoke including the sentinels passed
+there. Main is green on every host and production serves September code plus
+this session's fix: a read that fails now answers "try again" and never "this
+event does not exist", on every route that decides a 404.
+
+THE DRIVEN SMOKE ON PRODUCTION, 390 first, read only, the same one-command
+script as this morning pointed at a fresh folder
+(C:/dev/EVIDENCE/PRODUCTION-2026-09-12-b/, console in smoke-production-console.txt):
+  1. post-deploy-smoke.mjs pinned to d77aefce: the deployment under test is
+     live as that commit (dpl_5paWEdrMm8pbphJHRbMkPCuWQQBw); homepage anonymous
+     200 on the first attempt; homepage with the el_city cookie 200; the build
+     did not change underneath the run. The sentinels: NOT ASKED here, the
+     script's own words ("CRON_SECRET is not configured ... so this says nothing
+     about production"), which it reports as a FAIL line; the two workflow runs
+     above asked them with the secret and passed.
+  2. the venue pin at 390, 768 and 1440 on the Afro-Fusion event: 768 and 1440
+     PASS (map painted, pin "Quakers Centre", border rgb(10, 22, 40)); 390 on
+     the first run reported "gm-style false, 0 tile image(s)" with no key,
+     referrer or auth error in the console. Re-run at once, all three widths
+     PASS with the pin named at every width
+     (venue-pin-probe-production-rerun.txt, venue-pin-rerun/). A cold tile load
+     outran the probe's twenty-second wait once; not the product, and said so
+     rather than re-run until quiet.
+  3. the UX2 surfaces: 30 of 30 PASS at the three widths (the event 200; 3585,
+     3231 and 2662px between the last content box and the footer; ABN
+     30 837 447 587 on terms, privacy, about and press; every contact address on
+     eventlinqs.com; one ABN value everywhere).
+  4. axe, every impact level, 390 and 1440, on /, /events, the event page,
+     /organisers, /pricing, /login and /signup: 14 scans, 0 violations, 0
+     non-200 loads. The script's first pass of this step loaded no page at all,
+     the same Git Bash path conversion Session 92 met ("LOAD FAILED ...
+     C:/Program Files/Git/"); re-run with MSYS_NO_PATHCONV=1, and the smoke
+     script now exports it itself so the next run cannot stumble there.
+  5. every declared route on production, GET only: "PASS - no server error, no
+     error boundary inside a 200, no soft 404, no undeliberate 404".
+
+Nothing on production was written. Nothing needs fixing forward.
