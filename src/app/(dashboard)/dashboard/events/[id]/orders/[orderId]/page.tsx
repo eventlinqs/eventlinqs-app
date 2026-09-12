@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import type { Order, OrderItem, Payment } from '@/types/database'
 import { getOrderForAdmin } from '@/lib/admin/orders'
 import { OrganiserRefundPanel } from './refund-panel'
@@ -79,11 +80,10 @@ export default async function OrderDetailPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: event } = await supabase
-    .from('events')
-    .select('id, title, organisation_id')
-    .eq('id', eventId)
-    .single()
+  // Through readOrThrow: a failed read answers 500, never a false 404.
+  const event = await readOrThrow('dashboard order event', () =>
+    supabase.from('events').select('id, title, organisation_id').eq('id', eventId).single(),
+  )
 
   if (!event) notFound()
 
@@ -98,12 +98,9 @@ export default async function OrderDetailPage({ params }: Props) {
   if (!access.allowed) notFound()
 
   // Admin client - organiser is not the buyer, RLS blocks session-client reads on orders/payments
-  const { data: order } = await adminClient
-    .from('orders')
-    .select('*, order_items(*), payments(*)')
-    .eq('id', orderId)
-    .eq('event_id', eventId)
-    .single()
+  const order = await readOrThrow('dashboard order', () =>
+    adminClient.from('orders').select('*, order_items(*), payments(*)').eq('id', orderId).eq('event_id', eventId).single(),
+  )
 
   if (!order) notFound()
 

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import QRCode from 'qrcode'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatSeatLabel } from '@/lib/seating/format'
 
@@ -87,16 +88,21 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
   // model). Service-role read so a guest with the email link, who has
   // no session, can still show it at the gate. RLS still protects the
   // table from session-scoped reads of other people's tickets.
+  // A ticket holder at the door whose read blinked must never be told their
+  // ticket does not exist: readOrThrow retries a transient fault and throws a
+  // real one, so only "no row" reaches the notFound() below.
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('tickets')
-    .select(
-      'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, timezone, venue_name, venue_city, event_type), order_item:order_items(item_name), tier:ticket_tiers!tickets_ticket_tier_id_fkey(access_mode), seat:seats!tickets_seat_id_fkey(row_label, seat_number, section:seat_map_sections(name))',
-    )
-    .eq('ticket_code', code)
-    .maybeSingle()
-
-  const ticket = data as unknown as BearerTicket | null
+  const ticket = await readOrThrow(
+    'bearer ticket',
+    () =>
+      admin
+        .from('tickets')
+        .select(
+          'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, timezone, venue_name, venue_city, event_type), order_item:order_items(item_name), tier:ticket_tiers!tickets_ticket_tier_id_fkey(access_mode), seat:seats!tickets_seat_id_fkey(row_label, seat_number, section:seat_map_sections(name))',
+        )
+        .eq('ticket_code', code)
+        .maybeSingle() as unknown as Read<BearerTicket>,
+  )
   if (!ticket || ticket.secret !== secret) notFound()
 
   const qrSvg = await QRCode.toString(

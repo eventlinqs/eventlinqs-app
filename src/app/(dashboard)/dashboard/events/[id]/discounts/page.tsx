@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { DiscountCodesClient } from './discounts-client'
 import type { DiscountCode, TicketTier } from '@/types/database'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
@@ -16,14 +17,17 @@ export default async function DiscountsPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: event } = await supabase
-    .from('events')
-    // timezone comes along so the discount window is read in the EVENT's zone.
-    // Without it the form's "YYYY-MM-DDTHH:mm" was stored raw and Postgres read
-    // it as UTC, so a code valid from 12:00 opened at 11pm the night before.
-    .select('id, title, organisation_id, timezone')
-    .eq('id', eventId)
-    .single()
+  // Through readOrThrow: a failed read answers 500, never a false 404.
+  const event = await readOrThrow('dashboard event discounts', () =>
+    supabase
+      .from('events')
+      // timezone comes along so the discount window is read in the EVENT's zone.
+      // Without it the form's "YYYY-MM-DDTHH:mm" was stored raw and Postgres read
+      // it as UTC, so a code valid from 12:00 opened at 11pm the night before.
+      .select('id, title, organisation_id, timezone')
+      .eq('id', eventId)
+      .single(),
+  )
 
   if (!event) notFound()
 

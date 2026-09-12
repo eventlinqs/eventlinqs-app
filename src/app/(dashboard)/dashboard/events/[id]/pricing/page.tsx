@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { PricingClient } from './pricing-client'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
 
@@ -15,14 +16,14 @@ export default async function DynamicPricingPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Load event - only columns that exist (no currency on events)
-  const { data: event, error: eventError } = await supabase
-    .from('events')
-    .select('id, title, organisation_id')
-    .eq('id', eventId)
-    .single()
+  // Load event - only columns that exist (no currency on events). This used to
+  // fold `eventError` into notFound(), so a blink read as a missing event;
+  // readOrThrow throws a real fault and answers null only for "no row".
+  const event = await readOrThrow('dashboard event pricing', () =>
+    supabase.from('events').select('id, title, organisation_id').eq('id', eventId).single(),
+  )
 
-  if (eventError || !event) notFound()
+  if (!event) notFound()
 
   /*
    * ACCESS, VIA THE SHARED GATE. Two defects in one line.

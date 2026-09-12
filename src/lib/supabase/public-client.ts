@@ -39,6 +39,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseAnonKey, getSupabaseUrl } from './env'
+import { undedupedFetch } from './undeduped-fetch'
 
 let cachedClient: SupabaseClient | null = null
 
@@ -50,6 +51,10 @@ export function createPublicClient(): SupabaseClient {
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
+    // Every request carries its own signal, so a retry inside a render is a
+    // real second request and not the framework's memo of the first failure
+    // (src/lib/supabase/undeduped-fetch.ts).
+    global: { fetch: undedupedFetch },
   })
   return cachedClient
 }

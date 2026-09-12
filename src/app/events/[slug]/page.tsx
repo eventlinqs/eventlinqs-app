@@ -1,4 +1,5 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { Suspense } from 'react'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
@@ -135,33 +136,40 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
   const fixture = await fetchFixtureEvent(slug)
   if (fixture) return fixture as unknown as FullEvent
 
+  /*
+   * A FAILED READ IS NOT AN ABSENT EVENT. This used to log the error and return
+   * null, and the caller turned null into notFound(): a buyer whose read blinked
+   * was told the event does not exist (12 September 2026, the fourth occurrence
+   * of the class; src/lib/supabase/read-or-throw.ts records it). readOrThrow
+   * retries a transient fault and throws a real one, so the answer is "try
+   * again" and never "not here".
+   */
   const supabase = createPublicClient()
-  const { data, error } = await supabase
-    .from('events')
-    // organisations is embedded with an EXPLICIT column list, never (*). This is
-    // a public page read as `anon`, and organisations carries email, phone,
-    // owner_id and the full Stripe Connect posture. Those columns are now
-    // revoked from anon by column privilege (migration 20260808000010), so a
-    // (*) embed would fail the whole query with "permission denied for column
-    // email" and blank the event page. See docs/security/AUDIT-2026-08-08.md.
-    .select(EVENT_PAGE_SELECT)
-    .eq('slug', slug)
-    .maybeSingle() as { data: FullEvent | null; error: unknown }
-
-  if (error) {
-    console.error('[event-detail] fetchEvent failed:', error)
-    return null
-  }
+  const data = await readOrThrow('event-detail', () =>
+    supabase
+      .from('events')
+      // organisations is embedded with an EXPLICIT column list, never (*). This is
+      // a public page read as `anon`, and organisations carries email, phone,
+      // owner_id and the full Stripe Connect posture. Those columns are now
+      // revoked from anon by column privilege (migration 20260808000010), so a
+      // (*) embed would fail the whole query with "permission denied for column
+      // email" and blank the event page. See docs/security/AUDIT-2026-08-08.md.
+      .select(EVENT_PAGE_SELECT)
+      .eq('slug', slug)
+      .maybeSingle() as unknown as Read<FullEvent>,
+  )
   if (data) return data
 
   /*
-   * NOTHING PUBLIC AT THIS SLUG. Row-level security keeps drafts and ARCHIVED
-   * events out of the anonymous read, which is right for a stranger. For an
-   * archived event, and only then, a viewer who holds a ticket may still see
-   * the page (docs/EVENT-LIFECYCLE.md, close-out C13.5 and C13.6), so the
-   * second look is taken here with the service role. It returns null for
-   * everyone else, and the caller's notFound() stands.
+   * NOTHING PUBLIC AT THIS SLUG, and the database said so; the log says so too,
+   * so a bare 404 can never again be mistaken for a blink. Row-level security
+   * keeps drafts and ARCHIVED events out of the anonymous read, which is right
+   * for a stranger. For an archived event, and only then, a viewer who holds a
+   * ticket may still see the page (docs/EVENT-LIFECYCLE.md, close-out C13.5 and
+   * C13.6), so the second look is taken here with the service role. It returns
+   * null for everyone else, and the caller's notFound() stands.
    */
+  console.warn(`[event-detail] no public row for ${slug}`)
   return fetchArchivedEventForHolder<FullEvent>(slug, EVENT_PAGE_SELECT)
 }
 

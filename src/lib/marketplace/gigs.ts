@@ -1,4 +1,5 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 
 /**
  * Performer marketplace: gig board reads (SPEC: Gig Board, flag gig_board).
@@ -122,14 +123,19 @@ export async function fetchOpenGigs(
 }
 
 export async function fetchGigById(admin: Admin, id: string): Promise<GigWithOrg | null> {
-  const { data } = await admin
-    .from('gigs')
-    .select(`${GIG_COLUMNS}, organisation:organisations(name)`)
-    .eq('id', id)
-    .maybeSingle()
-  if (!data) return null
   type Row = GigRow & { organisation: { name: string } | null }
-  const row = data as unknown as Row
+  // Both callers turn null into notFound(), so a failed read must not become
+  // null: readOrThrow retries a blink and throws a real fault.
+  const row = await readOrThrow(
+    'gig',
+    () =>
+      admin
+        .from('gigs')
+        .select(`${GIG_COLUMNS}, organisation:organisations(name)`)
+        .eq('id', id)
+        .maybeSingle() as unknown as Read<Row>,
+  )
+  if (!row) return null
   return { ...row, organisation_name: row.organisation?.name ?? 'Organiser' }
 }
 

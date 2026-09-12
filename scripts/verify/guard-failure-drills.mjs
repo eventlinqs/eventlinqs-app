@@ -2155,6 +2155,78 @@ const DRILLS = [
     expect:
       'column public.connect_requirement_watch.a_column_the_drill_adds is created by 20260911000001_connect_requirement_watch.sql and public.Tables.connect_requirement_watch.Row.a_column_the_drill_adds is not in src/types/database.ts',
   },
+  /*
+   * read-failure-is-not-not-found, three drills, one per fault. 12 September
+   * 2026, the fourth occurrence of the class: the events layout's existence read
+   * discarded its error and a real event answered 404 to the gate's own drive.
+   * Each drill puts one of the three shapes back exactly as it stood on a real
+   * route and the guard has to name it.
+   */
+  {
+    name: 'the events layout discards the error of the read that decides existence (the incident)',
+    guard: `${GUARDS}/read-failure-is-not-not-found.mjs`,
+    file: 'src/app/events/[slug]/layout.tsx',
+    find:
+      "  const row = await readOrThrow('event-route', () =>\n" +
+      "    supabase.from('events').select('id').eq('slug', slug).maybeSingle(),\n" +
+      '  )\n' +
+      '\n' +
+      '  if (row) return children',
+    replace:
+      '  const { data } = await supabase\n' +
+      "    .from('events')\n" +
+      "    .select('id')\n" +
+      "    .eq('slug', slug)\n" +
+      '    .maybeSingle()\n' +
+      '\n' +
+      '  if (data) return children',
+    expect: 'discards the error of the read that decides if (data) return children',
+  },
+  {
+    name: 'a dashboard page folds the read error into the notFound() condition',
+    guard: `${GUARDS}/read-failure-is-not-not-found.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/pricing/page.tsx',
+    find:
+      "  const event = await readOrThrow('dashboard event pricing', () =>\n" +
+      "    supabase.from('events').select('id, title, organisation_id').eq('id', eventId).single(),\n" +
+      '  )\n' +
+      '\n' +
+      '  if (!event) notFound()',
+    replace:
+      '  const { data: event, error: eventError } = await supabase\n' +
+      "    .from('events')\n" +
+      "    .select('id, title, organisation_id')\n" +
+      "    .eq('id', eventId)\n" +
+      '    .single()\n' +
+      '\n' +
+      '  if (eventError || !event) notFound()',
+    expect: 'folds the read error `eventError` into notFound()',
+  },
+  {
+    name: 'a dashboard page logs the read error and 404s anyway',
+    guard: `${GUARDS}/read-failure-is-not-not-found.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/orders/page.tsx',
+    find:
+      "  const event = await readOrThrow('dashboard event orders', () =>\n" +
+      '    supabase\n' +
+      "      .from('events')\n" +
+      "      .select('id, title, organisation_id, waitlist_enabled, ticket_tiers(id, name, total_capacity, sold_count)')\n" +
+      "      .eq('id', eventId)\n" +
+      '      .single(),\n' +
+      '  )\n' +
+      '\n' +
+      '  if (!event) notFound()',
+    replace:
+      '  const { data: event, error } = await supabase\n' +
+      "    .from('events')\n" +
+      "    .select('id, title, organisation_id, waitlist_enabled, ticket_tiers(id, name, total_capacity, sold_count)')\n" +
+      "    .eq('id', eventId)\n" +
+      '    .single()\n' +
+      "  if (error) console.error('[orders] event read failed:', error)\n" +
+      '\n' +
+      '  if (!event) notFound()',
+    expect: 'binds the error as `error` and never throws it',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

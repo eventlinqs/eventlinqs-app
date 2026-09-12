@@ -127,7 +127,7 @@ describe('the step list against the CI workflow', () => {
       expect(typeof s.run, s.id).toBe('function')
       expect(['plain', 'local'], s.id).toContain(s.env)
     }
-    for (const id of ['typecheck', 'lint', 'guards', 'types-drift', 'suite', 'build', 'lighthouse']) expect(ids).toContain(id)
+    for (const id of ['typecheck', 'lint', 'guards', 'types-drift', 'suite', 'build', 'route-sweep', 'lighthouse']) expect(ids).toContain(id)
   })
 
   test('the build comes after the suite and before Lighthouse, so a red suite never pays for a build', () => {
@@ -135,6 +135,10 @@ describe('the step list against the CI workflow', () => {
     expect(at('suite')).toBeLessThan(at('build'))
     expect(at('build')).toBeLessThan(at('lighthouse'))
     expect(at('typecheck')).toBeLessThan(at('suite'))
+    // The route sweep drives the served build, so it needs the build and must
+    // refuse before Lighthouse spends thirty minutes on a tree with a 500 in it.
+    expect(at('build')).toBeLessThan(at('route-sweep'))
+    expect(at('route-sweep')).toBeLessThan(at('lighthouse'))
   })
 })
 

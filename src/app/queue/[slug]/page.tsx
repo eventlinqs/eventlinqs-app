@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import type { Event, TicketTier } from '@/types/database'
@@ -9,13 +10,13 @@ type Props = { params: Promise<{ slug: string }> }
 type QueueEvent = Event & { ticket_tiers: TicketTier[] }
 
 async function fetchEvent(slug: string): Promise<QueueEvent | null> {
+  // A failed read is not an absent event: readOrThrow retries a blink and throws
+  // a real fault, so the caller's notFound() stands only on "no row" (PGRST116).
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('events')
-    .select('*, ticket_tiers(*)')
-    .eq('slug', slug)
-    .single() as { data: QueueEvent | null; error: unknown }
-  return data
+  return readOrThrow(
+    'queue event',
+    () => supabase.from('events').select('*, ticket_tiers(*)').eq('slug', slug).single() as unknown as Read<QueueEvent>,
+  )
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

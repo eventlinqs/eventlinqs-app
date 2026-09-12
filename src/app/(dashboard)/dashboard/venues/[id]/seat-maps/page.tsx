@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { requireVenueSeatingAccess } from '@/lib/organisations/access'
 import { SeatMapsClient } from './seat-maps-client'
 
@@ -25,15 +26,19 @@ export default async function SeatMapsPage({ params }: Props) {
   if (!access.ok) notFound()
 
   const admin = createAdminClient()
-  const { data: venue, error: venueError } = await admin
-    .from('venues')
-    .select('id, name')
-    .eq('id', venueId)
-    .eq('organisation_id', access.organisationId)
-    .eq('is_active', true)
-    .single()
+  // This used to fold `venueError` into notFound(), so a blink read as a missing
+  // venue; readOrThrow throws a real fault and answers null only for "no row".
+  const venue = await readOrThrow('venue seat maps venue', () =>
+    admin
+      .from('venues')
+      .select('id, name')
+      .eq('id', venueId)
+      .eq('organisation_id', access.organisationId)
+      .eq('is_active', true)
+      .single(),
+  )
 
-  if (venueError || !venue) notFound()
+  if (!venue) notFound()
 
   const { data: seatMaps, error: mapsError } = await admin
     .from('seat_maps')

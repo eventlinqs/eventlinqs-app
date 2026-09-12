@@ -1,6 +1,7 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 /**
  * MAY THIS USER MANAGE THIS EVENT? One answer, used by every event-scoped
@@ -78,31 +79,35 @@ export async function resolveEventAccess(eventId: string): Promise<EventAccess> 
   // "this event does not exist", and the events SELECT policy for organisers is one
   // of the policies being refactored in 20260819000001. The access decision below
   // does not depend on that policy, so it must not be gated by it.
+  //
+  // And every read here goes through readOrThrow: this verdict is what every
+  // dashboard page turns into notFound(), so a read that FAILED must never
+  // answer "event_not_found" or "not_authorised". A blink is retried, a real
+  // fault throws, and only "no row" reaches the refusals below
+  // (src/lib/supabase/read-or-throw.ts).
   const admin = createAdminClient()
-  const { data: event } = await admin
-    .from('events')
-    .select('id, organisation_id')
-    .eq('id', eventId)
-    .maybeSingle()
+  const event = await readOrThrow('event access event', () =>
+    admin.from('events').select('id, organisation_id').eq('id', eventId).maybeSingle(),
+  )
   if (!event?.organisation_id) return { allowed: false, reason: 'event_not_found' }
 
   const organisationId = event.organisation_id as string
 
-  const { data: owned } = await admin
-    .from('organisations')
-    .select('id, owner_id')
-    .eq('id', organisationId)
-    .maybeSingle()
+  const owned = await readOrThrow('event access owner', () =>
+    admin.from('organisations').select('id, owner_id').eq('id', organisationId).maybeSingle(),
+  )
   if (owned?.owner_id === user.id) {
     return { allowed: true, via: 'owner', organisationId, userId: user.id, role: 'owner' }
   }
 
-  const { data: member } = await admin
-    .from('organisation_members')
-    .select('role')
-    .eq('organisation_id', organisationId)
-    .eq('user_id', user.id)
-    .maybeSingle()
+  const member = await readOrThrow('event access member', () =>
+    admin
+      .from('organisation_members')
+      .select('role')
+      .eq('organisation_id', organisationId)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  )
   if (member && (EVENT_MANAGER_ROLES as readonly string[]).includes(member.role as string)) {
     return { allowed: true, via: 'member', organisationId, userId: user.id, role: member.role as string }
   }

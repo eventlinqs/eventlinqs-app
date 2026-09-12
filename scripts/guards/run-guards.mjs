@@ -205,6 +205,10 @@
  *                              for other people. The list is derived from the manifest,
  *                              never retyped, and a bypass removes the report rather than
  *                              reporting a problem (close-out F1.4)
+ *   read-failure-is-not-not-found  a read whose empty answer decides a 404 names its
+ *                              error and throws it: never discarded, never folded into
+ *                              the notFound() condition, never only logged. A dropped
+ *                              socket must answer "try again", not "this does not exist"
  *   build-host-needs-declared  every prebuild entry point declares which of the three
  *                              things the build host lacks it needs - docs, git, a token -
  *                              read out of the import graph rather than listed, and fails
@@ -1252,6 +1256,18 @@ const GUARDS = [
   //
   // Drilled red on nine real overlays, all nine now portalled, then green.
   'scripts/guards/overlays-are-portalled.mjs',
+
+  // 12 September 2026, the FOURTH occurrence of one class. The gate's checkout
+  // drive opened a published, public event at 768 and the route answered 404,
+  // once, because the layout's existence read discarded its error: a dropped
+  // socket left `data` null exactly as an empty table would, and the line that
+  // turns null into notFound() cannot tell them apart. The first three were each
+  // fixed where they stood and each fix was a paragraph; the measurement after
+  // the third counted only the visible fold and walked past the silent one. The
+  // fix is now one door (src/lib/supabase/read-or-throw.ts) and this guard fails
+  // the build on every read that decides a 404 and discards, folds or merely
+  // logs its error. Drilled RED on the 17 files as they stood, then green.
+  'scripts/guards/read-failure-is-not-not-found.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

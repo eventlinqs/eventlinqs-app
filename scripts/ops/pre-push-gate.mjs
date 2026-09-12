@@ -101,6 +101,7 @@ const GATE_URLS = join(TMP, 'gate-urls.txt')
 const SERVER_LOG = join(TMP, 'gate-server.log')
 const INDEXING_LOG = join(TMP, 'gate-indexing-server.log')
 const CHECKOUT_LOG = join(TMP, 'gate-checkout-server.log')
+const ROUTE_SWEEP_LOG = join(TMP, 'gate-route-sweep-server.log')
 const LHCI_DIR = join(ROOT, '.lighthouseci')
 const ZERO_SHA = /^0{40}$/
 
@@ -669,6 +670,36 @@ async function runIndexingDrive(env) {
 }
 
 /**
+ * EVERY DECLARED ROUTE, DRIVEN AGAINST THIS BUILD (L1 item 14, before the push).
+ *
+ * 12 September 2026: the first production smoke after the merge of #145 found
+ * /unsubscribe/recovery/zzzzzzzzzzzz answering 500. The route was new, the gate
+ * had passed the tree that carried it, and the sweep that found the fault was
+ * only ever pointed at production after a deploy. So the sweep now runs here,
+ * on the served build, with --all-routes, because a local build serves every
+ * route in the tree and the production filter (routes main has merged) would
+ * skip exactly the newest ones. GET only; it writes nothing.
+ */
+async function runRouteSweep(env) {
+  if (!existsSync(join(ROOT, '.next', 'BUILD_ID'))) {
+    console.error('[gate] no production build under .next (no BUILD_ID). The build step produces it; run the whole gate.')
+    return 1
+  }
+  const started = await startGateServer(env, ROUTE_SWEEP_LOG)
+  if (started.error) return 1
+  const { base, stop } = started
+  try {
+    return exec(
+      NODE,
+      ['scripts/verify/production-route-sweep.mjs', '--base', base, '--out', join(TMP, 'route-sweep'), '--all-routes'],
+      env,
+    )
+  } finally {
+    stop()
+  }
+}
+
+/**
  * THE BUYER'S SURFACES, AT 390, 768 AND 1440 (close-out UX6).
  *
  * The static half of UX6 is two registered guards in the registry above
@@ -922,6 +953,14 @@ export const STEPS = [
     mirrors: [],
     env: 'local',
     run: runIndexingDrive,
+  },
+  {
+    id: 'route-sweep',
+    ci: 'local only: every declared route driven against this build (L1 item 14; the production smoke drives the live site after a deploy)',
+    title: 'every route in src/app answering as it should, on this build, GET only',
+    mirrors: [],
+    env: 'local',
+    run: runRouteSweep,
   },
   {
     id: 'checkout-viewport',

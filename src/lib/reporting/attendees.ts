@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { getSiteUrl } from '@/lib/site-url'
 import { buildConsentIndex, isEmailConsented, type ConsentRow } from '@/lib/consent/status'
 import type { AttendeeRow, OrderReportRow } from './types'
@@ -53,11 +54,16 @@ export async function getOrganiserEvent(eventId: string): Promise<OrganiserEvent
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: event } = await supabase
-    .from('events')
-    .select('id, title, slug, start_date, end_date, timezone, organisation_id')
-    .eq('id', eventId)
-    .maybeSingle()
+  // Every read here decides a caller's notFound(), so none may fold a failure
+  // into null: readOrThrow retries a blink and throws a real fault
+  // (src/lib/supabase/read-or-throw.ts).
+  const event = await readOrThrow('organiser event', () =>
+    supabase
+      .from('events')
+      .select('id, title, slug, start_date, end_date, timezone, organisation_id')
+      .eq('id', eventId)
+      .maybeSingle(),
+  )
   if (!event) return null
 
   /*
@@ -72,11 +78,9 @@ export async function getOrganiserEvent(eventId: string): Promise<OrganiserEvent
   const access = await resolveEventAccess(eventId)
   if (!access.allowed) return null
 
-  const { data: org } = await createAdminClient()
-    .from('organisations')
-    .select('id, name')
-    .eq('id', access.organisationId)
-    .maybeSingle()
+  const org = await readOrThrow('organiser event organisation', () =>
+    createAdminClient().from('organisations').select('id, name').eq('id', access.organisationId).maybeSingle(),
+  )
   if (!org) return null
 
   return {

@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { getOrganiserEvent } from '@/lib/reporting/attendees'
 import { isFlagEnabled } from '@/lib/flags'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
@@ -122,13 +123,14 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
   if (!organiserEvent) notFound()
 
   const admin = createAdminClient()
-  const { data: event } = await admin
-    .from('events')
-    .select(
-      'status, cover_image_url, venue_name, venue_city, has_reserved_seating, seat_map_id, summary',
-    )
-    .eq('id', id)
-    .maybeSingle()
+  // Through readOrThrow: a failed read answers 500, never a false 404.
+  const event = await readOrThrow('launch kit event', () =>
+    admin
+      .from('events')
+      .select('status, cover_image_url, venue_name, venue_city, has_reserved_seating, seat_map_id, summary')
+      .eq('id', id)
+      .maybeSingle(),
+  )
   if (!event) notFound()
 
   const justPublished = published === '1'
