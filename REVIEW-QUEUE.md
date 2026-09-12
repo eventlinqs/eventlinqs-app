@@ -4635,3 +4635,30 @@ C:\dev\push-attempt.log. If you would rather run it yourself:
 After that push: GitHub can now build the pull request (the earlier merge
 problem is fixed), CI and the preview run, and the merge to production follows
 the same rule as this morning.
+
+
+## Where the list stands, and what only you can move
+
+Once the waiting push lands and is merged, the remaining items in the order all
+stop at your desk. None of them is unbuilt; each has been driven as far as this
+machine can drive it and is waiting on one of four things:
+
+- The Stripe sandbox login, for the last legs of the recovery engine (D2), the
+  three organiser notifications that need a Stripe account to exist (UX3), and
+  the live connected-account checks (S1):
+
+      stripe login --project-name "eventlinqs sandbox"
+
+- A live Stripe key that can read the account, for the one comparison in UX2
+  that checks the legal entity taking the money against the ABN on the site.
+- Two decisions in UX2: confirming the ABN at abr.business.gov.au, and which
+  contact domain the platform uses everywhere (every address already derives
+  from one place, so it is a one-line change once you say which).
+- Two approvals in S1, which S1 itself reserves for you: setting the platform
+  account's own statement descriptor, and backfilling the existing connected
+  account.
+
+The 2FA enrolment page (UX5) is fixed for the defect it had on its face; the
+question from 11 September about what more you wanted from it is still open.
+The slot ledger (D1) is complete except for looking at one organiser's own
+dashboard, which only they or you can open.

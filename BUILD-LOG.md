@@ -13261,3 +13261,55 @@ three quiet minutes, then runs exactly `git push origin
 verify/l5-launch-readiness` (the hook runs the whole gate) and appends the
 attempt to push-attempt.log. Started in the background at 14:24; its outcome
 is appended below when it lands.
+
+### THE PRIORITY ORDER, READ WHILE THE PUSH WAITS FOR MAINS
+
+The wait-for-mains push runs detached (pid 48952, parent gone, header
+"WAITING FOR MAINS 2026-09-12T04:27:03Z" in push-attempt.log), so it outlives
+this session. Two instances briefly existed because the first launch was tied
+to this shell; the shell-tied one was stopped and exactly one remains, checked
+by process list with this query's own process excluded.
+
+What the priority order holds after this item, read from CLOSE-OUT-DONE.md,
+BUILD-LEDGER.md and git rather than from memory:
+
+  (1) UX6   DONE 12 September (CLOSE-OUT.md line 1909), body moved, evidence
+            C:\dev\EVIDENCE\UX6\preview-a90c085a. Confirmed against every
+            acceptance line in Session 91's roast ledger; nothing to redo.
+  (2) D1    Open on the render leg only, which lives on an outside organiser's
+            dashboard nothing on this machine can open. Said once in
+            REVIEW-QUEUE.md (Session 92, "What you can see, and I cannot").
+            Moved on, as the brief allows.
+  (3) D2    Open on the payment and refund legs. The brief says the renewed
+            Stripe CLI key drives them; Session 92 read the key and found it
+            belongs to the main Eventlinqs account (acct_1T8WBhGuiZ9cvxuu),
+            while every organiser on TEST is onboarded in the Eventlinqs
+            Sandbox (acct_1T8WBzGqHIQtgS8t), whose CLI key is the one still
+            expired. Both legs end in a webhook from the sandbox. Said once in
+            REVIEW-QUEUE.md; the one command is
+            `stripe login --project-name "eventlinqs sandbox"` (Law 10:
+            IMPOSSIBLE for a machine, a browser approval).
+  (4) UX5   The 2FA enrolment page: the defect on its face (no QR code drawn
+            beside "scan the QR code") fixed and driven at 390, 768 and 1440
+            on 11 September, every ledger row MET; the scope question the run
+            brief never answered is asked in REVIEW-QUEUE.md. Nothing to build
+            without the answer.
+  (5) UX2   2.2 and 2.3 driven on production this morning (Session 92); 2.5
+            done (ledger, 11 September). Left: 2.1c PARTIAL (the live Stripe
+            entity comparison needs a live key with account read permission;
+            the CLI's rk_live_ restricted key answers 401), 2.1d RESERVED (the
+            ABN is his to verify), 2.4a PARTIAL (every address derives from one
+            domain; WHICH domain is his decision). All three are the founder's.
+      UX3   Every row MET except the three Stripe legs (onboarding started,
+            onboarding completed, a paid order), all behind the sandbox login.
+      UX4   Every row MET; the one SCRIPTED row (arming the stall tick on the
+            founder's launcher) is his switch.
+  (6) S1    Four rows OWNER BLOCKED: two live-Stripe writes S1 itself reserves
+            for his approval, and two reads that need a working key.
+  (7) L     The launch readiness report stands at 4 PASS, 13 OWNER BLOCKED,
+            0 FAIL (launch-readiness-honest, on every gate run today).
+
+So after this push lands and is merged, nothing in the order can move without
+one of: the sandbox login, a live Stripe key with account read permission, the
+ABN and domain decisions, or the S1 approvals. That is stated in REVIEW-QUEUE.md
+in plain words, once, with the commands.
