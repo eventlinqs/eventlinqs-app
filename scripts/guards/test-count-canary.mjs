@@ -1426,9 +1426,17 @@ const ROOT = join(HERE, '..', '..')
  * tests/unit/supabase/undeduped-fetch holds that every Supabase request carries
  * its own signal, because the blink proof showed a retry inside a render was
  * being handed the framework's memo of the first failure rather than a request.
+ *
+ * 2026-09-12 (later): raised 387/4691 -> 388/4697, MEASURED. The push of the
+ * fix above was refused at checkout-viewport after nine seconds: "no published,
+ * unseated, sellable PAID event with room for two", because the step's own
+ * earlier runs had left 77 of the only paid event's 100 places in reservations
+ * nothing on TEST ever expires. tests/unit/ops/checkout-proof-leaves-test-as-found
+ * pins that the drive now runs the product's own sweep before it picks and
+ * expires what it reserved when it ends.
  */
-const MIN_FILES = 387
-const MIN_TESTS = 4691
+const MIN_FILES = 388
+const MIN_TESTS = 4697
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

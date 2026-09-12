@@ -112,6 +112,63 @@ const note = (m) => {
   console.log(`${TAG} ${m}`)
 }
 
+/* ------------------------------------------- leave TEST as it was found */
+
+/**
+ * THE DRIVE MUST NOT EAT THE INVENTORY IT DRIVES.
+ *
+ * Twice now this step has refused a push for its own reasons. Every paid walk
+ * reserves two places and stops at the payment step, so the reservation stays
+ * `active` until something expires it, and on TEST nothing does: the sweep is a
+ * production cron (src/app/api/cron/reservation-expire/route.ts). Session 91
+ * (12 September 2026, a90c085a) found 80 units of the only sellable paid event
+ * sitting in this drive's own reservations and ran the sweep by hand once.
+ * Session 93, the same day, found 77 and the push of b2564494 refused at this
+ * step after nine seconds with "no published, unseated, sellable PAID event
+ * with room for two". Both times the product was fine and the gate was full of
+ * itself.
+ *
+ * So the drive does what production does, in the same order production does
+ * it, before it picks: it runs the product's own expiry sweep, which releases
+ * every reservation past its expires_at and hands the places back to the tier.
+ * And when it finishes it expires what it made, by moving its own reservations'
+ * expires_at into the past and running the same sweep again, so the next run
+ * finds the database as this one found it. The free path's reservation is
+ * CONVERTED by its purchase and the sweep leaves converted rows alone, which is
+ * also what production does. Nothing here deletes anything, and none of it can
+ * run against production: the refusal at the top of this file comes first.
+ */
+const madeReservations = new Set()
+const sweepCounts = { before: null, after: null, ownExpired: 0 }
+
+async function sweep(phase) {
+  const { data: released, error } = await db.rpc('expire_stale_reservations')
+  if (error) {
+    fail(`the reservation sweep ${phase} failed: ${error.message}`)
+    return null
+  }
+  const { data: seats, error: seatError } = await db.rpc('release_expired_seat_reservations')
+  if (seatError) fail(`the seat-hold sweep ${phase} failed: ${seatError.message}`)
+  note(`sweep ${phase}: ${released ?? 0} stale reservation(s) released, ${seats ?? 0} expired seat hold(s) released`)
+  return released ?? 0
+}
+
+async function releaseOwnReservations() {
+  const ids = [...madeReservations]
+  if (ids.length > 0) {
+    const { data: expired, error } = await db
+      .from('reservations')
+      .update({ expires_at: new Date(Date.now() - 1000).toISOString() })
+      .in('id', ids)
+      .eq('status', 'active')
+      .select('id')
+    if (error) fail(`could not expire this run's own reservations: ${error.message}`)
+    else sweepCounts.ownExpired = (expired ?? []).length
+  }
+  sweepCounts.after = await sweep('after the drive')
+  note(`this run made ${ids.length} reservation(s); ${sweepCounts.ownExpired} still active were expired and swept, the rest were converted by a purchase`)
+}
+
 /* ------------------------------------------------------- pick the events */
 
 /**
@@ -352,6 +409,9 @@ async function walk({ browser, width, slug, label, complete }) {
     }
     await page.waitForURL(/\/checkout\//, { timeout: 45_000 }).catch(() => {})
     await page.waitForTimeout(4000)
+    // Remember what this walk reserved, so the run can expire it when it ends.
+    const reservationId = /\/checkout\/([0-9a-f-]{36})/i.exec(page.url())?.[1]
+    if (reservationId) madeReservations.add(reservationId)
     if (!/\/checkout\//.test(page.url())) {
       fail(`${label} @ ${width}: "${toCheckout}" did not reach checkout; ended on ${page.url().replace(BASE, '')}`)
       return
@@ -548,6 +608,8 @@ async function measureChromeAcross({ browser, slug, widths }) {
 /* ---------------------------------------------------------------- the run */
 
 mkdirSync(OUT, { recursive: true })
+// Production's own sweep first, so the pick sees the inventory a buyer would.
+sweepCounts.before = await sweep('before the pick')
 const paid = await pickEvent({ free: false })
 const free = await pickEvent({ free: true })
 if (!paid) fail('no published, unseated, sellable PAID event with room for two on this database')
@@ -573,6 +635,8 @@ ${TAG} ========== the chrome, between the three widths ==========`)
   await measureChromeAcross({ browser, slug: paid.event.slug, widths: CHROME_WIDTHS })
 } finally {
   await browser.close()
+  // Whatever happened above, the places this run held go back.
+  await releaseOwnReservations()
 }
 
 const verdict =
@@ -591,6 +655,7 @@ const report = {
   thirdPartyAxe,
   paymentStepMeasured,
   paymentStepSkipped,
+  sweep: sweepCounts,
   notes,
   faults,
   verdict,
