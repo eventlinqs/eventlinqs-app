@@ -43,7 +43,12 @@ if (!key) {
 // Which account is this? A live key and a test key describe different entities,
 // and comparing a legal name against a TEST account proves nothing about who
 // takes the money.
-const mode = key.startsWith('sk_live_') ? 'LIVE' : key.startsWith('sk_test_') ? 'TEST' : 'UNKNOWN'
+// `rk_` is a RESTRICTED key and is just as live or test as an `sk_`: the letter
+// that matters is the one after the underscore. Reading only the `sk_` forms
+// classified the key the Stripe CLI actually mints as UNKNOWN, and this script
+// would then have said a LIVE answer "does not settle the question" while
+// holding the very key that settles it.
+const mode = /^(sk|rk)_live_/.test(key) ? 'LIVE' : /^(sk|rk)_test_/.test(key) ? 'TEST' : 'UNKNOWN'
 console.log(`${TAG} Stripe key mode: ${mode}`)
 if (mode !== 'LIVE') {
   console.log(`${TAG}   The entity that takes real ticket money is on the LIVE account.`)
