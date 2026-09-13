@@ -2,10 +2,10 @@ import { describe, expect, test } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-// @ts-expect-error - a plain .mjs guard with no type declarations, imported for
-// its judgement so the drill exercises the shipped code and not a copy of it.
+// Imported for its judgement, so the drill exercises the shipped guard and not
+// a copy of it. No @ts-expect-error: TypeScript resolves these .mjs modules,
+// and a directive that suppresses nothing is itself a type error here.
 import { judgeSource, ROLES_THAT_PROHIBIT_A_NAME } from '../../../scripts/guards/busy-region-names-itself.mjs'
-// @ts-expect-error - same, for the comment stripper the guard reads source through.
 import { stripComments } from '../../../scripts/guards/lib/source.mjs'
 
 /**
