@@ -1456,9 +1456,21 @@ const ROOT = join(HERE, '..', '..')
  * year that are not, and on 4 October it landed on the PREVIOUS DATE. The three
  * new ones ask the question at the boundary: each transition explicitly, then
  * every hour of both transition days.
+ *
+ * 2026-09-13 (later still): raised 388/4701 -> 388/4704, MEASURED. Five tests
+ * where two stood in tests/unit/notifications/platform-send.test.ts, and the two
+ * that went are the point: they ASSERTED THE DEFECT. `sendHeldDigest` escalated
+ * on its first email refusal and, with no armed push device, wrote every row
+ * `failed` on one attempt, where nothing reads it again. Those two tests pinned
+ * that as correct while close-out UX3.2 says in writing "a failure is retried".
+ * The five that replace them drive the whole ladder: held on the first refusal,
+ * recovered on a later tick, escalated only once exhausted, failed only once
+ * exhausted, and the batch counted by its highest attempts so a new order
+ * joining cannot reset the clock. A test agreeing with the code is not the same
+ * as the code being right.
  */
 const MIN_FILES = 388
-const MIN_TESTS = 4701
+const MIN_TESTS = 4704
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

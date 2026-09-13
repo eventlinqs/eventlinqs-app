@@ -2278,6 +2278,32 @@ const DRILLS = [
     replace: 'export const SWEEP_TO_UTC = Date.UTC(2026, 0, 1)',
     expect: 'fewer than the 8 it must cross',
   },
+  /*
+   * notification-paths-retry-before-they-give-up (close-out UX3.2, 13 September
+   * 2026), two drills. The first takes the retry back out of the digest, which
+   * is precisely the code that shipped, so the drill is the regression itself.
+   * The second aims at the guard's own vacuity clause: rename one delivery path
+   * past the scan and the guard must say it can no longer see it rather than
+   * quietly judging one path and passing.
+   */
+  {
+    name: 'the digest goes back to escalating on its first refusal',
+    guard: `${GUARDS}/notification-paths-retry-before-they-give-up.mjs`,
+    file: 'src/lib/notifications/platform-send.ts',
+    find:
+      '    const attempt = Math.max(...rows.map((r) => r.attempts)) + 1\n' +
+      '    if (attempt < PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS) {',
+    replace: '    const attempt = Math.max(...rows.map((r) => r.attempts)) + 1\n    if (false) {',
+    expect: 'sendHeldDigest() writes a terminal delivery state and never consults',
+  },
+  {
+    name: 'a delivery path is nested past the scan, so the guard can see only one',
+    guard: `${GUARDS}/notification-paths-retry-before-they-give-up.mjs`,
+    file: 'scripts/guards/notification-paths-retry-before-they-give-up.mjs',
+    find: "const DECLARATION = /^(?:export\\s+)?(?:async\\s+)?function\\s+([A-Za-z0-9_]+)/",
+    replace: "const DECLARATION = /^(?:export\\s+)?(?:async\\s+)?function\\s+(sendHeldDigest)/",
+    expect: 'fewer than the 2 this guard must judge',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

@@ -257,6 +257,11 @@
  *                              including the two days a year that are not 24 hours long,
  *                              where the boundary used to land an hour out and in October
  *                              on the previous date (close-out UX3.3, 13 September 2026)
+ *   notification-paths-retry-before-they-give-up  every delivery path that can write a
+ *                              terminal state counts its attempts first, so no path
+ *                              escalates or gives up on ONE refusal the way the digest
+ *                              did, throwing away up to two hundred orders in a single
+ *                              unrecoverable row (close-out UX3.2, 13 September 2026)
  *   cron-routes-scheduled    every /api/cron route has a vercel.json entry, and every
  *                              entry has a route. /api/cron/queue-admit documented itself
  *                              as running every minute and had no schedule at all, so the
@@ -1171,6 +1176,17 @@ const GUARDS = [
   // used dates in the middle of a season. This calls the real function on every
   // hour of four years and refuses to run on a window with no transition in it.
   'scripts/guards/platform-day-boundary-is-zone-correct.mjs',
+
+  // Close-out UX3.2, 13 September 2026. "Every notification is recorded as sent
+  // or failed, A FAILURE IS RETRIED, and a PERSISTENT failure raises through the
+  // second channel." The individual dispatcher did that; the digest did not. One
+  // refusal from the mail vendor escalated it straight to push, and with no
+  // armed device it went to `failed` on a single attempt, where nothing reads it
+  // again. The one email that can carry two hundred orders was the one with no
+  // second chance. This asks every delivery path that writes a terminal state
+  // whether it counts its attempts first. Drilled red by taking the comparison
+  // back out of the digest.
+  'scripts/guards/notification-paths-retry-before-they-give-up.mjs',
 
   // 11 September 2026. Five migrations (20260910000001 to 20260911000001) were
   // committed without regenerating src/types/database.ts and every gate stayed
