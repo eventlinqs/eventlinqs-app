@@ -274,6 +274,42 @@ if (locked) {
   }
 }
 
+/* --------------------------- 5. the displayed waiver equals the charged one */
+
+/**
+ * THE WAIVER MUST BE READ BY SOMETHING THAT CAN SEE IT.
+ *
+ * `pricing_rules` is world-readable, so resolving the RATES through the anon
+ * client is correct and is what lets the event page work with no service key.
+ * `organisations` is not: migration 20260808000010 revoked every column from
+ * anon except six, and `founding_fee_free_until` is not among them. Reading the
+ * waiver through the anon client therefore answers `permission denied`, and
+ * getFoundingWaiver swallows a failure to INACTIVE on purpose, so the page shows
+ * a founding organiser's buyer a fee the checkout is never going to charge and
+ * nothing anywhere says so.
+ *
+ * That shipped on 8 August 2026 and was found on 13 September by driving it.
+ * This is the gate that would have caught it the same day.
+ */
+const FEE_DISPLAY = 'src/lib/pricing/event-fee-config.ts'
+const feeDisplaySource = read(FEE_DISPLAY)
+if (feeDisplaySource) {
+  checks['fee literal pattern'] += 1
+  const waiverCall = feeDisplaySource.indexOf('getFoundingWaiver(')
+  if (waiverCall === -1) {
+    faults.push(
+      `${FEE_DISPLAY} no longer applies the Founding Organiser waiver to the DISPLAYED rates, so a founding organiser's buyer is shown a fee the checkout will not charge`,
+    )
+  } else {
+    const argument = feeDisplaySource.slice(waiverCall, waiverCall + 200)
+    if (!argument.includes('createAdminClient()')) {
+      faults.push(
+        `${FEE_DISPLAY} reads the founding waiver with something other than createAdminClient(). organisations.founding_fee_free_until is revoked from anon and authenticated by 20260808000010, so any other client answers permission denied, getFoundingWaiver degrades that to INACTIVE, and the page shows a fee the charge waives`,
+      )
+    }
+  }
+}
+
 /* ------------------------------------------------------------------ verdict */
 
 declareWork('founding-offer-matches-configuration', {

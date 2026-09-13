@@ -198,10 +198,18 @@ export async function setFoundingWaiver(input: {
     overrode = atTheCap && input.overrideCap === true
   }
 
+  // Membership moves with the terms. Granting by hand IS admitting an organiser
+  // to the programme, and revoking is removing them from it, so is_founding and
+  // founding_since travel in the same statement rather than in a second write
+  // that can fail on its own and leave a badge with no window behind it.
+  // Extending changes the date and nothing about membership.
+  const membership = input.action === 'grant' ? 'grant' : input.action === 'revoke' ? 'revoke' : 'none'
+
   const { data: applied, error: rpcError } = await admin.rpc('admin_set_founding_waiver', {
     p_org_id: org.id,
     p_until: next,
     p_override: overrode,
+    p_membership: membership,
   })
 
   if (rpcError) {
@@ -229,6 +237,7 @@ export async function setFoundingWaiver(input: {
       new_fee_free_until: feeFreeUntil,
       months_added: input.action === 'extend' ? months ?? null : null,
       cap_overridden: overrode,
+      membership: membership,
       cap: FOUNDING_WAIVER_CAP,
       active_now: isWaiverActive(feeFreeUntil),
     },

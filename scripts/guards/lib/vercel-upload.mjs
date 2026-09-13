@@ -150,16 +150,6 @@ export function filesForUpload(root) {
 }
 
 /**
- * Build the upload tree at dest.
- *
- * @param {object} options
- * @param {string} options.root the real repository root
- * @param {string} options.dest an empty directory to build in
- * @param {string[]} [options.files] tracked paths; defaults to listTrackedFiles(root)
- * @param {boolean} [options.linkNodeModules] junction node_modules across (default true)
- * @returns {{ kept: number, stripped: number, directories: number, ignoreErrors: string[] }}
- */
-/**
  * The real git directory behind `root`, or null when there is no repository.
  *
  * An ordinary checkout has `.git` as a directory. A LINKED WORKTREE has `.git`
@@ -180,6 +170,16 @@ function gitDirectoryOf(root) {
   return existsSync(target) && statSync(target).isDirectory() ? target : null
 }
 
+/**
+ * Build the upload tree at dest.
+ *
+ * @param {object} options
+ * @param {string} options.root the real repository root
+ * @param {string} options.dest an empty directory to build in
+ * @param {string[]} [options.files] tracked paths; defaults to listTrackedFiles(root)
+ * @param {boolean} [options.linkNodeModules] junction node_modules across (default true)
+ * @returns {{ kept: number, stripped: number, directories: number, ignoreErrors: string[] }}
+ */
 export function materialiseVercelUpload({ root, dest, files, linkNodeModules = true }) {
   const { rules, errors } = readVercelIgnore(root)
   const judge = makeJudgeIgnored(rules)

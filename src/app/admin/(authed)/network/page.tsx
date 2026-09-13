@@ -30,7 +30,11 @@ export const metadata = {
  * waitlist-to-invite bridge, covering every Australian city rather than a
  * launch subset (nationwide from day one, founder ruling 2026-08-23).
  */
-export default async function AdminNetworkPage() {
+export default async function AdminNetworkPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ org?: string }>
+}) {
   const session = await requireAdminSession()
   if (!can(session, 'admin.network.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.network.view', session })
@@ -75,9 +79,24 @@ export default async function AdminNetworkPage() {
   // organiser they have just recruited without hunting for an id. Real rows
   // only; nothing here is fabricated and nothing is paginated away silently,
   // because a hidden organisation is one the owner cannot grant terms to.
-  const { data: termRows } = await admin
+  //
+  // AND IT IS SEARCHABLE, because a list is not a way to find one of 250
+  // organisations. Found on 13 September by driving it: the owner could not
+  // reach the organisation they had just recruited, because it was not among
+  // the fifty most recent, and a control the owner cannot reach is a control
+  // that does not exist.
+  const foundingQuery = (await searchParams)?.org?.trim() ?? ''
+  let termQuery = admin
     .from('organisations')
     .select('id, name, slug, is_founding, founding_fee_free_until, created_at')
+  if (foundingQuery) {
+    // PostgREST `or` takes a comma-separated filter list; a comma inside the
+    // pattern would split it, so one is refused rather than silently searching
+    // for half a name.
+    const safe = foundingQuery.replace(/[,()]/g, ' ').trim()
+    termQuery = termQuery.or(`name.ilike.%${safe}%,slug.ilike.%${safe}%`)
+  }
+  const { data: termRows } = await termQuery
     .order('founding_fee_free_until', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(50)
@@ -197,8 +216,33 @@ export default async function AdminNetworkPage() {
         <p className="mb-3 max-w-2xl text-sm text-white/60">
           Grant, extend or revoke a Founding Organiser fee-free window. The charge reads this field on every order,
           so a change here applies to the next order placed, with no deploy. Every change is written to the audit log
-          with who made it and what it moved.
+          with who made it and what it moved. The list shows every organisation holding a window first, then the
+          newest accounts; search by name or handle to reach any other.
         </p>
+        <form method="get" action="/admin/network" className="mb-3 flex flex-wrap items-center gap-2">
+          <label htmlFor="org-search" className="text-xs text-white/60">
+            Find an organisation
+          </label>
+          <input
+            id="org-search"
+            name="org"
+            type="search"
+            defaultValue={foundingQuery}
+            placeholder="Name or handle"
+            className="min-h-[40px] min-w-[220px] rounded-full border border-white/20 bg-[#131A2A] px-4 text-sm text-white placeholder:text-white/30"
+          />
+          <button
+            type="submit"
+            className="inline-flex min-h-[40px] items-center rounded-full border border-white/25 px-4 text-sm font-semibold text-white"
+          >
+            Search
+          </button>
+          {foundingQuery ? (
+            <a href="/admin/network" className="text-xs text-white/50 underline">
+              Clear
+            </a>
+          ) : null}
+        </form>
         <FoundingTerms
           rows={foundingTermRows}
           cap={FOUNDING_WAIVER_CAP}

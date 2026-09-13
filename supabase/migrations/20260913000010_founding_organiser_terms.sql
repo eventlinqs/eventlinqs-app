@@ -340,14 +340,22 @@ BEGIN
   RETURN NEW;
 END $cap$;
 
--- The single entry point for an owner-made change to a window. NULL clears it
--- (revoke); a timestamp sets it (grant or extend). Returns what the row holds
--- afterwards, so the caller reports what the database did rather than what it
--- asked for.
+-- The single entry point for an owner-made change to a founding organiser's
+-- terms. NULL clears the window (revoke); a timestamp sets it (grant or
+-- extend). Returns what the row holds afterwards, so the caller reports what the
+-- database did rather than what it asked for.
+--
+-- MEMBERSHIP MOVES WITH THE TERMS, which is why p_membership exists rather than
+-- the caller updating is_founding separately. Granting founding terms by hand IS
+-- admitting an organiser to the programme, and revoking them is removing them
+-- from it; splitting those into two writes is how an organisation ends up
+-- carrying the badge with no window, or a window with no badge. 'none' is the
+-- extend case, which changes the date and nothing about membership.
 CREATE OR REPLACE FUNCTION public.admin_set_founding_waiver(
-  p_org_id   UUID,
-  p_until    TIMESTAMPTZ,
-  p_override BOOLEAN DEFAULT FALSE
+  p_org_id     UUID,
+  p_until      TIMESTAMPTZ,
+  p_override   BOOLEAN DEFAULT FALSE,
+  p_membership TEXT DEFAULT 'none'
 )
 RETURNS TIMESTAMPTZ
 LANGUAGE plpgsql
@@ -358,16 +366,42 @@ DECLARE
   v_after TIMESTAMPTZ;
   v_found BOOLEAN;
 BEGIN
+  IF p_membership NOT IN ('none', 'grant', 'revoke') THEN
+    RAISE EXCEPTION 'p_membership must be none, grant or revoke, not %', p_membership
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
   IF p_override THEN
-    -- is_local = true: dies with this transaction, so the escape cannot leak
-    -- into the next statement on a pooled connection.
+    -- is_local = true: dies with this transaction, so the escape can never leak
+    -- onto the next caller of a pooled connection.
     PERFORM set_config('eventlinqs.founding_cap_override', 'on', TRUE);
   END IF;
 
   UPDATE public.organisations
-  SET founding_fee_free_until = p_until
+  SET founding_fee_free_until = p_until,
+      is_founding = CASE p_membership
+                      WHEN 'grant'  THEN TRUE
+                      WHEN 'revoke' THEN FALSE
+                      ELSE is_founding
+                    END,
+      founding_since = CASE
+                         WHEN p_membership = 'grant' THEN COALESCE(founding_since, NOW())
+                         WHEN p_membership = 'revoke' THEN NULL
+                         ELSE founding_since
+                       END
   WHERE id = p_org_id
   RETURNING TRUE, founding_fee_free_until INTO v_found, v_after;
+
+  -- CLOSE THE ESCAPE BEFORE RETURNING, so it dies with this CALL rather than
+  -- with the transaction. is_local already bounds it to the transaction, and
+  -- through PostgREST one RPC is one transaction, so the two are the same thing
+  -- today. They stop being the same thing the moment anything calls this twice
+  -- in one transaction, and then the second grant would ride an override the
+  -- owner authorised for the first. Found on 13 September by the database proof
+  -- asserting the tighter guarantee and watching the looser one fail it.
+  IF p_override THEN
+    PERFORM set_config('eventlinqs.founding_cap_override', '', TRUE);
+  END IF;
 
   IF NOT COALESCE(v_found, FALSE) THEN
     RAISE EXCEPTION 'organisation % not found', p_org_id
@@ -377,16 +411,16 @@ BEGIN
   RETURN v_after;
 END $admin$;
 
-COMMENT ON FUNCTION public.admin_set_founding_waiver(UUID, TIMESTAMPTZ, BOOLEAN) IS
-  'Owner-made grant, extend or revoke of a Founding Organiser fee-free window. NULL revokes. p_override opens the fifty cap for this transaction only and the caller must audit-log it. Service role only.';
+COMMENT ON FUNCTION public.admin_set_founding_waiver(UUID, TIMESTAMPTZ, BOOLEAN, TEXT) IS
+  'Owner-made grant, extend or revoke of a Founding Organiser''s terms. NULL revokes the window. p_membership moves is_founding and founding_since with it, so the badge and the window can never disagree. p_override opens the fifty cap for this transaction only and the caller must audit-log it. Service role only.';
 
 -- The service role is the only caller. The admin surface runs as service role
 -- after its own role check plus 2FA; anon and authenticated have no business
 -- moving a fee waiver.
-REVOKE ALL ON FUNCTION public.admin_set_founding_waiver(UUID, TIMESTAMPTZ, BOOLEAN) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.admin_set_founding_waiver(UUID, TIMESTAMPTZ, BOOLEAN) FROM anon;
-REVOKE ALL ON FUNCTION public.admin_set_founding_waiver(UUID, TIMESTAMPTZ, BOOLEAN) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_set_founding_waiver(UUID, TIMESTAMPTZ, BOOLEAN) TO service_role;
+REVOKE ALL ON FUNCTION public.admin_set_founding_waiver(UUID, TIMESTAMPTZ, BOOLEAN, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.admin_set_founding_waiver(UUID, TIMESTAMPTZ, BOOLEAN, TEXT) FROM anon;
+REVOKE ALL ON FUNCTION public.admin_set_founding_waiver(UUID, TIMESTAMPTZ, BOOLEAN, TEXT) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_set_founding_waiver(UUID, TIMESTAMPTZ, BOOLEAN, TEXT) TO service_role;
 
 REVOKE ALL ON FUNCTION public.credit_founding_referral(UUID, UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.credit_founding_referral(UUID, UUID) FROM anon;

@@ -5208,7 +5208,12 @@ export type Database = {
     }
     Functions: {
       admin_set_founding_waiver: {
-        Args: { p_org_id: string; p_override?: boolean; p_until: string }
+        Args: {
+          p_membership?: string
+          p_org_id: string
+          p_override?: boolean
+          p_until: string
+        }
         Returns: string
       }
       admit_queue_batch: {

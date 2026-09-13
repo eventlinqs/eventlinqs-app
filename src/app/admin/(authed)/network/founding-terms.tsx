@@ -55,7 +55,14 @@ export function FoundingTerms({
   initialMonths: number
   referralMonths: number
 }) {
-  const [state, setState] = useState<Record<string, { until: string | null; message: string | null; failed: boolean }>>({})
+  // The row's DESCRIPTIVE LINE is tracked here as well as the date, because a
+  // control that half-updates is a control the owner cannot trust. Found by
+  // driving it on 13 September: pressing Grant moved the date on screen and left
+  // the line reading "Standard organiser" until the page was reloaded, so the
+  // screen said two different things about the same organisation at once.
+  const [state, setState] = useState<
+    Record<string, { until: string | null; founding: boolean; message: string | null; failed: boolean }>
+  >({})
   const [overrideCap, setOverrideCap] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -74,10 +81,21 @@ export function FoundingTerms({
         [id]: result.ok
           ? {
               until: result.feeFreeUntil ?? null,
+              founding:
+                action === 'grant'
+                  ? true
+                  : action === 'revoke'
+                    ? false
+                    : (rows.find(r => r.id === id)?.isFounding ?? false),
               message: action === 'revoke' ? 'Window cleared' : `Fee free until ${formatUntil(result.feeFreeUntil ?? null)}`,
               failed: false,
             }
-          : { until: null, message: result.error ?? 'That did not work', failed: true },
+          : {
+              until: null,
+              founding: rows.find(r => r.id === id)?.isFounding ?? false,
+              message: result.error ?? 'That did not work',
+              failed: true,
+            },
       }))
       setBusyId(null)
     })
@@ -111,12 +129,13 @@ export function FoundingTerms({
             {rows.map(r => {
               const outcome = state[r.id]
               const until = outcome && !outcome.failed ? outcome.until : r.feeFreeUntil
+              const founding = outcome && !outcome.failed ? outcome.founding : r.isFounding
               return (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-white">{r.name}</p>
                     <p className="truncate text-xs text-white/50">
-                      {r.isFounding ? 'Founding Organiser' : 'Standard organiser'} · fee free until {formatUntil(until)} ·{' '}
+                      {founding ? 'Founding Organiser' : 'Standard organiser'} · fee free until {formatUntil(until)} ·{' '}
                       {r.referralsConfirmed} referral{r.referralsConfirmed === 1 ? '' : 's'} counted
                     </p>
                     {outcome?.message ? (
