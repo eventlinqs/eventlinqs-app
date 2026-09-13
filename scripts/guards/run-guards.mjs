@@ -268,6 +268,13 @@
  *                              them let a batch arrive at the bound and give up on its
  *                              first refusal, which is the line above defeated through
  *                              another door (close-out UX3.2 and UX3.3, 13 September 2026)
+ *   quiet-hours-are-honoured  the quiet hours the account screen collects are read on
+ *                              the USER'S clock before a send, and every path that reads
+ *                              the window either acts on it or says in the guard why it
+ *                              cannot. The window was collected, validated, stored and
+ *                              read on every send, and nothing ever consulted it: a user
+ *                              who asked for silence from 10pm was pushed at 3am
+ *                              (13 September 2026)
  *   cron-routes-scheduled    every /api/cron route has a vercel.json entry, and every
  *                              entry has a route. /api/cron/queue-admit documented itself
  *                              as running every minute and had no schedule at all, so the
@@ -1204,6 +1211,17 @@ const GUARDS = [
   // dispatcher calls it, because a perfect pure function nobody calls is worth
   // nothing. Drilled red both ways.
   'scripts/guards/digest-attempts-are-the-digests-own.mjs',
+
+  // 13 September 2026. /account/notifications promises "nothing arrives inside
+  // your quiet hours". The window was collected by that screen, validated by the
+  // API, stored on notification_prefs and READ by the dispatcher on every send,
+  // and no code anywhere consulted it: isWithinQuietHours was exhaustively unit
+  // tested and called only by its own test file. A control that does nothing is a
+  // defect by name, and this one made the screen say something untrue. The guard
+  // runs the real decision across every hour of three days including both
+  // daylight-saving transitions, and proves every reader of the window either
+  // honours it or carries a written reason it cannot. Drilled red both ways.
+  'scripts/guards/quiet-hours-are-honoured.mjs',
 
   // 11 September 2026. Five migrations (20260910000001 to 20260911000001) were
   // committed without regenerating src/types/database.ts and every gate stayed

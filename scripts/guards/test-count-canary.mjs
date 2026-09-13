@@ -1479,9 +1479,23 @@ const ROOT = join(HERE, '..', '..')
  * three ask it as one story: the hold hands the digest a fresh count and keeps
  * the history, the digest still gets all three attempts, and the held order is
  * delivered on a later tick so one individual refusal costs nothing.
+ *
+ * 2026-09-13 (the quiet hours): raised 388/4707 -> 390/4728, MEASURED. Two new
+ * files and 21 tests, and the reason they did not exist is the defect itself.
+ * /account/notifications promises "nothing arrives inside your quiet hours". The
+ * window was collected by that screen, validated by the API, stored on
+ * notification_prefs and READ by the dispatcher on every send, and nothing ever
+ * consulted it: `isWithinQuietHours` was exhaustively unit tested and its only
+ * caller was its own test file. There were NO tests of dispatchAlert at all, so
+ * nothing noticed that a user who asked for silence between 10pm and 7am was
+ * pushed at 3am. tests/unit/notifications/dispatch.test.ts drives the dispatcher
+ * itself (held rather than dropped, delivered on the next run, the user's own
+ * clock, a timezone the runtime cannot resolve), prefs-route.test.ts refuses the
+ * zone that could abort a whole cron pass, and policy.test.ts gains the hour
+ * resolution across both daylight-saving transitions.
  */
-const MIN_FILES = 388
-const MIN_TESTS = 4707
+const MIN_FILES = 390
+const MIN_TESTS = 4728
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -2329,6 +2329,30 @@ const DRILLS = [
     replace: "    delivery_state: 'held_for_digest',\n    attempts: spent as 0,",
     expect: 'enters the digest queue carrying',
   },
+  /*
+   * quiet-hours-are-honoured (13 September 2026), two drills, one per clause.
+   * The first restores the shipped state exactly: the dispatcher reads the
+   * window and never asks about it. The second leaves the caller alone and
+   * breaks the decision, reading the PLATFORM clock instead of the user's, which
+   * is the mistake a reader of this code is most likely to make next and which
+   * only a sweep across zones and transitions can see.
+   */
+  {
+    name: 'the dispatcher goes back to reading the quiet-hours window and never asking',
+    guard: `${GUARDS}/quiet-hours-are-honoured.mjs`,
+    file: 'src/lib/notifications/dispatch.ts',
+    find: "  if (isQuietNow(prefs, now)) return { status: 'skipped', reason: 'quiet_hours' }",
+    replace: "  void isQuietNow",
+    expect: 'never consults isQuietNow()',
+  },
+  {
+    name: 'the quiet-hours decision reads the platform clock instead of the user one',
+    guard: `${GUARDS}/quiet-hours-are-honoured.mjs`,
+    file: 'src/lib/notifications/policy.ts',
+    find: '  return isWithinQuietHours(prefs, localHourFor(prefs.timezone, now))',
+    replace: '  return isWithinQuietHours(prefs, now.getUTCHours())',
+    expect: 'window answered',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

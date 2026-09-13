@@ -67,6 +67,61 @@ export function isWithinQuietHours(
   return localHour >= start || localHour < end
 }
 
+/**
+ * The hour of the day, 0 to 23, as the USER experiences it.
+ *
+ * WHY THIS IS SEPARATE AND WHY IT NEVER THROWS. The preferences API accepts any
+ * string up to 64 characters for `timezone`, so a value Intl cannot resolve can
+ * reach a cron loop, and `new Intl.DateTimeFormat(..., { timeZone })` throws a
+ * RangeError on one. Inside dispatchAlert that would abort the whole run at the
+ * first bad row, taking every other follower's alert with it. A zone that cannot
+ * be resolved therefore falls back to the platform zone, which is the assumption
+ * the rest of the product already makes about an unknown user, rather than to
+ * UTC, which is ten or eleven hours away from the launch market and would put
+ * "quiet from 10pm" in the middle of the afternoon.
+ *
+ * hourCycle h23 rather than hour12 false, because the latter is specified to
+ * produce "24" for midnight in several locales and this function's whole output
+ * is an hour compared against a window.
+ */
+export function localHourFor(timezone: string, now: Date): number {
+  for (const zone of [timezone, DEFAULT_PREFS.timezone]) {
+    try {
+      const value = new Intl.DateTimeFormat('en-GB', {
+        timeZone: zone,
+        hour: '2-digit',
+        hourCycle: 'h23',
+      }).format(now)
+      const hour = Number(value)
+      if (Number.isInteger(hour) && hour >= 0 && hour <= 23) return hour
+    } catch {
+      // The next zone in the list, and then the UTC floor below.
+    }
+  }
+  return now.getUTCHours()
+}
+
+/**
+ * Is it inside this user's quiet hours right now? The whole decision, in one
+ * call, so no caller has to remember to resolve the zone first.
+ *
+ * THE DEFECT THIS CLOSES, 13 September 2026. /account/notifications tells the
+ * user "nothing is sent inside your quiet hours". The window was collected by
+ * that screen, validated by the API, stored on notification_prefs and READ by
+ * the dispatcher on every send - and nothing ever consulted it. The pure
+ * predicate above existed and was exhaustively unit tested, and the only thing
+ * that ever called it was its own test file. A user who asked for silence
+ * between 10pm and 7am was pushed at 3am regardless, which is a control that
+ * does nothing and a promise on a shipped surface that was not true.
+ */
+export function isQuietNow(
+  prefs: Pick<NotificationPrefs, 'quiet_hours_start' | 'quiet_hours_end' | 'timezone'>,
+  now: Date,
+): boolean {
+  if (prefs.quiet_hours_start === null || prefs.quiet_hours_end === null) return false
+  return isWithinQuietHours(prefs, localHourFor(prefs.timezone, now))
+}
+
 type AlertContext = {
   eventTitle: string
   eventCity?: string | null
