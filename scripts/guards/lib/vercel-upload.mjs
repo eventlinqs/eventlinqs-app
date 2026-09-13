@@ -46,10 +46,27 @@
  *   - Untracked files are absent, because Vercel clones from git.
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, linkSync, copyFileSync, mkdirSync, readdirSync, rmSync, statSync, symlinkSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { existsSync, linkSync, copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync } from 'node:fs'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { gitEnv } from '../../lib/git-env.mjs'
 import { describeNoGit, gitAvailability } from './git-availability.mjs'
+
+/**
+ * The directory holding git's own state for a tree, whichever shape `.git` has.
+ *
+ * A normal clone has `.git` as a DIRECTORY. A linked worktree has it as a FILE
+ * whose single line is `gitdir: <path>`, and that path may be relative to the
+ * worktree. Returns null when there is no git state at all, which is the build
+ * host and is a legitimate answer rather than an error.
+ */
+function gitDirectoryOf(dotGit) {
+  if (!existsSync(dotGit)) return null
+  if (statSync(dotGit).isDirectory()) return dotGit
+  const pointer = readFileSync(dotGit, 'utf8').match(/^gitdir:\s*(.+)$/m)?.[1]?.trim()
+  if (!pointer) return null
+  const target = isAbsolute(pointer) ? pointer : resolve(dirname(dotGit), pointer)
+  return existsSync(target) && statSync(target).isDirectory() ? target : null
+}
 import { walkTrackedFiles } from './gitignore.mjs'
 import { makeJudgeIgnored, readVercelIgnore } from './vercelignore.mjs'
 
@@ -201,6 +218,7 @@ export function materialiseVercelUpload({ root, dest, files, linkNodeModules = t
 
   /*
    * THE EMPTY .git SKELETON, because the build host has one and this simulation
+   * did not. See gitDirectoryOf below for the linked-worktree case.
    * did not. Vercel removes the FILES `.vercelignore` matches and leaves the
    * DIRECTORIES; `.git` is matched, so the build host carries an empty `.git`
    * tree. `git ls-files` never mentions `.git`, so nothing above reproduced it,
@@ -209,14 +227,33 @@ export function materialiseVercelUpload({ root, dest, files, linkNodeModules = t
    *
    * Reproduced by walking the real `.git` and creating its DIRECTORIES only.
    */
+  /*
+   * A LINKED WORKTREE KEEPS `.git` AS A FILE, and this used to walk past it.
+   *
+   * `statSync('.git').isDirectory()` is false in every `git worktree`, where
+   * `.git` is a one-line file reading `gitdir: ...`. So the skeleton was never
+   * created there, `materialiseVercelUpload` produced an upload with no `.git`
+   * at all, and `vercel-upload.test.ts` failed on exactly the assertion that
+   * exists to keep this simulation honest.
+   *
+   * That failure is invisible from the main checkout and unavoidable from a
+   * worktree, which is the worst shape a shared gate can have: since 13
+   * September this build runs three lanes, two of them in worktrees, so the one
+   * tree that can push was the one tree that could not see it.
+   *
+   * The pointer is followed for the SHAPE and the skeleton is still written at
+   * `.git`, because what is being reproduced is the build host: a `.git` that
+   * exists, holds no file, and leaves git refusing to work in the tree.
+   */
   const realGit = join(root, '.git')
-  if (existsSync(realGit) && statSync(realGit).isDirectory()) {
-    const stack = ['.git']
+  const gitSource = gitDirectoryOf(realGit)
+  if (gitSource) {
+    const stack = [{ rel: '.git', from: gitSource }]
     while (stack.length > 0) {
-      const rel = stack.pop()
+      const { rel, from } = stack.pop()
       ensureDir(rel)
-      for (const entry of readdirSync(join(root, rel), { withFileTypes: true })) {
-        if (entry.isDirectory()) stack.push(`${rel}/${entry.name}`)
+      for (const entry of readdirSync(from, { withFileTypes: true })) {
+        if (entry.isDirectory()) stack.push({ rel: `${rel}/${entry.name}`, from: join(from, entry.name) })
       }
     }
   }

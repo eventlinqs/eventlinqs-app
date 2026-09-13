@@ -1434,9 +1434,20 @@ const ROOT = join(HERE, '..', '..')
  * nothing on TEST ever expires. tests/unit/ops/checkout-proof-leaves-test-as-found
  * pins that the drive now runs the product's own sweep before it picks and
  * expires what it reserved when it ends.
+ *
+ * 2026-09-13: raised 388/4697 -> 388/4698, MEASURED. One test added, and it is
+ * worth naming because of where it fails. `materialiseVercelUpload` created the
+ * empty `.git` skeleton only when `.git` was a DIRECTORY, and in a linked git
+ * worktree it is a one-line FILE, so the simulation produced an upload with no
+ * `.git` at all and `vercel-upload.test.ts` failed on the assertion that keeps
+ * it honest. That was invisible from the main checkout and unavoidable from a
+ * worktree, and since 13 September this build runs three lanes with two of them
+ * in worktrees: the only tree that can push was the only tree that could not see
+ * it. The new test builds the worktree shape itself, so it fails from anywhere
+ * the pointer is not followed.
  */
 const MIN_FILES = 388
-const MIN_TESTS = 4697
+const MIN_TESTS = 4698
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

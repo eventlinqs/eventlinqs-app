@@ -43,6 +43,7 @@ import {
   createEventThroughWizard,
   buyTicket,
 } from '../journeys/harness.mjs'
+import { completeExpressOnboarding } from '../journeys/stripe-express-onboarding.mjs'
 
 const args = process.argv.slice(2)
 let out = 'C:/dev/EVIDENCE/UX3'
@@ -77,14 +78,24 @@ const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: fal
 
 const stamp = String(Date.now()).slice(-7)
 const mint = () => randomBytes(12).toString('base64url') + '-Aa1'
+/*
+ * EVERY ROW THIS DRIVE CREATES CARRIES ITS LANE.
+ *
+ * Three build lanes share one TEST project, and the protocol is that a row is
+ * identifiable as one lane's on sight, so no lane ever edits or clears another
+ * lane's fixture while cleaning up its own. The tag is in the email, the name
+ * and the slug rather than in a comment, because a comment is not visible from
+ * a database console.
+ */
+const LANE = 'lane-c'
 const ORGANISER = {
   name: 'Nadia Okonkwo',
-  email: `ux3.organiser.${stamp}@example.com`,
+  email: `ux3.${LANE}.organiser.${stamp}@example.com`,
   password: mint(),
 }
-const ORG_NAME = `Northside Sound ${stamp}`
-const ORG_SLUG = `northside-sound-${stamp}`
-const TITLE = `Northside Sound Launch ${stamp}`
+const ORG_NAME = `Northside Sound ${LANE} ${stamp}`
+const ORG_SLUG = `northside-sound-${LANE}-${stamp}`
+const TITLE = `Northside Sound Launch ${LANE} ${stamp}`
 
 const checks = []
 const failures = []
@@ -128,6 +139,55 @@ async function stripeReachable() {
   }
 }
 
+/**
+ * 7922, "theatrical producers and ticket agencies".
+ *
+ * Not invented here: it is the category one of the TEST organisers on this
+ * project actually chose for themselves, recorded in
+ * src/lib/stripe/business-profile.ts beside the reason the platform deliberately
+ * does NOT prefill this field.
+ */
+const MCC_TICKET_AGENCY = '7922'
+
+/**
+ * THE ONE FIELD THIS DRIVE SUPPLIES THROUGH THE API RATHER THAN THE FORM, AND
+ * EXACTLY WHY.
+ *
+ * Everything else on Stripe's hosted onboarding is answered the way a person
+ * answers it, by typing into the form. One control cannot be: the Industry
+ * picker on the "Additional information" panel is not an input, a select or a
+ * combobox in any frame on the page, so no locator reaches it. Driven on 13
+ * September 2026; the account otherwise arrives at Stripe's final screen with
+ * every other section complete and only that one marked Incomplete, which keeps
+ * "Agree and submit" disabled and the account unable to take charges.
+ *
+ * WHAT THIS DOES AND DOES NOT SUBSTITUTE. It sets one field of the ORGANISER'S
+ * OWN DATA inside Stripe's product, which is the same class of thing as the
+ * phone number and the address token this drive already supplies. It touches
+ * nothing on the EventLinqs side: `stripe_charges_enabled` is still flipped by
+ * Stripe, still read back by our own return route, and the notification is still
+ * written by the database trigger on that persist. If this ever writes to our
+ * own tables instead, the leg proves nothing and the drive is lying.
+ */
+async function setIndustryOnStripe(accountId) {
+  const key = (process.env.STRIPE_SECRET_KEY ?? '').trim()
+  if (!key.startsWith('sk_test') && !key.startsWith('rk_test')) {
+    return { ok: false, reason: 'not a TEST key' }
+  }
+  try {
+    const res = await fetch(`https://api.stripe.com/v1/accounts/${accountId}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ 'business_profile[mcc]': MCC_TICKET_AGENCY }),
+    })
+    if (res.ok) return { ok: true }
+    const body = await res.json().catch(() => ({}))
+    return { ok: false, reason: `${res.status} ${body?.error?.message ?? ''}`.trim() }
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 /** Wait for a row the DATABASE writes, so a slow transaction is not a failure. */
 async function waitForNotification(match, timeoutMs = 20000) {
   const started = Date.now()
@@ -152,6 +212,9 @@ await attach(j, page)
 
 let organisationId = null
 let eventId = null
+let eventSlug = null
+let chargesEnabled = false
+let connectedAccountId = null
 
 try {
   // -------------------------------------------------------------------------
@@ -233,6 +296,11 @@ try {
           typeof row.detail?.stripe_account_id === 'string' && row.detail.stripe_account_id.startsWith('acct_'),
           `carries the Stripe account: ${row.detail?.stripe_account_id}`,
         )
+        connectedAccountId = row.detail?.stripe_account_id ?? null
+        if (connectedAccountId) {
+          const industry = await setIndustryOnStripe(connectedAccountId)
+          note(j, 'Chose an industry through the API', industry.ok ? `mcc ${MCC_TICKET_AGENCY}` : `refused: ${industry.reason}`)
+        }
       }
       await page.waitForTimeout(6000)
       await page.screenshot({ path: join(out, 'drive-03-after-set-up-payouts.png'), fullPage: false }).catch(() => {})
@@ -243,13 +311,33 @@ try {
   // 3. STRIPE ONBOARDING COMPLETES AND CHARGES ARE ENABLED.
   //
   //    Only Stripe can flip that, and it flips it when a person finishes the
-  //    hosted form. This leg therefore drives what THIS platform does when it
-  //    happens: the organiser presses "Refresh status", reconcileConnectedAccount
-  //    reads the live account, and the column moves. If the account is not
-  //    enabled (the hosted form was not completed on this run) the leg is
-  //    reported NOT EXERCISED with its reason rather than faked.
+  //    hosted form, so the form is finished here rather than skipped. The
+  //    browser is already sitting on it: the click above left the site for
+  //    connect.stripe.com. `completeExpressOnboarding` answers every step with
+  //    Stripe's own published test values and Stripe redirects back to
+  //    /api/stripe/connect/return, which re-reads the live account and persists
+  //    the capability flags. The trigger fires on that persist.
+  //
+  //    Nothing here writes stripe_charges_enabled. If Stripe does not enable the
+  //    account, this leg reports NOT EXERCISED with the step it stopped on,
+  //    because a column set by hand would fire the trigger and prove nothing.
   // -------------------------------------------------------------------------
   if (organisationId && stripe.ok) {
+    let onboarding = null
+    if (/connect\.stripe\.com/.test(page.url())) {
+      // BOUNDED. The walk is capped so a form that cannot be finished costs one
+      // viewport a couple of minutes rather than the run. What it reached is
+      // reported either way.
+      onboarding = await completeExpressOnboarding(page, { shot: out, maxSteps: 20, log: m => console.log(`  ${m}`) })
+      note(
+        j,
+        'Finished Stripe onboarding',
+        onboarding.completed ? `returned to ${onboarding.leftStripeAt?.slice(0, 80)}` : `stopped: ${onboarding.stoppedBecause}`,
+      )
+      await page.waitForTimeout(8000)
+      await page.screenshot({ path: join(out, 'drive-03b-after-onboarding.png'), fullPage: false }).catch(() => {})
+    }
+
     await page.goto(`${BASE}/dashboard/payouts`, { waitUntil: 'networkidle', timeout: 60000 })
     await page.waitForTimeout(2500)
     const refresh = await page.$('button[aria-label="Refresh status"]')
@@ -257,18 +345,27 @@ try {
       await refresh.click()
       await page.waitForTimeout(6000)
     }
+    await page.screenshot({ path: join(out, 'drive-03c-payouts-after.png'), fullPage: false }).catch(() => {})
     const { data: after } = await db
       .from('organisations')
       .select('stripe_charges_enabled')
       .eq('id', organisationId)
       .maybeSingle()
-    if (after?.stripe_charges_enabled) {
+    chargesEnabled = Boolean(after?.stripe_charges_enabled)
+    if (chargesEnabled) {
       const { row } = await waitForNotification({ kind: 'connect_charges_enabled', organisationId })
       check('ux3.1.connect_charges_enabled', Boolean(row), row ? `"${row.summary}"` : 'NO ROW: charges were enabled in silence')
+      if (row) {
+        check(
+          'ux3.1.connect_charges_enabled.link',
+          row.admin_path === `/admin/organisers/${organisationId}`,
+          `admin path ${row.admin_path}`,
+        )
+      }
     } else {
       skip(
         'ux3.1.connect_charges_enabled',
-        'the brand new Express account is not charges-enabled, because Stripe only enables it when a person completes the hosted form. The transition itself is proved separately against an organisation Stripe has already enabled.',
+        `Stripe did not enable charges on this account. Onboarding ${onboarding ? `stopped: ${onboarding.stoppedBecause ?? 'unknown'}` : 'was never reached'}`,
       )
     }
   }
@@ -277,11 +374,23 @@ try {
   // 4. AN EVENT IS PUBLISHED.
   // -------------------------------------------------------------------------
   if (organisationId) {
+    /*
+     * A PAID EVENT WHEN THE ORGANISATION CAN TAKE MONEY, FREE WHEN IT CANNOT.
+     *
+     * The fifth notification is "every paid order", and a paid order needs a
+     * paid ticket on an organisation Stripe has enabled. When onboarding
+     * succeeded above, this event is that ticket, so the last leg is driven
+     * against the organiser this run created rather than against a slug somebody
+     * passed in. When onboarding did not succeed, a paid event would be refused
+     * publication for the money reason and would take the event_published leg
+     * down with it, so the event stays free and only the order leg is lost.
+     */
     const review = await createEventThroughWizard(j, page, {
       title: TITLE,
       summary: 'A night of north-side sound.',
       description: 'Local acts, one room, doors at eight. Bring a friend and stay for the last set.',
       capacity: '60',
+      price: chargesEnabled ? 25 : null,
       orgName: ORG_NAME,
     })
     await page.screenshot({ path: join(out, 'drive-04-review.png'), fullPage: false }).catch(() => {})
@@ -308,6 +417,7 @@ try {
       .limit(1)
       .maybeSingle()
     eventId = ev?.id ?? null
+    eventSlug = ev?.slug ?? null
     check('ux3.event.published', ev?.status === 'published', ev ? `${ev.slug} is ${ev.status}` : 'no event was created')
 
     if (eventId && ev?.status === 'published') {
@@ -332,15 +442,29 @@ try {
   //    already enabled, because a brand new account cannot sell yet and the
   //    close-out asks for a PAID order.
   // -------------------------------------------------------------------------
-  if (!skipPurchase && paidSlug && !stripe.ok) {
+  /*
+   * THE SLUG IS ENUMERATED, NEVER GUESSED. It is preferably the event this run
+   * just published on the organisation this run just enabled, which makes the
+   * whole chain one person's journey. `--paid-slug` stays supported so the leg
+   * can still be pointed at an existing sellable event.
+   */
+  const slugToBuy = (chargesEnabled && eventSlug) || paidSlug
+  if (!skipPurchase && slugToBuy && !stripe.ok) {
     skip(
       'ux3.1.order_paid',
       `${stripe.reason}, so no card can be taken on this machine and no order can reach 'confirmed'. Founder step: run "stripe login" and re-run this drive.`,
     )
-  } else if (!skipPurchase && paidSlug) {
-    const buyerEmail = `ux3.buyer.${stamp}@example.com`
+  } else if (!skipPurchase && slugToBuy) {
+    /*
+     * THE BUYER IS A STRANGER, so the session that built the event is dropped
+     * first. Everything the organiser had to do is finished by this point, and
+     * buying while still signed in as the event's own organiser would prefill
+     * the checkout from an account and skip the guest fields a real buyer fills.
+     */
+    await ctx.clearCookies()
+    const buyerEmail = `ux3.${LANE}.buyer.${stamp}@example.com`
     const before = new Date().toISOString()
-    await buyTicket(j, page, paidSlug, buyerEmail, 'Robin Ashe')
+    await buyTicket(j, page, slugToBuy, buyerEmail, 'Robin Ashe')
     await page.waitForTimeout(4000)
     await page.screenshot({ path: join(out, 'drive-06-after-purchase.png'), fullPage: false }).catch(() => {})
 
@@ -372,8 +496,23 @@ try {
         )
       }
     }
-  } else if (!paidSlug) {
-    skip('ux3.1.order_paid', 'no --paid-slug was supplied, so the card leg was not run')
+  } else if (!slugToBuy) {
+    /*
+     * SAY WHICH OF THE TWO REASONS IT IS.
+     *
+     * This used to read "no --paid-slug was supplied", which is true and
+     * misleading: it reads as a caller who forgot an argument, when the usual
+     * cause is upstream and is the platform working correctly. An organisation
+     * Stripe has not enabled cannot publish a paid event, so there is no paid
+     * ticket to buy, and a reason that names the wrong cause sends the next
+     * reader to the wrong place.
+     */
+    skip(
+      'ux3.1.order_paid',
+      chargesEnabled
+        ? 'charges are enabled but this run published no paid event and no --paid-slug was supplied'
+        : 'charges are NOT enabled on this organisation, so it cannot publish a paid event and there is no paid ticket to buy. That is the platform refusing correctly, not a defect: the leg is downstream of connect_charges_enabled above',
+    )
   }
 } finally {
   const report = { base: BASE, organiser: ORGANISER.email, organisationId, eventId, checks, notExercised, failures }
