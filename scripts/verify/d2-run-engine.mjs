@@ -110,5 +110,22 @@ if (command === 'activate') {
   process.exit(0)
 }
 
-console.error(`[d2-run-engine] unknown command ${command}. Expected sweep, promote or activate.`)
+if (command === 'proof') {
+  /*
+   * THE PANEL'S OWN NUMBERS, from the function the page calls, so a drive can
+   * compare what is on screen against what the engine computes for the slot
+   * rather than against a substring search over the panel's text.
+   */
+  const { proofForSlot } = await import('@/lib/fillrate/proof')
+  const slotId = flag('slot')
+  if (!slotId) {
+    console.error('[d2-run-engine] proof needs --slot')
+    process.exit(1)
+  }
+  const proof = await proofForSlot(String(slotId))
+  console.log(JSON.stringify({ ok: true, ...proof }))
+  process.exit(0)
+}
+
+console.error(`[d2-run-engine] unknown command ${command}. Expected sweep, promote, activate or proof.`)
 process.exit(1)

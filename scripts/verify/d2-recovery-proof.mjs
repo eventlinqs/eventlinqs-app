@@ -8,26 +8,30 @@
  *     "Proof panel renders real numbers at 390, 768 and 1440, no overflow."
  *
  * ----------------------------------------------------------------------------
- * WHAT THIS MACHINE CANNOT DO, SAID FIRST RATHER THAN DISCOVERED IN A FOOTNOTE.
+ * THE PAYMENT STEP NEEDS A STRIPE TEST KEY, AND WHAT HAPPENS WITH AND WITHOUT ONE.
  *
- * A checkout is abandoned at the PAYMENT step, and reaching that step needs a
- * Stripe TEST key. There is none here: both keys in the Stripe CLI config
- * answer HTTP 401 `api_key_expired` against Stripe's own API, checked again on
- * 11 September 2026, and every `STRIPE_SECRET_KEY` record on the Vercel project
- * is marked `sensitive`, which no token can decrypt. It is the same blocker
- * that left UX6's payment step unexercised, and it is closed by one founder
- * command (`stripe login`, or `npm run migrate:production`, which releases the
- * push and builds a git preview carrying the key).
+ * Until 12 September 2026 there was none on this machine (both CLI keys
+ * answered `api_key_expired`, every Vercel record is `sensitive`), so the
+ * abandonment was produced by a real buyer pressing Continue to payment on a
+ * real paid event: `processCheckout` wrote the `checkout_started` demand row
+ * carrying their address and then could not mint a payment intent, so no order
+ * existed and the reservation lapsed. That is the recorded state of a buyer who
+ * closed the tab at the card form, and the run said the payment step itself was
+ * NOT EXERCISED. That run is unchanged when no key is present.
  *
- * SO THE ABANDONMENT IS PRODUCED THE WAY IT ACTUALLY HAPPENS HERE, and it is a
- * real one rather than a seeded row. A real buyer opens a real paid event in a
- * real browser, chooses a ticket, fills the real checkout form and presses pay.
- * `processCheckout` writes the `checkout_started` demand row carrying their
- * address, and then cannot create a payment intent, so no order exists and the
- * reservation is left to lapse. The RECORDED STATE is exactly what a buyer who
- * looked at the card form and closed the tab leaves behind, which is the only
- * state the engine can see. Nothing is inserted by this script that a person
- * did not cause.
+ * WITH A KEY IN THE ENVIRONMENT (STRIPE_SECRET_KEY, which
+ * scripts/verify/d2-stripe-drive.mjs supplies from the CLI's own config beside
+ * the matching publishable key and a `stripe listen` forwarder), every buyer
+ * reaches the PAINTED card form, and the run has a THIRD buyer who does what
+ * the close-out actually asks: leaves at the card form, receives message one,
+ * comes back by its link, pays with Stripe's test card, has the order confirmed
+ * by the webhook, and is then REFUSED messages two and three because they
+ * bought. The panel must count them as having come back.
+ *
+ * In both shapes the abandonment is a real one rather than a seeded row. A real
+ * buyer opens a real paid event in a real browser, chooses a ticket, fills the
+ * real checkout form and presses Continue to payment. Nothing is inserted by
+ * this script that a person did not cause.
  *
  * TWO ACTS OF CLOCK COMPRESSION ARE TAKEN ON TEST AND ARE NAMED.
  *   - a reservation is made to have lapsed three hours ago, rather than waiting
@@ -50,11 +54,14 @@ import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { createClient } from '@supabase/supabase-js'
 import { chromium } from 'playwright'
-import { MEASURE_VIEWPORT_FIT, judgeSurface } from './lib/viewport-fit.mjs'
+import { MEASURE_VIEWPORT_FIT, MEASURE_ORDER_TOTALS, judgeSurface } from './lib/viewport-fit.mjs'
+import { stripeFrameOn, payWithTestCard, waitForConfirmedOrder } from './lib/test-card.mjs'
 
 const TAG = '[d2-proof]'
 const BASE = process.env.BASE ?? 'http://localhost:3311'
 const SERVER_LOG = process.env.SERVER_LOG ?? join(process.cwd(), '.tmp', 'd2-drive-server.log')
+/* The payment leg runs when a Stripe TEST key is in the environment (header). */
+const STRIPE_LEG = Boolean((process.env.STRIPE_SECRET_KEY ?? '').trim())
 
 const args = process.argv.slice(2)
 let out = 'C:/dev/EVIDENCE/D2'
@@ -298,7 +305,7 @@ async function slotFor(eventId) {
  * the browser laid the page out at 1280 is a green run that proves the
  * opposite of what it says, and this drive's ancestors did exactly that once.
  * ---------------------------------------------------------------------- */
-async function measure(page, label, { totals = [], totalRequired = false } = {}) {
+async function measure(page, label, { totalRequired = false } = {}) {
   await page.evaluate(() => document.fonts.ready.then(() => true)).catch(() => {})
   await page.waitForTimeout(400)
   const fit = await page.evaluate(`(${MEASURE_VIEWPORT_FIT})()`)
@@ -309,6 +316,14 @@ async function measure(page, label, { totals = [], totalRequired = false } = {})
       `${label}: the browser reports innerWidth ${fit.innerWidth}, not ${viewport.width}.`,
     )
   }
+  /*
+   * THE TOTALS ARE MEASURED HERE, as boxes, the way the UX6 proof measures
+   * them. The first Stripe run of this file handed the judge a selector
+   * string and was told "the order total is marked but not visible", which
+   * was the judge reading `.visible` off a string. The judge wants what
+   * MEASURE_ORDER_TOTALS returns and nothing else.
+   */
+  const totals = await page.evaluate(`(${MEASURE_ORDER_TOTALS})()`).catch(() => [])
   const faults = judgeSurface({ label, width: viewport.width, fit, totals, totalRequired })
   const shot = join(out, `${label}.png`)
   await page.screenshot({ path: shot, fullPage: true })
@@ -328,6 +343,34 @@ async function measure(page, label, { totals = [], totalRequired = false } = {})
 say(`${TAG} viewport ${viewportName} (${viewport.width}x${viewport.height}) against ${BASE}`)
 say(`${TAG} database ${SUPABASE_URL.replace(/https:\/\/([a-z]+)\..*/, '$1')} (TEST; production is refused above)`)
 say(`${TAG} run ${RUN}; the inbox is ${SERVER_LOG}`)
+say(
+  STRIPE_LEG
+    ? `${TAG} a Stripe TEST key is in the environment: the payment step is live and a third buyer returns and buys`
+    : `${TAG} no Stripe key in the environment: two buyers, the payment step NOT EXERCISED`,
+)
+
+/*
+ * WHAT A BUYER LEAVES BEHIND AT THE CARD FORM, read from the database: an
+ * order in `pending`, a payment row in `processing`, and a minted intent.
+ */
+async function pendingOrderFor(reservationId) {
+  const { data: order } = await db
+    .from('orders')
+    .select('id, status, metadata')
+    .eq('reservation_id', reservationId)
+    .maybeSingle()
+  if (!order) return null
+  const paymentId = order.metadata?.payment_id ?? null
+  const { data: payment } = paymentId
+    ? await db.from('payments').select('status, gateway_payment_id').eq('id', paymentId).maybeSingle()
+    : { data: null }
+  return {
+    orderId: order.id,
+    status: order.status,
+    paymentStatus: payment?.status ?? null,
+    intent: payment?.gateway_payment_id ?? null,
+  }
+}
 
 const picked = await paidEventWithRoom()
 if (!picked) {
@@ -353,9 +396,12 @@ try {
    * ================================================================= */
   const abandoner = buyerAddress('left')
   const stayer = buyerAddress('stayed')
+  const returner = STRIPE_LEG ? buyerAddress('returned') : null
+  const buyers = returner ? [abandoner, stayer, returner] : [abandoner, stayer]
+  const whoIs = address => (address === abandoner ? 'A' : address === stayer ? 'B' : 'C')
 
-  for (const address of [abandoner, stayer]) {
-    const who = address === abandoner ? 'A' : 'B'
+  for (const address of buyers) {
+    const who = whoIs(address)
     const ctx = await browser.newContext({ ...contextOptions, locale: 'en-AU' })
     const page = await ctx.newPage()
     try {
@@ -398,17 +444,37 @@ try {
       await page.waitForTimeout(1200)
 
       /*
-       * PRESS PAY AND THEN LEAVE. This is the moment `processCheckout` runs and
-       * writes the `checkout_started` demand row carrying the address. What
-       * happens next on this machine is the payment step, which needs a Stripe
-       * TEST key there is none of, so nothing is ever paid and no order exists.
-       * That is exactly the state a buyer leaves who looks at the card form and
-       * closes the tab, which is what the engine is built for.
+       * PRESS CONTINUE TO PAYMENT AND THEN LEAVE. This is the moment
+       * `processCheckout` runs and writes the `checkout_started` demand row
+       * carrying the address. With a key the card form paints and the buyer
+       * closes the tab on it, leaving a pending order with a minted intent;
+       * without one nothing is minted and no order exists. Both are the state
+       * of a buyer who looked at the card form and left, which is what the
+       * engine is built for.
        */
       const submitted = await clickText(page, /^continue to payment/i)
       check(`pressed-pay[${who}]`, Boolean(submitted), submitted ?? 'no way to submit the checkout details')
-      await page.waitForTimeout(9000)
-      await page.screenshot({ path: join(out, `1-checkout-${who}.png`), fullPage: true })
+      if (STRIPE_LEG) {
+        const painted = await stripeFrameOn(page)
+        check(
+          `the-card-form-painted[${who}]`,
+          painted,
+          painted ? 'the Stripe payment frame is on the page' : 'no Stripe frame within 60s',
+        )
+        const reservationId = page.url().match(/\/checkout\/([0-9a-f-]{36})/)?.[1] ?? null
+        const pending = reservationId ? await pendingOrderFor(reservationId) : null
+        check(
+          `the-abandoned-order-is-pending-with-an-intent[${who}]`,
+          Boolean(pending?.intent) && pending?.status === 'pending',
+          pending
+            ? `order ${pending.orderId} ${pending.status}, payment ${pending.paymentStatus}, intent ${pending.intent ? 'minted' : 'absent'}`
+            : 'no order row for this reservation',
+        )
+        await page.screenshot({ path: join(out, `1-payment-step-${who}.png`), fullPage: true })
+      } else {
+        await page.waitForTimeout(9000)
+        await page.screenshot({ path: join(out, `1-checkout-${who}.png`), fullPage: true })
+      }
     } finally {
       await ctx.close()
     }
@@ -426,12 +492,12 @@ try {
     .select('id, contact_email, occurrence_key')
     .eq('slot_id', slot.id)
     .eq('demand_action', 'checkout_started')
-    .in('contact_email', [abandoner, stayer])
+    .in('contact_email', buyers)
   const started = startedRows ?? []
   check(
     'the-checkout-wrote-a-demand-row-carrying-the-address',
-    started.length === 2,
-    `${started.length} checkout_started row(s) for the two addresses: ${started.map(r => r.contact_email).join(', ')}`,
+    started.length === buyers.length,
+    `${started.length} checkout_started row(s) for the ${buyers.length} addresses: ${started.map(r => r.contact_email).join(', ')}`,
   )
   if (started.length === 0) throw new Error('nothing to recover: no checkout_started row was written')
 
@@ -480,7 +546,7 @@ try {
     .select('id, contact_email, occurred_at, inventory_class, unit_amount_cents')
     .eq('slot_id', slot.id)
     .eq('demand_action', 'checkout_abandoned')
-    .in('contact_email', [abandoner, stayer])
+    .in('contact_email', buyers)
   const abandoned = abandonedRows ?? []
   check(
     'the-abandonment-is-in-the-ledger',
@@ -507,11 +573,30 @@ try {
   const tooSoon = await cron('/api/cron/recovery-sweep')
   check('recovery-sweep-cron-answers', tooSoon.status === 200, `HTTP ${tooSoon.status}`)
   say(`${TAG} the cron route said: ${JSON.stringify(tooSoon.parsed ?? tooSoon.body.slice(0, 300))}`)
+  /*
+   * JUDGED ON THIS RUN'S ADDRESSES, NOT ON THE SWEEP'S TOTAL. The first
+   * version asserted `sent === 0`, and on 12 September the real cron answered
+   * `sent: 83`: abandonments left on TEST by earlier days' drives had come due
+   * in the meantime and the sweep wrote to them, exactly as it should. That is
+   * the cron doing its job on a test database nothing else sweeps, not a
+   * message to somebody who left three minutes ago. So the assertion is the
+   * one the sentence actually makes: no send row and no message for any of
+   * the addresses that left minutes ago, and the refusal that names why.
+   */
+  const { data: earlySends } = await db
+    .from('recovery_sends')
+    .select('contact_email')
+    .eq('slot_id', slot.id)
+    .in('contact_email', buyers)
+  const earlyInbox = buyers.reduce((n, address) => n + messagesTo(address).length, 0)
   check(
     'nothing-is-written-to-somebody-who-left-three-minutes-ago',
-    tooSoon.parsed?.sent === 0 &&
+    (earlySends ?? []).length === 0 &&
+      earlyInbox === 0 &&
       JSON.stringify(tooSoon.parsed?.refusals ?? {}).includes('no message is due yet'),
-    `sent ${tooSoon.parsed?.sent}; refusals ${JSON.stringify(tooSoon.parsed?.refusals ?? {})}`,
+    `${(earlySends ?? []).length} send row(s) and ${earlyInbox} message(s) for this run's ${buyers.length} addresses; ` +
+      `the sweep sent ${tooSoon.parsed?.sent} to older abandonments already due on TEST and refused ` +
+      JSON.stringify(tooSoon.parsed?.refusals ?? {}),
   )
 
   /* ====================================================================
@@ -566,11 +651,22 @@ try {
     )
   }
 
+  if (returner) {
+    const firstToReturner = messagesTo(returner)
+    check(
+      'message-one-reached-the-person-who-will-return',
+      firstToReturner.length === 1,
+      firstToReturner.length === 1
+        ? `subject "${firstToReturner[0].subject}"`
+        : `${firstToReturner.length} message(s) in the inbox for ${returner}`,
+    )
+  }
+
   const { data: sendRows } = await db
     .from('recovery_sends')
     .select('id, contact_email, message_number, demand_entry_id, inventory_class, unit_amount_cents')
     .eq('slot_id', slot.id)
-    .in('contact_email', [abandoner, stayer])
+    .in('contact_email', buyers)
   check(
     'every-send-names-the-row-that-authorised-it',
     (sendRows ?? []).length > 0 && (sendRows ?? []).every(r => Number(r.demand_entry_id) > 0),
@@ -643,6 +739,129 @@ try {
   )
 
   /* ====================================================================
+   * 6c. THE PERSON WHO LEFT AT THE CARD FORM COMES BACK AND BUYS.
+   *
+   *     Through the link in message one, the real event page, the real
+   *     checkout, the painted card form and Stripe's test card. The judge of
+   *     "bought" is the database after the webhook the forwarder delivers:
+   *     the order confirmed, a ticket issued, the ticket email in the inbox,
+   *     and the SALE row in the ledger, which is what the engine reads to
+   *     refuse the next two messages.
+   * ================================================================= */
+  let returnerOrder = null
+  if (returner) {
+    const link = messagesTo(returner)[0]?.links.find(l => l.includes(`/events/${picked.event.slug}`))
+    check('the-returner-has-a-link-to-come-back-by', Boolean(link), link ?? 'no resume link in message one')
+    if (link) {
+      const ctx = await browser.newContext({ ...contextOptions, locale: 'en-AU' })
+      const page = await ctx.newPage()
+      try {
+        const res = await page.goto(link.replace(/^https?:\/\/[^/]+/, BASE), {
+          waitUntil: 'domcontentloaded',
+          timeout: 60_000,
+        })
+        check('the-returner-lands-on-the-slot', res?.status() === 200, `HTTP ${res?.status()}`)
+        await page.waitForTimeout(2500)
+        const plus = await clickText(page, /^\+$/)
+        await page.waitForTimeout(1200)
+        const onward = plus
+          ? ((await clickText(page, /^checkout\b/i)) ?? (await clickText(page, /^(continue|proceed|register)/i)))
+          : null
+        await page.waitForURL(/\/checkout\//, { timeout: 45_000 }).catch(() => {})
+        await page.waitForTimeout(3000)
+        check(
+          'the-returner-reaches-checkout-again',
+          /\/checkout\//.test(page.url()),
+          `"${onward ?? 'nothing to click'}" -> ${page.url().replace(BASE, '')}`,
+        )
+        await fillByLabel(page, /full name/i, 'Casey Nguyen')
+        await fillByLabel(page, /^email/i, returner)
+        await page.waitForTimeout(600)
+        const reused = await clickText(page, /use my details for all tickets/i)
+        if (!reused) {
+          await fillByLabel(page, /first name/i, 'Casey')
+          await fillByLabel(page, /last name/i, 'Nguyen')
+          for (const e of await page.$$('input[type="email"]')) await e.fill(returner).catch(() => {})
+        }
+        await page.waitForTimeout(1200)
+        await clickText(page, /^continue to payment/i)
+        const painted = await stripeFrameOn(page)
+        check(
+          'the-card-form-painted-for-the-returner',
+          painted,
+          painted ? 'the Stripe payment frame is on the page' : 'no Stripe frame within 60s',
+        )
+        const m = await measure(page, '5-returner-payment-step', { totalRequired: true })
+        check(`fit-5-returner-payment-step@${viewport.width}`, m.ok, m.detail)
+        const pressed = painted ? await payWithTestCard(page) : null
+        check('the-returner-pays-with-the-test-card', Boolean(pressed), pressed ?? 'no Pay button')
+        await page.waitForURL(/\/orders\/[^/]+\/confirmation/, { timeout: 120_000 }).catch(() => {})
+        const orderId = page.url().match(/\/orders\/([^/?]+)/)?.[1] ?? null
+        check('stripe-sends-the-returner-to-the-confirmation', Boolean(orderId), page.url().replace(BASE, ''))
+        if (orderId) {
+          const confirmed = await waitForConfirmedOrder(db, orderId)
+          returnerOrder = { id: orderId, ...confirmed }
+          check(
+            'the-webhook-confirmed-the-order-and-issued-the-ticket',
+            confirmed.status === 'confirmed' && confirmed.tickets > 0,
+            `order ${orderId}: status ${confirmed.status}, ${confirmed.tickets} ticket(s), total ${
+              confirmed.totalCents !== null ? money(confirmed.totalCents) : 'unknown'
+            }, confirmed_at ${confirmed.confirmedAt ?? 'null'}`,
+          )
+          await page.waitForTimeout(2500)
+          const c = await measure(page, '6-returner-confirmation')
+          check(`fit-6-returner-confirmation@${viewport.width}`, c.ok, c.detail)
+
+          let ticketMail = []
+          for (let i = 0; i < 20 && ticketMail.length === 0; i += 1) {
+            ticketMail = messagesTo(returner).filter(msg =>
+              msg.links.some(l => /\/t\/|\/orders\/|\/account\/tickets/.test(l)),
+            )
+            if (ticketMail.length === 0) await new Promise(r => setTimeout(r, 1000))
+          }
+          check(
+            'the-returner-receives-their-ticket-email',
+            ticketMail.length >= 1,
+            ticketMail[0] ? `subject "${ticketMail[0].subject}"` : 'no ticket email in the inbox',
+          )
+
+          // The sale rows land behind after(); one per order item, keyed by it.
+          const { data: items } = await db.from('order_items').select('id').eq('order_id', orderId)
+          const keys = (items ?? []).map(i => `sale:${i.id}`)
+          let saleRows = []
+          for (let i = 0; i < 20 && saleRows.length === 0 && keys.length > 0; i += 1) {
+            const { data: rows } = await db
+              .from('ledger_entries')
+              .select('id, amount_cents')
+              .eq('slot_id', slot.id)
+              .eq('kind', 'sale')
+              .in('occurrence_key', keys)
+            saleRows = rows ?? []
+            if (saleRows.length === 0) await new Promise(r => setTimeout(r, 1000))
+          }
+          /*
+           * WHAT THE SALE ROW CARRIES IS THE FACE VALUE, not the charge. The
+           * buyer paid $26.87 for a $25.00 ticket under the pass-on fee model;
+           * the organiser recovers $25.00 and that is what the ledger records
+           * and what the panel must show. The first run of this leg compared
+           * the panel with the charged total and called the panel wrong.
+           */
+          returnerOrder.saleCents = saleRows.reduce((n, r) => n + Number(r.amount_cents ?? 0), 0)
+          check(
+            'the-sale-is-in-the-ledger',
+            saleRows.length > 0,
+            `${saleRows.length} sale row(s) for order ${orderId} (${keys.length} item(s)), face value ${money(
+              returnerOrder.saleCents,
+            )} against a charge of ${confirmed.totalCents !== null ? money(confirmed.totalCents) : 'unknown'}`,
+          )
+        }
+      } finally {
+        await ctx.close()
+      }
+    }
+  }
+
+  /* ====================================================================
    * 7. AT HOUR 25, MESSAGE TWO GOES TO THE PERSON WHO DID NOT UNSUBSCRIBE
    *    AND NOT TO THE PERSON WHO DID. Both halves in one run, because a
    *    sweep that sends nothing and a sweep that correctly refuses
@@ -650,6 +869,7 @@ try {
    * ================================================================= */
   const abandonerBefore = messagesTo(abandoner).length
   const stayerBefore = messagesTo(stayer).length
+  const returnerBefore = returner ? messagesTo(returner).length : 0
   const atHour25 = engine('sweep', '--hours-ahead', '25', '--sent', '2000', '--unsubscribed', '10', '--complained', '0')
   say(`${TAG} at hour 25 the engine said: ${JSON.stringify(atHour25.parsed ?? atHour25.text.slice(0, 300))}`)
   await new Promise(r => setTimeout(r, 1500))
@@ -669,12 +889,25 @@ try {
     JSON.stringify(atHour25.parsed?.refusals ?? {}).includes('unsubscribed'),
     JSON.stringify(atHour25.parsed?.refusals ?? {}),
   )
+  if (returner) {
+    check(
+      'message-two-does-NOT-go-to-the-person-who-came-back-and-bought',
+      returnerOrder?.status === 'confirmed' && messagesTo(returner).length === returnerBefore,
+      `inbox for the returner ${returnerBefore} -> ${messagesTo(returner).length} (order ${returnerOrder?.status ?? 'none'})`,
+    )
+    check(
+      'and-the-refusal-is-that-they-already-bought',
+      (atHour25.parsed?.refusals?.['they already bought'] ?? 0) >= 1,
+      JSON.stringify(atHour25.parsed?.refusals ?? {}),
+    )
+  }
 
   /* ====================================================================
    * 7b. AND AT HOUR 73, THE LAST MESSAGE, TO THE SAME ONE PERSON.
    * ================================================================= */
   const stayerBeforeThree = messagesTo(stayer).length
   const abandonerBeforeThree = messagesTo(abandoner).length
+  const returnerBeforeThree = returner ? messagesTo(returner).length : 0
   const atHour73 = engine('sweep', '--hours-ahead', '73', '--sent', '2000', '--unsubscribed', '10', '--complained', '0')
   say(`${TAG} at hour 73 the engine said: ${JSON.stringify(atHour73.parsed ?? atHour73.text.slice(0, 300))}`)
   await new Promise(r => setTimeout(r, 1500))
@@ -688,6 +921,16 @@ try {
     messagesTo(abandoner).length === abandonerBeforeThree,
     `inbox for the unsubscriber ${abandonerBeforeThree} -> ${messagesTo(abandoner).length}`,
   )
+  if (returner) {
+    check(
+      'message-three-does-NOT-go-to-the-person-who-came-back-and-bought',
+      messagesTo(returner).length === returnerBeforeThree &&
+        (atHour73.parsed?.refusals?.['they already bought'] ?? 0) >= 1,
+      `inbox for the returner ${returnerBeforeThree} -> ${messagesTo(returner).length}; refusals ${JSON.stringify(
+        atHour73.parsed?.refusals ?? {},
+      )}`,
+    )
+  }
   const stayerMessages = messagesTo(stayer)
   check(
     'the-sequence-is-three-messages-and-stops-there',
@@ -823,6 +1066,36 @@ try {
             `the database says ${dbAbandoned.count ?? 0} and ${distinctPeople}`,
         )
 
+        /*
+         * THE PERSON WHO CAME BACK, COUNTED. The engine's own proof function is
+         * asked for this slot (the same call the page makes), and the panel's
+         * "came back and bought" figure and its recovered total must agree
+         * with it. A recovery is a sale on the slot whose keyed buyer hash
+         * matches an address the engine wrote to, after the first message.
+         */
+        if (returner) {
+          const engineProof = engine('proof', '--slot', slot.id).parsed
+          const shownReturned = onScreen?.figures?.['came back and bought'] ?? null
+          const digits = s => String(s ?? '').replace(/[^0-9.]/g, '')
+          say(`${TAG} the engine's own proof for this slot: ${JSON.stringify(engineProof)}`)
+          check(
+            'the-panel-counts-the-person-who-came-back-and-bought',
+            Number(engineProof?.returned ?? 0) >= 1 &&
+              shownReturned === String(engineProof?.returned) &&
+              digits(onScreen?.total) === digits(money(engineProof?.recoveredCents ?? 0)) &&
+              Number(engineProof?.recoveredCents ?? 0) >= Number(returnerOrder?.saleCents ?? 1),
+            `panel says came-back=${shownReturned} total=${onScreen?.total}; the engine says returned=${
+              engineProof?.returned
+            } recovered=${money(engineProof?.recoveredCents ?? 0)}; this run's sale carried a face value of ${
+              returnerOrder?.saleCents !== undefined ? money(returnerOrder.saleCents) : 'unknown'
+            } (charged ${
+              returnerOrder?.totalCents !== null && returnerOrder?.totalCents !== undefined
+                ? money(returnerOrder.totalCents)
+                : 'unknown'
+            })`,
+          )
+        }
+
         const m = await measure(page, '4-proof-panel')
         check(`fit-4-proof-panel@${viewport.width}`, m.ok, m.detail)
       }
@@ -841,6 +1114,9 @@ try {
 
 const failed = checks.filter(c => !c.pass)
 say('')
+if (!STRIPE_LEG) {
+  say(`${TAG} the payment step of an abandonment: NOT EXERCISED (no STRIPE_SECRET_KEY in the environment; run scripts/verify/d2-stripe-drive.mjs)`)
+}
 say(`${TAG} ${checks.length - failed.length} of ${checks.length} checks passed at ${viewportName}`)
 for (const f of failed) say(`${TAG}   FAILED  ${f.id}  ${f.detail}`)
 writeFileSync(join(out, 'report.txt'), report.join('\n'), 'utf8')
