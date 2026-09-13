@@ -62,7 +62,23 @@ const viewportOverride = JOURNEY_VIEWPORTS[process.env.JOURNEY_VIEWPORT ?? '']
 const REAL_CHROME = process.env.JOURNEY_BROWSER === 'chrome'
 const CHROME_PROFILE = join(tmpdir(), `eventlinqs-journey-chrome-${process.pid}`)
 
-function realChromeBrowser() {
+/**
+ * EXPORTED SINCE 14 September 2026, for the one shape the flag cannot serve.
+ *
+ * `JOURNEY_BROWSER=chrome` swaps the browser for a WHOLE journey, which is right
+ * when the whole journey needs real Chrome. It is wrong when only one LEG does,
+ * because the object below holds ONE context and deletes and recreates the
+ * profile on every `newContext()` call: a journey that opens a context per
+ * person (an organiser, a buyer, each member of a queue) would destroy the
+ * previous person's session on the next `newContext`.
+ *
+ * `d2-waitlist-proof.mjs` is exactly that shape. It needs real Chrome only to
+ * finish Stripe's hosted onboarding, whose first step carries an hCaptcha that
+ * refuses bundled headless Chromium for ever, and it needs the bundled browser
+ * for everything else. So it opens ONE of these around that leg and closes it,
+ * rather than setting a flag that would break the rest of the run.
+ */
+export function realChromeBrowser() {
   let context = null
   return {
     async newContext(options = {}) {

@@ -416,6 +416,8 @@ export async function completeExpressOnboarding(page, { values: supplied = STRIP
   let idle = 0
   let loading = 0
   let repeats = 0
+  /** The step signature a combobox was last answered for. See the bound below. */
+  let comboAnsweredFor = null
 
   for (let i = 1; i <= maxSteps; i += 1) {
     if (!STRIPE_HOST.test(page.url())) {
@@ -573,7 +575,31 @@ export async function completeExpressOnboarding(page, { values: supplied = STRIP
      * panel, and the drive pressed Save against the one control that was
      * blocking submission twenty times over. Asked for by ROLE, it is found.
      */
-    if (await answerCombobox(page, values, log)) {
+    /*
+     * ANSWERED ONCE PER STEP, NEVER ONCE PER PASS, and this bound is the whole
+     * point rather than a tidiness measure.
+     *
+     * Answering a combobox `continue`s, because the answer can reveal fields
+     * that were not there a moment ago and the step has to be re-read. That is
+     * right, and it is also a way to starve everything below it: on 14 September
+     * 2026, the pass after a business-type answer found the SAME picker still
+     * showing its placeholder, answered it again, and continued - three times
+     * over steps 5, 6 and 7 - so `chooseToggle` never ran, and the "No ABN"
+     * radio that lane C wrote it for was never ticked. `repeats = 0` on each
+     * answer meant the repeat budget could not end it either.
+     *
+     * It was a regression introduced by teaching this function to answer a
+     * business-type picker at all: before that it matched nothing, returned
+     * false, and the walk fell through to the field pass by accident. A branch
+     * that only works while it fails is not working.
+     *
+     * So a combobox may be answered at most once for a given step signature.
+     * When the signature changes, the allowance returns, because that is a
+     * genuinely new question rather than the same one asked twice.
+     */
+    const stepKey = keyOf(s)
+    if (comboAnsweredFor !== stepKey && (await answerCombobox(page, values, log))) {
+      comboAnsweredFor = stepKey
       repeats = 0
       await page.waitForTimeout(2500)
       continue
@@ -601,7 +627,26 @@ export async function completeExpressOnboarding(page, { values: supplied = STRIP
     const pressed = await pressPrimary(page, log)
     if (!pressed) {
       idle += 1
-      log('[stripe-onboarding]    no control to press on this step')
+      /*
+       * A STALL SAYS WHAT IT WAS LOOKING AT. This used to print six words and
+       * nothing else, and a lane-A run on 14 September 2026 printed them five
+       * times over three steps that also reported no heading and no fields -
+       * which reads as "Stripe stopped talking" and is far more likely to mean
+       * the walker read a step before it rendered, or read the wrong frame. The
+       * two are indistinguishable from six words, and they need opposite fixes.
+       */
+      const seen = await page
+        .evaluate(() => ({
+          url: location.pathname,
+          frames: window.frames.length,
+          text: (document.body.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 160),
+        }))
+        .catch(() => null)
+      log(
+        seen
+          ? `[stripe-onboarding]    no control to press. ${seen.frames} frame(s) at ${seen.url}, top document says: "${seen.text}"`
+          : '[stripe-onboarding]    no control to press on this step, and the page could not be read at all',
+      )
       // Not necessarily wrong: the phone and code steps submit themselves when
       // the test affordance fills them. It is only a failure when the SAME step
       // comes back with nothing to press, which the reset above detects.
@@ -654,17 +699,70 @@ async function answerCombobox(page, values, log) {
       if (!/please select|choose|select an option|select your/i.test(shown)) continue
       await combo.click({ timeout: 8000 }).catch(() => {})
       await page.waitForTimeout(1200)
-      const wanted = /ticket|event|entertain|music|performing|recreation/i
-      const option = frame.getByRole('option', { name: wanted }).first()
-      if (await option.count().catch(() => 0)) {
+      /*
+       * WHICH QUESTION IS THIS. Until 14 September 2026 there was ONE want, the
+       * industry one, and every unanswered combobox was answered as though it
+       * were that question. Stripe asks at least two: the INDUSTRY, and the
+       * BUSINESS TYPE, and on a lane-A run the business-type picker matched
+       * nothing, was dismissed with Escape, and the next Continue accepted
+       * Stripe's default. The account went down the COMPANY path - its next step
+       * asked for an Australian company number and it then stalled on "Business
+       * owners", which a walker has no directors to name - and finished
+       * charges_enabled false, payout_status restricted.
+       *
+       * It cannot be fixed by setting business_type through the API. Probed
+       * against the real account on 14 September 2026:
+       *
+       *     POST /v1/accounts/acct_1UFEtMKGrpw2Eqlc  business_type=individual
+       *     403 This application does not have the required permissions for the
+       *         parameter 'business_type'
+       *
+       * which is the same refusal this file's header already records for
+       * tos_acceptance: on an Express account Stripe reserves these for the
+       * person. So the person's choice is made here, where a person makes it.
+       *
+       * SOLE TRADER, because that is what a first organiser on this platform
+       * actually is, and because it is the path lane C's UX3 runs took on the
+       * way to charges_enabled ("Business type, Australian business number
+       * (ABN), No ABN"). The wants are tried in order and the FIRST that matches
+       * an offered option wins, so a picker that carries neither is still
+       * reported rather than silently dismissed.
+       */
+      const WANTS = [
+        { what: 'industry', rx: /ticket|event|entertain|music|performing|recreation/i },
+        { what: 'business type', rx: /^\s*(individual|sole trader|sole proprietor)/i },
+      ]
+      let answered = false
+      for (const want of WANTS) {
+        const option = frame.getByRole('option', { name: want.rx }).first()
+        if (!(await option.count().catch(() => 0))) continue
         const label = (await option.innerText().catch(() => '')).trim().slice(0, 40)
-        if (log) log(`[stripe-onboarding]    answering "${shown.trim().slice(0, 40)}" with "${label}"`)
+        if (log) log(`[stripe-onboarding]    answering "${shown.trim().slice(0, 40)}" with "${label}" (${want.what})`)
         await option.click({ timeout: 8000 }).catch(() => {})
-        return true
+        answered = true
+        break
       }
-      // Nothing matched, so close it rather than leave a popup over the page.
+      if (answered) return true
+      /*
+       * NOTHING MATCHED, so say what was actually on offer. The previous message
+       * named only the pattern that failed, which tells a reader what the walker
+       * wanted and nothing about what Stripe asked, and that is precisely the
+       * information needed to add the next want. A dead end that describes
+       * itself is one run; a dead end that does not is several.
+       */
+      const offered = []
+      const options = frame.getByRole('option')
+      const optionCount = await options.count().catch(() => 0)
+      for (let k = 0; k < Math.min(optionCount, 12); k += 1) {
+        offered.push(((await options.nth(k).innerText().catch(() => '')) || '').trim().slice(0, 28))
+      }
       await page.keyboard.press('Escape').catch(() => {})
-      if (log) log(`[stripe-onboarding]    a combobox offered no option matching ${wanted}`)
+      if (log) {
+        log(
+          `[stripe-onboarding]    a combobox ("${shown.trim().slice(0, 40)}") offered no option this walker knows. ` +
+            `${optionCount} option(s): ${offered.filter(Boolean).join(' | ') || '(none readable)'}`,
+        )
+      }
     }
   }
   return false

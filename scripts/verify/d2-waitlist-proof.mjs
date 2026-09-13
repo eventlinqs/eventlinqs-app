@@ -32,9 +32,13 @@
  * the matching publishable key and a `stripe listen` forwarder), the run is the
  * PAID one the close-out actually describes:
  *
- *   1. an organiser whose account can take a charge, enumerated from the
- *      database, signs in through the real forgot-password path (no password
- *      of theirs is on this machine) and publishes a PAID event with one place;
+ *   1. an organiser this drive MAKES: it signs up, creates its organisation and
+ *      finishes Stripe's own hosted Express onboarding in real Chrome, so that
+ *      STRIPE enables charges rather than a column being written by hand. Then
+ *      it publishes a PAID event with one place. (Until 14 September 2026 this
+ *      step borrowed an organisation off the shared TEST database and signed in
+ *      through the forgot-password path; both halves failed on a machine three
+ *      lanes write to, and the reasoning is at makeASellingOrganiser below.);
  *   2. a real attendee takes it with Stripe's test card, and the webhook
  *      confirms the order and issues the ticket;
  *   3. two more join the real waiting list, in order;
@@ -61,11 +65,12 @@ import {
   note,
   attach,
   fillIf,
-  linkFromInbox,
+  realChromeBrowser,
   signIn,
   signUpAndConfirm,
   createEventThroughWizard,
 } from '../journeys/harness.mjs'
+import { completeExpressOnboarding } from '../journeys/stripe-express-onboarding.mjs'
 import { MEASURE_VIEWPORT_FIT, judgeSurface } from './lib/viewport-fit.mjs'
 import { stripeFrameOn, payWithTestCard, waitForConfirmedOrder } from './lib/test-card.mjs'
 
@@ -106,120 +111,183 @@ function check(id, pass, detail) {
 
 const RUN = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 const PASSWORD = 'D2Waitlist!2026Proof'
+/** Ticket agency. See the note at the API call in makeASellingOrganiser. */
+const MCC_TICKET_AGENCY = '7922'
 const LISTEN_LOG = join(out, '..', 'stripe-listen.log')
 
 /*
- * AN ORGANISER WHO CAN SELL, ENUMERATED. A paid place needs an organisation the
- * charge precondition accepts (src/lib/payments/sale-status.ts: a connected
- * account, charges and payouts enabled, an active payout status). Only a
- * synthetic owner (an @example.com address) is used, because the sign-in below
- * resets that person's password through the real forgot-password path.
+ * AN ORGANISER WHO CAN SELL, MADE RATHER THAN BORROWED.
+ *
+ * WHAT THIS REPLACED, AND WHY. Until 14 September 2026 this proof ENUMERATED an
+ * existing organisation off TEST that the charge precondition would accept
+ * (src/lib/payments/sale-status.ts: a connected account, charges and payouts
+ * enabled, an active payout status) whose owner had a synthetic address, and
+ * then signed in as that person through the real forgot-password path, because
+ * no password of theirs is on this machine. Both halves failed, on consecutive
+ * runs, for reasons that were never going to go away:
+ *
+ *   - THE BORROW IS A RACE. TEST is shared by three build lanes, which churn
+ *     organisations with synthetic owners seconds apart. The picker found one on
+ *     the first attempt and none on the third: "no organisation with charges and
+ *     payouts enabled and a synthetic owner".
+ *   - THE SIGN-IN NEVER ESTABLISHED. The recovery link landed on
+ *     /auth/reset-password with no inputs on the page.
+ *
+ * Both are the same mistake underneath: depending on a row this lane does not
+ * own, and on a credential it never had. So the proof builds its own, through
+ * the interface, the way a person would: sign up, create the organisation, and
+ * finish Stripe's hosted Express onboarding so that STRIPE enables charges.
+ *
+ * NOTHING HERE WRITES stripe_charges_enabled. Only Stripe can set it, and it
+ * does so when a person finishes that form; a column set by hand would fire the
+ * trigger and prove nothing about the journey. The flag is read back OUT OF THE
+ * DATABASE after the return, never assumed from a redirect.
+ *
+ * IT NEEDS REAL CHROME, AND ONLY FOR THIS LEG. Stripe's first onboarding step
+ * carries an hCaptcha that refuses bundled headless Chromium for ever
+ * ("Challenge expired. Please try again."); real Chrome with a persistent
+ * profile is admitted. The harness exports exactly that under
+ * JOURNEY_BROWSER=chrome, but it CANNOT be set for this whole proof: that
+ * wrapper holds ONE context and deletes and recreates the Chrome profile on
+ * every newContext() call, and this proof opens a context per person (the
+ * organiser, the buyer, and each member of the queue). The first buyer context
+ * would destroy the organiser's session. So the onboarding leg gets its own
+ * real-Chrome browser, opened and closed around itself, and every other context
+ * in this file stays on the bundled browser it has always used.
  */
-async function sellingOrganiser() {
-  const { data: orgs } = await db
-    .from('organisations')
-    .select('id, name, owner_id, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, payout_status, created_at')
-    .eq('stripe_charges_enabled', true)
-    .eq('stripe_payouts_enabled', true)
-    .eq('payout_status', 'active')
-    .order('created_at', { ascending: true })
-  for (const org of orgs ?? []) {
-    if (!org.stripe_account_id || !org.owner_id) continue
-    const { data: owner } = await db.from('profiles').select('id, email').eq('id', org.owner_id).maybeSingle()
-    if (!owner?.email || !/@example\.com$/i.test(owner.email)) continue
-    return { org, email: owner.email }
-  }
-  return null
-}
+async function makeASellingOrganiser() {
+  const email = `d2-seller-${RUN}@example.com`
+  const orgSlug = `lane-a-queue-proof-${RUN}`
+  const orgName = `Lane A Queue Proof ${RUN}`
 
-/**
- * The real forgot-password path, as scripts/journeys/a4-price-history.mjs
- * drives it: the form, the recovery link read out of the console transport,
- * the reset page, a fresh password minted for this run and never written down.
- */
-async function signInThroughForgotPassword(page, email) {
-  const fresh = `D2Refund!${RUN}Aa1`
-  /*
-   * A DISABLED SUBMIT MUST SAY WHY (found 13 September 2026). This leg threw
-   * `page.click: Timeout 30000ms exceeded waiting for locator('button[type=submit]')`
-   * and that sentence names the symptom and nothing else. The submit on every
-   * credential form on this platform is `disabled={loading || !hydrated}`, by
-   * design, so no native GET can ever carry a password, which means a timeout
-   * here has three candidate causes a reader cannot tell apart: the button is
-   * not in the DOM at all, hydration never completed, or the field was never
-   * filled so the form is not submittable. It reports which.
-   */
-  const diagnose = async (where) => {
-    const seen = await page
-      .evaluate(() => {
-        const submits = [...document.querySelectorAll('button[type=submit]')]
-        const email = document.querySelector('input#email, input[type=email]')
-        return {
-          url: location.pathname + location.search.replace(/(code|token|access_token)=[^&]*/g, '$1=<redacted>'),
-          heading: (document.querySelector('h1, h2')?.textContent ?? '').trim().slice(0, 70),
-          says: (document.body.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 180),
-          submits: submits.length,
-          enabled: submits.filter((b) => !b.disabled).length,
-          labels: submits.map((b) => (b.textContent || '').trim().slice(0, 24)),
-          inputs: [...document.querySelectorAll('input')].map((i) => i.id || i.type).slice(0, 6),
-          emailPresent: Boolean(email),
-          emailValue: email ? (email.value || '').length : 0,
-          motion: document.documentElement.dataset.motion ?? 'unset',
-        }
-      })
-      .catch((error) => ({ error: String(error).slice(0, 120) }))
-    return `${where}: ${JSON.stringify(seen)}`
-  }
-  const clickSubmit = async (where) => {
-    const ready = await page
-      .waitForSelector('button[type=submit]:not([disabled])', { timeout: 45_000 })
-      .then(() => true)
-      .catch(() => false)
-    if (!ready) return { ok: false, why: `no enabled submit on ${await diagnose(where)}` }
-    await page.locator('button[type=submit]:not([disabled])').first().click()
-    return { ok: true }
-  }
+  const realChrome = realChromeBrowser()
+  const ctx = await realChrome.newContext({ viewport: { width: 1440, height: 1000 }, locale: 'en-AU' })
+  const page = ctx.pages()[0] ?? (await ctx.newPage())
+  await attach(j, page)
+  try {
+    const signedUp = await signUpAndConfirm(j, page, { name: 'Ada Seller', email, password: PASSWORD })
+    check('the-selling-organiser-signs-up', signedUp, signedUp ? email : (j.blockers.at(-1) ?? 'signup refused'))
+    if (!signedUp) return null
 
-  await page.goto(`${BASE}/forgot-password`, { waitUntil: 'networkidle', timeout: 60_000 })
-  await fillIf(page, 'input#email, input[type="email"]', email)
-  const asked = await clickSubmit('/forgot-password')
-  if (!asked.ok) return { ok: false, why: asked.why }
-  let resetLink = null
-  for (let i = 0; i < 20 && !resetLink; i += 1) {
-    resetLink = linkFromInbox(email, /type=recovery/)
-    if (!resetLink) await page.waitForTimeout(1500)
-  }
-  if (!resetLink) return { ok: false, why: 'no recovery link reached the inbox' }
-  /*
-   * THE SHAPE OF THE LINK, WITHOUT ITS SECRETS. A recovery link can arrive in
-   * three shapes and they behave differently: a site path with a FRAGMENT, a site
-   * path with a `code` query for the client to exchange, or a Supabase
-   * /auth/v1/verify URL that redirects. When the reset form sits on "Validating
-   * your reset link" for seventy-five seconds, which of the three it was is the
-   * whole question, and the first two runs of this could not say.
-   */
-  const shape = (() => {
-    try {
-      const u = new URL(resetLink)
-      const params = [...u.searchParams.keys()].join(',') || 'none'
-      const frag = u.hash ? u.hash.slice(1).split('&').map((kv) => kv.split('=')[0]).join(',') : 'none'
-      return `host ${u.host}, path ${u.pathname}, query keys [${params}], fragment keys [${frag}]`
-    } catch {
-      return 'unparseable'
+    await page.goto(`${BASE}/dashboard/organisation/create`, { waitUntil: 'networkidle', timeout: 60_000 })
+    await fillIf(page, 'input#name', orgName)
+    await fillIf(page, 'input#slug', orgSlug)
+    await fillIf(page, 'textarea#description', 'One place, and a queue behind it.')
+    await clickText(page, /create organisation/i)
+    await page.waitForTimeout(6000)
+    const { data: org } = await db.from('organisations').select('id, name').eq('slug', orgSlug).maybeSingle()
+    check('the-selling-organiser-has-an-organisation', Boolean(org?.id), org?.id ?? `no organisation at slug ${orgSlug}`)
+    if (!org?.id) return null
+
+    await page.goto(`${BASE}/dashboard/payouts`, { waitUntil: 'networkidle', timeout: 60_000 })
+    await page.waitForTimeout(2500)
+    const setUp = await page.$('button[aria-label="Set up payouts with Stripe"]')
+    check('the-payouts-screen-offers-onboarding', Boolean(setUp), setUp ? 'Set up payouts with Stripe' : 'no control on /dashboard/payouts')
+    if (!setUp) return null
+    await setUp.click()
+    await page.waitForTimeout(8000)
+    await page.screenshot({ path: join(out, '00-connect-onboarding-start.png'), fullPage: false }).catch(() => {})
+
+    /*
+     * THE INDUSTRY IS CHOSEN THROUGH THE API, BEFORE THE FORM IS WALKED, exactly
+     * as ux3-owner-notified-proof.mjs does it. Stripe's hosted form asks for an
+     * industry in a searchable dropdown that a step walker cannot fill reliably,
+     * and the platform deliberately does not prefill the field for real
+     * organisers (the reason is in src/lib/stripe/business-profile.ts). Setting
+     * it here removes that one step from the walk without touching what the
+     * product does. 7922 is a category a real TEST organiser on this project
+     * chose for itself, not an invention.
+     */
+    const { data: started } = await db
+      .from('organisations')
+      .select('stripe_account_id')
+      .eq('id', org.id)
+      .maybeSingle()
+    const accountId = started?.stripe_account_id ?? null
+    check(
+      'the-onboarding-persisted-a-connected-account',
+      typeof accountId === 'string' && accountId.startsWith('acct_'),
+      accountId ?? 'no stripe_account_id on the organisation after the click',
+    )
+    if (accountId) {
+      const key = (process.env.STRIPE_SECRET_KEY ?? '').trim()
+      const res = await fetch(`https://api.stripe.com/v1/accounts/${accountId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ 'business_profile[mcc]': MCC_TICKET_AGENCY }),
+      }).catch(error => ({ ok: false, status: 0, error }))
+      say(`${TAG}   industry set through the API: ${res.ok ? `mcc ${MCC_TICKET_AGENCY}` : `refused, HTTP ${res.status ?? '?'}`}`)
     }
-  })()
-  await page.goto(resetLink.replace(/^https?:\/\/[^/]+/, BASE), { waitUntil: 'networkidle', timeout: 60_000 })
-  await page.waitForSelector('input#password', { timeout: 30_000 }).catch(() => {})
-  await fillIf(page, 'input#password', fresh)
-  await fillIf(page, 'input#confirm', fresh)
-  const set = await clickSubmit('the reset form')
-  if (!set.ok) return { ok: false, why: `${set.why} // the link was: ${shape}` }
-  await page.waitForTimeout(6000)
-  let landed = new URL(page.url()).pathname
-  if (landed.startsWith('/login') || landed.startsWith('/auth')) landed = await signIn(j, page, email, fresh)
-  const ok = !landed.startsWith('/login') && !landed.startsWith('/auth')
-  return { ok, why: landed }
+
+    const onStripe = /connect\.stripe\.com/.test(page.url())
+    check('the-organiser-reaches-stripes-hosted-form', onStripe, page.url().replace(/\?.*$/, ''))
+    if (!onStripe) return null
+
+    const onboarding = await completeExpressOnboarding(page, { shot: out, maxSteps: 40, log: m => say(`${TAG}   ${m}`) })
+    check(
+      'stripes-hosted-onboarding-completes',
+      Boolean(onboarding?.completed),
+      onboarding?.completed
+        ? `returned to ${String(onboarding.leftStripeAt ?? '').slice(0, 90)}`
+        : `stopped: ${onboarding?.stoppedBecause}`,
+    )
+
+    await page.goto(`${BASE}/dashboard/payouts`, { waitUntil: 'networkidle', timeout: 60_000 })
+    await page.waitForTimeout(3000)
+    const refresh = await page.$('button[aria-label="Refresh status"]')
+    if (refresh) {
+      await refresh.click()
+      await page.waitForTimeout(6000)
+    }
+
+    /*
+     * READ BACK OUT OF THE DATABASE, never off the screen and never off the
+     * redirect. Stripe decides this, our return route persists what Stripe says,
+     * and the only honest question is what the row holds afterwards.
+     */
+    const { data: after } = await db
+      .from('organisations')
+      .select('id, name, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, payout_status')
+      .eq('id', org.id)
+      .maybeSingle()
+    const sellable =
+      Boolean(after?.stripe_account_id) &&
+      after?.stripe_charges_enabled === true &&
+      after?.stripe_payouts_enabled === true &&
+      after?.payout_status === 'active'
+    check(
+      'stripe-enabled-charges-for-the-organiser-this-drive-made',
+      sellable,
+      `account=${after?.stripe_account_id ?? 'none'} charges=${after?.stripe_charges_enabled} ` +
+        `payouts=${after?.stripe_payouts_enabled} payout_status=${after?.payout_status}`,
+    )
+    if (!sellable) return null
+    return { org: after, email }
+  } finally {
+    await realChrome.close().catch(() => {})
+  }
 }
+
+/*
+ * THE FORGOT-PASSWORD SIGN-IN WAS REMOVED ON 14 SEPTEMBER 2026, and the reason
+ * is recorded so nobody restores it thinking it was an oversight.
+ *
+ * It existed only because this proof used to BORROW an organiser off the shared
+ * TEST database, whose password is nobody here. It now makes its own, so it
+ * knows the password and signs in the ordinary way. Driving a password reset was
+ * never part of D2; it was the cost of the borrow.
+ *
+ * What it found on its way out is NOT lost and is not being claimed as a defect
+ * either: the recovery link landed on /auth/reset-password showing "Validating
+ * your reset link" with no inputs. Reading that page afterwards
+ * (src/components/auth/reset-password-form.tsx) shows it does NOT park there:
+ * it reads an expired-link error out of the fragment first, and where there is
+ * neither a session nor a URL error it waits 4000ms and then says session_missing
+ * with a way forward. This drive measured inside that window. If a drive is ever
+ * put back on that path, wait past the timeout and take the verdict from what the
+ * page then says, rather than from the spinner.
+ */
+
 
 function inbox() {
   if (!existsSync(SERVER_LOG)) return []
@@ -326,17 +394,24 @@ try {
     orgPage = page
     await attach(j, page)
     if (STRIPE_LEG) {
-      const seller = await sellingOrganiser()
+      /*
+       * The organiser is MADE by this lane, in real Chrome, through Stripe's own
+       * hosted onboarding, and only then is it signed in here on the bundled
+       * browser every other context in this run uses. The sign-in is an ordinary
+       * one because this drive chose the password: no recovery link, no row
+       * borrowed off a database three lanes are writing to.
+       */
+      const seller = await makeASellingOrganiser()
       check(
-        'an-organiser-who-can-take-a-charge-exists-on-test',
+        'an-organiser-who-can-take-a-charge-exists-because-this-drive-made-one',
         Boolean(seller),
-        seller ? `"${seller.org.name}" (${seller.email})` : 'no organisation with charges and payouts enabled and a synthetic owner',
+        seller ? `"${seller.org.name}" (${seller.email}) on ${seller.org.stripe_account_id}` : 'the organiser could not be brought to a sellable state',
       )
       if (!seller) throw new Error('no selling organiser')
       organiser = seller.email
-      const signedIn = await signInThroughForgotPassword(page, organiser)
-      check('the-organiser-signs-in-through-forgot-password', signedIn.ok, signedIn.why)
-      if (!signedIn.ok) throw new Error('organiser not signed in')
+      const signedIn = await signIn(j, page, organiser, PASSWORD)
+      check('the-organiser-signs-in', Boolean(signedIn), signedIn ? organiser : (j.blockers.at(-1) ?? 'sign-in refused'))
+      if (!signedIn) throw new Error('organiser not signed in')
     } else {
       const signedUp = await signUpAndConfirm(j, page, { name: 'Ada Waitlist', email: organiser, password: PASSWORD })
       check('the-organiser-signs-up', signedUp, signedUp ? organiser : (j.blockers.at(-1) ?? 'signup refused'))
