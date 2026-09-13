@@ -1445,9 +1445,18 @@ const ROOT = join(HERE, '..', '..')
  * machine was fit to judge, so a failure above is a statement about the
  * product" over three URLs whose own runs had been taken on a starved CPU, with
  * zero product bytes changed since a tip that had passed the same step.
+ *
+ * 2026-09-13 (later): raised 4721 -> 4726, MEASURED. Five more on the sales
+ * pace panel, for the second surface that draws it: /admin/events/[id] renders
+ * the same curve for the platform owner, because the one real production event
+ * belongs to an outside organiser and the owner had nowhere to read it. They
+ * hold that the tone is PAINT and never arithmetic (identical chart geometry
+ * and an identical table), that the heading stops saying "your" on a screen
+ * that is not the organiser's, and that no light-surface token survives onto
+ * the dark card.
  */
 const MIN_FILES = 389
-const MIN_TESTS = 4721
+const MIN_TESTS = 4726
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -19,6 +19,8 @@ const MIGRATION = 'supabase/migrations/20260910000002_slot_ledger.sql'
 const TYPES = 'src/lib/ledger/types.ts'
 const WEBHOOK = 'src/app/api/webhooks/stripe/route.ts'
 const READER = 'src/lib/ledger/pace.ts'
+/** The second surface that draws a curve, added 13 September 2026 (clause three). */
+const ADMIN_EVENT = 'src/app/admin/(authed)/events/[id]/page.tsx'
 
 const run = guard => {
   const r = spawnSync(process.execPath, [guard], { encoding: 'utf8', env: process.env })
@@ -44,21 +46,32 @@ const drills = [
     file: MIGRATION,
     break: t => t.replace('  buyer_hash text,', '  ticket_hash text,'),
   },
+  /*
+   * THE CALL SITE THESE THREE MUTATE HAD MOVED, AND ALL THREE HAD STOPPED
+   * PROVING ANYTHING (found 13 September 2026 by running this harness). They
+   * anchored on `  await recordConfirmedOrder(order_id)`, and D1's own reversal
+   * condition moved that write off the request path into
+   * `afterResponse(..., () => recordConfirmedOrder(order_id))`. All three then
+   * reported THE BREAK DID NOTHING, which this harness says loudly and exits
+   * non-zero for, so it was findable; nothing had run it since the move. The
+   * anchor is now the arrow function, which is the shape of the CALL rather than
+   * the shape of the line around it.
+   */
   {
     guard: ONE_DOOR,
     name: 'a module outside the engine writes to the ledger',
     file: WEBHOOK,
     break: t =>
       t.replace(
-        '  await recordConfirmedOrder(order_id)',
-        "  await adminClient.from('ledger_entries').insert({ kind: 'sale' })\n  await recordConfirmedOrder(order_id)",
+        '() => recordConfirmedOrder(order_id))',
+        "() => { void adminClient.from('ledger_entries').insert({ kind: 'sale' }); return recordConfirmedOrder(order_id) })",
       ),
   },
   {
     guard: ONE_DOOR,
     name: 'a confirm site stops recording the sale',
     file: WEBHOOK,
-    break: t => t.replace('  await recordConfirmedOrder(order_id)', '  // await recordConfirmedOrder(order_id)'),
+    break: t => t.replace('() => recordConfirmedOrder(order_id))', '() => Promise.resolve())'),
   },
   {
     guard: ONE_DOOR,
@@ -66,9 +79,44 @@ const drills = [
     file: WEBHOOK,
     break: t =>
       t.replace(
-        '  await recordConfirmedOrder(order_id)',
-        "  await adminClient.rpc('record_ledger_entry', { p_slot: {}, p_entry: {} })\n  await recordConfirmedOrder(order_id)",
+        '() => recordConfirmedOrder(order_id))',
+        "() => { void adminClient.rpc('record_ledger_entry', { p_slot: {}, p_entry: {} }); return recordConfirmedOrder(order_id) })",
       ),
+  },
+  /*
+   * CLAUSE THREE, the reading, added with the second surface on 13 September
+   * 2026. /admin/events/[id] now draws the same curve for the platform owner,
+   * because the one real production event belongs to an outside organiser and
+   * the owner had nowhere to read it.
+   */
+  {
+    guard: ONE_DOOR,
+    name: 'a surface draws the curve and stops reading the ledger for it',
+    file: ADMIN_EVENT,
+    break: t => t.replace('const paceCurve = await paceForSlot(id)', 'const paceCurve = null'),
+  },
+  {
+    guard: ONE_DOOR,
+    name: 'a surface composes a curve out of literals to make the panel look right',
+    file: ADMIN_EVENT,
+    break: t =>
+      t.replace(
+        '<SalesPacePanel curve={paceCurve} tone="console" />',
+        '<SalesPacePanel curve={paceCurve ?? { points: [], priceMoves: [], totals: { units: 7, amountCents: 12300, unitsReturned: 0 } }} tone="console" />',
+      ),
+  },
+  {
+    /*
+     * The blindness clause. The only way to make clause three judge nothing from
+     * a single file is to change what it looks for, so this mutates the guard's
+     * own constant, exactly as the confirm-site blindness clause would have to.
+     * A guard that silently stops judging is the failure mode every baseline in
+     * this repository is written to avoid.
+     */
+    guard: ONE_DOOR,
+    name: 'clause three goes blind because the panel it looks for was renamed',
+    file: ONE_DOOR,
+    break: t => t.replace("const PACE_PANEL = 'SalesPacePanel'", "const PACE_PANEL = 'SalesPacePanelRenamed'"),
   },
 ]
 

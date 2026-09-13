@@ -61,8 +61,10 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { chromium } from 'playwright'
+import { AxeBuilder } from '@axe-core/playwright'
 import { MEASURE_VIEWPORT_FIT, judgeSurface } from './lib/viewport-fit.mjs'
 
 const TAG = '[d1-proof]'
@@ -337,6 +339,8 @@ const browser = await chromium.launch()
 const ctx = await browser.newContext({ ...context, locale: 'en-AU' })
 const page = await ctx.newPage()
 const shots = []
+/** The console leg creates one, and the outer finally removes it whatever happens. */
+let adminUserId = null
 
 try {
   /* ---- LIVE LEG A: the public event page writes a page_view demand row ---- */
@@ -423,7 +427,9 @@ try {
         ).count ?? 0
       : 0
 
-    const buyer = `d1.${viewportName}.${String(Date.now()).slice(-8)}@example.com`
+    // Lane-tagged, per the three lane protocol: every row a lane creates on the
+    // shared TEST project names the lane that made it.
+    const buyer = `d1.lane-a.${viewportName}.${String(Date.now()).slice(-8)}@example.com`
     await page.goto(`${BASE}/events/${freeEvent.event.slug}`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
     await page.waitForTimeout(2500)
     await clickText(page, /^(get tickets|buy tickets|select tickets|register)/i)
@@ -536,8 +542,314 @@ try {
   const m = await measure(page, '2-organiser-dashboard-pace-panel')
   shots.push(m.shot)
   check(`fit-2-dashboard@${viewport.width}`, m.ok, m.detail)
+
+  /* ---- THE SAME CURVE, AS THE PLATFORM OWNER, IN THE CONSOLE ----
+   *
+   * WHY THIS LEG EXISTS (close-out D1, 13 September 2026). D1's last open leg
+   * was the render of the Afro-Fusion slot's curve, and on production that slot
+   * belongs to MKLStudios, an outside organiser whose one member is not the
+   * founder. There was no surface anywhere on the platform where the person who
+   * owns it could read that curve, which is what left the item open; the ledger
+   * row for it says so in as many words, "no admin surface renders the panel".
+   *
+   * So /admin/events/[id] now draws it, and this proves the owner's console and
+   * the organiser's dashboard read the SAME numbers out of the SAME ledger in
+   * the same run at the same width, rather than two surfaces that happen to look
+   * right separately.
+   */
+  const adminEmail = `d1-lane-a-admin-${Date.now().toString(36)}@eventlinqs.test`
+  const adminPassword = `${randomUUID()}Aa1`
+  const created = await db.auth.admin.createUser({
+    email: adminEmail,
+    password: adminPassword,
+    email_confirm: true,
+  })
+  check('console-admin-created', !created.error, created.error ? created.error.message : `lane-A admin on TEST`)
+  if (!created.error) {
+    adminUserId = created.data.user.id
+    await db.from('profiles').upsert({
+      id: adminUserId,
+      email: adminEmail,
+      full_name: 'D1 lane-A console proof',
+      display_name: 'D1 lane-A console proof',
+      is_verified: true,
+    })
+    const { error: auErr } = await db
+      .from('admin_users')
+      .insert({ id: adminUserId, role: 'super_admin', display_name: 'D1 lane-A console proof' })
+    check('console-admin-has-the-role', !auErr, auErr ? auErr.message : 'super_admin on TEST')
+
+    /*
+     * A FRESH CONTEXT, because the organiser is still signed in on the one above
+     * and a proof that reads the owner's screen through the organiser's cookies
+     * is not reading the owner's screen.
+     */
+    const adminCtx = await browser.newContext({ ...context, locale: 'en-AU' })
+    const adminPage = await adminCtx.newPage()
+    try {
+      await adminPage.goto(`${BASE}/admin/login`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+      await adminPage.locator('input[name="email"]').fill(adminEmail)
+      await adminPage.locator('input[name="password"]').fill(adminPassword)
+      const submit = adminPage.locator('button[type="submit"]')
+      await submit.waitFor({ state: 'visible', timeout: 30_000 })
+      // The submit is disabled until hydration, deliberately, so no native GET
+      // can ever carry the password. Wait for it rather than racing it.
+      await adminPage
+        .waitForFunction(() => !document.querySelector('button[type="submit"]')?.disabled, undefined, { timeout: 30_000 })
+        .catch(() => {})
+      await submit.click()
+      await adminPage.waitForTimeout(8000)
+      const adminLanded = new URL(adminPage.url()).pathname
+      check('console-admin-signed-in', !adminLanded.endsWith('/admin/login'), `landed on ${adminLanded}`)
+
+      const consoleRes = await adminPage.goto(`${BASE}/admin/events/${picked.event.id}`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 60_000,
+      })
+      await adminPage.waitForTimeout(4000)
+      check(
+        'console-event-page-answers-200',
+        consoleRes?.status() === 200,
+        `/admin/events/${picked.event.id} -> ${consoleRes?.status()}`,
+      )
+
+      /*
+       * THE PANEL, ITS NUMBERS, AND THE CONTRAST OF EVERY WORD IN IT.
+       *
+       * The contrast half is not ceremony. S1 found TWELVE elements on this exact
+       * shell painted white on white while axe reported zero violations at every
+       * impact level in the same run, because the cause was a Tailwind token
+       * globals.css does not define and the element inherited the shell's own
+       * text-white. axe runs below as well, for the classes it IS good at; this
+       * measures the RATIO, which is the one that would have caught that.
+       */
+      const consolePanel = await adminPage.evaluate(() => {
+        const canvas = document.createElement('canvas')
+        canvas.width = 1
+        canvas.height = 1
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })
+        const SENTINEL = '#ff00ff'
+        const unreadable = []
+        /*
+         * ANY CSS COLOUR TO sRGB WITH ALPHA, THROUGH THE BROWSER'S OWN PARSER AND
+         * ITS OWN PIXELS.
+         *
+         * Hand-written parsing of getComputedStyle's output is what made the first
+         * version of this check a FALSE GREEN, on this very page, on 13 September
+         * 2026. Tailwind v4 compiles `text-white/60` to
+         * `oklab(1 0 5.96046e-8 / 0.6)` (probed on the served build, not guessed),
+         * a reader looking for three comma-separated numbers read that as nothing,
+         * and every alpha-coloured element was SKIPPED while the check reported
+         * "45 text element(s) measured, lowest 17.37:1" - the ratio of solid white,
+         * which was the only kind it could read.
+         *
+         * So the browser parses it, a pixel carries the answer, and anything that
+         * cannot be read is COLLECTED AND FAILED rather than passed over. A check
+         * that quietly measures less than it says is worse than no check.
+         */
+        const toRgba = (value) => {
+          const text = String(value ?? '').trim()
+          if (!text) return null
+          ctx.fillStyle = SENTINEL
+          ctx.fillStyle = text
+          if (ctx.fillStyle === SENTINEL && text.toLowerCase() !== SENTINEL) return null
+          ctx.clearRect(0, 0, 1, 1)
+          ctx.fillRect(0, 0, 1, 1)
+          const pixel = ctx.getImageData(0, 0, 1, 1).data
+          return { r: pixel[0], g: pixel[1], b: pixel[2], a: pixel[3] / 255 }
+        }
+        const channel = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4))
+        const lum = (c) => 0.2126 * channel(c.r / 255) + 0.7152 * channel(c.g / 255) + 0.0722 * channel(c.b / 255)
+        const over = (fg, bg) => ({
+          r: fg.a * fg.r + (1 - fg.a) * bg.r,
+          g: fg.a * fg.g + (1 - fg.a) * bg.g,
+          b: fg.a * fg.b + (1 - fg.a) * bg.b,
+          a: 1,
+        })
+        const ratio = (a, b) => {
+          const la = lum(a)
+          const lb = lum(b)
+          return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+        }
+        const backdrop = (start) => {
+          let node = start
+          let acc = null
+          while (node) {
+            const raw = getComputedStyle(node).backgroundColor
+            const bg = toRgba(raw)
+            if (bg === null) unreadable.push({ where: 'a background', colour: raw })
+            if (bg && bg.a > 0) acc = acc ? over(acc, bg) : bg
+            if (acc && acc.a >= 1) return acc
+            node = node.parentElement
+          }
+          return acc ?? { r: 255, g: 255, b: 255, a: 1 }
+        }
+
+        const head = [...document.querySelectorAll('h2')].find((x) => /how this event sold/i.test(x.textContent || ''))
+        if (!head) return null
+        const card = head.closest('div')
+        if (!card) return null
+
+        const texts = []
+        const walk = document.createTreeWalker(card, NodeFilter.SHOW_ELEMENT)
+        for (let el = card; el; el = walk.nextNode()) {
+          const own = [...el.childNodes].some((n) => n.nodeType === 3 && (n.textContent || '').trim().length > 0)
+          if (!own) continue
+          const style = getComputedStyle(el)
+          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue
+          const fg = toRgba(style.color)
+          if (fg === null) {
+            unreadable.push({ where: (el.textContent || '').trim().slice(0, 40), colour: style.color })
+            continue
+          }
+          const bg = backdrop(el.parentElement ?? el)
+          const size = parseFloat(style.fontSize)
+          const bold = parseInt(style.fontWeight, 10) >= 700
+          // WCAG large text: 24px, or 18.66px when bold. The floor there is 3:1.
+          const floor = size >= 24 || (bold && size >= 18.66) ? 3 : 4.5
+          texts.push({
+            text: (el.textContent || '').trim().slice(0, 40),
+            colour: style.color,
+            ratio: Math.round(ratio(over(fg, bg), bg) * 100) / 100,
+            floor,
+          })
+        }
+
+        const strokes = [...card.querySelectorAll('path')].map((drawn) => {
+          const style = getComputedStyle(drawn)
+          const fg = toRgba(style.stroke)
+          if (fg === null) unreadable.push({ where: 'a series stroke', colour: style.stroke })
+          const bg = backdrop(drawn.parentElement)
+          return {
+            colour: style.stroke,
+            ratio: fg ? Math.round(ratio(over(fg, bg), bg) * 100) / 100 : 0,
+          }
+        })
+
+        const table = card.querySelector('table')
+        const rect = card.getBoundingClientRect()
+        return {
+          text: (card.innerText || '').split(/\s+/).join(' ').trim(),
+          plots: card.querySelectorAll('svg').length,
+          tableRows: table ? table.querySelectorAll('tbody tr').length : 0,
+          tableScroll: table ? { scrollWidth: table.scrollWidth, clientWidth: table.parentElement.clientWidth } : null,
+          rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+          cardBackground: getComputedStyle(card).backgroundColor,
+          texts,
+          strokes,
+          unreadable,
+        }
+      })
+
+      check(
+        'console-panel-is-on-the-page',
+        Boolean(consolePanel),
+        consolePanel
+          ? `${consolePanel.plots} plot(s), ${consolePanel.tableRows} table row(s), card ${consolePanel.cardBackground}`
+          : 'no "How this event sold" heading in the console',
+      )
+
+      if (consolePanel) {
+        check(
+          'console-panel-says-this-event-not-your-tickets',
+          !/how your tickets sold/i.test(consolePanel.text),
+          'the owner is not the organiser and the heading does not pretend otherwise',
+        )
+        check(
+          'console-panel-draws-the-curve',
+          consolePanel.plots >= 1 && consolePanel.tableRows >= 2,
+          `${consolePanel.plots} plot(s), ${consolePanel.tableRows} row(s) in the readable table beneath`,
+        )
+        const consoleUnits = consolePanel.text.match(/(\d+) sold/i)?.[1]
+        const consoleTaken = consolePanel.text.match(/(A?\$[\d,]+) taken/i)?.[1]
+        check(
+          'console-units-equal-the-ledger',
+          Number(consoleUnits) === ledger.units,
+          `the console says "${consoleUnits} sold"; the ledger sums to ${ledger.units}`,
+        )
+        check(
+          'console-money-equals-the-ledger',
+          Boolean(consoleTaken) &&
+            money(ledger.amountCents).replace(/^A?\$/, '') === (consoleTaken ?? '').replace(/^A?\$/, ''),
+          `the console says "${consoleTaken} taken"; the ledger sums to ${money(ledger.amountCents)}`,
+        )
+        check(
+          'console-panel-fits-the-viewport-box',
+          consolePanel.rect.x + consolePanel.rect.width <= viewport.width + 1,
+          `panel right edge ${Math.round(consolePanel.rect.x + consolePanel.rect.width)} against a ${viewport.width} viewport`,
+        )
+        check(
+          'console-table-is-not-clipped-inside-its-box',
+          consolePanel.tableScroll === null ||
+            consolePanel.tableScroll.scrollWidth <= consolePanel.tableScroll.clientWidth + 1,
+          consolePanel.tableScroll
+            ? `table ${consolePanel.tableScroll.scrollWidth} inside a box of ${consolePanel.tableScroll.clientWidth}`
+            : 'no table rendered',
+        )
+        const dim = consolePanel.texts.filter((item) => item.ratio < item.floor)
+        /*
+         * A COLOUR THE MEASUREMENT COULD NOT READ IS A FAULT, NOT A SKIP. The
+         * first version of this leg reported "45 measured, lowest 17.37:1" while
+         * every alpha-coloured element in the panel had been silently passed over,
+         * because Tailwind v4 compiles those to oklab() and the reader wanted
+         * rgb(). Whatever the next colour syntax is, this goes red rather than
+         * quiet.
+         */
+        check(
+          'console-panel-every-colour-was-actually-read',
+          consolePanel.unreadable.length === 0,
+          consolePanel.unreadable.length === 0
+            ? `every colour in the panel parsed, ${consolePanel.texts.length} text element(s) and ${consolePanel.strokes.length} stroke(s)`
+            : `${consolePanel.unreadable.length} colour(s) unreadable: ${consolePanel.unreadable
+                .map((item) => `${item.where} in ${item.colour}`)
+                .join(' | ')}`,
+        )
+        check(
+          'console-panel-every-word-meets-AA',
+          dim.length === 0 && consolePanel.unreadable.length === 0,
+          dim.length === 0
+            ? `${consolePanel.texts.length} text element(s) measured, lowest ${Math.min(
+                ...consolePanel.texts.map((item) => item.ratio),
+              )}:1 against the card`
+            : `${dim.length} under AA: ${dim
+                .map((item) => `"${item.text}" ${item.colour} ${item.ratio}:1 < ${item.floor}`)
+                .join(' | ')}`,
+        )
+        const faint = consolePanel.strokes.filter((stroke) => stroke.ratio < 3)
+        check(
+          'console-panel-series-strokes-meet-3-to-1',
+          faint.length === 0,
+          faint.length === 0
+            ? `${consolePanel.strokes.length} stroke(s), lowest ${Math.min(
+                ...consolePanel.strokes.map((stroke) => stroke.ratio),
+              )}:1`
+            : `${faint.length} under 3:1: ${faint.map((stroke) => `${stroke.colour} ${stroke.ratio}:1`).join(' | ')}`,
+        )
+      }
+
+      const consoleFit = await measure(adminPage, '3-admin-console-pace-panel')
+      shots.push(consoleFit.shot)
+      check(`fit-3-admin-console@${viewport.width}`, consoleFit.ok, consoleFit.detail)
+
+      const axe = await new AxeBuilder({ page: adminPage }).analyze()
+      check(
+        'console-event-page-axe-zero',
+        axe.violations.length === 0,
+        axe.violations.length === 0
+          ? 'zero violations at EVERY impact level'
+          : axe.violations.map((v) => `${v.id} (${v.impact}) x${v.nodes.length}`).join(' | '),
+      )
+    } finally {
+      await adminCtx.close()
+    }
+  }
 } finally {
   await browser.close()
+  // The lane-A console account never outlives the run that made it.
+  if (adminUserId) {
+    const removed = await db.auth.admin.deleteUser(adminUserId)
+    if (removed.error) console.warn(`${TAG} could not remove the lane-A admin: ${removed.error.message}`)
+  }
 }
 
 const failed = checks.filter((c) => !c.pass)

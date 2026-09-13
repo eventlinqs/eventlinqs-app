@@ -6,6 +6,8 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { getAdminEventDetail, actionsForEventStatus, EVENT_ACTION_LABELS } from '@/lib/admin/events'
 import { getLivePublicFee } from '@/lib/pricing/live-fee'
 import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
+import { SalesPacePanel } from '@/components/dashboard/sales-pace-panel'
+import { paceForSlot } from '@/lib/ledger/pace'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { deleteRefusalSentence, judgeDeleteEligibility, readMoneyRecordCounts } from '@/lib/events/delete-eligibility'
 import { eventActionForm, eventDeleteForm, eventFeatureForm } from '../actions'
@@ -57,6 +59,23 @@ export default async function AdminEventDetailPage({
   // The database's own count of money records decides whether Delete is
   // offered here, exactly as it does for the organiser (close-out C13.7).
   const eligibility = judgeDeleteEligibility(await readMoneyRecordCounts(createAdminClient(), id))
+  /*
+   * HOW THIS EVENT SOLD, read out of the slot ledger and nowhere else, through
+   * the same one door the organiser's own dashboard reads it through.
+   *
+   * WHY IT IS HERE (close-out D1, 13 September 2026). The ledger's whole purpose
+   * is answering when units sold and at what price, and until now the only
+   * surface that rendered that answer was the owning organiser's dashboard. For
+   * the one real production event the platform has sold tickets for, that
+   * dashboard belongs to an outside organiser, so the person who owns the
+   * platform could not read it anywhere. D1's last open leg was exactly that,
+   * and the ledger row for it said so in as many words: "no admin surface
+   * renders the panel".
+   *
+   * A null curve is a real answer and the panel renders it as one: an event
+   * created before the ledger existed did not sell nothing.
+   */
+  const paceCurve = await paceForSlot(id)
 
   return (
     <div>
@@ -274,6 +293,12 @@ export default async function AdminEventDetailPage({
             </form>
           </section>
         </div>
+      </div>
+
+      {/* Full width, because the curve is a plot and a two-column cell crushes
+          it. Below the controls so the moderation actions stay above the fold. */}
+      <div className="mt-6">
+        <SalesPacePanel curve={paceCurve} tone="console" />
       </div>
     </div>
   )

@@ -19,12 +19,21 @@ import { spawnSync } from 'node:child_process'
 import { envFor, startGateServer } from '../ops/pre-push-gate.mjs'
 
 const TAG = '[d1-drive]'
-const OUT = 'C:/dev/EVIDENCE/D1'
+let OUT = 'C:/dev/EVIDENCE/D1'
 const LOG = join(process.cwd(), '.tmp', 'd1-drive-server.log')
 
 const args = process.argv.slice(2)
 let only = null
-for (let i = 0; i < args.length; i += 1) if (args[i] === '--only') only = args[++i]
+let VIEWPORTS = ['mobile-390', 'tablet-768', 'desktop-1440']
+for (let i = 0; i < args.length; i += 1) {
+  if (args[i] === '--only') only = args[++i]
+  // So a re-run lands beside the run it is being compared with rather than on
+  // top of it: every leg writes report.txt and checks.json under OUT.
+  else if (args[i] === '--out') OUT = args[++i]
+  // One width on its own, for a drill. A red that costs three widths to see is
+  // a red somebody stops taking.
+  else if (args[i] === '--viewport') VIEWPORTS = [args[++i]]
+}
 
 const env = envFor('local')
 if (/gndnldyfudbytbboxesk/.test(env.NEXT_PUBLIC_SUPABASE_URL ?? '')) {
@@ -53,7 +62,7 @@ try {
     if (run('scripts/verify/d1-ledger-latency.mjs') !== 0) failures += 1
   }
   if (!only || only === 'proof') {
-    for (const viewport of ['mobile-390', 'tablet-768', 'desktop-1440']) {
+    for (const viewport of VIEWPORTS) {
       console.log(`${TAG} ---- the panel at ${viewport} ----`)
       if (run('scripts/verify/d1-slot-ledger-proof.mjs', { JOURNEY_VIEWPORT: viewport }) !== 0) failures += 1
     }
