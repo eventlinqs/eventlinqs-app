@@ -2353,6 +2353,47 @@ const DRILLS = [
     replace: '  return isWithinQuietHours(prefs, now.getUTCHours())',
     expect: 'window answered',
   },
+  /*
+   * the-daily-state-cannot-go-silent (close-out UX4.1 and UX4.2, 13 September
+   * 2026), two drills. The first restores the give-up the composer shipped with:
+   * a failed read ends the whole report instead of becoming a named blind spot.
+   * The second silences the blind stall check, which is the more dangerous half,
+   * because a check that goes quiet when it cannot see looks exactly like one
+   * that looked and found everything healthy.
+   */
+  {
+    name: 'a failed read ends the daily report again instead of being named on it',
+    guard: `${GUARDS}/the-daily-state-cannot-go-silent.mjs`,
+    file: 'scripts/ops/state-report.mjs',
+    find: '      const why = err instanceof Error ? err.message : String(err)\n      unreadable.push({ what, why })\n      return fallback(why)',
+    replace: '      throw err',
+    expect: 'no message was produced at all',
+  },
+  {
+    name: 'the stall check goes quiet again when it cannot see the repository',
+    guard: `${GUARDS}/the-daily-state-cannot-go-silent.mjs`,
+    file: 'scripts/lib/state-report.mjs',
+    find: '  if (unreadable) {\n    return {\n      stalled: false,\n      blind: true,',
+    replace: '  if (false) {\n    return {\n      stalled: false,\n      blind: true,',
+    expect: 'not BLIND and not alerting',
+  },
+  /*
+   * The third, and the one the driven render at 390 found after the guard was
+   * already green: a section that answers a FAILED read with an ABSENCE. "No
+   * push could be found" sends the reader hunting a stalled build when the truth
+   * is that nobody could see the repository.
+   */
+  {
+    name: 'the last-push section answers a failed read with "no push could be found" again',
+    guard: `${GUARDS}/the-daily-state-cannot-go-silent.mjs`,
+    file: 'scripts/lib/state-report.mjs',
+    find:
+      '      lastPushUnread\n' +
+      '        ? `Could not be read: ${lastPushUnread}. Whether anything has been pushed is therefore unknown, and this is NOT a report that nothing has.`\n' +
+      '        : state.lastPush?.when',
+    replace: '      state.lastPush?.when',
+    expect: 'No push to a working branch could be found',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

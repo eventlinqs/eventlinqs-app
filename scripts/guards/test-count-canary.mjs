@@ -1493,9 +1493,28 @@ const ROOT = join(HERE, '..', '..')
  * clock, a timezone the runtime cannot resolve), prefs-route.test.ts refuses the
  * zone that could abort a whole cron pass, and policy.test.ts gains the hour
  * resolution across both daylight-saving transitions.
+ *
+ * 2026-09-13 (the reporter's own silence): raised 390/4728 -> 391/4746,
+ * MEASURED. One new file and 18 tests. The daily state says inside its own body
+ * "if it does not arrive, that is itself the alert", and the reporter then gave
+ * up in the two cases that matter: with no GitHub token it returned null and
+ * `main` sent nothing, and any read that threw exited 2 and sent nothing. Three
+ * collectors also answered a failed read with an EMPTY LIST, so a morning when
+ * the commits API was down reported a quiet day. state-report-collect.test.ts
+ * drives the composer with readers that fail on purpose - the only way to see
+ * this without waiting for GitHub to have a bad morning - and state-report.test.ts
+ * gains the blind stall check, which alerts rather than going quiet because a
+ * stall produces silence and a blind check that stays silent looks identical to
+ * a healthy one. The sixteenth is the one the DRIVE found rather than the
+ * reading: three sections count things, an empty count is the GOOD answer for
+ * all three, and a failed read was still printing it. The last two are the
+ * SEVENTEENTH AND EIGHTEENTH, and they exist because the driven render at 390
+ * caught a fourth section doing it after the guard had already gone green: the
+ * last-push line still answered a failed read with "No push to a working branch
+ * could be found", which is the absence the stall alert exists to raise.
  */
-const MIN_FILES = 390
-const MIN_TESTS = 4728
+const MIN_FILES = 391
+const MIN_TESTS = 4746
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

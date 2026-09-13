@@ -41,6 +41,8 @@ export const CORAL_600 = '#E63E2C'
 export const GREEN_700 = '#15803D'
 
 const MS_PER_HOUR = 3_600_000
+/** A literal newline, kept out of the string so no editor pass can eat it. */
+const NEWLINE = String.fromCharCode(10)
 
 /** Hours between two instants, positive when `later` is after `earlier`. */
 export function hoursBetween(earlierIso, laterIso) {
@@ -140,7 +142,7 @@ export function nextLinkPath(linkHeader) {
  * so a caller that has thought about neither gets a loud repeat rather than a
  * quiet miss.
  *
- * @param {{ lastPushIso: string|null, nowIso: string, thresholdHours?: number, alreadyAlertedBand?: number|null, checkPeriodHours?: number|null }} input
+ * @param {{ lastPushIso: string|null, nowIso: string, thresholdHours?: number, alreadyAlertedBand?: number|null, checkPeriodHours?: number|null, unreadable?: string|null }} input
  */
 export function judgeStall({
   lastPushIso,
@@ -148,7 +150,34 @@ export function judgeStall({
   thresholdHours = STALL_THRESHOLD_HOURS,
   alreadyAlertedBand = null,
   checkPeriodHours = null,
+  unreadable = null,
 }) {
+  /*
+   * BLIND IS NOT QUIET. 13 September 2026.
+   *
+   * "No push was found" and "the push could not be looked up" arrive here as
+   * the same missing value, and they are opposites. The first is a fact about
+   * a quiet repository. The second is the check having no idea, and this is the
+   * ONE alert whose whole subject is silence: a stall produces no failure
+   * anywhere, which is why UX4.2 exists at all. A blind check that says nothing
+   * is indistinguishable from a healthy one, and the thing it would be hiding
+   * is precisely the thing nothing else can see.
+   *
+   * So blindness ALERTS. It costs a message an hour while GitHub is unreachable,
+   * and that is the cheaper mistake by a wide margin: the alternative is the
+   * owner reading silence as health on the day the build machine is dead.
+   */
+  if (unreadable) {
+    return {
+      stalled: false,
+      blind: true,
+      hoursSincePush: null,
+      band: null,
+      shouldAlert: true,
+      dedupe: 'a blind check speaks every time, because it cannot know whether it spoke last time about the same blindness',
+      reason: `the stall check could not read when the build last pushed: ${unreadable}`,
+    }
+  }
   if (!lastPushIso) {
     return {
       stalled: false,
@@ -246,6 +275,11 @@ export function headlineFor(state) {
   }
   if (state.main?.conclusion === 'failure') return { word: 'MAIN IS RED', colour: CORAL_600, urgent: true }
   if (state.stall?.stalled) return { word: 'THE BUILD HAS STALLED', colour: CORAL_600, urgent: true }
+  // A blind spot outranks a red branch, because the branch is a known finding
+  // and the blind spot may be hiding a worse one. It can never read ALL GREEN.
+  if ((state.unreadable ?? []).length > 0) {
+    return { word: 'PART OF THIS COULD NOT BE READ', colour: GOLD_700, urgent: false }
+  }
   if ((state.failingBranches ?? []).length > 0) return { word: 'GREEN, WITH BRANCHES RED', colour: GOLD_700, urgent: false }
   return { word: 'ALL GREEN', colour: GREEN_700, urgent: false }
 }
@@ -265,6 +299,31 @@ const escapeHtml = (value) =>
  */
 export function sectionsFor(state) {
   const sections = []
+
+  /*
+   * WHAT COULD NOT BE READ COMES FIRST, when there is any.
+   *
+   * A report that quietly prints "Not known" in four places reads, at a glance,
+   * like a calm day. The reader needs to meet the blind spots before the facts,
+   * because every fact below is only as good as the read that produced it.
+   */
+  const unreadable = state.unreadable ?? []
+  /*
+   * A LIST THAT COULD NOT BE READ DOES NOT GET TO SAY "NONE".
+   *
+   * Three of these sections count things, and an empty count is the GOOD answer
+   * for all three: nothing landed, no pull request is open, no branch went red.
+   * That is exactly why a failed read must not be allowed to print it. The blind
+   * spot is named at the top of the message and again here, where the reader is
+   * looking at the number.
+   */
+  const couldNotRead = (what) => unreadable.find((u) => u.what === what)?.why ?? null
+  if (unreadable.length > 0) {
+    sections.push({
+      title: `Could not be read (${unreadable.length})`,
+      lines: unreadable.map((u) => `${u.what}: ${u.why}`),
+    })
+  }
 
   sections.push({
     title: 'Main',
@@ -289,15 +348,31 @@ export function sectionsFor(state) {
   })
 
   const landed = state.landed ?? []
+  const landedUnread = couldNotRead('what landed in 24 hours')
   sections.push({
-    title: `Landed on main in 24 hours (${landed.length})`,
-    lines: landed.length === 0 ? ['Nothing.'] : landed.map((c) => `${c.shortSha}  ${c.subject}`),
+    title: landedUnread ? 'Landed on main in 24 hours (not known)' : `Landed on main in 24 hours (${landed.length})`,
+    lines: landedUnread
+      ? [`Could not be read: ${landedUnread}.`]
+      : landed.length === 0
+        ? ['Nothing.']
+        : landed.map((c) => `${c.shortSha}  ${c.subject}`),
   })
 
+  /*
+   * AND THIS SECTION MOST OF ALL. "No push could be found" is an ABSENCE, and
+   * the stall alert exists because an absence here is worth waking up for. A
+   * read that failed must never be allowed to say it: the reader would go
+   * looking for a stalled build when what actually happened is that nobody could
+   * see the repository. It survived the first pass of this fix and was caught in
+   * the driven render at 390, which is the argument for driving it.
+   */
+  const lastPushUnread = couldNotRead('the last push')
   sections.push({
-    title: 'When the build last pushed',
+    title: lastPushUnread ? 'When the build last pushed (not known)' : 'When the build last pushed',
     lines: [
-      state.lastPush?.when
+      lastPushUnread
+        ? `Could not be read: ${lastPushUnread}. Whether anything has been pushed is therefore unknown, and this is NOT a report that nothing has.`
+        : state.lastPush?.when
         ? `${humanAge(state.stall?.hoursSincePush)} ago, to ${state.lastPush.ref ?? 'an unknown ref'}, at ${platformDate(state.lastPush.when)}.`
         : `No push to a working branch could be found, which is itself worth looking at${state.lastPush?.reason ? `: ${state.lastPush.reason}` : ''}.`,
       state.lastPush?.bookkeepingSkipped
@@ -310,22 +385,26 @@ export function sectionsFor(state) {
   })
 
   const prs = state.openPullRequests ?? []
+  const prsUnread = couldNotRead('the open pull requests')
   sections.push({
-    title: `Open pull requests (${prs.length})`,
-    lines:
-      prs.length === 0
+    title: prsUnread ? 'Open pull requests (not known)' : `Open pull requests (${prs.length})`,
+    lines: prsUnread
+      ? [`Could not be read: ${prsUnread}.`]
+      : prs.length === 0
         ? ['None.']
         : prs.map((p) => `#${p.number}  open ${humanAge(p.ageHours)}  ${p.draft ? '(draft) ' : ''}${p.title}`),
   })
 
   const failing = state.failingBranches ?? []
+  const failingUnread = couldNotRead('the branches that went red')
   sections.push({
     // UX4.5. A branch gate failure is ONE LINE HERE and no longer an email of
     // its own. The guard it caught is named, because F1.1 made the gate say it
     // and this is the reader that was worth saying it for.
-    title: `Branches red in 24 hours (${failing.length})`,
-    lines:
-      failing.length === 0
+    title: failingUnread ? 'Branches red in 24 hours (not known)' : `Branches red in 24 hours (${failing.length})`,
+    lines: failingUnread
+      ? [`Could not be read: ${failingUnread}.`]
+      : failing.length === 0
         ? ['None.']
         : failing.map((b) => `${b.branch}  ${b.workflow}  ${b.guard ? `caught by ${b.guard}` : 'no guard named in the log'}  ${b.runUrl}`),
   })
@@ -372,7 +451,23 @@ export function renderStateReport(state) {
     ...sections.flatMap((section) => [section.title.toUpperCase(), ...section.lines.map((l) => `  ${l}`), '']),
   ].join('\n')
 
+  /*
+   * A COMPLETE DOCUMENT, not a bare div (13 September 2026).
+   *
+   * The fragment carried no language and no title, which axe reports as two
+   * serious violations the moment anybody opens it, and an assistive reader
+   * meeting a message body with no `lang` guesses the pronunciation of the whole
+   * thing. The cost of a doctype, a lang and a title is six lines.
+   */
   const html = [
+    '<!doctype html>',
+    '<html lang="en-AU">',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width,initial-scale=1">',
+    `<title>EventLinqs daily state: ${escapeHtml(headline.word)}</title>`,
+    '</head>',
+    '<body style="margin:0;background:#ffffff">',
     `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:640px;margin:0 auto;color:${INK_900}">`,
     `  <div style="background:${INK_900};color:#ffffff;padding:20px 20px 18px 20px">`,
     `    <div style="font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:${GOLD_400}">EventLinqs daily state</div>`,
@@ -394,6 +489,8 @@ export function renderStateReport(state) {
     ),
     `  <div style="padding:16px 20px;font-size:12px;color:${INK_600}">Runbook: docs/observability/state-report.md</div>`,
     '</div>',
+    '</body>',
+    '</html>',
   ].join('\n')
 
   return { subject, text, html, headline, sections }
@@ -402,6 +499,24 @@ export function renderStateReport(state) {
 /** The stall message, which is short on purpose: it is read on a phone. */
 export function renderStallAlert(state) {
   const stall = state.stall ?? {}
+  if (stall.blind) {
+    return {
+      subject: 'cannot see the build, so a stall cannot be ruled out',
+      text: [
+        `The stall check ran and could not read when the build last pushed: ${stall.reason}.`,
+        '',
+        'This is NOT a report that the build has stalled. It is a report that the',
+        'check cannot tell. A stall produces silence, so a check that goes quiet when',
+        'it is blind is indistinguishable from a check that found everything healthy,',
+        'and that is the one mistake this alert exists to make impossible.',
+        '',
+        'What to do: confirm the build is running, and look at why the repository',
+        'could not be read. If GitHub is down, this will clear itself.',
+        '',
+        'Runbook: docs/observability/state-report.md',
+      ].join(NEWLINE),
+    }
+  }
   const lines = [
     `Nothing has been pushed to the repository for ${humanAge(stall.hoursSincePush)}.`,
     '',
