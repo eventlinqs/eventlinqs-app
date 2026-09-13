@@ -15,6 +15,7 @@ import type { ComponentType } from 'react'
 
 import { resolveVenueProfile, venueSlugify } from '@/lib/venues/resolver'
 import { VenueSchemaJsonLd } from '@/components/features/venues/venue-schema-jsonld'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { VenueProfileHero } from '@/components/features/venues/venue-profile-hero'
 import { VenueAmenitiesGrid } from '@/components/features/venues/venue-amenities-grid'
 import { VenueMobileStickyBar } from '@/components/features/venues/venue-mobile-sticky-bar'
@@ -184,19 +185,32 @@ export default async function VenueProfilePage({ params }: Props) {
   })()
 
   const baseUrl = getSiteUrl()
-  const upcomingForSchema = upcoming.slice(0, 12).map(e => ({
-    slug: e.slug,
-    title: e.title,
-    startDate: e.start_date,
-    endDate: e.end_date ?? e.start_date,
-    organizerName: e.organisation?.name ?? '',
-    organizerSlug: e.organisation?.slug ?? '',
-    coverImageUrl: e.cover_image_url,
-  }))
+  /*
+   * SLUG AND TITLE, AND NOTHING ELSE. This projection used to carry the dates,
+   * the cover image and the organiser, and the schema component built twelve
+   * nested `Event` nodes from them. A venue profile is a page that LISTS events
+   * and must not carry Event markup for them (SEO1 v2, FAULT THREE). Narrowing
+   * the projection is what stops a later edit rebuilding them.
+   *
+   * The whole list is passed rather than the first twelve, so `numberOfItems`
+   * on the emitted ItemList is the number the venue actually has on.
+   */
+  const upcomingForSchema = upcoming.map(e => ({ slug: e.slug, title: e.title }))
 
   return (
     <>
       <VenueSchemaJsonLd venue={venue} upcomingEvents={upcomingForSchema} baseUrl={baseUrl} />
+      {/* SEO1 step 6: a BreadcrumbList on the venue page, which had none.
+        * TWO STEPS, because there is no /venues index route to be the parent
+        * (src/app/venues holds [handle] alone). Law 5 is zero dead links, and a
+        * breadcrumb item URL is a link: inventing the step would put a 404 into
+        * the markup Google crawls. */}
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: baseUrl },
+          { name: venue.name, url: `${baseUrl}/venues/${handle}` },
+        ]}
+      />
       <PageShell>
         {/* VP1 Hero */}
         <VenueProfileHero

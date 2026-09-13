@@ -415,6 +415,105 @@ const DRILLS = [
     expect: 'publishes /community/[community] without an isDiscoveryIndexable() gate',
   },
   /*
+   * event-structured-data (SEO1 v2), EIGHT DRILLS, one per clause and four
+   * extra where a clause has more than one way to fail.
+   *
+   * SEO1 named two: "Proven red twice, once by removing the block from a
+   * published lane-C event and once by emitting a hard coded price, each failure
+   * naming the offending event slug." SEO1 v2 raised it to "Proven red four
+   * times, once per clause" against its four clauses: the block resolves from
+   * the database, no unpublished event emits, no listing page emits an Event
+   * block, and the withdrawn attendance-mode property appears nowhere.
+   *
+   * The other four hold halves that would otherwise be silent: the page handing
+   * the emitter the raw rows again (the price the buyer sees and the price
+   * Google sees diverging), a seventeenth hand-rolled script tag opting itself
+   * out of the one reversal flag, a draft event finding its way back into the
+   * index, and an online event being described with an address it does not have.
+   */
+  {
+    name: 'the block is removed from a published lane-C event',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: "  return status !== 'draft' && status !== 'scheduled' && status !== 'archived'",
+    replace: "  return status !== 'draft' && status !== 'scheduled' && status !== 'archived' && status !== 'published'",
+    expect: 'lane-c-guard-alpha: a PUBLISHED event emitted no structured data at all',
+  },
+  {
+    name: 'the offer price is hard coded instead of read from the tier',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: '    price: (priceOf(tier) / 100).toFixed(2),',
+    replace: "    price: '99.99',",
+    expect: 'lane-c-guard-alpha: offers emit [99.99] and the tiers on the page are [18.00]',
+  },
+  {
+    name: 'the event page hands the emitter the raw tiers again, so the markup loses the price the page shows',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: '          ticketTiers={enrichedAllTiers}',
+    replace: '          ticketTiers={allTiers}',
+    expect: 'no longer passes `ticketTiers={enrichedAllTiers}`',
+  },
+  {
+    name: 'a page hand-rolls its own ld+json script tag again, outside the one emitter',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/app/help/page.tsx',
+    find: '      <JsonLd payload={itemList} />',
+    replace: '      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }} />',
+    expect: 'emit a raw application/ld+json script tag outside src/components/seo/json-ld.tsx',
+  },
+  {
+    name: 'a draft event is described to Google again (SEO1 v2 clause 2)',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: "  return status !== 'draft' && status !== 'scheduled' && status !== 'archived'",
+    replace: "  return status !== 'scheduled' && status !== 'archived'",
+    expect: 'lane-c-guard-alpha-draft: an event with status "draft" emitted a structured data block',
+  },
+  {
+    // The drill puts the node back exactly the way it actually shipped: nested
+    // inside the venue's own Place payload, which is where twelve of them lived.
+    name: 'a venue profile goes back to nesting Event nodes for the events it lists (SEO1 v2 clause 3)',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/components/features/venues/venue-schema-jsonld.tsx',
+    find: '    maximumAttendeeCapacity: venue.capacity ?? undefined,',
+    replace:
+      '    maximumAttendeeCapacity: venue.capacity ?? undefined,\n' +
+      "    event: upcomingEvents.map(e => ({ '@type': 'Event', name: e.title })),",
+    expect: 'Event node(s) are built outside src/lib/seo/event-schema.ts',
+  },
+  {
+    /*
+     * THE PROPERTY NAME IS BUILT FROM TWO HALVES, and for the same reason the
+     * guard builds it that way: clause 6 sweeps scripts/, and this file lives
+     * there. A literal here would make the guard fail on the drill that proves
+     * it, permanently, which reads as the guard working and is actually the
+     * guard being unable to run.
+     */
+    name: 'the withdrawn attendance-mode property comes back (SEO1 v2 clause 4)',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: "    location: {\n      '@type': 'Place',",
+    replace:
+      `    ${'eventAttendance' + 'Mode'}: 'https://schema.org/OfflineEventAttendanceMode',\n` +
+      "    location: {\n      '@type': 'Place',",
+    expect: 'still name the withdrawn attendance-mode property in CODE',
+  },
+  {
+    /*
+     * The other half of the same withdrawal. An online event has no Place, so
+     * describing it means publishing an address it does not have. This drill
+     * makes the serialiser describe it anyway, which is what it did before.
+     */
+    name: 'an online event is described to Google again, with an address it does not have',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: "  return eventType !== 'virtual'",
+    replace: '  return true',
+    expect: 'a VIRTUAL event emitted a block',
+  },
+  /*
    * geocoding-never-silent-null (close-out C9), two drills: the rule made to
    * allow the production case, and the create action's call removed.
    */

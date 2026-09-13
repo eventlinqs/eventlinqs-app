@@ -803,7 +803,13 @@ export default async function EventDetailPage({ params }: Props) {
         <EventSchemaJsonLd
           event={event}
           organisation={event.organisation}
-          ticketTiers={allTiers}
+          // THE TIERS AS THE PAGE SHOWS THEM, not as the rows store them.
+          // `allTiers` was passed here, so the markup emitted `tier.price` while
+          // the page rendered `display_price_cents`: on any event with a live
+          // demand-price move, Google was advertising a price nobody could buy
+          // at. Google's own note on offers.price is "Don't forget to update it
+          // as prices change or tickets sell out."
+          ticketTiers={enrichedAllTiers}
           state={eventStateForSchema}
           baseUrl={baseUrl}
           // The same lineup the page renders visibly below. It was already

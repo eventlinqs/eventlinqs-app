@@ -1587,6 +1587,22 @@ const ROOT = join(HERE, '..', '..')
  * subprocesses and mutate the tree, not of a test that is wrong. It is NOT
  * written off here: it is in REVIEW-QUEUE.md, and the push gate runs the suite
  * again, which is a third reading on the same tree.
+ *
+ * 2026-09-14 (SEO1 v2, the event structured data): raised 391/4746 -> 393/4782,
+ * MEASURED on a green suite, 0 failed and 0 skipped. An earlier reading said
+ * 4778 and it was taken while the suite was RED, so it is not the one recorded:
+ * the floor is measured on a green suite or it is not measured. Two new files
+ * and 36 tests. `tests/component/seo/json-ld-blocks.test.tsx`
+ * renders every JSON-LD block the platform emits, which is the half a unit test
+ * on a builder cannot reach: the two profile pages nested twelve `Event` nodes
+ * each inside their own payload, and a correct builder would not have stopped a
+ * component doing that. `tests/unit/seo/social-profiles.test.ts` holds the set
+ * behind `sameAs`, which shipped as an empty array on every page of the platform
+ * for months. The rest are additions to the existing SEO payload test, renamed
+ * to SEO1 v2's acceptance names, including the two the corrections added:
+ * `no_event_attendance_mode_is_emitted_anywhere`, which asserts on the emitted
+ * BYTES rather than the object because a key holding `undefined` is present on
+ * one and absent from the other, and `no_event_markup_on_any_listing_page`.
  */
 const MIN_FILES = 396
 const MIN_TESTS = 4812

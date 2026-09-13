@@ -14,14 +14,22 @@
  */
 
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
+import { JsonLd } from '@/components/seo/json-ld'
+import { buildEventItemList } from '@/lib/seo/event-item-list'
 
+/**
+ * SLUG AND TITLE ONLY, and the narrowing is the control rather than tidiness.
+ *
+ * This type used to carry startDate, endDate, venueCity and coverImageUrl,
+ * because the component built a nested `Event` node per upcoming event out of
+ * them. Those nodes are gone (SEO1 v2, FAULT THREE: a page that lists events
+ * must not carry Event markup for them), and the fields go with them so a later
+ * edit cannot reach for data that is no longer here. The same reasoning, and
+ * the same shape of fix, as PublicOrganisationSchemaFields below.
+ */
 interface UpcomingEventLite {
   slug: string
   title: string
-  startDate: string
-  endDate: string
-  venueCity: string | null
-  coverImageUrl: string | null
 }
 
 /**
@@ -61,26 +69,26 @@ export function OrganiserSchemaJsonLd({ organisation, upcomingEvents, baseUrl }:
   // metadata can hold social URLs; skip until the M7 admin panel
   // surfaces a typed schema. We don't read raw record fields blindly.
 
-  const events = upcomingEvents.slice(0, 12).map(e => ({
-    '@type': 'Event',
-    name: e.title,
-    startDate: e.startDate,
-    endDate: e.endDate,
-    url: `${baseUrl}/events/${e.slug}`,
-    image: e.coverImageUrl ? [e.coverImageUrl] : undefined,
-    location: e.venueCity
-      ? {
-          '@type': 'Place',
-          name: e.venueCity,
-          address: { '@type': 'PostalAddress', addressLocality: e.venueCity, addressCountry: 'AU' },
-        }
-      : undefined,
-    organizer: {
-      '@type': 'Organization',
-      name: organisation.name,
-      url: profileUrl,
-    },
-  }))
+  /*
+   * THE UPCOMING EVENTS ARE A LIST, AND THEY USED TO BE TWELVE EVENT NODES.
+   *
+   * This component published `event: [ { "@type": "Event", ... } x12 ]` inside
+   * the Organization payload. An organiser profile is a page that LISTS events,
+   * and Google's event experience "only supports pages that focus on a single
+   * event" (SEO1 v2, FAULT THREE; the citation is in
+   * src/lib/seo/event-item-list.ts). Worse, each node was built from a
+   * `venueCity` string, so it was a lower-quality duplicate of the leaf page's
+   * markup, which is the documented way to have the good copy discounted.
+   *
+   * The ItemList says the same thing, points at the leaf pages that hold the
+   * real Event markup, and carries no Event node.
+   */
+  const eventList = buildEventItemList({
+    events: upcomingEvents,
+    baseUrl,
+    name: `Upcoming events by ${organisation.name}`,
+    url: profileUrl,
+  })
 
   const payload = {
     '@context': 'https://schema.org',
@@ -97,14 +105,12 @@ export function OrganiserSchemaJsonLd({ organisation, upcomingEvents, baseUrl }:
     // website. Publishing contact details here put them in the page source and
     // in Google's structured-data index.
     sameAs: sameAs.length > 0 ? sameAs : undefined,
-    event: events.length > 0 ? events : undefined,
   }
 
   return (
-    <script
-      type="application/ld+json"
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
-    />
+    <>
+      <JsonLd payload={payload} />
+      <JsonLd payload={eventList} />
+    </>
   )
 }

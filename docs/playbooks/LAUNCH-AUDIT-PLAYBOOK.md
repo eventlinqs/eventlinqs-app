@@ -47,9 +47,15 @@ location). The seven areas:
    swallowed.
 5. Event/organiser/venue pages + Schema.org. Check each page emits valid JSON-LD;
    for the event, that Event has name, startDate, endDate, eventStatus,
-   eventAttendanceMode, location+address, image, description, offers (price,
-   priceCurrency=AUD, availability, validFrom), performer/organizer. Check
-   BreadcrumbList, canonical, OG/Twitter, og:image.
+   location+address, image, description, offers (price, priceCurrency=AUD,
+   availability, validFrom), performer/organizer. Check BreadcrumbList,
+   canonical, OG/Twitter, og:image. Check the attendance-mode property is NOT
+   emitted: Google removed online events, and every property describing one,
+   from its event documentation on 5 June 2025, so emitting it is dead code
+   (SEO1 v2, FAULT ONE; `scripts/guards/event-structured-data.mjs` fails the
+   build on it). Check no Event node appears on a page that LISTS events
+   (/events, /city, /community, /faith, an organiser or a venue profile):
+   Google's event experience only supports a leaf page holding one event.
 6. Hardening checklist (static portions): Supabase Auth Site URL references and
    redirect-base helpers; Resend FROM address; Mapbox token (public?) and
    restriction evidence; `/events` cache headers (revalidate / s-maxage /

@@ -20,6 +20,7 @@ import { EventCard, type EventCardData } from '@/components/features/events/even
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { JsonLd } from '@/components/seo/json-ld'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
@@ -225,11 +226,7 @@ export default async function FaithPage({ params }: Props) {
         *  page keeps its breadcrumb and the site-wide Organization and WebSite;
         *  only the claim it cannot support is withheld. */}
       {liveEvents.length > 0 && (
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }}
-        />
+        <JsonLd payload={collectionLd} />
       )}
     </div>
   )

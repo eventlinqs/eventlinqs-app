@@ -16,6 +16,7 @@ import { AssistantPanel } from '@/components/ai/assistant-panel'
 import { helpTopics } from '@/lib/help-content'
 import { getSiteUrl } from '@/lib/site-url'
 import type { ComponentType } from 'react'
+import { JsonLd } from '@/components/seo/json-ld'
 
 const POPULAR_QUESTIONS: { topicSlug: string; q: string }[] = [
   { topicSlug: 'getting-started',       q: 'How do I list an event on EventLinqs?' },
@@ -120,11 +121,7 @@ export default function HelpPage() {
 
   return (
     <PageShell>
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }}
-      />
+      <JsonLd payload={itemList} />
       <PageHero
         eyebrow="HELP CENTRE"
         title="How can we help?"
