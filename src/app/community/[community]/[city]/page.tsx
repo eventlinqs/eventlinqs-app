@@ -2,7 +2,7 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countCommunityCity } from '@/lib/seo/discovery-counts'
-import { discoveryIndexing } from '@/lib/seo/indexing-policy'
+import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
   getCommunity,
@@ -105,7 +105,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       `${community.displayName} ${cityName}`,
       `${cityName} ${community.displayName.toLowerCase()} events`,
     ],
-    ...discoveryIndexing(eventCount, `/community/${community.slug}/${cityParam}`),
+    ...(await discoveryIndexingFor(eventCount, `/community/${community.slug}/${cityParam}`)),
     openGraph: {
       title,
       description,

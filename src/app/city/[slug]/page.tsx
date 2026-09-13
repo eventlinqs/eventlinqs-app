@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countCity } from '@/lib/seo/discovery-counts'
-import { discoveryIndexing } from '@/lib/seo/indexing-policy'
+import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { formatEventDateShort, PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     keywords: city.keywords,
-    ...discoveryIndexing(eventCount, `/city/${city.slug}`),
+    ...(await discoveryIndexingFor(eventCount, `/city/${city.slug}`)),
     openGraph: { title, description, url: `/city/${city.slug}`, type: 'website', images: ['/opengraph-image'] },
   }
 }
