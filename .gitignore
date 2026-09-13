@@ -200,6 +200,11 @@ tmp-repro.mjs
 # suite now follows via WRITE_PROOF_ARTEFACTS.
 docs/verification/lh-local/
 
-# Local production-server logs written by the journey harness (C:\dev\serve.ps1)
+# Local production-server logs written by the journey harness (C:\dev\serve.ps1).
+# The port-suffixed form arrived on 13 September 2026, when the build split into
+# three lanes serving on three ports out of three worktrees, so each lane's
+# server writes its own log and none of them may dirty the tree.
 .tmp-serve.log
 .tmp-serve.err.log
+.tmp-serve-*.log
+.tmp-serve-*.err.log

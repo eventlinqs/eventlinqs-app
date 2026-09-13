@@ -376,27 +376,91 @@ describe('the digest', () => {
     expect(h.sent).toHaveLength(0)
   })
 
-  it('escalates a failed digest as ONE push, not one per row', async () => {
+  /*
+   * THE DIGEST RETRIES BEFORE IT ESCALATES, like every other path in this
+   * module. Until 13 September 2026 it did not, and the two tests below used to
+   * PIN that: they asserted a push and a `failed` row after ONE refusal. One
+   * transient 429 from the mail vendor therefore threw away a digest carrying up
+   * to two hundred orders, permanently, because a `failed` row is neither
+   * `pending` nor `held_for_digest` and nothing reads it again.
+   */
+  it('holds a failed digest for the next tick instead of escalating on the first refusal', async () => {
     h.emailFails = 'Resend down'
     db.platform_notifications = Array.from({ length: 5 }, () =>
       pending({ delivery_state: 'held_for_digest' }),
     )
 
     const summary = await sendHeldDigest({ admin })
+    expect(summary).toMatchObject({ held: 5, retried: 5, escalated: 0, failed: 0 })
+    expect(h.pushed).toHaveLength(0)
+    expect(db.platform_notifications.every(r => r.delivery_state === 'held_for_digest')).toBe(true)
+    expect(db.platform_notifications.every(r => r.attempts === 1)).toBe(true)
+  })
+
+  it('recovers on a later tick, so a transient refusal costs a minute and not the digest', async () => {
+    h.emailFails = 'Resend down'
+    db.platform_notifications = Array.from({ length: 3 }, () =>
+      pending({ delivery_state: 'held_for_digest' }),
+    )
+
+    await sendHeldDigest({ admin })
+    h.emailFails = null
+    const summary = await sendHeldDigest({ admin })
+
+    expect(summary).toMatchObject({ held: 3, sent: 3 })
+    expect(h.sent).toHaveLength(1)
+    expect(db.platform_notifications.every(r => r.delivery_state === 'sent')).toBe(true)
+    expect(db.platform_notifications.every(r => r.channel === 'digest')).toBe(true)
+  })
+
+  it('escalates as ONE push, not one per row, once the attempts are exhausted', async () => {
+    h.emailFails = 'Resend down'
+    db.platform_notifications = Array.from({ length: 5 }, () =>
+      pending({ delivery_state: 'held_for_digest' }),
+    )
+
+    for (let i = 1; i < PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS; i += 1) {
+      const held = await sendHeldDigest({ admin })
+      expect(held.retried).toBe(5)
+      expect(h.pushed).toHaveLength(0)
+    }
+    const summary = await sendHeldDigest({ admin })
+
     expect(summary.escalated).toBe(5)
     expect(h.pushed).toHaveLength(1)
     expect(db.platform_notifications.every(r => r.delivery_state === 'escalated')).toBe(true)
   })
 
-  it('marks a digest failed on both channels and raises once', async () => {
+  it('marks a digest failed on both channels and raises once, and only after the retries', async () => {
     h.emailFails = 'Resend down'
     h.pushConfigured = false
     db.platform_notifications = [pending({ delivery_state: 'held_for_digest' })]
 
+    for (let i = 1; i < PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS; i += 1) {
+      await sendHeldDigest({ admin })
+      expect(db.platform_notifications[0].delivery_state).toBe('held_for_digest')
+      expect(h.captured).toHaveLength(0)
+    }
     const summary = await sendHeldDigest({ admin })
+
     expect(summary.failed).toBe(1)
     expect(h.captured).toHaveLength(1)
     expect(db.platform_notifications[0].delivery_state).toBe('failed')
+    expect(db.platform_notifications[0].attempts).toBe(PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS)
+  })
+
+  it('counts the batch by its highest attempts, so a new order joining cannot reset the clock', async () => {
+    h.emailFails = 'Resend down'
+    h.pushConfigured = false
+    db.platform_notifications = [
+      pending({ delivery_state: 'held_for_digest', attempts: PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS - 1 }),
+      pending({ delivery_state: 'held_for_digest', attempts: 0 }),
+    ]
+
+    const summary = await sendHeldDigest({ admin })
+
+    expect(summary.failed).toBe(2)
+    expect(db.platform_notifications.every(r => r.delivery_state === 'failed')).toBe(true)
   })
 
   it('a digested row does not count against tomorrow ceiling, because its channel is digest', async () => {

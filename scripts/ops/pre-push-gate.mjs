@@ -521,14 +521,27 @@ function collectLikeLhci(urls, env) {
  * alert instead, and a transport that always succeeds can never show that. The
  * limiter is not part of this choice and is handed over either way.
  *
+ * `port` and `host` pin the server where a caller needs it pinned, and they
+ * default to the behaviour every existing caller already has: an ephemeral free
+ * port on 127.0.0.1. Two callers need the pin and neither can use a random port.
+ * A parallel build lane is given ONE port it may listen on, so that three
+ * sessions on one machine can never quietly take each other's server. And a
+ * drive that leaves the site for Stripe's hosted onboarding comes back through a
+ * redirect that was minted BEFORE the server started, so the return url and the
+ * server have to agree on a port that was known in advance. `host` exists
+ * alongside it because a cookie set on `127.0.0.1` is not sent to `localhost`:
+ * they are different origins to a browser, and a drive that leaves on one and
+ * returns on the other comes back signed out, which reads as an auth defect and
+ * is not one.
+ *
  * Returns `{ base, stop }` on success, or `{ error }` with the log already
  * tailed to stderr.
  */
-export async function startGateServer(env, logPath, { also = [], mail = 'console' } = {}) {
+export async function startGateServer(env, logPath, { also = [], mail = 'console', port, host = '127.0.0.1' } = {}) {
   mkdirSync(TMP, { recursive: true })
   const stubPort = await freePort()
-  const appPort = await freePort()
-  const base = `http://127.0.0.1:${appPort}`
+  const appPort = port ?? (await freePort())
+  const base = `http://${host}:${appPort}`
   const fd = openSync(logPath, 'w')
   // EMAIL_TRANSPORT=console refuses a production project, and the Upstash stub
   // is in-memory and local only: never a shared instance.

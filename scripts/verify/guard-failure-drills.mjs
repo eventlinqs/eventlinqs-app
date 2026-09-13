@@ -2268,6 +2268,83 @@ const DRILLS = [
       '  if (!event) notFound()',
     expect: 'binds the error as `error` and never throws it',
   },
+  /*
+   * platform-day-boundary-is-zone-correct (close-out UX3.3, 13 September 2026),
+   * two drills. The first restores the implementation that actually shipped, so
+   * the drill is the regression rather than a caricature of it. The second is
+   * aimed at the guard itself: a sweep window with no daylight-saving transition
+   * inside it would pass against the broken code, so narrowing the window has to
+   * fail loudly instead of quietly retiring the guard.
+   */
+  {
+    name: 'the day boundary goes back to subtracting the wall clock from the instant',
+    guard: `${GUARDS}/platform-day-boundary-is-zone-correct.mjs`,
+    file: 'src/lib/notifications/platform-policy.ts',
+    find:
+      '  const date = new Intl.DateTimeFormat(\'en-CA\', {\n' +
+      '    timeZone: PLATFORM_TIME_ZONE,\n' +
+      "    year: 'numeric',\n" +
+      "    month: '2-digit',\n" +
+      "    day: '2-digit',\n" +
+      '  }).format(now)\n' +
+      '  return new Date(fromZonedInputValue(`${date}T00:00`, PLATFORM_TIME_ZONE))',
+    replace:
+      '  const parts = new Intl.DateTimeFormat(\'en-CA\', {\n' +
+      '    timeZone: PLATFORM_TIME_ZONE,\n' +
+      "    year: 'numeric',\n" +
+      "    month: '2-digit',\n" +
+      "    day: '2-digit',\n" +
+      "    hour: '2-digit',\n" +
+      "    minute: '2-digit',\n" +
+      "    second: '2-digit',\n" +
+      '    hour12: false,\n' +
+      '  }).formatToParts(now)\n' +
+      "  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? '0')\n" +
+      "  const secondsIntoDay = get('hour') * 3600 + get('minute') * 60 + get('second')\n" +
+      '  return new Date(now.getTime() - secondsIntoDay * 1000 - now.getMilliseconds())',
+    expect: 'a different date',
+  },
+  {
+    /*
+     * Narrowed to a single year, which still crosses two transitions. A window
+     * with ZERO in it is already refused a step earlier by the work-report
+     * contract ("DID NOTHING"), so aiming there would have proven that rule
+     * rather than this one. Two out of eight is the case only MIN_TRANSITIONS
+     * can catch: real work performed, on a window too small to see the fault.
+     */
+    name: 'the sweep is narrowed to a window that crosses too few daylight-saving transitions',
+    guard: `${GUARDS}/platform-day-boundary-is-zone-correct.mjs`,
+    file: 'scripts/guards/platform-day-boundary-is-zone-correct.mjs',
+    find: 'export const SWEEP_TO_UTC = Date.UTC(2029, 0, 1)',
+    replace: 'export const SWEEP_TO_UTC = Date.UTC(2026, 0, 1)',
+    expect: 'fewer than the 8 it must cross',
+  },
+  /*
+   * notification-paths-retry-before-they-give-up (close-out UX3.2, 13 September
+   * 2026), two drills. The first takes the retry back out of the digest, which
+   * is precisely the code that shipped, so the drill is the regression itself.
+   * The second aims at the guard's own vacuity clause: rename one delivery path
+   * past the scan and the guard must say it can no longer see it rather than
+   * quietly judging one path and passing.
+   */
+  {
+    name: 'the digest goes back to escalating on its first refusal',
+    guard: `${GUARDS}/notification-paths-retry-before-they-give-up.mjs`,
+    file: 'src/lib/notifications/platform-send.ts',
+    find:
+      '    const attempt = Math.max(...rows.map((r) => r.attempts)) + 1\n' +
+      '    if (attempt < PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS) {',
+    replace: '    const attempt = Math.max(...rows.map((r) => r.attempts)) + 1\n    if (false) {',
+    expect: 'sendHeldDigest() writes a terminal delivery state and never consults',
+  },
+  {
+    name: 'a delivery path is nested past the scan, so the guard can see only one',
+    guard: `${GUARDS}/notification-paths-retry-before-they-give-up.mjs`,
+    file: 'scripts/guards/notification-paths-retry-before-they-give-up.mjs',
+    find: "const DECLARATION = /^(?:export\\s+)?(?:async\\s+)?function\\s+([A-Za-z0-9_]+)/",
+    replace: "const DECLARATION = /^(?:export\\s+)?(?:async\\s+)?function\\s+(sendHeldDigest)/",
+    expect: 'fewer than the 2 this guard must judge',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

@@ -80,6 +80,69 @@ describe('the platform day', () => {
     expect(start.getTime()).toBeLessThanOrEqual(now.getTime())
     expect(now.getTime() - start.getTime()).toBeLessThan(25 * 60 * 60 * 1000)
   })
+
+  /*
+   * THE TWO DAYS A YEAR THAT ARE NOT 24 HOURS LONG.
+   *
+   * Both cases below FAILED until 13 September 2026. The implementation read the
+   * Sydney wall clock off `now` and subtracted that many seconds from the
+   * instant, which is only the day start while the day is 24 hours long. The two
+   * tests above could never see it, because both use a date in the middle of a
+   * season, and that is the whole lesson: a boundary is tested at its boundary.
+   *
+   * The consequence was not cosmetic. `individualSentToday` counts order
+   * notifications with `sent_at >= platformDayStart(now)`, so in October the
+   * window reached back into the previous evening and the owner lost individual
+   * order alerts early, and in April the first hour of the day did not count and
+   * the ceiling could be overrun by a whole day's allowance.
+   */
+  const sydneyClock = (d: Date) =>
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Australia/Sydney',
+      dateStyle: 'short',
+      timeStyle: 'medium',
+      hour12: false,
+    }).format(d)
+
+  it('starts at midnight on the morning AEDT begins, when the day is 23 hours long', () => {
+    // 4 October 2026: 2am becomes 3am. 2026-10-03T23:00Z is 10:00 am AEDT on the
+    // 4th. The old code answered 3 Oct 11:00 pm, which is not even the same date.
+    const start = platformDayStart(new Date('2026-10-03T23:00:00.000Z'))
+    expect(sydneyClock(start)).toBe('04/10/2026, 00:00:00')
+    expect(start.toISOString()).toBe('2026-10-03T14:00:00.000Z')
+  })
+
+  it('starts at midnight on the morning AEST returns, when the day is 25 hours long', () => {
+    // 5 April 2026: 3am becomes 2am. 2026-04-05T00:00Z is 10:00 am AEST on the
+    // 5th. The old code answered 1:00 am, an hour of the day unaccounted for.
+    const start = platformDayStart(new Date('2026-04-05T00:00:00.000Z'))
+    expect(sydneyClock(start)).toBe('05/04/2026, 00:00:00')
+    expect(start.toISOString()).toBe('2026-04-04T13:00:00.000Z')
+  })
+
+  it('is midnight on the same Sydney date for every hour of both transition days', () => {
+    const dayOf = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Australia/Sydney',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    // A full 26 hours either side of each transition instant, so every hour of
+    // the short day and the long day is asked, not just the two above.
+    const spans = [Date.UTC(2026, 9, 3, 0), Date.UTC(2026, 3, 4, 0)]
+    let asked = 0
+    for (const from of spans) {
+      for (let t = from; t < from + 52 * 3600 * 1000; t += 3600 * 1000) {
+        const now = new Date(t)
+        const start = platformDayStart(now)
+        asked += 1
+        expect(sydneyClock(start).endsWith('00:00:00')).toBe(true)
+        expect(dayOf.format(start)).toBe(dayOf.format(now))
+        expect(start.getTime()).toBeLessThanOrEqual(now.getTime())
+      }
+    }
+    expect(asked).toBe(104)
+  })
 })
 
 describe('every kind says what happened, who, and which event', () => {

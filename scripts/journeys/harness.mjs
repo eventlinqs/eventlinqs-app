@@ -4,7 +4,9 @@
  * way a person reads it out of their inbox.
  */
 import { chromium as playwrightChromium } from 'playwright'
-import { mkdirSync, appendFileSync, writeFileSync, readFileSync } from 'node:fs'
+import { mkdirSync, appendFileSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 /*
  * THE THREE VIEWPORT RUNS, MADE POSSIBLE IN ONE PLACE.
@@ -30,17 +32,70 @@ const JOURNEY_VIEWPORTS = {
 }
 const viewportOverride = JOURNEY_VIEWPORTS[process.env.JOURNEY_VIEWPORT ?? '']
 
-export const chromium = viewportOverride
-  ? {
-      ...playwrightChromium,
-      async launch(...args) {
-        const browser = await playwrightChromium.launch(...args)
-        const original = browser.newContext.bind(browser)
-        browser.newContext = (options = {}) => original({ ...options, ...viewportOverride })
-        return browser
-      },
-    }
-  : playwrightChromium
+/*
+ * REAL CHROME, WHEN A JOURNEY HAS TO LEAVE THIS SITE.
+ *
+ * JOURNEY_BROWSER=chrome swaps the bundled headless Chromium for the Chrome
+ * installed on this machine, headed, in a persistent context. Unset, nothing
+ * changes and every journey keeps the browser it has always used.
+ *
+ * WHY IT IS NEEDED, and it is needed by exactly one leg. Close-out UX3.1 asks
+ * for "Stripe Connect onboarding completes and charges are enabled" to be proven
+ * by driving the real action, and only Stripe can enable charges: it does so
+ * when a person finishes its hosted onboarding form. That form's first step
+ * carries an hCaptcha, and bundled headless Chromium is refused by it
+ * indefinitely with "Challenge expired. Please try again." Real Chrome with a
+ * persistent profile is admitted. This is the same finding the web-push drive
+ * recorded on this machine in a different product, which is why it is written
+ * here once rather than in each drive.
+ *
+ * THE PROFILE LIVES OUTSIDE THE REPOSITORY, and that is not a tidiness
+ * preference. A Chrome profile inside the working tree put a locked
+ * `shared_proto_db/metadata/LOCK` in front of Turbopack's CSS scan and failed
+ * `next build` with `os error 33` from a stack that names globals.css, which
+ * reads as a stylesheet defect and is not one.
+ *
+ * A FRESH PROFILE PER LAUNCH, because a journey signs up as a new person every
+ * run and a carried-over session would sign the next viewport in as the last
+ * one's organiser.
+ */
+const REAL_CHROME = process.env.JOURNEY_BROWSER === 'chrome'
+const CHROME_PROFILE = join(tmpdir(), `eventlinqs-journey-chrome-${process.pid}`)
+
+function realChromeBrowser() {
+  let context = null
+  return {
+    async newContext(options = {}) {
+      rmSync(CHROME_PROFILE, { recursive: true, force: true })
+      context = await playwrightChromium.launchPersistentContext(CHROME_PROFILE, {
+        channel: 'chrome',
+        headless: false,
+        args: ['--disable-blink-features=AutomationControlled'],
+        ...options,
+        ...(viewportOverride ?? {}),
+      })
+      return context
+    },
+    async close() {
+      if (context) await context.close().catch(() => {})
+      rmSync(CHROME_PROFILE, { recursive: true, force: true })
+    },
+  }
+}
+
+export const chromium = REAL_CHROME
+  ? { ...playwrightChromium, async launch() { return realChromeBrowser() } }
+  : viewportOverride
+    ? {
+        ...playwrightChromium,
+        async launch(...args) {
+          const browser = await playwrightChromium.launch(...args)
+          const original = browser.newContext.bind(browser)
+          browser.newContext = (options = {}) => original({ ...options, ...viewportOverride })
+          return browser
+        },
+      }
+    : playwrightChromium
 
 export const BASE = process.env.BASE ?? 'http://localhost:3311'
 /*

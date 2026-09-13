@@ -1460,9 +1460,51 @@ const ROOT = join(HERE, '..', '..')
  * re-derivation of that guard's pinned axe-core role table from the installed
  * package, so an axe upgrade that moves the table turns this red rather than
  * quietly widening what the guard lets through.
+ * 2026-09-13: raised 388/4697 -> 388/4698, MEASURED. One test added, and it is
+ * worth naming because of where it fails. `materialiseVercelUpload` created the
+ * empty `.git` skeleton only when `.git` was a DIRECTORY, and in a linked git
+ * worktree it is a one-line FILE, so the simulation produced an upload with no
+ * `.git` at all and `vercel-upload.test.ts` failed on the assertion that keeps
+ * it honest. That was invisible from the main checkout and unavoidable from a
+ * worktree, and since 13 September this build runs three lanes with two of them
+ * in worktrees: the only tree that can push was the only tree that could not see
+ * it. The new test builds the worktree shape itself, so it fails from anywhere
+ * the pointer is not followed.
+ *
+ * 2026-09-13 (later): raised 388/4698 -> 388/4701, MEASURED. Three tests added
+ * to tests/unit/notifications/platform-policy.test.ts, and they are worth naming
+ * because of what the two tests already there could not see. `platformDayStart`
+ * decides the window the owner's daily order-alert ceiling counts, and it
+ * subtracted the Sydney wall clock from the instant, which is the day start only
+ * while a day is 24 hours long. Both existing tests used a date in the middle of
+ * a season, so both passed while the boundary was an hour out on the two days a
+ * year that are not, and on 4 October it landed on the PREVIOUS DATE. The three
+ * new ones ask the question at the boundary: each transition explicitly, then
+ * every hour of both transition days.
+ *
+ * 2026-09-13 (later still): raised 388/4701 -> 388/4704, MEASURED. Five tests
+ * where two stood in tests/unit/notifications/platform-send.test.ts, and the two
+ * that went are the point: they ASSERTED THE DEFECT. `sendHeldDigest` escalated
+ * on its first email refusal and, with no armed push device, wrote every row
+ * `failed` on one attempt, where nothing reads it again. Those two tests pinned
+ * that as correct while close-out UX3.2 says in writing "a failure is retried".
+ * The five that replace them drive the whole ladder: held on the first refusal,
+ * recovered on a later tick, escalated only once exhausted, failed only once
+ * exhausted, and the batch counted by its highest attempts so a new order
+ * joining cannot reset the clock. A test agreeing with the code is not the same
+ * as the code being right.
+ *
+ * 2026-09-13 (the merge of lane C into the push lane): the two histories above
+ * are BOTH kept, because each names tests that exist in this tree and a merge
+ * that dropped either would leave the next reader unable to find out why a
+ * number moved. The two branches raised the baseline from a common ancestor at
+ * the same time, which is why they collided: lane A reached 390/4740 and lane C
+ * reached 388/4704, and neither number is right for the merged tree. The value
+ * below is MEASURED on the merged tree, never the larger of the two, because
+ * the larger of two partial counts is still a guess.
  */
 const MIN_FILES = 390
-const MIN_TESTS = 4740
+const MIN_TESTS = 4747
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
