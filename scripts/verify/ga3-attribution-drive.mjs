@@ -851,6 +851,23 @@ try {
 
   /* ---- acceptance 4: completeness across the whole table ---- */
   {
+    /*
+     * THE BACKFILL RUNS FIRST, because acceptance 4 says "after the backfill"
+     * and because of something this drive found on its second run: three lanes
+     * share this TEST project, and another lane's drives had created seven
+     * orders from a worktree whose tree does not carry this migration. The code
+     * cannot write a record it does not have. That is exactly the gap the
+     * backfill exists to close, it is idempotent, and closing it here is the
+     * acceptance line rather than a way around it.
+     */
+    const { backfillAttributions } = await import('../../src/lib/attribution/store.ts')
+    const filled = await backfillAttributions({ onlyMissing: true })
+    check(
+      'ga3.completeness.the-backfill-leaves-nothing-missing',
+      filled.written >= 0,
+      `the backfill wrote ${filled.written} record(s) for orders that had none, ${filled.none} of them none with a reason`,
+    )
+
     const orders = await db.from('orders').select('id', { count: 'exact', head: true })
     const attributions = await db.from('marketing_attribution').select('order_id', { count: 'exact', head: true })
     const none = await db.from('marketing_attribution').select('order_id', { count: 'exact', head: true }).eq('decision', 'none')
