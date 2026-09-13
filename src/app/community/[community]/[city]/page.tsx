@@ -32,6 +32,7 @@ import {
   weekendWindowUtc,
 } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { JsonLd } from '@/components/seo/json-ld'
 
 export const revalidate = 300
 
@@ -297,11 +298,7 @@ export default async function CommunityByCityPage({ params }: Props) {
         *  page keeps its breadcrumb and the site-wide Organization and WebSite;
         *  only the claim it cannot support is withheld. */}
       {allEvents.length > 0 && (
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }}
-        />
+        <JsonLd payload={collectionLd} />
       )}
       <BreadcrumbJsonLd
         items={[

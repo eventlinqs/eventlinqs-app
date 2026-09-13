@@ -8,6 +8,7 @@ import { GuidesBrowser } from '@/components/guides/guides-browser'
 import { buildGuideIndex } from '@/components/guides/guide-index'
 import { getSiteUrl } from '@/lib/site-url'
 import { GUIDES, GUIDE_CATEGORIES } from '@/lib/guides'
+import { JsonLd } from '@/components/seo/json-ld'
 
 export const metadata: Metadata = {
   title: 'Organiser guides | EventLinqs',
@@ -50,10 +51,7 @@ export default async function GuidesHubPage({
 
   return (
     <PageShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }}
-      />
+      <JsonLd payload={itemList} />
 
       <PageHero
         eyebrow="ORGANISER GUIDES"

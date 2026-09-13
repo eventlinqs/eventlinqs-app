@@ -25,7 +25,21 @@ import { join } from 'node:path'
  * link cannot quietly disappear between drives.
  */
 const EVENT_PAGE = join(process.cwd(), 'src/app/events/[slug]/page.tsx')
-const EVENT_JSONLD = join(process.cwd(), 'src/components/features/events/event-schema-jsonld.tsx')
+/*
+ * THE FILE THAT BUILDS `organizer.url` MOVED, and this constant moved with it.
+ *
+ * Until SEO1 the payload was built inside `event-schema-jsonld.tsx`. SEO1 split
+ * the pure builder out into `src/lib/seo/event-schema.ts` so that
+ * `scripts/guards/event-structured-data.mjs` can EXECUTE it: the alias loader
+ * strips types but does not transpile, so a module holding JSX cannot be loaded
+ * by a guard at all. The component is now a thin renderer.
+ *
+ * The invariant this test holds is unchanged and still the one that matters: the
+ * page must LINK the same profile URL the structured data PUBLISHES. Only the
+ * file the URL is built in is different, so the assertion follows it rather than
+ * being relaxed.
+ */
+const EVENT_JSONLD = join(process.cwd(), 'src/lib/seo/event-schema.ts')
 
 describe('the event page links to the organiser it names', () => {
   test('the Organised by card carries a link to /organisers/<slug>', () => {

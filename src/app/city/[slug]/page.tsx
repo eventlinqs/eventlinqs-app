@@ -28,6 +28,7 @@ import {
   weekendWindowUtc,
 } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { JsonLd } from '@/components/seo/json-ld'
 
 export const revalidate = 300
 
@@ -214,22 +215,14 @@ export default async function CityPage({ params }: Props) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(cityLd) }}
-      />
+      <JsonLd payload={cityLd} />
       {/* An empty ItemList is markup that asserts a list and lists nothing.
         *  Found across 488 published URLs on 8 September 2026 by
         *  scripts/verify/structured-data-validate.mjs (close-out C19.4). The
         *  page keeps its breadcrumb and the site-wide Organization and WebSite;
         *  only the claim it cannot support is withheld. */}
       {allEvents.length > 0 && (
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
-        />
+        <JsonLd payload={itemListLd} />
       )}
       <BreadcrumbJsonLd
         items={[

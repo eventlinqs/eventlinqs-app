@@ -1512,9 +1512,25 @@ const ROOT = join(HERE, '..', '..')
  * caught a fourth section doing it after the guard had already gone green: the
  * last-push line still answered a failed read with "No push to a working branch
  * could be found", which is the absence the stall alert exists to raise.
+ *
+ * 2026-09-14 (SEO1 v2, the event structured data): raised 391/4746 -> 393/4782,
+ * MEASURED on a green suite, 0 failed and 0 skipped. An earlier reading said
+ * 4778 and it was taken while the suite was RED, so it is not the one recorded:
+ * the floor is measured on a green suite or it is not measured. Two new files
+ * and 36 tests. `tests/component/seo/json-ld-blocks.test.tsx`
+ * renders every JSON-LD block the platform emits, which is the half a unit test
+ * on a builder cannot reach: the two profile pages nested twelve `Event` nodes
+ * each inside their own payload, and a correct builder would not have stopped a
+ * component doing that. `tests/unit/seo/social-profiles.test.ts` holds the set
+ * behind `sameAs`, which shipped as an empty array on every page of the platform
+ * for months. The rest are additions to the existing SEO payload test, renamed
+ * to SEO1 v2's acceptance names, including the two the corrections added:
+ * `no_event_attendance_mode_is_emitted_anywhere`, which asserts on the emitted
+ * BYTES rather than the object because a key holding `undefined` is present on
+ * one and absent from the other, and `no_event_markup_on_any_listing_page`.
  */
-const MIN_FILES = 391
-const MIN_TESTS = 4746
+const MIN_FILES = 393
+const MIN_TESTS = 4782
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -18,6 +18,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate, weekendWindowUtc } from '@/lib/events/listing-window'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { JsonLd } from '@/components/seo/json-ld'
 
 export const revalidate = 300
 
@@ -159,11 +160,7 @@ export default async function SuburbPage({ params }: Props) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(placeLd) }}
-      />
+      <JsonLd payload={placeLd} />
       <BreadcrumbJsonLd
         items={[
           { name: 'Home', url: baseUrl },
