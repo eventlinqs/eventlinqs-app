@@ -56,6 +56,22 @@
  * dropped packet deciding anything.
  */
 
+/**
+ * The shape every function here hands back. Written as JSDoc rather than left
+ * to inference because the consumers are .ts tests and future guards, and an
+ * inferred union collapses `value` and `status` away the moment a branch is
+ * added: the typecheck step refused this file's own test for exactly that.
+ *
+ * @typedef {object} ReadOutcome
+ * @property {boolean} ok           true when the read succeeded
+ * @property {any} [value]          the parsed body, when ok
+ * @property {string} [kind]        'transport' | 'answered' | 'unparseable', when not ok
+ * @property {string} [detail]      what went wrong, in words
+ * @property {number} [status]      the HTTP status, when the server answered
+ * @property {number} [attempts]    how many times it was asked
+ * @property {number} [ms]          how long the asking took
+ */
+
 /** Attempts, and the pause before each RETRY. The first try is never delayed. */
 export const ATTEMPTS = 3
 export const BACKOFF_MS = [0, 1500, 4000]
@@ -72,6 +88,10 @@ const message = (e) => (e instanceof Error ? e.message : String(e))
  *
  * Returns the last outcome, with `attempts` and `ms` added so a refusal can
  * say how hard it tried rather than implying one glance.
+ *
+ * @param {(attempt: number) => Promise<ReadOutcome>} attempt
+ * @param {{ attempts?: number, backoff?: number[], onRetry?: (n: number, detail: string) => void }} [opts]
+ * @returns {Promise<ReadOutcome>}
  */
 export async function retryTransport(attempt, { attempts = ATTEMPTS, backoff = BACKOFF_MS, onRetry } = {}) {
   const startedAt = Date.now()
@@ -96,6 +116,10 @@ export async function retryTransport(attempt, { attempts = ATTEMPTS, backoff = B
  * A GET, never a POST: PostgREST serves a STABLE function on GET, and these
  * guards carry an admin credential, so they must hold no write verb at all.
  * That rule predates this module and is preserved by it.
+ *
+ * @param {string} target
+ * @param {{ key?: string, fetchImpl?: any }} [opts]
+ * @returns {Promise<ReadOutcome>}
  */
 export async function getJson(target, { key, fetchImpl = fetch } = {}) {
   return retryTransport(async () => {
@@ -124,12 +148,20 @@ export async function getJson(target, { key, fetchImpl = fetch } = {}) {
   })
 }
 
-/** `${url}/rest/v1/rpc/${rpc}`, read only, with the classification above. */
+/**
+ * `${url}/rest/v1/rpc/${rpc}`, read only, with the classification above.
+ * @param {{ url: string, key?: string, rpc: string, fetchImpl?: any }} opts
+ * @returns {Promise<ReadOutcome>}
+ */
 export function callRpc({ url, key, rpc, fetchImpl = fetch }) {
   return getJson(`${String(url).replace(/\/$/, '')}/rest/v1/rpc/${rpc}`, { key, fetchImpl })
 }
 
-/** `${url}/rest/v1/${query}`, read only, with the classification above. */
+/**
+ * `${url}/rest/v1/${query}`, read only, with the classification above.
+ * @param {{ url: string, key?: string, query: string, fetchImpl?: any }} opts
+ * @returns {Promise<ReadOutcome>}
+ */
 export function selectRest({ url, key, query, fetchImpl = fetch }) {
   return getJson(`${String(url).replace(/\/$/, '')}/rest/v1/${query}`, { key, fetchImpl })
 }
@@ -138,6 +170,10 @@ export function selectRest({ url, key, query, fetchImpl = fetch }) {
  * The sentence a guard prints when it could not look. Shared so that every
  * guard says the same true thing, and so none of them can accidentally
  * prescribe a migration for a dropped packet again.
+ *
+ * @param {string} what
+ * @param {{ detail?: string, attempts?: number, ms?: number }} outcome
+ * @returns {string}
  */
 export function couldNotLook(what, outcome) {
   return (

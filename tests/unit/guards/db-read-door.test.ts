@@ -70,6 +70,8 @@ describe('retryTransport: what is retried and what is not', () => {
     const attempt = vi.fn(async () => ({ ok: false, kind: 'unparseable', detail: 'not json' }))
     const r = await retryTransport(attempt, NOW)
     expect(attempt).toHaveBeenCalledTimes(1)
+    expect(r.kind).toBe('unparseable')
+    expect(r.attempts).toBe(1)
   })
 
   test('the first success is not delayed: attempt one runs immediately', async () => {
@@ -129,7 +131,14 @@ describe('getJson: classifying a real fetch', () => {
   })
 
   test('the request is a GET and carries no write verb', async () => {
-    const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, text: async () => 'true' }))
+    // The parameters are declared so `mock.calls` is a two-element tuple; a
+    // zero-arity mock types its calls as [] and the destructure below will not
+    // compile, which the typecheck step caught before the suite ever ran.
+    const fetchImpl = vi.fn(async (_target: string, _init?: { method?: string }) => ({
+      ok: true,
+      status: 200,
+      text: async () => 'true',
+    }))
     await callRpc({ url: 'https://project.supabase.co/', key: 'k', rpc: 'some_guards', fetchImpl })
     const [target, init] = fetchImpl.mock.calls[0]
     expect(target).toBe('https://project.supabase.co/rest/v1/rpc/some_guards')
