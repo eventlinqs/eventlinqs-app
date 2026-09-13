@@ -1434,9 +1434,20 @@ const ROOT = join(HERE, '..', '..')
  * nothing on TEST ever expires. tests/unit/ops/checkout-proof-leaves-test-as-found
  * pins that the drive now runs the product's own sweep before it picks and
  * expires what it reserved when it ends.
+ *
+ * 2026-09-13: raised 388/4697 -> 389/4721, MEASURED on a clean run of the whole
+ * suite (0 failed, 0 skipped). Two additions, both about an instrument lying
+ * about itself. tests/unit/verify/stripe-cli-keys holds the reader that sources
+ * a Stripe TEST key pair out of the CLI config, matches the pair by account,
+ * and refuses a live or an expired key without ever printing one. And fourteen
+ * more in tests/unit/ci/lighthouse-calibration pin the middle calibration
+ * state: on the first day of the three lane protocol the gate printed "this
+ * machine was fit to judge, so a failure above is a statement about the
+ * product" over three URLs whose own runs had been taken on a starved CPU, with
+ * zero product bytes changed since a tip that had passed the same step.
  */
-const MIN_FILES = 388
-const MIN_TESTS = 4697
+const MIN_FILES = 389
+const MIN_TESTS = 4721
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

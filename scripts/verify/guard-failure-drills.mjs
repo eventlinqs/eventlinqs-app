@@ -1803,6 +1803,47 @@ const DRILLS = [
     replace: "    if (verdict.state === 'degraded') return 0\n    return asserted",
     expect: 'no path turns a degraded machine into a pass',
   },
+  /*
+   * Four more on the same guard, added 13 September 2026 for the clause the
+   * first six did not cover: the calibration judged the MEDIAN of all 65
+   * readings and nothing else, so a collection at 2379 with a slowest run of
+   * 1071 was reported as "this machine was fit to judge, so a failure above is
+   * a statement about the product". It was not. Three URLs were under their
+   * floors with zero product bytes changed since a tip whose own gate had
+   * passed the same step four hours earlier.
+   */
+  {
+    name: 'the calibration loses the state for a collection that straddles the floor',
+    guard: `${GUARDS}/gate-names-the-instrument.mjs`,
+    file: 'scripts/ci/lighthouse-calibration.mjs',
+    find: "      state: 'mixed',",
+    replace: "      state: 'calibrated',",
+    expect: 'the calibration judges how many runs fell below the floor, not only the median',
+  },
+  {
+    name: 'the per-URL reading capability is renamed away',
+    guard: `${GUARDS}/gate-names-the-instrument.mjs`,
+    file: 'scripts/ci/lighthouse-calibration.mjs',
+    find: 'export function perUrlBands(',
+    replace: 'export function perUrlBandsWasHere(',
+    expect: 'the calibration can report the machine per URL, which is the unit a floor is asserted on',
+  },
+  {
+    name: 'the per-URL block stops reaching the pasted report',
+    guard: `${GUARDS}/gate-names-the-instrument.mjs`,
+    file: 'scripts/ci/lighthouse-calibration.mjs',
+    find: 'return [...verdict.lines, ...perUrlLines(lhrs)].join(String.fromCharCode(10))',
+    replace: 'return verdict.lines.join(String.fromCharCode(10))',
+    expect: 'calibrationReport() actually includes the per-URL block',
+  },
+  {
+    name: 'a NOT UNIFORM collection is made to EXCUSE a failed floor',
+    guard: `${GUARDS}/gate-names-the-instrument.mjs`,
+    file: 'scripts/ops/pre-push-gate.mjs',
+    find: '    return asserted',
+    replace: "    if (verdict.state === 'mixed') return 0\n    return asserted",
+    expect: 'no path turns a NOT UNIFORM collection into a pass',
+  },
   {
     name: 'Session Replay is deleted rather than deferred',
     guard: `${GUARDS}/sentry-off-the-paint-path.mjs`,
