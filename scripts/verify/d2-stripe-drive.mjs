@@ -44,10 +44,10 @@
  * or mismatched key pair, a build that does not carry the publishable key
  * (unless --build), and a `stripe listen` that never reports Ready.
  */
-import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, closeSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
-import { envFor, killTree, startGateServer } from '../ops/pre-push-gate.mjs'
+import { envFor, killTree, openStepLog, startGateServer } from '../ops/pre-push-gate.mjs'
 import { redactStripeSecrets, testKeyPairFromCli } from './lib/stripe-cli-keys.mjs'
 
 const TAG = '[d2-stripe]'
@@ -155,7 +155,13 @@ if (carrying.length === 0 || has('build-only')) {
   const buildLog = join(OUT, 'build.txt')
   say(`${TAG} building with NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY set for account ${pair.accountId} (next build only; the gate's prebuild guards run on the push). Log: ${buildLog}`)
   const started = Date.now()
-  const fd = openSync(buildLog, 'w')
+  // Append mode, never 'w', so a second writer on this path can never be
+  // overwritten by this child's stale offset. Nothing else writes to the
+  // build log today (spawnSync blocks and the fd closes on the next line),
+  // but the rule is flat on purpose: judging 'is anything else writing here'
+  // per call site is how the server log came to be opened 'w' in the first
+  // place. See openStepLog in scripts/ops/pre-push-gate.mjs.
+  const fd = openStepLog(buildLog)
   const r = spawnSync(process.execPath, ['node_modules/next/dist/bin/next', 'build'], {
     cwd: ROOT,
     env,

@@ -537,12 +537,55 @@ function collectLikeLhci(urls, env) {
  * Returns `{ base, stop }` on success, or `{ error }` with the log already
  * tailed to stderr.
  */
+/**
+ * A FRESH STEP LOG THAT A SECOND WRITER CANNOT DESTROY. Truncate, then open in
+ * APPEND mode, and hand THAT descriptor to every child.
+ *
+ * WHY THIS IS NOT `openSync(path, 'w')`, which is what it was until
+ * 14 September 2026. A descriptor opened 'w' carries its own file offset, and
+ * that offset only moves when its owner writes. The drives that read this file
+ * as an inbox do not only read it: `d2-recovery-proof.mjs` and
+ * `d2-waitlist-proof.mjs` run the recovery engine as a SUBPROCESS, capture its
+ * mail as a string, and `appendFileSync` it into this same file so the engine's
+ * messages land in the same inbox the server writes to. An append always writes
+ * at end of file. So every append moved the end of the file PAST the server's
+ * stale offset, and the server's next line was then written ON TOP of the
+ * message the harness had just added.
+ *
+ * WHAT IT COST, so this is not mistaken for tidiness. On 13 September the D2
+ * recovery proof at 768 reported "the sequence is three messages" as a FAILURE
+ * with only two in the inbox, and the message it could not find was message one
+ * to the person who stayed. The database had the send (`recovery_sends`
+ * `d2-stayed-...#1 -> entry 11587`), the engine's own sweep reported `sent: 3`,
+ * and the server log carried the wreckage: a line reading
+ * `ww.eventlinqs.com.au/events/...` with `[email:console] link    https://w`
+ * simply gone from the front of it. Two widths passed in the same run, because
+ * whether a line is destroyed depends on where the stale offset happens to
+ * point. A drive that reads a corrupted inbox reports the PRODUCT as broken.
+ *
+ * Append mode fixes it at the cause: on every platform a descriptor opened 'a'
+ * writes at the current end of the file, so two writers can never occupy the
+ * same bytes. Truncating first keeps the behaviour every caller already had,
+ * which is a fresh log per step.
+ *
+ * `tests/unit/ops/step-log-survives-a-second-writer.test.ts` drives both
+ * directions with a real child process and a real appender, and carries its own
+ * negative control so it cannot quietly stop proving anything.
+ *
+ * @param {string} logPath
+ * @returns {number} a file descriptor, owned by the caller, closed by the caller
+ */
+export function openStepLog(logPath) {
+  writeFileSync(logPath, '')
+  return openSync(logPath, 'a')
+}
+
 export async function startGateServer(env, logPath, { also = [], mail = 'console', port, host = '127.0.0.1' } = {}) {
   mkdirSync(TMP, { recursive: true })
   const stubPort = await freePort()
   const appPort = port ?? (await freePort())
   const base = `http://${host}:${appPort}`
-  const fd = openSync(logPath, 'w')
+  const fd = openStepLog(logPath)
   // EMAIL_TRANSPORT=console refuses a production project, and the Upstash stub
   // is in-memory and local only: never a shared instance.
   const stub = spawn(NODE, ['scripts/verify/upstash-local-stub.mjs'], {

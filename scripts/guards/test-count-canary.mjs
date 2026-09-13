@@ -1511,9 +1511,19 @@ const ROOT = join(HERE, '..', '..')
  * that cost a push, that an unreachable database must NOT be reported as a
  * missing migration. Each of those three previously asserted the misleading
  * sentence and called it correct, so they are corrected rather than added to.
+ *
+ * 2026-09-14 (lane A, the step log a second writer could destroy): raised
+ * 391/4760 -> 393/4770, MEASURED on a clean run. Two new files, ten tests:
+ * tests/unit/ops/step-log-survives-a-second-writer (3, one of them a NEGATIVE
+ * CONTROL asserting the old truncating open really does destroy an appended
+ * line on this platform, so the positive test cannot pass for a reason nobody
+ * checked) and tests/unit/guards/shared-log-is-opened-for-append (7, the guard
+ * drilled red on 'w' and on 'w+', green on 'a', plus the two judgements it
+ * makes: prose is not a call site, and a file that starts no process is out of
+ * scope).
  */
-const MIN_FILES = 391
-const MIN_TESTS = 4760
+const MIN_FILES = 393
+const MIN_TESTS = 4770
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

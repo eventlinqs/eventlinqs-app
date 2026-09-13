@@ -33,6 +33,9 @@
  *                              programmatic label, so assistive technology can name it
  *   one-db-read-door          every build guard that reads the database goes through
  *                              one door that retries a dropped packet
+ *   shared-log-is-opened-for-append  a descriptor handed to a child process is
+ *                              opened for append, so a second writer on the same
+ *                              file cannot be overwritten by a stale offset
  *   busy-region-names-itself   a loading skeleton that names itself carries a role
  *                              allowed to have a name, never a bare aria-label
  *   labels-name-the-right-control  and that label points at the control it describes,
@@ -630,6 +633,16 @@ const GUARDS = [
   // fix, made to the single guard that used the supabase client, missed all of
   // them. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
   'scripts/guards/one-db-read-door.mjs',
+  // A descriptor handed to a child process is opened for APPEND, never
+  // truncating. startGateServer hands one fd to the server, the Upstash stub
+  // and any extra a step needs, and the drives read that file as an inbox AND
+  // append the recovery engine subprocess mail into it. A truncating fd keeps
+  // its own offset, so every append moved end of file past it and the server
+  // wrote over the message the harness had just added. On 13 September 2026
+  // the D2 recovery proof at 768 called that a product defect: two messages
+  // where three were sent, while the database and the engine both said three.
+  // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/shared-log-is-opened-for-append.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
   // and compared byte for byte, so a row cannot be improved by editing the
