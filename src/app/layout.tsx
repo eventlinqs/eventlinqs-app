@@ -10,6 +10,7 @@ import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
 import { ReferralCapture } from '@/components/growth/referral-capture'
 import { ArrivalCapture } from '@/components/growth/arrival-capture'
+import { ClickIdentifierRelay } from '@/components/growth/click-identifier-relay'
 import { ConsentProvider } from '@/components/analytics/consent-provider'
 import { ConsentBanner } from '@/components/analytics/consent-banner'
 import { GatedAnalytics } from '@/components/analytics/gated-analytics'
@@ -240,6 +241,14 @@ export default function RootLayout({
            *  brought them", and they are read by different code at different
            *  moments. Renders null, post-paint, nothing identifying. */}
           <ArrivalCapture />
+          {/* THE CLICK IDENTIFIER, CARRIED OUT OF THE ADDRESS (close-out GA3).
+           *  Rung 2 of the attribution ladder: the person who was sent the
+           *  address rather than the person who opened the tracked link. Beside
+           *  the arrival capture rather than inside it, because that one is
+           *  first touch and answers which surface brought an account, and this
+           *  one is last touch and answers which message produced a sale.
+           *  Renders null, post-paint, one session cookie or none. */}
+          <ClickIdentifierRelay />
           {/* MEASUREMENT, AND THE ONLY WAY IT LOADS (close-out AN1).
            *  The provider holds the decision, the banner takes it, and the
            *  gate emits a third-party script only when the person agreed AND

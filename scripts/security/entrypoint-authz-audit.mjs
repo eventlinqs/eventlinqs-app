@@ -161,6 +161,8 @@ const PUBLIC_BY_DESIGN = {
   'api/home/surprise/GET': 'returns a random published event',
   'api/ai/status/GET': 'reports whether the assistant is configured',
   'api/broadcast/track/POST': 'anonymous view beacon, deduped server-side',
+  'm/[code]/GET':
+    'GA3 tracked link. It is an address printed in a message and on a poster, so requiring a caller identity would defeat the entire point of it. What it exposes is bounded by design: the code is opaque and random over 36^12, it is format-gated before any query, an unknown or inactive code answers 404, and a resolved one answers a 307 to a path that was stored at mint time and is a PUBLIC event page. It reads nothing about the caller and writes one click row plus one cookie holding a click id, which is a lookup key rather than a credential: a forged one resolves to no row and the resolver falls to the next rung. It cannot be used to learn that an unpublished event exists, because the target is whatever the link was minted for and a link is only minted for an event the organiser is selling.',
   'api/ledger/demand/POST':
     'anonymous demand beacon for the slot ledger. It accepts ONLY the two actions that carry no person (a page view and a sold-out view); every demand action that carries an address is written server side by the code that observed it. The slot is resolved from the database and a draft, private or cancelled event is refused exactly as its page would be, so it cannot be used to learn that an unpublished event exists. Deduped per visitor per slot per day and rate limited.',
   'api/tickets/[code]/qr/GET': 'BEARER auth: (ticket_code, secret) pair is the credential',

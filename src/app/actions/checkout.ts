@@ -26,6 +26,7 @@ import {
 import { cookies, headers } from 'next/headers'
 import { recordOrganiserMarketingConsent } from '@/lib/consent/record'
 import { recordCheckoutMarketingAnswer } from '@/lib/consent/checkout-answer'
+import { recordClickSignalForOrder } from '@/lib/attribution/checkout-signal'
 import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 import type { FeePassType } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
@@ -552,6 +553,17 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     platformConsent: platform_updates_consent,
   })
 
+  /*
+   * WHICH TRACKED LINK, IF ANY, THIS BUYER CAME THROUGH (close-out GA3).
+   *
+   * Beside the consent record rather than anywhere near the payment, and for
+   * the same reason: this is the first moment an order id exists, and it is a
+   * point lane B already owns. It never throws and never blocks; an order with
+   * no signal still gets its one attribution record, resolved on identity or
+   * recorded as none with a reason.
+   */
+  await recordClickSignalForOrder(order_id)
+
   // 8. For free orders - confirm immediately, no payment and no webhook.
   if (isFreeOrder) {
     // confirm_order atomically UPDATEs the order pending->confirmed (which fires
@@ -943,6 +955,10 @@ async function processSeatCheckout({
     organiserConsent,
     platformConsent,
   })
+
+  // The same tracked-link capture as the seated path above, for the same
+  // reason and at the same point: the first moment an order id exists.
+  await recordClickSignalForOrder(order_id)
 
   if (isFreeOrder) {
     // confirm_order UPDATEs the order pending->confirmed (firing the issuance

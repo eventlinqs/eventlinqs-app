@@ -7,6 +7,7 @@ import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
 import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 import { recordConfirmedOrder } from '@/lib/ledger/adapter'
 import { afterResponse } from '@/lib/after-response'
+import { recordClickSignalForOrder } from '@/lib/attribution/checkout-signal'
 
 const RegisterFreeSchema = z.object({
   event_id: z.string().uuid(),
@@ -176,6 +177,15 @@ export async function registerFreeTickets(
     console.error('Free order insert error:', orderError)
     return { error: 'Failed to create order. Please try again.' }
   }
+
+  /*
+   * WHICH TRACKED LINK, IF ANY (close-out GA3). A free registration is still an
+   * order, and GA3's invariant is one attribution record per order with no
+   * exceptions, so a free event promoted through a campaign is countable in the
+   * same way as a paid one. Nothing is billable on a free order, which the
+   * invoice view decides; the RECORD still exists.
+   */
+  await recordClickSignalForOrder(order_id)
 
   // 5. Create order_items
   const orderItems = cartTickets.flatMap(ticket =>

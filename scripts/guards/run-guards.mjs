@@ -63,6 +63,10 @@
  *   matcher-consented-and-capped  no stored match run holds somebody the consent
  *                              resolver refuses, and none holds more people than its
  *                              own cap
+ *   attribution-one-record-per-order-never-billable-when-reversed  every order
+ *                              carries exactly one stored attribution decision, an
+ *                              unattributed one says so with a reason, and nothing
+ *                              reports billable while a reversal exists for it
  *   consent-ledger-is-evidence  the consent and suppression ledgers refuse UPDATE and
  *                              DELETE at the database, an event cannot carry empty
  *                              wording or a null tenant, no audience row can exist for
@@ -848,6 +852,14 @@ const GUARDS = [
   // different question. Drilled red on both clauses with the database's own
   // protection removed, which is how a row like that would ever exist.
   'scripts/guards/matcher-consented-and-capped.mjs',
+  // Close-out GA3. The attribution table is the basis of an invoice, so every
+  // order carries exactly one stored decision, never zero and never two, an
+  // order no campaign produced says so with a reason rather than being absent,
+  // and nothing reports billable while a reversal exists for it. Drilled red on
+  // both clauses: an attribution row deleted for one lane-B order, and a
+  // reversal inserted against a billable one with the database's own recompute
+  // removed, which is how a row like that would ever exist.
+  'scripts/guards/attribution-one-record-per-order-never-billable-when-reversed.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and

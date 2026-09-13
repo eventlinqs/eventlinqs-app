@@ -2160,6 +2160,337 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_attribution: {
+        Row: {
+          billable: boolean
+          campaign_id: string | null
+          candidate_clicks: Json
+          channel_code: string | null
+          click_id: string | null
+          confidence: number
+          decision: string
+          explanation: string
+          forwarded: boolean
+          model_name: string
+          model_version: string
+          order_id: string
+          partner_id: string | null
+          reason: string | null
+          recipient_id: string | null
+          resolved_at: string
+          rung: number
+        }
+        Insert: {
+          billable?: boolean
+          campaign_id?: string | null
+          candidate_clicks?: Json
+          channel_code?: string | null
+          click_id?: string | null
+          confidence: number
+          decision: string
+          explanation: string
+          forwarded?: boolean
+          model_name: string
+          model_version: string
+          order_id: string
+          partner_id?: string | null
+          reason?: string | null
+          recipient_id?: string | null
+          resolved_at?: string
+          rung: number
+        }
+        Update: {
+          billable?: boolean
+          campaign_id?: string | null
+          candidate_clicks?: Json
+          channel_code?: string | null
+          click_id?: string | null
+          confidence?: number
+          decision?: string
+          explanation?: string
+          forwarded?: boolean
+          model_name?: string
+          model_version?: string
+          order_id?: string
+          partner_id?: string | null
+          reason?: string | null
+          recipient_id?: string | null
+          resolved_at?: string
+          rung?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_attribution_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaign"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_channel_code_fkey"
+            columns: ["channel_code"]
+            isOneToOne: false
+            referencedRelation: "marketing_channel"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_click_id_fkey"
+            columns: ["click_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_click"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_partner"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_recipient"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_attribution_config: {
+        Row: {
+          attribution_window_days: number
+          click_cookie_days: number
+          id: boolean
+          link_code_length: number
+          model_name: string
+          model_version: string
+          rung_four_confidence: number
+          updated_at: string
+        }
+        Insert: {
+          attribution_window_days: number
+          click_cookie_days: number
+          id?: boolean
+          link_code_length: number
+          model_name: string
+          model_version: string
+          rung_four_confidence: number
+          updated_at?: string
+        }
+        Update: {
+          attribution_window_days?: number
+          click_cookie_days?: number
+          id?: boolean
+          link_code_length?: number
+          model_name?: string
+          model_version?: string
+          rung_four_confidence?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketing_attribution_reversal: {
+        Row: {
+          actor_user_id: string | null
+          id: string
+          order_id: string
+          reason: string
+          reversed_amount_cents: number
+          reversed_at: string
+          source: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          id?: string
+          order_id: string
+          reason: string
+          reversed_amount_cents: number
+          reversed_at?: string
+          source: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          id?: string
+          order_id?: string
+          reason?: string
+          reversed_amount_cents?: number
+          reversed_at?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_attribution_reversal_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_campaign: {
+        Row: {
+          attribution_window_days: number
+          created_at: string
+          event_id: string
+          id: string
+          name: string
+          organisation_id: string
+          reference: string
+          state: string
+          tenant_id: string
+        }
+        Insert: {
+          attribution_window_days?: number
+          created_at?: string
+          event_id: string
+          id?: string
+          name: string
+          organisation_id: string
+          reference: string
+          state?: string
+          tenant_id: string
+        }
+        Update: {
+          attribution_window_days?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+          name?: string
+          organisation_id?: string
+          reference?: string
+          state?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_campaign_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_campaign_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_campaign_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_channel: {
+        Row: {
+          code: string
+          created_at: string
+          display_name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_name?: string
+        }
+        Relationships: []
+      }
+      marketing_click: {
+        Row: {
+          campaign_id: string
+          channel_code: string
+          cookie_was_present: boolean
+          degraded_reason: string | null
+          forwarded_suspected: boolean
+          id: string
+          link_code: string
+          occurred_at: string
+          partner_id: string | null
+          recipient_id: string | null
+          referrer_host: string | null
+          user_agent_class: string
+        }
+        Insert: {
+          campaign_id: string
+          channel_code: string
+          cookie_was_present?: boolean
+          degraded_reason?: string | null
+          forwarded_suspected?: boolean
+          id?: string
+          link_code: string
+          occurred_at?: string
+          partner_id?: string | null
+          recipient_id?: string | null
+          referrer_host?: string | null
+          user_agent_class: string
+        }
+        Update: {
+          campaign_id?: string
+          channel_code?: string
+          cookie_was_present?: boolean
+          degraded_reason?: string | null
+          forwarded_suspected?: boolean
+          id?: string
+          link_code?: string
+          occurred_at?: string
+          partner_id?: string | null
+          recipient_id?: string | null
+          referrer_host?: string | null
+          user_agent_class?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_click_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaign"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_click_channel_code_fkey"
+            columns: ["channel_code"]
+            isOneToOne: false
+            referencedRelation: "marketing_channel"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "marketing_click_link_code_fkey"
+            columns: ["link_code"]
+            isOneToOne: false
+            referencedRelation: "marketing_link"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "marketing_click_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_partner"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_click_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_recipient"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_consents: {
         Row: {
           city_slug: string | null
@@ -2216,6 +2547,68 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "cities"
             referencedColumns: ["slug"]
+          },
+        ]
+      }
+      marketing_link: {
+        Row: {
+          campaign_id: string
+          channel_code: string
+          code: string
+          created_at: string
+          is_active: boolean
+          partner_id: string | null
+          recipient_id: string | null
+          target_path: string
+        }
+        Insert: {
+          campaign_id: string
+          channel_code: string
+          code: string
+          created_at?: string
+          is_active?: boolean
+          partner_id?: string | null
+          recipient_id?: string | null
+          target_path: string
+        }
+        Update: {
+          campaign_id?: string
+          channel_code?: string
+          code?: string
+          created_at?: string
+          is_active?: boolean
+          partner_id?: string | null
+          recipient_id?: string | null
+          target_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_link_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaign"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_link_channel_code_fkey"
+            columns: ["channel_code"]
+            isOneToOne: false
+            referencedRelation: "marketing_channel"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "marketing_link_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_partner"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_link_recipient_belongs_to_campaign"
+            columns: ["recipient_id", "campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_recipient"
+            referencedColumns: ["id", "campaign_id"]
           },
         ]
       }
@@ -2397,6 +2790,141 @@ export type Database = {
           weight?: number
         }
         Relationships: []
+      }
+      marketing_order_signal: {
+        Row: {
+          campaign_id: string | null
+          captured_at: string
+          click_id: string | null
+          cookie_present: boolean
+          link_code: string | null
+          order_id: string
+          query_identifiers: Json
+        }
+        Insert: {
+          campaign_id?: string | null
+          captured_at?: string
+          click_id?: string | null
+          cookie_present?: boolean
+          link_code?: string | null
+          order_id: string
+          query_identifiers?: Json
+        }
+        Update: {
+          campaign_id?: string | null
+          captured_at?: string
+          click_id?: string | null
+          cookie_present?: boolean
+          link_code?: string | null
+          order_id?: string
+          query_identifiers?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_order_signal_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaign"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_order_signal_click_id_fkey"
+            columns: ["click_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_click"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_order_signal_link_code_fkey"
+            columns: ["link_code"]
+            isOneToOne: false
+            referencedRelation: "marketing_link"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "marketing_order_signal_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_partner: {
+        Row: {
+          contact: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          reference: string
+          revenue_share_basis: string
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          reference: string
+          revenue_share_basis: string
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          reference?: string
+          revenue_share_basis?: string
+        }
+        Relationships: []
+      }
+      marketing_recipient: {
+        Row: {
+          audience_member_id: string
+          campaign_id: string
+          channel_code: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          audience_member_id: string
+          campaign_id: string
+          channel_code: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          audience_member_id?: string
+          campaign_id?: string
+          channel_code?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_recipient_audience_member_id_fkey"
+            columns: ["audience_member_id"]
+            isOneToOne: false
+            referencedRelation: "audience_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_recipient_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaign"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_recipient_channel_code_fkey"
+            columns: ["channel_code"]
+            isOneToOne: false
+            referencedRelation: "marketing_channel"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       marketing_tenants: {
         Row: {
@@ -5767,6 +6295,91 @@ export type Database = {
       }
     }
     Views: {
+      marketing_attribution_invariant_breaches: {
+        Row: {
+          breach: string | null
+          detail: string | null
+          order_id: string | null
+          order_reference: string | null
+        }
+        Relationships: []
+      }
+      marketing_attribution_invoice_ready: {
+        Row: {
+          billable: boolean | null
+          campaign_id: string | null
+          candidate_clicks: Json | null
+          channel_code: string | null
+          click_id: string | null
+          confidence: number | null
+          decision: string | null
+          event_id: string | null
+          explanation: string | null
+          forwarded: boolean | null
+          model_name: string | null
+          model_version: string | null
+          order_id: string | null
+          order_number: string | null
+          order_status: Database["public"]["Enums"]["order_status"] | null
+          partner_id: string | null
+          reason: string | null
+          recipient_id: string | null
+          resolved_at: string | null
+          rung: number | null
+          total_cents: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_attribution_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaign"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_channel_code_fkey"
+            columns: ["channel_code"]
+            isOneToOne: false
+            referencedRelation: "marketing_channel"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_click_id_fkey"
+            columns: ["click_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_click"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_partner"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_recipient"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_match_invariant_breaches: {
         Row: {
           audience_member_id: string | null
@@ -6102,6 +6715,11 @@ export type Database = {
           installed: boolean
           name: string
         }[]
+      }
+      marketing_attribution_default_window: { Args: never; Returns: number }
+      marketing_attribution_is_billable: {
+        Args: { p_decision: string; p_order_id: string; p_rung: number }
+        Returns: boolean
       }
       materialize_seats: {
         Args: { p_event_id: string; p_seat_map_id: string }

@@ -65,8 +65,14 @@ describe('broadcast flag resolver', () => {
       // nothing about this default sends anything: the matcher produces a list
       // and no transport is reachable from it.
       marketing_matcher_enabled: true,
+      // The attribution spine's reversal condition (close-out GA3). ON, because
+      // a click that was never written cannot be recovered later and the record
+      // is the basis of an invoice, so the safe posture when the table cannot
+      // be read is to keep recording. Every tracked link keeps redirecting
+      // either way: a poster on a wall is not a feature.
+      marketing_attribution_capture_enabled: true,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(9)
+    expect(BROADCAST_FLAGS).toHaveLength(10)
   })
 
   test('DB row wins over the default in both directions', async () => {

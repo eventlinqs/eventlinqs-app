@@ -43,6 +43,9 @@ export const BROADCAST_FLAGS = [
   // Close-out GA2. Whether a new matcher run may be produced at all. The runs
   // already stored are never touched by it.
   'marketing_matcher_enabled',
+  // Close-out GA3. Whether a new click or attribution is WRITTEN. Every tracked
+  // link keeps redirecting either way: a poster on a wall is not a feature.
+  'marketing_attribution_capture_enabled',
 ] as const
 
 export type BroadcastFlag = (typeof BROADCAST_FLAGS)[number]
@@ -77,6 +80,11 @@ export const BROADCAST_FLAG_DEFAULTS: Record<BroadcastFlag, boolean> = {
   // how a consented list becomes a dead list. Nothing about this default sends
   // anything: the matcher produces a ranked list and no transport can reach it.
   marketing_matcher_enabled: true,
+  // ON. Attribution is the billing basis, and the failure mode of being off is
+  // a sale that happened and cannot be accounted for afterwards. A click that
+  // was never written cannot be recovered later, so the safe posture when the
+  // flags table cannot be read is to keep recording.
+  marketing_attribution_capture_enabled: true,
 }
 
 /**
@@ -117,6 +125,8 @@ export const BROADCAST_FLAG_DECISIONS: Record<BroadcastFlag, string> = {
     'lawal 2026-09-13: ON. The one marketing question at checkout and every write to the audience asset. Set it false and the question disappears from the checkout and no audience row is created or enriched, at once and with no deploy. Every existing row and every consent record is left exactly as it is. It is deliberately powerless in one direction: a withdrawal still removes its audience row while the switch is off, because a feature flag may not keep somebody in a marketing audience they asked to leave.',
   marketing_matcher_enabled:
     'lawal 2026-09-13: ON. Whether a new matcher run may be produced. Set it false and no new run starts, at once and with no deploy, and the admin view becomes a read of the runs already stored: every run, score and breakdown row is left exactly as it is, because a stored run is the record of a decision already taken. It gates producing a list and nothing else; no send path exists yet for it to gate.',
+  marketing_attribution_capture_enabled:
+    'lawal 2026-09-13: ON. Whether a new click row, order signal or attribution record is WRITTEN. Set it false and nothing new is recorded, at once and with no deploy, while every short link keeps redirecting to its target and every click, attribution and reversal already stored stays intact and readable: a link printed on a poster is not a feature and must not stop working because a switch moved. Orders placed while it is off still get their one attribution record, with the decision none and the reason naming the switch, because an order with no record at all is the one thing this item exists to prevent.',
 }
 
 // Minimal structural type so both the service-role admin client and the

@@ -9,6 +9,7 @@ import { createPlatformCharge } from '@/lib/payments/create-platform-charge'
 import { ChargePreconditionError } from '@/lib/payments/application-fee'
 import { recordOrganiserMarketingConsent } from '@/lib/consent/record'
 import { recordCheckoutMarketingAnswer } from '@/lib/consent/checkout-answer'
+import { recordClickSignalForOrder } from '@/lib/attribution/checkout-signal'
 import { assertSquadAccess, type SquadAccessRow } from '@/lib/squads/access'
 import type { FeePassType } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
@@ -183,6 +184,14 @@ export async function createSquadMemberPaymentIntent(
     console.error('[squad-checkout] order insert error:', orderError)
     return { error: 'Failed to create order. Please try again.' }
   }
+
+  /*
+   * WHICH TRACKED LINK, IF ANY (close-out GA3). Here for the same reason it is
+   * in the ordinary checkout: this is the first moment an order id exists, and
+   * GA3's invariant is one attribution record per order, never zero, which
+   * includes the orders a squad creates. Never throws, never blocks.
+   */
+  await recordClickSignalForOrder(order_id)
 
   // Create order item (1 ticket)
   const { error: itemError } = await adminClient

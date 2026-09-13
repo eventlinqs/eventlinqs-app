@@ -1490,9 +1490,22 @@ const ROOT = join(HERE, '..', '..')
  * scored, the cap and the contiguous ranks, the tie break that makes a run
  * reproducible, and the proof that nothing in src/lib/matching can reach a
  * transport.
+ *
+ * 2026-09-13 (lane B, close-out GA3): raised 394/4934 -> 395/4992, MEASURED.
+ * tests/unit/growth/attribution-spine holds the billing basis to what it can
+ * defend: every rung of the ladder in both directions and at its boundaries, a
+ * click in the future of its own order, the forwarded link that credits the
+ * campaign and not the recipient, one click backing one sale at the identity
+ * rung, confidence below one on rung four and nowhere else, the two triggers
+ * that make billable impossible for an application to type, the reversal rule
+ * that is deliberately NOT the gross-sales rule, and a scan proving no channel
+ * code, window length, route or fee is a literal in anything the item adds.
+ * Three counted here are not new tests but existing ones this item had to
+ * teach: the flag defaults gained a tenth switch, the indexing policy gained
+ * /admin/attribution, and the types coverage gained the invariant view.
  */
-const MIN_FILES = 394
-const MIN_TESTS = 4934
+const MIN_FILES = 395
+const MIN_TESTS = 4992
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
