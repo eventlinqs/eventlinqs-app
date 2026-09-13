@@ -6,6 +6,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import {
   chooseChannel,
   buildAlertPayload,
+  isQuietNow,
   DEFAULT_PREFS,
   type NotificationType,
   type NotificationPrefs,
@@ -27,11 +28,20 @@ export type DispatchInput = {
     url: string
     recipientEmail?: string | null
   }
+  /**
+   * The instant the run is judged against, so one cron pass uses ONE clock for
+   * every recipient rather than drifting across an hour boundary mid-batch, and
+   * so the quiet-hours decision can be driven in a test.
+   */
+  now?: Date
 }
 
 export type DispatchResult =
   | { status: 'sent'; channel: 'push' | 'email' }
-  | { status: 'skipped'; reason: 'duplicate' | 'opted_out' | 'no_email' | 'send_failed' }
+  | {
+      status: 'skipped'
+      reason: 'duplicate' | 'opted_out' | 'no_email' | 'send_failed' | 'quiet_hours'
+    }
 
 async function loadPrefs(admin: Admin, userId: string): Promise<NotificationPrefs> {
   const { data } = await admin
@@ -51,7 +61,7 @@ async function loadPrefs(admin: Admin, userId: string): Promise<NotificationPref
  * prune any dead push endpoints, and record the outcome for instrumentation.
  */
 export async function dispatchAlert(input: DispatchInput): Promise<DispatchResult> {
-  const { admin, userId, eventId, type, ctx } = input
+  const { admin, userId, eventId, type, ctx, now = new Date() } = input
 
   // Dedupe: one alert per user per event per type, ever.
   const { data: existing } = await admin
@@ -64,6 +74,21 @@ export async function dispatchAlert(input: DispatchInput): Promise<DispatchResul
   if (existing) return { status: 'skipped', reason: 'duplicate' }
 
   const prefs = await loadPrefs(admin, userId)
+
+  /*
+   * QUIET HOURS, HELD RATHER THAN DROPPED. /account/notifications promises the
+   * user "nothing is sent inside your quiet hours", and until 13 September 2026
+   * nothing honoured it: the window was collected, validated, stored and read,
+   * and no code ever consulted it.
+   *
+   * Returning here WITHOUT writing the notifications row is the whole mechanism.
+   * That row is the dedupe key, so leaving it unwritten means the next run of
+   * this cron - a quarter of an hour later - considers the same alert again and
+   * delivers it the moment the window ends. Suppression would need a row and
+   * would silently destroy the alert; this defers it. Nothing else in this
+   * module may be allowed to write that row on a quiet-hours skip.
+   */
+  if (isQuietNow(prefs, now)) return { status: 'skipped', reason: 'quiet_hours' }
 
   const { data: subs } = await admin
     .from('push_subscriptions')

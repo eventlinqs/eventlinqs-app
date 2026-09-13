@@ -10,6 +10,7 @@ import {
   bodyFor,
   digestBodyFor,
   digestSubjectFor,
+  holdForDigestPatch,
   platformDayStart,
   pushPayloadFor,
   routeFor,
@@ -212,7 +213,10 @@ export async function dispatchPendingPlatformNotifications(options: {
     const already = sentTodayByKind.get(row.kind) ?? 0
 
     if (routeFor(row.kind, already) === 'digest') {
-      await recordOutcome(admin, row.id, { delivery_state: 'held_for_digest' })
+      // holdForDigestPatch, never a literal: the row hands the digest a FRESH
+      // attempt count, because the attempts it carries were spent on a
+      // different message. See the function for what inheriting them cost.
+      await recordOutcome(admin, row.id, holdForDigestPatch(row))
       summary.held += 1
       continue
     }
@@ -312,6 +316,14 @@ export type DigestSummary = {
  * and would retry for ever while sales kept arriving. Nothing is stuck by that
  * choice, because reaching the ceiling moves every row in the batch out of
  * `held_for_digest` in the same write.
+ *
+ * THAT RULE IS ONLY SOUND BECAUSE EVERY ATTEMPT ON A HELD ROW IS A DIGEST
+ * ATTEMPT (13 September 2026). It was not: the hold used to carry the row's
+ * individual-email attempts across, so a batch could arrive already at the bound
+ * and give up on its first refusal - the same loss this function was fixed to
+ * prevent, through another door. The counter is now reset where the row is held,
+ * by holdForDigestPatch in ./platform-policy, and `attempts` on a
+ * `held_for_digest` row therefore means digest attempts and nothing else.
  */
 export async function sendHeldDigest(options: {
   admin: Admin

@@ -2345,6 +2345,96 @@ const DRILLS = [
     replace: "const DECLARATION = /^(?:export\\s+)?(?:async\\s+)?function\\s+(sendHeldDigest)/",
     expect: 'fewer than the 2 this guard must judge',
   },
+  /*
+   * digest-attempts-are-the-digests-own (close-out UX3.2 and UX3.3, 13 September
+   * 2026), two drills, one per clause, because either clause alone is
+   * defeatable. The first restores the hold EXACTLY as it shipped, a bare state
+   * literal, which is how a row carried its individual-email attempts into the
+   * digest. The second leaves the caller alone and breaks the decision itself,
+   * returning the spent count from the pure function: a guard that only read the
+   * call site would pass a function that had stopped resetting anything.
+   */
+  {
+    name: 'the hold goes back to writing the state literal, so the digest inherits the attempts',
+    guard: `${GUARDS}/digest-attempts-are-the-digests-own.mjs`,
+    file: 'src/lib/notifications/platform-send.ts',
+    find: '      await recordOutcome(admin, row.id, holdForDigestPatch(row))',
+    replace: "      await recordOutcome(admin, row.id, { delivery_state: 'held_for_digest' })",
+    expect: 'writes the held state as a literal',
+  },
+  {
+    name: 'the hold keeps the attempts it was written to reset',
+    guard: `${GUARDS}/digest-attempts-are-the-digests-own.mjs`,
+    file: 'src/lib/notifications/platform-policy.ts',
+    find: "    delivery_state: 'held_for_digest',\n    attempts: 0,",
+    replace: "    delivery_state: 'held_for_digest',\n    attempts: spent as 0,",
+    expect: 'enters the digest queue carrying',
+  },
+  /*
+   * quiet-hours-are-honoured (13 September 2026), two drills, one per clause.
+   * The first restores the shipped state exactly: the dispatcher reads the
+   * window and never asks about it. The second leaves the caller alone and
+   * breaks the decision, reading the PLATFORM clock instead of the user's, which
+   * is the mistake a reader of this code is most likely to make next and which
+   * only a sweep across zones and transitions can see.
+   */
+  {
+    name: 'the dispatcher goes back to reading the quiet-hours window and never asking',
+    guard: `${GUARDS}/quiet-hours-are-honoured.mjs`,
+    file: 'src/lib/notifications/dispatch.ts',
+    find: "  if (isQuietNow(prefs, now)) return { status: 'skipped', reason: 'quiet_hours' }",
+    replace: "  void isQuietNow",
+    expect: 'never consults isQuietNow()',
+  },
+  {
+    name: 'the quiet-hours decision reads the platform clock instead of the user one',
+    guard: `${GUARDS}/quiet-hours-are-honoured.mjs`,
+    file: 'src/lib/notifications/policy.ts',
+    find: '  return isWithinQuietHours(prefs, localHourFor(prefs.timezone, now))',
+    replace: '  return isWithinQuietHours(prefs, now.getUTCHours())',
+    expect: 'window answered',
+  },
+  /*
+   * the-daily-state-cannot-go-silent (close-out UX4.1 and UX4.2, 13 September
+   * 2026), two drills. The first restores the give-up the composer shipped with:
+   * a failed read ends the whole report instead of becoming a named blind spot.
+   * The second silences the blind stall check, which is the more dangerous half,
+   * because a check that goes quiet when it cannot see looks exactly like one
+   * that looked and found everything healthy.
+   */
+  {
+    name: 'a failed read ends the daily report again instead of being named on it',
+    guard: `${GUARDS}/the-daily-state-cannot-go-silent.mjs`,
+    file: 'scripts/ops/state-report.mjs',
+    find: '      const why = err instanceof Error ? err.message : String(err)\n      unreadable.push({ what, why })\n      return fallback(why)',
+    replace: '      throw err',
+    expect: 'no message was produced at all',
+  },
+  {
+    name: 'the stall check goes quiet again when it cannot see the repository',
+    guard: `${GUARDS}/the-daily-state-cannot-go-silent.mjs`,
+    file: 'scripts/lib/state-report.mjs',
+    find: '  if (unreadable) {\n    return {\n      stalled: false,\n      blind: true,',
+    replace: '  if (false) {\n    return {\n      stalled: false,\n      blind: true,',
+    expect: 'not BLIND and not alerting',
+  },
+  /*
+   * The third, and the one the driven render at 390 found after the guard was
+   * already green: a section that answers a FAILED read with an ABSENCE. "No
+   * push could be found" sends the reader hunting a stalled build when the truth
+   * is that nobody could see the repository.
+   */
+  {
+    name: 'the last-push section answers a failed read with "no push could be found" again',
+    guard: `${GUARDS}/the-daily-state-cannot-go-silent.mjs`,
+    file: 'scripts/lib/state-report.mjs',
+    find:
+      '      lastPushUnread\n' +
+      '        ? `Could not be read: ${lastPushUnread}. Whether anything has been pushed is therefore unknown, and this is NOT a report that nothing has.`\n' +
+      '        : state.lastPush?.when',
+    replace: '      state.lastPush?.when',
+    expect: 'No push to a working branch could be found',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

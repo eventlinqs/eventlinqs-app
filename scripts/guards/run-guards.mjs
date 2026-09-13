@@ -269,6 +269,26 @@
  *                              escalates or gives up on ONE refusal the way the digest
  *                              did, throwing away up to two hundred orders in a single
  *                              unrecoverable row (close-out UX3.2, 13 September 2026)
+ *   digest-attempts-are-the-digests-own  a row held for the digest hands it a FRESH
+ *                              attempt count, because the attempts it spent as an
+ *                              individual email belong to a different message. Inheriting
+ *                              them let a batch arrive at the bound and give up on its
+ *                              first refusal, which is the line above defeated through
+ *                              another door (close-out UX3.2 and UX3.3, 13 September 2026)
+ *   the-daily-state-cannot-go-silent  the once-a-day report is composed and SENT even
+ *                              when every read behind it fails, and it names what it
+ *                              could not see. It used to return null with no token and
+ *                              exit 2 on any throw, sending nothing, which is the one
+ *                              signal the owner is told means the build is dead. The
+ *                              blind stall check speaks too (close-out UX4.1 and UX4.2,
+ *                              13 September 2026)
+ *   quiet-hours-are-honoured  the quiet hours the account screen collects are read on
+ *                              the USER'S clock before a send, and every path that reads
+ *                              the window either acts on it or says in the guard why it
+ *                              cannot. The window was collected, validated, stored and
+ *                              read on every send, and nothing ever consulted it: a user
+ *                              who asked for silence from 10pm was pushed at 3am
+ *                              (13 September 2026)
  *   cron-routes-scheduled    every /api/cron route has a vercel.json entry, and every
  *                              entry has a route. /api/cron/queue-admit documented itself
  *                              as running every minute and had no schedule at all, so the
@@ -1224,6 +1244,39 @@ const GUARDS = [
   // whether it counts its attempts first. Drilled red by taking the comparison
   // back out of the digest.
   'scripts/guards/notification-paths-retry-before-they-give-up.mjs',
+
+  // Close-out UX3.2 and UX3.3, 13 September 2026, found the same day as the line
+  // above and against the one rule it left standing. The digest counts a batch by
+  // its HIGHEST attempts, which is right only while every attempt on a held row
+  // was a DIGEST attempt. The dispatcher held rows with their individual-email
+  // attempts intact, so a batch could arrive already at the bound and give up on
+  // its first refusal: the same unrecoverable loss, through another door. This
+  // runs the real hold across a sweep of attempt counts and also proves the
+  // dispatcher calls it, because a perfect pure function nobody calls is worth
+  // nothing. Drilled red both ways.
+  'scripts/guards/digest-attempts-are-the-digests-own.mjs',
+
+  // 13 September 2026. /account/notifications promises "nothing arrives inside
+  // your quiet hours". The window was collected by that screen, validated by the
+  // API, stored on notification_prefs and READ by the dispatcher on every send,
+  // and no code anywhere consulted it: isWithinQuietHours was exhaustively unit
+  // tested and called only by its own test file. A control that does nothing is a
+  // defect by name, and this one made the screen say something untrue. The guard
+  // runs the real decision across every hour of three days including both
+  // daylight-saving transitions, and proves every reader of the window either
+  // honours it or carries a written reason it cannot. Drilled red both ways.
+  'scripts/guards/quiet-hours-are-honoured.mjs',
+
+  // Close-out UX4.1 and UX4.2, 13 September 2026. The daily state says inside
+  // its own body "if it does not arrive, that is itself the alert". The reporter
+  // then gave up in the two cases that matter: no GitHub token returned null and
+  // sent nothing, and any read that threw exited 2 and sent nothing. A broken
+  // reporter therefore produced exactly the signal that means the build machine
+  // is dead. Three collectors also answered a failed read with an empty list, so
+  // a morning when the commits API was down reported a quiet day. This runs the
+  // REAL composer with readers that fail and asserts a message still comes out
+  // naming every blind spot, and that a blind stall check speaks. Drilled red.
+  'scripts/guards/the-daily-state-cannot-go-silent.mjs',
 
   // 11 September 2026. Five migrations (20260910000001 to 20260911000001) were
   // committed without regenerating src/types/database.ts and every gate stayed

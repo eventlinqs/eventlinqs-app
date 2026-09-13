@@ -109,6 +109,10 @@ export async function GET(request: NextRequest) {
 
     let sent = 0
     let dispatches = 0
+    // Held for a recipient's quiet hours. Counted and reported, because a run
+    // that deferred four hundred alerts and a run that had nothing to do must
+    // never read the same from the outside.
+    let deferred = 0
     outer: for (const event of events) {
       if (!event.organisation_id) continue
       const followers = followersByOrg.get(event.organisation_id) ?? []
@@ -122,6 +126,9 @@ export async function GET(request: NextRequest) {
           userId,
           eventId: event.id,
           type: 'just_announced',
+          // ONE clock for the whole pass, so a long run cannot judge the first
+          // follower against 9:59 pm and the last against 10:01 pm.
+          now,
           ctx: {
             eventTitle: event.title,
             eventCity: event.venue_city,
@@ -130,6 +137,7 @@ export async function GET(request: NextRequest) {
           },
         })
         if (result.status === 'sent') sent += 1
+        if (result.status === 'skipped' && result.reason === 'quiet_hours') deferred += 1
       }
     }
 
@@ -139,6 +147,7 @@ export async function GET(request: NextRequest) {
       organisations: orgIds.length,
       dispatches,
       sent,
+      deferred,
       timestamp: now.toISOString(),
     })
   } catch (err) {
