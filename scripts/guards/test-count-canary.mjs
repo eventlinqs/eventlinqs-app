@@ -1456,9 +1456,16 @@ const ROOT = join(HERE, '..', '..')
  * than a private mailbox, the five objections name no other platform and
  * restate no configured figure, and every section the page carried before the
  * item is still named in it.
+ *
+ * 2026-09-13 (lane B, close-out AN1, WORK IN PROGRESS): raised 390/4769 ->
+ * 391/4828, MEASURED. tests/unit/growth/measurement-and-consent holds the
+ * arrival capture, the signup attribution and the consent gate: no measurement
+ * script is emitted before the cookie is read, a decision is a record of what
+ * was on screen rather than a boolean, and the four providers named in the
+ * component are the four the provider table knows.
  */
-const MIN_FILES = 390
-const MIN_TESTS = 4769
+const MIN_FILES = 391
+const MIN_TESTS = 4828
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

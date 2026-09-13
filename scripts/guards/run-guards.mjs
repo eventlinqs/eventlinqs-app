@@ -50,6 +50,8 @@
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
  *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
  *   one-fee-copy               no customer-facing surface names a second fee
+ *   no-analytics-before-consent  no measurement or advertising host is reachable
+ *                              without consent, and the default is refusal
  *   organiser-page-is-a-read   the live proof block on /organisers is a read from the
  *                              catalogue, the surface is named inside the copy gate, and
  *                              every signup button carries the source AN1 counts
@@ -785,6 +787,18 @@ const GUARDS = [
   // every signup button to carry the source AN1 counts. Drilled red by pasting
   // an event slug into the template.
   'scripts/guards/organiser-page-is-a-read.mjs',
+  // Close-out AN1 (13 September 2026). The platform now loads four third-party
+  // measurement scripts, three of which can recognise a person on other sites,
+  // and the rule is that none is requested until somebody says yes. The failure
+  // is silent in the worst direction: the page still works, the data still
+  // flows, and the tracker loads for exactly the person who took the trouble to
+  // refuse. This holds every provider host to the one gate, requires that gate
+  // to ask BOTH questions (the category and the identifier), and requires the
+  // default to be refusal on every path the decoder can take. The network half,
+  // loading three pages with no consent and watching every request, is the
+  // driven proof; a guard that needs a running server cannot run on the build
+  // host and would be dropped from the chain. Drilled red.
+  'scripts/guards/no-analytics-before-consent.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and

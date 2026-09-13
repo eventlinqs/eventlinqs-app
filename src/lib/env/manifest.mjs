@@ -147,6 +147,36 @@ export const SHAPES = {
     // endpoint and this platform runs two.
     listSeparator: ',',
   },
+  posthogKey: {
+    // PostHog project API keys are phc_ followed by the body. Public by design:
+    // it is in every page that loads the snippet and can only write events.
+    pattern: '^phc_[A-Za-z0-9]{20,}$',
+    minLength: 24,
+    describe: 'phc_ followed by the project key body',
+  },
+  ga4MeasurementId: {
+    pattern: '^G-[A-Z0-9]{6,20}$',
+    minLength: 8,
+    describe: 'G- followed by the measurement id',
+  },
+  googleAdsId: {
+    pattern: '^AW-[0-9]{8,15}$',
+    minLength: 11,
+    describe: 'AW- followed by the conversion id',
+  },
+  metaPixelId: {
+    pattern: '^[0-9]{10,20}$',
+    minLength: 10,
+    describe: 'the numeric Meta pixel id',
+  },
+  googleSiteVerification: {
+    // Google mints a 43-character token for the meta-tag method. Bounded rather
+    // than pinned to 43 exactly, because the format is Google's to change and a
+    // guard that refuses a valid token is a guard that gets switched off.
+    pattern: '^[A-Za-z0-9_-]{20,64}$',
+    minLength: 20,
+    describe: 'the token from the Search Console HTML tag method, without the meta wrapper',
+  },
   resendKey: {
     pattern: '^re_[A-Za-z0-9_-]{16,}$',
     minLength: 20,
@@ -928,6 +958,96 @@ export const ENV_MANIFEST = [
     paymentCritical: false,
     githubActions: false,
     publicVar: true,
+  },
+  /*
+   * MEASUREMENT AND ADVERTISING (close-out AN1). Every one of these is
+   * OPTIONAL on every environment, and that is the design rather than a
+   * concession: a provider with no identifier loads nothing at all, which is
+   * the same posture as a visitor refusing consent. So a tree that has never
+   * been given any of them is a tree that measures nothing and is correct.
+   *
+   * None is sensitive. A PostHog project key, a GA4 measurement id, a Google
+   * Ads conversion id and a Meta pixel id are all published in the page that
+   * loads them, by design, and can only write events into their own project.
+   * Marking them sensitive would be theatre and would stop them being read
+   * where they are needed, which is the browser.
+   *
+   * Each one is the owner's to mint: see FOUNDER STEPS in close-out AN1.
+   */
+  {
+    name: 'NEXT_PUBLIC_POSTHOG_KEY',
+    describe: 'PostHog project key for the organiser funnel, loaded only after consent',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the funnel is measurement: with no key nothing loads, which is the same as a visitor refusing consent, and a build with no PostHog project must still succeed',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.posthogKey,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'NEXT_PUBLIC_GA4_MEASUREMENT_ID',
+    describe: 'Google Analytics 4 measurement id for advertising attribution, loaded only after consent',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'advertising attribution is off until the owner mints a property, and a build without one must still succeed',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.ga4MeasurementId,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'NEXT_PUBLIC_GOOGLE_ADS_ID',
+    describe: 'Google Ads conversion id, loaded only after consent',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'there is no advertising account until the owner creates one, and paid comes last by the growth plan',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.googleAdsId,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'NEXT_PUBLIC_META_PIXEL_ID',
+    describe: 'Meta pixel id, loaded only after consent',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'same as the Google Ads id: no account, no tag, and a build without one must still succeed',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.metaPixelId,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'GOOGLE_SITE_VERIFICATION',
+    describe: 'Google Search Console verification token, rendered as a meta tag when present',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the token does not exist until Google mints it in the owner account, and an EMPTY meta tag is worse than none because it looks verified and fails',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.googleSiteVerification,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: false,
   },
   {
     name: 'SENTRY_ORG',

@@ -3012,6 +3012,12 @@ export type Database = {
           phone: string | null
           preferred_city: Json | null
           role: Database["public"]["Enums"]["user_role"]
+          signup_heard_from: string | null
+          signup_heard_from_other: string | null
+          signup_landing_path: string | null
+          signup_referrer_host: string | null
+          signup_src: string | null
+          signup_utm: Json | null
           updated_at: string
         }
         Insert: {
@@ -3027,6 +3033,12 @@ export type Database = {
           phone?: string | null
           preferred_city?: Json | null
           role?: Database["public"]["Enums"]["user_role"]
+          signup_heard_from?: string | null
+          signup_heard_from_other?: string | null
+          signup_landing_path?: string | null
+          signup_referrer_host?: string | null
+          signup_src?: string | null
+          signup_utm?: Json | null
           updated_at?: string
         }
         Update: {
@@ -3042,6 +3054,12 @@ export type Database = {
           phone?: string | null
           preferred_city?: Json | null
           role?: Database["public"]["Enums"]["user_role"]
+          signup_heard_from?: string | null
+          signup_heard_from_other?: string | null
+          signup_landing_path?: string | null
+          signup_referrer_host?: string | null
+          signup_src?: string | null
+          signup_utm?: Json | null
           updated_at?: string
         }
         Relationships: []

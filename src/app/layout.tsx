@@ -9,6 +9,11 @@ import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
 import { ReferralCapture } from '@/components/growth/referral-capture'
+import { ArrivalCapture } from '@/components/growth/arrival-capture'
+import { ConsentProvider } from '@/components/analytics/consent-provider'
+import { ConsentBanner } from '@/components/analytics/consent-banner'
+import { GatedAnalytics } from '@/components/analytics/gated-analytics'
+import { FunnelLanded } from '@/components/analytics/funnel-landed'
 import { getSiteUrl } from '@/lib/site-url'
 import { BRAND_STRAPLINE, BRAND_STRAPLINE_SHORT, BRAND_TAGLINE } from '@/lib/brand/positioning'
 
@@ -100,6 +105,20 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true },
   },
+  /*
+   * GOOGLE SEARCH CONSOLE (close-out AN1 step 4). Indexing (C19) is a claim
+   * until Search Console is reading it back, and the property cannot be
+   * verified until Google can see the token on the live site.
+   *
+   * The token comes from the environment because it does not exist until Google
+   * mints it in the owner's own account, and it is rendered ONLY when it is
+   * present: an empty meta tag is not a neutral absence, it is a verification
+   * that will fail with a tag that looks correct. The value is public by design
+   * (it is a meta tag on every page) and proves nothing on its own.
+   */
+  ...(process.env.GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
+    : {}),
   openGraph: {
     type: 'website',
     title: `EventLinqs | ${BRAND_STRAPLINE_SHORT}`,
@@ -215,6 +234,25 @@ export default function RootLayout({
           {/* First-touch attribution capture (acquisition loop). Renders null
            *  and runs only in a post-paint effect, so it never costs LCP. */}
           <ReferralCapture />
+          {/* HOW THIS ACCOUNT ARRIVED (close-out AN1). A sibling of the
+           *  referral capture above rather than part of it: that one answers
+           *  "who referred this person", this one answers "which surface
+           *  brought them", and they are read by different code at different
+           *  moments. Renders null, post-paint, nothing identifying. */}
+          <ArrivalCapture />
+          {/* MEASUREMENT, AND THE ONLY WAY IT LOADS (close-out AN1).
+           *  The provider holds the decision, the banner takes it, and the
+           *  gate emits a third-party script only when the person agreed AND
+           *  the owner configured that provider. Nothing here renders anything
+           *  visible until a visitor who has never answered arrives, and
+           *  nothing here requests anything at all before that. Plausible
+           *  above is outside this gate on purpose: it is cookieless and
+           *  stores nothing on the device (see lib/analytics/providers.ts). */}
+          <ConsentProvider>
+            <GatedAnalytics />
+            <FunnelLanded />
+            <ConsentBanner />
+          </ConsentProvider>
         </HeroPresenceProvider>
       </body>
     </html>

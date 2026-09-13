@@ -299,6 +299,18 @@ export default function PrivacyPolicyPage() {
           reply. We do not send payment data, and the content is not used to train
           external models.
         </li>
+        <li>
+          <strong>PostHog, only if you agree:</strong> product analytics. It records
+          which steps of a form people reach, so we can see where the platform is
+          failing them. Nothing is loaded and nothing is sent until you accept.
+        </li>
+        <li>
+          <strong>Google Analytics 4, Google Ads and Meta, only if you agree:</strong>
+          advertising measurement. These tell us which of our own adverts brought an
+          organiser to the platform, and they are the ones capable of recognising you
+          on other sites, which is why they are a separate choice and are off until
+          you make it. Nothing is loaded and nothing is sent until you accept.
+        </li>
       </ul>
       <p>
         We may also disclose personal information to our professional advisers, to a
@@ -368,8 +380,19 @@ export default function PrivacyPolicyPage() {
         checkout, may stop working.
       </p>
       <p>
-        Full detail on the specific cookies we set is in our{' '}
-        <a href="/legal/cookies">Cookie Policy</a>.
+        Our own traffic measurement is cookieless and stores nothing on your
+        device. Two further kinds of measurement are loaded only if you agree
+        when we ask: product analytics (PostHog), which show us where people
+        give up on a form, and advertising measurement (Google Analytics 4,
+        Google Ads and the Meta pixel), which tells us which of our own adverts
+        brought an organiser here. If you say no, none of them is requested at
+        all and nothing is stored. Your answer is remembered so we do not keep
+        asking, and clearing the <code>el_consent</code> cookie brings the
+        question back.
+      </p>
+      <p>
+        Full detail on the specific cookies we set, and on each of those
+        providers, is in our <a href="/legal/cookies">Cookie Policy</a>.
       </p>
 
       <h2 id="security">How We Protect It</h2>

@@ -11,6 +11,9 @@ import { REF_COOKIE, REF_SOURCE_COOKIE, REF_EVENT_COOKIE } from '@/lib/growth/re
 import { DIGEST_CONSENT_WORDING } from '@/lib/consent/wording'
 import { authMessage, signupFieldFor, type AuthFailureClass } from '@/lib/auth/auth-errors'
 import { reportClientError } from '@/lib/observability/client-error-report'
+import { HEARD_FROM_CHOICES, HEARD_FROM_OTHER_MAX, HEARD_FROM_QUESTION } from '@/lib/growth/heard-from'
+import { ARRIVAL_COOKIE } from '@/lib/growth/arrival'
+import { trackFunnel } from '@/lib/analytics/funnel'
 
 function readCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined
@@ -48,6 +51,14 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
   // Unticked by default (Spam Act 2003): express opt-in only, never a
   // signup condition.
   const [digestOptIn, setDigestOptIn] = useState(false)
+  // Close-out AN1: the one question, asked of organisers only, and never a
+  // condition of signing up. Empty is a real answer and is stored as one.
+  // Fired once, the first time somebody actually types (close-out AN1). Mount
+  // would count every visitor who scrolled past the form as having started it,
+  // which turns the biggest drop in the funnel into a flat line.
+  const [funnelStarted, setFunnelStarted] = useState(false)
+  const [heardFrom, setHeardFrom] = useState('')
+  const [heardFromOther, setHeardFromOther] = useState('')
   const [loading, setLoading] = useState(false)
   // No native submit before the handler exists. See use-hydrated.ts.
   const hydrated = useHydrated()
@@ -115,6 +126,14 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
           ref: readCookie(REF_COOKIE),
           refSource: readCookie(REF_SOURCE_COOKIE),
           refEvent: readCookie(REF_EVENT_COOKIE),
+          // How this account ARRIVED, from the first-touch cookie written on
+          // whatever page they landed on first (close-out AN1). Forwarded
+          // rather than read server-side from the request, for the same reason
+          // the referral fields above are: the cookie is not httpOnly and the
+          // form is the one place that knows the submit is happening.
+          arrival: readCookie(ARRIVAL_COOKIE),
+          heardFrom: heardFrom || undefined,
+          heardFromOther: heardFromOther || undefined,
           digestOptIn,
         }),
       })
@@ -139,6 +158,10 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
         setLoading(false)
         return
       }
+
+      // The account exists. This is one of the two steps an advertising tool is
+      // told about, because it is the one a browser can honestly witness.
+      trackFunnel('signup_completed', { role })
 
       const nextParam = isOrganiser ? '&next=/dashboard' : ''
       router.push(`/verify-email-sent?email=${encodeURIComponent(email)}${nextParam}`)
@@ -242,6 +265,10 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
             onChange={(e) => {
               setFullName(e.target.value)
               clearErrorFor('fullName')
+              if (!funnelStarted) {
+                setFunnelStarted(true)
+                trackFunnel('signup_started', { role })
+              }
             }}
             required
             aria-invalid={Boolean(fieldError('fullName'))}
@@ -322,6 +349,47 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
             </p>
           )}
         </div>
+
+        {/* THE ONE QUESTION (close-out AN1). Organisers only, because it is
+            the supply side the answer is spent on, and OPTIONAL: a required
+            question buys a worse number, since the people who will not answer
+            it answer it falsely instead. No asterisk, and the submit button
+            never reads it. */}
+        {isOrganiser && (
+          <div>
+            <label htmlFor="heardFrom" className="mb-1.5 block text-sm font-medium text-ink-700">
+              {HEARD_FROM_QUESTION}
+              <span className="ml-1.5 text-xs font-normal text-ink-400">Optional</span>
+            </label>
+            <select
+              id="heardFrom"
+              name="heardFrom"
+              value={heardFrom}
+              onChange={e => setHeardFrom(e.target.value)}
+              className="h-11 w-full rounded-lg border border-ink-200 bg-white px-3 text-sm text-ink-900 focus:border-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-400"
+            >
+              <option value="">Prefer not to say</option>
+              {HEARD_FROM_CHOICES.map(choice => (
+                <option key={choice.value} value={choice.value}>
+                  {choice.label}
+                </option>
+              ))}
+            </select>
+            {heardFrom === 'other' && (
+              <input
+                id="heardFromOther"
+                name="heardFromOther"
+                type="text"
+                value={heardFromOther}
+                onChange={e => setHeardFromOther(e.target.value)}
+                maxLength={HEARD_FROM_OTHER_MAX}
+                placeholder="Where did you hear about us?"
+                aria-label="Where did you hear about us?"
+                className="mt-2 h-11 w-full rounded-lg border border-ink-200 bg-white px-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-400"
+              />
+            )}
+          </div>
+        )}
 
         <label className="flex min-h-[44px] cursor-pointer items-start gap-3 py-1">
           <input
