@@ -184,6 +184,20 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     purpose: 'platform_operations',
     reason: 'Alerts the platform when a connected account diverges from its recorded state.',
   },
+  {
+    file: 'src/lib/campaigner/sink.ts',
+    kind: 'transport',
+    purpose: '',
+    reason:
+      'The campaigner transport adapter (close-out GA4). It delivers whatever it is handed and decides nothing: in test mode it refuses every address outside the test domain, in hold mode it is never created, and in live mode it calls the Resend transport. The consent decision is taken by src/lib/campaigner/run.ts before anything reaches here.',
+  },
+  {
+    file: 'src/lib/campaigner/run.ts',
+    kind: 'marketing',
+    purpose: 'facilitated_event_marketing',
+    reason:
+      'The campaign pacing runner (close-out GA4). It is the marketing path: it asks the resolver about every recipient at SEND time, not only at admission to the allowlist, so a withdrawal taken five minutes ago takes effect on this run rather than the next campaign.',
+  },
 ] as const
 
 /** Every path that must call the resolver in its own file. */

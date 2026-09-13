@@ -1503,9 +1503,22 @@ const ROOT = join(HERE, '..', '..')
  * Three counted here are not new tests but existing ones this item had to
  * teach: the flag defaults gained a tenth switch, the indexing policy gained
  * /admin/attribution, and the types coverage gained the invariant view.
+ *
+ * 2026-09-14 (lane B, close-out GA4): raised 395/4992 -> 396/5037, MEASURED.
+ * tests/unit/growth/campaigner holds the two rules that can end this business
+ * to arithmetic and to constraints: every pacing boundary in both directions
+ * including the inclusive ends and a floored day count, the SMS step refused on
+ * a consent scoped to email and taken on one scoped to both, a render that
+ * refuses by name without a verified sender identity or a working unsubscribe,
+ * an SMS carrying an instruction rather than a link, the organiser own words
+ * placed verbatim and escaped in the html, the segment fingerprint that changes
+ * when the list, the size or the channel does, and a scan proving no template
+ * key, day count, cap or route is a literal in anything the item adds. The
+ * database half is not here by design: GA4 requires it proven by removing every
+ * application check and watching the constraint refuse anyway, which is driven.
  */
-const MIN_FILES = 395
-const MIN_TESTS = 4992
+const MIN_FILES = 396
+const MIN_TESTS = 5037
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

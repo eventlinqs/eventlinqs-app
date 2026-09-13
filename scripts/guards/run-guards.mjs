@@ -67,6 +67,11 @@
  *                              carries exactly one stored attribution decision, an
  *                              unattributed one says so with a reason, and nothing
  *                              reports billable while a reversal exists for it
+ *   campaigner-allowlist-and-cap-in-database  no send row can exist whose
+ *                              recipient is not allowlisted with consent true for that
+ *                              campaign and channel, no SMS rests on a consent scoped
+ *                              to email, no campaign exceeds its own volume cap, and
+ *                              nothing leaves draft without an approval for its segment
  *   consent-ledger-is-evidence  the consent and suppression ledgers refuse UPDATE and
  *                              DELETE at the database, an event cannot carry empty
  *                              wording or a null tenant, no audience row can exist for
@@ -860,6 +865,15 @@ const GUARDS = [
   // reversal inserted against a billable one with the database's own recompute
   // removed, which is how a row like that would ever exist.
   'scripts/guards/attribution-one-record-per-order-never-billable-when-reversed.mjs',
+  // Close-out GA4. The Spam Act is enforced hard here and the two failure modes
+  // an autonomous sender produces, messaging people who did not consent and
+  // volume nobody authorised, are each capable of ending this business. So the
+  // allowlist and the cap are database constraints rather than application
+  // checks, and this asserts both that the constraints are still there and that
+  // no row has slipped past them. Drilled red three times with every application
+  // level check removed: a send to somebody absent from the allowlist, an SMS to
+  // somebody whose consent covers email, and the insert that exceeds the cap.
+  'scripts/guards/campaigner-allowlist-and-cap-in-database.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and
