@@ -44,7 +44,7 @@
  * or mismatched key pair, a build that does not carry the publishable key
  * (unless --build), and a `stripe listen` that never reports Ready.
  */
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { envFor, killTree, startGateServer } from '../ops/pre-push-gate.mjs'
@@ -210,25 +210,32 @@ let listener = null
 let failures = 0
 try {
   const forwardTo = `${base}/api/webhooks/stripe`
-  const listenFd = openSync(LISTEN_LOG, 'w')
+  writeFileSync(LISTEN_LOG, '')
   const listenArgs = ['listen', '--forward-to', forwardTo]
+  let ready = false
+  /*
+   * DECLARED BEFORE THE SPAWN, because the ENOENT fallback below calls it and a
+   * `const` referenced above its own declaration throws on exactly the path that
+   * needs it: the one where the CLI is not on PATH under its resolved name.
+   */
+  const wire = (child) => {
+    for (const stream of [child.stdout, child.stderr]) {
+      stream.on('data', (chunk) => {
+        const text = redactStripeSecrets(chunk.toString())
+        appendFileSync(LISTEN_LOG, text)
+        if (/Ready!/.test(text)) ready = true
+      })
+    }
+  }
   listener = spawn(STRIPE, listenArgs, { cwd: ROOT, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] })
   listener.on('error', (error) => {
     if (error.code === 'ENOENT') {
       listener = spawn('stripe', listenArgs, { cwd: ROOT, env: process.env, stdio: ['ignore', 'pipe', 'pipe'], shell: true })
       wire(listener)
+    } else {
+      say(`${TAG} stripe listen errored: ${error.message}`)
     }
   })
-  let ready = false
-  const wire = (child) => {
-    for (const stream of [child.stdout, child.stderr]) {
-      stream.on('data', (chunk) => {
-        const text = redactStripeSecrets(chunk.toString())
-        writeFileSync(listenFd, text)
-        if (/Ready!/.test(text)) ready = true
-      })
-    }
-  }
   wire(listener)
   const deadline = Date.now() + 90_000
   while (!ready && Date.now() < deadline) await new Promise((r) => setTimeout(r, 500))

@@ -16,14 +16,60 @@
  */
 export const PAYMENT_FRAME = 'iframe[title="Secure payment input frame"]'
 
-/** True once the card number field is visible inside Stripe's frame. */
-export async function stripeFrameOn(page, timeout = 60_000) {
+/**
+ * True once the card number field is visible inside Stripe's frame.
+ *
+ * THE BUDGET IS 150 SECONDS AND IT IS NOT A FLOOR BEING LOWERED. On
+ * 13 September 2026 this returned false at ONE of three viewports in one run,
+ * 60 seconds, on the same build and the same code path that painted the frame at
+ * the other two and then took a real card payment. Nothing about the product
+ * differs between those three runs; what differs is that Stripe.js is a
+ * third-party script fetched over the network while three builds share one
+ * laptop. A wait on somebody else's CDN is not an assertion about this platform,
+ * and a harness that reports "no Stripe frame" for a slow fetch indicts the
+ * product for its own impatience.
+ *
+ * WHAT IS STILL ASSERTED, unchanged: the frame must appear, the card must be
+ * typed into it, and the judge of the purchase remains the TEST database's
+ * confirmed order and issued tickets, never the page.
+ */
+export async function stripeFrameOn(page, timeout = 150_000) {
   try {
     await page.frameLocator(PAYMENT_FRAME).first().locator('input[name="number"]').waitFor({ state: 'visible', timeout })
     return true
   } catch {
     return false
   }
+}
+
+/**
+ * WHY THE FRAME DID NOT PAINT, so the two causes are never reported as one.
+ *
+ * Either the server never minted a client secret (the product: the payment
+ * intent was refused, and the server log says why) or it did and Stripe.js did
+ * not finish loading (the environment). The first is a defect, the second is a
+ * slow afternoon, and "no Stripe frame" says neither.
+ */
+export async function whyNoFrame(page, serverLog = null) {
+  const onPage = await page
+    .evaluate(() => ({
+      frames: document.querySelectorAll('iframe').length,
+      stripeScript: [...document.querySelectorAll('script[src]')].some((s) => /js\.stripe\.com/.test(s.src)),
+      says: (document.body.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 160),
+    }))
+    .catch((error) => ({ error: String(error).slice(0, 120) }))
+  let minted = 'not looked for (no server log given)'
+  if (serverLog) {
+    try {
+      const { readFileSync } = await import('node:fs')
+      const text = readFileSync(serverLog, 'utf8')
+      const refusals = (text.match(/ChargePreconditionError|pricing issue|payment_intent.*refus/gi) ?? []).length
+      minted = `${(text.match(/pi_[A-Za-z0-9]{6,}/g) ?? []).length} payment intent reference(s) in the server log, ${refusals} refusal line(s)`
+    } catch (error) {
+      minted = `the server log could not be read: ${error instanceof Error ? error.message : String(error)}`
+    }
+  }
+  return `${JSON.stringify(onPage)}; ${minted}`
 }
 
 async function pressButton(page, rx) {

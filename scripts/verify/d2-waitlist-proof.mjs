@@ -139,22 +139,81 @@ async function sellingOrganiser() {
  */
 async function signInThroughForgotPassword(page, email) {
   const fresh = `D2Refund!${RUN}Aa1`
+  /*
+   * A DISABLED SUBMIT MUST SAY WHY (found 13 September 2026). This leg threw
+   * `page.click: Timeout 30000ms exceeded waiting for locator('button[type=submit]')`
+   * and that sentence names the symptom and nothing else. The submit on every
+   * credential form on this platform is `disabled={loading || !hydrated}`, by
+   * design, so no native GET can ever carry a password, which means a timeout
+   * here has three candidate causes a reader cannot tell apart: the button is
+   * not in the DOM at all, hydration never completed, or the field was never
+   * filled so the form is not submittable. It reports which.
+   */
+  const diagnose = async (where) => {
+    const seen = await page
+      .evaluate(() => {
+        const submits = [...document.querySelectorAll('button[type=submit]')]
+        const email = document.querySelector('input#email, input[type=email]')
+        return {
+          url: location.pathname + location.search.replace(/(code|token|access_token)=[^&]*/g, '$1=<redacted>'),
+          heading: (document.querySelector('h1, h2')?.textContent ?? '').trim().slice(0, 70),
+          says: (document.body.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 180),
+          submits: submits.length,
+          enabled: submits.filter((b) => !b.disabled).length,
+          labels: submits.map((b) => (b.textContent || '').trim().slice(0, 24)),
+          inputs: [...document.querySelectorAll('input')].map((i) => i.id || i.type).slice(0, 6),
+          emailPresent: Boolean(email),
+          emailValue: email ? (email.value || '').length : 0,
+          motion: document.documentElement.dataset.motion ?? 'unset',
+        }
+      })
+      .catch((error) => ({ error: String(error).slice(0, 120) }))
+    return `${where}: ${JSON.stringify(seen)}`
+  }
+  const clickSubmit = async (where) => {
+    const ready = await page
+      .waitForSelector('button[type=submit]:not([disabled])', { timeout: 45_000 })
+      .then(() => true)
+      .catch(() => false)
+    if (!ready) return { ok: false, why: `no enabled submit on ${await diagnose(where)}` }
+    await page.locator('button[type=submit]:not([disabled])').first().click()
+    return { ok: true }
+  }
+
   await page.goto(`${BASE}/forgot-password`, { waitUntil: 'networkidle', timeout: 60_000 })
-  await page.waitForSelector('button[type="submit"]:not([disabled])', { timeout: 30_000 }).catch(() => {})
   await fillIf(page, 'input#email, input[type="email"]', email)
-  await page.click('button[type="submit"]')
+  const asked = await clickSubmit('/forgot-password')
+  if (!asked.ok) return { ok: false, why: asked.why }
   let resetLink = null
   for (let i = 0; i < 20 && !resetLink; i += 1) {
     resetLink = linkFromInbox(email, /type=recovery/)
     if (!resetLink) await page.waitForTimeout(1500)
   }
   if (!resetLink) return { ok: false, why: 'no recovery link reached the inbox' }
+  /*
+   * THE SHAPE OF THE LINK, WITHOUT ITS SECRETS. A recovery link can arrive in
+   * three shapes and they behave differently: a site path with a FRAGMENT, a site
+   * path with a `code` query for the client to exchange, or a Supabase
+   * /auth/v1/verify URL that redirects. When the reset form sits on "Validating
+   * your reset link" for seventy-five seconds, which of the three it was is the
+   * whole question, and the first two runs of this could not say.
+   */
+  const shape = (() => {
+    try {
+      const u = new URL(resetLink)
+      const params = [...u.searchParams.keys()].join(',') || 'none'
+      const frag = u.hash ? u.hash.slice(1).split('&').map((kv) => kv.split('=')[0]).join(',') : 'none'
+      return `host ${u.host}, path ${u.pathname}, query keys [${params}], fragment keys [${frag}]`
+    } catch {
+      return 'unparseable'
+    }
+  })()
   await page.goto(resetLink.replace(/^https?:\/\/[^/]+/, BASE), { waitUntil: 'networkidle', timeout: 60_000 })
   await page.waitForSelector('input#password', { timeout: 30_000 }).catch(() => {})
   await fillIf(page, 'input#password', fresh)
   await fillIf(page, 'input#confirm', fresh)
-  await page.waitForSelector('button[type="submit"]:not([disabled])', { timeout: 30_000 }).catch(() => {})
-  await page.click('button[type="submit"]')
+  const set = await clickSubmit('the reset form')
+  if (!set.ok) return { ok: false, why: `${set.why} // the link was: ${shape}` }
   await page.waitForTimeout(6000)
   let landed = new URL(page.url()).pathname
   if (landed.startsWith('/login') || landed.startsWith('/auth')) landed = await signIn(j, page, email, fresh)

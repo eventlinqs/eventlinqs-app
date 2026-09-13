@@ -55,7 +55,7 @@ import { spawnSync } from 'node:child_process'
 import { createClient } from '@supabase/supabase-js'
 import { chromium } from 'playwright'
 import { MEASURE_VIEWPORT_FIT, MEASURE_ORDER_TOTALS, judgeSurface } from './lib/viewport-fit.mjs'
-import { stripeFrameOn, payWithTestCard, waitForConfirmedOrder } from './lib/test-card.mjs'
+import { stripeFrameOn, payWithTestCard, waitForConfirmedOrder, whyNoFrame } from './lib/test-card.mjs'
 
 const TAG = '[d2-proof]'
 const BASE = process.env.BASE ?? 'http://localhost:3311'
@@ -459,7 +459,9 @@ try {
         check(
           `the-card-form-painted[${who}]`,
           painted,
-          painted ? 'the Stripe payment frame is on the page' : 'no Stripe frame within 60s',
+          painted
+            ? 'the Stripe payment frame is on the page'
+            : `no Stripe frame: ${await whyNoFrame(page, process.env.SERVER_LOG ?? null)}`,
         )
         const reservationId = page.url().match(/\/checkout\/([0-9a-f-]{36})/)?.[1] ?? null
         const pending = reservationId ? await pendingOrderFor(reservationId) : null
@@ -789,7 +791,9 @@ try {
         check(
           'the-card-form-painted-for-the-returner',
           painted,
-          painted ? 'the Stripe payment frame is on the page' : 'no Stripe frame within 60s',
+          painted
+            ? 'the Stripe payment frame is on the page'
+            : `no Stripe frame: ${await whyNoFrame(page, process.env.SERVER_LOG ?? null)}`,
         )
         const m = await measure(page, '5-returner-payment-step', { totalRequired: true })
         check(`fit-5-returner-payment-step@${viewport.width}`, m.ok, m.detail)
@@ -1077,14 +1081,23 @@ try {
           const engineProof = engine('proof', '--slot', slot.id).parsed
           const shownReturned = onScreen?.figures?.['came back and bought'] ?? null
           const digits = s => String(s ?? '').replace(/[^0-9.]/g, '')
+          /*
+           * COMPARED IN CENTS, NEVER AS FORMATTED TEXT. The first run of this
+           * leg failed on a panel and an engine that AGREED: the panel renders
+           * the recovered total with no fraction digits ("$50") and this file's
+           * own money() renders two ("$50.00"), so a string comparison of the
+           * two was false while the numbers were identical. A check that can
+           * fail on a formatter is not checking the product.
+           */
+          const shownCents = Math.round(Number(digits(onScreen?.total) || '0') * 100)
           say(`${TAG} the engine's own proof for this slot: ${JSON.stringify(engineProof)}`)
           check(
             'the-panel-counts-the-person-who-came-back-and-bought',
             Number(engineProof?.returned ?? 0) >= 1 &&
               shownReturned === String(engineProof?.returned) &&
-              digits(onScreen?.total) === digits(money(engineProof?.recoveredCents ?? 0)) &&
+              shownCents === Number(engineProof?.recoveredCents ?? 0) &&
               Number(engineProof?.recoveredCents ?? 0) >= Number(returnerOrder?.saleCents ?? 1),
-            `panel says came-back=${shownReturned} total=${onScreen?.total}; the engine says returned=${
+            `panel says came-back=${shownReturned} total=${onScreen?.total} (${shownCents} cents); the engine says returned=${
               engineProof?.returned
             } recovered=${money(engineProof?.recoveredCents ?? 0)}; this run's sale carried a face value of ${
               returnerOrder?.saleCents !== undefined ? money(returnerOrder.saleCents) : 'unknown'
