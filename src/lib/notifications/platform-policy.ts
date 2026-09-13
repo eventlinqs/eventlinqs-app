@@ -121,6 +121,46 @@ export function routeFor(kind: PlatformNotificationKind, individualSentToday: nu
 }
 
 /**
+ * What is written to a row the moment the ceiling sends it to the digest.
+ *
+ * THE DEFECT THIS EXISTS TO CLOSE, 13 September 2026. The hold used to write
+ * `{ delivery_state: 'held_for_digest' }` and nothing else, so the row carried
+ * its `attempts` counter across with it. That counter is not the digest's: it
+ * counts how many times the row was tried AS AN INDIVIDUAL EMAIL, and a row
+ * reaches the hold with it already spent whenever a send failed while the day
+ * was still under the ceiling and the ceiling was crossed before the next tick
+ * came back to it. The digest then reads the batch's highest attempts - the
+ * right rule for attempts the digest itself made - and at
+ * PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS - 1 it gave up on its FIRST refusal,
+ * escalating or, with no armed push device, writing every row `failed`. That is
+ * the same loss fixed earlier the same day in sendHeldDigest, reached through a
+ * different door, and the message it throws away can carry two hundred orders.
+ *
+ * So the counter is RESET, because the digest is a different message that has
+ * never been attempted, and the history is moved into `last_error` rather than
+ * dropped: a feed showing "attempt 2 failed" beside a counter reading 0 would
+ * be the kind of half-truth that makes an operator distrust the whole screen.
+ *
+ * Pure, and exported, so scripts/guards/digest-attempts-are-the-digests-own.mjs
+ * can exercise the real decision instead of matching a regular expression
+ * against the sentence that describes it.
+ */
+export function holdForDigestPatch(
+  row: Pick<PlatformNotificationRow, 'attempts' | 'last_error'>,
+): { delivery_state: 'held_for_digest'; attempts: 0; last_error: string | null } {
+  const spent = Number.isFinite(row.attempts) ? Math.max(0, Math.trunc(row.attempts)) : 0
+  return {
+    delivery_state: 'held_for_digest',
+    attempts: 0,
+    last_error:
+      spent > 0
+        ? `held for the digest after ${spent} individual attempt(s), whose count does not carry over; ` +
+          `last individual error: ${row.last_error ?? 'not recorded'}`
+        : row.last_error,
+  }
+}
+
+/**
  * The start of the current platform day, as an ISO instant.
  *
  * Australia/Sydney, PLATFORM_TIME_ZONE, so the ceiling resets at a boundary the

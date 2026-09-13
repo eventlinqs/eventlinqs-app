@@ -262,6 +262,12 @@
  *                              escalates or gives up on ONE refusal the way the digest
  *                              did, throwing away up to two hundred orders in a single
  *                              unrecoverable row (close-out UX3.2, 13 September 2026)
+ *   digest-attempts-are-the-digests-own  a row held for the digest hands it a FRESH
+ *                              attempt count, because the attempts it spent as an
+ *                              individual email belong to a different message. Inheriting
+ *                              them let a batch arrive at the bound and give up on its
+ *                              first refusal, which is the line above defeated through
+ *                              another door (close-out UX3.2 and UX3.3, 13 September 2026)
  *   cron-routes-scheduled    every /api/cron route has a vercel.json entry, and every
  *                              entry has a route. /api/cron/queue-admit documented itself
  *                              as running every minute and had no schedule at all, so the
@@ -1187,6 +1193,17 @@ const GUARDS = [
   // whether it counts its attempts first. Drilled red by taking the comparison
   // back out of the digest.
   'scripts/guards/notification-paths-retry-before-they-give-up.mjs',
+
+  // Close-out UX3.2 and UX3.3, 13 September 2026, found the same day as the line
+  // above and against the one rule it left standing. The digest counts a batch by
+  // its HIGHEST attempts, which is right only while every attempt on a held row
+  // was a DIGEST attempt. The dispatcher held rows with their individual-email
+  // attempts intact, so a batch could arrive already at the bound and give up on
+  // its first refusal: the same unrecoverable loss, through another door. This
+  // runs the real hold across a sweep of attempt counts and also proves the
+  // dispatcher calls it, because a perfect pure function nobody calls is worth
+  // nothing. Drilled red both ways.
+  'scripts/guards/digest-attempts-are-the-digests-own.mjs',
 
   // 11 September 2026. Five migrations (20260910000001 to 20260911000001) were
   // committed without regenerating src/types/database.ts and every gate stayed

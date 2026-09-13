@@ -1468,9 +1468,20 @@ const ROOT = join(HERE, '..', '..')
  * exhausted, and the batch counted by its highest attempts so a new order
  * joining cannot reset the clock. A test agreeing with the code is not the same
  * as the code being right.
+ *
+ * 2026-09-13 (last of the three): raised 388/4704 -> 388/4707, MEASURED. Three
+ * tests to the same file, closing the door the fix above left open. The digest
+ * counts a batch by its HIGHEST attempts, which is only sound while every
+ * attempt on a held row was a DIGEST attempt. It was not: a row that failed as
+ * an individual email keeps its counter, and the dispatcher held it with that
+ * counter intact, so a batch could arrive already at the bound and give up on
+ * its first refusal - the same unrecoverable loss, through another door. The
+ * three ask it as one story: the hold hands the digest a fresh count and keeps
+ * the history, the digest still gets all three attempts, and the held order is
+ * delivered on a later tick so one individual refusal costs nothing.
  */
 const MIN_FILES = 388
-const MIN_TESTS = 4704
+const MIN_TESTS = 4707
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

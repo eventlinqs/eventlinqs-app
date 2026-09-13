@@ -2304,6 +2304,31 @@ const DRILLS = [
     replace: "const DECLARATION = /^(?:export\\s+)?(?:async\\s+)?function\\s+(sendHeldDigest)/",
     expect: 'fewer than the 2 this guard must judge',
   },
+  /*
+   * digest-attempts-are-the-digests-own (close-out UX3.2 and UX3.3, 13 September
+   * 2026), two drills, one per clause, because either clause alone is
+   * defeatable. The first restores the hold EXACTLY as it shipped, a bare state
+   * literal, which is how a row carried its individual-email attempts into the
+   * digest. The second leaves the caller alone and breaks the decision itself,
+   * returning the spent count from the pure function: a guard that only read the
+   * call site would pass a function that had stopped resetting anything.
+   */
+  {
+    name: 'the hold goes back to writing the state literal, so the digest inherits the attempts',
+    guard: `${GUARDS}/digest-attempts-are-the-digests-own.mjs`,
+    file: 'src/lib/notifications/platform-send.ts',
+    find: '      await recordOutcome(admin, row.id, holdForDigestPatch(row))',
+    replace: "      await recordOutcome(admin, row.id, { delivery_state: 'held_for_digest' })",
+    expect: 'writes the held state as a literal',
+  },
+  {
+    name: 'the hold keeps the attempts it was written to reset',
+    guard: `${GUARDS}/digest-attempts-are-the-digests-own.mjs`,
+    file: 'src/lib/notifications/platform-policy.ts',
+    find: "    delivery_state: 'held_for_digest',\n    attempts: 0,",
+    replace: "    delivery_state: 'held_for_digest',\n    attempts: spent as 0,",
+    expect: 'enters the digest queue carrying',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
