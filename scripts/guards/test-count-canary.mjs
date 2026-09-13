@@ -1445,9 +1445,20 @@ const ROOT = join(HERE, '..', '..')
  * in worktrees: the only tree that can push was the only tree that could not see
  * it. The new test builds the worktree shape itself, so it fails from anywhere
  * the pointer is not followed.
+ *
+ * 2026-09-13 (later): raised 388/4698 -> 388/4701, MEASURED. Three tests added
+ * to tests/unit/notifications/platform-policy.test.ts, and they are worth naming
+ * because of what the two tests already there could not see. `platformDayStart`
+ * decides the window the owner's daily order-alert ceiling counts, and it
+ * subtracted the Sydney wall clock from the instant, which is the day start only
+ * while a day is 24 hours long. Both existing tests used a date in the middle of
+ * a season, so both passed while the boundary was an hour out on the two days a
+ * year that are not, and on 4 October it landed on the PREVIOUS DATE. The three
+ * new ones ask the question at the boundary: each transition explicitly, then
+ * every hour of both transition days.
  */
 const MIN_FILES = 388
-const MIN_TESTS = 4698
+const MIN_TESTS = 4701
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

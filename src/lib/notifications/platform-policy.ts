@@ -15,7 +15,7 @@
  */
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { escapeHtml } from '@/lib/email/escape'
-import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
 
 export const PLATFORM_NOTIFICATION_KINDS = [
   'organiser_created',
@@ -126,21 +126,40 @@ export function routeFor(kind: PlatformNotificationKind, individualSentToday: nu
  * Australia/Sydney, PLATFORM_TIME_ZONE, so the ceiling resets at a boundary the
  * owner experiences rather than at UTC midnight, which in Sydney is the middle
  * of the morning or the middle of the day depending on daylight saving.
+ *
+ * WHY THIS SOLVES FOR THE INSTANT RATHER THAN SUBTRACTING THE WALL CLOCK.
+ * The first version read the Sydney hour, minute and second off `now` and
+ * subtracted that many seconds from the instant. That is only correct when the
+ * day is 24 hours long, and twice a year in Sydney it is not, so on both
+ * transition days the boundary landed an hour out - and on the October one it
+ * landed on the WRONG DATE. Driven, not argued:
+ *
+ *   4 Oct 2026 (AEDT begins, 2am becomes 3am), now = 10:00 am AEDT
+ *     old: 3 Oct 2026, 11:00:00 pm AEST   <- the previous evening
+ *     new: 4 Oct 2026, 12:00:00 am AEST
+ *   5 Apr 2026 (AEST returns, 3am becomes 2am), now = 10:00 am AEST
+ *     old: 5 Apr 2026, 1:00:00 am AEDT    <- an hour of the day missing
+ *     new: 5 Apr 2026, 12:00:00 am AEDT
+ *
+ * The consequence was real rather than cosmetic: `individualSentToday` counts
+ * `sent_at >= platformDayStart(now)`, so in October the window reached back into
+ * the previous evening and the owner was cut off from individual order alerts
+ * early, and in April the first hour of the day did not count and the ceiling
+ * could be overrun by a whole day's allowance.
+ *
+ * The correct answer is not a subtraction at all: it is midnight on the Sydney
+ * CALENDAR DATE, resolved to an instant by `fromZonedInputValue`, whose two-pass
+ * offset solve already exists in this repository precisely because "a time
+ * entered in the hours around a DST change is stored one hour out".
  */
 export function platformDayStart(now: Date): Date {
-  const parts = new Intl.DateTimeFormat('en-CA', {
+  const date = new Intl.DateTimeFormat('en-CA', {
     timeZone: PLATFORM_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).formatToParts(now)
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? '0')
-  const secondsIntoDay = get('hour') * 3600 + get('minute') * 60 + get('second')
-  return new Date(now.getTime() - secondsIntoDay * 1000 - now.getMilliseconds())
+  }).format(now)
+  return new Date(fromZonedInputValue(`${date}T00:00`, PLATFORM_TIME_ZONE))
 }
 
 /**

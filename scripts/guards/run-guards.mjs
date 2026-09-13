@@ -252,6 +252,11 @@
  *                              published event and a paid order, so none of the five can
  *                              complete in silence the way a real organiser's launch did
  *                              on 8 September 2026 (close-out UX3)
+ *   platform-day-boundary-is-zone-correct  the owner's daily order-alert ceiling resets
+ *                              at a real Sydney midnight on every hour of four years,
+ *                              including the two days a year that are not 24 hours long,
+ *                              where the boundary used to land an hour out and in October
+ *                              on the previous date (close-out UX3.3, 13 September 2026)
  *   cron-routes-scheduled    every /api/cron route has a vercel.json entry, and every
  *                              entry has a route. /api/cron/queue-admit documented itself
  *                              as running every minute and had no schedule at all, so the
@@ -1155,6 +1160,17 @@ const GUARDS = [
   // trigger's record fields against the committed types. Drilled red by putting
   // new.city back.
   'scripts/guards/trigger-columns-exist.mjs',
+
+  // Close-out UX3.3, the third guard, added 13 September 2026 after driving the
+  // function rather than reading it. The owner's daily order-alert ceiling is
+  // counted from platformDayStart(), which subtracted the Sydney wall clock from
+  // the instant. A day is 24 hours long except twice a year, so on both
+  // transition days the boundary was an hour out, and on the October one it
+  // landed on the PREVIOUS DATE: 172 of 35,064 hourly instants across four years
+  // were wrong. Neither the unit test nor any sweep could see it, because both
+  // used dates in the middle of a season. This calls the real function on every
+  // hour of four years and refuses to run on a window with no transition in it.
+  'scripts/guards/platform-day-boundary-is-zone-correct.mjs',
 
   // 11 September 2026. Five migrations (20260910000001 to 20260911000001) were
   // committed without regenerating src/types/database.ts and every gate stayed
