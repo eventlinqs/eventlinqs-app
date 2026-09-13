@@ -1,7 +1,13 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
 import { entityLegalLine } from '@/lib/legal/platform-entity'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getCurrentConsentWording } from '@/lib/consent/ledger'
+import { FACILITATED_MARKETING_PURPOSE } from '@/lib/consent/purposes'
+
+export const revalidate = 3600
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | EventLinqs',
@@ -33,7 +39,17 @@ const SECTIONS = [
   { id: 'related',         title: 'Related Policies' },
 ]
 
-export default function PrivacyPolicyPage() {
+export default async function PrivacyPolicyPage() {
+  /*
+   * The marketing wording is READ, never retyped.
+   *
+   * Close-out GA1 point 11: the version shown at the checkout and the version
+   * described here come from the same immutable record, so the policy cannot
+   * describe a promise the checkout has stopped making. Revalidated hourly
+   * rather than rendered per request, because a legal page is read far more
+   * often than a wording version changes.
+   */
+  const wording = await getCurrentConsentWording(createAdminClient(), FACILITATED_MARKETING_PURPOSE)
   return (
     <LegalPageShell
       title="Privacy Policy"
@@ -365,10 +381,37 @@ export default function PrivacyPolicyPage() {
         </li>
       </ul>
       <p>
+        <strong>Marketing about other organisers events, and who sends it.</strong> If
+        you tick the marketing box at the checkout, EventLinqs sends you marketing
+        about events run by other organisers who sell tickets on EventLinqs, chosen by
+        city and by the kinds of events you have bought before. EventLinqs is always
+        the sender and the authorising party. Your name, email and mobile are not
+        given to those organisers. EventLinqs uses{' '}
+        <strong>Fullproof AI</strong> as its service provider to send these messages on
+        its behalf, under a written agreement that restricts it to that purpose, and no
+        client audiences are ever merged. We do not sell your details and we do not buy
+        lists.
+      </p>
+      {wording && (
+        <p>
+          The exact wording you agree to is recorded with your consent, word for word,
+          together with the date and the time. The wording currently shown at the
+          checkout is version {wording.version}, and it reads:{' '}
+          <em>{wording.body}</em>
+        </p>
+      )}
+      <p>
+        <strong>Two rights that come with this, free and with no account.</strong> You
+        can ask us not to use your information to facilitate direct marketing by other
+        organisations, and you can ask us where we got your details. Both are on your{' '}
+        <Link href="/marketing/preferences">marketing preferences page</Link>, which is also
+        linked from every marketing message we send, and both are honoured within a
+        reasonable period at no cost.
+      </p>
+      <p>
         You can change your preferences at any time in your account settings, or by
         emailing{' '}
-        <a href={contactMailto('privacy')}>{contactAddress('privacy')}</a>. You may
-        also ask us to tell you where we obtained your information.
+        <a href={contactMailto('privacy')}>{contactAddress('privacy')}</a>.
       </p>
 
       <h2 id="cookies">Cookies and Analytics</h2>

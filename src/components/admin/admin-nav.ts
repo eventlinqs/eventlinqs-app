@@ -15,6 +15,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { label: 'Dashboard',        href: '/admin',            capability: 'admin.dashboard.view' },
   { label: 'Platform health',  href: '/admin/health',     capability: 'admin.dashboard.view' },
   { label: 'Demand signal',    href: '/admin/network',    capability: 'admin.network.manage' },
+  { label: 'Audience',         href: '/admin/audience',   capability: 'admin.network.manage' },
   { label: 'Pricing and fees', href: '/admin/pricing',    capability: 'admin.pricing.manage' },
   { label: 'Organisers',       href: '/admin/organisers', capability: 'admin.users.manage' },
   { label: 'KYC review',       href: '/admin/kyc',        capability: 'admin.users.manage' },

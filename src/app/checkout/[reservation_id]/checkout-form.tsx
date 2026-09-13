@@ -16,7 +16,7 @@ import { CartTimer } from '@/components/checkout/cart-timer'
 import { CheckoutSummary } from '@/components/checkout/checkout-summary'
 import { DiscountCodeInput } from '@/components/checkout/discount-code-input'
 import { AttendeeForm } from '@/components/checkout/attendee-form'
-import { MarketingConsent } from '@/components/checkout/marketing-consent'
+import { MarketingConsent, type PlatformConsentWording } from '@/components/checkout/marketing-consent'
 import type { FeeBreakdown } from '@/lib/payments/payment-calculator'
 import type { AttendeeDetails } from '@/components/checkout/attendee-form'
 
@@ -45,6 +45,18 @@ interface CheckoutFormProps {
   userEmail: string
   currency: string
   organiserName: string
+  /**
+   * The stored wording for the EventLinqs marketing question, or null.
+   *
+   * Close-out GA1. Two decisions arrive as one prop, deliberately. The wording
+   * is READ from the immutable versioned record so the page cannot carry a
+   * literal, and the audience_capture switch is resolved on the server, so
+   * null means either the owner has closed the question or the record could not
+   * be read. Both answers are the same answer: do not ask. The server action
+   * re-reads both before recording anything, so this is the presentation half
+   * of one decision and never the enforcement.
+   */
+  platformWording: PlatformConsentWording | null
   /** The trust panel, rendered beside the money on the details step and under the Pay button on the payment step. */
   trustSlot?: ReactNode
 }
@@ -245,6 +257,7 @@ export function CheckoutForm({
   userEmail,
   currency,
   organiserName,
+  platformWording,
   trustSlot,
 }: CheckoutFormProps) {
   const router = useRouter()
@@ -505,6 +518,7 @@ export function CheckoutForm({
                 platformConsent={platformConsent}
                 onOrganiserChange={setOrganiserConsent}
                 onPlatformChange={setPlatformConsent}
+                platformWording={platformWording}
               />
 
               {submitError && (

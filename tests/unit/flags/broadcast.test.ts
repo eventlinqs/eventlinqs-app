@@ -54,8 +54,14 @@ describe('broadcast flag resolver', () => {
       // so the safe posture when the table cannot be read is the one the public
       // page is already promising. Closing it is a deliberate act.
       founding_open: true,
+      // The audience asset's reversal condition (close-out GA1). ON, because
+      // the consent question is already on the checkout of a live platform and
+      // the asset it builds is the point of the item. Nothing about this
+      // default weakens consent: an audience row still cannot exist without a
+      // granted consent record, and the database is what refuses it.
+      audience_capture: true,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(7)
+    expect(BROADCAST_FLAGS).toHaveLength(8)
   })
 
   test('DB row wins over the default in both directions', async () => {

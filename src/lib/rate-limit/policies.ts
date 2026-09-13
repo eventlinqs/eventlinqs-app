@@ -28,6 +28,7 @@ export type PolicyName =
   | 'ledger-demand'
   | 'waitlist-join'
   | 'newsletter-subscribe'
+  | 'marketing-rights'
   | 'ai-chat'
   | 'ai-chat-daily'
   | 'gig-post'
@@ -177,6 +178,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'The slot ledger demand beacon per IP. The two anonymous actions only (a page view and a sold-out view); every action that carries an address is written server side by the code that observed it, so this endpoint cannot be used to invent a contactable person. Rows are deduped per visitor per slot per day by their occurrence key, so this cap only bounds junk traffic. FAIL-OPEN, the same posture as share-track: losing a view beacon to a Redis blip is a gap in a history table, and refusing one would be a failed request on an event page.',
+  },
+  'marketing-rights': {
+    keyPrefix: 'mkt-rights',
+    limit: 10,
+    windowSec: 600,
+    rationale:
+      'The no-token privacy rights form (APP 7.6 stop-facilitation) per IP per 10 min. It is public and unauthenticated and writes one suppression row per submission, so it is a write-amplification target like newsletter-subscribe. Ten covers a household clearing several addresses in one sitting and bounces a scripted flood. Deliberately fail-OPEN, and the reason is the direction the surface points: it can only ever STOP mail. A Redis blip that blocked somebody exercising a privacy right would be the platform refusing to honour a legal right to protect itself from writes, which is the wrong trade in a way that launch-email is not.',
   },
   'newsletter-subscribe': {
     keyPrefix: 'nl-sub',

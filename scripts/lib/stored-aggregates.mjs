@@ -220,6 +220,17 @@ export const STORED_AGGREGATES = [
       "NOT A SUMMARY OF ROWS. It is the hold row's OWN balance, not a total over other rows. organisations.hold_amount_cents is the figure that totals these, and that one IS reconciled above and does drift.",
   },
   {
+    column: 'audience_members.order_count',
+    summarises: 'public.orders where status = confirmed, for this buyer',
+    maintenance: 'trigger',
+    maintainedBy:
+      'public.refresh_audience_member, called by trg_audience_on_order_confirmed on public.orders, by trg_audience_on_consent_event on public.consent_events and by trg_audience_on_suppression_event on public.suppression_events (close-out GA1 v3: the ledger drives it, and the older trigger on public.marketing_consents now fires from the projection rather than from application code).',
+    reconciled: true,
+    caveat: null,
+    decision:
+      'RECOMPUTED FROM SCRATCH ON EVERY REFRESH, never incremented. Close-out GA1 chose a full recount over a delta precisely to stay out of this class: there is no += anywhere, so there is no way for it to drift, and a missed trigger costs one stale row rather than a permanently wrong number. The same call recomputes lifetime_spend_cents, first_order_at and last_order_at from the same read, so the four can never disagree with each other either.',
+  },
+  {
     column: 'digest_sends.event_count',
     summarises: null,
     maintenance: 'not-in-class',

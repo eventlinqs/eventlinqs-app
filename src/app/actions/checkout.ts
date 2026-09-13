@@ -24,10 +24,8 @@ import {
   type VisitAttribution,
 } from '@/lib/growth/visit-attribution'
 import { cookies, headers } from 'next/headers'
-import {
-  recordOrganiserMarketingConsent,
-  recordPlatformDigestConsent,
-} from '@/lib/consent/record'
+import { recordOrganiserMarketingConsent } from '@/lib/consent/record'
+import { recordCheckoutMarketingAnswer } from '@/lib/consent/checkout-answer'
 import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 import type { FeePassType } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
@@ -75,8 +73,20 @@ function generateOrderNumber(): string {
 /**
  * Persist marketing consent for a completed checkout. Best-effort and fully
  * isolated from the payment path: a consent write failure must never fail an
- * order. Records nothing when no box was ticked, so a no-consent purchase
- * leaves no consent (the lawful default).
+ * order. Ticking nothing still grants nothing: the lawful default is untouched.
+ *
+ * WHAT CHANGED IN GA1. The platform answer goes to the append-only consent
+ * ledger, under the versioned wording the buyer actually read, and it is
+ * recorded EITHER WAY: a tick is a grant, and leaving it alone is a decline,
+ * which until now was thrown away. "Asked and said no" and "never asked" are
+ * different facts, and only the first is evidence the question was ever put.
+ * The whole rule, including the one case where an untouched box records
+ * nothing, lives in src/lib/consent/checkout-answer.ts because there are three
+ * purchase paths and a rule that lives in one of them is a rule the other two
+ * do not have.
+ *
+ * The organiser box is a different consent to a different sender and is
+ * untouched by any of it.
  */
 async function recordCheckoutConsents(params: {
   adminClient: ReturnType<typeof createAdminClient>
@@ -102,48 +112,13 @@ async function recordCheckoutConsents(params: {
       at,
     })
   }
-  if (params.platformConsent) {
-    // The digest consent is city scoped (SPEC 3.1): the buyer's chosen city
-    // cookie wins, falling back to the event's city. Both are validated
-    // against the cities taxonomy so the FK can never fail the write.
-    const citySlug = await resolveDigestCity(params.adminClient, params.eventId)
-    await recordPlatformDigestConsent(params.adminClient, {
-      email: params.email,
-      userId: params.userId,
-      citySlug,
-      source: 'checkout',
-      at,
-    })
-  }
-}
-
-/** Resolve the digest locality: el_city cookie if it is a real city, else the
- * event's primary city, else null (national digest scope decided later). */
-async function resolveDigestCity(
-  adminClient: ReturnType<typeof createAdminClient>,
-  eventId: string,
-): Promise<string | null> {
-  try {
-    const jar = await cookies()
-    const cookieCity = jar.get('el_city')?.value ?? null
-    if (cookieCity) {
-      const { data } = await adminClient
-        .from('cities')
-        .select('slug')
-        .eq('slug', cookieCity)
-        .maybeSingle()
-      if (data?.slug) return data.slug
-    }
-    const { data: event } = await adminClient
-      .from('events')
-      .select('city_primary')
-      .eq('id', eventId)
-      .maybeSingle()
-    return event?.city_primary ?? null
-  } catch (error) {
-    captureException(error, { where: 'app/actions/checkout:134' })
-    return null
-  }
+  await recordCheckoutMarketingAnswer(params.adminClient, {
+    email: params.email,
+    ticked: params.platformConsent,
+    captureSurface: 'checkout',
+    eventId: params.eventId,
+    at,
+  })
 }
 
 /**

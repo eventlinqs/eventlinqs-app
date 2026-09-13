@@ -189,6 +189,12 @@ const PUBLIC_BY_DESIGN = {
   'actions/consent.ts::unsubscribeFromDigestAction': 'per-row unsubscribe token IS the credential; returns void, so no enumeration',
   'actions/consent.ts::unsubscribeFromOrganiserAction': 'per-row unsubscribe token IS the credential; returns void',
   'actions/discount-codes.ts::validateDiscountCode': 'a guest applies a discount code at checkout',
+  'actions/marketing-rights.ts::stopFacilitationByTokenAction':
+    'APP 7.6, by the per-message token, which IS the credential; returns void, writes only a suppression, and a right behind a login is a right nobody exercises',
+  'actions/marketing-rights.ts::unsubscribeEverythingByTokenAction':
+    'the same token, the same rule as the other unsubscribe actions; returns void so nothing can be enumerated with it',
+  'actions/marketing-rights.ts::stopFacilitationByEmailAction':
+    'APP 7.6 from the privacy policy, keyed by a typed address and DELIBERATELY unverified: it can only ever stop mail, it answers identically whether or not the address is known, and it is rate limited by the marketing-rights policy',
   'actions/email-subscribe.ts::submitEmailSignup': 'public newsletter opt-in',
   'actions/queue.ts::getQueuePosition': 'reads a position by queue id; positions are not sensitive',
   'actions/queue.ts::validateQueueToken': 'verifies a signed admission token; the signature is the credential',

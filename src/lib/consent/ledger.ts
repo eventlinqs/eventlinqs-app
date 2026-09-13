@@ -1,0 +1,345 @@
+import 'server-only'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
+import { captureException } from '@/lib/observability/sentry'
+import {
+  PLATFORM_TENANT_SLUG,
+  normaliseSubjectEmail,
+  type ConsentChannelScope,
+  type ConsentDecisionValue,
+  type SuppressionScope,
+} from './purposes'
+
+type Admin = SupabaseClient<Database>
+
+/**
+ * WRITING TO THE CONSENT LEDGER, AND READING WHAT IS IN IT.
+ *
+ * The ledger is APPEND ONLY and the database enforces it, so there is no update
+ * here and no delete here: a change of mind is a new event. Everything a
+ * complaint has to be answered from rides on the row at the moment of capture,
+ * because none of it can be reconstructed afterwards: the tenant, the purpose,
+ * the channel scope, the verbatim wording, the wording version, the surface it
+ * was captured on, whose marketing it covers and what a withdrawal stops.
+ *
+ * NOTHING IN THIS FILE SENDS ANYTHING. There is no transport import here and
+ * there is not allowed to be one; the guard fails the build if that changes.
+ */
+
+export interface ConsentWordingRecord {
+  purpose: string
+  version: string
+  label: string
+  body: string
+  channelScope: ConsentChannelScope
+  thirdPartyScope: string
+  suppressionScope: string
+}
+
+/**
+ * The wording currently in force for a purpose: the newest effective version.
+ *
+ * The checkout renders from this and the privacy page reads the same row, so
+ * the sentence a buyer agrees to and the sentence the privacy page describes
+ * can never drift apart. A caller that cannot read it must not invent one, so
+ * this returns null and the surface asks nothing rather than asking under
+ * wording it cannot prove.
+ */
+export async function getCurrentConsentWording(
+  admin: Admin,
+  purpose: string,
+): Promise<ConsentWordingRecord | null> {
+  try {
+    const { data, error } = await admin
+      .from('consent_wordings')
+      .select('purpose, version, label, body, channel_scope, third_party_scope, suppression_scope')
+      .eq('purpose', purpose)
+      .lte('effective_from', new Date().toISOString())
+      .order('effective_from', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error || !data) return null
+    return {
+      purpose: data.purpose,
+      version: data.version,
+      label: data.label,
+      body: data.body,
+      channelScope: data.channel_scope as ConsentChannelScope,
+      thirdPartyScope: data.third_party_scope,
+      suppressionScope: data.suppression_scope,
+    }
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/ledger:getCurrentConsentWording' })
+    return null
+  }
+}
+
+export interface RecordConsentParams {
+  email: string
+  purpose: string
+  decision: ConsentDecisionValue
+  /** The verbatim sentence the person read. Never a summary of it. */
+  wording: string
+  wordingVersion: string
+  channelScope: ConsentChannelScope
+  thirdPartyScope: string
+  suppressionScope: string
+  captureSurface: string
+  citySlug?: string | null
+  mobileHash?: string | null
+  /** An IP or session reference, so a record can be tied to a moment. */
+  reference?: string | null
+  tenantSlug?: string
+  at?: string
+}
+
+/** The ledger fields a stored wording record supplies, in one place. */
+export function consentFieldsFromWording(
+  wording: ConsentWordingRecord,
+): Pick<
+  RecordConsentParams,
+  'purpose' | 'wording' | 'wordingVersion' | 'channelScope' | 'thirdPartyScope' | 'suppressionScope'
+> {
+  return {
+    purpose: wording.purpose,
+    wording: wording.body,
+    wordingVersion: wording.version,
+    channelScope: wording.channelScope,
+    thirdPartyScope: wording.thirdPartyScope,
+    suppressionScope: wording.suppressionScope,
+  }
+}
+
+/**
+ * Record one consent event.
+ *
+ * Best effort by design: a marketing record is never worth somebody's ticket,
+ * so a failure here is captured and reported false rather than thrown into a
+ * checkout. The evidence that matters is written in one statement, so there is
+ * no half-written state to reason about.
+ */
+export async function recordConsentEvent(
+  admin: Admin,
+  params: RecordConsentParams,
+): Promise<boolean> {
+  try {
+    const email = normaliseSubjectEmail(params.email)
+    if (!email) return false
+
+    const tenantSlug = params.tenantSlug ?? PLATFORM_TENANT_SLUG
+    const { data: tenant } = await admin
+      .from('marketing_tenants')
+      .select('id')
+      .eq('slug', tenantSlug)
+      .maybeSingle()
+    if (!tenant?.id) return false
+
+    const { error } = await admin.from('consent_events').insert({
+      tenant_id: tenant.id,
+      subject_email: email,
+      subject_mobile_hash: params.mobileHash ?? null,
+      purpose: params.purpose,
+      channel_scope: params.channelScope,
+      decision: params.decision,
+      wording: params.wording,
+      wording_version: params.wordingVersion,
+      capture_surface: params.captureSurface,
+      third_party_scope: params.thirdPartyScope,
+      suppression_scope: params.suppressionScope,
+      city_slug: params.citySlug ?? null,
+      occurred_at: params.at ?? new Date().toISOString(),
+      ip_or_session_ref: params.reference ?? null,
+    })
+    return !error
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/ledger:recordConsentEvent' })
+    return false
+  }
+}
+
+export interface RecordSuppressionParams {
+  email: string
+  channel: ConsentChannelScope
+  scope: SuppressionScope
+  reason: string
+  requestSource: string
+  mobileHash?: string | null
+  tenantSlug?: string
+  at?: string
+}
+
+/**
+ * Record one suppression.
+ *
+ * A suppression is a fact that arrived, never a flag that gets toggled, so a
+ * second unsubscribe writes a second fact rather than editing the first. The
+ * resolver reads the latest, so repeating it changes nothing a person can see,
+ * which is exactly what idempotent means from their side of the message.
+ */
+export async function recordSuppressionEvent(
+  admin: Admin,
+  params: RecordSuppressionParams,
+): Promise<boolean> {
+  try {
+    const email = normaliseSubjectEmail(params.email)
+    if (!email) return false
+
+    const tenantSlug = params.tenantSlug ?? PLATFORM_TENANT_SLUG
+    const { data: tenant } = await admin
+      .from('marketing_tenants')
+      .select('id')
+      .eq('slug', tenantSlug)
+      .maybeSingle()
+    if (!tenant?.id) return false
+
+    const { error } = await admin.from('suppression_events').insert({
+      tenant_id: tenant.id,
+      subject_email: email,
+      subject_mobile_hash: params.mobileHash ?? null,
+      channel: params.channel,
+      scope: params.scope,
+      reason: params.reason,
+      request_source: params.requestSource,
+      occurred_at: params.at ?? new Date().toISOString(),
+    })
+    return !error
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/ledger:recordSuppressionEvent' })
+    return false
+  }
+}
+
+/**
+ * WHO A MESSAGE TOKEN BELONGS TO, WITH NO SESSION.
+ *
+ * Every message carries a token, and the two rights routes need to know whose
+ * address it is without asking anybody to log in: a right you have to create an
+ * account to exercise is not a right anybody exercises. Both tokens a recipient
+ * can be holding are accepted, the platform consent token and the city waitlist
+ * token, so nobody is ever sent a link that does nothing.
+ */
+export async function findSubjectByToken(admin: Admin, token: string): Promise<string | null> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+    return null
+  }
+  try {
+    const { data: consentRow } = await admin
+      .from('marketing_consents')
+      .select('email')
+      .eq('unsubscribe_token', token)
+      .maybeSingle()
+    if (consentRow?.email) return normaliseSubjectEmail(consentRow.email)
+
+    const { data: waitlistRow } = await admin
+      .from('city_waitlist_signups')
+      .select('email')
+      .eq('unsubscribe_token', token)
+      .maybeSingle()
+    if (waitlistRow?.email) return normaliseSubjectEmail(waitlistRow.email)
+
+    return null
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/ledger:findSubjectByToken' })
+    return null
+  }
+}
+
+export interface SubjectConsentRow {
+  id: string
+  purpose: string
+  decision: ConsentDecisionValue
+  channelScope: ConsentChannelScope
+  wording: string
+  wordingVersion: string
+  captureSurface: string
+  thirdPartyScope: string
+  suppressionScope: string
+  citySlug: string | null
+  occurredAt: string
+}
+
+export interface SubjectSuppressionRow {
+  id: string
+  channel: ConsentChannelScope
+  scope: SuppressionScope
+  reason: string
+  requestSource: string
+  occurredAt: string
+}
+
+export interface SubjectHistory {
+  email: string
+  consents: SubjectConsentRow[]
+  suppressions: SubjectSuppressionRow[]
+}
+
+/**
+ * One person's whole history, newest first.
+ *
+ * This is the screen a complaint is answered from and the answer the APP 7.7
+ * source disclosure gives, so it returns the records themselves rather than a
+ * summary: where each one came from, under exactly which words, and when.
+ */
+export async function readSubjectHistory(
+  admin: Admin,
+  email: string,
+  tenantSlug: string = PLATFORM_TENANT_SLUG,
+): Promise<SubjectHistory> {
+  const normalised = normaliseSubjectEmail(email)
+  const empty: SubjectHistory = { email: normalised, consents: [], suppressions: [] }
+  if (!normalised) return empty
+
+  try {
+    const { data: tenant } = await admin
+      .from('marketing_tenants')
+      .select('id')
+      .eq('slug', tenantSlug)
+      .maybeSingle()
+    if (!tenant?.id) return empty
+
+    const [consentResult, suppressionResult] = await Promise.all([
+      admin
+        .from('consent_events')
+        .select(
+          'id, purpose, decision, channel_scope, wording, wording_version, capture_surface, third_party_scope, suppression_scope, city_slug, occurred_at',
+        )
+        .eq('tenant_id', tenant.id)
+        .eq('subject_email', normalised)
+        .order('occurred_at', { ascending: false }),
+      admin
+        .from('suppression_events')
+        .select('id, channel, scope, reason, request_source, occurred_at')
+        .eq('tenant_id', tenant.id)
+        .eq('subject_email', normalised)
+        .order('occurred_at', { ascending: false }),
+    ])
+
+    return {
+      email: normalised,
+      consents: (consentResult.data ?? []).map((row) => ({
+        id: row.id,
+        purpose: row.purpose,
+        decision: row.decision as ConsentDecisionValue,
+        channelScope: row.channel_scope as ConsentChannelScope,
+        wording: row.wording,
+        wordingVersion: row.wording_version,
+        captureSurface: row.capture_surface,
+        thirdPartyScope: row.third_party_scope,
+        suppressionScope: row.suppression_scope,
+        citySlug: row.city_slug,
+        occurredAt: row.occurred_at,
+      })),
+      suppressions: (suppressionResult.data ?? []).map((row) => ({
+        id: row.id,
+        channel: row.channel as ConsentChannelScope,
+        scope: row.scope as SuppressionScope,
+        reason: row.reason,
+        requestSource: row.request_source,
+        occurredAt: row.occurred_at,
+      })),
+    }
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/ledger:readSubjectHistory' })
+    return empty
+  }
+}

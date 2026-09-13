@@ -203,3 +203,7 @@ docs/verification/lh-local/
 # Local production-server logs written by the journey harness (C:\dev\serve.ps1)
 .tmp-serve.log
 .tmp-serve.err.log
+# The same, per lane, when three worktrees drive against three ports at once.
+.tmp-serve-*.log
+.tmp-upstash*.log
+.tmp-stripe-listen.log

@@ -37,6 +37,9 @@ export const BROADCAST_FLAGS = [
   // switch the owner can throw WITHOUT A DEPLOY, so it rides the same governed
   // switch system rather than becoming a second, private flag mechanism.
   'founding_open',
+  // Close-out GA1. The audience asset's reversal condition: one switch removes
+  // the marketing question from checkout AND stops every audience write.
+  'audience_capture',
 ] as const
 
 export type BroadcastFlag = (typeof BROADCAST_FLAGS)[number]
@@ -60,6 +63,12 @@ export const BROADCAST_FLAG_DEFAULTS: Record<BroadcastFlag, boolean> = {
   // safe posture when the flags table cannot be read is the posture the public
   // page is already promising. Closing it is a deliberate act, never an outage.
   founding_open: true,
+  // ON. The consent question is already on the checkout of a live platform and
+  // the asset it builds is the point of the item, so the safe posture when the
+  // flags table cannot be read is the posture the checkout is already taking.
+  // Nothing about this default weakens consent: an audience row still cannot
+  // exist without a granted consent record, and the database is what refuses it.
+  audience_capture: true,
 }
 
 /**
@@ -96,6 +105,8 @@ export const BROADCAST_FLAG_DECISIONS: Record<BroadcastFlag, string> = {
     'lawal 2026-08-15: OFF at launch, deliberately. Same decision and same moment as gig_board; the two ship together or not at all, because a showcase with no gig board is a directory with nothing to do.',
   founding_open:
     'lawal 2026-09-13: ON. The Founding Organiser offer is open to new organisers. This is the FO1 reversal condition made operable: set it false and no new spot is granted and no new fee-free window is opened, at once and with no deploy. Organisations that already hold a window keep it and their referrals keep earning, because a promise already made is not withdrawn by closing the door behind it. The fifty cap closes the offer on its own; this closes it early.',
+  audience_capture:
+    'lawal 2026-09-13: ON. The one marketing question at checkout and every write to the audience asset. Set it false and the question disappears from the checkout and no audience row is created or enriched, at once and with no deploy. Every existing row and every consent record is left exactly as it is. It is deliberately powerless in one direction: a withdrawal still removes its audience row while the switch is off, because a feature flag may not keep somebody in a marketing audience they asked to leave.',
 }
 
 // Minimal structural type so both the service-role admin client and the

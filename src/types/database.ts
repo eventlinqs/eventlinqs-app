@@ -213,6 +213,120 @@ export type Database = {
           },
         ]
       }
+      audience_members: {
+        Row: {
+          arrival_device: string | null
+          arrival_referrer_host: string | null
+          arrival_utm_campaign: string | null
+          arrival_utm_medium: string | null
+          arrival_utm_source: string | null
+          category_slugs: string[]
+          city_slugs: string[]
+          community_slugs: string[]
+          consent_at: string
+          consent_channel: string
+          consent_source: string
+          consent_state: boolean
+          consent_text: string
+          consent_version: string
+          created_at: string
+          display_name: string | null
+          email: string
+          first_order_at: string
+          id: string
+          last_category_slug: string | null
+          last_city_slug: string | null
+          last_event_id: string | null
+          last_order_at: string
+          last_order_id: string | null
+          lifetime_spend_cents: number
+          order_count: number
+          postcode: string | null
+          price_band: string
+          refreshed_at: string
+          user_id: string | null
+        }
+        Insert: {
+          arrival_device?: string | null
+          arrival_referrer_host?: string | null
+          arrival_utm_campaign?: string | null
+          arrival_utm_medium?: string | null
+          arrival_utm_source?: string | null
+          category_slugs?: string[]
+          city_slugs?: string[]
+          community_slugs?: string[]
+          consent_at: string
+          consent_channel?: string
+          consent_source: string
+          consent_state?: boolean
+          consent_text: string
+          consent_version: string
+          created_at?: string
+          display_name?: string | null
+          email: string
+          first_order_at: string
+          id?: string
+          last_category_slug?: string | null
+          last_city_slug?: string | null
+          last_event_id?: string | null
+          last_order_at: string
+          last_order_id?: string | null
+          lifetime_spend_cents?: number
+          order_count?: number
+          postcode?: string | null
+          price_band: string
+          refreshed_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          arrival_device?: string | null
+          arrival_referrer_host?: string | null
+          arrival_utm_campaign?: string | null
+          arrival_utm_medium?: string | null
+          arrival_utm_source?: string | null
+          category_slugs?: string[]
+          city_slugs?: string[]
+          community_slugs?: string[]
+          consent_at?: string
+          consent_channel?: string
+          consent_source?: string
+          consent_state?: boolean
+          consent_text?: string
+          consent_version?: string
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          first_order_at?: string
+          id?: string
+          last_category_slug?: string | null
+          last_city_slug?: string | null
+          last_event_id?: string | null
+          last_order_at?: string
+          last_order_id?: string | null
+          lifetime_spend_cents?: number
+          order_count?: number
+          postcode?: string | null
+          price_band?: string
+          refreshed_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audience_members_last_event_id_fkey"
+            columns: ["last_event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_members_last_order_id_fkey"
+            columns: ["last_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -547,6 +661,21 @@ export type Database = {
           },
         ]
       }
+      community_tag_map: {
+        Row: {
+          community_slug: string
+          tokens: string[]
+        }
+        Insert: {
+          community_slug: string
+          tokens: string[]
+        }
+        Update: {
+          community_slug?: string
+          tokens?: string[]
+        }
+        Relationships: []
+      }
       connect_requirement_watch: {
         Row: {
           bucket: string
@@ -570,6 +699,174 @@ export type Database = {
           stripe_account_id?: string
         }
         Relationships: []
+      }
+      consent_events: {
+        Row: {
+          capture_surface: string
+          channel_scope: string
+          city_slug: string | null
+          created_at: string
+          decision: string
+          id: string
+          ip_or_session_ref: string | null
+          occurred_at: string
+          purpose: string
+          subject_email: string
+          subject_mobile_hash: string | null
+          suppression_scope: string
+          tenant_id: string
+          third_party_scope: string
+          wording: string
+          wording_version: string
+        }
+        Insert: {
+          capture_surface: string
+          channel_scope: string
+          city_slug?: string | null
+          created_at?: string
+          decision: string
+          id?: string
+          ip_or_session_ref?: string | null
+          occurred_at?: string
+          purpose: string
+          subject_email: string
+          subject_mobile_hash?: string | null
+          suppression_scope: string
+          tenant_id: string
+          third_party_scope: string
+          wording: string
+          wording_version: string
+        }
+        Update: {
+          capture_surface?: string
+          channel_scope?: string
+          city_slug?: string | null
+          created_at?: string
+          decision?: string
+          id?: string
+          ip_or_session_ref?: string | null
+          occurred_at?: string
+          purpose?: string
+          subject_email?: string
+          subject_mobile_hash?: string | null
+          suppression_scope?: string
+          tenant_id?: string
+          third_party_scope?: string
+          wording?: string
+          wording_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_events_city_slug_fkey"
+            columns: ["city_slug"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "consent_events_purpose_fkey"
+            columns: ["purpose"]
+            isOneToOne: false
+            referencedRelation: "consent_purposes"
+            referencedColumns: ["purpose"]
+          },
+          {
+            foreignKeyName: "consent_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consent_policy: {
+        Row: {
+          id: boolean
+          max_age_months: number
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          max_age_months?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          max_age_months?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      consent_purposes: {
+        Row: {
+          covers: string[]
+          created_at: string
+          facilitates_third_parties: boolean
+          name: string
+          purpose: string
+        }
+        Insert: {
+          covers?: string[]
+          created_at?: string
+          facilitates_third_parties?: boolean
+          name: string
+          purpose: string
+        }
+        Update: {
+          covers?: string[]
+          created_at?: string
+          facilitates_third_parties?: boolean
+          name?: string
+          purpose?: string
+        }
+        Relationships: []
+      }
+      consent_wordings: {
+        Row: {
+          body: string
+          channel_scope: string
+          created_at: string
+          effective_from: string
+          id: string
+          label: string
+          purpose: string
+          suppression_scope: string
+          third_party_scope: string
+          version: string
+        }
+        Insert: {
+          body: string
+          channel_scope: string
+          created_at?: string
+          effective_from?: string
+          id?: string
+          label: string
+          purpose: string
+          suppression_scope: string
+          third_party_scope: string
+          version: string
+        }
+        Update: {
+          body?: string
+          channel_scope?: string
+          created_at?: string
+          effective_from?: string
+          id?: string
+          label?: string
+          purpose?: string
+          suppression_scope?: string
+          third_party_scope?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_wordings_purpose_fkey"
+            columns: ["purpose"]
+            isOneToOne: false
+            referencedRelation: "consent_purposes"
+            referencedColumns: ["purpose"]
+          },
+        ]
       }
       digest_sends: {
         Row: {
@@ -1868,10 +2165,12 @@ export type Database = {
           city_slug: string | null
           consent_text: string
           consent_version: string
+          declined_at: string | null
           email: string
-          granted_at: string
+          granted_at: string | null
           id: string
           revoked_at: string | null
+          revoked_source: string | null
           source: string
           status: string
           unsubscribe_token: string
@@ -1882,10 +2181,12 @@ export type Database = {
           city_slug?: string | null
           consent_text: string
           consent_version?: string
+          declined_at?: string | null
           email: string
-          granted_at?: string
+          granted_at?: string | null
           id?: string
           revoked_at?: string | null
+          revoked_source?: string | null
           source?: string
           status?: string
           unsubscribe_token?: string
@@ -1896,10 +2197,12 @@ export type Database = {
           city_slug?: string | null
           consent_text?: string
           consent_version?: string
+          declined_at?: string | null
           email?: string
-          granted_at?: string
+          granted_at?: string | null
           id?: string
           revoked_at?: string | null
+          revoked_source?: string | null
           source?: string
           status?: string
           unsubscribe_token?: string
@@ -1915,6 +2218,30 @@ export type Database = {
             referencedColumns: ["slug"]
           },
         ]
+      }
+      marketing_tenants: {
+        Row: {
+          created_at: string
+          id: string
+          is_platform: boolean
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_platform?: boolean
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_platform?: boolean
+          name?: string
+          slug?: string
+        }
+        Relationships: []
       }
       marketplace_blocks: {
         Row: {
@@ -4281,6 +4608,53 @@ export type Database = {
           },
         ]
       }
+      suppression_events: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          occurred_at: string
+          reason: string
+          request_source: string
+          scope: string
+          subject_email: string
+          subject_mobile_hash: string | null
+          tenant_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          id?: string
+          occurred_at?: string
+          reason: string
+          request_source: string
+          scope: string
+          subject_email: string
+          subject_mobile_hash?: string | null
+          tenant_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          occurred_at?: string
+          reason?: string
+          request_source?: string
+          scope?: string
+          subject_email?: string
+          subject_mobile_hash?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppression_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tax_rules: {
         Row: {
           applies_to_platform_fees: boolean
@@ -5243,6 +5617,20 @@ export type Database = {
         Returns: number
       }
       assign_order_seats: { Args: { p_order_id: string }; Returns: number }
+      audience_consent_is_live: {
+        Args: { p_email: string }
+        Returns: {
+          consent_at: string
+          permitted: boolean
+          source: string
+          wording: string
+          wording_version: string
+        }[]
+      }
+      audience_price_band: {
+        Args: { p_unit_cents: number }
+        Returns: string
+      }
       claim_discount_use: {
         Args: { p_code_id: string; p_reservation_id: string }
         Returns: boolean
@@ -5257,6 +5645,20 @@ export type Database = {
         Returns: {
           guard: string
           holds: boolean
+        }[]
+      }
+      consent_permits: {
+        Args: {
+          p_channel: string
+          p_email: string
+          p_now?: string
+          p_purpose: string
+          p_tenant_slug: string
+        }
+        Returns: {
+          deciding_event_id: string
+          permitted: boolean
+          reason: string
         }[]
       }
       convert_discount_claim: {
@@ -5559,6 +5961,16 @@ export type Database = {
         Args: { p_entry: Json; p_slot: Json }
         Returns: number
       }
+      record_marketing_decline: {
+        Args: {
+          p_at?: string
+          p_consent_text: string
+          p_consent_version: string
+          p_email: string
+          p_source: string
+        }
+        Returns: boolean
+      }
       record_platform_notification: {
         Args: {
           p_actor_label?: string
@@ -5593,6 +6005,10 @@ export type Database = {
         Returns: {
           ticket_tier_id: string
         }[]
+      }
+      refresh_audience_member: {
+        Args: { p_email: string }
+        Returns: undefined
       }
       refund_policy_is_looser_or_equal: {
         Args: {

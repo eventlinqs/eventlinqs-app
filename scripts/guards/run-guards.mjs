@@ -55,6 +55,18 @@
  *   organiser-page-is-a-read   the live proof block on /organisers is a read from the
  *                              catalogue, the surface is named inside the copy gate, and
  *                              every signup button carries the source AN1 counts
+ *   audience-consent-is-the-title-deed  an audience row cannot exist without a
+ *                              consent state of true and a non-empty consent wording,
+ *                              no unsubscribe surface asks anybody to log in, and the
+ *                              community taxonomy and the price bands say the same
+ *                              thing in SQL and in TypeScript
+ *   consent-ledger-is-evidence  the consent and suppression ledgers refuse UPDATE and
+ *                              DELETE at the database, an event cannot carry empty
+ *                              wording or a null tenant, no audience row can exist for
+ *                              somebody the resolver refuses, every module that can
+ *                              reach a mail transport is classified and every marketing
+ *                              one calls the resolver, and no rights or unsubscribe
+ *                              surface reads a session
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -799,6 +811,32 @@ const GUARDS = [
   // driven proof; a guard that needs a running server cannot run on the build
   // host and would be dropped from the chain. Drilled red.
   'scripts/guards/no-analytics-before-consent.mjs',
+  // Close-out GA1 (13 September 2026). The platform now keeps an audience of
+  // proven buyers, and consent is the title deed to it: an audience without
+  // provable consent cannot be used and cannot be sold. ACMA's enforcement
+  // record covers both halves, and the dates are stated correctly here because
+  // an earlier version of this comment had two of them wrong: TAB was penalised
+  // 4,003,270 dollars in June 2025 and 2.7 million dollars again in July 2026,
+  // mostly for messages with no unsubscribe; the Commonwealth Bank was
+  // penalised 7.5 million dollars announced in October 2024, for 34.8 million
+  // messages to people who had not consented or had withdrawn. So the entry and
+  // the exit are held equally hard. Three GA1 clauses: the CHECK that refuses
+  // an unconsented row, the CHECK that refuses empty wording, and no session on
+  // any unsubscribe surface. Two more, because a trigger cannot call
+  // TypeScript and the two languages must not drift: the community token map
+  // and the price bands. Drilled red on the constraint and on the drift.
+  'scripts/guards/audience-consent-is-the-title-deed.mjs',
+  // Close-out GA1 v3. The consent LEDGER, which is a different claim from the
+  // audience above it: a consent record is evidence of what one person was
+  // shown and agreed to, so it is append only, it carries the tenant and the
+  // scope from its first line, and the resolver that reads it is the only door
+  // a message can leave by. Five clauses, each drilled red: the database
+  // refuses UPDATE and DELETE on both ledgers, an event cannot be empty
+  // evidence, an audience row cannot exist for somebody the resolver refuses,
+  // no module can reach a mail transport without being classified in the send
+  // path registry (and a marketing one without calling the resolver), and no
+  // unsubscribe or privacy rights surface reads a session.
+  'scripts/guards/consent-ledger-is-evidence.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and

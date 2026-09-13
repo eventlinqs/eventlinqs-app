@@ -1463,9 +1463,26 @@ const ROOT = join(HERE, '..', '..')
  * script is emitted before the cookie is read, a decision is a record of what
  * was on screen rather than a boolean, and the four providers named in the
  * component are the four the provider table knows.
+ *
+ * 2026-09-13 (lane B, close-out GA1): raised 391/4828 -> 392/4859, MEASURED.
+ * tests/unit/growth/consent-capture-and-the-audience-asset holds the audience
+ * asset to its title deed: the price and recency bands at every boundary and
+ * in both languages, the community value read from the taxonomy with a
+ * negative control for a pasted list, the decline that can never revoke a
+ * consent, both checkouts recording the answer either way and scoping it to a
+ * city through one shared rule, and the proof that nothing sends and no
+ * address is read.
+ *
+ * 2026-09-13 (lane B, close-out GA1 v3): raised 392/4859 -> 393/4905, MEASURED.
+ * tests/unit/growth/consent-ledger-and-the-one-resolver holds the ledger to
+ * being evidence: the seven named resolver decisions, coverage that only runs
+ * one way, a transactional message that is not the marketing this governs, the
+ * append-only schema, the wording read from the record rather than typed into a
+ * page, the send-path registry that makes "the resolver is the only door"
+ * checkable, and the two privacy rights routes.
  */
-const MIN_FILES = 391
-const MIN_TESTS = 4828
+const MIN_FILES = 393
+const MIN_TESTS = 4905
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -81,7 +81,7 @@ export const RESERVED_CODES: readonly string[] = [
   'community', 'contact', 'dashboard', 'design', 'dev', 'e', 'events', 'faith',
   'feed', 'for-organisers', 'forgot-password', 'gigs', 'guides', 'help', 'join',
   'launch',
-  'legal', 'login', 'orders', 'organisers', 'press', 'pricing', 'queue', 's',
+  'legal', 'login', 'marketing', 'orders', 'organisers', 'press', 'pricing', 'queue', 's',
   'scan', 'signup', 'squad', 't', 'tickets', 'unsubscribe', 'venues',
   'verify-email-sent', 'waitlist',
   // Held back on purpose: the permanent redirects from the community rename,
