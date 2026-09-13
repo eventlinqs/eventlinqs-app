@@ -1528,9 +1528,21 @@ const ROOT = join(HERE, '..', '..')
  * `no_event_attendance_mode_is_emitted_anywhere`, which asserts on the emitted
  * BYTES rather than the object because a key holding `undefined` is present on
  * one and absent from the other, and `no_event_markup_on_any_listing_page`.
+ *
+ * 2026-09-14 (SEO3 step 2, the owner's indexing threshold): raised 393/4782 ->
+ * 394/4794, MEASURED on a green suite. One new file, twelve tests. The
+ * discovery indexing threshold stopped being a compiled constant and became a
+ * row the owner can change without a deploy, and the resolver has to be right
+ * in THREE states rather than one: before his migration exists, after it exists,
+ * and when the database cannot be reached mid-request. The third is the one
+ * worth twelve tests, because a failed read that returned ZERO would make every
+ * templated discovery page indexable at once, which is the exact shape Google
+ * collapsed in close-out C19. It degrades to the constant instead, and the test
+ * that proves it asserts the value is greater than zero as well as equal to the
+ * constant.
  */
-const MIN_FILES = 393
-const MIN_TESTS = 4782
+const MIN_FILES = 394
+const MIN_TESTS = 4794
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

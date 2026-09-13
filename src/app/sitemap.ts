@@ -13,6 +13,7 @@ import { isRedirected } from '@/lib/seo/permanent-redirects'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { isDiscoveryIndexable } from '@/lib/seo/indexing-policy'
+import { resolveDiscoveryThreshold } from '@/lib/seo/discovery-threshold'
 import {
   loadDiscoveryRows,
   countCommunity,
@@ -116,6 +117,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
    * the page can never disagree about whether a URL is indexable.
    */
   const discoveryRows = await loadDiscoveryRows()
+
+  /*
+   * ONE THRESHOLD, RESOLVED ONCE, FOR ALL 490 DECISIONS BELOW.
+   *
+   * SEO3 step 2 made this number owner-editable without a deploy, so it is no
+   * longer a compiled constant and has to be read. It is read HERE, once, and
+   * passed down, rather than read inside `isDiscoveryIndexable`: the sitemap
+   * makes about 490 of these judgements in one request, and a resolver called
+   * 490 times could in principle answer differently partway through and publish
+   * a sitemap that disagreed with itself.
+   *
+   * The same resolver backs every page's `discoveryIndexingFor`, so a page's
+   * robots directive and that page's presence here still come from one number.
+   */
+  const threshold = await resolveDiscoveryThreshold()
 
   const entries: MetadataRoute.Sitemap = [
     {
@@ -260,7 +276,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (isRedirected(path)) continue
     // Published only while indexable (close-out C19.3), on the same count and
     // the same slug pair the page's own metadata uses.
-    if (!isDiscoveryIndexable(countCategory(discoveryRows, [category.slug, category.displayName.toLowerCase()]))) continue
+    if (!isDiscoveryIndexable(countCategory(discoveryRows, [category.slug, category.displayName.toLowerCase()]), threshold)) continue
     entries.push({
       url: `${baseUrl}${path}`,
       changeFrequency: 'daily',
@@ -275,7 +291,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   for (const c of allCities) {
-    if (!isDiscoveryIndexable(countCity(discoveryRows, c.city))) continue
+    if (!isDiscoveryIndexable(countCity(discoveryRows, c.city), threshold)) continue
     entries.push({
       url: `${baseUrl}/events/browse/${c.slug}`,
       changeFrequency: 'daily',
@@ -285,7 +301,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Batch 5 - community landing pages.
   for (const community of getAllCommunities()) {
-    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug))) continue
+    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug), threshold)) continue
     entries.push({
       url: `${baseUrl}/community/${community.slug}`,
       changeFrequency: 'daily',
@@ -295,7 +311,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Community Taxonomy v2 - faith landing pages.
   for (const faith of getAllFaiths()) {
-    if (!isDiscoveryIndexable(countFaith(discoveryRows, faith.slug))) continue
+    if (!isDiscoveryIndexable(countFaith(discoveryRows, faith.slug), threshold)) continue
     entries.push({
       url: `${baseUrl}/faith/${faith.slug}`,
       changeFrequency: 'daily',
@@ -305,7 +321,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Batch 6 - city + suburb landing pages.
   for (const city of getAllCities()) {
-    if (isDiscoveryIndexable(countCity(discoveryRows, city.name))) {
+    if (isDiscoveryIndexable(countCity(discoveryRows, city.name), threshold)) {
       entries.push({
         url: `${baseUrl}/city/${city.slug}`,
         changeFrequency: 'daily',
@@ -313,7 +329,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })
     }
     for (const s of getSuburbsForCity(city.slug)) {
-      if (!isDiscoveryIndexable(countSuburb(discoveryRows, city.name, city.slug, s.slug))) continue
+      if (!isDiscoveryIndexable(countSuburb(discoveryRows, city.name, city.slug, s.slug), threshold)) continue
       const facing = s.slug.startsWith(`${city.slug}-`) ? s.slug.slice(city.slug.length + 1) : s.slug
       entries.push({
         url: `${baseUrl}/city/${city.slug}/${facing}`,
@@ -331,7 +347,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // combination so search engines have the full surface.
   for (const community of getAllCommunities()) {
     for (const city of getAllCities()) {
-      if (!isDiscoveryIndexable(countCommunityCity(discoveryRows, community.slug, city.name))) continue
+      if (!isDiscoveryIndexable(countCommunityCity(discoveryRows, community.slug, city.name), threshold)) continue
       entries.push({
         url: `${baseUrl}/community/${community.slug}/${city.slug}`,
         changeFrequency: 'weekly',

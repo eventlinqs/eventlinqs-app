@@ -1,7 +1,7 @@
 import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countCommunity } from '@/lib/seo/discovery-counts'
-import { discoveryIndexing } from '@/lib/seo/indexing-policy'
+import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     keywords: community.keywords,
-    ...discoveryIndexing(eventCount, `/community/${community.slug}`),
+    ...(await discoveryIndexingFor(eventCount, `/community/${community.slug}`)),
     openGraph: {
       title,
       description,
