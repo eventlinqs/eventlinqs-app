@@ -231,6 +231,17 @@ export const STORED_AGGREGATES = [
       'RECOMPUTED FROM SCRATCH ON EVERY REFRESH, never incremented. Close-out GA1 chose a full recount over a delta precisely to stay out of this class: there is no += anywhere, so there is no way for it to drift, and a missed trigger costs one stale row rather than a permanently wrong number. The same call recomputes lifetime_spend_cents, first_order_at and last_order_at from the same read, so the four can never disagree with each other either.',
   },
   {
+    column: 'marketing_match_run.returned_count',
+    summarises: 'public.marketing_match_score rows belonging to this run',
+    maintenance: 'application',
+    maintainedBy:
+      'src/lib/matching/run.ts, in one UPDATE at the end of the run that writes the length of the list it just inserted.',
+    reconciled: true,
+    caveat: null,
+    decision:
+      'A RUN IS IMMUTABLE ONCE FINISHED, which is what takes this out of the drift class. The score rows for a run are inserted once, in one statement, and nothing on the platform adds to or removes from a finished run: there is no += anywhere and no second writer. The count is written from the array that was inserted rather than incremented per row, so the only way it can disagree with the rows is if the insert failed, and that path returns an error and leaves returned_count at its zero default rather than claiming a number. audience_considered and suppressed_by_reason on the same row are the same shape for the same reason.',
+  },
+  {
     column: 'digest_sends.event_count',
     summarises: null,
     maintenance: 'not-in-class',

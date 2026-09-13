@@ -175,19 +175,55 @@ export async function filterPermittedRecipients(
       return { permitted: [], refused: normalised.map((email) => ({ email, reason: `unknown tenant ${tenantSlug}` })) }
     }
 
-    const [eventResult, suppressionResult, policyResult] = await Promise.all([
-      admin
-        .from('consent_events')
-        .select('id, subject_email, purpose, channel_scope, decision, occurred_at, wording_version')
-        .eq('tenant_id', tenant.id)
-        .in('subject_email', normalised),
-      admin
-        .from('suppression_events')
-        .select('id, subject_email, channel, scope, occurred_at')
-        .eq('tenant_id', tenant.id)
-        .in('subject_email', normalised),
+    /*
+     * THE ADDRESSES ARE READ IN CHUNKS, AND THE REASON IS A REAL FAILURE.
+     *
+     * A single `.in()` carrying five hundred addresses is a URL of about
+     * twenty-two kilobytes, and PostgREST refuses it. The refusal lands in the
+     * catch below, which fails CLOSED, so the whole list came back refused and
+     * a matcher run returned nobody: the first driven run of GA2 produced zero
+     * matches out of five hundred consented people and every one of them was
+     * recorded as "the consent resolver does not permit". Fail-closed is right
+     * and it is exactly what made the fault look like a policy decision instead
+     * of a broken query. A hundred at a time keeps every URL short.
+     */
+    const CHUNK = 100
+    const chunks: string[][] = []
+    for (let i = 0; i < normalised.length; i += CHUNK) chunks.push(normalised.slice(i, i + CHUNK))
+
+    const [eventPages, suppressionPages, policyResult] = await Promise.all([
+      Promise.all(
+        chunks.map(chunk =>
+          admin
+            .from('consent_events')
+            .select('id, subject_email, purpose, channel_scope, decision, occurred_at, wording_version')
+            .eq('tenant_id', tenant.id)
+            .in('subject_email', chunk),
+        ),
+      ),
+      Promise.all(
+        chunks.map(chunk =>
+          admin
+            .from('suppression_events')
+            .select('id, subject_email, channel, scope, occurred_at')
+            .eq('tenant_id', tenant.id)
+            .in('subject_email', chunk),
+        ),
+      ),
       admin.from('consent_policy').select('max_age_months').eq('id', true).maybeSingle(),
     ])
+
+    /*
+     * A CHUNK THAT FAILED IS NOT A CHUNK THAT SAID NO. Reading half the ledger
+     * and treating the missing half as "no consent recorded" would refuse real
+     * people for a network blip, so any failure raises and the whole list fails
+     * closed together, which at least says the same thing about everybody.
+     */
+    for (const page of [...eventPages, ...suppressionPages]) {
+      if (page.error) throw new Error(`the consent ledger could not be read: ${page.error.message}`)
+    }
+    const eventResult = { data: eventPages.flatMap(page => page.data ?? []) }
+    const suppressionResult = { data: suppressionPages.flatMap(page => page.data ?? []) }
 
     const maxAgeMonths = policyResult.data?.max_age_months ?? CONSENT_MAX_AGE_MONTHS_FALLBACK
     const permitted: string[] = []

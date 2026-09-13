@@ -60,6 +60,9 @@
  *                              no unsubscribe surface asks anybody to log in, and the
  *                              community taxonomy and the price bands say the same
  *                              thing in SQL and in TypeScript
+ *   matcher-consented-and-capped  no stored match run holds somebody the consent
+ *                              resolver refuses, and none holds more people than its
+ *                              own cap
  *   consent-ledger-is-evidence  the consent and suppression ledgers refuse UPDATE and
  *                              DELETE at the database, an event cannot carry empty
  *                              wording or a null tenant, no audience row can exist for
@@ -837,6 +840,14 @@ const GUARDS = [
   // path registry (and a marketing one without calling the resolver), and no
   // unsubscribe or privacy rights surface reads a session.
   'scripts/guards/consent-ledger-is-evidence.mjs',
+  // Close-out GA2. The matcher produces the list a campaign will one day send
+  // against, so two things about a stored run must hold: nobody in it is
+  // somebody the consent resolver refuses, and no run holds more score rows
+  // than the cap recorded on it. The trigger stops a bad row arriving; this
+  // asks whether one is there, which a dropped or disabled trigger makes a
+  // different question. Drilled red on both clauses with the database's own
+  // protection removed, which is how a row like that would ever exist.
+  'scripts/guards/matcher-consented-and-capped.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and

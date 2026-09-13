@@ -1480,9 +1480,19 @@ const ROOT = join(HERE, '..', '..')
  * append-only schema, the wording read from the record rather than typed into a
  * page, the send-path registry that makes "the resolver is the only door"
  * checkable, and the two privacy rights routes.
+ *
+ * 2026-09-13 (lane B, close-out GA2): raised 393/4905 -> 394/4934, MEASURED.
+ * tests/unit/growth/matcher-scores-and-suppresses holds the matcher to the
+ * arithmetic it claims: every component at its boundaries, the weights refused
+ * by name when they do not sum to one, the score bounded on 500 fuzzed inputs,
+ * the breakdown summing to the score, every suppression reason with its
+ * sentence, suppression running BEFORE scoring so a removed person cannot be
+ * scored, the cap and the contiguous ranks, the tie break that makes a run
+ * reproducible, and the proof that nothing in src/lib/matching can reach a
+ * transport.
  */
-const MIN_FILES = 393
-const MIN_TESTS = 4905
+const MIN_FILES = 394
+const MIN_TESTS = 4934
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

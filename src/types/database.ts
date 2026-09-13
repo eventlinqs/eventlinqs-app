@@ -2219,6 +2219,185 @@ export type Database = {
           },
         ]
       }
+      marketing_match_config: {
+        Row: {
+          id: boolean
+          max_recipients_per_run: number
+          method_name: string
+          method_version: string
+          minimum_score_floor: number
+          price_band_tolerance: number
+          recency_half_life_days: number
+          send_cooldown_days: number
+          updated_at: string
+          weight_sum_tolerance: number
+        }
+        Insert: {
+          id?: boolean
+          max_recipients_per_run: number
+          method_name: string
+          method_version: string
+          minimum_score_floor: number
+          price_band_tolerance: number
+          recency_half_life_days: number
+          send_cooldown_days: number
+          updated_at?: string
+          weight_sum_tolerance?: number
+        }
+        Update: {
+          id?: boolean
+          max_recipients_per_run?: number
+          method_name?: string
+          method_version?: string
+          minimum_score_floor?: number
+          price_band_tolerance?: number
+          recency_half_life_days?: number
+          send_cooldown_days?: number
+          updated_at?: string
+          weight_sum_tolerance?: number
+        }
+        Relationships: []
+      }
+      marketing_match_postcode_bands: {
+        Row: {
+          band: number
+          fit: number
+          label: string
+          shared_prefix: number
+        }
+        Insert: {
+          band: number
+          fit: number
+          label: string
+          shared_prefix: number
+        }
+        Update: {
+          band?: number
+          fit?: number
+          label?: string
+          shared_prefix?: number
+        }
+        Relationships: []
+      }
+      marketing_match_run: {
+        Row: {
+          actor_user_id: string | null
+          audience_considered: number
+          config_snapshot: Json
+          event_id: string
+          finished_at: string | null
+          id: string
+          method_name: string
+          method_version: string
+          requested_cap: number
+          returned_count: number
+          started_at: string
+          suppressed_by_reason: Json
+          truncated: boolean
+        }
+        Insert: {
+          actor_user_id?: string | null
+          audience_considered?: number
+          config_snapshot: Json
+          event_id: string
+          finished_at?: string | null
+          id?: string
+          method_name: string
+          method_version: string
+          requested_cap: number
+          returned_count?: number
+          started_at?: string
+          suppressed_by_reason?: Json
+          truncated?: boolean
+        }
+        Update: {
+          actor_user_id?: string | null
+          audience_considered?: number
+          config_snapshot?: Json
+          event_id?: string
+          finished_at?: string | null
+          id?: string
+          method_name?: string
+          method_version?: string
+          requested_cap?: number
+          returned_count?: number
+          started_at?: string
+          suppressed_by_reason?: Json
+          truncated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_match_run_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_match_score: {
+        Row: {
+          audience_member_id: string
+          breakdown: Json
+          created_at: string
+          id: string
+          rank: number
+          run_id: string
+          score: number
+        }
+        Insert: {
+          audience_member_id: string
+          breakdown: Json
+          created_at?: string
+          id?: string
+          rank: number
+          run_id: string
+          score: number
+        }
+        Update: {
+          audience_member_id?: string
+          breakdown?: Json
+          created_at?: string
+          id?: string
+          rank?: number
+          run_id?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_match_score_audience_member_id_fkey"
+            columns: ["audience_member_id"]
+            isOneToOne: false
+            referencedRelation: "audience_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_match_score_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_match_run"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_match_weights: {
+        Row: {
+          component: string
+          sentence: string
+          weight: number
+        }
+        Insert: {
+          component: string
+          sentence: string
+          weight: number
+        }
+        Update: {
+          component?: string
+          sentence?: string
+          weight?: number
+        }
+        Relationships: []
+      }
       marketing_tenants: {
         Row: {
           created_at: string
@@ -5588,6 +5767,15 @@ export type Database = {
       }
     }
     Views: {
+      marketing_match_invariant_breaches: {
+        Row: {
+          audience_member_id: string | null
+          breach: string | null
+          detail: string | null
+          run_id: string | null
+        }
+        Relationships: []
+      }
       stored_aggregate_drift: {
         Row: {
           column_name: string | null

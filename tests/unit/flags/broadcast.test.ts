@@ -60,8 +60,13 @@ describe('broadcast flag resolver', () => {
       // default weakens consent: an audience row still cannot exist without a
       // granted consent record, and the database is what refuses it.
       audience_capture: true,
+      // The matcher's reversal condition (close-out GA2). ON, because the
+      // alternative to ranking a consented audience is messaging all of it, and
+      // nothing about this default sends anything: the matcher produces a list
+      // and no transport is reachable from it.
+      marketing_matcher_enabled: true,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(8)
+    expect(BROADCAST_FLAGS).toHaveLength(9)
   })
 
   test('DB row wins over the default in both directions', async () => {

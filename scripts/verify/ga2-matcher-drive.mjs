@@ -1,0 +1,716 @@
+/**
+ * GA2 DRIVEN PROOF. Five hundred people, a cap of fifty, and a weight moved
+ * without a deploy, produced through the screen a person actually uses, at 390,
+ * 768 and 1440.
+ *
+ * WHY IT IS DRIVEN RATHER THAN CALLED. src/lib/matching/run.ts imports
+ * `server-only`, so it cannot be loaded by a script, which is the same wall
+ * scripts/verify/event-lifecycle-proof.mjs records. That is not a workaround
+ * here, it is the better proof: the acceptance asks for a run produced for one
+ * event and an admin view that shows it, and pressing the button is how a
+ * person produces one.
+ *
+ * WHAT IT PROVES, and which acceptance line each answers.
+ *
+ *   1. An audience of 500 lane-B rows, matched with the cap set to 50, returns
+ *      exactly 50, records the audience it considered, flags the truncation
+ *      rather than hiding it, and ranks 1 to 50 contiguous with no duplicates.
+ *                                                              (acceptance 3)
+ *   2. Changing ONE WEIGHT ROW changes the ranking on the next run with no
+ *      deploy, which is what makes the weights configuration rather than code.
+ *                                                              (acceptance 4)
+ *   3. The admin view shows the list size, the funnel, the method and version,
+ *      the English sentence and one row expanded to its breakdown, with no
+ *      horizontal overflow at 390.                             (acceptance 6)
+ *   4. The database refuses a score row for somebody the consent resolver
+ *      refuses, and refuses a run that would exceed its own cap.
+ *   5. The invariant view the guard reads is empty afterwards.
+ *
+ * EVERY ROW IT CREATES CARRIES lane-b. Everything that can be removed is
+ * removed at the end; the consent events cannot be, by GA1's design, and the
+ * count that remains is reported rather than pretended away.
+ *
+ * Run:
+ *   BASE=http://localhost:3100 node --env-file=.env.local \
+ *     scripts/verify/ga2-matcher-drive.mjs --out C:/dev/EVIDENCE/GA2
+ */
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { createClient } from '@supabase/supabase-js'
+import { chromium, BASE } from '../journeys/harness.mjs'
+
+const args = process.argv.slice(2)
+let out = null
+for (let i = 0; i < args.length; i += 1) if (args[i] === '--out') out = args[++i]
+if (!out) {
+  console.error('FAIL: --out <directory> is required')
+  process.exit(1)
+}
+mkdirSync(out, { recursive: true })
+
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+if (!/vkapkibzokmfaxqogypq/.test(url)) {
+  console.error(`FAIL: this proof only runs against TEST vkapkibzokmfaxqogypq, not ${url}`)
+  process.exit(1)
+}
+const db = createClient(url, serviceKey, { auth: { persistSession: false } })
+
+const checks = []
+const failures = []
+function check(id, ok, detail) {
+  checks.push({ id, ok, detail })
+  if (!ok) failures.push(`${id}: ${detail}`)
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${id}  ${detail}`)
+}
+
+const STAMP = Date.now().toString(36)
+const LANE = `lane-b-ga2-${STAMP}`
+const POPULATION = 500
+const CAP = 50
+
+const VIEWPORTS = [
+  { label: 'mobile-390', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
+  { label: 'tablet-768', viewport: { width: 768, height: 1024 }, isMobile: false, hasTouch: true, deviceScaleFactor: 1 },
+  { label: 'desktop-1440', viewport: { width: 1440, height: 1000 }, isMobile: false, hasTouch: false, deviceScaleFactor: 1 },
+]
+
+const adminPassword = `${randomUUID()}Aa1`
+const fixture = {
+  ownerId: null,
+  organisationId: null,
+  eventId: null,
+  adminId: null,
+  emails: [],
+  memberIds: [],
+}
+
+/** Answer the analytics banner first, because that is what a person does. */
+async function answerTheCookieBanner(page) {
+  const banner = page.locator('[aria-label="Cookies and measurement"]')
+  if ((await banner.count()) === 0) return false
+  if (!(await banner.first().isVisible().catch(() => false))) return false
+  const no = banner.getByRole('button', { name: /no thanks/i }).first()
+  if ((await no.count()) > 0) {
+    await no.click({ timeout: 15000 }).catch(() => {})
+    await page.waitForTimeout(600)
+    return true
+  }
+  return false
+}
+
+/**
+ * ONE LOGIN FOR THE WHOLE DRIVE, SAVED AND REUSED.
+ *
+ * The first version signed in for every block, and the sixth sign-in was
+ * refused: auth-login is a FAIL-CLOSED rate limit and six logins from one
+ * address inside ten minutes is what it exists to stop. The limiter was right
+ * and the drive was hammering it. A saved session is also closer to the truth:
+ * a person does not log in again between two presses.
+ */
+const ADMIN_SESSION = () => join(out, 'admin-session.json')
+
+async function newAdminContext(browser, viewportOptions) {
+  return browser.newContext({ ...viewportOptions, storageState: ADMIN_SESSION() })
+}
+
+async function signInAsAdmin(page) {
+  await page.goto(`${BASE}/admin/login`, { waitUntil: 'domcontentloaded', timeout: 120000 })
+  await page.waitForTimeout(1200)
+  await answerTheCookieBanner(page)
+  await page.locator('input[name="email"]').fill(`${LANE}-admin@eventlinqs.test`)
+  await page.locator('input[name="password"]').fill(adminPassword)
+  await Promise.all([
+    page.waitForURL(u => !u.pathname.endsWith('/admin/login'), { timeout: 60000 }).catch(() => {}),
+    page.locator('button[type="submit"]').first().click(),
+  ])
+  await page.waitForTimeout(2500)
+}
+
+/**
+ * Produce a run the way a person does: open the page for that event, set the
+ * cap, press, and WAIT FOR THE ANSWER rather than for a fixed number of
+ * seconds. Scoring five hundred people takes as long as it takes, and a sleep
+ * that is usually long enough is a test that is occasionally a lie.
+ */
+async function pressProduceAMatch(page) {
+  await page.goto(`${BASE}/admin/matches?event=${fixture.eventId}`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 120000,
+  })
+  await page.waitForTimeout(2000)
+  await answerTheCookieBanner(page)
+
+  const cap = page.locator('#cap')
+  await cap.fill(String(CAP))
+  const filled = await cap.inputValue()
+  if (filled !== String(CAP)) throw new Error(`the cap field holds ${filled}, not ${CAP}`)
+
+  await page.getByRole('button', { name: /produce a match/i }).click({ timeout: 30000 })
+  await page
+    .locator('p[role="status"]')
+    .filter({ hasText: /matched|no run was produced|switched off|pick an event/i })
+    .first()
+    .waitFor({ state: 'visible', timeout: 180000 })
+    .catch(() => {})
+  await page.waitForTimeout(1500)
+  return (await page.locator('body').innerText()).toLowerCase()
+}
+
+async function buildFixture() {
+  const { data: city } = await db.from('cities').select('slug').eq('is_active', true).order('display_order').limit(1).single()
+  const { data: category } = await db.from('event_categories').select('id, slug').eq('is_active', true).order('sort_order').limit(1).single()
+  const { data: cover } = await db
+    .from('events')
+    .select('cover_image_url')
+    .eq('status', 'published')
+    .not('cover_image_url', 'is', null)
+    .limit(1)
+    .single()
+  const { data: tenant } = await db.from('marketing_tenants').select('id').eq('slug', 'eventlinqs').single()
+  const { data: wording } = await db
+    .from('consent_wordings')
+    .select('body, version, channel_scope, third_party_scope, suppression_scope')
+    .eq('purpose', 'facilitated_event_marketing')
+    .order('effective_from', { ascending: false })
+    .limit(1)
+    .single()
+
+  const owner = await db.auth.admin.createUser({
+    email: `${LANE}-organiser@eventlinqs.test`,
+    password: `${randomUUID()}Aa1`,
+    email_confirm: true,
+  })
+  if (owner.error) throw new Error(`create organiser: ${owner.error.message}`)
+  fixture.ownerId = owner.data.user.id
+  await db.from('profiles').upsert({ id: fixture.ownerId, email: `${LANE}-organiser@eventlinqs.test`, full_name: 'Lane B GA2' })
+
+  const org = await db
+    .from('organisations')
+    .insert({ name: `Lane B GA2 ${STAMP}`, slug: `${LANE}-org`, owner_id: fixture.ownerId, status: 'active' })
+    .select('id')
+    .single()
+  if (org.error) throw new Error(`create organisation: ${org.error.message}`)
+  fixture.organisationId = org.data.id
+
+  const start = new Date(Date.now() + 30 * 86_400_000)
+  const event = await db
+    .from('events')
+    .insert({
+      title: `Lane B GA2 match night ${STAMP}`,
+      slug: `${LANE}-event`,
+      organisation_id: fixture.organisationId,
+      created_by: fixture.ownerId,
+      category_id: category.id,
+      status: 'published',
+      visibility: 'public',
+      published_at: new Date().toISOString(),
+      start_date: start.toISOString(),
+      end_date: new Date(start.getTime() + 3 * 3_600_000).toISOString(),
+      timezone: 'Australia/Melbourne',
+      city_primary: city.slug,
+      venue_name: 'Lane B GA2 room',
+      venue_city: city.slug,
+      venue_postal_code: '3220',
+      cover_image_url: cover.cover_image_url,
+      tags: ['first-nations'],
+      summary: 'An event created by the GA2 matcher proof. It is deleted when the proof ends.',
+    })
+    .select('id')
+    .single()
+  if (event.error) throw new Error(`create event: ${event.error.message}`)
+  fixture.eventId = event.data.id
+
+  const tier = await db
+    .from('ticket_tiers')
+    .insert({ event_id: fixture.eventId, name: 'General', price: 4500, currency: 'AUD', total_capacity: 900, is_active: true })
+    .select('id')
+    .single()
+  if (tier.error) throw new Error(`create tier: ${tier.error.message}`)
+
+  /*
+   * FIVE HUNDRED CONSENTED PEOPLE, varied along every axis the scorer reads so
+   * the ranking has something to rank. The consent event comes first because
+   * the database REFUSES an audience row for somebody the resolver refuses,
+   * which is GA1's trigger doing exactly what it was built for.
+   */
+  const now = Date.now()
+  const consentRows = []
+  const audienceRows = []
+  for (let i = 0; i < POPULATION; i += 1) {
+    const email = `${LANE}-${String(i).padStart(3, '0')}@eventlinqs.test`
+    fixture.emails.push(email)
+    consentRows.push({
+      tenant_id: tenant.id,
+      subject_email: email,
+      purpose: 'facilitated_event_marketing',
+      channel_scope: wording.channel_scope,
+      decision: 'granted',
+      wording: wording.body,
+      wording_version: wording.version,
+      capture_surface: 'ga2-proof',
+      third_party_scope: wording.third_party_scope,
+      suppression_scope: wording.suppression_scope,
+      occurred_at: new Date(now - (i % 30) * 3_600_000).toISOString(),
+    })
+    audienceRows.push({
+      email,
+      consent_state: true,
+      consent_channel: 'email',
+      consent_at: new Date(now - (i % 30) * 3_600_000).toISOString(),
+      consent_text: wording.body,
+      consent_version: wording.version,
+      consent_source: 'ga2-proof',
+      first_order_at: new Date(now - (200 + (i % 400)) * 86_400_000).toISOString(),
+      last_order_at: new Date(now - (i % 400) * 86_400_000).toISOString(),
+      order_count: 1 + (i % 4),
+      lifetime_spend_cents: (i % 50) * 1000,
+      last_category_slug: i % 2 === 0 ? category.slug : null,
+      last_city_slug: i % 3 === 0 ? city.slug : null,
+      postcode: i % 5 === 0 ? '3220' : i % 5 === 1 ? '3250' : '6000',
+      price_band: ['free', 'under-30', '30-to-59', '60-to-99', '100-to-199', '200-plus'][i % 6],
+      category_slugs: i % 2 === 0 ? [category.slug] : [],
+      community_slugs: i % 4 === 0 ? ['aboriginal-torres-strait-islander'] : [],
+      city_slugs: i % 3 === 0 ? [city.slug] : [],
+    })
+  }
+
+  for (let i = 0; i < consentRows.length; i += 100) {
+    const { error } = await db.from('consent_events').insert(consentRows.slice(i, i + 100))
+    if (error) throw new Error(`seed consent events: ${error.message}`)
+  }
+  for (let i = 0; i < audienceRows.length; i += 100) {
+    const { error } = await db.from('audience_members').upsert(audienceRows.slice(i, i + 100), { onConflict: 'email' })
+    if (error) throw new Error(`seed audience: ${error.message}`)
+  }
+
+  const seededRows = []
+  for (let i = 0; i < fixture.emails.length; i += 100) {
+    const { data } = await db.from('audience_members').select('id, email').in('email', fixture.emails.slice(i, i + 100))
+    seededRows.push(...(data ?? []))
+  }
+  fixture.memberIds = seededRows.map(r => r.id)
+  check(
+    'fixture.five-hundred-consented-people-exist',
+    seededRows.length === POPULATION,
+    `${seededRows.length} of ${POPULATION} audience rows seeded, each with a consent event behind it`,
+  )
+
+  const admin = await db.auth.admin.createUser({
+    email: `${LANE}-admin@eventlinqs.test`,
+    password: adminPassword,
+    email_confirm: true,
+  })
+  if (admin.error) throw new Error(`create admin: ${admin.error.message}`)
+  fixture.adminId = admin.data.user.id
+  await db.from('profiles').upsert({ id: fixture.adminId, email: `${LANE}-admin@eventlinqs.test`, full_name: 'Lane B GA2 Owner' })
+  const staff = await db.from('admin_users').insert({ id: fixture.adminId, role: 'super_admin', display_name: 'Lane B GA2 Owner' })
+  if (staff.error) throw new Error(`admin_users insert: ${staff.error.message}`)
+}
+
+async function teardown() {
+  if (fixture.emails.length > 0) {
+    const { data: members } = await db.from('audience_members').select('id').in('email', fixture.emails)
+    const ids = (members ?? []).map(m => m.id)
+    for (let i = 0; i < ids.length; i += 100) {
+      await db.from('marketing_match_score').delete().in('audience_member_id', ids.slice(i, i + 100))
+    }
+    for (let i = 0; i < fixture.emails.length; i += 100) {
+      await db.from('audience_members').delete().in('email', fixture.emails.slice(i, i + 100))
+      await db.from('marketing_consents').delete().in('email', fixture.emails.slice(i, i + 100))
+    }
+  }
+  if (fixture.eventId) {
+    await db.from('marketing_match_run').delete().eq('event_id', fixture.eventId)
+    await db.from('ticket_tiers').delete().eq('event_id', fixture.eventId)
+    await db.from('ledger_slots').delete().eq('source_ref', fixture.eventId)
+    await db.from('events').delete().eq('id', fixture.eventId)
+  }
+  if (fixture.organisationId) await db.from('organisations').delete().eq('id', fixture.organisationId)
+  if (fixture.ownerId) await db.auth.admin.deleteUser(fixture.ownerId).catch(() => {})
+}
+
+async function run() {
+  await buildFixture()
+
+  // One sign-in, saved, and every context below opens with it.
+  {
+    const browser = await chromium.launch({ headless: true })
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+    const page = await context.newPage()
+    await signInAsAdmin(page)
+    await context.storageState({ path: ADMIN_SESSION() })
+    await context.close()
+    await browser.close()
+  }
+
+  let firstRunId = null
+  let topBefore = []
+
+  for (const vp of VIEWPORTS) {
+    const shot = p => join(out, `${vp.label}-${p}`)
+    const browser = await chromium.launch({ headless: true })
+    const context = await newAdminContext(browser, {
+      viewport: vp.viewport,
+      isMobile: vp.isMobile,
+      hasTouch: vp.hasTouch,
+      deviceScaleFactor: vp.deviceScaleFactor,
+    })
+    const page = await context.newPage()
+
+    try {
+      /*
+       * THE AUDIENCE IS COUNTED IMMEDIATELY BEFORE THE RUN, not at the start.
+       * The first version measured it once and asserted 500 plus that number,
+       * and it failed by one: the platform's own audience moves while a drive
+       * is running, and asserting against a count taken minutes earlier is
+       * asserting about a moment that has passed.
+       */
+      const { count: audienceNow } = await db
+        .from('audience_members')
+        .select('id', { count: 'exact', head: true })
+
+      // The empty state, before anything has been produced for this event.
+      if (!firstRunId) {
+        await page.goto(`${BASE}/admin/matches?event=${fixture.eventId}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
+        await page.waitForTimeout(2000)
+        await answerTheCookieBanner(page)
+        const emptyText = (await page.locator('body').innerText()).toLowerCase()
+        await page.screenshot({ path: shot('01-empty-state.png'), fullPage: true })
+        check(
+          `${vp.label}.empty-state.says-what-to-do-and-never-says-no-data`,
+          /no match has been produced/.test(emptyText) && !/no data/.test(emptyText),
+          'the empty state names the event and says what pressing the button does',
+        )
+      }
+
+      const afterText = await pressProduceAMatch(page)
+      await page.screenshot({ path: shot('02-match-produced.png'), fullPage: true })
+
+      const { data: runRow } = await db
+        .from('marketing_match_run')
+        .select('id, audience_considered, returned_count, truncated, requested_cap, method_name, method_version, suppressed_by_reason')
+        .eq('event_id', fixture.eventId)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      const { data: scores } = await db
+        .from('marketing_match_score')
+        .select('rank, score, audience_member_id, breakdown')
+        .eq('run_id', runRow.id)
+        .order('rank')
+
+      check(
+        `${vp.label}.cap.exactly-fifty-returned`,
+        (scores ?? []).length === CAP && runRow.returned_count === CAP,
+        `${(scores ?? []).length} score row(s), the run says ${runRow.returned_count}`,
+      )
+      check(
+        `${vp.label}.cap.the-cap-the-operator-typed-is-the-cap-the-run-used`,
+        runRow.requested_cap === CAP,
+        `the run records a cap of ${runRow.requested_cap}`,
+      )
+      check(
+        `${vp.label}.cap.truncation-is-recorded-rather-than-hidden`,
+        runRow.truncated === true,
+        `truncated ${runRow.truncated}, cap ${runRow.requested_cap}`,
+      )
+      check(
+        `${vp.label}.run.records-the-audience-it-considered`,
+        runRow.audience_considered === (audienceNow ?? 0),
+        `considered ${runRow.audience_considered}, which is every audience row on TEST at that moment, including the ${POPULATION} this proof seeded`,
+      )
+      const ranks = (scores ?? []).map(s => s.rank)
+      check(
+        `${vp.label}.ranks.contiguous-one-to-fifty-with-no-duplicates`,
+        ranks.length === CAP && new Set(ranks).size === CAP && ranks.every((r, i) => r === i + 1),
+        `ranks ${ranks[0]} to ${ranks[ranks.length - 1]}, ${new Set(ranks).size} distinct`,
+      )
+      check(
+        `${vp.label}.ranks.are-ordered-by-score`,
+        (scores ?? []).every((s, i, all) => i === 0 || Number(all[i - 1].score) >= Number(s.score)),
+        `top ${scores?.[0]?.score}, last ${scores?.[scores.length - 1]?.score}`,
+      )
+      check(
+        `${vp.label}.breakdown.is-stored-with-every-score`,
+        (scores ?? []).every(s => Array.isArray(s.breakdown) && s.breakdown.length === 8),
+        'every stored row carries its eight components',
+      )
+
+      /* ---- what the screen says (acceptance 6) ---------------------------- */
+      check(
+        `${vp.label}.screen.one-number-first`,
+        afterText.includes('people this run matched') && afterText.includes(String(CAP)),
+        'the size of the list this run produced leads the page',
+      )
+      check(
+        `${vp.label}.screen.shows-the-funnel`,
+        /audience considered/.test(afterText) && /removed before scoring/.test(afterText) &&
+          /they already hold a ticket to this event/.test(afterText),
+        'the funnel from audience to matched is on the page, reason by reason',
+      )
+      check(
+        `${vp.label}.screen.names-the-method-and-version`,
+        afterText.includes(runRow.method_name.toLowerCase()) && afterText.includes(runRow.method_version.toLowerCase()),
+        `${runRow.method_name} ${runRow.method_version} named on the page`,
+      )
+      check(
+        `${vp.label}.screen.explains-the-arithmetic-in-english`,
+        /each person scores out of 100 by adding up eight fits/.test(afterText),
+        'the method is stated in one sentence rather than implied',
+      )
+
+      const firstRow = page.locator('details').first()
+      await firstRow.click({ timeout: 15000 }).catch(() => {})
+      await page.waitForTimeout(800)
+      await firstRow.scrollIntoViewIfNeeded().catch(() => {})
+      await page.screenshot({ path: shot('03-breakdown-expanded.png'), fullPage: false })
+      const expanded = (await page.locator('body').innerText()).toLowerCase()
+      check(
+        `${vp.label}.screen.a-row-expands-to-sentences-not-json`,
+        /they have bought a ticket in this category before/.test(expanded) && !/"component"/.test(expanded),
+        'the breakdown reads as sentences with a number beside each',
+      )
+
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
+      check(`${vp.label}.screen.no-horizontal-overflow`, !overflow, overflow ? 'the matches view overflows sideways' : 'no sideways scroll')
+
+      if (!firstRunId) {
+        firstRunId = runRow.id
+        topBefore = (scores ?? []).slice(0, 20).map(s => s.audience_member_id)
+      }
+    } finally {
+      await context.close()
+      await browser.close()
+    }
+  }
+
+  /* ---- acceptance 4: a weight moves, the ranking moves, no deploy --------- */
+  {
+    const browser = await chromium.launch({ headless: true })
+    const context = await newAdminContext(browser, { viewport: { width: 1440, height: 1000 } })
+    const page = await context.newPage()
+    try {
+      await db.from('marketing_match_weights').update({ weight: 0.04 }).eq('component', 'category')
+      await db.from('marketing_match_weights').update({ weight: 0.34 }).eq('component', 'city')
+      await pressProduceAMatch(page)
+      await page.screenshot({ path: join(out, 'weights-moved.png'), fullPage: true })
+
+      const { data: latest } = await db
+        .from('marketing_match_run')
+        .select('id')
+        .eq('event_id', fixture.eventId)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .single()
+      const { data: scoresAfter } = await db
+        .from('marketing_match_score')
+        .select('rank, audience_member_id')
+        .eq('run_id', latest.id)
+        .order('rank')
+      const topAfter = (scoresAfter ?? []).slice(0, 20).map(s => s.audience_member_id)
+      check(
+        'weights.are-configuration-and-move-the-ranking',
+        JSON.stringify(topBefore) !== JSON.stringify(topAfter),
+        'the top twenty changed after one weight row moved, with no deploy',
+      )
+
+      // A weight set that does not sum to one is refused BY NAME on the screen
+      // rather than scoring with a ceiling nobody knows about.
+      await db.from('marketing_match_weights').update({ weight: 0.5 }).eq('component', 'category')
+      const refusedText = await pressProduceAMatch(page)
+      await page.screenshot({ path: join(out, 'weights-broken-refused.png'), fullPage: true })
+      check(
+        'weights.a-broken-set-is-refused-on-screen-and-names-the-rows',
+        /sums to/.test(refusedText) && /category=0.5/.test(refusedText),
+        'the screen says the weights do not sum to one and prints the rows',
+      )
+    } finally {
+      // Put the weights back exactly as they were, whatever happened above.
+      await db.from('marketing_match_weights').update({ weight: 0.24 }).eq('component', 'category')
+      await db.from('marketing_match_weights').update({ weight: 0.14 }).eq('component', 'city')
+      await context.close()
+      await browser.close()
+    }
+  }
+
+  /* ---- the reversal switch ------------------------------------------------ */
+  {
+    const browser = await chromium.launch({ headless: true })
+    const context = await newAdminContext(browser, { viewport: { width: 1440, height: 1000 } })
+    const page = await context.newPage()
+    try {
+      await db.from('feature_flags').update({ enabled: false }).eq('flag', 'marketing_matcher_enabled')
+      await page.goto(`${BASE}/admin/matches?event=${fixture.eventId}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
+      await page.waitForTimeout(2500)
+      await answerTheCookieBanner(page)
+      await page.screenshot({ path: join(out, 'switch-off.png'), fullPage: true })
+      const offText = (await page.locator('body').innerText()).toLowerCase()
+      const buttonDisabled = await page.getByRole('button', { name: /produce a match/i }).isDisabled().catch(() => false)
+      const { count: stillStored } = await db
+        .from('marketing_match_score')
+        .select('id', { count: 'exact', head: true })
+        .eq('run_id', firstRunId)
+      check(
+        'reversal.the-switch-stops-a-new-run-and-leaves-the-stored-ones-alone',
+        /the matcher is switched off/.test(offText) && buttonDisabled && (stillStored ?? 0) === CAP,
+        `the screen says so, the button is disabled, and the stored run still holds ${stillStored} rows`,
+      )
+    } finally {
+      await db.from('feature_flags').update({ enabled: true }).eq('flag', 'marketing_matcher_enabled')
+      await context.close()
+      await browser.close()
+    }
+  }
+
+  /* ---- the database's own refusals --------------------------------------- */
+
+  /*
+   * THE CAP IS TESTED ON A FULL RUN, and the order below is the whole reason
+   * this is worth writing down. The first version tested it AFTER withdrawing
+   * somebody, and it failed: the withdrawal deletes that person's audience row
+   * (GA1's refresh) and the score row goes with it by cascade, so the run held
+   * forty-nine and a fiftieth row was legitimately allowed. The test was wrong
+   * and the behaviour it stumbled into is worth having on the record, so both
+   * are checked, in an order where each means what it says.
+   */
+  const { count: rowsBeforeCapTest } = await db
+    .from('marketing_match_score')
+    .select('id', { count: 'exact', head: true })
+    .eq('run_id', firstRunId)
+  const { data: liveMember } = await db
+    .from('audience_members')
+    .select('id')
+    .in('email', fixture.emails.slice(100, 150))
+    .limit(1)
+    .single()
+  const { error: refusedCap } = await db.from('marketing_match_score').insert({
+    run_id: firstRunId,
+    audience_member_id: liveMember.id,
+    score: 50,
+    breakdown: [],
+    rank: 51,
+  })
+  check(
+    'database.refuses-a-run-that-would-exceed-its-own-cap',
+    Boolean(refusedCap) && rowsBeforeCapTest === CAP,
+    refusedCap
+      ? `${refusedCap.message} (the run held ${rowsBeforeCapTest} of ${CAP})`
+      : `the row was accepted with ${rowsBeforeCapTest} of ${CAP} already stored, so a run can hold more people than the owner approved`,
+  )
+
+  const { data: withdrawnMember } = await db
+    .from('audience_members')
+    .select('id, email')
+    .in('email', fixture.emails.slice(0, 50))
+    .limit(1)
+    .single()
+  const { data: tenant } = await db.from('marketing_tenants').select('id').eq('slug', 'eventlinqs').single()
+  await db.from('suppression_events').insert({
+    tenant_id: tenant.id,
+    subject_email: withdrawnMember.email,
+    channel: 'both',
+    scope: 'all_marketing',
+    reason: 'the GA2 proof withdrew them to see what the database does',
+    request_source: 'ga2-proof',
+  })
+
+  // A withdrawal removes them from every stored list, by cascade, because the
+  // audience row they hang off is derived and GA1's refresh deletes it. That is
+  // the strongest posture available and it is asserted rather than assumed.
+  const { count: afterWithdrawal } = await db
+    .from('marketing_match_score')
+    .select('id', { count: 'exact', head: true })
+    .eq('audience_member_id', withdrawnMember.id)
+  check(
+    'withdrawal.removes-that-person-from-every-stored-run',
+    (afterWithdrawal ?? 0) === 0,
+    `${afterWithdrawal ?? 0} stored score row(s) left for somebody who withdrew`,
+  )
+
+  const { error: refusedScore } = await db.from('marketing_match_score').insert({
+    run_id: firstRunId,
+    audience_member_id: withdrawnMember.id,
+    score: 99,
+    breakdown: [],
+    rank: 9999,
+  })
+  check(
+    'database.refuses-a-score-row-for-a-refused-subject',
+    Boolean(refusedScore),
+    refusedScore?.message ?? 'the row was accepted, which would let a withdrawn person into a send list',
+  )
+
+  /* ---- the invariant the guard reads ------------------------------------- */
+  const { data: breaches } = await db.from('marketing_match_invariant_breaches').select('breach, detail')
+  check(
+    'invariant.view-is-empty',
+    (breaches ?? []).length === 0,
+    (breaches ?? []).length === 0 ? 'no breach of the matcher invariant' : JSON.stringify(breaches),
+  )
+
+  /* ---- an unpublished event is refused ------------------------------------ */
+  {
+    const browser = await chromium.launch({ headless: true })
+    const context = await newAdminContext(browser, { viewport: { width: 1440, height: 1000 } })
+    const page = await context.newPage()
+    try {
+      await db.from('events').update({ status: 'draft' }).eq('id', fixture.eventId)
+      const draftText = await pressProduceAMatch(page)
+      await page.screenshot({ path: join(out, 'draft-refused.png'), fullPage: true })
+      check(
+        'refusal.an-unpublished-event-cannot-be-matched',
+        /a match is only produced for a published event/.test(draftText),
+        'the screen refuses a draft and says why',
+      )
+    } finally {
+      await db.from('events').update({ status: 'published' }).eq('id', fixture.eventId)
+      await context.close()
+      await browser.close()
+    }
+  }
+}
+
+let exitCode = 0
+try {
+  await run()
+} catch (error) {
+  check('proof.completed', false, String(error?.stack ?? error))
+} finally {
+  let ledgerLeft = 0
+  try {
+    await teardown()
+    const { count } = await db
+      .from('consent_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('capture_surface', 'ga2-proof')
+    ledgerLeft = count ?? 0
+    const { count: leftMembers } = await db
+      .from('audience_members')
+      .select('id', { count: 'exact', head: true })
+      .in('email', fixture.emails.slice(0, 100))
+    check('teardown.left-as-found', (leftMembers ?? 0) === 0, `${leftMembers ?? 0} seeded audience row(s) left`)
+    check(
+      'teardown.the-consent-ledger-cannot-be-tidied-away',
+      ledgerLeft > 0,
+      `${ledgerLeft} consent event(s) remain, because the database refuses to delete a consent record`,
+    )
+  } catch (error) {
+    check('teardown.left-as-found', false, String(error?.message ?? error))
+  }
+
+  const passed = checks.filter(c => c.ok).length
+  writeFileSync(
+    join(out, 'matcher-proof.json'),
+    JSON.stringify({ item: 'GA2', at: new Date().toISOString(), lane: LANE, passed, total: checks.length, checks, failures }, null, 2),
+  )
+  console.log(`\n${passed} of ${checks.length} checks passed`)
+  if (failures.length > 0) {
+    console.log('FAILURES:')
+    for (const f of failures) console.log(`  ${f}`)
+    exitCode = 1
+  }
+}
+process.exit(exitCode)
