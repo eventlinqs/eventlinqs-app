@@ -50,6 +50,9 @@
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
  *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
  *   one-fee-copy               no customer-facing surface names a second fee
+ *   organiser-page-is-a-read   the live proof block on /organisers is a read from the
+ *                              catalogue, the surface is named inside the copy gate, and
+ *                              every signup button carries the source AN1 counts
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -772,6 +775,16 @@ const GUARDS = [
   // set of numbers, and holds /organisers and /pricing to rendering the fee as a
   // read rather than a sentence. Drilled red by changing one number in the copy.
   'scripts/guards/founding-offer-matches-configuration.mjs',
+  // Close-out OL1 (13 September 2026). /organisers is now the page every
+  // outreach message sends a stranger to, and it gained a block that shows the
+  // newest published event as a real card. The cheapest way to make that block
+  // look good on a thin day is to paste an event into it, and nothing would
+  // fail: the page would read better and would be lying to the people it is
+  // recruiting. This holds the block to a read, names the surface so a
+  // narrowing of the copy gate's walk cannot quietly drop it, and requires
+  // every signup button to carry the source AN1 counts. Drilled red by pasting
+  // an event slug into the template.
+  'scripts/guards/organiser-page-is-a-read.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and

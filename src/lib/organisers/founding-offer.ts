@@ -25,6 +25,23 @@ export interface FoundingOffer {
   points: string[]
   ctaLabel: string
   ctaHref: string
+  /**
+   * The second button beside the signup CTA (close-out OL1): the way to say
+   * yes to the founder rather than to a form. Every message sent from
+   * 12 September 2026 promises that Lawal sets the first event up personally,
+   * and the page had no way to take him up on it.
+   *
+   * THE ADDRESS IS NOT HERE, and that is deliberate. Founder ruling R2 of
+   * 3 August 2026 removed a personal address from source and put every
+   * destination behind one definition; this href is built from that definition
+   * (src/lib/email/sender.ts, contactMailto) at render, so the page can never
+   * publish a private mailbox.
+   */
+  founderCtaLabel: string
+  /** Shown under the founder button, in his own words. */
+  founderCtaNote: string
+  /** The subject line the reply arrives with, so it can be found and answered. */
+  founderCtaSubject: string
   /** Small print under the CTA; keep honest and short. */
   note: string
 }
@@ -42,5 +59,8 @@ export const FOUNDING_OFFER: FoundingOffer = {
   ],
   ctaLabel: 'Create your organiser account',
   ctaHref: '/organisers/signup',
+  founderCtaLabel: 'Set up my event with Lawal',
+  founderCtaNote: 'I set up the first events myself, on a 20 minute call. Lawal Adams, founder.',
+  founderCtaSubject: 'Founding Organiser',
   note: 'Invitations are limited to the first 50 organisers nationally and go out personally. Start free today: you can build, publish and sell straight away, wherever in Australia you are. Founding terms are applied to your account before your first on-sale.',
 }

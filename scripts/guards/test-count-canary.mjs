@@ -1447,9 +1447,18 @@ const ROOT = join(HERE, '..', '..')
  * .git skeleton when `.git` was a worktree POINTER FILE, the offline-door
  * assertion anchored on a bare newline in a CRLF checkout, and the homepage
  * fixture is generated rather than tracked.
+ *
+ * 2026-09-13 (lane B, close-out OL1): raised 389/4735 -> 390/4769, MEASURED.
+ * tests/unit/growth/organiser-page-and-the-messages holds /organisers to what
+ * the outreach messages promise: the live proof block is a read and not a
+ * pasted event, every signup button carries the source AN1 counts and no more
+ * specific one is clobbered, the founder button opens the brand address rather
+ * than a private mailbox, the five objections name no other platform and
+ * restate no configured figure, and every section the page carried before the
+ * item is still named in it.
  */
-const MIN_FILES = 389
-const MIN_TESTS = 4735
+const MIN_FILES = 390
+const MIN_TESTS = 4769
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

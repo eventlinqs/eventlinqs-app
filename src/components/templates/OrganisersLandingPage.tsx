@@ -11,8 +11,13 @@ import { helpTopics } from '@/lib/help-content'
 import { getLivePublicFee } from '@/lib/pricing/live-fee'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
 import { getPlatformStats } from '@/lib/stats/platform-stats'
+import { getNewestPublishedEvent } from '@/lib/organisers/newest-published-event'
+import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import { contactMailto } from '@/lib/email/sender'
+import { ORGANISER_SIGNUP_PATH, withSignupSource } from '@/lib/organisers/signup-source'
 import { PayoutCalculator } from '@/components/features/organisers/payout-calculator'
 import { FOUNDING_OFFER } from '@/lib/organisers/founding-offer'
+import { ORGANISER_OBJECTIONS } from '@/lib/organisers/objections'
 import { ORGANISER_TESTIMONIALS } from '@/lib/organisers/testimonials'
 import {
   ORGANISER_HERO,
@@ -49,6 +54,16 @@ const FAQ_QUESTIONS = [
 const FAQ_ARTICLES = SELLING_TICKETS_TOPIC
   ? SELLING_TICKETS_TOPIC.articles.filter(a => FAQ_QUESTIONS.includes(a.q))
   : []
+
+/**
+ * The mechanics first, then the five things a stranger actually says back
+ * (close-out OL1). The help-centre answers explain how the product works; the
+ * objections answer why somebody would risk it, and a page that only does the
+ * first is a manual rather than a pitch. Their source and the two corrections
+ * made to the recruitment pack's wording are recorded in
+ * src/lib/organisers/objections.ts.
+ */
+const FAQ_ENTRIES = [...FAQ_ARTICLES, ...ORGANISER_OBJECTIONS]
 
 // ── Real platform truths (no fabricated numbers, no fake logos) ──────────────
 const STATS = [
@@ -306,6 +321,47 @@ function LiveProofStrip({
   )
 }
 
+// ── Live proof: one real event a stranger can open ──────────────────────────
+// Close-out OL1. Every outreach message from 12 September 2026 points a
+// stranger at this page, and it could not show them a single event they could
+// go and look at. The card is the newest published event, read from the
+// catalogue through the page's own one-minute ISR window; when there is nothing
+// to show the block does not exist, because a launching platform with no events
+// is a real state and an invented example is the fabrication Law 4 forbids.
+function LiveProofEvent({ event }: { event: EventCardData }) {
+  return (
+    <ContentSection surface="base" width="wide" reveal>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] lg:items-center lg:gap-12">
+        <div>
+          <p className="flex items-center gap-2.5 font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
+            <span aria-hidden className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold-400 opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-gold-500" />
+            </span>
+            Live now, real event, real sales
+          </p>
+          <h2 className="mt-3 font-display text-2xl font-extrabold leading-[1.1] tracking-tight text-[var(--text-primary)] sm:text-3xl">
+            This is on sale right now, on the platform you are reading about.
+          </h2>
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-[var(--text-secondary)]">
+            Not a mock-up and not a screenshot. It is the most recently published
+            event in the catalogue, and it is the page your own event gets.
+          </p>
+          <Link
+            href={`/events/${event.slug}`}
+            className="mt-5 inline-flex min-h-[44px] items-center text-sm font-semibold text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)]"
+          >
+            Open {event.title} &rsaquo;
+          </Link>
+        </div>
+        <div className="max-w-sm">
+          <EventCard event={event} />
+        </div>
+      </div>
+    </ContentSection>
+  )
+}
+
 // ── Founding Organiser offer (config-driven slot) ────────────────────────────
 // Content and visibility live in src/lib/organisers/founding-offer.ts so the
 // founder can retire or reword the offer without touching this template.
@@ -353,9 +409,26 @@ function FoundingOfferBand() {
             </ul>
           </div>
           <div className="flex flex-col items-start gap-3 lg:items-end">
-            <Button variant="primary" size="lg" href={FOUNDING_OFFER.ctaHref}>
+            <Button variant="primary" size="lg" href={withSignupSource(FOUNDING_OFFER.ctaHref)}>
               {FOUNDING_OFFER.ctaLabel}
             </Button>
+            {/* THE WAY TO SAY YES TO THE FOUNDER RATHER THAN TO A FORM (OL1).
+                Every message promises that Lawal sets the first event up
+                personally; until now the page offered only a signup form, so
+                the promise had nowhere to land. The address is resolved from
+                the one sender definition, never typed, so no private mailbox
+                can reach a public page (founder ruling R2). */}
+            <Button
+              variant="secondary"
+              size="lg"
+              onSurface="dark"
+              href={contactMailto('hello', FOUNDING_OFFER.founderCtaSubject)}
+            >
+              {FOUNDING_OFFER.founderCtaLabel}
+            </Button>
+            <p className="max-w-xs text-xs leading-relaxed text-white/80 lg:text-right">
+              {FOUNDING_OFFER.founderCtaNote}
+            </p>
             <p className="max-w-xs text-xs leading-relaxed text-white/60 lg:text-right">
               {FOUNDING_OFFER.note}
             </p>
@@ -407,10 +480,11 @@ export async function OrganisersLandingPage() {
   // Live fee from pricing_rules (same source the calculator charges), static
   // fallback inside getLivePublicFee. Displayed == charged. The full rate set
   // feeds the payout calculator; the live counts feed the proof strip.
-  const [fee, rates, stats] = await Promise.all([
+  const [fee, rates, stats, newestEvent] = await Promise.all([
     getLivePublicFee(),
     getEventFeeRates({}),
     getPlatformStats(),
+    getNewestPublishedEvent(),
   ])
   const showLiveProof =
     stats.source === 'live' && stats.eventsListed !== null && stats.eventsListed >= 50
@@ -467,7 +541,7 @@ export async function OrganisersLandingPage() {
                 <span className="font-normal text-white/85"> Paid tickets {fee.label} each.</span>
               </p>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button variant="primary" size="lg" href="/organisers/signup">
+                <Button variant="primary" size="lg" href={withSignupSource(ORGANISER_SIGNUP_PATH)}>
                   Build your event free
                 </Button>
                 <Button variant="secondary" size="lg" onSurface="dark" href="/pricing">
@@ -478,6 +552,9 @@ export async function OrganisersLandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── 1b. One real event a stranger can open (close-out OL1) ───────── */}
+      {newestEvent && <LiveProofEvent event={newestEvent} />}
 
       {/* ── 2. Live proof strip (honest counts, hidden below the floor) ──── */}
       {showLiveProof && (
@@ -590,7 +667,7 @@ export async function OrganisersLandingPage() {
       </ContentSection>
 
       {/* ── 8. Premium FAQ ───────────────────────────────────────────────── */}
-      {FAQ_ARTICLES.length > 0 && (
+      {FAQ_ENTRIES.length > 0 && (
         <ContentSection surface="alt" width="prose" topBorder reveal>
           <p className="mb-3 font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
             Common questions
@@ -599,7 +676,7 @@ export async function OrganisersLandingPage() {
             Organiser FAQ
           </h2>
           <div className="space-y-3">
-            {FAQ_ARTICLES.map((article, i) => (
+            {FAQ_ENTRIES.map((article, i) => (
               <details
                 key={i}
                 className="group rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-shadow open:shadow-sm"
@@ -670,7 +747,7 @@ export async function OrganisersLandingPage() {
               start selling straight away.
             </p>
             <div className="mt-8">
-              <Button variant="primary" size="lg" href="/organisers/signup">
+              <Button variant="primary" size="lg" href={withSignupSource(ORGANISER_SIGNUP_PATH)}>
                 Start selling tickets
               </Button>
             </div>
