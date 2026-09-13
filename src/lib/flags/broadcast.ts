@@ -33,6 +33,10 @@ export const BROADCAST_FLAGS = [
   // (admin surface, audit log, cache) as the broadcast stages.
   'gig_board',
   'artist_showcase',
+  // Close-out FO1. The Founding Organiser offer's reversal condition needs a
+  // switch the owner can throw WITHOUT A DEPLOY, so it rides the same governed
+  // switch system rather than becoming a second, private flag mechanism.
+  'founding_open',
 ] as const
 
 export type BroadcastFlag = (typeof BROADCAST_FLAGS)[number]
@@ -52,6 +56,10 @@ export const BROADCAST_FLAG_DEFAULTS: Record<BroadcastFlag, boolean> = {
   broadcast_artists: false,
   gig_board: false,
   artist_showcase: false,
+  // ON. The offer is live on /organisers and in every outreach message, so the
+  // safe posture when the flags table cannot be read is the posture the public
+  // page is already promising. Closing it is a deliberate act, never an outage.
+  founding_open: true,
 }
 
 /**
@@ -86,6 +94,8 @@ export const BROADCAST_FLAG_DECISIONS: Record<BroadcastFlag, string> = {
     'lawal 2026-08-15: OFF at launch, deliberately. Built, tested, and held for the post-launch "performers, bring your numbers" moment recorded in the recruitment playbook. Marketing is explicitly barred from naming it before then.',
   artist_showcase:
     'lawal 2026-08-15: OFF at launch, deliberately. Same decision and same moment as gig_board; the two ship together or not at all, because a showcase with no gig board is a directory with nothing to do.',
+  founding_open:
+    'lawal 2026-09-13: ON. The Founding Organiser offer is open to new organisers. This is the FO1 reversal condition made operable: set it false and no new spot is granted and no new fee-free window is opened, at once and with no deploy. Organisations that already hold a window keep it and their referrals keep earning, because a promise already made is not withdrawn by closing the door behind it. The fifty cap closes the offer on its own; this closes it early.',
 }
 
 // Minimal structural type so both the service-role admin client and the

@@ -2,11 +2,13 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import {
-  extendWaiver,
+  foundingGrantVerdict,
   initialWaiverUntil,
   FOUNDING_INITIAL_MONTHS,
+  FOUNDING_REFERRAL_MONTHS,
   FOUNDING_WAIVER_CAP,
 } from '@/lib/payments/founding-waiver'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 /**
  * The founding-organiser network: spots, invite codes, and conversion.
@@ -15,7 +17,10 @@ import {
  * a REAL count (organisations.is_founding), never fabricated scarcity. Invites
  * are single-use codes, either from a founding organiser (their personal
  * links) or from the founder. A conversion grants the new organisation a spot
- * (if any remain) and credits the inviter 3 fee-free months.
+ * (if any remain), opens its six-month fee-free window, and records WHO
+ * REFERRED IT. The inviter's three extra months are credited later, by the
+ * database, when the referred organiser's first paid ticket actually sells
+ * (close-out FO1); this module no longer pays on a signup.
  *
  * NATIONWIDE FROM DAY ONE (founder ruling 2026-08-23). This module used to
  * carry `FOUNDING_CITIES = ['geelong','melbourne']` and gate every invite on
@@ -28,10 +33,18 @@ import {
  */
 import { isCitySlug, getCity, type CitySlug } from '@/lib/cities/data'
 
-export const FOUNDING_SPOT_CAP = 50
+/**
+ * ONE FIFTY, ONE THREE. These used to be separate literals that happened to
+ * equal the constants in src/lib/payments/founding-waiver.ts, which is how the
+ * fee engine and the invite mechanic come to disagree about the same offer
+ * without anything failing. They are re-exports now: the terms live in the
+ * waiver module, beside the charge that applies them, and this module names
+ * them in its own vocabulary.
+ */
+export const FOUNDING_SPOT_CAP = FOUNDING_WAIVER_CAP
 /** How many personal invites a single founding organiser may generate. */
 export const INVITES_PER_FOUNDING_ORGANISER = 5
-export const REFERRAL_BONUS_MONTHS = 3
+export const REFERRAL_BONUS_MONTHS = FOUNDING_REFERRAL_MONTHS
 
 /**
  * Any city in the canonical Australian registry may carry a founding invite.
@@ -83,6 +96,39 @@ export async function getFoundingCounts(): Promise<FoundingCounts> {
     invitesIssued: issued ?? 0,
     invitesAccepted: accepted ?? 0,
   }
+}
+
+/**
+ * How many organisers this one has actually brought on board, split into the
+ * two states that matter to the offer.
+ *
+ * CONFIRMED is the number that has earned fee-free months: organisations this
+ * one referred whose first paid ticket has sold. PENDING is the number who
+ * signed up through the link and have not sold one yet.
+ *
+ * DERIVED, never stored. A counter column would need a declared maintainer and
+ * would rot the first time a path forgot to increment it; these two numbers are
+ * a count over the two columns that already decide the credit, so the screen
+ * and the machine cannot tell different stories.
+ */
+export async function getFoundingReferralSummary(organisationId: string): Promise<{
+  confirmed: number
+  pending: number
+}> {
+  const admin = createAdminClient()
+  const [{ count: confirmed }, { count: pending }] = await Promise.all([
+    admin
+      .from('organisations')
+      .select('id', { count: 'exact', head: true })
+      .eq('referred_by_organisation_id', organisationId)
+      .not('referral_credited_at', 'is', null),
+    admin
+      .from('organisations')
+      .select('id', { count: 'exact', head: true })
+      .eq('referred_by_organisation_id', organisationId)
+      .is('referral_credited_at', null),
+  ])
+  return { confirmed: confirmed ?? 0, pending: pending ?? 0 }
 }
 
 /**
@@ -159,8 +205,27 @@ export async function getInviteByCode(code: string): Promise<PublicInvite | null
 
 /**
  * Convert an invite when the invited organiser has created their organisation.
- * Idempotent per invite. Grants a founding spot if any remain (atomic RPC) and
- * credits the inviter 3 months. Never throws; returns a small result object.
+ *
+ * Idempotent per invite. Records who referred whom, grants a founding spot if
+ * any remain (atomic RPC) and opens the new organisation's six-month window.
+ *
+ * IT NO LONGER CREDITS THE INVITER HERE, and that is the point of close-out
+ * FO1. This function used to add three fee-free months to the inviter's window
+ * the instant the invited organiser CREATED AN ACCOUNT. The offer published on
+ * /organisers, and repeated word for word in every outreach message since
+ * 12 September 2026, promises "3 more fee-free months for every organiser you
+ * refer WHO RUNS AN EVENT". So the copy promised an event and the machine paid
+ * on a signup: an organiser could have earned a year of waived fees by inviting
+ * four friends who never sold a ticket.
+ *
+ * The credit now belongs to the referred organiser's FIRST CONFIRMED PAID
+ * ORDER and is granted by the database, in trigger trg_founding_referral_credit
+ * (migration 20260913000010). It is in the database rather than in a webhook
+ * because the grant must happen exactly once for exactly the orders that
+ * actually confirmed, and the row lock that guarantees that is only available
+ * where the row is.
+ *
+ * Never throws; returns a small result object.
  */
 export async function acceptFoundingInvite(input: {
   code: string
@@ -194,6 +259,53 @@ export async function acceptFoundingInvite(input: {
     .maybeSingle()
   if (!claimed) return { granted: false, spotNumber: null, alreadyFull: false }
 
+  // WHO REFERRED WHOM, recorded before anything can fail, and independently of
+  // whether a founding spot was still available. The relationship is a fact
+  // about how this organiser arrived; the spot is a separate question, and an
+  // organiser who came through a friend's link still came through it even when
+  // the fiftieth spot went an hour earlier. The three-month credit is granted
+  // later, by the database, on this organisation's first confirmed paid order.
+  if (invite.inviter_org_id && invite.inviter_org_id !== input.orgId) {
+    const { error: referralError } = await admin
+      .from('organisations')
+      .update({ referred_by_organisation_id: invite.inviter_org_id })
+      .eq('id', input.orgId)
+      .is('referred_by_organisation_id', null)
+    if (referralError) {
+      // Not fatal to the signup: the organiser still gets their account and
+      // their spot. It IS reported, because an unrecorded referral is a fee
+      // waiver somebody earned and will never be paid.
+      console.error('[founding] could not record the referral for org %s:', input.orgId, referralError)
+      await recordAnonAuditEvent({
+        action: 'founding.referral.record_failed',
+        metadata: {
+          organisation_id: input.orgId,
+          referrer_organisation_id: invite.inviter_org_id,
+          invite_code: input.code,
+          error: referralError.message,
+        },
+      })
+    }
+  }
+
+  // THE OFFER CAN BE CLOSED WITHOUT A DEPLOY (FO1 reversal condition). With
+  // founding_open false no new spot is granted and no new window is opened;
+  // organisations that already hold one keep it, and their referrals keep
+  // earning. The invite is still consumed above, so the link cannot be replayed
+  // once the offer reopens.
+  const offerOpen = await isFeatureEnabled('founding_open', { client: admin })
+  if (!offerOpen) {
+    await recordAnonAuditEvent({
+      action: 'founding.offer.closed_refusal',
+      metadata: {
+        organisation_id: input.orgId,
+        invite_code: input.code,
+        reason: 'feature_flag founding_open is false',
+      },
+    })
+    return { granted: false, spotNumber: null, alreadyFull: true }
+  }
+
   const { data: spot } = await admin.rpc('claim_founding_spot', {
     p_org_id: input.orgId,
     p_city_slug: invite.city_slug,
@@ -217,7 +329,9 @@ export async function acceptFoundingInvite(input: {
       .select('id', { count: 'exact', head: true })
       .not('founding_fee_free_until', 'is', null)
 
-    if ((holders ?? 0) >= FOUNDING_WAIVER_CAP) {
+    if (
+      foundingGrantVerdict({ holders: holders ?? 0, opensNewWindow: true }) === 'refused_cap'
+    ) {
       await recordAnonAuditEvent({
         action: 'founding.waiver.cap_reached',
         metadata: {
@@ -254,52 +368,12 @@ export async function acceptFoundingInvite(input: {
     })
   }
 
-  // Credit the inviter on a successful conversion.
-  //
-  // The DATE WINDOW is what the charge reads (src/lib/payments/founding-waiver.ts):
-  // three months are added to founding_fee_free_until FROM ITS CURRENT VALUE, not
-  // from today, so two referrals in the same week stack to six months instead of
-  // one overwriting the other. `founding_bonus_months` is still incremented as
-  // the historical record of how many referrals were earned, but nothing prices
-  // from it any more.
-  //
-  // Every extension is audit-logged with who, when and the resulting date, which
-  // is the audit trail the counter never had.
-  if (granted && invite.inviter_org_id) {
-    const { data: inviterOrg } = await admin
-      .from('organisations')
-      .select('founding_bonus_months, founding_fee_free_until, name')
-      .eq('id', invite.inviter_org_id)
-      .maybeSingle()
-    if (inviterOrg) {
-      const previousUntil = inviterOrg.founding_fee_free_until ?? null
-      const nextUntil = extendWaiver(previousUntil, REFERRAL_BONUS_MONTHS)
-      const { error: updateError } = await admin
-        .from('organisations')
-        .update({
-          founding_bonus_months: (inviterOrg.founding_bonus_months ?? 0) + REFERRAL_BONUS_MONTHS,
-          founding_fee_free_until: nextUntil,
-        })
-        .eq('id', invite.inviter_org_id)
-
-      await recordAnonAuditEvent({
-        action: updateError
-          ? 'founding.waiver.extension_failed'
-          : 'founding.waiver.extended',
-        metadata: {
-          organisation_id: invite.inviter_org_id,
-          organisation_name: inviterOrg.name ?? null,
-          reason: 'confirmed_referral',
-          referred_organisation_id: input.orgId,
-          invite_code: input.code,
-          months_added: REFERRAL_BONUS_MONTHS,
-          previous_fee_free_until: previousUntil,
-          new_fee_free_until: updateError ? null : nextUntil,
-          ...(updateError ? { error: updateError.message } : {}),
-        },
-      })
-    }
-  }
+  // THE INVITER IS NOT CREDITED HERE. It used to be, the moment this line ran,
+  // which paid three fee-free months for a signup while the published offer
+  // promised them for an organiser who RUNS AN EVENT. The credit now belongs to
+  // the referred organisation's first confirmed PAID order and is granted by
+  // trigger trg_founding_referral_credit, from the referral relationship
+  // recorded above. See migration 20260913000010_founding_organiser_terms.sql.
 
   return { granted, spotNumber, alreadyFull: !granted }
 }

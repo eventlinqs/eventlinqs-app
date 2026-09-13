@@ -170,6 +170,9 @@ export async function createSquadMemberPaymentIntent(
       addon_total_cents: 0,
       platform_fee_cents: fees.platform_fee_cents,
       processing_fee_cents: fees.payment_processing_fee_cents,
+      // Close-out FO1: what the Founding Organiser offer cost on this order.
+      // Zero on every order whose organiser is not inside a fee-free window.
+      founding_fee_waived_cents: fees.founding_fee_waived_cents,
       tax_cents: fees.tax_cents,
       discount_cents: 0,
       total_cents: fees.total_cents,

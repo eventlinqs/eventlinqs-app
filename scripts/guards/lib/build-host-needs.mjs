@@ -48,6 +48,9 @@ export const DECLARED = {
   'scripts/guards/excluded-reads-survive-the-upload.mjs': {
     git: 'a CORRECTION, no longer a dependence (close-out F2.2). The upload is enumerated by walking the filesystem and applying every .gitignore, so it works with no repository at all; where the index IS readable it is asked, because being force-added is a fact only the index holds and 16 shipped rasters under public/ are force-added. This is the FIFTH lost deployment: it ran on the build host, called git ls-files, and threw. It now stands aside there by BUILD SCOPE rather than by failing to find git.',
   },
+  'scripts/guards/founding-offer-matches-configuration.mjs': {
+    docs: 'reads the PRICING-LOCK block out of docs/PRICING.md through src/lib/health/pricing-lock.mjs, to hold the fee sentence on /organisers and /pricing and the last-resort fallback constant to the one locked figure. Same file and same re-inclusion as check-pricing-lock.mjs.',
+  },
   'scripts/guards/launch-readiness-honest.mjs': {
     docs: 'scripts/verify/launch-readiness.mjs re-renders docs/verification/LAUNCH-READINESS.md from the adjudication and compares byte for byte, and checks the evidence each PASS row cites is still under docs/verification/launch-readiness. Both re-included; the fourth lost deployment.',
   },

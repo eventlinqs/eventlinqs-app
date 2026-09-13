@@ -1434,9 +1434,22 @@ const ROOT = join(HERE, '..', '..')
  * nothing on TEST ever expires. tests/unit/ops/checkout-proof-leaves-test-as-found
  * pins that the drive now runs the product's own sweep before it picks and
  * expires what it reserved when it ends.
+ *
+ * 2026-09-13 (lane B, close-out FO1): raised 388/4697 -> 389/4735, MEASURED.
+ * tests/unit/growth/founding-organiser-terms holds the Founding Organiser offer
+ * to the configuration: what a founding organiser is charged inside and outside
+ * the window, what the waived amount is, the fifty cap and its deliberate
+ * override, that a referral sale adds exactly three months once, that the four
+ * published offer numbers ARE the constants the charge uses, and that the
+ * credit is granted by the database on a confirmed PAID order rather than on a
+ * signup. Three files that were RED in a fresh git worktree were fixed in the
+ * same pass and are counted here: the vercel-upload simulation skipped the
+ * .git skeleton when `.git` was a worktree POINTER FILE, the offline-door
+ * assertion anchored on a bare newline in a CRLF checkout, and the homepage
+ * fixture is generated rather than tracked.
  */
-const MIN_FILES = 388
-const MIN_TESTS = 4697
+const MIN_FILES = 389
+const MIN_TESTS = 4735
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -49,8 +49,13 @@ describe('broadcast flag resolver', () => {
       // Performer marketplace stages ship built but OFF by default.
       gig_board: false,
       artist_showcase: false,
+      // The Founding Organiser offer's reversal condition (close-out FO1). ON,
+      // because the offer is live on /organisers and in every outreach message,
+      // so the safe posture when the table cannot be read is the one the public
+      // page is already promising. Closing it is a deliberate act.
+      founding_open: true,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(6)
+    expect(BROADCAST_FLAGS).toHaveLength(7)
   })
 
   test('DB row wins over the default in both directions', async () => {

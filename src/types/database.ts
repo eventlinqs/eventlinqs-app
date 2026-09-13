@@ -2165,6 +2165,7 @@ export type Database = {
           event_id: string
           expires_at: string | null
           fee_pass_type: Database["public"]["Enums"]["fee_pass_type"]
+          founding_fee_waived_cents: number
           guest_email: string | null
           guest_name: string | null
           id: string
@@ -2192,6 +2193,7 @@ export type Database = {
           event_id: string
           expires_at?: string | null
           fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"]
+          founding_fee_waived_cents?: number
           guest_email?: string | null
           guest_name?: string | null
           id?: string
@@ -2219,6 +2221,7 @@ export type Database = {
           event_id?: string
           expires_at?: string | null
           fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"]
+          founding_fee_waived_cents?: number
           guest_email?: string | null
           guest_name?: string | null
           id?: string
@@ -2342,6 +2345,8 @@ export type Database = {
           payout_status: string
           payout_tier: string
           phone: string | null
+          referral_credited_at: string | null
+          referred_by_organisation_id: string | null
           refund_window_days: number
           risk_tier: string
           slug: string
@@ -2381,6 +2386,8 @@ export type Database = {
           payout_status?: string
           payout_tier?: string
           phone?: string | null
+          referral_credited_at?: string | null
+          referred_by_organisation_id?: string | null
           refund_window_days?: number
           risk_tier?: string
           slug: string
@@ -2420,6 +2427,8 @@ export type Database = {
           payout_status?: string
           payout_tier?: string
           phone?: string | null
+          referral_credited_at?: string | null
+          referred_by_organisation_id?: string | null
           refund_window_days?: number
           risk_tier?: string
           slug?: string
@@ -2442,6 +2451,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisations_referred_by_organisation_id_fkey"
+            columns: ["referred_by_organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
         ]
@@ -5191,6 +5207,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_set_founding_waiver: {
+        Args: { p_org_id: string; p_override?: boolean; p_until: string }
+        Returns: string
+      }
       admit_queue_batch: {
         Args: {
           p_admission_window_minutes?: number
@@ -5255,6 +5275,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      credit_founding_referral: {
+        Args: { p_order_id: string; p_org_id: string }
+        Returns: string
       }
       disburse_payout: {
         Args: {
@@ -5428,6 +5452,10 @@ export type Database = {
         }[]
       }
       expire_waitlist_notifications: { Args: never; Returns: number }
+      founding_add_months: {
+        Args: { p_months: number; p_ts: string }
+        Returns: string
+      }
       freeze_chargeback: {
         Args: {
           p_dispute_amount_cents: number

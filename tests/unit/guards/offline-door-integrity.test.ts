@@ -19,7 +19,12 @@ describe('checkMigration', () => {
     expect(checkMigration(sql)).toEqual([])
   })
   test("dropping the status = 'valid' clause from the sync is named", () => {
-    const broken = sql.replace(/\s+AND t\.status\s+= 'valid'\n(\s+RETURNING t\.id, t\.holder_name, t\.first_scanned_at\n\s+INTO v_ticket;)/, '\n$1')
+    // \r?\n, not \n. With core.autocrlf = true a FRESH checkout (every new git
+    // worktree, and this repository runs nine) gets the migration with CRLF line
+    // endings, the anchored newline never matched, `broken` came back identical to
+    // `sql`, and this test failed on a file nobody had touched. The fault was the
+    // assertion's, not the migration's.
+    const broken = sql.replace(/\s+AND t\.status\s+= 'valid'\r?\n(\s+RETURNING t\.id, t\.holder_name, t\.first_scanned_at\r?\n\s+INTO v_ticket;)/, '\n$1')
     expect(broken).not.toBe(sql)
     expect(checkMigration(broken).join('\n')).toMatch(/without `t\.status = 'valid'`/)
   })

@@ -50,6 +50,9 @@
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
  *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
  *   one-fee-copy               no customer-facing surface names a second fee
+ *   founding-offer-matches-configuration  the published Founding Organiser numbers,
+ *                              the fifty in the SQL, and the fee sentence on /organisers
+ *                              and /pricing all agree with the configuration
  *   positioning-lock           no user-facing surface calls EventLinqs a ticketing platform
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
@@ -759,6 +762,16 @@ const GUARDS = [
   // GENERATOR: run it with --write to regenerate, and with no arguments, which
   // is how the runner invokes it, it checks.
   'scripts/pricing-derive.mjs',
+  // Close-out FO1 (13 September 2026). The Founding Organiser offer is
+  // published on /organisers and repeated word for word in every outreach
+  // message: fifty organisers, six fee-free months, three more per referral,
+  // terms applied before the first on-sale. Every one of those numbers was a
+  // string in a copy file that no gate compared with the constants the charge
+  // actually uses, and the cap was ALSO a literal in two SQL functions that
+  // TypeScript cannot see. This holds the copy, the code and the database to one
+  // set of numbers, and holds /organisers and /pricing to rendering the fee as a
+  // read rather than a sentence. Drilled red by changing one number in the copy.
+  'scripts/guards/founding-offer-matches-configuration.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and

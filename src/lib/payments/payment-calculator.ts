@@ -48,6 +48,21 @@ export interface FeeBreakdown {
   total_cents: number
   currency: string
   fee_pass_type: FeePassType
+  /**
+   * THE COST OF THE FOUNDING ORGANISER OFFER, ON THIS ORDER (close-out FO1).
+   *
+   * The platform fee this order did NOT charge because the organiser held a
+   * Founding Organiser window when it was priced. Zero on every other order.
+   *
+   * It is computed here and nowhere else, because here is the only place that
+   * ever sees BOTH numbers: the rate the resolver returned, and the zero the
+   * waiver replaced it with. A waived order stores platform_fee_cents = 0,
+   * which is correct and is also indistinguishable from a free event, a
+   * discount to zero, or a fee that never resolved. Without this, "what is the
+   * offer costing us" is an archaeology exercise across historical
+   * pricing_rules versions rather than a sum over a column.
+   */
+  founding_fee_waived_cents: number
   breakdown_display: {
     tickets: { name: string; qty: number; unit_price_cents: number; line_total_cents: number }[]
     addons: { name: string; qty: number; unit_price_cents: number; line_total_cents: number }[]
@@ -113,6 +128,10 @@ export class PaymentCalculator {
         total_cents: 0,
         currency,
         fee_pass_type: fee_pass_type ?? 'pass_to_buyer',
+        // A zero-subtotal cart is short-circuited before any fee is resolved,
+        // so nothing was waived: a free event is free for everybody and costs
+        // the founding offer nothing.
+        founding_fee_waived_cents: 0,
         breakdown_display: {
           tickets: tickets.map(t => ({
             name: t.tier_name,
@@ -202,6 +221,20 @@ export class PaymentCalculator {
       ticketCount,
       waivedRates,
     )
+
+    // What the Founding Organiser offer cost on this order: the same arithmetic
+    // run once more on the UNWAIVED rates. Computed from the fee line rather
+    // than from the percentage, so it can never drift from what would actually
+    // have been charged (the rounding is inside computeFeeLineCents, and doing
+    // the multiplication a second way here is how the two numbers come to
+    // disagree by a cent). Zero when no waiver applied, which is the honest
+    // answer for every standard order.
+    const founding_fee_waived_cents = waiver.active
+      ? computeFeeLineCents(discounted_subtotal, ticketCount, {
+          platformFeePercent,
+          platformFeeFixedCents,
+        }).platform_fee_cents - platform_fee_cents
+      : 0
     // GST is inclusive in EventLinqs all-in pricing (all-in pricing shown from
     // the first click, no hidden fees). Funds-holding model + founder GST ruling
     // (Option 1, limited payment collection agent): EventLinqs is the PAYMENTS
@@ -261,6 +294,7 @@ export class PaymentCalculator {
       total_cents,
       currency,
       fee_pass_type: resolvedPassType,
+      founding_fee_waived_cents,
       breakdown_display: {
         tickets: tickets.map(t => ({
           name: t.tier_name,
