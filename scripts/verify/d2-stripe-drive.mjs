@@ -129,7 +129,12 @@ function filesCarrying(dir, needle) {
     let text
     try {
       text = readFileSync(file, 'utf8')
-    } catch {
+    } catch (error) {
+      // A build artefact that cannot be read is not nothing: it is a file this
+      // search was supposed to judge and did not, and silence here would let
+      // "the build does not carry the key" be reported when the truth is "this
+      // script could not look".
+      console.warn(`${TAG} could not read ${file.replace(ROOT, '')}: ${error instanceof Error ? error.message : String(error)}`)
       continue
     }
     if (text.includes(needle)) hits.push(file.replace(ROOT, '').replace(/\\/g, '/'))

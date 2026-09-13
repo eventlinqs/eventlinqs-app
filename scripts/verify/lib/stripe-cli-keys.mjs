@@ -43,9 +43,16 @@ export const STRIPE_CLI_CONFIG_PATH = join(homedir(), '.config', 'stripe', 'conf
 
 /**
  * The account id a Stripe key opens, read from the key itself, or null when
- * the key is not shaped like one. `sk_test_51T8WBhGuiZ9cvxuu...` opens
- * `acct_1T8WBhGuiZ9cvxuu`: eight characters of prefix, a `5`, then the sixteen
- * that follow `acct_1`.
+ * the key is not shaped like one. Eight characters of prefix, a `5`, then the
+ * sixteen that follow `acct_1`, so a key beginning `sk_test_51EXAMPLE` opens
+ * the account `acct_1EXAMPLE...`.
+ *
+ * The example is deliberately synthetic and deliberately short. An earlier
+ * draft of this comment carried the first twenty six characters of the REAL
+ * key on this machine to illustrate the mapping, and `no-plaintext-credential`
+ * refused the push for it, correctly: a well-known secret prefix followed by a
+ * high-entropy body is a credential shape whether or not the remainder is
+ * present, and the guard cannot know how much of the key a comment stopped at.
  */
 export function accountIdFromKey(key) {
   if (typeof key !== 'string') return null
