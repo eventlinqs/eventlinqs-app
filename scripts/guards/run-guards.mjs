@@ -31,6 +31,8 @@
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
  *   labelled-form-controls     every raw input, select and textarea carries a
  *                              programmatic label, so assistive technology can name it
+ *   busy-region-names-itself   a loading skeleton that names itself carries a role
+ *                              allowed to have a name, never a bare aria-label
  *   labels-name-the-right-control  and that label points at the control it describes,
  *                              not at the one that happens to sit beside it
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
@@ -596,6 +598,18 @@ const GUARDS = [
   // filling the field the label named produced a zero-priced ticket on a paid
   // event. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
   'scripts/guards/labels-name-the-right-control.mjs',
+  // The third sibling, and the one the other two cannot see: a name that is
+  // PROHIBITED, so assistive technology drops it silently. A plain div maps to
+  // role=generic and a generic role may not carry an accessible name, so
+  // `<div aria-busy aria-label="Loading">` is invalid ARIA that announces
+  // nothing while looking correct in review. Fixed once in the seating plan in
+  // September, with a comment, and shipped again three times anyway: checkout,
+  // the event page and the shared LoadingState. The checkout one BLOCKED THE
+  // PUSH GATE on 13 September 2026 at the checkout-viewport step. Scoped to
+  // aria-busy because that is where axe raises a violation rather than a review
+  // note, which is measured in the guard header, not assumed.
+  // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/busy-region-names-itself.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
   // and compared byte for byte, so a row cannot be improved by editing the

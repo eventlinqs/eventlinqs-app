@@ -119,11 +119,63 @@ if (!url || !key) {
 }
 
 const supabase = createClient(url, key)
-const { data, error } = await supabase.from(TABLE).select('slug, name')
+
+/*
+ * ONE DROPPED PACKET IS NOT A MISSING DATABASE.
+ *
+ * The stance above is right and is kept: with a real project URL, a database
+ * this guard cannot read is "could not look", and "could not look" is not a
+ * pass. But that stance was implemented as a SINGLE fetch, and a single fetch
+ * cannot tell a down database from a momentary blip.
+ *
+ * On 13 September 2026 it blocked the push gate with
+ * `could not read event_categories: TypeError: fetch failed`, on a laptop
+ * shared by three build lanes. The same guard, run by hand thirty seconds
+ * later against the same TEST project, read all 22 rows and passed. Nothing
+ * about the taxonomy had changed; a socket had.
+ *
+ * That failure mode is worse than it looks. A gate that goes red at random
+ * teaches the person in front of it to re-run until green, and the day it is
+ * RIGHT they will re-run then too.
+ *
+ * So the read is attempted three times across a few seconds before the guard
+ * concludes anything, and the refusal says how many attempts it made over how
+ * long, so a real outage still reads as a real outage. A transport failure and
+ * a database that answers with an error are reported separately, because they
+ * are different facts.
+ */
+const ATTEMPTS = 3
+const BACKOFF_MS = [0, 1500, 4000]
+
+let data = null
+let error = null
+let attemptsMade = 0
+const startedAt = Date.now()
+
+for (let i = 0; i < ATTEMPTS; i++) {
+  if (BACKOFF_MS[i] > 0) await new Promise((r) => setTimeout(r, BACKOFF_MS[i]))
+  attemptsMade = i + 1
+  const res = await supabase
+    .from(TABLE)
+    .select('slug, name')
+    .then((r) => r, (thrown) => ({ data: null, error: thrown }))
+  data = res.data
+  error = res.error
+  if (!error) break
+  if (i < ATTEMPTS - 1) {
+    console.log(`  attempt ${attemptsMade} of ${ATTEMPTS} could not read ${TABLE}: ${error.message}. Retrying.`)
+  }
+}
 
 if (error) {
+  const seconds = ((Date.now() - startedAt) / 1000).toFixed(1)
   console.error('')
-  console.error(`FAIL: could not read ${TABLE}: ${error.message}`)
+  console.error(`FAIL: could not read ${TABLE} in ${attemptsMade} attempt(s) over ${seconds}s: ${error.message}`)
+  console.error('')
+  console.error('This is a transport or permission failure, not a statement about the')
+  console.error('taxonomy. It still FAILS, because a build that cannot see the taxonomy')
+  console.error('cannot know whether the homepage is about to drop a tile. Check that the')
+  console.error('project is reachable and that the key can read the table, then run again.')
   process.exit(1)
 }
 

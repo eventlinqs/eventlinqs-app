@@ -1454,9 +1454,15 @@ const ROOT = join(HERE, '..', '..')
  * and an identical table), that the heading stops saying "your" on a screen
  * that is not the organiser's, and that no light-surface token survives onto
  * the dark card.
+ * 2026-09-13 (later still): raised 389/4726 -> 390/4740, MEASURED on a clean
+ * run of the whole suite. One new file, tests/unit/a11y/busy-region-names-itself.test.ts,
+ * carrying 14 tests: the drill for the new busy-region-names-itself guard, and a
+ * re-derivation of that guard's pinned axe-core role table from the installed
+ * package, so an axe upgrade that moves the table turns this red rather than
+ * quietly widening what the guard lets through.
  */
-const MIN_FILES = 389
-const MIN_TESTS = 4726
+const MIN_FILES = 390
+const MIN_TESTS = 4740
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
