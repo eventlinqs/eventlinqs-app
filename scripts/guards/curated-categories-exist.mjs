@@ -37,6 +37,7 @@
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
+import { retryTransport, couldNotLook } from './lib/db-read.mjs'
 
 const CURATION_FILE = 'src/lib/categories/homepage-curation.ts'
 const TABLE = 'event_categories'
@@ -144,38 +145,38 @@ const supabase = createClient(url, key)
  * a database that answers with an error are reported separately, because they
  * are different facts.
  */
-const ATTEMPTS = 3
-const BACKOFF_MS = [0, 1500, 4000]
+const probe = await retryTransport(
+  async () => {
+    const res = await supabase
+      .from(TABLE)
+      .select('slug, name')
+      .then((r) => r, (thrown) => ({ data: null, error: thrown }))
+    if (!res.error) return { ok: true, value: res.data }
+    /*
+     * supabase-js reports a transport failure as a thrown TypeError with no
+     * status, and a refusal as an error object carrying one. Anything with a
+     * status is an ANSWER and is not retried.
+     */
+    const answered = res.error && (res.error.status || res.error.code)
+    return { ok: false, kind: answered ? 'answered' : 'transport', detail: res.error.message ?? String(res.error) }
+  },
+  { onRetry: (n, detail) => console.log(`  attempt ${n} could not read ${TABLE}: ${detail}. Retrying.`) },
+)
 
-let data = null
-let error = null
-let attemptsMade = 0
-const startedAt = Date.now()
-
-for (let i = 0; i < ATTEMPTS; i++) {
-  if (BACKOFF_MS[i] > 0) await new Promise((r) => setTimeout(r, BACKOFF_MS[i]))
-  attemptsMade = i + 1
-  const res = await supabase
-    .from(TABLE)
-    .select('slug, name')
-    .then((r) => r, (thrown) => ({ data: null, error: thrown }))
-  data = res.data
-  error = res.error
-  if (!error) break
-  if (i < ATTEMPTS - 1) {
-    console.log(`  attempt ${attemptsMade} of ${ATTEMPTS} could not read ${TABLE}: ${error.message}. Retrying.`)
-  }
-}
+const data = probe.ok ? probe.value : null
+const error = probe.ok ? null : probe
 
 if (error) {
-  const seconds = ((Date.now() - startedAt) / 1000).toFixed(1)
   console.error('')
-  console.error(`FAIL: could not read ${TABLE} in ${attemptsMade} attempt(s) over ${seconds}s: ${error.message}`)
+  console.error(
+    error.kind === 'transport'
+      ? `FAIL: ${couldNotLook(TABLE, error)}`
+      : `FAIL: ${TABLE} answered, and the answer was not usable: ${error.detail}`,
+  )
   console.error('')
-  console.error('This is a transport or permission failure, not a statement about the')
-  console.error('taxonomy. It still FAILS, because a build that cannot see the taxonomy')
-  console.error('cannot know whether the homepage is about to drop a tile. Check that the')
-  console.error('project is reachable and that the key can read the table, then run again.')
+  console.error('It still FAILS, because a build that cannot see the taxonomy cannot know')
+  console.error('whether the homepage is about to drop a tile, and "could not look"')
+  console.error('reported as a pass is the shape this repository has spent a week removing.')
   process.exit(1)
 }
 

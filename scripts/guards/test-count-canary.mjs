@@ -1502,9 +1502,18 @@ const ROOT = join(HERE, '..', '..')
  * reached 388/4704, and neither number is right for the merged tree. The value
  * below is MEASURED on the merged tree, never the larger of the two, because
  * the larger of two partial counts is still a guess.
+ *
+ * 2026-09-13 (lane A, the db-read door): raised 390/4747 -> 391/4760, MEASURED
+ * on a clean run. One new file, tests/unit/guards/db-read-door.test.ts, with 13
+ * tests on the shared door every build guard now reads the database through.
+ * The other three are net: three existing tests in the event-lifecycle,
+ * platform-notifications and door-live-published guard suites gained the case
+ * that cost a push, that an unreachable database must NOT be reported as a
+ * missing migration. Each of those three previously asserted the misleading
+ * sentence and called it correct, so they are corrected rather than added to.
  */
-const MIN_FILES = 390
-const MIN_TESTS = 4747
+const MIN_FILES = 391
+const MIN_TESTS = 4760
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

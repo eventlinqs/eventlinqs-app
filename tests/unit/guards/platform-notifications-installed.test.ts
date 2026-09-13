@@ -63,7 +63,26 @@ describe('decide', () => {
   test('FAILs when the RPC cannot be asked or answers the wrong shape', () => {
     const absent = decide({ url: URL, serviceKey: 'k', answer: { error: 'HTTP 404 not found' } })
     expect(absent.verdict).toBe('FAIL')
-    expect(absent.reason).toMatch(/could not be asked/)
+    expect(absent.reason).toMatch(/answered, and the answer was not usable/)
+
+    /*
+     * AND THE CASE THAT COST A PUSH. A dropped packet is not an answer and
+     * must never be described as a missing migration. The old assertion here
+     * matched exactly the sentence that told a reader, on 13 September 2026,
+     * to apply a migration that had been applied for a week.
+     */
+    const unreachable = decide({
+      url: URL,
+      serviceKey: 'k',
+      answer: {
+        error: 'fetch failed',
+        unreachable: true,
+        outcome: { detail: 'fetch failed', attempts: 3, ms: 5600 },
+      },
+    })
+    expect(unreachable.verdict).toBe('FAIL')
+    expect(unreachable.reason).toContain('could not reach the database')
+    expect(unreachable.reason).not.toMatch(/apply .*\.sql/i)
     expect(decide({ url: URL, serviceKey: 'k', answer: { value: true } }).verdict).toBe('FAIL')
     expect(decide({ url: URL, serviceKey: 'k', answer: { value: null } }).verdict).toBe('FAIL')
   })

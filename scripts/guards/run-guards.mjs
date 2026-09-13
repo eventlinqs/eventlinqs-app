@@ -31,6 +31,8 @@
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
  *   labelled-form-controls     every raw input, select and textarea carries a
  *                              programmatic label, so assistive technology can name it
+ *   one-db-read-door          every build guard that reads the database goes through
+ *                              one door that retries a dropped packet
  *   busy-region-names-itself   a loading skeleton that names itself carries a role
  *                              allowed to have a name, never a bare aria-label
  *   labels-name-the-right-control  and that label points at the control it describes,
@@ -620,6 +622,14 @@ const GUARDS = [
   // note, which is measured in the guard header, not assumed.
   // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
   'scripts/guards/busy-region-names-itself.mjs',
+  // A build guard that reads the database over the network does it through one
+  // door that retries a dropped packet. On 13 September 2026 two pushes were
+  // blocked, four hours apart, by guards reporting `fetch failed` as a finding;
+  // one of them told the reader to apply two migrations that had been applied
+  // for a week. Five of the probes were copy-pastes of each other, so the first
+  // fix, made to the single guard that used the supabase client, missed all of
+  // them. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/one-db-read-door.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
   // and compared byte for byte, so a row cannot be improved by editing the
