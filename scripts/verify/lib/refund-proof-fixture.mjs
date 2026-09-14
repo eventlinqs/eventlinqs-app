@@ -127,12 +127,16 @@ export async function purgeFixtures(db, log = () => {}) {
  * Clear fixtures left by an earlier run that failed before buying anything. A
  * fixture carrying orders is KEPT: it is the evidence. Without this, TEST
  * accumulates an organisation and an auth user on every iteration.
+ *
+ * `slugPrefix` defaults to the refund proofs' own, so existing callers are
+ * unchanged, and is passed by any proof building under its own lane tag. It is
+ * the ONLY thing scoping the delete, so it is never widened to a bare `%`.
  */
-export async function clearEmptyFixtures(db, log = () => {}) {
+export async function clearEmptyFixtures(db, log = () => {}, slugPrefix = 'refund-proof-presents') {
   const { data: priorOrgs } = await db
     .from('organisations')
     .select('id, owner_id, slug')
-    .like('slug', 'refund-proof-presents-%')
+    .like('slug', `${slugPrefix}-%`)
   for (const p of priorOrgs ?? []) {
     const { data: evs } = await db.from('events').select('id').eq('organisation_id', p.id)
     const ids = (evs ?? []).map(e => e.id)
@@ -169,7 +173,30 @@ export async function clearEmptyFixtures(db, log = () => {}) {
  * events_published_real_cover (20260504000001) refuses a published-public event
  * with no cover, an empty cover, or a picsum placeholder.
  */
-export async function buildFixture(db, { stamp, ownerEmail, password, capacity = 10, priceCents = 2500, log = () => {} }) {
+export async function buildFixture(db, {
+  stamp,
+  ownerEmail,
+  password,
+  capacity = 10,
+  priceCents = 2500,
+  log = () => {},
+  /*
+   * WHAT THE ROWS ARE CALLED. Defaulted to the refund proofs' own names so every
+   * existing caller is unchanged, and overridable so a second proof can build the
+   * SAME charge-ready fixture under its own tag instead of copying this function.
+   * Three lanes share this TEST project and the protocol is that a row says on
+   * sight whose it is, which a hard-coded name cannot do.
+   */
+  brand = {},
+}) {
+  const naming = {
+    org: 'Refund Proof Presents',
+    orgSlug: 'refund-proof-presents',
+    event: 'Refund Proof Night',
+    eventSlug: 'refund-proof-night',
+    owner: 'Refund Proof Owner',
+    ...brand,
+  }
   const { data: donor } = await db
     .from('organisations')
     .select('stripe_account_id, stripe_account_country')
@@ -196,16 +223,16 @@ export async function buildFixture(db, { stamp, ownerEmail, password, capacity =
   if (created.error) throw new Error(`create owner: ${created.error.message}`)
   const ownerId = created.data.user.id
   await db.from('profiles').upsert({
-    id: ownerId, email: ownerEmail, full_name: 'Refund Proof Owner',
-    display_name: 'Refund Proof Owner', is_verified: true,
+    id: ownerId, email: ownerEmail, full_name: naming.owner,
+    display_name: naming.owner, is_verified: true,
   })
   log(`owner ${ownerEmail} (${ownerId})`)
 
   const { data: cat } = await db.from('event_categories').select('id').limit(1).maybeSingle()
 
   const { data: org, error: orgErr } = await db.from('organisations').insert({
-    name: `Refund Proof Presents ${stamp}`,
-    slug: `refund-proof-presents-${stamp}`,
+    name: `${naming.org} ${stamp}`,
+    slug: `${naming.orgSlug}-${stamp}`,
     owner_id: ownerId,
     email: ownerEmail,
     status: 'active',
@@ -220,10 +247,10 @@ export async function buildFixture(db, { stamp, ownerEmail, password, capacity =
 
   const startDate = new Date(Date.now() + 21 * 864e5)
   const { data: event, error: evErr } = await db.from('events').insert({
-    title: `Refund Proof Night ${stamp}`,
-    slug: `refund-proof-night-${stamp}`,
-    description: 'Fixture event for the refund proofs.',
-    summary: 'Refund proof fixture',
+    title: `${naming.event} ${stamp}`,
+    slug: `${naming.eventSlug}-${stamp}`,
+    description: `Fixture event for ${naming.event}.`,
+    summary: `${naming.event} fixture`,
     organisation_id: org.id,
     created_by: ownerId,
     category_id: cat?.id ?? null,
@@ -243,7 +270,7 @@ export async function buildFixture(db, { stamp, ownerEmail, password, capacity =
   const { data: tier, error: tErr } = await db.from('ticket_tiers').insert({
     event_id: event.id,
     name: 'General Admission',
-    description: 'Refund proof tier',
+    description: `${naming.event} tier`,
     tier_type: 'general_admission',
     price: priceCents, currency: 'AUD',
     total_capacity: capacity, sold_count: 0, reserved_count: 0,
@@ -273,8 +300,37 @@ export async function drivePurchase(page, { base, slug, qty, buyerEmail, shot = 
   await page.goto(`${base}/events/${slug}`, { waitUntil: 'load', timeout: 120000 })
   await shot(page, '01-event-page')
 
-  const plus = page.getByRole('button', { name: /^(\+|increase|add)/i }).first()
-  if (!(await plus.count())) throw new Error('no quantity control on the event page')
+  /*
+   * THE SELECTOR IS NOT ALWAYS ON THE PAGE. At narrow widths the ticket picker
+   * sits behind a "Get tickets" control rather than in the layout, so the
+   * quantity button genuinely does not exist until that is pressed. The first
+   * version threw "no quantity control on the event page" at 390 and read as an
+   * event with no tickets, which is the harness's vocabulary indicting a screen
+   * that was correct.
+   */
+  const quantityControl = () => page.getByRole('button', { name: /^(\+|increase|add)/i }).first()
+  let plus = quantityControl()
+  /*
+   * IT IS WAITED FOR, NOT SAMPLED ONCE, and that distinction cost a run. A
+   * `count()` taken the instant `load` fires is a question asked before the
+   * answer exists: against `next dev` the first request for a route compiles it,
+   * so the control appears seconds after the event is on screen. The version
+   * that sampled passed on a warm route and failed on a cold one, and reported
+   * "no quantity control on the event page" about an event whose tickets were
+   * perfectly on sale.
+   */
+  try {
+    await plus.waitFor({ state: 'visible', timeout: 25000 })
+  } catch {
+    const opener = page.getByRole('button', { name: /^(get|buy|select) tickets/i }).first()
+    if (await opener.count()) {
+      await opener.click().catch(() => {})
+      await sleep(2500)
+      plus = quantityControl()
+      await plus.waitFor({ state: 'visible', timeout: 30000 }).catch(() => {})
+    }
+  }
+  if (!(await plus.count())) throw new Error('no quantity control on the event page, with or without opening the picker')
   for (let i = 0; i < qty; i += 1) { await plus.click(); await sleep(450) }
   await shot(page, '02-selected')
 

@@ -207,3 +207,12 @@ docs/verification/lh-local/
 .tmp-serve-*.log
 .tmp-upstash*.log
 .tmp-stripe-listen.log
+#
+# AND ANY OTHER `.tmp-*` LOG, WHICH IS THE POINT OF THIS LINE.
+#
+# The five entries above were added one at a time as each new harness invented a
+# new name, and the sixth escaped: `.tmp-lane-b-stripe-listen.log` matches none
+# of them, and it holds the `whsec_` signing secret `stripe listen` mints for the
+# session. A list of exact names is a list that is always one name short, and the
+# thing it lets through is a credential in the tree.
+.tmp-*.log

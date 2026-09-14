@@ -19,8 +19,17 @@
  * uses is what refuses it, rather than a comment asking nicely.
  *
  * USAGE
- *   node --import ./scripts/lib/src-alias-loader.mjs --env-file=.env.local \
+ *   node --import ./scripts/lib/server-only-shim.mjs \
+ *        --import ./scripts/lib/src-alias-loader.mjs --env-file=.env.local \
  *     scripts/ops/attribution-backfill.mjs [--all] [--json <path>]
+ *
+ * BOTH `--import` FLAGS ARE REQUIRED and the first one used to be missing here,
+ * which meant the command as documented had never run. `store.ts` opens with
+ * `import 'server-only'`, and `server-only` is not a package in this tree: it is
+ * an alias Next resolves inside its own bundler. Without the shim Node stops at
+ * ERR_MODULE_NOT_FOUND before a single order is read, and the failure names a
+ * missing package rather than a missing flag. A remedy nobody can run is not a
+ * remedy, so the fix is the flag and not a note asking the reader to know.
  */
 import { writeFileSync } from 'node:fs'
 import { assertNotProduction } from '../lib/production-write-preflight.mjs'

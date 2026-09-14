@@ -35,6 +35,17 @@
  * CHECKS, and an unreachable database FAILS, because "could not look" reported
  * as a pass is the shape this repository has spent weeks removing.
  *
+ * ONE THING IT CANNOT SEE, recorded 14 September 2026 because it took a run to
+ * work out and will take another one otherwise. This guard judges whatever
+ * database the environment points at, and on THIS machine that is a TEST
+ * project three worktrees sell tickets into. Only lane B's tree carries the
+ * checkout writer, so an order sold by another lane arrives with no record
+ * through no fault of anything, and seven did on 14 September. The guard is not
+ * weakened for it and must not be: the remedy is the backfill, which it prints
+ * on every such failure, and the condition ends the moment lane B is merged and
+ * every tree carries the writer. What IS handled below is the resolution window,
+ * which is a real race in the product rather than a fact about this laptop.
+ *
  * Run standalone:
  *   node --env-file=.env.local scripts/guards/attribution-one-record-per-order-never-billable-when-reversed.mjs
  */
@@ -150,7 +161,7 @@ if (!url || !key) {
 
 const db = createClient(url, key, { auth: { persistSession: false } })
 
-const { data: breaches, error } = await db
+const { data: rawBreaches, error } = await db
   .from('marketing_attribution_invariant_breaches')
   .select('breach, order_id, order_reference, detail')
 
@@ -160,17 +171,90 @@ if (error) {
   process.exit(1)
 }
 
+/*
+ * THE ONE TOLERANCE, AND IT IS CORRECTNESS RATHER THAN LENIENCY.
+ *
+ * `recordClickSignalForOrder` writes the signal inside the request and hands the
+ * RESOLUTION to `afterResponse`, deliberately: six reads are not something a
+ * buyer should wait on to be told about their own purchase. So between the order
+ * insert and the resolver finishing there is a window, BY DESIGN, in which an
+ * order genuinely has no record and nothing is wrong.
+ *
+ * The view reports raw truth and is right to; it has no business knowing about a
+ * scheduling decision in the application. This guard applies the tolerance,
+ * because it is the thing that has to decide whether to fail a build, and a gate
+ * that reds on a race it was told to expect is a gate somebody switches off.
+ *
+ * It is scoped as tightly as it can be: the grace applies ONLY to the
+ * no-record clause, only to orders younger than the window, and the count is
+ * PRINTED on every run, so a number that starts growing is visible rather than
+ * absorbed. An order that is still unresolved after this long is not racing, it
+ * is missing, and it fails.
+ */
+const RESOLUTION_GRACE_MS = 5 * 60 * 1000
+const NO_RECORD = 'order has no attribution record'
+
+let stillResolving = 0
+let breaches = rawBreaches ?? []
+const unrecorded = breaches.filter(b => b.breach === NO_RECORD).map(b => b.order_id)
+if (unrecorded.length > 0) {
+  const cutoff = new Date(Date.now() - RESOLUTION_GRACE_MS).toISOString()
+  const young = new Set()
+  for (let i = 0; i < unrecorded.length; i += 200) {
+    const { data } = await db
+      .from('orders')
+      .select('id')
+      .in('id', unrecorded.slice(i, i + 200))
+      .gt('created_at', cutoff)
+    for (const row of data ?? []) young.add(row.id)
+  }
+  stillResolving = young.size
+  breaches = breaches.filter(b => !(b.breach === NO_RECORD && young.has(b.order_id)))
+}
+
 const { count: orders } = await db.from('orders').select('id', { count: 'exact', head: true })
 
-report(orders ?? 0, (breaches ?? []).length)
+report(orders ?? 0, breaches.length)
 
 console.log(
   `${TAG} the primary key, both triggers and the view are all defined by the migrations; ${orders ?? 0} order(s) judged`,
 )
+console.log(
+  `${TAG} ${stillResolving} order(s) are inside the ${RESOLUTION_GRACE_MS / 60000}-minute resolution window and are not judged yet; the resolver runs after the response by design.`,
+)
 
-if ((breaches ?? []).length > 0) {
+if (breaches.length > 0) {
   for (const row of breaches) console.error(`${TAG} FAIL: ${row.breach}: ${row.detail}`)
   console.error(`${TAG} ${breaches.length} breach(es) of the attribution invariant.`)
+
+  /*
+   * THE ONE BREACH THAT HAS A COMMAND, so the guard hands it over instead of
+   * making the reader find it (Law 10).
+   *
+   * "No attribution record" is the only clause that is routinely a GAP rather
+   * than a fault: an order written by any code path that predates the checkout
+   * writer has no record and never will until something resolves it. On this
+   * machine that happens whenever another lane's worktree, whose tree does not
+   * carry the writer, sells a ticket into the shared TEST project - seven
+   * arrived that way on 14 September. The remedy is the product's own backfill,
+   * it is idempotent, and it only ever fills gaps.
+   *
+   * The other three clauses have no command: billable-while-reversed, billable
+   * on a rung that is not evidence, and a `none` with no reason are all wrong
+   * DECISIONS rather than absent ones, and re-running a resolver over them is
+   * how a wrong number gets laundered into a confident one.
+   */
+  if (breaches.some(row => row.breach === 'order has no attribution record')) {
+    console.error('')
+    console.error(`${TAG} Every one of those is an order with NO record, which the backfill fills:`)
+    console.error('')
+    console.error('    node --import ./scripts/lib/server-only-shim.mjs \\')
+    console.error('         --import ./scripts/lib/src-alias-loader.mjs --env-file=.env.local \\')
+    console.error('      scripts/ops/attribution-backfill.mjs')
+    console.error('')
+    console.error(`${TAG} It refuses production, writes only the orders that have no record, and`)
+    console.error('      records "none" with a reason for the ones no campaign produced.')
+  }
   process.exit(1)
 }
 
