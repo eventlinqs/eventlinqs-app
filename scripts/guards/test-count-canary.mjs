@@ -1663,9 +1663,18 @@ const ROOT = join(HERE, '..', '..')
  * So neither was taken. The four lane C commits were rebased, the conflicts were
  * resolved by keeping BOTH history blocks and deferring the number, and then the
  * suite was run on the tree that actually exists. 403 and 4889 is what it holds.
+ *
+ * 2026-09-14 (close-out SEO5, lane C): 408/4968, MEASURED, 0 failed, 0 skipped.
+ * Five new files: the calendar composition, the accessibility derivation, the
+ * og:type decision, the after-the-fact lifecycle door, and the three event
+ * states rendered as components. The largest of them is there because a
+ * completed event's page answered a real 404 for months against a document that
+ * says it is a full page with a banner, and nothing in the suite could say so.
+ * Raised again to 4970 in the same session: the reversal condition gained two
+ * tests once it stopped being a sentence and became a flag.
  */
-const MIN_FILES = 403
-const MIN_TESTS = 4889
+const MIN_FILES = 408
+const MIN_TESTS = 4970
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -70,6 +70,15 @@ interface TicketSelectorProps {
    * browser, unlike the runtime zone.
    */
   eventTimezone: string | null
+  /**
+   * Whether the remaining-tickets line may render (close-out SEO5 reversal).
+   *
+   * Defaults to true so every existing caller is unchanged. The event page
+   * resolves the `event_availability_and_access` flag once and threads it, so
+   * the owner can take every availability figure off the platform with one
+   * admin row change and no deploy.
+   */
+  showAvailability?: boolean
 }
 
 function formatPrice(priceCents: number, currency: string) {
@@ -77,7 +86,7 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, saleRefusalReason = null, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, showAvailability = true, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, saleRefusalReason = null, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -365,7 +374,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                         Sale opens {formatEventDateTimeCompact(tier.sale_start, eventTimezone)}
                       </p>
                     )}
-                    {!soldOut && !salePending && available <= 20 && (
+                    {showAvailability && !soldOut && !salePending && available <= 20 && (
                       <p className="mt-1 text-xs font-medium text-error-strong">Only {available} left</p>
                     )}
                     {!soldOut && !salePending && tier.max_per_order < 10 && (

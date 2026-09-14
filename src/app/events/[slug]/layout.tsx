@@ -3,6 +3,7 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { fixtureEventExists } from '@/lib/dev/fixture-events'
 import { viewerMayReachArchivedEvent } from '@/lib/events/archived-view'
+import { afterTheFactEventExists } from '@/lib/events/after-the-fact-view'
 
 /**
  * Existence guard for /events/[slug].
@@ -71,6 +72,19 @@ export default async function EventSlugLayout({
    */
   console.warn(`[event-route] no public row for ${slug}; asking whether a ticket holder may see an archived one`)
   if (await viewerMayReachArchivedEvent(slug)) return children
+
+  /*
+   * PAUSED, POSTPONED, CANCELLED AND COMPLETED ARE PUBLIC PAGES, and the anon
+   * read above cannot see any of them: the row-level security policies on
+   * `public.events` admit `status = 'published'` alone. `docs/EVENT-LIFECYCLE.md`
+   * says all four answer a full page with a banner, and all four were answering
+   * a real 404 until 14 September 2026. The full account is in
+   * `src/lib/event-lifecycle.ts` beside PUBLIC_AFTER_THE_FACT_STATUSES.
+   *
+   * Unlike the archived branch above, this answer is the SAME FOR EVERY VIEWER,
+   * so it reads no session and the response stays cacheable at the edge.
+   */
+  if (await afterTheFactEventExists(slug)) return children
 
   notFound()
 }

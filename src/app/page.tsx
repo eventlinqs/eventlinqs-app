@@ -281,9 +281,20 @@ export default async function HomePage() {
         />
 
         {/* Trending (general, demand-based) - Variant B: the one larger
-            feature-card row. Uniform feature-sized cards within the rail. */}
+            feature-card row. Uniform feature-sized cards within the rail.
+
+            THE EYEBROW SAID "Selling fast" AND THE RAIL COULD NOT KNOW THAT.
+            `trending` is every upcoming event with percent_sold > 0, ordered by
+            that proportion, so the tenth card can be an event that has sold one
+            ticket out of four hundred. A rail-level scarcity claim is a claim
+            about every card in it, and this one was not true of most of them.
+            The per-card badge engine (src/lib/events/badges.ts) DOES know: it
+            labels a card "Selling fast" only above 70 percent sold, and "Few
+            left" only under ten remaining. The eyebrow now describes the rail,
+            which is what an eyebrow is for, and the stock claim is left to the
+            thing that reads stock. scripts/guards/no-false-urgency.mjs holds it. */}
         <EventRailSection
-          eyebrow="Selling fast"
+          eyebrow="What the city is booking"
           title="Trending now"
           ariaLabel="Trending events"
           railLabel="Trending events"

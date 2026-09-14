@@ -492,6 +492,102 @@ const DRILLS = [
     expect: 'multiplies a per-ticket all-in total to get a cart total',
   },
   /*
+   * event-lifecycle-total clause 7 (close-out SEO5 step 5), THREE DRILLS.
+   *
+   * The clause exists because four of the eight statuses were answering a real
+   * 404 on their own public page, against a document that says all four render
+   * a full page with a banner, and nothing in the repository could see it. Each
+   * drill is one of the three ways it comes back: the classification losing a
+   * status, a caller losing the door, and the door losing a constraint.
+   */
+  {
+    name: 'a status the document calls a full page drops out of the classification',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'src/lib/event-lifecycle.ts',
+    // A SINGLE LINE, deliberately. src/lib/event-lifecycle.ts has CRLF line
+    // endings, so a multi-line `find` written with LF matches nothing and the
+    // drill reports a bad find string instead of exercising the guard.
+    find: "  'cancelled',",
+    replace: '  /* lane-C drill: cancelled removed */',
+    expect: 'cancelled is not in PUBLIC_AFTER_THE_FACT_STATUSES',
+  },
+  {
+    name: 'the route existence guard stops consulting the after-the-fact door',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'src/app/events/[slug]/layout.tsx',
+    find: '  if (await afterTheFactEventExists(slug)) return children',
+    replace: '  // lane-C drill: the door removed',
+    expect: 'no longer consults the after-the-fact door',
+  },
+  {
+    name: 'the after-the-fact door stops constraining visibility',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'src/lib/events/after-the-fact-view.ts',
+    // The EXISTENCE check's copy, because the guard judges every read in the
+    // file rather than the file as a whole: removing the constraint from one of
+    // two queries is exactly how this defect would return.
+    find: "      .in('visibility', [...PUBLIC_VISIBILITIES])\n      .maybeSingle(),",
+    replace: '      .maybeSingle(),',
+    expect: 'has a read that does not constrain visibility',
+  },
+  /*
+   * no-false-urgency (close-out SEO5), FOUR DRILLS. The item asks for it
+   * "proven red by hard coding a low stock message, then green", which is the
+   * first two of these: one for the literal count, one for a scarcity sentence
+   * in a file that has never counted a ticket. The other two are the
+   * accessibility half of the same invariant, which has its own way of lying.
+   */
+  {
+    name: 'a low stock message is hard coded',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/components/checkout/ticket-selector.tsx',
+    find: '                      <p className="mt-1 text-xs font-medium text-error-strong">Only {available} left</p>',
+    replace: '                      <p className="mt-1 text-xs font-medium text-error-strong">Only 3 left</p>',
+    expect: 'writes a scarcity COUNT as a literal',
+  },
+  {
+    name: 'a scarcity sentence appears on a surface that never reads inventory',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/lib/content/category-highlight-slides.ts',
+    find: "    cardEyebrow: 'Most booked',",
+    replace: "    cardEyebrow: 'Selling fast',",
+    expect: 'is NOT reviewed',
+  },
+  {
+    name: 'the accessibility section loses its refusal to render empty',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/components/features/accessibility/accessibility-section.tsx',
+    find: '  if (!hasAccessibilityInfo(info)) return null',
+    replace: '  void hasAccessibilityInfo',
+    expect: 'no longer refuses to render when there is nothing to say',
+  },
+  {
+    name: 'the accessibility surface starts rendering a negative',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/components/features/accessibility/accessibility-section.tsx',
+    find: '        <p className="mt-5 flex items-start gap-3 text-xs leading-relaxed text-ink-500">',
+    replace:
+      '        <p className="text-xs">Not wheelchair accessible</p>\n        <p className="mt-5 flex items-start gap-3 text-xs leading-relaxed text-ink-500">',
+    expect: 'renders an accessibility NEGATIVE',
+  },
+  {
+    name: 'a governed surface stops consulting the reversal switch',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/components/checkout/ticket-selector.tsx',
+    find: '{showAvailability && !soldOut && !salePending && available <= 20 && (',
+    replace: '{!soldOut && !salePending && available <= 20 && (',
+    expect: 'the remaining-tickets line is no longer gated on the reversal switch',
+  },
+  {
+    name: 'the calendar links are put behind the reversal switch, which the close-out forbids',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/components/features/events/add-to-calendar.tsx',
+    find: 'export function AddToCalendar({ event }: { event: CalendarEvent }) {',
+    replace:
+      'export function AddToCalendar({ event, showAvailability }: { event: CalendarEvent; showAvailability?: boolean }) {\n  void showAvailability',
+    expect: 'is behind the reversal switch',
+  },
+  /*
    * event-structured-data (SEO1 v2), EIGHT DRILLS, one per clause and four
    * extra where a clause has more than one way to fail.
    *

@@ -71,11 +71,16 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { FollowButton } from '@/components/features/follow/follow-button'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
+import { eventOpenGraph } from '@/lib/seo/og-type'
+import { EventOpenGraphTypeMeta } from '@/components/seo/og-type-meta'
+import { AccessibilitySection } from '@/components/features/accessibility/accessibility-section'
+import { accessibilityItems, hasAccessibilityInfo, NO_ACCESSIBILITY_INFO } from '@/lib/accessibility/fields'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { KnowBeforeYouGo } from '@/components/features/events/know-before-you-go'
 import { AddToCalendar } from '@/components/features/events/add-to-calendar'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
 import { fetchArchivedEventForHolder } from '@/lib/events/archived-view'
+import { fetchAfterTheFactEvent } from '@/lib/events/after-the-fact-view'
 import { SaveEventButton } from '@/components/features/events/save-event-button'
 import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
@@ -171,7 +176,17 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
    * null for everyone else, and the caller's notFound() stands.
    */
   console.warn(`[event-detail] no public row for ${slug}`)
-  return fetchArchivedEventForHolder<FullEvent>(slug, EVENT_PAGE_SELECT)
+  const holderView = await fetchArchivedEventForHolder<FullEvent>(slug, EVENT_PAGE_SELECT)
+  if (holderView) return holderView
+
+  /*
+   * THE FOUR AFTER-THE-FACT STATES, which this read could not see either.
+   * `docs/EVENT-LIFECYCLE.md` says a paused, postponed, cancelled or completed
+   * event answers a full page with its banner; the RLS policies admit published
+   * alone, so all four were a 404 and the banner code on this page had never run
+   * for a stranger. See src/lib/event-lifecycle.ts, PUBLIC_AFTER_THE_FACT_STATUSES.
+   */
+  return fetchAfterTheFactEvent<FullEvent>(slug, EVENT_PAGE_SELECT)
 }
 
 /** The one column list the public read and the holder's archived read share. */
@@ -304,40 +319,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // the cover photo, scrim, title, date and venue. Setting raw cover images
     // here would override the file-convention card with an unbranded photo.
     /*
-     * og:type = 'event' (close-out SEO5 step 7), AND THE SPEC DOES NOT DEFINE IT.
+     * og:type, from ONE constant (close-out SEO5 step 7).
      *
-     * The Open Graph protocol's published object types are music.song,
-     * music.album, music.playlist, music.radio_station, video.movie,
-     * video.episode, video.tv_show, video.other, article, book, payment.link,
-     * profile and website. `event` is not among them (https://ogp.me/, fetched
-     * 14 September 2026).
+     * The owner's instruction was to set this to `event` rather than `website`.
+     * It was held for one session on a partial reading of the spec, and the
+     * second read reversed the hold: the Open Graph protocol explicitly permits
+     * types outside its global registry, Meta publishes no competing list, and
+     * Eventbrite's own live event page emits `events.event` while its discovery
+     * page emits `website`. All three citations, the measurement, and the reason
+     * the value is `event` rather than `events.event` are in
+     * `src/lib/seo/og-type.ts`, which is also the one word that changes it.
      *
-     * NEXT'S OWN TYPES REFUSE IT TOO, which is a second and independent reading
-     * of the same vocabulary: `Metadata['openGraph']['type']` enumerates exactly
-     * the OGP list and `'event'` is not in it, so setting it is a compile error
-     * that only an `as` cast can silence.
-     *
-     * IT IS THEREFORE NOT SET, and that is the one acceptance line of SEO5 this
-     * lane has not met. Casting past the type checker to publish an undefined
-     * value on every event page is an outward-facing change to the preview card
-     * that WhatsApp and Facebook render, and this product's own help content
-     * names those two as a differentiator. That is the owner's call to make with
-     * the evidence in front of him, not a lane's to make quietly.
-     *
-     * WHAT ACTUALLY TELLS A SEARCH ENGINE THIS IS AN EVENT is the Schema.org
-     * `Event` block this page already emits, which close-out SEO1 v2 corrected.
-     * `og:type` is not what Google reads for event rich results, so the page is
-     * not missing a signal; it is missing a label the vocabulary has no word for.
-     *
-     * The decision, both citations and the one-word change are in
-     * REVIEW-QUEUE-C.md.
+     * THE BLOCK BELOW CARRIES NO `type` KEY, AND THAT IS NOT AN OMISSION. Next
+     * switches on `openGraph.type` at render time and THROWS on anything
+     * outside the Open Graph global registry, which took this whole page down
+     * to "We hit a snag loading this page" when it was tried. The tag is
+     * emitted from the page tree by `<EventOpenGraphTypeMeta />` instead.
      */
-    openGraph: {
+    openGraph: eventOpenGraph({
       title: event.title,
       description,
       url: `${baseUrl}/events/${slug}`,
-      type: 'website',
-    },
+    }),
     twitter: {
       card: 'summary_large_image',
       title: event.title,
@@ -431,6 +434,17 @@ export default async function EventDetailPage({ params }: Props) {
    */
   const artistsOnPromise = isFeatureEnabled('broadcast_artists')
   artistsOnPromise.catch(() => {})
+  /*
+   * THE SECOND FLAG STARTS HERE FOR THE SAME REASON AS THE FIRST.
+   *
+   * `event_availability_and_access` (close-out SEO5's reversal condition) does
+   * not depend on the event either. Awaiting it where it is USED, four hundred
+   * lines down, would have re-introduced exactly the serial round trip the
+   * comment above records measuring away: 624ms of server-response-time on the
+   * page a buyer is standing on when they decide to pay. Two flags, one wait.
+   */
+  const availabilityAndAccessPromise = isFeatureEnabled('event_availability_and_access')
+  availabilityAndAccessPromise.catch(() => {})
   const event = await fetchEvent(slug)
 
   // notFound() BEFORE any request-data access, so a missing event returns a
@@ -829,6 +843,50 @@ export default async function EventDetailPage({ params }: Props) {
   const saleRefusalReason = saleDecision.reason
 
   const baseUrl = getSiteUrl()
+
+  // What the organiser has said about access (close-out SEO5 step 4). The row
+  // is read with `*`, so these columns arrive the moment the founder applies
+  // docs/migrations-pending/20260914000002_accessibility_fields.sql and are
+  // `undefined` until then, which reads as "not stated" and renders nothing.
+  /*
+   * CLOSE-OUT SEO5'S REVERSAL CONDITION, RESOLVED ONCE.
+   *
+   * "One flag hides the availability indicator and the accessibility section
+   * while leaving the calendar links in place."
+   *
+   * Read here and threaded, rather than asked for at each of the four places
+   * that need it, so those four can never disagree about it. It governs the
+   * remaining-tickets line, the per-tier social-proof badges, the event-level
+   * badge beside the title, and the accessibility section. It does NOT govern
+   * the calendar links: a date in a diary is never the thing that turns out to
+   * be untrue, and the whole point of a reversal is to remove the claim that
+   * could be wrong rather than the feature it sits next to.
+   *
+   * A missing row and an unreachable database both resolve to ON
+   * (BROADCAST_FLAG_DEFAULTS), so an outage never blanks a correct page.
+   */
+  const availabilityAndAccessOn = await availabilityAndAccessPromise
+
+  const eventAccessibility = availabilityAndAccessOn
+    ? accessibilityItems(event as unknown as Record<string, unknown>, 'event')
+    : NO_ACCESSIBILITY_INFO
+
+  /*
+   * WHAT THE PRIMARY ACTION SAYS, in one place (close-out SEO5 step 5).
+   *
+   * It used to be the literal "Get tickets" in three places, and a sold-out
+   * event rendered all three: the hero CTA, the sticky bar's desktop button and
+   * its mobile one, every one of them a gold button promising tickets on an
+   * event with none. They anchor to #tickets, where the panel says the room is
+   * full, so the buyer was walked to a refusal by a control that had implied a
+   * purchase. Found by driving a sold-out fixture at 390, 768 and 1440; nothing
+   * static could see it, because the markup was correct.
+   *
+   * The waitlist IS at that anchor, so the label now names it. One value, three
+   * consumers, and the sold-out panel is the thing it scrolls to.
+   */
+  const ticketCtaLabel = isSoldOut && !saleBlocked ? 'Join the waitlist' : 'Get tickets'
+
   const eventStateForSchema =
     eventBannerState === 'cancelled' ? 'cancelled' as const :
     eventBannerState === 'postponed' ? 'postponed' as const :
@@ -870,6 +928,10 @@ export default async function EventDetailPage({ params }: Props) {
           { name: event.title, url: `${baseUrl}/events/${event.slug}` },
         ]}
       />
+      {/* og:type, which Next will not emit for a type outside its registry.
+          React hoists this into the head beside the tags generateMetadata
+          produced. See src/lib/seo/og-type.ts. */}
+      <EventOpenGraphTypeMeta />
       <EventViewTracker
         eventId={event.id}
         eventTitle={event.title}
@@ -901,6 +963,7 @@ export default async function EventDetailPage({ params }: Props) {
         venueLabel={venueLabelShort}
         priceLabel={priceLabel}
         shareUrl={`/events/${event.slug}`}
+        ctaLabel={ticketCtaLabel}
       />
 
       <main>
@@ -965,7 +1028,7 @@ export default async function EventDetailPage({ params }: Props) {
                 )}
               </div>
 
-              {eventInventory && (
+              {availabilityAndAccessOn && eventInventory && (
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   <SocialProofBadge inventory={eventInventory} createdAt={event.created_at} />
                   {/* Honest social proof: real confirmed sales (total_sold,
@@ -986,7 +1049,7 @@ export default async function EventDetailPage({ params }: Props) {
                   </Link>
                 ) : (
                   <GetTicketsCta className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]">
-                    Get tickets
+                    {ticketCtaLabel}
                   </GetTicketsCta>
                 )}
                 {!eventBannerState ? (
@@ -1188,6 +1251,28 @@ export default async function EventDetailPage({ params }: Props) {
                       )}
                       isFree={event.is_free ?? false}
                     />
+                  </Reveal>
+                )}
+
+                {/*
+                  ACCESSIBILITY (close-out SEO5 step 4).
+
+                  NOT behind `surpassEdgesEnabled`, and that is deliberate. The
+                  card above it is a product experiment and can be switched off;
+                  whether a wheelchair user can get into the room is not an
+                  experiment, and a flag that hid it would hide it from the one
+                  person who cannot work around its absence.
+
+                  The event row is read with `EVENT_PAGE_SELECT`, which begins
+                  with `*`, so these columns arrive here the moment the founder
+                  applies docs/migrations-pending/20260914000002_accessibility_fields.sql
+                  and are simply `undefined` until then. Undefined reads as "not
+                  stated", which renders as nothing at all, so this line is safe
+                  on both sides of that migration.
+                */}
+                {hasAccessibilityInfo(eventAccessibility) && (
+                  <Reveal>
+                    <AccessibilitySection info={eventAccessibility} subject="event" />
                   </Reveal>
                 )}
 
@@ -1413,6 +1498,7 @@ export default async function EventDetailPage({ params }: Props) {
                           waitlistEnabled={event.waitlist_enabled ?? false}
                           squadBookingEnabled={event.squad_booking_enabled ?? false}
                           tierInventory={tierInventory}
+                          showAvailability={availabilityAndAccessOn}
                           saleBlocked={saleBlocked}
                           saleRefusalReason={saleRefusalReason}
                           feeRates={feeRates}
@@ -1456,6 +1542,7 @@ export default async function EventDetailPage({ params }: Props) {
                         waitlistEnabled={event.waitlist_enabled ?? false}
                         squadBookingEnabled={event.squad_booking_enabled ?? false}
                         tierInventory={tierInventory}
+                        showAvailability={availabilityAndAccessOn}
                         saleBlocked={saleBlocked}
                         saleRefusalReason={saleRefusalReason}
                         feeRates={feeRates}

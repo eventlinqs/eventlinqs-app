@@ -173,6 +173,11 @@
  *   all-in-pricing            no buyer is shown a number they will not pay: the fee value has
  *                              ONE source, every buyer-facing price surface resolves it live,
  *                              and no cart total is a per-ticket figure multiplied (SEO4)
+ *   no-false-urgency          every scarcity, availability or urgency message is computed
+ *                              from real inventory and is a reviewed site naming the
+ *                              expression that decides it, no scarcity count is a literal,
+ *                              and the accessibility section refuses to render empty or to
+ *                              render a negative (SEO5)
  *   discovery-indexability    the page and the sitemap count the same dimension for every
  *                              templated family, nothing overrides or re-spells the owner's
  *                              threshold, and every category in event_categories is a real
@@ -1185,6 +1190,15 @@ const GUARDS = [
   // no gate could fail, because the number was correct and simply was not the
   // price.
   'scripts/guards/all-in-pricing.mjs',
+  // Close-out SEO5 (14 September 2026): nothing may hurry a buyer with a number
+  // it made up, and no accessibility section may render empty. It found four
+  // live false-urgency claims on its first run: a "Selling fast" eyebrow over a
+  // homepage rail that reads no stock at all, the same eyebrow on the bento
+  // variant, a static content slide asserting "The events booking out right
+  // now", and an alerts panel promising a push "when an event is going fast"
+  // that nothing on this platform has ever sent. Each was true-looking and none
+  // was true. The badge engine, which DOES count tickets, was correct all along.
+  'scripts/guards/no-false-urgency.mjs',
   // Close-out H2.1 (8 September 2026): production reset a TLS handshake from a
   // GitHub Actions runner and the post-deploy smoke called it an outage. The
   // reset was at the handshake, before any header was sent, so nothing that

@@ -33,6 +33,17 @@ export const BROADCAST_FLAGS = [
   // (admin surface, audit log, cache) as the broadcast stages.
   'gig_board',
   'artist_showcase',
+  /*
+   * NOT A BROADCAST STAGE, and it is here because this is the platform's ONE
+   * flag resolver rather than because it belongs to that layer. The
+   * constitution names public.feature_flags as where a feature switch lives;
+   * the array's name is historical.
+   *
+   * It is close-out SEO5's reversal condition, written as a switch rather than
+   * as a sentence: "One flag hides the availability indicator and the
+   * accessibility section while leaving the calendar links in place."
+   */
+  'event_availability_and_access',
 ] as const
 
 export type BroadcastFlag = (typeof BROADCAST_FLAGS)[number]
@@ -52,6 +63,10 @@ export const BROADCAST_FLAG_DEFAULTS: Record<BroadcastFlag, boolean> = {
   broadcast_artists: false,
   gig_board: false,
   artist_showcase: false,
+  // ON. Both surfaces are shipped, correct and wanted; the switch exists to
+  // turn them OFF in one row change if either is ever found saying something
+  // untrue, which is the reversal condition rather than a launch decision.
+  event_availability_and_access: true,
 }
 
 /**
@@ -86,6 +101,8 @@ export const BROADCAST_FLAG_DECISIONS: Record<BroadcastFlag, string> = {
     'lawal 2026-08-15: OFF at launch, deliberately. Built, tested, and held for the post-launch "performers, bring your numbers" moment recorded in the recruitment playbook. Marketing is explicitly barred from naming it before then.',
   artist_showcase:
     'lawal 2026-08-15: OFF at launch, deliberately. Same decision and same moment as gig_board; the two ship together or not at all, because a showcase with no gig board is a directory with nothing to do.',
+  event_availability_and_access:
+    'lawal 2026-09-14: ON. Close-out SEO5 reversal condition. Hides the remaining-tickets line and the social-proof badges on the event page, and the accessibility section on the event and venue pages, in one admin row change with no deploy. The calendar links are deliberately NOT behind it: a date in a diary is never the thing that turns out to be untrue. Turn it OFF if any availability figure is ever found not to come from inventory, or if an accessibility claim is ever found that no organiser made.',
 }
 
 // Minimal structural type so both the service-role admin client and the
