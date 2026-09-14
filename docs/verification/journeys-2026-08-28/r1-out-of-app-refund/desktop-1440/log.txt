@@ -1,4 +1,10 @@
 R1: a refund made outside the application
 =========================================
-01. R1 proof finished
-      1/2 at desktop-1440
+01. Signed in
+      lane-a-r1-mu0ti7vr-first@example.com -> /dashboard
+02. Signed in
+      lane-a-r1-mu0ti7vr-second@example.com -> /dashboard
+03. Signed in
+      lane-a-r1-mu0ti7vr-owner@example.com -> /dashboard
+04. R1 proof finished
+      28/35 at desktop-1440

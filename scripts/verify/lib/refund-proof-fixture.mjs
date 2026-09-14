@@ -372,8 +372,95 @@ export async function drivePurchase(page, { base, slug, qty, buyerEmail, shot = 
   if (await postal.count()) await postal.fill('3220')
   await sleep(900)
   await shot(page, '04-card-entered')
-  await page.getByRole('button', { name: /pay/i }).first().click()
-  await page.waitForURL(/confirmation/, { timeout: 150000 })
+  /*
+   * DISMISS ANY NATIVE POPUP BEFORE PRESSING PAY, AND THE REASON IS EVIDENCE
+   * RATHER THAN SUPERSTITION.
+   *
+   * At tablet-768 this drive failed three times running while mobile-390 and
+   * desktop-1440 passed the identical step in the same run. The instrumentation
+   * settled what it was: the button still read "Pay AUD 26.87" three seconds
+   * after the click rather than "Processing...", the console was silent, the
+   * page showed no error and Stripe's element showed none either. The submit
+   * handler NEVER RAN. The screenshot shows why: Stripe's payment element at
+   * this width renders a Country <select>, focus lands on it once the security
+   * code is complete, and its native option list was open over the page. In
+   * Chromium a click made while a native select popup is open is consumed
+   * CLOSING THE POPUP and never reaches the element underneath.
+   *
+   * SO THIS IS THE HARNESS, NOT THE PRODUCT, and the distinction is the whole
+   * point: the page cannot respond to an event the browser never delivered to
+   * it, and a real buyer moving a finger from the card fields to the Pay button
+   * does not leave a country list hanging open. Escape is what closes it, and it
+   * is a no-op on the two viewports that never had one open, which is why it is
+   * unconditional rather than a width special case.
+   */
+  await page.keyboard.press('Escape')
+  await sleep(300)
+
+  const payButton = page.getByRole('button', { name: /pay/i }).first()
+  const payLabel = ((await payButton.textContent()) || '').trim()
+  const console_ = []
+  page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console_.push(`${m.type()}: ${m.text()}`.slice(0, 300)) })
+  page.on('pageerror', err => console_.push(`pageerror: ${err.message}`.slice(0, 300)))
+  await payButton.click()
+  /*
+   * DID THE HANDLER EVEN RUN. The button reads "Processing..." for as long as
+   * confirmPayment is in flight (checkout-form.tsx), so its label is the one
+   * observable that separates "the click never reached the submit handler" from
+   * "the payment was attempted and did not come back". At tablet-768 on
+   * 14 September 2026 it still read "Pay AUD 26.87" after 150 seconds, which is
+   * the first of those two and a completely different investigation.
+   */
+  let labelAfter = '(not read)'
+  try {
+    await payButton.waitFor({ state: 'visible', timeout: 3000 })
+    labelAfter = ((await payButton.textContent()) || '').trim()
+  } catch { labelAfter = '(the button went away, which is what a submit looks like)' }
+  try {
+    await page.waitForURL(/confirmation/, { timeout: 150000 })
+  } catch {
+    /*
+     * THE PAY WENT IN AND NOTHING CAME BACK, AND THAT IS THREE DIFFERENT
+     * FINDINGS. 14 September 2026: the tablet-768 leg of the R1 drive timed out
+     * here while mobile-390 and desktop-1440 passed the identical step in the
+     * same run. The server's own log showed a payment_intent.created for that
+     * leg and NO charge after it, so the click landed and the confirmation did
+     * not complete. `waitForURL timed out` says none of that.
+     *
+     * A card declined inside Stripe's element, a validation error Stripe is
+     * showing, and a confirmation that is simply still in flight are three
+     * separate things, and the page is holding the answer to which at the
+     * moment it gives up. So it is read and reported rather than thrown away.
+     */
+    await shot(page, '05-pay-did-not-complete')
+    const errors = await page
+      .locator('[role="alert"], .text-red-600, [data-testid*="error"], p.text-danger')
+      .allTextContents()
+    let stripeError = ''
+    try {
+      stripeError = (
+        await page
+          .frameLocator('iframe[name^="__privateStripeFrame"]')
+          .first()
+          .locator('[role="alert"], .p-FieldError, .Error')
+          .allTextContents()
+      ).join(' | ')
+    } catch {
+      stripeError = '(the Stripe frame could not be read)'
+    }
+    throw new Error(
+      `the payment did not reach the confirmation in 150s. Pressed "${payLabel}", ` +
+        `button read "${labelAfter}" three seconds later (it reads "Processing..." ` +
+        `while confirmPayment is in flight, so an unchanged label means the SUBMIT ` +
+        `HANDLER NEVER RAN and the click was swallowed). ` +
+        `Console: ${console_.slice(0, 5).join(' || ') || '(silent)'}. ` +
+        `still at ${page.url()}. Page said: ${errors.filter(Boolean).join(' | ') || '(nothing)'}. ` +
+        `Stripe's own element said: ${stripeError || '(nothing)'}. Cross-check the ` +
+        `server log for a payment_intent.succeeded on this attempt: a created ` +
+        `intent with no charge after it means the confirmation never completed, ` +
+        `not that the platform refused it.`,
+    )
+  }
   await shot(page, '05-confirmation')
 
   return page.url().match(/orders\/([0-9a-f-]+)\//)?.[1] ?? null
