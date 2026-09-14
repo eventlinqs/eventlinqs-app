@@ -34,7 +34,7 @@
  * unpublished event emits any block; no listing page emits an Event block; and
  * the string [the attendance-mode property] appears nowhere in the repository."
  *
- * THE SIX CLAUSES, because any one alone is defeatable.
+ * THE SEVEN CLAUSES, because any one alone is defeatable.
  *
  *   1. WIRING. The page still renders the emitter, still hands it the lineup,
  *      and still hands it the DISPLAYED tiers rather than the raw rows.
@@ -62,6 +62,16 @@
  *      FAULT ONE). Google removed online events, and every property describing
  *      one, from its event documentation on 5 June 2025. Emitting it is dead
  *      code. The shipped payload carried it on every event.
+ *   7. NO EMPTY CLAIM, AT ANY DEPTH (added 14 September 2026, after the push
+ *      gate stopped with `Offer.name is an empty string`). The serialiser
+ *      compacted its own TOP LEVEL and left every nested Offer, Place,
+ *      PostalAddress and PerformingGroup outside the clean it reported. The
+ *      clause runs the real serialiser over a row whose tier has no name and
+ *      whose optional venue fields are blank, then WALKS the payload rather than
+ *      naming properties, because the property that breaks is the one nobody
+ *      thought to list. It also reads src/components/seo/json-ld.tsx, the one
+ *      point every page type crosses, and fails if it serialises without
+ *      pruning.
  *
  * WHY CLAUSE 6 BUILDS ITS OWN SEARCH STRING FROM TWO HALVES. The guard has to
  * name the token to look for it, and it scans scripts/, so a literal here would
@@ -90,7 +100,7 @@
  * holds the wiring and the provenance; the test holds the content; the audit
  * holds the deployed truth.
  *
- * Proven red six ways in scripts/verify/guard-failure-drills.mjs.
+ * Proven red nine ways in scripts/verify/guard-failure-drills.mjs.
  */
 import { spawnSync } from 'node:child_process'
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
@@ -109,6 +119,8 @@ export const SERIALISER = 'src/lib/seo/event-schema.ts'
 export const ONE_EMITTER = 'src/components/seo/json-ld.tsx'
 const PAYLOAD_TEST = 'tests/unit/seo/event-structured-data.test.ts'
 const AUDIT = 'scripts/verify/event-structured-data-audit.mjs'
+const RENDERER = 'src/components/seo/json-ld.tsx'
+const STRUCTURED_DATA = 'src/lib/seo/structured-data.ts'
 
 /** The five properties SEO1 names, which must all resolve from the row. */
 export const TRACKED = ['name', 'startDate', 'location', 'organizer', 'offers']
@@ -370,6 +382,14 @@ const FIXTURES = {
     { id: 'tb2', name: 'Door', price: 6600, currency: 'AUD', display_price_cents: 7700 },
   ],
   unpublished: ['draft', 'scheduled', 'archived'],
+  /*
+   * CLAUSE 7's fixture: the exact shape that stopped the push gate on
+   * 14 September 2026. A tier named '' is not hypothetical - one sits on TEST
+   * today - and the optional venue fields are blanked alongside it because the
+   * nested PostalAddress is the other node the old top-level compaction never
+   * reached.
+   */
+  blankTiers: [{ id: 'tblank', name: '', price: 2500, currency: 'AUD' }],
 }
 
 /** Runs the REAL serialiser in a child process through the alias loader. */
@@ -398,6 +418,12 @@ function runSerialiser() {
         { ...F.rowA, slug: F.rowA.slug + '-hybrid', event_type: 'hybrid' },
         F.orgA,
         F.tiersA,
+      ),
+      blank: build(
+        { ...F.rowA, slug: F.rowA.slug + '-blank',
+          venue_name: '', venue_address: '   ', venue_postal_code: '' },
+        { ...F.orgA, description: '' },
+        F.blankTiers,
       ),
     }
     console.log(JSON.stringify(out))
@@ -589,6 +615,100 @@ try {
         `withholding from it means the online rule is firing too wide.`,
     )
   }
+
+  /*
+   * CLAUSE 7. NO EMPTY CLAIM, AT ANY DEPTH.
+   *
+   * WHY IT EXISTS, and it is an incident rather than a precaution. The push gate
+   * stopped on 14 September 2026 at its indexing step with one line:
+   *
+   *     [structured-data] FAIL: /events/lineup-loop-proof-night-3z7osn
+   *                       Offer.name is an empty string
+   *
+   * The serialiser compacted, so the fault was not a missing clean. It was a
+   * clean that ran over the TOP LEVEL of the payload only, and every nested
+   * Offer, Place, PostalAddress and PerformingGroup lay outside it. That is the
+   * shape worth defending against: a check that reports success over the part of
+   * the document nobody was worried about.
+   *
+   * An empty string is not an absent property. It is a positive claim that the
+   * value is nothing, and the platform's own validator refuses it for that
+   * reason (scripts/verify/structured-data-validate.mjs: "no property is an
+   * empty string, an empty array or null"). Google never asks for `Offer.name`,
+   * so silence is the honest answer to a nameless tier.
+   *
+   * IT WALKS RATHER THAN NAMING PROPERTIES, deliberately. Listing the properties
+   * that may not be blank would need extending every time the payload grows, and
+   * the one that broke would be the one nobody thought to list.
+   */
+  judged++
+  const blank = result.blank
+  if (!blank) {
+    failures.push(
+      `${FIXTURES.rowA.slug}-blank: the blank-field fixture emitted no block at ` +
+        `all, so clause 7 judged nothing. It is a published in-person event with ` +
+        `a real address line and must still be described.`,
+    )
+  } else {
+    const empties = []
+    const walk = (node, path) => {
+      if (Array.isArray(node)) {
+        node.forEach((item, i) => walk(item, `${path}[${i}]`))
+        return
+      }
+      if (node !== null && typeof node === 'object') {
+        for (const [key, child] of Object.entries(node)) walk(child, path ? `${path}.${key}` : key)
+        return
+      }
+      if (node === null) empties.push(`${path} is null`)
+      else if (typeof node === 'string' && node.trim() === '') empties.push(`${path} is an empty string`)
+    }
+    walk(blank, '')
+    if (empties.length) {
+      failures.push(
+        `${FIXTURES.rowA.slug}-blank: the payload carries ${empties.length} empty ` +
+          `claim(s) a validator refuses, at ${empties.slice(0, 6).join(', ')}` +
+          `${empties.length > 6 ? ', ...' : ''}. An empty string is a claim that ` +
+          `the value is nothing; omission is the honest encoding. The walk is ` +
+          `pruneJsonLd in ${STRUCTURED_DATA} and it must reach every depth.`,
+      )
+    }
+    if (!blank.offers || blank.offers.length !== 1) {
+      failures.push(
+        `${FIXTURES.rowA.slug}-blank: a nameless tier must still produce its Offer ` +
+          `(price, currency, availability, url); pruning a blank name must not ` +
+          `delete the offer with it.`,
+      )
+    }
+  }
+
+  /*
+   * AND THE SAME INVARIANT AT THE ONE PLACE EVERY PAGE TYPE PASSES THROUGH.
+   * <JsonLd> is a .tsx holding a React element, so this guard cannot execute it
+   * (see the header) and reads it instead. It is checked because the serialiser
+   * above is not the only emitter: a serialiser written next month that never
+   * compacts at all must still be unable to put an empty claim in front of
+   * Google.
+   */
+  judged++
+  const renderer = read(RENDERER)
+  const rendererCode = code(renderer)
+  if (!/JSON\.stringify\(\s*pruneJsonLd\(/.test(rendererCode)) {
+    failures.push(
+      `${RENDERER} serialises a payload without passing it through pruneJsonLd ` +
+        `first, so any emitter that forgets to compact can publish an empty ` +
+        `claim. This is the last point between a payload and the DOM and the ` +
+        `only one every page type must cross.`,
+    )
+  }
+  if (!/from '@\/lib\/seo\/structured-data'/.test(rendererCode) || !/pruneJsonLd/.test(rendererCode)) {
+    failures.push(
+      `${RENDERER} no longer imports pruneJsonLd from ${STRUCTURED_DATA}. Two ` +
+        `copies of a cleaning rule is how two page types come to disagree about ` +
+        `what clean means.`,
+    )
+  }
+  scanned.push(`${RENDERER}: prunes every null and empty string before it serialises`)
 } catch (error) {
   failures.push(`the serialiser could not be executed, so nothing below was judged: ${error.message}`)
 }

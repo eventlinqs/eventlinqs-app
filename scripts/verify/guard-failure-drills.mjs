@@ -513,6 +513,48 @@ const DRILLS = [
     replace: '  return true',
     expect: 'a VIRTUAL event emitted a block',
   },
+
+  // -------------------------------------------------------------------------
+  // CLAUSE 7, NO EMPTY CLAIM AT ANY DEPTH (14 September 2026). The push gate
+  // stopped at its indexing step with "Offer.name is an empty string" on a real
+  // event whose tier is named ''. The serialiser DID compact; it compacted its
+  // own top level only, so every nested Offer, Place and PostalAddress lay
+  // outside the clean it reported. Three drills: the shallow walk restored, the
+  // walk emptied out, and the one renderer every page type crosses serialising
+  // without it.
+  // -------------------------------------------------------------------------
+  {
+    name: 'the payload compaction goes back to the top level only (the defect itself)',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: '  return pruneJsonLd(obj) as Partial<T>',
+    replace: [
+      '  const out: Record<string, unknown> = {}',
+      '  for (const [k, v] of Object.entries(obj)) {',
+      '    if (v === null || v === undefined) continue',
+      "    if (typeof v === 'string' && v.trim() === '') continue",
+      '    out[k] = v',
+      '  }',
+      '  return out as Partial<T>',
+    ].join('\n'),
+    expect: 'empty claim',
+  },
+  {
+    name: 'the walk stops recursing, so only the outermost node is cleaned',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/structured-data.ts',
+    find: '      out[key] = pruneJsonLd(child)',
+    replace: '      out[key] = child',
+    expect: 'empty claim',
+  },
+  {
+    name: 'the one renderer every page type crosses serialises without pruning',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/components/seo/json-ld.tsx',
+    find: 'JSON.stringify(pruneJsonLd(payload))',
+    replace: 'JSON.stringify(payload)',
+    expect: 'without passing it through pruneJsonLd',
+  },
   /*
    * geocoding-never-silent-null (close-out C9), two drills: the rule made to
    * allow the production case, and the create action's call removed.
