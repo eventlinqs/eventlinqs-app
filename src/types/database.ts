@@ -1863,6 +1863,69 @@ export type Database = {
           },
         ]
       }
+      forecast_runs: {
+        Row: {
+          capacity: number
+          city_slug: string | null
+          costs_cents: number
+          created_at: string
+          days_until_event: number
+          email: string | null
+          email_consent_at: string | null
+          email_consent_text: string | null
+          event_type: string | null
+          fee_pass_type: string
+          has_run_an_event_before: boolean | null
+          id: string
+          method: string
+          outputs: Json
+          referrer_host: string | null
+          source_parameters: Json
+          src: string | null
+          ticket_price_cents: number
+        }
+        Insert: {
+          capacity: number
+          city_slug?: string | null
+          costs_cents?: number
+          created_at?: string
+          days_until_event?: number
+          email?: string | null
+          email_consent_at?: string | null
+          email_consent_text?: string | null
+          event_type?: string | null
+          fee_pass_type?: string
+          has_run_an_event_before?: boolean | null
+          id?: string
+          method: string
+          outputs: Json
+          referrer_host?: string | null
+          source_parameters: Json
+          src?: string | null
+          ticket_price_cents: number
+        }
+        Update: {
+          capacity?: number
+          city_slug?: string | null
+          costs_cents?: number
+          created_at?: string
+          days_until_event?: number
+          email?: string | null
+          email_consent_at?: string | null
+          email_consent_text?: string | null
+          event_type?: string | null
+          fee_pass_type?: string
+          has_run_an_event_before?: boolean | null
+          id?: string
+          method?: string
+          outputs?: Json
+          referrer_host?: string | null
+          source_parameters?: Json
+          src?: string | null
+          ticket_price_cents?: number
+        }
+        Relationships: []
+      }
       gigs: {
         Row: {
           application_deadline: string

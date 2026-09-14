@@ -157,6 +157,8 @@ const PUBLIC_BY_DESIGN = {
   'api/auth/magic-link/POST': 'magic link request; generic response, rate limited',
   'api/auth/resend-verification/POST': 'verification resend; generic response, rate limited',
   'api/newsletter/subscribe/POST': 'public newsletter opt-in',
+  'forecast/actions.ts::runForecast':
+    'close-out FT1, the free public forecast tool. It is public BY DESIGN and requiring a caller identity would defeat the point of it: FT1 says in terms that there is no account and no email wall, because the organiser it is written for has not signed up yet and is deciding whether to. What it does is bounded. It READS nothing about anybody: the taxonomy and the fee come from public configuration through the anon client, and it touches no person, no event and no order. It WRITES one row to forecast_runs, a table with RLS on and no policy, so nothing public can read it back, and the row holds only what the submitter typed about their own hypothetical night. The optional address is refused by a database check constraint unless the consent wording it was given under is stored with it. Abuse is bounded by the forecast-run rate limit, and the worst a flood achieves is rows in a table nobody can read: it sends no email, bills no third party and grants no access.',
   'api/location/set/POST': 'writes a non-sensitive location preference cookie',
   'api/home/surprise/GET': 'returns a random published event',
   'api/ai/status/GET': 'reports whether the assistant is configured',

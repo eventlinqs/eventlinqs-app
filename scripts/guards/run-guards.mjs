@@ -72,6 +72,12 @@
  *                              campaign and channel, no SMS rests on a consent scoped
  *                              to email, no campaign exceeds its own volume cap, and
  *                              nothing leaves draft without an approval for its segment
+ *   forecast-reads-every-number  no fee, price or taxonomy value is typed into
+ *                              the public forecast tool, the fee comes from the
+ *                              one resolver, the taxonomy from the database, the
+ *                              method sentence is chosen by the method used, the
+ *                              measured claim stays out of reach, and the call to
+ *                              action sits below the result
  *   product-loops-carry-their-parameters  the ticket email, rendered, carries the
  *                              run-your-event line and both parameters; the
  *                              confirmation page, the share bar and the
@@ -899,6 +905,12 @@ const GUARDS = [
   // process rather than reading its source, because a line inside a branch that
   // never runs is in the source and not in the email.
   'scripts/guards/product-loops-carry-their-parameters.mjs',
+  // Close-out FT1. The free forecast tool is the strongest reason a stranger
+  // has to trust this platform, and there are two ways it stops being that: a
+  // fee, price or taxonomy value gets typed into it and it quietly stops
+  // agreeing with what the platform charges, or the method sentence goes
+  // missing and arithmetic starts reading as a prediction.
+  'scripts/guards/forecast-reads-every-number.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and

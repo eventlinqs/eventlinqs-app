@@ -64,6 +64,10 @@ export const COMMUNITIES = [
 export const FOR_ORGANISERS = [
   { label: 'Sell tickets',        href: withSignupSource(ORGANISER_SIGNUP_PATH, 'footer') },
   { label: 'Pricing',             href: '/pricing' },
+  // Close-out FT1. The free forecast tool, in the footer because FT1 asks for
+  // it to be reachable from here and because a page nothing links to is a page
+  // Google cannot reach either (the lesson C19's reachability crawl taught).
+  { label: 'Event forecast',      href: '/forecast' },
   // Close-out OL1: named "Organisers", because that is the page every outreach
   // message sends a stranger to and "Organiser guide" reads as help content
   // rather than as the page itself. The header already links to it, as

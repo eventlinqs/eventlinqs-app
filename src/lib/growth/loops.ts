@@ -50,6 +50,8 @@ export const LOOP_SOURCES = {
    * registered guard on its first run.
    */
   ACCOUNT: 'account',
+  /** The public forecast tool's one call to action (close-out FT1). */
+  FORECAST: 'forecast',
 } as const
 
 export type LoopSource = (typeof LOOP_SOURCES)[keyof typeof LOOP_SOURCES]
@@ -149,4 +151,49 @@ export function withShareSource(url: string): string {
   } catch {
     return url
   }
+}
+
+/**
+ * THE SHAPE A PERSON ALREADY TYPED, carried from the forecast tool to the form
+ * that would otherwise ask for it again.
+ *
+ * Close-out FT1 point 6: one call to action under the result, "to the signup
+ * path with src=forecast, carrying the entered event shape so the organiser
+ * does not type it twice". So it carries the shape through TWO hops: the signup
+ * path takes a `next`, and the shape rides on that, so it survives the account
+ * being created and lands on the create-event form, which reads it.
+ *
+ * FOUR FIELDS AND NO MORE, all of them things the forecast asked for. The
+ * title, the date and the description are not here and must not be: the tool
+ * never asked, and a form that invents an organiser's event title is worse than
+ * one that leaves it blank.
+ */
+export interface EventShapeParams {
+  categoryId?: string | null
+  city?: string | null
+  capacity?: number | null
+  priceCents?: number | null
+}
+
+/** The create-event path carrying the shape, used as the signup `next`. */
+export function createEventPathWithShape(shape: EventShapeParams): string {
+  const params = new URLSearchParams()
+  if (shape.categoryId) params.set('category', shape.categoryId)
+  if (shape.city) params.set('city', shape.city)
+  if (shape.capacity && shape.capacity > 0) params.set('capacity', String(shape.capacity))
+  if (shape.priceCents && shape.priceCents > 0) params.set('price', String(shape.priceCents))
+  const query = params.toString()
+  return query ? `/dashboard/events/create?${query}` : '/dashboard/events/create'
+}
+
+/**
+ * The forecast tool's call to action: sign up as an organiser, with the shape
+ * waiting on the other side.
+ */
+export function forecastSignupPath(shape: EventShapeParams): string {
+  const params = new URLSearchParams()
+  params.set('role', 'organiser')
+  params.set('src', LOOP_SOURCES.FORECAST)
+  params.set('next', createEventPathWithShape(shape))
+  return `/signup?${params.toString()}`
 }

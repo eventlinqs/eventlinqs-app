@@ -271,12 +271,22 @@ function PricingClarityBand({
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
         <Link
           href="/pricing"
           className="text-sm font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 transition-colors hover:text-[var(--text-primary)]"
         >
           See full pricing and FAQ &rsaquo;
+        </Link>
+        {/* Close-out FT1. It sits beside the payout calculator on purpose: this
+            band already answers "what do I keep", and the forecast answers the
+            question an organiser asks before that one, which is how many they
+            have to sell at all. */}
+        <Link
+          href="/forecast"
+          className="text-sm font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 transition-colors hover:text-[var(--text-primary)]"
+        >
+          Work out what your event has to sell &rsaquo;
         </Link>
       </div>
     </ContentSection>

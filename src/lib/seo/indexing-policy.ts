@@ -133,6 +133,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/legal/privacy', klass: 'always', why: 'legal' },
   { route: '/legal/refunds', klass: 'always', why: 'legal' },
   { route: '/legal/terms', klass: 'always', why: 'legal' },
+  { route: '/forecast', klass: 'always', why: 'the free public forecast tool: no account, its own copy, and the one piece of marketing that is also product' },
   { route: '/organisers', klass: 'always', why: 'the organiser landing, the switching pitch' },
   { route: '/press', klass: 'always', why: 'marketing' },
   { route: '/pricing', klass: 'always', why: 'marketing; the fee transparency surface' },

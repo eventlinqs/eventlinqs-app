@@ -1517,6 +1517,20 @@ const ROOT = join(HERE, '..', '..')
  * database half is not here by design: GA4 requires it proven by removing every
  * application check and watching the constraint refuse anyway, which is driven.
  *
+ * 2026-09-14 (lane B, close-out FT1): raised 398/5088 -> 399/5118, MEASURED.
+ * tests/unit/growth/forecast holds the free public forecast tool to the owner's
+ * own correction: on day zero the output is plain arithmetic and it says so.
+ * Break even at three prices and two capacities with the fee passed in rather
+ * than read, the absorb arm taking the fee out of what a ticket leaves you, the
+ * figures moving when the rate moves, the founding figure being the same
+ * arithmetic with the waiver applied, days-to-event turning a number into a
+ * rate and never into a prediction, and the one that matters most: the page
+ * cannot print the measured sentence while there is nothing to measure. Plus
+ * the shape cookie's bounded round trip and the copy laws over every sentence
+ * the page can print. The driven half is not here by design: a row written by a
+ * real submit, the call to action measured BELOW the result by geometry at
+ * three widths, and the database refusing an address with no consent wording.
+ *
  * 2026-09-14 (lane B, close-out PL1): raised 397/5068 -> 398/5088, MEASURED.
  * tests/unit/growth/product-loops holds the two loops to their arithmetic:
  * every loop link carries BOTH parameter systems and neither is typed at a
@@ -1551,8 +1565,8 @@ const ROOT = join(HERE, '..', '..')
  * behaviour is driven at three widths; these three hold the contract, so an
  * edit that deletes one half of it cannot pass.
  */
-const MIN_FILES = 398
-const MIN_TESTS = 5088
+const MIN_FILES = 399
+const MIN_TESTS = 5118
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
