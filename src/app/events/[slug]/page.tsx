@@ -73,6 +73,7 @@ import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jso
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { KnowBeforeYouGo } from '@/components/features/events/know-before-you-go'
+import { AddToCalendar } from '@/components/features/events/add-to-calendar'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
 import { fetchArchivedEventForHolder } from '@/lib/events/archived-view'
 import { SaveEventButton } from '@/components/features/events/save-event-button'
@@ -302,6 +303,35 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // (opengraph-image.tsx in this route folder): the branded invitation with
     // the cover photo, scrim, title, date and venue. Setting raw cover images
     // here would override the file-convention card with an unbranded photo.
+    /*
+     * og:type = 'event' (close-out SEO5 step 7), AND THE SPEC DOES NOT DEFINE IT.
+     *
+     * The Open Graph protocol's published object types are music.song,
+     * music.album, music.playlist, music.radio_station, video.movie,
+     * video.episode, video.tv_show, video.other, article, book, payment.link,
+     * profile and website. `event` is not among them (https://ogp.me/, fetched
+     * 14 September 2026).
+     *
+     * NEXT'S OWN TYPES REFUSE IT TOO, which is a second and independent reading
+     * of the same vocabulary: `Metadata['openGraph']['type']` enumerates exactly
+     * the OGP list and `'event'` is not in it, so setting it is a compile error
+     * that only an `as` cast can silence.
+     *
+     * IT IS THEREFORE NOT SET, and that is the one acceptance line of SEO5 this
+     * lane has not met. Casting past the type checker to publish an undefined
+     * value on every event page is an outward-facing change to the preview card
+     * that WhatsApp and Facebook render, and this product's own help content
+     * names those two as a differentiator. That is the owner's call to make with
+     * the evidence in front of him, not a lane's to make quietly.
+     *
+     * WHAT ACTUALLY TELLS A SEARCH ENGINE THIS IS AN EVENT is the Schema.org
+     * `Event` block this page already emits, which close-out SEO1 v2 corrected.
+     * `og:type` is not what Google reads for event rich results, so the page is
+     * not missing a signal; it is missing a label the vocabulary has no word for.
+     *
+     * The decision, both citations and the one-word change are in
+     * REVIEW-QUEUE-C.md.
+     */
     openGraph: {
       title: event.title,
       description,
@@ -1064,6 +1094,35 @@ export default async function EventDetailPage({ params }: Props) {
                       Ends {formatDateTime(event.end_date, event.timezone)}
                     </p>
                     <p className="mt-2 text-xs text-ink-400">Timezone: {event.timezone}</p>
+                    {/*
+                      ADD TO CALENDAR (close-out SEO5 step 2), in the WHEN card
+                      because that is where a person has just read the date and
+                      is deciding whether they are free.
+                      
+                      It existed only on the ORDER CONFIRMATION until today, which
+                      is after payment, and the person who most needs it is the
+                      one who has decided to go and has not bought yet.
+                      
+                      Hidden once the event is over or cancelled: a calendar entry
+                      for a night that is not happening is worse than none, and
+                      `eventBannerState` is the same signal that already suppresses
+                      the ticket panel and the structured data.
+                    */}
+                    {!eventBannerState && (
+                      <div className="mt-4">
+                        <AddToCalendar
+                          event={{
+                            id: event.id,
+                            title: event.title,
+                            startDate: event.start_date,
+                            endDate: event.end_date,
+                            timezone: event.timezone ?? null,
+                            location: [event.venue_name, event.venue_city].filter(Boolean).join(', ') || null,
+                            url: `${baseUrl}/events/${event.slug}`,
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="rounded-2xl border border-ink-200 bg-white p-5">
