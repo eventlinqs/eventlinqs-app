@@ -44,7 +44,8 @@
  *   env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_ANON_KEY \
  *     BASE=http://localhost:3100 \
  *     UPSTASH_REDIS_REST_URL=http://127.0.0.1:8179 UPSTASH_REDIS_REST_TOKEN=local \
- *     node --import ./scripts/lib/server-only-shim.mjs \n *          --import ./scripts/lib/src-alias-loader.mjs \
+ *     node --import ./scripts/lib/server-only-shim.mjs \
+ *          --import ./scripts/lib/src-alias-loader.mjs \
  *          --env-file=.env.local scripts/verify/ga2-matcher-drive.mjs \
  *          --out C:/dev/EVIDENCE/GA2
  *
@@ -60,6 +61,16 @@ import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { chromium, BASE } from '../journeys/harness.mjs'
 import { invalidateFeatureFlag, FEATURE_FLAG_CACHE_TTL_SECONDS } from '../../src/lib/flags/broadcast.ts'
+import { sitemapFootprint, laneFixturesStillPublished } from './lib/sitemap-footprint.mjs'
+import { answerTheCookieBanner as answerTheBanner } from './lib/cookie-banner.mjs'
+
+/*
+ * THE CONSENT BANNER. One shared implementation (scripts/verify/lib/cookie-banner.mjs),
+ * answered 'decline' here because that is the answer this drive has always given.
+ * Five private copies of this helper existed on 15 September 2026 and three of them
+ * matched button labels the banner does not carry, so they never dismissed anything.
+ */
+const answerTheCookieBanner = (page) => answerTheBanner(page, { answer: 'decline' })
 
 const args = process.argv.slice(2)
 let out = null
@@ -105,20 +116,6 @@ const fixture = {
   adminId: null,
   emails: [],
   memberIds: [],
-}
-
-/** Answer the analytics banner first, because that is what a person does. */
-async function answerTheCookieBanner(page) {
-  const banner = page.locator('[aria-label="Cookies and measurement"]')
-  if ((await banner.count()) === 0) return false
-  if (!(await banner.first().isVisible().catch(() => false))) return false
-  const no = banner.getByRole('button', { name: /no thanks/i }).first()
-  if ((await no.count()) > 0) {
-    await no.click({ timeout: 15000 }).catch(() => {})
-    await page.waitForTimeout(600)
-    return true
-  }
-  return false
 }
 
 /**
@@ -235,9 +232,19 @@ async function buildFixture() {
   fixture.ownerId = owner.data.user.id
   await db.from('profiles').upsert({ id: fixture.ownerId, email: `${LANE}-organiser@eventlinqs.test`, full_name: 'Lane B GA2' })
 
+  /*
+   * PENDING, NOT ACTIVE, AND THE EVENT BELOW IS UNLISTED, NOT PUBLIC. An active
+   * organisation is published at /organisers/<slug> by src/app/sitemap.ts and a
+   * public event publishes both /events/<slug> and a /venues/<handle> derived
+   * from venue_name. Three lanes share one TEST database and the sitemap holds
+   * its snapshot for 300 seconds, so a fixture that is visible for the minutes it
+   * lives leaves another lane's gate reading URLs that 404. That is not a
+   * hypothesis: it refused lane A's push on 14 September 2026, and the whole
+   * incident is written up in scripts/verify/lib/sitemap-footprint.mjs.
+   */
   const org = await db
     .from('organisations')
-    .insert({ name: `Lane B GA2 ${STAMP}`, slug: `${LANE}-org`, owner_id: fixture.ownerId, status: 'active' })
+    .insert({ name: `Lane B GA2 ${STAMP}`, slug: `${LANE}-org`, owner_id: fixture.ownerId, status: 'pending' })
     .select('id')
     .single()
   if (org.error) throw new Error(`create organisation: ${org.error.message}`)
@@ -253,7 +260,7 @@ async function buildFixture() {
       created_by: fixture.ownerId,
       category_id: category.id,
       status: 'published',
-      visibility: 'public',
+      visibility: 'unlisted',
       published_at: new Date().toISOString(),
       start_date: start.toISOString(),
       end_date: new Date(start.getTime() + 3 * 3_600_000).toISOString(),
@@ -382,6 +389,28 @@ async function teardown() {
 
 async function run() {
   await buildFixture()
+
+  /*
+   * WHAT THIS FIXTURE PUBLISHES, ASKED OF THE DATABASE RATHER THAN ASSUMED.
+   * The sitemap's own three queries, run against the rows that now exist. An
+   * empty answer is the only acceptable one: everything here is deleted at
+   * teardown, and a published URL that disappears is what refused lane A's push
+   * on 14 September 2026. See scripts/verify/lib/sitemap-footprint.mjs.
+   */
+  {
+    const footprint = await sitemapFootprint(db, {
+      organisationSlugs: [`${LANE}-org`],
+      eventSlugs: [`${LANE}-event`],
+      venueNames: ['Lane B GA2 room'],
+    })
+    check(
+      'ga2.fixture.publishes-nothing-into-the-sitemap',
+      footprint.length === 0,
+      footprint.length === 0
+        ? 'the organisation, the event(s) and the venue(s) are all absent from the sitemap queries'
+        : `the sitemap would publish ${footprint.join(', ')}, and every one of them 404s the moment this drive tears down`,
+    )
+  }
 
   // One sign-in, saved, and every context below opens with it.
   {
@@ -767,6 +796,22 @@ try {
       'teardown.the-consent-ledger-cannot-be-tidied-away',
       ledgerLeft > 0,
       `${ledgerLeft} consent event(s) remain, because the database refuses to delete a consent record`,
+    )
+
+    /*
+     * AND NOTHING OF THIS DRIVE'S, FROM ANY RUN, IS LEFT PUBLISHED. The count
+     * above asks about one table. This asks the sitemap's question of every
+     * row carrying this drive's prefix, including rows an EARLIER run left
+     * behind, which is how a published GA5 fixture event lived on shared TEST
+     * for two days while every run reported "left as found".
+     */
+    const leftPublished = await laneFixturesStillPublished(db, 'lane-b-ga2-')
+    check(
+      'ga2.teardown.nothing-of-this-drive-is-left-published',
+      leftPublished.length === 0,
+      leftPublished.length === 0
+        ? 'no organiser, event or venue page of this drive is in the sitemap'
+        : `still published: ${leftPublished.join(', ')}. Every one of them 404s when the row goes.`,
     )
   } catch (error) {
     check('teardown.left-as-found', false, String(error?.message ?? error))

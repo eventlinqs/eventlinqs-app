@@ -36,6 +36,8 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
+import { sitemapFootprint, laneFixturesStillPublished } from './lib/sitemap-footprint.mjs'
+import { answerTheCookieBanner as answerTheBanner } from './lib/cookie-banner.mjs'
 
 const args = process.argv.slice(2)
 let out = null
@@ -108,17 +110,14 @@ const fixture = {
 
 /* ------------------------------------------------------------ browser helpers */
 
-async function answerTheCookieBanner(page) {
-  for (const label of [/accept/i, /allow/i, /^ok$/i]) {
-    const button = page.getByRole('button', { name: label }).first()
-    if (await button.isVisible().catch(() => false)) {
-      await button.click().catch(() => {})
-      await page.waitForTimeout(400)
-      return true
-    }
-  }
-  return false
-}
+/*
+ * THE CONSENT BANNER. One shared implementation (scripts/verify/lib/cookie-banner.mjs),
+ * answered 'decline' here, which is a change: the local copy this replaces matched
+ * /accept/, /allow/ and /^ok$/ against a banner whose buttons read "That is fine" and
+ * "No thanks", so this drive had never dismissed the banner at all and every capture
+ * it produced carries it across the bottom of the page.
+ */
+const answerTheCookieBanner = (page) => answerTheBanner(page, { answer: 'decline' })
 
 async function horizontalOverflow(page) {
   return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)
@@ -160,9 +159,19 @@ async function buildFixture() {
   fixture.ownerId = owner.data.user.id
   await db.from('profiles').upsert({ id: fixture.ownerId, email: `${LANE}-organiser-${STAMP}@eventlinqs.test`, full_name: 'Lane B GA4' })
 
+  /*
+   * PENDING, NOT ACTIVE, AND THE EVENT BELOW IS UNLISTED, NOT PUBLIC. An active
+   * organisation is published at /organisers/<slug> by src/app/sitemap.ts and a
+   * public event publishes both /events/<slug> and a /venues/<handle> derived
+   * from venue_name. Three lanes share one TEST database and the sitemap holds
+   * its snapshot for 300 seconds, so a fixture that is visible for the minutes it
+   * lives leaves another lane's gate reading URLs that 404. That is not a
+   * hypothesis: it refused lane A's push on 14 September 2026, and the whole
+   * incident is written up in scripts/verify/lib/sitemap-footprint.mjs.
+   */
   const org = await db
     .from('organisations')
-    .insert({ name: `Lane B GA4 ${STAMP}`, slug: `${LANE}-org-${STAMP}`, owner_id: fixture.ownerId, status: 'active' })
+    .insert({ name: `Lane B GA4 ${STAMP}`, slug: `${LANE}-org-${STAMP}`, owner_id: fixture.ownerId, status: 'pending' })
     .select('id')
     .single()
   if (org.error) throw new Error(`create organisation: ${org.error.message}`)
@@ -179,7 +188,7 @@ async function buildFixture() {
       created_by: fixture.ownerId,
       category_id: category.id,
       status: 'published',
-      visibility: 'public',
+      visibility: 'unlisted',
       published_at: new Date().toISOString(),
       start_date: start.toISOString(),
       end_date: new Date(start.getTime() + 3 * 3_600_000).toISOString(),
@@ -403,6 +412,28 @@ const ADMIN_SESSION = join(out, 'ga4-admin-session.json')
 
 try {
   await buildFixture()
+
+  /*
+   * WHAT THIS FIXTURE PUBLISHES, ASKED OF THE DATABASE RATHER THAN ASSUMED.
+   * The sitemap's own three queries, run against the rows that now exist. An
+   * empty answer is the only acceptable one: everything here is deleted at
+   * teardown, and a published URL that disappears is what refused lane A's push
+   * on 14 September 2026. See scripts/verify/lib/sitemap-footprint.mjs.
+   */
+  {
+    const footprint = await sitemapFootprint(db, {
+      organisationSlugs: [`${LANE}-org-${STAMP}`],
+      eventSlugs: [fixture.eventSlug],
+      venueNames: ['Lane B GA4 warehouse'],
+    })
+    check(
+      'ga4.fixture.publishes-nothing-into-the-sitemap',
+      footprint.length === 0,
+      footprint.length === 0
+        ? 'the organisation, the event(s) and the venue(s) are all absent from the sitemap queries'
+        : `the sitemap would publish ${footprint.join(', ')}, and every one of them 404s the moment this drive tears down`,
+    )
+  }
 
   const { produceMatchRun } = await import('../../src/lib/matching/run.ts')
   const { admitMatchRunToAllowlist } = await import('../../src/lib/campaigner/allowlist.ts')
@@ -825,7 +856,23 @@ try {
       waitUntil: 'domcontentloaded',
       timeout: 120000,
     })
-    await page.waitForTimeout(2500)
+    /*
+     * WAIT FOR THE PAGE, DO NOT SLEEP AND HOPE. This used to be a flat 2500ms,
+     * and on 15 September 2026 the FIRST viewport in this loop, 390, failed
+     * `shows-the-schedule-against-days-remaining` and
+     * `shows-the-message-exactly-as-it-arrives` while 768 and 1440 passed on the
+     * same campaign moments later. The route was compiling on the first request
+     * and the sections below the stat tiles had not arrived when the body was
+     * read. Nothing was wrong with the product and the re-run was 49 of 49.
+     *
+     * `What has happened` is the LAST section this page renders once a campaign
+     * resolves, so waiting for it means everything the checks read is present.
+     * It is deliberately not the text any check asserts on: a wait for the
+     * assertion's own subject turns a failure into a timeout and proves nothing.
+     */
+    await page
+      .getByRole('heading', { name: 'What has happened' })
+      .waitFor({ state: 'visible', timeout: 60000 })
     await answerTheCookieBanner(page)
     const body = await page.locator('body').innerText()
 
@@ -903,6 +950,22 @@ try {
       .select('id', { count: 'exact', head: true })
       .eq('reference', `${LANE}-campaign-${STAMP}`)
     check('ga4.teardown.left-as-found', (count ?? 0) === 0, `${count ?? 0} lane B GA4 campaign row(s) remain`)
+
+    /*
+     * AND NOTHING OF THIS DRIVE'S, FROM ANY RUN, IS LEFT PUBLISHED. The count
+     * above asks about one table. This asks the sitemap's question of every
+     * row carrying this drive's prefix, including rows an EARLIER run left
+     * behind, which is how a published GA5 fixture event lived on shared TEST
+     * for two days while every run reported "left as found".
+     */
+    const leftPublished = await laneFixturesStillPublished(db, 'lane-b-ga4-')
+    check(
+      'ga4.teardown.nothing-of-this-drive-is-left-published',
+      leftPublished.length === 0,
+      leftPublished.length === 0
+        ? 'no organiser, event or venue page of this drive is in the sitemap'
+        : `still published: ${leftPublished.join(', ')}. Every one of them 404s when the row goes.`,
+    )
   } catch (error) {
     check('ga4.teardown.left-as-found', false, error instanceof Error ? error.message : String(error))
   }

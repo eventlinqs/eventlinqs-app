@@ -41,6 +41,15 @@ import { join } from 'node:path'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { invalidatePricingRule, PRICING_RULES_CACHE_TTL_SECONDS } from '../../src/lib/payments/pricing-rules.ts'
+import { answerTheCookieBanner as answerTheBanner } from './lib/cookie-banner.mjs'
+
+/*
+ * THE CONSENT BANNER. One shared implementation (scripts/verify/lib/cookie-banner.mjs),
+ * answered 'accept' here because that is the answer this drive has always given.
+ * Five private copies of this helper existed on 15 September 2026 and three of them
+ * matched button labels the banner does not carry, so they never dismissed anything.
+ */
+const answerTheCookieBanner = (page) => answerTheBanner(page, { answer: 'accept' })
 
 const args = process.argv.slice(2)
 let out = null
@@ -89,17 +98,6 @@ async function everyRouteThisDriveNeedsIsServed() {
     else if (response.status === 404) missing.push(`${path} answered 404`)
   }
   return missing
-}
-
-async function answerTheCookieBanner(page) {
-  for (const label of [/that is fine/i, /accept/i]) {
-    const button = page.getByRole('button', { name: label }).first()
-    if (await button.isVisible().catch(() => false)) {
-      await button.click().catch(() => {})
-      await page.waitForTimeout(400)
-      return
-    }
-  }
 }
 
 const createdRunIds = []

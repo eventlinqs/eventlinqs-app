@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { withBuildRetry } from '@/lib/supabase/build-retry'
 import { getPricingRule } from '@/lib/payments/pricing-rules'
 import { captureException } from '@/lib/observability/sentry'
 import { composeProof, everyFigureIsSourced, type ProofOrder, type ProofResult, type ProofSend } from './compose'
@@ -44,30 +45,104 @@ export interface ProofReadResult {
   unsourced: string[]
 }
 
+
+/**
+ * A READ THAT FAILED IS NOT AN ANSWER OF ZERO, AND IT IS NOT AN ANSWER OF
+ * "THIS DOES NOT EXIST".
+ *
+ * FOUND BY DRIVING, 15 September 2026. GA5's drive reported
+ * `desktop-1440.with-sales.renders` failing and the leading number rendering
+ * at 0 pixels. The server log carries the cause, and it is not this page:
+ *
+ *     TypeError: fetch failed
+ *       cause: ConnectTimeoutError (attempted 172.64.149.246:443, timeout: 10000ms)
+ *       code: UND_ERR_CONNECT_TIMEOUT
+ *     GET /admin/campaigns/<id>/proof 404 in 42s
+ *
+ * The laptop could not reach Supabase for about a minute. Every read in this
+ * file was written `const { data } = await admin...`, discarding `error`, so:
+ *
+ *   the CAMPAIGN read came back null and the page called notFound(), telling
+ *   the reader the campaign does not exist, permanently, because a socket did
+ *   not open;
+ *   the ORDERS read came back `[]`, and an empty order list is not an error
+ *   anywhere downstream. It is ZERO REVENUE, printed as a figure, on the one
+ *   page in this product whose stated law is that a figure which cannot name
+ *   its source renders as WORDS and never as a zero.
+ *
+ * The second is the dangerous one, because it is silent and it is a number a
+ * fee is defended with.
+ *
+ * THE PATTERN IS NOT NEW HERE. src/app/organisers/[handle]/page.tsx carries
+ * the same post-mortem under the heading about a page that may never answer
+ * that something does not exist because it could not ask (close-out UX6):
+ * retry the transient with `withBuildRetry`, and when it still fails, THROW,
+ * because a 500 says ask again where a 404 and a zero both say something
+ * false.
+ */
+export class ProofReadFailed extends Error {
+  constructor(what: string, cause: unknown) {
+    super(`[proof/read] could not read ${what}; answering 500 rather than a figure this page cannot source`)
+    this.name = 'ProofReadFailed'
+    this.cause = cause
+  }
+}
+
+/*
+ * THE SHAPE IS INFERRED FROM THE QUERY, not declared here. supabase-js answers
+ * a UNION of { data: T, error: null } and { data: null, error: PostgrestError },
+ * so a parameter written `{ data: T | null; error: unknown }` infers T as never
+ * and every field read off the row becomes a type error. Taking the whole
+ * response as R and returning R['data'] keeps each caller's row type exactly as
+ * the query describes it.
+ */
+async function mustRead<R extends { data: unknown; error: unknown }>(
+  what: string,
+  run: () => PromiseLike<R>,
+): Promise<R['data']> {
+  const { data, error } = await withBuildRetry(
+    run as () => PromiseLike<{ data: unknown; error: unknown }>,
+    { label: `proof/${what}` },
+  )
+  if (error) {
+    captureException(error, { where: `lib/proof/read:${what}` })
+    throw new ProofReadFailed(what, error)
+  }
+  return data as R['data']
+}
+
 export async function readProof(campaignId: string, now = new Date()): Promise<ProofReadResult | null> {
   const admin = createAdminClient()
 
-  const { data: campaign } = await admin
-    .from('marketing_campaign')
-    .select('id, reference, name, event_id, organisation_id, created_at')
-    .eq('id', campaignId)
-    .maybeSingle()
+  const campaign = await mustRead('the campaign', () =>
+    admin
+      .from('marketing_campaign')
+      .select('id, reference, name, event_id, organisation_id, created_at')
+      .eq('id', campaignId)
+      .maybeSingle(),
+  )
+  /* null HERE means the campaign genuinely is not there, and 404 is the truth. */
   if (!campaign) return null
 
-  const [{ data: event }, { data: organisation }] = await Promise.all([
-    admin.from('events').select('id, title').eq('id', campaign.event_id).maybeSingle(),
-    admin.from('organisations').select('id, name').eq('id', campaign.organisation_id).maybeSingle(),
+  const [event, organisation] = await Promise.all([
+    mustRead('the event', () => admin.from('events').select('id, title').eq('id', campaign.event_id).maybeSingle()),
+    mustRead('the organisation', () =>
+      admin.from('organisations').select('id, name').eq('id', campaign.organisation_id).maybeSingle(),
+    ),
   ])
 
   const windowFrom = campaign.created_at
   const windowTo = now.toISOString()
 
-  const { data: orderRows } = await admin
-    .from('orders')
-    .select('id, order_number, total_cents, status, created_at, currency')
-    .eq('event_id', campaign.event_id)
-    .gte('created_at', windowFrom)
-    .lte('created_at', windowTo)
+  /* THE REVENUE. An error here would read as zero, so it is never an error here. */
+  const orderRows = await mustRead('the orders in the window', () =>
+    admin
+      .from('orders')
+      .select('id, order_number, total_cents, status, created_at, currency')
+      .eq('event_id', campaign.event_id)
+      .gte('created_at', windowFrom)
+      .lte('created_at', windowTo),
+  )
   const orders = orderRows ?? []
 
   const orderIds = orders.map(o => o.id)
@@ -75,15 +150,19 @@ export async function readProof(campaignId: string, now = new Date()): Promise<P
   const reversals = new Map<string, ProofOrder['reversals']>()
   for (let i = 0; i < orderIds.length; i += 200) {
     const slice = orderIds.slice(i, i + 200)
-    const [{ data: attrRows }, { data: revRows }] = await Promise.all([
-      admin
-        .from('marketing_attribution')
-        .select('order_id, campaign_id, decision, billable, rung, explanation')
-        .in('order_id', slice),
-      admin
-        .from('marketing_attribution_reversal')
-        .select('id, order_id, reversed_amount_cents, reason')
-        .in('order_id', slice),
+    const [attrRows, revRows] = await Promise.all([
+      mustRead('the attribution decisions', () =>
+        admin
+          .from('marketing_attribution')
+          .select('order_id, campaign_id, decision, billable, rung, explanation')
+          .in('order_id', slice),
+      ),
+      mustRead('the attribution reversals', () =>
+        admin
+          .from('marketing_attribution_reversal')
+          .select('id, order_id, reversed_amount_cents, reason')
+          .in('order_id', slice),
+      ),
     ])
     for (const row of attrRows ?? []) {
       attributions.set(row.order_id, {
@@ -111,13 +190,14 @@ export async function readProof(campaignId: string, now = new Date()): Promise<P
     reversals: reversals.get(o.id) ?? [],
   }))
 
-  const { data: sendRows } = await admin
-    .from('marketing_send')
-    .select('id, channel_code, state')
-    .eq('campaign_id', campaign.id)
+  const sendRows = await mustRead('the sends', () =>
+    admin.from('marketing_send').select('id, channel_code, state').eq('campaign_id', campaign.id),
+  )
   const sends: ProofSend[] = (sendRows ?? []).map(s => ({ id: s.id, channelCode: s.channel_code, state: s.state }))
 
-  const { data: channelRows } = await admin.from('marketing_channel').select('code, cost_per_send_cents')
+  const channelRows = await mustRead('the channel costs', () =>
+    admin.from('marketing_channel').select('code, cost_per_send_cents'),
+  )
   const channelCostCents: Record<string, number | null> = {}
   for (const c of channelRows ?? []) {
     channelCostCents[c.code] = c.cost_per_send_cents === null ? null : Number(c.cost_per_send_cents)
@@ -151,38 +231,50 @@ export async function readProof(campaignId: string, now = new Date()): Promise<P
    * dimension, so it can say what an event took and can never say which
    * campaign took it. An event it does not hold withholds the fee.
    */
+  /*
+   * THE LEDGER IS THE ONE READ HERE THAT DOES NOT THROW, and the difference is
+   * deliberate rather than an oversight. Every other read above feeds a figure
+   * the page PRINTS, so a failure must become a 500. The ledger feeds the
+   * reconciliation, and the page already has an honest answer for not having
+   * it: the fee is WITHHELD and says so in words.
+   *
+   * What was wrong until 15 September 2026 is that it could not tell the two
+   * apart. `const { data: slot }` discarded the error, so a ledger the page
+   * could not READ looked exactly like an event the ledger does not HOLD, and
+   * both withheld the fee with the same sentence. The withholding was right
+   * either way; the silence was not, because nobody would ever learn the money
+   * ledger had stopped answering.
+   */
   let ledgerNetCents: number | null = null
   let ledgerEntryIds: string[] = []
-  try {
-    const { data: slot } = await admin
-      .from('ledger_slots')
-      .select('id')
-      .eq('source_ref', campaign.event_id)
-      .maybeSingle()
-    if (slot) {
-      const { data: entries } = await admin
-        .from('ledger_entries')
-        .select('id, amount_cents, occurred_at')
-        .eq('slot_id', slot.id)
-        .gte('occurred_at', windowFrom)
-        .lte('occurred_at', windowTo)
+  const { data: slot, error: slotError } = await admin
+    .from('ledger_slots')
+    .select('id')
+    .eq('source_ref', campaign.event_id)
+    .maybeSingle()
+  if (slotError) {
+    captureException(slotError, { where: 'lib/proof/read:ledger-slot' })
+  } else if (slot) {
+    const { data: entries, error: entriesError } = await admin
+      .from('ledger_entries')
+      .select('id, amount_cents, occurred_at')
+      .eq('slot_id', slot.id)
+      .gte('occurred_at', windowFrom)
+      .lte('occurred_at', windowTo)
+    if (entriesError) {
+      captureException(entriesError, { where: 'lib/proof/read:ledger-entries' })
+    } else {
       const rows = entries ?? []
       ledgerEntryIds = rows.map(e => String(e.id))
       ledgerNetCents = rows.reduce((total, e) => total + Number(e.amount_cents ?? 0), 0)
     }
-  } catch (error) {
-    captureException(error, { where: 'lib/proof/read:ledger' })
-    ledgerNetCents = null
   }
 
   let currency: string | null = orders[0]?.currency ?? null
   if (!currency) {
-    const { data: tier } = await admin
-      .from('ticket_tiers')
-      .select('currency')
-      .eq('event_id', campaign.event_id)
-      .limit(1)
-      .maybeSingle()
+    const tier = await mustRead('the ticket currency', () =>
+      admin.from('ticket_tiers').select('currency').eq('event_id', campaign.event_id).limit(1).maybeSingle(),
+    )
     currency = tier?.currency ?? null
   }
 

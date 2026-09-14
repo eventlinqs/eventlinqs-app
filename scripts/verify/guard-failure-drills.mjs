@@ -406,11 +406,19 @@ const DRILLS = [
     replace: '',
     expect: '/scan/[eventId] is classified never and nothing in its metadata chain declares noindex',
   },
+  /*
+   * RE-AIMED 15 September 2026. This drill had been STALE and therefore not
+   * running: SEO3 step 2 made the discovery threshold owner-editable, so the
+   * sitemap line grew a `, threshold` argument and the anchor stopped matching.
+   * A drill that cannot aim reads in a summary exactly like a drill that passed,
+   * which is the failure mode the harness exists to prevent, so it is fixed here
+   * rather than left in the four-that-did-not-fire footnote of another report.
+   */
   {
     name: 'the sitemap publishes a templated family without the threshold gate',
     guard: `${GUARDS}/indexing-policy.mjs`,
     file: 'src/app/sitemap.ts',
-    find: '    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug))) continue\n',
+    find: '    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug), threshold)) continue\n',
     replace: '',
     expect: 'publishes /community/[community] without an isDiscoveryIndexable() gate',
   },
@@ -2732,6 +2740,80 @@ const DRILLS = [
     find: "return /lane-b/i.test(`${org?.name ?? ''} ${org?.slug ?? ''}`)",
     replace: 'return true',
     expect: 'fo1-founding-offer-drive.mjs: calls admin_set_founding_waiver and never restricts its',
+  },
+  /*
+   * fixtures-are-not-published, four drills, because the guard makes four
+   * distinct claims and three of them had never been seen failing.
+   *
+   * The first two are the incident itself: on 14 September 2026 PL1's fixture
+   * carried exactly these two literals and its deleted rows refused lane A's
+   * push with two RULE 2 faults on URLs lane A had never heard of.
+   *
+   * The third is this guard's own blind spot, deliberately made loud. A row
+   * built as a variable and inserted by name is a write the static reader cannot
+   * judge, and the first version of the guard passed one silently:
+   * community-threshold-drive builds its rows that way and was reported clean.
+   *
+   * The fourth is the premise. The rule is only true while the sitemap still
+   * selects on those literals, and a guard whose premise has moved keeps passing
+   * while the thing it protects stops being protected.
+   */
+  {
+    name: 'a drive fixture event goes back to being publicly visible',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: "      visibility: 'unlisted',",
+    replace: "      visibility: 'public',",
+    expect: "writes visibility: 'public', which publishes /events/<slug>",
+  },
+  {
+    name: 'a drive fixture organisation goes back to being active',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: "owner_id: fixture.organiserId, status: 'pending' })",
+    replace: "owner_id: fixture.organiserId, status: 'active' })",
+    expect: "inserts organisations with status: 'active'",
+  },
+  {
+    name: 'a fixture organisation is built as a variable, where no static reader can judge it',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: ".insert({ name: `Lane B PL1 ${STAMP}`, slug: `${LANE}-org-${STAMP}`, owner_id: fixture.organiserId, status: 'pending' })",
+    replace: '.insert(organisationRow)',
+    expect: 'inserts organisations from a variable, so this guard cannot see',
+  },
+  {
+    name: "the sitemap stops selecting organisers on 'active', and the guard's rule stops being true",
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: ".eq('status', 'active')",
+    replace: ".eq('status', 'approved')",
+    expect: "THIS GUARD'S PREMISE HAS MOVED",
+  },
+  /*
+   * proof-reads-never-discard-their-error, two drills, one per way a read on
+   * that surface can stop telling a failure from an absence.
+   *
+   * Both are the state src/lib/proof/read.ts was actually in on the morning of
+   * 15 September 2026, when a ConnectTimeoutError to Supabase made the campaign
+   * proof page answer 404 for a campaign that exists. The orders read was the
+   * same shape and would have printed zero revenue instead.
+   */
+  {
+    name: 'a ledger read on the proof page stops binding its error',
+    guard: `${GUARDS}/proof-reads-never-discard-their-error.mjs`,
+    file: 'src/lib/proof/read.ts',
+    find: '  const { data: slot, error: slotError } = await admin',
+    replace: '  const { data: slot } = await admin',
+    expect: 'destructures { data } from an await and never binds',
+  },
+  {
+    name: 'a figure read on the proof page stops going through mustRead',
+    guard: `${GUARDS}/proof-reads-never-discard-their-error.mjs`,
+    file: 'src/lib/proof/read.ts',
+    find: "  const sendRows = await mustRead('the sends', () =>",
+    replace: '  const { data: sendRows } = await (async () =>',
+    expect: 'never binds `error`',
   },
 ]
 

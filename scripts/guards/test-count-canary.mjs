@@ -1812,9 +1812,21 @@ const ROOT = join(HERE, '..', '..')
  * revoked a window it had not granted while reporting "left as found". Both
  * directions are held, because the failing one is the one that was wrong and a
  * test of the happy path alone would have passed before the fix.
+ *
+ * 2026-09-15 (lane B, the fixture publication law): raised 412/5327 -> 414/5355,
+ * MEASURED on a green suite of the whole tree. Two new files, twenty eight tests.
+ * tests/unit/guards/fixtures-are-not-published holds the rule that a drive fixture
+ * is never given the two values src/app/sitemap.ts selects on, after lane B's PL1
+ * fixture published an organiser page and a venue page and then deleted them,
+ * refusing lane A's push with two RULE 2 faults on URLs lane A had never heard of.
+ * tests/unit/guards/proof-reads-never-discard-their-error holds the rule that a
+ * failed read on the campaign proof page becomes a 500 rather than a printed zero,
+ * after a ConnectTimeoutError to Supabase made that page answer 404 for a campaign
+ * that exists. Both hold their guard in BOTH directions, because in both cases the
+ * passing half was already true and it was the failing half nobody had seen.
  */
-const MIN_FILES = 412
-const MIN_TESTS = 5327
+const MIN_FILES = 414
+const MIN_TESTS = 5355
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

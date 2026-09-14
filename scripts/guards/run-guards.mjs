@@ -45,6 +45,13 @@
  *   drive-usage-names-what-it-needs  a drive's header names every loader flag and
  *                              environment variable that drive needs, so the
  *                              evidence behind a closure can be reproduced
+ *   fixtures-are-not-published  a drive's fixture is never given the two values the
+ *                              sitemap selects on, because three lanes share one TEST
+ *                              database and a published URL deleted minutes later
+ *                              answers 404 to whoever reads the snapshot next
+ *   proof-reads-never-discard-their-error  on the campaign proof page a read that
+ *                              failed becomes a 500, never a printed zero and never
+ *                              a 404, because that page defends a fee with numbers
  *   busy-region-names-itself   a loading skeleton that names itself carries a role
  *                              allowed to have a name, never a bare aria-label
  *   labels-name-the-right-control  and that label points at the control it describes,
@@ -747,6 +754,28 @@ const GUARDS = [
   // scripts/verify/guard-failure-drills.mjs.
   'scripts/guards/lane-tagged-privilege-writes.mjs',
   'scripts/guards/drive-usage-names-what-it-needs.mjs',
+  // On 14 September 2026 lane B's PL1 fixture refused lane A's push at step 13 of
+  // 16: an organisation created `active` and an event created `public` are exactly
+  // what src/app/sitemap.ts selects on, so for the minutes that fixture lived the
+  // platform advertised an organiser profile and a venue page that were about to be
+  // deleted, and another lane's server had already cached that snapshot for its 300
+  // second revalidate window. Deleting the rows does not undo the advertising. The
+  // same shape cost production 48 URLs answering 404 to Googlebot on 25 August 2026.
+  // This guard also checks its own premise, because a rule about what the sitemap
+  // publishes is worthless the day the sitemap publishes something else. Drilled red
+  // in scripts/verify/guard-failure-drills.mjs, four ways.
+  'scripts/guards/fixtures-are-not-published.mjs',
+  // 15 September 2026, found by driving rather than by reading. GA5's drive said
+  // the proof page did not read as the with-sales state and the leading number
+  // rendered at 0 pixels. The server log carried the cause: a ConnectTimeoutError
+  // to Supabase, for about a minute. Every read in src/lib/proof/read.ts dropped
+  // its error, so the campaign read returned null and the page answered 404 for a
+  // campaign that exists, and the orders read would have returned an empty list,
+  // which downstream is not an error at all. It is zero revenue, printed as a
+  // figure, on the one page whose stated law is that a figure which cannot name
+  // its source renders as words and never as a zero. Drilled red two ways in
+  // scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/proof-reads-never-discard-their-error.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
   // and compared byte for byte, so a row cannot be improved by editing the

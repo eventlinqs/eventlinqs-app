@@ -36,6 +36,21 @@ import { randomUUID } from 'node:crypto'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { invalidatePricingRule, PRICING_RULES_CACHE_TTL_SECONDS } from '../../src/lib/payments/pricing-rules.ts'
+import { sitemapFootprint, laneFixturesStillPublished } from './lib/sitemap-footprint.mjs'
+import { answerTheCookieBanner as answerTheBanner } from './lib/cookie-banner.mjs'
+
+/*
+ * THE CONSENT BANNER. One shared implementation (scripts/verify/lib/cookie-banner.mjs),
+ * answered 'accept' here because that is the answer this drive has always given.
+ *
+ * This drive is where the defect was first found, and its post-mortem moved into
+ * the shared file with the code: the banner's buttons read "That is fine" and
+ * "No thanks", a matcher built from accept / allow / ok matched nothing, and at
+ * 390 the banner covered the half of the page the state was being photographed
+ * for. The evidence was a picture of a cookie notice. That fix was applied HERE
+ * and to none of the four other copies, which is why there is now one.
+ */
+const answerTheCookieBanner = (page) => answerTheBanner(page, { answer: 'accept' })
 
 const args = process.argv.slice(2)
 let out = null
@@ -119,24 +134,6 @@ const fixture = {
   commissionRuleId: null,
 }
 
-/*
- * THE CONSENT BANNER'S BUTTONS SAY WHAT THIS PLATFORM SAYS, not what a generic
- * banner says. They read "That is fine" and "No thanks", so a matcher built
- * from accept / allow / ok matched nothing, the banner stayed up, and at 390 it
- * covered the half of the page the state was being photographed for. The
- * evidence was a picture of a cookie notice.
- */
-async function answerTheCookieBanner(page) {
-  for (const label of [/that is fine/i, /accept/i, /allow/i, /^ok$/i]) {
-    const button = page.getByRole('button', { name: label }).first()
-    if (await button.isVisible().catch(() => false)) {
-      await button.click().catch(() => {})
-      await page.waitForTimeout(400)
-      return true
-    }
-  }
-  return false
-}
 
 async function horizontalOverflow(page) {
   return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)
@@ -261,9 +258,19 @@ async function buildFixture() {
   fixture.ownerId = owner.data.user.id
   await db.from('profiles').upsert({ id: fixture.ownerId, email: `${LANE}-organiser-${STAMP}@eventlinqs.test`, full_name: 'Lane B GA5' })
 
+  /*
+   * PENDING, NOT ACTIVE, AND THE EVENT BELOW IS UNLISTED, NOT PUBLIC. An active
+   * organisation is published at /organisers/<slug> by src/app/sitemap.ts and a
+   * public event publishes both /events/<slug> and a /venues/<handle> derived
+   * from venue_name. Three lanes share one TEST database and the sitemap holds
+   * its snapshot for 300 seconds, so a fixture that is visible for the minutes it
+   * lives leaves another lane's gate reading URLs that 404. That is not a
+   * hypothesis: it refused lane A's push on 14 September 2026, and the whole
+   * incident is written up in scripts/verify/lib/sitemap-footprint.mjs.
+   */
   const org = await db
     .from('organisations')
-    .insert({ name: `Lane B GA5 ${STAMP}`, slug: `${LANE}-org-${STAMP}`, owner_id: fixture.ownerId, status: 'active' })
+    .insert({ name: `Lane B GA5 ${STAMP}`, slug: `${LANE}-org-${STAMP}`, owner_id: fixture.ownerId, status: 'pending' })
     .select('id')
     .single()
   if (org.error) throw new Error(`organisation: ${org.error.message}`)
@@ -279,7 +286,7 @@ async function buildFixture() {
       created_by: fixture.ownerId,
       category_id: category.id,
       status: 'published',
-      visibility: 'public',
+      visibility: 'unlisted',
       published_at: new Date().toISOString(),
       start_date: start.toISOString(),
       end_date: new Date(start.getTime() + 3 * 3_600_000).toISOString(),
@@ -478,6 +485,28 @@ const ADMIN_SESSION = join(out, 'ga5-admin-session.json')
 try {
   await buildFixture()
 
+  /*
+   * WHAT THIS FIXTURE PUBLISHES, ASKED OF THE DATABASE RATHER THAN ASSUMED.
+   * The sitemap's own three queries, run against the rows that now exist. An
+   * empty answer is the only acceptable one: everything here is deleted at
+   * teardown, and a published URL that disappears is what refused lane A's push
+   * on 14 September 2026. See scripts/verify/lib/sitemap-footprint.mjs.
+   */
+  {
+    const footprint = await sitemapFootprint(db, {
+      organisationSlugs: [`${LANE}-org-${STAMP}`],
+      eventSlugs: [`${LANE}-event-${STAMP}`],
+      venueNames: ['Lane B GA5 warehouse'],
+    })
+    check(
+      'ga5.fixture.publishes-nothing-into-the-sitemap',
+      footprint.length === 0,
+      footprint.length === 0
+        ? 'the organisation, the event(s) and the venue(s) are all absent from the sitemap queries'
+        : `the sitemap would publish ${footprint.join(', ')}, and every one of them 404s the moment this drive tears down`,
+    )
+  }
+
   const { readProof, closeMonth } = await import('../../src/lib/proof/read.ts')
   const { FIGURE } = await import('../../src/lib/proof/compose.ts')
 
@@ -660,18 +689,52 @@ try {
         storageState: ADMIN_SESSION,
       })
       const page = await context.newPage()
-      await page.goto(`${BASE}/admin/campaigns/${fixture.campaigns[state.tag]}/proof`, {
-        waitUntil: 'domcontentloaded',
-        timeout: 120000,
-      })
-      await page.waitForTimeout(2200)
+      /*
+       * DID THE PROOF PAGE ANSWER, OR DID THE ADMIN DOOR BOUNCE US? On
+       * 15 September 2026 `desktop-1440.with-a-reversal.renders` failed with
+       * 'the page reads as the with-a-reversal state' while 390 and 768 passed
+       * on the same campaign minutes earlier. The capture was the OPERATIONS
+       * DASHBOARD, and the server log says why:
+       *
+       *   GET /admin/campaigns/edf6d025.../proof 307 in 24.5s (application-code: 24.3s)
+       *   GET /admin/login 307 in 20.0s
+       *
+       * A 24 second read, then a redirect. getAdminSession() returns null when
+       * its reads FAIL as well as when there is no session, so a slow or
+       * dropped Supabase call signs the admin out and the login bounces an
+       * already-authenticated user on to /admin. The proof page never ran.
+       *
+       * That is a product finding and it is recorded in REVIEW-QUEUE-B.md; it
+       * is not this drive's to fix, because the admin session door is shared by
+       * every admin page in every lane. What IS this drive's to fix is that it
+       * reported the page as wrong when the page was never reached. It retries
+       * once, because the cause is transient, and then says what happened.
+       */
+      const proofPath = `/admin/campaigns/${fixture.campaigns[state.tag]}/proof`
+      let landedOn = null
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        await page.goto(`${BASE}${proofPath}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
+        await page.waitForTimeout(2200)
+        landedOn = new URL(page.url()).pathname
+        if (landedOn === proofPath) break
+        console.log(`  the proof page bounced to ${landedOn} on attempt ${attempt}; the admin session door, not the page`)
+      }
       await answerTheCookieBanner(page)
       const body = await page.locator('body').innerText()
 
       check(
+        `ga5.${vp.label}.${state.label}.the-proof-page-answered`,
+        landedOn === proofPath,
+        landedOn === proofPath
+          ? 'the proof page rendered rather than redirecting'
+          : `the request was redirected to ${landedOn} twice, so the admin session door answered and this page never ran`,
+      )
+      check(
         `ga5.${vp.label}.${state.label}.renders`,
-        state.expect.test(body),
-        `the page reads as the ${state.label} state`,
+        landedOn === proofPath && state.expect.test(body),
+        landedOn === proofPath
+          ? `the page reads as the ${state.label} state`
+          : `not judged: the request landed on ${landedOn}`,
       )
       check(
         `ga5.${vp.label}.${state.label}.no-horizontal-overflow`,
@@ -777,6 +840,22 @@ try {
       .select('id', { count: 'exact', head: true })
       .like('reference', `${LANE}-%-${STAMP}`)
     check('ga5.teardown.left-as-found', (count ?? 0) === 0, `${count ?? 0} lane B GA5 campaign row(s) remain`)
+
+    /*
+     * AND NOTHING OF THIS DRIVE'S, FROM ANY RUN, IS LEFT PUBLISHED. The count
+     * above asks about one table. This asks the sitemap's question of every
+     * row carrying this drive's prefix, including rows an EARLIER run left
+     * behind, which is how a published GA5 fixture event lived on shared TEST
+     * for two days while every run reported "left as found".
+     */
+    const leftPublished = await laneFixturesStillPublished(db, 'lane-b-ga5-')
+    check(
+      'ga5.teardown.nothing-of-this-drive-is-left-published',
+      leftPublished.length === 0,
+      leftPublished.length === 0
+        ? 'no organiser, event or venue page of this drive is in the sitemap'
+        : `still published: ${leftPublished.join(', ')}. Every one of them 404s when the row goes.`,
+    )
   } catch (error) {
     check('ga5.teardown.left-as-found', false, error instanceof Error ? error.message : String(error))
   }

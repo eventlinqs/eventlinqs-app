@@ -14,6 +14,11 @@
  *      to what it was before this item, proven by capturing both and counting
  *      the differing pixels rather than by looking at them.
  *
+ * AND ONE THING THAT IS NOT AN ACCEPTANCE LINE AND RUNS FIRST ANYWAY: that this
+ * fixture publishes NOTHING into the sitemap. On 14 September 2026 it published
+ * three URLs and deleted them, and another lane's pre-push gate read the
+ * snapshot afterwards and was refused. See scripts/verify/lib/sitemap-footprint.mjs.
+ *
  * Run. The first version of this block named the two --import flags and nothing
  * else, and running exactly what it said failed three checks with product
  * sounding messages: 'no link was printed', 'the referred account's role is
@@ -46,8 +51,18 @@ import { gitEnv } from '../lib/git-env.mjs'
 import { pathToFileURL } from 'node:url'
 import { chromium } from 'playwright'
 import { linkFromInbox } from '../journeys/harness.mjs'
+import { sitemapFootprint, laneFixturesStillPublished } from './lib/sitemap-footprint.mjs'
 import { PNG } from 'pngjs'
 import { createClient } from '@supabase/supabase-js'
+import { answerTheCookieBanner as answerTheBanner } from './lib/cookie-banner.mjs'
+
+/*
+ * THE CONSENT BANNER. One shared implementation (scripts/verify/lib/cookie-banner.mjs),
+ * answered 'accept' here because that is the answer this drive has always given.
+ * Five private copies of this helper existed on 15 September 2026 and three of them
+ * matched button labels the banner does not carry, so they never dismissed anything.
+ */
+const answerTheCookieBanner = (page) => answerTheBanner(page, { answer: 'accept' })
 
 const args = process.argv.slice(2)
 let out = null
@@ -98,17 +113,6 @@ async function everyRouteThisDriveNeedsIsServed() {
   return missing
 }
 
-async function answerTheCookieBanner(page) {
-  for (const label of [/that is fine/i, /accept/i]) {
-    const button = page.getByRole('button', { name: label }).first()
-    if (await button.isVisible().catch(() => false)) {
-      await button.click().catch(() => {})
-      await page.waitForTimeout(400)
-      return
-    }
-  }
-}
-
 const fixture = {
   organiserId: null,
   organisationId: null,
@@ -146,9 +150,26 @@ async function buildFixture() {
     role: 'organiser',
   })
 
+  /*
+   * PENDING, NOT ACTIVE, AND THE EVENT BELOW IS UNLISTED, NOT PUBLIC. On
+   * 14 September 2026 this fixture refused lane A's push at step 13 of 16:
+   *
+   *   [indexing-drive] FAIL: RULE 2: /organisers/lane-b-pl1-org-202609141153
+   *                          is in the sitemap and answered 404
+   *   [indexing-drive] FAIL: RULE 2: /venues/lane-b-pl1-warehouse
+   *                          is in the sitemap and answered 404
+   *
+   * An active organisation is published by src/app/sitemap.ts, a public event
+   * publishes both its own URL and a venue handle derived from venue_name, and
+   * three lanes share one TEST database. Deleting the rows at teardown does not
+   * undo that: the sitemap holds its snapshot for 300 seconds, so another lane's
+   * gate reads URLs that no longer resolve. The window cannot be made small
+   * enough; the fixture has to be invisible to discovery for its whole life.
+   * Nothing here needs it to be visible. See scripts/verify/lib/sitemap-footprint.mjs.
+   */
   const org = await db
     .from('organisations')
-    .insert({ name: `Lane B PL1 ${STAMP}`, slug: `${LANE}-org-${STAMP}`, owner_id: fixture.organiserId, status: 'active' })
+    .insert({ name: `Lane B PL1 ${STAMP}`, slug: `${LANE}-org-${STAMP}`, owner_id: fixture.organiserId, status: 'pending' })
     .select('id')
     .single()
   if (org.error) throw new Error(`organisation: ${org.error.message}`)
@@ -164,7 +185,7 @@ async function buildFixture() {
       created_by: fixture.organiserId,
       category_id: category.id,
       status: 'published',
-      visibility: 'public',
+      visibility: 'unlisted',
       published_at: new Date().toISOString(),
       start_date: start.toISOString(),
       end_date: new Date(start.getTime() + 3 * 3_600_000).toISOString(),
@@ -282,6 +303,25 @@ try {
   await buildFixture()
   console.log(`event  /events/${fixture.eventSlug}`)
   console.log(`order  /orders/${fixture.orderId}/confirmation`)
+
+  /*
+   * BEFORE ANYTHING ELSE, ASK THE DATABASE WHAT THIS FIXTURE PUBLISHES. The
+   * static guard refuses the two literals in this file; this asks the sitemap's
+   * own three questions of the rows that now exist, which is the claim that had
+   * never been made when this fixture blocked another lane's push.
+   */
+  const footprint = await sitemapFootprint(db, {
+    organisationSlugs: [`${LANE}-org-${STAMP}`],
+    eventSlugs: [fixture.eventSlug],
+    venueNames: ['Lane B PL1 warehouse'],
+  })
+  check(
+    'pl1.fixture.publishes-nothing-into-the-sitemap',
+    footprint.length === 0,
+    footprint.length === 0
+      ? 'the organisation, the event and the venue are all absent from the sitemap queries'
+      : `the sitemap would publish ${footprint.join(', ')}, and every one of them 404s the moment this drive tears down`,
+  )
 
   const loops = await import(pathToFileURL(join(ROOT, 'src/lib/growth/loops.ts')).href)
   const email = await import(pathToFileURL(join(ROOT, 'src/lib/email/order-confirmation.ts')).href)
@@ -612,6 +652,22 @@ try {
       .select('id', { count: 'exact', head: true })
       .like('slug', `${LANE}-event-${STAMP}`)
     check('pl1.teardown.left-as-found', (count ?? 0) === 0, `${count ?? 0} lane B PL1 event row(s) remain`)
+
+    /*
+     * AND NOTHING OF THIS DRIVE'S, FROM ANY RUN, IS LEFT PUBLISHED. The count
+     * above asks about one table. This asks the sitemap's question of every
+     * row carrying this drive's prefix, including rows an EARLIER run left
+     * behind, which is how a published GA5 fixture event lived on shared TEST
+     * for two days while every run reported "left as found".
+     */
+    const leftPublished = await laneFixturesStillPublished(db, 'lane-b-pl1-')
+    check(
+      'pl1.teardown.nothing-of-this-drive-is-left-published',
+      leftPublished.length === 0,
+      leftPublished.length === 0
+        ? 'no organiser, event or venue page of this drive is in the sitemap'
+        : `still published: ${leftPublished.join(', ')}. Every one of them 404s when the row goes.`,
+    )
   } catch (error) {
     check('pl1.teardown.left-as-found', false, error instanceof Error ? error.message : String(error))
   }
