@@ -1781,7 +1781,45 @@ if (collectionFailures.length > 0) {
   )
 }
 if (failedSuites > 0 && collectionFailures.length === 0) {
-  problems.push(`${failedSuites} test SUITE(S) failed. Read the vitest output.`)
+  /*
+   * NAME THE FILES, for the same reason the failing tests are named below, and
+   * because on 14 September 2026 this branch was the whole of what the gate
+   * said. The push of eight commits was refused at the suite step with
+   * "2 test SUITE(S) failed. Read the vitest output." and a total one test
+   * below the baseline. There WAS no vitest output to read: this guard runs
+   * vitest with --reporter=json into a file and then deletes it, so the
+   * instruction pointed at something that does not exist, and the second
+   * failing file was never identified. One of the two was a flake that passed
+   * standalone seconds later; the other is still unknown and cannot now be
+   * recovered.
+   *
+   * The report already carries every file with its status and its assertions,
+   * so withholding the names cost a diagnosis for nothing. A file listed with
+   * zero failed tests is the interesting case: it failed OUTSIDE a test, in a
+   * hook, a teardown or an unhandled rejection, and that is the shape that
+   * takes tests down with it and shows up as a total below the baseline.
+   */
+  const failedFiles = (Array.isArray(report.testResults) ? report.testResults : [])
+    .filter(r => r.status === 'failed')
+    .map(r => {
+      const file = (r.name ?? '').replace(/\\/g, '/').replace(ROOT.replace(/\\/g, '/') + '/', '')
+      const assertions = r.assertionResults ?? []
+      const bad = assertions.filter(a => a.status === 'failed').length
+      return `        ${file}  (${assertions.length} test(s) registered, ${bad} failed)`
+    })
+  problems.push(
+    `${failedFiles.length || failedSuites} test FILE(S) failed:\n` +
+      (failedFiles.length > 0 ? failedFiles.join('\n') : '        (the report named none)') +
+      '\n' +
+      '      A file listed here with 0 failed tests failed OUTSIDE a test: a hook, a\n' +
+      '      teardown or an unhandled rejection, and that shape can take its remaining\n' +
+      '      tests down with it.\n' +
+      (failedSuites !== failedFiles.length
+        ? `      vitest's own numFailedTestSuites says ${failedSuites}, and it is NOT a file count:\n` +
+          '      it counts describe blocks too, so one file failing inside one describe\n' +
+          '      reports as two. Drilled on 14 September 2026. Trust the list above.\n'
+        : ''),
+  )
 }
 if (!reportedSuccess) {
   problems.push('vitest reported success=false for this run.')
@@ -1832,9 +1870,14 @@ if (files < MIN_FILES) {
 }
 if (tests < MIN_TESTS) {
   problems.push(
-    `only ${tests} TESTS ran, baseline is ${MIN_TESTS}.\n` +
+    `only ${tests} tests PASSED, baseline is ${MIN_TESTS}.\n` +
       '      Tests that do not run cannot fail, so a green suite that runs fewer tests\n' +
-      '      is not evidence of anything.',
+      '      is not evidence of anything.\n' +
+      (failed > 0
+        ? `      READ THIS WITH THE FAILURES ABOVE FIRST. This is the PASSED count, not the\n` +
+          `      total, so the ${failed} failing test(s) already lower it by ${failed} on their own.\n` +
+          '      A shortfall of exactly that size means nothing stopped running.' + `\n`
+        : '      Nothing failed on this run, so the shortfall is tests that did not run at all.'),
   )
 }
 if (skipped > MAX_SKIPPED) {
