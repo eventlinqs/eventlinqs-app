@@ -1678,9 +1678,20 @@ const ROOT = join(HERE, '..', '..')
  * red, and the guard that refuses a line with no check. The first real run
  * against production found five failures and three lines it could not observe,
  * which is the point of it.
+ *
+ * 2026-09-14 (close-out SEO2, lane C): 413/5066, MEASURED on the tree that
+ * exists rather than derived by adding this session's new tests to the previous
+ * floor, which is the rule set two entries above after two lanes each raised
+ * this number from a different tree. Three files: the Search Console token
+ * reader, the weekly indexing check, and the guard that compares the sitemap
+ * against the catalogue it describes. The visibility proof for the sitemap also
+ * gained two tests: the event predicate moved into
+ * src/lib/seo/sitemap-catalogue.ts so a build-time guard could execute it, and
+ * the proof now asserts both that the catalogue applies the rule and that
+ * sitemap.ts asks nobody else, which the single-regex version did not.
  */
-const MIN_FILES = 410
-const MIN_TESTS = 5012
+const MIN_FILES = 413
+const MIN_TESTS = 5066
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

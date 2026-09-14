@@ -460,6 +460,55 @@ const DRILLS = [
     expect: 'the category "comedy" exists in event_categories and has no editorial',
   },
   /*
+   * sitemap-covers-the-catalogue (close-out SEO2), FOUR DRILLS, one per way the
+   * comparison can go red. The item asks for it to be "proven red by
+   * unpublishing one lane-C event while leaving it in the sitemap, then green",
+   * which is the ORPHANED drill below expressed as the code that would leave it
+   * there: the sitemap reads the database live, so an event cannot be absent
+   * from the catalogue and present in the sitemap unless the sitemap has stopped
+   * asking whether it is published. That is the second drill, and the literal
+   * version of it (a real lane-C event set to draft while the predicate was
+   * removed, with the guard naming that slug) is in the item's evidence.
+   *
+   * The other three cover the failure modes actually on record: a catalogue
+   * silently truncating so pages go MISSING, a query error thrown away so a
+   * whole family publishes NOTHING (the 42703 that hid the venue block for its
+   * whole life), and a profile predicate dropped so pages that 404 are
+   * advertised (the eight 'pending' organisations).
+   */
+  {
+    name: 'the event catalogue truncates, so published pages are never advertised',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .order('slug', { ascending: true })\n      .limit(CATALOGUE_ROW_CAP)\n    if (error) return { rows: [], error: error.message }\n    const rows: CatalogueRow[] = []\n    for (const row of data ?? []) {\n      const slug = typeof row.slug === 'string' ? row.slug.trim() : ''\n      if (!slug) continue\n      rows.push({\n        path: `/events/${slug}`,",
+    replace: "      .order('slug', { ascending: true })\n      .limit(5)\n    if (error) return { rows: [], error: error.message }\n    const rows: CatalogueRow[] = []\n    for (const row of data ?? []) {\n      const slug = typeof row.slug === 'string' ? row.slug.trim() : ''\n      if (!slug) continue\n      rows.push({\n        path: `/events/${slug}`,",
+    expect: 'events page(s) the database holds are ABSENT from the sitemap',
+  },
+  {
+    name: 'the sitemap stops asking whether an event is published, so unpublished events stay in it',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .select('slug, updated_at')\n      .match(PUBLIC_EVENT_MATCH)\n      .not('slug', 'is', null)",
+    replace: "      .select('slug, updated_at')\n      .not('slug', 'is', null)",
+    expect: 'events URL(s) in the sitemap have no row behind them and would answer 404',
+  },
+  {
+    name: 'a catalogue query names a column that does not exist, and the error is thrown away again',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .select('venue_name, updated_at')",
+    replace: "      .select('venue_slug, updated_at')",
+    expect: 'the sitemap would publish NO venues URL at all and say nothing about it',
+  },
+  {
+    name: 'the organiser block loses its status predicate, so pending profiles are advertised again',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .not('slug', 'is', null)\n      .eq('status', 'active')",
+    replace: "      .not('slug', 'is', null)",
+    expect: 'organisers URL(s) in the sitemap have no row behind them and would answer 404',
+  },
+  /*
    * all-in-pricing (close-out SEO4), THREE DRILLS, one per clause. The item asks
    * for the guard to be "proven red by displaying a ticket price without its
    * fee, then green", which is the second of these; the other two are the
@@ -909,24 +958,25 @@ const DRILLS = [
    */
   {
     /*
-     * The incident itself, put back. This is the exact file and the exact
-     * shape: a Supabase query in a try, and a catch that says nothing.
+     * The incident itself, put back. Same shape, and since close-out SEO2 the
+     * exact file is src/lib/seo/sitemap-catalogue.ts: the event query moved
+     * there so a build-time guard could execute it, and the catch moved with it.
+     * The catch there RETURNS the error rather than logging it, which is a voice
+     * (the sitemap logs it, the guard fails the build on it); this drill takes
+     * that voice away.
      */
     name: 'the sitemap event query is wrapped in a catch that says nothing',
     guard: `${GUARDS}/no-silent-catch.mjs`,
-    file: 'src/app/sitemap.ts',
+    file: 'src/lib/seo/sitemap-catalogue.ts',
     find: [
       '  } catch (err) {',
-      '    // Sitemap must never 500. Fall through to the static entries already built,',
-      '    // but SAY SO: a silent catch on this exact shape hid a 42703 in the venue',
-      '    // block for the whole life of that block.',
-      "    console.error('[sitemap] event block failed:', err)",
+      '    return { rows: [], error: err instanceof Error ? err.message : String(err) }',
+      '  }',
     ].join('\n'),
     // The FIRST version of this drill removed only the binding and left the
-    // console.error, and the guard passed, correctly: a catch that logs is not
-    // silent whatever its binding says. The drill has to remove the voice, not
-    // the name.
-    replace: ['  } catch {', '    // drill: the voice removed'].join('\n'),
+    // voice, and the guard passed, correctly: a catch that speaks is not silent
+    // whatever its binding says. The drill has to remove the voice, not the name.
+    replace: ['  } catch {', '    return { rows: [], error: null }', '  }'].join('\n'),
     expect: 'silent around I/O',
   },
   {
@@ -1177,10 +1227,26 @@ const DRILLS = [
   {
     name: 'the sitemap queries a column that does not exist (the 42703 class)',
     guard: `${GUARDS}/sitemap-resolves.mjs`,
-    file: 'src/app/sitemap.ts',
+    // The venue query lives in the catalogue module since close-out SEO2, and
+    // the guard reads both files for exactly this reason.
+    file: 'src/lib/seo/sitemap-catalogue.ts',
     find: "      .select('venue_name, updated_at')",
     replace: "      .select('venue_name, updated_at, nonexistent_column')",
     expect: 'does not exist in src/types/database.ts',
+  },
+  {
+    /*
+     * The failure mode this guard's subject moving created, and the clause added
+     * to refuse it: a family stops being built and the guard goes QUIET rather
+     * than red. Every sitemap defect on record is a family publishing nothing in
+     * silence.
+     */
+    name: 'the catalogue stops building one of the three families',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: '      rows.push({ path: `/venues/${handle}`, lastModified: handles.get(handle) ?? null })',
+    replace: '      rows.push({ path: `/nothing/${handle}`, lastModified: handles.get(handle) ?? null })',
+    expect: 'no longer builds /venues/PARAM',
   },
   {
     name: 'the sitemap publishes a URL this repository permanently redirects',
@@ -1209,8 +1275,10 @@ const DRILLS = [
   {
     name: 'a sitemap catch block swallows its error without reporting it',
     guard: `${GUARDS}/sitemap-resolves.mjs`,
+    // The artists block is the last remaining try/catch in sitemap.ts; the three
+    // row-derived families now return their error from the catalogue instead.
     file: 'src/app/sitemap.ts',
-    find: "    console.error('[sitemap] organiser block failed:', err)",
+    find: "    console.error('[sitemap] artist block failed:', err)",
     replace: '    void err',
     expect: 'catch block that reports nothing',
   },

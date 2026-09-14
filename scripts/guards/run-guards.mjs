@@ -186,6 +186,14 @@
  *                              threshold, and every category in event_categories is a real
  *                              page with written editorial rather than a /events?category=
  *                              query string that canonicalises to /events (SEO3)
+ *   sitemap-covers-the-catalogue
+ *                             the sitemap and the database agree in both directions for the
+ *                              three families that come from rows: no published event,
+ *                              organiser profile or venue profile is absent from the sitemap,
+ *                              and no URL the sitemap publishes has no row behind it. Reads
+ *                              the shipped readers and asks the same questions again over raw
+ *                              PostgREST, so a swallowed query error fails a build instead of
+ *                              publishing an empty family in silence (SEO2)
  *   machine-callers-reachable every route that authenticates a machine with a shared secret is
  *                              on a reviewed record or a reviewed exclusion, no signed webhook
  *                              can be refused by our own rate limiter, no cron limiter fails
@@ -1184,6 +1192,18 @@ const GUARDS = [
   // sitemap are asking the same question of the same numbers, and whether a
   // category is a page rather than a query string that canonicalises to /events.
   'scripts/guards/discovery-indexability.mjs',
+  // Close-out SEO2 (14 September 2026): the two guards above judge the POLICY
+  // and the THRESHOLD, both of which are readable from source. This one judges
+  // the CATALOGUE, which is not: an event page exists because a row exists. It
+  // runs the shipped sitemap readers against the build's own database and asks
+  // the same three questions again over raw PostgREST, and fails when a page the
+  // database holds is absent from the sitemap or a URL the sitemap publishes has
+  // no row behind it. Every sitemap defect on record is in that shape and every
+  // one of them was silent: a 42703 a bare catch threw away, so the venue block
+  // published nothing for its whole life; a missing status predicate that
+  // advertised eight 404s. SKIPs by name on CI's placeholder URL. Drilled red
+  // four ways in scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/sitemap-covers-the-catalogue.mjs',
   // Close-out SEO4 (14 September 2026): one-fee-copy.mjs judges whether a
   // SENTENCE names a second fee. This one judges the wiring and the arithmetic:
   // whether a surface that renders a price has the live fee values in its hands,

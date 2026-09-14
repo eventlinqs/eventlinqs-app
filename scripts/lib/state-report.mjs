@@ -27,6 +27,13 @@
  * speaking, and Law 1 does not have an exception for the owner's inbox.
  */
 
+/*
+ * The indexing line's wording lives with the check that produces it (close-out
+ * SEO2 step 3), so a weekly job and this daily report cannot describe the same
+ * result in two different registers. Both files are pure.
+ */
+import { digestLines as indexingDigestLines } from './indexing-check.mjs'
+
 /** The one threshold. Six hours, from close-out UX4.2, and it lives here alone. */
 export const STALL_THRESHOLD_HOURS = 6
 
@@ -454,6 +461,24 @@ export function sectionsFor(state) {
             // what a reader actually needs, and there are never many.
             ...(parity.failures ?? []).map((f) => `FAILED: ${f.line} - ${f.observation}`),
           ].filter(Boolean),
+  })
+
+  /*
+   * THE INDEXING LINE (close-out SEO2 step 3): "pages submitted, pages indexed,
+   * and any page in the sitemap that Search Console reports as excluded, with
+   * the reason. It appears in the owner digest as one line."
+   *
+   * It sits beside the parity line for the same reason that one sits where it
+   * does: both answer "how is the product", where everything above answers "how
+   * is the build". And it follows the same rule about absence, which is the rule
+   * this whole report is built on: a check that has not run must look different
+   * from a check that found nothing. The wording lives in
+   * scripts/lib/indexing-check.mjs beside the judging, so the weekly job and this
+   * daily one cannot describe the same result differently.
+   */
+  sections.push({
+    title: 'Google and the sitemap',
+    lines: indexingDigestLines(state.indexing ?? null, humanAge),
   })
 
   const biz = state.business ?? {}

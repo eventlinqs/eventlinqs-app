@@ -111,6 +111,38 @@ jobs:
             echo "Not the 1st or the 15th (today is $DAY). The parity check is not due."
           fi
 
+      # THE WEEKLY INDEXING CHECK (close-out SEO2 step 3), in this job and for the
+      # same reason as the parity check above: it writes a file and the compose
+      # step below reads it, and two workflows are two runners that share no disk.
+      #
+      # MONDAY, said in one place (INDEXING_CADENCE in
+      # scripts/lib/indexing-check.mjs) so this file and the digest cannot
+      # describe the cadence differently. A weekday rather than a date, because
+      # the thing it watches (the catalogue, and what Google has done with it)
+      # moves with the week rather than with the month.
+      #
+      # IT NEVER FAILS THE JOB, for the reason written above the parity step: a
+      # step that goes red on a finding every run is a step somebody switches
+      # off, and the finding is delivered by being IN the email.
+      #
+      # GOOGLE_SEARCH_CONSOLE_KEY is passed if the repository holds it and the
+      # check says plainly that Google was not asked when it does not. There is
+      # no version of this that quietly reports "0 excluded" for a property
+      # nobody has ever connected.
+      - name: The weekly indexing check
+        continue-on-error: true
+        env:
+          INDEXING_SITE: https://www.eventlinqs.com.au
+          GOOGLE_SEARCH_CONSOLE_KEY: ${{ secrets.GOOGLE_SEARCH_CONSOLE_KEY }}
+        run: |
+          set -u
+          DOW=$(date -u +%u)
+          if [ "$DOW" = "1" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            node scripts/ops/indexing-check.mjs --json indexing.json
+          else
+            echo "Not a Monday (day $DOW of the week). The indexing check is not due."
+          fi
+
       - name: Compose and send
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,6 +170,7 @@ jobs:
             state.json
             state.html
             parity.json
+            indexing.json
           if-no-files-found: ignore
           retention-days: 14
 

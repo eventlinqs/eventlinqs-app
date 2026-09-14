@@ -57,6 +57,7 @@ import {
   BOOKKEEPING_REFS,
   STALL_THRESHOLD_HOURS,
 } from '../lib/state-report.mjs'
+import { INDEXING_STALE_AFTER_HOURS } from '../lib/indexing-check.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -67,6 +68,13 @@ const TAG = '[state-report]'
  * the writer and the reader cannot disagree about the path.
  */
 const PARITY_STATE_FILE = join(ROOT, '.parity', 'last-run.json')
+
+/**
+ * Where the weekly indexing check leaves its result (close-out SEO2 step 3).
+ * Same handoff as the parity file above and for the same reason: that job runs
+ * weekly, this report runs daily, and the two never share a process.
+ */
+const INDEXING_STATE_FILE = join(ROOT, '.indexing', 'last-run.json')
 
 const DEFAULT_REPO = 'eventlinqs/eventlinqs-app'
 const DEFAULT_SITE = 'https://www.eventlinqs.com.au'
@@ -472,6 +480,38 @@ export function readParityState(file, nowIso) {
   }
 }
 
+/**
+ * THE INDEXING RESULT, READ OFF DISK (close-out SEO2 step 3).
+ *
+ * `scripts/ops/indexing-check.mjs` runs weekly and writes `.indexing/last-run.json`;
+ * this digest runs daily. Same handoff as the parity result above, same rule
+ * about absence: a missing file means the check has not run on this machine, an
+ * unreadable one says so, and a result older than the weekly cadence is marked
+ * OVERDUE rather than printed as though it were today's. A check that has
+ * stopped running must look different from a check that found nothing.
+ */
+export function readIndexingState(file, nowIso) {
+  if (!existsSync(file)) return null
+  let parsed
+  try {
+    parsed = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    return { error: `the indexing result could not be parsed: ${error.message}` }
+  }
+  if (!parsed?.at || !parsed?.headline) {
+    return { error: 'the indexing result is missing its timestamp or its headline' }
+  }
+  const ageHours = hoursBetween(parsed.at, nowIso)
+  return {
+    headline: parsed.headline,
+    site: parsed.site ?? null,
+    ageHours,
+    stale: ageHours > INDEXING_STALE_AFTER_HOURS,
+    faults: parsed.faults ?? [],
+    searchConsole: parsed.searchConsole ?? null,
+  }
+}
+
 const DEFAULT_READERS = {
   main: ({ token, repo }) => collectMain(token, repo),
   landed: ({ token, repo, since }) => collectLanded(token, repo, since),
@@ -580,12 +620,15 @@ async function collect({
    * read that has no way to be slow.
    */
   const parity = readParityState(PARITY_STATE_FILE, nowIso)
+  /* Same shape, same reasoning, same absence rule. See readIndexingState. */
+  const indexing = readIndexingState(INDEXING_STATE_FILE, nowIso)
 
   return {
     generatedAt: nowIso,
     repo,
     main,
     parity,
+    indexing,
     production,
     landed,
     openPullRequests,

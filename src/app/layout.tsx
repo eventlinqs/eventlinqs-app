@@ -10,6 +10,7 @@ import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
 import { ReferralCapture } from '@/components/growth/referral-capture'
 import { getSiteUrl } from '@/lib/site-url'
+import { siteVerificationMetadata } from '@/lib/seo/site-verification'
 import { BRAND_STRAPLINE, BRAND_STRAPLINE_SHORT, BRAND_TAGLINE } from '@/lib/brand/positioning'
 
 /*
@@ -100,6 +101,15 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true },
   },
+  /*
+   * SEARCH CONSOLE OWNERSHIP (close-out SEO2 step 2). Emits
+   * <meta name="google-site-verification" content="..."> when, and only when,
+   * GOOGLE_SITE_VERIFICATION holds a usable token; nothing otherwise. The token
+   * is minted by a signed-in Google account, which is the one irreducible act,
+   * and everything either side of it is `npm run seo2:verify-property`. See
+   * src/lib/seo/site-verification.ts.
+   */
+  ...siteVerificationMetadata(),
   openGraph: {
     type: 'website',
     title: `EventLinqs | ${BRAND_STRAPLINE_SHORT}`,
