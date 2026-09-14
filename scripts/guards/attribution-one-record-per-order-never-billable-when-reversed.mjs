@@ -54,6 +54,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 import { declareWork } from '../lib/work-report.mjs'
+import { resolutionGraceMs } from './lib/attribution-grace.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -97,6 +98,24 @@ const structural = []
 const { sql, files } = allMigrationSql()
 for (const clause of STRUCTURAL_CLAUSES) {
   if (!sql.includes(clause.needle)) structural.push(clause.problem)
+}
+
+/*
+ * THE RESOLUTION GRACE IS A STRUCTURAL CLAIM TOO, and it is read HERE, before a
+ * database client exists, for a reason that cost a drill run to find. Read
+ * later, a failure has to exit while the supabase client's socket is still in
+ * flight, and `process.exit` at that moment aborts Node on Windows with
+ * `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` and the code
+ * 3221226505. The guard refused either way, but an abnormal-termination code is
+ * not a verdict: it reads as the guard breaking rather than as the guard
+ * finding something. Every other source-level claim in this file is settled
+ * before the network is touched; this one now is as well.
+ */
+let RESOLUTION_GRACE_MS = 0
+try {
+  RESOLUTION_GRACE_MS = resolutionGraceMs()
+} catch (error) {
+  structural.push(error.message)
 }
 
 /* ------------------------------------------------------------- the data half */
@@ -190,8 +209,14 @@ if (error) {
  * PRINTED on every run, so a number that starts growing is visible rather than
  * absorbed. An order that is still unresolved after this long is not racing, it
  * is missing, and it fails.
+ *
+ * THE NUMBER IS NOT WRITTEN HERE. It is read out of
+ * `src/lib/attribution/backstop.ts`, which is the one place it is declared and
+ * which the scheduled healer imports directly. A guard carrying its own copy
+ * would eventually tolerate a different window from the healer, and the failure
+ * that produces is a build going red on an order the healer was deliberately
+ * leaving alone.
  */
-const RESOLUTION_GRACE_MS = 5 * 60 * 1000
 const NO_RECORD = 'order has no attribution record'
 
 let stillResolving = 0

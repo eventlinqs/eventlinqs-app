@@ -56,6 +56,11 @@
  *                              no lane B fixture is left published on shared TEST,
  *                              whoever left it and whenever, because a leftover is a
  *                              state and only a question finds one
+ *   every-order-carries-its-attribution  an order is never created by a path that
+ *                              skips the write-time attribution capture, and the
+ *                              repair for the ones it still misses is on a
+ *                              schedule, because the guard that reads the rows
+ *                              skips in CI and never runs on production at all
  *   busy-region-names-itself   a loading skeleton that names itself carries a role
  *                              allowed to have a name, never a bare aria-label
  *   labels-name-the-right-control  and that label points at the control it describes,
@@ -793,6 +798,17 @@ const GUARDS = [
   // tests/unit/guards/no-published-lane-b-fixture-on-test.test.ts, because proving
   // the interesting half against the real database means committing the incident.
   'scripts/guards/no-published-lane-b-fixture-on-test.mjs',
+  // 15 September 2026. GA3's invariant guard reads the database, and its own
+  // header says what it cannot do: in CI it points at a PLACEHOLDER project and
+  // skips, and on production nothing runs it at all. So the rule that every
+  // order carries exactly one stored attribution decision was defended by four
+  // call sites remembering one function, plus an ops script a person runs by
+  // hand after a build reds on a different machine. This checks the two halves
+  // that ARE source facts: every order insert under src/ is paired with the
+  // write-time capture, and the healer is on a schedule. Both derived by reading
+  // src/ rather than listed, so the fifth insert site is judged the day it is
+  // written. Drilled red both ways in scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/every-order-carries-its-attribution.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
   // and compared byte for byte, so a row cannot be improved by editing the

@@ -1831,9 +1831,20 @@ const ROOT = join(HERE, '..', '..')
  * right now, over synthetic rows, because proving the interesting half against
  * the real database means creating the very published fixture the guard exists
  * to prevent.
+ *
+ * 2026-09-15 (lane B, the attribution backstop): raised 415/5361 -> 417/5393,
+ * MEASURED on a clean run. Two new files, 32 tests.
+ * tests/unit/growth/attribution-backstop holds the scheduled repair that makes
+ * GA3's invariant a product guarantee rather than a build-time observation: the
+ * grace it must not race, the cap it must report hitting, and the two reads
+ * that must THROW rather than answer "nothing to heal" when the database is
+ * unreachable. tests/unit/guards/every-order-carries-its-attribution drives the
+ * counting the new guard does, in both directions, because a guard that counted
+ * every `from('orders')` as an insert would also pass on a correct tree, and
+ * passing for the wrong reason is the failure that survives longest.
  */
-const MIN_FILES = 415
-const MIN_TESTS = 5361
+const MIN_FILES = 417
+const MIN_TESTS = 5393
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

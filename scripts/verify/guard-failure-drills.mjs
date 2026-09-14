@@ -2837,6 +2837,60 @@ const DRILLS = [
     replace: "    prefix: 'lane-b-fo1-NOT-THIS-ONE-',",
     expect: 'are PUBLISHED on the database three lanes share',
   },
+  /*
+   * every-order-carries-its-attribution, three drills, one per way an order can
+   * come to exist with no stored attribution decision.
+   *
+   * The first two are the write-time half and they are the realistic ones: a new
+   * checkout path that forgets the capture entirely, and an existing file that
+   * grows a second insert and keeps its one call. The second is the nastier
+   * shape, because the file still looks correct at a glance and a grep for the
+   * function name finds it.
+   *
+   * The third is the heal-time half. It removes the schedule rather than the
+   * route, because a route that exists and is never invoked is the exact defect
+   * cron-routes-scheduled was written for, and it is the one a reader is most
+   * likely to reintroduce by editing vercel.json.
+   */
+  {
+    name: 'an order-creating path stops calling the write-time attribution capture',
+    guard: `${GUARDS}/every-order-carries-its-attribution.mjs`,
+    file: 'src/app/actions/register-free.ts',
+    find: '  await recordClickSignalForOrder(order_id)',
+    replace: '  void order_id',
+    expect: 'never calls recordClickSignalForOrder',
+  },
+  {
+    name: 'a file grows a second order insert and keeps its single capture call',
+    guard: `${GUARDS}/every-order-carries-its-attribution.mjs`,
+    file: 'src/app/actions/register-free.ts',
+    find: "  const { error: orderError } = await adminClient.from('orders').insert({",
+    replace:
+      "  if (false as boolean) await adminClient.from('orders').insert({ id: order_id })\n  const { error: orderError } = await adminClient.from('orders').insert({",
+    expect: 'calls recordClickSignalForOrder only 1 time(s)',
+  },
+  {
+    name: 'the attribution backstop is left in the tree with no schedule behind it',
+    guard: `${GUARDS}/every-order-carries-its-attribution.mjs`,
+    file: 'vercel.json',
+    find: '      "path": "/api/cron/attribution-backstop",',
+    replace: '      "path": "/api/cron/attribution-backstop-NOT-THIS-ONE",',
+    expect: 'has no entry in vercel.json crons, so it never runs',
+  },
+  /*
+   * The resolution grace is declared once, in the product, and both the healer
+   * and the invariant guard read that one declaration. This drills the reader
+   * rather than the number: move the constant and the guard must refuse to run
+   * rather than quietly fall back to a window of its own.
+   */
+  {
+    name: 'the resolution grace window stops being readable, and the guard refuses rather than assuming one',
+    guard: `${GUARDS}/attribution-one-record-per-order-never-billable-when-reversed.mjs`,
+    file: 'src/lib/attribution/backstop.ts',
+    find: 'export const RESOLUTION_GRACE_MS = 5 * 60 * 1000',
+    replace: 'export const RESOLUTION_GRACE_MS = graceFromSomewhereElse()',
+    expect: 'no longer exports RESOLUTION_GRACE_MS as a literal',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
