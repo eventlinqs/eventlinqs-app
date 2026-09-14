@@ -1648,9 +1648,24 @@ const ROOT = join(HERE, '..', '..')
  * reports are invisible on screen, because the spacing is a CSS margin between
  * two inline elements with no whitespace character between them, and the test
  * found a THIRD instance on /organisers that the item does not name.
+ *
+ * 2026-09-14 (the rebase onto verify/l5-launch-readiness): 403/4889, MEASURED on
+ * the merged tree, 0 failed and 0 skipped. This entry records a NUMBER rather
+ * than a piece of work, and the reason is worth keeping.
+ *
+ * This constant conflicts on every merge between lane A and lane C, because both
+ * lanes raise one number in one file from a common ancestor, and neither lane's
+ * figure describes a tree holding both sets of tests: lane A measured 396/4812
+ * without lane C's SEO1 v2 tests, and lane C measured 398/4823 without lane A's.
+ * Taking either would have set a floor that was wrong in a direction nobody
+ * could see, and taking the larger would still have been a guess.
+ *
+ * So neither was taken. The four lane C commits were rebased, the conflicts were
+ * resolved by keeping BOTH history blocks and deferring the number, and then the
+ * suite was run on the tree that actually exists. 403 and 4889 is what it holds.
  */
-const MIN_FILES = 398
-const MIN_TESTS = 4823
+const MIN_FILES = 403
+const MIN_TESTS = 4889
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
