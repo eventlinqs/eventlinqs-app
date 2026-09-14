@@ -299,6 +299,42 @@ async function clickByText(page, rx) {
   return false
 }
 
+/**
+ * WAIT FOR THE REQUEST TO BE RECORDED, RATHER THAN SLEEPING AND HOPING.
+ *
+ * 14 September 2026. Both rights submissions below waited a flat 3000ms and
+ * then read the page and the database. On a machine running three builds that
+ * was not always enough, and the drive reported
+ *
+ *     tablet-768.rights.no-token-form-records-the-stop-and-says-so
+ *     0 suppression(s) for the typed address, page said: ""
+ *
+ * at 768 while 390 and 1440 passed, which reads as a product that records a
+ * legal request on two viewports out of three. The screenshot the drive had
+ * already taken settled it: the button still said "Recording your request".
+ * The submit was in flight. Nothing was wrong except the question being asked
+ * too early.
+ *
+ * So it waits for the button to LEAVE the pending state and for the page to
+ * say so, and only then reads. It never throws: a timeout hands the real page
+ * text to the check, which is the thing that should decide.
+ */
+async function waitForRecorded(page, timeout = 30000) {
+  await page
+    .locator('button', { hasText: /^Recording your request/i })
+    .waitFor({ state: 'detached', timeout })
+    .catch(() => {})
+  await page.getByText(/Recorded\./i).first().waitFor({ state: 'visible', timeout }).catch(() => {})
+  await page.waitForTimeout(500)
+}
+
+/** What the page says about the request, for a check message a reader can act on. */
+function recordedSentence(text) {
+  const at = text.indexOf('Recorded')
+  if (at < 0) return `the page never said "Recorded."; it said ${JSON.stringify(text.replace(/\s+/g, ' ').trim().slice(0, 140))}`
+  return `the page said ${JSON.stringify(text.slice(at, at + 90))}`
+}
+
 async function fillByLabel(page, rx, value) {
   for (const el of await page.$$('input')) {
     if (!(await el.isVisible().catch(() => false))) continue
@@ -658,7 +694,7 @@ async function run() {
         check(`${vp.label}.rights.no-login-is-asked-for`, !rightsAsksToSignIn, rightsAsksToSignIn ? 'the rights page asks the visitor to sign in' : 'no login is asked for')
 
         await clickByText(strangerPage, /stop using my details/i)
-        await strangerPage.waitForTimeout(3000)
+        await waitForRecorded(strangerPage)
         await strangerPage.screenshot({ path: shot('07-facilitation-stopped.png'), fullPage: true })
         const afterStop = await suppressionsFor(yesEmail)
         check(
@@ -684,14 +720,14 @@ async function run() {
         await noTokenPage.screenshot({ path: shot('08-rights-entry.png'), fullPage: true })
         await noTokenPage.locator('#marketing-rights-email').fill(typedEmail)
         await clickByText(noTokenPage, /stop using my details/i)
-        await noTokenPage.waitForTimeout(3000)
+        await waitForRecorded(noTokenPage)
         await noTokenPage.screenshot({ path: shot('09-rights-entry-recorded.png'), fullPage: true })
         const typedText = await noTokenPage.locator('body').innerText()
         const typedSuppressions = await suppressionsFor(typedEmail)
         check(
           `${vp.label}.rights.no-token-form-records-the-stop-and-says-so`,
           typedSuppressions.some(s => s.scope === 'facilitation_by_others') && /Recorded\./i.test(typedText),
-          `${typedSuppressions.length} suppression(s) for the typed address, page said: ${JSON.stringify(typedText.slice(typedText.indexOf('Recorded'), typedText.indexOf('Recorded') + 90))}`,
+          `${typedSuppressions.length} suppression(s) for the typed address; ${recordedSentence(typedText)}`,
         )
         const noOverflow = await noTokenPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
         check(`${vp.label}.rights.no-horizontal-overflow`, noOverflow, noOverflow ? 'no sideways scroll' : 'the rights page overflows sideways')

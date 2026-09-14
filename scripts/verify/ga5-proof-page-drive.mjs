@@ -16,10 +16,19 @@
  *      the evidence expansion reachable with a thumb.
  *
  * Run (dev server on 3100 against TEST):
+ *   UPSTASH_REDIS_REST_URL=http://127.0.0.1:8179 UPSTASH_REDIS_REST_TOKEN=local \
  *   node --import ./scripts/lib/server-only-shim.mjs \
  *        --import ./scripts/lib/src-alias-loader.mjs \
  *        --env-file=.env.local scripts/verify/ga5-proof-page-drive.mjs \
  *        --out C:/dev/EVIDENCE/GA5
+ *
+ * UPSTASH_* IS NOT OPTIONAL. This drive clears the resolved marketing
+ * commission rule, and that cache lives in the store the server was started
+ * with, so a process without it invalidates nothing at all and its fee checks
+ * then pass or fail on whether the 60 second TTL happened to expire, which is a
+ * reading about timing rather than about the product. Added 14 September 2026
+ * after the identical omission in ft1-forecast-drive produced three readings of
+ * the same stale fee and an accusation against a page that was correct.
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'

@@ -18,10 +18,23 @@
  * wall, and the figures on screen move when the fee configuration moves.
  *
  * Run (dev server on 3100 against TEST):
+ *   UPSTASH_REDIS_REST_URL=http://127.0.0.1:8179 UPSTASH_REDIS_REST_TOKEN=local \
  *   node --import ./scripts/lib/server-only-shim.mjs \
  *        --import ./scripts/lib/src-alias-loader.mjs \
  *        --env-file=.env.local scripts/verify/ft1-forecast-drive.mjs \
  *        --out C:/dev/EVIDENCE/FT1
+ *
+ * UPSTASH_* IS NOT OPTIONAL AND WAS MISSING UNTIL 14 September 2026. The fee
+ * check clears the resolved pricing rule the way /admin/pricing does, and that
+ * cache lives in the store the server was started with. A drive process without
+ * it prints "Redis disabled" and the invalidation does NOTHING, so the check
+ * read the same stale figure three times and reported
+ *
+ *     the fee read $68.50, then $68.50 ... and $68.50
+ *
+ * which says the displayed fee does not follow pricing_rules, and that would
+ * mean the shown fee can drift from the charged fee. It does follow it. With
+ * the store named in the command: $68.50, then $143.50, then $68.50, 29 of 29.
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'

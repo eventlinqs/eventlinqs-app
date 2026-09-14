@@ -222,6 +222,37 @@ export function analyseDrive(name, text) {
       satisfied: /server-only-shim/.test(header),
     })
   }
+  /*
+   * NEEDS THE CACHE STORE, and this requirement is here because this guard's own
+   * header used to say it could not be judged: "It does not check
+   * UPSTASH_REDIS_REST_URL, because whether a drive touches a rate limited route
+   * is not visible in its imports, and a rule that guesses is a rule somebody
+   * switches off." That reasoning is sound for a RATE LIMITED ROUTE and does not
+   * cover this, which is visible in the imports and needs no guess: a drive that
+   * imports an `invalidate*` function is clearing a cache, and on this machine
+   * that cache lives in the store the server was started with. A drive process
+   * without it logs "Redis disabled" and the invalidation is a silent no-op.
+   *
+   * 14 September 2026, ft1-forecast-drive, run exactly as its header said:
+   *
+   *     FAIL  ft1.configuration.the-fee-on-screen-moves-when-the-configuration-moves
+   *     the fee read $68.50, then $68.50 ... and $68.50
+   *
+   * which says the displayed fee does not follow pricing_rules, and that would
+   * mean the shown fee can drift from the charged fee. With the store named in
+   * the command: $68.50, then $143.50, then $68.50, 29 of 29. The page was right
+   * the whole time and the harness accused it, which is the precise failure mode
+   * this guard exists for.
+   */
+  if (/import\s*\{[^}]*\binvalidate[A-Za-z0-9_]*\b[^}]*\}\s*from\s*'(?:\.\.\/)+src\//.test(text)) {
+    needs.push({
+      what: 'UPSTASH_REDIS_REST_URL',
+      because:
+        'it imports an invalidate function out of src/, and without that store the invalidation is a ' +
+        'silent no-op that reads back as the product ignoring its own configuration',
+      satisfied: /UPSTASH_REDIS_REST_URL/.test(header),
+    })
+  }
   if (/\blinkFromInbox\b/.test(text)) {
     needs.push({
       what: 'SERVER_LOG',

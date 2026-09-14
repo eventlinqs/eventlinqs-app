@@ -2699,6 +2699,22 @@ const DRILLS = [
     expect: 'ga3-attribution-drive.mjs: the header never names server-only-shim',
   },
   /*
+   * The third requirement, added 14 September 2026. ft1-forecast-drive run
+   * exactly as its header then read reported the fee as $68.50 three times over
+   * a configuration change, which says the displayed fee does not follow
+   * pricing_rules. It does. The drive's own invalidation was a no-op because
+   * its process had no cache store, and the store is not a guess: the drive
+   * IMPORTS an invalidate function out of src/.
+   */
+  {
+    name: 'a drive that clears a cache stops naming the store it lives in',
+    guard: `${GUARDS}/drive-usage-names-what-it-needs.mjs`,
+    file: 'scripts/verify/ft1-forecast-drive.mjs',
+    find: ' *   UPSTASH_REDIS_REST_URL=http://127.0.0.1:8179 UPSTASH_REDIS_REST_TOKEN=local',
+    replace: ' *   (the store removed by the drill)',
+    expect: 'ft1-forecast-drive.mjs: the header never names UPSTASH_REDIS_REST_URL',
+  },
+  /*
    * lane-tagged-privilege-writes. The drill takes the lane filter out of the
    * FO1 offer drive's own selection, which is EXACTLY the state the file was in
    * on the morning of 14 September 2026 when it was found granting founding

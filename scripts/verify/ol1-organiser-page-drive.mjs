@@ -180,9 +180,48 @@ try {
     )
     await page.screenshot({ path: join(out, `${vp.label}-01-live-proof.png`), fullPage: false })
 
-    // The card's link resolves, because a proof block that 404s is worse than none.
+    /*
+     * The card's link resolves, because a proof block that 404s is worse than
+     * none.
+     *
+     * AND WHEN IT DOES NOT, THE DRIVE ASKS WHOSE FAULT IT IS BEFORE SAYING SO.
+     * 14 September 2026: this reported
+     *
+     *     /events/lane-c-seo5-soldout-mu17elve answered 410
+     *
+     * which reads as the page publishing a dead link. It was not. Three lanes
+     * drive one TEST project at once, that slug is lane C's SEO5 fixture, and
+     * it was published when this drive READ the catalogue and archived by its
+     * owner before this drive REQUESTED it. Two later runs of the same code
+     * passed, 36 of 36, which is the signature of a race and not of a defect.
+     *
+     * A 410 is only the product's fault if the event is STILL published, so
+     * that is what is asked. The database is the tie breaker rather than a
+     * retry, because a retry would hide the real version of this too.
+     */
     const opened = await page.goto(`${BASE}/events/${newest.slug}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-    check(`ol1.${vp.label}.proof-link-resolves`, opened?.status() === 200, `/events/${newest.slug} answered ${opened?.status()}`)
+    const answered = opened?.status()
+    if (answered === 200) {
+      check(`ol1.${vp.label}.proof-link-resolves`, true, `/events/${newest.slug} answered 200`)
+    } else {
+      const { data: still } = await db
+        .from('events')
+        .select('status, visibility')
+        .eq('id', newest.id)
+        .maybeSingle()
+      const stillPublished = still?.status === 'published' && still?.visibility === 'public'
+      check(
+        `ol1.${vp.label}.proof-link-resolves`,
+        !stillPublished,
+        stillPublished
+          ? `/events/${newest.slug} answered ${answered} while the event is STILL published and public, ` +
+            `so the page is publishing a dead link and this IS the product`
+          : `/events/${newest.slug} answered ${answered}, and the event is no longer published ` +
+            `(status ${still?.status}, visibility ${still?.visibility}). It was published when this ` +
+            `drive read the catalogue, so another lane retired its fixture mid-run. That is this ` +
+            `shared machine, not the page.`,
+      )
+    }
 
     // 4. Every way out of the page.
     await page.goto(`${BASE}/organisers`, { waitUntil: 'domcontentloaded', timeout: 120000 })
