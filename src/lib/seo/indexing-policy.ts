@@ -180,6 +180,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/account/notifications', klass: 'never', why: 'authenticated' },
   { route: '/account/saved', klass: 'never', why: 'authenticated' },
   { route: '/account/tickets', klass: 'never', why: 'authenticated' },
+  { route: '/offline', klass: 'never', why: 'the service worker fallback document (close-out C8B.5): a real page only so it can wear the design system, never a search result' },
   { route: '/admin', klass: 'never', why: 'staff only' },
   { route: '/admin/analytics', klass: 'never', why: 'staff only' },
   { route: '/admin/audit', klass: 'never', why: 'staff only' },

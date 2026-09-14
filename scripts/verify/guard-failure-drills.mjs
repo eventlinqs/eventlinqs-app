@@ -882,6 +882,56 @@ const DRILLS = [
     expect: 'not on the reviewed list',
   },
   /*
+   * weak-network-contract (close-out C8B.5, Scope v5 10.3), five drills, one per
+   * clause plus the silent-catch case.
+   *
+   * THE FIFTH IS THE ONE WORTH READING. Clause 1 could have been a grep for the
+   * word "catch", and a grep would have gone green on a catch that swallows the
+   * failure and shows the buyer nothing, which is a DIFFERENT defect rather than
+   * a fix: a button that visibly does nothing. So the drill empties the catch
+   * body instead of deleting the try, and the clause must still fire.
+   */
+  {
+    name: 'the checkout submit stops catching a thrown server action',
+    guard: `${GUARDS}/weak-network-contract.mjs`,
+    file: 'src/app/checkout/[reservation_id]/checkout-form.tsx',
+    find: '      let result: Awaited<ReturnType<typeof processCheckout>>\n      try {',
+    replace: '      let result: Awaited<ReturnType<typeof processCheckout>>\n      if (true) {',
+    expect: 'not inside a try/catch',
+  },
+  {
+    name: 'the checkout catches the network failure and tells the buyer nothing',
+    guard: `${GUARDS}/weak-network-contract.mjs`,
+    file: 'src/app/checkout/[reservation_id]/checkout-form.tsx',
+    find: '        setSubmitError(describeCheckoutSubmitFailure(browserIsOnline()).message)',
+    replace: '        // swallowed',
+    expect: 'does not call describeCheckoutSubmitFailure',
+  },
+  {
+    name: 'the root service worker starts caching pages, so a buyer can be shown a stale price',
+    guard: `${GUARDS}/weak-network-contract.mjs`,
+    file: 'public/app-sw.js',
+    find: '  if (url.pathname.indexOf(STATIC_PATH) === 0) {\n    event.respondWith(cacheFirst(request))\n  }',
+    replace: '  event.respondWith(cacheFirst(request))',
+    expect: 'without a STATIC_PATH test above it',
+  },
+  {
+    name: 'the root service worker is never registered, so the offline page is dead weight',
+    guard: `${GUARDS}/weak-network-contract.mjs`,
+    file: 'src/app/layout.tsx',
+    find: '          <RegisterAppWorker />',
+    replace: '          {/* removed */}',
+    expect: 'RegisterAppWorker is not rendered',
+  },
+  {
+    name: 'the offline page becomes indexable, so "You are offline" can rank for EventLinqs',
+    guard: `${GUARDS}/weak-network-contract.mjs`,
+    file: 'src/lib/seo/indexing-policy.ts',
+    find: "  { route: '/offline', klass: 'never',",
+    replace: "  { route: '/offline', klass: 'always',",
+    expect: "is not classified 'never'",
+  },
+  /*
    * no-hardcoded-spacing (close-out C14.12), three drills: an arbitrary
    * utility off the 4px grid, an inline style off it, and a CSS declaration
    * off it. A token or a multiple of 4px passes, so the guard only fires on a

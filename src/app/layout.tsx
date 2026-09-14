@@ -9,6 +9,7 @@ import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
 import { ReferralCapture } from '@/components/growth/referral-capture'
+import { RegisterAppWorker } from '@/components/pwa/register-app-worker'
 import { getSiteUrl } from '@/lib/site-url'
 import { siteVerificationMetadata } from '@/lib/seo/site-verification'
 import { BRAND_STRAPLINE, BRAND_STRAPLINE_SHORT, BRAND_TAGLINE } from '@/lib/brand/positioning'
@@ -225,6 +226,11 @@ export default function RootLayout({
           {/* First-touch attribution capture (acquisition loop). Renders null
            *  and runs only in a post-paint effect, so it never costs LCP. */}
           <ReferralCapture />
+          {/* The root service worker, so a navigation with no signal answers
+           *  with an EventLinqs page instead of the browser's error page
+           *  (close-out C8B.5, Scope v5 10.3). Renders null and registers only
+           *  after `load`, so it is outside every window Lighthouse measures. */}
+          <RegisterAppWorker />
         </HeroPresenceProvider>
       </body>
     </html>

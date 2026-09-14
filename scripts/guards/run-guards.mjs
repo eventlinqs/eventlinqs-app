@@ -156,6 +156,11 @@
  *   one-priority-image        a document preloads its LCP candidate and nothing else: every
  *                              priority grant is a named candidate, none reaches past the
  *                              first item (close-out C8)
+ *   weak-network-contract     the checkout survives a submit that never reached the server,
+ *                              the root service worker keeps only content-hashed assets so
+ *                              no cache can serve a stale price, it registers after the
+ *                              paint, and /offline is a real route classified never
+ *                              (close-out C8B.5, Scope v5 10.3)
  *   homepage-hero-never-empty a homepage with no featured event still wears a curated,
  *                              licensed hero raster from the attribution file beside the
  *                              assets, and the media component owns the failure path
@@ -1191,6 +1196,14 @@ const GUARDS = [
   // seconds for it. Every priority grant is a named LCP candidate; a grant that
   // reaches past the first item fails. Drilled red and green.
   'scripts/guards/one-priority-image.mjs',
+  // Close-out C8B.5 (15 September 2026), Scope v5 10.3: the platform's contract
+  // with a weak network. The checkout survives a submit that never reaches the
+  // server (it used to throw the buyer to the error boundary and lose every
+  // value they typed), the root service worker keeps only content-hashed
+  // assets so no cache can ever serve a stale price, it registers after the
+  // paint, and /offline is a real route classified never. Four clauses, each
+  // drilled red and green.
+  'scripts/guards/weak-network-contract.mjs',
   // Close-out C17 (7 September 2026): the homepage hero never renders without
   // imagery. Production showed a flat navy panel the day every event had ended;
   // the empty branch now wears a curated, licensed raster and the media component

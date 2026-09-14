@@ -1780,8 +1780,29 @@ const ROOT = join(HERE, '..', '..')
  * red ones. It is the drill for a check whose first version could not fail at
  * all.
  */
-const MIN_FILES = 418
-const MIN_TESTS = 5139
+/*
+ * 2026-09-15 (close-out C8B.5, Scope v5 10.3, the weak-network contract): raised
+ * 418/5139 -> 420/5159, MEASURED THREE TIMES on a green suite and identical on
+ * every one, because the entry above records a count that moved by one between
+ * runs and a floor pinned above the low measurement refuses a push for a reason
+ * nobody can act on.
+ *
+ * Two new files, twenty tests, and both exist because a DRIVE found a live
+ * defect rather than because a rule needed restating.
+ * tests/unit/checkout/network-failure.test.ts holds what a buyer is told when a
+ * checkout submit never reached the server. Before this item that submit had no
+ * catch, so a dropped connection threw the buyer to the checkout error boundary
+ * and took their name, their email and every attendee's details with it, under a
+ * heading reading "Our team has been notified" while no report could leave the
+ * browser either.
+ * tests/unit/pwa/app-service-worker.test.ts drives the new root service worker
+ * inside a fake worker global, and its most important cases are the REFUSALS:
+ * that a successful navigation is never cached, because an event page carries a
+ * price and a remaining-tickets count, and serving yesterday's total would
+ * quietly break the ACCC all-in display in a way nothing else here could detect.
+ */
+const MIN_FILES = 420
+const MIN_TESTS = 5159
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
