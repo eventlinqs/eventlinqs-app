@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
@@ -179,6 +180,20 @@ export default async function AdminCampaignsPage({ searchParams }: Props) {
             ) : (
               <p className="mt-2 text-sm text-white/70">{view.previewProblem}</p>
             )}
+          </section>
+
+          <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+            <h2 className="font-display text-lg font-semibold text-white">The proof</h2>
+            <p className="mt-1 text-sm text-white/60">
+              What this campaign produced and the fee against it, every figure read from the order
+              ledger and the attribution records rather than assembled by hand.
+            </p>
+            <Link
+              href={`/admin/campaigns/${view.id}/proof`}
+              className="mt-4 inline-flex min-h-[44px] items-center rounded-lg border border-white/20 px-5 text-sm font-semibold text-white transition hover:border-[var(--brand-accent)]"
+            >
+              Open the campaign proof
+            </Link>
           </section>
 
           <section className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">

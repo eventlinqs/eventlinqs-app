@@ -2416,6 +2416,7 @@ export type Database = {
           default_volume_cap: number
           id: boolean
           mode: string
+          proof_page_enabled: boolean
           test_domain: string
           unsubscribe_path: string
           updated_at: string
@@ -2424,6 +2425,7 @@ export type Database = {
           default_volume_cap: number
           id?: boolean
           mode: string
+          proof_page_enabled?: boolean
           test_domain: string
           unsubscribe_path: string
           updated_at?: string
@@ -2432,6 +2434,7 @@ export type Database = {
           default_volume_cap?: number
           id?: boolean
           mode?: string
+          proof_page_enabled?: boolean
           test_domain?: string
           unsubscribe_path?: string
           updated_at?: string
@@ -2441,16 +2444,19 @@ export type Database = {
       marketing_channel: {
         Row: {
           code: string
+          cost_per_send_cents: number | null
           created_at: string
           display_name: string
         }
         Insert: {
           code: string
+          cost_per_send_cents?: number | null
           created_at?: string
           display_name: string
         }
         Update: {
           code?: string
+          cost_per_send_cents?: number | null
           created_at?: string
           display_name?: string
         }
@@ -2925,6 +2931,44 @@ export type Database = {
           revenue_share_basis?: string
         }
         Relationships: []
+      }
+      marketing_proof_snapshot: {
+        Row: {
+          campaign_id: string
+          figures: Json
+          id: string
+          period_end: string
+          period_start: string
+          sources: Json
+          taken_at: string
+        }
+        Insert: {
+          campaign_id: string
+          figures: Json
+          id?: string
+          period_end: string
+          period_start: string
+          sources: Json
+          taken_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          figures?: Json
+          id?: string
+          period_end?: string
+          period_start?: string
+          sources?: Json
+          taken_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_proof_snapshot_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaign"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketing_recipient: {
         Row: {
@@ -7219,6 +7263,10 @@ export type Database = {
         Returns: boolean
       }
       marketing_campaigner_default_cap: { Args: never; Returns: number }
+      marketing_proof_every_figure_is_sourced: {
+        Args: { p_figures: Json; p_sources: Json }
+        Returns: boolean
+      }
       materialize_seats: {
         Args: { p_event_id: string; p_seat_map_id: string }
         Returns: number

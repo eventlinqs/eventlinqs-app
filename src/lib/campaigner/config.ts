@@ -25,6 +25,8 @@ export interface CampaignerConfig {
   testDomain: string
   defaultVolumeCap: number
   unsubscribePath: string
+  /** GA5's reversal condition: false and the campaign proof route answers 404. */
+  proofPageEnabled: boolean
   /** True when the row could not be read and the safe posture was assumed. */
   degraded: boolean
 }
@@ -35,6 +37,7 @@ export const SEEDED_CAMPAIGNER_CONFIG = {
   testDomain: 'eventlinqs.test',
   defaultVolumeCap: 500,
   unsubscribePath: '/marketing/preferences',
+  proofPageEnabled: true,
 }
 
 const SAFE_POSTURE: CampaignerConfig = {
@@ -42,6 +45,12 @@ const SAFE_POSTURE: CampaignerConfig = {
   testDomain: SEEDED_CAMPAIGNER_CONFIG.testDomain,
   defaultVolumeCap: SEEDED_CAMPAIGNER_CONFIG.defaultVolumeCap,
   unsubscribePath: SEEDED_CAMPAIGNER_CONFIG.unsubscribePath,
+  /*
+   * The proof page is a READ. Holding it shut when the configuration cannot be
+   * read would hide evidence rather than prevent an action, and the safe
+   * posture for a read is the opposite of the safe posture for a send.
+   */
+  proofPageEnabled: true,
   degraded: true,
 }
 
@@ -50,7 +59,7 @@ export async function readCampaignerConfig(): Promise<CampaignerConfig> {
     const admin = createAdminClient()
     const { data, error } = await admin
       .from('marketing_campaigner_config')
-      .select('mode, test_domain, default_volume_cap, unsubscribe_path')
+      .select('mode, test_domain, default_volume_cap, unsubscribe_path, proof_page_enabled')
       .eq('id', true)
       .maybeSingle()
     if (error || !data) {
@@ -64,6 +73,7 @@ export async function readCampaignerConfig(): Promise<CampaignerConfig> {
       testDomain: data.test_domain,
       defaultVolumeCap: Number(data.default_volume_cap),
       unsubscribePath: data.unsubscribe_path,
+      proofPageEnabled: data.proof_page_enabled,
       degraded: false,
     }
   } catch (error) {

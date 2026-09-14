@@ -72,6 +72,11 @@
  *                              campaign and channel, no SMS rests on a consent scoped
  *                              to email, no campaign exceeds its own volume cap, and
  *                              nothing leaves draft without an approval for its segment
+ *   proof-page-every-number-sourced  every figure on the campaign proof page is
+ *                              produced through a source or a stated absence, no
+ *                              number, currency or percentage is typed into the
+ *                              rendering path, and the database refuses a stored
+ *                              snapshot holding a figure nothing sources
  *   consent-ledger-is-evidence  the consent and suppression ledgers refuse UPDATE and
  *                              DELETE at the database, an event cannot carry empty
  *                              wording or a null tenant, no audience row can exist for
@@ -874,6 +879,13 @@ const GUARDS = [
   // level check removed: a send to somebody absent from the allowlist, an SMS to
   // somebody whose consent covers email, and the insert that exceeds the cap.
   'scripts/guards/campaigner-allowlist-and-cap-in-database.mjs',
+  // Close-out GA5. A client will not keep paying a commission they cannot check,
+  // and the moment a number appears on the proof page that nobody can trace, the
+  // page stops being proof and becomes a claim. This reads the rendering path
+  // out of the repository, so it needs no database and runs everywhere. Drilled
+  // red by replacing one figure with a typed literal, which it names by figure
+  // and by file, and by removing the snapshot constraint from the migration.
+  'scripts/guards/proof-page-every-number-sourced.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and

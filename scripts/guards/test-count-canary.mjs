@@ -1516,9 +1516,20 @@ const ROOT = join(HERE, '..', '..')
  * key, day count, cap or route is a literal in anything the item adds. The
  * database half is not here by design: GA4 requires it proven by removing every
  * application check and watching the constraint refuse anyway, which is driven.
+ *
+ * 2026-09-14 (lane B, close-out GA5): raised 396/5037 -> 397/5065, MEASURED.
+ * tests/unit/growth/proof-page holds the eight aggregation rules GA5 names by
+ * name, plus the two the page rests on and the item does not name: that a
+ * figure which cannot be sourced renders as words rather than as a zero, and
+ * that the snapshot payload carries a source for every figure in it. Also here
+ * is the scan that fails on any numeric literal, currency string or percentage
+ * anywhere in the rendering path, with its exceptions listed in the test rather
+ * than inferred. The database half is not here by design: the check constraint
+ * that refuses a stored snapshot holding an unsourced figure is proven by
+ * removing it and watching the guard name it, which is drilled.
  */
-const MIN_FILES = 396
-const MIN_TESTS = 5037
+const MIN_FILES = 397
+const MIN_TESTS = 5065
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
