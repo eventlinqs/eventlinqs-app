@@ -2698,6 +2698,25 @@ const DRILLS = [
     replace: ' *     node (the shim flag removed by the drill)',
     expect: 'ga3-attribution-drive.mjs: the header never names server-only-shim',
   },
+  /*
+   * lane-tagged-privilege-writes. The drill takes the lane filter out of the
+   * FO1 offer drive's own selection, which is EXACTLY the state the file was in
+   * on the morning of 14 September 2026 when it was found granting founding
+   * windows on lane A's refund fixtures and lane C's events.
+   *
+   * The anchor is `isLaneB`, which is the file's ONLY lane PREDICATE. Its other
+   * ten lane tags are names it gives rows it creates, and the guard does not
+   * accept those, for the reason written in the guard: this very file named
+   * every row lane-b on the morning it was granting windows to lane A's.
+   */
+  {
+    name: 'a drive that grants a founding window stops saying whose row it is',
+    guard: `${GUARDS}/lane-tagged-privilege-writes.mjs`,
+    file: 'scripts/verify/fo1-founding-offer-drive.mjs',
+    find: "return /lane-b/i.test(`${org?.name ?? ''} ${org?.slug ?? ''}`)",
+    replace: 'return true',
+    expect: 'fo1-founding-offer-drive.mjs: calls admin_set_founding_waiver and never restricts its',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

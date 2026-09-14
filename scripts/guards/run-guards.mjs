@@ -36,6 +36,12 @@
  *   shared-log-is-opened-for-append  a descriptor handed to a child process is
  *                              opened for append, so a second writer on the same
  *                              file cannot be overwritten by a stale offset
+ *   lane-tagged-privilege-writes  a script that grants a Founding Organiser
+ *                              window on shared TEST restricts its subject to its
+ *                              own lane's rows, because a window makes the platform
+ *                              fee zero and a zero keep is refused at the payment
+ *                              step, so one left on another lane's charge fixture
+ *                              fails that lane's proof for a reason not in its tree
  *   drive-usage-names-what-it-needs  a drive's header names every loader flag and
  *                              environment variable that drive needs, so the
  *                              evidence behind a closure can be reproduced
@@ -732,6 +738,14 @@ const GUARDS = [
   // own evidence. A drive is what a closure block cites, so a drive nobody can
   // reproduce is a closure resting on somebody's shell history. Drilled red in
   // scripts/verify/guard-failure-drills.mjs.
+  // Three lanes share TEST vkapkibzokmfaxqogypq. On 14 September 2026 lane B's
+  // FO1 offer drive was found granting and revoking Founding Organiser windows on
+  // whichever organisation happened to be first, which on that day meant lane A's
+  // refund fixtures and lane C's events. A window sets the platform fee to zero and
+  // a zero keep is refused at the payment step, so it makes another lane's proof
+  // fail at Stripe with the cause nowhere in that lane's tree. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/lane-tagged-privilege-writes.mjs',
   'scripts/guards/drive-usage-names-what-it-needs.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here

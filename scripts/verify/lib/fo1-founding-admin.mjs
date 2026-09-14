@@ -74,3 +74,40 @@ export async function pressFoundingTerm(page, base, orgName, label, shotPath) {
   if (shotPath) await page.screenshot({ path: shotPath, fullPage: false })
   return { ok: true, message: text.replace(/\s+/g, ' ').slice(0, 200) }
 }
+
+/**
+ * WHICH SELLABLE EVENT THE OFFER DRIVE MAY GRANT A FOUNDING WINDOW TO.
+ *
+ * Extracted from `fo1-founding-offer-drive` on 14 September 2026 because the
+ * rule it encodes was learned from a defect and a rule learned from a defect
+ * needs a test, not a comment.
+ *
+ * The drive GRANTS a founding window, exercises it, and REVOKES it. That only
+ * leaves TEST as it was found if the organisation started without one. The
+ * version with no such filter took the first sellable event and, on a machine
+ * where `fo1-founding-purchase-drive` had just run and KEPT its fixture,
+ * picked that fixture: the precondition check failed, which read as a product
+ * fault, and then the teardown revoked a window the other drive was relying on
+ * and reported "left as found".
+ *
+ * @template {{organisation?: {name?: string, slug?: string, founding_fee_free_until?: string|null}}} T
+ * @param {readonly T[]|undefined} sellable
+ * @returns {{target: T|null, reason: string|null}} `reason` is the sentence the
+ *   caller should refuse with, and is null exactly when `target` is not.
+ */
+export function chooseFoundingDriveTarget(sellable) {
+  const candidates = sellable ?? []
+  const standard = candidates.filter(e => e?.organisation?.founding_fee_free_until == null)
+  if (standard.length > 0) return { target: standard[0], reason: null }
+  if (candidates.length > 0) {
+    return {
+      target: null,
+      reason:
+        `every sellable PAID event on TEST belongs to an organisation that ALREADY holds a founding ` +
+        `window (${candidates.length} candidate(s)). This drive grants and revokes, so it needs one ` +
+        `that starts standard. Clear a fixture, or run it before fo1-founding-purchase-drive rather ` +
+        `than after it.`,
+    }
+  }
+  return { target: null, reason: 'no published, public, sellable PAID event with places left on TEST' }
+}

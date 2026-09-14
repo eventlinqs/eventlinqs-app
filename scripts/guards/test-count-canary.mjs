@@ -1801,9 +1801,20 @@ const ROOT = join(HERE, '..', '..')
  * lane B had never seen, and a tree holding both sets of files is a third
  * thing. The pair below is MEASURED on it: 411 files and 5321 tests, 0 failed and 0 skipped,
  * on a clean run of the whole suite of the merged tree.
+ *
+ * 2026-09-14 (lane B, the FO1 drive collision): raised 411/5321 -> 412/5327,
+ * MEASURED on a green suite of the whole tree. One new file, six tests.
+ * tests/unit/verify/fo1-drive-target-selection holds the rule that stops one
+ * FO1 drive deleting the other's fixture: the offer drive grants and revokes a
+ * founding window, so its subject must START without one, and on a machine
+ * where three lanes share TEST it must be a lane-B row rather than whichever
+ * organisation happens to be first. It was neither, and the teardown then
+ * revoked a window it had not granted while reporting "left as found". Both
+ * directions are held, because the failing one is the one that was wrong and a
+ * test of the happy path alone would have passed before the fix.
  */
-const MIN_FILES = 411
-const MIN_TESTS = 5321
+const MIN_FILES = 412
+const MIN_TESTS = 5327
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

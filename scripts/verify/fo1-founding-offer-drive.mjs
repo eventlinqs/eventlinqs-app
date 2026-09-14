@@ -48,6 +48,8 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { chromium, BASE, messagesOnScreen } from '../journeys/harness.mjs'
+import { chooseFoundingDriveTarget } from './lib/fo1-founding-admin.mjs'
+import { buildFixture } from './lib/refund-proof-fixture.mjs'
 
 const args = process.argv.slice(2)
 let out = null
@@ -115,15 +117,94 @@ async function pickTargets() {
     return free > 1
   })
 
-  const target = sellablePaid[0]
-  if (!target) throw new Error('no published, public, sellable PAID event with places left on TEST')
+  /*
+   * LANE B ONLY, AND THE RULE IS NOT A TIDINESS ONE.
+   *
+   * 14 September 2026, found by arming a drill and reading what this function
+   * actually returns. Three lanes share TEST vkapkibzokmfaxqogypq and the
+   * standing rule is that a lane never edits a row tagged for another lane.
+   * This function enumerated every sellable paid event and took the first, and
+   * on the day it was read the first fourteen were:
+   *
+   *     8 x Refund Proof Presents ...     lane A's refund fixtures
+   *     4 x Northside Sound lane-c ...    lane C's fixtures
+   *     2 x Lane B FO1 Founding ...       lane B's own
+   *
+   * So this drive, whose whole purpose is to GRANT and REVOKE founding terms,
+   * was granting and revoking them on other lanes' rows. Filtering only for
+   * "not already founding" does not fix it: that merely moves the pick from
+   * lane A's fixture to lane C's.
+   *
+   * It is worse than an etiquette breach because a founding window makes the
+   * platform fee zero, and a zero keep is refused at the payment step today
+   * (the BORDER in REVIEW-QUEUE-B.md). A window left on another lane's charge
+   * fixture makes that lane's proof fail for a reason that is not in its tree.
+   *
+   * So the drive uses its OWN lane-B rows and nothing else: an existing lane-B
+   * fixture when one is there, and one it builds when none is, through the same
+   * shared builder the purchase drive uses. Never a row it did not make.
+   */
+  const laneB = sellablePaid.filter(e => isLaneB(e.organisation))
+  const chosen = chooseFoundingDriveTarget(laneB)
+  const standard = laneB.filter(e => e.organisation?.founding_fee_free_until == null)
+  return { chosen, laneB, standard }
+}
 
-  const control = (events ?? []).find(
-    e => e.organisation && e.organisation.id !== target.organisation_id && e.organisation.status === 'active',
-  )
-  if (!control) throw new Error('no second organisation on TEST to serve as the standard-organiser control')
+/** A row says on sight whose it is, or it is not this drive's to touch. */
+function isLaneB(org) {
+  return /lane-b/i.test(`${org?.name ?? ''} ${org?.slug ?? ''}`)
+}
 
-  return { target, control }
+/**
+ * The target and the control, both lane B's own, building them when TEST holds
+ * none. Returns the fixtures it built so the run can say what it made.
+ */
+async function ensureTargets() {
+  /*
+   * THE CONTROL MUST START STANDARD TOO, and the first version of this function
+   * only required it of the TARGET. The control exists to prove the words
+   * "Founding Organiser" are ABSENT for an organiser who is not one, so a
+   * control that already holds a window fails that check while the product is
+   * behaving perfectly. It did, on all three viewports, on the run that found
+   * it: the control was lane-b-mu0uyeif, fee free until March 2027, and the
+   * page was right to say so.
+   */
+  const first = await pickTargets()
+  if (first.standard.length >= 2) {
+    return { target: first.standard[0], control: first.standard[1], built: [] }
+  }
+
+  const built = []
+  const need = 2 - first.standard.length
+  for (let i = 0; i < need; i += 1) {
+    const stamp = `lane-b-${Date.now().toString(36)}${i}`
+    built.push(await buildFixture(db, {
+      stamp,
+      ownerEmail: `lane-b-fo1-offer-owner-${stamp}@eventlinqs.test`,
+      password: `${stamp}-Aa1!`,
+      capacity: 12,
+      priceCents: 2500,
+      log: m => console.log(`  fixture: ${m}`),
+      brand: {
+        org: 'Lane B FO1 Offer',
+        orgSlug: 'lane-b-fo1-offer',
+        event: 'Lane B FO1 Offer Night',
+        eventSlug: 'lane-b-fo1-offer-night',
+        owner: 'Lane B FO1 Offer Owner',
+      },
+    }))
+  }
+
+  const again = await pickTargets()
+  if (again.chosen.reason) throw new Error(again.chosen.reason)
+  if (again.standard.length < 2) {
+    throw new Error(
+      `built ${built.length} lane-B fixture(s) and TEST still shows only ${again.standard.length} standard ` +
+        `lane-B sellable event(s). This drive needs two: one to grant a window to and one to prove the ` +
+        `words are absent without one.`,
+    )
+  }
+  return { target: again.standard[0], control: again.standard[1], built }
 }
 
 /* ---------------------------------------------------------- the owner's login */
@@ -327,15 +408,28 @@ async function reachOrderRow(page, slug, buyerEmail, shotPrefix) {
 let browser = null
 let target = null
 let granted = false
+/*
+ * WHAT THE ORGANISATION HELD BEFORE THE DRIVE TOUCHED IT, read once and kept
+ * out here so the `finally` can put it back. "Left as found" is a claim about
+ * the state at the start, so a teardown that cannot see that state cannot make
+ * the claim, and the version that revoked unconditionally made it anyway.
+ */
+let before = null
 
 try {
-  const picked = await pickTargets()
+  const picked = await ensureTargets()
   target = picked.target
   const control = picked.control
   console.log(`target event  ${target.slug} (${target.organisation.name})`)
   console.log(`control event ${control.slug} (${control.organisation.name})`)
+  if (picked.built.length) console.log(`built ${picked.built.length} lane-B fixture(s) because TEST held too few`)
+  check(
+    'fo1.setup.both-rows-are-lane-b',
+    isLaneB(target.organisation) && isLaneB(control.organisation),
+    `target ${target.organisation.slug}, control ${control.organisation.slug}`,
+  )
 
-  const before = {
+  before = {
     is_founding: target.organisation.is_founding,
     founding_fee_free_until: target.organisation.founding_fee_free_until,
   }
@@ -534,24 +628,33 @@ try {
   failures.push(`drive threw: ${String(error?.message ?? error)}`)
   console.error(error)
 } finally {
-  // LEAVE TEST AS IT WAS FOUND. The organisation is a shared fixture and the
-  // window must not outlive this drive, whatever happened above.
-  if (target) {
-    await db.rpc('admin_set_founding_waiver', {
-      p_org_id: target.organisation_id,
-      p_until: null,
-      p_override: false,
-      p_membership: 'revoke',
-    })
+  /*
+   * LEAVE TEST AS IT WAS FOUND, AND "AS FOUND" MEANS `before`, NOT "standard".
+   * The previous version revoked unconditionally and then asserted the window
+   * was gone, which is the same sentence for two different outcomes: restoring
+   * an organisation that started standard, and DESTROYING one that did not.
+   * The target filter above should now make the second impossible, and this is
+   * the second lock on it, because a precondition and a teardown that disagree
+   * is how the first one got through.
+   */
+  if (target && before) {
+    const restore = before.founding_fee_free_until === null
+      ? { p_org_id: target.organisation_id, p_until: null, p_override: false, p_membership: 'revoke' }
+      : { p_org_id: target.organisation_id, p_until: before.founding_fee_free_until, p_override: true, p_membership: 'grant' }
+    await db.rpc('admin_set_founding_waiver', restore)
     const { data: after } = await db
       .from('organisations')
       .select('is_founding, founding_fee_free_until')
       .eq('id', target.organisation_id)
       .maybeSingle()
+    const same =
+      String(after?.founding_fee_free_until ?? null) === String(before.founding_fee_free_until ?? null) &&
+      Boolean(after?.is_founding) === Boolean(before.is_founding)
     check(
       'fo1.teardown.left-as-found',
-      after?.founding_fee_free_until === null && after?.is_founding === false,
-      `${target.organisation.name}: is_founding=${after?.is_founding}, window=${String(after?.founding_fee_free_until)} (granted during the run: ${granted})`,
+      same,
+      `${target.organisation.name}: found is_founding=${before.is_founding} window=${String(before.founding_fee_free_until)}, ` +
+        `left is_founding=${after?.is_founding} window=${String(after?.founding_fee_free_until)} (granted during the run: ${granted})`,
     )
   }
   // The drive took holds on the only paid event on TEST. Nothing on TEST expires
