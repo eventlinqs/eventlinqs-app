@@ -1672,9 +1672,15 @@ const ROOT = join(HERE, '..', '..')
  * says it is a full page with a banner, and nothing in the suite could say so.
  * Raised again to 4970 in the same session: the reversal condition gained two
  * tests once it stopped being a sentence and became a flag.
+ *
+ * 2026-09-14 (close-out PARITY1, lane C): 410/5012, MEASURED. Two files: the
+ * table-stakes specification, with one break per line proving each check goes
+ * red, and the guard that refuses a line with no check. The first real run
+ * against production found five failures and three lines it could not observe,
+ * which is the point of it.
  */
-const MIN_FILES = 408
-const MIN_TESTS = 4970
+const MIN_FILES = 410
+const MIN_TESTS = 5012
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

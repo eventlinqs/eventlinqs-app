@@ -208,3 +208,9 @@ docs/verification/lh-local/
 .tmp-serve.err.log
 .tmp-serve-*.log
 .tmp-serve-*.err.log
+
+# The parity check's last result (close-out PARITY1). A RUN RESULT, not source:
+# it is written by scripts/ops/parity-check.mjs and read by the daily digest,
+# and committing it would put one machine's observation of production into
+# everybody's tree and make a merge conflict out of a measurement.
+.parity/

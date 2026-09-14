@@ -173,6 +173,9 @@
  *   all-in-pricing            no buyer is shown a number they will not pay: the fee value has
  *                              ONE source, every buyer-facing price surface resolves it live,
  *                              and no cart total is a per-ticket figure multiplied (SEO4)
+ *   parity-spec-complete      every table-stakes line in scripts/lib/parity-spec.mjs carries a
+ *                              check that answers on no evidence rather than passing on it,
+ *                              and every line is named by a test that breaks it (PARITY1)
  *   no-false-urgency          every scarcity, availability or urgency message is computed
  *                              from real inventory and is a reviewed site naming the
  *                              expression that decides it, no scarcity count is a literal,
@@ -1199,6 +1202,13 @@ const GUARDS = [
   // that nothing on this platform has ever sent. Each was true-looking and none
   // was true. The badge engine, which DOES count tickets, was correct all along.
   'scripts/guards/no-false-urgency.mjs',
+  // Close-out PARITY1 (14 September 2026): the structured data gap, the noindex
+  // discovery layer and the undisclosed buyer total were all found because the
+  // owner asked a question, not because the build noticed. The table stakes are
+  // now a specification the machine checks against production, and this guard
+  // holds the one thing a specification can quietly lose: a line with no check,
+  // or a check that reports PASS when it was shown nothing at all.
+  'scripts/guards/parity-spec-complete.mjs',
   // Close-out H2.1 (8 September 2026): production reset a TLS handshake from a
   // GitHub Actions runner and the post-deploy smoke called it an outage. The
   // reset was at the handshake, before any header was sent, so nothing that

@@ -531,6 +531,47 @@ const DRILLS = [
     expect: 'has a read that does not constrain visibility',
   },
   /*
+   * parity-spec-complete (close-out PARITY1), THREE DRILLS. The item asks for
+   * it "proven red by adding a line with no check, then green", which is the
+   * first. The other two are the ways a specification degrades without losing a
+   * line: a check that passes on no evidence, and a line whose proof is gone.
+   */
+  {
+    name: 'a table-stakes line is added with no check',
+    guard: `${GUARDS}/parity-spec-complete.mjs`,
+    file: 'scripts/lib/parity-spec.mjs',
+    find: 'export const PARITY_LINES = [',
+    replace:
+      "export const PARITY_LINES = [\n  { id: 'lane-c-drill-no-check', line: 'a line nobody wired up', why: 'the drill for the guard that catches exactly this' },",
+    expect: 'HAS NO CHECK',
+  },
+  {
+    name: 'a table-stakes check reports PASS when it was shown nothing at all',
+    guard: `${GUARDS}/parity-spec-complete.mjs`,
+    file: 'scripts/lib/parity-spec.mjs',
+    find: 'export const PARITY_LINES = [',
+    replace:
+      "export const PARITY_LINES = [\n  { id: 'lane-c-drill-always-green', line: 'a line that always says yes', why: 'the drill for a check that is not looking at anything', check: () => ({ state: 'pass', observation: 'fine', page: null }) },",
+    expect: 'reports PASS against an empty snapshot',
+  },
+  {
+    name: 'the disable switch is read inside the specification itself',
+    guard: `${GUARDS}/parity-spec-complete.mjs`,
+    file: 'scripts/lib/parity-spec.mjs',
+    find: 'export const PARITY_LINES = [',
+    replace:
+      'const laneCDrill = process.env.PARITY_CHECK_DISABLED\nvoid laneCDrill\nexport const PARITY_LINES = [',
+    expect: 'reads configuration',
+  },
+  {
+    name: 'a table-stakes line loses the test that proves it goes red',
+    guard: `${GUARDS}/parity-spec-complete.mjs`,
+    file: 'tests/unit/parity/parity-spec.test.ts',
+    find: "    id: 'past-event-state',",
+    replace: "    id: 'lane-c-drill-renamed',",
+    expect: 'is named nowhere in',
+  },
+  /*
    * no-false-urgency (close-out SEO5), FOUR DRILLS. The item asks for it
    * "proven red by hard coding a low stock message, then green", which is the
    * first two of these: one for the literal count, one for a scarcity sentence
