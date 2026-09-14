@@ -1625,10 +1625,22 @@ const ROOT = join(HERE, '..', '..')
  * partial counts is still a guess. The value below is MEASURED on the merged
  * tree.
  *
- * MEASURED: 399 files, 4860 tests, 0 failed, 0 skipped.
+ * 2026-09-14 (R1, the refund success door, and the empty claim the push gate
+ * caught): raised 399/4860 -> 400/4897, MEASURED on a green suite. R1 added one
+ * file and 43 tests across two: which Stripe events mean a refund SUCCEEDED
+ * (the route reached its successful-refund handler from one event, and Stripe's
+ * own page names a different one as the minimum), and the route-handler form of
+ * the event revalidation, which exists because updateTag throws outside a Server
+ * Action and a webhook calling it would have traded a stale page for a Stripe
+ * retry loop. The other four are the empty claim: a nameless ticket tier put
+ * `Offer.name: ""` into a nested node the serialiser had already declared clean,
+ * and the four are written against the emitted BYTES because the object is not
+ * what Google reads.
+ *
+ * MEASURED: 400 files, 4893 tests on e9dfc26b, plus the four above.
  */
-const MIN_FILES = 399
-const MIN_TESTS = 4860
+const MIN_FILES = 400
+const MIN_TESTS = 4897
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
