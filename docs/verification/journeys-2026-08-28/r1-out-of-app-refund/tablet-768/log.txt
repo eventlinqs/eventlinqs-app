@@ -1,0 +1,4 @@
+R1: a refund made outside the application
+=========================================
+01. R1 proof finished
+      1/2 at tablet-768

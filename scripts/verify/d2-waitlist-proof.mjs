@@ -72,6 +72,7 @@ import {
 } from '../journeys/harness.mjs'
 import { completeExpressOnboarding } from '../journeys/stripe-express-onboarding.mjs'
 import { MEASURE_VIEWPORT_FIT, judgeSurface } from './lib/viewport-fit.mjs'
+import { joinWaitlistThroughTheUi } from './lib/waitlist-join.mjs'
 import { stripeFrameOn, payWithTestCard, waitForConfirmedOrder } from './lib/test-card.mjs'
 
 const TAG = '[d2-waitlist]'
@@ -565,117 +566,39 @@ try {
     }
     const wanted = (await queueLength()) + 1
 
-    await page.goto(`${BASE}/events/${slug}`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
-    await page.waitForTimeout(2500)
-    const joined =
-      (await clickText(page, /join (the )?wait ?list/i)) ?? (await clickText(page, /notify me/i))
-    await page.waitForTimeout(2500)
-
     /*
-     * THE MODAL SUBMIT, NOT THE BUTTON THAT OPENED IT. An earlier run clicked
-     * `^(join|confirm|add me)` and matched the TRIGGER again, because it is
-     * still in the DOM and still visible behind the dialog, so the form was
-     * never submitted: three PASSes about joining a queue, and an empty
-     * waitlist table underneath them. The submit reads "Join Waitlist: 1
-     * ticket", inside a dialog, and that is what is pressed.
+     * THE JOIN ITSELF MOVED TO scripts/verify/lib/waitlist-join.mjs on
+     * 14 September 2026 (close-out R1), unchanged in behaviour. R1 needs a queue
+     * behind a sold-out place to prove that a refund issued OUTSIDE the
+     * application still offers the freed place down the list, and the four
+     * lessons this block paid for (the trigger matched instead of the modal
+     * submit, the fixed-position click that never settles, the two coordinate
+     * spaces, and the row that arrives at six seconds) are lessons a copy would
+     * have inherited frozen. They are in that file's header, verbatim.
      */
-    const submit = page.locator('[role=dialog][aria-labelledby=waitlist-modal-title] button[type=submit]').first()
-    let confirmed = null
-    if (await submit.count()) {
-      confirmed = (await submit.innerText().catch(() => '')).trim()
-
-      /*
-       * PRESSED WHERE A FINGER LANDS, not through Playwright's own click.
-       *
-       * `locator.click()` timed out on this button, twice, and its call log says
-       * why: "element is visible, enabled and stable", then "scrolling into view
-       * if needed", and then nothing. The modal is `position: fixed` inside a
-       * document whose `html, body` carry `overflow-x: clip` (globals.css), and
-       * the scroll step never settles on that combination. Nothing about the
-       * button is wrong, and a person never scrolls to reach it.
-       *
-       * So the drive does what a person does and what Playwright's own click
-       * would have done next: it reads the button's box, CHECKS THAT THE BUTTON
-       * IS WHAT IS ACTUALLY AT THAT POINT, which is the reachability question
-       * worth asking, and presses the mouse there.
-       */
-      /*
-       * THE POINT IS MEASURED INSIDE THE PAGE, with `getBoundingClientRect`,
-       * which is viewport-relative by definition. The run before this one used
-       * Playwright's `boundingBox()` and then asked `elementFromPoint`, and the
-       * answer came back "covered by the hero": two different coordinate spaces,
-       * and a reachability check that was measuring the wrong pixel. A drive
-       * that indicts the product for its own arithmetic is worse than no drive.
-       */
-      const at = await page.evaluate(() => {
-        const button = document.querySelector(
-          '[role=dialog][aria-labelledby=waitlist-modal-title] button[type=submit]',
-        )
-        if (!button) return null
-        const box = button.getBoundingClientRect()
-        const x = box.left + box.width / 2
-        const y = box.top + box.height / 2
-        const topmost = document.elementFromPoint(x, y)
-        return {
-          x,
-          y,
-          reached: Boolean(topmost && topmost.closest('button') === button),
-          topmost: topmost
-            ? `${topmost.tagName.toLowerCase()} "${(topmost.textContent ?? '').trim().slice(0, 40)}"`
-            : 'nothing',
-        }
-      })
-      if (at) {
-        check(
-          `the-${who}-can-actually-reach-the-join-button`,
-          at.reached,
-          at.reached
-            ? `the button is the topmost element at ${Math.round(at.x)},${Math.round(at.y)}`
-            : `covered by ${at.topmost} at ${Math.round(at.x)},${Math.round(at.y)}`,
-        )
-        await page.mouse.click(at.x, at.y)
-      } else {
-        check(`the-${who}-can-actually-reach-the-join-button`, false, 'the join button has no box on the page')
-      }
-    } else {
-      confirmed = await clickText(page, /^join waitlist:/i)
-    }
-    await page.waitForTimeout(3000)
-    /*
-     * WHAT THE DIALOG SAYS AFTER THE PRESS. A join that does not happen has a
-     * reason and the dialog is where it is written; a drive that reports only
-     * "0 rows" is asking somebody to guess.
-     */
-    const dialogSaid = await page
-      .locator('[role=dialog][aria-labelledby=waitlist-modal-title]')
-      .first()
-      .innerText()
-      .then(t => t.replace(/\s+/g, ' ').trim().slice(0, 200))
-      .catch(() => '(the dialog is gone, which is what a join looks like)')
-    say(`${TAG}   after the press, ${who} is on ${page.url().replace(BASE, '')} and the dialog says: ${dialogSaid}`)
-
-    /*
-     * WAIT FOR THE ROW, NOT FOR A CLOCK. The run before this one gave the join
-     * five seconds and then counted, and the second person's row arrived at
-     * about six: the drive recorded a FAILED join and then attributed that same
-     * row to the third person, who had actually never submitted anything. A
-     * fixed timeout does not measure a server, it measures a guess.
-     */
-    let queued = await queueLength()
-    for (let i = 0; i < 20 && queued < wanted; i += 1) {
-      await page.waitForTimeout(1000)
-      queued = await queueLength()
+    const attempt = await joinWaitlistThroughTheUi(page, {
+      base: BASE,
+      slug,
+      queueLength,
+      wanted,
+      log: m => say(`${TAG}   ${m}`),
+    })
+    const { joined, confirmed, reach, queued } = attempt
+    if (reach) {
+      check(
+        `the-${who}-can-actually-reach-the-join-button`,
+        reach.reached,
+        reach.reached
+          ? `the button is the topmost element at ${Math.round(reach.x)},${Math.round(reach.y)}`
+          : `covered by ${reach.topmost} at ${Math.round(reach.x)},${Math.round(reach.y)}`,
+      )
+    } else if (confirmed === null && joined === null) {
+      check(`the-${who}-can-actually-reach-the-join-button`, false, 'no join control on the page at all')
     }
     await page.screenshot({ path: join(out, `03-joined-${who}.png`), fullPage: false }).catch(() => {})
-    /*
-     * THE ROW IS THE ANSWER, not which control was pressed. There are two ways
-     * in: the tickets panel opens the dialog, and the ticket selector joins
-     * directly with no dialog at all. An earlier version of this check required
-     * a dialog submit and reported a perfectly good direct join as a failure.
-     */
     check(
       `the-${who}-person-joins-the-waiting-list`,
-      Boolean(joined) && queued >= wanted,
+      attempt.ok,
       `"${joined ?? 'nothing to click'}"${confirmed ? ` then "${confirmed}"` : ' (joined directly, no dialog)'}; ` +
         `${queued} row(s) on the list, wanted ${wanted}`,
     )

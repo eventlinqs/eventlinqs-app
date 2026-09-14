@@ -1440,6 +1440,100 @@ const DRILLS = [
   },
 
   // -------------------------------------------------------------------------
+  // THE REFUND SUCCESS DOOR (close-out R1, 14 September 2026). The drills above
+  // ask what happens once a refund is HEARD. These seven ask whether it is heard
+  // at all. Until R1 the route reached its successful-refund handler from one
+  // event, `charge.refunded`, and a refund issued from the Stripe Dashboard
+  // arrived as `refund.created` and was dropped in silence.
+  //
+  // The last two are one violation drilled TWICE, deliberately. The first time
+  // this clause was drilled, commenting the requirement out left the guard GREEN,
+  // because a key inside `// 'refund.created': ...` still matched a quoted key
+  // followed by a colon. Deleting it fired and commenting it out did not, so both
+  // are kept: the disabled-but-present shape is the one that got through.
+  // -------------------------------------------------------------------------
+  {
+    name: 'the refund.created case is gone from the route (the R1 defect itself)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: "      case 'refund.created': {",
+    replace: "      case 'refund.created.DRILL': {",
+    expect: "has no `case 'refund.created':`",
+  },
+  {
+    name: 'a successful refund routed to the FAILED and CANCELLED path',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '        await handleRefundCreated(refund)',
+    replace: '        await handleRefundNotCompleted(refund)',
+    expect: 'routes to handleRefundNotCompleted',
+  },
+  {
+    name: 'the declared set shrinks below the event Stripe names as the minimum',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/lib/payments/refund-events.ts',
+    find: "export const REFUND_SUCCESS_EVENTS = ['refund.created', 'charge.refunded'] as const",
+    replace: "export const REFUND_SUCCESS_EVENTS = ['charge.refunded'] as const",
+    expect: 'does not contain refund.created',
+  },
+  {
+    name: 'the reconcile failure throws a plain Error again (the retry that was a comment)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: 'throw new WebhookProcessingError(`reconcile_refund failed',
+    replace: 'throw new Error(`reconcile_refund failed',
+    expect: 'maps ONLY WebhookProcessingError to HTTP 500',
+  },
+  {
+    name: 'a deprecated Stripe event wired to the success path',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: "      case 'refund.created': {",
+    replace: "      case 'charge.refund.updated':\n      case 'refund.created': {",
+    expect: 'Stripe marks that event Deprecated',
+  },
+  {
+    name: 'the endpoint subscription probe stops requiring refund.created (deleted)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'scripts/probe/webhook-subscription-check.mjs',
+    find: "  'refund.created': 'the second door to reconcile_refund, and the one Stripe names as the minimum',\n",
+    replace: '',
+    expect: 'subscription probe does not require refund.created',
+  },
+  {
+    name: 'the endpoint subscription probe stops requiring refund.created (commented out)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'scripts/probe/webhook-subscription-check.mjs',
+    find: "  'refund.created': 'the second door",
+    replace: "  // 'refund.created': 'the second door",
+    expect: 'subscription probe does not require refund.created',
+  },
+  {
+    name: 'a refund stops making the freed place visible again (the SOLD OUT page)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '      const invalidated = await revalidateEventSurfacesFromRouteHandlerById(adminClient, order.event_id as string)',
+    replace: '      const invalidated: string[] = []',
+    expect: 'no longer call revalidateEventSurfacesFromRouteHandlerById',
+  },
+  {
+    name: 'the refund stops refreshing the inventory cache the ticket panel reads',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '          refreshInventoryCache(tier, order.event_id as string).catch(err => {',
+    replace: '          Promise.resolve(tier).catch(err => {',
+    expect: 'no longer call refreshInventoryCache',
+  },
+  {
+    name: 'the webhook reaches for the SERVER ACTION revalidation, which throws in a route handler',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '      const invalidated = await revalidateEventSurfacesFromRouteHandlerById(adminClient, order.event_id as string)',
+    replace: '      const invalidated = await revalidateEventSurfacesById(adminClient, order.event_id as string)',
+    expect: 'the SERVER ACTION form',
+  },
+
+  // -------------------------------------------------------------------------
   // OVERSELL (measured 2026-08-19). 50 simultaneous buyers against one seat:
   // with the row lock 1 won, with the lock removed 16 won and 15 people would
   // have been turned away at the door. These drills are the ways back in.
