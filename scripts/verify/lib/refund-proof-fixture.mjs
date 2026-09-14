@@ -271,14 +271,76 @@ export async function drivePurchase(page, { base, slug, qty, buyerEmail, shot = 
   const sleep = ms => new Promise(r => setTimeout(r, ms))
 
   await page.goto(`${base}/events/${slug}`, { waitUntil: 'load', timeout: 120000 })
-  await shot(page, '01-event-page')
 
+  /*
+   * IT WAITS FOR THE PAGE, AND IT NAMES WHAT IT GOT INSTEAD. 14 September 2026.
+   *
+   * A drive of this file reported "no quantity control on the event page" and a
+   * reserve button that never appeared, on two of three viewports, and both read
+   * as product failures. The screenshot settled it: 14,672 bytes of UNSTYLED
+   * html saying "Loading event", against 115,219 for the same page minutes
+   * earlier. That is the route's loading shell served with no stylesheet, which
+   * is what a running `next start` serves once something has rebuilt `.next`
+   * underneath it: the HTML references chunk URLs the new build no longer has.
+   *
+   * `waitUntil: 'load'` cannot tell that apart from a slow stream, and a bare
+   * count() a moment later cannot either, so the harness accused the product of
+   * a fault that belonged to the machine. Now it WAITS for the control, and on
+   * timeout it says which of the two it is looking at. A harness that cannot
+   * tell its own environment from the product under test is worse than no
+   * harness, because its failures get believed.
+   */
   const plus = page.getByRole('button', { name: /^(\+|increase|add)/i }).first()
-  if (!(await plus.count())) throw new Error('no quantity control on the event page')
+  try {
+    await plus.waitFor({ state: 'visible', timeout: 45000 })
+  } catch {
+    await shot(page, '01-event-page')
+    const stylesheets = await page.locator('link[rel="stylesheet"]').count()
+    const shell = await page.getByText(/^Loading event/i).count()
+    const title = (await page.title()) || '(no title)'
+    if (shell > 0 || stylesheets === 0) {
+      throw new Error(
+        `the server served its LOADING SHELL, not the event page ` +
+          `(${stylesheets} stylesheet link(s), title "${title}"). This is the ` +
+          `environment, not the product: a running next start whose .next was ` +
+          `rebuilt underneath it serves html pointing at chunks that no longer ` +
+          `exist. Re-run the drive with nothing else building.`,
+      )
+    }
+    throw new Error(
+      `no quantity control on the event page after 45s, and the page is a real ` +
+        `rendered page (${stylesheets} stylesheet link(s), title "${title}"), so ` +
+        `this IS about the product.`,
+    )
+  }
+  await shot(page, '01-event-page')
   for (let i = 0; i < qty; i += 1) { await plus.click(); await sleep(450) }
   await shot(page, '02-selected')
 
-  await page.getByRole('button', { name: /reserve|get tickets|checkout/i }).first().click()
+  /*
+   * THE SAME RULE FOR THE RESERVE BUTTON. At tablet-768 on 14 September 2026
+   * this click timed out after the quantity control had already worked, so the
+   * page WAS real and the button was the question. A bare click that times out
+   * says only "not clickable", which is true of a button that is missing, one
+   * that is disabled, and one that is off screen, and those are three different
+   * findings.
+   */
+  const reserve = page.getByRole('button', { name: /reserve|get tickets|checkout/i }).first()
+  try {
+    await reserve.click({ timeout: 45000 })
+  } catch {
+    await shot(page, '02-reserve-would-not-take')
+    const present = await reserve.count()
+    const label = present ? ((await reserve.textContent()) || '').trim() : '(absent)'
+    const enabled = present ? await reserve.isEnabled() : false
+    const visible = present ? await reserve.isVisible() : false
+    throw new Error(
+      `the reserve button would not take a click: present=${present > 0} ` +
+        `visible=${visible} enabled=${enabled} label="${label}". A DISABLED ` +
+        `button here means the ticket panel refused the selection; an ABSENT one ` +
+        `means the panel never rendered.`,
+    )
+  }
   await page.waitForURL(/\/checkout\//, { timeout: 60000 })
   await sleep(2500)
 
