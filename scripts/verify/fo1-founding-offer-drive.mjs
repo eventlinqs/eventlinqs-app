@@ -17,13 +17,21 @@
  *      standard fee again on the very next view, with no deploy.
  *                                                              (acceptance 3)
  *
- * WHAT IT DOES NOT DRIVE, and why, stated here rather than left to be noticed.
- * A CARD PAYMENT CANNOT BE COMPLETED ON THIS MACHINE: STRIPE_SECRET_KEY is empty
- * in .env.local and the only matching TEST key in the Stripe CLI config answers
- * `Expired API Key`. So the buyer cannot be taken past the payment step here,
- * and the two things that need a CONFIRMED PAID ORDER (the waived amount landing
- * on the order row, and the referral credit firing) are proved against the
- * database instead, by fo1-founding-database-proof.mjs, which is honest about
+ * WHAT IT DOES NOT DRIVE, and where that went instead. This drive stops at the
+ * order row and does not take a card.
+ *
+ * IT USED TO SAY A CARD PAYMENT COULD NOT BE COMPLETED ON THIS MACHINE AT ALL,
+ * and that was wrong. `.env.local`'s STRIPE_SECRET_KEY is empty and its
+ * publishable key belongs to a different account, both true, and the conclusion
+ * still did not follow: the publishable key is not fixed, so a server can be
+ * started to match the key the Stripe CLI holds rather than the other way round.
+ * `scripts/dev/lane-b-serve-with-stripe.mjs` starts one and
+ * `fo1-founding-purchase-drive.mjs` sells a ticket through it for card 4242. The
+ * stale sentence is replaced rather than deleted, because a claim that shaped a
+ * Law 10 verdict should be seen to have been withdrawn.
+ *
+ * The referral credit, which needs a confirmed paid order, is still proved
+ * against the database by fo1-founding-database-proof.mjs, which is honest about
  * being a database proof rather than a browser one.
  *
  * IT LEAVES TEST AS IT FOUND IT. The organisation it grants terms to is a
@@ -235,16 +243,19 @@ function centsFromLabel(text) {
  * Takes the buyer from the selector to the moment the ORDER ROW IS WRITTEN.
  *
  * The checkout action prices the cart, inserts the order, and only then asks the
- * payment gateway for an intent. On this machine the gateway call fails, because
- * STRIPE_SECRET_KEY is empty and the only matching TEST key has expired, and the
- * buyer is shown "Payment system error". The ORDER IS ALREADY ON THE TABLE by
- * then, carrying the fee the calculator resolved and the amount the founding
- * waiver took off it, which is exactly what FO1 asks the ledger to record.
+ * payment gateway for an intent. Against a server started without a Stripe
+ * secret key the gateway call fails and the buyer is shown "Payment system
+ * error"; against one started WITH the key, a founding organiser's charge is
+ * refused a step later by `assertOrganiserCanReceiveFunds`, which cannot tell a
+ * deliberate fee waiver from a pricing table that returned nothing. Either way
+ * the ORDER IS ALREADY ON THE TABLE, carrying the fee the calculator resolved
+ * and the amount the founding waiver took off it, which is exactly what FO1 asks
+ * the ledger to record.
  *
- * So this proves the ledger through the product's own path, and it does not
- * pretend to be a completed purchase. The completed purchase is the one thing
- * this machine cannot do; it is named in REVIEW-QUEUE-B.md as a credential the
- * owner has to mint.
+ * So this proves the ledger through the product's own path and does not pretend
+ * to be a completed purchase. The completed purchase lives in
+ * `fo1-founding-purchase-drive.mjs`, which takes a real card and reports what
+ * the screen says when the charge is refused.
  */
 async function reachOrderRow(page, slug, buyerEmail, shotPrefix) {
   const clickAny = async rx => {
