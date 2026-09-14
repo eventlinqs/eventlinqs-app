@@ -33,6 +33,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { declareWork } from '../lib/work-report.mjs'
+import { callRpc, couldNotLook } from './lib/db-read.mjs'
 
 const TAG = '[event-lifecycle-installed]'
 export const RPC = 'event_lifecycle_guards'
@@ -76,8 +77,11 @@ export function decide({ url, serviceKey, answer }) {
   if (!serviceKey) {
     return { verdict: 'SKIP', reason: 'no SUPABASE_SERVICE_ROLE_KEY in this build, and the probe is not granted to anon' }
   }
+  if (answer.unreachable) {
+    return { verdict: 'FAIL', reason: couldNotLook(`${RPC}()`, answer.outcome) }
+  }
   if (answer.error) {
-    return { verdict: 'FAIL', reason: `${RPC}() could not be asked (${answer.error}); apply ${MIGRATIONS.join(' and ')} to this project` }
+    return { verdict: 'FAIL', reason: `${RPC}() answered, and the answer was not usable (${answer.error}); apply ${MIGRATIONS.join(' and ')} to this project` }
   }
   const value = answer.value
   if (!value || typeof value !== 'object') {
@@ -100,20 +104,17 @@ export function decide({ url, serviceKey, answer }) {
  * admin credential, so it must hold no write verb at all.
  */
 export async function ask({ url, serviceKey, fetchImpl = fetch }) {
-  try {
-    const res = await fetchImpl(`${url.replace(/\/$/, '')}/rest/v1/rpc/${RPC}`, {
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, Accept: 'application/json' },
-    })
-    const text = await res.text()
-    if (!res.ok) return { error: `HTTP ${res.status} ${text.slice(0, 160)}` }
-    try {
-      return { value: JSON.parse(text) }
-    } catch {
-      return { error: `unparseable answer ${text.slice(0, 80)}` }
-    }
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) }
-  }
+  const outcome = await callRpc({ url, key: serviceKey, rpc: RPC, fetchImpl })
+  if (outcome.ok) return { value: outcome.value }
+  /*
+   * `unreachable` is carried separately from `error` because the two need
+   * OPPOSITE sentences. On 13 September 2026 this guard failed a push with
+   * "could not be asked (fetch failed); apply 20260906000001_... and
+   * 20260906000002_... to this project" on a project where both migrations
+   * had been applied for a week. A dropped packet was reported as a missing
+   * migration, which is the most expensive kind of wrong: confidently wrong.
+   */
+  return { error: outcome.detail, unreachable: outcome.kind === 'transport', outcome }
 }
 
 const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').replace(/^.*\/scripts\//, 'scripts/'))

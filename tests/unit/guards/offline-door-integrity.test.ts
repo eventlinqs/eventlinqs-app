@@ -19,13 +19,21 @@ describe('checkMigration', () => {
     expect(checkMigration(sql)).toEqual([])
   })
   test("dropping the status = 'valid' clause from the sync is named", () => {
-    // \r?\n, not \n. With core.autocrlf = true a FRESH checkout (every new git
-    // worktree, and this repository runs nine) gets the migration with CRLF line
-    // endings, the anchored newline never matched, `broken` came back identical to
-    // `sql`, and this test failed on a file nobody had touched. The fault was the
-    // assertion's, not the migration's.
-    const broken = sql.replace(/\s+AND t\.status\s+= 'valid'\r?\n(\s+RETURNING t\.id, t\.holder_name, t\.first_scanned_at\r?\n\s+INTO v_ticket;)/, '\n$1')
-    expect(broken).not.toBe(sql)
+    /*
+     * `\r?\n`, because the line ending is a property of the CHECKOUT and not of
+     * the migration. With `core.autocrlf` on, these files arrive with CRLF, the
+     * bare `\n` in this pattern matched nothing, `broken` came back identical to
+     * `sql`, and the test failed on its own setup while saying "expected X not
+     * to be X", which names neither the cause nor the file.
+     *
+     * It failed only in the worktrees, never in the checkout that pushes, which
+     * is the shape that costs a day: the tree that runs the gate cannot see it.
+     */
+    const broken = sql.replace(
+      /\s+AND t\.status\s+= 'valid'\r?\n(\s+RETURNING t\.id, t\.holder_name, t\.first_scanned_at\r?\n\s+INTO v_ticket;)/,
+      '\n$1',
+    )
+    expect(broken, 'the clause this test removes was not found in the migration').not.toBe(sql)
     expect(checkMigration(broken).join('\n')).toMatch(/without `t\.status = 'valid'`/)
   })
   test('returning the secret in the door list is named', () => {

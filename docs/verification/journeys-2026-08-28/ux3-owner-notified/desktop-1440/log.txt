@@ -1,8 +1,14 @@
 UX3: the platform tells its owner what happened
 ===============================================
 01. Signed up and confirmed
-      ux3.organiser.2829962@example.com -> /dashboard
+      ux3.lane-c.organiser.2143609@example.com -> /dashboard
 02. Created the organisation
-      Northside Sound 2829962 -> /dashboard/organisation
-03. Made a cover
+      Northside Sound lane-c 2143609 -> /dashboard/organisation
+03. Chose an industry through the API
+      mcc 7922
+04. Finished Stripe onboarding
+      returned to http://localhost:3200/dashboard/payouts?status=complete&org=2f27e58b-75c9-440b-8
+05. Made a cover
       the platform composed one
+06. Bought a ticket
+      ux3.lane-c.buyer.2143609@example.com -> /orders/af378c63-0c3b-4eb1-a6c1-1a9410f418a7/confirmation?payment_intent=pi_3UF7

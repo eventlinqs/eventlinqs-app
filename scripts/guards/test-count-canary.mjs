@@ -1435,6 +1435,175 @@ const ROOT = join(HERE, '..', '..')
  * pins that the drive now runs the product's own sweep before it picks and
  * expires what it reserved when it ends.
  *
+ * 2026-09-13: raised 388/4697 -> 389/4721, MEASURED on a clean run of the whole
+ * suite (0 failed, 0 skipped). Two additions, both about an instrument lying
+ * about itself. tests/unit/verify/stripe-cli-keys holds the reader that sources
+ * a Stripe TEST key pair out of the CLI config, matches the pair by account,
+ * and refuses a live or an expired key without ever printing one. And fourteen
+ * more in tests/unit/ci/lighthouse-calibration pin the middle calibration
+ * state: on the first day of the three lane protocol the gate printed "this
+ * machine was fit to judge, so a failure above is a statement about the
+ * product" over three URLs whose own runs had been taken on a starved CPU, with
+ * zero product bytes changed since a tip that had passed the same step.
+ *
+ * 2026-09-13 (later): raised 4721 -> 4726, MEASURED. Five more on the sales
+ * pace panel, for the second surface that draws it: /admin/events/[id] renders
+ * the same curve for the platform owner, because the one real production event
+ * belongs to an outside organiser and the owner had nowhere to read it. They
+ * hold that the tone is PAINT and never arithmetic (identical chart geometry
+ * and an identical table), that the heading stops saying "your" on a screen
+ * that is not the organiser's, and that no light-surface token survives onto
+ * the dark card.
+ * 2026-09-13 (later still): raised 389/4726 -> 390/4740, MEASURED on a clean
+ * run of the whole suite. One new file, tests/unit/a11y/busy-region-names-itself.test.ts,
+ * carrying 14 tests: the drill for the new busy-region-names-itself guard, and a
+ * re-derivation of that guard's pinned axe-core role table from the installed
+ * package, so an axe upgrade that moves the table turns this red rather than
+ * quietly widening what the guard lets through.
+ * 2026-09-13: raised 388/4697 -> 388/4698, MEASURED. One test added, and it is
+ * worth naming because of where it fails. `materialiseVercelUpload` created the
+ * empty `.git` skeleton only when `.git` was a DIRECTORY, and in a linked git
+ * worktree it is a one-line FILE, so the simulation produced an upload with no
+ * `.git` at all and `vercel-upload.test.ts` failed on the assertion that keeps
+ * it honest. That was invisible from the main checkout and unavoidable from a
+ * worktree, and since 13 September this build runs three lanes with two of them
+ * in worktrees: the only tree that can push was the only tree that could not see
+ * it. The new test builds the worktree shape itself, so it fails from anywhere
+ * the pointer is not followed.
+ *
+ * 2026-09-13 (later): raised 388/4698 -> 388/4701, MEASURED. Three tests added
+ * to tests/unit/notifications/platform-policy.test.ts, and they are worth naming
+ * because of what the two tests already there could not see. `platformDayStart`
+ * decides the window the owner's daily order-alert ceiling counts, and it
+ * subtracted the Sydney wall clock from the instant, which is the day start only
+ * while a day is 24 hours long. Both existing tests used a date in the middle of
+ * a season, so both passed while the boundary was an hour out on the two days a
+ * year that are not, and on 4 October it landed on the PREVIOUS DATE. The three
+ * new ones ask the question at the boundary: each transition explicitly, then
+ * every hour of both transition days.
+ *
+ * 2026-09-13 (later still): raised 388/4701 -> 388/4704, MEASURED. Five tests
+ * where two stood in tests/unit/notifications/platform-send.test.ts, and the two
+ * that went are the point: they ASSERTED THE DEFECT. `sendHeldDigest` escalated
+ * on its first email refusal and, with no armed push device, wrote every row
+ * `failed` on one attempt, where nothing reads it again. Those two tests pinned
+ * that as correct while close-out UX3.2 says in writing "a failure is retried".
+ * The five that replace them drive the whole ladder: held on the first refusal,
+ * recovered on a later tick, escalated only once exhausted, failed only once
+ * exhausted, and the batch counted by its highest attempts so a new order
+ * joining cannot reset the clock. A test agreeing with the code is not the same
+ * as the code being right.
+ *
+ * 2026-09-13 (last of the three): raised 388/4704 -> 388/4707, MEASURED. Three
+ * tests to the same file, closing the door the fix above left open. The digest
+ * counts a batch by its HIGHEST attempts, which is only sound while every
+ * attempt on a held row was a DIGEST attempt. It was not: a row that failed as
+ * an individual email keeps its counter, and the dispatcher held it with that
+ * counter intact, so a batch could arrive already at the bound and give up on
+ * its first refusal - the same unrecoverable loss, through another door. The
+ * three ask it as one story: the hold hands the digest a fresh count and keeps
+ * the history, the digest still gets all three attempts, and the held order is
+ * delivered on a later tick so one individual refusal costs nothing.
+ *
+ * 2026-09-13 (the quiet hours): raised 388/4707 -> 390/4728, MEASURED. Two new
+ * files and 21 tests, and the reason they did not exist is the defect itself.
+ * /account/notifications promises "nothing arrives inside your quiet hours". The
+ * window was collected by that screen, validated by the API, stored on
+ * notification_prefs and READ by the dispatcher on every send, and nothing ever
+ * consulted it: `isWithinQuietHours` was exhaustively unit tested and its only
+ * caller was its own test file. There were NO tests of dispatchAlert at all, so
+ * nothing noticed that a user who asked for silence between 10pm and 7am was
+ * pushed at 3am. tests/unit/notifications/dispatch.test.ts drives the dispatcher
+ * itself (held rather than dropped, delivered on the next run, the user's own
+ * clock, a timezone the runtime cannot resolve), prefs-route.test.ts refuses the
+ * zone that could abort a whole cron pass, and policy.test.ts gains the hour
+ * resolution across both daylight-saving transitions.
+ *
+ * 2026-09-13 (the reporter's own silence): raised 390/4728 -> 391/4746,
+ * MEASURED. One new file and 18 tests. The daily state says inside its own body
+ * "if it does not arrive, that is itself the alert", and the reporter then gave
+ * up in the two cases that matter: with no GitHub token it returned null and
+ * `main` sent nothing, and any read that threw exited 2 and sent nothing. Three
+ * collectors also answered a failed read with an EMPTY LIST, so a morning when
+ * the commits API was down reported a quiet day. state-report-collect.test.ts
+ * drives the composer with readers that fail on purpose - the only way to see
+ * this without waiting for GitHub to have a bad morning - and state-report.test.ts
+ * gains the blind stall check, which alerts rather than going quiet because a
+ * stall produces silence and a blind check that stays silent looks identical to
+ * a healthy one. The sixteenth is the one the DRIVE found rather than the
+ * reading: three sections count things, an empty count is the GOOD answer for
+ * all three, and a failed read was still printing it. The last two are the
+ * SEVENTEENTH AND EIGHTEENTH, and they exist because the driven render at 390
+ * caught a fourth section doing it after the guard had already gone green: the
+ * last-push line still answered a failed read with "No push to a working branch
+ * could be found", which is the absence the stall alert exists to raise.
+ * 2026-09-13 (the merge of lane C into the push lane): the two histories above
+ * are BOTH kept, because each names tests that exist in this tree and a merge
+ * that dropped either would leave the next reader unable to find out why a
+ * number moved. The two branches raised the baseline from a common ancestor at
+ * the same time, which is why they collided: lane A reached 390/4740 and lane C
+ * reached 388/4704, and neither number is right for the merged tree. The value
+ * below is MEASURED on the merged tree, never the larger of the two, because
+ * the larger of two partial counts is still a guess.
+ *
+ * 2026-09-13 (lane A, the db-read door): raised 390/4747 -> 391/4760, MEASURED
+ * on a clean run. One new file, tests/unit/guards/db-read-door.test.ts, with 13
+ * tests on the shared door every build guard now reads the database through.
+ * The other three are net: three existing tests in the event-lifecycle,
+ * platform-notifications and door-live-published guard suites gained the case
+ * that cost a push, that an unreachable database must NOT be reported as a
+ * missing migration. Each of those three previously asserted the misleading
+ * sentence and called it correct, so they are corrected rather than added to.
+ *
+ * 2026-09-14 (lane A, the step log a second writer could destroy): raised
+ * 391/4760 -> 393/4770, MEASURED on a clean run. Two new files, ten tests:
+ * tests/unit/ops/step-log-survives-a-second-writer (3, one of them a NEGATIVE
+ * CONTROL asserting the old truncating open really does destroy an appended
+ * line on this platform, so the positive test cannot pass for a reason nobody
+ * checked) and tests/unit/guards/shared-log-is-opened-for-append (7, the guard
+ * drilled red on 'w' and on 'w+', green on 'a', plus the two judgements it
+ * makes: prose is not a call site, and a file that starts no process is out of
+ * scope).
+ *
+ * 2026-09-14 (the merge of lane C into the push lane, the second one): the
+ * two blocks above are BOTH kept verbatim and they do NOT form one chain,
+ * which is the whole reason this file conflicts every time the lanes meet.
+ * They are two lineages that ran in parallel from d137ed2f: lane C counted
+ * 388/4704 -> 388/4707 -> 390/4728 -> 391/4746 while lane A counted
+ * 390/4747 -> 391/4760 -> 393/4770, and neither end point describes a tree
+ * that holds both sets of files. Reading either number off the page would be
+ * a guess wearing arithmetic. The value below is MEASURED on the merged tree.
+ *
+ * MEASURED: 396 files, 4812 tests, 0 failed, 0 skipped.
+ *
+ * AND ONE THING THE MEASUREMENT ITSELF TURNED UP, recorded because a number
+ * taken from a single run is worth exactly as much as the run. The FIRST
+ * measuring run on this merged tree reported 4810 passed and 2 FAILED:
+ * card-raster-traced.test.ts and no-inherited-git-env.test.ts. Neither
+ * reproduced. Both files pass standalone (43 of 43) and a second full run of
+ * the same tree reported 396/4812/0/0 with success=true. The total is 4812
+ * either way, so the two runs agree about what EXISTS and disagree only about
+ * what passed, which is the signature of interference between tests that spawn
+ * subprocesses and mutate the tree, not of a test that is wrong. It is NOT
+ * written off here: it is in REVIEW-QUEUE.md, and the push gate runs the suite
+ * again, which is a third reading on the same tree.
+ *
+ * 2026-09-14 (lane B, merging origin/verify/l5-launch-readiness): the two
+ * histories above and below this line ran in PARALLEL, in two trees, from a
+ * common ancestor, so their "raised X -> Y" chains are not one chain and cannot
+ * be read as one. Both are kept verbatim because each names what it counted.
+ * The pair below is MEASURED on the merged tree rather than chained from either
+ * side or taken as the larger of the two: the larger of two partial counts is
+ * still a guess, which is the rule lane A used on this same file on 13
+ * September and it is the rule here. The merged tree MEASURES 407 files and
+ * 5233 tests, 0 failed and 0 skipped, on a clean run of the whole suite.
+ *
+ * The merge also cost a defect, which is the reason a merge is measured and
+ * not arithmetic: lane A's new shared-log-is-opened-for-append guard arrived
+ * with it and went RED on scripts/dev/lane-b-serve-with-stripe.mjs, which
+ * handed the Upstash shim a 'w' descriptor for stdout beside an 'a' for
+ * stderr - two independent offsets inside one spawn. Fixed to one openStepLog
+ * descriptor in the same pass.
  * 2026-09-13 (lane B, close-out FO1): raised 388/4697 -> 389/4735, MEASURED.
  * tests/unit/growth/founding-organiser-terms holds the Founding Organiser offer
  * to the configuration: what a founding organiser is charged inside and outside
@@ -1565,8 +1734,8 @@ const ROOT = join(HERE, '..', '..')
  * behaviour is driven at three widths; these three hold the contract, so an
  * edit that deletes one half of it cannot pass.
  */
-const MIN_FILES = 399
-const MIN_TESTS = 5118
+const MIN_FILES = 407
+const MIN_TESTS = 5233
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

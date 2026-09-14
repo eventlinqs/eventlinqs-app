@@ -50,6 +50,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
+import { selectRest, couldNotLook } from './lib/db-read.mjs'
 
 const ROOT = process.cwd()
 const TAG = '[community-layer-protected]'
@@ -137,13 +138,17 @@ if (!REAL_PROJECT.test(url)) {
 } else if (!key) {
   categorySkip = 'a real project URL but no key to read event_categories with (SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY)'
 } else {
-  try {
-    const res = await fetch(`${url}/rest/v1/event_categories?select=slug,name,is_active&order=slug`, { headers: { apikey: key, Authorization: `Bearer ${key}` } })
-    if (!res.ok) fail(`event_categories could not be read from ${url.slice(8, 28)}: HTTP ${res.status}`)
-    else dbCategories = await res.json()
-  } catch (error) {
-    fail(`event_categories could not be read: ${error instanceof Error ? error.message : String(error)}`)
-  }
+  /*
+   * Through the shared door, which retries a TRANSPORT failure and never
+   * describes one as a finding. On 13 September 2026 this guard blocked a push
+   * with "event_categories could not be read: fetch failed" under a heading
+   * saying a taxonomy fault had been found. Nothing was wrong with the
+   * taxonomy; a socket had dropped on a laptop running three builds.
+   */
+  const outcome = await selectRest({ url, key, query: 'event_categories?select=slug,name,is_active&order=slug' })
+  if (outcome.ok) dbCategories = outcome.value
+  else if (outcome.kind === 'transport') fail(couldNotLook('event_categories', outcome))
+  else fail(`event_categories could not be read from ${url.slice(8, 28)}: ${outcome.detail}`)
 }
 if (dbCategories) {
   const dbSlugs = dbCategories.map((c) => c.slug)

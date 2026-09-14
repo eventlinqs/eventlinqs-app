@@ -30,6 +30,21 @@
  * the hole is invisible: the missing rows look exactly like slots that sold
  * nothing.
  *
+ * CLAUSE THREE, THE READING (added 13 September 2026 with the second surface).
+ * Every surface that DRAWS a slot's curve must get it from `paceForSlot`, and no
+ * surface may compose a curve out of literals. Until today there was one reader,
+ * the organiser's dashboard, and "it obviously reads the ledger" was true by
+ * inspection. There are now two: /admin/events/[id] renders the same panel for
+ * the platform owner, because the one real production event belongs to an
+ * outside organiser and the owner had nowhere to read its curve.
+ *
+ * The failure this stops is a specific and tempting one. A panel that draws
+ * nothing looks broken, and the quickest way to make it look right is to hand it
+ * a shaped object. That is Law 1's placeholder defect wearing a chart, and it
+ * would be worse here than anywhere else: the whole claim of the ledger is that
+ * the numbers on that panel came out of recorded rows, so a literal curve is not
+ * a cosmetic stub, it is a fabricated sales history on an organiser's screen.
+ *
  * Run standalone:  node scripts/guards/ledger-writes-through-the-adapter.mjs
  */
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs'
@@ -49,6 +64,9 @@ const WRITER = 'record_ledger_entry'
 const CONFIRMED_ORDER_RECORDER = 'recordConfirmedOrder'
 /** The one gate every confirmed order passes through. */
 const ORDER_CONFIRM_RPC = 'confirm_order'
+/** The component that draws a slot's curve, and the only reader that may feed it. */
+const PACE_PANEL = 'SalesPacePanel'
+const PACE_READER = 'paceForSlot'
 
 function sourceFiles(dir, out = []) {
   for (const entry of readdirSync(dir)) {
@@ -79,9 +97,19 @@ export function callsRecorder(text, name = CONFIRMED_ORDER_RECORDER) {
   return new RegExp(`\\b${name}\\s*\\(`).test(live)
 }
 
+/** `<SalesPacePanel ... />` rendered, in live code rather than named in a comment. */
+const PANEL_RENDER = new RegExp(`<${PACE_PANEL}[\\s/>]`)
+/**
+ * A curve composed out of literals. It looks for the two fields that only a
+ * PaceCurve has, appearing as object keys close together: `priceMoves` and
+ * `totals`. A page reading the real thing never writes either of them down.
+ */
+const LITERAL_CURVE = /priceMoves\s*:[\s\S]{0,400}?totals\s*:|totals\s*:[\s\S]{0,400}?priceMoves\s*:/
+
 const problems = []
 let filesRead = 0
 let confirmSites = 0
+let panelRenders = 0
 
 for (const file of sourceFiles(SRC)) {
   const text = readFileSync(file, 'utf8')
@@ -124,6 +152,26 @@ for (const file of sourceFiles(SRC)) {
       )
     }
   }
+
+  /* CLAUSE THREE: the reading. Comments stripped, for the same reason as above. */
+  const live = withoutComments(text)
+  if (PANEL_RENDER.test(live)) {
+    panelRenders += 1
+    if (!callsRecorder(text, PACE_READER)) {
+      problems.push(
+        `${rel} renders <${PACE_PANEL}> and never calls ${PACE_READER}(). A curve on that panel is a claim ` +
+          'that those units sold on those days at those prices, so it comes out of the ledger or it does not ' +
+          'get drawn.',
+      )
+    }
+    if (LITERAL_CURVE.test(live)) {
+      problems.push(
+        `${rel} composes a curve out of literals beside a <${PACE_PANEL}>. A panel that draws nothing looks ` +
+          'broken and a shaped object is the quickest way to make it look right, which is a fabricated sales ' +
+          'history on an organiser screen rather than a cosmetic stub.',
+      )
+    }
+  }
 }
 
 /*
@@ -138,11 +186,23 @@ if (confirmSites === 0) {
   )
 }
 
+/* The same honesty for clause three: no readers found means it judged nothing. */
+if (panelRenders === 0) {
+  problems.push(
+    `no surface renders <${PACE_PANEL}> anywhere under src/. Either the panel has been renamed, in which case ` +
+      'clause three is now blind, or the organiser and the owner have both lost the one screen that says when ' +
+      'their units sold.',
+  )
+}
+
 if (!existsSync(join(SRC, 'lib', 'ledger', 'adapter.ts'))) {
   problems.push('src/lib/ledger/adapter.ts does not exist, so there is no boundary to defend')
 }
 
-console.log(`${TAG} ${filesRead} source file(s) read, ${confirmSites} order-confirmation site(s) judged`)
+console.log(
+  `${TAG} ${filesRead} source file(s) read, ${confirmSites} order-confirmation site(s) judged, ` +
+    `${panelRenders} surface(s) drawing a slot curve judged`,
+)
 
 if (problems.length > 0) {
   console.error('')
@@ -155,7 +215,11 @@ if (problems.length > 0) {
 }
 
 declareWork('ledger-writes-through-the-adapter', {
-  did: { 'source file read': filesRead, 'order-confirmation site judged': confirmSites },
+  did: {
+    'source file read': filesRead,
+    'order-confirmation site judged': confirmSites,
+    'surface drawing a slot curve judged': panelRenders,
+  },
   found: { 'write that walks past the adapter': problems.length },
   zeroIsFine: {
     'write that walks past the adapter':
@@ -164,5 +228,8 @@ declareWork('ledger-writes-through-the-adapter', {
   exitOnZero: false,
 })
 
-console.log(`${TAG} PASS - one door in, and all ${confirmSites} order-confirmation site(s) use it.`)
+console.log(
+  `${TAG} PASS - one door in, and all ${confirmSites} order-confirmation site(s) use it; ` +
+    `all ${panelRenders} surface(s) that draw a curve read it through ${PACE_READER}().`,
+)
 process.exit(0)

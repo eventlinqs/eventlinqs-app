@@ -23,14 +23,18 @@ export function LoadingState({ lines = 3 }: LoadingStateProps) {
   const widths = ['100%', '75%', '90%', '60%', '85%']
 
   return (
-    <div className="animate-pulse space-y-3" aria-busy="true" aria-label="Loading">
+    <div className="animate-pulse space-y-3" role="status" aria-busy="true">
       {Array.from({ length: lines }, (_, i) => (
         <div
           key={i}
           className="h-4 rounded bg-[var(--surface-2)]"
+          aria-hidden
           style={{ width: widths[i % widths.length] }}
         />
       ))}
+      {/* Last, not first: `space-y-3` puts margin-top on every child that
+          follows another, so a leading span would push the first bar down. */}
+      <span className="sr-only">Loading</span>
     </div>
   )
 }

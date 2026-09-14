@@ -85,3 +85,74 @@ describe('SalesPacePanel', () => {
     expect(screen.getByText(/Nothing has sold yet/)).toBeInTheDocument()
   })
 })
+
+/*
+ * THE SECOND SURFACE (close-out D1, 13 September 2026).
+ *
+ * /admin/events/[id] draws the same curve for the platform owner, because the
+ * one real production event belongs to an outside organiser and the owner had
+ * nowhere to read it. The console shell is dark, so the panel takes a tone. What
+ * must be true of that: the ARITHMETIC and every refusal-to-lie sentence are the
+ * same component and therefore identical, the heading stops saying "your" on a
+ * screen that is not the organiser's, and no light-surface token survives onto
+ * the dark card, because S1 found twelve elements on that exact shell painted
+ * white on white while axe reported zero violations in the same run.
+ */
+describe('SalesPacePanel on the admin console', () => {
+  it('says "this event" rather than "your tickets", on every state', () => {
+    const { container, unmount } = render(<SalesPacePanel curve={curve()} tone="console" />)
+    expect(screen.getByText('How this event sold')).toBeInTheDocument()
+    expect(screen.queryByText('How your tickets sold')).toBeNull()
+    expect(container.textContent).toContain('28 sold')
+    unmount()
+
+    render(<SalesPacePanel curve={null} tone="console" />)
+    expect(screen.getByText('How this event sold')).toBeInTheDocument()
+  })
+
+  it('keeps every sentence the organiser panel refuses to replace with a zero', () => {
+    const { unmount } = render(<SalesPacePanel curve={curve()} tone="console" />)
+    expect(screen.getByText(/Nothing is recorded yet about the people who looked and did not buy/)).toBeInTheDocument()
+    unmount()
+
+    render(<SalesPacePanel curve={curve({ points: [], totals: { units: 0, amountCents: 0, unitsReturned: 0 } })} tone="console" />)
+    expect(screen.getByText(/Nothing has sold yet/)).toBeInTheDocument()
+  })
+
+  it('draws the identical chart geometry, so the tone is paint and never arithmetic', () => {
+    const light = render(<SalesPacePanel curve={curve()} />)
+    const lightPaths = [...light.container.querySelectorAll('path')].map((p) => p.getAttribute('d'))
+    const lightTable = light.container.querySelector('table')?.textContent
+    light.unmount()
+
+    const dark = render(<SalesPacePanel curve={curve()} tone="console" />)
+    const darkPaths = [...dark.container.querySelectorAll('path')].map((p) => p.getAttribute('d'))
+    expect(darkPaths).toEqual(lightPaths)
+    expect(dark.container.querySelector('table')?.textContent).toBe(lightTable)
+  })
+
+  it('carries no light-surface token onto the dark card, and no dark one onto the light card', () => {
+    const dark = render(<SalesPacePanel curve={curve()} tone="console" />)
+    const darkHtml = dark.container.innerHTML
+    for (const token of ['bg-white"', 'bg-white ', 'text-ink-900', 'text-ink-600', 'border-ink-100', 'bg-ink-100/40']) {
+      expect(darkHtml).not.toContain(token)
+    }
+    // And the two series colours are the console's, not the canvas's.
+    expect(darkHtml).toContain('#FFFFFF')
+    expect(darkHtml).toContain('var(--color-gold-400)')
+    expect(darkHtml).not.toContain('var(--color-ink-900)')
+    dark.unmount()
+
+    const light = render(<SalesPacePanel curve={curve()} />)
+    const lightHtml = light.container.innerHTML
+    expect(lightHtml).toContain('var(--color-ink-900)')
+    expect(lightHtml).toContain('var(--color-gold-800)')
+    expect(lightHtml).not.toContain('#131A2A')
+    expect(lightHtml).not.toContain('var(--color-gold-400)')
+  })
+
+  it('defaults to the organiser tone, so every existing call site is untouched', () => {
+    render(<SalesPacePanel curve={curve()} />)
+    expect(screen.getByText('How your tickets sold')).toBeInTheDocument()
+  })
+})

@@ -35,9 +35,33 @@ describe('decide', () => {
   })
 
   test('FAILs when the RPC cannot be asked or answers the wrong shape', () => {
+    // AN ANSWER the guard cannot use. HTTP 404 means the server replied, so
+    // prescribing the migration is right here.
     const absent = decide({ url: URL, serviceKey: 'k', answer: { error: 'HTTP 404 function not found' } })
     expect(absent.verdict).toBe('FAIL')
-    expect(absent.reason).toMatch(/could not be asked/)
+    expect(absent.reason).toMatch(/answered, and the answer was not usable/)
+
+    /*
+     * AND THE CASE THAT COST A PUSH. A dropped packet is NOT an answer, and
+     * must never be described as a missing migration. On 13 September 2026
+     * this guard blocked a push saying "could not be asked (fetch failed);
+     * apply <two migrations> to this project" on a project where both had
+     * been applied for a week. The old assertion here matched that sentence
+     * and called it correct, which is why it is replaced rather than kept.
+     */
+    const unreachable = decide({
+      url: URL,
+      serviceKey: 'k',
+      answer: {
+        error: 'fetch failed',
+        unreachable: true,
+        outcome: { detail: 'fetch failed', attempts: 3, ms: 5600 },
+      },
+    })
+    expect(unreachable.verdict).toBe('FAIL')
+    expect(unreachable.reason).toContain('could not reach the database')
+    expect(unreachable.reason).toContain('3 attempt(s)')
+    expect(unreachable.reason).not.toMatch(/apply .*\.sql/i)
     expect(decide({ url: URL, serviceKey: 'k', answer: { value: true } }).verdict).toBe('FAIL')
     expect(decide({ url: URL, serviceKey: 'k', answer: { value: null } }).verdict).toBe('FAIL')
   })

@@ -9,7 +9,8 @@
  */
 export default function EventDetailLoading() {
   return (
-    <div className="min-h-screen bg-canvas" aria-busy="true" aria-label="Loading event">
+    <div className="min-h-screen bg-canvas" role="status" aria-busy="true">
+      <span className="sr-only">Loading event</span>
       {/* Hero - dark to match the loaded photo+overlay hero (no tone jump).
           Scale matches the real hero's single platform token (.hero-marketing)
           so the swap is zero-shift; the old 55-70vh skeleton predated the hero

@@ -32,6 +32,7 @@
 import { spawn, execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, openSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { openStepLog } from '../ops/pre-push-gate.mjs'
 import { readStripeTestKeys, probeStripeTestKey } from '../verify/lib/stripe-cli-test-keys.mjs'
 
 const ROOT = resolve(import.meta.dirname, '..', '..')
@@ -224,10 +225,16 @@ await new Promise(r => setTimeout(r, 1500))
 
 // 1. the rate-limit store
 if (!(await up(`http://127.0.0.1:${SHIM_PORT}/get/_probe`, 1000))) {
+  const shimLog = openStepLog(SHIM_LOG)
   spawn(process.execPath, [resolve(ROOT, 'scripts/dev/upstash-shim.mjs'), String(SHIM_PORT)], {
     cwd: ROOT,
     detached: true,
-    stdio: ['ignore', openSync(SHIM_LOG, 'w'), openSync(SHIM_LOG, 'a')],
+    // One descriptor, truncated once and then APPENDED to, because a 'w'
+    // descriptor keeps its own file offset: it writes on top of anything another
+    // writer has appended since. This line was the 'w'/'a' pair, which is that
+    // defect inside a single spawn. Found by shared-log-is-opened-for-append on
+    // 14 September 2026, when lane A's guard arrived in the merge.
+    stdio: ['ignore', shimLog, shimLog],
   }).unref()
   if (!(await up(`http://127.0.0.1:${SHIM_PORT}/get/_probe`, 20000))) {
     die(`the Upstash shim never answered on ${SHIM_PORT}; see ${SHIM_LOG}`)

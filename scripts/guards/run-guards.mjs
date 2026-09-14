@@ -31,6 +31,13 @@
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
  *   labelled-form-controls     every raw input, select and textarea carries a
  *                              programmatic label, so assistive technology can name it
+ *   one-db-read-door          every build guard that reads the database goes through
+ *                              one door that retries a dropped packet
+ *   shared-log-is-opened-for-append  a descriptor handed to a child process is
+ *                              opened for append, so a second writer on the same
+ *                              file cannot be overwritten by a stale offset
+ *   busy-region-names-itself   a loading skeleton that names itself carries a role
+ *                              allowed to have a name, never a bare aria-label
  *   labels-name-the-right-control  and that label points at the control it describes,
  *                              not at the one that happens to sit beside it
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
@@ -301,6 +308,36 @@
  *                              published event and a paid order, so none of the five can
  *                              complete in silence the way a real organiser's launch did
  *                              on 8 September 2026 (close-out UX3)
+ *   platform-day-boundary-is-zone-correct  the owner's daily order-alert ceiling resets
+ *                              at a real Sydney midnight on every hour of four years,
+ *                              including the two days a year that are not 24 hours long,
+ *                              where the boundary used to land an hour out and in October
+ *                              on the previous date (close-out UX3.3, 13 September 2026)
+ *   notification-paths-retry-before-they-give-up  every delivery path that can write a
+ *                              terminal state counts its attempts first, so no path
+ *                              escalates or gives up on ONE refusal the way the digest
+ *                              did, throwing away up to two hundred orders in a single
+ *                              unrecoverable row (close-out UX3.2, 13 September 2026)
+ *   digest-attempts-are-the-digests-own  a row held for the digest hands it a FRESH
+ *                              attempt count, because the attempts it spent as an
+ *                              individual email belong to a different message. Inheriting
+ *                              them let a batch arrive at the bound and give up on its
+ *                              first refusal, which is the line above defeated through
+ *                              another door (close-out UX3.2 and UX3.3, 13 September 2026)
+ *   the-daily-state-cannot-go-silent  the once-a-day report is composed and SENT even
+ *                              when every read behind it fails, and it names what it
+ *                              could not see. It used to return null with no token and
+ *                              exit 2 on any throw, sending nothing, which is the one
+ *                              signal the owner is told means the build is dead. The
+ *                              blind stall check speaks too (close-out UX4.1 and UX4.2,
+ *                              13 September 2026)
+ *   quiet-hours-are-honoured  the quiet hours the account screen collects are read on
+ *                              the USER'S clock before a send, and every path that reads
+ *                              the window either acts on it or says in the guard why it
+ *                              cannot. The window was collected, validated, stored and
+ *                              read on every send, and nothing ever consulted it: a user
+ *                              who asked for silence from 10pm was pushed at 3am
+ *                              (13 September 2026)
  *   cron-routes-scheduled    every /api/cron route has a vercel.json entry, and every
  *                              entry has a route. /api/cron/queue-admit documented itself
  *                              as running every minute and had no schedule at all, so the
@@ -645,6 +682,36 @@ const GUARDS = [
   // filling the field the label named produced a zero-priced ticket on a paid
   // event. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
   'scripts/guards/labels-name-the-right-control.mjs',
+  // The third sibling, and the one the other two cannot see: a name that is
+  // PROHIBITED, so assistive technology drops it silently. A plain div maps to
+  // role=generic and a generic role may not carry an accessible name, so
+  // `<div aria-busy aria-label="Loading">` is invalid ARIA that announces
+  // nothing while looking correct in review. Fixed once in the seating plan in
+  // September, with a comment, and shipped again three times anyway: checkout,
+  // the event page and the shared LoadingState. The checkout one BLOCKED THE
+  // PUSH GATE on 13 September 2026 at the checkout-viewport step. Scoped to
+  // aria-busy because that is where axe raises a violation rather than a review
+  // note, which is measured in the guard header, not assumed.
+  // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/busy-region-names-itself.mjs',
+  // A build guard that reads the database over the network does it through one
+  // door that retries a dropped packet. On 13 September 2026 two pushes were
+  // blocked, four hours apart, by guards reporting `fetch failed` as a finding;
+  // one of them told the reader to apply two migrations that had been applied
+  // for a week. Five of the probes were copy-pastes of each other, so the first
+  // fix, made to the single guard that used the supabase client, missed all of
+  // them. NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/one-db-read-door.mjs',
+  // A descriptor handed to a child process is opened for APPEND, never
+  // truncating. startGateServer hands one fd to the server, the Upstash stub
+  // and any extra a step needs, and the drives read that file as an inbox AND
+  // append the recovery engine subprocess mail into it. A truncating fd keeps
+  // its own offset, so every append moved end of file past it and the server
+  // wrote over the message the harness had just added. On 13 September 2026
+  // the D2 recovery proof at 768 called that a product defect: two messages
+  // where three were sent, while the database and the engine both said three.
+  // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
+  'scripts/guards/shared-log-is-opened-for-append.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
   // and compared byte for byte, so a row cannot be improved by editing the
@@ -1307,6 +1374,61 @@ const GUARDS = [
   // trigger's record fields against the committed types. Drilled red by putting
   // new.city back.
   'scripts/guards/trigger-columns-exist.mjs',
+
+  // Close-out UX3.3, the third guard, added 13 September 2026 after driving the
+  // function rather than reading it. The owner's daily order-alert ceiling is
+  // counted from platformDayStart(), which subtracted the Sydney wall clock from
+  // the instant. A day is 24 hours long except twice a year, so on both
+  // transition days the boundary was an hour out, and on the October one it
+  // landed on the PREVIOUS DATE: 172 of 35,064 hourly instants across four years
+  // were wrong. Neither the unit test nor any sweep could see it, because both
+  // used dates in the middle of a season. This calls the real function on every
+  // hour of four years and refuses to run on a window with no transition in it.
+  'scripts/guards/platform-day-boundary-is-zone-correct.mjs',
+
+  // Close-out UX3.2, 13 September 2026. "Every notification is recorded as sent
+  // or failed, A FAILURE IS RETRIED, and a PERSISTENT failure raises through the
+  // second channel." The individual dispatcher did that; the digest did not. One
+  // refusal from the mail vendor escalated it straight to push, and with no
+  // armed device it went to `failed` on a single attempt, where nothing reads it
+  // again. The one email that can carry two hundred orders was the one with no
+  // second chance. This asks every delivery path that writes a terminal state
+  // whether it counts its attempts first. Drilled red by taking the comparison
+  // back out of the digest.
+  'scripts/guards/notification-paths-retry-before-they-give-up.mjs',
+
+  // Close-out UX3.2 and UX3.3, 13 September 2026, found the same day as the line
+  // above and against the one rule it left standing. The digest counts a batch by
+  // its HIGHEST attempts, which is right only while every attempt on a held row
+  // was a DIGEST attempt. The dispatcher held rows with their individual-email
+  // attempts intact, so a batch could arrive already at the bound and give up on
+  // its first refusal: the same unrecoverable loss, through another door. This
+  // runs the real hold across a sweep of attempt counts and also proves the
+  // dispatcher calls it, because a perfect pure function nobody calls is worth
+  // nothing. Drilled red both ways.
+  'scripts/guards/digest-attempts-are-the-digests-own.mjs',
+
+  // 13 September 2026. /account/notifications promises "nothing arrives inside
+  // your quiet hours". The window was collected by that screen, validated by the
+  // API, stored on notification_prefs and READ by the dispatcher on every send,
+  // and no code anywhere consulted it: isWithinQuietHours was exhaustively unit
+  // tested and called only by its own test file. A control that does nothing is a
+  // defect by name, and this one made the screen say something untrue. The guard
+  // runs the real decision across every hour of three days including both
+  // daylight-saving transitions, and proves every reader of the window either
+  // honours it or carries a written reason it cannot. Drilled red both ways.
+  'scripts/guards/quiet-hours-are-honoured.mjs',
+
+  // Close-out UX4.1 and UX4.2, 13 September 2026. The daily state says inside
+  // its own body "if it does not arrive, that is itself the alert". The reporter
+  // then gave up in the two cases that matter: no GitHub token returned null and
+  // sent nothing, and any read that threw exited 2 and sent nothing. A broken
+  // reporter therefore produced exactly the signal that means the build machine
+  // is dead. Three collectors also answered a failed read with an empty list, so
+  // a morning when the commits API was down reported a quiet day. This runs the
+  // REAL composer with readers that fail and asserts a message still comes out
+  // naming every blind spot, and that a blind stall check speaks. Drilled red.
+  'scripts/guards/the-daily-state-cannot-go-silent.mjs',
 
   // 11 September 2026. Five migrations (20260910000001 to 20260911000001) were
   // committed without regenerating src/types/database.ts and every gate stayed

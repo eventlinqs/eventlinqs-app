@@ -10,6 +10,7 @@ import {
   bodyFor,
   digestBodyFor,
   digestSubjectFor,
+  holdForDigestPatch,
   platformDayStart,
   pushPayloadFor,
   routeFor,
@@ -35,7 +36,10 @@ import {
  *               module that leaves a row in the state it found it.
  *   RETRIED     a failed send stays `pending` with attempts incremented, so the
  *               next cron tick tries again. PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS
- *               bounds it.
+ *               bounds it. The DIGEST follows the same rule and stays
+ *               `held_for_digest` (13 September 2026; before that it was the one
+ *               path that escalated on its first failure, and see sendHeldDigest
+ *               for what that cost).
  *   ESCALATED   after that, the SECOND CHANNEL: Web Push to the platform admins,
  *               which shares no vendor, no domain and no rate limit with Resend
  *               (the property scripts/ops/alert-dispatch.mjs picked its GitHub
@@ -209,7 +213,10 @@ export async function dispatchPendingPlatformNotifications(options: {
     const already = sentTodayByKind.get(row.kind) ?? 0
 
     if (routeFor(row.kind, already) === 'digest') {
-      await recordOutcome(admin, row.id, { delivery_state: 'held_for_digest' })
+      // holdForDigestPatch, never a literal: the row hands the digest a FRESH
+      // attempt count, because the attempts it carries were spent on a
+      // different message. See the function for what inheriting them cost.
+      await recordOutcome(admin, row.id, holdForDigestPatch(row))
       summary.held += 1
       continue
     }
@@ -279,6 +286,7 @@ export type DigestSummary = {
   sent: number
   escalated: number
   failed: number
+  retried: number
 }
 
 /**
@@ -291,6 +299,31 @@ export type DigestSummary = {
  * know what is happening, not to be told tomorrow. A digest that batches the
  * overflow of the last few minutes still collapses fifty sales into one email,
  * which is the whole point of the ceiling, and it never delays a fact by a day.
+ *
+ * IT RETRIES BEFORE IT ESCALATES, LIKE EVERY OTHER PATH HERE (13 September 2026).
+ * Until then it did not, and it was the only path that did not. One failed send
+ * escalated to push immediately, and if no admin device had armed push, the rows
+ * went straight to `failed` on a single attempt. A `failed` row is neither
+ * `pending` nor `held_for_digest`, so nothing ever reads it again: one transient
+ * refusal from the mail vendor and a digest carrying up to two hundred orders was
+ * gone for good. UX3.2 says "a failure is retried", and this was the one path
+ * carrying the most in a single message that did not.
+ *
+ * THE ATTEMPT COUNT IS THE BATCH'S HIGHEST, not each row's own. The rows share
+ * one email, so they are tried together and counted together, and the highest is
+ * the right reading of "how long has this digest been failing": a fresh order
+ * joining the batch must not reset the clock, which is what the lowest would do
+ * and would retry for ever while sales kept arriving. Nothing is stuck by that
+ * choice, because reaching the ceiling moves every row in the batch out of
+ * `held_for_digest` in the same write.
+ *
+ * THAT RULE IS ONLY SOUND BECAUSE EVERY ATTEMPT ON A HELD ROW IS A DIGEST
+ * ATTEMPT (13 September 2026). It was not: the hold used to carry the row's
+ * individual-email attempts across, so a batch could arrive already at the bound
+ * and give up on its first refusal - the same loss this function was fixed to
+ * prevent, through another door. The counter is now reset where the row is held,
+ * by holdForDigestPatch in ./platform-policy, and `attempts` on a
+ * `held_for_digest` row therefore means digest attempts and nothing else.
  */
 export async function sendHeldDigest(options: {
   admin: Admin
@@ -306,7 +339,7 @@ export async function sendHeldDigest(options: {
     .limit(limit)
   if (error) throw new Error(`platform_notifications digest read failed: ${error.message}`)
   const rows = (data ?? []) as unknown as PlatformNotificationRow[]
-  const summary: DigestSummary = { held: rows.length, sent: 0, escalated: 0, failed: 0 }
+  const summary: DigestSummary = { held: rows.length, sent: 0, escalated: 0, failed: 0, retried: 0 }
   if (rows.length === 0) return summary
 
   const siteUrl = getSiteUrl()
@@ -336,6 +369,23 @@ export async function sendHeldDigest(options: {
     return summary
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+
+    const attempt = Math.max(...rows.map((r) => r.attempts)) + 1
+    if (attempt < PLATFORM_NOTIFY_MAX_EMAIL_ATTEMPTS) {
+      const { error: retryError } = await admin
+        .from('platform_notifications')
+        .update({
+          attempts: attempt,
+          last_attempt_at: stamp,
+          last_error: `digest attempt ${attempt}: ${message}`,
+        })
+        .in('id', ids)
+      if (retryError) throw new Error(`digest retry update failed: ${retryError.message}`)
+      // Still held_for_digest, so the next cron tick tries the whole batch again.
+      summary.retried = rows.length
+      return summary
+    }
+
     // A failed digest is escalated as ONE push naming the count, not as fifty.
     const second = await escalate(admin, {
       ...rows[0],
@@ -349,8 +399,9 @@ export async function sendHeldDigest(options: {
           delivery_state: 'escalated',
           channel: 'push',
           sent_at: stamp,
+          attempts: attempt,
           last_attempt_at: stamp,
-          last_error: `digest email failed: ${message}`,
+          last_error: `digest email failed ${attempt} time(s): ${message}`,
         })
         .in('id', ids)
       summary.escalated = rows.length
@@ -362,8 +413,9 @@ export async function sendHeldDigest(options: {
       .update({
         delivery_state: 'failed',
         channel: null,
+        attempts: attempt,
         last_attempt_at: stamp,
-        last_error: `digest email failed: ${message}; push: ${second.reason}`,
+        last_error: `digest email failed ${attempt} time(s): ${message}; push: ${second.reason}`,
       })
       .in('id', ids)
     summary.failed = rows.length

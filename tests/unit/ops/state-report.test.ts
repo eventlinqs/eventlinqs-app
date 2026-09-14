@@ -197,7 +197,14 @@ describe('the report itself', () => {
   })
 
   it('obeys the copy law: no em dash, no en dash, no exclamation mark', () => {
-    for (const body of [renderStateReport(greenState).text, renderStateReport(greenState).html]) {
+    // MARKUP IS NOT COPY. The HTML body is a complete document, so it opens with
+    // a doctype, and a doctype carries an exclamation mark that no reader ever
+    // sees. The law is about the words, exactly as CLAUDE.md says of a Tailwind
+    // `!important` modifier, so the tags are stripped before the words are
+    // judged rather than the doctype being dropped to please a regular
+    // expression.
+    const words = (html: string) => html.replace(/<[^>]*>/g, ' ')
+    for (const body of [renderStateReport(greenState).text, words(renderStateReport(greenState).html)]) {
       expect(body).not.toContain('—')
       expect(body).not.toContain('–')
       expect(body).not.toContain('!')
@@ -283,5 +290,136 @@ describe('what counts as a push, so the stall clock is not reset by bookkeeping'
     expect(nextLinkPath(link)).toBe('/repositories/1/activity?per_page=100&after=abc')
     expect(nextLinkPath('<https://api.github.com/x?page=1>; rel="prev"')).toBeNull()
     expect(nextLinkPath(null)).toBeNull()
+  })
+})
+
+
+/*
+ * THE REPORTER MUST NOT GO SILENT WHEN ITS OWN READS FAIL. 13 September 2026.
+ *
+ * UX4.1 says the daily message arrives "WHETHER OR NOT anything is wrong" and
+ * that "its absence is itself the alert". The reporter took that promise and
+ * broke it in the one case that matters most: if the GitHub token could not be
+ * resolved, `collect` returned null and `main` returned without sending
+ * anything at all, and if any collector threw, the top-level catch exited 2 with
+ * nothing sent. So a broken reporter produced exactly the signal the owner has
+ * been taught means the build machine is dead.
+ *
+ * UX4.2 had the same hole and worse consequences. `judgeStall` treats a missing
+ * last push as "nothing to judge" and does not alert, which is right when the
+ * repository genuinely has no push, and catastrophic when the read simply
+ * failed: the one alert whose whole purpose is to break a silence is itself
+ * silenced by a failure to read.
+ */
+describe('a report that could not read everything still arrives', () => {
+  const partial = {
+    ...greenState,
+    main: { conclusion: 'unknown', reason: 'the head of main could not be read (HTTP 401)' },
+    unreadable: [
+      { what: 'main', why: 'the head of main could not be read (HTTP 401)' },
+      { what: 'the last push', why: 'the activity list answered 403' },
+    ],
+  }
+
+  it('never says ALL GREEN about a day it could not see', () => {
+    expect(headlineFor(greenState).word).toBe('ALL GREEN')
+    expect(headlineFor(partial).word).not.toBe('ALL GREEN')
+    expect(headlineFor(partial).word).toContain('COULD NOT BE READ')
+  })
+
+  it('leads with what it could not read, rather than burying it', () => {
+    const titles = sectionsFor(partial).map((s) => s.title)
+    expect(titles[0]).toContain('Could not be read')
+    expect(titles[0]).toContain('2')
+  })
+
+  it('names every reason, in the text and in the HTML', () => {
+    const rendered = renderStateReport(partial)
+    for (const body of [rendered.text, rendered.html]) {
+      expect(body).toContain('the head of main could not be read')
+      expect(body).toContain('the activity list answered 403')
+    }
+  })
+
+  it('never prints a zero it could not read', () => {
+    const blindLists = {
+      ...greenState,
+      landed: [],
+      openPullRequests: [],
+      failingBranches: [],
+      unreadable: [
+        { what: 'what landed in 24 hours', why: 'the commits on main could not be read (HTTP 500)' },
+        { what: 'the open pull requests', why: 'the open pull requests could not be read (HTTP 500)' },
+        { what: 'the branches that went red', why: 'the failing workflow runs could not be read (HTTP 500)' },
+      ],
+    }
+    const titles = sectionsFor(blindLists).map((s) => s.title)
+    // An empty count is the GOOD answer for all three, which is exactly why a
+    // failed read must never be able to print it.
+    expect(titles).toContain('Landed on main in 24 hours (not known)')
+    expect(titles).toContain('Open pull requests (not known)')
+    expect(titles).toContain('Branches red in 24 hours (not known)')
+    const text = renderStateReport(blindLists).text
+    expect(text).not.toContain('Nothing.')
+    expect(text).not.toContain('None.')
+  })
+
+  it('does not answer a failed last-push read with "no push could be found"', () => {
+    // THE WORST OF THE ABSENCE SENTENCES, and the one that survived the first
+    // pass of this fix. An absence here is what the stall alert exists for, so a
+    // failed read wearing it sends the reader hunting a stalled build when the
+    // truth is that nobody could see the repository.
+    const blindPush = {
+      ...greenState,
+      lastPush: { when: null, reason: 'the repository activity could not be read (HTTP 404)' },
+      unreadable: [{ what: 'the last push', why: 'the repository activity could not be read (HTTP 404)' }],
+    }
+    const titles = sectionsFor(blindPush).map((s) => s.title)
+    expect(titles).toContain('When the build last pushed (not known)')
+    const text = renderStateReport(blindPush).text
+    expect(text).not.toContain('No push to a working branch could be found')
+    expect(text).toContain('this is NOT a report that nothing has')
+  })
+
+  it('still says plainly that nothing was pushed when it could read and found nothing', () => {
+    const quiet = {
+      ...greenState,
+      lastPush: { when: null, reason: 'no push to a working branch appears in the last 500 activity records' },
+      unreadable: [],
+    }
+    const text = renderStateReport(quiet).text
+    expect(text).toContain('No push to a working branch could be found')
+  })
+
+  it('adds nothing to a report that read everything', () => {
+    const titles = sectionsFor(greenState).map((s) => s.title)
+    expect(titles.some((t) => t.includes('Could not be read'))).toBe(false)
+  })
+})
+
+describe('the stall check when it cannot see the repository', () => {
+  it('alerts rather than going quiet, because silence is the thing it watches for', () => {
+    const blind = judgeStall({ lastPushIso: null, nowIso: NOW, unreadable: 'the activity list answered 403' })
+    expect(blind.blind).toBe(true)
+    expect(blind.shouldAlert).toBe(true)
+    expect(blind.reason).toContain('403')
+  })
+
+  it('still reports rather than alerting when the repository genuinely has no push', () => {
+    const empty = judgeStall({ lastPushIso: null, nowIso: NOW })
+    expect(empty.blind).toBeFalsy()
+    expect(empty.shouldAlert).toBe(false)
+  })
+
+  it('says in the message that it is blind, not that the build has stalled', () => {
+    const state = {
+      ...greenState,
+      lastPush: {},
+      stall: judgeStall({ lastPushIso: null, nowIso: NOW, unreadable: 'the activity list answered 403' }),
+    }
+    const message = renderStallAlert(state)
+    expect(message.subject).toContain('cannot see')
+    expect(message.text).toContain('403')
+    expect(message.text).not.toContain('Nothing has been pushed to the repository for')
   })
 })
