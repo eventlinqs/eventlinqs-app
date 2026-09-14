@@ -1647,9 +1647,16 @@ const ROOT = join(HERE, '..', '..')
  * priority quoted the code it replaced and the guard failed the tree on the
  * quotation. The two hero-raster tests changed in the same commit were made
  * deterministic rather than added to, so they move no count.
+ *
+ * 2026-09-14 (MONEY FIX A1.7): raised 400/4900 -> 401/4910, MEASURED on a green
+ * suite of the whole tree. One new file, tests/unit/payments/money-chain.test.ts,
+ * ten tests, which hold the money chain: a ticket charge names a destination, an
+ * organiser who cannot be paid is refused with a named reason, and the fee
+ * amount never decides whether the money may move. The first of them failed
+ * before the fix and is the defect's own reproduction.
  */
-const MIN_FILES = 400
-const MIN_TESTS = 4900
+const MIN_FILES = 401
+const MIN_TESTS = 4910
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
