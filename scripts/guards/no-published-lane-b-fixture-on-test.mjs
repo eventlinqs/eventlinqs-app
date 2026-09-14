@@ -56,6 +56,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { declareWork } from '../lib/work-report.mjs'
+import { selectRest, couldNotLook } from './lib/db-read.mjs'
 
 const TAG = '[no-published-lane-b-fixture-on-test]'
 
@@ -158,15 +159,25 @@ async function main() {
     process.exit(0)
   }
 
-  async function rows(path) {
-    const res = await fetch(`${url.replace(/\/$/, '')}/rest/v1/${path}`, {
-      headers: { apikey: key, authorization: `Bearer ${key}` },
-    })
-    if (!res.ok) {
-      console.error(`${TAG} FAIL: ${path} answered ${res.status}. A guard that cannot look does not pass.`)
+  /*
+   * THROUGH THE SHARED DOOR, and the first version of this guard was not, which
+   * `one-db-read-door` caught within the hour: "a hand-rolled fetch cannot
+   * distinguish a dropped packet from an answer, and every guard that tried
+   * reported a transport failure as a finding".
+   *
+   * That is the same defect this session spent the morning fixing one layer up,
+   * in src/lib/proof/read.ts, where a ConnectTimeoutError became a 404 for a
+   * campaign that exists. Here it would have been worse in kind: a guard that
+   * cannot reach TEST would have said a fixture is published, which is a finding
+   * about data it never saw.
+   */
+  async function rows(query) {
+    const outcome = await selectRest({ url, key, query })
+    if (!outcome.ok) {
+      console.error(`${TAG} FAIL: ${couldNotLook(query, outcome)}`)
       process.exit(1)
     }
-    return res.json()
+    return outcome.value
   }
 
   const organisations = await rows('organisations?slug=like.lane-b-*&status=eq.active&select=slug')
