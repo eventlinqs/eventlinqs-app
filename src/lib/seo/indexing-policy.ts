@@ -63,20 +63,33 @@ export type IndexingClass = 'always' | 'conditional' | 'alias' | 'never'
  * HOW MANY PUBLICLY VISIBLE EVENTS A TEMPLATED DISCOVERY PAGE NEEDS BEFORE IT IS
  * OFFERED TO SEARCH ENGINES.
  *
- * Three, per close-out C19.3's stated default, and put to the owner in
- * REVIEW-QUEUE.md on 8 September 2026 for confirmation. The reasoning, so the
- * number can be argued rather than inherited:
+ * ONE, by the owner's instruction in close-out SEO3 step 2: "Seed the minimum at
+ * one." This constant was THREE until 14 September 2026 and the argument it
+ * carried is kept here rather than deleted, because the owner may want it back
+ * and an argument nobody can read is an argument nobody can reverse:
  *
  *   - One event makes the page real for a VISITOR (the platform's own
  *     one-event-shows-the-rail law, CLAUDE.md), but it does not make the page
  *     DIFFERENT from the other 440 in its family, and difference is what Google
- *     is judging when it collapses duplicates.
- *   - Three is the smallest number at which the page's list, its map and its
+ *     is judging when it collapses duplicates. That reasoning came from Search
+ *     Console's own report of "duplicate, Google chose different canonical",
+ *     which is the report close-out C19 was raised to answer.
+ *   - Three was the smallest number at which the page's list, its map and its
  *     "what is on" heading all carry content unique to that community or city.
- *   - It is a single named constant read by the pages AND by the sitemap, so
- *     moving it moves both. Nothing else in the tree may write this number.
+ *
+ * The owner's number wins, and the consequence is written down rather than
+ * discovered: at one, roughly 440 community-by-city pages become eligible the
+ * moment a single event tags them. SEO3's reversal condition covers exactly that
+ * ("the threshold rises rather than the pages being deleted"), and the resolver
+ * below is what makes the reversal same-day instead of next-deploy.
+ *
+ * THIS CONSTANT IS NOW A FALLBACK, NOT THE ANSWER. It is what the platform uses
+ * when the owner has set nothing, or when the settings row cannot be read. The
+ * live number comes from `resolveDiscoveryThreshold()` in
+ * src/lib/seo/discovery-threshold.ts. It is still the ONLY place this number is
+ * written in the tree; nothing else may spell it.
  */
-export const DISCOVERY_INDEXING_THRESHOLD = 3
+export const DISCOVERY_INDEXING_THRESHOLD = 1
 
 /**
  * ROUTES NOTHING ON THE PLATFORM LINKS TO, ON PURPOSE.
@@ -316,8 +329,8 @@ export function aliasMetadata(canonicalPath: string) {
  * page whether or not anything is on: pointing it elsewhere while empty is what
  * produced Search Console's "Google chose different canonical" report.
  */
-export function discoveryIndexing(eventCount: number, canonicalPath: string) {
-  const indexable = isDiscoveryIndexable(eventCount)
+export function discoveryIndexing(eventCount: number, canonicalPath: string, threshold: number) {
+  const indexable = isDiscoveryIndexable(eventCount, threshold)
   return {
     robots: {
       index: indexable,
@@ -328,7 +341,17 @@ export function discoveryIndexing(eventCount: number, canonicalPath: string) {
   } as const
 }
 
-/** Whether a count clears the threshold. The sitemap and the pages share it. */
-export function isDiscoveryIndexable(eventCount: number): boolean {
-  return eventCount >= DISCOVERY_INDEXING_THRESHOLD
+/**
+ * Whether a count clears the threshold. The sitemap and the pages share it.
+ *
+ * THE THRESHOLD IS A REQUIRED ARGUMENT AND HAS NO DEFAULT, deliberately. It used
+ * to read the constant itself, and once the owner could move the number (SEO3
+ * step 2) a default would have meant a call site that forgot to pass the LIVE
+ * value silently kept using the compiled one. The two would then disagree, a
+ * page would say noindex while the sitemap published it, and that contradiction
+ * is exactly what Search Console reports back as an exclusion. With no default
+ * the compiler finds every call site instead.
+ */
+export function isDiscoveryIndexable(eventCount: number, threshold: number): boolean {
+  return eventCount >= threshold
 }

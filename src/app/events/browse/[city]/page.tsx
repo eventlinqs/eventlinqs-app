@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { getCity } from '@/lib/cities/data'
 import { loadDiscoveryRows, countCity } from '@/lib/seo/discovery-counts'
-import { discoveryIndexing } from '@/lib/seo/indexing-policy'
+import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
@@ -87,7 +87,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    ...discoveryIndexing(eventCount, `/events/browse/${city.slug}`),
+    ...(await discoveryIndexingFor(eventCount, `/events/browse/${city.slug}`)),
     openGraph: {
       title,
       description,

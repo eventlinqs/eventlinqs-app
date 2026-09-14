@@ -122,6 +122,11 @@
  *                              whole query at runtime while compiling and testing clean
  *   one-refund-path            every refund trigger funnels through one path, so there is one
  *                              answer to how much money goes back
+ *   refund-success-door        a refund that SUCCEEDS is heard whichever event Stripe announces it
+ *                              with: every event in the declared set has a case that reaches
+ *                              reconcile_refund, no deprecated event does, the reconcile failure
+ *                              is retryable, and the endpoint subscription probe requires the
+ *                              same set (close-out R1)
  *   inventory-lock-integrity   two buyers can never be sold the same seat
  *   no-unowned-organisation-read  a service-role read of an organisation's sale posture, or a
  *                              service-role call to the publish gate, must prove the caller
@@ -1058,6 +1063,17 @@ const GUARDS = [
   // exactly one sanctioned void.
   'scripts/guards/refund-restores-inventory.mjs',
   'scripts/guards/one-refund-path.mjs',
+  // Close-out R1, 14 September 2026. The guard above pins what happens ONCE a
+  // refund is heard; this one pins whether it is heard at all. The route reached
+  // its successful-refund handler from one event, `charge.refunded`, and a refund
+  // issued from the Stripe Dashboard arrived as `refund.created` and was dropped:
+  // the ticket kept admitting, the place stayed unsellable, the queue was never
+  // offered it, and nothing reported a fault. Stripe's own page names
+  // `refund.created` as the minimum an integration must listen to. This pins the
+  // set, that each event in it reaches reconcile_refund, that no deprecated event
+  // does, that the reconcile failure is actually retryable, and that the endpoint
+  // subscription probe cannot drift from the code.
+  'scripts/guards/refund-success-door.mjs',
   'scripts/guards/no-ambiguous-embed.mjs',
   // Measured 2026-08-19 against the real TEST database: 50 simultaneous buyers
   // against ONE seat, live create_reservation -> 1 won. Same body with FOR UPDATE

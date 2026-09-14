@@ -415,6 +415,147 @@ const DRILLS = [
     expect: 'publishes /community/[community] without an isDiscoveryIndexable() gate',
   },
   /*
+   * event-structured-data (SEO1 v2), EIGHT DRILLS, one per clause and four
+   * extra where a clause has more than one way to fail.
+   *
+   * SEO1 named two: "Proven red twice, once by removing the block from a
+   * published lane-C event and once by emitting a hard coded price, each failure
+   * naming the offending event slug." SEO1 v2 raised it to "Proven red four
+   * times, once per clause" against its four clauses: the block resolves from
+   * the database, no unpublished event emits, no listing page emits an Event
+   * block, and the withdrawn attendance-mode property appears nowhere.
+   *
+   * The other four hold halves that would otherwise be silent: the page handing
+   * the emitter the raw rows again (the price the buyer sees and the price
+   * Google sees diverging), a seventeenth hand-rolled script tag opting itself
+   * out of the one reversal flag, a draft event finding its way back into the
+   * index, and an online event being described with an address it does not have.
+   */
+  {
+    name: 'the block is removed from a published lane-C event',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: "  return status !== 'draft' && status !== 'scheduled' && status !== 'archived'",
+    replace: "  return status !== 'draft' && status !== 'scheduled' && status !== 'archived' && status !== 'published'",
+    expect: 'lane-c-guard-alpha: a PUBLISHED event emitted no structured data at all',
+  },
+  {
+    name: 'the offer price is hard coded instead of read from the tier',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: '    price: (priceOf(tier) / 100).toFixed(2),',
+    replace: "    price: '99.99',",
+    expect: 'lane-c-guard-alpha: offers emit [99.99] and the tiers on the page are [18.00]',
+  },
+  {
+    name: 'the event page hands the emitter the raw tiers again, so the markup loses the price the page shows',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: '          ticketTiers={enrichedAllTiers}',
+    replace: '          ticketTiers={allTiers}',
+    expect: 'no longer passes `ticketTiers={enrichedAllTiers}`',
+  },
+  {
+    name: 'a page hand-rolls its own ld+json script tag again, outside the one emitter',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/app/help/page.tsx',
+    find: '      <JsonLd payload={itemList} />',
+    replace: '      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }} />',
+    expect: 'emit a raw application/ld+json script tag outside src/components/seo/json-ld.tsx',
+  },
+  {
+    name: 'a draft event is described to Google again (SEO1 v2 clause 2)',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: "  return status !== 'draft' && status !== 'scheduled' && status !== 'archived'",
+    replace: "  return status !== 'scheduled' && status !== 'archived'",
+    expect: 'lane-c-guard-alpha-draft: an event with status "draft" emitted a structured data block',
+  },
+  {
+    // The drill puts the node back exactly the way it actually shipped: nested
+    // inside the venue's own Place payload, which is where twelve of them lived.
+    name: 'a venue profile goes back to nesting Event nodes for the events it lists (SEO1 v2 clause 3)',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/components/features/venues/venue-schema-jsonld.tsx',
+    find: '    maximumAttendeeCapacity: venue.capacity ?? undefined,',
+    replace:
+      '    maximumAttendeeCapacity: venue.capacity ?? undefined,\n' +
+      "    event: upcomingEvents.map(e => ({ '@type': 'Event', name: e.title })),",
+    expect: 'Event node(s) are built outside src/lib/seo/event-schema.ts',
+  },
+  {
+    /*
+     * THE PROPERTY NAME IS BUILT FROM TWO HALVES, and for the same reason the
+     * guard builds it that way: clause 6 sweeps scripts/, and this file lives
+     * there. A literal here would make the guard fail on the drill that proves
+     * it, permanently, which reads as the guard working and is actually the
+     * guard being unable to run.
+     */
+    name: 'the withdrawn attendance-mode property comes back (SEO1 v2 clause 4)',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: "    location: {\n      '@type': 'Place',",
+    replace:
+      `    ${'eventAttendance' + 'Mode'}: 'https://schema.org/OfflineEventAttendanceMode',\n` +
+      "    location: {\n      '@type': 'Place',",
+    expect: 'still name the withdrawn attendance-mode property in CODE',
+  },
+  {
+    /*
+     * The other half of the same withdrawal. An online event has no Place, so
+     * describing it means publishing an address it does not have. This drill
+     * makes the serialiser describe it anyway, which is what it did before.
+     */
+    name: 'an online event is described to Google again, with an address it does not have',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: "  return eventType !== 'virtual'",
+    replace: '  return true',
+    expect: 'a VIRTUAL event emitted a block',
+  },
+
+  // -------------------------------------------------------------------------
+  // CLAUSE 7, NO EMPTY CLAIM AT ANY DEPTH (14 September 2026). The push gate
+  // stopped at its indexing step with "Offer.name is an empty string" on a real
+  // event whose tier is named ''. The serialiser DID compact; it compacted its
+  // own top level only, so every nested Offer, Place and PostalAddress lay
+  // outside the clean it reported. Three drills: the shallow walk restored, the
+  // walk emptied out, and the one renderer every page type crosses serialising
+  // without it.
+  // -------------------------------------------------------------------------
+  {
+    name: 'the payload compaction goes back to the top level only (the defect itself)',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: '  return pruneJsonLd(obj) as Partial<T>',
+    replace: [
+      '  const out: Record<string, unknown> = {}',
+      '  for (const [k, v] of Object.entries(obj)) {',
+      '    if (v === null || v === undefined) continue',
+      "    if (typeof v === 'string' && v.trim() === '') continue",
+      '    out[k] = v',
+      '  }',
+      '  return out as Partial<T>',
+    ].join('\n'),
+    expect: 'empty claim',
+  },
+  {
+    name: 'the walk stops recursing, so only the outermost node is cleaned',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/structured-data.ts',
+    find: '      out[key] = pruneJsonLd(child)',
+    replace: '      out[key] = child',
+    expect: 'empty claim',
+  },
+  {
+    name: 'the one renderer every page type crosses serialises without pruning',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/components/seo/json-ld.tsx',
+    find: 'JSON.stringify(pruneJsonLd(payload))',
+    replace: 'JSON.stringify(payload)',
+    expect: 'without passing it through pruneJsonLd',
+  },
+  /*
    * geocoding-never-silent-null (close-out C9), two drills: the rule made to
    * allow the production case, and the create action's call removed.
    */
@@ -1338,6 +1479,100 @@ const DRILLS = [
     find: '  const inAppRefundId = (stripeRefund.metadata as { refund_id?: string } | null | undefined)?.refund_id',
     replace: '  const inAppRefundId: string | undefined = undefined',
     expect: 'refuses a refund carrying metadata.refund_id',
+  },
+
+  // -------------------------------------------------------------------------
+  // THE REFUND SUCCESS DOOR (close-out R1, 14 September 2026). The drills above
+  // ask what happens once a refund is HEARD. These seven ask whether it is heard
+  // at all. Until R1 the route reached its successful-refund handler from one
+  // event, `charge.refunded`, and a refund issued from the Stripe Dashboard
+  // arrived as `refund.created` and was dropped in silence.
+  //
+  // The last two are one violation drilled TWICE, deliberately. The first time
+  // this clause was drilled, commenting the requirement out left the guard GREEN,
+  // because a key inside `// 'refund.created': ...` still matched a quoted key
+  // followed by a colon. Deleting it fired and commenting it out did not, so both
+  // are kept: the disabled-but-present shape is the one that got through.
+  // -------------------------------------------------------------------------
+  {
+    name: 'the refund.created case is gone from the route (the R1 defect itself)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: "      case 'refund.created': {",
+    replace: "      case 'refund.created.DRILL': {",
+    expect: "has no `case 'refund.created':`",
+  },
+  {
+    name: 'a successful refund routed to the FAILED and CANCELLED path',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '        await handleRefundCreated(refund)',
+    replace: '        await handleRefundNotCompleted(refund)',
+    expect: 'routes to handleRefundNotCompleted',
+  },
+  {
+    name: 'the declared set shrinks below the event Stripe names as the minimum',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/lib/payments/refund-events.ts',
+    find: "export const REFUND_SUCCESS_EVENTS = ['refund.created', 'charge.refunded'] as const",
+    replace: "export const REFUND_SUCCESS_EVENTS = ['charge.refunded'] as const",
+    expect: 'does not contain refund.created',
+  },
+  {
+    name: 'the reconcile failure throws a plain Error again (the retry that was a comment)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: 'throw new WebhookProcessingError(`reconcile_refund failed',
+    replace: 'throw new Error(`reconcile_refund failed',
+    expect: 'maps ONLY WebhookProcessingError to HTTP 500',
+  },
+  {
+    name: 'a deprecated Stripe event wired to the success path',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: "      case 'refund.created': {",
+    replace: "      case 'charge.refund.updated':\n      case 'refund.created': {",
+    expect: 'Stripe marks that event Deprecated',
+  },
+  {
+    name: 'the endpoint subscription probe stops requiring refund.created (deleted)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'scripts/probe/webhook-subscription-check.mjs',
+    find: "  'refund.created': 'the second door to reconcile_refund, and the one Stripe names as the minimum',\n",
+    replace: '',
+    expect: 'subscription probe does not require refund.created',
+  },
+  {
+    name: 'the endpoint subscription probe stops requiring refund.created (commented out)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'scripts/probe/webhook-subscription-check.mjs',
+    find: "  'refund.created': 'the second door",
+    replace: "  // 'refund.created': 'the second door",
+    expect: 'subscription probe does not require refund.created',
+  },
+  {
+    name: 'a refund stops making the freed place visible again (the SOLD OUT page)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '      const invalidated = await revalidateEventSurfacesFromRouteHandlerById(adminClient, order.event_id as string)',
+    replace: '      const invalidated: string[] = []',
+    expect: 'no longer call revalidateEventSurfacesFromRouteHandlerById',
+  },
+  {
+    name: 'the refund stops refreshing the inventory cache the ticket panel reads',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '          refreshInventoryCache(tier, order.event_id as string).catch(err => {',
+    replace: '          Promise.resolve(tier).catch(err => {',
+    expect: 'no longer call refreshInventoryCache',
+  },
+  {
+    name: 'the webhook reaches for the SERVER ACTION revalidation, which throws in a route handler',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '      const invalidated = await revalidateEventSurfacesFromRouteHandlerById(adminClient, order.event_id as string)',
+    replace: '      const invalidated = await revalidateEventSurfacesById(adminClient, order.event_id as string)',
+    expect: 'the SERVER ACTION form',
   },
 
   // -------------------------------------------------------------------------

@@ -301,30 +301,57 @@ export async function drivePurchase(page, { base, slug, qty, buyerEmail, shot = 
   const sleep = ms => new Promise(r => setTimeout(r, ms))
 
   await page.goto(`${base}/events/${slug}`, { waitUntil: 'load', timeout: 120000 })
-  await shot(page, '01-event-page')
 
   /*
-   * THE SELECTOR IS NOT ALWAYS ON THE PAGE. At narrow widths the ticket picker
-   * sits behind a "Get tickets" control rather than in the layout, so the
-   * quantity button genuinely does not exist until that is pressed. The first
-   * version threw "no quantity control on the event page" at 390 and read as an
-   * event with no tickets, which is the harness's vocabulary indicting a screen
-   * that was correct.
+   * THE SELECTOR IS NOT ALWAYS ON THE PAGE, AND WHEN IT IS ABSENT THE HARNESS
+   * SAYS WHICH OF THE TWO REASONS IT IS. Both halves of this were learned the
+   * hard way in two trees on 14 September 2026 and the merge keeps both,
+   * because they diagnose different faults and either one alone accuses the
+   * product of the other's.
+   *
+   * REASON ONE, THE ENVIRONMENT (lane A). A drive reported "no quantity control
+   * on the event page" and a reserve button that never appeared, on two of
+   * three viewports, and both read as product failures. The screenshot settled
+   * it: 14,672 bytes of UNSTYLED html saying "Loading event", against 115,219
+   * for the same page minutes earlier. That is the route's loading shell served
+   * with no stylesheet, which is what a running `next start` serves once
+   * something has rebuilt `.next` underneath it: the HTML references chunk URLs
+   * the new build no longer has.
+   *
+   * REASON TWO, THE VIEWPORT (lane B). At narrow widths the ticket picker sits
+   * behind a "Get tickets" control rather than in the layout, so the quantity
+   * button genuinely does not exist until that is pressed. The first version
+   * threw the same sentence at 390 and read as an event with no tickets, which
+   * is the harness's vocabulary indicting a screen that was correct.
+   *
+   * SO THE ORDER IS FIXED: wait for the control; on timeout ask the page
+   * whether it is even a rendered page, because if it is not, opening a picker
+   * that does not exist would only produce a second wrong message; only then
+   * try the opener; and only then say it is about the product.
+   *
+   * IT IS WAITED FOR, NOT SAMPLED ONCE, and that distinction cost a run. A
+   * `count()` taken the instant `load` fires is a question asked before the
+   * answer exists: against `next dev` the first request for a route compiles
+   * it, so the control appears seconds after the event is on screen.
    */
   const quantityControl = () => page.getByRole('button', { name: /^(\+|increase|add)/i }).first()
   let plus = quantityControl()
-  /*
-   * IT IS WAITED FOR, NOT SAMPLED ONCE, and that distinction cost a run. A
-   * `count()` taken the instant `load` fires is a question asked before the
-   * answer exists: against `next dev` the first request for a route compiles it,
-   * so the control appears seconds after the event is on screen. The version
-   * that sampled passed on a warm route and failed on a cold one, and reported
-   * "no quantity control on the event page" about an event whose tickets were
-   * perfectly on sale.
-   */
   try {
-    await plus.waitFor({ state: 'visible', timeout: 25000 })
+    await plus.waitFor({ state: 'visible', timeout: 45000 })
   } catch {
+    await shot(page, '01-event-page')
+    const stylesheets = await page.locator('link[rel="stylesheet"]').count()
+    const shell = await page.getByText(/^Loading event/i).count()
+    const title = (await page.title()) || '(no title)'
+    if (shell > 0 || stylesheets === 0) {
+      throw new Error(
+        `the server served its LOADING SHELL, not the event page ` +
+          `(${stylesheets} stylesheet link(s), title "${title}"). This is the ` +
+          `environment, not the product: a running next start whose .next was ` +
+          `rebuilt underneath it serves html pointing at chunks that no longer ` +
+          `exist. Re-run the drive with nothing else building.`,
+      )
+    }
     const opener = page.getByRole('button', { name: /^(get|buy|select) tickets/i }).first()
     if (await opener.count()) {
       await opener.click().catch(() => {})
@@ -332,12 +359,43 @@ export async function drivePurchase(page, { base, slug, qty, buyerEmail, shot = 
       plus = quantityControl()
       await plus.waitFor({ state: 'visible', timeout: 30000 }).catch(() => {})
     }
+    if (!(await plus.count())) {
+      throw new Error(
+        `no quantity control on the event page after 45s, with or without ` +
+          `opening the picker, and the page is a real rendered page ` +
+          `(${stylesheets} stylesheet link(s), title "${title}"), so this IS ` +
+          `about the product.`,
+      )
+    }
   }
-  if (!(await plus.count())) throw new Error('no quantity control on the event page, with or without opening the picker')
+  await shot(page, '01-event-page')
   for (let i = 0; i < qty; i += 1) { await plus.click(); await sleep(450) }
   await shot(page, '02-selected')
 
-  await page.getByRole('button', { name: /reserve|get tickets|checkout/i }).first().click()
+  /*
+   * THE SAME RULE FOR THE RESERVE BUTTON. At tablet-768 on 14 September 2026
+   * this click timed out after the quantity control had already worked, so the
+   * page WAS real and the button was the question. A bare click that times out
+   * says only "not clickable", which is true of a button that is missing, one
+   * that is disabled, and one that is off screen, and those are three different
+   * findings.
+   */
+  const reserve = page.getByRole('button', { name: /reserve|get tickets|checkout/i }).first()
+  try {
+    await reserve.click({ timeout: 45000 })
+  } catch {
+    await shot(page, '02-reserve-would-not-take')
+    const present = await reserve.count()
+    const label = present ? ((await reserve.textContent()) || '').trim() : '(absent)'
+    const enabled = present ? await reserve.isEnabled() : false
+    const visible = present ? await reserve.isVisible() : false
+    throw new Error(
+      `the reserve button would not take a click: present=${present > 0} ` +
+        `visible=${visible} enabled=${enabled} label="${label}". A DISABLED ` +
+        `button here means the ticket panel refused the selection; an ABSENT one ` +
+        `means the panel never rendered.`,
+    )
+  }
   await page.waitForURL(/\/checkout\//, { timeout: 60000 })
   await sleep(2500)
 
@@ -369,8 +427,95 @@ export async function drivePurchase(page, { base, slug, qty, buyerEmail, shot = 
   if (await postal.count()) await postal.fill('3220')
   await sleep(900)
   await shot(page, '04-card-entered')
-  await page.getByRole('button', { name: /pay/i }).first().click()
-  await page.waitForURL(/confirmation/, { timeout: 150000 })
+  /*
+   * DISMISS ANY NATIVE POPUP BEFORE PRESSING PAY, AND THE REASON IS EVIDENCE
+   * RATHER THAN SUPERSTITION.
+   *
+   * At tablet-768 this drive failed three times running while mobile-390 and
+   * desktop-1440 passed the identical step in the same run. The instrumentation
+   * settled what it was: the button still read "Pay AUD 26.87" three seconds
+   * after the click rather than "Processing...", the console was silent, the
+   * page showed no error and Stripe's element showed none either. The submit
+   * handler NEVER RAN. The screenshot shows why: Stripe's payment element at
+   * this width renders a Country <select>, focus lands on it once the security
+   * code is complete, and its native option list was open over the page. In
+   * Chromium a click made while a native select popup is open is consumed
+   * CLOSING THE POPUP and never reaches the element underneath.
+   *
+   * SO THIS IS THE HARNESS, NOT THE PRODUCT, and the distinction is the whole
+   * point: the page cannot respond to an event the browser never delivered to
+   * it, and a real buyer moving a finger from the card fields to the Pay button
+   * does not leave a country list hanging open. Escape is what closes it, and it
+   * is a no-op on the two viewports that never had one open, which is why it is
+   * unconditional rather than a width special case.
+   */
+  await page.keyboard.press('Escape')
+  await sleep(300)
+
+  const payButton = page.getByRole('button', { name: /pay/i }).first()
+  const payLabel = ((await payButton.textContent()) || '').trim()
+  const console_ = []
+  page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console_.push(`${m.type()}: ${m.text()}`.slice(0, 300)) })
+  page.on('pageerror', err => console_.push(`pageerror: ${err.message}`.slice(0, 300)))
+  await payButton.click()
+  /*
+   * DID THE HANDLER EVEN RUN. The button reads "Processing..." for as long as
+   * confirmPayment is in flight (checkout-form.tsx), so its label is the one
+   * observable that separates "the click never reached the submit handler" from
+   * "the payment was attempted and did not come back". At tablet-768 on
+   * 14 September 2026 it still read "Pay AUD 26.87" after 150 seconds, which is
+   * the first of those two and a completely different investigation.
+   */
+  let labelAfter = '(not read)'
+  try {
+    await payButton.waitFor({ state: 'visible', timeout: 3000 })
+    labelAfter = ((await payButton.textContent()) || '').trim()
+  } catch { labelAfter = '(the button went away, which is what a submit looks like)' }
+  try {
+    await page.waitForURL(/confirmation/, { timeout: 150000 })
+  } catch {
+    /*
+     * THE PAY WENT IN AND NOTHING CAME BACK, AND THAT IS THREE DIFFERENT
+     * FINDINGS. 14 September 2026: the tablet-768 leg of the R1 drive timed out
+     * here while mobile-390 and desktop-1440 passed the identical step in the
+     * same run. The server's own log showed a payment_intent.created for that
+     * leg and NO charge after it, so the click landed and the confirmation did
+     * not complete. `waitForURL timed out` says none of that.
+     *
+     * A card declined inside Stripe's element, a validation error Stripe is
+     * showing, and a confirmation that is simply still in flight are three
+     * separate things, and the page is holding the answer to which at the
+     * moment it gives up. So it is read and reported rather than thrown away.
+     */
+    await shot(page, '05-pay-did-not-complete')
+    const errors = await page
+      .locator('[role="alert"], .text-red-600, [data-testid*="error"], p.text-danger')
+      .allTextContents()
+    let stripeError = ''
+    try {
+      stripeError = (
+        await page
+          .frameLocator('iframe[name^="__privateStripeFrame"]')
+          .first()
+          .locator('[role="alert"], .p-FieldError, .Error')
+          .allTextContents()
+      ).join(' | ')
+    } catch {
+      stripeError = '(the Stripe frame could not be read)'
+    }
+    throw new Error(
+      `the payment did not reach the confirmation in 150s. Pressed "${payLabel}", ` +
+        `button read "${labelAfter}" three seconds later (it reads "Processing..." ` +
+        `while confirmPayment is in flight, so an unchanged label means the SUBMIT ` +
+        `HANDLER NEVER RAN and the click was swallowed). ` +
+        `Console: ${console_.slice(0, 5).join(' || ') || '(silent)'}. ` +
+        `still at ${page.url()}. Page said: ${errors.filter(Boolean).join(' | ') || '(nothing)'}. ` +
+        `Stripe's own element said: ${stripeError || '(nothing)'}. Cross-check the ` +
+        `server log for a payment_intent.succeeded on this attempt: a created ` +
+        `intent with no charge after it means the confirmation never completed, ` +
+        `not that the platform refused it.`,
+    )
+  }
   await shot(page, '05-confirmation')
 
   return page.url().match(/orders\/([0-9a-f-]+)\//)?.[1] ?? null

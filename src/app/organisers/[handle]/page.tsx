@@ -14,6 +14,7 @@ import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 import { OrganiserSchemaJsonLd } from '@/components/features/organisers/organiser-schema-jsonld'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { OrganiserProfileHero } from '@/components/features/organisers/organiser-profile-hero'
 import { FollowButton } from '@/components/features/follow/follow-button'
 import { OrganiserBioSection } from '@/components/features/organisers/organiser-bio-section'
@@ -301,14 +302,21 @@ export default async function OrganiserProfilePage({ params }: Props) {
     .map(v => ({ name: v.name, count: v.count, handle: venueSlugify(v.name) }))
 
   const baseUrl = getSiteUrl()
-  const upcomingForSchema = upcoming.slice(0, 12).map(e => ({
-    slug: e.slug,
-    title: e.title,
-    startDate: e.start_date,
-    endDate: e.end_date ?? e.start_date,
-    venueCity: e.venue_city,
-    coverImageUrl: e.cover_image_url,
-  }))
+  /*
+   * SLUG AND TITLE, AND NOTHING ELSE, because nothing else may be emitted here.
+   *
+   * This projection used to carry startDate, endDate, venueCity and
+   * coverImageUrl, and the schema component used them to build twelve nested
+   * `Event` nodes. An organiser profile is a page that LISTS events, and
+   * Google's event experience only supports a leaf page holding a single event
+   * (SEO1 v2, FAULT THREE). Narrowing the projection is the control: a future
+   * edit cannot rebuild those nodes here, because the data is no longer carried.
+   *
+   * The whole list is passed, not the first twelve, so the ItemList's
+   * `numberOfItems` is the number the organiser actually has on sale rather than
+   * the size of the sample the markup shows.
+   */
+  const upcomingForSchema = upcoming.map(e => ({ slug: e.slug, title: e.title }))
 
   return (
     <>
@@ -316,6 +324,18 @@ export default async function OrganiserProfilePage({ params }: Props) {
         organisation={organisation}
         upcomingEvents={upcomingForSchema}
         baseUrl={baseUrl}
+      />
+      {/* SEO1 step 6: a BreadcrumbList on the organiser page, which had none.
+        * TWO STEPS, NOT THREE, and that is deliberate. There is no organiser
+        * DIRECTORY on this platform: /organisers is the marketing landing that
+        * sells the product to an organiser, so naming it the parent of a
+        * profile would put a misleading label on a link that goes somewhere
+        * else. A trail with a step that lies is worse than a short one. */}
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: baseUrl },
+          { name: organisation.name, url: `${baseUrl}/organisers/${organisation.slug}` },
+        ]}
       />
       <PageShell>
         {/* OP1 Hero */}

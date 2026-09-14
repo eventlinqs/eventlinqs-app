@@ -1537,6 +1537,7 @@ const ROOT = join(HERE, '..', '..')
  * caught a fourth section doing it after the guard had already gone green: the
  * last-push line still answered a failed read with "No push to a working branch
  * could be found", which is the absence the stall alert exists to raise.
+ *
  * 2026-09-13 (the merge of lane C into the push lane): the two histories above
  * are BOTH kept, because each names tests that exist in this tree and a merge
  * that dropped either would leave the next reader unable to find out why a
@@ -1733,9 +1734,76 @@ const ROOT = join(HERE, '..', '..')
  * cost a layout shift on the pages the mobile budget is measured on. The
  * behaviour is driven at three widths; these three hold the contract, so an
  * edit that deletes one half of it cannot pass.
+ * 2026-09-14 (SEO1 v2, the event structured data): raised 391/4746 -> 393/4782,
+ * MEASURED on a green suite, 0 failed and 0 skipped. An earlier reading said
+ * 4778 and it was taken while the suite was RED, so it is not the one recorded:
+ * the floor is measured on a green suite or it is not measured. Two new files
+ * and 36 tests. `tests/component/seo/json-ld-blocks.test.tsx`
+ * renders every JSON-LD block the platform emits, which is the half a unit test
+ * on a builder cannot reach: the two profile pages nested twelve `Event` nodes
+ * each inside their own payload, and a correct builder would not have stopped a
+ * component doing that. `tests/unit/seo/social-profiles.test.ts` holds the set
+ * behind `sameAs`, which shipped as an empty array on every page of the platform
+ * for months. The rest are additions to the existing SEO payload test, renamed
+ * to SEO1 v2's acceptance names, including the two the corrections added:
+ * `no_event_attendance_mode_is_emitted_anywhere`, which asserts on the emitted
+ * BYTES rather than the object because a key holding `undefined` is present on
+ * one and absent from the other, and `no_event_markup_on_any_listing_page`.
+ *
+ * 2026-09-14 (SEO3 step 2, the owner's indexing threshold): raised 393/4782 ->
+ * 394/4794, MEASURED on a green suite. One new file, twelve tests. The
+ * discovery indexing threshold stopped being a compiled constant and became a
+ * row the owner can change without a deploy, and the resolver has to be right
+ * in THREE states rather than one: before his migration exists, after it exists,
+ * and when the database cannot be reached mid-request. The third is the one
+ * worth twelve tests, because a failed read that returned ZERO would make every
+ * templated discovery page indexable at once, which is the exact shape Google
+ * collapsed in close-out C19. It degrades to the constant instead, and the test
+ * that proves it asserts the value is greater than zero as well as equal to the
+ * constant.
+ *
+ * 2026-09-14 (the merge of lane C into the push lane, the THIRD one): both
+ * lineages above are kept verbatim again, and they still do not form one
+ * chain. From d137ed2f lane A counted 390/4747 -> 391/4760 -> 393/4770 ->
+ * 396/4812 while lane C counted 391/4746 -> 393/4782 -> 394/4794. Neither end
+ * point describes a tree holding both sets of files, and the larger of two
+ * partial counts is still a guess. The value below is MEASURED on the merged
+ * tree.
+ *
+ * 2026-09-14 (R1, the refund success door, and the empty claim the push gate
+ * caught): raised 399/4860 -> 400/4897, MEASURED on a green suite. R1 added one
+ * file and 43 tests across two: which Stripe events mean a refund SUCCEEDED
+ * (the route reached its successful-refund handler from one event, and Stripe's
+ * own page names a different one as the minimum), and the route-handler form of
+ * the event revalidation, which exists because updateTag throws outside a Server
+ * Action and a webhook calling it would have traded a stale page for a Stripe
+ * retry loop. The other four are the empty claim: a nameless ticket tier put
+ * `Offer.name: ""` into a nested node the serialiser had already declared clean,
+ * and the four are written against the emitted BYTES because the object is not
+ * what Google reads.
+ *
+ * MEASURED: 400 files, 4893 tests on e9dfc26b, plus the four above.
+ *
+ * 2026-09-14 (the flake that refused a push, and this guard's own message):
+ * raised 400/4897 -> 400/4900, MEASURED on a green suite of the whole tree. No
+ * new file: three tests added to tests/unit/guards/one-priority-image.test.ts.
+ * They pin that a multi-line JSX comment is commentary on every one of its
+ * lines, which cost a cycle when a comment explaining why a tile is NOT
+ * priority quoted the code it replaced and the guard failed the tree on the
+ * quotation. The two hero-raster tests changed in the same commit were made
+ * deterministic rather than added to, so they move no count.
+ *
+ * 2026-09-14 (lane B, merging verify/l5-launch-readiness a SECOND time, the
+ * merge lane A returned): the same rule as the entry above applies again and
+ * for the same reason. Both comment histories are kept verbatim because each
+ * names what it counted; neither pair of numbers describes this tree. Lane B
+ * measured 407/5233 on the tree it merged, lane A measured 400/4900 on a tree
+ * lane B had never seen, and a tree holding both sets of files is a third
+ * thing. The pair below is MEASURED on it: 411 files and 5321 tests, 0 failed and 0 skipped,
+ * on a clean run of the whole suite of the merged tree.
  */
-const MIN_FILES = 407
-const MIN_TESTS = 5233
+const MIN_FILES = 411
+const MIN_TESTS = 5321
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
@@ -1876,7 +1944,45 @@ if (collectionFailures.length > 0) {
   )
 }
 if (failedSuites > 0 && collectionFailures.length === 0) {
-  problems.push(`${failedSuites} test SUITE(S) failed. Read the vitest output.`)
+  /*
+   * NAME THE FILES, for the same reason the failing tests are named below, and
+   * because on 14 September 2026 this branch was the whole of what the gate
+   * said. The push of eight commits was refused at the suite step with
+   * "2 test SUITE(S) failed. Read the vitest output." and a total one test
+   * below the baseline. There WAS no vitest output to read: this guard runs
+   * vitest with --reporter=json into a file and then deletes it, so the
+   * instruction pointed at something that does not exist, and the second
+   * failing file was never identified. One of the two was a flake that passed
+   * standalone seconds later; the other is still unknown and cannot now be
+   * recovered.
+   *
+   * The report already carries every file with its status and its assertions,
+   * so withholding the names cost a diagnosis for nothing. A file listed with
+   * zero failed tests is the interesting case: it failed OUTSIDE a test, in a
+   * hook, a teardown or an unhandled rejection, and that is the shape that
+   * takes tests down with it and shows up as a total below the baseline.
+   */
+  const failedFiles = (Array.isArray(report.testResults) ? report.testResults : [])
+    .filter(r => r.status === 'failed')
+    .map(r => {
+      const file = (r.name ?? '').replace(/\\/g, '/').replace(ROOT.replace(/\\/g, '/') + '/', '')
+      const assertions = r.assertionResults ?? []
+      const bad = assertions.filter(a => a.status === 'failed').length
+      return `        ${file}  (${assertions.length} test(s) registered, ${bad} failed)`
+    })
+  problems.push(
+    `${failedFiles.length || failedSuites} test FILE(S) failed:\n` +
+      (failedFiles.length > 0 ? failedFiles.join('\n') : '        (the report named none)') +
+      '\n' +
+      '      A file listed here with 0 failed tests failed OUTSIDE a test: a hook, a\n' +
+      '      teardown or an unhandled rejection, and that shape can take its remaining\n' +
+      '      tests down with it.\n' +
+      (failedSuites !== failedFiles.length
+        ? `      vitest's own numFailedTestSuites says ${failedSuites}, and it is NOT a file count:\n` +
+          '      it counts describe blocks too, so one file failing inside one describe\n' +
+          '      reports as two. Drilled on 14 September 2026. Trust the list above.\n'
+        : ''),
+  )
 }
 if (!reportedSuccess) {
   problems.push('vitest reported success=false for this run.')
@@ -1927,9 +2033,14 @@ if (files < MIN_FILES) {
 }
 if (tests < MIN_TESTS) {
   problems.push(
-    `only ${tests} TESTS ran, baseline is ${MIN_TESTS}.\n` +
+    `only ${tests} tests PASSED, baseline is ${MIN_TESTS}.\n` +
       '      Tests that do not run cannot fail, so a green suite that runs fewer tests\n' +
-      '      is not evidence of anything.',
+      '      is not evidence of anything.\n' +
+      (failed > 0
+        ? `      READ THIS WITH THE FAILURES ABOVE FIRST. This is the PASSED count, not the\n` +
+          `      total, so the ${failed} failing test(s) already lower it by ${failed} on their own.\n` +
+          '      A shortfall of exactly that size means nothing stopped running.' + `\n`
+        : '      Nothing failed on this run, so the shortfall is tests that did not run at all.'),
   )
 }
 if (skipped > MAX_SKIPPED) {

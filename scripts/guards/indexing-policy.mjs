@@ -30,14 +30,22 @@
  *      so: a 3xx has no document and therefore no head to put a tag in.
  *   3. INDEXABLE PAGES DECLARE THEIR OWN CANONICAL. Every ALWAYS and CONDITIONAL
  *      page declares `alternates` in its own file (directly, or through
- *      discoveryIndexing(), which carries one). This is the check that would
+ *      discoveryIndexingFor(), which carries one). This is the check that would
  *      have caught /help/[slug].
  *   4. THE ROOT LAYOUT DECLARES NO CANONICAL. The defect above, specifically.
  *   5. CONDITIONAL ROUTES APPLY THE THRESHOLD, and the sitemap applies it too:
- *      every conditional page calls discoveryIndexing(), and src/app/sitemap.ts
+ *      every conditional page calls discoveryIndexingFor(), and src/app/sitemap.ts
  *      gates with isDiscoveryIndexable() for each conditional family it
  *      publishes. A page that goes noindex while the sitemap still advertises it
  *      is the contradiction Search Console reports back.
+ *
+ *      SINCE close-out SEO3 (14 September 2026) the threshold is the OWNER'S,
+ *      read from public.seo_settings without a deploy, so clause 5 names the
+ *      RESOLVER rather than the pure function. A page calling the pure
+ *      discoveryIndexing() would have to pass a threshold from somewhere, and
+ *      the only somewhere in a page file is the compiled constant: it would then
+ *      judge itself against the build's number while the sitemap used the
+ *      owner's, which is the same contradiction reached by a new door.
  *   6. THE SITEMAP NEVER NAMES A NEVER ROUTE. Checked against the literal paths
  *      the sitemap source writes.
  *
@@ -142,7 +150,10 @@ function metadataChain(file) {
 }
 
 const NOINDEX = /index:\s*false|noIndexMetadata\s*\(/
-const CANONICAL = /alternates:\s*\{|discoveryIndexing\s*\(|aliasMetadata\s*\(/
+// `discoveryIndexingFor` carries the self-referencing canonical for every
+// conditional page, exactly as `discoveryIndexing` did before SEO3 split the
+// live-threshold resolution out of it.
+const CANONICAL = /alternates:\s*\{|discoveryIndexingFor\s*\(|aliasMetadata\s*\(/
 /**
  * A page whose default export ONLY redirects. It never renders a document, so
  * there is no head to carry a robots tag or a canonical, and requiring one would
@@ -200,10 +211,24 @@ for (const [route, klass] of classified) {
     }
   }
 
-  if (klass === 'conditional' && !/discoveryIndexing\s*\(/.test(own)) {
+  /*
+   * THE LIVE RESOLVER, NOT THE PURE FUNCTION (close-out SEO3 step 2).
+   *
+   * `discoveryIndexing(count, path, threshold)` is pure and takes the threshold
+   * as an argument. `discoveryIndexingFor(count, path)` resolves the OWNER'S
+   * number first and then calls it. A page calling the pure one directly would
+   * have to supply a threshold from somewhere, and the only somewhere is the
+   * compiled constant, which is exactly the drift this guard exists to stop: the
+   * page would judge itself against the build's number while the sitemap judged
+   * it against the owner's, and the two would publish a contradiction. So a
+   * conditional family must name the RESOLVER.
+   */
+  if (klass === 'conditional' && !/discoveryIndexingFor\s*\(/.test(own)) {
     fail(
-      `${route} is a templated discovery page and does not call discoveryIndexing().\n` +
-        '        Without it the page stays indexable while empty, which is what Google collapsed.',
+      `${route} is a templated discovery page and does not call discoveryIndexingFor().\n` +
+        '        Without it the page stays indexable while empty, which is what Google collapsed,\n' +
+        '        or it judges itself against the compiled constant while the sitemap uses the\n' +
+        "        owner's live threshold, and the two disagree in public.",
     )
   }
 

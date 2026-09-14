@@ -15,9 +15,9 @@
  * baseUrl they use for every other JSON-LD payload).
  *
  * Mirrors EventSchemaJsonLd exactly: a server component (no client
- * directive) rendering a single <script type="application/ld+json"> via
- * dangerouslySetInnerHTML + JSON.stringify, suppressHydrationWarning.
+ * directive) rendering its payload through the one JsonLd emitter.
  */
+import { JsonLd } from '@/components/seo/json-ld'
 
 interface BreadcrumbItem {
   /** Human-readable label for this step in the trail. */
@@ -43,11 +43,5 @@ export function BreadcrumbJsonLd({ items }: BreadcrumbJsonLdProps) {
     })),
   }
 
-  return (
-    <script
-      type="application/ld+json"
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
-    />
-  )
+  return <JsonLd payload={payload} />
 }

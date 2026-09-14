@@ -1,7 +1,7 @@
 import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countCategory } from '@/lib/seo/discovery-counts'
-import { discoveryIndexing } from '@/lib/seo/indexing-policy'
+import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
@@ -53,7 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${category.displayName} events - ${category.tagline} | EventLinqs`,
     description,
     keywords: category.keywords,
-    ...discoveryIndexing(eventCount, `/categories/${category.slug}`),
+    ...(await discoveryIndexingFor(eventCount, `/categories/${category.slug}`)),
     openGraph: {
       title: `${category.displayName} events - ${category.tagline} | EventLinqs`,
       description,

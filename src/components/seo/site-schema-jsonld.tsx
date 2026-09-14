@@ -22,12 +22,16 @@
  */
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 import { contactAddress } from '@/lib/email/sender'
+import { sameAsProfiles } from '@/lib/brand/social-profiles'
+import { JsonLd } from '@/components/seo/json-ld'
 
 interface Props {
   baseUrl: string
 }
 
 export function SiteSchemaJsonLd({ baseUrl }: Props) {
+  const sameAs = sameAsProfiles()
+
   const website = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -68,24 +72,18 @@ export function SiteSchemaJsonLd({ baseUrl }: Props) {
       areaServed: 'AU',
       availableLanguage: 'en',
     },
-    sameAs: [
-      // Real social URLs surface when M9 marketing ships them; placeholders
-      // omitted to avoid linking to nothing.
-    ],
+    // OMITTED rather than emitted empty. `sameAs: []` shipped on every page of
+    // the platform: an array asserting that EventLinqs is also nothing at all.
+    // The set is read from src/lib/brand/social-profiles.ts, which is the one
+    // list the footer and the contact page read too, and which carries the
+    // proof for each URL it is prepared to assert.
+    ...(sameAs.length > 0 ? { sameAs } : {}),
   }
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(website) }}
-      />
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organization) }}
-      />
+      <JsonLd payload={website} />
+      <JsonLd payload={organization} />
     </>
   )
 }

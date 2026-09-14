@@ -5,6 +5,7 @@ import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
+import { SOCIAL_PROFILES, type SocialLabel } from '@/lib/brand/social-profiles'
 import { ORGANISER_SIGNUP_PATH, withSignupSource } from '@/lib/organisers/signup-source'
 
 /**
@@ -157,13 +158,17 @@ function DesktopColumn({ title, links }: FooterColumnProps) {
 }
 
 function SocialRow() {
-  const items = [
-    { label: 'Instagram',  href: 'https://instagram.com/eventlinqs', icon: <InstagramIcon /> },
-    { label: 'TikTok',     href: 'https://tiktok.com/@eventlinqs',   icon: <TikTokIcon /> },
-    { label: 'X',          href: 'https://twitter.com/eventlinqs',   icon: <XIcon /> },
-    { label: 'LinkedIn',   href: 'https://linkedin.com/company/eventlinqs', icon: <LinkedInIcon /> },
-    { label: 'Facebook',   href: 'https://facebook.com/eventlinqs',  icon: <FacebookIcon /> },
-  ]
+  // The URLs come from src/lib/brand/social-profiles.ts, the one list, which the
+  // contact page and the Organization structured-data block also read. They were
+  // typed here and typed again on the contact page, and the two disagreed.
+  const icons: Record<SocialLabel, React.ReactNode> = {
+    Instagram: <InstagramIcon />,
+    TikTok: <TikTokIcon />,
+    X: <XIcon />,
+    LinkedIn: <LinkedInIcon />,
+    Facebook: <FacebookIcon />,
+  }
+  const items = SOCIAL_PROFILES.map(p => ({ label: p.label, href: p.href, icon: icons[p.label] }))
   return (
     <div className="flex items-center gap-4">
       {items.map(it => (

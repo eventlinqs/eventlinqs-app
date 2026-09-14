@@ -244,6 +244,43 @@ const NO_ANONYMOUS_VALUE = {
 /* ------------------------------------------------------- 3. driving them */
 
 const results = []
+/*
+ * MORE THAN ONE LCP PRELOAD IN ONE HEAD (added 14 September 2026, lane A).
+ *
+ * Close-out C8 set the rule on 6 September 2026: a document preloads its LCP
+ * candidate and nothing else. The homepage carried NINE image preloads then,
+ * and under the mobile profile first paint and LCP arrived together at four
+ * seconds because every one of them competed with the render-blocking
+ * stylesheet.
+ *
+ * scripts/guards/one-priority-image.mjs holds that rule statically, and its own
+ * header says what it cannot see: "a flag computed elsewhere ... the drive proof
+ * counts: the preload links in the served head of every key route". Nothing
+ * counted them. This does, and the first count found four routes over the
+ * limit, one of them because a component granted priority under a condition
+ * written in its comment and a literal `true` in its code.
+ *
+ * THE BASELINE IS NAMED, DATED AND REPORTED ON EVERY RUN, never a silent skip.
+ * The three below were measured on production on 14 September 2026 and each
+ * needs a decision about which of its two images is really the LCP, which is a
+ * design judgement rather than a bug fix. They are here so no FOURTH route can
+ * join them unnoticed, and an entry that stops matching is reported as stale
+ * exactly like the deliberate-404 list above.
+ */
+const TWO_PRELOADS_REVIEWED = {
+  '/cities': 'the city grid grants its first tile and the page paints a second stock city raster; measured 2 on production 2026-09-14, REVIEW-QUEUE.md',
+  '/communities': 'a community doorway raster and the grid first tile; measured 2 on production 2026-09-14, REVIEW-QUEUE.md',
+  '/events/browse/[city]': 'the city hero and the first recommended rail card, whose allowlist reason says browse has no hero; measured 2 on production 2026-09-14, REVIEW-QUEUE.md',
+}
+/** Every route pattern this run found carrying more than one image preload. */
+const twoPreloadHits = new Set()
+
+/** `<link rel="preload" as="image">` in a served head, in either attribute order. */
+function countImagePreloads(html) {
+  const links = html.match(/<link\b[^>]*>/gi) ?? []
+  return links.filter(l => /rel=["']preload["']/i.test(l) && /as=["']image["']/i.test(l)).length
+}
+
 const defects = []
 
 /** How a concrete value was obtained. REAL means the platform itself produced it. */
@@ -319,6 +356,20 @@ async function drive(url, { pattern, how }) {
   } else if (finalStatus === 200 && /this page could not be found|404 - not found/i.test(body)) {
     defects.push(`${url}: 200 whose body says the page does not exist (a soft 404)`)
     row.defect = 'soft 404'
+  } else if (finalStatus === 200) {
+    // THE FOURTH SHAPE, and a status code will never show it either.
+    const preloads = countImagePreloads(body)
+    row.imagePreloads = preloads
+    if (preloads > 1) {
+      twoPreloadHits.add(pattern)
+      const reviewed = TWO_PRELOADS_REVIEWED[pattern]
+      if (reviewed) {
+        row.reviewed = `${preloads} image preloads: ${reviewed}`
+      } else {
+        defects.push(`${url}: ${preloads} image preloads in one head (pattern ${pattern}). One document preloads one LCP candidate (C8). Make the others lazy, or review the route and add it to TWO_PRELOADS_REVIEWED with the reason.`)
+        row.defect = 'more than one LCP preload'
+      }
+    }
   } else if (res.status === 404) {
     const known = deliberateFor(pattern) ?? deliberateFor(new URL(url).pathname)
     if (known) {
@@ -545,6 +596,14 @@ for (const p of Object.keys(NO_ANONYMOUS_VALUE)) {
     console.log(`[sweep] the note for ${p} matched nothing this run: it has a real value now, so delete the note.`)
   }
 }
+
+console.log('\n[sweep] image preloads per head, reviewed baseline (one per document is the rule):')
+for (const [pattern, why] of Object.entries(TWO_PRELOADS_REVIEWED)) {
+  if (twoPreloadHits.has(pattern)) console.log(`  still over  ${pattern.padEnd(28)} ${why}`)
+  else console.log(`  FIXED or not driven, so the entry may be stale: ${pattern} (${why})`)
+}
+const overAndUnreviewed = [...twoPreloadHits].filter(p => !TWO_PRELOADS_REVIEWED[p])
+console.log(`  ${twoPreloadHits.size} route pattern(s) carried more than one, ${overAndUnreviewed.length} of them unreviewed`)
 
 if (defects.length > 0) {
   console.error(`\n[sweep] ${defects.length} DEFECT(S):`)

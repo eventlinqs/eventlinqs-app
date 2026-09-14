@@ -1,7 +1,7 @@
 import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countCommunity } from '@/lib/seo/discovery-counts'
-import { discoveryIndexing } from '@/lib/seo/indexing-policy'
+import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
@@ -21,6 +21,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { JsonLd } from '@/components/seo/json-ld'
 
 // ISR: 5-minute revalidate matches /events/[slug] and /categories/[slug].
 export const revalidate = 300
@@ -49,7 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     keywords: community.keywords,
-    ...discoveryIndexing(eventCount, `/community/${community.slug}`),
+    ...(await discoveryIndexingFor(eventCount, `/community/${community.slug}`)),
     openGraph: {
       title,
       description,
@@ -171,11 +172,7 @@ export default async function CommunityPage({ params }: Props) {
         *  page keeps its breadcrumb and the site-wide Organization and WebSite;
         *  only the claim it cannot support is withheld. */}
       {liveEvents.length > 0 && (
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }}
-        />
+        <JsonLd payload={collectionLd} />
       )}
       <BreadcrumbJsonLd
         items={[

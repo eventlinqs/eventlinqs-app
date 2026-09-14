@@ -8,6 +8,7 @@ import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getCommunityIndexEntries, type CommunityIndexEntry } from '@/lib/communities/index-page-data'
 import { getSiteUrl } from '@/lib/site-url'
 import { getAllFaiths } from '@/lib/faiths/data'
+import { JsonLd } from '@/components/seo/json-ld'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
@@ -113,14 +114,8 @@ export default async function CommunitiesIndexPage() {
       </main>
       <SiteFooter />
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
+      <JsonLd payload={itemListSchema} />
+      <JsonLd payload={breadcrumbSchema} />
     </div>
   )
 }
