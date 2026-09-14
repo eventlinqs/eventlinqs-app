@@ -36,6 +36,11 @@ const SEED_PATHS = [
   '/press',
   '/cities',
   '/communities',
+  // A REAL CATEGORY LANDING (close-out SEO3 step 4, 14 September 2026). It is
+  // seeded because it is the page that cross-links the other twenty-one, so one
+  // load here harvests every category URL on the platform. Before that pass the
+  // family did not exist as pages at all and there was nothing here to crawl.
+  '/categories/music',
   '/city/sydney',                   // city landing (renders suburb tiles + community tiles)
   '/city/melbourne',
   '/community/african',               // community landing (renders community-city tiles)

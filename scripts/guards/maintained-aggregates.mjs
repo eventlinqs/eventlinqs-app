@@ -225,10 +225,26 @@ function resolveTag(expr) {
   return e
 }
 
-/** `for (const tag of EVENT_DATA_CACHE_TAGS) updateTag(tag)` clears them all. */
+/**
+ * `for (const tag of EVENT_DATA_CACHE_TAGS) expireTag(tag)` clears them all.
+ *
+ * ANY OF THE THREE INVALIDATORS, not `updateTag` alone, which is what this read
+ * for until 14 September 2026. On that day close-out SEO3 step 3 gave
+ * `revalidateEventSurfaces` a caller argument, because `updateTag` "can only be
+ * used in Server Actions" (next@16.3.0 docs) and the scheduled-publish cron is a
+ * Route Handler, so the loop now calls a local binding that is one or the other.
+ * The rename alone made this guard report that FIVE tags had no invalidator
+ * anywhere, which was false and would have been read as a serious regression.
+ *
+ * The narrower pattern was also inconsistent with this guard's own stated rule
+ * three paragraphs up ("a revalidateTag / updateTag / expireTag call") and with
+ * the single-call matcher at line 194, both of which already accept all three.
+ */
 const clearsWholeEventRegistry = srcFiles.some(f => {
   const t = readText(f)
-  return /for\s*\(\s*const\s+(\w+)\s+of\s+EVENT_DATA_CACHE_TAGS\s*\)[\s\S]{0,120}?updateTag\(\s*\1\s*\)/.test(t)
+  return /for\s*\(\s*const\s+(\w+)\s+of\s+EVENT_DATA_CACHE_TAGS\s*\)[\s\S]{0,120}?(?:revalidateTag|updateTag|expireTag)\(\s*\1\s*[,)]/.test(
+    t,
+  )
 })
 
 const clearedSet = new Set()

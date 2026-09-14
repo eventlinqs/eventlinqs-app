@@ -1,5 +1,5 @@
 import 'server-only'
-import { revalidatePath, updateTag } from 'next/cache'
+import { revalidatePath, updateTag, revalidateTag } from 'next/cache'
 import { EVENT_DATA_CACHE_TAGS } from './cache-tags'
 import { getAllCities } from '@/lib/cities/data'
 import { communitiesFromTags } from '@/lib/communities/tag-bridge'
@@ -59,6 +59,34 @@ export interface RevalidatableEvent {
 }
 
 /**
+ * WHERE THE CALL IS COMING FROM, BECAUSE NEXT ALLOWS DIFFERENT THINGS IN EACH.
+ *
+ * `updateTag` "immediately expires cached data for read-your-own-writes
+ * scenarios ... Unlike `revalidateTag`, it can only be used in Server Actions"
+ * (node_modules/next/dist/docs/01-app/01-getting-started/09-revalidating.md
+ * line 121, shipped with next@16.3.0, read 14 September 2026).
+ *
+ * Every caller of this function was a Server Action until 14 September 2026,
+ * when close-out SEO3 step 3 found that the scheduled-publish CRON published an
+ * event without clearing a single data cache tag, so an event that went live at
+ * the time its organiser set was absent from every count and from the sitemap
+ * until a timer expired. A cron route is a Route Handler, and calling this from
+ * one without saying so would reach `updateTag` outside a Server Action.
+ *
+ * So the caller states which it is, and it is NOT inferred: there is no reliable
+ * way to ask at runtime, and a wrong guess fails in the direction that breaks a
+ * working cron rather than in the direction that leaves a page stale.
+ *
+ * WHAT THE ROUTE HANDLER GIVES UP, said plainly. `revalidateTag` is
+ * stale-while-revalidate, so the very next reader may be served the old value
+ * once more before the fresh one lands. For a mutation an organiser is watching
+ * that would be wrong, which is why the Server Action path keeps `updateTag`.
+ * For a cron publishing on a schedule nobody is staring at, one more stale read
+ * inside a five minute window is the correct trade against a 500.
+ */
+export type RevalidationCaller = 'server-action' | 'route-handler'
+
+/**
  * The same thing, but it reads what it needs instead of trusting a caller to
  * assemble it.
  *
@@ -105,6 +133,7 @@ interface EventReadChain {
 export async function revalidateEventSurfacesById(
   db: EventReadClient,
   eventId: string,
+  caller: RevalidationCaller = 'server-action',
 ): Promise<string[]> {
   const { data: row, error } = await (db.from('events') as EventReadChain)
     .select('slug, venue_city, tags, category:event_categories(slug), organisation:organisations(slug)')
@@ -119,7 +148,7 @@ export async function revalidateEventSurfacesById(
       eventId,
       error,
     )
-    return revalidateEventSurfaces({})
+    return revalidateEventSurfaces({}, caller)
   }
 
   const category = data.category as { slug?: string } | null
@@ -131,7 +160,7 @@ export async function revalidateEventSurfacesById(
     tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
     category_slug: category?.slug ?? null,
     organiser_handle: organisation?.slug ?? null,
-  })
+  }, caller)
 }
 
 /**
@@ -166,12 +195,29 @@ function citySlugForVenueCity(venueCity: string | null | undefined): string | nu
  * produced `if (input.has_reserved_seating)`, and it was wrong in the direction
  * that leaves an organiser staring at a stale page.
  */
-export function revalidateEventSurfaces(event: RevalidatableEvent): string[] {
+export function revalidateEventSurfaces(
+  event: RevalidatableEvent,
+  caller: RevalidationCaller = 'server-action',
+): string[] {
   const invalidated: string[] = []
   const mark = (path: string) => {
     revalidatePath(path)
     invalidated.push(path)
   }
+  /*
+   * See RevalidationCaller: `updateTag` is Server-Action only in next@16.3.0.
+   *
+   * `{ expire: 0 }` IS REQUIRED AND IS NOT A DEFAULT. The shipped type is
+   * `revalidateTag(tag: string, profile: string | CacheLifeConfig)`
+   * (node_modules/next/dist/server/web/spec-extension/revalidate.d.ts line 13),
+   * where the second argument "specifies a cacheLife profile (e.g. "max"), or a
+   * `{ expire }` object". Zero is the shortest life there is, so the entry is
+   * expired on the spot rather than being given a new lease; it is the closest
+   * `revalidateTag` gets to what `updateTag` does, which is the whole reason the
+   * Server Action path does not use it.
+   */
+  const expireTag =
+    caller === 'route-handler' ? (tag: string) => revalidateTag(tag, { expire: 0 }) : updateTag
 
   /*
    * TWO CACHE LAYERS, AND THIS USED TO CLEAR ONLY ONE. Added 25 August 2026.
@@ -231,7 +277,7 @@ export function revalidateEventSurfaces(event: RevalidatableEvent): string[] {
    * the test doing exactly its job.
    */
   for (const tag of EVENT_DATA_CACHE_TAGS) {
-    updateTag(tag)
+    expireTag(tag)
   }
 
   // The event's own page, and the two surfaces every event is on.
@@ -243,19 +289,27 @@ export function revalidateEventSurfaces(event: RevalidatableEvent): string[] {
   if (citySlug) mark(`/city/${citySlug}`)
 
   /*
-   * THE CATEGORY MARK IS GONE, AND IT WAS ALWAYS MARKING A 404.
+   * THE CATEGORY MARK IS BACK, BECAUSE THE REASON IT WENT HAS BEEN REVERSED.
    *
-   * `event.category_slug` comes from `event_categories`, so it is one of the
-   * twenty-two real category slugs. `/categories/[slug]` is bound to the seven
-   * hero-category editorial slugs, which have no overlap with those twenty-two.
-   * Driven against production on 25 August 2026: all twenty-two answered 404.
-   * This line has therefore been invalidating a path that does not exist on
-   * every event save since it was written, at no cost and to no effect.
+   * It was removed on 25 August 2026 on a premise that was true that day:
+   * `event.category_slug` is one of the twenty-two slugs in `event_categories`,
+   * `/categories/[slug]` was bound to the seven hero-category editorial slugs,
+   * and all twenty-two answered 404 when driven against production. The line
+   * was invalidating a path that did not exist, so it was deleted, and the note
+   * added that `/categories/<real slug>` 308s to `/events?category=<slug>`.
    *
-   * `/categories/<real slug>` now 308s to `/events?category=<slug>`, and
-   * `/events` is already marked two lines above, which is the route that
-   * actually renders those results.
+   * Close-out SEO3 step 4 (14 September 2026) made every one of those twenty-two
+   * a REAL page with its own canonical, title, h1 and editorial, and removed the
+   * redirect. So the premise is gone, and leaving the line out would now leave
+   * the page an event belongs to stale for its whole ISR window on every publish,
+   * which is precisely what SEO3 step 3 forbids for the city pages.
+   *
+   * The mark is unconditional on the slug being a live category rather than
+   * checked against the taxonomy, because `revalidatePath` on a path that does
+   * not resolve costs nothing and reading the database here would make an
+   * invalidation depend on a query that can fail.
    */
+  if (event.category_slug) mark(`/categories/${event.category_slug}`)
 
   for (const community of communitiesFromTags(event.tags ?? [])) {
     mark(`/community/${community}`)
@@ -269,7 +323,7 @@ export function revalidateEventSurfaces(event: RevalidatableEvent): string[] {
   mark('/sitemap.xml')
 
   // The city picker merges its options from live event cities.
-  updateTag('picker-cities')
+  expireTag('picker-cities')
 
   // The organiser's own views, so the dashboard is never behind the public page.
   mark('/dashboard/events')

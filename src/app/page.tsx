@@ -268,7 +268,7 @@ export default async function HomePage() {
           ariaLabel="Music events"
           railLabel="Music events"
           events={musicEvents}
-          viewAllHref="/events?category=music"
+          viewAllHref="/categories/music"
         />
 
         <EventRailSection
@@ -277,7 +277,7 @@ export default async function HomePage() {
           ariaLabel="Food and drink events"
           railLabel="Food and drink events"
           events={foodEvents}
-          viewAllHref="/events?category=food-drink"
+          viewAllHref="/categories/food-drink"
         />
 
         {/* Trending (general, demand-based) - Variant B: the one larger
@@ -298,7 +298,7 @@ export default async function HomePage() {
           ariaLabel="Festival events"
           railLabel="Festival events"
           events={festivalEvents}
-          viewAllHref="/events?category=festival"
+          viewAllHref="/categories/festival"
         />
 
         <EventRailSection
@@ -307,7 +307,7 @@ export default async function HomePage() {
           ariaLabel="Arts and theatre events"
           railLabel="Arts and theatre events"
           events={artsEvents}
-          viewAllHref="/events?category=arts-community"
+          viewAllHref="/categories/arts-community"
         />
 
         {/* This Weekend (general, time-based) */}
@@ -327,7 +327,7 @@ export default async function HomePage() {
           ariaLabel="Nightlife events"
           railLabel="Nightlife events"
           events={nightlifeEvents}
-          viewAllHref="/events?category=nightlife"
+          viewAllHref="/categories/nightlife"
         />
 
         <EventRailSection
@@ -336,7 +336,7 @@ export default async function HomePage() {
           ariaLabel="Comedy events"
           railLabel="Comedy events"
           events={comedyEvents}
-          viewAllHref="/events?category=comedy"
+          viewAllHref="/categories/comedy"
         />
 
         {/* Free (general, price-based) */}
@@ -365,7 +365,7 @@ export default async function HomePage() {
           ariaLabel="Sport events"
           railLabel="Sport events"
           events={sportsEvents}
-          viewAllHref="/events?category=sports"
+          viewAllHref="/categories/sports"
         />
 
         <EventRailSection
@@ -374,7 +374,7 @@ export default async function HomePage() {
           ariaLabel="Family events"
           railLabel="Family events"
           events={familyEvents}
-          viewAllHref="/events?category=family"
+          viewAllHref="/categories/family"
         />
 
         {/* Business and networking rail removed from the homepage (founder

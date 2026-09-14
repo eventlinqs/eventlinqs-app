@@ -170,6 +170,11 @@
  *                              never route resolves to noindex, every indexable page names
  *                              its own canonical, the root layout names none, and the
  *                              sitemap gates each templated family on the threshold (C19)
+ *   discovery-indexability    the page and the sitemap count the same dimension for every
+ *                              templated family, nothing overrides or re-spells the owner's
+ *                              threshold, and every category in event_categories is a real
+ *                              page with written editorial rather than a /events?category=
+ *                              query string that canonicalises to /events (SEO3)
  *   machine-callers-reachable every route that authenticates a machine with a shared secret is
  *                              on a reviewed record or a reviewed exclusion, no signed webhook
  *                              can be refused by our own rate limiter, no cron limiter fails
@@ -1163,6 +1168,11 @@ const GUARDS = [
   // what may be indexed, and the tree must keep agreeing with it. Google Search
   // Console had been reporting the disagreement back for weeks.
   'scripts/guards/indexing-policy.mjs',
+  // Close-out SEO3 (14 September 2026): indexing-policy.mjs asks whether a gate
+  // EXISTS. This one asks whether the gate on the page and the gate in the
+  // sitemap are asking the same question of the same numbers, and whether a
+  // category is a page rather than a query string that canonicalises to /events.
+  'scripts/guards/discovery-indexability.mjs',
   // Close-out H2.1 (8 September 2026): production reset a TLS handshake from a
   // GitHub Actions runner and the post-deploy smoke called it an outage. The
   // reset was at the handshake, before any header was sent, so nothing that

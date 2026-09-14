@@ -1615,6 +1615,23 @@ const ROOT = join(HERE, '..', '..')
  * collapsed in close-out C19. It degrades to the constant instead, and the test
  * that proves it asserts the value is greater than zero as well as equal to the
  * constant.
+ *
+ * 2026-09-14 (SEO3 steps 4, 6 and 7, the category pages): raised 394/4794 ->
+ * 396/4809, MEASURED on a green suite. Two new files, fifteen tests.
+ * `tests/unit/seo/discovery-indexability.test.ts` carries the nine tests the
+ * close-out names, two of which GENERATE the real `src/app/sitemap.ts` against a
+ * fixture catalogue rather than reading its source, because a test that grepped
+ * for `isDiscoveryIndexable` would have been green on the day the category block
+ * was missing from that file entirely: the gate it was looking for was present
+ * in six other blocks.
+ * `tests/unit/events/scheduled-publish-invalidates-discovery.test.ts` carries
+ * five, and it exists because of a defect no existing test could see. The
+ * scheduled-publish CRON published an organiser's event and invalidated three
+ * paths, clearing none of the six event data cache tags and touching none of the
+ * discovery surfaces, while `tests/unit/events/publish-scheduled.test.ts` stayed
+ * green throughout - correctly, because the defect was never in the function it
+ * tests. It was in what the ROUTE did with the answer. Proven red against the
+ * exact pre-fix shape (3 of the 5 fail) before being called done.
  */
 const MIN_FILES = 396
 const MIN_TESTS = 4812

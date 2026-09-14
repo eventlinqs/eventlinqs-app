@@ -46,7 +46,7 @@
  * the log once rather than on every render.
  */
 import { createPublicClient } from '@/lib/supabase/public-client'
-import { DISCOVERY_INDEXING_THRESHOLD, discoveryIndexing } from './indexing-policy'
+import { DISCOVERY_INDEXING_THRESHOLD, discoveryIndexing, organiserIndexing } from './indexing-policy'
 
 /** The key in public.seo_settings. Written here and in the migration only. */
 export const DISCOVERY_THRESHOLD_KEY = 'discovery_indexing_threshold'
@@ -129,4 +129,20 @@ export function resetDiscoveryThresholdCache() {
  */
 export async function discoveryIndexingFor(eventCount: number, canonicalPath: string) {
   return discoveryIndexing(eventCount, canonicalPath, await resolveDiscoveryThreshold())
+}
+
+/**
+ * The metadata block for an organiser profile, at the LIVE threshold.
+ *
+ * The same one-resolver rule as `discoveryIndexingFor` above and for the same
+ * reason: the profile page and the sitemap's organiser block must decide with
+ * one number, or a profile says noindex while the sitemap advertises it, which
+ * is the contradiction Search Console reports back as an exclusion.
+ */
+export async function organiserIndexingFor(
+  eventCount: number,
+  hasBiography: boolean,
+  canonicalPath: string,
+) {
+  return organiserIndexing(eventCount, hasBiography, canonicalPath, await resolveDiscoveryThreshold())
 }

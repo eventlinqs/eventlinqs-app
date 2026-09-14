@@ -69,6 +69,14 @@ const CATEGORY_QUERIES: Record<string, string> = {
   'nightlife':                 'rooftop bar friends sunset drinks vibrant colorful',
   'technology':                'tech conference startup speakers stage',
   'other':                     'community celebration friends together event',
+
+  // ---- the three real categories no query covered (close-out SEO3 step 4) --
+  // Every slug in `event_categories` now has a real /categories/<slug> landing,
+  // and a landing with no query fell through to the branded SVG while its
+  // twenty-one siblings carried a photograph. Descriptive, never generic.
+  'pride':                     'pride parade rainbow flags crowd celebration day',
+  'middle-eastern':            'middle eastern feast long table lanterns celebration',
+  'pacific':                   'pacific island dance performance flowers celebration',
 }
 
 export interface PexelsPhoto {

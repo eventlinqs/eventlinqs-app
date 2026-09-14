@@ -14,6 +14,18 @@ interface Props {
    * flat dark panel - per the design system.
    */
   backdropImage?: string | null
+  /**
+   * Copy overrides, both defaulting to the community wording this band shipped
+   * with, so the /community/[slug] champion is byte-identical without them.
+   *
+   * They exist because close-out SEO3 gave the real category landings the same
+   * closer (src/components/templates/CategoryEventsLandingPage.tsx). The band
+   * carries no community-specific logic, only two community-specific sentences,
+   * and a second copy of a 100-line gradient band is one more place for the two
+   * to drift apart. Passing the sentences in was the smaller change.
+   */
+  heading?: string
+  body?: string
 }
 
 /**
@@ -28,6 +40,8 @@ export function CommunityOrganiserCtaPanel({
   communityName,
   organiserPersonas,
   backdropImage = null,
+  heading,
+  body,
 }: Props) {
   const isDark = Boolean(backdropImage)
   const c = {
@@ -85,10 +99,11 @@ export function CommunityOrganiserCtaPanel({
               For organisers
             </p>
             <h2 className={`font-display text-2xl font-bold leading-tight sm:text-3xl ${c.heading}`}>
-              Built for the people who run {communityName} events.
+              {heading ?? `Built for the people who run ${communityName} events.`}
             </h2>
             <p className={`mt-3 text-sm leading-relaxed sm:text-base ${c.body}`}>
-              Transparent fees, real human support, and a platform that respects the {communityName} community instead of treating it like an afterthought.
+              {body ??
+                `Transparent fees, real human support, and a platform that respects the ${communityName} community instead of treating it like an afterthought.`}
             </p>
             <div className="mt-6">
               <Button

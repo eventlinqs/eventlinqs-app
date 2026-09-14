@@ -52,16 +52,30 @@ describe('every surface an event appears on', () => {
     expect(paths).toContain('/city/melbourne')
   })
 
-  it('does NOT invalidate /categories/<real slug>, because that path does not exist', () => {
-    // `/categories/[slug]` serves the seven hero-category editorial slugs. A
-    // real category slug (one of the twenty-two in event_categories) has never
-    // resolved there: driven against production on 25 August 2026, all
-    // twenty-two answered 404, and this function was invalidating them anyway.
-    // Since that pass a real slug 308s to /events?category=<slug>, and /events
-    // is the route that renders it and is already invalidated below.
+  it('invalidates /categories/<real slug>, which is a real page again', () => {
+    // THIS ASSERTION IS THE REVERSE OF WHAT IT WAS, AND THE REASON IS RECORDED
+    // RATHER THAN THE ASSERTION SIMPLY BEING FLIPPED.
+    //
+    // It used to read "does NOT invalidate, because that path does not exist",
+    // and on 25 August 2026 that was measured and true: `/categories/[slug]`
+    // served seven hero-category editorial slugs, all twenty-two real category
+    // slugs answered 404 when driven against production, and the mark was
+    // removed from the source for that reason.
+    //
+    // Close-out SEO3 step 4 (14 September 2026) made every one of the twenty-two
+    // a real page with its own canonical, title, h1 and editorial, and deleted
+    // the redirect. A test still asserting the absence would now be holding the
+    // category page stale for its whole ISR window on every publish.
     const paths = revalidateEventSurfaces({ slug: 'e', category_slug: 'music' })
-    expect(paths).not.toContain('/categories/music')
+    expect(paths).toContain('/categories/music')
     expect(paths).toContain('/events')
+  })
+
+  it('marks no category path when the event has no category', () => {
+    // The guard against a `/categories/undefined` or `/categories/null` mark,
+    // which is what an unconditional template literal would produce.
+    const paths = revalidateEventSurfaces({ slug: 'e', category_slug: null })
+    expect(paths.filter(p => p.startsWith('/categories/'))).toEqual([])
   })
 
   it('invalidates the organiser profile', () => {
@@ -107,7 +121,9 @@ describe('it does not depend on the caller assembling fields', () => {
       'evt-1',
     )
     expect(paths).toContain('/events/read-from-db')
-    expect(paths).not.toContain('/categories/comedy')
+    // The category read off the row reaches the real category landing, as of
+    // close-out SEO3 step 4. See the sibling test above for why this flipped.
+    expect(paths).toContain('/categories/comedy')
     expect(paths).toContain('/organisers/a-promoter')
     expect(paths).toContain('/city/geelong')
   })

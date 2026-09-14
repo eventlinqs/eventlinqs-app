@@ -7,12 +7,13 @@ import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
 import { getSiteUrl } from '@/lib/site-url'
 import { GUIDES } from '@/lib/guides'
 import { getAllHeroCategories } from '@/lib/hero-categories'
+import { getPublishableCategories } from '@/lib/categories/taxonomy'
 import { helpTopics } from '@/lib/help-content'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { isRedirected } from '@/lib/seo/permanent-redirects'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
-import { isDiscoveryIndexable } from '@/lib/seo/indexing-policy'
+import { isDiscoveryIndexable, isOrganiserProfileIndexable } from '@/lib/seo/indexing-policy'
 import { resolveDiscoveryThreshold } from '@/lib/seo/discovery-threshold'
 import {
   loadDiscoveryRows,
@@ -22,6 +23,7 @@ import {
   countSuburb,
   countCategory,
   countFaith,
+  countOrganiser,
 } from '@/lib/seo/discovery-counts'
 
 /**
@@ -284,6 +286,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
   }
 
+  /*
+   * THE REAL CATEGORY LANDINGS (close-out SEO3 step 4).
+   *
+   * The block above publishes the seven LEGACY hero slugs. These are the 22 real
+   * categories in `public.event_categories`, which until today permanently
+   * redirected to `/events?category=<slug>` and were therefore in no sitemap at
+   * all: that URL canonicalises to `/events`, so the platform published one page
+   * where it had twenty-two.
+   *
+   * The list is READ FROM THE DATABASE, never typed, and it is the same reader
+   * the route uses, so a row added to the taxonomy enters this file and becomes
+   * a page in the same breath. A row with no written editorial is not a page and
+   * is not published here; the guard fails the build before that state can ship.
+   */
+  for (const category of await getPublishableCategories()) {
+    if (!isDiscoveryIndexable(countCategory(discoveryRows, [category.slug]), threshold)) continue
+    entries.push({
+      url: `${baseUrl}/categories/${category.slug}`,
+      changeFrequency: 'daily',
+      priority: 0.8,
+    })
+  }
+
   const groups = await getPickerCities()
   const allCities = [
     ...groups.australia,
@@ -402,7 +427,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // The two queries must agree; this is the one that was wrong.
     const { data: organisers, error: organiserError } = await admin
       .from('organisations')
-      .select('slug, updated_at')
+      // `id` and `description` are read for the substance rule below: the page
+      // decides its own robots directive from the event count and the biography,
+      // and a sitemap that published a profile the page had sent to noindex is
+      // the contradiction Search Console reports back as an exclusion.
+      .select('id, slug, description, updated_at')
       .not('slug', 'is', null)
       .eq('status', 'active')
       // Same reason as the events query above: a published artefact should not
@@ -414,6 +443,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
     for (const o of organisers ?? []) {
       if (!o.slug) continue
+      /*
+       * PUBLISHED ONLY WHILE THE PROFILE IS A PAGE (close-out SEO3 step 7).
+       * Events at the owner's live threshold, or a written biography. The audit
+       * of 13 September 2026 named /organisers/oanh, which had neither and was
+       * published here anyway.
+       */
+      if (
+        !isOrganiserProfileIndexable(
+          countOrganiser(discoveryRows, o.id),
+          typeof o.description === 'string' && o.description.trim().length > 0,
+          threshold,
+        )
+      ) {
+        continue
+      }
       entries.push({
         url: `${baseUrl}/organisers/${o.slug}`,
         ...(o.updated_at ? { lastModified: new Date(o.updated_at) } : {}),

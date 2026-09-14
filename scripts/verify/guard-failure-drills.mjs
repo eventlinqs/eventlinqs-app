@@ -410,9 +410,54 @@ const DRILLS = [
     name: 'the sitemap publishes a templated family without the threshold gate',
     guard: `${GUARDS}/indexing-policy.mjs`,
     file: 'src/app/sitemap.ts',
-    find: '    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug))) continue\n',
+    // THE ANCHOR MOVED AND THIS DID NOT. The `, threshold` argument arrived with
+    // close-out SEO3 step 2, when the number became the owner's rather than the
+    // build's, and this anchor was not moved with it, so the drill stopped
+    // aiming and the harness reported it STALE instead of firing. Kept in step
+    // with the source it mutates.
+    find: '    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug), threshold)) continue\n',
     replace: '',
     expect: 'publishes /community/[community] without an isDiscoveryIndexable() gate',
+  },
+  /*
+   * discovery-indexability (close-out SEO3), FOUR DRILLS. The item asks for
+   * three, "proven red three times", one per clause of its stated invariant:
+   * no page carrying noindex may appear in the sitemap; no page meeting the
+   * substance threshold may carry noindex; and no category may exist only as a
+   * query string. The third clause has two independent ways to fail, a link and
+   * a missing page, so it gets one drill each.
+   */
+  {
+    name: 'the sitemap judges a family with a count its page never calls',
+    guard: `${GUARDS}/discovery-indexability.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '    if (!isDiscoveryIndexable(countCategory(discoveryRows, [category.slug]), threshold)) continue',
+    replace: '    if (!isDiscoveryIndexable(countCity(discoveryRows, category.slug), threshold)) continue',
+    expect: 'src/app/sitemap.ts judges /categories/[slug] with countCity, which its page never calls',
+  },
+  {
+    name: 'a templated discovery page hardcodes noindex over the threshold',
+    guard: `${GUARDS}/discovery-indexability.mjs`,
+    file: 'src/app/faith/[faith]/page.tsx',
+    find: '  return {',
+    replace: '  return {\n    robots: { index: false },',
+    expect: '/faith/[faith] is a templated discovery page and hardcodes noindex',
+  },
+  {
+    name: 'a category tile goes back to being a query string',
+    guard: `${GUARDS}/discovery-indexability.mjs`,
+    file: 'src/components/features/home/category-nav-rail.tsx',
+    find: '                  href: `/categories/${t.slug}`,',
+    replace: '                  href: `/events?category=${t.slug}`,',
+    expect: 'navigates to a category through /events?category=',
+  },
+  {
+    name: 'a live category loses the editorial that makes it a page',
+    guard: `${GUARDS}/discovery-indexability.mjs`,
+    file: 'src/lib/categories/category-editorial.ts',
+    find: "    slug: 'comedy',",
+    replace: "    slug: 'comedy-lane-c-drill',",
+    expect: 'the category "comedy" exists in event_categories and has no editorial',
   },
   /*
    * event-structured-data (SEO1 v2), EIGHT DRILLS, one per clause and four
