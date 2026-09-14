@@ -45,29 +45,36 @@
  *   node scripts/dev/lane-b-serve-with-stripe.mjs
  *   BASE=http://localhost:3100 node --env-file=.env.local \
  *     scripts/verify/fo1-founding-purchase-drive.mjs --out C:/dev/EVIDENCE/FO1
+ *
+ * A run KEEPS its fixture, because the orders on it are the evidence. When the
+ * item closes, remove every one this drive has ever made:
+ *   node --env-file=.env.local scripts/verify/fo1-founding-purchase-drive.mjs --cleanup
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { chromium } from 'playwright'
 import { readStripeTestKeys, probeStripeTestKey } from './lib/stripe-cli-test-keys.mjs'
-import { buildFixture, drivePurchase, clearEmptyFixtures } from './lib/refund-proof-fixture.mjs'
+import { buildFixture, drivePurchase, clearEmptyFixtures, purgeFixtures } from './lib/refund-proof-fixture.mjs'
 import { createProofAdmin, removeProofAdmin, signInAsOwner, pressFoundingTerm } from './lib/fo1-founding-admin.mjs'
 
 const BASE = process.env.BASE ?? 'http://localhost:3100'
+const LANE_B_SLUG_PREFIX = 'lane-b-fo1-founding'
 const args = process.argv.slice(2)
 let out = null
-let keepFixture = false
+let cleanupOnly = false
 for (let i = 0; i < args.length; i += 1) {
   if (args[i] === '--out') out = args[++i]
-  if (args[i] === '--keep') keepFixture = true
+  if (args[i] === '--cleanup') cleanupOnly = true
 }
-if (!out) {
+if (!out && !cleanupOnly) {
   console.error('FAIL: --out <directory> is required')
   process.exit(1)
 }
-out = join(out, 'purchase')
-mkdirSync(out, { recursive: true })
+if (out) {
+  out = join(out, 'purchase')
+  mkdirSync(out, { recursive: true })
+}
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
@@ -76,6 +83,26 @@ if (!/vkapkibzokmfaxqogypq/.test(url)) {
   process.exit(1)
 }
 const db = createClient(url, serviceKey, { auth: { persistSession: false } })
+
+/*
+ * `--cleanup` REMOVES THE FIXTURES INCLUDING THE ONES CARRYING ORDERS, which a
+ * run never does, because those orders are the evidence. It exists because this
+ * drive's own closing message promises it, and a script that names a flag it
+ * does not have is the same defect as a runbook naming a command that cannot
+ * run: the reader believes the tidying is available and it is not.
+ *
+ * Scoped to lane B's slug prefix, so it cannot reach another lane's rows or a
+ * seeded organisation.
+ */
+if (cleanupOnly) {
+  const result = await purgeFixtures(db, m => console.log(`  ${m}`), LANE_B_SLUG_PREFIX)
+  console.log(`removed ${result.removed} lane-B FO1 fixture(s)`)
+  if (result.errors.length) {
+    for (const e of result.errors) console.error(`  FAILED ${e}`)
+    process.exit(1)
+  }
+  process.exit(0)
+}
 
 const checks = []
 const failures = []
@@ -220,7 +247,7 @@ try {
   // An iteration that failed before buying anything leaves an organisation and
   // an auth user behind on a TEST project three lanes share. Scoped to lane B's
   // own slug, so it can only ever reach fixtures this drive made.
-  await clearEmptyFixtures(db, m => console.log(`  cleanup: ${m}`), 'lane-b-fo1-founding')
+  await clearEmptyFixtures(db, m => console.log(`  cleanup: ${m}`), LANE_B_SLUG_PREFIX)
   fixture = await buildFixture(db, {
     stamp,
     ownerEmail: `lane-b-fo1-owner-${stamp}@eventlinqs.test`,
@@ -230,7 +257,7 @@ try {
     log: m => console.log(`  fixture: ${m}`),
     brand: {
       org: 'Lane B FO1 Founding',
-      orgSlug: 'lane-b-fo1-founding',
+      orgSlug: LANE_B_SLUG_PREFIX,
       event: 'Lane B FO1 Founding Night',
       eventSlug: 'lane-b-fo1-founding-night',
       owner: 'Lane B FO1 Owner',
@@ -392,8 +419,9 @@ try {
   const report = { base: BASE, when: new Date().toISOString(), stamp, fixture: fixture ? { organisation: fixture.org.name, event: fixture.event.slug } : null, checks }
   writeFileSync(join(out, 'fo1-purchase-report.json'), JSON.stringify(report, null, 2))
   await removeProofAdmin(db, admin)
-  if (fixture && !keepFixture) {
-    console.log(`fixture ${fixture.org.name} KEPT: it carries the orders that are the evidence. Remove with --cleanup when the item closes.`)
+  if (fixture) {
+    console.log(`fixture ${fixture.org.name} KEPT: it carries the orders that are the evidence.`)
+    console.log('Remove every lane-B FO1 fixture when the item closes with:  --cleanup')
   }
 
   console.log(`\n${checks.filter(c => c.ok).length}/${checks.length} checks passed`)

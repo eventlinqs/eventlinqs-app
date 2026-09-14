@@ -18,14 +18,17 @@
  * deleting an event first fails with 23503 and leaves half a fixture behind, which
  * is worse than leaving all of it. Children first, parents last, every time.
  *
- * It is scoped by the `refund-proof-presents-%` slug, so it can only ever reach
- * fixtures this harness created. It cannot touch a seeded or real organisation.
+ * It is scoped by a slug PREFIX, so it can only ever reach fixtures a harness
+ * created under that tag. It cannot touch a seeded or real organisation, and the
+ * prefix is never widened to a bare `%`. `slugPrefix` defaults to the refund
+ * proofs' own so every existing caller is unchanged, and is passed by any proof
+ * building under its own lane tag.
  */
-export async function purgeFixtures(db, log = () => {}) {
+export async function purgeFixtures(db, log = () => {}, slugPrefix = 'refund-proof-presents') {
   const { data: orgs } = await db
     .from('organisations')
     .select('id, owner_id, slug')
-    .like('slug', 'refund-proof-presents-%')
+    .like('slug', `${slugPrefix}-%`)
 
   /**
    * EVERY DELETE IS CHECKED. The first version of this function ignored the error
