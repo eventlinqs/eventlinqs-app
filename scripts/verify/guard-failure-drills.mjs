@@ -410,7 +410,11 @@ const DRILLS = [
     name: 'the sitemap publishes a templated family without the threshold gate',
     guard: `${GUARDS}/indexing-policy.mjs`,
     file: 'src/app/sitemap.ts',
-    find: '    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug))) continue\n',
+    // Re-anchored 14 September 2026 by lane A. Lane C's owner-settable indexing
+    // threshold (commit 5c272e21) gave isDiscoveryIndexable a second argument,
+    // so this drill stopped matching and stopped proving its clause. The drill
+    // was not wrong and the guard was not wrong; the anchor had simply moved.
+    find: '    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug), threshold)) continue\n',
     replace: '',
     expect: 'publishes /community/[community] without an isDiscoveryIndexable() gate',
   },
@@ -2669,6 +2673,62 @@ const DRILLS = [
       '        : state.lastPush?.when',
     replace: '      state.lastPush?.when',
     expect: 'No push to a working branch could be found',
+  },
+  /*
+   * MONEY FIX A1.7, the six drills for funds-reach-the-organiser.
+   *
+   * The first is the defect itself, and it is the one that matters: the charge
+   * precondition refusing a deliberately waived fee meant every paid ticket for
+   * a founding organiser was refused at checkout, silently, for as long as the
+   * waiver lasted. It is drilled by restoring the exact line that did it.
+   */
+  {
+    name: 'the charge precondition refuses a deliberately waived zero fee again (the A1.7 defect)',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/application-fee.ts',
+    find: '  if (inclusiveKeep < 0) {',
+    replace: '  if (inclusiveKeep <= 0) {',
+    expect: 'every paid ticket for a founding organiser is refused at checkout',
+  },
+  {
+    name: 'the zero-fee refusal stops consulting the waiver',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/application-fee.ts',
+    find: '  if (inclusiveKeep === 0 && !fees.fee_waived) {',
+    replace: '  if (inclusiveKeep === 0 && !fees.currency) {',
+    expect: 'no longer consults fees.fee_waived',
+  },
+  {
+    name: 'the breakdown stops recording the waiver from the source that zeroed the rates',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/payment-calculator.ts',
+    find: '      fee_waived: waiver.active,',
+    replace: '      fee_waived: false,',
+    expect: 'does not set fee_waived from waiver.active',
+  },
+  {
+    name: 'the charge is created before anybody checks the organiser can be paid',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/create-platform-charge.ts',
+    find: '  assertOrganiserCanReceiveFunds(org, input.fees)',
+    replace: '  // assertOrganiserCanReceiveFunds(org, input.fees)',
+    expect: 'does not call assertOrganiserCanReceiveFunds',
+  },
+  {
+    name: 'the charge stops resolving a destination connected account',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/create-platform-charge.ts',
+    find: '  const connectedAccountId = org.stripe_account_id!',
+    replace: '  const connectedAccountId = null as unknown as string',
+    expect: 'no longer resolved from the organisation row',
+  },
+  {
+    name: 'an organiser whose payouts are disabled is no longer refused',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/application-fee.ts',
+    find: '  if (!org.stripe_payouts_enabled) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
+    replace: '  if (false) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
+    expect: 'no longer tests `!org.stripe_payouts_enabled`',
   },
 ]
 

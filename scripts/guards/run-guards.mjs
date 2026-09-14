@@ -75,6 +75,11 @@
  *                              reconcile_refund, no deprecated event does, the reconcile failure
  *                              is retryable, and the endpoint subscription probe requires the
  *                              same set (close-out R1)
+ *   funds-reach-the-organiser  a ticket charge names a destination connected account, refuses an
+ *                              organiser who cannot be paid with a named reason, and is never
+ *                              refused by the FEE AMOUNT: a deliberately waived fee is a
+ *                              legitimate zero and an unexplained zero still is not
+ *                              (close-out MONEY FIX A1.7)
  *   inventory-lock-integrity   two buyers can never be sold the same seat
  *   no-unowned-organisation-read  a service-role read of an organisation's sale posture, or a
  *                              service-role call to the publish gate, must prove the caller
@@ -906,6 +911,14 @@ const GUARDS = [
   // does, that the reconcile failure is actually retryable, and that the endpoint
   // subscription probe cannot drift from the code.
   'scripts/guards/refund-success-door.mjs',
+  // Close-out MONEY FIX part A. A ticket charge exists to pay an organiser, so
+  // it must name a destination, refuse an organiser who cannot be paid, and
+  // never be refused by the FEE AMOUNT. The last clause is the A1.7 defect: the
+  // precondition refused any zero platform fee as calculator drift, and a
+  // founding organiser inside their fee-free window resolves to exactly zero, so
+  // every paid ticket for the organisers the growth plan exists to recruit was
+  // refused at checkout with a pricing error that refreshing could never clear.
+  'scripts/guards/funds-reach-the-organiser.mjs',
   'scripts/guards/no-ambiguous-embed.mjs',
   // Measured 2026-08-19 against the real TEST database: 50 simultaneous buyers
   // against ONE seat, live create_reservation -> 1 won. Same body with FOR UPDATE

@@ -393,8 +393,26 @@ export async function drivePurchase(page, { base, slug, qty, buyerEmail, shot = 
    * does not leave a country list hanging open. Escape is what closes it, and it
    * is a no-op on the two viewports that never had one open, which is why it is
    * unconditional rather than a width special case.
+   *
+   * ESCAPE ALONE WAS NOT ENOUGH, 14 September 2026, lane A. The money drive hit
+   * this again at tablet-768 with the Escape already in place, and the
+   * screenshot (EVIDENCE/MONEY/2026-09-14-a17/tablet-768) shows the country list
+   * still open across the top of the page with Australia highlighted. A native
+   * select popup is browser chrome rather than page content, so an Escape
+   * synthesised through CDP and delivered to the focused element inside a
+   * cross-origin iframe does not reliably close it.
+   *
+   * What DOES work is to stop making the Pay click the sacrifice. One harmless
+   * click on a neutral part of the page is offered up first: if a popup is open
+   * that click is consumed closing it, and if none is open it lands on dead
+   * space and does nothing. Either way the NEXT click is the first one the page
+   * can actually receive. Cheap, unconditional, and it cannot mask a real
+   * failure, because a Pay button that does not respond after this is genuinely
+   * not responding.
    */
   await page.keyboard.press('Escape')
+  await sleep(200)
+  await page.mouse.click(4, 4)
   await sleep(300)
 
   const payButton = page.getByRole('button', { name: /pay/i }).first()
