@@ -12,6 +12,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { GUIDES, getGuide, getGuideCategory } from '@/lib/guides'
 import { getGuideLiveValues } from '@/lib/guides/live-values'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { JsonLd } from '@/components/seo/json-ld'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -66,10 +67,7 @@ export default async function GuidePage({ params }: Props) {
 
   return (
     <PageShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(howTo) }}
-      />
+      <JsonLd payload={howTo} />
 
       {/* Title block: light interior band, matching the platform page chrome. */}
       <section className="relative bg-[var(--surface-0)] pb-10 pt-12 md:pb-12 md:pt-16">

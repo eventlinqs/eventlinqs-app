@@ -109,14 +109,24 @@ export function validateEventNode(ev) {
     warnings.push('startDate carries no UTC offset; Google falls back to the location timezone')
   }
 
-  const mode = String(ev.eventAttendanceMode ?? '')
-  const isOnlineOnly = mode.includes('OnlineEventAttendanceMode')
+  /*
+   * THE ONLINE-EVENT BRANCH IS GONE, AND ITS ABSENCE IS THE RULE NOW.
+   *
+   * This validator used to read the attendance mode and downgrade an
+   * online-only event to a warning. Google removed online events, and every
+   * property describing one, from its event documentation on 5 June 2025, so
+   * there is no longer a documented mode to read. SEO1 v2, FAULT ONE.
+   *
+   * A page that still carries one is not excused here: an online event has no
+   * Place, so it falls into the `location` errors below, which is the honest
+   * verdict. The serialiser declines to emit such an event at all
+   * (src/lib/seo/event-schema.ts, hasPhysicalPlace), and a page reaching this
+   * validator without a Place is a real defect rather than a special case.
+   */
   const loc = ev.location
 
   if (!loc) {
     errors.push('location is missing (REQUIRED)')
-  } else if (isOnlineOnly) {
-    warnings.push('online-only event: ineligible for the event experience (must take place in a physical location)')
   } else {
     const places = Array.isArray(loc) ? loc : [loc]
     const place = places.find(p => p && p['@type'] === 'Place') ?? places[0]

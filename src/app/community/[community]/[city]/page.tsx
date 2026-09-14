@@ -2,7 +2,7 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countCommunityCity } from '@/lib/seo/discovery-counts'
-import { discoveryIndexing } from '@/lib/seo/indexing-policy'
+import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
   getCommunity,
@@ -32,6 +32,7 @@ import {
   weekendWindowUtc,
 } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { JsonLd } from '@/components/seo/json-ld'
 
 export const revalidate = 300
 
@@ -104,7 +105,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       `${community.displayName} ${cityName}`,
       `${cityName} ${community.displayName.toLowerCase()} events`,
     ],
-    ...discoveryIndexing(eventCount, `/community/${community.slug}/${cityParam}`),
+    ...(await discoveryIndexingFor(eventCount, `/community/${community.slug}/${cityParam}`)),
     openGraph: {
       title,
       description,
@@ -297,11 +298,7 @@ export default async function CommunityByCityPage({ params }: Props) {
         *  page keeps its breadcrumb and the site-wide Organization and WebSite;
         *  only the claim it cannot support is withheld. */}
       {allEvents.length > 0 && (
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }}
-        />
+        <JsonLd payload={collectionLd} />
       )}
       <BreadcrumbJsonLd
         items={[

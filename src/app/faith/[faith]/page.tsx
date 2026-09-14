@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countFaith } from '@/lib/seo/discovery-counts'
-import { discoveryIndexing } from '@/lib/seo/indexing-policy'
+import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
@@ -20,6 +20,7 @@ import { EventCard, type EventCardData } from '@/components/features/events/even
 import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { JsonLd } from '@/components/seo/json-ld'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
@@ -46,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     keywords: faith.keywords,
-    ...discoveryIndexing(eventCount, `/faith/${faith.slug}`),
+    ...(await discoveryIndexingFor(eventCount, `/faith/${faith.slug}`)),
     openGraph: { title, description, url: `/faith/${faith.slug}`, type: 'website' },
     twitter: { card: 'summary_large_image', title },
   }
@@ -225,11 +226,7 @@ export default async function FaithPage({ params }: Props) {
         *  page keeps its breadcrumb and the site-wide Organization and WebSite;
         *  only the claim it cannot support is withheld. */}
       {liveEvents.length > 0 && (
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }}
-        />
+        <JsonLd payload={collectionLd} />
       )}
     </div>
   )

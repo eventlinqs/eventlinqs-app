@@ -269,11 +269,47 @@ function label(file) {
   return rel.startsWith('..') ? file.replaceAll('\\', '/') : rel
 }
 
+/**
+ * THE SURFACES WHOSE WORDS REACH GOOGLE, NAMED (SEO1 step 9).
+ *
+ * "Add the event page, the organiser page and the venue page to the list of
+ * surfaces the existing copy gate already inspects, so no banned word can reach
+ * Google through the description field."
+ *
+ * They were already inspected, because this gate walks the whole of src. That is
+ * a fact about today's scan roots rather than a commitment, and an unnamed
+ * inclusion is one narrowing away from being untrue with nothing able to notice.
+ * Naming them makes the inclusion checkable: the gate asserts below that it
+ * actually read each one, and a scan root narrowed away from any of them fails
+ * here instead of going quietly cleaner.
+ *
+ * WHAT THIS CANNOT DO, and it is written here rather than left to be assumed.
+ * These four files hold the PLATFORM'S words. The `description` property in an
+ * event's structured data is the ORGANISER'S: it is typed into the create form,
+ * stored on the row, and emitted verbatim because Google requires the markup to
+ * match what the page shows a human. No gate that reads source can see it. That
+ * gap is real, it is recorded in REVIEW-QUEUE-C.md for the founder, and it is
+ * not closed by this list.
+ */
+const SURFACES_THAT_REACH_GOOGLE = [
+  'src/app/events/[slug]/page.tsx',
+  'src/app/organisers/[handle]/page.tsx',
+  'src/app/venues/[handle]/page.tsx',
+  'src/lib/seo/event-schema.ts',
+  // The two profile emitters write PLATFORM words into the markup, not just
+  // database values: each names its list ("Upcoming events by ...", "Upcoming
+  // events at ..."), and that sentence is published to a search index.
+  'src/components/features/organisers/organiser-schema-jsonld.tsx',
+  'src/components/features/venues/venue-schema-jsonld.tsx',
+]
+const surfacesRead = new Set()
+
 const violations = []
 let scannedFiles = 0
 for (const file of walkAll(scanRoots())) {
   scannedFiles += 1
   const rel = label(file)
+  if (SURFACES_THAT_REACH_GOOGLE.includes(rel)) surfacesRead.add(rel)
   const allowed = ALLOWLIST.find(a => a.file === rel)?.patterns ?? []
   const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/)
 
@@ -354,9 +390,24 @@ if (coverage.ratio < COVERAGE_FLOOR) {
   process.exit(1)
 }
 
+// LOCK 7 (SEO1 step 9): every surface whose words reach Google was really read.
+const unread = SURFACES_THAT_REACH_GOOGLE.filter(f => !surfacesRead.has(f))
+if (unread.length > 0) {
+  console.error(
+    [
+      `copy-tell-gate: ${unread.length} surface(s) whose copy reaches Google were NOT scanned:`,
+      ...unread.map(f => `  - ${f}`),
+      '  Either the file moved, or a scan root was narrowed away from it. Both are',
+      '  failures: a banned word on one of these pages is published to a search index.',
+    ].join('\n'),
+  )
+  process.exit(1)
+}
+
 declareWork('copy-tell-gate', {
   did: {
     'file scanned': scannedFiles,
+    'surface that reaches Google scanned': surfacesRead.size,
     'non-comment line read': coverage.numerator,
   },
   found: { 'copy-law violation': 0 },

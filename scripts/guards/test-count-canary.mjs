@@ -1537,6 +1537,7 @@ const ROOT = join(HERE, '..', '..')
  * caught a fourth section doing it after the guard had already gone green: the
  * last-push line still answered a failed read with "No push to a working branch
  * could be found", which is the absence the stall alert exists to raise.
+ *
  * 2026-09-13 (the merge of lane C into the push lane): the two histories above
  * are BOTH kept, because each names tests that exist in this tree and a merge
  * that dropped either would leave the next reader unable to find out why a
@@ -1587,9 +1588,47 @@ const ROOT = join(HERE, '..', '..')
  * subprocesses and mutate the tree, not of a test that is wrong. It is NOT
  * written off here: it is in REVIEW-QUEUE.md, and the push gate runs the suite
  * again, which is a third reading on the same tree.
+ *
+ * 2026-09-14 (SEO1 v2, the event structured data): raised 391/4746 -> 393/4782,
+ * MEASURED on a green suite, 0 failed and 0 skipped. An earlier reading said
+ * 4778 and it was taken while the suite was RED, so it is not the one recorded:
+ * the floor is measured on a green suite or it is not measured. Two new files
+ * and 36 tests. `tests/component/seo/json-ld-blocks.test.tsx`
+ * renders every JSON-LD block the platform emits, which is the half a unit test
+ * on a builder cannot reach: the two profile pages nested twelve `Event` nodes
+ * each inside their own payload, and a correct builder would not have stopped a
+ * component doing that. `tests/unit/seo/social-profiles.test.ts` holds the set
+ * behind `sameAs`, which shipped as an empty array on every page of the platform
+ * for months. The rest are additions to the existing SEO payload test, renamed
+ * to SEO1 v2's acceptance names, including the two the corrections added:
+ * `no_event_attendance_mode_is_emitted_anywhere`, which asserts on the emitted
+ * BYTES rather than the object because a key holding `undefined` is present on
+ * one and absent from the other, and `no_event_markup_on_any_listing_page`.
+ *
+ * 2026-09-14 (SEO3 step 2, the owner's indexing threshold): raised 393/4782 ->
+ * 394/4794, MEASURED on a green suite. One new file, twelve tests. The
+ * discovery indexing threshold stopped being a compiled constant and became a
+ * row the owner can change without a deploy, and the resolver has to be right
+ * in THREE states rather than one: before his migration exists, after it exists,
+ * and when the database cannot be reached mid-request. The third is the one
+ * worth twelve tests, because a failed read that returned ZERO would make every
+ * templated discovery page indexable at once, which is the exact shape Google
+ * collapsed in close-out C19. It degrades to the constant instead, and the test
+ * that proves it asserts the value is greater than zero as well as equal to the
+ * constant.
+ *
+ * 2026-09-14 (the merge of lane C into the push lane, the THIRD one): both
+ * lineages above are kept verbatim again, and they still do not form one
+ * chain. From d137ed2f lane A counted 390/4747 -> 391/4760 -> 393/4770 ->
+ * 396/4812 while lane C counted 391/4746 -> 393/4782 -> 394/4794. Neither end
+ * point describes a tree holding both sets of files, and the larger of two
+ * partial counts is still a guess. The value below is MEASURED on the merged
+ * tree.
+ *
+ * MEASURED: 399 files, 4860 tests, 0 failed, 0 skipped.
  */
-const MIN_FILES = 396
-const MIN_TESTS = 4812
+const MIN_FILES = 399
+const MIN_TESTS = 4860
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

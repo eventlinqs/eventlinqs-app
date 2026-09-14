@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import type { Metadata } from 'next'
 import { loadDiscoveryRows, countSuburb } from '@/lib/seo/discovery-counts'
-import { discoveryIndexing } from '@/lib/seo/indexing-policy'
+import { discoveryIndexingFor } from '@/lib/seo/discovery-threshold'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
   getCity,
@@ -18,6 +18,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate, weekendWindowUtc } from '@/lib/events/listing-window'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { JsonLd } from '@/components/seo/json-ld'
 
 export const revalidate = 300
 
@@ -52,7 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    ...discoveryIndexing(eventCount, `/city/${city.slug}/${suburb}`),
+    ...(await discoveryIndexingFor(eventCount, `/city/${city.slug}/${suburb}`)),
     openGraph: { title, description, url: `/city/${city.slug}/${suburb}`, type: 'website', images: ['/opengraph-image'] },
   }
 }
@@ -159,11 +160,7 @@ export default async function SuburbPage({ params }: Props) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(placeLd) }}
-      />
+      <JsonLd payload={placeLd} />
       <BreadcrumbJsonLd
         items={[
           { name: 'Home', url: baseUrl },

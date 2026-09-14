@@ -129,10 +129,13 @@ function checkEventNode(node) {
   if (!node.startDate) required.push('startDate')
   if (!node.location) required.push('location')
   else {
+    // No online-event exemption. Google removed online events, and the
+    // VirtualLocation escape hatch this branch used to carry, from its event
+    // documentation on 5 June 2025 (SEO1 v2, FAULT ONE). A location without an
+    // address is now simply a missing required property, whatever its @type.
     const loc = Array.isArray(node.location) ? node.location[0] : node.location
-    const isVirtual = loc?.['@type'] === 'VirtualLocation'
-    if (!isVirtual && !loc?.address) required.push('location.address')
-    if (!isVirtual && !loc?.name) recommended.push('location.name')
+    if (!loc?.address) required.push('location.address')
+    if (!loc?.name) recommended.push('location.name')
   }
   for (const p of ['description', 'endDate', 'eventStatus', 'image', 'organizer', 'performer']) {
     if (!node[p]) recommended.push(p)

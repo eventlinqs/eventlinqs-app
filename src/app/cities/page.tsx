@@ -10,6 +10,7 @@ import { CityTileImage } from '@/components/media/CityTileImage'
 import { getCityHeroPhoto, getCityPhoto } from '@/lib/images/city-photo'
 import { getCityIndexEntries, type CityIndexEntry } from '@/lib/cities/index-page-data'
 import { getSiteUrl } from '@/lib/site-url'
+import { JsonLd } from '@/components/seo/json-ld'
 
 export const revalidate = 300
 
@@ -92,14 +93,8 @@ export default async function CitiesIndexPage() {
       </main>
       <SiteFooter />
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
+      <JsonLd payload={itemListSchema} />
+      <JsonLd payload={breadcrumbSchema} />
     </div>
   )
 }
