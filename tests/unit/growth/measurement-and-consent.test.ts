@@ -406,3 +406,42 @@ describe('AN1: the policies say what the platform now does', () => {
     expect(cookies).toContain('el_consent')
   })
 })
+
+/**
+ * THE BANNER SITS ON NOTHING, held structurally as well as by the drive.
+ *
+ * Measured at 390 on 14 September 2026 before this existed: the banner stood
+ * 286 pixels tall, /admin/login does not scroll, and the Sign in button was
+ * entirely underneath it with no way to reach it. /login was the same, and on
+ * /organisers the whole mobile bottom bar was covered. The drive proves the
+ * behaviour on a real page at three widths; these three hold the CONTRACT the
+ * behaviour rests on, so a later edit that deletes one half cannot pass on the
+ * grounds that nothing was rendering the banner at the time.
+ */
+describe('AN1: the consent banner reserves the space it occupies', () => {
+  const banner = readFileSync(join(ROOT, 'src/components/analytics/consent-banner.tsx'), 'utf8')
+  const globals = readFileSync(join(ROOT, 'src/app/globals.css'), 'utf8')
+  const bottomNav = readFileSync(join(ROOT, 'src/components/layout/mobile-bottom-nav.tsx'), 'utf8')
+  const VARIABLE = '--el-consent-banner-height'
+
+  it('measures its own height rather than guessing one', () => {
+    expect(banner).toContain(VARIABLE)
+    expect(banner).toContain('ResizeObserver')
+    expect(banner).toContain('getBoundingClientRect')
+    // And gives the space back, so an answered banner costs nothing.
+    expect(banner).toContain('removeProperty')
+  })
+
+  it('makes the document that much taller while it is up', () => {
+    expect(globals).toContain('padding-bottom: var(' + VARIABLE + ', 0px)')
+  })
+
+  it('lifts the mobile bottom bar clear of it through a transform', () => {
+    expect(bottomNav).toContain(VARIABLE)
+    // Through the transform rather than `bottom`: a `bottom` that changes after
+    // first paint moves a visible element, which is a layout shift, and the
+    // mobile performance budget is a law.
+    expect(bottomNav).toContain('translateY(calc(-1 * var(' + VARIABLE + ', 0px)))')
+    expect(bottomNav).not.toContain("bottom: 'var(" + VARIABLE)
+  })
+})

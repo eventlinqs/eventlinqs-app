@@ -39,7 +39,8 @@
  * with no consent and watching every request, is the driven half and lives in
  * scripts/verify/an1-consent-drive.mjs; this half is what fails a build.
  *
- * Proven red and green: C:\\dev\\EVIDENCE\\AN1\\guard-red.txt, guard-green.txt.
+ * Proven red and green five ways, each drill restoring what it broke:
+ * C:\\dev\\EVIDENCE\\AN1\\guard-drills.txt, harness drill-guard.mjs beside it.
  *
  * Run: node scripts/guards/no-analytics-before-consent.mjs
  */

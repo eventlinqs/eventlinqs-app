@@ -1527,9 +1527,20 @@ const ROOT = join(HERE, '..', '..')
  * than inferred. The database half is not here by design: the check constraint
  * that refuses a stored snapshot holding an unsourced figure is proven by
  * removing it and watching the guard name it, which is drilled.
+ *
+ * 2026-09-14 (lane B, close-out AN1): raised 397/5065 -> 397/5068, MEASURED.
+ * Three tests, no new file. They hold the contract behind a defect measured and
+ * fixed in the same session: the consent banner stood 286 pixels tall at 390
+ * over an /admin/login page that does not scroll, and Sign in could not be
+ * reached at all. The banner now measures its own height into a variable, the
+ * document reserves exactly that much, and the mobile bottom bar lifts clear
+ * through its TRANSFORM rather than through `bottom`, because `bottom` would
+ * cost a layout shift on the pages the mobile budget is measured on. The
+ * behaviour is driven at three widths; these three hold the contract, so an
+ * edit that deletes one half of it cannot pass.
  */
 const MIN_FILES = 397
-const MIN_TESTS = 5065
+const MIN_TESTS = 5068
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
