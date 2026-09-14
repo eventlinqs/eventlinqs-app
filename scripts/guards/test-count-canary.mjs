@@ -1638,9 +1638,18 @@ const ROOT = join(HERE, '..', '..')
  * what Google reads.
  *
  * MEASURED: 400 files, 4893 tests on e9dfc26b, plus the four above.
+ *
+ * 2026-09-14 (the flake that refused a push, and this guard's own message):
+ * raised 400/4897 -> 400/4900, MEASURED on a green suite of the whole tree. No
+ * new file: three tests added to tests/unit/guards/one-priority-image.test.ts.
+ * They pin that a multi-line JSX comment is commentary on every one of its
+ * lines, which cost a cycle when a comment explaining why a tile is NOT
+ * priority quoted the code it replaced and the guard failed the tree on the
+ * quotation. The two hero-raster tests changed in the same commit were made
+ * deterministic rather than added to, so they move no count.
  */
 const MIN_FILES = 400
-const MIN_TESTS = 4897
+const MIN_TESTS = 4900
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
