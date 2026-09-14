@@ -328,3 +328,60 @@ describe('the report a person reads', () => {
     expect(report).toContain('No failures. Nothing to raise.')
   })
 })
+
+describe('two ways this review reported a correct platform as broken, 14 September 2026', () => {
+  /*
+   * Both were found by running the check against a LOCAL tree rather than
+   * production, which the review had never been pointed at before. Both fail in
+   * the direction that matters most: they say a thing is missing when it is
+   * there, and a line that is red for months on correct behaviour is a line
+   * somebody stops reading.
+   */
+
+  it('does not demand a fee breakdown from a free event, because there is no fee', () => {
+    const free = goodSnapshot()
+    // The good world's page() gives jsonLd an empty-array type, so the shape is
+    // restated here rather than assigned into an inferred `never[]`.
+    free.pages[LEAF] = page(LEAF, {
+      ...free.pages[LEAF],
+      text: ['Lane C parity fixture', 'Free', 'Get tickets'].join('\n'),
+      jsonLd: [
+        {
+          '@type': 'Event',
+          name: 'Lane C parity fixture',
+          startDate: '2026-10-10T08:00:00.000Z',
+          location: { '@type': 'Place', name: 'Lane C Proof Room' },
+          offers: { '@type': 'Offer', name: 'General admission', price: '0.00' },
+        },
+      ],
+    })
+    const verdict = verdictFor(free, 'all-in-pricing')
+    expect(verdict.state).toBe('blind')
+    expect(verdict.observation).toContain('free')
+  })
+
+  it('still fails a PAID event with no breakdown, so the blind above is not an escape hatch', () => {
+    const paid = goodSnapshot()
+    paid.pages[LEAF].text = ['Lane C parity fixture', 'AUD 30.49', 'Get tickets'].join('\n')
+    const verdict = verdictFor(paid, 'all-in-pricing')
+    expect(verdict.state).toBe('fail')
+    expect(verdict.observation).toContain('fee breakdown')
+  })
+
+  it('reads the price from the structured data rather than from the word "Free" in the prose', () => {
+    // A page can say "Free" for half a dozen unrelated reasons: a free drink, a
+    // free guest list, free entry before nine. The offers are the number.
+    const paid = goodSnapshot()
+    paid.pages[LEAF].text = ['Free parking at the venue', 'AUD 30.49', 'Get tickets'].join('\n')
+    expect(verdictFor(paid, 'all-in-pricing').state).toBe('fail')
+  })
+
+  it('says an empty accessibility catalogue is an empty catalogue, not a missing surface', () => {
+    const empty = goodSnapshot()
+    empty.pages[LEAF].hasAccessibilitySection = false
+    empty.pages[VENUE].hasAccessibilitySection = false
+    const verdict = verdictFor(empty, 'accessibility-published')
+    expect(verdict.state).toBe('fail')
+    expect(verdict.observation).toContain('once an organiser fills the fields')
+  })
+})

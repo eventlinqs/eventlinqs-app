@@ -108,6 +108,23 @@ function leaf(snap) {
  * disabled by configuration but the specification cannot be deleted, because the
  * specification is the record of what the platform has promised itself."
  */
+/**
+ * The Event JSON-LD offers on a page, or an empty list.
+ *
+ * One reader, so a line that needs a PRICE asks the structured data rather than
+ * the prose. The block is guaranteed on a published leaf event page by
+ * close-out SEO1 v2 and its guard, and its prices resolve to database values.
+ */
+export function eventOffers(page) {
+  for (const block of page?.jsonLd ?? []) {
+    if (!block || block['@type'] !== 'Event') continue
+    const offers = block.offers
+    if (Array.isArray(offers)) return offers
+    if (offers && typeof offers === 'object') return [offers]
+  }
+  return []
+}
+
 export const PARITY_LINES = [
   {
     id: 'structured-data-on-a-leaf-url',
@@ -246,6 +263,31 @@ export const PARITY_LINES = [
       if (/sold out|tickets not yet on sale|this event has ended/i.test(p.text)) {
         return blind('the leaf event has no purchasable ticket, so there is no price to judge', p.url)
       }
+      /*
+       * A FREE EVENT HAS NOTHING TO BREAK DOWN, AND THIS LINE USED TO FAIL ON IT
+       * FOR EVER.
+       *
+       * "Free events are free. $0, no fees, same as every competitor"
+       * (CLAUDE.md, the locked fee structure), and the calculator short-circuits
+       * a zero-subtotal cart before any fee is applied. So a free event's page
+       * correctly shows no fee line, and demanding one is demanding the platform
+       * say something untrue.
+       *
+       * Found on 14 September 2026 running this check against a tree whose only
+       * leaf event was free: the line read "no ticket price on the page shows
+       * its fee breakdown" and nothing the platform could do would clear it. A
+       * line that is red for months on correct behaviour is a line somebody
+       * stops reading, which costs the other fourteen.
+       *
+       * The signal is the Event JSON-LD offers rather than the page text,
+       * because a price is a number and a word like "Free" appears on a page for
+       * half a dozen unrelated reasons. SEO1 v2 guarantees the block is there
+       * and that its prices come from the database.
+       */
+      const offers = eventOffers(p)
+      if (offers.length > 0 && offers.every(o => Number(o.price) === 0)) {
+        return blind('every ticket on the leaf event is free, so there is no fee to break down', p.url)
+      }
       const hasBreakdown = /ticket plus .* fee|fee included in the ticket price/i.test(p.text)
       if (!hasBreakdown) {
         return fail('no ticket price on the page shows its fee breakdown', p.url)
@@ -311,8 +353,18 @@ export const PARITY_LINES = [
       if (judged.length === 0) return blind('no event or venue page was fetched to judge')
       const withSection = judged.filter(p => p.hasAccessibilitySection)
       if (withSection.length === 0) {
+        /*
+         * SAID SO THAT IT IS READ CORRECTLY. The section is built and it renders
+         * only when an organiser has filled the fields, deliberately: "show it
+         * only when filled, a blank section is worse than none" (close-out SEO5
+         * step 4). So this FAIL is about what a visitor can see today, never
+         * about a missing capability, and the sentence has to carry that or the
+         * owner reads a content gap as an unbuilt feature.
+         */
         return fail(
-          `no accessibility information is published on any of the ${judged.length} event or venue page(s) served`,
+          `no accessibility information is published on any of the ${judged.length} event or venue page(s) served; ` +
+            'the section is built and appears once an organiser fills the fields, so this is an empty catalogue rather ' +
+            'than a missing surface',
           judged[0].url,
         )
       }

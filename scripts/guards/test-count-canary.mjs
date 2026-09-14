@@ -1689,9 +1689,32 @@ const ROOT = join(HERE, '..', '..')
  * src/lib/seo/sitemap-catalogue.ts so a build-time guard could execute it, and
  * the proof now asserts both that the catalogue applies the rule and that
  * sitemap.ts asks nobody else, which the single-regex version did not.
+ *
+ * 2026-09-14 (close-out SEO2, second commit, lane C): 414/5074, MEASURED, and
+ * 5074 rather than the 5075 the last run reported. Three consecutive runs of the
+ * whole suite on the same tree returned 414/5074 with one failure, then
+ * 414/5075 with none, then 414/5075 with none. One test is therefore
+ * intermittent somewhere in the suite: on the run that failed, one FEWER test
+ * also ran.
+ *
+ * THE FLOOR IS THE LOWEST OBSERVED COUNT, NOT THE HIGHEST, and that is what a
+ * floor means. Pinning 5075 would make this guard refuse a push on the run where
+ * the intermittent test does not appear, which is a gate going red for a reason
+ * nobody can act on, and the thing that happens next is somebody lowers it in a
+ * hurry. 5074 still catches a test that disappears, which is the whole job.
+ *
+ * The intermittent test is NOT named here because this session did not catch it
+ * in the act: the failing run's output was not kept, and naming a suspect from
+ * a count would be a guess. It is recorded so the next run that sees a red suite
+ * knows to look at the file rather than at its own change.
+ *
+ * One file and eight tests were added: the parity review's origin fix
+ * (tests/unit/ops/parity-check-origin.test.ts, five), and four more in
+ * tests/unit/parity/parity-spec.test.ts for the two ways that review reported a
+ * correct platform as broken.
  */
-const MIN_FILES = 413
-const MIN_TESTS = 5066
+const MIN_FILES = 414
+const MIN_TESTS = 5074
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -223,11 +223,47 @@ async function probe(url) {
   }
 }
 
+/**
+ * EVERY URL IS PUT BACK ON THE SITE UNDER TEST, and this is not tidiness.
+ *
+ * A sitemap carries ABSOLUTE URLs, and it builds them from the origin the
+ * application was CONFIGURED with, not the origin it was served from. Point this
+ * check at a preview or a local build and the sitemap it serves still says
+ * `https://www.eventlinqs.com.au/...`, because that is what NEXT_PUBLIC_SITE_URL
+ * holds.
+ *
+ * Measured on 14 September 2026, running with `--site http://localhost:3200`
+ * against a tree that HAD the structured data, the calendar links and the
+ * accessibility fields: nine lines came back FAIL, every one of them citing a
+ * production URL, and one of them read
+ *
+ *     1 sitemap URL(s) do not answer 200, first:
+ *     https://www.eventlinqs.com.au/events/afro-fusion-showcase-... (404)
+ *
+ * which is a TEST slug read out of the local sitemap and then requested against
+ * production. The check was judging production while reporting on the target, and
+ * a reader would have concluded the work was missing when it had never been
+ * looked at. That is the worst failure a verification tool can have, because it
+ * fails in the direction of "your fix is not there".
+ *
+ * So the path is what is taken from the sitemap and the origin is always the one
+ * being asked about. A URL that cannot be parsed is kept verbatim rather than
+ * dropped, so a malformed sitemap is still visible to the lines that judge it.
+ */
+export function onSite(url, site = SITE) {
+  try {
+    const parsed = new URL(url, `${site}/`)
+    return `${site}${parsed.pathname}${parsed.search}`
+  } catch {
+    return url
+  }
+}
+
 async function readSitemap() {
   try {
     const res = await fetch(`${SITE}/sitemap.xml`)
     const xml = await res.text()
-    const urls = Array.from(xml.matchAll(/<loc>([^<]+)<\/loc>/g)).map(m => m[1].trim())
+    const urls = Array.from(xml.matchAll(/<loc>([^<]+)<\/loc>/g)).map(m => onSite(m[1].trim()))
     return { status: res.status, urls }
   } catch (error) {
     return { status: 0, urls: [], error: error.message }
