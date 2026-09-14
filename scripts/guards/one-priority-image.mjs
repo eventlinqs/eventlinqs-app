@@ -48,7 +48,6 @@ const EXCLUDED_PREFIXES = ['src/lib/broadcast/', 'src/app/dev/', 'src/app/design
 export const ALLOWED_GRANTS = [
   { file: 'src/components/features/home/FeaturedHeroClient.tsx', match: 'priority={idx === 0}', why: 'homepage: slide 0 of the hero is the LCP; later slides never preload' },
   { file: 'src/components/features/home/FeaturedHero.tsx', match: 'alt={curated.alt} priority />', why: 'homepage with no featured event (close-out C17): the curated hero raster is the LCP' },
-  { file: 'src/components/features/home/category-nav-rail.tsx', match: 'priority: true,', why: 'homepage: the Communities doorway tile leads the first rail under the hero and sits in the first viewport at 390; it is the LCP when the hero has no photograph' },
   { file: 'src/components/features/events/m5-recommended-rail.tsx', match: 'priority={i === 0}', why: 'browse: no hero image; the first rail card is the LCP' },
   { file: 'src/components/features/events/m5-events-grid-client.tsx', match: 'priority={firstCardEager && i === 0}', why: 'browse grid without a rail above it: the first card is the LCP' },
   { file: 'src/app/cities/page.tsx', match: '<CitiesGrid entries={tier1} priority />', why: '/cities has no hero image; the grid decides which single tile carries it' },
@@ -103,11 +102,39 @@ export function classifyLine(raw) {
   return { expr: expr || 'true', reach }
 }
 
+/*
+ * A BLOCK COMMENT IS COMMENTARY ON EVERY ONE OF ITS LINES, not just the first.
+ *
+ * classifyLine is handed one line and can only judge that line, so it skips a
+ * line that STARTS like a comment. That misses the continuation lines of a
+ * multi-line JSX comment whose body is not bulleted, which is the style this
+ * codebase writes them in. On 14 September 2026 a comment explaining why a
+ * tile is NOT priority quoted the code it replaced, and this guard failed the
+ * tree on the quotation: "grants priority and is not on the reviewed list".
+ * A guard that fires on prose is a guard somebody rewrites their prose around,
+ * and then the explanation is what gets lost rather than the defect.
+ *
+ * So the block state is tracked here, where the lines arrive in order and it
+ * can be known, and classifyLine goes on judging one line at a time.
+ */
 export function findGrants(source, file) {
   const out = []
+  let inBlock = false
   source.split(/\r?\n/).forEach((line, i) => {
-    const g = classifyLine(line)
-    if (g) out.push({ file, line: i + 1, text: line.trim(), ...g })
+    // Complete /* ... */ pairs on one line are removed first, so a line that
+    // both opens and closes a comment is judged on what is left outside it.
+    const bare = line.replace(/\/\*[\s\S]*?\*\//g, ' ')
+    const opens = bare.includes('/*')
+    const closes = bare.includes('*/')
+    const wasInBlock = inBlock
+    if (!inBlock && opens) inBlock = true
+    else if (inBlock && closes) inBlock = false
+    // A line inside a block, or the tail that closes one, is commentary. The
+    // line that OPENS a block is still judged on the code before the opener.
+    if (wasInBlock) return
+    const judged = opens ? bare.slice(0, bare.indexOf('/*')) : bare
+    const g = classifyLine(judged)
+    if (g) out.push({ file, line: i + 1, text: judged.trim(), ...g })
   })
   return out
 }

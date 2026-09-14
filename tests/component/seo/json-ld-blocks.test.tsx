@@ -331,4 +331,106 @@ describe('the one emitter', () => {
     expect(parsed.name).toBe('A </script> night')
     expect(scripts[0].textContent).not.toContain('</script')
   })
+
+  /*
+   * THE PUSH GATE STOPPED HERE ON 14 SEPTEMBER 2026, with one line:
+   *
+   *     [structured-data] FAIL: /events/lineup-loop-proof-night-3z7osn
+   *                       Offer.name is an empty string
+   *
+   * A ticket tier on TEST carries name = '' and the serialiser wrote it straight
+   * into a nested Offer. The serialiser DID compact, over its own top level
+   * only, so every nested Offer, Place, PostalAddress and PerformingGroup was
+   * outside the clean it reported. These four are the regression, and they are
+   * written against the BYTES for the same reason the rest of this file is: the
+   * object is not what Google reads.
+   */
+  it('a nameless ticket tier omits Offer.name rather than publishing an empty one', () => {
+    const { container } = render(
+      <EventSchemaJsonLd
+        event={EVENT as never}
+        organisation={ORGANISATION}
+        ticketTiers={[{ id: 't1', name: '', price: 2500, currency: 'AUD' } as never]}
+        state="upcoming"
+        baseUrl={BASE}
+      />,
+    )
+    const [block] = blocksIn(container) as Record<string, unknown>[]
+    const offers = block.offers as Record<string, unknown>[]
+    expect(offers).toHaveLength(1)
+    expect('name' in offers[0]).toBe(false)
+    // The properties Google actually asks for are untouched by the pruning.
+    expect(offers[0].price).toBe('25.00')
+    expect(offers[0].priceCurrency).toBe('AUD')
+    expect(offers[0].availability).toBe('https://schema.org/InStock')
+  })
+
+  it('a tier whose name is only whitespace is treated the same way', () => {
+    const { container } = render(
+      <EventSchemaJsonLd
+        event={EVENT as never}
+        organisation={ORGANISATION}
+        ticketTiers={[{ id: 't1', name: '   ', price: 2500, currency: 'AUD' } as never]}
+        state="upcoming"
+        baseUrl={BASE}
+      />,
+    )
+    const [block] = blocksIn(container) as Record<string, unknown>[]
+    expect('name' in (block.offers as Record<string, unknown>[])[0]).toBe(false)
+  })
+
+  it('a named tier still carries its name, so the pruning is not just deletion', () => {
+    const { container } = render(
+      <EventSchemaJsonLd
+        event={EVENT as never}
+        organisation={ORGANISATION}
+        ticketTiers={[{ id: 't1', name: 'General Admission', price: 2500, currency: 'AUD' } as never]}
+        state="upcoming"
+        baseUrl={BASE}
+      />,
+    )
+    const [block] = blocksIn(container) as Record<string, unknown>[]
+    expect((block.offers as Record<string, unknown>[])[0].name).toBe('General Admission')
+  })
+
+  it('the renderer itself prunes, so a serialiser that never compacts cannot emit an empty claim', () => {
+    /*
+     * <JsonLd> is the only point every page type must pass through, so the
+     * invariant is pinned THERE and not only in the one serialiser that happened
+     * to break it. Zero and false survive: a free ticket costs 0 and that is a
+     * fact, not a blank.
+     */
+    const raw = {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Proof Night',
+      description: '',
+      image: null,
+      isAccessibleForFree: false,
+      location: {
+        '@type': 'Place',
+        name: '',
+        address: { '@type': 'PostalAddress', streetAddress: '  ', addressLocality: 'Geelong' },
+      },
+      offers: [{ '@type': 'Offer', name: '', price: '0.00', priceCurrency: 'AUD' }],
+    }
+    const { container } = render(<JsonLd payload={raw} />)
+    const parsed = JSON.parse(
+      container.querySelector('script[type="application/ld+json"]')?.textContent ?? '',
+    ) as Record<string, unknown>
+
+    expect('description' in parsed).toBe(false)
+    expect('image' in parsed).toBe(false)
+    expect(parsed.isAccessibleForFree).toBe(false)
+
+    const place = parsed.location as Record<string, unknown>
+    expect('name' in place).toBe(false)
+    const address = place.address as Record<string, unknown>
+    expect('streetAddress' in address).toBe(false)
+    expect(address.addressLocality).toBe('Geelong')
+
+    const offer = (parsed.offers as Record<string, unknown>[])[0]
+    expect('name' in offer).toBe(false)
+    expect(offer.price).toBe('0.00')
+  })
 })

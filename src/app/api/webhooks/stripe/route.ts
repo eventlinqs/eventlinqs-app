@@ -38,6 +38,8 @@ import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
 import { recordDiscountUse } from '@/lib/payments/discount-usage'
 import { recordConfirmedOrder, recordRefundedOrder } from '@/lib/ledger/adapter'
+import { refundChargeSource } from '@/lib/payments/refund-events'
+import { revalidateEventSurfacesFromRouteHandlerById } from '@/lib/events/revalidate-event'
 import { afterResponse } from '@/lib/after-response'
 
 export const dynamic = 'force-dynamic'
@@ -141,9 +143,47 @@ export async function POST(request: NextRequest) {
         await handlePaymentCancelled(supabase, intent)
         break
       }
+      /*
+       * IT SAYS WHICH EVENT IT IS ACTING ON, and that line is not decoration.
+       * Close-out R1, 14 September 2026: this branch handled `charge.refunded`
+       * and printed NOTHING naming it, so "no charge.refunded in the log" was
+       * indistinguishable from "charge.refunded arrived and worked", and a
+       * session read the silence as an absence and raised a defect that did not
+       * exist. Stripe's own event record showed the event had been sent and
+       * handled all along. A handled path that never says so cannot be read.
+       */
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge
+        console.log('[webhook] charge.refunded: reconciling the refunds on this charge', {
+          charge_id: charge.id,
+          amount_refunded: charge.amount_refunded,
+        })
         await handleChargeRefunded(charge)
+        break
+      }
+      /*
+       * THE SECOND DOOR TO A SUCCESSFUL REFUND. Close-out R1.
+       *
+       * `charge.refunded` was the only one until 14 September 2026, so a refund
+       * issued from the Stripe Dashboard, or by any script calling the Refunds
+       * API, was received and dropped: the ticket kept admitting, the place
+       * stayed unsellable and the queue was never offered it.
+       *
+       * Stripe's own page names this event as the minimum an integration should
+       * listen to (https://docs.stripe.com/refunds, "Refund events", fetched
+       * 14 September 2026). The set lives in src/lib/payments/refund-events.ts
+       * and a registered guard fails the build if this case stops reaching the
+       * reconcile.
+       *
+       * IT IS SAFE FOR BOTH TO ARRIVE. Each ends in `reconcile_refund`, whose
+       * idempotency latch is in the database: the second delivery finds the
+       * refunds row already `completed`, returns `already_done`, and the side
+       * effects (the queue offer, the buyer's email) are skipped because they
+       * run only on `reconciled`.
+       */
+      case 'refund.created': {
+        const refund = event.data.object as Stripe.Refund
+        await handleRefundCreated(refund)
         break
       }
       /*
@@ -938,6 +978,79 @@ async function handleSquadMemberPaymentSucceeded(
   console.log(`[webhook] squad ${squadId} completed - ${squad.total_spots} members all paid`)
 }
 
+/**
+ * A refund that Stripe told us about through `refund.created` rather than
+ * `charge.refunded`. Close-out R1.
+ *
+ * IT RESOLVES THE CHARGE AND THEN TAKES THE SAME ROAD. handleChargeRefunded is
+ * the proven path: it lists the charge's refunds, binds the in-app row where
+ * there is one, adopts the orphan where there is not, reconciles each one
+ * idempotently and falls back to the door-safety void only when adoption itself
+ * failed. Reimplementing a quarter of that here for the sake of a single refund
+ * object would be a second money path, and the whole reason R1 exists is that a
+ * second path was never as complete as the first.
+ *
+ * WHY THE CHARGE IS FETCHED RATHER THAN SYNTHESISED. Three things downstream
+ * need the real charge and not just its id: `adoptOrphanRefund` reads
+ * `charge.payment_intent` to find the order, `orphanOrderLevelVoid` reads the
+ * same, and the buyer's refund email is addressed from the charge. A stub object
+ * carrying only an id would take the orphan path on every dashboard refund,
+ * which is the defect wearing a fix.
+ *
+ * A REFUND WITH NEITHER A CHARGE NOR AN INTENT IS REPORTED, NOT SWALLOWED. It
+ * should not happen on a card refund, and if it ever does, the money has moved
+ * and nothing here can name the order, which is exactly the case that has to
+ * reach a person.
+ */
+async function handleRefundCreated(refund: Stripe.Refund) {
+  const { chargeId, paymentIntentId } = refundChargeSource(refund)
+  const stripe = getStripeClient()
+  let resolvedChargeId = chargeId
+
+  if (!resolvedChargeId && paymentIntentId) {
+    // The intent is the documented way back to the charge when the refund does
+    // not name one. A failure here is retryable: the refund exists at Stripe and
+    // the next delivery can resolve it.
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId).catch((err: unknown) => {
+      throw new WebhookProcessingError(`refund.created: could not retrieve payment intent ${paymentIntentId}`, {
+        cause: err,
+        context: { stripe_refund_id: refund.id },
+      })
+    })
+    resolvedChargeId =
+      typeof intent.latest_charge === 'string'
+        ? intent.latest_charge
+        : ((intent.latest_charge as Stripe.Charge | null)?.id ?? null)
+  }
+
+  if (!resolvedChargeId) {
+    console.error('[webhook] refund.created names neither a charge nor a payment intent', {
+      stripe_refund_id: refund.id,
+      status: refund.status,
+    })
+    captureException(new Error('refund.created with no charge and no payment intent'), {
+      scope: 'stripe-webhook',
+      handler: 'refund-created',
+      stripe_refund_id: refund.id,
+    })
+    return
+  }
+
+  const charge = await stripe.charges.retrieve(resolvedChargeId).catch((err: unknown) => {
+    throw new WebhookProcessingError(`refund.created: could not retrieve charge ${resolvedChargeId}`, {
+      cause: err,
+      context: { stripe_refund_id: refund.id },
+    })
+  })
+
+  console.log('[webhook] refund.created: reconciling through the charge it belongs to', {
+    stripe_refund_id: refund.id,
+    charge_id: charge.id,
+    status: refund.status,
+  })
+  await handleChargeRefunded(charge)
+}
+
 async function handleChargeRefunded(charge: Stripe.Charge) {
   // Webhook has no auth session - must use admin client for all DB operations.
   const adminClient = createAdminClient()
@@ -1023,15 +1136,29 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     }
 
     if (error) {
-      // Throw so the webhook returns non-2xx and Stripe retries. reconcile_refund
-      // is idempotent (already-completed -> no-op), so a retry is corrective and safe.
+      /*
+       * Throw so the webhook returns non-2xx and Stripe retries. reconcile_refund
+       * is idempotent (already-completed -> no-op), so a retry is corrective and safe.
+       *
+       * IT MUST BE A WebhookProcessingError AND NOT A PLAIN ERROR, and that was
+       * wrong here until 14 September 2026 (close-out R1, found by reading the
+       * route's own catch rather than by a failure). The outer catch maps ONLY
+       * WebhookProcessingError to HTTP 500; every other throw is captured and
+       * answered 200, which tells Stripe the delivery succeeded. So the comment
+       * above promised a retry that could not happen, and a transient database
+       * fault on the refund path meant the seat never came back and Stripe never
+       * asked again.
+       */
       captureException(error, {
         scope: 'stripe-webhook',
         handler: 'reconcile-refund',
         stripe_refund_id: r.id,
         charge_id: charge.id,
       })
-      throw new Error(`reconcile_refund failed for ${r.id}: ${error.message}`)
+      throw new WebhookProcessingError(`reconcile_refund failed for ${r.id}: ${error.message}`, {
+        cause: error,
+        context: { stripe_refund_id: r.id, charge_id: charge.id },
+      })
     }
     if (result !== 'no_refund_row') matchedAnyRow = true
     if (result === 'reconciled') {
@@ -1519,6 +1646,56 @@ async function postReconcileSideEffects(
       promoteWaitlist(order.event_id, tier, qty).catch(err => {
         console.error('[webhook] promoteWaitlist failed after reconcile:', err)
       })
+    }
+
+    /*
+     * THE PLACE IS BACK, AND THE PUBLIC PAGE HAS TO BE TOLD. Close-out R1, found
+     * by DRIVING the refund rather than by reading anything: `sold_count` went
+     * from 1 to 0 in the database, every ledger and ticket assertion passed, and
+     * /events/<slug> went on saying SOLD OUT at 390. The refund was the one
+     * inventory movement on this platform that invalidated nothing.
+     *
+     * WHY IT MATTERS MORE THAN A STALE FIELD. The waiting list is offered the
+     * freed place in the lines directly above, and that offer email links
+     * straight at this page. So the person told "a ticket just opened up" was
+     * being sent to a page that said the opposite, and the place sat unsellable
+     * for the route's 300 second ISR window (and, being
+     * stale-while-revalidate, for one request after that). Money, not polish.
+     *
+     * WHY NOT `revalidateEventSurfacesById`, which every dashboard mutation
+     * calls: it reaches the data caches with `updateTag`, which throws outside a
+     * Server Action. A webhook calling it would have swapped a stale page for a
+     * thrown handler and a Stripe retry loop. The route-handler form invalidates
+     * the same SET of paths from one place and expires the same data tags with
+     * `{ expire: 0 }`, which the shipped Next reference names as the pattern for
+     * exactly this caller.
+     *
+     * NEVER FATAL. The money has already moved and the seat is already back; a
+     * cache that could not be reached is a stale page, not a lost refund, and it
+     * says so rather than being swallowed.
+     */
+    try {
+      const invalidated = await revalidateEventSurfacesFromRouteHandlerById(adminClient, order.event_id as string)
+      await Promise.all(
+        [...perTier.keys()].map(tier =>
+          refreshInventoryCache(tier, order.event_id as string).catch(err => {
+            console.error('[webhook] refreshInventoryCache failed after a refund:', err)
+          }),
+        ),
+      )
+      console.log('[webhook] the freed place is visible again', {
+        event_id: order.event_id,
+        paths: invalidated.length,
+        tiers: perTier.size,
+      })
+    } catch (err) {
+      captureException(err, {
+        scope: 'stripe-webhook',
+        handler: 'refund-revalidate',
+        order_id: refund.order_id,
+        event_id: order.event_id,
+      })
+      console.error('[webhook] could not invalidate the surfaces a refund changed:', err)
     }
   }
 

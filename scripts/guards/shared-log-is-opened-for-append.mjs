@@ -112,6 +112,8 @@ const BASELINE = [
 
 /** Directories the scan could not open. Reported; never silently empty. */
 const unreadable = []
+/** Paths listed by the walk that no longer existed when the read came. */
+const vanished = []
 
 /**
  * A directory this guard cannot read is a directory it cannot judge, so the
@@ -174,7 +176,37 @@ function codeOnly(source) {
 
 for (const file of files) {
   const rel = relative(ROOT, file).split('\\').join('/')
-  const source = codeOnly(readFileSync(file, 'utf8'))
+  /*
+   * A FILE THAT VANISHED BETWEEN ENUMERATION AND READ IS NOT A VIOLATION, AND
+   * IT IS NOT AN UNREADABLE TREE EITHER. The two are separated deliberately.
+   *
+   * 14 September 2026: this guard took the whole suite red inside the push gate
+   * with a raw node:fs stack ("expected 'node:fs:484 return binding.rea...' to
+   * contain 'PASS'"), and passed on its own moments later. It scans 1102 files
+   * under scripts, tests and .githooks, and several guard tests under tests/
+   * write scratch files into the tree and delete them again. Run those in a
+   * parallel vitest worker while this scan is between its walk and its read and
+   * readFileSync throws ENOENT on a path that existed when it was listed.
+   *
+   * Swallowing that would be the vacuous green this file's own header warns
+   * about, so the vanished paths are COUNTED AND NAMED. But failing on them
+   * would be worse than useless: there is no file there to break the rule, and a
+   * gate that goes red on its own concurrency teaches people to re-run until it
+   * is green, which is how a real failure gets clicked past. Anything that is
+   * not ENOENT is still a tree this guard cannot read, and still fails.
+   */
+  let raw
+  try {
+    raw = readFileSync(file, 'utf8')
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      vanished.push(rel)
+      continue
+    }
+    unreadable.push({ dir: rel, why: error instanceof Error ? error.message : String(error) })
+    continue
+  }
+  const source = codeOnly(raw)
   // Only files that can hand a descriptor to a child are in scope. A script that
   // opens a file for its own use and starts nothing cannot produce this defect.
   if (!/\bstdio\s*:/.test(source)) continue
@@ -202,6 +234,12 @@ if (unreadable.length) {
   process.exit(1)
 }
 console.log(`[shared-log-append] scanned ${files.length} file(s) under ${ROOTS.join(', ')}`)
+if (vanished.length) {
+  console.log(
+    `[shared-log-append] ${vanished.length} path(s) vanished between the walk and the read and were not judged ` +
+      `(a concurrent guard drill writing scratch files into the tree does this): ${vanished.join(', ')}`,
+  )
+}
 console.log(`[shared-log-append] ${withStdio} file(s) hand a stdio option to a child; ${opens} openSync call(s) judged outside the baseline`)
 console.log(`[shared-log-append] reviewed baseline (${BASELINE.length}), printed every run on purpose:`)
 for (const b of BASELINE) {

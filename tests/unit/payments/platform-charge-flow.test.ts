@@ -163,6 +163,7 @@ function makeFees(): FeeBreakdown {
     total_cents: 10_800,
     currency: 'AUD',
     fee_pass_type: 'pass_to_buyer',
+    fee_waived: false,
     breakdown_display: {
       tickets: [{ name: 'GA', qty: 2, unit_price_cents: 5_000, line_total_cents: 10_000 }],
       addons: [],

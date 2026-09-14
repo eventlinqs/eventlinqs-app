@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { publishScheduledEvents } from '@/lib/events/publish-scheduled'
-import { revalidateEventSurfacesById } from '@/lib/events/revalidate-event'
+import { revalidateEventSurfacesFromRouteHandlerById } from '@/lib/events/revalidate-event'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -66,7 +66,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
    *     scheduled publish is a publish. Measured on 14 September 2026: it did
    *     not.
    *
-   * `revalidateEventSurfacesById` is the one function every manual mutation in
+   * `revalidateEventSurfacesFromRouteHandlerById` is the route-handler form of
+   * the one function every manual mutation in
    * src/app/(dashboard)/dashboard/events/actions.ts calls, and it reads the row
    * rather than trusting a caller to assemble the fields, which is why it is
    * used here rather than a hand-written list that would drift the same way this
@@ -75,10 +76,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
    */
   for (const outcome of summary.outcomes) {
     if (outcome.result === 'published') {
-      // 'route-handler': `updateTag` is Server-Action only in next@16.3.0, and a
-      // cron GET is a Route Handler. See RevalidationCaller for the citation and
-      // for what the weaker semantics cost here.
-      await revalidateEventSurfacesById(admin, outcome.eventId, 'route-handler')
+      // The ROUTE HANDLER form, not the server-action one: `updateTag` is
+      // Server-Action only in next@16, and a cron GET is a Route Handler. See
+      // `revalidateEventSurfacesFromRouteHandler` for the citation and for why
+      // `{ expire: 0 }` makes it immediate rather than stale-while-revalidate.
+      await revalidateEventSurfacesFromRouteHandlerById(admin, outcome.eventId)
     }
   }
 

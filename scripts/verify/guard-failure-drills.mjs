@@ -413,8 +413,11 @@ const DRILLS = [
     // THE ANCHOR MOVED AND THIS DID NOT. The `, threshold` argument arrived with
     // close-out SEO3 step 2, when the number became the owner's rather than the
     // build's, and this anchor was not moved with it, so the drill stopped
-    // aiming and the harness reported it STALE instead of firing. Kept in step
-    // with the source it mutates.
+    // aiming and the harness reported it STALE instead of firing. Both lanes
+    // re-anchored it independently on 14 September 2026, which is itself the
+    // point: the drill was not wrong and the guard was not wrong, so a stale
+    // anchor reads as a passing gate until somebody checks. Kept in step with
+    // the source it mutates.
     find: '    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug), threshold)) continue\n',
     replace: '',
     expect: 'publishes /community/[community] without an isDiscoveryIndexable() gate',
@@ -775,6 +778,48 @@ const DRILLS = [
     find: "  return eventType !== 'virtual'",
     replace: '  return true',
     expect: 'a VIRTUAL event emitted a block',
+  },
+
+  // -------------------------------------------------------------------------
+  // CLAUSE 7, NO EMPTY CLAIM AT ANY DEPTH (14 September 2026). The push gate
+  // stopped at its indexing step with "Offer.name is an empty string" on a real
+  // event whose tier is named ''. The serialiser DID compact; it compacted its
+  // own top level only, so every nested Offer, Place and PostalAddress lay
+  // outside the clean it reported. Three drills: the shallow walk restored, the
+  // walk emptied out, and the one renderer every page type crosses serialising
+  // without it.
+  // -------------------------------------------------------------------------
+  {
+    name: 'the payload compaction goes back to the top level only (the defect itself)',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/event-schema.ts',
+    find: '  return pruneJsonLd(obj) as Partial<T>',
+    replace: [
+      '  const out: Record<string, unknown> = {}',
+      '  for (const [k, v] of Object.entries(obj)) {',
+      '    if (v === null || v === undefined) continue',
+      "    if (typeof v === 'string' && v.trim() === '') continue",
+      '    out[k] = v',
+      '  }',
+      '  return out as Partial<T>',
+    ].join('\n'),
+    expect: 'empty claim',
+  },
+  {
+    name: 'the walk stops recursing, so only the outermost node is cleaned',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/lib/seo/structured-data.ts',
+    find: '      out[key] = pruneJsonLd(child)',
+    replace: '      out[key] = child',
+    expect: 'empty claim',
+  },
+  {
+    name: 'the one renderer every page type crosses serialises without pruning',
+    guard: `${GUARDS}/event-structured-data.mjs`,
+    file: 'src/components/seo/json-ld.tsx',
+    find: 'JSON.stringify(pruneJsonLd(payload))',
+    replace: 'JSON.stringify(payload)',
+    expect: 'without passing it through pruneJsonLd',
   },
   /*
    * geocoding-never-silent-null (close-out C9), two drills: the rule made to
@@ -1719,6 +1764,100 @@ const DRILLS = [
     find: '  const inAppRefundId = (stripeRefund.metadata as { refund_id?: string } | null | undefined)?.refund_id',
     replace: '  const inAppRefundId: string | undefined = undefined',
     expect: 'refuses a refund carrying metadata.refund_id',
+  },
+
+  // -------------------------------------------------------------------------
+  // THE REFUND SUCCESS DOOR (close-out R1, 14 September 2026). The drills above
+  // ask what happens once a refund is HEARD. These seven ask whether it is heard
+  // at all. Until R1 the route reached its successful-refund handler from one
+  // event, `charge.refunded`, and a refund issued from the Stripe Dashboard
+  // arrived as `refund.created` and was dropped in silence.
+  //
+  // The last two are one violation drilled TWICE, deliberately. The first time
+  // this clause was drilled, commenting the requirement out left the guard GREEN,
+  // because a key inside `// 'refund.created': ...` still matched a quoted key
+  // followed by a colon. Deleting it fired and commenting it out did not, so both
+  // are kept: the disabled-but-present shape is the one that got through.
+  // -------------------------------------------------------------------------
+  {
+    name: 'the refund.created case is gone from the route (the R1 defect itself)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: "      case 'refund.created': {",
+    replace: "      case 'refund.created.DRILL': {",
+    expect: "has no `case 'refund.created':`",
+  },
+  {
+    name: 'a successful refund routed to the FAILED and CANCELLED path',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '        await handleRefundCreated(refund)',
+    replace: '        await handleRefundNotCompleted(refund)',
+    expect: 'routes to handleRefundNotCompleted',
+  },
+  {
+    name: 'the declared set shrinks below the event Stripe names as the minimum',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/lib/payments/refund-events.ts',
+    find: "export const REFUND_SUCCESS_EVENTS = ['refund.created', 'charge.refunded'] as const",
+    replace: "export const REFUND_SUCCESS_EVENTS = ['charge.refunded'] as const",
+    expect: 'does not contain refund.created',
+  },
+  {
+    name: 'the reconcile failure throws a plain Error again (the retry that was a comment)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: 'throw new WebhookProcessingError(`reconcile_refund failed',
+    replace: 'throw new Error(`reconcile_refund failed',
+    expect: 'maps ONLY WebhookProcessingError to HTTP 500',
+  },
+  {
+    name: 'a deprecated Stripe event wired to the success path',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: "      case 'refund.created': {",
+    replace: "      case 'charge.refund.updated':\n      case 'refund.created': {",
+    expect: 'Stripe marks that event Deprecated',
+  },
+  {
+    name: 'the endpoint subscription probe stops requiring refund.created (deleted)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'scripts/probe/webhook-subscription-check.mjs',
+    find: "  'refund.created': 'the second door to reconcile_refund, and the one Stripe names as the minimum',\n",
+    replace: '',
+    expect: 'subscription probe does not require refund.created',
+  },
+  {
+    name: 'the endpoint subscription probe stops requiring refund.created (commented out)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'scripts/probe/webhook-subscription-check.mjs',
+    find: "  'refund.created': 'the second door",
+    replace: "  // 'refund.created': 'the second door",
+    expect: 'subscription probe does not require refund.created',
+  },
+  {
+    name: 'a refund stops making the freed place visible again (the SOLD OUT page)',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '      const invalidated = await revalidateEventSurfacesFromRouteHandlerById(adminClient, order.event_id as string)',
+    replace: '      const invalidated: string[] = []',
+    expect: 'no longer call revalidateEventSurfacesFromRouteHandlerById',
+  },
+  {
+    name: 'the refund stops refreshing the inventory cache the ticket panel reads',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '          refreshInventoryCache(tier, order.event_id as string).catch(err => {',
+    replace: '          Promise.resolve(tier).catch(err => {',
+    expect: 'no longer call refreshInventoryCache',
+  },
+  {
+    name: 'the webhook reaches for the SERVER ACTION revalidation, which throws in a route handler',
+    guard: `${GUARDS}/refund-success-door.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '      const invalidated = await revalidateEventSurfacesFromRouteHandlerById(adminClient, order.event_id as string)',
+    replace: '      const invalidated = await revalidateEventSurfacesById(adminClient, order.event_id as string)',
+    expect: 'the SERVER ACTION form',
   },
 
   // -------------------------------------------------------------------------
@@ -2815,6 +2954,62 @@ const DRILLS = [
       '        : state.lastPush?.when',
     replace: '      state.lastPush?.when',
     expect: 'No push to a working branch could be found',
+  },
+  /*
+   * MONEY FIX A1.7, the six drills for funds-reach-the-organiser.
+   *
+   * The first is the defect itself, and it is the one that matters: the charge
+   * precondition refusing a deliberately waived fee meant every paid ticket for
+   * a founding organiser was refused at checkout, silently, for as long as the
+   * waiver lasted. It is drilled by restoring the exact line that did it.
+   */
+  {
+    name: 'the charge precondition refuses a deliberately waived zero fee again (the A1.7 defect)',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/application-fee.ts',
+    find: '  if (inclusiveKeep < 0) {',
+    replace: '  if (inclusiveKeep <= 0) {',
+    expect: 'every paid ticket for a founding organiser is refused at checkout',
+  },
+  {
+    name: 'the zero-fee refusal stops consulting the waiver',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/application-fee.ts',
+    find: '  if (inclusiveKeep === 0 && !fees.fee_waived) {',
+    replace: '  if (inclusiveKeep === 0 && !fees.currency) {',
+    expect: 'no longer consults fees.fee_waived',
+  },
+  {
+    name: 'the breakdown stops recording the waiver from the source that zeroed the rates',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/payment-calculator.ts',
+    find: '      fee_waived: waiver.active,',
+    replace: '      fee_waived: false,',
+    expect: 'does not set fee_waived from waiver.active',
+  },
+  {
+    name: 'the charge is created before anybody checks the organiser can be paid',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/create-platform-charge.ts',
+    find: '  assertOrganiserCanReceiveFunds(org, input.fees)',
+    replace: '  // assertOrganiserCanReceiveFunds(org, input.fees)',
+    expect: 'does not call assertOrganiserCanReceiveFunds',
+  },
+  {
+    name: 'the charge stops resolving a destination connected account',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/create-platform-charge.ts',
+    find: '  const connectedAccountId = org.stripe_account_id!',
+    replace: '  const connectedAccountId = null as unknown as string',
+    expect: 'no longer resolved from the organisation row',
+  },
+  {
+    name: 'an organiser whose payouts are disabled is no longer refused',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/application-fee.ts',
+    find: '  if (!org.stripe_payouts_enabled) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
+    replace: '  if (false) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
+    expect: 'no longer tests `!org.stripe_payouts_enabled`',
   },
 ]
 

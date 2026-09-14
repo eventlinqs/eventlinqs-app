@@ -1537,6 +1537,7 @@ const ROOT = join(HERE, '..', '..')
  * caught a fourth section doing it after the guard had already gone green: the
  * last-push line still answered a failed read with "No push to a working branch
  * could be found", which is the absence the stall alert exists to raise.
+ *
  * 2026-09-13 (the merge of lane C into the push lane): the two histories above
  * are BOTH kept, because each names tests that exist in this tree and a merge
  * that dropped either would leave the next reader unable to find out why a
@@ -1712,9 +1713,58 @@ const ROOT = join(HERE, '..', '..')
  * (tests/unit/ops/parity-check-origin.test.ts, five), and four more in
  * tests/unit/parity/parity-spec.test.ts for the two ways that review reported a
  * correct platform as broken.
+ *
+ * 2026-09-14 (the merge of lane C into the push lane, the THIRD one): both
+ * lineages above are kept verbatim again, and they still do not form one
+ * chain. From d137ed2f lane A counted 390/4747 -> 391/4760 -> 393/4770 ->
+ * 396/4812 while lane C counted 391/4746 -> 393/4782 -> 394/4794. Neither end
+ * point describes a tree holding both sets of files, and the larger of two
+ * partial counts is still a guess. The value below is MEASURED on the merged
+ * tree.
+ *
+ * 2026-09-14 (R1, the refund success door, and the empty claim the push gate
+ * caught): raised 399/4860 -> 400/4897, MEASURED on a green suite. R1 added one
+ * file and 43 tests across two: which Stripe events mean a refund SUCCEEDED
+ * (the route reached its successful-refund handler from one event, and Stripe's
+ * own page names a different one as the minimum), and the route-handler form of
+ * the event revalidation, which exists because updateTag throws outside a Server
+ * Action and a webhook calling it would have traded a stale page for a Stripe
+ * retry loop. The other four are the empty claim: a nameless ticket tier put
+ * `Offer.name: ""` into a nested node the serialiser had already declared clean,
+ * and the four are written against the emitted BYTES because the object is not
+ * what Google reads.
+ *
+ * MEASURED: 400 files, 4893 tests on e9dfc26b, plus the four above.
+ *
+ * 2026-09-14 (the flake that refused a push, and this guard's own message):
+ * raised 400/4897 -> 400/4900, MEASURED on a green suite of the whole tree. No
+ * new file: three tests added to tests/unit/guards/one-priority-image.test.ts.
+ * They pin that a multi-line JSX comment is commentary on every one of its
+ * lines, which cost a cycle when a comment explaining why a tile is NOT
+ * priority quoted the code it replaced and the guard failed the tree on the
+ * quotation. The two hero-raster tests changed in the same commit were made
+ * deterministic rather than added to, so they move no count.
+ *
+ * 2026-09-14 (MONEY FIX A1.7): raised 400/4900 -> 401/4910, MEASURED on a green
+ * suite of the whole tree. One new file, tests/unit/payments/money-chain.test.ts,
+ * ten tests, which hold the money chain: a ticket charge names a destination, an
+ * organiser who cannot be paid is refused with a named reason, and the fee
+ * amount never decides whether the money may move. The first of them failed
+ * before the fix and is the defect's own reproduction.
+ *
+ * 2026-09-14 (the merge of verify/l5-launch-readiness into lane/c-ux, the
+ * FOURTH time this constant has collided): both lineages above are kept
+ * verbatim, again, and again they do not form one chain. Lane C counted
+ * 414/5074 on a tree without lane A's R1, money-chain and priority-image
+ * tests; lane A counted 401/4910 on a tree without lane C's SEO3, SEO4, SEO5,
+ * PARITY1 and SEO2 tests. Neither number describes the tree that now exists,
+ * and the larger of two partial counts is still a guess.
+ *
+ * THE VALUE BELOW IS MEASURED ON THE MERGED TREE, 0 failed and 0 skipped,
+ * which is the only thing either lane can honestly write here.
  */
-const MIN_FILES = 414
-const MIN_TESTS = 5074
+const MIN_FILES = 416
+const MIN_TESTS = 5125
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
@@ -1855,7 +1905,45 @@ if (collectionFailures.length > 0) {
   )
 }
 if (failedSuites > 0 && collectionFailures.length === 0) {
-  problems.push(`${failedSuites} test SUITE(S) failed. Read the vitest output.`)
+  /*
+   * NAME THE FILES, for the same reason the failing tests are named below, and
+   * because on 14 September 2026 this branch was the whole of what the gate
+   * said. The push of eight commits was refused at the suite step with
+   * "2 test SUITE(S) failed. Read the vitest output." and a total one test
+   * below the baseline. There WAS no vitest output to read: this guard runs
+   * vitest with --reporter=json into a file and then deletes it, so the
+   * instruction pointed at something that does not exist, and the second
+   * failing file was never identified. One of the two was a flake that passed
+   * standalone seconds later; the other is still unknown and cannot now be
+   * recovered.
+   *
+   * The report already carries every file with its status and its assertions,
+   * so withholding the names cost a diagnosis for nothing. A file listed with
+   * zero failed tests is the interesting case: it failed OUTSIDE a test, in a
+   * hook, a teardown or an unhandled rejection, and that is the shape that
+   * takes tests down with it and shows up as a total below the baseline.
+   */
+  const failedFiles = (Array.isArray(report.testResults) ? report.testResults : [])
+    .filter(r => r.status === 'failed')
+    .map(r => {
+      const file = (r.name ?? '').replace(/\\/g, '/').replace(ROOT.replace(/\\/g, '/') + '/', '')
+      const assertions = r.assertionResults ?? []
+      const bad = assertions.filter(a => a.status === 'failed').length
+      return `        ${file}  (${assertions.length} test(s) registered, ${bad} failed)`
+    })
+  problems.push(
+    `${failedFiles.length || failedSuites} test FILE(S) failed:\n` +
+      (failedFiles.length > 0 ? failedFiles.join('\n') : '        (the report named none)') +
+      '\n' +
+      '      A file listed here with 0 failed tests failed OUTSIDE a test: a hook, a\n' +
+      '      teardown or an unhandled rejection, and that shape can take its remaining\n' +
+      '      tests down with it.\n' +
+      (failedSuites !== failedFiles.length
+        ? `      vitest's own numFailedTestSuites says ${failedSuites}, and it is NOT a file count:\n` +
+          '      it counts describe blocks too, so one file failing inside one describe\n' +
+          '      reports as two. Drilled on 14 September 2026. Trust the list above.\n'
+        : ''),
+  )
 }
 if (!reportedSuccess) {
   problems.push('vitest reported success=false for this run.')
@@ -1906,9 +1994,14 @@ if (files < MIN_FILES) {
 }
 if (tests < MIN_TESTS) {
   problems.push(
-    `only ${tests} TESTS ran, baseline is ${MIN_TESTS}.\n` +
+    `only ${tests} tests PASSED, baseline is ${MIN_TESTS}.\n` +
       '      Tests that do not run cannot fail, so a green suite that runs fewer tests\n' +
-      '      is not evidence of anything.',
+      '      is not evidence of anything.\n' +
+      (failed > 0
+        ? `      READ THIS WITH THE FAILURES ABOVE FIRST. This is the PASSED count, not the\n` +
+          `      total, so the ${failed} failing test(s) already lower it by ${failed} on their own.\n` +
+          '      A shortfall of exactly that size means nothing stopped running.' + `\n`
+        : '      Nothing failed on this run, so the shortfall is tests that did not run at all.'),
   )
 }
 if (skipped > MAX_SKIPPED) {

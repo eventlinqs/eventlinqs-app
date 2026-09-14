@@ -1,5 +1,5 @@
 import 'server-only'
-import { revalidatePath, updateTag, revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { EVENT_DATA_CACHE_TAGS } from './cache-tags'
 import { getAllCities } from '@/lib/cities/data'
 import { communitiesFromTags } from '@/lib/communities/tag-bridge'
@@ -59,34 +59,6 @@ export interface RevalidatableEvent {
 }
 
 /**
- * WHERE THE CALL IS COMING FROM, BECAUSE NEXT ALLOWS DIFFERENT THINGS IN EACH.
- *
- * `updateTag` "immediately expires cached data for read-your-own-writes
- * scenarios ... Unlike `revalidateTag`, it can only be used in Server Actions"
- * (node_modules/next/dist/docs/01-app/01-getting-started/09-revalidating.md
- * line 121, shipped with next@16.3.0, read 14 September 2026).
- *
- * Every caller of this function was a Server Action until 14 September 2026,
- * when close-out SEO3 step 3 found that the scheduled-publish CRON published an
- * event without clearing a single data cache tag, so an event that went live at
- * the time its organiser set was absent from every count and from the sitemap
- * until a timer expired. A cron route is a Route Handler, and calling this from
- * one without saying so would reach `updateTag` outside a Server Action.
- *
- * So the caller states which it is, and it is NOT inferred: there is no reliable
- * way to ask at runtime, and a wrong guess fails in the direction that breaks a
- * working cron rather than in the direction that leaves a page stale.
- *
- * WHAT THE ROUTE HANDLER GIVES UP, said plainly. `revalidateTag` is
- * stale-while-revalidate, so the very next reader may be served the old value
- * once more before the fresh one lands. For a mutation an organiser is watching
- * that would be wrong, which is why the Server Action path keeps `updateTag`.
- * For a cron publishing on a schedule nobody is staring at, one more stale read
- * inside a five minute window is the correct trade against a 500.
- */
-export type RevalidationCaller = 'server-action' | 'route-handler'
-
-/**
  * The same thing, but it reads what it needs instead of trusting a caller to
  * assemble it.
  *
@@ -133,7 +105,26 @@ interface EventReadChain {
 export async function revalidateEventSurfacesById(
   db: EventReadClient,
   eventId: string,
-  caller: RevalidationCaller = 'server-action',
+): Promise<string[]> {
+  return invalidateById(db, eventId, revalidateEventSurfaces)
+}
+
+/**
+ * The same read, for a caller that is a ROUTE HANDLER rather than a server
+ * action. Close-out R1: the Stripe webhook's refund path needs it, and cannot
+ * use the function above because `updateTag` throws outside a server action.
+ */
+export async function revalidateEventSurfacesFromRouteHandlerById(
+  db: EventReadClient,
+  eventId: string,
+): Promise<string[]> {
+  return invalidateById(db, eventId, revalidateEventSurfacesFromRouteHandler)
+}
+
+async function invalidateById(
+  db: EventReadClient,
+  eventId: string,
+  invalidate: (event: RevalidatableEvent) => string[],
 ): Promise<string[]> {
   const { data: row, error } = await (db.from('events') as EventReadChain)
     .select('slug, venue_city, tags, category:event_categories(slug), organisation:organisations(slug)')
@@ -148,19 +139,19 @@ export async function revalidateEventSurfacesById(
       eventId,
       error,
     )
-    return revalidateEventSurfaces({}, caller)
+    return invalidate({})
   }
 
   const category = data.category as { slug?: string } | null
   const organisation = data.organisation as { slug?: string } | null
 
-  return revalidateEventSurfaces({
+  return invalidate({
     slug: typeof data.slug === 'string' ? data.slug : null,
     venue_city: typeof data.venue_city === 'string' ? data.venue_city : null,
     tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
     category_slug: category?.slug ?? null,
     organiser_handle: organisation?.slug ?? null,
-  }, caller)
+  })
 }
 
 /**
@@ -195,29 +186,28 @@ function citySlugForVenueCity(venueCity: string | null | undefined): string | nu
  * produced `if (input.has_reserved_seating)`, and it was wrong in the direction
  * that leaves an organiser staring at a stale page.
  */
-export function revalidateEventSurfaces(
-  event: RevalidatableEvent,
-  caller: RevalidationCaller = 'server-action',
-): string[] {
+/**
+ * EVERY PATH AN EVENT APPEARS ON, INVALIDATED. The paths only, and deliberately
+ * so: `revalidatePath` is callable from a server action AND from a route
+ * handler, while `updateTag` is Server-Action only, and the two callers of this
+ * module are one of each.
+ *
+ * SPLIT OUT ON 14 SEPTEMBER 2026 (close-out R1), and the reason is a defect the
+ * drive found rather than a tidy-up. A refund returned a place to inventory in
+ * the database and /events/<slug> went on saying SOLD OUT, because the refund
+ * path was the one inventory movement on the platform that invalidated nothing.
+ * It could not simply call `revalidateEventSurfaces`: that function calls
+ * `updateTag`, which throws outside a server action, so a webhook calling it
+ * would have traded a stale page for a thrown handler and a Stripe retry loop.
+ * One place still owns the SET of paths; only the tag mechanism differs by
+ * caller, which is the one thing the platform genuinely forces to differ.
+ */
+function markEventPaths(event: RevalidatableEvent): string[] {
   const invalidated: string[] = []
   const mark = (path: string) => {
     revalidatePath(path)
     invalidated.push(path)
   }
-  /*
-   * See RevalidationCaller: `updateTag` is Server-Action only in next@16.3.0.
-   *
-   * `{ expire: 0 }` IS REQUIRED AND IS NOT A DEFAULT. The shipped type is
-   * `revalidateTag(tag: string, profile: string | CacheLifeConfig)`
-   * (node_modules/next/dist/server/web/spec-extension/revalidate.d.ts line 13),
-   * where the second argument "specifies a cacheLife profile (e.g. "max"), or a
-   * `{ expire }` object". Zero is the shortest life there is, so the entry is
-   * expired on the spot rather than being given a new lease; it is the closest
-   * `revalidateTag` gets to what `updateTag` does, which is the whole reason the
-   * Server Action path does not use it.
-   */
-  const expireTag =
-    caller === 'route-handler' ? (tag: string) => revalidateTag(tag, { expire: 0 }) : updateTag
 
   /*
    * TWO CACHE LAYERS, AND THIS USED TO CLEAR ONLY ONE. Added 25 August 2026.
@@ -276,10 +266,6 @@ export function revalidateEventSurfaces(
    * immediately (13 reported, 8 actually called) and the test caught it, which is
    * the test doing exactly its job.
    */
-  for (const tag of EVENT_DATA_CACHE_TAGS) {
-    expireTag(tag)
-  }
-
   // The event's own page, and the two surfaces every event is on.
   if (event.slug) mark(`/events/${event.slug}`)
   mark('/events')
@@ -322,12 +308,59 @@ export function revalidateEventSurfaces(
   // event still listed there is a crawl into a dead link.
   mark('/sitemap.xml')
 
-  // The city picker merges its options from live event cities.
-  expireTag('picker-cities')
-
   // The organiser's own views, so the dashboard is never behind the public page.
   mark('/dashboard/events')
   mark('/dashboard')
 
+  return invalidated
+}
+
+/**
+ * The server-action form: every path, then the DATA caches expired IMMEDIATELY.
+ * This is the one every dashboard mutation calls, and the `updateTag` choice
+ * above is its whole argument.
+ */
+export function revalidateEventSurfaces(event: RevalidatableEvent): string[] {
+  const invalidated = markEventPaths(event)
+  for (const tag of EVENT_DATA_CACHE_TAGS) {
+    updateTag(tag)
+  }
+  // The city picker merges its options from live event cities.
+  updateTag('picker-cities')
+  return invalidated
+}
+
+/**
+ * The ROUTE HANDLER form, for the Stripe webhook. Close-out R1.
+ *
+ * IT DIFFERS IN EXACTLY ONE WAY, and the difference is Next's, not ours:
+ * `updateTag` "can only be called from within a Server Action" (its own type
+ * declaration, next@16), so a route handler reaches the same data caches through
+ * `revalidateTag`.
+ *
+ * AND IT IS STILL IMMEDIATE, which is the part worth citing rather than
+ * assuming. `revalidateTag(tag)` on its own is stale-while-revalidate, and the
+ * single-argument form is deprecated in this version. The shipped reference names
+ * this exact case: "For webhooks or third-party services that need immediate
+ * expiration, you can pass `{ expire: 0 }` as the second argument ... This
+ * pattern is necessary when external systems call your Route Handlers and require
+ * data to expire immediately."
+ * (node_modules/next/dist/docs/01-app/03-api-reference/04-functions/revalidateTag.md,
+ * shipped with next@16, read 14 September 2026.) A Stripe webhook is precisely an
+ * external system calling a route handler, so `{ expire: 0 }` it is, and the
+ * refund does not hand the next visitor a page that still says sold out.
+ *
+ * The PATHS need no such care: `revalidatePath` invalidates the route entry and
+ * "the next request to that content triggers a fresh render"
+ * (node_modules/next/dist/docs/01-app/02-guides/how-revalidation-works.md, same
+ * version), which is the page the buyer and the person holding a waiting-list
+ * offer actually load.
+ */
+export function revalidateEventSurfacesFromRouteHandler(event: RevalidatableEvent): string[] {
+  const invalidated = markEventPaths(event)
+  for (const tag of EVENT_DATA_CACHE_TAGS) {
+    revalidateTag(tag, { expire: 0 })
+  }
+  revalidateTag('picker-cities', { expire: 0 })
   return invalidated
 }

@@ -37,6 +37,40 @@ describe('classifyLine', () => {
   })
 })
 
+describe('findGrants and the block comment', () => {
+  /*
+   * Added 14 September 2026. A comment explaining why a tile is NOT priority
+   * quoted the code it replaced, and the guard failed the tree on the
+   * quotation, because a line-by-line scanner only skips a line that STARTS
+   * like a comment and this codebase does not bullet its JSX comment bodies.
+   */
+  test('a grant quoted inside a multi-line JSX comment is prose, not a grant', () => {
+    const source = [
+      '          {/* NOT PRIORITY. The line under this used to read',
+      '              `priority: true`, which was a literal standing in for a',
+      '              condition that has since become permanently false. */}',
+      '          <Tile priority={false} />',
+    ].join('\n')
+    expect(findGrants(source, 'x.tsx')).toEqual([])
+  })
+
+  test('a real grant after the comment closes is still found', () => {
+    const source = [
+      '          {/* the hero is the LCP',
+      '              priority: true is what that means */}',
+      '          <HeroMedia image={src} alt="" priority />',
+    ].join('\n')
+    const grants = findGrants(source, 'x.tsx')
+    expect(grants).toHaveLength(1)
+    expect(grants[0].line).toBe(3)
+  })
+
+  test('a comment opened and closed on one line does not hide the code beside it', () => {
+    const source = '          <HeroMedia priority /> /* the LCP */'
+    expect(findGrants(source, 'x.tsx')).toHaveLength(1)
+  })
+})
+
 describe('judge', () => {
   const allowed = [{ file: 'src/a.tsx', match: 'priority={idx === 0}', why: 'the hero' }]
 

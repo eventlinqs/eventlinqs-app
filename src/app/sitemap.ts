@@ -12,12 +12,12 @@ import { helpTopics } from '@/lib/help-content'
 import { isRedirected } from '@/lib/seo/permanent-redirects'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { isDiscoveryIndexable } from '@/lib/seo/indexing-policy'
+import { resolveDiscoveryThreshold } from '@/lib/seo/discovery-threshold'
 import {
   readEventCatalogue,
   readOrganiserCatalogue,
   readVenueCatalogue,
 } from '@/lib/seo/sitemap-catalogue'
-import { resolveDiscoveryThreshold } from '@/lib/seo/discovery-threshold'
 import {
   loadDiscoveryRows,
   countCommunity,

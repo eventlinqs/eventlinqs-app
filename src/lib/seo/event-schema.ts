@@ -24,6 +24,7 @@
 import type { Event, TicketTier, Organisation } from '@/types/database'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { toZonedIso8601 } from '@/lib/dates/event-time'
+import { pruneJsonLd } from '@/lib/seo/structured-data'
 
 type EventStatus = 'upcoming' | 'sold-out' | 'cancelled' | 'postponed' | 'past'
 
@@ -65,22 +66,24 @@ export interface EventSchemaProps {
 }
 
 /**
- * Drops keys whose value is null, undefined, or an empty/whitespace string.
+ * Drops keys whose value is null, undefined, or an empty/whitespace string, at
+ * EVERY depth.
  *
  * WHY. The emitter used `?? ''` on every optional venue field, so an event with
  * no street address published `"streetAddress": ""` rather than omitting it. An
  * empty string is not "absent": it is a positive claim that the value is empty,
  * and validators read it as a malformed value rather than a missing optional
  * one. Omission is the honest encoding.
+ *
+ * IT USED TO STOP AT THE TOP LEVEL, and the push gate found out on 14 September
+ * 2026: a ticket tier named '' put `Offer.name: ""` into a nested node this
+ * function had already declared clean. The walk now lives in `pruneJsonLd`
+ * (src/lib/seo/structured-data.ts) with the whole argument written beside it,
+ * because `<JsonLd>` needs the same walk and two copies of a cleaning rule is
+ * how two page types come to disagree about what clean means.
  */
 function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
-  const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(obj)) {
-    if (v === null || v === undefined) continue
-    if (typeof v === 'string' && v.trim() === '') continue
-    out[k] = v
-  }
-  return out as Partial<T>
+  return pruneJsonLd(obj) as Partial<T>
 }
 
 /**
