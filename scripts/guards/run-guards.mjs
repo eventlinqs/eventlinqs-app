@@ -170,6 +170,9 @@
  *                              never route resolves to noindex, every indexable page names
  *                              its own canonical, the root layout names none, and the
  *                              sitemap gates each templated family on the threshold (C19)
+ *   all-in-pricing            no buyer is shown a number they will not pay: the fee value has
+ *                              ONE source, every buyer-facing price surface resolves it live,
+ *                              and no cart total is a per-ticket figure multiplied (SEO4)
  *   discovery-indexability    the page and the sitemap count the same dimension for every
  *                              templated family, nothing overrides or re-spells the owner's
  *                              threshold, and every category in event_categories is a real
@@ -1173,6 +1176,15 @@ const GUARDS = [
   // sitemap are asking the same question of the same numbers, and whether a
   // category is a page rather than a query string that canonicalises to /events.
   'scripts/guards/discovery-indexability.mjs',
+  // Close-out SEO4 (14 September 2026): one-fee-copy.mjs judges whether a
+  // SENTENCE names a second fee. This one judges the wiring and the arithmetic:
+  // whether a surface that renders a price has the live fee values in its hands,
+  // whether any file carries the fee as a literal, and whether anybody
+  // multiplies a per-ticket total into a cart total. The event page showed
+  // "From AUD $18.00" for an event nobody could leave for eighteen dollars, and
+  // no gate could fail, because the number was correct and simply was not the
+  // price.
+  'scripts/guards/all-in-pricing.mjs',
   // Close-out H2.1 (8 September 2026): production reset a TLS handshake from a
   // GitHub Actions runner and the post-deploy smoke called it an outage. The
   // reset was at the handshake, before any header was sent, so nothing that

@@ -1632,9 +1632,25 @@ const ROOT = join(HERE, '..', '..')
  * green throughout - correctly, because the defect was never in the function it
  * tests. It was in what the ROUTE did with the answer. Proven red against the
  * exact pre-fix shape (3 of the 5 fail) before being called done.
+ *
+ * 2026-09-14 (SEO4, all-in pricing): raised 396/4809 -> 398/4823, MEASURED on a
+ * green suite. Two new files, fourteen tests.
+ * `tests/unit/pricing/all-in-pricing.test.ts` carries the six the close-out
+ * names plus the ones that tie the DISPLAY to the CHARGE, and those drive the
+ * real `PaymentCalculator` rather than re-implementing it, because every other
+ * test in the file could be green while the display quietly used a second,
+ * slightly different formula. Writing it that way immediately found a real
+ * property nobody had written down: the fee line is rounded ONCE, so the
+ * per-ticket all-in price times the quantity is NOT the cart total (2035 and
+ * 4069, not 4070), and the error can go either way.
+ * `tests/component/fee-sentence-spacing.test.tsx` RENDERS three surfaces and
+ * reads their text as a screen reader would. The two defects the close-out
+ * reports are invisible on screen, because the spacing is a CSS margin between
+ * two inline elements with no whitespace character between them, and the test
+ * found a THIRD instance on /organisers that the item does not name.
  */
-const MIN_FILES = 396
-const MIN_TESTS = 4812
+const MIN_FILES = 398
+const MIN_TESTS = 4823
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

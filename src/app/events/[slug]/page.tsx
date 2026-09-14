@@ -63,7 +63,7 @@ import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel
 // organiser Stripe columns that `anon` may not see. See organiserCanSell.
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
-import type { FeePassType } from '@/lib/payments/fee-math'
+import type { FeePassType, FeeRates } from '@/lib/payments/fee-math'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
 import { ReservationNotice } from '@/components/checkout/reservation-notice'
@@ -338,11 +338,26 @@ function formatShortDate(iso: string, timezone: string) {
   })
 }
 
-function cheapestPrice(tiers: { price: number; currency: string }[]): string | null {
+/**
+ * The "From ..." line on this page.
+ *
+ * IT IS THE LOWEST ALL-IN TOTAL, not the lowest face value (close-out SEO4
+ * step 3). This page resolves THIS EVENT's fee scope through the one resolver
+ * (`getEventFeeRates` -> `getPricingRule`), so it is entitled to state the real
+ * price; a surface that has not resolved the scope is not, and `priceLabel`
+ * makes that an argument rather than an assumption.
+ *
+ * The audit of 13 September 2026 read `From AUD $18.00` on a page where the
+ * buyer pays more than that and is told so nowhere.
+ */
+function cheapestPrice(
+  tiers: { price: number; currency: string }[],
+  allIn: { rates: FeeRates; feePassType: FeePassType },
+): string | null {
   if (!tiers.length) return null
   // The shared price-label rule: free only when EVERY tier is $0, otherwise
   // the lowest PAID price (see src/lib/events/price-label.ts).
-  return priceLabel(tiers, 'Free entry')
+  return priceLabel(tiers, 'Free entry', allIn)
 }
 
 export default async function EventDetailPage({ params }: Props) {
@@ -702,7 +717,7 @@ export default async function EventDetailPage({ params }: Props) {
     price: resolvePrice(t),
     currency: t.currency ?? 'AUD',
   }))
-  const priceLabel = cheapestPrice(priceTiersForDisplay)
+  const priceLabel = cheapestPrice(priceTiersForDisplay, { rates: feeRates, feePassType: eventFeePassType })
   const shortDate = formatShortDate(event.start_date, event.timezone)
   const venueLabelShort = [event.venue_name, event.venue_city].filter(Boolean).join(' · ') || null
   // UX1.2: this used to lead with `event.venue_name` and KnowBeforeYouGo then

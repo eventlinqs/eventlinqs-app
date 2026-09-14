@@ -460,6 +460,38 @@ const DRILLS = [
     expect: 'the category "comedy" exists in event_categories and has no editorial',
   },
   /*
+   * all-in-pricing (close-out SEO4), THREE DRILLS, one per clause. The item asks
+   * for the guard to be "proven red by displaying a ticket price without its
+   * fee, then green", which is the second of these; the other two are the
+   * clauses that would let the same defect back in by a different door.
+   */
+  {
+    name: 'a ticket price is displayed without its fee',
+    guard: `${GUARDS}/all-in-pricing.mjs`,
+    file: 'src/components/checkout/ticket-selector.tsx',
+    find: '                      {formatPrice(tierAllIn(tier).totalCents, currency)}',
+    replace: '                      {formatPrice(tier.display_price_cents ?? tier.price, currency)}',
+    expect: 'formats a raw tier price as the price a buyer reads',
+  },
+  {
+    name: 'the fee is hardcoded into a second file',
+    guard: `${GUARDS}/all-in-pricing.mjs`,
+    file: 'src/lib/payments/all-in-price.ts',
+    find: 'export function allInPriceForOneTicket(',
+    replace:
+      'const LANE_C_DRILL = { percent: 3.5, fixedCents: 99 }\nvoid LANE_C_DRILL\nexport function allInPriceForOneTicket(',
+    expect: 'carries the platform fee',
+  },
+  {
+    name: 'a cart total is a per-ticket total multiplied by the quantity',
+    guard: `${GUARDS}/all-in-pricing.mjs`,
+    file: 'src/lib/payments/all-in-price.ts',
+    find: '  return paid.reduce((lowest, tier) => {',
+    replace:
+      '  const laneCDrill = allInPriceForOneTicket(paid[0].price, rates, feePassType).totalCents * 2\n  void laneCDrill\n  return paid.reduce((lowest, tier) => {',
+    expect: 'multiplies a per-ticket all-in total to get a cart total',
+  },
+  /*
    * event-structured-data (SEO1 v2), EIGHT DRILLS, one per clause and four
    * extra where a clause has more than one way to fail.
    *

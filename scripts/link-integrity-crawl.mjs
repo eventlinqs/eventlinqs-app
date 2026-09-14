@@ -57,8 +57,25 @@ const SEED_PATHS = [
 const SKIP_PREFIXES = ['/api/', '/cdn/', '/_next/', '/monitoring']
 const SKIP_EXACT = new Set(['/sitemap.xml', '/robots.txt'])
 
-const CONCURRENCY = 12
-const TIMEOUT_MS = 30000
+/*
+ * CONCURRENCY IS TUNABLE, AND THE REASON IS ABOUT THE HARNESS RATHER THAN THE
+ * PRODUCT (14 September 2026).
+ *
+ * Twelve is right against a deployed preview, which is a production build behind
+ * a CDN. Against a local `next dev` it is not: the server compiles each route on
+ * first request and then server-renders twelve heavy event pages at once, and
+ * requests start aborting at the 30 second timeout. Measured that day, the same
+ * pages that aborted in the sweep answered 200 in 1.5 to 2.0 seconds each when
+ * asked one at a time, so the timeouts were the crawler saturating the server
+ * and reporting the result as a dead link.
+ *
+ * A dead link and a link nobody could load in thirty seconds are not the same
+ * finding, and conflating them makes the crawler untrustworthy in the one
+ * environment where it is cheapest to run. The default is unchanged; a local run
+ * lowers it.
+ */
+const CONCURRENCY = Number(process.env.LINK_CRAWL_CONCURRENCY) || 12
+const TIMEOUT_MS = Number(process.env.LINK_CRAWL_TIMEOUT_MS) || 30000
 
 function isInternal(href) {
   if (!href) return false

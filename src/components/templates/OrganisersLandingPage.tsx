@@ -226,7 +226,26 @@ function PricingClarityBand({
           <p className="font-display text-sm font-bold uppercase tracking-[0.14em] text-[var(--text-primary)]">Paid events</p>
           <p className="mt-3">
             <span className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">{feeLabel}</span>
+            {/*
+              A REAL SPACE, for the same reason as /pricing (close-out SEO4
+              step 6). This is a THIRD instance of a defect the item names twice:
+              two adjacent inline spans, separated by `ml-2` and by nothing a
+              screen reader or a copy-paste can see, so the text content read
+              "AUD 0.99per paid ticket sold" here too. Found by extending the
+              test to this surface rather than by reading.
+            */}
+            {' '}
             <span className="ml-2 text-sm text-[var(--text-secondary)]">per paid ticket sold. That is the whole fee.</span>
+          </p>
+          {/*
+            THE PLATFORM POSITION, stated plainly (close-out SEO4 step 7). It
+            sits under the fee rather than in a band of its own because it is a
+            claim ABOUT that number, and a promise made three sections away from
+            the figure it qualifies is a promise a reader has to go looking for.
+          */}
+          <p className="mt-3 text-sm font-medium text-[var(--text-primary)]">
+            The price a buyer sees is the price a buyer pays. The total is shown
+            in full on the event page, before anyone reaches the payment step.
           </p>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">Everything in Free, plus paid-ticket selling.</p>
           <ul className="mt-5 flex-1 space-y-2.5">
