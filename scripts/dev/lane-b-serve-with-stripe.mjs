@@ -30,7 +30,7 @@
  *   node scripts/dev/lane-b-serve-with-stripe.mjs --stop     # stop what it started
  */
 import { spawn, execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync, openSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, openSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { readStripeTestKeys, probeStripeTestKey } from '../verify/lib/stripe-cli-test-keys.mjs'
 
@@ -74,6 +74,26 @@ function ps(script) {
   }
 }
 
+/*
+ * A COMMAND LINE IS A PLACE A SECRET LIVES, and this script learned it the
+ * embarrassing way.
+ *
+ * `stripe listen --api-key sk_test_...` carries the key in argv, so every
+ * process on the machine can read it and, more to the point, `stopMine` printed
+ * it verbatim while the header of this file promised a key is never printed. A
+ * promise a file makes about itself has to be enforced in the file.
+ *
+ * Every key-shaped run is replaced by its prefix and its ACCOUNT, which is the
+ * only part a reader ever needs: it says which platform the process was talking
+ * to and nothing that opens it.
+ */
+function redactKeys(text) {
+  return String(text).replace(
+    /\b([sprk]k)_(test|live)_[A-Za-z0-9]{20,}/g,
+    (whole, prefix, mode) => `${prefix}_${mode}_<acct_${whole.slice(9, 25)}>`,
+  )
+}
+
 /** Processes whose command line names this worktree. Never matched on name alone. */
 function minePids(pattern) {
   const out = ps(
@@ -114,10 +134,37 @@ function stopMine() {
   for (const t of targets) {
     if (seen.has(t.pid) || !Number.isInteger(t.pid)) continue
     seen.add(t.pid)
-    say(`stopping ${t.pid} (${t.cmd.slice(0, 90)})`)
+    say(`stopping ${t.pid} (${redactKeys(t.cmd).slice(0, 100)})`)
     ps(`Stop-Process -Id ${t.pid} -Force -ErrorAction SilentlyContinue`)
   }
-  if (!seen.size) say('nothing of lane B was running')
+  if (!seen.size) {
+    say('nothing of lane B was running')
+    return 0
+  }
+
+  /*
+   * WHAT A KILLED DEV SERVER LEAVES BEHIND, AND WHY IT READS AS A CODE ERROR.
+   *
+   * `next dev` regenerates `.next/dev/types/validator.ts` continuously, one
+   * block per route. Stopping it mid-write leaves that file TRUNCATED, and the
+   * next `tsc --noEmit` fails inside it:
+   *
+   *     .next/dev/types/validator.ts(1597,1): error TS1128: Declaration or
+   *     statement expected.
+   *
+   * Nothing in `src` is wrong, the typecheck gate step is red, and the error
+   * points at a generated file most people have never opened. It cost a gate run
+   * here on 14 September.
+   *
+   * It is deleted rather than repaired, because it is generated: the next start
+   * writes it whole. Only the types are removed, never the build cache, which
+   * three worktrees share a disk for and which costs a cold rebuild to replace.
+   */
+  const generatedTypes = resolve(ROOT, '.next', 'dev', 'types')
+  if (existsSync(generatedTypes)) {
+    rmSync(generatedTypes, { recursive: true, force: true })
+    say('removed .next/dev/types: a server stopped mid-write leaves it truncated and typecheck fails inside it')
+  }
   return seen.size
 }
 
@@ -168,7 +215,7 @@ if (fileAccount && `acct_${fileAccount}` !== keys.accountId) {
 if (mode === 'status') {
   const listening = await up(`http://localhost:${PORT}/`, 2000)
   say(`port ${PORT}: ${listening ? 'answering' : 'silent'}`)
-  for (const p of minePids(ROOT.replace(/\//g, '\\'))) say(`  ${p.pid}  ${p.cmd.slice(0, 110)}`)
+  for (const p of minePids(ROOT.replace(/\//g, '\\'))) say(`  ${p.pid}  ${redactKeys(p.cmd).slice(0, 110)}`)
   process.exit(0)
 }
 
