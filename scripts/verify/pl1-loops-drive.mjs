@@ -14,11 +14,29 @@
  *      to what it was before this item, proven by capturing both and counting
  *      the differing pixels rather than by looking at them.
  *
- * Run (dev server on 3100 against TEST, with the console email transport):
- *   node --import ./scripts/lib/server-only-shim.mjs \
- *        --import ./scripts/lib/src-alias-loader.mjs \
- *        --env-file=.env.local scripts/verify/pl1-loops-drive.mjs \
- *        --out C:/dev/EVIDENCE/PL1
+ * Run. The first version of this block named the two --import flags and nothing
+ * else, and running exactly what it said failed three checks with product
+ * sounding messages: 'no link was printed', 'the referred account's role is
+ * attendee after confirming', and 'the weekly query counted 0 referred signups'.
+ * All three were this command, not the loops. Corrected 14 September 2026.
+ *
+ *   env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_ANON_KEY \
+ *     BASE=http://localhost:3100 \
+ *     SERVER_LOG=.tmp-lane-b-serve.log \
+ *     UPSTASH_REDIS_REST_URL=http://127.0.0.1:8179 UPSTASH_REDIS_REST_TOKEN=local \
+ *     node --import ./scripts/lib/server-only-shim.mjs \
+ *          --import ./scripts/lib/src-alias-loader.mjs \
+ *          --env-file=.env.local scripts/verify/pl1-loops-drive.mjs \
+ *          --out C:/dev/EVIDENCE/PL1
+ *
+ * SERVER_LOG is the one that matters here and it is the one that was missing.
+ * The referral leg reads the confirmation link out of the console email inbox,
+ * which IS the running server's own log. Left on the harness default
+ * `.tmp-serve.log` it reads some other lane's file, or a stale one, finds no
+ * link, and then reports the two downstream failures that follow from never
+ * having confirmed the account. Lane B's server writes `.tmp-lane-b-serve.log`.
+ *
+ * Start the server first: node scripts/dev/lane-b-serve-with-stripe.mjs
  */
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'

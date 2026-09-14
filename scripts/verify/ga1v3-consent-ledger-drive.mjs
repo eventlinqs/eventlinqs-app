@@ -35,11 +35,20 @@
  * the item's own first principle, so this drive leaves its ledger rows behind
  * and says how many.                                          (acceptance 13)
  *
- * WHY IT BUYS A FREE TICKET. There is no working Stripe TEST secret key on this
- * machine (REVIEW-QUEUE-B.md records it as a credential the owner must mint),
- * so a card payment cannot complete here. A FREE order takes the identical
+ * WHY IT BUYS A FREE TICKET. Because a FREE order takes the identical
  * confirmation path, `confirm_order`, which is the same RPC the paid path calls
- * from the webhook and the thing that fires the audience trigger. The behaviour
+ * from the webhook and the thing that fires the audience trigger. So a free
+ * ticket exercises every rule this drive is here to prove, with less to go
+ * wrong.
+ *
+ * WITHDRAWN, 14 September 2026, the reason this used to give. It said "there is
+ * no working Stripe TEST secret key on this machine (REVIEW-QUEUE-B.md records
+ * it as a credential the owner must mint), so a card payment cannot complete
+ * here". It is replaced rather than deleted because it was read as settled and
+ * became a Law 10 verdict of IMPOSSIBLE against a step that is SCRIPTED. The
+ * CLI's `[default]` profile holds a TEST key for acct_1T8WBhGuiZ9cvxuu that
+ * answers /v1/balance, and scripts/dev/lane-b-serve-with-stripe.mjs builds with
+ * that account's publishable key so the pair matches and a card completes. The behaviour
  * of every database rule underneath it is proved directly by
  * scripts/verify/ga1v3-consent-ledger-proof.sql.
  *

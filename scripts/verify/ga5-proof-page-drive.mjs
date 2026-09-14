@@ -26,6 +26,7 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
+import { invalidatePricingRule, PRICING_RULES_CACHE_TTL_SECONDS } from '../../src/lib/payments/pricing-rules.ts'
 
 const args = process.argv.slice(2)
 let out = null
@@ -47,6 +48,40 @@ if (!/vkapkibzokmfaxqogypq/.test(url)) {
   process.exit(1)
 }
 const db = createClient(url, serviceKey, { auth: { persistSession: false } })
+
+/**
+ * Write the commission AND invalidate it, exactly as src/lib/admin/pricing.ts
+ * does, AT EVERY SCOPE THE READER MIGHT HAVE CACHED IT UNDER.
+ *
+ * THE SCOPE IS THE WHOLE POINT, and the first fix here got it wrong. The row
+ * this drive edits is the AU/AUD region default, so invalidating
+ * `{countryCode:'AU', currency:'AUD', organisationId:null, eventId:null}` looks
+ * right. It is not what the reader uses. `src/lib/proof/read.ts` resolves the
+ * commission with the CAMPAIGN'S organisation and event, and `cacheKey` returns
+ * `pr:v2:<ruleType>:event:<eventId>` whenever an eventId is present, holding the
+ * value that event RESOLVED to, override or region fall-through alike. So the
+ * region key was cleared, the event key was not, and the drive read the stale
+ * value and reported "the fee went from 1450 to 1450" - the same false
+ * accusation, one level down.
+ *
+ * Both keys are cleared here because the drive moves a region row that an
+ * event-scoped read falls through to, and only the reader knows which key it
+ * used.
+ */
+async function setCommission(ruleId, percentage) {
+  await db.from('pricing_rules').update({ value_percentage: percentage }).eq('id', ruleId)
+  for (const scope of [
+    { organisationId: null, eventId: null },
+    { organisationId: fixture.organisationId, eventId: fixture.eventId },
+  ]) {
+    await invalidatePricingRule({
+      ruleType: 'marketing_commission_percentage',
+      countryCode: 'AU',
+      currency: 'AUD',
+      ...scope,
+    })
+  }
+}
 
 const VIEWPORTS = [
   { label: 'mobile-390', width: 390, height: 844, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1' },
@@ -469,14 +504,31 @@ try {
       .is('effective_until', null)
       .limit(1)
       .single()
-    await db.from('pricing_rules').update({ value_percentage: 20 }).eq('id', rule.id)
+    /*
+     * SET THE COMMISSION THE WAY /admin/pricing SETS IT: a row write AND an
+     * invalidation. `getPricingRule` caches a resolved rule for
+     * PRICING_RULES_CACHE_TTL_SECONDS and `src/lib/admin/pricing.ts` invalidates
+     * after every change, so a real edit lands at once and a row write alone is
+     * read stale for up to a minute.
+     *
+     * Corrected 14 September 2026 alongside the identical defect in
+     * ft1-forecast-drive, which reported "$68.50, then $68.50, and $68.50" and
+     * for an hour looked like the fee law being broken, and in
+     * ga2-matcher-drive, where an un-invalidated RESTORE left the next block
+     * pressing a button the drive had switched off. This one had not failed
+     * yet, which is the worst of the three states to be in: with a TTL and no
+     * invalidation it passes or fails on WHEN it runs, so a green here was
+     * never evidence. The old message said the fee moved "on a row update
+     * alone", which was the thing that was wrong.
+     */
+    await setCommission(rule.id, 20)
     const afterFee = await readProof(fixture.campaigns.sales)
     check(
       'ga5.nothing-is-typed.changing-the-fee-configuration-changes-the-fee-with-no-deploy',
       afterFee.result.figures[FIGURE.FEE_DUE].value === Math.round(14500 * 0.2) && feeBefore !== afterFee.result.figures[FIGURE.FEE_DUE].value,
-      `the fee went from ${feeBefore} to ${afterFee.result.figures[FIGURE.FEE_DUE].value} on a row update alone`,
+      `the fee went from ${feeBefore} to ${afterFee.result.figures[FIGURE.FEE_DUE].value} once the row was updated AND the rule invalidated the way /admin/pricing does (cache TTL ${PRICING_RULES_CACHE_TTL_SECONDS}s)`,
     )
-    await db.from('pricing_rules').update({ value_percentage: 10 }).eq('id', rule.id)
+    await setCommission(rule.id, 10)
   }
 
   /* ---- acceptance 5: the snapshot, and what a later reversal does to it ---- */

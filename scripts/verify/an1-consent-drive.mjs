@@ -25,9 +25,38 @@
  *
  * Every row it creates on TEST carries lane-b in the email.
  *
- * Usage (the shell must not carry the production Supabase URL):
- *   BASE=http://localhost:3100 node --env-file=.env.local \
- *     scripts/verify/an1-consent-drive.mjs --out C:/dev/EVIDENCE/AN1
+ * Usage. FOUR things have to be in this command and the first version of this
+ * header carried ONE of them, so running exactly what it said failed three
+ * checks and then threw. Corrected 14 September 2026, by running it.
+ *
+ *   env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_ANON_KEY \
+ *     BASE=http://localhost:3100 \
+ *     SERVER_LOG=.tmp-lane-b-serve.log \
+ *     UPSTASH_REDIS_REST_URL=http://127.0.0.1:8179 UPSTASH_REDIS_REST_TOKEN=local \
+ *     node --import ./scripts/lib/server-only-shim.mjs \
+ *          --import ./scripts/lib/src-alias-loader.mjs \
+ *          --env-file=.env.local scripts/verify/an1-consent-drive.mjs \
+ *          --out C:/dev/EVIDENCE/AN1
+ *
+ * WHY EACH ONE, because a missing one fails as a PRODUCT defect rather than as
+ * a setup error, which is the part that costs the time:
+ *   env -u ...        this shell carries the PRODUCTION Supabase URL, so without
+ *                     it the drive reads and writes the live database.
+ *   SERVER_LOG        the harness reads the console inbox out of the server's own
+ *                     log. Left on the default `.tmp-serve.log` it finds no
+ *                     confirmation link and reports that the email carried none,
+ *                     then that confirming did not make the account an organiser.
+ *                     Lane B's server writes `.tmp-lane-b-serve.log`.
+ *   UPSTASH_*         the rate-limit store the running server uses. Without it
+ *                     signup answers 'a service we depend on is unavailable',
+ *                     which is the limiter working correctly and reads at the UI
+ *                     as broken signup.
+ *   the two --import  this drive imports `src/**.ts`, and transitively
+ *                     `signup-sources.ts`, which is `server-only`. Without them
+ *                     node throws ERR_MODULE_NOT_FOUND part way through and the
+ *                     run ends with checks unexecuted.
+ *
+ * Start the server first: node scripts/dev/lane-b-serve-with-stripe.mjs
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'

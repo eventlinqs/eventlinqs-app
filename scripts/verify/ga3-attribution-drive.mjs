@@ -28,13 +28,32 @@
  * ticket is a real order on this platform, it goes through the SAME checkout
  * action and the same order insert as a paid one, and the attribution spine
  * keys on the order rather than on the money. The paid path is exercised at the
- * point the order row is written, which is where the signal is recorded, and
- * the reason a completed CARD payment is not driven here is recorded in
- * REVIEW-QUEUE-B.md: this machine has no working Stripe TEST secret.
+ * point the order row is written, which is where the signal is recorded. A card
+ * adds a payment step to the drive and nothing to what is being proved.
  *
- * Run (dev server on 3100 against TEST):
- *   node --env-file=.env.local scripts/verify/ga3-attribution-drive.mjs \
- *     --out C:/dev/EVIDENCE/GA3
+ * WITHDRAWN, 14 September 2026: this used to say "the reason a completed CARD
+ * payment is not driven here is recorded in REVIEW-QUEUE-B.md: this machine has
+ * no working Stripe TEST secret". That is false, and it is replaced rather than
+ * deleted because it was cited as the settled reason in three files. The CLI's
+ * `[default]` profile holds a working TEST key for acct_1T8WBhGuiZ9cvxuu, and
+ * scripts/dev/lane-b-serve-with-stripe.mjs serves a matching pair, so a card
+ * completes on this machine. The spine keys on the ORDER, not on the money, so
+ * a free order remains the right thing to drive here.
+ *
+ * Run. The two loader flags are not optional: this drive imports the
+ * attribution recorder out of src/, which reaches both the @/ alias and a
+ * module declaring server-only. Without them node throws ERR_MODULE_NOT_FOUND.
+ * Corrected 14 September 2026 by drive-usage-names-what-it-needs.
+ *
+ *   env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_ANON_KEY \
+ *     BASE=http://localhost:3100 \
+ *     UPSTASH_REDIS_REST_URL=http://127.0.0.1:8179 UPSTASH_REDIS_REST_TOKEN=local \
+ *     node --import ./scripts/lib/server-only-shim.mjs \
+ *          --import ./scripts/lib/src-alias-loader.mjs \
+ *          --env-file=.env.local scripts/verify/ga3-attribution-drive.mjs \
+ *          --out C:/dev/EVIDENCE/GA3
+ *
+ * Start the server first: node scripts/dev/lane-b-serve-with-stripe.mjs
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'

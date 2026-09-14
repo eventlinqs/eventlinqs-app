@@ -19,10 +19,22 @@
 -- browser cannot show. The first is a REFUSAL: an audience row with consent
 -- state false, or with empty consent wording, must be impossible, and the only
 -- way to prove a database refuses something is to ask it to do it. The second is
--- a PAID confirmation: there is no working Stripe TEST secret key on this
--- machine, so no browser here can take a buyer past the payment step, and the
--- behaviour on a paid order can only be shown by confirming an order the way
--- Stripe's webhook confirms it.
+-- a PAID confirmation, which is shown by confirming an order the way Stripe's
+-- webhook confirms it, through `confirm_order`.
+--
+-- WITHDRAWN, 14 September 2026. This paragraph used to justify that by saying
+-- "there is no working Stripe TEST secret key on this machine, so no browser
+-- here can take a buyer past the payment step". THAT IS FALSE and it is
+-- replaced rather than deleted, because it was quoted as settled fact in a
+-- review queue and in two other proofs. The Stripe CLI's `[default]` profile
+-- holds a TEST key for acct_1T8WBhGuiZ9cvxuu that answers /v1/balance, and
+-- scripts/dev/lane-b-serve-with-stripe.mjs builds and serves with that
+-- account's publishable key so a real card completes here.
+--
+-- The CHOICE stands, on a reason that was always the better one and did not
+-- need the false premise: `confirm_order` is the single RPC both paths call, so
+-- confirming directly proves the database rule under test without a browser and
+-- without a card, which is what a .sql proof is for.
 --
 -- EVERY ROW IT CREATES CARRIES lane-b, and the whole thing runs inside one
 -- transaction that ends in ROLLBACK. The last SELECT reports the verdicts and

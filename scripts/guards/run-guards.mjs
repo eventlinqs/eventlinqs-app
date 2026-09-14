@@ -36,6 +36,9 @@
  *   shared-log-is-opened-for-append  a descriptor handed to a child process is
  *                              opened for append, so a second writer on the same
  *                              file cannot be overwritten by a stale offset
+ *   drive-usage-names-what-it-needs  a drive's header names every loader flag and
+ *                              environment variable that drive needs, so the
+ *                              evidence behind a closure can be reproduced
  *   busy-region-names-itself   a loading skeleton that names itself carries a role
  *                              allowed to have a name, never a bare aria-label
  *   labels-name-the-right-control  and that label points at the control it describes,
@@ -712,6 +715,19 @@ const GUARDS = [
   // where three were sent, while the database and the engine both said three.
   // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
   'scripts/guards/shared-log-is-opened-for-append.mjs',
+  // A drive's documented command names everything that drive actually needs.
+  // Three incidents in one day, 14 September 2026, all in lane B's own drives
+  // and all found by running exactly what the header said: an1-consent-drive
+  // named neither loader flag nor SERVER_LOG and reported 'no confirmation link
+  // was printed' and 'the role is attendee after confirming' before throwing
+  // part way through; pl1-loops-drive named the loaders and not SERVER_LOG and
+  // reported 'the weekly query counted 0 referred signups'. Every one of those
+  // messages accuses the product and not one was about the product, which is
+  // the property that makes it worth a guard: the damage lands in the harness's
+  // own evidence. A drive is what a closure block cites, so a drive nobody can
+  // reproduce is a closure resting on somebody's shell history. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/drive-usage-names-what-it-needs.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
   // and compared byte for byte, so a row cannot be improved by editing the

@@ -2435,6 +2435,34 @@ const DRILLS = [
     replace: '      state.lastPush?.when',
     expect: 'No push to a working branch could be found',
   },
+  /*
+   * drive-usage-names-what-it-needs, two drills, one per requirement it can
+   * judge. Each removes the flag from a header that legitimately needs it and
+   * expects the guard to name that drive, because a guard that says only FAIL
+   * sends the reader through 28 files.
+   *
+   * The requirement is real in both cases and was established by running the
+   * command rather than by reading it: without the alias loader node cannot
+   * resolve the @/ imports the src module reaches, and without the server-only
+   * shim it throws ERR_MODULE_NOT_FOUND on a package that exists only inside
+   * Next.
+   */
+  {
+    name: 'a drive that needs the alias loader stops naming it',
+    guard: `${GUARDS}/drive-usage-names-what-it-needs.mjs`,
+    file: 'scripts/verify/ft1-forecast-drive.mjs',
+    find: ' *        --import ./scripts/lib/src-alias-loader.mjs',
+    replace: ' *        (the loader flag removed by the drill)',
+    expect: 'ft1-forecast-drive.mjs: the header never names src-alias-loader',
+  },
+  {
+    name: 'a drive that needs the server-only shim stops naming it',
+    guard: `${GUARDS}/drive-usage-names-what-it-needs.mjs`,
+    file: 'scripts/verify/ga3-attribution-drive.mjs',
+    find: ' *     node --import ./scripts/lib/server-only-shim.mjs',
+    replace: ' *     node (the shim flag removed by the drill)',
+    expect: 'ga3-attribution-drive.mjs: the header never names server-only-shim',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

@@ -30,15 +30,36 @@
  * removed at the end; the consent events cannot be, by GA1's design, and the
  * count that remains is reported rather than pretended away.
  *
- * Run:
- *   BASE=http://localhost:3100 node --env-file=.env.local \
- *     scripts/verify/ga2-matcher-drive.mjs --out C:/dev/EVIDENCE/GA2
+ * Run. BOTH loader flags, and neither is optional. This drive sets the matcher
+ * feature flag the way /admin/flags sets it, which means importing the
+ * product's own invalidateFeatureFlag out of src/lib/flags/broadcast.ts.
+ * That module reaches the @/ alias, which node cannot resolve, AND it reaches
+ * src/lib/observability/sentry.ts, which imports `isInitialized` from
+ * @sentry/nextjs, an export the installed package only has inside a Next
+ * build. With the alias loader alone the drive dies on
+ *   SyntaxError: The requested module '@sentry/nextjs' does not provide an
+ *   export named 'isInitialized'
+ * before a single check runs. Added 14 September 2026 with the invalidation.
+ *
+ *   env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_ANON_KEY \
+ *     BASE=http://localhost:3100 \
+ *     UPSTASH_REDIS_REST_URL=http://127.0.0.1:8179 UPSTASH_REDIS_REST_TOKEN=local \
+ *     node --import ./scripts/lib/server-only-shim.mjs \n *          --import ./scripts/lib/src-alias-loader.mjs \
+ *          --env-file=.env.local scripts/verify/ga2-matcher-drive.mjs \
+ *          --out C:/dev/EVIDENCE/GA2
+ *
+ * UPSTASH_* matters here for the same reason the loader does: the flag cache
+ * lives in that store, so a drive that cannot reach it cannot clear what the
+ * server is reading.
+ *
+ * Start the server first: node scripts/dev/lane-b-serve-with-stripe.mjs
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { chromium, BASE } from '../journeys/harness.mjs'
+import { invalidateFeatureFlag, FEATURE_FLAG_CACHE_TTL_SECONDS } from '../../src/lib/flags/broadcast.ts'
 
 const args = process.argv.slice(2)
 let out = null
@@ -110,6 +131,34 @@ async function answerTheCookieBanner(page) {
  * a person does not log in again between two presses.
  */
 const ADMIN_SESSION = () => join(out, 'admin-session.json')
+
+/**
+ * SET THE FLAG THE WAY THE ADMIN SURFACE SETS IT: a row write AND an
+ * invalidation, never a row write alone.
+ *
+ * WHAT THIS COST, on 14 September 2026. The reversal block wrote
+ * `feature_flags.enabled = false` directly, proved the button disables, and put
+ * it back to `true` in its `finally` - also directly. `isFeatureEnabled` caches
+ * a flag for FEATURE_FLAG_CACHE_TTL_SECONDS, and `src/lib/admin/flags.ts` calls
+ * `invalidateFeatureFlag` after every write, so a real switch lands at once.
+ * This drive invalidated nothing, so the server kept serving `false` after the
+ * restore, and the NEXT block found "Produce a match" still disabled and died
+ * on `locator.click: Timeout 30000ms exceeded` with the button's own
+ * `disabled` attribute in the error. 50 of 51, and the one that failed was
+ * `proof.completed`, so it read as the drive falling over rather than as the
+ * drive having switched the product off and not switched it back.
+ *
+ * It passed at closure for the same reason the FT1 fee check passed at closure:
+ * with a TTL and no invalidation, whether a read straddles an expiry is a matter
+ * of WHEN it runs. That is not a check, and the identical defect in two of this
+ * lane's drives is why `drive-usage-names-what-it-needs` exists.
+ *
+ * The TTL is imported and never typed.
+ */
+async function setMatcherFlag(enabled) {
+  await db.from('feature_flags').update({ enabled }).eq('flag', 'marketing_matcher_enabled')
+  await invalidateFeatureFlag('marketing_matcher_enabled')
+}
 
 async function newAdminContext(browser, viewportOptions) {
   return browser.newContext({ ...viewportOptions, storageState: ADMIN_SESSION() })
@@ -361,15 +410,36 @@ async function run() {
 
     try {
       /*
-       * THE AUDIENCE IS COUNTED IMMEDIATELY BEFORE THE RUN, not at the start.
-       * The first version measured it once and asserted 500 plus that number,
-       * and it failed by one: the platform's own audience moves while a drive
-       * is running, and asserting against a count taken minutes earlier is
-       * asserting about a moment that has passed.
+       * THE AUDIENCE IS COUNTED AS AT THE RUN'S OWN TIMESTAMP, which is the only
+       * count the run can be judged against.
+       *
+       * Two versions of this were wrong before this one, and both were wrong the
+       * same way: they compared a number the RUN recorded against a count taken
+       * at a DIFFERENT MOMENT, and then reported the difference as the run
+       * having recorded the wrong figure.
+       *
+       * v1 counted once at the start of the drive and failed by ONE.
+       * v2 counted "immediately before the run", and on 14 September 2026 it
+       *    failed by THREE, reading "considered 503, which is every audience row
+       *    on TEST at that moment". Nothing was wrong with the matcher. A second
+       *    lane B drive was seeding audience rows on the same TEST project while
+       *    this one ran, so rows arrived BETWEEN the count and the run. On a
+       *    machine carrying three build lanes that is not an unlucky day, it is
+       *    the normal condition.
+       *
+       * So the count is taken after the fact and bounded by the run's own
+       * `started_at`. Rows that arrived after the run started are not rows the
+       * run could have considered, and are correctly excluded. This is race free
+       * rather than race narrowed, and it does NOT weaken the assertion: it is
+       * still every audience row on the platform, not just this lane's.
        */
-      const { count: audienceNow } = await db
-        .from('audience_members')
-        .select('id', { count: 'exact', head: true })
+      const audienceAsAt = async (startedAt) => {
+        const { count } = await db
+          .from('audience_members')
+          .select('id', { count: 'exact', head: true })
+          .lte('created_at', startedAt)
+        return count ?? 0
+      }
 
       // The empty state, before anything has been produced for this event.
       if (!firstRunId) {
@@ -390,7 +460,7 @@ async function run() {
 
       const { data: runRow } = await db
         .from('marketing_match_run')
-        .select('id, audience_considered, returned_count, truncated, requested_cap, method_name, method_version, suppressed_by_reason')
+        .select('id, audience_considered, returned_count, truncated, requested_cap, method_name, method_version, suppressed_by_reason, started_at')
         .eq('event_id', fixture.eventId)
         .order('started_at', { ascending: false })
         .limit(1)
@@ -417,10 +487,11 @@ async function run() {
         runRow.truncated === true,
         `truncated ${runRow.truncated}, cap ${runRow.requested_cap}`,
       )
+      const audienceWhenItRan = await audienceAsAt(runRow.started_at)
       check(
         `${vp.label}.run.records-the-audience-it-considered`,
-        runRow.audience_considered === (audienceNow ?? 0),
-        `considered ${runRow.audience_considered}, which is every audience row on TEST at that moment, including the ${POPULATION} this proof seeded`,
+        runRow.audience_considered === audienceWhenItRan,
+        `considered ${runRow.audience_considered}, against ${audienceWhenItRan} audience row(s) existing as at the run's own started_at, including the ${POPULATION} this proof seeded`,
       )
       const ranks = (scores ?? []).map(s => s.rank)
       check(
@@ -542,7 +613,7 @@ async function run() {
     const context = await newAdminContext(browser, { viewport: { width: 1440, height: 1000 } })
     const page = await context.newPage()
     try {
-      await db.from('feature_flags').update({ enabled: false }).eq('flag', 'marketing_matcher_enabled')
+      await setMatcherFlag(false)
       await page.goto(`${BASE}/admin/matches?event=${fixture.eventId}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
       await page.waitForTimeout(2500)
       await answerTheCookieBanner(page)
@@ -556,10 +627,10 @@ async function run() {
       check(
         'reversal.the-switch-stops-a-new-run-and-leaves-the-stored-ones-alone',
         /the matcher is switched off/.test(offText) && buttonDisabled && (stillStored ?? 0) === CAP,
-        `the screen says so, the button is disabled, and the stored run still holds ${stillStored} rows`,
+        `the screen says so, the button is disabled, and the stored run still holds ${stillStored} rows (the flag was set the way /admin/flags sets it, write plus invalidate, because the cache TTL is ${FEATURE_FLAG_CACHE_TTL_SECONDS}s and a write alone leaves the next block pressing a button this one switched off)`,
       )
     } finally {
-      await db.from('feature_flags').update({ enabled: true }).eq('flag', 'marketing_matcher_enabled')
+      await setMatcherFlag(true)
       await context.close()
       await browser.close()
     }

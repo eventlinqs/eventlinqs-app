@@ -27,6 +27,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
+import { invalidatePricingRule, PRICING_RULES_CACHE_TTL_SECONDS } from '../../src/lib/payments/pricing-rules.ts'
 
 const args = process.argv.slice(2)
 let out = null
@@ -287,15 +288,49 @@ try {
           return cells[1] ?? ''
         })
       }
+      /*
+       * SET THE RATE THE WAY THE PRODUCT SETS IT, which is a row write AND an
+       * invalidation, never a row write alone.
+       *
+       * This check failed on 14 September 2026 reading "$68.50, then $68.50, and
+       * $68.50", and for about an hour that looked like the fee law being broken:
+       * a page not following `pricing_rules` would mean the displayed fee can
+       * drift from the charged fee. It was this drive that was wrong.
+       *
+       * `getPricingRule` caches a resolved rule for PRICING_RULES_CACHE_TTL_SECONDS
+       * through Redis, and `src/lib/admin/pricing.ts` calls `invalidatePricingRule`
+       * on every change, so a real admin edit lands at once. This drive wrote the
+       * row directly with the service role and invalidated nothing, so it read a
+       * cache the product would have cleared, waited two seconds, and reported the
+       * stale value as the page's answer.
+       *
+       * The reason it had ever passed is worse than the failure: with a 60 second
+       * TTL and no invalidation, whether the three reads straddle an expiry is a
+       * matter of WHEN the drive runs. It passed at closure and failed today on
+       * the same code. A check that reports on timing is not a check, and the
+       * verdict it produced was an accusation against a page that was correct.
+       *
+       * So the drive now uses the product's own invalidation, which also means
+       * this check proves that path works rather than working around it. The TTL
+       * is imported and never typed, per the rule that no configured number is a
+       * literal in this item.
+       */
+      const feeScopes = ['platform_fee_percentage', 'platform_fee_fixed']
+      const setRate = async (percentage) => {
+        await db.from('pricing_rules').update({ value_percentage: percentage }).eq('id', rule.id)
+        for (const ruleType of feeScopes) {
+          await invalidatePricingRule({ ruleType, countryCode: 'AU', currency: 'AUD', organisationId: null, eventId: null })
+        }
+      }
       const before = await feeOnScreen()
-      await db.from('pricing_rules').update({ value_percentage: 9.5 }).eq('id', rule.id)
+      await setRate(9.5)
       const after = await feeOnScreen()
-      await db.from('pricing_rules').update({ value_percentage: rule.value_percentage }).eq('id', rule.id)
+      await setRate(rule.value_percentage)
       const restored = await feeOnScreen()
       check(
         'ft1.configuration.the-fee-on-screen-moves-when-the-configuration-moves',
         before !== after && before === restored && after.length > 0,
-        `the fee read ${before}, then ${after} on a row update alone, and ${restored} once it was put back`,
+        `the fee read ${before}, then ${after} once the row was updated AND the rule invalidated the way /admin/pricing does, and ${restored} once it was put back (cache TTL ${PRICING_RULES_CACHE_TTL_SECONDS}s, so a row write alone would have been read stale)`,
       )
       await context.close()
     }
