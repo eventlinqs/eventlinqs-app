@@ -1761,10 +1761,27 @@ const ROOT = join(HERE, '..', '..')
  * and the larger of two partial counts is still a guess.
  *
  * THE VALUE BELOW IS MEASURED ON THE MERGED TREE, 0 failed and 0 skipped,
- * which is the only thing either lane can honestly write here.
+ * which is the only thing either lane can honestly write here. 416 files and
+ * 5125 tests, and it was run THREE times rather than once, because the entry
+ * above this one records a count that moved by one test between runs, and a
+ * floor set from a single observation of an unstable number is a gate that
+ * goes red on somebody else's push. All three runs agreed.
+ *
+ * 2026-09-14 (the SEO2 harness, after it accused the product twice): raised
+ * 416/5125 -> 418/5139, MEASURED twice on a green suite. Two new files,
+ * fourteen tests, and both exist because a DRIVE was wrong rather than the
+ * platform. tests/unit/verify/port-is-ours.test.ts holds the refusal that stops
+ * a drive measuring a server it did not start, and it binds real sockets on
+ * kernel-chosen ports rather than mocking node:net, because the whole point of
+ * the helper is that it asks the operating system the same question the spawned
+ * server is about to ask.
+ * tests/unit/verify/verification-tag-placement.test.ts holds the ruling that
+ * REPLACED two discarded photograph comparisons, and six of its eight cases are
+ * red ones. It is the drill for a check whose first version could not fail at
+ * all.
  */
-const MIN_FILES = 416
-const MIN_TESTS = 5125
+const MIN_FILES = 418
+const MIN_TESTS = 5139
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -40,6 +40,11 @@
 import { assertNotProduction } from '../lib/production-write-preflight.mjs'
 import { chromium } from 'playwright'
 import { spawn } from 'node:child_process'
+import { refuseUnlessThePortIsFree } from './lib/port-is-ours.mjs'
+import {
+  VERIFICATION_TAG,
+  judgeVerificationTagPlacement,
+} from './lib/verification-tag-placement.mjs'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -164,11 +169,20 @@ async function preflight() {
 
 /* ------------------------------------------------------------------- helpers */
 
-const VERIFICATION_TAG = /<meta[^>]+name=["']google-site-verification["'][^>]*>/i
 
 const verificationTagOf = html => {
   const meta = VERIFICATION_TAG.exec(html)
   return meta ? (/content=["']([^"']+)["']/i.exec(meta[0])?.[1] ?? null) : null
+}
+
+/**
+ * Report the placement ruling. The ruling itself, and the two discarded attempts
+ * that produced it, are in scripts/verify/lib/verification-tag-placement.mjs.
+ */
+function headCarriesTheTag(html, key) {
+  const ruling = judgeVerificationTagPlacement(html)
+  if (!ruling.ok) fail(`${key}: ${ruling.reason}`)
+  return ruling.ok
 }
 
 /**
@@ -341,6 +355,12 @@ let surfaces = ['/', '/events']
 try {
   /* ---------------------------------------------- run one: nothing configured */
 
+  /*
+   * THE PORT MUST BE OURS BEFORE A SINGLE ASSERTION IS MADE ABOUT WHAT IT
+   * SERVES. The whole argument, and the run that made it necessary, is in
+   * scripts/verify/lib/port-is-ours.mjs.
+   */
+  await refuseUnlessThePortIsFree(PORT, 'before the first server was started', 'set SEO2_PORT to one this lane owns')
   say(`starting the server on ${PORT} with no verification token`)
   startServer({ GOOGLE_SITE_VERIFICATION: '' })
   if (!(await waitFor())) throw new Error(`the server on ${PORT} never answered`)
@@ -411,6 +431,7 @@ try {
 
   /* -------------------------------------------------- run two: token configured */
 
+  await refuseUnlessThePortIsFree(PORT, 'before the second server was started', 'set SEO2_PORT to one this lane owns')
   say(`restarting the server on ${PORT} with a lane-C verification token`)
   startServer({ GOOGLE_SITE_VERIFICATION: LANE_C_VERIFICATION_MARK })
   if (!(await waitFor())) throw new Error(`the server on ${PORT} never answered on the second run`)
@@ -428,6 +449,18 @@ try {
     say('the homepage head carries the configured token, which is what Search Console reads')
   }
 
+  /*
+   * AND IT IS PLACED WHERE IT CANNOT PAINT, judged on every surface rather than
+   * on the homepage alone. The whole argument is at `headCarriesTheTag`; the
+   * short version is that this is the only part of "nothing a visitor sees
+   * changes" that the platform is capable of getting wrong.
+   */
+  let placed = 0
+  for (const [path, html] of documents.tagged) {
+    if (headCarriesTheTag(html, path === '/' ? 'home' : path)) placed += 1
+  }
+  say(`${placed} of ${documents.tagged.size} surface(s) carry exactly one verification meta element, inside <head>`)
+
   // The markup comparison now runs on the settled documents captured in the
   // browser, below, beside the pictures.
 
@@ -441,9 +474,21 @@ try {
   }
 
   /*
-   * THE PICTURES, COMPARED. This is the acceptance line "driven proof at 390,
-   * 768 and 1440 shows every page visually unchanged", answered by the pictures
-   * themselves rather than by a reading of the markup.
+   * THE PICTURES. The acceptance line is "driven proof at 390, 768 and 1440
+   * shows every page visually unchanged", and what answers it is the
+   * settled-document comparison below plus `headCarriesTheTag`, not a
+   * photograph. The reasoning is at `headCarriesTheTag`. What follows
+   * immediately is the cross-run picture count, kept as an observation.
+   */
+  /*
+   * REPORTED, NOT JUDGED, and the reason is written at `headCarriesTheTag`
+   * rather than here: two captures taken minutes apart on two server runs cannot
+   * tell the tag apart from the clock, and on 14 September 2026 one run in four
+   * of UNCHANGED code reported a difference that the settled documents in the
+   * same run proved was not there. The question it was asking is now answered by
+   * the same-load proof, which can isolate the variable. This stays because a
+   * count that drops far below 15 is still worth a reader's eye, and it is
+   * printed with what it is so nobody reads it as a verdict again.
    */
   let samePicture = 0
   for (const [key, before] of capturedUnset.shots) {
@@ -453,9 +498,11 @@ try {
       continue
     }
     if (Buffer.compare(before, after) === 0) samePicture += 1
-    else fail(`${key}: the page is NOT the same picture with the verification tag as without it`)
   }
-  say(`${samePicture} of ${capturedUnset.shots.size} photograph(s) byte identical across the two states, at 390, 768 and 1440`)
+  say(
+    `${samePicture} of ${capturedUnset.shots.size} photograph(s) byte identical ACROSS THE TWO SERVER RUNS ` +
+      '(an observation, not a verdict: a second page load is not the same moment)',
+  )
 
   /*
    * AND THE MARKUP, which catches what a picture cannot: a link, an aria label,
