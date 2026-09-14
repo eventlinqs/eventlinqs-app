@@ -1517,6 +1517,18 @@ const ROOT = join(HERE, '..', '..')
  * database half is not here by design: GA4 requires it proven by removing every
  * application check and watching the constraint refuse anyway, which is driven.
  *
+ * 2026-09-14 (lane B, close-out PL1): raised 397/5068 -> 398/5088, MEASURED.
+ * tests/unit/growth/product-loops holds the two loops to their arithmetic:
+ * every loop link carries BOTH parameter systems and neither is typed at a
+ * call site, a shared link keeps its source through a tracked short link and
+ * never gains it twice, an organiser's referral code round trips back to the
+ * profile that owns it, the weekly line names the referred count and says
+ * nothing rather than zero, and the confirmation prompt sits BELOW the ticket
+ * in the source order. The rendered half is not here by design: PL1 requires
+ * the ticket email judged on what it CONTAINS rather than what its source
+ * says, so the registered guard renders it in a child process and the drill
+ * removes the line from that render.
+ *
  * 2026-09-14 (lane B, close-out GA5): raised 396/5037 -> 397/5065, MEASURED.
  * tests/unit/growth/proof-page holds the eight aggregation rules GA5 names by
  * name, plus the two the page rests on and the item does not name: that a
@@ -1539,8 +1551,8 @@ const ROOT = join(HERE, '..', '..')
  * behaviour is driven at three widths; these three hold the contract, so an
  * edit that deletes one half of it cannot pass.
  */
-const MIN_FILES = 397
-const MIN_TESTS = 5068
+const MIN_FILES = 398
+const MIN_TESTS = 5088
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

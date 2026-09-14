@@ -324,11 +324,11 @@ describe('AN1 acceptance 3: the weekly line the digest prints', () => {
   it('says nothing rather than zero when the read failed', () => {
     // "No organisers signed up" and "we could not find out" are different
     // pieces of news and only one of them is about the platform.
-    expect(organiserSignupSourceLine({ total: 0, heardFrom: [], surfaces: [], unavailable: true })).toBeNull()
+    expect(organiserSignupSourceLine({ total: 0, heardFrom: [], surfaces: [], referred: 0, unavailable: true })).toBeNull()
   })
 
   it('says none when there genuinely were none', () => {
-    expect(organiserSignupSourceLine({ total: 0, heardFrom: [], surfaces: [], unavailable: false })).toBe(
+    expect(organiserSignupSourceLine({ total: 0, heardFrom: [], surfaces: [], referred: 0, unavailable: false })).toBe(
       'Organiser signups this week: none.',
     )
   })
@@ -343,6 +343,7 @@ describe('AN1 acceptance 3: the weekly line the digest prints', () => {
         { label: 'Google', count: 1 },
       ],
       surfaces: [],
+      referred: 0,
       unavailable: false,
     })
     expect(line).toBe(
@@ -357,6 +358,7 @@ describe('AN1 acceptance 3: the weekly line the digest prints', () => {
       total: 4,
       heardFrom: [{ label: 'Not answered', count: 4 }],
       surfaces: [],
+      referred: 0,
       unavailable: false,
     })
     expect(line).toContain('Not answered 4')

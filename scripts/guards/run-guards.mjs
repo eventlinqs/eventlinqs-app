@@ -72,6 +72,12 @@
  *                              campaign and channel, no SMS rests on a consent scoped
  *                              to email, no campaign exceeds its own volume cap, and
  *                              nothing leaves draft without an approval for its segment
+ *   product-loops-carry-their-parameters  the ticket email, rendered, carries the
+ *                              run-your-event line and both parameters; the
+ *                              confirmation page, the share bar and the
+ *                              organiser dashboard build their links through the
+ *                              one builder; and nothing types an attributed
+ *                              organiser link by hand
  *   proof-page-every-number-sourced  every figure on the campaign proof page is
  *                              produced through a source or a stated absence, no
  *                              number, currency or percentage is typed into the
@@ -886,6 +892,13 @@ const GUARDS = [
   // red by replacing one figure with a typed literal, which it names by figure
   // and by file, and by removing the snapshot constraint from the migration.
   'scripts/guards/proof-page-every-number-sourced.mjs',
+  // Close-out PL1. The two product loops, and the failure that is quiet in the
+  // direction that costs most: the loop still works, people still arrive, and
+  // the parameter that says where they came from is gone, so the item is judged
+  // on a number nobody collected. It RENDERS the ticket email in a child
+  // process rather than reading its source, because a line inside a branch that
+  // never runs is in the source and not in the email.
+  'scripts/guards/product-loops-carry-their-parameters.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and

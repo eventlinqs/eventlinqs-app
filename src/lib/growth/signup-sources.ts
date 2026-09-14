@@ -36,6 +36,8 @@ export interface SignupSourceCounts {
   heardFrom: Array<{ label: string; count: number }>
   /** Which surface was clicked, from the src on the link. Same ordering. */
   surfaces: Array<{ label: string; count: number }>
+  /** How many of them came through another organiser's referral link (PL1). */
+  referred: number
   /** True when the read failed, so the caller can say so rather than say zero. */
   unavailable: boolean
 }
@@ -63,13 +65,13 @@ export async function getOrganiserSignupSources(opts?: {
     const admin = createAdminClient()
     const { data, error } = await admin
       .from('profiles')
-      .select('signup_heard_from, signup_src')
+      .select('signup_heard_from, signup_src, referred_by')
       .eq('role', 'organiser')
       .gte('created_at', since.toISOString())
       .lt('created_at', now.toISOString())
     if (error) {
       console.error('[signup-sources] could not read the weekly organiser signups:', error)
-      return { total: 0, heardFrom: [], surfaces: [], unavailable: true }
+      return { total: 0, heardFrom: [], surfaces: [], referred: 0, unavailable: true }
     }
     const rows = data ?? []
     return {
@@ -82,11 +84,19 @@ export async function getOrganiserSignupSources(opts?: {
         rows.map(r => r.signup_src ?? null),
         SIGNUP_SOURCE_DIRECT_LABEL,
       ),
+      /*
+       * PL1. Counted from the COLUMN rather than from the `src` tally, and the
+       * difference matters: `src` says which surface the link was on, and an
+       * organiser's referral link can be pasted anywhere. This counts the
+       * accounts that carry a resolved referrer, which is the thing the loop
+       * actually produced.
+       */
+      referred: rows.filter(r => r.referred_by !== null).length,
       unavailable: false,
     }
   } catch (error) {
     captureException(error, { where: 'lib/growth/signup-sources' })
-    return { total: 0, heardFrom: [], surfaces: [], unavailable: true }
+    return { total: 0, heardFrom: [], surfaces: [], referred: 0, unavailable: true }
   }
 }
 
@@ -106,5 +116,11 @@ export function organiserSignupSourceLine(counts: SignupSourceCounts): string | 
     .slice(0, 3)
     .map(entry => `${entry.label} ${entry.count}`)
     .join(', ')
-  return `Organiser signups this week: ${counts.total}. Heard about us through: ${top}.`
+  /*
+   * PL1 adds the referral count to the same line rather than a second one. A
+   * digest gains a line far more easily than it loses one, and this is the same
+   * week and the same population: one sentence, three facts.
+   */
+  const referred = counts.referred > 0 ? ` ${counts.referred} came through an organiser referral link.` : ''
+  return `Organiser signups this week: ${counts.total}. Heard about us through: ${top}.${referred}`
 }

@@ -13,6 +13,7 @@ import { formatSeatLabel } from '@/lib/seating/format'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
 import { entityFooterLine } from '@/lib/legal/platform-entity'
+import { LOOP_SOURCES, RUN_YOUR_EVENT_LINE, organiserLoopUrl } from '@/lib/growth/loops'
 
 // ---------------------------------------------------------------------------
 // Order confirmation email (shared by the paid Stripe webhook and the free /
@@ -445,7 +446,12 @@ export function buildConfirmationEmailHtml(
   <p style="margin:0 0 4px;color:#6B7280;font-size:13px;"><strong style="color:#0A1628;">Refunds:</strong> ${escapeHtml(describeRefundPolicy(policyFromEvent(event), event.is_free ?? false))}</p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Your tax invoice or receipt, and the refund controls, are on <a href="${orderUrl}" style="color:#9CA3AF;">your order page</a>. Platform terms: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">${canonicalHost()}/legal/refunds</a></p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">${entityFooterLine()}</p>
-  <p style="margin:0;color:#9CA3AF;font-size:12px;">You received this because you bought tickets on EventLinqs.</p>
+  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">You received this because you bought tickets on EventLinqs.</p>
+  <!-- CLOSE-OUT PL1. The person reading this has just watched the product
+       work, which is the only moment they are ever going to wonder whether
+       they could use it. One line, in the footer, under the receipt and under
+       the legal line, never above the ticket. -->
+  <p style="margin:12px 0 0;color:#6B7280;font-size:13px;">${escapeHtml(RUN_YOUR_EVENT_LINE)} <a href="${organiserLoopUrl(siteUrl, LOOP_SOURCES.TICKET)}" style="color:#0A1628;font-weight:600;">Run your event on EventLinqs</a></p>
 
 </div>
 </body>
@@ -546,6 +552,9 @@ export function buildConfirmationEmailText(
   lines.push(`Platform terms: ${siteUrl}/legal/refunds`)
   lines.push(entityFooterLine())
   lines.push('You received this because you bought tickets on EventLinqs.')
+  lines.push('')
+  // PL1, the same line the HTML footer carries, in the same place.
+  lines.push(`${RUN_YOUR_EVENT_LINE}. Run your event on EventLinqs: ${organiserLoopUrl(siteUrl, LOOP_SOURCES.TICKET)}`)
 
   return lines.join('\n')
 }

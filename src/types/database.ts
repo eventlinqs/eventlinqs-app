@@ -4577,6 +4577,7 @@ export type Database = {
           onboarding_completed: boolean
           phone: string | null
           preferred_city: Json | null
+          referred_by: string | null
           role: Database["public"]["Enums"]["user_role"]
           signup_heard_from: string | null
           signup_heard_from_other: string | null
@@ -4598,6 +4599,7 @@ export type Database = {
           onboarding_completed?: boolean
           phone?: string | null
           preferred_city?: Json | null
+          referred_by?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           signup_heard_from?: string | null
           signup_heard_from_other?: string | null
@@ -4619,6 +4621,7 @@ export type Database = {
           onboarding_completed?: boolean
           phone?: string | null
           preferred_city?: Json | null
+          referred_by?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           signup_heard_from?: string | null
           signup_heard_from_other?: string | null

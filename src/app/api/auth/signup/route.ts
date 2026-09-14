@@ -317,11 +317,37 @@ export async function POST(request: NextRequest) {
    */
   const arrival = decodeArrival(body.arrival ?? null)
   const heard = normaliseHeardFrom({ heardFrom: body.heardFrom, heardFromOther: body.heardFromOther })
+
+  /*
+   * WHO INTRODUCED THEM (close-out PL1), resolved BEFORE the write and written
+   * as null when it cannot be resolved.
+   *
+   * `profiles.referred_by` is a foreign key, so an id that decodes cleanly but
+   * names nobody would make the whole update below fail, and that update also
+   * carries AN1's six arrival fields. A stale referral link would then cost the
+   * platform the source of every account that arrived through one, which is the
+   * exact opposite of what this item is for. So the referrer is CONFIRMED to
+   * exist first, and a code that names nobody is recorded as no referrer at all
+   * rather than taking the rest of the row down with it.
+   *
+   * The code can arrive two ways and both are read: the first-touch referral
+   * cookie the existing loop sets, and AN1's arrival record. They agree in
+   * practice; where they do not, the referral cookie wins, because it is first
+   * touch by design and the arrival record is last-page-before-signup.
+   */
+  const claimedReferrer = captured?.referredBy ?? decodeRefCode(arrival.ref)
+  let referredBy: string | null = null
+  if (claimedReferrer && claimedReferrer !== newUserId) {
+    const { data: referrer } = await admin.from('profiles').select('id').eq('id', claimedReferrer).maybeSingle()
+    if (referrer?.id) referredBy = referrer.id
+    else console.warn('[auth/signup] a referral code decoded to a profile that does not exist; recorded as no referrer')
+  }
   const hasArrivalToStore =
     Boolean(captured) ||
     heard.heardFrom !== null ||
     Boolean(arrival.src || arrival.landingPath || arrival.referrerHost) ||
-    arrivalUtmObject(arrival) !== null
+    arrivalUtmObject(arrival) !== null ||
+    referredBy !== null
 
   if (hasArrivalToStore && newUserId) {
     try {
@@ -343,6 +369,7 @@ export async function POST(request: NextRequest) {
           signup_landing_path: arrival.landingPath,
           signup_referrer_host: arrival.referrerHost,
           signup_utm: arrivalUtmObject(arrival),
+          referred_by: referredBy,
         })
         .eq('id', newUserId)
     } catch (error) {
