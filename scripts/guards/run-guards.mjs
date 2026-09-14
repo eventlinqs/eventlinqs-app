@@ -52,6 +52,10 @@
  *   proof-reads-never-discard-their-error  on the campaign proof page a read that
  *                              failed becomes a 500, never a printed zero and never
  *                              a 404, because that page defends a fee with numbers
+ *   no-published-lane-b-fixture-on-test  and the same rule asked of the DATABASE:
+ *                              no lane B fixture is left published on shared TEST,
+ *                              whoever left it and whenever, because a leftover is a
+ *                              state and only a question finds one
  *   busy-region-names-itself   a loading skeleton that names itself carries a role
  *                              allowed to have a name, never a bare aria-label
  *   labels-name-the-right-control  and that label points at the control it describes,
@@ -776,6 +780,19 @@ const GUARDS = [
   // its source renders as words and never as a zero. Drilled red two ways in
   // scripts/verify/guard-failure-drills.mjs.
   'scripts/guards/proof-reads-never-discard-their-error.mjs',
+  // The third lock on the same law, and the only one that asks the world. The
+  // static guard reads the drives; each drive asks about its own run; this asks
+  // what is on TEST right now. On 13 September 2026 a GA5 run left a published
+  // fixture event with four confirmed orders behind it, GA5 reported 'left as
+  // found' on every run afterwards because it counted campaign rows, and it sat in
+  // the sitemap for two days. Neither of the other two locks can see that: the
+  // source was already being changed and the run had long since ended. SKIPS by
+  // name where there is no database, as schema-ahead-of-code does. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs by removing the FO1 exemption, and its
+  // decision is driven both ways over synthetic rows in
+  // tests/unit/guards/no-published-lane-b-fixture-on-test.test.ts, because proving
+  // the interesting half against the real database means committing the incident.
+  'scripts/guards/no-published-lane-b-fixture-on-test.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
   // and compared byte for byte, so a row cannot be improved by editing the

@@ -1824,9 +1824,16 @@ const ROOT = join(HERE, '..', '..')
  * after a ConnectTimeoutError to Supabase made that page answer 404 for a campaign
  * that exists. Both hold their guard in BOTH directions, because in both cases the
  * passing half was already true and it was the failing half nobody had seen.
+ *
+ * 2026-09-15 (lane B, the third lock on the same law): raised 414/5355 ->
+ * 415/5361, MEASURED. tests/unit/guards/no-published-lane-b-fixture-on-test
+ * drives the decision of the guard that asks the DATABASE what is published
+ * right now, over synthetic rows, because proving the interesting half against
+ * the real database means creating the very published fixture the guard exists
+ * to prevent.
  */
-const MIN_FILES = 414
-const MIN_TESTS = 5355
+const MIN_FILES = 415
+const MIN_TESTS = 5361
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

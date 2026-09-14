@@ -2815,6 +2815,28 @@ const DRILLS = [
     replace: '  const { data: sendRows } = await (async () =>',
     expect: 'never binds `error`',
   },
+  /*
+   * no-published-lane-b-fixture-on-test. The drill removes the FO1 exemption,
+   * and the guard then names the four fixtures it was allowing: real rows, on
+   * the real database, through the real fetch.
+   *
+   * WHAT THIS DRILL DELIBERATELY DOES NOT DO is create a published fixture to
+   * be caught. That would mean putting a real organiser page into the sitemap of
+   * a database three lanes share, for as long as the drill runs, which is
+   * precisely the incident the guard exists to prevent. The catching half is
+   * driven over synthetic rows in
+   * tests/unit/guards/no-published-lane-b-fixture-on-test.test.ts, including the
+   * exact leftover that started this: lane-b-ga5-event-202609131728 at all three
+   * of its URLs.
+   */
+  {
+    name: 'the persistent-fixture exemption is removed, and the published rows are named',
+    guard: `${GUARDS}/no-published-lane-b-fixture-on-test.mjs`,
+    file: 'scripts/guards/no-published-lane-b-fixture-on-test.mjs',
+    find: "    prefix: 'lane-b-fo1-',",
+    replace: "    prefix: 'lane-b-fo1-NOT-THIS-ONE-',",
+    expect: 'are PUBLISHED on the database three lanes share',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
