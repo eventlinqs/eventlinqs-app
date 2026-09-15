@@ -1800,9 +1800,21 @@ const ROOT = join(HERE, '..', '..')
  * that a successful navigation is never cached, because an event page carries a
  * price and a remaining-tickets count, and serving yesterday's total would
  * quietly break the ACCC all-in display in a way nothing else here could detect.
+ *
+ * 2026-09-15: raised 420/5159 -> 421/5178. Close-out C8 EXECUTION METHOD, C8B.3.
+ * One file, nineteen tests: tests/unit/perf/first-load-budget, which holds the
+ * three decisions behind the new initial-bundle budget that are easy to get
+ * wrong later and expensive to notice.
+ * The one worth naming is what PUBLIC means for a byte budget. The first design
+ * reused src/lib/seo/indexing-policy.ts, on the reasoning that its `never` class
+ * is the logged-in half of the platform. It is not: `never` contains /checkout,
+ * /orders/[order_id]/confirmation, /queue/[slug], /t/[code], /tickets and
+ * /scan/[eventId], every one of them a buyer on a phone, and a budget built on
+ * that reading would have exempted the exact pages Scope v5 10.3 is about. The
+ * test pins all nine of those routes as public so the reading cannot drift back.
  */
-const MIN_FILES = 420
-const MIN_TESTS = 5159
+const MIN_FILES = 421
+const MIN_TESTS = 5178
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

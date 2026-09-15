@@ -185,6 +185,11 @@
  *                              never route resolves to noindex, every indexable page names
  *                              its own canonical, the root layout names none, and the
  *                              sitemap gates each templated family on the threshold (C19)
+ *   initial-bundle-budget     every route's first-load JavaScript weighed against Scope v5
+ *                              10.3's 200KB and against its own recorded mark, which may only
+ *                              ever go down. Two modes: this half judges the contract and
+ *                              weighs nothing, npm's postbuild runs it with --built and
+ *                              weighs the build (C8B.3/C8B.4)
  *   all-in-pricing            no buyer is shown a number they will not pay: the fee value has
  *                              ONE source, every buyer-facing price surface resolves it live,
  *                              and no cart total is a per-ticket figure multiplied (SEO4)
@@ -1498,6 +1503,26 @@ const GUARDS = [
   // the build on every read that decides a 404 and discards, folds or merely
   // logs its error. Drilled RED on the 17 files as they stood, then green.
   'scripts/guards/read-failure-is-not-not-found.mjs',
+
+  // Close-out C8 EXECUTION METHOD, C8B.3 and C8B.4, 15 September 2026. Scope v5
+  // section 10.3 asks for "minimal JavaScript payloads (<200KB initial bundle)"
+  // and until now NOTHING measured it on any commit. The Lighthouse gate holds
+  // a SCORE, and the founder's ruling of 25 August made that gate advisory
+  // because the same bytes scored 0.76 on the runner and 0.88 from a warmed
+  // client. Bytes do not have that problem, so the scope's own number can be a
+  // hard gate where the score cannot.
+  //
+  // Measured on the first run: the four heaviest PUBLIC routes on the platform
+  // were /signup (228.9 KB), /login (228.2), /auth/reset-password (226.8) and
+  // /scan/[eventId] (225.2), all of them heavier than the event page nobody had
+  // stopped optimising, and all four explained by one 51.4 KB chunk of auth
+  // client statically imported into four components. Nothing could see it.
+  //
+  // THIS HALF WEIGHS NOTHING and says so on every run: it judges the contract
+  // (perf-budget.json is well formed, carries the scope number, and the
+  // postbuild half is still wired). The proof is the same file run with
+  // --built from npm's postbuild, against the build that just finished.
+  'scripts/guards/initial-bundle-budget.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

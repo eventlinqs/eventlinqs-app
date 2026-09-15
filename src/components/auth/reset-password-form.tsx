@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useHydrated } from '@/lib/hooks/use-hydrated'
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
+import { loadSupabaseClient } from '@/lib/supabase/client-lazy'
 import { authErrorMessage, authMessage, readAuthErrorFromUrl } from '@/lib/auth/auth-errors'
 
 export function ResetPasswordForm() {
-  const supabase = createClient()
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -25,8 +24,15 @@ export function ResetPasswordForm() {
   // visible one. See the hidden input below.
   const [accountEmail, setAccountEmail] = useState('')
 
+  // The auth client is fetched here rather than imported at module scope. On
+  // THIS page that is a sequencing saving and not a weight one, and it is
+  // recorded as such in src/lib/supabase/client-lazy.ts: the session has to be
+  // read on mount either way, so the 51.4 KB still arrives. What changes is
+  // that it no longer has to be parsed and evaluated before the page can paint
+  // its own "Validating your reset link" state.
   useEffect(() => {
     let active = true
+    let unsubscribe: (() => void) | null = null
 
     // FIRST, before waiting on any session: a dead link arrives as
     // `#error=access_denied&error_code=otp_expired`. The fragment never reaches
@@ -43,6 +49,8 @@ export function ResetPasswordForm() {
     }
 
     const checkSession = async () => {
+      const supabase = await loadSupabaseClient()
+      if (!active) return
       const { data } = await supabase.auth.getSession()
       if (!active) return
       if (data.session) {
@@ -65,21 +73,33 @@ export function ResetPasswordForm() {
       }, 4000)
     }
 
-    checkSession()
+    void checkSession()
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        setAccountEmail(session?.user.email ?? '')
-        setSessionReady(true)
-        setLinkFailed(false)
-      }
-    })
+    // Subscribed after the same load. A PASSWORD_RECOVERY event fires when the
+    // client processes the recovery fragment, which it cannot do before it
+    // exists, so there is no window here that the static import did not have.
+    void (async () => {
+      const supabase = await loadSupabaseClient()
+      if (!active) return
+      const { data: sub } = supabase.auth.onAuthStateChange(
+        (event: AuthChangeEvent, session: Session | null) => {
+          if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+            setAccountEmail(session?.user.email ?? '')
+            setSessionReady(true)
+            setLinkFailed(false)
+          }
+        },
+      )
+      // The effect may already have torn down while the chunk was in flight.
+      if (!active) sub.subscription.unsubscribe()
+      else unsubscribe = () => sub.subscription.unsubscribe()
+    })()
 
     return () => {
       active = false
-      sub.subscription.unsubscribe()
+      unsubscribe?.()
     }
-  }, [supabase])
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,6 +123,8 @@ export function ResetPasswordForm() {
       // pending forever, and the global unhandledrejection handler in
       // src/lib/supabase/client.ts swallows the surfaced error - the button
       // would otherwise stay stuck on "Updating password" with no feedback.
+      // Resolves from memory: the mount effect already loaded it.
+      const supabase = await loadSupabaseClient()
       const update = supabase.auth.updateUser({ password })
       const timeout = new Promise<{ error: { message: string } }>((_, reject) =>
         setTimeout(() => reject(new Error('Password update timed out. Please try again.')), 15000),

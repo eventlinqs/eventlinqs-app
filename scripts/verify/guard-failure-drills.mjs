@@ -3061,6 +3061,43 @@ const DRILLS = [
     replace: '  if (false) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
     expect: 'no longer tests `!org.stripe_payouts_enabled`',
   },
+  /*
+   * initial-bundle-budget, the CONTRACT half (close-out C8B.3, 15 September
+   * 2026). This harness runs a guard with no arguments, so what it can drill is
+   * the prebuild half: the promise. The proof half (--built) weighs the build
+   * and is drilled by hand against a real build, recorded in
+   * C:\dev\EVIDENCE\C8C\guard-built-drills.txt, because a drill that needs a
+   * five minute `next build` cannot live in a harness that runs on every push.
+   *
+   * The first drill is the one that matters most. The prebuild half CANNOT
+   * WEIGH ANYTHING, so if the postbuild half is ever unhooked this guard goes
+   * on passing for ever while nothing is measured, which is the exact shape
+   * `pre-push-gate-wired` and `workflows-skip-drafts` exist to refuse.
+   */
+  {
+    name: 'the half that actually weighs the build is unhooked from postbuild',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'package.json',
+    find: ' && node scripts/guards/initial-bundle-budget.mjs --built',
+    replace: '',
+    expect: 'does not run this guard with --built',
+  },
+  {
+    name: 'the budget file quietly disagrees with the scope about what 200KB is',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"_budgetBytes": 204800,',
+    replace: '"_budgetBytes": 307200,',
+    expect: 'is not the authority',
+  },
+  {
+    name: 'a recorded mark stops being a byte count',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"marks": {',
+    replace: '"marks": {\n    "/drill-not-a-byte-count": null,',
+    expect: 'which is not a byte count',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

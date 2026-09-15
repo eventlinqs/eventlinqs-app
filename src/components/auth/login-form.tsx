@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useHydrated } from '@/lib/hooks/use-hydrated'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { loadSupabaseClient, warmSupabaseClient } from '@/lib/supabase/client-lazy'
 import { assertLoginRateLimit } from '@/app/actions/auth-rate-limit'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
@@ -30,7 +30,6 @@ type Props = {
 export function LoginForm({ googleEnabled }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
 
   const resetFlag = searchParams.get('reset') === 'success'
   const callbackError = searchParams.get('error')
@@ -70,6 +69,10 @@ export function LoginForm({ googleEnabled }: Props) {
       return
     }
 
+    // Fetched here rather than at module scope: 51.4 KB gzip of auth client that a
+    // visitor who never signs in should not pay for (src/lib/supabase/client-lazy.ts).
+    // Warmed on the first keystroke below, so by now this resolves from memory.
+    const supabase = await loadSupabaseClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
@@ -190,7 +193,18 @@ export function LoginForm({ googleEnabled }: Props) {
         </>
       )}
 
-      <form method="post" onSubmit={handleEmailLogin} className="space-y-4">
+      {/* The auth client chunk is warmed on the first sign that somebody is
+          about to sign in, so the 51.4 KB it weighs is already in memory by the
+          time Sign in is pressed and the deferral costs nobody a wait. focusin
+          rather than onFocus on the input alone: a password manager fills both
+          fields without ever focusing the first one. */}
+      <form
+        method="post"
+        onSubmit={handleEmailLogin}
+        onFocusCapture={warmSupabaseClient}
+        onPointerDownCapture={warmSupabaseClient}
+        className="space-y-4"
+      >
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-ink-900">
             Email
