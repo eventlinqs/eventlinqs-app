@@ -57,10 +57,24 @@ import {
   BOOKKEEPING_REFS,
   STALL_THRESHOLD_HOURS,
 } from '../lib/state-report.mjs'
+import { INDEXING_STALE_AFTER_HOURS } from '../lib/indexing-check.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
 const TAG = '[state-report]'
+
+/**
+ * Where the parity check leaves its result. Imported rather than re-typed, so
+ * the writer and the reader cannot disagree about the path.
+ */
+const PARITY_STATE_FILE = join(ROOT, '.parity', 'last-run.json')
+
+/**
+ * Where the weekly indexing check leaves its result (close-out SEO2 step 3).
+ * Same handoff as the parity file above and for the same reason: that job runs
+ * weekly, this report runs daily, and the two never share a process.
+ */
+const INDEXING_STATE_FILE = join(ROOT, '.indexing', 'last-run.json')
 
 const DEFAULT_REPO = 'eventlinqs/eventlinqs-app'
 const DEFAULT_SITE = 'https://www.eventlinqs.com.au'
@@ -426,6 +440,78 @@ function watchdogEvidence(fromWatchdog) {
  * @type {Record<'main'|'landed'|'pullRequests'|'lastPush'|'failingBranches'|'production'|'business',
  *   (ctx: ReaderContext) => Promise<any>>}
  */
+/**
+ * THE PARITY RESULT, READ OFF DISK (close-out PARITY1 step 4).
+ *
+ * `scripts/ops/parity-check.mjs` runs fortnightly and writes `.parity/last-run.json`;
+ * this digest runs daily. The two cannot pass a value in memory, so the file is
+ * the handoff.
+ *
+ * IT NEVER INVENTS GOOD NEWS. A missing file means the check has never run, an
+ * unreadable one means it could not be read, and both say so. A result older
+ * than the fortnightly cadence is marked OVERDUE rather than quietly printed as
+ * though it were today's, because the whole point of this digest is that a thing
+ * which has stopped running must look different from a thing that is fine.
+ */
+export const PARITY_STALE_AFTER_HOURS = 15 * 24
+
+export function readParityState(file, nowIso) {
+  if (!existsSync(file)) return null
+  let parsed
+  try {
+    parsed = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    return { error: `the parity result could not be parsed: ${error.message}` }
+  }
+  if (!parsed?.at || !parsed?.headline) {
+    return { error: 'the parity result is missing its timestamp or its headline' }
+  }
+  const ageHours = hoursBetween(parsed.at, nowIso)
+  return {
+    headline: parsed.headline,
+    site: parsed.site ?? null,
+    ageHours,
+    stale: ageHours > PARITY_STALE_AFTER_HOURS,
+    // Every failing line, not only the worst. The close-out asks for the worst;
+    // a reader deciding what to do next needs the list, and it is never long.
+    failures: (parsed.results ?? [])
+      .filter((r) => r.state === 'fail')
+      .map((r) => ({ line: r.line, observation: r.observation, page: r.page ?? null })),
+  }
+}
+
+/**
+ * THE INDEXING RESULT, READ OFF DISK (close-out SEO2 step 3).
+ *
+ * `scripts/ops/indexing-check.mjs` runs weekly and writes `.indexing/last-run.json`;
+ * this digest runs daily. Same handoff as the parity result above, same rule
+ * about absence: a missing file means the check has not run on this machine, an
+ * unreadable one says so, and a result older than the weekly cadence is marked
+ * OVERDUE rather than printed as though it were today's. A check that has
+ * stopped running must look different from a check that found nothing.
+ */
+export function readIndexingState(file, nowIso) {
+  if (!existsSync(file)) return null
+  let parsed
+  try {
+    parsed = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    return { error: `the indexing result could not be parsed: ${error.message}` }
+  }
+  if (!parsed?.at || !parsed?.headline) {
+    return { error: 'the indexing result is missing its timestamp or its headline' }
+  }
+  const ageHours = hoursBetween(parsed.at, nowIso)
+  return {
+    headline: parsed.headline,
+    site: parsed.site ?? null,
+    ageHours,
+    stale: ageHours > INDEXING_STALE_AFTER_HOURS,
+    faults: parsed.faults ?? [],
+    searchConsole: parsed.searchConsole ?? null,
+  }
+}
+
 const DEFAULT_READERS = {
   main: ({ token, repo }) => collectMain(token, repo),
   landed: ({ token, repo, since }) => collectLanded(token, repo, since),
@@ -452,6 +538,24 @@ const DEFAULT_READERS = {
  * always sends it. What could not be read leads the message and the headline can
  * no longer say ALL GREEN about a day nobody could see.
  */
+/**
+ * The injectable reads, declared rather than inferred.
+ *
+ * WHY IT IS WRITTEN DOWN. Without this, `readers`'s type was whatever
+ * TypeScript happened to infer from DEFAULT_READERS, which made the EXACT
+ * return shape of every real collector part of the contract a test stub had to
+ * satisfy. `tests/unit/ops/state-report-collect.test.ts` injects stubs that
+ * return the subset each assertion needs, which is the correct thing for a stub
+ * to do, and adding thirty unrelated lines to this file was enough to change
+ * the inference and turn all of them red.
+ *
+ * A stub's job is to answer the question under test. The shape it answers with
+ * belongs to the assertions, not to the parameter, so the parameter says so.
+ *
+ * @typedef {Record<string, (ctx?: any) => Promise<any>>} StateReaders
+ */
+
+/** @param {{ nowIso: string, fromWatchdog?: boolean, alertedBand?: number|null, checkPeriodHours?: number, readers?: StateReaders, env?: Record<string, string|undefined>, resolveToken?: Function }} options */
 async function collect({
   nowIso,
   fromWatchdog,
@@ -509,10 +613,22 @@ async function collect({
     unreadable: lastPush?.unreadable ?? null,
   })
 
+  /*
+   * The parity read is NOT in the `safely` group above: it touches no network
+   * and cannot hang, and `readParityState` already answers with a stated reason
+   * rather than throwing. Wrapping it would add a blind-spot line for a file
+   * read that has no way to be slow.
+   */
+  const parity = readParityState(PARITY_STATE_FILE, nowIso)
+  /* Same shape, same reasoning, same absence rule. See readIndexingState. */
+  const indexing = readIndexingState(INDEXING_STATE_FILE, nowIso)
+
   return {
     generatedAt: nowIso,
     repo,
     main,
+    parity,
+    indexing,
     production,
     landed,
     openPullRequests,

@@ -410,13 +410,275 @@ const DRILLS = [
     name: 'the sitemap publishes a templated family without the threshold gate',
     guard: `${GUARDS}/indexing-policy.mjs`,
     file: 'src/app/sitemap.ts',
-    // Re-anchored 14 September 2026 by lane A. Lane C's owner-settable indexing
-    // threshold (commit 5c272e21) gave isDiscoveryIndexable a second argument,
-    // so this drill stopped matching and stopped proving its clause. The drill
-    // was not wrong and the guard was not wrong; the anchor had simply moved.
+    // THE ANCHOR MOVED AND THIS DID NOT. The `, threshold` argument arrived with
+    // close-out SEO3 step 2, when the number became the owner's rather than the
+    // build's, and this anchor was not moved with it, so the drill stopped
+    // aiming and the harness reported it STALE instead of firing. Both lanes
+    // re-anchored it independently on 14 September 2026, which is itself the
+    // point: the drill was not wrong and the guard was not wrong, so a stale
+    // anchor reads as a passing gate until somebody checks. Kept in step with
+    // the source it mutates.
     find: '    if (!isDiscoveryIndexable(countCommunity(discoveryRows, community.slug), threshold)) continue\n',
     replace: '',
     expect: 'publishes /community/[community] without an isDiscoveryIndexable() gate',
+  },
+  /*
+   * discovery-indexability (close-out SEO3), FOUR DRILLS. The item asks for
+   * three, "proven red three times", one per clause of its stated invariant:
+   * no page carrying noindex may appear in the sitemap; no page meeting the
+   * substance threshold may carry noindex; and no category may exist only as a
+   * query string. The third clause has two independent ways to fail, a link and
+   * a missing page, so it gets one drill each.
+   */
+  {
+    name: 'the sitemap judges a family with a count its page never calls',
+    guard: `${GUARDS}/discovery-indexability.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '    if (!isDiscoveryIndexable(countCategory(discoveryRows, [category.slug]), threshold)) continue',
+    replace: '    if (!isDiscoveryIndexable(countCity(discoveryRows, category.slug), threshold)) continue',
+    expect: 'src/app/sitemap.ts judges /categories/[slug] with countCity, which its page never calls',
+  },
+  {
+    name: 'a templated discovery page hardcodes noindex over the threshold',
+    guard: `${GUARDS}/discovery-indexability.mjs`,
+    file: 'src/app/faith/[faith]/page.tsx',
+    find: '  return {',
+    replace: '  return {\n    robots: { index: false },',
+    expect: '/faith/[faith] is a templated discovery page and hardcodes noindex',
+  },
+  {
+    name: 'a category tile goes back to being a query string',
+    guard: `${GUARDS}/discovery-indexability.mjs`,
+    file: 'src/components/features/home/category-nav-rail.tsx',
+    find: '                  href: `/categories/${t.slug}`,',
+    replace: '                  href: `/events?category=${t.slug}`,',
+    expect: 'navigates to a category through /events?category=',
+  },
+  {
+    name: 'a live category loses the editorial that makes it a page',
+    guard: `${GUARDS}/discovery-indexability.mjs`,
+    file: 'src/lib/categories/category-editorial.ts',
+    find: "    slug: 'comedy',",
+    replace: "    slug: 'comedy-lane-c-drill',",
+    expect: 'the category "comedy" exists in event_categories and has no editorial',
+  },
+  /*
+   * sitemap-covers-the-catalogue (close-out SEO2), FOUR DRILLS, one per way the
+   * comparison can go red. The item asks for it to be "proven red by
+   * unpublishing one lane-C event while leaving it in the sitemap, then green",
+   * which is the ORPHANED drill below expressed as the code that would leave it
+   * there: the sitemap reads the database live, so an event cannot be absent
+   * from the catalogue and present in the sitemap unless the sitemap has stopped
+   * asking whether it is published. That is the second drill, and the literal
+   * version of it (a real lane-C event set to draft while the predicate was
+   * removed, with the guard naming that slug) is in the item's evidence.
+   *
+   * The other three cover the failure modes actually on record: a catalogue
+   * silently truncating so pages go MISSING, a query error thrown away so a
+   * whole family publishes NOTHING (the 42703 that hid the venue block for its
+   * whole life), and a profile predicate dropped so pages that 404 are
+   * advertised (the eight 'pending' organisations).
+   */
+  {
+    name: 'the event catalogue truncates, so published pages are never advertised',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .order('slug', { ascending: true })\n      .limit(CATALOGUE_ROW_CAP)\n    if (error) return { rows: [], error: error.message }\n    const rows: CatalogueRow[] = []\n    for (const row of data ?? []) {\n      const slug = typeof row.slug === 'string' ? row.slug.trim() : ''\n      if (!slug) continue\n      rows.push({\n        path: `/events/${slug}`,",
+    replace: "      .order('slug', { ascending: true })\n      .limit(5)\n    if (error) return { rows: [], error: error.message }\n    const rows: CatalogueRow[] = []\n    for (const row of data ?? []) {\n      const slug = typeof row.slug === 'string' ? row.slug.trim() : ''\n      if (!slug) continue\n      rows.push({\n        path: `/events/${slug}`,",
+    expect: 'events page(s) the database holds are ABSENT from the sitemap',
+  },
+  {
+    name: 'the sitemap stops asking whether an event is published, so unpublished events stay in it',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .select('slug, updated_at')\n      .match(PUBLIC_EVENT_MATCH)\n      .not('slug', 'is', null)",
+    replace: "      .select('slug, updated_at')\n      .not('slug', 'is', null)",
+    expect: 'events URL(s) in the sitemap have no row behind them and would answer 404',
+  },
+  {
+    name: 'a catalogue query names a column that does not exist, and the error is thrown away again',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .select('venue_name, updated_at')",
+    replace: "      .select('venue_slug, updated_at')",
+    expect: 'the sitemap would publish NO venues URL at all and say nothing about it',
+  },
+  {
+    name: 'the organiser block loses its status predicate, so pending profiles are advertised again',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .not('slug', 'is', null)\n      .eq('status', 'active')",
+    replace: "      .not('slug', 'is', null)",
+    expect: 'organisers URL(s) in the sitemap have no row behind them and would answer 404',
+  },
+  /*
+   * all-in-pricing (close-out SEO4), THREE DRILLS, one per clause. The item asks
+   * for the guard to be "proven red by displaying a ticket price without its
+   * fee, then green", which is the second of these; the other two are the
+   * clauses that would let the same defect back in by a different door.
+   */
+  {
+    name: 'a ticket price is displayed without its fee',
+    guard: `${GUARDS}/all-in-pricing.mjs`,
+    file: 'src/components/checkout/ticket-selector.tsx',
+    find: '                      {formatPrice(tierAllIn(tier).totalCents, currency)}',
+    replace: '                      {formatPrice(tier.display_price_cents ?? tier.price, currency)}',
+    expect: 'formats a raw tier price as the price a buyer reads',
+  },
+  {
+    name: 'the fee is hardcoded into a second file',
+    guard: `${GUARDS}/all-in-pricing.mjs`,
+    file: 'src/lib/payments/all-in-price.ts',
+    find: 'export function allInPriceForOneTicket(',
+    replace:
+      'const LANE_C_DRILL = { percent: 3.5, fixedCents: 99 }\nvoid LANE_C_DRILL\nexport function allInPriceForOneTicket(',
+    expect: 'carries the platform fee',
+  },
+  {
+    name: 'a cart total is a per-ticket total multiplied by the quantity',
+    guard: `${GUARDS}/all-in-pricing.mjs`,
+    file: 'src/lib/payments/all-in-price.ts',
+    find: '  return paid.reduce((lowest, tier) => {',
+    replace:
+      '  const laneCDrill = allInPriceForOneTicket(paid[0].price, rates, feePassType).totalCents * 2\n  void laneCDrill\n  return paid.reduce((lowest, tier) => {',
+    expect: 'multiplies a per-ticket all-in total to get a cart total',
+  },
+  /*
+   * event-lifecycle-total clause 7 (close-out SEO5 step 5), THREE DRILLS.
+   *
+   * The clause exists because four of the eight statuses were answering a real
+   * 404 on their own public page, against a document that says all four render
+   * a full page with a banner, and nothing in the repository could see it. Each
+   * drill is one of the three ways it comes back: the classification losing a
+   * status, a caller losing the door, and the door losing a constraint.
+   */
+  {
+    name: 'a status the document calls a full page drops out of the classification',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'src/lib/event-lifecycle.ts',
+    // A SINGLE LINE, deliberately. src/lib/event-lifecycle.ts has CRLF line
+    // endings, so a multi-line `find` written with LF matches nothing and the
+    // drill reports a bad find string instead of exercising the guard.
+    find: "  'cancelled',",
+    replace: '  /* lane-C drill: cancelled removed */',
+    expect: 'cancelled is not in PUBLIC_AFTER_THE_FACT_STATUSES',
+  },
+  {
+    name: 'the route existence guard stops consulting the after-the-fact door',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'src/app/events/[slug]/layout.tsx',
+    find: '  if (await afterTheFactEventExists(slug)) return children',
+    replace: '  // lane-C drill: the door removed',
+    expect: 'no longer consults the after-the-fact door',
+  },
+  {
+    name: 'the after-the-fact door stops constraining visibility',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'src/lib/events/after-the-fact-view.ts',
+    // The EXISTENCE check's copy, because the guard judges every read in the
+    // file rather than the file as a whole: removing the constraint from one of
+    // two queries is exactly how this defect would return.
+    find: "      .in('visibility', [...PUBLIC_VISIBILITIES])\n      .maybeSingle(),",
+    replace: '      .maybeSingle(),',
+    expect: 'has a read that does not constrain visibility',
+  },
+  /*
+   * parity-spec-complete (close-out PARITY1), THREE DRILLS. The item asks for
+   * it "proven red by adding a line with no check, then green", which is the
+   * first. The other two are the ways a specification degrades without losing a
+   * line: a check that passes on no evidence, and a line whose proof is gone.
+   */
+  {
+    name: 'a table-stakes line is added with no check',
+    guard: `${GUARDS}/parity-spec-complete.mjs`,
+    file: 'scripts/lib/parity-spec.mjs',
+    find: 'export const PARITY_LINES = [',
+    replace:
+      "export const PARITY_LINES = [\n  { id: 'lane-c-drill-no-check', line: 'a line nobody wired up', why: 'the drill for the guard that catches exactly this' },",
+    expect: 'HAS NO CHECK',
+  },
+  {
+    name: 'a table-stakes check reports PASS when it was shown nothing at all',
+    guard: `${GUARDS}/parity-spec-complete.mjs`,
+    file: 'scripts/lib/parity-spec.mjs',
+    find: 'export const PARITY_LINES = [',
+    replace:
+      "export const PARITY_LINES = [\n  { id: 'lane-c-drill-always-green', line: 'a line that always says yes', why: 'the drill for a check that is not looking at anything', check: () => ({ state: 'pass', observation: 'fine', page: null }) },",
+    expect: 'reports PASS against an empty snapshot',
+  },
+  {
+    name: 'the disable switch is read inside the specification itself',
+    guard: `${GUARDS}/parity-spec-complete.mjs`,
+    file: 'scripts/lib/parity-spec.mjs',
+    find: 'export const PARITY_LINES = [',
+    replace:
+      'const laneCDrill = process.env.PARITY_CHECK_DISABLED\nvoid laneCDrill\nexport const PARITY_LINES = [',
+    expect: 'reads configuration',
+  },
+  {
+    name: 'a table-stakes line loses the test that proves it goes red',
+    guard: `${GUARDS}/parity-spec-complete.mjs`,
+    file: 'tests/unit/parity/parity-spec.test.ts',
+    find: "    id: 'past-event-state',",
+    replace: "    id: 'lane-c-drill-renamed',",
+    expect: 'is named nowhere in',
+  },
+  /*
+   * no-false-urgency (close-out SEO5), FOUR DRILLS. The item asks for it
+   * "proven red by hard coding a low stock message, then green", which is the
+   * first two of these: one for the literal count, one for a scarcity sentence
+   * in a file that has never counted a ticket. The other two are the
+   * accessibility half of the same invariant, which has its own way of lying.
+   */
+  {
+    name: 'a low stock message is hard coded',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/components/checkout/ticket-selector.tsx',
+    find: '                      <p className="mt-1 text-xs font-medium text-error-strong">Only {available} left</p>',
+    replace: '                      <p className="mt-1 text-xs font-medium text-error-strong">Only 3 left</p>',
+    expect: 'writes a scarcity COUNT as a literal',
+  },
+  {
+    name: 'a scarcity sentence appears on a surface that never reads inventory',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/lib/content/category-highlight-slides.ts',
+    find: "    cardEyebrow: 'Most booked',",
+    replace: "    cardEyebrow: 'Selling fast',",
+    expect: 'is NOT reviewed',
+  },
+  {
+    name: 'the accessibility section loses its refusal to render empty',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/components/features/accessibility/accessibility-section.tsx',
+    find: '  if (!hasAccessibilityInfo(info)) return null',
+    replace: '  void hasAccessibilityInfo',
+    expect: 'no longer refuses to render when there is nothing to say',
+  },
+  {
+    name: 'the accessibility surface starts rendering a negative',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/components/features/accessibility/accessibility-section.tsx',
+    find: '        <p className="mt-5 flex items-start gap-3 text-xs leading-relaxed text-ink-500">',
+    replace:
+      '        <p className="text-xs">Not wheelchair accessible</p>\n        <p className="mt-5 flex items-start gap-3 text-xs leading-relaxed text-ink-500">',
+    expect: 'renders an accessibility NEGATIVE',
+  },
+  {
+    name: 'a governed surface stops consulting the reversal switch',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/components/checkout/ticket-selector.tsx',
+    find: '{showAvailability && !soldOut && !salePending && available <= 20 && (',
+    replace: '{!soldOut && !salePending && available <= 20 && (',
+    expect: 'the remaining-tickets line is no longer gated on the reversal switch',
+  },
+  {
+    name: 'the calendar links are put behind the reversal switch, which the close-out forbids',
+    guard: `${GUARDS}/no-false-urgency.mjs`,
+    file: 'src/components/features/events/add-to-calendar.tsx',
+    find: 'export function AddToCalendar({ event }: { event: CalendarEvent }) {',
+    replace:
+      'export function AddToCalendar({ event, showAvailability }: { event: CalendarEvent; showAvailability?: boolean }) {\n  void showAvailability',
+    expect: 'is behind the reversal switch',
   },
   /*
    * event-structured-data (SEO1 v2), EIGHT DRILLS, one per clause and four
@@ -620,6 +882,56 @@ const DRILLS = [
     expect: 'not on the reviewed list',
   },
   /*
+   * weak-network-contract (close-out C8B.5, Scope v5 10.3), five drills, one per
+   * clause plus the silent-catch case.
+   *
+   * THE FIFTH IS THE ONE WORTH READING. Clause 1 could have been a grep for the
+   * word "catch", and a grep would have gone green on a catch that swallows the
+   * failure and shows the buyer nothing, which is a DIFFERENT defect rather than
+   * a fix: a button that visibly does nothing. So the drill empties the catch
+   * body instead of deleting the try, and the clause must still fire.
+   */
+  {
+    name: 'the checkout submit stops catching a thrown server action',
+    guard: `${GUARDS}/weak-network-contract.mjs`,
+    file: 'src/app/checkout/[reservation_id]/checkout-form.tsx',
+    find: '      let result: Awaited<ReturnType<typeof processCheckout>>\n      try {',
+    replace: '      let result: Awaited<ReturnType<typeof processCheckout>>\n      if (true) {',
+    expect: 'not inside a try/catch',
+  },
+  {
+    name: 'the checkout catches the network failure and tells the buyer nothing',
+    guard: `${GUARDS}/weak-network-contract.mjs`,
+    file: 'src/app/checkout/[reservation_id]/checkout-form.tsx',
+    find: '        setSubmitError(describeCheckoutSubmitFailure(browserIsOnline()).message)',
+    replace: '        // swallowed',
+    expect: 'does not call describeCheckoutSubmitFailure',
+  },
+  {
+    name: 'the root service worker starts caching pages, so a buyer can be shown a stale price',
+    guard: `${GUARDS}/weak-network-contract.mjs`,
+    file: 'public/app-sw.js',
+    find: '  if (url.pathname.indexOf(STATIC_PATH) === 0) {\n    event.respondWith(cacheFirst(request))\n  }',
+    replace: '  event.respondWith(cacheFirst(request))',
+    expect: 'without a STATIC_PATH test above it',
+  },
+  {
+    name: 'the root service worker is never registered, so the offline page is dead weight',
+    guard: `${GUARDS}/weak-network-contract.mjs`,
+    file: 'src/app/layout.tsx',
+    find: '          <RegisterAppWorker />',
+    replace: '          {/* removed */}',
+    expect: 'RegisterAppWorker is not rendered',
+  },
+  {
+    name: 'the offline page becomes indexable, so "You are offline" can rank for EventLinqs',
+    guard: `${GUARDS}/weak-network-contract.mjs`,
+    file: 'src/lib/seo/indexing-policy.ts',
+    find: "  { route: '/offline', klass: 'never',",
+    replace: "  { route: '/offline', klass: 'always',",
+    expect: "is not classified 'never'",
+  },
+  /*
    * no-hardcoded-spacing (close-out C14.12), three drills: an arbitrary
    * utility off the 4px grid, an inline style off it, and a CSS declaration
    * off it. A token or a multiple of 4px passes, so the guard only fires on a
@@ -741,24 +1053,25 @@ const DRILLS = [
    */
   {
     /*
-     * The incident itself, put back. This is the exact file and the exact
-     * shape: a Supabase query in a try, and a catch that says nothing.
+     * The incident itself, put back. Same shape, and since close-out SEO2 the
+     * exact file is src/lib/seo/sitemap-catalogue.ts: the event query moved
+     * there so a build-time guard could execute it, and the catch moved with it.
+     * The catch there RETURNS the error rather than logging it, which is a voice
+     * (the sitemap logs it, the guard fails the build on it); this drill takes
+     * that voice away.
      */
     name: 'the sitemap event query is wrapped in a catch that says nothing',
     guard: `${GUARDS}/no-silent-catch.mjs`,
-    file: 'src/app/sitemap.ts',
+    file: 'src/lib/seo/sitemap-catalogue.ts',
     find: [
       '  } catch (err) {',
-      '    // Sitemap must never 500. Fall through to the static entries already built,',
-      '    // but SAY SO: a silent catch on this exact shape hid a 42703 in the venue',
-      '    // block for the whole life of that block.',
-      "    console.error('[sitemap] event block failed:', err)",
+      '    return { rows: [], error: err instanceof Error ? err.message : String(err) }',
+      '  }',
     ].join('\n'),
     // The FIRST version of this drill removed only the binding and left the
-    // console.error, and the guard passed, correctly: a catch that logs is not
-    // silent whatever its binding says. The drill has to remove the voice, not
-    // the name.
-    replace: ['  } catch {', '    // drill: the voice removed'].join('\n'),
+    // voice, and the guard passed, correctly: a catch that speaks is not silent
+    // whatever its binding says. The drill has to remove the voice, not the name.
+    replace: ['  } catch {', '    return { rows: [], error: null }', '  }'].join('\n'),
     expect: 'silent around I/O',
   },
   {
@@ -1009,10 +1322,26 @@ const DRILLS = [
   {
     name: 'the sitemap queries a column that does not exist (the 42703 class)',
     guard: `${GUARDS}/sitemap-resolves.mjs`,
-    file: 'src/app/sitemap.ts',
+    // The venue query lives in the catalogue module since close-out SEO2, and
+    // the guard reads both files for exactly this reason.
+    file: 'src/lib/seo/sitemap-catalogue.ts',
     find: "      .select('venue_name, updated_at')",
     replace: "      .select('venue_name, updated_at, nonexistent_column')",
     expect: 'does not exist in src/types/database.ts',
+  },
+  {
+    /*
+     * The failure mode this guard's subject moving created, and the clause added
+     * to refuse it: a family stops being built and the guard goes QUIET rather
+     * than red. Every sitemap defect on record is a family publishing nothing in
+     * silence.
+     */
+    name: 'the catalogue stops building one of the three families',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: '      rows.push({ path: `/venues/${handle}`, lastModified: handles.get(handle) ?? null })',
+    replace: '      rows.push({ path: `/nothing/${handle}`, lastModified: handles.get(handle) ?? null })',
+    expect: 'no longer builds /venues/PARAM',
   },
   {
     name: 'the sitemap publishes a URL this repository permanently redirects',
@@ -1041,8 +1370,10 @@ const DRILLS = [
   {
     name: 'a sitemap catch block swallows its error without reporting it',
     guard: `${GUARDS}/sitemap-resolves.mjs`,
+    // The artists block is the last remaining try/catch in sitemap.ts; the three
+    // row-derived families now return their error from the catalogue instead.
     file: 'src/app/sitemap.ts',
-    find: "    console.error('[sitemap] organiser block failed:', err)",
+    find: "    console.error('[sitemap] artist block failed:', err)",
     replace: '    void err',
     expect: 'catch block that reports nothing',
   },
@@ -2729,6 +3060,43 @@ const DRILLS = [
     find: '  if (!org.stripe_payouts_enabled) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
     replace: '  if (false) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
     expect: 'no longer tests `!org.stripe_payouts_enabled`',
+  },
+  /*
+   * initial-bundle-budget, the CONTRACT half (close-out C8B.3, 15 September
+   * 2026). This harness runs a guard with no arguments, so what it can drill is
+   * the prebuild half: the promise. The proof half (--built) weighs the build
+   * and is drilled by hand against a real build, recorded in
+   * C:\dev\EVIDENCE\C8C\guard-built-drills.txt, because a drill that needs a
+   * five minute `next build` cannot live in a harness that runs on every push.
+   *
+   * The first drill is the one that matters most. The prebuild half CANNOT
+   * WEIGH ANYTHING, so if the postbuild half is ever unhooked this guard goes
+   * on passing for ever while nothing is measured, which is the exact shape
+   * `pre-push-gate-wired` and `workflows-skip-drafts` exist to refuse.
+   */
+  {
+    name: 'the half that actually weighs the build is unhooked from postbuild',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'package.json',
+    find: ' && node scripts/guards/initial-bundle-budget.mjs --built',
+    replace: '',
+    expect: 'does not run this guard with --built',
+  },
+  {
+    name: 'the budget file quietly disagrees with the scope about what 200KB is',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"_budgetBytes": 204800,',
+    replace: '"_budgetBytes": 307200,',
+    expect: 'is not the authority',
+  },
+  {
+    name: 'a recorded mark stops being a byte count',
+    guard: `${GUARDS}/initial-bundle-budget.mjs`,
+    file: 'perf-budget.json',
+    find: '"marks": {',
+    replace: '"marks": {\n    "/drill-not-a-byte-count": null,',
+    expect: 'which is not a byte count',
   },
 ]
 

@@ -32,6 +32,20 @@ export interface HeroCategory {
   relatedCities: string[]
   accentColor?: string
   keywords: string[]
+  /**
+   * The slug in `public.event_categories` this legacy hero category is the
+   * ancestor of, where one exists.
+   *
+   * WHY (close-out SEO3 step 4). No hero slug exists in the live taxonomy, so
+   * this page's "View all" link, which pointed at `/events?category=<hero
+   * slug>`, could never match an event: a 200 with nothing on it, which Law 5
+   * counts as a dead end exactly as it counts a 404. Where a real successor
+   * exists the link now goes to that page. `networking` is the only hero
+   * category with one, and it is also the only one of the seven that is not
+   * permanently redirected to a community landing, so it is the only one whose
+   * link a person can still reach.
+   */
+  realCategorySlug?: string
 }
 
 export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
@@ -211,6 +225,9 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
 
   networking: {
     slug: 'networking',
+    // The one hero category with a live successor: `business-networking` in
+    // public.event_categories. See `realCategorySlug` on the interface above.
+    realCategorySlug: 'business-networking',
     displayName: 'Business & Networking',
     eyebrowLabel: 'BUSINESS & NETWORKING',
     tagline: 'Where the next deal, hire, and big idea gets made.',

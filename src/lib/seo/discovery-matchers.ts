@@ -26,6 +26,16 @@ export interface DiscoveryEventRow {
   venue_latitude: number | null
   venue_longitude: number | null
   category_slug: string | null
+  /**
+   * The organisation that published the event.
+   *
+   * Added for close-out SEO3 step 7, which sends an organiser profile holding no
+   * events and no biography to noindex. That judgement needs a count per
+   * organisation, and the sitemap needs one for every organisation in a single
+   * request, so it comes off the SAME row set every other discovery count comes
+   * off rather than becoming one query per profile.
+   */
+  organisation_id: string | null
 }
 
 /* ------------------------------------------------------------- the matchers */
@@ -93,6 +103,17 @@ export function countSuburb(
 
 export function countCategory(rows: DiscoveryEventRow[], slugs: string[]): number {
   return rows.filter(r => matchesCategory(r, slugs)).length
+}
+
+/**
+ * How many publicly visible events an organisation has.
+ *
+ * Mirrors the organiser profile's own upcoming query
+ * (`.eq('organisation_id', id)` plus PUBLIC_EVENT_MATCH plus the listing
+ * window), which is what `loadDiscoveryRows` already applies to every row.
+ */
+export function countOrganiser(rows: DiscoveryEventRow[], organisationId: string): number {
+  return rows.filter(r => r.organisation_id === organisationId).length
 }
 
 export function countFaith(rows: DiscoveryEventRow[], faith: FaithSlug): number {

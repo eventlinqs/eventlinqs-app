@@ -27,6 +27,13 @@
  * speaking, and Law 1 does not have an exception for the owner's inbox.
  */
 
+/*
+ * The indexing line's wording lives with the check that produces it (close-out
+ * SEO2 step 3), so a weekly job and this daily report cannot describe the same
+ * result in two different registers. Both files are pure.
+ */
+import { digestLines as indexingDigestLines } from './indexing-check.mjs'
+
 /** The one threshold. Six hours, from close-out UX4.2, and it lives here alone. */
 export const STALL_THRESHOLD_HOURS = 6
 
@@ -297,6 +304,13 @@ const escapeHtml = (value) =>
  * the HTML can never say different things. Nine sections, in the order
  * close-out UX4.1 lists them.
  */
+/**
+ * When the parity check runs, said once so the report and the workflow cannot
+ * describe it differently. The first and the fifteenth is the nearest a cron
+ * expression gets to fortnightly without drifting through the week.
+ */
+export const PARITY_CADENCE = 'The parity check runs on the 1st and the 15th of the month'
+
 export function sectionsFor(state) {
   const sections = []
 
@@ -407,6 +421,64 @@ export function sectionsFor(state) {
       : failing.length === 0
         ? ['None.']
         : failing.map((b) => `${b.branch}  ${b.workflow}  ${b.guard ? `caught by ${b.guard}` : 'no guard named in the log'}  ${b.runUrl}`),
+  })
+
+  /*
+   * THE PARITY LINE (close-out PARITY1 step 4): "One line in the owner digest:
+   * parity checks passed, parity checks failed, and the worst failure."
+   *
+   * It sits directly ABOVE the platform counts, because both answer "how is the
+   * product", where everything above answers "how is the build".
+   *
+   * A MISSING OR STALE RESULT IS SAID OUT LOUD, never omitted. The parity check
+   * runs fortnightly and this digest runs daily, so most days carry a result
+   * that is up to a fortnight old; printing its age is the difference between a
+   * reader trusting it and a reader being misled by it. And a result that has
+   * never been produced reads as "no parity run has been recorded", which is the
+   * same rule every other section in this report follows: an absence is not a
+   * clean bill of health.
+   */
+  const parity = state.parity ?? null
+  sections.push({
+    title: 'Table-stakes parity',
+    lines: !parity
+      ? [
+          // NOT an alarm. The check runs on two days a month, on whichever
+          // machine runs it, so on the other twenty-eight the absence of a
+          // result is the expected state and saying "it has never run" would be
+          // a false alarm twenty-eight times in thirty.
+          `${PARITY_CADENCE}. No result is on the machine that composed this report.`,
+        ]
+      : parity.error
+        ? [`Not known: ${parity.error}.`]
+        : [
+            parity.headline,
+            `Last run ${humanAge(parity.ageHours)} ago, against ${parity.site ?? 'production'}.`,
+            parity.stale
+              ? `THIS IS OVERDUE. ${PARITY_CADENCE}, and this result is ${humanAge(parity.ageHours)} old.`
+              : null,
+            // The worst failure is what the close-out asks for; all of them is
+            // what a reader actually needs, and there are never many.
+            ...(parity.failures ?? []).map((f) => `FAILED: ${f.line} - ${f.observation}`),
+          ].filter(Boolean),
+  })
+
+  /*
+   * THE INDEXING LINE (close-out SEO2 step 3): "pages submitted, pages indexed,
+   * and any page in the sitemap that Search Console reports as excluded, with
+   * the reason. It appears in the owner digest as one line."
+   *
+   * It sits beside the parity line for the same reason that one sits where it
+   * does: both answer "how is the product", where everything above answers "how
+   * is the build". And it follows the same rule about absence, which is the rule
+   * this whole report is built on: a check that has not run must look different
+   * from a check that found nothing. The wording lives in
+   * scripts/lib/indexing-check.mjs beside the judging, so the weekly job and this
+   * daily one cannot describe the same result differently.
+   */
+  sections.push({
+    title: 'Google and the sitemap',
+    lines: indexingDigestLines(state.indexing ?? null, humanAge),
   })
 
   const biz = state.business ?? {}

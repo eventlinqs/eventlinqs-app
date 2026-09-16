@@ -91,19 +91,43 @@ describe('PROOF 1 of 4: discovery never selects a non-public event', () => {
 })
 
 describe('PROOF 3 of 4: the sitemap', () => {
+  /*
+   * THE RULE MOVED, SO THIS FOLLOWS IT (close-out SEO2, 14 September 2026).
+   *
+   * The three row-derived families now come from src/lib/seo/sitemap-catalogue.ts,
+   * which src/app/sitemap.ts calls and which a build-time guard can execute.
+   * This proof used to search sitemap.ts for the predicate ANYWHERE in the file,
+   * which would have been satisfied by one predicated query beside a second
+   * unpredicated one. It now asserts both halves, which is strictly stronger:
+   * the sitemap asks nobody but the catalogue, and the catalogue applies the
+   * shared rule.
+   */
+  const applied = (src: string) =>
+    /\.eq\(\s*['"]visibility['"]\s*,\s*['"]public['"]\s*\)/.test(src) ||
+    /\.match\(\s*PUBLIC_EVENT_MATCH\s*\)/.test(src) ||
+    /applyPublicEventVisibility/.test(src)
+
   it('only ever lists public events', () => {
-    const src = code(read('src/app/sitemap.ts'))
     // Either the literal pair or the shared rule. See the note in PROOF 1.
-    expect(
-      /\.eq\(\s*['"]visibility['"]\s*,\s*['"]public['"]\s*\)/.test(src) ||
-        /\.match\(\s*PUBLIC_EVENT_MATCH\s*\)/.test(src) ||
-        /applyPublicEventVisibility/.test(src),
-    ).toBe(true)
+    expect(applied(code(read('src/lib/seo/sitemap-catalogue.ts')))).toBe(true)
+  })
+
+  it('reads events through the catalogue and nowhere else, so there is one predicate to keep right', () => {
+    const src = code(read('src/app/sitemap.ts'))
+    expect(src).toMatch(/readEventCatalogue\(/)
+    expect(src).toMatch(/readVenueCatalogue\(/)
+    expect(src).toMatch(/readOrganiserCatalogue\(/)
+    // The artists block is the one remaining direct read in this file and it
+    // queries `artists`, never `events`. A second events query here would be a
+    // second copy of the visibility rule.
+    expect(src).not.toMatch(/\.from\(\s*['"]events['"]\s*\)/)
+    expect(src).not.toMatch(/\.from\(\s*['"]organisations['"]\s*\)/)
   })
 
   it('does not use a deny-list that would leak a future enum value', () => {
-    const src = code(read('src/app/sitemap.ts'))
-    expect(src).not.toMatch(/visibility.*!==?\s*['"]private['"]/)
+    for (const file of ['src/app/sitemap.ts', 'src/lib/seo/sitemap-catalogue.ts']) {
+      expect(code(read(file))).not.toMatch(/visibility.*!==?\s*['"]private['"]/)
+    }
   })
 })
 

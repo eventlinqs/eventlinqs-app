@@ -1,4 +1,5 @@
 import { Lock, ShieldCheck, BadgeCheck } from 'lucide-react'
+import { AcceptedPaymentMethods } from './AcceptedPaymentMethods'
 
 /**
  * CheckoutTrustSignals (Batch 11.0).
@@ -43,24 +44,13 @@ export function CheckoutTrustSignals() {
         </li>
       </ul>
 
-      <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-ink-400">
-        We accept
-      </p>
-      <ul
-        role="list"
-        aria-label="Accepted payment methods"
-        className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-600"
-      >
-        <li>Visa</li>
-        <li aria-hidden className="text-ink-200">·</li>
-        <li>Mastercard</li>
-        <li aria-hidden className="text-ink-200">·</li>
-        <li>Amex</li>
-        <li aria-hidden className="text-ink-200">·</li>
-        <li>Apple Pay</li>
-        <li aria-hidden className="text-ink-200">·</li>
-        <li>Google Pay</li>
-      </ul>
+      {/*
+        The list was typed here, and a DIFFERENT typed list lived in the /pricing
+        FAQ answer. Both now read src/lib/payments/payment-methods.ts
+        (close-out SEO4 step 5), so the two surfaces cannot disagree about what a
+        buyer can pay with, which they already did.
+      */}
+      <AcceptedPaymentMethods className="mt-5" />
     </aside>
   )
 }

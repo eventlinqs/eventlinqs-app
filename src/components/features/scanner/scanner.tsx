@@ -16,7 +16,7 @@ import {
   describeDoorOutcome,
 } from '@/lib/scanner/door-copy'
 import { getDeviceId } from '@/lib/scanner/device-id'
-import { createClient as createBrowserClient } from '@/lib/supabase/client'
+import { loadSupabaseClient } from '@/lib/supabase/client-lazy'
 import {
   subscribeToDoor,
   liveEntryFrom,
@@ -354,34 +354,45 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
     }
     let leave: (() => void) | null = null
     let cancelled = false
-    void subscribeToDoor({
-      client: createBrowserClient(),
-      eventId,
-      onStatus: (status, error) => {
-        setLiveStatus(status)
-        setLiveError(error)
-        if (status === 'live' && !refreshedOnLiveRef.current) {
-          refreshedOnLiveRef.current = true
-          void downloadSet()
-        }
-      },
-      onRow: (row) => {
-        const entry = liveEntryFrom(row, eventId, deviceIdRef.current)
-        if (!entry) return
-        void (async () => {
-          const store = storeRef.current
-          const applied = store ? await applyLiveEntry(store, eventId, entry) : { record: null, changed: false }
-          if (!entry.mine) {
-            const text = describeLiveEntry(entry, applied.record)
-            setLiveFeed((prev) => feedFor([entry, ...prev.map((p) => p.entry)]).map((e) => ({ entry: e, text: e.scanId === entry.scanId ? text : (prev.find((p) => p.entry.scanId === e.scanId)?.text ?? describeLiveEntry(e, null)) })))
+    // The auth client is fetched HERE and nowhere earlier, which is the biggest
+    // single saving this change makes (51.4 KB gzip off a 225.2 KB route). The
+    // door's actual job is matching a scanned ticket against the set already on
+    // the phone, and that needs no network and no client at all. This effect is
+    // the only caller, and it returns above when the phone is offline, so at a
+    // venue with no signal the chunk is never fetched. See
+    // src/lib/supabase/client-lazy.ts.
+    void (async () => {
+      const client = await loadSupabaseClient()
+      if (cancelled) return
+      void subscribeToDoor({
+        client,
+        eventId,
+        onStatus: (status, error) => {
+          setLiveStatus(status)
+          setLiveError(error)
+          if (status === 'live' && !refreshedOnLiveRef.current) {
+            refreshedOnLiveRef.current = true
+            void downloadSet()
           }
-          await refreshCounts()
-        })()
-      },
-    }).then((l) => {
-      if (cancelled) l()
-      else leave = l
-    })
+        },
+        onRow: (row) => {
+          const entry = liveEntryFrom(row, eventId, deviceIdRef.current)
+          if (!entry) return
+          void (async () => {
+            const store = storeRef.current
+            const applied = store ? await applyLiveEntry(store, eventId, entry) : { record: null, changed: false }
+            if (!entry.mine) {
+              const text = describeLiveEntry(entry, applied.record)
+              setLiveFeed((prev) => feedFor([entry, ...prev.map((p) => p.entry)]).map((e) => ({ entry: e, text: e.scanId === entry.scanId ? text : (prev.find((p) => p.entry.scanId === e.scanId)?.text ?? describeLiveEntry(e, null)) })))
+            }
+            await refreshCounts()
+          })()
+        },
+      }).then((l) => {
+        if (cancelled) l()
+        else leave = l
+      })
+    })()
     return () => {
       cancelled = true
       leave?.()

@@ -1160,6 +1160,81 @@ export const ENV_MANIFEST = [
     publicVar: false,
   },
   {
+    name: 'GOOGLE_SITE_VERIFICATION',
+    describe: 'Search Console ownership token, emitted as the google-site-verification meta tag',
+    /*
+     * NOT REQUIRED ANYWHERE, and the reason is worth writing down rather than
+     * inferring from the empty array. The token is minted by Search Console for
+     * a signed-in Google account, which is the one act in this chain a machine
+     * cannot perform (close-out SEO2, Law 10 rule 2). Requiring it would fail
+     * every build on every scope until the founder had signed in, which is a
+     * gate that blocks the launch it exists to help.
+     *
+     * It must still be well formed wherever it exists: an unusable value means
+     * somebody believes the property is verified and it is not, which is worse
+     * than an absent one. src/lib/seo/site-verification.ts refuses it by name
+     * in the build log rather than emitting a broken tag.
+     */
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the token is minted by Search Console for a signed-in Google account, which no script can do, so it ' +
+      'arrives when the founder runs `npm run seo2:verify-property` and not before. Until then the property ' +
+      'is simply unverified and every page is unchanged',
+    /*
+     * NOT A SECRET. It is published in the homepage HTML by design, exactly like
+     * the Maps browser key beside it: its whole purpose is to be read by anyone
+     * who fetches the page. Marking it sensitive would make it unreadable in the
+     * dashboard for no protection at all.
+     */
+    mustBeSensitive: false,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    githubActions: false,
+    /*
+     * Read in a server component at build time, not inlined into the browser
+     * bundle: the layout's metadata is composed on the server and only the
+     * rendered tag reaches the client. So it is not a public variable in the
+     * NEXT_PUBLIC_ sense, even though its VALUE is public once rendered.
+     */
+    publicVar: false,
+  },
+  {
+    name: 'GOOGLE_SEARCH_CONSOLE_KEY',
+    describe: 'Search Console service-account key JSON, read only by the weekly indexing check',
+    /*
+     * FORBIDDEN IN EVERY VERCEL STORE, and that is the whole point of declaring
+     * it (close-out SEO2 step 3). No application code reads it and none ever
+     * should: it is read by `scripts/ops/indexing-check.mjs` on the runner that
+     * composes the owner digest, and by a laptop running the same command by
+     * hand. Putting a private key into a deployment scope that nothing reads
+     * would be pure attack surface.
+     *
+     * It carries the read-only webmasters scope, so a leak would let somebody
+     * read what Google thinks of this site and change nothing. That is a reason
+     * to keep it out of the browser bundle and the deployment stores, not a
+     * reason to relax about where it lives.
+     */
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview', 'development'],
+    optionalOn: [],
+    mustBeSensitive: true,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    /*
+     * Not declared as a required GitHub Actions secret either. The weekly step
+     * passes it when the repository holds it and the check says in the digest,
+     * in words, that Google was not asked when it does not. A gate that failed
+     * for want of a credential nobody has minted yet would block the report that
+     * exists to say the credential is missing.
+     */
+    githubActions: false,
+    publicVar: false,
+  },
+  {
     name: 'ALLOW_PRODUCTION_SUPABASE',
     describe: 'Named override letting a non-production build resolve the LIVE database',
     requiredOn: [],

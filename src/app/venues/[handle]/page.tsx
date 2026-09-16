@@ -4,6 +4,10 @@ import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
+import { AccessibilitySection } from '@/components/features/accessibility/accessibility-section'
+import { readVenueAccessibility } from '@/lib/accessibility/read'
+import { hasAccessibilityInfo, NO_ACCESSIBILITY_INFO } from '@/lib/accessibility/fields'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
@@ -164,6 +168,20 @@ export default async function VenueProfilePage({ params }: Props) {
   // Similar venues - same city, similar capacity.
   const similar = await fetchSimilarVenues(handle, venue.city, venue.capacity)
 
+  /*
+   * What this venue has told us about access (close-out SEO5 step 4). Returns
+   * nothing, rather than throwing, when the columns are not there yet.
+   *
+   * BEHIND THE SAME ONE FLAG AS THE EVENT PAGE. SEO5's reversal condition is
+   * "one flag hides the availability indicator and the accessibility section",
+   * and a reversal that left half the platform still making access claims would
+   * not be a reversal. The read is skipped entirely when it is off, so turning
+   * it off also removes the round trip.
+   */
+  const venueAccessibility = (await isFeatureEnabled('event_availability_and_access'))
+    ? await readVenueAccessibility(venue.id)
+    : NO_ACCESSIBILITY_INFO
+
   // UX1.2: the venue name is already the page heading, so this is the
   // address-only form, composed by the one formatter.
   const fullAddress = formatVenueAddress({
@@ -229,6 +247,30 @@ export default async function VenueProfilePage({ params }: Props) {
           fullAddress={fullAddress}
           venueType={venue.venueType}
         />
+
+        {/*
+          VP2b ACCESSIBILITY (close-out SEO5 step 4).
+
+          Read in its own query rather than added to the venue select, because
+          that select names its columns and PostgREST fails the WHOLE query with
+          42703 on a column it does not have. Adding these there would blank the
+          venue page for every visitor until the founder applied
+          docs/migrations-pending/20260914000002_accessibility_fields.sql.
+
+          Renders nothing at all when the venue has said nothing, which is the
+          owner's rule rather than a convenience: a heading over an empty card
+          reads as "there is none" to the person who needs the answer most.
+        */}
+        {/* The wrapper is gated too, not only the section. A ContentSection is a
+            padded band: rendering one around a component that returned null
+            leaves a strip of empty page, which is the blank section under
+            another name. `hasAccessibilityInfo` is the ONE emptiness test and
+            both the wrapper and the component ask it. */}
+        {hasAccessibilityInfo(venueAccessibility) && (
+          <ContentSection surface="base" width="wide">
+            <AccessibilitySection info={venueAccessibility} subject="venue" />
+          </ContentSection>
+        )}
 
         {/* VP3 Map - Google Maps venue location (one provider platform-wide) */}
         {typeof venue.latitude === 'number' && typeof venue.longitude === 'number' ? (

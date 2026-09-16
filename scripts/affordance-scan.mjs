@@ -20,12 +20,20 @@ const PAGES = [
   ['pricing', '/pricing'],
   ['about', '/about'],
   ['events-browse', '/events'],
-  ['event-detail', '/events/aso-ebi-affair-owambe-garden-party'],
+  // event-detail is resolved from the LIVE SITEMAP below, never typed. See
+  // resolveEventDetailPath: the slug that used to sit here had been deleted from
+  // the catalogue, the page answered 404, and a 404 renders no tiles, so this
+  // scan reported "OK ... dead-end tiles: 0" on it for as long as that was true.
   ['city', '/city/sydney'],
   ['suburb', '/city/sydney/inner-west'],
   ['community', '/community/african'],
   ['communities-hub', '/communities'],
-  ['category', '/events?category=music'],
+  // THE REAL CATEGORY LANDING (close-out SEO3 step 4, 14 September 2026). This
+  // entry read `/events?category=music` for as long as a category was a filter
+  // rather than a page, so the scan was measuring the browse page twice and the
+  // category surface never. It is a page now, with a hero, an event grid and a
+  // sibling tile strip, which is exactly the shape this scan exists to judge.
+  ['category', '/categories/music'],
   ['community-city', '/community/african/sydney'],
   ['help', '/help'],
   ['guides-hub', '/guides'],
@@ -85,8 +93,63 @@ const DETECT = () => {
   return out
 }
 
+/**
+ * A REAL EVENT PAGE, READ OUT OF THE LIVE SITEMAP.
+ *
+ * This entry used to be a typed slug. On 14 September 2026 that event had been
+ * deleted from the catalogue, so the page answered 404 and this scan printed
+ *
+ *     OK   event-detail   [404] dead-end tiles: 0
+ *
+ * which is true and worthless: a 404 renders no tiles, so it cannot fail a scan
+ * that counts tiles. The event page carries the cover image, the organiser
+ * avatar and the related-events rail, and none of them had been scanned since
+ * that slug went stale.
+ *
+ * The sitemap is the platform's own list of event URLs, so asking it is the one
+ * way this cannot go stale again. If it names no event, the page is NOT scanned
+ * and the run says so, rather than quietly scanning eighteen pages and calling
+ * it nineteen.
+ */
+async function resolveEventDetailPath() {
+  try {
+    const res = await fetch(`${BASE}/sitemap.xml`)
+    if (!res.ok) return null
+    const xml = await res.text()
+    /*
+     * `[^<\/]+` AND NOT `[^<]+`, because the first draft of this matched
+     * `/events/browse/geelong`, which is the browse-by-city page and not an
+     * event at all. An event URL is `/events/<slug>` with nothing after the
+     * slug, so the character class excludes the slash that would let a deeper
+     * path through.
+     */
+    const m = /<loc>[^<]*?(\/events\/[^<\/]+)<\/loc>/.exec(xml)
+    return m ? m[1] : null
+  } catch (error) {
+    // NAMED AND SPOKEN, never swallowed. The caller reports that the event page
+    // was not scanned, but only this frame knows WHY, and "the sitemap could not
+    // be reached" and "the sitemap listed no event" need opposite responses.
+    console.warn(`event-detail: could not read ${BASE}/sitemap.xml:`, error)
+    return null
+  }
+}
+
+const eventDetailPath = await resolveEventDetailPath()
+if (eventDetailPath) {
+  PAGES.splice(5, 0, ['event-detail', eventDetailPath])
+  console.log(`event-detail resolved from the sitemap: ${eventDetailPath}\n`)
+} else {
+  console.log('event-detail: the sitemap named no event URL, so the event page is NOT scanned in this run\n')
+}
+
 const b = await chromium.launch({ args: ['--no-sandbox'] })
 let total = 0
+/**
+ * Pages that did not render. Counted apart from tiles because it is a different
+ * fault with the opposite symptom: a page that does not render has no tiles to
+ * be dead ends, so it scores a perfect zero and reads as a pass.
+ */
+const unreachable = []
 const results = []
 for (const [name, path] of PAGES) {
   try {
@@ -100,6 +163,12 @@ for (const [name, path] of PAGES) {
       window.scrollTo(0, 0)
     })
     await page.waitForTimeout(600)
+    if (status !== 200) {
+      unreachable.push(`${name} ${path} answered ${status}`)
+      console.log(`FAIL ${name.padEnd(14)} [${status}] page did not render, so nothing on it was scanned`)
+      await ctx.close()
+      continue
+    }
     const viol = await page.evaluate(DETECT)
     total += viol.length
     results.push({ name, path, status, violations: viol.length, detail: viol })
@@ -113,5 +182,10 @@ for (const [name, path] of PAGES) {
 }
 await b.close()
 console.log(`\nTOTAL dead-end tiles across ${PAGES.length} pages: ${total}`)
-console.log(total === 0 ? 'AFFORDANCE SCAN: PASS' : 'AFFORDANCE SCAN: FAIL')
-process.exit(total === 0 ? 0 : 1)
+if (unreachable.length > 0) {
+  console.log(`\n${unreachable.length} page(s) could not be scanned because they did not render:`)
+  for (const u of unreachable) console.log(`  - ${u}`)
+}
+const ok = total === 0 && unreachable.length === 0
+console.log(ok ? 'AFFORDANCE SCAN: PASS' : 'AFFORDANCE SCAN: FAIL')
+process.exit(ok ? 0 : 1)

@@ -1617,6 +1617,103 @@ const ROOT = join(HERE, '..', '..')
  * that proves it asserts the value is greater than zero as well as equal to the
  * constant.
  *
+ * 2026-09-14 (SEO3 steps 4, 6 and 7, the category pages): raised 394/4794 ->
+ * 396/4809, MEASURED on a green suite. Two new files, fifteen tests.
+ * `tests/unit/seo/discovery-indexability.test.ts` carries the nine tests the
+ * close-out names, two of which GENERATE the real `src/app/sitemap.ts` against a
+ * fixture catalogue rather than reading its source, because a test that grepped
+ * for `isDiscoveryIndexable` would have been green on the day the category block
+ * was missing from that file entirely: the gate it was looking for was present
+ * in six other blocks.
+ * `tests/unit/events/scheduled-publish-invalidates-discovery.test.ts` carries
+ * five, and it exists because of a defect no existing test could see. The
+ * scheduled-publish CRON published an organiser's event and invalidated three
+ * paths, clearing none of the six event data cache tags and touching none of the
+ * discovery surfaces, while `tests/unit/events/publish-scheduled.test.ts` stayed
+ * green throughout - correctly, because the defect was never in the function it
+ * tests. It was in what the ROUTE did with the answer. Proven red against the
+ * exact pre-fix shape (3 of the 5 fail) before being called done.
+ *
+ * 2026-09-14 (SEO4, all-in pricing): raised 396/4809 -> 398/4823, MEASURED on a
+ * green suite. Two new files, fourteen tests.
+ * `tests/unit/pricing/all-in-pricing.test.ts` carries the six the close-out
+ * names plus the ones that tie the DISPLAY to the CHARGE, and those drive the
+ * real `PaymentCalculator` rather than re-implementing it, because every other
+ * test in the file could be green while the display quietly used a second,
+ * slightly different formula. Writing it that way immediately found a real
+ * property nobody had written down: the fee line is rounded ONCE, so the
+ * per-ticket all-in price times the quantity is NOT the cart total (2035 and
+ * 4069, not 4070), and the error can go either way.
+ * `tests/component/fee-sentence-spacing.test.tsx` RENDERS three surfaces and
+ * reads their text as a screen reader would. The two defects the close-out
+ * reports are invisible on screen, because the spacing is a CSS margin between
+ * two inline elements with no whitespace character between them, and the test
+ * found a THIRD instance on /organisers that the item does not name.
+ *
+ * 2026-09-14 (the rebase onto verify/l5-launch-readiness): 403/4889, MEASURED on
+ * the merged tree, 0 failed and 0 skipped. This entry records a NUMBER rather
+ * than a piece of work, and the reason is worth keeping.
+ *
+ * This constant conflicts on every merge between lane A and lane C, because both
+ * lanes raise one number in one file from a common ancestor, and neither lane's
+ * figure describes a tree holding both sets of tests: lane A measured 396/4812
+ * without lane C's SEO1 v2 tests, and lane C measured 398/4823 without lane A's.
+ * Taking either would have set a floor that was wrong in a direction nobody
+ * could see, and taking the larger would still have been a guess.
+ *
+ * So neither was taken. The four lane C commits were rebased, the conflicts were
+ * resolved by keeping BOTH history blocks and deferring the number, and then the
+ * suite was run on the tree that actually exists. 403 and 4889 is what it holds.
+ *
+ * 2026-09-14 (close-out SEO5, lane C): 408/4968, MEASURED, 0 failed, 0 skipped.
+ * Five new files: the calendar composition, the accessibility derivation, the
+ * og:type decision, the after-the-fact lifecycle door, and the three event
+ * states rendered as components. The largest of them is there because a
+ * completed event's page answered a real 404 for months against a document that
+ * says it is a full page with a banner, and nothing in the suite could say so.
+ * Raised again to 4970 in the same session: the reversal condition gained two
+ * tests once it stopped being a sentence and became a flag.
+ *
+ * 2026-09-14 (close-out PARITY1, lane C): 410/5012, MEASURED. Two files: the
+ * table-stakes specification, with one break per line proving each check goes
+ * red, and the guard that refuses a line with no check. The first real run
+ * against production found five failures and three lines it could not observe,
+ * which is the point of it.
+ *
+ * 2026-09-14 (close-out SEO2, lane C): 413/5066, MEASURED on the tree that
+ * exists rather than derived by adding this session's new tests to the previous
+ * floor, which is the rule set two entries above after two lanes each raised
+ * this number from a different tree. Three files: the Search Console token
+ * reader, the weekly indexing check, and the guard that compares the sitemap
+ * against the catalogue it describes. The visibility proof for the sitemap also
+ * gained two tests: the event predicate moved into
+ * src/lib/seo/sitemap-catalogue.ts so a build-time guard could execute it, and
+ * the proof now asserts both that the catalogue applies the rule and that
+ * sitemap.ts asks nobody else, which the single-regex version did not.
+ *
+ * 2026-09-14 (close-out SEO2, second commit, lane C): 414/5074, MEASURED, and
+ * 5074 rather than the 5075 the last run reported. Three consecutive runs of the
+ * whole suite on the same tree returned 414/5074 with one failure, then
+ * 414/5075 with none, then 414/5075 with none. One test is therefore
+ * intermittent somewhere in the suite: on the run that failed, one FEWER test
+ * also ran.
+ *
+ * THE FLOOR IS THE LOWEST OBSERVED COUNT, NOT THE HIGHEST, and that is what a
+ * floor means. Pinning 5075 would make this guard refuse a push on the run where
+ * the intermittent test does not appear, which is a gate going red for a reason
+ * nobody can act on, and the thing that happens next is somebody lowers it in a
+ * hurry. 5074 still catches a test that disappears, which is the whole job.
+ *
+ * The intermittent test is NOT named here because this session did not catch it
+ * in the act: the failing run's output was not kept, and naming a suspect from
+ * a count would be a guess. It is recorded so the next run that sees a red suite
+ * knows to look at the file rather than at its own change.
+ *
+ * One file and eight tests were added: the parity review's origin fix
+ * (tests/unit/ops/parity-check-origin.test.ts, five), and four more in
+ * tests/unit/parity/parity-spec.test.ts for the two ways that review reported a
+ * correct platform as broken.
+ *
  * 2026-09-14 (the merge of lane C into the push lane, the THIRD one): both
  * lineages above are kept verbatim again, and they still do not form one
  * chain. From d137ed2f lane A counted 390/4747 -> 391/4760 -> 393/4770 ->
@@ -1654,9 +1751,70 @@ const ROOT = join(HERE, '..', '..')
  * organiser who cannot be paid is refused with a named reason, and the fee
  * amount never decides whether the money may move. The first of them failed
  * before the fix and is the defect's own reproduction.
+ *
+ * 2026-09-14 (the merge of verify/l5-launch-readiness into lane/c-ux, the
+ * FOURTH time this constant has collided): both lineages above are kept
+ * verbatim, again, and again they do not form one chain. Lane C counted
+ * 414/5074 on a tree without lane A's R1, money-chain and priority-image
+ * tests; lane A counted 401/4910 on a tree without lane C's SEO3, SEO4, SEO5,
+ * PARITY1 and SEO2 tests. Neither number describes the tree that now exists,
+ * and the larger of two partial counts is still a guess.
+ *
+ * THE VALUE BELOW IS MEASURED ON THE MERGED TREE, 0 failed and 0 skipped,
+ * which is the only thing either lane can honestly write here. 416 files and
+ * 5125 tests, and it was run THREE times rather than once, because the entry
+ * above this one records a count that moved by one test between runs, and a
+ * floor set from a single observation of an unstable number is a gate that
+ * goes red on somebody else's push. All three runs agreed.
+ *
+ * 2026-09-14 (the SEO2 harness, after it accused the product twice): raised
+ * 416/5125 -> 418/5139, MEASURED twice on a green suite. Two new files,
+ * fourteen tests, and both exist because a DRIVE was wrong rather than the
+ * platform. tests/unit/verify/port-is-ours.test.ts holds the refusal that stops
+ * a drive measuring a server it did not start, and it binds real sockets on
+ * kernel-chosen ports rather than mocking node:net, because the whole point of
+ * the helper is that it asks the operating system the same question the spawned
+ * server is about to ask.
+ * tests/unit/verify/verification-tag-placement.test.ts holds the ruling that
+ * REPLACED two discarded photograph comparisons, and six of its eight cases are
+ * red ones. It is the drill for a check whose first version could not fail at
+ * all.
  */
-const MIN_FILES = 401
-const MIN_TESTS = 4910
+/*
+ * 2026-09-15 (close-out C8B.5, Scope v5 10.3, the weak-network contract): raised
+ * 418/5139 -> 420/5159, MEASURED THREE TIMES on a green suite and identical on
+ * every one, because the entry above records a count that moved by one between
+ * runs and a floor pinned above the low measurement refuses a push for a reason
+ * nobody can act on.
+ *
+ * Two new files, twenty tests, and both exist because a DRIVE found a live
+ * defect rather than because a rule needed restating.
+ * tests/unit/checkout/network-failure.test.ts holds what a buyer is told when a
+ * checkout submit never reached the server. Before this item that submit had no
+ * catch, so a dropped connection threw the buyer to the checkout error boundary
+ * and took their name, their email and every attendee's details with it, under a
+ * heading reading "Our team has been notified" while no report could leave the
+ * browser either.
+ * tests/unit/pwa/app-service-worker.test.ts drives the new root service worker
+ * inside a fake worker global, and its most important cases are the REFUSALS:
+ * that a successful navigation is never cached, because an event page carries a
+ * price and a remaining-tickets count, and serving yesterday's total would
+ * quietly break the ACCC all-in display in a way nothing else here could detect.
+ *
+ * 2026-09-15: raised 420/5159 -> 421/5178. Close-out C8 EXECUTION METHOD, C8B.3.
+ * One file, nineteen tests: tests/unit/perf/first-load-budget, which holds the
+ * three decisions behind the new initial-bundle budget that are easy to get
+ * wrong later and expensive to notice.
+ * The one worth naming is what PUBLIC means for a byte budget. The first design
+ * reused src/lib/seo/indexing-policy.ts, on the reasoning that its `never` class
+ * is the logged-in half of the platform. It is not: `never` contains /checkout,
+ * /orders/[order_id]/confirmation, /queue/[slug], /t/[code], /tickets and
+ * /scan/[eventId], every one of them a buyer on a phone, and a budget built on
+ * that reading would have exempted the exact pages Scope v5 10.3 is about. The
+ * test pins all nine of those routes as public so the reading cannot drift back.
+ */
+const MIN_FILES = 421
+const MIN_TESTS = 5178
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

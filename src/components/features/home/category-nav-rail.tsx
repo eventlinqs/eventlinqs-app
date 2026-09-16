@@ -145,7 +145,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
             <div key={t.slug} className="w-[220px] shrink-0 snap-start sm:w-[260px]">
               <CategoryTile
                 category={{
-                  href: `/events?category=${t.slug}`,
+                  href: `/categories/${t.slug}`,
                   imageSrc: t.imageSrc,
                   alt: t.alt,
                   name: t.name,

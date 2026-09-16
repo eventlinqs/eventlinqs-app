@@ -63,7 +63,7 @@ import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel
 // organiser Stripe columns that `anon` may not see. See organiserCanSell.
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
-import type { FeePassType } from '@/lib/payments/fee-math'
+import type { FeePassType, FeeRates } from '@/lib/payments/fee-math'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
 import { ReservationNotice } from '@/components/checkout/reservation-notice'
@@ -71,10 +71,16 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { FollowButton } from '@/components/features/follow/follow-button'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
+import { eventOpenGraph } from '@/lib/seo/og-type'
+import { EventOpenGraphTypeMeta } from '@/components/seo/og-type-meta'
+import { AccessibilitySection } from '@/components/features/accessibility/accessibility-section'
+import { accessibilityItems, hasAccessibilityInfo, NO_ACCESSIBILITY_INFO } from '@/lib/accessibility/fields'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { KnowBeforeYouGo } from '@/components/features/events/know-before-you-go'
+import { AddToCalendar } from '@/components/features/events/add-to-calendar'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
 import { fetchArchivedEventForHolder } from '@/lib/events/archived-view'
+import { fetchAfterTheFactEvent } from '@/lib/events/after-the-fact-view'
 import { SaveEventButton } from '@/components/features/events/save-event-button'
 import { EventGallery } from '@/components/features/events/event-gallery'
 import { EventVideo } from '@/components/features/events/event-video'
@@ -170,7 +176,17 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
    * null for everyone else, and the caller's notFound() stands.
    */
   console.warn(`[event-detail] no public row for ${slug}`)
-  return fetchArchivedEventForHolder<FullEvent>(slug, EVENT_PAGE_SELECT)
+  const holderView = await fetchArchivedEventForHolder<FullEvent>(slug, EVENT_PAGE_SELECT)
+  if (holderView) return holderView
+
+  /*
+   * THE FOUR AFTER-THE-FACT STATES, which this read could not see either.
+   * `docs/EVENT-LIFECYCLE.md` says a paused, postponed, cancelled or completed
+   * event answers a full page with its banner; the RLS policies admit published
+   * alone, so all four were a 404 and the banner code on this page had never run
+   * for a stranger. See src/lib/event-lifecycle.ts, PUBLIC_AFTER_THE_FACT_STATUSES.
+   */
+  return fetchAfterTheFactEvent<FullEvent>(slug, EVENT_PAGE_SELECT)
 }
 
 /** The one column list the public read and the holder's archived read share. */
@@ -302,12 +318,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // (opengraph-image.tsx in this route folder): the branded invitation with
     // the cover photo, scrim, title, date and venue. Setting raw cover images
     // here would override the file-convention card with an unbranded photo.
-    openGraph: {
+    /*
+     * og:type, from ONE constant (close-out SEO5 step 7).
+     *
+     * The owner's instruction was to set this to `event` rather than `website`.
+     * It was held for one session on a partial reading of the spec, and the
+     * second read reversed the hold: the Open Graph protocol explicitly permits
+     * types outside its global registry, Meta publishes no competing list, and
+     * Eventbrite's own live event page emits `events.event` while its discovery
+     * page emits `website`. All three citations, the measurement, and the reason
+     * the value is `event` rather than `events.event` are in
+     * `src/lib/seo/og-type.ts`, which is also the one word that changes it.
+     *
+     * THE BLOCK BELOW CARRIES NO `type` KEY, AND THAT IS NOT AN OMISSION. Next
+     * switches on `openGraph.type` at render time and THROWS on anything
+     * outside the Open Graph global registry, which took this whole page down
+     * to "We hit a snag loading this page" when it was tried. The tag is
+     * emitted from the page tree by `<EventOpenGraphTypeMeta />` instead.
+     */
+    openGraph: eventOpenGraph({
       title: event.title,
       description,
       url: `${baseUrl}/events/${slug}`,
-      type: 'website',
-    },
+    }),
     twitter: {
       card: 'summary_large_image',
       title: event.title,
@@ -338,11 +371,26 @@ function formatShortDate(iso: string, timezone: string) {
   })
 }
 
-function cheapestPrice(tiers: { price: number; currency: string }[]): string | null {
+/**
+ * The "From ..." line on this page.
+ *
+ * IT IS THE LOWEST ALL-IN TOTAL, not the lowest face value (close-out SEO4
+ * step 3). This page resolves THIS EVENT's fee scope through the one resolver
+ * (`getEventFeeRates` -> `getPricingRule`), so it is entitled to state the real
+ * price; a surface that has not resolved the scope is not, and `priceLabel`
+ * makes that an argument rather than an assumption.
+ *
+ * The audit of 13 September 2026 read `From AUD $18.00` on a page where the
+ * buyer pays more than that and is told so nowhere.
+ */
+function cheapestPrice(
+  tiers: { price: number; currency: string }[],
+  allIn: { rates: FeeRates; feePassType: FeePassType },
+): string | null {
   if (!tiers.length) return null
   // The shared price-label rule: free only when EVERY tier is $0, otherwise
   // the lowest PAID price (see src/lib/events/price-label.ts).
-  return priceLabel(tiers, 'Free entry')
+  return priceLabel(tiers, 'Free entry', allIn)
 }
 
 export default async function EventDetailPage({ params }: Props) {
@@ -386,6 +434,17 @@ export default async function EventDetailPage({ params }: Props) {
    */
   const artistsOnPromise = isFeatureEnabled('broadcast_artists')
   artistsOnPromise.catch(() => {})
+  /*
+   * THE SECOND FLAG STARTS HERE FOR THE SAME REASON AS THE FIRST.
+   *
+   * `event_availability_and_access` (close-out SEO5's reversal condition) does
+   * not depend on the event either. Awaiting it where it is USED, four hundred
+   * lines down, would have re-introduced exactly the serial round trip the
+   * comment above records measuring away: 624ms of server-response-time on the
+   * page a buyer is standing on when they decide to pay. Two flags, one wait.
+   */
+  const availabilityAndAccessPromise = isFeatureEnabled('event_availability_and_access')
+  availabilityAndAccessPromise.catch(() => {})
   const event = await fetchEvent(slug)
 
   // notFound() BEFORE any request-data access, so a missing event returns a
@@ -702,7 +761,7 @@ export default async function EventDetailPage({ params }: Props) {
     price: resolvePrice(t),
     currency: t.currency ?? 'AUD',
   }))
-  const priceLabel = cheapestPrice(priceTiersForDisplay)
+  const priceLabel = cheapestPrice(priceTiersForDisplay, { rates: feeRates, feePassType: eventFeePassType })
   const shortDate = formatShortDate(event.start_date, event.timezone)
   const venueLabelShort = [event.venue_name, event.venue_city].filter(Boolean).join(' · ') || null
   // UX1.2: this used to lead with `event.venue_name` and KnowBeforeYouGo then
@@ -784,6 +843,50 @@ export default async function EventDetailPage({ params }: Props) {
   const saleRefusalReason = saleDecision.reason
 
   const baseUrl = getSiteUrl()
+
+  // What the organiser has said about access (close-out SEO5 step 4). The row
+  // is read with `*`, so these columns arrive the moment the founder applies
+  // docs/migrations-pending/20260914000002_accessibility_fields.sql and are
+  // `undefined` until then, which reads as "not stated" and renders nothing.
+  /*
+   * CLOSE-OUT SEO5'S REVERSAL CONDITION, RESOLVED ONCE.
+   *
+   * "One flag hides the availability indicator and the accessibility section
+   * while leaving the calendar links in place."
+   *
+   * Read here and threaded, rather than asked for at each of the four places
+   * that need it, so those four can never disagree about it. It governs the
+   * remaining-tickets line, the per-tier social-proof badges, the event-level
+   * badge beside the title, and the accessibility section. It does NOT govern
+   * the calendar links: a date in a diary is never the thing that turns out to
+   * be untrue, and the whole point of a reversal is to remove the claim that
+   * could be wrong rather than the feature it sits next to.
+   *
+   * A missing row and an unreachable database both resolve to ON
+   * (BROADCAST_FLAG_DEFAULTS), so an outage never blanks a correct page.
+   */
+  const availabilityAndAccessOn = await availabilityAndAccessPromise
+
+  const eventAccessibility = availabilityAndAccessOn
+    ? accessibilityItems(event as unknown as Record<string, unknown>, 'event')
+    : NO_ACCESSIBILITY_INFO
+
+  /*
+   * WHAT THE PRIMARY ACTION SAYS, in one place (close-out SEO5 step 5).
+   *
+   * It used to be the literal "Get tickets" in three places, and a sold-out
+   * event rendered all three: the hero CTA, the sticky bar's desktop button and
+   * its mobile one, every one of them a gold button promising tickets on an
+   * event with none. They anchor to #tickets, where the panel says the room is
+   * full, so the buyer was walked to a refusal by a control that had implied a
+   * purchase. Found by driving a sold-out fixture at 390, 768 and 1440; nothing
+   * static could see it, because the markup was correct.
+   *
+   * The waitlist IS at that anchor, so the label now names it. One value, three
+   * consumers, and the sold-out panel is the thing it scrolls to.
+   */
+  const ticketCtaLabel = isSoldOut && !saleBlocked ? 'Join the waitlist' : 'Get tickets'
+
   const eventStateForSchema =
     eventBannerState === 'cancelled' ? 'cancelled' as const :
     eventBannerState === 'postponed' ? 'postponed' as const :
@@ -825,6 +928,10 @@ export default async function EventDetailPage({ params }: Props) {
           { name: event.title, url: `${baseUrl}/events/${event.slug}` },
         ]}
       />
+      {/* og:type, which Next will not emit for a type outside its registry.
+          React hoists this into the head beside the tags generateMetadata
+          produced. See src/lib/seo/og-type.ts. */}
+      <EventOpenGraphTypeMeta />
       <EventViewTracker
         eventId={event.id}
         eventTitle={event.title}
@@ -856,6 +963,7 @@ export default async function EventDetailPage({ params }: Props) {
         venueLabel={venueLabelShort}
         priceLabel={priceLabel}
         shareUrl={`/events/${event.slug}`}
+        ctaLabel={ticketCtaLabel}
       />
 
       <main>
@@ -920,7 +1028,7 @@ export default async function EventDetailPage({ params }: Props) {
                 )}
               </div>
 
-              {eventInventory && (
+              {availabilityAndAccessOn && eventInventory && (
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   <SocialProofBadge inventory={eventInventory} createdAt={event.created_at} />
                   {/* Honest social proof: real confirmed sales (total_sold,
@@ -941,7 +1049,7 @@ export default async function EventDetailPage({ params }: Props) {
                   </Link>
                 ) : (
                   <GetTicketsCta className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]">
-                    Get tickets
+                    {ticketCtaLabel}
                   </GetTicketsCta>
                 )}
                 {!eventBannerState ? (
@@ -1049,6 +1157,35 @@ export default async function EventDetailPage({ params }: Props) {
                       Ends {formatDateTime(event.end_date, event.timezone)}
                     </p>
                     <p className="mt-2 text-xs text-ink-400">Timezone: {event.timezone}</p>
+                    {/*
+                      ADD TO CALENDAR (close-out SEO5 step 2), in the WHEN card
+                      because that is where a person has just read the date and
+                      is deciding whether they are free.
+                      
+                      It existed only on the ORDER CONFIRMATION until today, which
+                      is after payment, and the person who most needs it is the
+                      one who has decided to go and has not bought yet.
+                      
+                      Hidden once the event is over or cancelled: a calendar entry
+                      for a night that is not happening is worse than none, and
+                      `eventBannerState` is the same signal that already suppresses
+                      the ticket panel and the structured data.
+                    */}
+                    {!eventBannerState && (
+                      <div className="mt-4">
+                        <AddToCalendar
+                          event={{
+                            id: event.id,
+                            title: event.title,
+                            startDate: event.start_date,
+                            endDate: event.end_date,
+                            timezone: event.timezone ?? null,
+                            location: [event.venue_name, event.venue_city].filter(Boolean).join(', ') || null,
+                            url: `${baseUrl}/events/${event.slug}`,
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="rounded-2xl border border-ink-200 bg-white p-5">
@@ -1114,6 +1251,28 @@ export default async function EventDetailPage({ params }: Props) {
                       )}
                       isFree={event.is_free ?? false}
                     />
+                  </Reveal>
+                )}
+
+                {/*
+                  ACCESSIBILITY (close-out SEO5 step 4).
+
+                  NOT behind `surpassEdgesEnabled`, and that is deliberate. The
+                  card above it is a product experiment and can be switched off;
+                  whether a wheelchair user can get into the room is not an
+                  experiment, and a flag that hid it would hide it from the one
+                  person who cannot work around its absence.
+
+                  The event row is read with `EVENT_PAGE_SELECT`, which begins
+                  with `*`, so these columns arrive here the moment the founder
+                  applies docs/migrations-pending/20260914000002_accessibility_fields.sql
+                  and are simply `undefined` until then. Undefined reads as "not
+                  stated", which renders as nothing at all, so this line is safe
+                  on both sides of that migration.
+                */}
+                {hasAccessibilityInfo(eventAccessibility) && (
+                  <Reveal>
+                    <AccessibilitySection info={eventAccessibility} subject="event" />
                   </Reveal>
                 )}
 
@@ -1339,6 +1498,7 @@ export default async function EventDetailPage({ params }: Props) {
                           waitlistEnabled={event.waitlist_enabled ?? false}
                           squadBookingEnabled={event.squad_booking_enabled ?? false}
                           tierInventory={tierInventory}
+                          showAvailability={availabilityAndAccessOn}
                           saleBlocked={saleBlocked}
                           saleRefusalReason={saleRefusalReason}
                           feeRates={feeRates}
@@ -1382,6 +1542,7 @@ export default async function EventDetailPage({ params }: Props) {
                         waitlistEnabled={event.waitlist_enabled ?? false}
                         squadBookingEnabled={event.squad_booking_enabled ?? false}
                         tierInventory={tierInventory}
+                        showAvailability={availabilityAndAccessOn}
                         saleBlocked={saleBlocked}
                         saleRefusalReason={saleRefusalReason}
                         feeRates={feeRates}

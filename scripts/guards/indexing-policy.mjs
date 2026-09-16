@@ -153,7 +153,7 @@ const NOINDEX = /index:\s*false|noIndexMetadata\s*\(/
 // `discoveryIndexingFor` carries the self-referencing canonical for every
 // conditional page, exactly as `discoveryIndexing` did before SEO3 split the
 // live-threshold resolution out of it.
-const CANONICAL = /alternates:\s*\{|discoveryIndexingFor\s*\(|aliasMetadata\s*\(/
+const CANONICAL = /alternates:\s*\{|discoveryIndexingFor\s*\(|organiserIndexingFor\s*\(|aliasMetadata\s*\(/
 /**
  * A page whose default export ONLY redirects. It never renders a document, so
  * there is no head to carry a robots tag or a canonical, and requiring one would
@@ -223,7 +223,16 @@ for (const [route, klass] of classified) {
    * it against the owner's, and the two would publish a contradiction. So a
    * conditional family must name the RESOLVER.
    */
-  if (klass === 'conditional' && !/discoveryIndexingFor\s*\(/.test(own)) {
+  /*
+   * TWO RESOLVERS, NOT ONE (close-out SEO3 step 7). `/organisers/[handle]`
+   * became conditional when the organiser profile started deciding its own
+   * robots directive, and its rule has a second limb the discovery pages do not
+   * have: a written biography makes a profile substantive with no events at all.
+   * That rule is `organiserIndexingFor`, which resolves the SAME live threshold
+   * through the same module, so the thing this clause is protecting, one number
+   * for the page and the sitemap, is unchanged.
+   */
+  if (klass === 'conditional' && !/(discoveryIndexingFor|organiserIndexingFor)\s*\(/.test(own)) {
     fail(
       `${route} is a templated discovery page and does not call discoveryIndexingFor().\n` +
         '        Without it the page stays indexable while empty, which is what Google collapsed,\n' +
@@ -273,6 +282,13 @@ const SITEMAP_PATH_OF = {
   '/categories/[slug]': '/categories/${category.slug}',
   '/events/browse/[city]': '/events/browse/${c.slug}',
   '/faith/[faith]': '/faith/${faith.slug}',
+  // Close-out SEO3 step 7. The organiser profile stopped being classified
+  // ALWAYS on 14 September 2026: it is indexable while it holds events at the
+  // owner's live threshold OR carries a biography, and the audit of
+  // 13 September named /organisers/oanh, which had neither and was published
+  // here anyway. Its gate is `isOrganiserProfileIndexable`, which the predicate
+  // below accepts alongside `isDiscoveryIndexable`.
+  '/organisers/[handle]': '/organisers/${o.slug}',
 }
 let gatedFamilies = 0
 for (const [route, klass] of classified) {
@@ -310,7 +326,10 @@ for (const [route, klass] of classified) {
   const start = sitemapSrc.lastIndexOf('for (', idx)
   const nextFor = sitemapSrc.indexOf('for (', idx)
   const window = sitemapSrc.slice(start === -1 ? 0 : start, nextFor === -1 ? sitemapSrc.length : nextFor)
-  if (!/isDiscoveryIndexable\s*\(/.test(window)) {
+  // `isOrganiserProfileIndexable` is the organiser profile's own predicate
+  // (close-out SEO3 step 7): the same live threshold, plus a second limb for a
+  // written biography. Same module, same number, different question.
+  if (!/(isDiscoveryIndexable|isOrganiserProfileIndexable)\s*\(/.test(window)) {
     fail(
       `src/app/sitemap.ts publishes ${route} without an isDiscoveryIndexable() gate above it.\n` +
         '        An empty templated page in the sitemap is the duplicate Google reported.',

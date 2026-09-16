@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { AccessibilityFields } from '@/components/features/accessibility/accessibility-fields'
+import { accessibilityInputFrom } from '@/lib/accessibility/fields'
 import Link from 'next/link'
 import { createVenue, updateVenue, deleteVenue, type VenueInput, type VenueRow } from './actions'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
@@ -21,6 +23,13 @@ interface Venue {
 
 interface Props {
   venues: Venue[]
+  /**
+   * Accessibility columns by venue id (close-out SEO5 step 4), read separately
+   * by the page because the venue select names its columns and these arrive
+   * with a migration that is parked awaiting the founder. An empty map means
+   * the panel starts with nothing ticked, which is the correct degrade.
+   */
+  accessibility?: Record<string, Record<string, unknown>>
 }
 
 const BLANK: VenueInput = {
@@ -36,10 +45,13 @@ const BLANK: VenueInput = {
 
 function VenueForm({
   initial,
+  accessibilityRow,
   onSave,
   onCancel,
 }: {
   initial: VenueInput & { id?: string }
+  /** Undefined for a venue being created: it has no id to save access against yet. */
+  accessibilityRow?: Record<string, unknown>
   onSave: (input: VenueInput) => Promise<void>
   onCancel: () => void
 }) {
@@ -166,6 +178,24 @@ function VenueForm({
         </div>
       </div>
 
+      {/*
+        ACCESSIBILITY (close-out SEO5 step 4), on an EXISTING venue only.
+
+        A venue being created has no id, and access details are saved against
+        one by their own action rather than by `createVenue`: the columns arrive
+        with a parked migration, and PostgREST fails a whole statement on a
+        column it does not have, so folding them into the create would stop an
+        organiser adding a venue at all until the founder applied it. Save the
+        venue, reopen it, and the panel is there.
+      */}
+      {initial.id && (
+        <AccessibilityFields
+          scope="venue"
+          subjectId={initial.id}
+          initial={accessibilityInputFrom(accessibilityRow ?? null, 'venue')}
+        />
+      )}
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex justify-end gap-3 pt-2 border-t border-ink-100">
@@ -189,7 +219,7 @@ function VenueForm({
   )
 }
 
-export function VenuesClient({ venues: initialVenues }: Props) {
+export function VenuesClient({ venues: initialVenues, accessibility }: Props) {
   const router = useRouter()
   const [venues, setVenues] = useState<Venue[]>(initialVenues)
   const [showCreate, setShowCreate] = useState(false)
@@ -322,6 +352,7 @@ export function VenuesClient({ venues: initialVenues }: Props) {
                       capacity: venue.capacity,
                       description: venue.description,
                     }}
+                    accessibilityRow={accessibility?.[venue.id]}
                     onSave={input => handleUpdate(venue.id, input)}
                     onCancel={() => setEditingId(null)}
                   />

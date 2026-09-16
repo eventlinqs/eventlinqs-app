@@ -208,3 +208,19 @@ docs/verification/lh-local/
 .tmp-serve.err.log
 .tmp-serve-*.log
 .tmp-serve-*.err.log
+
+# The parity check's last result (close-out PARITY1). A RUN RESULT, not source:
+# it is written by scripts/ops/parity-check.mjs and read by the daily digest,
+# and committing it would put one machine's observation of production into
+# everybody's tree and make a merge conflict out of a measurement.
+.parity/
+
+# The weekly indexing check's last result (close-out SEO2). Same reasoning as
+# .parity/ above: a run result, written by scripts/ops/indexing-check.mjs and
+# read by the daily digest, never source.
+.indexing/
+
+# The throwaway drill runners a session writes to iterate on one guard. They are
+# deleted when the proof is recorded; ignoring them means a forgotten one can
+# never be committed by accident.
+.tmp-*.mjs

@@ -156,6 +156,11 @@
  *   one-priority-image        a document preloads its LCP candidate and nothing else: every
  *                              priority grant is a named candidate, none reaches past the
  *                              first item (close-out C8)
+ *   weak-network-contract     the checkout survives a submit that never reached the server,
+ *                              the root service worker keeps only content-hashed assets so
+ *                              no cache can serve a stale price, it registers after the
+ *                              paint, and /offline is a real route classified never
+ *                              (close-out C8B.5, Scope v5 10.3)
  *   homepage-hero-never-empty a homepage with no featured event still wears a curated,
  *                              licensed hero raster from the attribution file beside the
  *                              assets, and the media component owns the failure path
@@ -180,6 +185,35 @@
  *                              never route resolves to noindex, every indexable page names
  *                              its own canonical, the root layout names none, and the
  *                              sitemap gates each templated family on the threshold (C19)
+ *   initial-bundle-budget     every route's first-load JavaScript weighed against Scope v5
+ *                              10.3's 200KB and against its own recorded mark, which may only
+ *                              ever go down. Two modes: this half judges the contract and
+ *                              weighs nothing, npm's postbuild runs it with --built and
+ *                              weighs the build (C8B.3/C8B.4)
+ *   all-in-pricing            no buyer is shown a number they will not pay: the fee value has
+ *                              ONE source, every buyer-facing price surface resolves it live,
+ *                              and no cart total is a per-ticket figure multiplied (SEO4)
+ *   parity-spec-complete      every table-stakes line in scripts/lib/parity-spec.mjs carries a
+ *                              check that answers on no evidence rather than passing on it,
+ *                              and every line is named by a test that breaks it (PARITY1)
+ *   no-false-urgency          every scarcity, availability or urgency message is computed
+ *                              from real inventory and is a reviewed site naming the
+ *                              expression that decides it, no scarcity count is a literal,
+ *                              and the accessibility section refuses to render empty or to
+ *                              render a negative (SEO5)
+ *   discovery-indexability    the page and the sitemap count the same dimension for every
+ *                              templated family, nothing overrides or re-spells the owner's
+ *                              threshold, and every category in event_categories is a real
+ *                              page with written editorial rather than a /events?category=
+ *                              query string that canonicalises to /events (SEO3)
+ *   sitemap-covers-the-catalogue
+ *                             the sitemap and the database agree in both directions for the
+ *                              three families that come from rows: no published event,
+ *                              organiser profile or venue profile is absent from the sitemap,
+ *                              and no URL the sitemap publishes has no row behind it. Reads
+ *                              the shipped readers and asks the same questions again over raw
+ *                              PostgREST, so a swallowed query error fails a build instead of
+ *                              publishing an empty family in silence (SEO2)
  *   machine-callers-reachable every route that authenticates a machine with a shared secret is
  *                              on a reviewed record or a reviewed exclusion, no signed webhook
  *                              can be refused by our own rate limiter, no cron limiter fails
@@ -1167,6 +1201,14 @@ const GUARDS = [
   // seconds for it. Every priority grant is a named LCP candidate; a grant that
   // reaches past the first item fails. Drilled red and green.
   'scripts/guards/one-priority-image.mjs',
+  // Close-out C8B.5 (15 September 2026), Scope v5 10.3: the platform's contract
+  // with a weak network. The checkout survives a submit that never reaches the
+  // server (it used to throw the buyer to the error boundary and lose every
+  // value they typed), the root service worker keeps only content-hashed
+  // assets so no cache can ever serve a stale price, it registers after the
+  // paint, and /offline is a real route classified never. Four clauses, each
+  // drilled red and green.
+  'scripts/guards/weak-network-contract.mjs',
   // Close-out C17 (7 September 2026): the homepage hero never renders without
   // imagery. Production showed a flat navy panel the day every event had ended;
   // the empty branch now wears a curated, licensed raster and the media component
@@ -1192,6 +1234,48 @@ const GUARDS = [
   // what may be indexed, and the tree must keep agreeing with it. Google Search
   // Console had been reporting the disagreement back for weeks.
   'scripts/guards/indexing-policy.mjs',
+  // Close-out SEO3 (14 September 2026): indexing-policy.mjs asks whether a gate
+  // EXISTS. This one asks whether the gate on the page and the gate in the
+  // sitemap are asking the same question of the same numbers, and whether a
+  // category is a page rather than a query string that canonicalises to /events.
+  'scripts/guards/discovery-indexability.mjs',
+  // Close-out SEO2 (14 September 2026): the two guards above judge the POLICY
+  // and the THRESHOLD, both of which are readable from source. This one judges
+  // the CATALOGUE, which is not: an event page exists because a row exists. It
+  // runs the shipped sitemap readers against the build's own database and asks
+  // the same three questions again over raw PostgREST, and fails when a page the
+  // database holds is absent from the sitemap or a URL the sitemap publishes has
+  // no row behind it. Every sitemap defect on record is in that shape and every
+  // one of them was silent: a 42703 a bare catch threw away, so the venue block
+  // published nothing for its whole life; a missing status predicate that
+  // advertised eight 404s. SKIPs by name on CI's placeholder URL. Drilled red
+  // four ways in scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/sitemap-covers-the-catalogue.mjs',
+  // Close-out SEO4 (14 September 2026): one-fee-copy.mjs judges whether a
+  // SENTENCE names a second fee. This one judges the wiring and the arithmetic:
+  // whether a surface that renders a price has the live fee values in its hands,
+  // whether any file carries the fee as a literal, and whether anybody
+  // multiplies a per-ticket total into a cart total. The event page showed
+  // "From AUD $18.00" for an event nobody could leave for eighteen dollars, and
+  // no gate could fail, because the number was correct and simply was not the
+  // price.
+  'scripts/guards/all-in-pricing.mjs',
+  // Close-out SEO5 (14 September 2026): nothing may hurry a buyer with a number
+  // it made up, and no accessibility section may render empty. It found four
+  // live false-urgency claims on its first run: a "Selling fast" eyebrow over a
+  // homepage rail that reads no stock at all, the same eyebrow on the bento
+  // variant, a static content slide asserting "The events booking out right
+  // now", and an alerts panel promising a push "when an event is going fast"
+  // that nothing on this platform has ever sent. Each was true-looking and none
+  // was true. The badge engine, which DOES count tickets, was correct all along.
+  'scripts/guards/no-false-urgency.mjs',
+  // Close-out PARITY1 (14 September 2026): the structured data gap, the noindex
+  // discovery layer and the undisclosed buyer total were all found because the
+  // owner asked a question, not because the build noticed. The table stakes are
+  // now a specification the machine checks against production, and this guard
+  // holds the one thing a specification can quietly lose: a line with no check,
+  // or a check that reports PASS when it was shown nothing at all.
+  'scripts/guards/parity-spec-complete.mjs',
   // Close-out H2.1 (8 September 2026): production reset a TLS handshake from a
   // GitHub Actions runner and the post-deploy smoke called it an outage. The
   // reset was at the handshake, before any header was sent, so nothing that
@@ -1419,6 +1503,26 @@ const GUARDS = [
   // the build on every read that decides a 404 and discards, folds or merely
   // logs its error. Drilled RED on the 17 files as they stood, then green.
   'scripts/guards/read-failure-is-not-not-found.mjs',
+
+  // Close-out C8 EXECUTION METHOD, C8B.3 and C8B.4, 15 September 2026. Scope v5
+  // section 10.3 asks for "minimal JavaScript payloads (<200KB initial bundle)"
+  // and until now NOTHING measured it on any commit. The Lighthouse gate holds
+  // a SCORE, and the founder's ruling of 25 August made that gate advisory
+  // because the same bytes scored 0.76 on the runner and 0.88 from a warmed
+  // client. Bytes do not have that problem, so the scope's own number can be a
+  // hard gate where the score cannot.
+  //
+  // Measured on the first run: the four heaviest PUBLIC routes on the platform
+  // were /signup (228.9 KB), /login (228.2), /auth/reset-password (226.8) and
+  // /scan/[eventId] (225.2), all of them heavier than the event page nobody had
+  // stopped optimising, and all four explained by one 51.4 KB chunk of auth
+  // client statically imported into four components. Nothing could see it.
+  //
+  // THIS HALF WEIGHS NOTHING and says so on every run: it judges the contract
+  // (perf-budget.json is well formed, carries the scope number, and the
+  // postbuild half is still wired). The proof is the same file run with
+  // --built from npm's postbuild, against the build that just finished.
+  'scripts/guards/initial-bundle-budget.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

@@ -30,6 +30,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 
 const ROOT = process.cwd()
+process.exit(1) // planted by the F1.1 drill, restored in the finally
 
 /** Directories that are not hand-written source. */
 const SKIP_DIRS = new Set(['node_modules', '.next', '.git', 'dist', 'build', 'coverage', 'design-captures'])

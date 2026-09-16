@@ -27,6 +27,15 @@
  *      scan_ticket, door_validation_set and sync_offline_scans (the LAST
  *      migration defining each) carry no events.status predicate, so a ticket
  *      to an archived event still validates at the door (close-out C13.5).
+ *   7. THE FOUR AFTER-THE-FACT STATES ARE PUBLIC PAGES. paused, postponed,
+ *      cancelled and completed answer a full page with a banner, which the
+ *      document says in four rows and which was FALSE for months: the RLS
+ *      policies admit published alone, so all four served a real 404 and the
+ *      page's banner code for them had never run for a stranger. The route
+ *      guard and the page must both consult the one door
+ *      (src/lib/events/after-the-fact-view.ts), that door must constrain both
+ *      status and visibility in the query, and the classification must cover
+ *      every value of the enum so a new status cannot default into a 404.
  *
  * IT PRINTS WHAT IT SCANNED and FAILS if it scanned nothing.
  *
@@ -50,6 +59,20 @@ export const CONTROL_SURFACES = [
   'src/app/(dashboard)/dashboard/events/[id]/page.tsx',
 ]
 export const CONTROL_COMPONENT = 'src/components/features/dashboard/event-lifecycle-actions.tsx'
+/**
+ * The two surfaces that must consult the after-the-fact door, and the door.
+ *
+ * BOTH, not either. The route's layout answers before the page renders, so a
+ * page that consults the door under a layout that does not would still 404;
+ * that exact split is recorded in src/lib/events/archived-view.ts, where the
+ * first drive found the page's holder branch never ran.
+ */
+export const AFTER_THE_FACT_CALLERS = [
+  { file: 'src/app/events/[slug]/layout.tsx', calls: /afterTheFactEventExists\(/ },
+  { file: 'src/app/events/[slug]/page.tsx', calls: /fetchAfterTheFactEvent</ },
+]
+export const AFTER_THE_FACT_DOOR = 'src/lib/events/after-the-fact-view.ts'
+
 /** The door functions that must never read events.status. */
 export const DOOR_FUNCTIONS = ['scan_ticket', 'door_validation_set', 'sync_offline_scans']
 
@@ -88,6 +111,59 @@ export function judgeLifecycle(facts) {
   if (!facts.componentAsksModule) {
     failures.push(`${CONTROL_COMPONENT} must decide what to offer through canArchive() and restoreTarget(), never a status list of its own`)
   }
+  /*
+   * CLAUSE 7. The four after-the-fact states reach their page.
+   */
+  /*
+   * THE PER-STATUS REPORT RUNS EVEN WHEN THE COUNT IS WRONG. It used to sit in
+   * an `else`, so dropping a status produced only "should name the four
+   * states" and the reader had to work out which one had gone. Naming it is the
+   * whole value of the check.
+   */
+  if (!Array.isArray(facts.afterTheFact)) {
+    failures.push(
+      `PUBLIC_AFTER_THE_FACT_STATUSES is not a list; the module says ${JSON.stringify(facts.afterTheFact)}`,
+    )
+  } else {
+    for (const status of ['paused', 'postponed', 'cancelled', 'completed']) {
+      if (!facts.afterTheFact.includes(status)) {
+        failures.push(
+          `${status} is not in PUBLIC_AFTER_THE_FACT_STATUSES, so its public URL answers 404. ` +
+            `docs/EVENT-LIFECYCLE.md says it is a full page with a banner.`,
+        )
+      }
+    }
+    if (facts.afterTheFact.includes('archived')) {
+      failures.push(
+        'archived is in PUBLIC_AFTER_THE_FACT_STATUSES. Its page is per viewer and belongs to ' +
+          'src/lib/events/archived-view.ts; admitting it here publishes every archived event.',
+      )
+    }
+  }
+  for (const caller of facts.afterTheFactCallers ?? []) {
+    if (!caller.consults) {
+      failures.push(
+        `${caller.file} no longer consults the after-the-fact door, so a cancelled or completed ` +
+          `event answers 404 there (src/lib/events/after-the-fact-view.ts).`,
+      )
+    }
+  }
+  if (!(facts.afterTheFactDoorReads > 0)) {
+    failures.push(`${AFTER_THE_FACT_DOOR} makes no read of events; the after-the-fact check cannot aim`)
+  }
+  if (!facts.afterTheFactDoorConstrainsStatus) {
+    failures.push(
+      `${AFTER_THE_FACT_DOOR} has a read that does not constrain status. It reads with the service ` +
+        `role, so an unconstrained query publishes drafts and archived events.`,
+    )
+  }
+  if (!facts.afterTheFactDoorConstrainsVisibility) {
+    failures.push(
+      `${AFTER_THE_FACT_DOOR} has a read that does not constrain visibility. A private event would ` +
+        `become a public page the moment it was cancelled.`,
+    )
+  }
+
   for (const door of facts.doors) {
     if (!door.file) failures.push(`no migration defines ${door.fn}; the door check cannot aim`)
     else if (door.predicateAt.length > 0) {
@@ -130,7 +206,7 @@ function readSource(rel) {
 /** Gather every fact the judgement needs from the live tree. */
 export function collectFacts() {
   const script = [
-    "import { deadEnds, exitsOf, EVENT_STATUSES, canArchive, canTransition } from './src/lib/event-lifecycle.ts'",
+    "import { deadEnds, exitsOf, EVENT_STATUSES, canArchive, canTransition, PUBLIC_AFTER_THE_FACT_STATUSES } from './src/lib/event-lifecycle.ts'",
     "import { PUBLIC_EVENT_MATCH, publicEventVisibilitySql } from './src/lib/events/public-visibility.ts'",
     'const directFromArchived = {}',
     "for (const s of EVENT_STATUSES) directFromArchived[s] = canTransition('archived', s)",
@@ -140,6 +216,7 @@ export function collectFacts() {
     "  archivedExits: exitsOf('archived'),",
     "  canArchive: { cancelled: canArchive('cancelled'), completed: canArchive('completed') },",
     '  directFromArchived,',
+    '  afterTheFact: [...PUBLIC_AFTER_THE_FACT_STATUSES],',
     '  publishedStatus: PUBLIC_EVENT_MATCH.status,',
     '  sqlForm: publicEventVisibilitySql(),',
     '}))',
@@ -163,7 +240,38 @@ export function collectFacts() {
     const { file, body } = effectiveDefinition(fn)
     return { fn, file, predicateAt: predicateLines(body) }
   })
-  return { ...loaded, surfaces, componentAsksModule, doors }
+  const afterTheFactCallers = AFTER_THE_FACT_CALLERS.map(({ file, calls }) => ({
+    file,
+    consults: calls.test(readSource(file)),
+  }))
+  const doorSource = readSource(AFTER_THE_FACT_DOOR)
+  /*
+   * EVERY READ IN THE DOOR, NOT THE FILE AS A WHOLE.
+   *
+   * The first version asked whether the constraint appeared anywhere in the
+   * file, and the drill that removed it from one of the two queries PASSED: the
+   * other query's copy satisfied the search. The door has an existence check
+   * and a row fetch, and an unconstrained existence check alone would answer
+   * "yes, there is a page here" for a draft. So the source is split on each
+   * read and each segment is judged on its own.
+   */
+  const reads = doorSource.split(/\.from\('events'\)/).slice(1)
+  const afterTheFactDoorReads = reads.length
+  const afterTheFactDoorConstrainsStatus =
+    reads.length > 0 && reads.every(read => /\.in\('status',/.test(read))
+  const afterTheFactDoorConstrainsVisibility =
+    reads.length > 0 && reads.every(read => /\.in\('visibility',/.test(read))
+
+  return {
+    ...loaded,
+    surfaces,
+    componentAsksModule,
+    doors,
+    afterTheFactCallers,
+    afterTheFactDoorReads,
+    afterTheFactDoorConstrainsStatus,
+    afterTheFactDoorConstrainsVisibility,
+  }
 }
 
 const isMain = process.argv[1] && /event-lifecycle-total\.mjs$/.test(process.argv[1].replace(/\\/g, '/'))
@@ -175,16 +283,19 @@ if (isMain) {
       'status judged': facts.statuses.length,
       'control surface read': facts.surfaces.length,
       'door function read': facts.doors.filter((d) => d.file).length,
+      'after-the-fact caller read': (facts.afterTheFactCallers ?? []).length,
+      'after-the-fact read judged': facts.afterTheFactDoorReads ?? 0,
     },
     found: { 'lifecycle defect': failures.length },
   })
   console.log(`${TAG} statuses: ${facts.statuses.join(', ')}`)
   console.log(`${TAG} doors: ${facts.doors.map((d) => `${d.fn} (${d.file ?? 'MISSING'})`).join(', ')}`)
+  console.log(`${TAG} public after the fact: ${(facts.afterTheFact ?? []).join(', ')}`)
   if (failures.length > 0) {
     console.error(`\n${TAG} FAILED\n`)
     for (const f of failures) console.error(`    ${f}`)
     console.error('')
     process.exit(1)
   }
-  console.log(`${TAG} PASS - no dead end, archived leaves only by restore, the public rule pins published, both surfaces render the controls, the door reads no event status`)
+  console.log(`${TAG} PASS - no dead end, archived leaves only by restore, the public rule pins published, both surfaces render the controls, the door reads no event status, and the four after-the-fact states reach their page`)
 }

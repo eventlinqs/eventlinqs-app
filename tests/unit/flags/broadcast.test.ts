@@ -49,8 +49,38 @@ describe('broadcast flag resolver', () => {
       // Performer marketplace stages ship built but OFF by default.
       gig_board: false,
       artist_showcase: false,
+      /*
+       * NOT A STAGE, AND ON BY DEFAULT, which is why it is called out here
+       * rather than folded into the list above.
+       *
+       * It is close-out SEO5's reversal condition: one row change hides every
+       * availability figure and the accessibility section across the event and
+       * venue pages, with no deploy. Both surfaces are shipped and correct, so
+       * the launch state is ON; the switch exists for the day one of them is
+       * found saying something no inventory or organiser supplied.
+       */
+      event_availability_and_access: true,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(6)
+    expect(BROADCAST_FLAGS).toHaveLength(7)
+  })
+
+  test('the reversal flag defaults ON in both failure paths', async () => {
+    /*
+     * A reversal switch that a database blink could throw is worse than no
+     * switch: it would blank a correct accessibility section, which is the very
+     * thing the item says must not happen ("a blank section is worse than
+     * none"). Both the missing row and the failed read must resolve ON.
+     */
+    const empty = clientReturning(null)
+    expect(await isFeatureEnabled('event_availability_and_access', { client: empty })).toBe(true)
+
+    const broken = clientReturning(null, 'connection reset')
+    expect(await isFeatureEnabled('event_availability_and_access', { client: broken })).toBe(true)
+  })
+
+  test('the reversal flag can be switched OFF by a row, which is the whole point', async () => {
+    const off = clientReturning({ flag: 'event_availability_and_access', enabled: false })
+    expect(await isFeatureEnabled('event_availability_and_access', { client: off })).toBe(false)
   })
 
   test('DB row wins over the default in both directions', async () => {
