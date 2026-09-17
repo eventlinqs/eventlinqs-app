@@ -2,6 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { buildAttributedUrl } from '@/lib/growth/referrals'
+import {
+  buildIcs,
+  buildGoogleCalendarUrl,
+  icsFileName as buildIcsFileName,
+  type CalendarEvent,
+} from '@/lib/events/calendar-links'
 
 interface ConfirmationActionsProps {
   eventTitle: string
@@ -10,27 +16,45 @@ interface ConfirmationActionsProps {
   location: string
   orderNumber: string
   eventSlug: string
+  /** The event's IANA zone, so the description can carry the local time. */
+  timezone?: string | null
+  /** The canonical event URL, for the calendar entry's URL property. */
+  eventUrl: string
   /** The buyer's referral code, when they have an account. Makes the
    *  post-purchase share an attributed invite that credits this buyer. */
   refCode?: string
 }
 
-function toCalendarDate(iso: string): string {
-  // Returns YYYYMMDDTHHMMSSZ format for Google Calendar / .ics
-  return iso.replace(/[-:]/g, '').split('.')[0] + 'Z'
-}
-
-function buildGoogleCalendarUrl(props: ConfirmationActionsProps): string {
-  const start = toCalendarDate(props.startDate)
-  const end = toCalendarDate(props.endDate)
-  const params = new URLSearchParams({
-    action: 'TEMPLATE',
-    text: props.eventTitle,
-    dates: `${start}/${end}`,
-    details: `Order ${props.orderNumber}`,
-    ...(props.location ? { location: props.location } : {}),
-  })
-  return `https://calendar.google.com/calendar/render?${params.toString()}`
+/**
+ * THE CALENDAR FORMATS MOVED OUT (close-out SEO5 step 2).
+ *
+ * These three builders were private to this file, reachable only by a buyer who
+ * had already paid, and the event page had no calendar link at all. Rather than
+ * copy them, they moved to `src/lib/events/calendar-links.ts` and both surfaces
+ * read that.
+ *
+ * THE MOVE FIXED THREE DEFECTS THAT SHIPPED HERE. The VEVENT carried no `UID`
+ * and no `DTSTAMP`, both of which RFC 5545 section 3.6.1 requires, and a VEVENT
+ * with no UID is the one a calendar client cannot recognise as the same event
+ * twice, so re-importing after a date change adds a second entry instead of
+ * updating the first. And no text value was escaped, so an event called
+ * "Drinks, dancing; and a DJ" truncated at the first comma in every client that
+ * read it. See that module's header for the citation and for its limits.
+ *
+ * This component keeps its own shape: it is an ORDER confirmation, so its
+ * description names the order, which the shared builder takes as part of the
+ * event's `url` and description composition rather than inventing.
+ */
+function toCalendarEvent(props: ConfirmationActionsProps): CalendarEvent {
+  return {
+    id: props.orderNumber,
+    title: props.eventTitle,
+    startDate: props.startDate,
+    endDate: props.endDate,
+    timezone: props.timezone ?? null,
+    location: props.location || null,
+    url: props.eventUrl,
+  }
 }
 
 function buildOutlookUrl(props: ConfirmationActionsProps): string {
@@ -42,23 +66,6 @@ function buildOutlookUrl(props: ConfirmationActionsProps): string {
     ...(props.location ? { location: props.location } : {}),
   })
   return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`
-}
-
-function buildIcsDataUrl(props: ConfirmationActionsProps): string {
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//EventLinqs//EN',
-    'BEGIN:VEVENT',
-    `DTSTART:${toCalendarDate(props.startDate)}`,
-    `DTEND:${toCalendarDate(props.endDate)}`,
-    `SUMMARY:${props.eventTitle}`,
-    props.location ? `LOCATION:${props.location}` : '',
-    `DESCRIPTION:Order ${props.orderNumber}`,
-    'END:VEVENT',
-    'END:VCALENDAR',
-  ].filter(Boolean)
-  return `data:text/calendar;charset=utf-8,${encodeURIComponent(lines.join('\r\n'))}`
 }
 
 export function ConfirmationActions(props: ConfirmationActionsProps) {
@@ -105,7 +112,7 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
     }
   }
 
-  const icsFileName = `${props.eventTitle.replace(/[^a-z0-9]/gi, '-')}.ics`
+  const icsFileName = buildIcsFileName(props.eventTitle)
 
   return (
     <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -125,7 +132,7 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
         {calendarOpen && (
           <div className="absolute left-0 right-0 z-10 mt-1 rounded-lg border border-ink-200 bg-white shadow-lg overflow-hidden">
             <a
-              href={buildGoogleCalendarUrl(props)}
+              href={buildGoogleCalendarUrl(toCalendarEvent(props))}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setCalendarOpen(false)}
@@ -137,7 +144,7 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
               Google Calendar
             </a>
             <a
-              href={buildIcsDataUrl(props)}
+              href={`data:text/calendar;charset=utf-8,${encodeURIComponent(buildIcs(toCalendarEvent(props)))}`}
               download={icsFileName}
               onClick={() => setCalendarOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-sm text-ink-600 hover:bg-ink-100 transition-colors border-t border-ink-100"

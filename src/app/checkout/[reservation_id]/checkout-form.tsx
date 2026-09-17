@@ -11,6 +11,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js'
 import { processCheckout } from '@/app/actions/checkout'
+import { browserIsOnline, describeCheckoutSubmitFailure } from '@/lib/checkout/network-failure'
 import { Button } from '@/components/ui/Button'
 import { CartTimer } from '@/components/checkout/cart-timer'
 import { CheckoutSummary } from '@/components/checkout/checkout-summary'
@@ -343,20 +344,43 @@ export function CheckoutForm({
     }
 
     startTransition(async () => {
-      const result = await processCheckout({
-        reservation_id: reservationId,
-        buyer_email: buyerEmail,
-        buyer_name: buyerName,
-        attendees: attendees.map(a => ({
-          ticket_tier_id: a.ticket_tier_id,
-          first_name: a.first_name,
-          last_name: a.last_name,
-          email: a.email,
-        })),
-        discount_code: discountCode ?? undefined,
-        organiser_marketing_consent: organiserConsent,
-        platform_updates_consent: platformConsent,
-      })
+      /*
+       * THE SUBMIT SURVIVES A DROPPED NETWORK. Close-out C8B.5, Scope v5 10.3
+       * ("Checkout must not fail under poor network conditions").
+       *
+       * `processCheckout` is a Server Action, so this call is a fetch, and a
+       * fetch on a dead radio REJECTS rather than returning `{ error }`. Without
+       * this catch the rejection was unhandled inside the transition, React
+       * surfaced it to src/app/checkout/error.tsx, and the buyer lost their
+       * name, their email and every attendee's details to a page that told them
+       * "Our team has been notified" while the network was down and no report
+       * could leave the browser. Driven at 390, 768 and 1440 before the fix and
+       * after: C:\dev\EVIDENCE\C8B.
+       *
+       * A thrown failure is now presented exactly like a RETURNED refusal: the
+       * same panel, the same form, the same button. See
+       * src/lib/checkout/network-failure.ts for why no retry is invented here.
+       */
+      let result: Awaited<ReturnType<typeof processCheckout>>
+      try {
+        result = await processCheckout({
+          reservation_id: reservationId,
+          buyer_email: buyerEmail,
+          buyer_name: buyerName,
+          attendees: attendees.map(a => ({
+            ticket_tier_id: a.ticket_tier_id,
+            first_name: a.first_name,
+            last_name: a.last_name,
+            email: a.email,
+          })),
+          discount_code: discountCode ?? undefined,
+          organiser_marketing_consent: organiserConsent,
+          platform_updates_consent: platformConsent,
+        })
+      } catch {
+        setSubmitError(describeCheckoutSubmitFailure(browserIsOnline()).message)
+        return
+      }
 
       if (result.error) {
         setSubmitError(result.error)

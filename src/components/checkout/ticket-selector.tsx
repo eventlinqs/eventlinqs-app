@@ -18,6 +18,8 @@ import {
   type FeeRates,
   type FeePassType,
 } from '@/lib/payments/fee-math'
+import { allInPriceForOneTicket } from '@/lib/payments/all-in-price'
+import { AcceptedPaymentMethods } from '@/components/features/checkout/AcceptedPaymentMethods'
 import { formatEventDateTimeCompact } from '@/lib/dates/event-time'
 
 type TierWithDisplayPrice = TicketTier & {
@@ -68,6 +70,15 @@ interface TicketSelectorProps {
    * browser, unlike the runtime zone.
    */
   eventTimezone: string | null
+  /**
+   * Whether the remaining-tickets line may render (close-out SEO5 reversal).
+   *
+   * Defaults to true so every existing caller is unchanged. The event page
+   * resolves the `event_availability_and_access` flag once and threads it, so
+   * the owner can take every availability figure off the platform with one
+   * admin row change and no deploy.
+   */
+  showAvailability?: boolean
 }
 
 function formatPrice(priceCents: number, currency: string) {
@@ -75,7 +86,7 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, saleRefusalReason = null, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, showAvailability = true, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, saleRefusalReason = null, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -161,6 +172,28 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
       ? computeAllInTotalCents(subtotalCents, feeLines, feePassType)
       : subtotalCents
   const showAllIn = !allFree && subtotalCents > 0
+
+  /**
+   * What ONE ticket at this tier costs the buyer (close-out SEO4 step 2).
+   *
+   * Composed through `allInPriceForOneTicket`, which composes `fee-math.ts`,
+   * which is what the server charges through. There is no second formula here
+   * and deliberately so: a per-ticket markup written out at this call site would
+   * be right today and silently wrong the day the flat fee stops being charged
+   * per ticket.
+   *
+   * With no rates resolved it returns the face value rather than guessing, which
+   * is the same rule `priceLabel` follows: a surface that has not resolved this
+   * event's fee scope must not state a total, because a per-event override would
+   * make that total confidently wrong.
+   */
+  function tierAllIn(tier: TierWithDisplayPrice) {
+    const face = tier.display_price_cents ?? tier.price
+    if (!feeRates) {
+      return { faceCents: face, feeCents: 0, totalCents: face, feeIsAddedOnTop: false }
+    }
+    return allInPriceForOneTicket(face, feeRates, feePassType)
+  }
 
   function handleCheckout() {
     setError(null)
@@ -341,13 +374,39 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                         Sale opens {formatEventDateTimeCompact(tier.sale_start, eventTimezone)}
                       </p>
                     )}
-                    {!soldOut && !salePending && available <= 20 && (
+                    {showAvailability && !soldOut && !salePending && available <= 20 && (
                       <p className="mt-1 text-xs font-medium text-error-strong">Only {available} left</p>
                     )}
                     {!soldOut && !salePending && tier.max_per_order < 10 && (
                       <p className="mt-0.5 text-[11px] text-ink-400">Max {tier.max_per_order} per order</p>
                     )}
-                    <p className="mt-1 text-sm font-bold text-ink-900">{formatPrice(tier.display_price_cents ?? tier.price, currency)}</p>
+                    {/*
+                      THE PRICE THE BUYER WILL ACTUALLY PAY, per tier
+                      (close-out SEO4 step 2). This line used to be the FACE
+                      VALUE alone, so the panel showed AUD 18.00 beside a tier a
+                      buyer could not leave for less than AUD 19.62, and the true
+                      number only appeared once a quantity had been chosen.
+
+                      The prominent number is the TOTAL. The breakdown is on the
+                      line beneath it rather than behind a disclosure, which is
+                      stronger than the "available in one interaction" the
+                      close-out asks for: all three figures, ticket, fee and
+                      total, are visible without touching anything.
+
+                      When the organiser ABSORBS the fee there is nothing to add
+                      and nothing to break down, so the total is the face value
+                      and the second line says the fee is already inside it.
+                    */}
+                    <p className="mt-1 text-sm font-bold text-ink-900">
+                      {formatPrice(tierAllIn(tier).totalCents, currency)}
+                    </p>
+                    {tierAllIn(tier).totalCents > 0 && (
+                      <p className="mt-0.5 text-[11px] text-ink-500" data-testid="tier-all-in-breakdown">
+                        {tierAllIn(tier).feeIsAddedOnTop
+                          ? `${formatPrice(tierAllIn(tier).faceCents, currency)} ticket plus ${formatPrice(tierAllIn(tier).feeCents, currency)} fee`
+                          : 'Fee included in the ticket price'}
+                      </p>
+                    )}
                     {/* The price's last move, in words, beside the number it moved to
                       * (Scope v5 3.3). The full timeline sits in the price history
                       * block under this panel. */}
@@ -538,6 +597,37 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
             ? `Register ${totalTickets} ticket${totalTickets > 1 ? 's' : ''}`
             : `Checkout · ${formatPrice(allInTotalCents, currency)}`}
         </button>
+      )}
+
+      {/*
+        WHAT THE FEE IS, AND WHAT A BUYER CAN PAY WITH (close-out SEO4 steps 4
+        and 5).
+
+        Step 4 asks for the fee "in plain words on the event page, once, read
+        from configuration, so the buyer understands what the fee is before they
+        are told it is non refundable". The audit of 13 September 2026 found the
+        event page telling a buyer the booking fee would not be returned without
+        ever saying what the booking fee was. The only place it appeared was
+        /pricing, which is an organiser-facing page.
+
+        ONCE, literally: this panel renders once per event page. The seated
+        branch and the standing branch of src/app/events/[slug]/page.tsx are two
+        arms of one ternary, so a page carries one of them and never both.
+
+        NOTHING HERE IS TYPED. The percentage and the flat amount come from
+        `feeRates`, resolved server-side through getPricingRule, the same rows
+        the charge resolves. A free event reaches neither line: it has no fee to
+        describe, and describing one would be the platform inventing a charge.
+      */}
+      {!allFree && feeRates && (
+        <div className="space-y-3 border-t border-ink-200 pt-4">
+          <p className="text-[11px] leading-relaxed text-ink-500">
+            {feePassType === 'absorb'
+              ? 'Every price here is the price you pay. The EventLinqs fee is already inside the ticket price, and there is nothing added at the payment step.'
+              : `Every price here is the price you pay. It includes the EventLinqs fee of ${feeRates.platformFeePercent}% plus ${formatPrice(feeRates.platformFeeFixedCents, currency)} per ticket, which covers card processing, and nothing further is added at the payment step.`}
+          </p>
+          <AcceptedPaymentMethods heading="We accept" />
+        </div>
       )}
     </div>
   )

@@ -15,7 +15,9 @@ import { ConsentProvider } from '@/components/analytics/consent-provider'
 import { ConsentBanner } from '@/components/analytics/consent-banner'
 import { GatedAnalytics } from '@/components/analytics/gated-analytics'
 import { FunnelLanded } from '@/components/analytics/funnel-landed'
+import { RegisterAppWorker } from '@/components/pwa/register-app-worker'
 import { getSiteUrl } from '@/lib/site-url'
+import { siteVerificationMetadata } from '@/lib/seo/site-verification'
 import { BRAND_STRAPLINE, BRAND_STRAPLINE_SHORT, BRAND_TAGLINE } from '@/lib/brand/positioning'
 
 /*
@@ -107,19 +109,19 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true },
   },
   /*
-   * GOOGLE SEARCH CONSOLE (close-out AN1 step 4). Indexing (C19) is a claim
-   * until Search Console is reading it back, and the property cannot be
+   * SEARCH CONSOLE OWNERSHIP (close-out AN1 step 4, and close-out SEO2 step 2,
+   * which are the same requirement reached from two lanes). Indexing (C19) is a
+   * claim until Search Console is reading it back, and the property cannot be
    * verified until Google can see the token on the live site.
    *
-   * The token comes from the environment because it does not exist until Google
-   * mints it in the owner's own account, and it is rendered ONLY when it is
-   * present: an empty meta tag is not a neutral absence, it is a verification
-   * that will fail with a tag that looks correct. The value is public by design
-   * (it is a meta tag on every page) and proves nothing on its own.
+   * Emits <meta name="google-site-verification" content="..."> when, and only
+   * when, GOOGLE_SITE_VERIFICATION holds a usable token; nothing otherwise. An
+   * empty meta tag is not a neutral absence, it is a verification that fails
+   * with a tag that looks correct. The token is minted by a signed-in Google
+   * account, which is the one irreducible act, and everything either side of it
+   * is `npm run seo2:verify-property`. See src/lib/seo/site-verification.ts.
    */
-  ...(process.env.GOOGLE_SITE_VERIFICATION
-    ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
-    : {}),
+  ...siteVerificationMetadata(),
   openGraph: {
     type: 'website',
     title: `EventLinqs | ${BRAND_STRAPLINE_SHORT}`,
@@ -262,6 +264,11 @@ export default function RootLayout({
             <FunnelLanded />
             <ConsentBanner />
           </ConsentProvider>
+          {/* The root service worker, so a navigation with no signal answers
+           *  with an EventLinqs page instead of the browser's error page
+           *  (close-out C8B.5, Scope v5 10.3). Renders null and registers only
+           *  after `load`, so it is outside every window Lighthouse measures. */}
+          <RegisterAppWorker />
         </HeroPresenceProvider>
       </body>
     </html>

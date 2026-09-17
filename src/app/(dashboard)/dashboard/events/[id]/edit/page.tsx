@@ -3,6 +3,8 @@ import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { EventForm } from '@/components/features/events/event-form'
+import { AccessibilityFields } from '@/components/features/accessibility/accessibility-fields'
+import { accessibilityInputFrom } from '@/lib/accessibility/fields'
 import { RevenueSummary } from '@/components/orders/revenue-summary'
 import type { Event, TicketTier, EventCategory } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
@@ -107,7 +109,8 @@ export default async function EditEventPage({ params }: Props) {
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <EventForm
+        <div className="space-y-6">
+          <EventForm
           userId={user.id}
           organisationId={event.organisation_id}
           categories={categories ?? []}
@@ -119,7 +122,25 @@ export default async function EditEventPage({ params }: Props) {
           existingStreamUrl={existingStreamUrl}
           existingStatus={event.status}
           lineupEnabled={await isFeatureEnabled('broadcast_artists')}
-        />
+          />
+
+          {/*
+            ACCESSIBILITY (close-out SEO5 step 4), saved on its own.
+
+            It is NOT part of the form above and must not become part of it. The
+            columns behind it are created by a migration that is parked awaiting
+            the founder (docs/migrations-pending/20260914000002_accessibility_fields.sql),
+            and PostgREST fails a whole statement on a column it does not have,
+            so folding these twelve fields into `updateEvent` would stop every
+            organiser saving every event until he applied it. Separated, the
+            worst case is this panel saying the fields are not available yet.
+          */}
+          <AccessibilityFields
+            scope="event"
+            subjectId={event.id}
+            initial={accessibilityInputFrom(event as unknown as Record<string, unknown>, 'event')}
+          />
+        </div>
 
         <div className="space-y-4">
           <RevenueSummary

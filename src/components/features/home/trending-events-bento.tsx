@@ -143,8 +143,13 @@ export function TrendingEventsBento({ events, viewAllHref = '/events?sort=trendi
           <div className="flex items-start gap-3">
             <div className="mt-1 h-8 w-0.5 shrink-0 bg-[var(--brand-accent)]" aria-hidden />
             <div>
+              {/* Was "Selling fast", over a rail that reads no stock at all.
+                  See the same correction on the homepage rail: the per-card
+                  badge engine is the only thing on this platform allowed to say
+                  a ticket is running out, because it is the only thing that
+                  counts them. */}
               <p className="font-display text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
-                Selling fast
+                What the city is booking
               </p>
               <h2
                 id="trending-bento-heading"

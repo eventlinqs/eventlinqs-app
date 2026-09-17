@@ -29,6 +29,8 @@ import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { getFoundingBadge } from '@/lib/organisers/founding-badge'
+import { loadDiscoveryRows, countOrganiser } from '@/lib/seo/discovery-counts'
+import { organiserIndexingFor } from '@/lib/seo/discovery-threshold'
 
 export const revalidate = 300
 
@@ -219,7 +221,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     keywords: [organisation.name, 'organiser', 'events', 'tickets'],
-    alternates: { canonical: `/organisers/${organisation.slug}` },
+    /*
+     * SUBSTANCE, NOT STATUS (close-out SEO3 step 7).
+     *
+     * This route was classified ALWAYS, so every active organisation was offered
+     * to Google whether or not there was anything on the page. The audit of
+     * 13 September 2026 named /organisers/oanh: an active organisation with no
+     * events on sale and no biography, which is a name and a logo, and is the
+     * thin page Search Console reports back.
+     *
+     * A profile is indexable when it holds events at the owner's live threshold
+     * OR when somebody has written a biography, which are the two ways a profile
+     * is a page rather than a placeholder. The canonical is self-referencing in
+     * both states, exactly as it is on every conditional discovery page, and the
+     * sitemap asks the same question of the same numbers.
+     */
+    ...(await organiserIndexingFor(
+      countOrganiser(await loadDiscoveryRows(), organisation.id),
+      stripMarkdown(organisation.description ?? '').trim().length > 0,
+      `/organisers/${organisation.slug}`,
+    )),
     openGraph: {
       title: organisation.name,
       description,

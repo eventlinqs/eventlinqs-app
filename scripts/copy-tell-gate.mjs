@@ -301,6 +301,22 @@ const SURFACES_THAT_REACH_GOOGLE = [
   // events at ..."), and that sentence is published to a search index.
   'src/components/features/organisers/organiser-schema-jsonld.tsx',
   'src/components/features/venues/venue-schema-jsonld.tsx',
+  /*
+   * THE CATEGORY LANDINGS (close-out SEO3 step 4, 14 September 2026).
+   *
+   * Twenty-two pages of written editorial, and every one of them publishes a
+   * metaTitle and a metaDescription straight into a search result. Their copy is
+   * not derived from a database value the way an event title is: it is PLATFORM
+   * WORDS, written in this repository, so an em dash or a banned word here is
+   * published under our own name on twenty-two URLs at once.
+   *
+   * The acceptance line for SEO3 is "the copy gate passes on every new category
+   * page". Being inside the scan root already made that TRUE; listing them here
+   * is what keeps it true, because lock 7 fails the build if a scan root is ever
+   * narrowed away from a surface on this list rather than silently scanning less.
+   */
+  'src/lib/categories/category-editorial.ts',
+  'src/components/templates/CategoryEventsLandingPage.tsx',
 ]
 const surfacesRead = new Set()
 

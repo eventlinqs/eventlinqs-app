@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { loadSupabaseClient, warmSupabaseClient } from '@/lib/supabase/client-lazy'
 import { authErrorMessage } from '@/lib/auth/auth-errors'
 
 type Props = {
@@ -30,12 +30,15 @@ type Props = {
 export function GoogleButton({ label = 'Continue with Google', redirectTo }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClient()
 
   const handleClick = async () => {
     setLoading(true)
     setError(null)
     const target = redirectTo ?? `${window.location.origin}/auth/callback`
+    // Fetched on press rather than on render: 51.4 KB gzip of auth client that
+    // a visitor who never signs in should not pay for. Warmed on hover and on
+    // the pointer going down, so by here it resolves from memory.
+    const supabase = await loadSupabaseClient()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: target },
@@ -60,6 +63,8 @@ export function GoogleButton({ label = 'Continue with Google', redirectTo }: Pro
       <button
         type="button"
         onClick={handleClick}
+        onPointerEnter={warmSupabaseClient}
+        onFocus={warmSupabaseClient}
         disabled={loading}
         className="flex w-full items-center justify-center gap-3 h-11 rounded-lg border border-ink-200 bg-white text-sm font-medium text-ink-900 transition-colors hover:bg-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 disabled:opacity-60"
       >

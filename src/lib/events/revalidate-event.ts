@@ -275,19 +275,27 @@ function markEventPaths(event: RevalidatableEvent): string[] {
   if (citySlug) mark(`/city/${citySlug}`)
 
   /*
-   * THE CATEGORY MARK IS GONE, AND IT WAS ALWAYS MARKING A 404.
+   * THE CATEGORY MARK IS BACK, BECAUSE THE REASON IT WENT HAS BEEN REVERSED.
    *
-   * `event.category_slug` comes from `event_categories`, so it is one of the
-   * twenty-two real category slugs. `/categories/[slug]` is bound to the seven
-   * hero-category editorial slugs, which have no overlap with those twenty-two.
-   * Driven against production on 25 August 2026: all twenty-two answered 404.
-   * This line has therefore been invalidating a path that does not exist on
-   * every event save since it was written, at no cost and to no effect.
+   * It was removed on 25 August 2026 on a premise that was true that day:
+   * `event.category_slug` is one of the twenty-two slugs in `event_categories`,
+   * `/categories/[slug]` was bound to the seven hero-category editorial slugs,
+   * and all twenty-two answered 404 when driven against production. The line
+   * was invalidating a path that did not exist, so it was deleted, and the note
+   * added that `/categories/<real slug>` 308s to `/events?category=<slug>`.
    *
-   * `/categories/<real slug>` now 308s to `/events?category=<slug>`, and
-   * `/events` is already marked two lines above, which is the route that
-   * actually renders those results.
+   * Close-out SEO3 step 4 (14 September 2026) made every one of those twenty-two
+   * a REAL page with its own canonical, title, h1 and editorial, and removed the
+   * redirect. So the premise is gone, and leaving the line out would now leave
+   * the page an event belongs to stale for its whole ISR window on every publish,
+   * which is precisely what SEO3 step 3 forbids for the city pages.
+   *
+   * The mark is unconditional on the slug being a live category rather than
+   * checked against the taxonomy, because `revalidatePath` on a path that does
+   * not resolve costs nothing and reading the database here would make an
+   * invalidation depend on a query that can fail.
    */
+  if (event.category_slug) mark(`/categories/${event.category_slug}`)
 
   for (const community of communitiesFromTags(event.tags ?? [])) {
     mark(`/community/${community}`)

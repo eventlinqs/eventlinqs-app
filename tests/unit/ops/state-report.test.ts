@@ -25,6 +25,7 @@ import {
   nextLinkPath,
   BOOKKEEPING_REFS,
   STALL_THRESHOLD_HOURS,
+  PARITY_CADENCE,
 } from '../../../scripts/lib/state-report.mjs'
 
 const NOW = '2026-09-10T12:00:00.000Z'
@@ -165,6 +166,10 @@ describe('the report itself', () => {
     expect(titles.some((t) => t.startsWith('Open pull requests'))).toBe(true)
     expect(titles.some((t) => t.startsWith('Branches red'))).toBe(true)
     expect(titles).toContain('The platform')
+  })
+
+  it('carries the table-stakes parity line PARITY1 asks for', () => {
+    expect(sectionsFor(greenState).map((s) => s.title)).toContain('Table-stakes parity')
   })
 
   it('says in the message itself that its absence is the alert', () => {
@@ -421,5 +426,70 @@ describe('the stall check when it cannot see the repository', () => {
     expect(message.subject).toContain('cannot see')
     expect(message.text).toContain('403')
     expect(message.text).not.toContain('Nothing has been pushed to the repository for')
+  })
+})
+
+/**
+ * THE PARITY LINE (close-out PARITY1 step 4): "One line in the owner digest:
+ * parity checks passed, parity checks failed, and the worst failure."
+ *
+ * The check runs on two days a month and this report runs every day, so most
+ * days carry a result that is up to a fortnight old, or none at all. Every one
+ * of those states has to read as itself: a stale result must not look like
+ * today's, and an absent one must not look like an alarm OR like good news.
+ */
+describe('the table-stakes parity line', () => {
+  const parityLines = (parity: unknown) =>
+    sectionsFor({ ...greenState, parity }).find((s) => s.title === 'Table-stakes parity')!.lines
+
+  it('names the cadence when there is no result, rather than raising an alarm', () => {
+    const lines = parityLines(null).join(' ')
+    expect(lines).toContain(PARITY_CADENCE)
+    expect(lines).not.toMatch(/never/i)
+  })
+
+  it('carries the headline and the age when there is one', () => {
+    const lines = parityLines({
+      headline: 'Parity: 12 passed, 3 failed. Worst: wallet pass - none exists',
+      site: 'https://www.eventlinqs.com.au',
+      ageHours: 26,
+      stale: false,
+      failures: [],
+    }).join('\n')
+    expect(lines).toContain('Parity: 12 passed, 3 failed')
+    expect(lines).toContain('https://www.eventlinqs.com.au')
+    expect(lines).toContain('Last run')
+  })
+
+  it('lists every failing line, not only the worst', () => {
+    const lines = parityLines({
+      headline: 'Parity: 13 passed, 2 failed.',
+      site: 'https://example.test',
+      ageHours: 1,
+      stale: false,
+      failures: [
+        { line: 'wallet pass', observation: 'no route serves one' },
+        { line: 'add to calendar', observation: 'the event page offers none' },
+      ],
+    }).join('\n')
+    expect(lines).toContain('FAILED: wallet pass - no route serves one')
+    expect(lines).toContain('FAILED: add to calendar - the event page offers none')
+  })
+
+  it('says OVERDUE about a result older than the cadence, rather than printing it as fresh', () => {
+    const lines = parityLines({
+      headline: 'Parity: 15 passed, 0 failed.',
+      site: 'https://example.test',
+      ageHours: 24 * 40,
+      stale: true,
+      failures: [],
+    }).join('\n')
+    expect(lines).toContain('THIS IS OVERDUE')
+  })
+
+  it('reports a result it could not read rather than printing a clean bill of health', () => {
+    const lines = parityLines({ error: 'the parity result could not be parsed' }).join('\n')
+    expect(lines).toContain('Not known: the parity result could not be parsed')
+    expect(lines).not.toMatch(/passed/)
   })
 })

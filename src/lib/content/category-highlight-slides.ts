@@ -47,10 +47,14 @@ export const CATEGORY_HIGHLIGHT_SLIDES: CategoryHighlightSlide[] = [
   {
     key: 'trending',
     eyebrow: 'Trending now',
-    cardEyebrow: 'Selling fast',
+    // Was "Selling fast" over "The events booking out right now. Move before the
+    // tickets do." This slide is static content with no inventory behind it, so
+    // both sentences were claims about stock that nothing had counted. The link
+    // it carries is a SORT, and the copy now says what the sort does.
+    cardEyebrow: 'Most booked',
     cardTitle: 'What the community is buying',
     cardCopy:
-      'The events booking out right now. Move before the tickets do.',
+      'The events with the most tickets away, ordered by how much of the room has gone.',
     ctaLabel: 'See what is trending',
     ctaHref: '/events?sort=trending',
     media: { title: 'Trending events', category: { slug: 'music', name: 'Music' } },

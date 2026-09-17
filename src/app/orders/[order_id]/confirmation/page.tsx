@@ -559,6 +559,8 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           location={location}
           orderNumber={fullOrder.order_number}
           eventSlug={event.slug}
+          timezone={event.timezone}
+          eventUrl={`${siteUrl}/events/${event.slug}`}
           refCode={user ? encodeRefCode(user.id) ?? undefined : undefined}
         />
 

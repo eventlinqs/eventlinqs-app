@@ -152,7 +152,22 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'What does it cost to sell tickets on EventLinqs?',
-        a: "There is no upfront cost to list events. Free events incur zero platform fees, permanently. For paid events, fees are a percentage of ticket revenue. The booking fee is split between EventLinqs and the organiser. We cap the total booking fee to protect buyer trust. See our pricing page for current fee rates, which are always kept up to date.",
+        /*
+         * REWRITTEN 14 September 2026 (close-out SEO4). The previous answer told
+         * readers that "the booking fee is split between EventLinqs and the
+         * organiser" and that "we cap the total booking fee". Neither is true and
+         * neither has been since the founder's ruling of 15 August 2026: there is
+         * ONE fee, it is not shared with the organiser, and there is no cap
+         * because there is nothing to cap. /help/buying-tickets is a public page
+         * in the sitemap, so a deleted fee model was being published to a search
+         * index under our own name.
+         *
+         * NO RATE IS WRITTEN HERE, deliberately. The fee lives in `pricing_rules`
+         * and is owner-editable, and `help-content.ts` is a static module with no
+         * access to it, so a number typed here would be a second source that goes
+         * stale in silence. The answer points at /pricing, which resolves it live.
+         */
+        a: "There is no upfront cost to list events. Free events have zero platform fees, permanently. Paid tickets carry one EventLinqs fee per ticket, and card processing is already inside it, so there is no second fee of any kind. You choose whether that fee is added on top for the buyer or absorbed into your ticket price. The current rate is published in full on our pricing page.",
       },
       {
         q: 'When do I receive my payout?',

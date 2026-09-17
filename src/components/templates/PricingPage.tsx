@@ -8,6 +8,7 @@ import { getLivePublicFee } from '@/lib/pricing/live-fee'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
 import { isFlagEnabled } from '@/lib/flags'
 import { PayoutCalculator } from '@/components/features/organisers/payout-calculator'
+import { acceptedPaymentMethodsSentence } from '@/lib/payments/payment-methods'
 
 /**
  * PricingPage - /pricing
@@ -98,7 +99,17 @@ const FAQ = [
   },
   {
     q: "What payment methods do buyers use?",
-    a: "Buyers can pay with Visa, Mastercard, and American Express credit and debit cards, as well as Apple Pay, Google Pay, and Stripe Link. Available methods vary slightly by device and browser.",
+    /*
+     * COMPOSED FROM THE ONE DECLARATION, never typed (close-out SEO4 step 5).
+     *
+     * This answer used to be a second hand-written list, and it did not match
+     * the one in the checkout panel: it named Stripe Link and the panel did not.
+     * Whether Link is enabled is a Stripe dashboard fact this repository cannot
+     * read, so naming it to a buyer was an unsourced claim about money. The
+     * sentence is now built from src/lib/payments/payment-methods.ts, so the FAQ
+     * and the checkout say the same thing by construction.
+     */
+    a: `Buyers can pay with ${acceptedPaymentMethodsSentence()}`,
   },
   {
     q: "Do you charge a fee for refunds?",
@@ -126,6 +137,22 @@ export async function PricingPage() {
         align="center"
         variant="premium"
       />
+
+      {/*
+        THE PLATFORM POSITION, stated once and plainly (close-out SEO4 step 7).
+
+        It is here, directly under the hero and above the tier cards, because it
+        is the sentence that makes the numbers below it mean something. The
+        Australian unfair trading regime commences 1 July 2027 with drip pricing
+        expressly in scope, and this is the position the platform is taking now
+        rather than retrofitting then.
+      */}
+      <ContentSection surface="base" width="default">
+        <p className="mx-auto max-w-2xl text-center text-base font-medium leading-relaxed text-[var(--text-primary)] sm:text-lg">
+          The price a buyer sees is the price a buyer pays. Every total is shown
+          in full on the event page, before anyone reaches the payment step.
+        </p>
+      </ContentSection>
 
       {/* -- 2. Pricing tiers ---------------------------------------- */}
       {/* Tinted band so the white tier cards have contrast and elevation,
@@ -160,9 +187,21 @@ export async function PricingPage() {
                   {tier.id === 'paid' ? fee.label : tier.price}
                 </span>
                 {tier.priceDetail && (
-                  <span className="ml-2 text-sm text-[var(--text-secondary)]">
-                    {tier.priceDetail}
-                  </span>
+                  <>
+                    {/*
+                      A REAL SPACE CHARACTER, not only the `ml-2` margin.
+                      Close-out SEO4 step 6: these are two adjacent inline spans,
+                      so `textContent` read "AUD 0.99per paid ticket sold" and a
+                      screen reader announced the number welded to the next word.
+                      The margin is kept for the visual gap; the space is what
+                      makes the sentence a sentence for everybody who is not
+                      looking at it.
+                    */}
+                    {' '}
+                    <span className="ml-2 text-sm text-[var(--text-secondary)]">
+                      {tier.priceDetail}
+                    </span>
+                  </>
                 )}
               </div>
 

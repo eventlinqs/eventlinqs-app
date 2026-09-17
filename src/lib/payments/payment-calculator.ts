@@ -63,6 +63,22 @@ export interface FeeBreakdown {
    * pricing_rules versions rather than a sum over a column.
    */
   founding_fee_waived_cents: number
+  /**
+   * True when the platform fee is zero BECAUSE IT WAS DELIBERATELY WAIVED (the
+   * founding offer), rather than because the fee resolver returned nothing.
+   *
+   * WHY THIS EXISTS AND WHY IT IS NOT OPTIONAL. `assertOrganiserCanReceiveFunds`
+   * has to refuse a zero platform fee, because a silent zero is how a
+   * misconfigured `pricing_rules` would sell every ticket at a zero take-rate
+   * without anybody noticing. It also has to ALLOW a zero platform fee, because
+   * a founding organiser inside their fee-free window genuinely owes nothing.
+   * Those two are indistinguishable from the numbers alone, so the breakdown
+   * carries the reason as a fact rather than leaving the precondition to guess.
+   *
+   * It is required rather than optional so a new construction site cannot
+   * default into "waived" by omission. The fail-closed value is `false`.
+   */
+  fee_waived: boolean
   breakdown_display: {
     tickets: { name: string; qty: number; unit_price_cents: number; line_total_cents: number }[]
     addons: { name: string; qty: number; unit_price_cents: number; line_total_cents: number }[]
@@ -132,6 +148,11 @@ export class PaymentCalculator {
         // so nothing was waived: a free event is free for everybody and costs
         // the founding offer nothing.
         founding_fee_waived_cents: 0,
+        // A free cart charges nothing because there is nothing to charge, which
+        // is not a fee waiver. It never reaches Stripe (the charge precondition
+        // refuses a zero total outright), so the honest value is false and the
+        // fail-closed value is the same.
+        fee_waived: false,
         breakdown_display: {
           tickets: tickets.map(t => ({
             name: t.tier_name,
@@ -295,6 +316,11 @@ export class PaymentCalculator {
       currency,
       fee_pass_type: resolvedPassType,
       founding_fee_waived_cents,
+      // The waiver is recorded as a FACT on the breakdown the charge is built
+      // from, so the charge precondition can tell a deliberate fee holiday from
+      // a fee resolver that returned nothing. Read from the same `waiver.active`
+      // that zeroed the rates above, so the flag and the numbers cannot drift.
+      fee_waived: waiver.active,
       breakdown_display: {
         tickets: tickets.map(t => ({
           name: t.tier_name,

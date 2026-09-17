@@ -20,6 +20,18 @@ interface Props {
   priceLabel: string | null
   /** CSS selector to smooth-scroll to when CTA is clicked. */
   ticketAnchor?: string
+  /**
+   * What the primary action SAYS. Defaults to the buying case.
+   *
+   * It became a prop on 14 September 2026 because it was a literal, and a
+   * literal cannot tell the truth about a sold-out event: the bar offered
+   * "Get tickets" on an event with none, three times over at every viewport,
+   * scrolling the buyer to a panel that says the room is full. That is a false
+   * affordance rather than a cosmetic label, and the Definition of Done counts
+   * a no-op control as a defect. Driven at 390, 768 and 1440 by
+   * scripts/verify/seo5-states-drive.mjs.
+   */
+  ctaLabel?: string
   /** Pixels past which the bar reveals. */
   threshold?: number
   /** Share URL (copied to clipboard when share tapped). */
@@ -34,6 +46,7 @@ export function StickyActionBar({
   ticketAnchor = '#tickets',
   threshold = 420,
   shareUrl,
+  ctaLabel = 'Get tickets',
 }: Props) {
   const [visible, setVisible] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -123,7 +136,7 @@ export function StickyActionBar({
                 onClick={handleTicketsClick}
                 className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-4 text-sm font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 hover:bg-gold-600 hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
-                Get tickets
+                {ctaLabel}
               </Link>
             </div>
           </div>
@@ -162,7 +175,7 @@ export function StickyActionBar({
               onClick={handleTicketsClick}
               className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-gold-500 px-4 py-3 text-sm font-semibold text-ink-900 shadow-[var(--shadow-card)] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 hover:bg-gold-600 motion-reduce:transition-none"
             >
-              Get tickets
+              {ctaLabel}
             </Link>
           </div>
         </div>

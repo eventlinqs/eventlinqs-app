@@ -30,6 +30,7 @@ const row = (over: Partial<DiscoveryEventRow> = {}): DiscoveryEventRow => ({
   venue_latitude: null,
   venue_longitude: null,
   category_slug: null,
+  organisation_id: null,
   ...over,
 })
 

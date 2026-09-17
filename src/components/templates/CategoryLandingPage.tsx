@@ -42,9 +42,22 @@ function resolveIcon(name: string): ComponentType<{ className?: string }> {
 interface CategoryLandingPageProps {
   category: HeroCategory
   liveEvents?: EventCardData[]
+  /**
+   * Where "View all" goes. Resolved by the route, defaulting to the catalogue.
+   *
+   * It used to be `/events?category=<hero slug>`, and no hero slug exists in
+   * `event_categories`, so the link landed on a filtered browse page that could
+   * never match an event: a 200 with nothing on it, which Law 5 counts as a
+   * dead end exactly as it counts a 404 (close-out SEO3 step 4).
+   */
+  browseHref?: string
 }
 
-export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandingPageProps) {
+export function CategoryLandingPage({
+  category,
+  liveEvents = [],
+  browseHref = '/events',
+}: CategoryLandingPageProps) {
   const {
     slug,
     displayName,
@@ -121,7 +134,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
                 Live {displayName} events
               </h2>
               <Link
-                href={`/events?category=${slug}`}
+                href={browseHref}
                 className="shrink-0 text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--text-primary)] transition-colors"
               >
                 View all &rsaquo;

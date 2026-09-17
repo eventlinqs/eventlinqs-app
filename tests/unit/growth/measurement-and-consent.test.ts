@@ -45,6 +45,7 @@ import {
 import { ANALYTICS_HOSTS, ANALYTICS_PROVIDERS, isAnalyticsHost } from '@/lib/analytics/providers'
 import { AD_CONVERSIONS, FUNNEL_STEPS, isAdConversion } from '@/lib/analytics/funnel'
 import { organiserSignupSourceLine } from '@/lib/growth/signup-sources'
+import { siteVerificationMetadata } from '@/lib/seo/site-verification'
 
 const ROOT = process.cwd()
 
@@ -366,12 +367,33 @@ describe('AN1 acceptance 3: the weekly line the digest prints', () => {
 })
 
 describe('AN1 acceptance 4: Search Console can verify the property', () => {
+  /*
+   * RE-AIMED 16 September 2026, when lane B's tree met lane C's. Both lanes
+   * built this emission independently (AN1 step 4 and SEO2 step 2 are the same
+   * requirement reached from two directions), and the surviving implementation
+   * is the one that reads the token through src/lib/seo/site-verification.ts.
+   *
+   * The three lines this test used to grep for are gone, so a grep for them
+   * would now fail for the right reason and pass again the moment somebody
+   * pasted them back anywhere in the file. The RULE is what AN1 asked for, so
+   * the rule is what is driven: the tag is emitted when, and only when, the
+   * owner has pasted a usable token.
+   */
   it('renders the verification tag only when the owner has pasted the token', () => {
     // An EMPTY meta tag is worse than none: it looks verified and fails.
+    expect(siteVerificationMetadata({}, () => {})).toEqual({})
+    expect(siteVerificationMetadata({ GOOGLE_SITE_VERIFICATION: '' }, () => {})).toEqual({})
+
+    const token = 'g'.repeat(43)
+    expect(siteVerificationMetadata({ GOOGLE_SITE_VERIFICATION: token }, () => {})).toEqual({
+      verification: { google: token },
+    })
+  })
+
+  it('is wired into the root layout, which is the only page-wide head there is', () => {
     const layout = readFileSync(join(ROOT, 'src/app/layout.tsx'), 'utf8')
-    expect(layout).toContain('process.env.GOOGLE_SITE_VERIFICATION')
-    expect(layout).toContain('? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }')
-    expect(layout).toContain(': {}),')
+    expect(layout).toContain("from '@/lib/seo/site-verification'")
+    expect(layout).toContain('...siteVerificationMetadata(),')
   })
 
   it('declares the token in the environment manifest', () => {

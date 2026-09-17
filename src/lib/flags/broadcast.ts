@@ -46,6 +46,17 @@ export const BROADCAST_FLAGS = [
   // Close-out GA3. Whether a new click or attribution is WRITTEN. Every tracked
   // link keeps redirecting either way: a poster on a wall is not a feature.
   'marketing_attribution_capture_enabled',
+  /*
+   * NOT A BROADCAST STAGE, and it is here because this is the platform's ONE
+   * flag resolver rather than because it belongs to that layer. The
+   * constitution names public.feature_flags as where a feature switch lives;
+   * the array's name is historical.
+   *
+   * It is close-out SEO5's reversal condition, written as a switch rather than
+   * as a sentence: "One flag hides the availability indicator and the
+   * accessibility section while leaving the calendar links in place."
+   */
+  'event_availability_and_access',
 ] as const
 
 export type BroadcastFlag = (typeof BROADCAST_FLAGS)[number]
@@ -85,6 +96,10 @@ export const BROADCAST_FLAG_DEFAULTS: Record<BroadcastFlag, boolean> = {
   // was never written cannot be recovered later, so the safe posture when the
   // flags table cannot be read is to keep recording.
   marketing_attribution_capture_enabled: true,
+  // ON. Both surfaces are shipped, correct and wanted; the switch exists to
+  // turn them OFF in one row change if either is ever found saying something
+  // untrue, which is the reversal condition rather than a launch decision.
+  event_availability_and_access: true,
 }
 
 /**
@@ -127,6 +142,8 @@ export const BROADCAST_FLAG_DECISIONS: Record<BroadcastFlag, string> = {
     'lawal 2026-09-13: ON. Whether a new matcher run may be produced. Set it false and no new run starts, at once and with no deploy, and the admin view becomes a read of the runs already stored: every run, score and breakdown row is left exactly as it is, because a stored run is the record of a decision already taken. It gates producing a list and nothing else; no send path exists yet for it to gate.',
   marketing_attribution_capture_enabled:
     'lawal 2026-09-13: ON. Whether a new click row, order signal or attribution record is WRITTEN. Set it false and nothing new is recorded, at once and with no deploy, while every short link keeps redirecting to its target and every click, attribution and reversal already stored stays intact and readable: a link printed on a poster is not a feature and must not stop working because a switch moved. Orders placed while it is off still get their one attribution record, with the decision none and the reason naming the switch, because an order with no record at all is the one thing this item exists to prevent.',
+  event_availability_and_access:
+    'lawal 2026-09-14: ON. Close-out SEO5 reversal condition. Hides the remaining-tickets line and the social-proof badges on the event page, and the accessibility section on the event and venue pages, in one admin row change with no deploy. The calendar links are deliberately NOT behind it: a date in a diary is never the thing that turns out to be untrue. Turn it OFF if any availability figure is ever found not to come from inventory, or if an accessibility claim is ever found that no organiser made.',
 }
 
 // Minimal structural type so both the service-role admin client and the

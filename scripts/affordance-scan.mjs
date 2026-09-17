@@ -37,7 +37,7 @@ const PAGES = [
   ['about', '/about'],
   ['events-browse', '/events'],
   /*
-   * RESOLVED FROM THE RUNNING CATALOGUE, never typed. This entry used to be the
+   * RESOLVED FROM THE RUNNING PLATFORM, never typed. This entry used to be the
    * literal slug `aso-ebi-affair-owambe-garden-party`, and on 14 September 2026
    * that event no longer existed, so the one page type where a dead-end tile is
    * most likely had been answering 404 and being counted as clean. A slug in a
@@ -45,14 +45,20 @@ const PAGES = [
    * the day the event is unpublished.
    *
    * `EVENT_DETAIL` below is replaced before the loop with the first event the
-   * browse page actually links to, which is the same thing a visitor clicks.
+   * platform's own sitemap names, which is the list Google reads and the one
+   * source that cannot drift from the catalogue.
    */
   ['event-detail', 'EVENT_DETAIL'],
   ['city', '/city/sydney'],
   ['suburb', '/city/sydney/inner-west'],
   ['community', '/community/african'],
   ['communities-hub', '/communities'],
-  ['category', '/events?category=music'],
+  // THE REAL CATEGORY LANDING (close-out SEO3 step 4, 14 September 2026). This
+  // entry read `/events?category=music` for as long as a category was a filter
+  // rather than a page, so the scan was measuring the browse page twice and the
+  // category surface never. It is a page now, with a hero, an event grid and a
+  // sibling tile strip, which is exactly the shape this scan exists to judge.
+  ['category', '/categories/music'],
   ['community-city', '/community/african/sydney'],
   ['help', '/help'],
   ['guides-hub', '/guides'],
@@ -113,37 +119,72 @@ const DETECT = () => {
 }
 
 /**
- * The first event the browse page links to, which is the one a visitor clicks.
- * Read out of the running product rather than out of this file, so it cannot go
- * stale. A catalogue with nothing in it is left to fail loudly as a 404 below
- * rather than quietly skipped, because an events platform with no openable
- * event is a finding in itself.
+ * A REAL EVENT PAGE, READ OUT OF THE LIVE SITEMAP.
+ *
+ * This entry used to be a typed slug. On 14 September 2026 that event had been
+ * deleted from the catalogue, so the page answered 404 and this scan printed
+ *
+ *     OK   event-detail   [404] dead-end tiles: 0
+ *
+ * which is true and worthless: a 404 renders no tiles, so it cannot fail a scan
+ * that counts tiles. The event page carries the cover image, the organiser
+ * avatar and the related-events rail, and none of them had been scanned since
+ * that slug went stale.
+ *
+ * The sitemap is the platform's own list of event URLs, so asking it is the one
+ * way this cannot go stale again. If it names no event, that is NOT quietly
+ * skipped: an events platform with no openable event is a finding in itself, so
+ * the entry is dropped from the list and recorded as a page that could not be
+ * scanned, which fails the run.
  */
-async function resolveEventDetail() {
+async function resolveEventDetailPath() {
   try {
-    const html = await (await fetch(`${BASE}/events`, { headers: { 'user-agent': UA } })).text()
-    const m = html.match(/href="(\/events\/[a-z0-9][a-z0-9-]*)"/i)
+    const res = await fetch(`${BASE}/sitemap.xml`, { headers: { 'user-agent': UA } })
+    if (!res.ok) {
+      console.warn(`event-detail: ${BASE}/sitemap.xml answered ${res.status}`)
+      return null
+    }
+    const xml = await res.text()
+    /*
+     * `[^<\/]+` AND NOT `[^<]+`, because the first draft of this matched
+     * `/events/browse/geelong`, which is the browse-by-city page and not an
+     * event at all. An event URL is `/events/<slug>` with nothing after the
+     * slug, so the character class excludes the slash that would let a deeper
+     * path through.
+     */
+    const m = /<loc>[^<]*?(\/events\/[^<\/]+)<\/loc>/.exec(xml)
     return m ? m[1] : null
   } catch (error) {
-    // Not swallowed: the scan continues and the unresolved entry fails below as
-    // a page that did not load, but the READER needs to know the difference
-    // between "the browse page linked to no event" and "the browse page could
-    // not be reached at all", and only this line knows which it was.
-    console.warn(`  could not read ${BASE}/events to resolve an event: ${String(error?.message ?? error)}`)
+    // NAMED AND SPOKEN, never swallowed. The caller reports that the event page
+    // was not scanned, but only this frame knows WHY, and "the sitemap could not
+    // be reached" and "the sitemap listed no event" need opposite responses.
+    console.warn(`event-detail: could not read ${BASE}/sitemap.xml: ${String(error?.message ?? error)}`)
     return null
   }
 }
-const resolved = await resolveEventDetail()
-for (const entry of PAGES) {
-  if (entry[1] === 'EVENT_DETAIL') {
-    entry[1] = resolved ?? '/events/(the browse page linked to no event)'
-    console.log(`event-detail resolved from ${BASE}/events to ${entry[1]}`)
-  }
+
+/**
+ * Pages that did not render, or that could not be resolved to a URL at all.
+ * Counted apart from tiles because it is a different fault with the opposite
+ * symptom: a page that does not render has no tiles to be dead ends, so it
+ * scores a perfect zero and reads as a pass.
+ */
+const unreachable = []
+
+const eventDetailIndex = PAGES.findIndex(entry => entry[1] === 'EVENT_DETAIL')
+const eventDetailPath = await resolveEventDetailPath()
+if (eventDetailPath) {
+  PAGES[eventDetailIndex][1] = eventDetailPath
+  console.log(`event-detail resolved from the sitemap: ${eventDetailPath}\n`)
+} else {
+  PAGES.splice(eventDetailIndex, 1)
+  unreachable.push('event-detail: the sitemap named no event URL, so the event page was not scanned')
+  console.log('FAIL event-detail   the sitemap named no event URL, so the event page was NOT scanned\n')
 }
 
 const b = await chromium.launch({ args: ['--no-sandbox'] })
 let total = 0
-const notLoaded = []
+let scanned = 0
 const results = []
 for (const [name, path] of PAGES) {
   try {
@@ -165,12 +206,19 @@ for (const [name, path] of PAGES) {
      * 14 September 2026, so a scan that said PASS across nineteen pages had
      * actually looked at twelve.
      */
-    const viol = status === 200 ? await page.evaluate(DETECT) : []
+    if (status !== 200) {
+      unreachable.push(`${name} ${path} answered ${status}`)
+      console.log(`FAIL ${name.padEnd(14)} [${status}] page did not render, so nothing on it was scanned`)
+      results.push({ name, path, status, violations: null, notScanned: true })
+      await ctx.close()
+      continue
+    }
+    const viol = await page.evaluate(DETECT)
+    scanned++
     total += viol.length
-    if (status !== 200) notLoaded.push(`${name} ${path} answered ${status}`)
     results.push({ name, path, status, violations: viol.length, detail: viol })
-    const verdict = status !== 200 ? 'GONE' : viol.length === 0 ? 'OK  ' : 'FAIL'
-    console.log(`${verdict} ${name.padEnd(14)} [${status}] dead-end tiles: ${status === 200 ? viol.length : 'not scanned, the page did not load'}`)
+    const verdict = viol.length === 0 ? 'OK  ' : 'FAIL'
+    console.log(`${verdict} ${name.padEnd(14)} [${status}] dead-end tiles: ${viol.length}`)
     if (viol.length) viol.slice(0, 6).forEach(v => console.log(`       - ${v.alt || '(no alt)'} ${v.w}x${v.h} ${v.src}`))
     await ctx.close()
   } catch (e) {
@@ -179,15 +227,14 @@ for (const [name, path] of PAGES) {
   }
 }
 await b.close()
-const scanned = PAGES.length - notLoaded.length
-console.log(`\nTOTAL dead-end tiles across ${scanned} of ${PAGES.length} pages: ${total}`)
-if (notLoaded.length) {
-  console.log(`\n${notLoaded.length} page(s) did NOT load, so nothing was scanned on them:`)
-  for (const n of notLoaded) console.log(`    ${n}`)
+console.log(`\nTOTAL dead-end tiles across ${scanned} of ${scanned + unreachable.length} pages: ${total}`)
+if (unreachable.length) {
+  console.log(`\n${unreachable.length} page(s) did NOT load, so nothing was scanned on them:`)
+  for (const u of unreachable) console.log(`    ${u}`)
   console.log('')
   console.log('  Either the path is wrong in this file or the surface is broken, and both')
   console.log('  are findings. A scan cannot report a page clean without looking at it.')
 }
-const ok = total === 0 && notLoaded.length === 0
+const ok = total === 0 && unreachable.length === 0
 console.log(ok ? 'AFFORDANCE SCAN: PASS' : 'AFFORDANCE SCAN: FAIL')
 process.exit(ok ? 0 : 1)

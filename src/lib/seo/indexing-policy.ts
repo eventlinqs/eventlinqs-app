@@ -98,19 +98,23 @@ export const DISCOVERY_INDEXING_THRESHOLD = 1
  * close-out C19.1's fourth question) found ten route families no internal link
  * reached. Most had an explanation the crawler could work out for itself: the
  * page 404s because its feature flag is off, or there is no member to link to
- * because the catalogue holds none. These three did not, and they are deliberate,
- * so they are written down rather than left to fail the check forever.
+ * because the catalogue holds none. These did not, and they are deliberate, so
+ * they are written down rather than left to fail the check forever.
  *
- * Two orphans found by the same crawl were NOT deliberate and were fixed rather
+ * Orphans found by the same crawl that were NOT deliberate were fixed rather
  * than listed here: the five /faith/[faith] pages now have a door on
  * /communities (a page whose own subheading already promised one), and the 21
  * /events/browse/[city] pages are linked from their city page.
+ *
+ * `/categories/[slug]` LEFT THIS LIST on 14 September 2026. It was here because
+ * "category browsing on the platform routes to /events?category=", and close-out
+ * SEO3 step 4 reversed exactly that: the homepage rails and the category tiles
+ * now link to `/categories/<slug>`, so the family is navigated to and an entry
+ * claiming otherwise would be a false record.
  */
 export const UNLINKED_BY_DESIGN: Record<string, string> = {
   '/launch': 'a campaign landing reached from a link the founder sends, not from site navigation',
   '/waitlist': 'a campaign landing reached from a link the founder sends, not from site navigation',
-  '/categories/[slug]':
-    'the legacy hero-category landings. Six of the seven permanently redirect to /community/*, and category browsing on the platform routes to /events?category=, so the surviving one is deliberately not navigated to',
 }
 
 export interface PolicyEntry {
@@ -152,7 +156,6 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/pricing', klass: 'always', why: 'marketing; the fee transparency surface' },
   { route: '/waitlist', klass: 'always', why: 'a public landing with its own copy' },
   { route: '/events/[slug]', klass: 'always', why: 'a real event, its own content, Event structured data' },
-  { route: '/organisers/[handle]', klass: 'always', why: 'a real organisation; the sitemap already publishes only active ones' },
   { route: '/venues/[handle]', klass: 'always', why: 'a real venue; the sitemap derives handles from events that exist, so a published venue page always holds one' },
   { route: '/artists', klass: 'always', why: 'the artist index; flag gated, and the sitemap asks the same flag the route asks' },
   { route: '/artists/[slug]', klass: 'always', why: 'a real artist with its own biography; flag gated' },
@@ -166,6 +169,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/categories/[slug]', klass: 'conditional', why: 'templated category landings' },
   { route: '/events/browse/[city]', klass: 'conditional', why: '22 templated browse-by-city pages' },
   { route: '/faith/[faith]', klass: 'conditional', why: 'templated faith landings' },
+  { route: '/organisers/[handle]', klass: 'conditional', why: "an organiser profile, indexable while it holds events at the live threshold OR carries a biography; close-out SEO3 step 7 found /organisers/oanh published with neither" },
 
   // ----------------------------------------------------------------- ALIAS
   { route: '/for-organisers', klass: 'alias', why: '308 to /organisers; kept because external links reach for it' },
@@ -177,6 +181,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/account/notifications', klass: 'never', why: 'authenticated' },
   { route: '/account/saved', klass: 'never', why: 'authenticated' },
   { route: '/account/tickets', klass: 'never', why: 'authenticated' },
+  { route: '/offline', klass: 'never', why: 'the service worker fallback document (close-out C8B.5): a real page only so it can wear the design system, never a search result' },
   { route: '/admin', klass: 'never', why: 'staff only' },
   { route: '/admin/analytics', klass: 'never', why: 'staff only' },
   { route: '/admin/audience', klass: 'never', why: 'staff only' },
@@ -354,4 +359,54 @@ export function discoveryIndexing(eventCount: number, canonicalPath: string, thr
  */
 export function isDiscoveryIndexable(eventCount: number, threshold: number): boolean {
   return eventCount >= threshold
+}
+
+/**
+ * WHETHER AN ORGANISER PROFILE IS WORTH INDEXING (close-out SEO3 step 7).
+ *
+ * The item names the rule exactly: "Set /organisers/oanh and any other organiser
+ * profile with zero events and no biography to noindex, follow under the same
+ * substance rule, so empty profiles stop entering the index."
+ *
+ * So there are TWO ways a profile is substantive and it needs only one of them:
+ * it holds events, judged on the same live threshold every discovery page is
+ * judged on, OR somebody has written a biography. A profile with a written
+ * biography and no events on sale is a real page about a real organisation; a
+ * profile with neither is a name and a logo, which is the thin page Search
+ * Console reports back.
+ *
+ * WHY THIS IS NOT `isDiscoveryIndexable` WITH THE COUNT NUDGED UP. Passing
+ * `hasBiography ? threshold : count` would make the rule true by lying about the
+ * count, and the next person reading the call site would have no way to tell
+ * which of the two reasons made the page indexable. The rule is written down
+ * instead.
+ */
+export function isOrganiserProfileIndexable(
+  eventCount: number,
+  hasBiography: boolean,
+  threshold: number,
+): boolean {
+  return hasBiography || isDiscoveryIndexable(eventCount, threshold)
+}
+
+/**
+ * The metadata block for an organiser profile. Self-canonical in both states,
+ * for the same reason every conditional page is: the URL is its own page whether
+ * or not anything is on it.
+ */
+export function organiserIndexing(
+  eventCount: number,
+  hasBiography: boolean,
+  canonicalPath: string,
+  threshold: number,
+) {
+  const indexable = isOrganiserProfileIndexable(eventCount, hasBiography, threshold)
+  return {
+    robots: {
+      index: indexable,
+      follow: true,
+      googleBot: { index: indexable, follow: true },
+    },
+    alternates: { canonical: canonicalPath },
+  } as const
 }

@@ -319,13 +319,35 @@ export function assertOrganiserCanReceiveFunds(
       'FeeBreakdown.total_cents must be positive for a paid-event charge.'
     )
   }
-  // The platform's keep (inclusive composition) must be positive and strictly
-  // less than the total, else the organiser transfer would be zero or negative.
+  /*
+   * The platform's keep (inclusive composition) must never be negative, and
+   * must stay strictly less than the total, else the organiser transfer would
+   * be zero or negative.
+   *
+   * ZERO IS THE INTERESTING CASE AND IT HAS TWO MEANINGS (close-out MONEY FIX,
+   * A1.7). A zero keep is a FAULT when `pricing_rules` returned nothing, which
+   * would sell every ticket at a silent zero take-rate. It is CORRECT when a
+   * founding organiser is inside their fee-free window and genuinely owes
+   * nothing. The numbers are identical in both cases, so this used to refuse
+   * both, and the cost was that the fee-waived organisers the growth plan exists
+   * to recruit were the only ones on the platform who could not sell a ticket:
+   * every checkout threw here and the buyer was told there was a pricing issue.
+   *
+   * The breakdown now carries WHY the fee is zero (`fee_waived`, set from the
+   * same waiver that zeroed the rates), so this can refuse the fault and allow
+   * the waiver without guessing from the amounts.
+   */
   const inclusiveKeep = composeApplicationFee(fees, 1)
-  if (inclusiveKeep <= 0) {
+  if (inclusiveKeep < 0) {
     throw new ChargePreconditionError(
       'fee_breakdown_invalid',
-      'Computed platform fee is zero or negative; pricing_rules likely returned no platform fee.'
+      `Computed platform fee (${inclusiveKeep}) is negative; the platform would be paying the buyer.`
+    )
+  }
+  if (inclusiveKeep === 0 && !fees.fee_waived) {
+    throw new ChargePreconditionError(
+      'fee_breakdown_invalid',
+      'Computed platform fee is zero and no fee waiver is recorded on the breakdown; pricing_rules likely returned no platform fee.'
     )
   }
   if (inclusiveKeep >= fees.total_cents) {

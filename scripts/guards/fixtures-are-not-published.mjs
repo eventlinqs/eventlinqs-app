@@ -174,6 +174,42 @@ const BASELINE = [
     write: "organisations.status='active'",
     why: "the sale gate refuses an organisation that is not active, so a pending one cannot take the payment the proof is about; lane A's file, handed to them as a BORDER line",
   },
+  /*
+   * ADDED 16 September 2026 when lane C's SEO work arrived in this tree. THREE
+   * of its drives write a public event; two of them are on this list and the
+   * third is not, and the difference was established by reading the product
+   * rather than by reading the drive's own header.
+   *
+   *   discovery-flip-drive.mjs  EXCUSED. Its whole subject is whether a city
+   *     page flips to indexable and APPEARS IN THE SITEMAP when a real event is
+   *     published in it. An unlisted fixture is excluded by PUBLIC_EVENT_MATCH
+   *     and would therefore be invisible to the thing under test, which is the
+   *     same reason community-threshold-drive.mjs is excused above.
+   *
+   *   seo5-states-drive.mjs  EXCUSED, and NOT because it renders event pages.
+   *     The event page renders `unlisted` in full (only `private` is screened
+   *     out, src/app/events/[slug]/page.tsx), so the three state proofs alone
+   *     would not need it. It also opens /venues/<handle>, and that route
+   *     resolves through resolveVenueProfile, which reads events through
+   *     PUBLIC_EVENT_MATCH (src/lib/venues/resolver.ts). An unlisted fixture
+   *     gives that page nothing to resolve, so the access-section proof on the
+   *     venue page could not run at all.
+   *
+   *   all-in-pricing-drive.mjs  NOT EXCUSED, because the same reading says it
+   *     does not need it: it opens /events/<slug> and nothing else, and that
+   *     page renders unlisted. It is changed rather than baselined, and the
+   *     change is recorded as a cross-lane edit in REVIEW-QUEUE-B.md.
+   */
+  {
+    drive: 'discovery-flip-drive.mjs',
+    write: "events.visibility='public'",
+    why: 'it proves a city page flips to indexable and appears in the sitemap when a real event is published in it; PUBLIC_EVENT_MATCH excludes an unlisted fixture, so it would be invisible to the thing under test',
+  },
+  {
+    drive: 'seo5-states-drive.mjs',
+    write: "events.visibility='public'",
+    why: 'it opens /venues/<handle>, and resolveVenueProfile derives that page through PUBLIC_EVENT_MATCH, so an unlisted fixture leaves that page with nothing to resolve',
+  },
 ]
 
 /**
@@ -282,16 +318,39 @@ export function judgeDrive(name, src) {
  * selecting on these. Each entry names the file, what must still be true of it,
  * and why the rule depends on it.
  */
+/*
+ * RE-DERIVED 16 September 2026, WHICH IS WHAT THE FAILURE MESSAGE ASKS FOR.
+ *
+ * The first two entries named `src/app/sitemap.ts`, and on the tree that merged
+ * lane B's work with lane C's SEO2 they stopped matching: the three catalogue
+ * reads moved out of the route into `src/lib/seo/sitemap-catalogue.ts`, which
+ * the route now composes. The predicates did not change value; they changed
+ * address.
+ *
+ * That is exactly the case this list exists for, and the guard behaved: it went
+ * red saying THIS GUARD'S PREMISE HAS MOVED rather than quietly judging drives
+ * against a rule that was no longer true. The fix is to re-aim it at where the
+ * predicate lives now, never to delete the check.
+ *
+ * The route is ALSO pinned, on the composition rather than on the predicate, so
+ * a catalogue that still selects correctly but is no longer read by the sitemap
+ * cannot leave this guard confidently enforcing a rule about nothing.
+ */
 const PREMISES = [
   {
-    file: 'src/app/sitemap.ts',
+    file: 'src/lib/seo/sitemap-catalogue.ts',
     needle: ".eq('status', 'active')",
-    why: "the organiser block's predicate; it is the reason an active fixture organisation is published at /organisers/<slug>",
+    why: "the organiser catalogue's predicate; it is the reason an active fixture organisation is published at /organisers/<slug>",
+  },
+  {
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    needle: '.match(PUBLIC_EVENT_MATCH)',
+    why: 'the event and venue catalogues both compose it; it is the reason a public fixture event publishes two URLs',
   },
   {
     file: 'src/app/sitemap.ts',
-    needle: '.match(PUBLIC_EVENT_MATCH)',
-    why: 'the event and venue blocks both compose it; it is the reason a public fixture event publishes two URLs',
+    needle: "from '@/lib/seo/sitemap-catalogue'",
+    why: 'the route still READS those three catalogues; a sitemap that stopped calling them would make the two predicates above true and irrelevant',
   },
   {
     file: 'src/lib/events/public-visibility.ts',
