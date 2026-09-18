@@ -174,6 +174,32 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
   const showAllIn = !allFree && subtotalCents > 0
 
   /**
+   * A WAIVED FEE IS NOT A FEE OF ZERO, AND TWO SENTENCES IN THIS PANEL HAVE TO
+   * KNOW THE DIFFERENCE (close-out FO1, 18 September 2026).
+   *
+   * A Founding Organiser's resolved rates are both zero, which is the offer
+   * working exactly as it should. Every NUMBER on this panel was already right
+   * for them: subtotal 2500, no service fee row, total 2500. Both WORDS were
+   * wrong, and both were found on a screenshot in the driven purchase proof
+   * rather than by an assertion, because the assertions were about the numbers.
+   *
+   *   the tier line   said "Fee included in the ticket price", because the fee
+   *                   is not added on top. Nothing is included: there is no fee.
+   *   the panel line  said "It includes the EventLinqs fee of 0% plus Free per
+   *                   ticket, which covers card processing", which is not
+   *                   English, claims a fee is included, and claims a charge of
+   *                   nothing covers something.
+   *
+   * IT IS READ FROM THE CONFIGURATION, NEVER FROM A FOUNDING FLAG. Any pricing
+   * rule that resolves to no percentage and no flat amount says the same thing,
+   * whoever it was granted to, so the buyer is never shown anything about the
+   * organiser's commercial terms. ABSORB is deliberately a different case and
+   * keeps its own sentence: there the fee is real and is inside the price.
+   */
+  const feeIsWaived =
+    !!feeRates && feeRates.platformFeePercent === 0 && feeRates.platformFeeFixedCents === 0
+
+  /**
    * What ONE ticket at this tier costs the buyer (close-out SEO4 step 2).
    *
    * Composed through `allInPriceForOneTicket`, which composes `fee-math.ts`,
@@ -396,11 +422,15 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                       When the organiser ABSORBS the fee there is nothing to add
                       and nothing to break down, so the total is the face value
                       and the second line says the fee is already inside it.
+
+                      When the fee is WAIVED there is no breakdown line at all,
+                      because there is nothing to break down and nothing inside
+                      the price either. See `feeIsWaived` above.
                     */}
                     <p className="mt-1 text-sm font-bold text-ink-900">
                       {formatPrice(tierAllIn(tier).totalCents, currency)}
                     </p>
-                    {tierAllIn(tier).totalCents > 0 && (
+                    {tierAllIn(tier).totalCents > 0 && !feeIsWaived && (
                       <p className="mt-0.5 text-[11px] text-ink-500" data-testid="tier-all-in-breakdown">
                         {tierAllIn(tier).feeIsAddedOnTop
                           ? `${formatPrice(tierAllIn(tier).faceCents, currency)} ticket plus ${formatPrice(tierAllIn(tier).feeCents, currency)} fee`
@@ -618,11 +648,19 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
         `feeRates`, resolved server-side through getPricingRule, the same rows
         the charge resolves. A free event reaches neither line: it has no fee to
         describe, and describing one would be the platform inventing a charge.
+
+        A WAIVED FEE GETS ITS OWN SENTENCE and it is answered FIRST, before
+        either branch that states a rate. Before close-out FO1 this line read,
+        in front of a real buyer: "It includes the EventLinqs fee of 0% plus
+        Free per ticket, which covers card processing". See `feeIsWaived` above
+        for what was wrong with it and how it was found.
       */}
       {!allFree && feeRates && (
         <div className="space-y-3 border-t border-ink-200 pt-4">
           <p className="text-[11px] leading-relaxed text-ink-500">
-            {feePassType === 'absorb'
+            {feeIsWaived
+              ? 'Every price here is the price you pay. There is no EventLinqs fee on this event, and nothing is added at the payment step.'
+              : feePassType === 'absorb'
               ? 'Every price here is the price you pay. The EventLinqs fee is already inside the ticket price, and there is nothing added at the payment step.'
               : `Every price here is the price you pay. It includes the EventLinqs fee of ${feeRates.platformFeePercent}% plus ${formatPrice(feeRates.platformFeeFixedCents, currency)} per ticket, which covers card processing, and nothing further is added at the payment step.`}
           </p>

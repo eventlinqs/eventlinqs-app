@@ -131,6 +131,10 @@
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
+ *   drive-quantity-control-selector  the money drives press the button they name: the
+ *                              selector is anchored, it matches the label the product
+ *                              puts on the tier increase control, and nothing else in
+ *                              src/ answers to it
  *   positioning-lock           no user-facing surface calls EventLinqs a ticketing platform
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
@@ -1021,6 +1025,19 @@ const GUARDS = [
   // set of numbers, and holds /organisers and /pricing to rendering the fee as a
   // read rather than a sentence. Drilled red by changing one number in the copy.
   'scripts/guards/founding-offer-matches-configuration.mjs',
+  // Close-out FO1 (18 September 2026). Every driven proof that a ticket can be
+  // bought goes through one helper, and that helper asked Playwright for a
+  // button whose name merely STARTED with "add". On 14 September an "Add to
+  // calendar" button shipped above the ticket panel, so from that day every
+  // money drive opened a calendar menu, left the quantity at 0, and reported
+  // that the ticket panel had never rendered. It had. A loose selector does not
+  // fail; it indicts the product for the harness's mistake, in detail, and is
+  // believed. This holds the drive's selector to the label the product actually
+  // puts on the control the drive presses, requires it to be anchored at both
+  // ends, and fails if any other button in src/ answers to it. Drilled red both
+  // ways: the old prefix selector back in the helper (it names "Add to
+  // calendar" and eleven more), and the product renaming its own tier label.
+  'scripts/guards/drive-quantity-control-selector.mjs',
   // Close-out OL1 (13 September 2026). /organisers is now the page every
   // outreach message sends a stranger to, and it gained a block that shows the
   // newest published event as a real card. The cheapest way to make that block

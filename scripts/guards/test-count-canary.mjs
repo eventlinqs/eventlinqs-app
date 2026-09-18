@@ -2034,9 +2034,30 @@ const ROOT = join(HERE, '..', '..')
  * `npm run gate:push -- --only suite`: 438 files, 5673 tests, 0 failed,
  * 0 skipped. Three of those tests were failing when the merge landed and are
  * fixed rather than counted around, and one is new.
+ *
+ * 2026-09-18 (lane B, close-out FO1): raised 438/5673 -> 439/5692. One file
+ * and nineteen tests: tests/unit/guards/jsx-buttons, which pins the reader
+ * behind scripts/guards/drive-quantity-control-selector.mjs. That guard
+ * promises no other button in the tree answers to the selector every money
+ * drive presses, and the promise is worth exactly what the reader is worth:
+ * its first draft found the end of a JSX open tag with indexOf('>'), landed
+ * inside the `=>` of an onClick handler, and so could not see the "Add to
+ * calendar" button that had broken every money drive four days earlier.
+ * Measured on a clean `npx vitest run`: 439 files, 5692 tests, 0 failed,
+ * 0 skipped.
+ *
+ * 2026-09-18 (lane B, close-out FO1, later the same day): raised 439/5692 ->
+ * 440/5698. One file and six tests: tests/component/waived-fee-sentence, which
+ * pins what a buyer is TOLD when the platform fee is waived. A Founding
+ * Organiser's rates are both zero, and every number on the ticket panel was
+ * already right for them, so the driven purchase proof passed while the panel
+ * said "It includes the EventLinqs fee of 0% plus Free per ticket, which covers
+ * card processing". Two of those six tests fail against the code as it stood.
+ * Measured through the gate's own suite step: 440 files, 5698 tests, 0 failed,
+ * 0 skipped.
  */
-const MIN_FILES = 438
-const MIN_TESTS = 5673
+const MIN_FILES = 440
+const MIN_TESTS = 5698
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
