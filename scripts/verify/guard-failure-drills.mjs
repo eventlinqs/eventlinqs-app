@@ -4448,6 +4448,84 @@ const DRILLS = [
   },
 
   /*
+   * marketing-mail-carries-one-click (lane B, 19 September 2026), six drills,
+   * one per clause plus the blindness case.
+   *
+   * The guard exists because both marketing send paths shipped without the RFC
+   * 8058 one-click unsubscribe pair and nothing anywhere could see it: the
+   * message renders, the body link works, the provider returns an id, and every
+   * test is green. The only signal is a deliverability number weeks later.
+   *
+   * THE SIXTH DRILL IS THE IMPORTANT ONE. It does not break the product at all.
+   * It empties the registry the guard reads, so the guard would sweep nothing
+   * and report OK over a platform sending no-one-click mail. A guard that
+   * passes because it looked at nothing is the failure mode lane A found twice
+   * in this tree in two days, once in a matcher built from a template literal.
+   */
+  {
+    name: 'the campaigner stops composing the one-click pair on its live send',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'src/lib/campaigner/run.ts',
+    find: "import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'",
+    replace: '',
+    expect: 'does not import oneClickUnsubscribeHeaders',
+  },
+  {
+    name: 'the weekly city digest stops composing the one-click pair',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'src/app/api/cron/weekly-digest/route.ts',
+    find: "import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'",
+    replace: '',
+    expect: 'does not import oneClickUnsubscribeHeaders',
+  },
+  {
+    name: 'the transport accepts headers and quietly drops them before the provider',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'src/lib/email/send.ts',
+    find: '    ...(input.headers && Object.keys(input.headers).length > 0 ? { headers: input.headers } : {}),',
+    replace: '',
+    expect: 'the resend.emails.send call does not pass them',
+  },
+  {
+    name: 'the RFC 8058 header value is edited to a form a receiver will not match',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'src/lib/consent/one-click.ts',
+    find: "export const LIST_UNSUBSCRIBE_POST_VALUE = 'List-Unsubscribe=One-Click'",
+    replace: "export const LIST_UNSUBSCRIBE_POST_VALUE = 'List-Unsubscribe=one-click'",
+    expect: 'RFC 8058 requires exactly',
+  },
+  {
+    name: 'the headers point at an address no route answers',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'src/lib/consent/one-click.ts',
+    find: "export const ONE_CLICK_UNSUBSCRIBE_ROUTE = '/api/marketing/one-click-unsubscribe'",
+    replace: "export const ONE_CLICK_UNSUBSCRIBE_ROUTE = '/api/marketing/unsubscribe-one-click'",
+    expect: 'does not exist',
+  },
+  {
+    /*
+     * THE GUARD'S OWN BLINDNESS, not the product's.
+     *
+     * The first version of this drill flipped one entry in the registry from
+     * marketing to transactional, and it would NOT have fired: the harness
+     * replaces the FIRST match only, so the second marketing entry survived, the
+     * guard judged it, found the pair, and reported OK. A drill that cannot fail
+     * proves nothing, and it is the same shape as the guard lane A found on
+     * 18 September reporting PASS over the import it banned.
+     *
+     * So the sabotage is aimed where it can only have one effect: the guard's
+     * own comparison, which makes it match no entry at all and sweep an empty
+     * set.
+     */
+    name: 'the guard matches no registry entry and would sweep nothing while reporting OK',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'scripts/guards/marketing-mail-carries-one-click.mjs',
+    find: "if (kind && kind[1] === 'marketing') entries.push(file)",
+    replace: "if (kind && kind[1] === 'marketing-direct') entries.push(file)",
+    expect: 'classifies no path as marketing',
+  },
+
+  /*
    * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of
    * scripts/guards/no-drill-residue.mjs.
    *

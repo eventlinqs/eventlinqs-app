@@ -30,6 +30,7 @@ export type PolicyName =
   | 'forecast-run'
   | 'newsletter-subscribe'
   | 'marketing-rights'
+  | 'marketing-one-click'
   | 'ai-chat'
   | 'ai-chat-daily'
   | 'gig-post'
@@ -188,6 +189,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 600,
     rationale:
       'The no-token privacy rights form (APP 7.6 stop-facilitation) per IP per 10 min. It is public and unauthenticated and writes one suppression row per submission, so it is a write-amplification target like newsletter-subscribe. Ten covers a household clearing several addresses in one sitting and bounces a scripted flood. Deliberately fail-OPEN, and the reason is the direction the surface points: it can only ever STOP mail. A Redis blip that blocked somebody exercising a privacy right would be the platform refusing to honour a legal right to protect itself from writes, which is the wrong trade in a way that launch-email is not.',
+  },
+  'marketing-one-click': {
+    keyPrefix: 'mkt-1click',
+    limit: 20,
+    windowSec: 600,
+    rationale:
+      'The RFC 8058 one-click unsubscribe endpoint, POST /api/marketing/one-click-unsubscribe/[token]. KEYED BY THE TOKEN, passed explicitly, NEVER by the IP, and that is the whole point of this entry rather than a detail of it. The caller is a mailbox provider: Google or Yahoo infrastructure posting on a recipient behalf, so every recipient of one campaign arrives from a handful of egress addresses. An IP-keyed bucket of any size would start refusing real unsubscribes the moment a campaign went out at volume, which is the carrier-NAT bucket this platform has already met twice (launch-artefact, launch-compose-daily) and which payouts-read and stream-message were both re-keyed to escape. One token is one subscriber, which is the unit of abuse worth bounding, and the token is an unguessable uuid rather than something a stranger enumerates. Twenty per token per ten minutes covers a provider retrying a delivery and a person pressing the button in every copy of every message they hold, and is useless for anything else, because the only thing the endpoint can do with a valid token is stop mail to that one address. FAIL-OPEN, the same posture and the same reason as marketing-rights: this surface can only ever STOP mail, the write is idempotent so a flood of valid requests produces one ledger row, and a Redis blip that refused a one-click unsubscribe would be the platform failing the exact facility the headers promise a mailbox provider works. That is a deliverability failure, which is the cost launch-email prices in domains rather than in requests, and it is incurred by refusing rather than by allowing.',
   },
   'forecast-run': {
     keyPrefix: 'fc-run',

@@ -152,6 +152,11 @@
  *                              reach a mail transport is classified and every marketing
  *                              one calls the resolver, and no rights or unsubscribe
  *                              surface reads a session
+ *   marketing-mail-carries-one-click  every send path classified marketing composes the
+ *                              RFC 8058 one-click unsubscribe pair, the transport carries
+ *                              headers to the provider, the List-Unsubscribe-Post value is
+ *                              the exact specified bytes, the address those headers name is
+ *                              a route that answers POST, and GET on it withdraws nothing
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -1208,6 +1213,18 @@ const GUARDS = [
   // when 102 people had declined. Every read in the marketing path now pages or
   // states its bound, and this fails the build when a new one does neither.
   'scripts/guards/no-silent-row-ceiling.mjs',
+  // The one-click unsubscribe pair. Google requires senders of more than 5,000
+  // messages a day to Gmail to support RFC 8058 one-click, from 1 February 2024
+  // (https://support.google.com/a/answer/81126, fetched 2026-09-19). The
+  // transport passed Resend five fields and no headers, and a grep for
+  // List-Unsubscribe over the whole tree matched nothing, so both marketing
+  // send paths shipped without it and no endpoint could have answered the POST.
+  // Nothing about that failure is visible from inside: the message renders, the
+  // body link works and the provider returns an id. This fails the build when a
+  // marketing path stops composing the pair, when the transport stops carrying
+  // it, when the RFC value is edited, when the address the header names is not
+  // a real POST route, or when GET on that route starts withdrawing.
+  'scripts/guards/marketing-mail-carries-one-click.mjs',
   // Close-out GA2. The matcher produces the list a campaign will one day send
   // against, so two things about a stored run must hold: nobody in it is
   // somebody the consent resolver refuses, and no run holds more score rows
