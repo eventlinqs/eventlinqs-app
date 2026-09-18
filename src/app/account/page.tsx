@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
+import { LOOP_SOURCES, organiserLoopPath } from '@/lib/growth/loops'
 
 export const metadata: Metadata = {
   title: 'Your account | EventLinqs',
@@ -55,7 +56,7 @@ export default async function AccountPage() {
             {[
               { label: 'For You',              href: '/feed',       hint: 'Events picked from the organisers and scenes you follow.' },
               { label: 'Browse events',        href: '/events',     hint: 'Find your next night out.' },
-              { label: 'Become an organiser',  href: '/organisers?via=organiser-invite', hint: 'Run your own events on EventLinqs. Free to start.' },
+              { label: 'Become an organiser',  href: organiserLoopPath(LOOP_SOURCES.ACCOUNT), hint: 'Run your own events on EventLinqs. Free to start.' },
               { label: 'Event alerts',         href: '/account/notifications', hint: 'Get a push when organisers you follow have something on.' },
               { label: 'Communities',          href: '/communities',   hint: 'Browse 14 communities.' },
               { label: 'Cities',               href: '/cities',     hint: '20 cities, from Sydney to Hobart.' },

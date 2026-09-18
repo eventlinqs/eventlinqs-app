@@ -17,6 +17,9 @@ import {
   type ChecklistStatus,
 } from '@/components/dashboard/get-started-checklist'
 import { QuickActionsPanel } from '@/components/dashboard/quick-actions-panel'
+import { OrganiserReferralPanel } from '@/components/dashboard/organiser-referral-panel'
+import { organiserReferralUrl } from '@/lib/growth/loops'
+import { getSiteUrl } from '@/lib/site-url'
 import { AssistantPanel } from '@/components/ai/assistant-panel'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
@@ -305,6 +308,10 @@ export default async function DashboardPage({
             />
           )}
           <QuickActionsPanel />
+          {/* PL1, the fourth loop. Built on the server because the link carries
+           *  a code derived from the profile id, and the browser has no business
+           *  holding the encoder. */}
+          <OrganiserReferralPanel link={organiserReferralUrl(getSiteUrl(), user.id)} />
         </div>
       </div>
     </div>

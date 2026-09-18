@@ -165,6 +165,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.7,
     },
+    // The free forecast tool (close-out FT1). It is the strongest reason a
+    // stranger who has never heard of this platform has to arrive at it, so it
+    // is published rather than left to be found from one internal link.
+    {
+      url: `${baseUrl}/forecast`,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
     {
       url: `${baseUrl}/pricing`,
       changeFrequency: 'monthly',

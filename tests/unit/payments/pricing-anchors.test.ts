@@ -5,7 +5,9 @@
  *
  *   1. A 20.00 ticket at the public rates carries 2.19 in fees, and the
  *      organiser keeps the full 20.00.
- *   2. A 20.00 ticket during the founding fee-free period is 20.50 all in.
+ *   2. A 20.00 ticket during the founding fee-free period is 20.00 all in. It
+ *      used to be 20.50, because the separate processing fee was never waived;
+ *      that fee was deleted on 15 August 2026 and this line was left behind.
  *
  * The values are parsed out of docs/PRICING.md rather than typed here, so this
  * suite and the build guard and the prose are physically the same numbers. If
@@ -218,9 +220,16 @@ describe('the last-resort fallback cannot become a second source', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The Founding Organiser waiver (founder decision 2026-07-27: a DATE WINDOW).
-// The waiver zeroes the PLATFORM fee only; the processing fee is a real
-// third-party cost and is never waived, which is why an inside-window 20.00
-// ticket is 20.50 all in and not 20.00.
+//
+// ONE-FEE-ALLOW-BEGIN: quotes the wrong text it replaces, so the correction is
+// legible rather than a silent edit. This comment used to read "the processing
+// fee is a real third-party cost and is never waived, which is why an
+// inside-window 20.00 ticket is 20.50 all in and not 20.00", and every
+// assertion underneath it already said 20.00. A comment arguing with the tests
+// it introduces is how the next reader picks the wrong half. There is ONE fee
+// since 15 August 2026 and the waiver takes it to zero, so a waived ticket is
+// genuinely free of charge.
+// ONE-FEE-ALLOW-END
 // ─────────────────────────────────────────────────────────────────────────────
 describe('FOUNDING WAIVER: a 20.00 ticket inside and outside the window', () => {
   const NOW = new Date('2026-07-27T00:00:00.000Z')

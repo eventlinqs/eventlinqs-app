@@ -444,6 +444,14 @@ const DRILLS = [
     replace: '',
     expect: '/scan/[eventId] is classified never and nothing in its metadata chain declares noindex',
   },
+  /*
+   * RE-AIMED 15 September 2026. This drill had been STALE and therefore not
+   * running: SEO3 step 2 made the discovery threshold owner-editable, so the
+   * sitemap line grew a `, threshold` argument and the anchor stopped matching.
+   * A drill that cannot aim reads in a summary exactly like a drill that passed,
+   * which is the failure mode the harness exists to prevent, so it is fixed here
+   * rather than left in the four-that-did-not-fire footnote of another report.
+   */
   {
     name: 'the sitemap publishes a templated family without the threshold gate',
     guard: `${GUARDS}/indexing-policy.mjs`,
@@ -3042,6 +3050,219 @@ const DRILLS = [
       '        : state.lastPush?.when',
     replace: '      state.lastPush?.when',
     expect: 'No push to a working branch could be found',
+  },
+  /*
+   * drive-usage-names-what-it-needs, two drills, one per requirement it can
+   * judge. Each removes the flag from a header that legitimately needs it and
+   * expects the guard to name that drive, because a guard that says only FAIL
+   * sends the reader through 28 files.
+   *
+   * The requirement is real in both cases and was established by running the
+   * command rather than by reading it: without the alias loader node cannot
+   * resolve the @/ imports the src module reaches, and without the server-only
+   * shim it throws ERR_MODULE_NOT_FOUND on a package that exists only inside
+   * Next.
+   */
+  {
+    name: 'a drive that needs the alias loader stops naming it',
+    guard: `${GUARDS}/drive-usage-names-what-it-needs.mjs`,
+    file: 'scripts/verify/ft1-forecast-drive.mjs',
+    find: ' *        --import ./scripts/lib/src-alias-loader.mjs',
+    replace: ' *        (the loader flag removed by the drill)',
+    expect: 'ft1-forecast-drive.mjs: the header never names src-alias-loader',
+  },
+  {
+    name: 'a drive that needs the server-only shim stops naming it',
+    guard: `${GUARDS}/drive-usage-names-what-it-needs.mjs`,
+    file: 'scripts/verify/ga3-attribution-drive.mjs',
+    find: ' *     node --import ./scripts/lib/server-only-shim.mjs',
+    replace: ' *     node (the shim flag removed by the drill)',
+    expect: 'ga3-attribution-drive.mjs: the header never names server-only-shim',
+  },
+  /*
+   * The third requirement, added 14 September 2026. ft1-forecast-drive run
+   * exactly as its header then read reported the fee as $68.50 three times over
+   * a configuration change, which says the displayed fee does not follow
+   * pricing_rules. It does. The drive's own invalidation was a no-op because
+   * its process had no cache store, and the store is not a guess: the drive
+   * IMPORTS an invalidate function out of src/.
+   */
+  {
+    name: 'a drive that clears a cache stops naming the store it lives in',
+    guard: `${GUARDS}/drive-usage-names-what-it-needs.mjs`,
+    file: 'scripts/verify/ft1-forecast-drive.mjs',
+    find: ' *   UPSTASH_REDIS_REST_URL=http://127.0.0.1:8179 UPSTASH_REDIS_REST_TOKEN=local',
+    replace: ' *   (the store removed by the drill)',
+    expect: 'ft1-forecast-drive.mjs: the header never names UPSTASH_REDIS_REST_URL',
+  },
+  /*
+   * lane-tagged-privilege-writes. The drill takes the lane filter out of the
+   * FO1 offer drive's own selection, which is EXACTLY the state the file was in
+   * on the morning of 14 September 2026 when it was found granting founding
+   * windows on lane A's refund fixtures and lane C's events.
+   *
+   * The anchor is `isLaneB`, which is the file's ONLY lane PREDICATE. Its other
+   * ten lane tags are names it gives rows it creates, and the guard does not
+   * accept those, for the reason written in the guard: this very file named
+   * every row lane-b on the morning it was granting windows to lane A's.
+   */
+  {
+    name: 'a drive that grants a founding window stops saying whose row it is',
+    guard: `${GUARDS}/lane-tagged-privilege-writes.mjs`,
+    file: 'scripts/verify/fo1-founding-offer-drive.mjs',
+    find: "return /lane-b/i.test(`${org?.name ?? ''} ${org?.slug ?? ''}`)",
+    replace: 'return true',
+    expect: 'fo1-founding-offer-drive.mjs: calls admin_set_founding_waiver and never restricts its',
+  },
+  /*
+   * fixtures-are-not-published, four drills, because the guard makes four
+   * distinct claims and three of them had never been seen failing.
+   *
+   * The first two are the incident itself: on 14 September 2026 PL1's fixture
+   * carried exactly these two literals and its deleted rows refused lane A's
+   * push with two RULE 2 faults on URLs lane A had never heard of.
+   *
+   * The third is this guard's own blind spot, deliberately made loud. A row
+   * built as a variable and inserted by name is a write the static reader cannot
+   * judge, and the first version of the guard passed one silently:
+   * community-threshold-drive builds its rows that way and was reported clean.
+   *
+   * The fourth is the premise. The rule is only true while the sitemap still
+   * selects on those literals, and a guard whose premise has moved keeps passing
+   * while the thing it protects stops being protected.
+   */
+  {
+    name: 'a drive fixture event goes back to being publicly visible',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: "      visibility: 'unlisted',",
+    replace: "      visibility: 'public',",
+    expect: "writes visibility: 'public', which publishes /events/<slug>",
+  },
+  {
+    name: 'a drive fixture organisation goes back to being active',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: "owner_id: fixture.organiserId, status: 'pending' })",
+    replace: "owner_id: fixture.organiserId, status: 'active' })",
+    expect: "inserts organisations with status: 'active'",
+  },
+  {
+    name: 'a fixture organisation is built as a variable, where no static reader can judge it',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: ".insert({ name: `Lane B PL1 ${STAMP}`, slug: `${LANE}-org-${STAMP}`, owner_id: fixture.organiserId, status: 'pending' })",
+    replace: '.insert(organisationRow)',
+    expect: 'inserts organisations from a variable, so this guard cannot see',
+  },
+  {
+    name: "the sitemap stops selecting organisers on 'active', and the guard's rule stops being true",
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: ".eq('status', 'active')",
+    replace: ".eq('status', 'approved')",
+    expect: "THIS GUARD'S PREMISE HAS MOVED",
+  },
+  /*
+   * proof-reads-never-discard-their-error, two drills, one per way a read on
+   * that surface can stop telling a failure from an absence.
+   *
+   * Both are the state src/lib/proof/read.ts was actually in on the morning of
+   * 15 September 2026, when a ConnectTimeoutError to Supabase made the campaign
+   * proof page answer 404 for a campaign that exists. The orders read was the
+   * same shape and would have printed zero revenue instead.
+   */
+  {
+    name: 'a ledger read on the proof page stops binding its error',
+    guard: `${GUARDS}/proof-reads-never-discard-their-error.mjs`,
+    file: 'src/lib/proof/read.ts',
+    find: '  const { data: slot, error: slotError } = await admin',
+    replace: '  const { data: slot } = await admin',
+    expect: 'destructures { data } from an await and never binds',
+  },
+  {
+    name: 'a figure read on the proof page stops going through mustRead',
+    guard: `${GUARDS}/proof-reads-never-discard-their-error.mjs`,
+    file: 'src/lib/proof/read.ts',
+    find: "  const sendRows = await mustRead('the sends', () =>",
+    replace: '  const { data: sendRows } = await (async () =>',
+    expect: 'never binds `error`',
+  },
+  /*
+   * no-published-lane-b-fixture-on-test. The drill removes the FO1 exemption,
+   * and the guard then names the four fixtures it was allowing: real rows, on
+   * the real database, through the real fetch.
+   *
+   * WHAT THIS DRILL DELIBERATELY DOES NOT DO is create a published fixture to
+   * be caught. That would mean putting a real organiser page into the sitemap of
+   * a database three lanes share, for as long as the drill runs, which is
+   * precisely the incident the guard exists to prevent. The catching half is
+   * driven over synthetic rows in
+   * tests/unit/guards/no-published-lane-b-fixture-on-test.test.ts, including the
+   * exact leftover that started this: lane-b-ga5-event-202609131728 at all three
+   * of its URLs.
+   */
+  {
+    name: 'the persistent-fixture exemption is removed, and the published rows are named',
+    guard: `${GUARDS}/no-published-lane-b-fixture-on-test.mjs`,
+    file: 'scripts/guards/no-published-lane-b-fixture-on-test.mjs',
+    find: "    prefix: 'lane-b-fo1-',",
+    replace: "    prefix: 'lane-b-fo1-NOT-THIS-ONE-',",
+    expect: 'are PUBLISHED on the database three lanes share',
+  },
+  /*
+   * every-order-carries-its-attribution, three drills, one per way an order can
+   * come to exist with no stored attribution decision.
+   *
+   * The first two are the write-time half and they are the realistic ones: a new
+   * checkout path that forgets the capture entirely, and an existing file that
+   * grows a second insert and keeps its one call. The second is the nastier
+   * shape, because the file still looks correct at a glance and a grep for the
+   * function name finds it.
+   *
+   * The third is the heal-time half. It removes the schedule rather than the
+   * route, because a route that exists and is never invoked is the exact defect
+   * cron-routes-scheduled was written for, and it is the one a reader is most
+   * likely to reintroduce by editing vercel.json.
+   */
+  {
+    name: 'an order-creating path stops calling the write-time attribution capture',
+    guard: `${GUARDS}/every-order-carries-its-attribution.mjs`,
+    file: 'src/app/actions/register-free.ts',
+    find: '  await recordClickSignalForOrder(order_id)',
+    replace: '  void order_id',
+    expect: 'never calls recordClickSignalForOrder',
+  },
+  {
+    name: 'a file grows a second order insert and keeps its single capture call',
+    guard: `${GUARDS}/every-order-carries-its-attribution.mjs`,
+    file: 'src/app/actions/register-free.ts',
+    find: "  const { error: orderError } = await adminClient.from('orders').insert({",
+    replace:
+      "  if (false as boolean) await adminClient.from('orders').insert({ id: order_id })\n  const { error: orderError } = await adminClient.from('orders').insert({",
+    expect: 'calls recordClickSignalForOrder only 1 time(s)',
+  },
+  {
+    name: 'the attribution backstop is left in the tree with no schedule behind it',
+    guard: `${GUARDS}/every-order-carries-its-attribution.mjs`,
+    file: 'vercel.json',
+    find: '      "path": "/api/cron/attribution-backstop",',
+    replace: '      "path": "/api/cron/attribution-backstop-NOT-THIS-ONE",',
+    expect: 'has no entry in vercel.json crons, so it never runs',
+  },
+  /*
+   * The resolution grace is declared once, in the product, and both the healer
+   * and the invariant guard read that one declaration. This drills the reader
+   * rather than the number: move the constant and the guard must refuse to run
+   * rather than quietly fall back to a window of its own.
+   */
+  {
+    name: 'the resolution grace window stops being readable, and the guard refuses rather than assuming one',
+    guard: `${GUARDS}/attribution-one-record-per-order-never-billable-when-reversed.mjs`,
+    file: 'src/lib/attribution/backstop.ts',
+    find: 'export const RESOLUTION_GRACE_MS = 5 * 60 * 1000',
+    replace: 'export const RESOLUTION_GRACE_MS = graceFromSomewhereElse()',
+    expect: 'no longer exports RESOLUTION_GRACE_MS as a literal',
   },
   /*
    * MONEY FIX A1.7, the six drills for funds-reach-the-organiser.

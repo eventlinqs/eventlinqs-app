@@ -59,6 +59,7 @@ export const ALLOWED_GRANTS = [
   { file: 'src/components/templates/PhotographicCategoryHero.tsx', match: 'priority />', why: 'the category landing hero: the hero is the LCP' },
   { file: 'src/components/templates/PhotographicCommunityHero.tsx', match: 'priority />', why: 'the community landing hero: the hero is the LCP' },
   { file: 'src/components/templates/OrganisersLandingPage.tsx', match: 'priority />', why: '/organisers: the marketing hero is the LCP' },
+  { file: 'src/app/forecast/page.tsx', match: 'priority', why: '/forecast (close-out FT1): the full-room hero is the one above-fold raster and owns the LCP' },
   { file: 'src/components/features/venues/venue-profile-hero.tsx', match: 'priority />', why: 'venue profile: the hero is the LCP' },
   { file: 'src/components/features/organisers/organiser-profile-hero.tsx', match: 'size="lg" priority />', why: 'organiser profile: the avatar in the hero is the LCP' },
   { file: 'src/components/auth/auth-shell.tsx', match: 'priority />', why: 'login and signup: the brand panel is the LCP on desktop' },

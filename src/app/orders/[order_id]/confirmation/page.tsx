@@ -12,6 +12,12 @@ import { formatSeatLabel } from '@/lib/seating/format'
 import { ConfirmationActions } from '@/components/orders/confirmation-actions'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { encodeRefCode } from '@/lib/growth/referrals'
+import {
+  LOOP_SOURCES,
+  RUN_YOUR_EVENT_CALL,
+  RUN_YOUR_EVENT_LEAD,
+  organiserLoopPath,
+} from '@/lib/growth/loops'
 import { recordShareConversionForOrder } from '@/lib/broadcast/conversion'
 import type { Order, OrderItem } from '@/types/database'
 import { BuyerRefundPanel } from './refund-panel'
@@ -558,17 +564,25 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           refCode={user ? encodeRefCode(user.id) ?? undefined : undefined}
         />
 
-        {/* Invite-an-organiser conversion (the acquisition loop). The moment a
-         *  buyer has momentum is the moment to surface that they can run their
-         *  own events. The link is attributed (via=organiser-invite) so we can
-         *  measure how many organisers this hook converts. */}
-        <div className="rounded-xl border border-gold-100 bg-gold-100/60 p-5 text-center mb-6">
-          <p className="text-sm font-semibold text-ink-900">Run your own events on EventLinqs</p>
+        {/* Invite-an-organiser conversion (the acquisition loop), close-out PL1.
+         *  The moment a buyer has momentum is the moment to surface that they
+         *  can run their own events, and this sits BELOW the ticket and never
+         *  above it: the thing they came for is the thing they see first.
+         *
+         *  The link carries BOTH parameters and neither is typed here. `via`
+         *  feeds the referral and attribution spine; `src` is what the signup
+         *  stores on the account, which is the only one the weekly source line
+         *  can count. Both come from src/lib/growth/loops.ts. */}
+        <div
+          data-loop="organiser-invite"
+          className="rounded-xl border border-gold-100 bg-gold-100/60 p-5 text-center mb-6"
+        >
+          <p className="text-sm font-semibold text-ink-900">{RUN_YOUR_EVENT_LEAD}</p>
           <p className="mt-1 text-xs text-ink-600">
-            It is free to start. List your event, reach your community, and keep every attendee relationship.
+            {RUN_YOUR_EVENT_CALL}. It is free to start, and you keep every attendee relationship.
           </p>
           <Link
-            href="/organisers?via=organiser-invite"
+            href={organiserLoopPath(LOOP_SOURCES.CONFIRMATION)}
             className="mt-3 inline-block rounded-lg bg-gold-400 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-500"
           >
             Become an organiser

@@ -206,8 +206,21 @@ docs/verification/lh-local/
 # server writes its own log and none of them may dirty the tree.
 .tmp-serve.log
 .tmp-serve.err.log
+# The same, per lane, when three worktrees drive against three ports at once.
 .tmp-serve-*.log
 .tmp-serve-*.err.log
+.tmp-upstash*.log
+.tmp-stripe-listen.log
+#
+# AND ANY OTHER `.tmp-*` LOG, WHICH IS THE POINT OF THIS LINE.
+#
+# The entries above were added one at a time as each new harness invented a new
+# name, and one escaped: `.tmp-lane-b-stripe-listen.log` matches none of them,
+# and it holds the `whsec_` signing secret `stripe listen` mints for the session.
+# A list of exact names is a list that is always one name short, and the thing it
+# lets through is a credential in the tree. The named lines are kept anyway, so a
+# reader can see which harness invented which name.
+.tmp-*.log
 
 # The parity check's last result (close-out PARITY1). A RUN RESULT, not source:
 # it is written by scripts/ops/parity-check.mjs and read by the daily digest,

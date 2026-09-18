@@ -33,6 +33,19 @@ export const BROADCAST_FLAGS = [
   // (admin surface, audit log, cache) as the broadcast stages.
   'gig_board',
   'artist_showcase',
+  // Close-out FO1. The Founding Organiser offer's reversal condition needs a
+  // switch the owner can throw WITHOUT A DEPLOY, so it rides the same governed
+  // switch system rather than becoming a second, private flag mechanism.
+  'founding_open',
+  // Close-out GA1. The audience asset's reversal condition: one switch removes
+  // the marketing question from checkout AND stops every audience write.
+  'audience_capture',
+  // Close-out GA2. Whether a new matcher run may be produced at all. The runs
+  // already stored are never touched by it.
+  'marketing_matcher_enabled',
+  // Close-out GA3. Whether a new click or attribution is WRITTEN. Every tracked
+  // link keeps redirecting either way: a poster on a wall is not a feature.
+  'marketing_attribution_capture_enabled',
   /*
    * NOT A BROADCAST STAGE, and it is here because this is the platform's ONE
    * flag resolver rather than because it belongs to that layer. The
@@ -63,6 +76,26 @@ export const BROADCAST_FLAG_DEFAULTS: Record<BroadcastFlag, boolean> = {
   broadcast_artists: false,
   gig_board: false,
   artist_showcase: false,
+  // ON. The offer is live on /organisers and in every outreach message, so the
+  // safe posture when the flags table cannot be read is the posture the public
+  // page is already promising. Closing it is a deliberate act, never an outage.
+  founding_open: true,
+  // ON. The consent question is already on the checkout of a live platform and
+  // the asset it builds is the point of the item, so the safe posture when the
+  // flags table cannot be read is the posture the checkout is already taking.
+  // Nothing about this default weakens consent: an audience row still cannot
+  // exist without a granted consent record, and the database is what refuses it.
+  audience_capture: true,
+  // ON. The matcher decides who inside a consented audience should hear about
+  // an event, and the alternative to having it is messaging everybody, which is
+  // how a consented list becomes a dead list. Nothing about this default sends
+  // anything: the matcher produces a ranked list and no transport can reach it.
+  marketing_matcher_enabled: true,
+  // ON. Attribution is the billing basis, and the failure mode of being off is
+  // a sale that happened and cannot be accounted for afterwards. A click that
+  // was never written cannot be recovered later, so the safe posture when the
+  // flags table cannot be read is to keep recording.
+  marketing_attribution_capture_enabled: true,
   // ON. Both surfaces are shipped, correct and wanted; the switch exists to
   // turn them OFF in one row change if either is ever found saying something
   // untrue, which is the reversal condition rather than a launch decision.
@@ -101,6 +134,14 @@ export const BROADCAST_FLAG_DECISIONS: Record<BroadcastFlag, string> = {
     'lawal 2026-08-15: OFF at launch, deliberately. Built, tested, and held for the post-launch "performers, bring your numbers" moment recorded in the recruitment playbook. Marketing is explicitly barred from naming it before then.',
   artist_showcase:
     'lawal 2026-08-15: OFF at launch, deliberately. Same decision and same moment as gig_board; the two ship together or not at all, because a showcase with no gig board is a directory with nothing to do.',
+  founding_open:
+    'lawal 2026-09-13: ON. The Founding Organiser offer is open to new organisers. This is the FO1 reversal condition made operable: set it false and no new spot is granted and no new fee-free window is opened, at once and with no deploy. Organisations that already hold a window keep it and their referrals keep earning, because a promise already made is not withdrawn by closing the door behind it. The fifty cap closes the offer on its own; this closes it early.',
+  audience_capture:
+    'lawal 2026-09-13: ON. The one marketing question at checkout and every write to the audience asset. Set it false and the question disappears from the checkout and no audience row is created or enriched, at once and with no deploy. Every existing row and every consent record is left exactly as it is. It is deliberately powerless in one direction: a withdrawal still removes its audience row while the switch is off, because a feature flag may not keep somebody in a marketing audience they asked to leave.',
+  marketing_matcher_enabled:
+    'lawal 2026-09-13: ON. Whether a new matcher run may be produced. Set it false and no new run starts, at once and with no deploy, and the admin view becomes a read of the runs already stored: every run, score and breakdown row is left exactly as it is, because a stored run is the record of a decision already taken. It gates producing a list and nothing else; no send path exists yet for it to gate.',
+  marketing_attribution_capture_enabled:
+    'lawal 2026-09-13: ON. Whether a new click row, order signal or attribution record is WRITTEN. Set it false and nothing new is recorded, at once and with no deploy, while every short link keeps redirecting to its target and every click, attribution and reversal already stored stays intact and readable: a link printed on a poster is not a feature and must not stop working because a switch moved. Orders placed while it is off still get their one attribution record, with the decision none and the reason naming the switch, because an order with no record at all is the one thing this item exists to prevent.',
   event_availability_and_access:
     'lawal 2026-09-14: ON. Close-out SEO5 reversal condition. Hides the remaining-tickets line and the social-proof badges on the event page, and the accessibility section on the event and venue pages, in one admin row change with no deploy. The calendar links are deliberately NOT behind it: a date in a diary is never the thing that turns out to be untrue. Turn it OFF if any availability figure is ever found not to come from inventory, or if an accessibility claim is ever found that no organiser made.',
 }

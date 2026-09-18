@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Metadata } from 'next'
 import { SquadPayForm } from './squad-pay-form'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { getCurrentConsentWording } from '@/lib/consent/ledger'
+import { FACILITATED_MARKETING_PURPOSE } from '@/lib/consent/purposes'
 
 type Props = {
   params: Promise<{ token: string; member_id: string }>
@@ -107,6 +110,12 @@ export default async function SquadPayPage({ params }: Props) {
     .eq('id', event.organisation_id)
     .maybeSingle()
   const organiserName = organisation?.name ?? ''
+  // GA1: the question and the words it is asked in are both resolved here, so
+  // this page carries no consent sentence of its own and one switch governs
+  // both asking it and recording the answer. Null means it is not asked.
+  const platformWording = (await isFeatureEnabled('audience_capture'))
+    ? await getCurrentConsentWording(adminClient, FACILITATED_MARKETING_PURPOSE)
+    : null
 
   return (
     <div className="min-h-screen bg-ink-100">
@@ -158,6 +167,7 @@ export default async function SquadPayPage({ params }: Props) {
             pricePerSpotCents={tier.price}
             currency={tier.currency}
             publishableKey={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}
+            platformWording={platformWording}
           />
         </div>
       </div>

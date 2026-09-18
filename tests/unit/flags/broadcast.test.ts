@@ -49,6 +49,28 @@ describe('broadcast flag resolver', () => {
       // Performer marketplace stages ship built but OFF by default.
       gig_board: false,
       artist_showcase: false,
+      // The Founding Organiser offer's reversal condition (close-out FO1). ON,
+      // because the offer is live on /organisers and in every outreach message,
+      // so the safe posture when the table cannot be read is the one the public
+      // page is already promising. Closing it is a deliberate act.
+      founding_open: true,
+      // The audience asset's reversal condition (close-out GA1). ON, because
+      // the consent question is already on the checkout of a live platform and
+      // the asset it builds is the point of the item. Nothing about this
+      // default weakens consent: an audience row still cannot exist without a
+      // granted consent record, and the database is what refuses it.
+      audience_capture: true,
+      // The matcher's reversal condition (close-out GA2). ON, because the
+      // alternative to ranking a consented audience is messaging all of it, and
+      // nothing about this default sends anything: the matcher produces a list
+      // and no transport is reachable from it.
+      marketing_matcher_enabled: true,
+      // The attribution spine's reversal condition (close-out GA3). ON, because
+      // a click that was never written cannot be recovered later and the record
+      // is the basis of an invoice, so the safe posture when the table cannot
+      // be read is to keep recording. Every tracked link keeps redirecting
+      // either way: a poster on a wall is not a feature.
+      marketing_attribution_capture_enabled: true,
       /*
        * NOT A STAGE, AND ON BY DEFAULT, which is why it is called out here
        * rather than folded into the list above.
@@ -61,7 +83,7 @@ describe('broadcast flag resolver', () => {
        */
       event_availability_and_access: true,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(7)
+    expect(BROADCAST_FLAGS).toHaveLength(11)
   })
 
   test('the reversal flag defaults ON in both failure paths', async () => {

@@ -9,6 +9,12 @@ import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
 import { ReferralCapture } from '@/components/growth/referral-capture'
+import { ArrivalCapture } from '@/components/growth/arrival-capture'
+import { ClickIdentifierRelay } from '@/components/growth/click-identifier-relay'
+import { ConsentProvider } from '@/components/analytics/consent-provider'
+import { ConsentBanner } from '@/components/analytics/consent-banner'
+import { GatedAnalytics } from '@/components/analytics/gated-analytics'
+import { FunnelLanded } from '@/components/analytics/funnel-landed'
 import { RegisterAppWorker } from '@/components/pwa/register-app-worker'
 import { getSiteUrl } from '@/lib/site-url'
 import { siteVerificationMetadata } from '@/lib/seo/site-verification'
@@ -103,12 +109,17 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true },
   },
   /*
-   * SEARCH CONSOLE OWNERSHIP (close-out SEO2 step 2). Emits
-   * <meta name="google-site-verification" content="..."> when, and only when,
-   * GOOGLE_SITE_VERIFICATION holds a usable token; nothing otherwise. The token
-   * is minted by a signed-in Google account, which is the one irreducible act,
-   * and everything either side of it is `npm run seo2:verify-property`. See
-   * src/lib/seo/site-verification.ts.
+   * SEARCH CONSOLE OWNERSHIP (close-out AN1 step 4, and close-out SEO2 step 2,
+   * which are the same requirement reached from two lanes). Indexing (C19) is a
+   * claim until Search Console is reading it back, and the property cannot be
+   * verified until Google can see the token on the live site.
+   *
+   * Emits <meta name="google-site-verification" content="..."> when, and only
+   * when, GOOGLE_SITE_VERIFICATION holds a usable token; nothing otherwise. An
+   * empty meta tag is not a neutral absence, it is a verification that fails
+   * with a tag that looks correct. The token is minted by a signed-in Google
+   * account, which is the one irreducible act, and everything either side of it
+   * is `npm run seo2:verify-property`. See src/lib/seo/site-verification.ts.
    */
   ...siteVerificationMetadata(),
   openGraph: {
@@ -226,6 +237,33 @@ export default function RootLayout({
           {/* First-touch attribution capture (acquisition loop). Renders null
            *  and runs only in a post-paint effect, so it never costs LCP. */}
           <ReferralCapture />
+          {/* HOW THIS ACCOUNT ARRIVED (close-out AN1). A sibling of the
+           *  referral capture above rather than part of it: that one answers
+           *  "who referred this person", this one answers "which surface
+           *  brought them", and they are read by different code at different
+           *  moments. Renders null, post-paint, nothing identifying. */}
+          <ArrivalCapture />
+          {/* THE CLICK IDENTIFIER, CARRIED OUT OF THE ADDRESS (close-out GA3).
+           *  Rung 2 of the attribution ladder: the person who was sent the
+           *  address rather than the person who opened the tracked link. Beside
+           *  the arrival capture rather than inside it, because that one is
+           *  first touch and answers which surface brought an account, and this
+           *  one is last touch and answers which message produced a sale.
+           *  Renders null, post-paint, one session cookie or none. */}
+          <ClickIdentifierRelay />
+          {/* MEASUREMENT, AND THE ONLY WAY IT LOADS (close-out AN1).
+           *  The provider holds the decision, the banner takes it, and the
+           *  gate emits a third-party script only when the person agreed AND
+           *  the owner configured that provider. Nothing here renders anything
+           *  visible until a visitor who has never answered arrives, and
+           *  nothing here requests anything at all before that. Plausible
+           *  above is outside this gate on purpose: it is cookieless and
+           *  stores nothing on the device (see lib/analytics/providers.ts). */}
+          <ConsentProvider>
+            <GatedAnalytics />
+            <FunnelLanded />
+            <ConsentBanner />
+          </ConsentProvider>
           {/* The root service worker, so a navigation with no signal answers
            *  with an EventLinqs page instead of the browser's error page
            *  (close-out C8B.5, Scope v5 10.3). Renders null and registers only

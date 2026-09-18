@@ -10,7 +10,23 @@
 // Usage: node scripts/affordance-scan.mjs [BASE]
 import { chromium } from 'playwright'
 
-const BASE = (process.argv[2] ||
+/*
+ * BASE IS READ FROM THE ENVIRONMENT TOO, and until 14 September 2026 it was not.
+ *
+ * CLAUDE.md says this scan "runs beside the link-integrity crawler in the audit
+ * suite on every pass". That crawler reads `process.argv[2] || process.env.BASE`.
+ * This one read argv only, and fell back to a HARD-CODED preview URL for the
+ * feat/home-rebuild branch. So the documented way to run the pair,
+ *
+ *     BASE=http://localhost:3100 node scripts/link-integrity-crawl.mjs
+ *     BASE=http://localhost:3100 node scripts/affordance-scan.mjs
+ *
+ * aimed the first at the tree under test and the second at a months-old
+ * deployment of a different branch, and printed AFFORDANCE SCAN: PASS about it.
+ * Two tools that are always run together and are aimed differently is a trap
+ * with no visible symptom: the pass is real, it is just about another website.
+ */
+const BASE = (process.argv[2] || process.env.BASE ||
   'https://eventlinqs-app-git-feat-home-rebuild-lawals-projects-c20c0be8.vercel.app').replace(/\/$/, '')
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
@@ -20,10 +36,19 @@ const PAGES = [
   ['pricing', '/pricing'],
   ['about', '/about'],
   ['events-browse', '/events'],
-  // event-detail is resolved from the LIVE SITEMAP below, never typed. See
-  // resolveEventDetailPath: the slug that used to sit here had been deleted from
-  // the catalogue, the page answered 404, and a 404 renders no tiles, so this
-  // scan reported "OK ... dead-end tiles: 0" on it for as long as that was true.
+  /*
+   * RESOLVED FROM THE RUNNING PLATFORM, never typed. This entry used to be the
+   * literal slug `aso-ebi-affair-owambe-garden-party`, and on 14 September 2026
+   * that event no longer existed, so the one page type where a dead-end tile is
+   * most likely had been answering 404 and being counted as clean. A slug in a
+   * scan is a claim that goes stale silently: nothing about this file changes on
+   * the day the event is unpublished.
+   *
+   * `EVENT_DETAIL` below is replaced before the loop with the first event the
+   * platform's own sitemap names, which is the list Google reads and the one
+   * source that cannot drift from the catalogue.
+   */
+  ['event-detail', 'EVENT_DETAIL'],
   ['city', '/city/sydney'],
   ['suburb', '/city/sydney/inner-west'],
   ['community', '/community/african'],
@@ -107,14 +132,18 @@ const DETECT = () => {
  * that slug went stale.
  *
  * The sitemap is the platform's own list of event URLs, so asking it is the one
- * way this cannot go stale again. If it names no event, the page is NOT scanned
- * and the run says so, rather than quietly scanning eighteen pages and calling
- * it nineteen.
+ * way this cannot go stale again. If it names no event, that is NOT quietly
+ * skipped: an events platform with no openable event is a finding in itself, so
+ * the entry is dropped from the list and recorded as a page that could not be
+ * scanned, which fails the run.
  */
 async function resolveEventDetailPath() {
   try {
-    const res = await fetch(`${BASE}/sitemap.xml`)
-    if (!res.ok) return null
+    const res = await fetch(`${BASE}/sitemap.xml`, { headers: { 'user-agent': UA } })
+    if (!res.ok) {
+      console.warn(`event-detail: ${BASE}/sitemap.xml answered ${res.status}`)
+      return null
+    }
     const xml = await res.text()
     /*
      * `[^<\/]+` AND NOT `[^<]+`, because the first draft of this matched
@@ -129,27 +158,33 @@ async function resolveEventDetailPath() {
     // NAMED AND SPOKEN, never swallowed. The caller reports that the event page
     // was not scanned, but only this frame knows WHY, and "the sitemap could not
     // be reached" and "the sitemap listed no event" need opposite responses.
-    console.warn(`event-detail: could not read ${BASE}/sitemap.xml:`, error)
+    console.warn(`event-detail: could not read ${BASE}/sitemap.xml: ${String(error?.message ?? error)}`)
     return null
   }
 }
 
+/**
+ * Pages that did not render, or that could not be resolved to a URL at all.
+ * Counted apart from tiles because it is a different fault with the opposite
+ * symptom: a page that does not render has no tiles to be dead ends, so it
+ * scores a perfect zero and reads as a pass.
+ */
+const unreachable = []
+
+const eventDetailIndex = PAGES.findIndex(entry => entry[1] === 'EVENT_DETAIL')
 const eventDetailPath = await resolveEventDetailPath()
 if (eventDetailPath) {
-  PAGES.splice(5, 0, ['event-detail', eventDetailPath])
+  PAGES[eventDetailIndex][1] = eventDetailPath
   console.log(`event-detail resolved from the sitemap: ${eventDetailPath}\n`)
 } else {
-  console.log('event-detail: the sitemap named no event URL, so the event page is NOT scanned in this run\n')
+  PAGES.splice(eventDetailIndex, 1)
+  unreachable.push('event-detail: the sitemap named no event URL, so the event page was not scanned')
+  console.log('FAIL event-detail   the sitemap named no event URL, so the event page was NOT scanned\n')
 }
 
 const b = await chromium.launch({ args: ['--no-sandbox'] })
 let total = 0
-/**
- * Pages that did not render. Counted apart from tiles because it is a different
- * fault with the opposite symptom: a page that does not render has no tiles to
- * be dead ends, so it scores a perfect zero and reads as a pass.
- */
-const unreachable = []
+let scanned = 0
 const results = []
 for (const [name, path] of PAGES) {
   try {
@@ -163,16 +198,27 @@ for (const [name, path] of PAGES) {
       window.scrollTo(0, 0)
     })
     await page.waitForTimeout(600)
+    /*
+     * A PAGE THAT DID NOT LOAD IS NOT EVIDENCE THAT IT HAS NO DEAD-END TILES.
+     * This used to print "OK  communities-hub [404] dead-end tiles: 0" and
+     * count it towards a PASS, which is true and worthless: a 404 body has no
+     * tiles in it. Seven of the nineteen pages were reporting exactly that on
+     * 14 September 2026, so a scan that said PASS across nineteen pages had
+     * actually looked at twelve.
+     */
     if (status !== 200) {
       unreachable.push(`${name} ${path} answered ${status}`)
       console.log(`FAIL ${name.padEnd(14)} [${status}] page did not render, so nothing on it was scanned`)
+      results.push({ name, path, status, violations: null, notScanned: true })
       await ctx.close()
       continue
     }
     const viol = await page.evaluate(DETECT)
+    scanned++
     total += viol.length
     results.push({ name, path, status, violations: viol.length, detail: viol })
-    console.log(`${viol.length === 0 ? 'OK  ' : 'FAIL'} ${name.padEnd(14)} [${status}] dead-end tiles: ${viol.length}`)
+    const verdict = viol.length === 0 ? 'OK  ' : 'FAIL'
+    console.log(`${verdict} ${name.padEnd(14)} [${status}] dead-end tiles: ${viol.length}`)
     if (viol.length) viol.slice(0, 6).forEach(v => console.log(`       - ${v.alt || '(no alt)'} ${v.w}x${v.h} ${v.src}`))
     await ctx.close()
   } catch (e) {
@@ -181,10 +227,13 @@ for (const [name, path] of PAGES) {
   }
 }
 await b.close()
-console.log(`\nTOTAL dead-end tiles across ${PAGES.length} pages: ${total}`)
-if (unreachable.length > 0) {
-  console.log(`\n${unreachable.length} page(s) could not be scanned because they did not render:`)
-  for (const u of unreachable) console.log(`  - ${u}`)
+console.log(`\nTOTAL dead-end tiles across ${scanned} of ${scanned + unreachable.length} pages: ${total}`)
+if (unreachable.length) {
+  console.log(`\n${unreachable.length} page(s) did NOT load, so nothing was scanned on them:`)
+  for (const u of unreachable) console.log(`    ${u}`)
+  console.log('')
+  console.log('  Either the path is wrong in this file or the surface is broken, and both')
+  console.log('  are findings. A scan cannot report a page clean without looking at it.')
 }
 const ok = total === 0 && unreachable.length === 0
 console.log(ok ? 'AFFORDANCE SCAN: PASS' : 'AFFORDANCE SCAN: FAIL')

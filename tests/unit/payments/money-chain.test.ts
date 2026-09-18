@@ -55,6 +55,7 @@ function makeFees(overrides: Partial<FeeBreakdown> = {}): FeeBreakdown {
     currency: 'AUD',
     fee_pass_type: 'pass_to_buyer',
     fee_waived: false,
+    founding_fee_waived_cents: 0,
     breakdown_display: {
       tickets: [],
       addons: [],
@@ -76,6 +77,10 @@ function makeWaivedFees(overrides: Partial<FeeBreakdown> = {}): FeeBreakdown {
     payment_processing_fee_cents: 0,
     total_cents: 5_000,
     fee_waived: true,
+    // The waived amount is the fee that WOULD have been charged (close-out FO1):
+    // the same 274c the standard shape above charges, recorded so the offer's
+    // cost is a sum over a column rather than an archaeology exercise.
+    founding_fee_waived_cents: 274,
     breakdown_display: {
       tickets: [],
       addons: [],

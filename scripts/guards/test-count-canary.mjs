@@ -1589,6 +1589,151 @@ const ROOT = join(HERE, '..', '..')
  * written off here: it is in REVIEW-QUEUE.md, and the push gate runs the suite
  * again, which is a third reading on the same tree.
  *
+ * 2026-09-14 (lane B, merging origin/verify/l5-launch-readiness): the two
+ * histories above and below this line ran in PARALLEL, in two trees, from a
+ * common ancestor, so their "raised X -> Y" chains are not one chain and cannot
+ * be read as one. Both are kept verbatim because each names what it counted.
+ * The pair below is MEASURED on the merged tree rather than chained from either
+ * side or taken as the larger of the two: the larger of two partial counts is
+ * still a guess, which is the rule lane A used on this same file on 13
+ * September and it is the rule here. The merged tree MEASURES 407 files and
+ * 5233 tests, 0 failed and 0 skipped, on a clean run of the whole suite.
+ *
+ * The merge also cost a defect, which is the reason a merge is measured and
+ * not arithmetic: lane A's new shared-log-is-opened-for-append guard arrived
+ * with it and went RED on scripts/dev/lane-b-serve-with-stripe.mjs, which
+ * handed the Upstash shim a 'w' descriptor for stdout beside an 'a' for
+ * stderr - two independent offsets inside one spawn. Fixed to one openStepLog
+ * descriptor in the same pass.
+ * 2026-09-13 (lane B, close-out FO1): raised 388/4697 -> 389/4735, MEASURED.
+ * tests/unit/growth/founding-organiser-terms holds the Founding Organiser offer
+ * to the configuration: what a founding organiser is charged inside and outside
+ * the window, what the waived amount is, the fifty cap and its deliberate
+ * override, that a referral sale adds exactly three months once, that the four
+ * published offer numbers ARE the constants the charge uses, and that the
+ * credit is granted by the database on a confirmed PAID order rather than on a
+ * signup. Three files that were RED in a fresh git worktree were fixed in the
+ * same pass and are counted here: the vercel-upload simulation skipped the
+ * .git skeleton when `.git` was a worktree POINTER FILE, the offline-door
+ * assertion anchored on a bare newline in a CRLF checkout, and the homepage
+ * fixture is generated rather than tracked.
+ *
+ * 2026-09-13 (lane B, close-out OL1): raised 389/4735 -> 390/4769, MEASURED.
+ * tests/unit/growth/organiser-page-and-the-messages holds /organisers to what
+ * the outreach messages promise: the live proof block is a read and not a
+ * pasted event, every signup button carries the source AN1 counts and no more
+ * specific one is clobbered, the founder button opens the brand address rather
+ * than a private mailbox, the five objections name no other platform and
+ * restate no configured figure, and every section the page carried before the
+ * item is still named in it.
+ *
+ * 2026-09-13 (lane B, close-out AN1, WORK IN PROGRESS): raised 390/4769 ->
+ * 391/4828, MEASURED. tests/unit/growth/measurement-and-consent holds the
+ * arrival capture, the signup attribution and the consent gate: no measurement
+ * script is emitted before the cookie is read, a decision is a record of what
+ * was on screen rather than a boolean, and the four providers named in the
+ * component are the four the provider table knows.
+ *
+ * 2026-09-13 (lane B, close-out GA1): raised 391/4828 -> 392/4859, MEASURED.
+ * tests/unit/growth/consent-capture-and-the-audience-asset holds the audience
+ * asset to its title deed: the price and recency bands at every boundary and
+ * in both languages, the community value read from the taxonomy with a
+ * negative control for a pasted list, the decline that can never revoke a
+ * consent, both checkouts recording the answer either way and scoping it to a
+ * city through one shared rule, and the proof that nothing sends and no
+ * address is read.
+ *
+ * 2026-09-13 (lane B, close-out GA1 v3): raised 392/4859 -> 393/4905, MEASURED.
+ * tests/unit/growth/consent-ledger-and-the-one-resolver holds the ledger to
+ * being evidence: the seven named resolver decisions, coverage that only runs
+ * one way, a transactional message that is not the marketing this governs, the
+ * append-only schema, the wording read from the record rather than typed into a
+ * page, the send-path registry that makes "the resolver is the only door"
+ * checkable, and the two privacy rights routes.
+ *
+ * 2026-09-13 (lane B, close-out GA2): raised 393/4905 -> 394/4934, MEASURED.
+ * tests/unit/growth/matcher-scores-and-suppresses holds the matcher to the
+ * arithmetic it claims: every component at its boundaries, the weights refused
+ * by name when they do not sum to one, the score bounded on 500 fuzzed inputs,
+ * the breakdown summing to the score, every suppression reason with its
+ * sentence, suppression running BEFORE scoring so a removed person cannot be
+ * scored, the cap and the contiguous ranks, the tie break that makes a run
+ * reproducible, and the proof that nothing in src/lib/matching can reach a
+ * transport.
+ *
+ * 2026-09-13 (lane B, close-out GA3): raised 394/4934 -> 395/4992, MEASURED.
+ * tests/unit/growth/attribution-spine holds the billing basis to what it can
+ * defend: every rung of the ladder in both directions and at its boundaries, a
+ * click in the future of its own order, the forwarded link that credits the
+ * campaign and not the recipient, one click backing one sale at the identity
+ * rung, confidence below one on rung four and nowhere else, the two triggers
+ * that make billable impossible for an application to type, the reversal rule
+ * that is deliberately NOT the gross-sales rule, and a scan proving no channel
+ * code, window length, route or fee is a literal in anything the item adds.
+ * Three counted here are not new tests but existing ones this item had to
+ * teach: the flag defaults gained a tenth switch, the indexing policy gained
+ * /admin/attribution, and the types coverage gained the invariant view.
+ *
+ * 2026-09-14 (lane B, close-out GA4): raised 395/4992 -> 396/5037, MEASURED.
+ * tests/unit/growth/campaigner holds the two rules that can end this business
+ * to arithmetic and to constraints: every pacing boundary in both directions
+ * including the inclusive ends and a floored day count, the SMS step refused on
+ * a consent scoped to email and taken on one scoped to both, a render that
+ * refuses by name without a verified sender identity or a working unsubscribe,
+ * an SMS carrying an instruction rather than a link, the organiser own words
+ * placed verbatim and escaped in the html, the segment fingerprint that changes
+ * when the list, the size or the channel does, and a scan proving no template
+ * key, day count, cap or route is a literal in anything the item adds. The
+ * database half is not here by design: GA4 requires it proven by removing every
+ * application check and watching the constraint refuse anyway, which is driven.
+ *
+ * 2026-09-14 (lane B, close-out FT1): raised 398/5088 -> 399/5118, MEASURED.
+ * tests/unit/growth/forecast holds the free public forecast tool to the owner's
+ * own correction: on day zero the output is plain arithmetic and it says so.
+ * Break even at three prices and two capacities with the fee passed in rather
+ * than read, the absorb arm taking the fee out of what a ticket leaves you, the
+ * figures moving when the rate moves, the founding figure being the same
+ * arithmetic with the waiver applied, days-to-event turning a number into a
+ * rate and never into a prediction, and the one that matters most: the page
+ * cannot print the measured sentence while there is nothing to measure. Plus
+ * the shape cookie's bounded round trip and the copy laws over every sentence
+ * the page can print. The driven half is not here by design: a row written by a
+ * real submit, the call to action measured BELOW the result by geometry at
+ * three widths, and the database refusing an address with no consent wording.
+ *
+ * 2026-09-14 (lane B, close-out PL1): raised 397/5068 -> 398/5088, MEASURED.
+ * tests/unit/growth/product-loops holds the two loops to their arithmetic:
+ * every loop link carries BOTH parameter systems and neither is typed at a
+ * call site, a shared link keeps its source through a tracked short link and
+ * never gains it twice, an organiser's referral code round trips back to the
+ * profile that owns it, the weekly line names the referred count and says
+ * nothing rather than zero, and the confirmation prompt sits BELOW the ticket
+ * in the source order. The rendered half is not here by design: PL1 requires
+ * the ticket email judged on what it CONTAINS rather than what its source
+ * says, so the registered guard renders it in a child process and the drill
+ * removes the line from that render.
+ *
+ * 2026-09-14 (lane B, close-out GA5): raised 396/5037 -> 397/5065, MEASURED.
+ * tests/unit/growth/proof-page holds the eight aggregation rules GA5 names by
+ * name, plus the two the page rests on and the item does not name: that a
+ * figure which cannot be sourced renders as words rather than as a zero, and
+ * that the snapshot payload carries a source for every figure in it. Also here
+ * is the scan that fails on any numeric literal, currency string or percentage
+ * anywhere in the rendering path, with its exceptions listed in the test rather
+ * than inferred. The database half is not here by design: the check constraint
+ * that refuses a stored snapshot holding an unsourced figure is proven by
+ * removing it and watching the guard name it, which is drilled.
+ *
+ * 2026-09-14 (lane B, close-out AN1): raised 397/5065 -> 397/5068, MEASURED.
+ * Three tests, no new file. They hold the contract behind a defect measured and
+ * fixed in the same session: the consent banner stood 286 pixels tall at 390
+ * over an /admin/login page that does not scroll, and Sign in could not be
+ * reached at all. The banner now measures its own height into a variable, the
+ * document reserves exactly that much, and the mobile bottom bar lifts clear
+ * through its TRANSFORM rather than through `bottom`, because `bottom` would
+ * cost a layout shift on the pages the mobile budget is measured on. The
+ * behaviour is driven at three widths; these three hold the contract, so an
+ * edit that deletes one half of it cannot pass.
  * 2026-09-14 (SEO1 v2, the event structured data): raised 391/4746 -> 393/4782,
  * MEASURED on a green suite, 0 failed and 0 skipped. An earlier reading said
  * 4778 and it was taken while the suite was RED, so it is not the one recorded:
@@ -1745,6 +1890,56 @@ const ROOT = join(HERE, '..', '..')
  * quotation. The two hero-raster tests changed in the same commit were made
  * deterministic rather than added to, so they move no count.
  *
+ * 2026-09-14 (lane B, merging verify/l5-launch-readiness a SECOND time, the
+ * merge lane A returned): the same rule as the entry above applies again and
+ * for the same reason. Both comment histories are kept verbatim because each
+ * names what it counted; neither pair of numbers describes this tree. Lane B
+ * measured 407/5233 on the tree it merged, lane A measured 400/4900 on a tree
+ * lane B had never seen, and a tree holding both sets of files is a third
+ * thing. The pair below is MEASURED on it: 411 files and 5321 tests, 0 failed and 0 skipped,
+ * on a clean run of the whole suite of the merged tree.
+ *
+ * 2026-09-14 (lane B, the FO1 drive collision): raised 411/5321 -> 412/5327,
+ * MEASURED on a green suite of the whole tree. One new file, six tests.
+ * tests/unit/verify/fo1-drive-target-selection holds the rule that stops one
+ * FO1 drive deleting the other's fixture: the offer drive grants and revokes a
+ * founding window, so its subject must START without one, and on a machine
+ * where three lanes share TEST it must be a lane-B row rather than whichever
+ * organisation happens to be first. It was neither, and the teardown then
+ * revoked a window it had not granted while reporting "left as found". Both
+ * directions are held, because the failing one is the one that was wrong and a
+ * test of the happy path alone would have passed before the fix.
+ *
+ * 2026-09-15 (lane B, the fixture publication law): raised 412/5327 -> 414/5355,
+ * MEASURED on a green suite of the whole tree. Two new files, twenty eight tests.
+ * tests/unit/guards/fixtures-are-not-published holds the rule that a drive fixture
+ * is never given the two values src/app/sitemap.ts selects on, after lane B's PL1
+ * fixture published an organiser page and a venue page and then deleted them,
+ * refusing lane A's push with two RULE 2 faults on URLs lane A had never heard of.
+ * tests/unit/guards/proof-reads-never-discard-their-error holds the rule that a
+ * failed read on the campaign proof page becomes a 500 rather than a printed zero,
+ * after a ConnectTimeoutError to Supabase made that page answer 404 for a campaign
+ * that exists. Both hold their guard in BOTH directions, because in both cases the
+ * passing half was already true and it was the failing half nobody had seen.
+ *
+ * 2026-09-15 (lane B, the third lock on the same law): raised 414/5355 ->
+ * 415/5361, MEASURED. tests/unit/guards/no-published-lane-b-fixture-on-test
+ * drives the decision of the guard that asks the DATABASE what is published
+ * right now, over synthetic rows, because proving the interesting half against
+ * the real database means creating the very published fixture the guard exists
+ * to prevent.
+ *
+ * 2026-09-15 (lane B, the attribution backstop): raised 415/5361 -> 417/5393,
+ * MEASURED on a clean run. Two new files, 32 tests.
+ * tests/unit/growth/attribution-backstop holds the scheduled repair that makes
+ * GA3's invariant a product guarantee rather than a build-time observation: the
+ * grace it must not race, the cap it must report hitting, and the two reads
+ * that must THROW rather than answer "nothing to heal" when the database is
+ * unreachable. tests/unit/guards/every-order-carries-its-attribution drives the
+ * counting the new guard does, in both directions, because a guard that counted
+ * every `from('orders')` as an insert would also pass on a correct tree, and
+ * passing for the wrong reason is the failure that survives longest.
+ *
  * 2026-09-14 (MONEY FIX A1.7): raised 400/4900 -> 401/4910, MEASURED on a green
  * suite of the whole tree. One new file, tests/unit/payments/money-chain.test.ts,
  * ten tests, which hold the money chain: a ticket charge names a destination, an
@@ -1812,21 +2007,58 @@ const ROOT = join(HERE, '..', '..')
  * /scan/[eventId], every one of them a buyer on a phone, and a budget built on
  * that reading would have exempted the exact pages Scope v5 10.3 is about. The
  * test pins all nine of those routes as public so the reading cannot drift back.
+ *
+ * 2026-09-16 (lane B, merging verify/l5-launch-readiness a THIRD time): both
+ * comment histories above are kept verbatim, again, and again they do not form
+ * one chain. Lane B counted 417/5393 on a tree without lane A's money-chain
+ * tests and without lane C's SEO2, C8B.5 and first-load-budget tests; the other
+ * lineage counted 421/5178 on a tree that has never held GA1 to GA5, PL1, FT1 or
+ * the attribution backstop. Neither pair describes the tree that now exists, and
+ * the larger of two partial counts is still a guess.
+ *
+ * THE PAIR BELOW IS MEASURED ON THE MERGED TREE, 0 failed and 0 skipped, which
+ * is the only thing this lane can honestly write here.
+ *
+ * 2026-09-17 (lane B, the same merge finished): the pair above was left at
+ * 0/0, and a floor of zero is not a measurement, it is this guard switched
+ * off while its own comment says it was measured. Nothing can fall below
+ * zero, so for a day the canary could not have noticed the entire suite
+ * failing to collect, which is the single thing it exists for. It is
+ * precisely the move the failure message below forbids, performed on the
+ * guard by the guard's own author.
+ *
+ * The honest reason it happened: the merge was committed before the suite
+ * could be run, so there was no measured number to write, and 0/0 went in as
+ * a placeholder that nothing would refuse. Lane B then measured its own
+ * branch with a clean run of `npm run gate:push -- --only suite`: 438
+ * files, 5673 tests, 0 failed, 0 skipped. Three of those tests were failing
+ * when the merge landed and are fixed rather than counted around, and one
+ * is new. That pair described lane/b-growth, and it was superseded one day
+ * later by the measurement directly below, which is of the tree that
+ * actually carries all three lanes.
  */
 /*
- * 2026-09-18: 422 files / 5202 tests, measured on Node 24.19.0 on a FULLY GREEN
- * run of this tree, never chosen. The first measurement of it read 5201, because
- * these counts are of tests that PASSED and one test was failing at the time:
- * git-availability's pinned count of git readers, which my eighth reader was
- * meant to turn red exactly once. 5201 + 1 = 5202.
- * The additions are tests/unit/guards/no-drill-residue.test.ts,
- * which holds the drill journal that replaced the `finally` a killed process
- * never ran, and seven more in tests/unit/perf/first-load-budget.test.ts for the
- * measuring identity a bundle mark now records. The guard asked for the raise in
- * its own output on the run that measured it.
+ * 2026-09-18, THE THREE LANE MERGE: 439 files / 5697 tests, 0 failed and 0
+ * skipped, measured on Node 24.19.0 on this merged tree by
+ * `npm run gate:push -- --only suite` before the merge was committed, which is
+ * the order this file argues for above and the order lane B could not follow.
+ *
+ * WHAT THE THREE SIDES SAID, recorded because a floor is the one number nobody
+ * can check later. Lane A stood at 422/5202. Lane B measured 438/5673 on its
+ * own branch, which carries lane A only as far as the merge it took in on
+ * 17 September. The owner asked for 421/5185 in the instruction that ordered
+ * this merge, which was the measurement of verify/l5-launch-readiness at
+ * b3cc6317 at 12:43 that day, before the last four lane A commits and before
+ * any of this. All three were true about the tree in front of them and none of
+ * them is true about this one.
+ *
+ * A BASELINE IS A FLOOR AND IT ONLY EVER MOVES UP. Writing the lowest of those
+ * three claims would have taken the floor 18 files and 512 tests below what the
+ * suite actually runs here, which is the precise move the failure message below
+ * refuses, so the measured count is what stands.
  */
-const MIN_FILES = 422
-const MIN_TESTS = 5202
+const MIN_FILES = 439
+const MIN_TESTS = 5697
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

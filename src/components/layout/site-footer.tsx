@@ -6,6 +6,7 @@ import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
 import { contactAddress, contactMailto } from '@/lib/email/sender'
 import { SOCIAL_PROFILES, type SocialLabel } from '@/lib/brand/social-profiles'
+import { ORGANISER_SIGNUP_PATH, withSignupSource } from '@/lib/organisers/signup-source'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -50,10 +51,30 @@ export const COMMUNITIES = [
   { label: 'All communities',   href: '/communities' },
 ]
 
+/**
+ * THE FOOTER'S OWN SOURCE, close-out OL1 and AN1.
+ *
+ * Found by driving /organisers: three buttons on the page carried
+ * src=organisers and the footer's "Sell tickets" carried nothing, on every page
+ * of the platform. A signup through it is a signup nobody can attribute, and it
+ * is invisible, because the link works perfectly. The footer's source is
+ * `footer` rather than `organisers` because this link appears everywhere, and
+ * saying "the organiser page sent them" when the homepage did would be worse
+ * than saying nothing.
+ */
 export const FOR_ORGANISERS = [
-  { label: 'Sell tickets',        href: '/organisers/signup' },
+  { label: 'Sell tickets',        href: withSignupSource(ORGANISER_SIGNUP_PATH, 'footer') },
   { label: 'Pricing',             href: '/pricing' },
-  { label: 'Organiser guide',     href: '/organisers' },
+  // Close-out FT1. The free forecast tool, in the footer because FT1 asks for
+  // it to be reachable from here and because a page nothing links to is a page
+  // Google cannot reach either (the lesson C19's reachability crawl taught).
+  { label: 'Event forecast',      href: '/forecast' },
+  // Close-out OL1: named "Organisers", because that is the page every outreach
+  // message sends a stranger to and "Organiser guide" reads as help content
+  // rather than as the page itself. The header already links to it, as
+  // "Event Organisers", which is the founder's own wording from the launch
+  // blocker list and is not touched here.
+  { label: 'Organisers',          href: '/organisers' },
   { label: 'Step-by-step guides', href: '/guides' },
   { label: 'Help centre',         href: '/help/selling-tickets' },
 ]

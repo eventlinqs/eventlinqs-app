@@ -1,5 +1,6 @@
 import 'server-only'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getPricingRule, type PricingReadClient } from '@/lib/payments/pricing-rules'
 import type { FeeRates } from '@/lib/payments/fee-math'
 import {
@@ -59,9 +60,30 @@ export async function getEventFeeRates(opts: EventFeeRatesOptions): Promise<FeeR
     // surfaces call getEventFeeRates({}) with no organisation, so they keep
     // showing the standard public rates, which is correct: those pages describe
     // the platform's rates, not one organiser's deal.
+    //
+    // READ WITH THE SERVICE ROLE, NOT THE ANON CLIENT, and this is a correction
+    // rather than a preference (close-out FO1, 13 September 2026).
+    //
+    // `pricing_rules` has a public SELECT policy, so resolving the RATES through
+    // the anon client is right and is why this module works on an environment
+    // with no service key. `organisations` does NOT: migration
+    // 20260808000010_rls_column_privilege_lockdown revoked every column from
+    // anon except the six public ones, and `founding_fee_free_until` is not
+    // among them. So this lookup had been answering `permission denied`,
+    // getFoundingWaiver swallows that to INACTIVE by design (a lookup failure
+    // must never hand out a free fee), and the event page showed a founding
+    // organiser's buyer a service fee that the checkout was never going to
+    // charge. The charge applied the waiver correctly the whole time; only the
+    // DISPLAY was wrong, which is the exact divergence the one-source fee law
+    // exists to prevent, and it was invisible because both halves fail quietly.
+    //
+    // This is a SERVER module ('server-only' above) called from server
+    // components, so the service-role client is available to it. The failure
+    // posture is unchanged: no client, or a failed read, still resolves to
+    // INACTIVE and the standard rate is shown.
     if (organisationId) {
       const waiver = await getFoundingWaiver(
-        client as unknown as OrganisationReadClient,
+        createAdminClient() as unknown as OrganisationReadClient,
         organisationId,
       )
       const waived = applyFoundingWaiver({ platformFeePercent, platformFeeFixedCents }, waiver.active)
