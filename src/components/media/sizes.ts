@@ -159,15 +159,53 @@ export const MEDIA_SIZES = {
 
   /* ---------------------------------------------------------------------
    * MARKETING. Lane B's surfaces (the organiser landing and its family).
-   * Measured on 18 September 2026 and deliberately left alone; the numbers and
-   * the handover are the BORDER line in C:\dev\REVIEW-QUEUE-C.md.
+   *
+   * `featureBand` used to be here alone, and it dressed THREE different band
+   * layouts at once, which is the same fault the grid hints above were split to
+   * end. It was not only waste: two of the three were UNDER-fetched, so the
+   * bands on /organisers and /about rendered BLURRY at every desktop width,
+   * on the marketing surface every outreach message points a stranger at.
+   * Driven on 19 September 2026 at nine viewports at DPR 2
+   * (`C:\dev\EVIDENCE\LB-BANDS\before-drive.txt`):
+   *
+   *     /organisers 1280   a 1214px band needed 2428, the browser chose 1920  x0.79
+   *     /organisers 1440   a 1334px band needed 2668, the browser chose 1920  x0.72
+   *     /about      1920   a 1920px band needed 3840, the browser chose 1920  x0.50
+   *
+   * So there is now one hint per band layout, named for the layout. Picking
+   * the wrong one is a visible mistake in review rather than an invisible one
+   * in the network panel.
    * ------------------------------------------------------------------- */
 
-  /** Marketing/landing feature band image (~half the content width desktop,
-   *  full-bleed within its column on mobile). Used by MarketingMedia. */
-  featureBand: '(max-width: 1024px) 100vw, 640px',
-  /** Marketing/landing tile (community / solutions grid, 2-up mobile,
-   *  3-4-up desktop). Used by MarketingMedia. */
+  /** `grid-cols-1 lg:grid-cols-2`, gap-16, inside `ContentSection width="wide"`.
+   *  The alternating image-and-text feature band on /organisers and /waitlist.
+   *  One column below `lg`, half the content column above it. Capped slot
+   *  636px: the container caps at 1400px, 32px of padding a side leaves 1336px
+   *  of content, less the 64px gap, halved. The two-column step begins at 1024
+   *  and its predecessor claimed 1025, so at exactly 1024 a 448px band asked
+   *  for a full viewport. */
+  bandHalfColumn: '(max-width: 1023px) 100vw, (max-width: 1399px) 50vw, 640px',
+  /** A band image filling the WHOLE capped content column, not half of it: the
+   *  Founding Organiser offer band on /organisers, whose photograph is the
+   *  `absolute inset-0` backdrop of a full-width card. Capped slot 1336px, and
+   *  this is the layout that rendered at x0.72 while wearing the half-column
+   *  hint. */
+  bandFullColumn: '(max-width: 1399px) 100vw, 1340px',
+  /** A band that is the full VIEWPORT wide, outside any container: the
+   *  photographic story band on /about. There is no cap to fall back to, so
+   *  there is no fixed term. This is the layout that rendered at x0.50. */
+  bandFullBleed: '100vw',
+  /** A screenshot inside guide prose (`max-w-3xl` with its own padding), for
+   *  GuideShotImage. Capped slot 720px between 768 and 1023, 704px above it.
+   *  It wore the band hint, which claimed 640px: larger than the slot at DPR 2
+   *  only because the candidate ladder rounds up to 1920, and SMALLER than it
+   *  at DPR 1, which the fidelity drive does not measure. */
+  guideShot: '(max-width: 767px) 100vw, 720px',
+  /** Marketing/landing tile (the invitation card in the organiser launch kit,
+   *  `grid-cols-1 lg:grid-cols-2` inside the 1400px dashboard container).
+   *  NOT CORRECTED AND NOT CLAIMED: its one call site is behind a login, and
+   *  the fidelity drive signs in to nothing, so no number about it has been
+   *  driven. The reasoning is the open line in C:\dev\REVIEW-QUEUE-B.md. */
   featureTile: '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px',
 
   /** The 56px square thumbnail in a dashboard list row (h-14 w-14). It wore the

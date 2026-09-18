@@ -167,7 +167,7 @@ export default function AboutPage() {
         <MarketingMedia
           src={ABOUT_PHOTOS.storyBand.src}
           alt={ABOUT_PHOTOS.storyBand.alt}
-          variant="band"
+          variant="band-full-bleed"
           objectPosition={ABOUT_PHOTOS.storyBand.objectPosition}
         />
         <div className="hero-scrim" aria-hidden />

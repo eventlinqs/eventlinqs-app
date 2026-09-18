@@ -129,7 +129,7 @@ export default async function WaitlistPage() {
               <MarketingMedia
                 src={WAITLIST_ORGANISER_BAND.src}
                 alt={WAITLIST_ORGANISER_BAND.alt}
-                variant="band"
+                variant="band-half-column"
                 objectPosition={WAITLIST_ORGANISER_BAND.objectPosition}
               />
             </div>

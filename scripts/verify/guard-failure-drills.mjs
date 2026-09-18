@@ -4242,6 +4242,72 @@ const DRILLS = [
   },
 
   /*
+   * THE MARKETING BANDS (lane B, 19 September 2026). One drill per clause of
+   * scripts/guards/marketing-bands-are-supplyable.mjs.
+   *
+   * The guard exists because /organisers and /about shipped under-fetched bands
+   * at every desktop width with every gate green. The gate that could have seen
+   * them, image-hint-fidelity-drive.mjs, simply did not have those routes in its
+   * list, so clause 1 is a route list that cannot be forgotten quietly.
+   */
+  {
+    name: 'a route that renders a marketing band drops out of the fidelity drive list',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'scripts/verify/image-hint-fidelity-drive.mjs',
+    find: "'communities', 'organisers'",
+    replace: "'communities'",
+    expect: 'is not in the default route list',
+  },
+  {
+    name: 'two band variants are pointed at one hint, which is the whole fault',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'src/components/media/MarketingMedia.tsx',
+    find: "'band-full-column': MEDIA_SIZES.bandFullColumn",
+    replace: "'band-full-column': MEDIA_SIZES.bandHalfColumn",
+    expect: 'One hint cannot be right for two layouts',
+  },
+  {
+    name: "a band hint's fixed term drifts away from the slot the guard declares",
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: '(max-width: 1399px) 100vw, 1340px',
+    replace: '(max-width: 1399px) 100vw, 1280px',
+    expect: 'Move both or neither',
+  },
+  {
+    name: 'a band hint loses the fixed term that holds it above the container cap',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: "bandHalfColumn: '(max-width: 1023px) 100vw, (max-width: 1399px) 50vw, 640px'",
+    replace: "bandHalfColumn: '(max-width: 1023px) 100vw, 50vw'",
+    expect: 'does not end in a fixed pixel term',
+  },
+  {
+    name: 'a band the raster cannot supply is left out of the register',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'scripts/guards/marketing-bands-are-supplyable.mjs',
+    find: "    variant: 'band-full-bleed',",
+    replace: "    variant: 'band-half-column',",
+    expect: 'it is not in this guard',
+  },
+  {
+    name: 'the soft register outlives its defect once the raster ceiling rises',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'src/lib/images/spine.ts',
+    find: '  hero: 1920,',
+    replace: '  hero: 4096,',
+    expect: 'a register that outlives its defect is a mute button',
+  },
+  {
+    name: 'an exemption in the register loses the reason that justifies it',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'scripts/guards/marketing-bands-are-supplyable.mjs',
+    find: "why: 'the /about story band is the full viewport",
+    replace: "why: 'because",
+    expect: 'indistinguishable from a forgotten one',
+  },
+
+  /*
    * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of
    * scripts/guards/no-drill-residue.mjs.
    *
