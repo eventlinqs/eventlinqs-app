@@ -104,8 +104,22 @@ describe('every git reader in this repository reaches the one sentence', () => {
     .filter(([, needs]) => needs.git)
     .map(([entry]) => entry)
 
-  test('there are seven of them, and the count is the answer F2.4 asks for', () => {
-    expect(gitReaders).toHaveLength(7)
+  /*
+   * EIGHT since 18 September 2026, up from the seven F2.4 found in the Vercel
+   * build log of ffded236. The eighth is scripts/guards/no-drill-residue.mjs,
+   * which asks git whether anything under .drill-journal is TRACKED, a question
+   * nothing but git can answer.
+   *
+   * The number is pinned rather than derived because it is the ANSWER to F2.4,
+   * not an incidental fact: seven scripts each said "no git" in their own
+   * words and the words were the problem. A new git reader is therefore meant to
+   * turn this test red once, so that whoever adds it is made to confirm the
+   * reader reaches the shared sentence rather than inventing a ninth.
+   *
+   * It did exactly that on the commit that added the eighth.
+   */
+  test('there are eight of them, and the count is the answer F2.4 asks for', () => {
+    expect(gitReaders).toHaveLength(8)
   })
 
   test.each(gitReaders)('%s reaches lib/git-availability.mjs', (entry) => {

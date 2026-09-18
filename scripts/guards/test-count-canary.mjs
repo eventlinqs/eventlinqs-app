@@ -1813,8 +1813,20 @@ const ROOT = join(HERE, '..', '..')
  * that reading would have exempted the exact pages Scope v5 10.3 is about. The
  * test pins all nine of those routes as public so the reading cannot drift back.
  */
-const MIN_FILES = 421
-const MIN_TESTS = 5178
+/*
+ * 2026-09-18: 422 files / 5202 tests, measured on Node 24.19.0 on a FULLY GREEN
+ * run of this tree, never chosen. The first measurement of it read 5201, because
+ * these counts are of tests that PASSED and one test was failing at the time:
+ * git-availability's pinned count of git readers, which my eighth reader was
+ * meant to turn red exactly once. 5201 + 1 = 5202.
+ * The additions are tests/unit/guards/no-drill-residue.test.ts,
+ * which holds the drill journal that replaced the `finally` a killed process
+ * never ran, and seven more in tests/unit/perf/first-load-budget.test.ts for the
+ * measuring identity a bundle mark now records. The guard asked for the raise in
+ * its own output on the run that measured it.
+ */
+const MIN_FILES = 422
+const MIN_TESTS = 5202
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
@@ -2065,14 +2077,45 @@ if (skipped > MAX_SKIPPED) {
 }
 
 if (problems.length > 0) {
-  console.error('\n[test-count-canary] FAILED. The suite is running LESS than it used to.\n')
+  /*
+   * THE HEADER SAYS WHICH KIND OF PROBLEM IT WAS, because "running LESS" was
+   * printed for both kinds and is only true of one.
+   *
+   * On 18 September 2026 this guard printed "The suite is running LESS than it
+   * used to" on a run of 422 files and 5201 tests against a baseline of 421 and
+   * 5178. The suite had GROWN. One test had failed, which is a completely
+   * different finding with a completely different next step, and the header sent
+   * the reader looking for a file that had stopped collecting. The detail lines
+   * below it were correct and named the failing test exactly, which is the worse
+   * shape rather than the better one: a summary that contradicts the note three
+   * lines beneath it is worse than no summary at all. The same ruling was applied
+   * to initial-bundle-budget's PASS line on the same day.
+   *
+   * The two are distinguished by the floors, which are the only thing this
+   * guard's own name is about.
+   */
+  const ranLess = files < MIN_FILES || tests < MIN_TESTS || skipped > MAX_SKIPPED
+  console.error(
+    `\n[test-count-canary] FAILED. ${
+      ranLess
+        ? 'The suite is running LESS than it used to.'
+        : `The floors held (${files} files, ${tests} tests against ${MIN_FILES}/${MIN_TESTS}), so nothing stopped running: the suite FAILED on its own results. Read the lines below, not the floors.`
+    }\n`,
+  )
   for (const p of problems) console.error(`  - ${p}\n`)
   console.error(
-    '  Find the file that stopped collecting before touching the baseline. Run\n' +
-      '  `npx vitest run` and look for a file reporting "no tests" or a suite-level\n' +
-      '  error rather than a test-level one.\n\n' +
-      '  Lowering MIN_FILES or MIN_TESTS to go green is the move this guard exists to\n' +
-      '  stop. It needs a founder ruling and a note on the constant.\n',
+    ranLess
+      ? '  Find the file that stopped collecting before touching the baseline. Run\n' +
+          '  `npx vitest run` and look for a file reporting "no tests" or a suite-level\n' +
+          '  error rather than a test-level one.\n\n' +
+          '  Lowering MIN_FILES or MIN_TESTS to go green is the move this guard exists to\n' +
+          '  stop. It needs a founder ruling and a note on the constant.\n'
+      : // Sending a reader to hunt for a file that stopped collecting, when the
+        // floors say none did, is the same misdirection the header carried.
+        '  The floors are not the finding here, so do NOT touch the baseline. Fix the\n' +
+          '  named failure(s) above, then re-run. If a named test does not reproduce on\n' +
+          '  its own, it is a flake and belongs in the review queue rather than in a\n' +
+          '  baseline change.\n',
   )
   process.exit(1)
 }
