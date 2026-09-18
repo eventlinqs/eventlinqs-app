@@ -89,7 +89,7 @@ export function EventCardLandscape({ event }: { event: HomeCardEvent }) {
   return (
     <Link href={event.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
       <div className={`${IMG_WRAP} aspect-[16/10]`}>
-        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="card" priority={event.priority} className={IMG_MOTION} />
+        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-event-card" priority={event.priority} className={IMG_MOTION} />
       </div>
       <div className="flex flex-1 flex-col p-4">
         <p className={LABEL}>{event.label}</p>
@@ -111,7 +111,7 @@ export function EventCardSquare({ event }: { event: HomeCardEvent }) {
   return (
     <Link href={event.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
       <div className={`${IMG_WRAP} aspect-square`}>
-        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail" priority={event.priority} className={IMG_MOTION} />
+        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-square-card" priority={event.priority} className={IMG_MOTION} />
       </div>
       <div className="flex flex-1 flex-col p-3">
         <p className={LABEL}>{event.label}</p>
@@ -131,7 +131,7 @@ export function EventCardFeature({ event, blurb }: { event: HomeCardEvent; blurb
   return (
     <Link href={event.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
       <div className={`${IMG_WRAP} aspect-[16/9]`}>
-        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="card" priority={event.priority ?? false} className={IMG_MOTION} />
+        <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-feature-card" priority={event.priority ?? false} className={IMG_MOTION} />
       </div>
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <p className={LABEL}>{event.label}</p>
@@ -174,14 +174,26 @@ export interface CommunityTileData {
  * EventCardMedia), the community name and event count BELOW it, never on the
  * image. Links to the real /community/[slug] landing.
  */
-export function CommunityTile({ community }: { community: CommunityTileData }) {
+export function CommunityTile({
+  community,
+  layout,
+}: {
+  community: CommunityTileData
+  /**
+   * Where this tile is rendered. The two callers are not the same shape and
+   * cannot share a `sizes` hint: the rail cell is a fixed 160/180px and the
+   * value band is a 2/3/6-column grid that renders at 145px on a small laptop
+   * and 207px at the container cap.
+   */
+  layout: 'rail-community-tile' | 'grid-two-three-six'
+}) {
   return (
     <Link href={community.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
       <div className={`${IMG_WRAP} aspect-[4/5]`}>
         <EventCardMedia
           src={community.imageSrc ?? ''}
           alt={community.alt}
-          variant="card"
+          variant={layout}
           priority={community.priority}
           objectPosition={community.objectPosition}
           className={IMG_MOTION}
@@ -200,7 +212,7 @@ export function CityTile({ city }: { city: CityTileData }) {
   return (
     <Link href={city.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
-        <CityTileImage src={city.imageSrc} alt={city.alt} priority={city.priority} objectPosition={city.objectPosition} className={IMG_MOTION} />
+        <CityTileImage src={city.imageSrc} alt={city.alt} layout="rail-city-tile" priority={city.priority} objectPosition={city.objectPosition} className={IMG_MOTION} />
       </div>
       <div className="flex flex-1 items-center justify-between gap-2 p-4">
         <span className={`text-lg ${TITLE}`}>{city.name}</span>
@@ -233,7 +245,7 @@ export function CategoryTile({ category }: { category: CategoryTileData }) {
   return (
     <Link href={category.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
-        <CategoryTileImage src={category.imageSrc} alt={category.alt} priority={category.priority} objectPosition={category.objectPosition} className={IMG_MOTION} />
+        <CategoryTileImage src={category.imageSrc} alt={category.alt} layout="rail-compact-tile" priority={category.priority} objectPosition={category.objectPosition} className={IMG_MOTION} />
       </div>
       <div className="flex flex-1 items-center justify-between gap-2 p-4">
         <span className={`text-lg ${TITLE}`}>{category.name}</span>

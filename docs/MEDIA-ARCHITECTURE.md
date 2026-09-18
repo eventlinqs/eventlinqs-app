@@ -37,10 +37,10 @@ Located at `src/components/media/`. Each enforces a slice of this standard.
 | Component | Use when | Auto-applied defaults |
 |---|---|---|
 | `<HeroMedia>` | Above-fold full-bleed hero on any route (`/`, `/events/[slug]`, future landing pages) | `priority`, `fetchPriority="high"`, raster only, no opacity transition on first paint, video overlay deferred to `requestIdleCallback` |
-| `<EventCardMedia>` | Card / tile / bento / rail / list-row event imagery | lazy, sized via prop variant (`bento-hero`, `bento-supporting`, `card`, `rail`, `marquee`, `list-row`), AVIF, blur placeholder |
-| `<CityTileImage>` | City rail tiles, city landing page heroes, region selectors | dual-mode (local SVG → raw `<img unoptimized>`; remote raster → `<Image>` with rail sizes) |
+| `<EventCardMedia>` | Card / tile / bento / rail / list-row event imagery | lazy, sized via a prop variant that names ONE cell or ONE column ladder (`rail-event-card`, `grid-one-two-three`, `list-thumb`, ...), AVIF, blur placeholder |
+| `<CityTileImage>` | City rail tiles, city landing page heroes, region selectors | dual-mode (local SVG → raw `<img unoptimized>`; remote raster → `<Image>`), with the `sizes` hint chosen by the caller's required `layout` prop |
 | `<OrganiserAvatar>` | Every avatar - topbar, organiser cards, ticket holder badges, list rows | rounded-full, sized via `size` prop (`xs`, `sm`, `md`, `topbar`, `lg`), initials fallback, lazy unless `priority` |
-| `<CategoryTileImage>` | Category landing tiles, category pickers, category browse cards | lazy, sized for category card layout, AVIF, alt text required |
+| `<CategoryTileImage>` | Category landing tiles, category pickers, category browse cards | lazy, AVIF, alt text required, `sizes` chosen by the caller's required `layout` prop |
 
 These are the **only** surfaces feature code is allowed to use for media. ESLint enforces.
 
@@ -89,25 +89,45 @@ Components import these constants. **Never** hardcode a `quality={N}` literal in
 
 ### 4.3 Sizes hints
 
-Centralised in `src/components/media/sizes.ts`:
+**The table lives in `src/components/media/sizes.ts` and is NOT copied here.**
 
-```ts
-export const MEDIA_SIZES = {
-  fullBleed: '(max-width: 768px) 100vw, 1920px',
-  bentoHero: '(max-width: 1024px) 100vw, 720px',
-  bentoSupporting: '(max-width: 1024px) 50vw, 360px',
-  card: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
-  rail: '(min-width: 1024px) 280px, 220px',
-  marquee: '280px',
-  category: '(max-width: 768px) 50vw, 320px',
-  avatarTopbar: '32px',
-  avatarSm: '32px',
-  avatarMd: '48px',
-  avatarLg: '96px',
-} as const
-```
+It used to be copied here, and the copy went stale without anybody noticing:
+this section still showed `fullBleed: '(max-width: 768px) 100vw, 1920px'` and
+`rail: '(min-width: 1024px) 280px, 220px'` long after the code had moved to
+75vw and to a 640px breakpoint. A second copy of a value is a second thing that
+can be wrong, and prose cannot be run. Read the file.
 
-Variants on each component pull their hint from this map. **Never** inline a `sizes` string in feature code.
+**The rule the file holds, and the two gates that hold it.**
+
+A `sizes` hint is a promise about layout that the markup makes to the browser
+before any layout exists, and the browser believes it absolutely: it picks a
+srcset candidate from the hint alone, at parse time. So a hint is written from
+the LAYOUT, never from taste and never from a measurement taken at one viewport.
+
+- A **rail cell** is a fixed pixel width that steps once at Tailwind's `sm`
+  (640px). Its two numbers live in `src/lib/ui/rhythm.ts` beside the Tailwind
+  class string that renders them, and its hint is derived from that pair.
+- A **grid** is viewport-relative UNTIL the container stops growing. Every
+  content column is capped at `max-w-7xl`, which is 1400px INCLUDING its 32px of
+  large-screen padding, so 1336px of content. Above that a `vw` term keeps
+  growing while the column does not, so every grid hint ends in a fixed pixel
+  term. Grid hints are named for their COLUMN LADDER
+  (`gridOneTwoThree`, `gridTwoThreeSix`), not for the page that first needed one,
+  so the next page with that ladder reuses it.
+- **A hint may be larger than its slot and never smaller.** Over-fetching costs
+  bytes and is measured. Under-fetching costs sharpness, which the premium bar
+  forbids, and it is invisible to every static check because the markup is
+  perfectly well formed. The one deliberate exception is `fullBleed` on mobile,
+  documented in the file and exempted BY NAME in the drive.
+
+| Gate | What it proves |
+|---|---|
+| `scripts/guards/image-hints-match-the-cell.mjs` (registered, blocking) | every rail cell says its two numbers twice and both agree; every rail hint is derived from a cell; no cell width or raw `sizes` string is written anywhere else; no hint is dead and every variant is mapped |
+| `scripts/verify/image-hint-fidelity-drive.mjs` | no image is fetched smaller than its slot, in a real browser, at nine viewports on four routes |
+| `scripts/perf/image-hint-fidelity.mjs` | the measurement the two above were written from: chosen candidate against rendered slot, per hint, per viewport |
+
+Variants on each component pull their hint from the map. **Never** inline a
+`sizes` string in feature code; the guard fails the build on one.
 
 ---
 
@@ -204,7 +224,8 @@ The `image` prop is **required** and must point to a raster URL. If callers only
 8. ❌ Client-only `useEffect`-mounted `<Image>` for above-fold media
 9. ❌ `loading="lazy"` combined with `priority`
 10. ❌ Hardcoded `quality={N}` outside `MEDIA_QUALITY.*`
-11. ❌ Hardcoded `sizes="..."` outside `MEDIA_SIZES.*`
+11. ❌ Hardcoded `sizes="..."` outside `MEDIA_SIZES.*` (blocking guard: `image-hints-match-the-cell`)
+11b. ❌ A rail cell width (`w-[Npx] shrink-0 snap-start`) written anywhere but `src/lib/ui/rhythm.ts` (same guard)
 12. ❌ `unoptimized={true}` on remote raster images
 13. ❌ Constructing `<Image>` directly in feature code outside `src/components/media/`
 

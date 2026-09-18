@@ -124,7 +124,7 @@ export async function RecommendedRail({
                 in one file and the truth is per ROUTE, which no per-file read
                 can reach. So the caller decides, and the drive counts.
               */}
-              <EventCard event={c} variant="rail" priority={firstCardEager && i === 0} />
+              <EventCard event={c} variant="rail-flat" priority={firstCardEager && i === 0} />
             </div>
           ))}
           {/* Launch-day sparse-rail discipline: top up a thin rail with

@@ -30,7 +30,13 @@ export function GalleryImage({ src, alt, blurDataURL, className = '' }: Props) {
         src={safeSrc}
         alt={alt}
         fill
-        sizes={MEDIA_SIZES.card}
+        /* The gallery is `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`. The hint
+           it borrows steps to three columns at md rather than sm, so between
+           640 and 767 it asks for half the viewport where the slot is a third
+           of it. That direction is safe (a generous hint costs bytes, a mean
+           one costs sharpness) and it is one band on a below-fold gallery, so
+           it does not earn a fourteenth string. */
+        sizes={MEDIA_SIZES.gridTwoThreeFour}
         quality={MEDIA_QUALITY.card}
         loading="lazy"
         decoding="async"

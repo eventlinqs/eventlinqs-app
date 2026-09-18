@@ -4,7 +4,7 @@ import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getSpineCategoryTile } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
-import { RHYTHM_GAP } from '@/lib/ui/rhythm'
+import { RHYTHM_GAP, COMPACT_TILE_CELL } from '@/lib/ui/rhythm'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { CURATED_HOMEPAGE_CATEGORY_SLUGS } from '@/lib/categories/homepage-curation'
 import { captureException } from '@/lib/observability/sentry'
@@ -129,7 +129,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
               scripts/verify/production-route-sweep.mjs now COUNTS the preloads
               in every served head, because a static allowlist records a reason
               and cannot check that the reason still holds. */}
-          <div className="w-[220px] shrink-0 snap-start sm:w-[260px]">
+          <div className={COMPACT_TILE_CELL}>
             <CategoryTile
               category={{
                 href: '/communities',
@@ -142,7 +142,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
             />
           </div>
           {tiles.map(t => (
-            <div key={t.slug} className="w-[220px] shrink-0 snap-start sm:w-[260px]">
+            <div key={t.slug} className={COMPACT_TILE_CELL}>
               <CategoryTile
                 category={{
                   href: `/categories/${t.slug}`,

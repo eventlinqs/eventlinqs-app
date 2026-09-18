@@ -3,6 +3,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { getAllCommunities } from '@/lib/communities/data'
+import { WIDE_TILE_CELL } from '@/lib/ui/rhythm'
 
 interface Props {
   citySlug: string
@@ -38,11 +39,12 @@ export function BrowseByCommunityRail({ citySlug, cityName, images }: Props) {
             <Link
               key={community.slug}
               href={`/community/${community.slug}/${citySlug}`}
-              className="group relative block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+              className={`group relative block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
             >
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
                 {img ? (
                   <CityTileImage
+                    layout="rail-wide-tile"
                     src={img}
                     alt={`${community.displayName} events in ${cityName}`}
                     className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"

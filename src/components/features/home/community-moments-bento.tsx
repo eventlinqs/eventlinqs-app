@@ -6,6 +6,7 @@ import { getCommunity } from '@/lib/communities/data'
 import type { CommunityMoment } from '@/lib/community-moments/calendar'
 import { SnapRail } from '@/components/ui/snap-rail'
 import { CONTAINER } from '@/lib/ui/spacing'
+import { EVENT_CARD_CELL } from '@/lib/ui/rhythm'
 
 /**
  * CommunityMomentsRail - upcoming community moments as a plain separated-card
@@ -49,7 +50,7 @@ function MomentCard({ moment, image }: { moment: CommunityMoment; image: string 
       className={[
         `plausible-event-name=community_moment_click`,
         `plausible-event-moment=${moment.slug}`,
-        'group w-[240px] shrink-0 snap-start sm:w-[280px]',
+        `group ${EVENT_CARD_CELL}`,
         'rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2',
       ].join(' ')}
     >
@@ -58,7 +59,7 @@ function MomentCard({ moment, image }: { moment: CommunityMoment; image: string 
           <EventCardMedia
             src={image}
             alt={moment.name}
-            variant="rail"
+            variant="rail-event-card"
             className="transition-transform duration-700 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : (

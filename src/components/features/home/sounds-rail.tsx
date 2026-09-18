@@ -69,7 +69,7 @@ function SoundTile({ tile }: { tile: Sound & { image: string; alt: string; objec
     <div className={SCENE_TILE_CELL}>
       <Link href={tile.href} prefetch={false} className={SURFACE}>
         <div className="relative aspect-square overflow-hidden bg-[var(--surface-1)]">
-          <EventCardMedia src={tile.image} alt={tile.alt} variant="rail" objectPosition={tile.objectPosition} className={IMG_MOTION} />
+          <EventCardMedia src={tile.image} alt={tile.alt} variant="rail-scene-tile" objectPosition={tile.objectPosition} className={IMG_MOTION} />
         </div>
         <div className="p-3">
           <h3 className="font-headline text-sm font-bold leading-snug tracking-tight text-[var(--text-primary)] transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]">

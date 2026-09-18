@@ -175,7 +175,7 @@ export default async function FaithPage({ params }: Props) {
             >
               {liveEvents.map(e => (
                 <li key={e.id}>
-                  <EventCard event={e} />
+                  <EventCard event={e} variant="grid-one-two-four" />
                 </li>
               ))}
             </ul>

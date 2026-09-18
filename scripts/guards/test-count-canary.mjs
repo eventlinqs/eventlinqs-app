@@ -1867,10 +1867,24 @@ const ROOT = join(HERE, '..', '..')
  * clause was true no matter what happened to the boundary it existed to police.
  * It counts nesting DEPTH now, and two tests hold both halves: a hero ahead of
  * legitimate boundaries is depth 0, and a hero inside one is depth 1.
+ *
+ * 2026-09-18 (later): raised 424/5225 -> 425/5261. Close-out C8B.3, the `sizes`
+ * hint that stopped describing its slot. One new file,
+ * tests/unit/media/image-hints-match-the-cell.test.ts, thirty-six tests.
+ * The test worth naming is the SENSITIVITY one. The grid assertions are
+ * arithmetic, and arithmetic that cannot fail proves nothing, so the file
+ * measures the hint this item REPLACED against the same ladder and asserts it
+ * comes out wrong in both directions: under-fetching between 640 and 767 where
+ * it claimed two columns and the grid was still one, and over-fetching past the
+ * container cap where a vw term keeps growing and the column does not. The
+ * replacement is then asserted correct at the same four viewports.
+ * The parser the file checks with is a deliberately SEPARATE implementation
+ * from anything in src/: if the product built the hint and the test read it back
+ * with the same code, the pair would agree about a rule neither of them holds.
  * The counts below are MEASURED from the run that raised them, never predicted.
  */
-const MIN_FILES = 424
-const MIN_TESTS = 5225
+const MIN_FILES = 425
+const MIN_TESTS = 5261
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

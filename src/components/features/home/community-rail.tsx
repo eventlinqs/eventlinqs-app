@@ -2,7 +2,7 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { CommunityTile } from '@/components/features/home/cards'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
-import { RHYTHM_GAP } from '@/lib/ui/rhythm'
+import { RHYTHM_GAP, COMMUNITY_TILE_CELL } from '@/lib/ui/rhythm'
 import { getCommunityIndexEntries } from '@/lib/communities/index-page-data'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getSpineSceneForCommunity } from '@/lib/images/spine'
@@ -60,8 +60,9 @@ export async function CommunityRail() {
           cardGap={RHYTHM_GAP}
         >
           {tiles.map(t => (
-            <div key={t.slug} className="w-[160px] shrink-0 snap-start sm:w-[180px]">
+            <div key={t.slug} className={COMMUNITY_TILE_CELL}>
               <CommunityTile
+                layout="rail-community-tile"
                 community={{
                   href: `/community/${t.slug}`,
                   imageSrc: t.imageSrc,

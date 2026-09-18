@@ -27,6 +27,7 @@ export function CityTile({ city, slug, eventCount, imageSrc }: Props) {
       className="group relative block h-full min-h-[220px] overflow-hidden rounded-2xl bg-ink-900 tile-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
     >
       <CityTileImage
+        layout="grid-one-two-three"
         src={imageSrc}
         alt=""
         className="transition-transform duration-700 ease-out group-hover:scale-105"

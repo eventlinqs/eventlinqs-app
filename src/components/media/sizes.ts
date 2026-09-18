@@ -1,3 +1,16 @@
+import {
+  COMPACT_TILE_PX,
+  CITY_TILE_PX,
+  COMMUNITY_TILE_PX,
+  EVENT_CARD_PX,
+  FEATURE_CARD_PX,
+  FLAT_RAIL_PX,
+  WIDE_TILE_PX,
+  SCENE_TILE_PX,
+  SQUARE_CARD_PX,
+  STANDARD_TILE_PX,
+} from '@/lib/ui/rhythm'
+
 /**
  * Centralised `sizes` hints for next/image.
  *
@@ -7,6 +20,56 @@
  * the same layout role gets the same hint everywhere on the platform.
  *
  * See docs/MEDIA-ARCHITECTURE.md §4.3 for policy.
+ *
+ * ============================================================================
+ * ONE HINT PER LAYOUT, NOT PER COMPONENT. THE DIFFERENCE COST REAL BYTES.
+ * ============================================================================
+ *
+ * The rule above was already written here and was still being broken, because
+ * "the same layout role" was read as "the same component". Driven on this tree's
+ * production build at nine viewports on 18 September 2026
+ * (`C:\dev\EVIDENCE\C8B3-HINTS\before-sweep.txt`), THREE hints were serving
+ * THIRTEEN different layouts, and one string cannot be right for thirteen widths:
+ *
+ *   - `card` was worn by a 160px community tile, a 240px rail card, a 420px
+ *     feature card and a results grid at once. On the homepage at 1440 it made
+ *     the browser fetch a 1080px-wide image for a 278px slot, and at a 1920px
+ *     desktop a 1920px-wide image for the same slot: x6.9.
+ *   - `rail` was worn by a 150px scene tile AND a 340px city tile. Too big for
+ *     one and TOO SMALL for the other, so the city tiles on the homepage and on
+ *     /cities fetched 640px for a slot needing 644 and rendered BLURRY on any 2x
+ *     screen. An over-generous hint wastes bytes; a mean one breaks the premium
+ *     bar, which is the worse of the two.
+ *   - `card` also claimed the grid went two-up at 640, and eight templates go
+ *     two-up at 768 (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3`). Every event
+ *     card between 640 and 767 CSS pixels wide was fetched at HALF the width it
+ *     rendered at.
+ *
+ * ============================================================================
+ * HOW TO READ A HINT HERE, AND THE ONE RULE FOR WRITING A NEW ONE
+ * ============================================================================
+ *
+ * A hint describes LAYOUT, so it is written from the layout, never from a
+ * measurement that happened to be taken at three viewports.
+ *
+ *   - A RAIL CELL is a fixed pixel width that steps once at Tailwind's `sm`
+ *     (640px), so its hint is the two numbers out of `src/lib/ui/rhythm.ts` and
+ *     nothing else. `scripts/guards/image-hints-match-the-cell.mjs` compares the
+ *     two and fails the build if either moves without the other.
+ *   - A GRID is viewport-relative UNTIL the container stops growing. Every
+ *     content column on this platform is capped at `max-w-7xl`, which is 1400px
+ *     INCLUDING its 32px of large-screen padding, so 1336px of content. Above
+ *     that a `vw` term keeps growing while the slot does not, which is how a
+ *     33vw hint came to ask for a 1920px image on a 1920px desktop. So every
+ *     grid hint ends in a FIXED pixel term for the capped range, and each one is
+ *     NAMED FOR ITS COLUMN LADDER rather than for the page that first needed it,
+ *     because the next page with that ladder should reuse it rather than invent
+ *     a fourteenth string.
+ *
+ * THE ONE RULE: a hint may be larger than the slot, never smaller. Over-fetching
+ * costs bytes and is measured; under-fetching costs sharpness and is a defect.
+ * `scripts/verify/image-hint-fidelity-drive.mjs` drives nine viewports and fails
+ * on any under-fetch. Where a `vw` term is rounded, it is rounded UP.
  */
 export const MEDIA_SIZES = {
   /** Above-fold full-bleed hero (HeroMedia default).
@@ -14,30 +77,117 @@ export const MEDIA_SIZES = {
    *  under a 40-80% navy scrim with text on top, so a source sized for ~75vw
    *  shown across the full width is visually identical while cutting the LCP
    *  image to a smaller AVIF variant (e.g. 640-828px instead of 1080px). The
-   *  optimiser still serves responsive AVIF off the 1-year edge cache. */
+   *  optimiser still serves responsive AVIF off the 1-year edge cache.
+   *  THIS IS THE ONE DELIBERATE UNDER-FETCH ON THE PLATFORM, and the drive
+   *  exempts it by name rather than by widening a tolerance for everything. */
   fullBleed: '(max-width: 768px) 75vw, 1920px',
   /** Bento grid hero tile */
   bentoHero: '(max-width: 1024px) 100vw, 720px',
   /** Bento grid supporting tile */
   bentoSupporting: '(max-width: 1024px) 50vw, 360px',
-  /** Standard event card in a 1/2/3 column grid */
-  card: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
-  /** Horizontal rail tile (this-week, by-city desktop, recommended rail, etc.).
-   *  Actual rendered widths are fixed: w-64 (256px) on mobile,
-   *  sm:w-72 (288px) tablet+, with this-week strip at w-[280px] across
-   *  all breakpoints. The hint must reflect those CSS pixel widths so
-   *  next/image does not deliver a 750w asset for a 254px slot. */
-  rail: '(min-width: 640px) 288px, 256px',
+
+  /* ---------------------------------------------------------------------
+   * RAIL CELLS. A fixed width with one step at `sm` (640px). Every one is
+   * `(min-width: 640px) {sm}px, {base}px` built from src/lib/ui/rhythm.ts,
+   * and the guard proves it.
+   * ------------------------------------------------------------------- */
+
+  /** Standard rail event card. Cell EVENT_CARD_PX 240 / 280. */
+  railEventCard: '(min-width: 640px) 280px, 240px',
+  /** Lead feature card in a rail. Cell FEATURE_CARD_PX 300 / 420. */
+  railFeatureCard: '(min-width: 640px) 420px, 300px',
+  /** Compact square card (genre and trending rails). Cell SQUARE_CARD_PX 180 / 200. */
+  railSquareCard: '(min-width: 640px) 200px, 180px',
+  /** Scene / sound tile. Cell SCENE_TILE_PX 150 / 168. */
+  railSceneTile: '(min-width: 640px) 168px, 150px',
+  /** City "destination" tile in the homepage rail. Cell CITY_TILE_PX 280 / 340.
+   *  This is the one that was UNDER-fetching: the old shared `rail` hint claimed
+   *  288px for a slot that renders at 338. */
+  railCityTile: '(min-width: 640px) 340px, 280px',
+  /** Heritage community tile in the "Find your community" rail.
+   *  Cell COMMUNITY_TILE_PX 160 / 180. */
+  railCommunityTile: '(min-width: 640px) 180px, 160px',
+  /** Category tile in the "Browse by category" rail, including the Communities
+   *  doorway tile that leads it. Cell COMPACT_TILE_PX 220 / 260. */
+  railCompactTile: '(min-width: 640px) 260px, 220px',
+  /** Portrait tile in a profile-page rail: communities on a city page, cities on
+   *  an organiser or venue profile. Cell WIDE_TILE_PX 260 / 280. */
+  railWideTile: '(min-width: 640px) 280px, 260px',
+  /** Format tile in a city page's "what's on" rail. Cell STANDARD_TILE_PX 240 / 260. */
+  railStandardTile: '(min-width: 640px) 260px, 240px',
+  /** A rail cell with NO `sm` step: the flat `w-[280px]` used by the event rails
+   *  on /feed, /city/*, /community/*, /venues/*, /artists/* and /organisers/*.
+   *  One number because the cell is one number. The old `rail` hint said 256px
+   *  below 640, which under-stated this cell by 24px. */
+  railFlat: '280px',
   /** Live-vibe horizontal marquee */
   marquee: '280px',
-  /** Category landing tile */
-  category: '(max-width: 768px) 50vw, 320px',
+
+  /* ---------------------------------------------------------------------
+   * GRIDS, named for the column ladder they describe. Viewport-relative until
+   * max-w-7xl caps the content at 1336px, then a fixed term. The ladder in each
+   * comment is the grid class the caller renders, so the two can be checked
+   * against each other by eye in review.
+   * ------------------------------------------------------------------- */
+
+  /** `grid-cols-1 md:grid-cols-2`, gap-6. The guides hub. Capped slot 656px. */
+  gridOneTwo: '(max-width: 767px) 100vw, (max-width: 1399px) 50vw, 660px',
+  /** `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`, gap-6. The event-results grid
+   *  on eight templates: city, suburb, community-by-city, category events, venue,
+   *  organiser and the feed. Capped slot 427px. Its predecessor claimed the
+   *  two-up step began at 640 and it begins at 768. */
+  gridOneTwoThree: '(max-width: 767px) 100vw, (max-width: 1023px) 50vw, (max-width: 1399px) 33vw, 430px',
+  /** `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`, gap-4. The sold-out
+   *  suggestions grid and the related-communities grid. Two-up at sm rather than
+   *  md, which is the one band that separates it from gridOneTwoThree.
+   *  Capped slot 433px. */
+  gridOneTwoThreeSm: '(max-width: 639px) 100vw, (max-width: 1023px) 50vw, (max-width: 1399px) 33vw, 435px',
+  /** `grid-cols-1 md:grid-cols-3`, gap-6. The category landing grid, which skips
+   *  the two-column step entirely. Capped slot 427px. */
+  gridOneThree: '(max-width: 767px) 100vw, (max-width: 1399px) 33vw, 430px',
+  /** `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`, gap-6.
+   *  The /events results grid, the second largest image surface on the platform.
+   *  Capped slot 316px, and the `xl` step was missing from the old hint. */
+  gridOneTwoThreeFour: '(max-width: 639px) 100vw, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 320px',
+  /** `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`, gap-4. The faith landing grid.
+   *  Capped slot 322px. */
+  gridOneTwoFour: '(max-width: 639px) 100vw, (max-width: 1023px) 50vw, (max-width: 1399px) 25vw, 325px',
+  /** `grid-cols-2 md:grid-cols-3 lg:grid-cols-4`, gap-3/gap-4. The /cities index,
+   *  the event gallery and the waitlist city picker. Capped slot 322px. */
+  gridTwoThreeFour: '(max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1399px) 25vw, 325px',
+  /** `grid-cols-2 md:grid-cols-4 lg:grid-cols-5`, gap-3/gap-4. The /communities
+   *  index. Capped slot 254px. */
+  gridTwoFourFive: '(max-width: 767px) 50vw, (max-width: 1023px) 25vw, (max-width: 1399px) 21vw, 255px',
+  /** `grid-cols-2 sm:grid-cols-3 lg:grid-cols-5`, gap-4/gap-5. Capped slot 251px.
+   *  21vw rather than 20vw for the five-up band: a five-column grid is a fifth of
+   *  the container MINUS four gaps, so the honest rounding is upwards, and 21
+   *  also keeps the candidate list at eight rather than nine. */
+  gridTwoThreeFive: '(max-width: 639px) 50vw, (max-width: 1023px) 33vw, (max-width: 1399px) 21vw, 255px',
+  /** `grid-cols-2 sm:grid-cols-3 lg:grid-cols-6`, gap-3/gap-4. The homepage
+   *  community value band and the sub-communities grid. Capped slot 207px.
+   *  The six-up band is written in pixels rather than as 17vw because at 1279 a
+   *  vw term asks the browser for 640 and the pixel term asks for 384, for the
+   *  same 189px slot. */
+  gridTwoThreeSix: '(max-width: 639px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 190px, 210px',
+
+  /* ---------------------------------------------------------------------
+   * MARKETING. Lane B's surfaces (the organiser landing and its family).
+   * Measured on 18 September 2026 and deliberately left alone; the numbers and
+   * the handover are the BORDER line in C:\dev\REVIEW-QUEUE-C.md.
+   * ------------------------------------------------------------------- */
+
   /** Marketing/landing feature band image (~half the content width desktop,
    *  full-bleed within its column on mobile). Used by MarketingMedia. */
   featureBand: '(max-width: 1024px) 100vw, 640px',
   /** Marketing/landing tile (community / solutions grid, 2-up mobile,
    *  3-4-up desktop). Used by MarketingMedia. */
   featureTile: '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px',
+
+  /** The 56px square thumbnail in a dashboard list row (h-14 w-14). It wore the
+   *  shared rail hint, which claimed 256px for it and made the browser fetch a
+   *  640px-wide image for a 56px square: x11.4, the worst single ratio found. */
+  listThumb: '56px',
+
   /** Avatar - topbar (32px on every breakpoint) */
   avatarTopbar: '32px',
   /** Avatar - small (32px) */
@@ -49,3 +199,36 @@ export const MEDIA_SIZES = {
 } as const
 
 export type MediaSizeKey = keyof typeof MEDIA_SIZES
+
+/**
+ * The rail cells whose hint is derived from a cell width, and the hint key each
+ * one owns. The guard reads THIS rather than carrying its own copy of the
+ * pairing, because a guard with a private copy of the rule it polices can drift
+ * from the code, which is the exact failure this item exists to stop.
+ */
+export const RAIL_CELL_HINTS = [
+  { key: 'railEventCard', px: EVENT_CARD_PX, name: 'EVENT_CARD_PX' },
+  { key: 'railFeatureCard', px: FEATURE_CARD_PX, name: 'FEATURE_CARD_PX' },
+  { key: 'railSquareCard', px: SQUARE_CARD_PX, name: 'SQUARE_CARD_PX' },
+  { key: 'railSceneTile', px: SCENE_TILE_PX, name: 'SCENE_TILE_PX' },
+  { key: 'railCityTile', px: CITY_TILE_PX, name: 'CITY_TILE_PX' },
+  { key: 'railCommunityTile', px: COMMUNITY_TILE_PX, name: 'COMMUNITY_TILE_PX' },
+  { key: 'railCompactTile', px: COMPACT_TILE_PX, name: 'COMPACT_TILE_PX' },
+  { key: 'railWideTile', px: WIDE_TILE_PX, name: 'WIDE_TILE_PX' },
+  { key: 'railStandardTile', px: STANDARD_TILE_PX, name: 'STANDARD_TILE_PX' },
+  { key: 'railFlat', px: FLAT_RAIL_PX, name: 'FLAT_RAIL_PX' },
+  { key: 'marquee', px: FLAT_RAIL_PX, name: 'FLAT_RAIL_PX' },
+] as const
+
+/**
+ * The hint a `sm`-stepped rail cell must declare. ONE definition, imported by
+ * the unit tests and re-derived by the guard from the same two numbers, so a
+ * change to the rule cannot leave either of them right about a rule the other
+ * does not hold.
+ */
+export function railCellHint(px: { base: number; sm: number }): string {
+  /* A cell that does not step at `sm` needs ONE number, not the same number
+     twice behind a media query that can never change the answer. */
+  if (px.base === px.sm) return `${px.base}px`
+  return `(min-width: 640px) ${px.sm}px, ${px.base}px`
+}

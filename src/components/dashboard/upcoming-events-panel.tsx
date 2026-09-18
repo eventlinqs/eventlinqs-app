@@ -62,7 +62,7 @@ export function UpcomingEventsPanel({ events }: { events: UpcomingEvent[] }) {
                         <EventCardMedia
                           src={event.cover_image_url}
                           alt=""
-                          variant="rail"
+                          variant="list-thumb"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-ink-400">

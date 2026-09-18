@@ -166,6 +166,12 @@
  *                              itself, ahead of every streaming boundary, so its preload
  *                              leaves in the first chunk. Streaming the shell first was
  *                              measured and cost 597 ms of LCP (close-out C8B.3)
+ *   image-hints-match-the-cell
+ *                             the `sizes` hint a component declares is the width its cell
+ *                              actually is: every rail cell says its two numbers twice and
+ *                              both agree, every rail hint is derived from a cell, no cell
+ *                              width or raw sizes string is written anywhere else, no hint
+ *                              is dead and every variant is mapped (close-out C8B.3)
  *   weak-network-contract     the checkout survives a submit that never reached the server,
  *                              the root service worker keeps only content-hashed assets so
  *                              no cache can serve a stale price, it registers after the
@@ -1247,6 +1253,14 @@ const GUARDS = [
   // assets so no cache can ever serve a stale price, it registers after the
   // paint, and /offline is a real route classified never. Four clauses, each
   // drilled red and green.
+  // Close-out C8B.3 (18 September 2026): a `sizes` hint is a promise about layout
+  // that the browser believes at parse time, and nothing else in the toolchain can
+  // notice when it stops being true. Driven at nine viewports, three hints were
+  // serving thirteen layouts: the homepage fetched a 1080px image for a 278px slot
+  // at 1440 and a 1920px one at 1920, the city tiles fetched 640px for a slot
+  // needing 644 and were BLURRY, and a 56px dashboard thumbnail fetched 640px.
+  // Five clauses, each drilled red and green.
+  'scripts/guards/image-hints-match-the-cell.mjs',
   'scripts/guards/weak-network-contract.mjs',
   // Close-out C17 (7 September 2026): the homepage hero never renders without
   // imagery. Production showed a flat navy panel the day every event had ended;
