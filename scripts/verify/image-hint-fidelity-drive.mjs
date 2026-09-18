@@ -563,7 +563,18 @@ try {
         under.length === 0
           ? `${judgedTotal} of ${inDomTotal} images judged; tightest margin x${worst.ratio === Infinity ? 'n/a' : worst.ratio.toFixed(2)}` +
             (worst.sizes ? ` (${worst.slot}px slot needing ${worst.need}, chose ${worst.chose}, ${worst.heading ?? 'unnamed'})` : '')
-          : under
+          : /*
+             * THE COUNT LEADS, AND THE TRUNCATION SAYS SO. This printed six
+             * lines and nothing else, so a run with seven under-fetches read as
+             * a run with six, and the one it dropped was the WORST: the launch
+             * kit tile at 1920, x0.50, sat in report.json while the console
+             * showed x0.59 as the floor. A summary that quietly contradicts the
+             * record underneath it is worse than no summary.
+             */
+            `${under.length} under-fetch(es), worst x${Math.min(...under.map(u => u.ratio)).toFixed(3)}` +
+            (under.length > 6 ? `, first 6 shown, all of them in report.json` : '') +
+            '\n        ' +
+            under
               .slice(0, 6)
               .map(u => `${u.width}: a ${u.slotWidth}px slot needs ${u.need} and the browser chose ${u.chosenWidth} (x${u.ratio}) - ${u.heading ?? 'unnamed'}, sizes=${u.sizes}`)
               .join('\n        '),
