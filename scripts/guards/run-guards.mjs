@@ -80,6 +80,8 @@
  *                              anonymous header and never stores a signed-in render
  *   no-client-redis-import     no client component pulls @upstash/redis into the bundle
  *   no-loadable-in-the-root-shell  nothing in the root layout's client chunk imports next/dynamic
+ *   no-loadable-in-platform-chrome  nor does anything behind the site header or footer,
+ *                              which the root-shell closure does not reach
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
@@ -966,6 +968,16 @@ const GUARDS = [
   // /press and /offline, none of which names the cause. A bare import() defers
   // the same tree for nothing. Route-level lazy wrappers are untouched.
   'scripts/guards/no-loadable-in-the-root-shell.mjs',
+  // THE SAME RULE, THE CHUNK THE GUARD ABOVE CANNOT REACH. SiteHeader is not
+  // in the root layout: 22 route files import it directly and the rest reach
+  // it through the page templates, so the root-shell closure never touches it.
+  // Two pieces of header chrome deferred their panels with dynamic() on
+  // 17 September and the root-shell guard reported PASS on both, while each
+  // file's own comment asserted it WAS in the root layout. The blind spot and
+  // the false justification were the same belief, so neither corrected the
+  // other. This one is rooted at the header and the footer, the two client
+  // subtrees that are on every page by construction.
+  'scripts/guards/no-loadable-in-platform-chrome.mjs',
   // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
   // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
   // printing a tidy list of 200s the whole time; its replacement then reported

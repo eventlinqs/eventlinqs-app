@@ -1,16 +1,20 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useDeferredComponent } from '@/components/ui/use-deferred-component'
 import { Search } from 'lucide-react'
 
 /**
  * THE OVERLAY IS FETCHED ON INTENT, NOT ON EVERY PAGE LOAD.
  *
- * `HeaderSearchTrigger` renders in the site header, the site header renders in
- * the root layout, and the root layout renders on every route. A static import
- * of the overlay therefore put the whole search surface into the platform-wide
- * client shell: the query state machine, the suggestion list, the keyboard
+ * `HeaderSearchTrigger` renders in the site header, and the site header is
+ * imported by 22 route files directly plus the page templates the rest use, so
+ * its client chunk is shared across effectively the whole platform. (It is NOT
+ * in the root layout: an earlier version of this comment said it was, which is
+ * why `no-loadable-in-the-root-shell` passed on this file while the cost it
+ * exists to stop was being paid anyway, one layer out.) A static import of the
+ * overlay therefore put the whole search surface into that shared chunk: the
+ * query state machine, the suggestion list, the keyboard
  * navigation and the analytics calls, on /offline, on /careers, on
  * /unsubscribe/[token] and on every other page where nobody will ever press it.
  *
@@ -22,10 +26,15 @@ import { Search } from 'lucide-react'
  * carrying the header, the footer accordion, the location picker and this
  * overlay.
  *
- * WHY next/dynamic AND NOT A CONDITIONAL RENDER. The overlay already returns
- * null while closed, so a conditional render saves no bytes at all: a static
- * import is resolved by the bundler, not by the branch. Only a dynamic import
- * moves the module into a chunk of its own.
+ * WHY A DYNAMIC IMPORT AND NOT A CONDITIONAL RENDER. The overlay already
+ * returns null while closed, so a conditional render saves no bytes at all: a
+ * static import is resolved by the bundler, not by the branch. Only a dynamic
+ * import moves the module into a chunk of its own.
+ *
+ * WHY `useDeferredComponent` AND NOT `next/dynamic`. Measured by lane A on this
+ * tree: the loadable runtime costs 1306 bytes gzip and one whole shared chunk,
+ * for a preload handle, a `loading` slot and an SSR switch this file uses none
+ * of. A bare `import()` splits the chunk identically. See the hook's own note.
  *
  * WHY IT IS ARMED ON INTENT AND NOT ON MOUNT. Arming on mount would move the
  * bytes out of first-load and then fetch them anyway during the load, which is
@@ -48,10 +57,6 @@ import { Search } from 'lucide-react'
  * open after the first is synchronous and the overlay's own close animation
  * and focus restore behave exactly as they did when the import was static.
  */
-const HeaderSearchOverlay = dynamic(() =>
-  import('./header-search-overlay').then(m => m.HeaderSearchOverlay),
-)
-
 interface Props {
   /** Visual variant - the State B compact desktop pill, or the mobile
    *  icon-only trigger that lives in the header always. */
@@ -128,7 +133,11 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
     onFocus: arm,
   }
 
-  const overlay = armed ? (
+  const HeaderSearchOverlay = useDeferredComponent(armed, () =>
+    import('./header-search-overlay').then(m => m.HeaderSearchOverlay),
+  )
+
+  const overlay = HeaderSearchOverlay ? (
     <HeaderSearchOverlay open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} />
   ) : null
 
