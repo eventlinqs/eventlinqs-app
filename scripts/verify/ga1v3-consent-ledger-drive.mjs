@@ -380,6 +380,27 @@ async function buyFreeTicket(page, { email, name, tickConsent, shotPrefix }) {
   if (!onCheckout) return { reachedCheckout: false }
 
   /*
+   * WAIT FOR THE QUESTION TO EXIST BEFORE ASKING ANYTHING ABOUT IT.
+   *
+   * 18 September 2026, the merge run. The 768 leg reported six failures in a
+   * row starting with "the marketing box was null before the buyer touched it",
+   * and the screenshot taken seconds later,
+   * tablet-768-01-consented-after-register.png, SHOWS THE QUESTION ON THE PAGE
+   * with its wording verbatim and both checkboxes rendered. The product was
+   * right and the drive was early: the panel had not mounted when
+   * `locator.count()` was asked, so questionVisible was false, the box was
+   * never ticked, and every check that depends on an answered question failed
+   * after it. Six accusations, one race.
+   *
+   * A fixed `waitForTimeout` cannot be the answer to "has it rendered yet",
+   * because the honest value of that timeout is unknowable and the number that
+   * works on one machine is the number that fails on a machine three lanes
+   * share. This waits for the element, then asks.
+   */
+  const consentBox = page.locator('#platform-marketing-consent')
+  await consentBox.waitFor({ state: 'visible', timeout: 45000 }).catch(() => {})
+
+  /*
    * FILL, THEN CHECK IT WENT IN, THEN FILL AGAIN.
    *
    * The first run of this drive reported "the buyer who ignored the question
@@ -389,6 +410,14 @@ async function buyFreeTicket(page, { email, name, tickConsent, shotPrefix }) {
    * fill landed on an input that was then re-rendered. A drive that reports a
    * product defect it caused itself is worse than no drive, so this fills, reads
    * the values back, and repeats once before it gives up.
+   *
+   * 18 September 2026: ONCE WAS NOT ENOUGH, and the same screenshot proves it.
+   * The 768 leg submitted with an empty Email field and the browser's own
+   * "Please fill out this field" balloon open beside it, so the form never
+   * posted and the order was "none". The retry now runs up to four times with a
+   * real wait between attempts, and when the fields still will not hold a value
+   * it captures that state to its own file, so a genuine product failure to
+   * accept input is reported as exactly that rather than as a missing order.
    */
   const fillTheBuyer = async () => {
     await fillByLabel(page, /name/i, name)
@@ -414,13 +443,15 @@ async function buyFreeTicket(page, { email, name, tickConsent, shotPrefix }) {
     }
     return true
   }
-  await fillTheBuyer()
-  if (!(await buyerFieldsAreFilled())) {
-    await page.waitForTimeout(2000)
+  let filled = false
+  for (let attempt = 1; attempt <= 4 && !filled; attempt += 1) {
     await fillTheBuyer()
+    filled = await buyerFieldsAreFilled()
+    if (!filled) await page.waitForTimeout(1500)
   }
+  if (!filled) await page.screenshot({ path: `${shotPrefix}-fields-would-not-fill.png`, fullPage: false })
 
-  const box = page.locator('#platform-marketing-consent')
+  const box = consentBox
   const questionVisible = (await box.count()) > 0 && (await box.isVisible().catch(() => false))
   const panelText = questionVisible
     ? ((await page.locator('#platform-marketing-consent').locator('xpath=ancestor::div[1]/..').innerText().catch(() => '')) || '').trim()
