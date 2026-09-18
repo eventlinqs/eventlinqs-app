@@ -1731,6 +1731,69 @@ export type Database = {
         }
         Relationships: []
       }
+      forecast_runs: {
+        Row: {
+          capacity: number
+          city_slug: string | null
+          costs_cents: number
+          created_at: string
+          days_until_event: number
+          email: string | null
+          email_consent_at: string | null
+          email_consent_text: string | null
+          event_type: string | null
+          fee_pass_type: string
+          has_run_an_event_before: boolean | null
+          id: string
+          method: string
+          outputs: Json
+          referrer_host: string | null
+          source_parameters: Json
+          src: string | null
+          ticket_price_cents: number
+        }
+        Insert: {
+          capacity: number
+          city_slug?: string | null
+          costs_cents?: number
+          created_at?: string
+          days_until_event?: number
+          email?: string | null
+          email_consent_at?: string | null
+          email_consent_text?: string | null
+          event_type?: string | null
+          fee_pass_type?: string
+          has_run_an_event_before?: boolean | null
+          id?: string
+          method: string
+          outputs: Json
+          referrer_host?: string | null
+          source_parameters: Json
+          src?: string | null
+          ticket_price_cents: number
+        }
+        Update: {
+          capacity?: number
+          city_slug?: string | null
+          costs_cents?: number
+          created_at?: string
+          days_until_event?: number
+          email?: string | null
+          email_consent_at?: string | null
+          email_consent_text?: string | null
+          event_type?: string | null
+          fee_pass_type?: string
+          has_run_an_event_before?: boolean | null
+          id?: string
+          method?: string
+          outputs?: Json
+          referrer_host?: string | null
+          source_parameters?: Json
+          src?: string | null
+          ticket_price_cents?: number
+        }
+        Relationships: []
+      }
       founding_invites: {
         Row: {
           accepted_at: string | null
@@ -1862,69 +1925,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      forecast_runs: {
-        Row: {
-          capacity: number
-          city_slug: string | null
-          costs_cents: number
-          created_at: string
-          days_until_event: number
-          email: string | null
-          email_consent_at: string | null
-          email_consent_text: string | null
-          event_type: string | null
-          fee_pass_type: string
-          has_run_an_event_before: boolean | null
-          id: string
-          method: string
-          outputs: Json
-          referrer_host: string | null
-          source_parameters: Json
-          src: string | null
-          ticket_price_cents: number
-        }
-        Insert: {
-          capacity: number
-          city_slug?: string | null
-          costs_cents?: number
-          created_at?: string
-          days_until_event?: number
-          email?: string | null
-          email_consent_at?: string | null
-          email_consent_text?: string | null
-          event_type?: string | null
-          fee_pass_type?: string
-          has_run_an_event_before?: boolean | null
-          id?: string
-          method: string
-          outputs: Json
-          referrer_host?: string | null
-          source_parameters: Json
-          src?: string | null
-          ticket_price_cents: number
-        }
-        Update: {
-          capacity?: number
-          city_slug?: string | null
-          costs_cents?: number
-          created_at?: string
-          days_until_event?: number
-          email?: string | null
-          email_consent_at?: string | null
-          email_consent_text?: string | null
-          event_type?: string | null
-          fee_pass_type?: string
-          has_run_an_event_before?: boolean | null
-          id?: string
-          method?: string
-          outputs?: Json
-          referrer_host?: string | null
-          source_parameters?: Json
-          src?: string | null
-          ticket_price_cents?: number
-        }
-        Relationships: []
       }
       gigs: {
         Row: {
@@ -4694,7 +4694,15 @@ export type Database = {
           signup_utm?: Json | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -7035,10 +7043,7 @@ export type Database = {
           wording_version: string
         }[]
       }
-      audience_price_band: {
-        Args: { p_unit_cents: number }
-        Returns: string
-      }
+      audience_price_band: { Args: { p_unit_cents: number }; Returns: string }
       claim_discount_use: {
         Args: { p_code_id: string; p_reservation_id: string }
         Returns: boolean
@@ -7424,10 +7429,7 @@ export type Database = {
           ticket_tier_id: string
         }[]
       }
-      refresh_audience_member: {
-        Args: { p_email: string }
-        Returns: undefined
-      }
+      refresh_audience_member: { Args: { p_email: string }; Returns: undefined }
       refund_policy_is_looser_or_equal: {
         Args: {
           p_new_absorb: boolean
