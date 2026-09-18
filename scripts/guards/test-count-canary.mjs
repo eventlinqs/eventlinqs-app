@@ -2078,7 +2078,7 @@ const ROOT = join(HERE, '..', '..')
  * from anything in src/: if the product built the hint and the test read it back
  * with the same code, the pair would agree about a rule neither of them holds.
  * The counts below are MEASURED from the run that raised them, never predicted.
- */
+ *
  * 2026-09-16 (lane B, merging verify/l5-launch-readiness a THIRD time): both
  * comment histories above are kept verbatim, again, and again they do not form
  * one chain. Lane B counted 417/5393 on a tree without lane A's money-chain
@@ -2177,8 +2177,36 @@ const ROOT = join(HERE, '..', '..')
  * daily digest. The floor moves UP to what the green run measured, which is the
  * only direction it ever moves.
  */
-const MIN_FILES = 446
-const MIN_TESTS = 5746
+/*
+ * 2026-09-19, LANE C, the merge of verify/l5-launch-readiness plus the move off
+ * next/dynamic in the platform chrome: 451 files / 5837 tests, 0 failed and 0
+ * skipped, measured by `npm run gate:push -- --only suite` on the merged tree.
+ *
+ * The jump from 446 is mostly the merge: this floor was lane A's, measured on a
+ * tree that held lane C only as far as 32d8515c, so five lane C files and their
+ * tests were already running and simply were not in the number.
+ *
+ * ONE new file of this item's own, tests/component/ui/use-deferred-component,
+ * eight tests, holding the hook that replaced `next/dynamic` behind the site
+ * header. The test worth naming is the RACE one, and it is worth naming because
+ * the test it replaced could not fail. The obvious way to prove the hook's
+ * cancellation is to unmount mid-flight and assert React logged no "setState on
+ * an unmounted component" warning; that test was written, and it passed with
+ * the cancellation deleted, because React 19 removed that warning. The drill is
+ * the only reason anybody knows. What cancellation actually buys is that a
+ * superseded in-flight load cannot overwrite a newer one, so that is what is
+ * asserted now, and deleting `cancelled` takes exactly that one test red.
+ *
+ * THE COUNTS ARE MEASURED FROM THE RUN THAT RAISED THEM, never predicted. That
+ * run was the SECOND of two: the first reported one failure in
+ * tests/component/layout/interaction-only-chrome (escape_closes_the_dialog)
+ * which did not reproduce in the second full run nor when the file was run on
+ * its own, on a machine shared with two other build lanes. It is recorded as a
+ * flake in C:/dev/REVIEW-QUEUE-C.md rather than absorbed into this baseline,
+ * which is what the failure message below asks for.
+ */
+const MIN_FILES = 451
+const MIN_TESTS = 5837
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

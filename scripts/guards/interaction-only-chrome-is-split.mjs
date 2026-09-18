@@ -6,10 +6,18 @@
  * WHY THIS EXISTS, with the measurement that produced it
  * ============================================================================
  *
- * The site header renders in the root layout, and the root layout renders on
- * every route. Anything the header imports statically is therefore first-load
- * JavaScript on /offline, on /careers, on /unsubscribe/[token] and on every
- * other page where nobody will ever press it.
+ * The site header is imported by 22 route files directly, and the rest of the
+ * platform reaches it through the page templates, so its client chunk is shared
+ * across effectively every route. Anything the header imports statically is
+ * therefore first-load JavaScript on /offline, on /careers, on
+ * /unsubscribe/[token] and on every other page where nobody will ever press it.
+ *
+ * (An earlier version of this comment said the header was in the ROOT LAYOUT.
+ * It is not, and the error was not free: it is exactly why
+ * no-loadable-in-the-root-shell reported PASS on both owners below while each
+ * was paying for the next/dynamic loadable runtime anyway. The gap is covered
+ * by no-loadable-in-platform-chrome.mjs, which is rooted at the header and the
+ * footer rather than at src/app/layout.)
  *
  * Three surfaces were in that position and every one of them is reachable only
  * after an action: the global search overlay, and the city dialog behind the
@@ -38,7 +46,7 @@
  * static import that crept back in is simply the new normal. A one-line change
  * from
  *
- *     const Panel = dynamic(() => import('./location-picker-panel').then(...))
+ *     const Panel = useDeferredComponent(armed, () => import('./location-picker-panel'))
  * to
  *     import { LocationPickerPanel } from './location-picker-panel'
  *
@@ -51,7 +59,8 @@
  *
  *   1. Every registered deferred module EXISTS. A rename that is not carried
  *      into this registry would otherwise disarm the guard without a sound.
- *   2. Its OWNER reaches it through `dynamic(() => import('<specifier>')`.
+ *   2. Its OWNER reaches it through a deferred `import('<specifier>')`, in any
+ *      wrapper or none: the bundler splits on the call form, not the wrapper.
  *   3. NOTHING under src/ imports it statically. Not the owner, not anywhere
  *      else: the one legitimate consumer is a dynamic import, so a static one
  *      anywhere is the defect, wherever it is written.
@@ -137,9 +146,26 @@ function staticImportPattern(specifier) {
   return new RegExp(`import\\s+(?!type\\b)[^;]*?from\\s*['"]${escaped}(\\.tsx?)?['"]`)
 }
 
-function dynamicImportPattern(specifier) {
+/**
+ * A DEFERRED import of this specifier: a CALL-form `import('...')`, wrapped in
+ * anything or wrapped in nothing.
+ *
+ * THIS USED TO REQUIRE THE `dynamic(` WRAPPER, and that was wrong twice over.
+ * It was wrong in principle, because the split is done by the bundler when it
+ * sees a call-form `import()`; `next/dynamic` is one way to hold the result,
+ * not the thing that causes the split. And it was wrong in fact: on
+ * 19 September 2026 both owners moved off `next/dynamic` onto the shared
+ * `useDeferredComponent` hook, because the loadable runtime costs 1306 bytes
+ * gzip and one whole extra chunk in the header's shared chunk, and this guard
+ * failed both of them for a change that made the thing it protects strictly
+ * better. A gate that refuses an improvement is a gate somebody switches off.
+ *
+ * A static `import X from '...'` cannot match this: it has no parenthesis after
+ * the keyword. Clause 3 is what refuses the static form, and it is unchanged.
+ */
+function deferredImportPattern(specifier) {
   const escaped = specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return new RegExp(`dynamic\\s*\\([\\s\\S]{0,200}?import\\s*\\(\\s*['"]${escaped}['"]`)
+  return new RegExp(`import\\s*\\(\\s*['"]${escaped}['"]`)
 }
 
 const problems = []
@@ -185,11 +211,13 @@ for (const entry of DEFERRED) {
   }
 
   // CLAUSE 2: the owner reaches it dynamically.
-  if (!dynamicImportPattern(entry.specifier).test(ownerSource)) {
+  if (!deferredImportPattern(entry.specifier).test(ownerSource)) {
     problems.push(
-      `${entry.owner} no longer reaches ${entry.specifier} through ` +
-        `dynamic(() => import('${entry.specifier}')). Without that call the module is ` +
-        `first-load JavaScript on every route, because the header is in the root layout.`,
+      `${entry.owner} no longer reaches ${entry.specifier} through a deferred ` +
+        `import('${entry.specifier}'). Without that call the module is first-load ` +
+        `JavaScript on every route that renders the site header, which is effectively all ` +
+        `of them: 22 route files import SiteHeader directly and the rest reach it through ` +
+        `the page templates.`,
     )
   }
 
@@ -207,9 +235,9 @@ for (const entry of DEFERRED) {
     if (!relativeHit && !aliasHit) continue
     problems.push(
       `${where} imports ${bare} statically. ${entry.module} is registered as ` +
-        `interaction-only chrome: it is reachable from the root layout, so a static ` +
+        `interaction-only chrome: it is reachable from the site header, so a static ` +
         `import puts every one of its bytes into first-load JavaScript on all 133 routes. ` +
-        `Reach it with dynamic(() => import('${entry.specifier}')) instead.`,
+        `Reach it with useDeferredComponent(armed, () => import('${entry.specifier}')) instead.`,
     )
   }
 }

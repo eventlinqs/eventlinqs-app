@@ -3447,6 +3447,52 @@ const DRILLS = [
     replace: '"marks": {\n    "/drill-not-a-byte-count": null,',
     expect: 'which is not a byte count',
   },
+  // -------------------------------------------------------------------------
+  // no-loadable-in-platform-chrome. BOTH HALVES, because this guard exists
+  // precisely because its older sibling reported a confident PASS on the defect
+  // it was written for: no-loadable-in-the-root-shell is rooted at
+  // src/app/layout, SiteHeader is not under src/app/layout, and so two pieces
+  // of header chrome carried next/dynamic past a green gate for a day. A guard
+  // built to cover another guard's blind spot has to prove it can fail.
+  // -------------------------------------------------------------------------
+  {
+    name: 'header chrome goes back to deferring its panel with next/dynamic',
+    guard: `${GUARDS}/no-loadable-in-platform-chrome.mjs`,
+    file: 'src/components/layout/header-search-trigger.tsx',
+    find: "import { useDeferredComponent } from '@/components/ui/use-deferred-component'",
+    replace: "import dynamic from 'next/dynamic'",
+    expect: 'module(s) in the platform chrome import',
+  },
+  {
+    // The clause that stops this guard going the way of the one it backs up. A
+    // walk whose roots are gone finds an empty closure and reports PASS, which
+    // is the exact shape of a gate that has quietly stopped checking anything.
+    name: 'the platform chrome is renamed and the guard is left pointing at nothing',
+    guard: `${GUARDS}/no-loadable-in-platform-chrome.mjs`,
+    file: 'scripts/guards/no-loadable-in-platform-chrome.mjs',
+    find: "const ROOTS = ['src/components/layout/site-header', 'src/components/layout/site-footer']",
+    replace: "const ROOTS = ['src/components/layout/site-header-gone', 'src/components/layout/site-footer']",
+    expect: 'are not on disk',
+  },
+  // -------------------------------------------------------------------------
+  // interaction-only-chrome-is-split. This guard had NO drill until 19
+  // September 2026, which is how its clause 2 came to require the literal
+  // `dynamic(` wrapper rather than the call-form `import()` that actually
+  // causes the split. It then failed both of its own registered surfaces for
+  // moving OFF next/dynamic onto a cheaper deferral, which is a gate refusing
+  // an improvement. The matcher was corrected and this drill is what holds it.
+  // The planted static import fires clause 2 and clause 3 together, which is
+  // the real-world shape: the "tidy-up" that deletes the deferral writes the
+  // static import in the same edit.
+  // -------------------------------------------------------------------------
+  {
+    name: 'a deferred chrome import is tidied back into a static one',
+    guard: `${GUARDS}/interaction-only-chrome-is-split.mjs`,
+    file: 'src/components/layout/header-search-trigger.tsx',
+    find: "    import('./header-search-overlay').then(m => m.HeaderSearchOverlay),",
+    replace: "    Promise.resolve(HeaderSearchOverlayStatic),",
+    expect: 'no longer reaches ./header-search-overlay through a deferred',
+  },
   {
     name: 'a rail cell is widened in the class string and its pixel pair is left behind',
     guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
@@ -3524,6 +3570,7 @@ const DRILLS = [
     find: "  { key: 'railCityTile', px: CITY_TILE_PX, name: 'CITY_TILE_PX' },",
     replace: "  { key: 'railCityTile', px: GONE_TILE_PX, name: 'GONE_TILE_PX' },",
     expect: 'which src/lib/ui/rhythm.ts does not declare',
+  },
 
   /*
    * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of

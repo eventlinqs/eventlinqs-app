@@ -1,7 +1,7 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import { useCallback, useRef, useState } from 'react'
+import { useDeferredComponent } from './use-deferred-component'
 import { MapPinIcon } from './location-picker-icons'
 import type { DetectedLocation } from '@/lib/geo/detect'
 import type { PickerCityGroups } from '@/lib/locations/picker-cities'
@@ -9,8 +9,10 @@ import type { PickerCityGroups } from '@/lib/locations/picker-cities'
 /**
  * THE DIALOG IS FETCHED ON INTENT, NOT ON EVERY PAGE LOAD.
  *
- * This component renders in the site header, the site header renders in the
- * root layout, and the root layout renders on every route. Before this split
+ * This component renders in the site header, and the site header is imported by
+ * 22 route files directly plus the page templates the rest use, so its client
+ * chunk is shared across effectively the whole platform. (It is NOT in the root
+ * layout; an earlier version of this comment said it was.) Before this split
  * the whole city dialog travelled with it: the search box and its normalising
  * matcher, the full city list, the haversine nearest-city search, the
  * geolocation handling and the routing that follows a pick. All of it shipped
@@ -24,9 +26,14 @@ import type { PickerCityGroups } from '@/lib/locations/picker-cities'
  * platform puts on every route, and the largest application chunk in it was the
  * one holding the header, the footer accordion and this dialog.
  *
- * WHY next/dynamic AND NOT A CONDITIONAL RENDER. The dialog was already inside
- * an `open &&` branch and that saved nothing: a static import is resolved by
- * the bundler, not by the branch. Only a dynamic import gives it a chunk.
+ * WHY A DYNAMIC IMPORT AND NOT A CONDITIONAL RENDER. The dialog was already
+ * inside an `open &&` branch and that saved nothing: a static import is
+ * resolved by the bundler, not by the branch. Only a dynamic import gives it a
+ * chunk.
+ *
+ * WHY `useDeferredComponent` AND NOT `next/dynamic`. The loadable runtime costs
+ * 1306 bytes gzip and one whole shared chunk on this tree, measured gate build
+ * against gate build, for features this file uses none of. See the hook's note.
  *
  * WHY INTENT AND NOT MOUNT. Arming on mount would move the bytes out of
  * first-load and then fetch them during the load anyway, which is a sequencing
@@ -39,10 +46,6 @@ import type { PickerCityGroups } from '@/lib/locations/picker-cities'
  * therefore shorter than the one it replaces and does the same two things that
  * were ever visible: it closes, and it returns focus to the trigger.
  */
-const LocationPickerPanel = dynamic(() =>
-  import('./location-picker-panel').then(m => m.LocationPickerPanel),
-)
-
 interface LocationPickerProps {
   currentLocation: DetectedLocation
   /** Curated + dynamic picker cities. Fetched server-side and passed in. */
@@ -65,6 +68,10 @@ export function LocationPicker({
 
   /** Request the dialog chunk. Safe to call repeatedly. */
   const arm = useCallback(() => setArmed(true), [])
+
+  const LocationPickerPanel = useDeferredComponent(armed, () =>
+    import('./location-picker-panel').then(m => m.LocationPickerPanel),
+  )
 
   const closeDialog = useCallback(() => {
     setOpen(false)
@@ -114,7 +121,7 @@ export function LocationPicker({
         <span className="truncate max-w-[140px]">{currentLocation.city}</span>
       </button>
 
-      {armed && open ? (
+      {LocationPickerPanel && open ? (
         <LocationPickerPanel
           currentLocation={currentLocation}
           cities={cities}
