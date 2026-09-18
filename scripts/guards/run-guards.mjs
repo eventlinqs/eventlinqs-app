@@ -50,6 +50,8 @@
  *   interaction-only-chrome-is-split  the search overlay and the city dialog are reached
  *                              only by a dynamic import, so they are not first-load
  *                              JavaScript on every one of the 133 routes
+ *   edge-cache-is-viewer-independent  a route that is edge-cached publicly renders the
+ *                              anonymous header and never stores a signed-in render
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
@@ -770,6 +772,15 @@ const GUARDS = [
   // such rewrite a static import that crept back is the new normal. This names
   // that edit.
   'scripts/guards/interaction-only-chrome-is-split.mjs',
+  // A ROUTE WHOSE RESPONSES ARE SHARED AT THE EDGE MAY NOT RENDER ONE VISITOR'S
+  // NAME. /events carried `CDN-Cache-Control: public, s-maxage=60` with no
+  // signed-in exclusion while rendering the ordinary `<SiteHeader />`, which
+  // puts the signed-in visitor's initials and display name in the markup, and
+  // that display name falls back to the local part of their email. Production
+  // answered `X-Vercel-Cache: HIT, Age: 80` on that URL, so the cache was real.
+  // Its two siblings had both halves of the protection; this one had neither.
+  // Found by building this guard rather than by a visitor, on 18 September 2026.
+  'scripts/guards/edge-cache-is-viewer-independent.mjs',
   // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
   // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
   // printing a tidy list of 200s the whole time; its replacement then reported

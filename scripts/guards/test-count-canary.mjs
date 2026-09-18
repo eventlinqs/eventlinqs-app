@@ -1825,9 +1825,21 @@ const ROOT = join(HERE, '..', '..')
  * The tick after the click is the one thing that tells a resolved static
  * import from a dynamic one, and both were drilled red by making each import
  * static again.
+ *
+ * 2026-09-18: raised 422/5189 -> 423/5202. Close-out C8, the edge cache that
+ * was holding one visitor's name. One file, thirteen tests:
+ * tests/unit/security/edge-cache-viewer-independence, which holds both halves
+ * of the fix to /events (the signed-in exclusion on the cache rule, and the
+ * anonymous header on the page) and the reader the guard shares with it.
+ * The two worth naming are the reader tests, and they are there because the
+ * fix's own explanatory comment contains the literal
+ * `missing: [{ type: 'cookie', key: 'el-signed-in' }]` directly above the rule
+ * it describes. A checker that read comments would find that text and pass a
+ * rule carrying no such condition, which is the check reporting the
+ * documentation instead of the code. One test plants exactly that shape.
  */
-const MIN_FILES = 422
-const MIN_TESTS = 5189
+const MIN_FILES = 423
+const MIN_TESTS = 5202
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

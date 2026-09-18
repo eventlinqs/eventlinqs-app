@@ -402,13 +402,40 @@ const nextConfig: NextConfig = {
       // scraping Open Graph tags) is served from Vercel's CDN instead of
       // re-rendering against the database on every hit. CDN-Cache-Control only
       // affects Vercel's edge cache, NOT the browser Cache-Control, so it does
-      // not fight Next's per-page no-store. Both routes are anonymous (no
-      // cookies in the render path), so a shared cached response is safe.
+      // not fight Next's per-page no-store.
+      //
+      // THIS COMMENT USED TO END "Both routes are anonymous (no cookies in the
+      // render path), so a shared cached response is safe", AND THAT WAS FALSE
+      // FOR /events (close-out C8, 18 September 2026). It rendered the ordinary
+      // `<SiteHeader />`, which reads the session cookie and renders the signed-in
+      // visitor's initials and display name, and `deriveAccountUser` falls back to
+      // the LOCAL PART OF THEIR EMAIL when the profile carries no name. That
+      // response carried `CDN-Cache-Control: public, s-maxage=60` with no
+      // exclusion, so one signed-in visitor's identity was storable at the edge
+      // and servable to every other visitor for up to 60 seconds, 300 more while
+      // stale. Driven against this build before the fix: /events returned the
+      // public header for a request carrying `el-signed-in=1`, while
+      // /events/:slug, which has the exclusion, withheld it.
+      //
+      // BOTH HALVES ARE NEEDED AND NEITHER IS SUFFICIENT.
+      //   `missing` stops a signed-in render from ever being STORED.
+      //   `staticSafe` stops a per-viewer render from EXISTING on a route whose
+      //   responses are shared, which matters because the edge looks a URL up
+      //   before any function runs and cookies are not part of its key
+      //   (src/lib/auth/signed-in-marker.ts, measured on the C13 preview), so a
+      //   signed-in visitor can still be SERVED an anonymous cached copy. With
+      //   staticSafe that copy is byte-identical to their own render.
+      // scripts/guards/edge-cache-is-viewer-independent.mjs holds both.
       {
         // /events is dynamic (reads searchParams), so without this it is
         // never edge-cached. s-maxage 60s with 5-minute stale-while-revalidate
-        // matches the page's `revalidate = 60`.
+        // matches the page's `revalidate = 60`. Query strings are part of the
+        // Vercel cache key for a function response, so /events?category=music
+        // and /events are separate entries
+        // (https://vercel.com/docs/caching/cdn-cache/purge, "The request URL
+        // (query strings are ignored for static files)", fetched 2026-09-18).
         source: '/events',
+        missing: [{ type: 'cookie', key: 'el-signed-in' }],
         headers: [
           { key: 'CDN-Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=300' },
         ],
