@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { Calendar, MapPin, PlusCircle } from 'lucide-react'
-import { EventCardMedia } from '@/components/media'
-
+import { EventCardMedia } from '@/components/media/EventCardMedia'
 export type UpcomingEvent = {
   id: string
   slug: string

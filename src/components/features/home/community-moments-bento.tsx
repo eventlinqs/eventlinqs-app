@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { EventCardMedia } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getMomentsAhead, formatMomentDates } from '@/lib/community-moments/get-moments-ahead'
 import { getCommunity } from '@/lib/communities/data'

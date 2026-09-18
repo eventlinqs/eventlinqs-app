@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { CityTileImage } from '@/components/media'
+import { CityTileImage } from '@/components/media/CityTileImage'
 import { COMPACT_TILE_CELL } from '@/lib/ui/rhythm'
 
 /**

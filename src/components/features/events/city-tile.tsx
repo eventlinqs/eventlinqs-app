@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { CityTileImage } from '@/components/media'
-
+import { CityTileImage } from '@/components/media/CityTileImage'
 /**
  * CityTile: editorial city bento tile backed by a local SVG placeholder.
  *

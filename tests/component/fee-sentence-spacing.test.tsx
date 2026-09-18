@@ -92,8 +92,13 @@ vi.mock('@/lib/stats/platform-stats', () => ({
 vi.mock('@/components/features/organisers/community-strip', () => ({
   OrganiserCommunityStrip: () => null,
 }))
-vi.mock('@/components/media', () => ({
+/* Mocked per module rather than through a barrel, because the barrel is gone:
+   it put the whole media library into the first load of 63 routes, including
+   ones that render no images at all. See docs/MEDIA-ARCHITECTURE.md. */
+vi.mock('@/components/media/HeroMedia', () => ({
   HeroMedia: ({ alt }: { alt?: string }) => createElement('img', { alt: alt ?? '' }),
+}))
+vi.mock('@/components/media/MarketingMedia', () => ({
   MarketingMedia: ({ alt }: { alt?: string }) => createElement('img', { alt: alt ?? '' }),
 }))
 

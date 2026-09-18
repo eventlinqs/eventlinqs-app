@@ -9,8 +9,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react'
-import { MEDIA_TRANSITIONS } from '@/components/media'
-
+import { MEDIA_TRANSITIONS } from '@/components/media/transitions'
 function subscribeReducedMotion(onChange: () => void): () => void {
   if (typeof window === 'undefined') return () => {}
   const mq = window.matchMedia('(prefers-reduced-motion: reduce)')

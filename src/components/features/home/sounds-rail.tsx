@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
-import { EventCardMedia } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { getSpineSceneForSound } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'

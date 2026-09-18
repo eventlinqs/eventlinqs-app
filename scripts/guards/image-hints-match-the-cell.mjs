@@ -80,6 +80,14 @@ const ROOT = process.cwd()
 const SRC = join(ROOT, 'src')
 const RHYTHM = 'src/lib/ui/rhythm.ts'
 const SIZES = 'src/components/media/sizes.ts'
+/*
+ * The cell-to-hint pairing lives in its own file rather than in sizes.ts, and
+ * the reason is a measurement: putting it in sizes.ts gave the most widely
+ * imported module in the media layer an import of the rhythm module and cost
+ * 49,014 bytes of gzip across 61 routes. See that file's header.
+ */
+const PAIRS = 'src/components/media/rail-cell-hints.ts'
+const BARREL = 'src/components/media/index.ts'
 const MEDIA_DIR = 'src/components/media/'
 
 const failures = []
@@ -93,10 +101,11 @@ function fail(where, message) {
  * whose reads fail quietly reports PASS about a tree it never opened, which is
  * the one failure mode a gate must not have.
  */
-function read(rel) {
+function read(rel, expectedToExist = true) {
   try {
     return readFileSync(join(ROOT, rel), 'utf8')
   } catch (err) {
+    if (!expectedToExist) return null
     console.error(
       `image-hints-match-the-cell: could not read ${rel}: ${err instanceof Error ? err.message : String(err)}`,
     )
@@ -133,8 +142,25 @@ function stripComments(code) {
 
 const rhythmRaw = read(RHYTHM)
 const sizesRaw = read(SIZES)
+const pairsRaw = read(PAIRS)
 if (rhythmRaw === null) fail(RHYTHM, 'the cell geometry file is missing; this guard has nothing to compare')
 if (sizesRaw === null) fail(SIZES, 'the hint table is missing; this guard has nothing to compare')
+if (pairsRaw === null) fail(PAIRS, 'the cell-to-hint pairing is missing; clause 2 would check nothing')
+
+/*
+ * sizes.ts is a LEAF and stays one. It is reached by every card, tile and avatar
+ * on the platform, so anything it imports, everything imports: one import edge
+ * added here cost 49,014 bytes of gzip across 61 routes before it was measured
+ * and moved out.
+ */
+if (sizesRaw !== null && /^\s*import\s/m.test(stripComments(sizesRaw))) {
+  fail(
+    SIZES,
+    'sizes.ts has gained an import. It is the most widely reached module in the media layer, so ' +
+      'whatever it imports reaches every route that renders any image. Keep the finished strings ' +
+      'here and put anything that needs another module beside rail-cell-hints.ts.',
+  )
+}
 
 let cellsChecked = 0
 let hintsChecked = 0
@@ -142,9 +168,10 @@ let hintsInTable = 0
 let variantsChecked = 0
 let filesScanned = 0
 
-if (rhythmRaw !== null && sizesRaw !== null) {
+if (rhythmRaw !== null && sizesRaw !== null && pairsRaw !== null) {
   const rhythm = stripComments(rhythmRaw)
   const sizes = stripComments(sizesRaw)
+  const pairsSource = stripComments(pairsRaw)
 
   /* ---------------- clause 1: the class string and the pair agree ---------- */
 
@@ -218,22 +245,22 @@ if (rhythmRaw !== null && sizesRaw !== null) {
     fail(SIZES, 'no hints were parsed out of MEDIA_SIZES, so clause 2 would pass vacuously')
   }
 
-  const pairs = [...sizes.matchAll(/\{ key: '(\w+)', px: (\w+), name: '(\w+)' \}/g)]
+  const pairs = [...pairsSource.matchAll(/\{ key: '(\w+)', px: (\w+), name: '(\w+)' \}/g)]
   if (pairs.length === 0) {
-    fail(SIZES, 'RAIL_CELL_HINTS is empty or unparseable, so no rail hint would ever be checked')
+    fail(PAIRS, 'RAIL_CELL_HINTS is empty or unparseable, so no rail hint would ever be checked')
   }
   for (const [, key, pxRef, pxName] of pairs) {
     if (pxRef !== pxName) {
-      fail(SIZES, `RAIL_CELL_HINTS entry '${key}' imports ${pxRef} but labels it ${pxName}`)
+      fail(PAIRS, `RAIL_CELL_HINTS entry '${key}' imports ${pxRef} but labels it ${pxName}`)
     }
     const px = cellPx.get(pxRef)
     if (!px) {
-      fail(SIZES, `RAIL_CELL_HINTS entry '${key}' names ${pxRef}, which ${RHYTHM} does not declare`)
+      fail(PAIRS, `RAIL_CELL_HINTS entry '${key}' names ${pxRef}, which ${RHYTHM} does not declare`)
       continue
     }
     const declared = hint.get(key)
     if (declared === undefined) {
-      fail(SIZES, `RAIL_CELL_HINTS names the hint '${key}', and MEDIA_SIZES has no such key`)
+      fail(PAIRS, `RAIL_CELL_HINTS names the hint '${key}', and MEDIA_SIZES has no such key`)
       continue
     }
     /* The same rule the runtime uses, restated here so the guard does not have to
@@ -292,6 +319,35 @@ if (rhythmRaw !== null && sizesRaw !== null) {
             'next/image emits every candidate width it has',
         )
       }
+    }
+  }
+
+  /* ---------------- clause 6: the media layer has no barrel --------------- */
+
+  /*
+   * A barrel re-exports every surface, and a bundler that cannot prove a module
+   * is side-effect free keeps all of them. `src/components/media/index.ts`
+   * existed until 18 September 2026 and one import of `OrganiserAvatar` in the
+   * dashboard topbar, or of `HeroMedia` in the auth shell, carried the WHOLE
+   * media library into the first load: 63 of 133 routes were shipping
+   * EventCardMedia and this hint table, including /login and /forgot-password,
+   * which render no cards at all. Removing it and importing each surface from
+   * its own module moved 133 routes by -74,193 bytes gzip in aggregate.
+   *
+   * So the barrel does not come back quietly.
+   */
+  if (read(BARREL, false) !== null) {
+    fail(
+      BARREL,
+      'the media layer has a barrel again. Every surface it re-exports lands in the first load of ' +
+        'every route that imports ANY of them, because the bundler cannot prove the rest are ' +
+        'unused. Import each surface from its own module instead.',
+    )
+  }
+  for (const file of files) {
+    const code = stripComments(read(file) ?? '')
+    if (/from '@\/components\/media'/.test(code)) {
+      fail(file, "imports from the media barrel, which does not exist. Import the surface's own module.")
     }
   }
 

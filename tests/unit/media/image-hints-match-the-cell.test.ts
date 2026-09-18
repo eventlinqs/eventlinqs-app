@@ -19,7 +19,8 @@
  * bar forbids, so it is the worse of the two and is asserted hardest.
  */
 import { describe, expect, it } from 'vitest'
-import { MEDIA_SIZES, RAIL_CELL_HINTS, railCellHint } from '@/components/media/sizes'
+import { MEDIA_SIZES } from '@/components/media/sizes'
+import { RAIL_CELL_HINTS, railCellHint } from '@/components/media/rail-cell-hints'
 import {
   CITY_TILE_PX,
   EVENT_CARD_PX,

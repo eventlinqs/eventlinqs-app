@@ -25,7 +25,8 @@ import {
   type ShareChannel,
 } from '@/lib/broadcast/share-links'
 import { getRequestOrigin } from '@/lib/site-origin'
-import { HeroMedia, MarketingMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
+import { MarketingMedia } from '@/components/media/MarketingMedia'
 import { Reveal } from '@/components/ui/reveal'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { KitRenderedTracker } from '@/components/launch-kit/kit-rendered-tracker'

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground, type EventMediaInput } from '@/lib/images/event-media'

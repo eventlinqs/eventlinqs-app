@@ -3174,6 +3174,14 @@ const DRILLS = [
     expect: 'is declared and nothing reads it',
   },
   {
+    name: 'sizes.ts gains an import and stops being a leaf, which is what cost 49KB across 61 routes',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: '/**' + chr(10) + ' * Centralised `sizes` hints for next/image.',
+    replace: "import { RHYTHM_GAP } from '@/lib/ui/rhythm'" + chr(10) + chr(10) + 'void RHYTHM_GAP' + chr(10) + '/**' + chr(10) + ' * Centralised `sizes` hints for next/image.',
+    expect: 'sizes.ts has gained an import',
+  },
+  {
     name: 'the cell geometry file is renamed away and the guard cannot compare anything',
     guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
     file: 'src/components/media/sizes.ts',

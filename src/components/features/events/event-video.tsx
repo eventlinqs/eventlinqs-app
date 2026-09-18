@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { GalleryImage } from '@/components/media'
+import { GalleryImage } from '@/components/media/GalleryImage'
 import type { VideoProvider } from '@/lib/media/limits'
 
 // Event video, rendered BELOW the hero. A click-to-play FACADE: a raster poster

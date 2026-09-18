@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { MapPin } from 'lucide-react'
-import { EventCardMedia, type EventCardMediaVariant } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
+import type { EventCardMediaVariant } from '@/components/media/EventCardMedia'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { SaveEventButton } from './save-event-button'
 import type { EventInventory } from '@/lib/redis/inventory-cache'

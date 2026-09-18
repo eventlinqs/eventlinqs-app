@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { EventCardMedia } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { CategoryTileImage } from '@/components/media/CategoryTileImage'
 

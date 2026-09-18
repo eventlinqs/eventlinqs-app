@@ -1,16 +1,3 @@
-import {
-  COMPACT_TILE_PX,
-  CITY_TILE_PX,
-  COMMUNITY_TILE_PX,
-  EVENT_CARD_PX,
-  FEATURE_CARD_PX,
-  FLAT_RAIL_PX,
-  WIDE_TILE_PX,
-  SCENE_TILE_PX,
-  SQUARE_CARD_PX,
-  STANDARD_TILE_PX,
-} from '@/lib/ui/rhythm'
-
 /**
  * Centralised `sizes` hints for next/image.
  *
@@ -199,36 +186,3 @@ export const MEDIA_SIZES = {
 } as const
 
 export type MediaSizeKey = keyof typeof MEDIA_SIZES
-
-/**
- * The rail cells whose hint is derived from a cell width, and the hint key each
- * one owns. The guard reads THIS rather than carrying its own copy of the
- * pairing, because a guard with a private copy of the rule it polices can drift
- * from the code, which is the exact failure this item exists to stop.
- */
-export const RAIL_CELL_HINTS = [
-  { key: 'railEventCard', px: EVENT_CARD_PX, name: 'EVENT_CARD_PX' },
-  { key: 'railFeatureCard', px: FEATURE_CARD_PX, name: 'FEATURE_CARD_PX' },
-  { key: 'railSquareCard', px: SQUARE_CARD_PX, name: 'SQUARE_CARD_PX' },
-  { key: 'railSceneTile', px: SCENE_TILE_PX, name: 'SCENE_TILE_PX' },
-  { key: 'railCityTile', px: CITY_TILE_PX, name: 'CITY_TILE_PX' },
-  { key: 'railCommunityTile', px: COMMUNITY_TILE_PX, name: 'COMMUNITY_TILE_PX' },
-  { key: 'railCompactTile', px: COMPACT_TILE_PX, name: 'COMPACT_TILE_PX' },
-  { key: 'railWideTile', px: WIDE_TILE_PX, name: 'WIDE_TILE_PX' },
-  { key: 'railStandardTile', px: STANDARD_TILE_PX, name: 'STANDARD_TILE_PX' },
-  { key: 'railFlat', px: FLAT_RAIL_PX, name: 'FLAT_RAIL_PX' },
-  { key: 'marquee', px: FLAT_RAIL_PX, name: 'FLAT_RAIL_PX' },
-] as const
-
-/**
- * The hint a `sm`-stepped rail cell must declare. ONE definition, imported by
- * the unit tests and re-derived by the guard from the same two numbers, so a
- * change to the rule cannot leave either of them right about a rule the other
- * does not hold.
- */
-export function railCellHint(px: { base: number; sm: number }): string {
-  /* A cell that does not step at `sm` needs ONE number, not the same number
-     twice behind a media query that can never change the answer. */
-  if (px.base === px.sm) return `${px.base}px`
-  return `(min-width: 640px) ${px.sm}px, ${px.base}px`
-}
