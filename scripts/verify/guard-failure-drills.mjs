@@ -42,6 +42,9 @@ import { resolveVercelToken } from '../lib/vercel-login.mjs'
 import * as journal from './lib/drill-journal.mjs'
 
 const ROOT = process.cwd()
+// A single backslash, built rather than typed, because a drill anchor that must
+// contain one is the exact shape this file has lost twice to escaping.
+const BSL = String.fromCharCode(92)
 const GUARDS = 'scripts/guards'
 
 /*
@@ -4523,6 +4526,62 @@ const DRILLS = [
     find: "if (kind && kind[1] === 'marketing') entries.push(file)",
     replace: "if (kind && kind[1] === 'marketing-direct') entries.push(file)",
     expect: 'classifies no path as marketing',
+  },
+
+  /*
+   * consent-dates-are-zoned (lane B, 19 September 2026), five drills.
+   *
+   * The guard exists because the consent ledger rendered every date from UTC
+   * getters on a platform whose readers are all UTC+10 or UTC+11, so every
+   * record made after 10:00 local was a day early, on the one page whose closing
+   * line is "Records are kept as evidence of what you were shown and when".
+   *
+   * THE FOURTH DRILL AIMS AT THE GUARD ITSELF, because a guard that sweeps
+   * nothing prints the same OK as one that sweeps everything, and this guard
+   * legitimately reports zero rendering calls on a healthy tree: everything in
+   * scope already delegates. The file count is the only thing that proves it
+   * looked, so the drill takes the file count away.
+   */
+  {
+    name: 'the consent ledger goes back to assembling its dates from UTC getters',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/lib/consent/sentences.ts',
+    find: '  return formatPlatformDateLong(iso)',
+    replace: '  return `${at.getUTCDate()} ${at.getUTCMonth()} ${at.getUTCFullYear()}`',
+    expect: 'assembles a date from .getUTCDate()',
+  },
+  {
+    name: 'an audience read formats a date with no zone named',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/lib/audience/read.ts',
+    find: 'export ',
+    replace: 'const shownAt = (iso) => new Date(iso).toLocaleDateString(); export ',
+    expect: 'names no timeZone',
+  },
+  {
+    name: 'a date is formatted through Intl with every option except the zone',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/lib/proof/read.ts',
+    find: 'export ',
+    replace:
+      "const stamp = (d) => new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'long' }).format(d); export ",
+    expect: 'names no timeZone',
+  },
+  {
+    name: 'the date guard sweeps no files at all while still reporting OK',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'scripts/guards/consent-dates-are-zoned.mjs',
+    find: `!/${BSL}.test${BSL}.tsx?$/.test(entry)) out.push(full)`,
+    replace: `!/${BSL}.(ts|tsx)$/.test(entry)) out.push(full)`,
+    expect: 'the scope matched no files at all',
+  },
+  {
+    name: 'the ledger keeps a zoned date but stops delegating to the one formatter',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/lib/consent/sentences.ts',
+    find: "import { formatPlatformDateLong } from '@/lib/dates/event-time'",
+    replace: '',
+    expect: 'no longer imports formatPlatformDateLong',
   },
 
   /*

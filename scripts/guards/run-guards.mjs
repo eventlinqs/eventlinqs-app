@@ -157,6 +157,10 @@
  *                              headers to the provider, the List-Unsubscribe-Post value is
  *                              the exact specified bytes, the address those headers name is
  *                              a route that answers POST, and GET on it withdraws nothing
+ *   consent-dates-are-zoned  no date a person reads on a consent, audience or
+ *                              marketing surface is assembled from UTC getters or
+ *                              formatted without naming a time zone, and the consent
+ *                              ledger renders through the one platform formatter
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -1225,6 +1229,17 @@ const GUARDS = [
   // it, when the RFC value is edited, when the address the header names is not
   // a real POST route, or when GET on that route starts withdrawing.
   'scripts/guards/marketing-mail-carries-one-click.mjs',
+  // The time zone on a date a person reads. src/lib/consent/sentences.ts built
+  // every consent date from getUTCDate/getUTCMonth/getUTCFullYear, and
+  // Australian eastern time is UTC+10 or UTC+11, so every record made after
+  // 10:00 local rendered A DAY EARLY. Driven on 19 September 2026: a one-click
+  // unsubscribe pressed at 07:20 on the 19th was reported to that person as
+  // having happened on the 18th, on the page whose closing line is "Records are
+  // kept as evidence of what you were shown and when". This fails the build when
+  // anything in the consent, audience, campaigner, matching, attribution, proof
+  // or marketing path assembles a date from UTC getters or formats one without
+  // naming a zone. UTC ARITHMETIC is untouched and out of scope on purpose.
+  'scripts/guards/consent-dates-are-zoned.mjs',
   // Close-out GA2. The matcher produces the list a campaign will one day send
   // against, so two things about a stored run must hold: nobody in it is
   // somebody the consent resolver refuses, and no run holds more score rows

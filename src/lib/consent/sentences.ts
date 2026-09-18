@@ -11,6 +11,7 @@
  * September 2026 you agreed, at the checkout, that EventLinqs could email and
  * text you about other events near you" is an answer.
  */
+import { formatPlatformDateLong } from '@/lib/dates/event-time'
 import type { ConsentChannelScope, ConsentDecisionValue, SuppressionScope } from './purposes'
 
 export interface HistoryConsentRow {
@@ -31,16 +32,37 @@ export interface HistorySuppressionRow {
   occurredAt: string
 }
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
-
-/** A date a person reads, in Australian order, with no punctuation tricks. */
+/**
+ * A date a person reads, in Australian order, with no punctuation tricks, IN
+ * THE PLATFORM ZONE.
+ *
+ * THE DEFECT THIS CLOSES, measured on 19 September 2026. This function built the
+ * date from `getUTCDate()`, `getUTCMonth()` and `getUTCFullYear()` over its own
+ * month array. Australian eastern time is UTC+10 or UTC+11, so EVERY record made
+ * between 10:00 and midnight rendered a day early: a person who pressed
+ * unsubscribe at 07:20 on 19 September was told, on this page, that they had
+ * done it on 18 September. Fourteen hours of every day, and all of the evening,
+ * which is when people read email and press unsubscribe.
+ *
+ * It is worse here than almost anywhere else on the platform, because the
+ * closing line of the page this renders says "Records are kept as evidence of
+ * what you were shown and when". A date that is out by a day is not a cosmetic
+ * fault on a surface whose whole claim is evidence.
+ *
+ * The rule it now follows is the platform's own, written at
+ * src/lib/dates/event-time.ts: a date with no event behind it takes the platform
+ * zone. A consent event has no event behind it. There is no longer a month array
+ * or a date getter in this file, so the zone cannot be got wrong here again
+ * without deleting the delegation, which
+ * scripts/guards/consent-dates-are-zoned.mjs fails the build for.
+ */
 export function readableDate(iso: string): string {
   const at = new Date(iso)
+  // Kept ahead of the delegation: the shared formatter answers a malformed date
+  // with the raw string, which is right for an admin table and wrong inside a
+  // sentence a member of the public reads.
   if (Number.isNaN(at.getTime())) return 'an unrecorded date'
-  return `${at.getUTCDate()} ${MONTHS[at.getUTCMonth()]} ${at.getUTCFullYear()}`
+  return formatPlatformDateLong(iso)
 }
 
 /** Where a record was captured, said as a place rather than a code. */
