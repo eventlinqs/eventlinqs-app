@@ -223,6 +223,21 @@ export function formatPlatformDate(iso: string): string {
   return format(iso, PLATFORM_TIME_ZONE, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+/**
+ * The same date with the month SPELLED OUT, for prose rather than for a table.
+ *
+ * The consent ledger reads its history back as sentences, because a record is
+ * only evidence if a person can read it, and "On 13 Sep 2026 you agreed" is a
+ * table cell wearing a sentence. It exists here rather than in the consent
+ * module for the reason stated at the top of this file: one place formats a
+ * date, and it is never allowed to guess the zone. The consent module had its
+ * own hand-rolled month array and UTC getters, which is exactly what this
+ * module exists to stop.
+ */
+export function formatPlatformDateLong(iso: string): string {
+  return format(iso, PLATFORM_TIME_ZONE, { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 /** A timestamp with no event behind it, to the minute. */
 export function formatPlatformDateTime(iso: string): string {
   return format(iso, PLATFORM_TIME_ZONE, { dateStyle: 'medium', timeStyle: 'short' })
