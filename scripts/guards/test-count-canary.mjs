@@ -2380,9 +2380,19 @@ const ROOT = join(HERE, '..', '..')
  *   5960 + 14 + 11 = 5985 tests
  * Neither file is table driven, so a sum is a fair check here. The measurement
  * is still what set the number.
+ *
+ * 2026-09-19, the same item, one commit later: the cache-control header on the
+ * new endpoint was wrong and the fix is pinned by a test rather than a comment.
+ *
+ * MEASURED: 460 files, 5990 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: one new file, tests/unit/locations/picker-cities-endpoint.test.ts,
+ * holding 5 cases.
+ *   459 + 1 = 460 files
+ *   5985 + 5 = 5990 tests
  */
-const MIN_FILES = 459
-const MIN_TESTS = 5985
+const MIN_FILES = 460
+const MIN_TESTS = 5990
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

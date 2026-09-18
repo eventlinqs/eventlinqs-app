@@ -49,18 +49,33 @@ import { getPickerCities } from '@/lib/locations/picker-cities'
  * font.
  *
  * ============================================================================
- * CACHING: SHARED, AND THE REASON IT IS SAFE TO SHARE
+ * CACHING: PRIVATE AND SHORT, AND THE FIRST ANSWER HERE WAS WRONG
  * ============================================================================
  *
- * Unlike the seat chart, this response is the same for every visitor by
- * construction: no cookie is read, no session is resolved, and there is one
- * catalogue rather than one per viewer. That is exactly the property
- * `edge-cache-is-viewer-independent` asks a shared cache entry to have.
+ * The obvious header is `public, max-age=3600`: the response is the same for
+ * every visitor by construction, no cookie is read and no session is resolved,
+ * and `getPickerCities` is already wrapped in `unstable_cache` with
+ * `revalidate: 3600`, so a shared copy of the same age looked like it could not
+ * be staler than the thing it copied.
  *
- * An hour is not a new staleness. `getPickerCities` is already wrapped in
- * `unstable_cache` with `revalidate: 3600` and the `picker-cities` tag, so the
- * origin itself can be an hour behind; a shared copy of the same age cannot be
- * staler than the thing it copied.
+ * THAT REASONING IS FALSE, and the premise it missed is in
+ * `src/lib/events/revalidate-event.ts:364`:
+ *
+ *     revalidateTag('picker-cities', { expire: 0 })
+ *
+ * The origin cache is not an hour behind. It is invalidated the moment an event
+ * is published, which is exactly when a city can become new. An hour in a shared
+ * cache would therefore add a staleness that did not exist before this route
+ * did, and it would add it to the one case that matters: an organiser publishes
+ * the first event in a town and a visitor is told that town is not on the list.
+ * That is the Geelong report, which this repository's own code comments call a
+ * launch blocker.
+ *
+ * So: `private`, which keeps it out of shared caches entirely, and 60 seconds,
+ * which is short enough that an invalidation is effectively immediate. The cost
+ * of doing so is close to nothing, because `picker-cities-client.ts` already
+ * holds the catalogue for the life of the tab: HTTP caching only ever saves the
+ * second FULL page load, not the second open of the dialog.
  */
 export const dynamic = 'force-dynamic'
 
@@ -71,7 +86,7 @@ export async function GET() {
       { australia, internationalByCountry },
       {
         headers: {
-          'cache-control': 'public, max-age=3600, stale-while-revalidate=86400',
+          'cache-control': 'private, max-age=60',
         },
       },
     )

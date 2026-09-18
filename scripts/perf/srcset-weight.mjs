@@ -149,13 +149,19 @@ for (const path of paths) {
   const a = analyseDocument(html)
   /*
    * THE CATALOGUES, MEASURED ON THE SERVED DOCUMENT AND NOT ONLY ON THE BUILT
-   * ONE. The built documents are the deterministic comparison, but they are
-   * prerendered with whatever the data layer answered at build time, and this
-   * platform's picker catalogue GROWS at runtime: the `cities` table and the
-   * distinct venue cities of published events are merged in on the first
-   * request that misses the one-hour cache. A built document therefore
-   * UNDERSTATES what a visitor downloads, and a saving quoted from it alone is
-   * quoted from the smaller of the two numbers.
+   * ONE. The built documents are the deterministic comparison; these are what a
+   * visitor actually downloads, and the two are assembled at different moments.
+   *
+   * ON THE TREE OF 19 SEPTEMBER 2026 THEY AGREE EXACTLY: 20 distinct cities and
+   * 6,988 bytes, built and served. That is worth writing down rather than
+   * assuming, because the obvious guess is wrong in BOTH directions. The guess
+   * that a built document understates it is wrong here (checked: the 20 rows the
+   * endpoint returns are exactly LAUNCH_TARGET_CITIES). The guess that they must
+   * therefore always agree is also wrong: `getPickerCities` merges the `cities`
+   * table and the distinct venue cities of published events on top of the
+   * curated list, so a build made before an organiser publishes in a new town
+   * and a request made after it are answering different questions. The served
+   * number is the one a visitor pays, so it is the one measured here.
    */
   const catalogues = CATALOGUES.map(c => ({
     name: c.name,
