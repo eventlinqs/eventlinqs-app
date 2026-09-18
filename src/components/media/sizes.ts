@@ -201,12 +201,37 @@ export const MEDIA_SIZES = {
    *  only because the candidate ladder rounds up to 1920, and SMALLER than it
    *  at DPR 1, which the fidelity drive does not measure. */
   guideShot: '(max-width: 767px) 100vw, 720px',
-  /** Marketing/landing tile (the invitation card in the organiser launch kit,
-   *  `grid-cols-1 lg:grid-cols-2` inside the 1400px dashboard container).
-   *  NOT CORRECTED AND NOT CLAIMED: its one call site is behind a login, and
-   *  the fidelity drive signs in to nothing, so no number about it has been
-   *  driven. The reasoning is the open line in C:\dev\REVIEW-QUEUE-B.md. */
-  featureTile: '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px',
+  /** `grid-cols-1 gap-6 lg:grid-cols-2` inside the DASHBOARD container, beside
+   *  the sidebar: the invitation card on the organiser Launch Kit. Capped slot
+   *  636px.
+   *
+   *  THE LADDER, and it is the dashboard's rather than a public page's, which is
+   *  the whole reason the old hint was wrong. The sidebar is `hidden md:block`
+   *  and `w-16` collapsed or `w-60` expanded, so the WIDEST case is collapsed and
+   *  the hint is written from that one. `main` carries the padding (16 / 24 at
+   *  `sm` / 32 at `lg`) OUTSIDE its `max-w-7xl`, so the full 1400px is content,
+   *  unlike every public container in this file. The card then spends 52px of its
+   *  column on two 1px borders and `px-6`.
+   *
+   *      v < 768   one column, no sidebar        slot = v - 84  (v < 640) or v - 100
+   *      768-1023  one column, 64px sidebar      slot = v - 164
+   *      1024-1527 two columns, 64px sidebar     slot = v/2 - 128
+   *      >= 1528   two columns, container capped slot = 636
+   *
+   *  IT WAS `(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px`, which
+   *  describes a three-up public grid this call site has never been in, and it
+   *  under-fetched at 6 of the 9 viewports the drive claims the contract at.
+   *  Driven at DPR 2 on 19 September 2026
+   *  (`C:\dev\EVIDENCE\LB-TILE\before-drive.txt`):
+   *
+   *       640  a 540px slot needed 1080, the browser chose 640   x0.59
+   *      1440  a 504px slot needed 1008, the browser chose 640   x0.64
+   *       360  a 276px slot needed  552, the browser chose 384   x0.70
+   *
+   *  It stood uncorrected because it could not be measured: the route is behind
+   *  a login and this drive signed in to nothing. That is now `AUTHED_PATHS` in
+   *  `scripts/verify/image-hint-fidelity-drive.mjs`. */
+  tileDashboardHalfColumn: '(max-width: 767px) 90vw, (max-width: 1023px) 85vw, (max-width: 1527px) 42vw, 640px',
 
   /** The 56px square thumbnail in a dashboard list row (h-14 w-14). It wore the
    *  shared rail hint, which claimed 256px for it and made the browser fetch a

@@ -60,12 +60,27 @@
  *     the build until it is deleted, so the register cannot outlive the defect.
  *
  * ============================================================================
- * WHAT THIS GUARD CANNOT SEE, STATED SO IT IS NOT MISTAKEN FOR COVERAGE
+ * THE TILE, WHICH THIS GUARD USED TO SAY IT COULD NOT SEE (19 September 2026)
  * ============================================================================
  *
- * It judges the band variants, whose capped slot is declared. It does NOT judge
- * `tile`, whose one call site is behind a login that no drive signs in to, so
- * no number about it is claimed here or anywhere else.
+ * This header carried a paragraph saying it judged the bands and NOT `tile`,
+ * "whose one call site is behind a login that no drive signs in to, so no number
+ * about it is claimed here or anywhere else". That was honest and it was also a
+ * hole, and the hole had a defect in it the whole time. `MEDIA_SIZES.featureTile`
+ * claimed `(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px`, which
+ * describes a three-up public grid. Its call site is a HALF of the 1400px
+ * dashboard column beside a sidebar. Driven at DPR 2 once the drive was taught
+ * to sign in (`C:\dev\EVIDENCE\LB-TILE\before-drive.txt`):
+ *
+ *      640  a 540px slot needed 1080, the browser chose 640   x0.59
+ *     1440  a 504px slot needed 1008, the browser chose 640   x0.64
+ *      360  a 276px slot needed  552, the browser chose 384   x0.70
+ *
+ * Six of the nine viewports under-fetched. So the drive grew `AUTHED_PATHS`, the
+ * variant is now named for its layout, and clause 1 requires a page rendering a
+ * TILE to be in that authed list exactly as a page rendering a BAND must be in
+ * the public one. A guard that names what it cannot see is better than one that
+ * pretends; a guard that goes and looks is better than both.
  *
  * Exit 1 with every offending line, or exit 0 with the counts checked.
  * Drilled red and green in scripts/verify/guard-failure-drills.mjs.
@@ -94,7 +109,8 @@ function read(rel) {
 }
 
 /**
- * THE CAPPED SLOT OF EACH BAND LAYOUT, IN CSS PIXELS, AND WHERE IT COMES FROM.
+ * THE CAPPED SLOT OF EACH MARKETING LAYOUT, IN CSS PIXELS, AND WHERE IT COMES
+ * FROM.
  *
  * Each number is stated twice on purpose, here and as the fixed term of the
  * hint in sizes.ts, because neither can be generated from the other: a hint is
@@ -106,11 +122,44 @@ function read(rel) {
  * as wide as the viewport. Its slot is therefore the widest viewport the
  * fidelity drive claims the contract at, read out of the drive rather than
  * written here, so widening the drive widens this too.
+ *
+ * `surface` says WHICH route list clause 1 requires the layout's pages to be in.
+ * A public band belongs in the drive's default paths; the dashboard tile belongs
+ * in its AUTHED_PATHS, and requiring it in the public list is what the first
+ * draft of clause 1 did, which was the guard being wrong about the page.
+ *
+ * `raster` says WHOSE pixels sit behind the layout, because clause 3 judges a
+ * slot against the licensed library's ingest ceiling and that question is only
+ * meaningful where the library supplies the image. A `null` raster must carry a
+ * `rasterWhy`, so an exclusion from clause 3 is a named decision rather than a
+ * quiet gap, which is the same rule SOFT_REGISTER lives under.
  */
-const BAND_SLOTS = {
-  'band-half-column': { capped: 640, why: '1400px container less 64px padding is 1336px of content, less the 64px gap, halved, rounded up' },
-  'band-full-column': { capped: 1340, why: '1400px container less 64px padding is 1336px of content, rounded up' },
-  'band-full-bleed': { capped: null, why: 'no cap: the band is the viewport, so the drive\'s widest viewport is the slot' },
+const LAYOUT_SLOTS = {
+  'band-half-column': {
+    capped: 640,
+    surface: 'public',
+    raster: 'library',
+    why: '1400px container less 64px padding is 1336px of content, less the 64px gap, halved, rounded up',
+  },
+  'band-full-column': {
+    capped: 1340,
+    surface: 'public',
+    raster: 'library',
+    why: '1400px container less 64px padding is 1336px of content, rounded up',
+  },
+  'band-full-bleed': {
+    capped: null,
+    surface: 'public',
+    raster: 'library',
+    why: 'no cap: the band is the viewport, so the drive\'s widest viewport is the slot',
+  },
+  'tile-dashboard-half-column': {
+    capped: 640,
+    surface: 'authed',
+    raster: null,
+    why: 'the DASHBOARD container is 1400px of content, because its padding sits on <main> OUTSIDE the max-w-7xl unlike every public container, less the 24px gap, halved, less the 52px the card spends on two 1px borders and px-6: 636, rounded up',
+    rasterWhy: 'an ORGANISER-SUPPLIED event cover sits behind this tile rather than a licensed library raster, so the library ingest ceiling is not the ceiling over it and judging it against one would be judging the wrong file. Law 6 governs what may be done with it: render what was supplied, never invent pixels it does not have.',
+  },
 }
 
 /** A retina screen needs two physical pixels per CSS pixel, which is the DPR
@@ -153,6 +202,7 @@ const routeOf = id =>
 
 const driveSrc = read(DRIVE)
 let drivePaths = []
+let authedPaths = []
 let driveWidths = []
 if (driveSrc) {
   const listed = /const rawPaths[\s\S]*?\?\s*rawPaths\s*:\s*\[([^\]]*)\]/.exec(driveSrc)
@@ -160,6 +210,21 @@ if (driveSrc) {
     fail(DRIVE, 'the default route list could not be found, so clause 1 judged nothing. It is the `["home", ...]` literal beside `rawPaths`.')
   } else {
     drivePaths = [...listed[1].matchAll(/'([^']+)'/g)].map(m => (m[1] === 'home' ? '/' : `/${m[1]}`))
+  }
+  /* The authed list is already in route form, dynamic segments and all, so that
+     it can be compared with what routeOf() derives from the app directory
+     without either side reformatting the other.
+     THE CLOSING BRACKET IS FOUND BY THE LINE BREAK AFTER IT, not by being the
+     first `]`, because a Next.js dynamic segment IS a pair of brackets: the
+     first draft used `[^\]]*` and captured up to the `]` in `[id]`, which parsed
+     to an empty list. It did not fail quietly, and that is worth recording: the
+     declareWork zero-work clause refused the run with "authed route measured by
+     the fidelity drive came back zero" before any human read the output. */
+  const authed = /const AUTHED_PATHS\s*=\s*\[([\s\S]*?)\]\s*(?:\r?\n|$)/.exec(driveSrc)
+  if (!authed) {
+    fail(DRIVE, 'the AUTHED_PATHS list could not be found, so no tile-bearing route was judged. It is the `["/dashboard/..."]` literal.')
+  } else {
+    authedPaths = [...authed[1].matchAll(/'([^']+)'/g)].map(m => m[1])
   }
   const widths = /const WIDTHS\s*=\s*\[([^\]]*)\]/.exec(driveSrc)
   if (!widths) {
@@ -171,27 +236,39 @@ if (driveSrc) {
 
 /*
  * A page that imports MarketingMedia is not necessarily a page with a BAND on
- * it: the organiser launch kit renders `variant="tile"`, its one call site sits
- * behind a login, and no drive signs in to anything, so requiring it in a route
- * list would be requiring a measurement nobody can take. The first draft of
- * this clause walked to the component and named the launch kit; that was the
- * guard being wrong, not the page. So the subjects are the files that actually
- * declare a band variant, and the pages that reach them.
+ * it, so the subjects are the files that actually DECLARE a variant, and the
+ * pages that reach them. The first draft of this clause walked to the component
+ * instead and named the organiser launch kit for rendering a tile; that was the
+ * guard being wrong about the page, not the page being wrong.
+ *
+ * The launch kit IS now a subject, on the other list. A tile is measured behind
+ * a login, so its route belongs in the drive's AUTHED_PATHS, and requiring it in
+ * the public list would be requiring a measurement nobody can take.
  */
-const bandUsers = graph.files
-  .map(f => f.replaceAll('\\', '/'))
-  .filter(f => /variant="band-/.test(readFileSync(f, 'utf8')))
-  .map(f => f.replace(/\.(tsx?)$/, ''))
+function declarersOf(marker) {
+  return graph.files
+    .map(f => f.replaceAll('\\', '/'))
+    .filter(f => marker.test(readFileSync(f, 'utf8')))
+    .map(f => f.replace(/\.(tsx?)$/, ''))
+}
+
+function pagesReaching(users) {
+  return pages.filter(page => users.some(user => page === user || pathToTarget(graph, page, user, new Map())))
+}
+
+const bandUsers = declarersOf(/variant="band-/)
+const tileUsers = declarersOf(/variant="tile-/)
 
 if (!bandUsers.length) {
   fail(MEDIA, 'no file in src/ declares a band variant, so clause 1 judged nothing. Either every band is gone or the marker moved.')
 }
-
-const bandPages = []
-for (const page of pages) {
-  const reaches = bandUsers.some(user => page === user || pathToTarget(graph, page, user, new Map()))
-  if (reaches) bandPages.push(page)
+if (!tileUsers.length) {
+  fail(MEDIA, 'no file in src/ declares a tile variant, so the authed half of clause 1 judged nothing. Either the tile is gone or the marker moved.')
 }
+
+const bandPages = pagesReaching(bandUsers)
+const tilePages = pagesReaching(tileUsers)
+
 for (const page of bandPages) {
   const route = routeOf(page)
   if (!drivePaths.includes(route)) {
@@ -200,6 +277,17 @@ for (const page of bandPages) {
       `renders a marketing band on ${route}, and ${route} is not in the default route list of ${DRIVE}.\n` +
         `    That is exactly how /organisers and /about came to ship blurry bands with every gate green.\n` +
         `    Add '${route === '/' ? 'home' : route.slice(1)}' to that list.`,
+    )
+  }
+}
+for (const page of tilePages) {
+  const route = routeOf(page)
+  if (!authedPaths.includes(route)) {
+    fail(
+      `${page}.tsx`,
+      `renders a marketing tile on ${route}, and ${route} is not in AUTHED_PATHS in ${DRIVE}.\n` +
+        `    A tile behind a login is exactly the surface that kept its wrong hint for months, because\n` +
+        `    nothing could reach it. Add '${route}' to AUTHED_PATHS and let the drive sign in and measure it.`,
     )
   }
 }
@@ -248,11 +336,11 @@ for (const variant of variants) {
 
 let slotsCompared = 0
 if (sizesSrc) {
-  for (const [variant, declared] of Object.entries(BAND_SLOTS)) {
+  for (const [variant, declared] of Object.entries(LAYOUT_SLOTS)) {
     if (declared.capped === null) continue
     const key = mapped.get(variant)
     if (!key) {
-      fail(MEDIA, `band variant '${variant}' is declared in this guard's BAND_SLOTS and is not mapped to a hint.`)
+      fail(MEDIA, `variant '${variant}' is declared in this guard's LAYOUT_SLOTS and is not mapped to a hint.`)
       continue
     }
     const hint = new RegExp(`\\b${key}:\\s*'([^']+)'`).exec(sizesSrc)
@@ -294,7 +382,12 @@ let bandsJudged = 0
 const stillSoft = new Set()
 
 if (ceiling !== null && widest !== null) {
-  for (const [variant, declared] of Object.entries(BAND_SLOTS)) {
+  for (const [variant, declared] of Object.entries(LAYOUT_SLOTS)) {
+    /* A layout whose pixels are not the library's is not judged against the
+       library's ceiling. It must say so in `rasterWhy`, which is checked below
+       with the register, so the skip is a sentence somebody wrote rather than a
+       branch nobody noticed. */
+    if (declared.raster === null) continue
     const slot = declared.capped ?? widest
     const needs = slot * DPR
     bandsJudged += 1
@@ -319,8 +412,8 @@ if (ceiling !== null && widest !== null) {
   }
 }
 for (const entry of SOFT_REGISTER) {
-  if (!BAND_SLOTS[entry.variant]) {
-    fail('scripts/guards/marketing-bands-are-supplyable.mjs', `SOFT_REGISTER names '${entry.variant}', which is not a band layout in BAND_SLOTS.`)
+  if (!LAYOUT_SLOTS[entry.variant]) {
+    fail('scripts/guards/marketing-bands-are-supplyable.mjs', `SOFT_REGISTER names '${entry.variant}', which is not a layout in LAYOUT_SLOTS.`)
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.since ?? '')) {
     fail('scripts/guards/marketing-bands-are-supplyable.mjs', `the SOFT_REGISTER entry for '${entry.variant}' carries no dated \`since\`, so nobody can tell how long it has stood.`)
@@ -330,16 +423,36 @@ for (const entry of SOFT_REGISTER) {
   }
 }
 
+/* A layout excluded from clause 3 must say whose pixels it renders instead.
+   Without this the `raster: null` line is a silent opt-out, which is the exact
+   shape of the hole this guard's header used to describe about the tile. */
+let unjudgedRasters = 0
+for (const [variant, declared] of Object.entries(LAYOUT_SLOTS)) {
+  if (declared.raster !== null) continue
+  unjudgedRasters += 1
+  if (!declared.rasterWhy || declared.rasterWhy.trim().length < 40) {
+    fail(
+      'scripts/guards/marketing-bands-are-supplyable.mjs',
+      `LAYOUT_SLOTS['${variant}'] is excluded from the raster-ceiling clause with no \`rasterWhy\`.\n` +
+        '    An excluded layout must name whose pixels it renders and why the library ceiling is the wrong question,\n' +
+        '    or the exclusion is indistinguishable from an oversight.',
+    )
+  }
+}
+
 declareWork('marketing-bands-are-supplyable', {
   did: {
-    'page swept for a marketing band': pages.length,
+    'page swept for a marketing band or tile': pages.length,
     'page that renders a band': bandPages.length,
-    'route measured by the fidelity drive': drivePaths.length,
-    'band variant mapped to its own hint': mapped.size,
+    'page that renders a tile': tilePages.length,
+    'public route measured by the fidelity drive': drivePaths.length,
+    'authed route measured by the fidelity drive': authedPaths.length,
+    'variant mapped to its own hint': mapped.size,
     'capped slot compared with its hint': slotsCompared,
-    'band judged against the raster ceiling': bandsJudged,
+    'layout judged against the raster ceiling': bandsJudged,
+    'layout excluded from the ceiling with a stated reason': unjudgedRasters,
   },
-  found: { 'band that no gate was watching': failures.length },
+  found: { 'band or tile that no gate was watching': failures.length },
 })
 
 if (ceiling !== null && stillSoft.size) {
@@ -356,6 +469,7 @@ if (failures.length) {
 }
 
 console.log(
-  `marketing-bands-are-supplyable: PASS - ${bandPages.length} band-bearing route(s) all measured by the drive, ` +
-    `${mapped.size} variant(s) each on their own hint, ${bandsJudged} band(s) judged against the ${ceiling}px ceiling.`,
+  `marketing-bands-are-supplyable: PASS - ${bandPages.length} band-bearing route(s) in the drive's public list and ` +
+    `${tilePages.length} tile-bearing route(s) in its authed list, ${mapped.size} variant(s) each on their own hint, ` +
+    `${bandsJudged} layout(s) judged against the ${ceiling}px ceiling and ${unjudgedRasters} excluded with a stated reason.`,
 )

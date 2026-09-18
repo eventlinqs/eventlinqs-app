@@ -83,13 +83,16 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { chromium } from 'playwright'
+import { createClient } from '@supabase/supabase-js'
 import { startGateServer, envFor } from '../ops/pre-push-gate.mjs'
 import { readLadder } from '../guards/lib/candidate-ladder.mjs'
 
 const TAG = '[image-hint-fidelity-drive]'
 const args = process.argv.slice(2)
 const SERVE = args.includes('--serve')
+const NO_AUTHED = args.includes('--no-authed')
 const PORT = Number(args.find(a => a.startsWith('--port='))?.split('=')[1] ?? 3200)
 let BASE = (args.find(a => a.startsWith('http')) ?? `http://127.0.0.1:${PORT}`).replace(/\/$/, '')
 const OUT = args.find(a => a.startsWith('--out='))?.slice('--out='.length) ?? 'C:/dev/EVIDENCE/C8B3-HINTS/driven'
@@ -122,6 +125,206 @@ const paths = (rawPaths.length ? rawPaths : ['home', 'events', 'cities', 'commun
 })
 
 /**
+ * ============================================================================
+ * THE AUTHED ROUTES, ADDED 19 SEPTEMBER 2026, AND WHY THEY ARE HERE AT ALL
+ * ============================================================================
+ *
+ * This drive signed in to NOTHING until today, and one hint on the platform was
+ * left uncorrected for exactly that reason. `MEDIA_SIZES.featureTile` claimed
+ * `(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px`, which describes a
+ * three-up grid inside a public container. Its ONE call site is the invitation
+ * card on the organiser Launch Kit, which is a HALF of the 1400px dashboard
+ * column beside a sidebar, so the claim was wrong in both directions at once and
+ * nothing could see it: the guard cannot resolve a grid, and the drive could not
+ * reach the page.
+ *
+ * Correcting a hint nobody can measure would have been claiming a number, so the
+ * previous session refused to touch it and wrote the refusal into
+ * C:\dev\REVIEW-QUEUE-B.md. This is that hole closed rather than argued away.
+ *
+ * The list is in Next.js dynamic-segment form because that is the form
+ * `scripts/guards/marketing-bands-are-supplyable.mjs` derives from the app
+ * directory, so the guard can require that a page rendering a marketing TILE
+ * appears here, exactly as it already requires it of a page rendering a BAND.
+ * The concrete id is resolved from the row this drive creates, never guessed.
+ */
+const AUTHED_PATHS = ['/dashboard/events/[id]/launch-kit']
+
+/** Only TEST is ever written to. Production is a different project ref and the
+ *  drive stops rather than discovering that from a row. */
+const TEST_PROJECT_REF = 'vkapkibzokmfaxqogypq'
+
+/**
+ * A lane-B organiser with one published event, signed in through the real login
+ * form, so the Launch Kit renders the way its organiser sees it.
+ *
+ * WHAT IS BORROWED AND WHAT IS MADE. The cover photograph is an existing
+ * published event's, read from the database: an invented URL would render the
+ * branded placeholder and this drive would then measure a gradient instead of a
+ * photograph. Everything else is made here and deleted in `release`.
+ *
+ * THE EVENT IS UNLISTED AND THE ORGANISATION IS PENDING, which is not caution
+ * for its own sake. An active organisation publishes /organisers/<slug> into
+ * src/app/sitemap.ts and a public event publishes /events/<slug>; three lanes
+ * share this TEST database and the sitemap holds its snapshot for 300 seconds,
+ * so a fixture that is visible for the minutes it lives leaves another lane's
+ * gate reading URLs that 404. That refused lane A's push on 14 September 2026.
+ */
+async function buildAuthedFixture(browser) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  if (!supabaseUrl.includes(TEST_PROJECT_REF)) {
+    throw new Error(
+      `the authed routes only ever touch TEST ${TEST_PROJECT_REF}, and NEXT_PUBLIC_SUPABASE_URL is ${supabaseUrl || '(empty)'}`,
+    )
+  }
+  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not in the environment, so no fixture can be made')
+
+  const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+  const stamp = `${Date.now().toString(36)}`
+  const email = `lane-b-hints-${stamp}@eventlinqs.test`
+  const password = `${randomUUID()}Aa1`
+  const made = { userId: null, organisationId: null, eventId: null }
+
+  const release = async () => {
+    if (made.eventId) {
+      await db.from('ticket_tiers').delete().eq('event_id', made.eventId)
+      await db.from('events').delete().eq('id', made.eventId)
+    }
+    if (made.organisationId) await db.from('organisations').delete().eq('id', made.organisationId)
+    if (made.userId) await db.auth.admin.deleteUser(made.userId)
+  }
+
+  try {
+    const { data: city } = await db.from('cities').select('slug').eq('is_active', true).order('display_order').limit(1).single()
+    const { data: category } = await db.from('event_categories').select('id').eq('is_active', true).order('sort_order').limit(1).single()
+    const { data: cover } = await db
+      .from('events')
+      .select('cover_image_url')
+      .eq('status', 'published')
+      .not('cover_image_url', 'is', null)
+      .limit(1)
+      .single()
+    if (!cover?.cover_image_url) throw new Error('no published event carries a cover photograph to borrow')
+
+    const owner = await db.auth.admin.createUser({ email, password, email_confirm: true })
+    if (owner.error) throw new Error(`create organiser: ${owner.error.message}`)
+    made.userId = owner.data.user.id
+    await db.from('profiles').upsert({ id: made.userId, email, full_name: 'Lane B hint fidelity' })
+
+    const org = await db
+      .from('organisations')
+      .insert({ name: `Lane B hints ${stamp}`, slug: `lane-b-hints-${stamp}`, owner_id: made.userId, status: 'pending' })
+      .select('id')
+      .single()
+    if (org.error) throw new Error(`create organisation: ${org.error.message}`)
+    made.organisationId = org.data.id
+
+    const start = new Date(Date.now() + 30 * 86_400_000)
+    const event = await db
+      .from('events')
+      .insert({
+        title: `Lane B hint fidelity night ${stamp}`,
+        slug: `lane-b-hints-night-${stamp}`,
+        organisation_id: made.organisationId,
+        created_by: made.userId,
+        category_id: category.id,
+        status: 'published',
+        visibility: 'unlisted',
+        published_at: new Date().toISOString(),
+        start_date: start.toISOString(),
+        end_date: new Date(start.getTime() + 3 * 3_600_000).toISOString(),
+        timezone: 'Australia/Melbourne',
+        city_primary: city.slug,
+        venue_name: 'Lane B hint room',
+        venue_city: city.slug,
+        venue_postal_code: '3220',
+        cover_image_url: cover.cover_image_url,
+        summary: 'An event created by the image-hint fidelity drive so the Launch Kit can be measured. It is deleted when the drive ends.',
+      })
+      .select('id')
+      .single()
+    if (event.error) throw new Error(`create event: ${event.error.message}`)
+    made.eventId = event.data.id
+
+    const tier = await db
+      .from('ticket_tiers')
+      .insert({ event_id: made.eventId, name: 'Free entry', price: 0, currency: 'AUD', total_capacity: 200, is_active: true })
+    if (tier.error) throw new Error(`create tier: ${tier.error.message}`)
+
+    /*
+     * THE SESSION, THROUGH THE REAL LOGIN FORM, because a hand-built cookie
+     * proves the page renders for a cookie rather than for an organiser.
+     *
+     * IT IS RETRIED, AND THE REFUSAL IS READ OFF THE SCREEN, for a reason this
+     * drive was taught the hard way on its first afternoon: the second run in a
+     * row timed out at the form with nothing in the server log, because login
+     * runs CLIENT-side against Supabase GoTrue and GoTrue keeps its own per-IP
+     * limit that the server never sees (the same fault
+     * scripts/verify/lib/proof-session.mjs was written for). A bare
+     * "Timeout 120000ms exceeded" is indistinguishable from a broken selector,
+     * and this branch has already been fooled three times in two days by a
+     * harness fault wearing a product fault's clothes. So the message says which
+     * one it was.
+     */
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+    const page = await context.newPage()
+    let signedIn = false
+    let lastRefusal = 'no attempt was made'
+    for (let attempt = 1; attempt <= 3 && !signedIn; attempt += 1) {
+      await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded', timeout: 120_000 })
+      await page.getByLabel(/email/i).first().fill(email)
+      await page.getByLabel(/password/i).first().fill(password)
+      await page.getByRole('button', { name: /sign in|log in/i }).first().click()
+      /*
+       * POLLED, NOT `waitForURL`. Sign-in ends in a client-side router push, a
+       * SAME-DOCUMENT navigation, and `waitForURL` waits for `load` by default,
+       * which such a navigation never fires. The first draft used it and timed
+       * out at 120 seconds on a page that had in fact reached /dashboard, and a
+       * probe of the identical form landed on /dashboard in under 15 seconds.
+       * That was the fourth time in three days a harness in this branch accused
+       * a working product, so the wait now asks the only question it means:
+       * where is the browser.
+       */
+      const deadline = Date.now() + 45_000
+      while (Date.now() < deadline && !signedIn) {
+        await page.waitForTimeout(500)
+        if (!new URL(page.url()).pathname.startsWith('/login')) signedIn = true
+      }
+      if (!signedIn) {
+        const onScreen = await page
+          .locator('[role="alert"], [aria-live], .text-red-600, .text-error')
+          .allTextContents()
+          .catch(() => [])
+        const said = onScreen.map(s => s.trim()).filter(Boolean).join(' // ')
+        lastRefusal =
+          `attempt ${attempt} stayed on ${new URL(page.url()).pathname}` +
+          (said ? `, and the form said: ${said}` : ', and the form said nothing at all, which is the shape a GoTrue per-IP limit takes')
+        if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 20_000))
+      }
+    }
+    if (!signedIn) {
+      await context.close()
+      throw new Error(`the login form never left /login after 3 attempts. ${lastRefusal}`)
+    }
+    const storageState = await context.storageState()
+    await context.close()
+
+    return {
+      release,
+      targets: AUTHED_PATHS.map(template => ({
+        path: template,
+        url: BASE + template.replace('[id]', made.eventId),
+        storageState,
+      })),
+    }
+  } catch (err) {
+    await release()
+    throw err
+  }
+}
+
+/**
  * The configured ladder, read from next.config.ts by the same reader the guard
  * uses. Not retyped here: a drive with its own copy of the list would agree with
  * itself about a number neither of them holds.
@@ -151,6 +354,12 @@ const PROBE = () => {
       sizes: img.getAttribute('sizes'),
       slotWidth: Math.round(r.width),
       chosenWidth: widthOf(img.currentSrc),
+      /* The URL the browser actually fetched, recorded so the OTHER half of the
+         claim can be taken from the same run: this drive judges the width that
+         was REQUESTED, and only opening those bytes says what arrived. Two
+         marketing bands pass clause 1 and are still soft for exactly that
+         reason (marketing-bands-are-supplyable.mjs, clause 3). */
+      currentSrc: img.currentSrc || null,
       decoded: img.naturalWidth > 0,
       heading:
         section?.getAttribute('aria-label') ??
@@ -215,13 +424,46 @@ try {
   mkdirSync(OUT, { recursive: true })
 
   const browser = await chromium.launch()
+  let releaseFixture = null
   try {
-    for (const path of paths) {
-      const url = BASE + path
-      const head = await fetch(url, { headers: { 'user-agent': 'eventlinqs-image-hint-drive' } })
-      if (!head.ok) {
-        record(`${path} is served`, false, `answered ${head.status}; nothing on it can be judged`)
-        continue
+    const targets = paths.map(path => ({ path, url: BASE + path, storageState: null }))
+
+    /*
+     * A public-only run is a legitimate thing to want (against a preview, for
+     * instance, where there is no service role key and no TEST database). It is
+     * not a legitimate thing to get by accident, because "nothing looked" is the
+     * fault this whole file exists to end. So it is opted into by name and the
+     * absence of a fixture is a FAILED check rather than a quiet shorter run.
+     */
+    if (NO_AUTHED) {
+      console.log(`${TAG} --no-authed: the ${AUTHED_PATHS.length} authed route(s) are NOT measured in this run.`)
+    } else {
+      try {
+        const authed = await buildAuthedFixture(browser)
+        releaseFixture = authed.release
+        targets.push(...authed.targets)
+        record(
+          `the ${AUTHED_PATHS.length} authed route(s) have a signed-in organiser to be measured as`,
+          true,
+          `${AUTHED_PATHS.join(', ')} resolved against a lane-B fixture on TEST`,
+        )
+      } catch (err) {
+        record(
+          `the ${AUTHED_PATHS.length} authed route(s) have a signed-in organiser to be measured as`,
+          false,
+          `${err.message}. Pass --no-authed to declare a public-only run; a run that cannot sign in must not read as a full sweep.`,
+        )
+      }
+    }
+
+    for (const target of targets) {
+      const { path, url, storageState } = target
+      if (!storageState) {
+        const head = await fetch(url, { headers: { 'user-agent': 'eventlinqs-image-hint-drive' } })
+        if (!head.ok) {
+          record(`${path} is served`, false, `answered ${head.status}; nothing on it can be judged`)
+          continue
+        }
       }
 
       const route = { path, widths: [] }
@@ -230,14 +472,27 @@ try {
       let judgedTotal = 0
       let inDomTotal = 0
       let worst = { ratio: Infinity }
+      /* The image asking the ORIGIN for the most pixels on this route. It is a
+         different question from the tightest ratio and it is the one that
+         decides whether the raster behind the slot can supply it at all. */
+      let widestNeed = { need: -1 }
 
       for (const width of WIDTHS) {
         const context = await browser.newContext({
           viewport: { width, height: width === 390 ? 844 : 1000 },
           deviceScaleFactor: DPR,
+          ...(storageState ? { storageState } : {}),
         })
         const page = await context.newPage()
-        await page.goto(url, { waitUntil: 'domcontentloaded' })
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120_000 })
+        /* A session that expired mid-run lands on /login, whose images are not
+           this route's images. Measuring them would report a comfortable PASS
+           about a page nobody asked for. */
+        if (storageState && new URL(page.url()).pathname.startsWith('/login')) {
+          record(`${path} is reached signed in at ${width}`, false, `landed on ${new URL(page.url()).pathname}`)
+          await context.close()
+          continue
+        }
         await revealEverything(page)
         const images = await page.evaluate(PROBE)
         const bytes = await page.evaluate(BYTES)
@@ -254,7 +509,12 @@ try {
           if (ratio < 1) {
             under.push({ width, ...i, need, ratio: Number(ratio.toFixed(3)) })
           }
-          if (ratio < worst.ratio) worst = { ratio, width, sizes: i.sizes, slot: i.slotWidth, need, chose: i.chosenWidth, heading: i.heading }
+          if (ratio < worst.ratio) {
+            worst = { ratio, width, sizes: i.sizes, slot: i.slotWidth, need, chose: i.chosenWidth, heading: i.heading, currentSrc: i.currentSrc }
+          }
+          if (need > widestNeed.need) {
+            widestNeed = { ratio, width, sizes: i.sizes, slot: i.slotWidth, need, chose: i.chosenWidth, heading: i.heading, currentSrc: i.currentSrc }
+          }
         }
 
         route.widths.push({
@@ -321,9 +581,24 @@ try {
       route.judged = judgedTotal
       route.imagesInDom = inDomTotal
       route.underfetched = under
+      /* The tightest image on the route, with the URL it fetched, so the
+         delivered pixels can be decoded from the report rather than from a
+         second run that would have to rebuild the fixture. */
+      route.tightest = worst.ratio === Infinity ? null : worst
+      route.widestNeed = widestNeed.need < 0 ? null : widestNeed
       report.routes.push(route)
     }
   } finally {
+    /* TEST is left as it was found, and the deletion is reported rather than
+       assumed: a fixture that survives a crashed run is another lane's puzzle. */
+    if (releaseFixture) {
+      try {
+        await releaseFixture()
+        console.log(`${TAG} the lane-B fixture was deleted from TEST`)
+      } catch (err) {
+        console.error(`${TAG} THE FIXTURE WAS NOT DELETED: ${err.message}`)
+      }
+    }
     await browser.close()
   }
 } finally {
