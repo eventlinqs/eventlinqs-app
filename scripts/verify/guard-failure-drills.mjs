@@ -3713,15 +3713,25 @@ const DRILLS = [
   },
 
   /*
-   * organiser-page-is-a-read (OL1), three drills, one per product clause.
+   * organiser-page-is-a-read (OL1), four drills, one per clause.
    *
-   * THE FOURTH CLAUSE IS NOT DRILLED AND THE REASON IS NOT LAZINESS. That
-   * clause asserts the copy gate still walks src/, and it passes if ANY of
-   * three patterns matches. scripts/copy-tell-gate.mjs names that root on two
-   * separate lines (253 and 392), and this harness replaces the FIRST match
-   * only, so a content mutation cannot make the clause false. It is recorded in
-   * C:\\dev\\REVIEW-QUEUE-B.md rather than left to look like an oversight.
+   * THE FOURTH ONE EXISTS BECAUSE THE CLAUSE HAD TO BE REWRITTEN TO HAVE IT.
+   * That clause asserts the copy gate still walks src/, and it used to pass if
+   * any of three text patterns matched anywhere in scripts/copy-tell-gate.mjs.
+   * That file names the root twice, once in the scan that enforces the copy
+   * laws and once in a coverage measurement that enforces nothing, and this
+   * harness replaces the first match only, so no planted regression could make
+   * the clause false. A clause nothing can falsify is not enforcing anything.
+   * It now reads the body of scanRoots() and the drill below narrows it.
    */
+  {
+    name: 'the copy gate narrows its scan to src/app and the organiser page drops out of the copy laws',
+    guard: `${GUARDS}/organiser-page-is-a-read.mjs`,
+    file: 'scripts/copy-tell-gate.mjs',
+    find: "  const roots = [path.join(ROOT, 'src')]",
+    replace: "  const roots = [path.join(ROOT, 'src', 'app')]",
+    expect: 'no longer roots the walk at src/',
+  },
   {
     name: 'the live proof block stops reading the catalogue and becomes a screenshot',
     guard: `${GUARDS}/organiser-page-is-a-read.mjs`,

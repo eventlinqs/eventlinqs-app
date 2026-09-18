@@ -76,8 +76,8 @@ which the brief names explicitly. Rows 34 to 44 are the standing laws in
 | 1 | **PARTIAL, and it is the worst finding in this ledger.** `CLOSE-OUT.md` was read at the start and drove every decision. `BUILD-BRIEF.md` was NOT read until the roast gate, after the work was committed. Two of its rules were missed as a result: logging free disk at the start of the item (row 27) and its stricter hyphen rule (row 25). Both are now closed, and the ledger says so rather than the report | Read at the roast gate; one copy fix applied, recorded at row 25 |
 | 2 | MET, with rows 28 and 32 adjudicated separately below as not applicable to an item that ships no schema and no surface | Commit `16101894`; the six gate steps at rows 12 and 33 |
 | 3 | MET. Five defects found, five fixed in the same commit: the campaigner runner exempt from the resolver clause, two guards accepting an import as a read, one of those then accepting a comment, the drive-selector guard reading drill data as a live selector, and a lane B drill stale since 16 September | `scripts/guards/consent-ledger-is-evidence.mjs:225`, `forecast-reads-every-number.mjs:177`, `founding-offer-matches-configuration.mjs:294`, `drive-quantity-control-selector.mjs:292`, drill re-aimed at `src/lib/seo/sitemap-catalogue.ts` |
-| 4 | MET. Nothing is claimed here that was not run. Every one of the 48 drills was watched to go red with its own output quoted; the four that do not fire in this worktree are named with the credential each is missing, and the guard behind one of them was run directly to confirm the reason | `C:\dev\EVIDENCE\LBG1\drills-lane-b-eleven.txt` (48 of 48), `drills-full-harness-final.txt` (314 of 318) |
-| 5 | MET. Every drill anchor was verified mechanically to exist in the file it names before any drill ran; guard ownership was established with `git merge-base --is-ancestor` per file, not inferred from a name | The anchor check reported "47 drill(s) checked, 0 with a problem"; two anchors it rejected were repointed at real ones |
+| 4 | MET. Nothing is claimed here that was not run. Every one of the 49 drills was watched to go red with its own output quoted; the four that do not fire in this worktree are named with the credential each is missing, and the guard behind one of them was run directly to confirm the reason | `C:\dev\EVIDENCE\LBG1\drills-lane-b-eleven.txt` (49 of 49), `drills-full-harness-final.txt` (314 of 318) |
+| 5 | MET. Every drill anchor was verified mechanically to exist in the file it names before any drill ran; guard ownership was established with `git merge-base --is-ancestor` per file, not inferred from a name | The anchor check reports "51 drill(s) checked, 0 with a problem" over every drill added by this item; two anchors it rejected were repointed at real ones |
 | 6 | MET | Every command in this session ran in `C:\dev\lanes\B`; `git branch --show-current` is `lane/b-growth` |
 | 7 | MET. `git -C /c/dev` was used once, to ask whether `C:\dev` is a repository. `C:\dev` is not a lane worktree and the answer was "not a git repository" | No lane worktree was read or written |
 | 8 | MET. Nothing pushed, no pull request. `git log origin/verify/l5-launch-readiness..HEAD` stands at 64 commits, all local | |
@@ -125,7 +125,19 @@ not mention `BUILD-BRIEF.md` at all, because it had not been read. That is a
 silent drop of row 1 and it cascaded into rows 25 and 27. It is now the first
 thing this ledger says. No other row is absent from the report.
 
-**Interpretation drift.** One instance, caught and corrected mid-task. The first
+**Interpretation drift.** THE LARGEST INSTANCE WAS IN THIS LEDGER ITSELF, and it
+was caught by re-reading the ledger rather than by anything mechanical. Row 11
+and the Phase 3 note below originally recorded the copy-gate clause of
+`organiser-page-is-a-read` as "not drillable by a content mutation", filed it in
+the review queue, and moved on. That is the exact substitution this gate exists
+to catch: the honest finding is that a clause no planted regression can falsify
+is a clause enforcing nothing, and the honest response is to rewrite it. The
+weak clause is in a LANE B guard and `scripts/copy-tell-gate.mjs` is only READ by
+it, so the "it would mean changing another lane's gate" reasoning was simply
+false. The clause now reads the body of `scanRoots()`, a fourth drill narrows the
+scan to `src/app`, and it is watched to go red. Lane B's drill count is 49.
+
+Two smaller instances, both caught and corrected mid-task. The first
 drill written for the ticket email renamed a key beside the thing under test
 rather than breaking the rendered email, which would have proved the guard could
 notice an edit that does not matter. It reported DID NOT FAIL, was rewritten to
@@ -148,7 +160,7 @@ skipped, per Phase 5.
 
 | Claim | What would falsify it | Tested |
 |---|---|---|
-| "48 drills, all fire" | any drill reporting DID NOT FAIL, WRONG REASON or STALE | Yes: `drills-lane-b-eleven.txt` reads 48 of 48 and the file contains zero of those three strings |
+| "49 drills, all fire" | any drill reporting DID NOT FAIL, WRONG REASON or STALE | Yes: `drills-lane-b-eleven.txt` reads 49 of 49 and the file contains zero of those three strings |
 | "all 149 guards pass on the restored tree" | the harness's own closing re-verification failing | Yes: "all guards PASS on the restored tree" in both full runs |
 | "no lane B guard carries lane A's blind-matcher defect" | a lone backslash before a class letter inside an untagged template literal that is compiled to a regex | Yes for the mechanical half: 18 lane B guards scanned, 2 hits, both `String.raw` tagged. The 20 hits across the other 402 files were adjudicated BY READING each printed line, not mechanically, and every one is a comment or an embedded regex literal. The method is a reading and is recorded as one |
 | "the four remaining drill failures are not caused by this work" | any of them naming a lane B guard or a file this commit touched | Yes: all four name guards owned elsewhere, two print the missing credential themselves, one is STALE for a missing `.vercel` directory, and the fourth's guard was run directly and reports "0 expected bypass rules compared" |
