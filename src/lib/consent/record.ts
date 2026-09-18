@@ -253,6 +253,22 @@ export async function withdrawDigestByAnyToken(
   admin: Admin,
   token: string,
   at: string,
+  /**
+   * WHERE THE WITHDRAWAL CAME FROM, when it is not one of the two link
+   * surfaces this function was written for.
+   *
+   * `capture_surface` is free text in the schema (the only constraint is
+   * `length(btrim(capture_surface)) > 0`, migration 20260913000040 line 210),
+   * so recording a new surface costs no migration. It is worth recording
+   * because the ledger is evidence: a withdrawal a MAILBOX PROVIDER posted on
+   * somebody's behalf, through the one-click header, is a different fact from
+   * one the person typed on the preferences page, and a ledger that cannot
+   * tell them apart cannot answer which facility people actually use.
+   *
+   * Omitted, the two original surfaces are kept exactly as they were, so no
+   * existing caller changes behaviour.
+   */
+  captureSurface?: string,
 ): Promise<DigestUnsubscribeResult | null> {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
     return null
@@ -274,7 +290,7 @@ export async function withdrawDigestByAnyToken(
       wording: consentRow.consent_text,
       wordingVersion: consentRow.consent_version,
       citySlug: consentRow.city_slug,
-      captureSurface: 'unsubscribe-token',
+      captureSurface: captureSurface ?? 'unsubscribe-token',
       at,
     })
     return { source: 'consent', email, alreadyWithdrawn: false }
@@ -304,7 +320,7 @@ export async function withdrawDigestByAnyToken(
     wording: waitlistRow.consent_text,
     wordingVersion: waitlistRow.consent_version,
     citySlug: waitlistRow.city_slug,
-    captureSurface: 'waitlist-token',
+    captureSurface: captureSurface ?? 'waitlist-token',
     at,
   })
   if (!written) return null

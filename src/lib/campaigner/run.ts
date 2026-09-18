@@ -18,6 +18,7 @@ import {
   type SkipReason,
 } from './pacing'
 import { CampaignRenderError, RENDER_FAILURE, renderCampaignMessage, unsubscribeUrl } from './render'
+import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'
 import { SinkRefusal, transportForMode } from './sink'
 
 /**
@@ -271,7 +272,9 @@ export async function runCampaign(params: {
     const drafts = await readEveryRow('the approved drafts', (from, to) =>
       admin
         .from('marketing_send')
-        .select('id, channel_code, destination, rendered_subject, rendered_body, rendered_html')
+        .select(
+          'id, channel_code, destination, rendered_subject, rendered_body, rendered_html, unsubscribe_token',
+        )
         .eq('campaign_id', campaign.id)
         .eq('channel_code', params.channelCode)
         .eq('segment_fingerprint', result.segmentFingerprint)
@@ -291,6 +294,13 @@ export async function runCampaign(params: {
           // approval is supposed to pin down.
           body: draft.rendered_body,
           html: draft.rendered_html,
+          /*
+           * COMPOSED FROM THE ROW'S OWN TOKEN, not re-minted. The draft was
+           * written with `unsubscribe_token` beside the rendered body, so the
+           * header a mailbox provider posts to and the link inside the message
+           * withdraw the same person's consent.
+           */
+          headers: oneClickUnsubscribeHeaders(origin, draft.unsubscribe_token),
         })
         const { error: moveError } = await admin
           .from('marketing_send')
@@ -499,6 +509,7 @@ export async function runCampaign(params: {
         subject: rendered.subject,
         body: rendered.body,
         html: rendered.html,
+        headers: oneClickUnsubscribeHeaders(origin, token),
       })
       const { error: moveError } = await admin
         .from('marketing_send')
