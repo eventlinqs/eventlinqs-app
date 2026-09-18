@@ -1812,9 +1812,22 @@ const ROOT = join(HERE, '..', '..')
  * /scan/[eventId], every one of them a buyer on a phone, and a budget built on
  * that reading would have exempted the exact pages Scope v5 10.3 is about. The
  * test pins all nine of those routes as public so the reading cannot drift back.
+ *
+ * 2026-09-18: raised 421/5178 -> 422/5189. Close-out C8, the platform-wide
+ * client shell. One file, eleven tests:
+ * tests/component/layout/interaction-only-chrome, which runs the two surfaces
+ * that moved out of the shell (the global search overlay and the city dialog)
+ * now that a dynamic import stands between the header and both of them.
+ * The two worth naming are the same-tick pair. The obvious test here is a
+ * trap: "nothing is rendered before the interaction" passes against the OLD
+ * code too, because both surfaces already returned null while closed, so a
+ * test written that way would read as proof of the split and prove nothing.
+ * The tick after the click is the one thing that tells a resolved static
+ * import from a dynamic one, and both were drilled red by making each import
+ * static again.
  */
-const MIN_FILES = 421
-const MIN_TESTS = 5178
+const MIN_FILES = 422
+const MIN_TESTS = 5189
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

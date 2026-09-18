@@ -47,6 +47,9 @@
  *                              without a declared maintainer
  *   no-silent-catch            no catch around I/O discards its error in silence
  *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
+ *   interaction-only-chrome-is-split  the search overlay and the city dialog are reached
+ *                              only by a dynamic import, so they are not first-load
+ *                              JavaScript on every one of the 133 routes
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
@@ -756,6 +759,17 @@ const GUARDS = [
   // 2026-08-25 rebuilt it in one line, in bill-ref.ts, and nothing but a bigger
   // bundle would have said so.
   'scripts/guards/no-client-sentry-import.mjs',
+  // THE SAME DEFECT ONE LAYER OUT: chrome that only an action can reveal, sitting
+  // in the platform-wide client shell because the header is in the root layout.
+  // The global search overlay and the city dialog were both there, on /offline
+  // and /unsubscribe/[token] as much as on the homepage. Moving them behind
+  // next/dynamic took 509,320 bytes off the platform across 133 routes with 0
+  // routes worse, and took three public routes back under the Scope v5 10.3
+  // budget. initial-bundle-budget would catch a straight reintroduction, but its
+  // marks are rewritten by hand whenever a growth is justified, and after any
+  // such rewrite a static import that crept back is the new normal. This names
+  // that edit.
+  'scripts/guards/interaction-only-chrome-is-split.mjs',
   // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
   // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
   // printing a tidy list of 200s the whole time; its replacement then reported

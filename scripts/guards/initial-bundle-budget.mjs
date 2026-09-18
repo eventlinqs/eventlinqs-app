@@ -302,7 +302,7 @@ async function judgeBuilt() {
     if (internalOver.length > 5) notes.push(`    ... and ${internalOver.length - 5} more, all under /dashboard or /admin.`)
   }
   if (result.coverage.absent.length) {
-    notes.push(`not in this build, declared conditional: ${result.coverage.absent.join('; ')}`)
+    notes.push(`in no route's first load, declared conditional: ${result.coverage.absent.join('; ')}`)
   }
   if (registered.length) {
     notes.push(
