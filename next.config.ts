@@ -462,6 +462,53 @@ const nextConfig: NextConfig = {
           { key: 'CDN-Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=86400' },
         ],
       },
+      {
+        // THE 22 CITY BROWSE PAGES WERE REBUILT FROM THE DATABASE ON EVERY
+        // SINGLE VISIT (close-out C8B.3, 18 September 2026). Measured against
+        // production before this rule existed, 8 warm samples per route:
+        //
+        //   /events                   HIT  x8   warm 185 ms   origin 301 ms
+        //   /events/browse/melbourne  MISS x8   warm 276 ms   origin 309 ms
+        //   /events/browse/sydney     MISS x8   warm 276 ms   origin 269 ms
+        //   /events/browse/brisbane   MISS x8   warm 272 ms   origin 286 ms
+        //
+        // Not a cold cache: MISS on every warm sample, and the warm and
+        // cache-busted medians on the three browse pages are the same number to
+        // within the noise (+33, -7, +14 ms) because with nothing stored a warm
+        // request IS an origin render. The sibling that does have this rule
+        // saves 116 ms of first byte per request, and C8B.1's cost table found
+        // first byte to be the largest phase of the paint.
+        // scripts/perf/edge-cache-saving.mjs re-runs that table.
+        //
+        // WHY THIS ROUTE AND NOT THE OTHER 28. It is the only indexable family
+        // that already renders `<SiteHeader staticSafe />`, so sharing it
+        // changes what NOBODY sees. The homepage, the city, community and
+        // category pages render the per-viewer header through PageShell, and
+        // caching those would take a signed-in visitor's avatar off 464 pages.
+        // That is a product decision and it is in REVIEW-QUEUE-C.md with three
+        // costed options, not something this rule quietly presumes.
+        //
+        // s-maxage EQUALS the page's own `export const revalidate = 120`, and
+        // scripts/guards/edge-cache-is-viewer-independent.mjs clause 7 now
+        // fails the build if any rule here drifts from its page's number. The
+        // two values answer the same question - how stale may this page be -
+        // and until that clause existed the answer was written twice with
+        // nothing comparing them.
+        //
+        // stale-while-revalidate is 300 rather than the 86400 used by
+        // /events/:slug, DELIBERATELY. This route is `conditional` in the
+        // indexing policy: its robots meta flips between noindex and index with
+        // the city's own event count. A day-long stale window could hand a
+        // crawler a noindex copy for a day after the city crossed the
+        // threshold, which is the exact defect SEO3 was opened to fix. 300
+        // bounds the staleness at seven minutes and costs nothing measurable,
+        // because the 120-second fresh window already serves the traffic.
+        source: '/events/browse/:city',
+        missing: [{ type: 'cookie', key: 'el-signed-in' }],
+        headers: [
+          { key: 'CDN-Cache-Control', value: 'public, s-maxage=120, stale-while-revalidate=300' },
+        ],
+      },
     ]
   },
   async rewrites() {

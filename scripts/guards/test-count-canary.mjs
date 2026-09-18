@@ -1837,9 +1837,24 @@ const ROOT = join(HERE, '..', '..')
  * it describes. A checker that read comments would find that text and pass a
  * rule carrying no such condition, which is the check reporting the
  * documentation instead of the code. One test plants exactly that shape.
+ *
+ * 2026-09-18: raised 423/5202 -> 423/5212. Close-out C8B.3, the 22 city browse
+ * pages joining the shared set: they answered MISS on 8 of 8 warm production
+ * samples, so every visitor and every crawler was paying for a fresh render.
+ * No new file; ten tests added to
+ * tests/unit/security/edge-cache-viewer-independence.
+ * The two worth naming are the shelf-life pair. `s-maxage` and
+ * `export const revalidate` answer the same question in two files read by two
+ * different systems, which is the shape Law 9 records for .nvmrc against the
+ * Vercel dashboard: they disagreed for months with nothing able to notice. The
+ * only thing comparing them here was a COMMENT claiming the agreement in prose.
+ * Both were drilled red by moving s-maxage away from the page's number, and the
+ * guard clause beside them (clause 7) was drilled red a second way, by
+ * commenting the page's `revalidate` out rather than deleting it, which also
+ * proves the clause reads the comment-stripped source.
  */
 const MIN_FILES = 423
-const MIN_TESTS = 5202
+const MIN_TESTS = 5212
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

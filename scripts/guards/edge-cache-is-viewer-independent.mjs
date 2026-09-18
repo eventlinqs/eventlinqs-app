@@ -79,6 +79,12 @@
  *   6. The root not-found BOUNDARY renders the anonymous header, because Next
  *      serialises it into the payload of every page rather than only into a
  *      real 404. See below: this is the clause that clause 2 could not see.
+ *   7. The rule's `s-maxage` equals the page's own `export const revalidate`.
+ *      Both answer "how stale may this page be", in two files read by two
+ *      different systems, and until this clause existed the only thing
+ *      comparing them was a comment. Added with the /events/browse/:city rule
+ *      on 18 September 2026 (close-out C8B.3), which made it the third place
+ *      that number is written down.
  *
  * ============================================================================
  * CLAUSE 2 WAS NOT ENOUGH, AND THE DRIVE IS WHAT SAID SO
@@ -282,6 +288,8 @@ export function main() {
   let publicRules = 0
   let boundariesChecked = 0
 
+  let shelfLivesCompared = 0
+
   let markerCookie = null
   try {
     const marker = read(MARKER_MODULE)
@@ -402,6 +410,51 @@ export function main() {
               'another way, in which case this guard must be taught it, or it renders no header and the entry should say so.',
           )
         }
+
+        /*
+         * CLAUSE 7: THE SHELF LIFE IS WRITTEN TWICE AND NOTHING COMPARED THEM.
+         *
+         * `s-maxage` here and `export const revalidate` there answer the same
+         * question - how stale may this page be - in two files that are read by
+         * two different systems, which is the exact shape Law 9 records for
+         * .nvmrc against the Vercel dashboard: "they disagreed for months with
+         * nothing anywhere able to notice".
+         *
+         * Both directions are a defect, and neither announces itself:
+         *   s-maxage > revalidate  the edge keeps serving a copy the origin
+         *                          already considers stale, so an organiser
+         *                          publishes an event and the city page does
+         *                          not show it for longer than the page says
+         *   s-maxage < revalidate  the edge re-asks the origin more often than
+         *                          the data can have changed, paying for the
+         *                          function invocations the cache exists to
+         *                          avoid
+         *
+         * The config's own comments have claimed this agreement in prose since
+         * /events was written ("matches the page's `revalidate = 60`"). A
+         * comment is not a check, and this repository has been caught by a
+         * guard reading documentation instead of code once already (clause 5).
+         */
+        const sMaxAge = rule.match(/s-maxage=(\d+)/)
+        const revalidate = withoutComments.match(/export\s+const\s+revalidate\s*=\s*(\d+)/)
+        if (sMaxAge && revalidate) {
+          shelfLivesCompared += 1
+          if (sMaxAge[1] !== revalidate[1]) {
+            problems.push(
+              `${CONFIG}: '${routeSource}' shares its response at the edge for s-maxage=${sMaxAge[1]}s, but ${relative} ` +
+                `declares \`export const revalidate = ${revalidate[1]}\`. The two numbers answer the same question and ` +
+                'disagree, so the page is either served staler than it says or re-rendered more often than it needs to be. ' +
+                'Change both or neither.',
+            )
+          }
+        } else if (sMaxAge && !revalidate) {
+          problems.push(
+            `${CONFIG}: '${routeSource}' shares its response at the edge for s-maxage=${sMaxAge[1]}s, but ${relative} ` +
+              'declares no `export const revalidate`. The shelf life of a shared response is then asserted in one file and ' +
+              'unknown in the other, so the next person to change how fresh this page is has nothing telling them a copy ' +
+              'is also being held at the edge. Declare the matching revalidate on the page.',
+          )
+        }
       }
     }
   } catch (error) {
@@ -442,7 +495,23 @@ export function main() {
   }
 
   declareWork('edge-cache-is-viewer-independent', {
-    did: { 'header rule read': rulesSeen, 'route cached publicly': publicRules, 'boundary checked': boundariesChecked, 'clause checked': 6 },
+    did: {
+      'header rule read': rulesSeen,
+      'route cached publicly': publicRules,
+      'boundary checked': boundariesChecked,
+      // Printed rather than kept internal so a rule that quietly stops being
+      // comparable - the page loses its `revalidate`, the rule loses its
+      // s-maxage - shows up as a number that went DOWN, instead of as a clause
+      // that silently had nothing to say.
+      //
+      // "cache window" and not "shelf life": the shared reporter pluralises the
+      // word before the participle, so that label prints as "shelf lifes
+      // compared". The reporter's bug is recorded in REVIEW-QUEUE-C.md and is
+      // not this lane's to fix under two other builds; the label works around
+      // it rather than editing shared tooling every guard prints through.
+      'cache window compared': shelfLivesCompared,
+      'clause checked': 7,
+    },
     found: { 'shared response carrying one visitor\'s identity': problems.length },
   })
 

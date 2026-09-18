@@ -71,6 +71,51 @@ const DRILLS = [
     replace: 'const { data } = await supabase.auth.getUserRenamed()',
     expect: 'it is protecting nothing',
   },
+  /*
+   * THE NEXT FOUR ARE THE /events/browse/:city RULE (close-out C8B.3).
+   *
+   * The first two drill clause 7, which is new and which is the only clause
+   * that can fail in two different ways. The second two re-drill clauses 2 and 3
+   * AGAINST THE NEW ROUTE rather than against /events, because "the guard fires
+   * on some route" is not evidence that it fires on the route just added: the
+   * loop could have stopped early, the source literal could be unmatchable, the
+   * page could resolve to a file the guard cannot read. Proven, not reasoned.
+   */
+  {
+    clause: 7,
+    name: 'the edge is told to hold the city page longer than the page says it stays fresh',
+    file: 'next.config.ts',
+    find: "{ key: 'CDN-Cache-Control', value: 'public, s-maxage=120, stale-while-revalidate=300' },",
+    replace: "{ key: 'CDN-Cache-Control', value: 'public, s-maxage=600, stale-while-revalidate=300' },",
+    expect: 'answer the same question and disagree',
+  },
+  {
+    clause: 7,
+    name: 'the city page stops declaring how fresh it is, leaving the edge the only one that knows',
+    file: 'src/app/events/browse/[city]/page.tsx',
+    // Commented out rather than deleted, which also proves the clause reads the
+    // comment-stripped source. Clause 5 once passed a drill by matching its own
+    // documentation, and that is the failure this shape rules out.
+    find: 'export const revalidate = 120',
+    replace: '// export const revalidate = 120',
+    expect: 'declares no `export const revalidate`',
+  },
+  {
+    clause: 2,
+    name: 'the NEW city rule: the page goes back to the per-viewer header',
+    file: 'src/app/events/browse/[city]/page.tsx',
+    find: '      <SiteHeader staticSafe />',
+    replace: '      <SiteHeader />',
+    expect: 'which reads the session and renders the',
+  },
+  {
+    clause: 3,
+    name: 'the NEW city rule: the signed-in exclusion is dropped',
+    file: 'next.config.ts',
+    find: "        source: '/events/browse/:city',\n        missing: [{ type: 'cookie', key: 'el-signed-in' }],",
+    replace: "        source: '/events/browse/:city',",
+    expect: 'is edge-cached publicly with no',
+  },
 ]
 
 let failures = 0

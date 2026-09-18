@@ -55,7 +55,14 @@ const SERVE = process.argv.includes('--serve')
 const portArg = process.argv.find((a) => a.startsWith('--port='))
 const PORT = portArg ? Number(portArg.split('=')[1]) : 3200
 let BASE = process.argv.find((a) => a.startsWith('http')) ?? `http://localhost:${PORT}`
-const OUT = 'C:/dev/EVIDENCE/C8-RUN6/driven'
+/*
+ * Where the evidence lands. Overridable because this drive is re-run by later
+ * items against later trees (C8B.3 added /events/browse/:city to the set it
+ * covers), and a second run writing over the first one's screenshots destroys
+ * the evidence a closed item's ledger block cites.
+ */
+const outArg = process.argv.find((a) => a.startsWith('--out='))
+const OUT = outArg ? outArg.slice('--out='.length) : 'C:/dev/EVIDENCE/C8-RUN6/driven'
 const TAG = '[edge-cache-headers-drive]'
 const MARKER = 'el-signed-in'
 const WIDTHS = [390, 768, 1440]
@@ -86,6 +93,39 @@ async function concreteUrl(routeSource) {
     const slug = slugs.find((s) => s !== 'browse')
     if (!slug) throw new Error('no event slug could be harvested from /events; nothing is guessed here')
     return `${BASE}/events/${slug}`
+  }
+  if (routeSource === '/events/browse/:city') {
+    /*
+     * ENUMERATED FROM THE RUNNING APP, NEVER TYPED. "melbourne" would work
+     * today and is exactly the kind of literal that keeps a drive green after
+     * the thing it was aimed at has moved.
+     *
+     * The sitemap is the platform's own published list of these URLs, and it is
+     * tried first. It can legitimately be EMPTY: close-out SEO3 made a
+     * templated discovery page publish itself only while it holds real events,
+     * so a thin local catalogue yields nothing here and that is correct
+     * behaviour rather than a fault.
+     *
+     * The second source is the one internal link these pages have. A production
+     * crawl on 8 September 2026 found nothing on the platform linking to them;
+     * CityLandingPage now carries the door, and harvesting through it proves
+     * that door is open as a side effect.
+     */
+    const sitemap = await fetch(`${BASE}/sitemap.xml`).then((r) => r.text()).catch(() => '')
+    const published = [...sitemap.matchAll(/\/events\/browse\/([a-z0-9-]+)/g)].map((m) => m[1])
+    if (published.length > 0) return `${BASE}/events/browse/${published[0]}`
+
+    const citiesPage = await fetch(`${BASE}/cities`, { headers: { Cookie: 'el-audit=1' } }).then((r) => r.text())
+    const citySlugs = [...new Set([...citiesPage.matchAll(/href="\/city\/([a-z0-9-]+)"/g)].map((m) => m[1]))]
+    for (const slug of citySlugs) {
+      const cityHtml = await fetch(`${BASE}/city/${slug}`, { headers: { Cookie: 'el-audit=1' } }).then((r) => r.text())
+      const link = cityHtml.match(/href="\/events\/browse\/([a-z0-9-]+)"/)
+      if (link) return `${BASE}/events/browse/${link[1]}`
+    }
+    throw new Error(
+      'no /events/browse/<city> URL could be harvested from the sitemap or from any of the ' +
+        `${citySlugs.length} city page(s) reached from /cities. Nothing is guessed here.`,
+    )
   }
   throw new Error(`no harvester for ${routeSource}; add one rather than guessing a value`)
 }
@@ -222,20 +262,27 @@ async function main() {
       .map((c) => `${c.name}=${c.value}`)
       .join('; ')
     /*
-     * EVERY publicly cached route is probed, plus two CONTROLS, and the controls
-     * are what make the result readable rather than a bare pass or fail:
+     * EVERY publicly cached route is probed, plus the CONTROL that makes the
+     * result readable rather than a bare pass or fail:
      *
-     *   /events/browse/melbourne  renders `<SiteHeader staticSafe />` and is NOT
-     *     cached. If it carries no identity, `staticSafe` demonstrably works at
-     *     runtime, so an identity on a cached route is that route's own fault.
-     *   /                         renders the ordinary header and is NOT cached.
-     *     It MUST carry the identity. If it does not, this whole section is
-     *     measuring a session that is not being applied, and every clean result
-     *     above it is meaningless.
+     *   /   renders the ordinary per-viewer header and is NOT cached, so it
+     *       MUST carry the identity. If it does not, this whole section is
+     *       measuring a session that is not being applied, and every clean
+     *       result above it is meaningless rather than reassuring.
+     *
+     * THERE USED TO BE A SECOND CONTROL AND IT HAS BEEN RETIRED HONESTLY.
+     * `/events/browse/melbourne` sat here as "staticSafe, and NOT cached",
+     * to show `staticSafe` working at runtime on a route whose cleanliness the
+     * cache could not explain. Close-out C8B.3 gave that route a public rule,
+     * so the sentence stopped being true, and a control that describes the
+     * platform as it was is worse than no control: it is a false statement the
+     * drive prints as a PASS. No indexable page renders the anonymous header
+     * and stays uncached any more, so the control is gone rather than
+     * re-pointed at a page that would not carry the property either. The `/`
+     * control is the one that guards against vacuity, and it remains.
      */
     const probes = [
       ...routes.map((r) => ({ route: r, mustBeClean: true })),
-      { route: '/events/browse/melbourne', mustBeClean: true, control: 'staticSafe, not cached' },
       { route: '/', mustBeClean: false, control: 'per-viewer header, not cached' },
     ]
     for (const probe of probes) {
@@ -265,14 +312,87 @@ async function main() {
           res.headers.get('cdn-cache-control') === null,
           `CDN-Cache-Control: ${res.headers.get('cdn-cache-control') ?? '(withheld, correct)'}`,
         )
+
+        /*
+         * THE PROPERTY THE WHOLE ARRANGEMENT RESTS ON, MEASURED RATHER THAN
+         * ARGUED (close-out C8B.3).
+         *
+         * `missing` stops a signed-in render being STORED, but it cannot stop a
+         * signed-in visitor being SERVED a stored anonymous copy: the edge looks
+         * a URL up before any function runs and cookies are not part of its key
+         * (src/lib/auth/signed-in-marker.ts, measured on the C13 preview). So
+         * being served the cached copy is the NORMAL case for a signed-in
+         * visitor, not an edge case, and the only thing that makes it harmless
+         * is that the two documents are the same document.
+         *
+         * Everything above proves the cached copy carries no identity. That is
+         * weaker than what is needed: a page could also drop a whole section for
+         * anonymous visitors and still contain no name. This compares the bytes
+         * the edge would store against the bytes this real session is rendered,
+         * so "they see what they would have seen anyway" is a measurement.
+         *
+         * TWO PER-REQUEST VALUES ARE NORMALISED, NAMED HERE RATHER THAN WAVED
+         * AT, because the first version of this check compared raw bytes and
+         * failed - and the reason it failed is worth knowing.
+         *
+         * Two IDENTICAL anonymous requests to the same URL returned 401475 and
+         * 401527 bytes. The divergence was located rather than assumed: it
+         * begins at character 4897, at
+         * `<meta name="sentry-trace" content="...">` and the `baggage` tag
+         * beside it. Those carry a fresh distributed-tracing id per response,
+         * and the trailing sampling flag (`-0` or `-1`) changes the length of
+         * `baggage` with it. React's generated ids vary too.
+         *
+         * With exactly those three neutralised, two anonymous renders are
+         * byte-identical (379822 = 379822), so the page is deterministic and
+         * this comparison is meaningful rather than lucky.
+         *
+         * WORTH KNOWING AND NOT A DEFECT: a cached response therefore carries
+         * ONE visitor's trace id to everybody served it. That is a monitoring
+         * accuracy point, not a privacy one - the tags hold an environment, a
+         * release, a public key and a random id, and nothing about a person -
+         * and it has been true of /events and /events/:slug since they were
+         * cached. It is written up in REVIEW-QUEUE-C.md.
+         */
+        const anonBody = await fetch(url).then((r) => r.text())
+        const neutralise = (s) =>
+          s
+            .replace(/<meta name="sentry-trace" content="[^"]*"\/>/g, '<meta name="sentry-trace"/>')
+            .replace(/<meta name="baggage" content="[^"]*"\/>/g, '<meta name="baggage"/>')
+            .replace(/[0-9a-f]{8,}/g, '#')
+        const anon = neutralise(anonBody)
+        const signedIn = neutralise(body)
+        // Length is compared on the NORMALISED text, so a section that is
+        // present for one visitor and absent for the other still moves it.
+        const same = anon.length === signedIn.length && anon === signedIn
+        record(
+          `${probe.route}: the copy the edge would store IS the copy this session renders`,
+          same,
+          same
+            ? `${anon.length} normalised bytes either way, identical character for character`
+            : `anonymous ${anon.length} normalised bytes vs signed-in ${signedIn.length}. A signed-in visitor served ` +
+              'the cached copy would see a different page from the one this route renders for them.',
+        )
       }
     }
 
-    // B2. THE ABSENCE, now earned, at all three widths.
+    /*
+     * B2. THE ABSENCE, now earned, at all three widths, ON EVERY CACHED ROUTE.
+     *
+     * This loop used to drive `/events` alone, because `/events` was the route
+     * the defect was found on. That is the shape that lets the NEXT route join
+     * the shared set with no eyes on it at any width, which is precisely how
+     * `/events/[slug]` carried an identity from C13 until somebody looked. The
+     * route list is derived from next.config.ts, so a rule added tomorrow is
+     * driven tomorrow without anybody remembering to add it here.
+     */
+    for (const route of routes) {
+    const routeSlug = route.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'root'
+    const routeUrl = await concreteUrl(route)
     for (const width of WIDTHS) {
       const view = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 1000 }, storageState: await context.storageState() })
       const p = await view.newPage()
-      const response = await p.goto(`${BASE}/events`, { waitUntil: 'domcontentloaded', timeout: 120_000 })
+      const response = await p.goto(routeUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 })
       const html = await p.content()
       const cdn = response?.headers()['cdn-cache-control'] ?? null
 
@@ -287,29 +407,39 @@ async function main() {
         where.push(html.slice(Math.max(0, i - 120), i + 60).replace(/\s+/g, ' '))
         if (where.length >= 4) break
       }
-      if (where.length > 0) writeFileSync(join(OUT, `events-signed-in-${width}-occurrences.txt`), where.join('\n\n'))
+      if (where.length > 0) writeFileSync(join(OUT, `${routeSlug}-signed-in-${width}-occurrences.txt`), where.join('\n\n'))
       record(
-        `@${width}: signed in, /events renders no trace of "${name}"`,
+        `@${width}: signed in, ${route} renders no trace of "${name}"`,
         where.length === 0,
         where.length > 0
           ? `THE VISITOR'S IDENTITY IS IN A SHARED RESPONSE, ${where.length} occurrence(s):\n        ${where.join('\n        ')}`
           : 'absent, and the same string is present on /account',
       )
       record(
-        `@${width}: signed in, /events is not offered the shared cache`,
+        `@${width}: signed in, ${route} is not offered the shared cache`,
         cdn === null,
         `CDN-Cache-Control: ${cdn ?? '(withheld, correct)'}`,
       )
-      // The page must still WORK. A blank page also contains no name.
+      /*
+       * THE PAGE MUST STILL WORK. A blank page also contains no name, so the
+       * absence above is only worth having beside a page that rendered.
+       *
+       * The link selector is `a[href^="/"]` and not `a[href^="/events/"]`,
+       * DELIBERATELY. This loop now covers every cached route rather than
+       * /events alone, and an event DETAIL page is not obliged to link to other
+       * events; the narrower selector would have failed it for being the wrong
+       * kind of page rather than for being broken.
+       */
       const heading = await p.locator('h1').first().textContent().catch(() => null)
-      const links = await p.locator('a[href^="/events/"]').count()
+      const links = await p.locator('a[href^="/"]').count()
       record(
-        `@${width}: /events is still a working page for a signed-in visitor`,
+        `@${width}: ${route} is still a working page for a signed-in visitor`,
         Boolean(heading && heading.trim().length > 0) && links > 0,
-        `h1 ${JSON.stringify((heading ?? '').trim().slice(0, 60))}, ${links} event link(s)`,
+        `h1 ${JSON.stringify((heading ?? '').trim().slice(0, 60))}, ${links} internal link(s)`,
       )
-      await p.screenshot({ path: join(OUT, `events-signed-in-${width}.png`), fullPage: false })
+      await p.screenshot({ path: join(OUT, `${routeSlug}-signed-in-${width}.png`), fullPage: false })
       await view.close()
+    }
     }
 
     /*

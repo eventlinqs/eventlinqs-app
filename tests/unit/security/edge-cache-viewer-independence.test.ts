@@ -148,3 +148,96 @@ describe('the reader the guard and this test share cannot be fooled by a comment
     expect(indexingClassOf('/account', policy)).toBe('never')
   })
 })
+
+/**
+ * THE SHELF LIFE OF A SHARED RESPONSE IS WRITTEN TWICE (close-out C8B.3).
+ *
+ * `s-maxage` in next.config.ts and `export const revalidate` on the page both
+ * answer "how stale may this page be", and they are read by two different
+ * systems: the CDN and the framework. Law 9 records what that shape costs when
+ * nothing compares the two - `.nvmrc` said Node 20 while Vercel built on 24,
+ * "for months with nothing anywhere able to notice".
+ *
+ * Until guard clause 7 was written on 18 September 2026, the only thing
+ * comparing them was a comment in next.config.ts claiming the agreement in
+ * prose.
+ */
+describe('the edge and the page agree on how stale a shared response may be', () => {
+  const shelfLives = publicRules.map((rule: string) => {
+    const source = sourceOf(rule)
+    const page = source ? pageFileFor(source, ROOT) : null
+    return {
+      source,
+      sMaxAge: rule.match(/s-maxage=(\d+)/)?.[1] ?? null,
+      revalidate: page
+        ? (stripCommentsAndStrings(readFileSync(page, 'utf8')).match(
+            /export\s+const\s+revalidate\s*=\s*(\d+)/,
+          )?.[1] ?? null)
+        : null,
+    }
+  })
+
+  it('every publicly cached rule is comparable at all, so a silent gap cannot pass', () => {
+    expect(shelfLives.length).toBeGreaterThan(0)
+    for (const row of shelfLives) {
+      expect(row.sMaxAge, `${row.source} declares no s-maxage`).not.toBeNull()
+      expect(row.revalidate, `${row.source}'s page declares no revalidate`).not.toBeNull()
+    }
+  })
+
+  it.each(shelfLives.map((r) => [r.source, r] as const))(
+    '%s holds its response for exactly as long as the page says it stays fresh',
+    (_source, row) => {
+      expect(row.sMaxAge).toBe(row.revalidate)
+    },
+  )
+})
+
+/**
+ * THE 22 CITY BROWSE PAGES, which C8B.3 added to the shared set because they
+ * were rebuilt from the database on every single visit: MISS on 8 of 8 warm
+ * production samples, on all three cities measured.
+ *
+ * They qualified where the other 28 crawlable routes did not for one reason,
+ * and it is the reason these tests pin: the page already renders the anonymous
+ * header, so sharing its response changes what nobody sees.
+ */
+describe('the city browse pages are shared at the edge, and were eligible to be', () => {
+  const browse = publicRules.find((r: string) => sourceOf(r) === '/events/browse/:city')
+
+  it('carries a public rule at all', () => {
+    expect(
+      browse,
+      '/events/browse/:city is no longer publicly cached. If that was deliberate, re-aim this test; ' +
+        'if it was not, 22 city pages have gone back to rendering per visit.',
+    ).toBeDefined()
+  })
+
+  it('renders the anonymous header, which is what made it eligible', () => {
+    const page = pageFileFor('/events/browse/:city', ROOT)
+    expect(page).not.toBeNull()
+    const source = stripCommentsAndStrings(readFileSync(page as string, 'utf8'))
+    expect(source).toMatch(/<SiteHeader\s+staticSafe/)
+    expect(source).not.toMatch(/<SiteHeader\s*\/>/)
+    expect(source).not.toMatch(/<PageShell[\s>]/)
+  })
+
+  it('is indexable rather than authenticated, so a shared entry is not one visitor s page', () => {
+    const policy = readFileSync(join(ROOT, 'src', 'lib', 'seo', 'indexing-policy.ts'), 'utf8')
+    expect(indexingClassOf('/events/browse/:city', policy)).toBe('conditional')
+  })
+
+  /*
+   * The 300-second stale window is deliberate and is NOT the 86400 that
+   * /events/:slug uses. This route is `conditional`: its robots meta flips
+   * between noindex and index with the city's own event count, so a day-long
+   * stale window could hand a crawler a noindex copy for a day after the city
+   * crossed the threshold. That is the defect SEO3 was opened to fix, and it
+   * would arrive here as a side effect of a performance change.
+   */
+  it('bounds its stale window at minutes, because its own robots meta changes with the catalogue', () => {
+    expect(browse).toBeDefined()
+    const swr = Number((browse as string).match(/stale-while-revalidate=(\d+)/)?.[1])
+    expect(swr).toBeLessThanOrEqual(300)
+  })
+})
