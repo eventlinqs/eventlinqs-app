@@ -83,9 +83,58 @@ export function collect(root = ROOT) {
  * whose route is no longer over budget, so the register cannot outlive the
  * defect it describes either.
  */
+/**
+ * THE COMMIT SHA IS IN THE CLIENT BUNDLE, SO EVERY COMMIT MOVES EVERY ROUTE BY
+ * A FEW BYTES, AND A MARK WRITTEN TO THE EXACT BYTE CANNOT SURVIVE BEING
+ * COMMITTED.
+ *
+ * Established on 18 September 2026 after four pushes were refused by uniform
+ * overages of +1, +2 and +3 bytes on all 141 routes at once, each time on a tree
+ * whose bundled source had not changed. The chain, read out of the build rather
+ * than reasoned about:
+ *
+ *   1. `@sentry/nextjs` inlines the git HEAD as the release. It is in the
+ *      emitted JavaScript in full:
+ *          release:"35c843f2f6f396f5d8b776e12395db365ddc51a4"
+ *   2. Chunk filenames are content-addressed, so that chunk is renamed by every
+ *      commit.
+ *   3. A chunk in EVERY route's first load LISTS other chunks' filenames,
+ *      including that one. Verified by grep: `static/chunks/3xb4h7ynb_v2_`
+ *      appears inside the shared chunk that all 141 routes load.
+ *   4. The replacement name is the same LENGTH and different CHARACTERS, so the
+ *      chunk's raw size is unchanged and its gzip size moves by a byte or three.
+ *      Measured: raw identical at 20986 both times, gzip 4886 then 4888.
+ *
+ * So writing a mark, committing it, and building again produces a different
+ * number than the mark just written. It is a closed loop, and it is why the
+ * ratchet had started refusing every push regardless of the tree.
+ *
+ * THE BUILD ITSELF IS DETERMINISTIC. Two consecutive builds of one tree both
+ * measured 160550 on the shared shell, to the byte. The variation is per COMMIT,
+ * not per build, which is exactly what makes it invisible: nobody re-measures
+ * after committing.
+ *
+ * THE ALLOWANCE, AND WHY IT IS NOT A WEAKENED GATE. A mark is a HIGH-WATER MARK,
+ * not a measurement, and this is what its head-room is for. 64 bytes is an order
+ * of magnitude above the largest variation measured (5 bytes, across four builds
+ * at four different commits: 160545, 160548, 160550, 160550) and two orders
+ * below the smallest real regression this ratchet has ever caught (303 bytes on
+ * one route; the one that started this was 3938 bytes on every route). It cannot
+ * hide anything the ratchet exists to see.
+ *
+ * IT DOES NOT TOUCH THE ABSOLUTE BUDGET. `overBudget` below and the Scope v5
+ * 10.3 limit are judged against `r.gzip`, the MEASURED value, never against the
+ * mark, so a public route cannot slip over 200 KB by way of this allowance.
+ *
+ * `scripts/guards/initial-bundle-budget.mjs` is untouched and still refuses any
+ * route above its mark.
+ */
+const SHA_JITTER_ALLOWANCE_BYTES = 64
+
 export function baselineFrom(result, previous = null) {
   const marks = {}
-  for (const r of [...result.routes].sort((a, b) => a.route.localeCompare(b.route))) marks[r.route] = r.gzip
+  for (const r of [...result.routes].sort((a, b) => a.route.localeCompare(b.route)))
+    marks[r.route] = r.gzip + SHA_JITTER_ALLOWANCE_BYTES
   return {
     _doc:
       'High-water marks for first-load JavaScript, gzip bytes per route, measured from ' +
@@ -105,14 +154,17 @@ export function baselineFrom(result, previous = null) {
       'NEXT_PUBLIC_SENTRY_DSN to a parity DSN when the environment has none, and that value is INLINED at ' +
       'build time, so a bare build emits a framework chunk 124 bytes smaller than the one any deployment ' +
       'serves. Marks taken that way were 120 bytes low on all 141 routes at once. ' +
-      'TWO: take it from a build of the EXACT tree being pushed, including comment-only edits. Chunk ' +
-      'filenames are content-addressed and the turbopack runtime chunk LISTS them, so rehashing a module ' +
-      'rewrites that list character for character at the same length and it gzips differently. Measured: a ' +
-      'comment change in one component moved two shared chunks by +4 and -1 gzip bytes with their RAW sizes ' +
-      'byte-identical (11246 and 20986), failing all 141 routes by +3. ' +
-      'That is noise of a few bytes which no amount of care in the code can remove, and the answer is NOT to ' +
-      'give the guard a tolerance: an exact ratchet with a known procedure beats a fuzzy one. The procedure ' +
-      'is: finish every change under src/, then build, then write the baseline, then commit the marks alone.',
+      'TWO: a mark is a HIGH-WATER MARK and carries 64 bytes of head-room, written by --write-baseline, ' +
+      'because the git HEAD is inlined into the client bundle as the Sentry release. Chunk filenames are ' +
+      'content-addressed, so the chunk holding the release is renamed by EVERY COMMIT, and a chunk in every ' +
+      "route's first load LISTS that filename: same length, different characters, so raw size is unchanged " +
+      'and gzip moves a byte or three. Writing a mark and then committing it therefore invalidates the mark ' +
+      'just written, which is a closed loop and refused four pushes on 18 September 2026 by uniform overages ' +
+      'of +1, +2 and +3 on all 141 routes. The BUILD is deterministic (two builds of one tree both measured ' +
+      '160550 exactly); the variation is per COMMIT, which is what makes it invisible. The allowance is an ' +
+      'order of magnitude above the largest variation measured (5 bytes across four commits) and two orders ' +
+      'below the smallest real regression this ratchet has caught (303 bytes). The absolute Scope v5 budget ' +
+      'is judged against the MEASURED value, never the mark, so nothing slips over 200 KB by way of it.',
     _overBudgetDoc:
       'PUBLIC routes over the budget today. Every entry is dated, says why, and says what would fix it. ' +
       'The guard FAILS on a public route over budget with no entry here, and FAILS on an entry whose route ' +
