@@ -45,6 +45,7 @@
 import { spawnSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
+import { poolStartFailures } from './lib/vitest-pool.mjs'
 import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -2086,8 +2087,20 @@ const ROOT = join(HERE, '..', '..')
  * against a file whose third line was the banned import. Only the red half of
  * the drill found it. These cases are what keep it found.
  */
-const MIN_FILES = 442
-const MIN_TESTS = 5711
+/*
+ * 2026-09-18, LB3 again: 443 files / 5717 tests, 0 failed and 0 skipped
+ * (C:\dev\_a-lb3-suite5.txt).
+ *
+ * Six tests in one file, and that file is the reason this guard stopped blaming
+ * the tree for the runner. tests/unit/perf/vitest-pool-start-failures.test.ts
+ * holds the matcher that reads a vitest WORKER START FAILURE out of a run, the
+ * shape that cost eleven files and 75 tests earlier the same day and was read at
+ * the time as eleven files that had "stopped collecting". Its first case is the
+ * text vitest actually printed, kept verbatim, because the first version of that
+ * matcher was blind to it.
+ */
+const MIN_FILES = 443
+const MIN_TESTS = 5717
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
@@ -2151,8 +2164,43 @@ const result = spawnSync(
   { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: gitEnv() },
 )
 
+/**
+ * A WORKER THAT NEVER STARTED IS NOT A FILE THAT STOPPED COLLECTING, AND THIS
+ * GUARD USED TO CALL IT ONE.
+ *
+ * On 18 September 2026 a gate run reported 431 files against a baseline of 442
+ * and said "the suite is running LESS than it used to", which sent the search
+ * into the tree. The cause was in vitest's own output, which this guard captures
+ * and then threw away:
+ *
+ *     Error: [vitest-pool]: Failed to start forks worker for test files ...
+ *     Caused by: Error: [vitest-pool-runner]: Timeout waiting for worker to respond
+ *
+ * A file whose worker never started registers nothing at all, so it is
+ * indistinguishable in the JSON report from a file somebody deleted. The
+ * distinction only exists on stderr, so it is read from there and said out loud.
+ * The run STILL FAILS: a suite that did not run every test is not evidence of
+ * anything. What changes is that it names the runner rather than the tree.
+ */
+const poolFailures = poolStartFailures(`${result.stdout ?? ''}\n${result.stderr ?? ''}`)
+const reportPoolFailure = () => {
+  if (poolFailures.length === 0) return
+  console.error(
+    `\n[test-count-canary] ${poolFailures.length} vitest WORKER(S) FAILED TO START. This is the runner, not the tree:`,
+  )
+  for (const f of poolFailures) console.error(`    ${f}`)
+  console.error(
+    '  Those files registered nothing, so they are indistinguishable in the JSON report\n' +
+      '  from files that were deleted. vitest START_TIMEOUT is a hardcoded 60s and is not\n' +
+      '  configurable; the lever is fewer concurrent workers (maxWorkers in\n' +
+      '  vitest.config.ts) or less else running on the machine. This run is still a FAILURE,\n' +
+      '  because a suite that did not run every test proves nothing.',
+  )
+}
+
 if (!existsSync(REPORT)) {
   console.error(`[test-count-canary] vitest wrote no JSON report at ${REPORT_NAME}, so nothing can be counted.`)
+  reportPoolFailure()
   console.error('--- vitest stdout (tail) ---')
   console.error((result.stdout ?? '').slice(-1500))
   console.error('--- vitest stderr (tail) ---')
@@ -2440,6 +2488,9 @@ if (problems.length > 0) {
           '  its own, it is a flake and belongs in the review queue rather than in a\n' +
           '  baseline change.\n',
   )
+  // Last, so it is the thing left on screen: if workers failed to start, every
+  // count above is a symptom and none of it is about the tree.
+  reportPoolFailure()
   process.exit(1)
 }
 
