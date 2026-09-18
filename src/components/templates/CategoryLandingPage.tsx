@@ -126,7 +126,9 @@ export function CategoryLandingPage({
       </ContentSection>
 
       {/* ── 4. Live events OR CategoryHeroEmpty ──────────────────── */}
-      <ContentSection surface="base" width="wide">
+      {/* 9,043px at 390: the category events grid lays out with the page,
+          because the 480px estimate `cv-section` reserves is for a rail. */}
+      <ContentSection surface="base" width="wide" skipOffscreen={false}>
         {liveEvents.length > 0 ? (
           <>
             <div className="mb-8 flex items-end justify-between gap-4">

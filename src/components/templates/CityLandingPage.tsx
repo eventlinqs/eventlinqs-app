@@ -266,7 +266,9 @@ export function CityLandingPage({
       ) : null}
 
       {/* S12 All city events grid. */}
-      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal>
+      {/* 9,067px at 390 on 19 September 2026: far too tall for the 480px
+          estimate `cv-section` reserves, so this one lays out with the page. */}
+      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal skipOffscreen={false}>
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">

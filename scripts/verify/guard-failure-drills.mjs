@@ -4743,6 +4743,14 @@ const DRILLS = [
     expect: 'does not reference chrome-nav-link',
   },
   {
+    name: 'every interior template stops skipping below-fold layout because ContentSection dropped the class',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/layout/ContentSection.tsx',
+    find: "className={`${skipOffscreen ? 'cv-section ' : ''}relative",
+    replace: "className={`${skipOffscreen ? '' : ''}relative",
+    expect: 'does not reference cv-section',
+  },
+  {
     /* cv-section is not a class list; it is held by the same guard because it
      * fails the same way - a one-line deletion that costs measured
      * milliseconds on every homepage visit and breaks no test. */

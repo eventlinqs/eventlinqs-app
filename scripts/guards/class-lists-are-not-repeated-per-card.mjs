@@ -188,6 +188,10 @@ const COMPOSITE_CALL_SITES = [
    * homepage. The class existing in globals.css is worth nothing if the one
    * constant that applies it stops doing so. */
   { file: 'src/lib/ui/spacing.ts', composite: 'cv-section' },
+  /* And `ContentSection`, which is how it reaches every interior template.
+   * Nine surfaces stop skipping below-the-fold layout if this line goes, and
+   * the only symptom is milliseconds. */
+  { file: 'src/components/layout/ContentSection.tsx', composite: 'cv-section' },
 ]
 const GLOBALS = 'src/app/globals.css'
 /**

@@ -33,6 +33,34 @@ interface ContentSectionProps {
    * audits (the shared Reveal primitive is gated by html[data-motion=1]).
    */
   reveal?: boolean
+  /**
+   * Skip layout, style and paint for this section until it approaches the
+   * viewport (`cv-section`: content-visibility: auto with an intrinsic size
+   * of 480px). DEFAULT TRUE, and the default is a measurement rather than an
+   * opinion.
+   *
+   * Every section on /city/melbourne is 439 to 670px tall except one, and
+   * 480px is a rail: a heading and one row of cards. Sweeping every
+   * ContentSection-bearing route at 390 on 19 September 2026 found only FIVE
+   * sections over 1,500px on the whole platform - the city's "all events"
+   * grid (9,067px), the category's (9,043px), the suburb's (3,535px), the
+   * careers pitch (1,519px) and the waitlist's city chooser (2,469px). Each
+   * passes `skipOffscreen={false}` with its measurement beside it.
+   *
+   * A SIXTH is opted out by SHAPE rather than by measurement and is marked as
+   * such: the community-by-city page's "all events" grid is the same
+   * component arrangement as the city page's, on a route the sweep did not
+   * reach. Assuming it behaves like its twin is a judgement; pretending it
+   * was measured would be a lie.
+   *
+   * WHY IT MATTERS THAT THEY DO. With the treatment on all of them,
+   * /city/melbourne grew from 7,551px to 12,055px as it was scrolled - the
+   * reserved estimate was wrong for nine sections at once and the scrollbar
+   * rescaled under the reader the whole way down. That is measured in
+   * scripts/verify/below-fold-sections-drive.mjs, which is what a new tall
+   * section should be run against before it is added without this flag.
+   */
+  skipOffscreen?: boolean
 }
 
 const surfaces: Record<SurfaceName, string> = {
@@ -75,36 +103,24 @@ export function ContentSection({
   className = '',
   topBorder = false,
   reveal = false,
+  skipOffscreen = true,
 }: ContentSectionProps) {
   return (
     <section
       id={id}
       aria-labelledby={ariaLabelledby}
       /*
-       * `cv-section` WAS ADDED HERE ON 19 SEPTEMBER 2026 AND REVERTED THE
-       * SAME DAY, and the reason is recorded so the next session does not
-       * spend the afternoon rediscovering it (close-out C8B.3).
+       * `cv-section` here is the treatment the homepage rails have carried
+       * since close-out C8 (6 September 2026). It reached no other surface
+       * until 19 September, when /city/melbourne was measured rendering
+       * 1,866 nodes across 11 sections with none of it and spending 705 ms
+       * in Style & Layout before it could paint.
        *
-       * The homepage rails have carried `content-visibility: auto` with
-       * `contain-intrinsic-size: auto 480px` since 6 September and no other
-       * surface had it. Putting it on this component gave it to every
-       * template that uses one, and it worked: on /city/melbourne style
-       * recalculation fell to 104-130 ms against 171-231 ms across three
-       * sessions of the tree without it, while the control page's did not
-       * move.
-       *
-       * IT ALSO MADE THE PAGE GROW 45 TO 103 PER CENT UNDER THE READER. 480px
-       * is a rail - a heading and one row of cards - and the sections this
-       * component wraps are grids two and three times that, so the browser's
-       * reserved estimate was wrong for nine sections at once and the
-       * document's height climbed from 7,551px to 12,055px as it was scrolled.
-       * Isolated on the same build by forcing the treatment off in the
-       * browser: 59.6% with it, 0.0% without.
-       *
-       * What this needs is a per-section estimate, not the homepage's
-       * constant. That is a measured job per template and it is not this one.
+       * It is ON by default and OFF for the five sections on the platform
+       * that are too tall for a 480px estimate - see `skipOffscreen` above,
+       * where the measurement and the failure it prevents are written down.
        */
-      className={`relative ${surfaces[surface]} ${pads[pad]} ${className}`}
+      className={`${skipOffscreen ? 'cv-section ' : ''}relative ${surfaces[surface]} ${pads[pad]} ${className}`}
     >
       {topBorder && (
         <div

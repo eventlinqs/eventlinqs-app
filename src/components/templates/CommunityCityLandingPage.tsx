@@ -274,7 +274,9 @@ export function CommunityCityLandingPage({
 
       {/* S10 All events in city (paginated grid). S8/S9 organisers/venues
           render conditionally - hidden until populated. */}
-      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal>
+      {/* The events grid, the same shape as the city page's: too tall for the
+          480px estimate, so it lays out with the page. */}
+      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal skipOffscreen={false}>
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">

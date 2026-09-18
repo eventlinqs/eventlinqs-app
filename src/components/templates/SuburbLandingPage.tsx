@@ -102,7 +102,8 @@ export function SuburbLandingPage({
         </ContentSection>
       ) : null}
 
-      <ContentSection id="all-events" surface="base" width="wide" topBorder>
+      {/* 3,535px at 390: the events grid lays out with the page. */}
+      <ContentSection id="all-events" surface="base" width="wide" topBorder skipOffscreen={false}>
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
