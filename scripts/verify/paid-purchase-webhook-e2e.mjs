@@ -88,7 +88,14 @@ try {
     await page.goto(`${BASE}/events/${ev.slug}`, { waitUntil: 'load', timeout: 90000 })
 
     // Add one ticket of the first available tier.
-    const plus = page.getByRole('button', { name: /^(\+|increase|add)/i }).first()
+    // THE NAME IS THE PRODUCT'S OWN, ANCHORED AT BOTH ENDS (close-out FO1,
+    // 18 September 2026). This read /^(\+|increase|add)/i and took .first(),
+    // so from 14 September it pressed the "Add to calendar" button that ships
+    // above the ticket panel, left the quantity at 0, and reported the ticket
+    // panel as missing. src/components/checkout/ticket-selector.tsx labels the
+    // control `Increase ${tier.name} quantity`; guarded by
+    // scripts/guards/drive-quantity-control-selector.mjs.
+    const plus = page.getByRole('button', { name: /^increase .+ quantity$/i }).first()
     if (!(await plus.count())) { console.log('  no quantity control, skipping'); continue }
     await plus.click()
     await page.waitForTimeout(500)

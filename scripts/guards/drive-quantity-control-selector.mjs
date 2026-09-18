@@ -45,11 +45,24 @@
  *      wait rather than on the assertion, so the drive reports the panel
  *      missing all over again.
  *
- *   4. NOTHING ELSE IN THE TREE ANSWERS TO IT. Every <button> in src/ is read,
- *      its accessible name is computed the way a browser would (aria-label if
- *      present, else its text), and the selector is tested against all of them.
- *      Exactly the ticket selector's own increase controls may match. This is
- *      the check that would have caught "Add to calendar" the day it landed.
+ *   4. NOTHING ELSE ANSWERS TO IT, IN ANY DRIVE, NOT JUST THAT HELPER. Every
+ *      <button> in src/ is read and its accessible name computed the way a
+ *      browser would. Every `getByRole('button', { name: /../ })` in scripts/ is
+ *      read as a real RegExp. Any selector that matches the tier increase
+ *      control is one somebody wrote to add a ticket, and if it ALSO matches
+ *      another button it fails: Playwright takes `.first()` in DOM order and the
+ *      drive does not get to choose.
+ *
+ *      SCOPING THIS TO ONE FILE WAS THE FIRST VERSION'S MISTAKE, found minutes
+ *      after it first went green. `drivePurchase` was fixed and the guard
+ *      passed while paid-purchase-webhook-e2e, refund-dashboard-e2e and
+ *      share-conversion-e2e were still carrying the identical
+ *      `/^(\+|increase|add)/i`. A guard watching one door in a building with
+ *      four reports that the building is secure.
+ *
+ *      A selector that does NOT reach the quantity control is out of scope and
+ *      is left alone. The reserve selector legitimately accepts several labels
+ *      because the product shows a different one per state.
  *
  * WHAT IT DELIBERATELY DOES NOT DO. It does not read a database, a network or a
  * running server, so it runs identically on a laptop, in CI and on the Vercel
@@ -79,6 +92,7 @@ const TAG = '[drive-quantity-selector]'
 const SELECTOR_FILE = 'scripts/verify/lib/refund-proof-fixture.mjs'
 const PRODUCT_FILE = 'src/components/checkout/ticket-selector.tsx'
 const SRC = 'src'
+const SCRIPTS = 'scripts'
 
 /* A name a real tier or add-on could carry, used to turn the product's label
  * TEMPLATE into a concrete accessible name the selector can be tested against. */
@@ -220,27 +234,114 @@ if (selector && labelTemplates.length > 0) {
   checks['product label tested against the selector'] = matched
 }
 
-/* --------------------------------- 4. nothing else in the tree answers to it */
+/* -------- 4. EVERY drive in scripts/, not just the one helper, and the rule is
+ *             the same for all of them.
+ *
+ * SCOPING THIS TO ONE FILE WAS THE FIRST VERSION'S MISTAKE AND IT WAS FOUND
+ * MINUTES AFTER IT WENT GREEN. `drivePurchase` was fixed, the guard passed, and
+ * three MORE drives were still carrying the identical `/^(\+|increase|add)/i`:
+ * paid-purchase-webhook-e2e, refund-dashboard-e2e and share-conversion-e2e. A
+ * guard that watches one door in a building with four is a guard that reports
+ * the building is secure.
+ *
+ * THE RULE, stated so it needs no list of files and no list of buttons. Read
+ * every accessible name in src/. Read every `getByRole('button', { name: /../ })`
+ * in scripts/. A selector is IN SCOPE if it matches the tier increase control,
+ * because that is a selector somebody wrote to add a ticket. An in-scope
+ * selector that ALSO matches any other name is a fault, because Playwright
+ * takes `.first()` in DOM order and the drive does not get to choose.
+ *
+ * Selectors that do not match the quantity control are none of this guard's
+ * business and are left alone. That is deliberate: the reserve selector
+ * legitimately accepts several labels because the product shows a different one
+ * per state, and pinning it is a different invariant.
+ */
 
-if (selector) {
+const QUANTITY_SAMPLE = labelTemplates[0]
+  ? labelTemplates[0].replace(/\$\{[^}]*\}/g, SAMPLE_NAMES[0])
+  : null
+
+/** Every statically readable button name in src/, as `{ where, name }`. */
+const productButtonNames = []
+{
   let buttonsRead = 0
-  const collisions = []
   for (const file of tsxFiles(SRC)) {
     const src = readFileSync(join(ROOT, file), 'utf8')
     for (const button of buttonsIn(src)) {
       buttonsRead += 1
-      const concrete = button.name.replace(/\$\{[^}]*\}/g, SAMPLE_NAMES[0])
-      if (!selector.test(concrete)) continue
       const isTheQuantityControl =
         file.split('/').join(sep) === PRODUCT_FILE.split('/').join(sep) && /^Increase /.test(button.name)
-      if (!isTheQuantityControl) collisions.push(`${file}:${button.line} "${button.name}"`)
+      productButtonNames.push({
+        where: `${file}:${button.line}`,
+        name: button.name.replace(/\$\{[^}]*\}/g, SAMPLE_NAMES[0]),
+        raw: button.name,
+        isTheQuantityControl,
+      })
     }
   }
   checks['button in src read for its accessible name'] = buttonsRead
-  for (const collision of collisions) {
+}
+
+/** Every `getByRole('button', { name: /../ })` in scripts/, as a real RegExp. */
+function driveSelectors() {
+  const found = []
+  const SELECTOR = /getByRole\(\s*'button'\s*,\s*\{\s*name:\s*(\/(?:\\.|[^/\\\n])+\/[a-z]*)/g
+  for (const file of mjsFiles(SCRIPTS)) {
+    // The guard's own source quotes these patterns in its prose and its
+    // messages. It is not a drive and must not judge itself.
+    if (file.endsWith('drive-quantity-control-selector.mjs')) continue
+    const src = readFileSync(join(ROOT, file), 'utf8')
+    let m
+    while ((m = SELECTOR.exec(src))) {
+      const literal = m[1]
+      const lastSlash = literal.lastIndexOf('/')
+      try {
+        found.push({
+          file,
+          line: src.slice(0, m.index).split('\n').length,
+          literal,
+          regex: new RegExp(literal.slice(1, lastSlash), literal.slice(lastSlash + 1)),
+        })
+      } catch {
+        /* An unparseable literal is a different fault and is not this guard's. */
+      }
+    }
+  }
+  return found
+}
+
+function mjsFiles(dir, acc = []) {
+  for (const entry of readdirSync(join(ROOT, dir), { withFileTypes: true })) {
+    if (entry.name === 'node_modules') continue
+    const rel = `${dir}/${entry.name}`
+    if (entry.isDirectory()) mjsFiles(rel, acc)
+    else if (entry.name.endsWith('.mjs') || entry.name.endsWith('.js')) acc.push(rel)
+  }
+  return acc
+}
+
+if (QUANTITY_SAMPLE) {
+  const selectors = driveSelectors()
+  checks['button selector in scripts read'] = selectors.length
+  let inScope = 0
+  for (const candidate of selectors) {
+    if (!candidate.regex.test(QUANTITY_SAMPLE)) continue
+    inScope += 1
+    const alsoMatches = productButtonNames.filter(b => !b.isTheQuantityControl && candidate.regex.test(b.name))
+    if (alsoMatches.length === 0) continue
+    const named = alsoMatches.slice(0, 6).map(b => `${b.where} "${b.raw}"`).join('; ')
+    const more = alsoMatches.length > 6 ? ` and ${alsoMatches.length - 6} more` : ''
     faults.push(
-      `${collision} answers to the quantity selector ${selector} as well. Playwright takes .first() in DOM ` +
-        `order, so whichever of the two is higher on the event page is the one every money drive will press`,
+      `${candidate.file}:${candidate.line} selects the quantity control with ${candidate.literal}, which also ` +
+        `matches ${alsoMatches.length} other button(s): ${named}${more}. Playwright takes .first() in DOM order, ` +
+        `so this drive presses whichever sits higher on the page, and then reports the ticket panel as missing`,
+    )
+  }
+  checks['selector that reaches the quantity control judged'] = inScope
+  if (inScope === 0) {
+    faults.push(
+      `no selector anywhere in ${SCRIPTS}/ matches "${QUANTITY_SAMPLE}". Either every drive lost its ability to ` +
+        `add a ticket, or this guard has lost its ability to find them; both are worth stopping for`,
     )
   }
 }
