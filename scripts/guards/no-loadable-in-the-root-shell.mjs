@@ -29,9 +29,9 @@
  * that a bare `import()` defers just as well:
  *
  *     WITH next/dynamic   13 shared chunks   161851 bytes gzip
- *     WITH import()       12 shared chunks   160425 bytes gzip
+ *     WITH import()       12 shared chunks   160545 bytes gzip
  *
- * 1426 bytes gzip and one entire chunk, on every route, for a deferral helper
+ * 1306 bytes gzip and one entire chunk, on every route, for a deferral helper
  * whose preload handle, `loading` slot and SSR switch the shell uses none of.
  *
  * ============================================================================
@@ -136,7 +136,7 @@ if (violations.length > 0) {
   console.error(`\nFAIL: ${violations.length} module(s) in the root client shell import '${BANNED}':`)
   for (const mod of violations) console.error(`  ${mod}`)
   console.error(
-    `\n'${BANNED}' costs 1426 bytes gzip in the shared shell, which is the first load of EVERY\n` +
+    `\n'${BANNED}' costs 1306 bytes gzip in the shared shell, which is the first load of EVERY\n` +
       `route, and the shell uses none of what it buys. Defer with a bare dynamic import instead:\n` +
       `\n` +
       `    const [Thing, setThing] = useState(null)\n` +

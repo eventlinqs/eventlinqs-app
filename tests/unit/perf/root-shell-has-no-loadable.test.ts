@@ -23,7 +23,7 @@ import { importsBareSpecifier } from '../../../scripts/guards/lib/bare-import.mj
  * the pattern has to survive them.
  */
 describe('the matcher the root-shell guard reads source with', () => {
-  it('sees the import shape that actually cost 1426 bytes', () => {
+  it('sees the import shape that actually cost 1306 bytes', () => {
     expect(importsBareSpecifier("import dynamic from 'next/dynamic'", 'next/dynamic')).toBe(true)
   })
 

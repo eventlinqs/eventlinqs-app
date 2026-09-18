@@ -68,16 +68,25 @@ import { useEffect, useState, type ComponentType } from 'react'
  * one tree that a bare `import()` defers just as well.
  *
  *     WITH next/dynamic   13 shared chunks   161851 bytes gzip   +1099 over mark
- *     WITH import()       12 shared chunks   160425 bytes gzip    -327 under it
+ *     WITH import()       12 shared chunks   160545 bytes gzip    -207 under it
  *
- * 1426 bytes gzip, and one whole chunk that stops being fetched at all, off the
+ * 1306 bytes gzip, and one whole chunk that stops being fetched at all, off the
  * first load of all 141 routes. The ratchet went from 134 faults to 16 on that
  * one edit, because 116 of them were this one number reported once per route.
  *
- * Measured on the same toolchain, both numbers being the gzip total of the
- * chunks common to every route in `.next/diagnostics/route-bundle-stats.json`,
- * which is the same file `scripts/guards/initial-bundle-budget.mjs --built`
- * weighs.
+ * Both numbers are the gzip total of the chunks common to every route in
+ * `.next/diagnostics/route-bundle-stats.json`, which is the same file
+ * `scripts/guards/initial-bundle-budget.mjs --built` weighs, and BOTH ARE FROM
+ * A GATE BUILD, which is not the same thing as a build.
+ *
+ * `scripts/ops/pre-push-gate.mjs:195` sets `NEXT_PUBLIC_SENTRY_DSN` to a
+ * parity DSN when the environment has none, because that value is INLINED at
+ * build time: without it the local build ships a browser bundle that no
+ * deployment ever serves. The first version of this note quoted 160425 and a
+ * saving of 1426, taken from a bare `next build` with the DSN empty, and the
+ * push measured 160545 on every one of the 141 routes and refused all of them
+ * by an identical +120 bytes. A mark, and a measurement quoted beside it, is
+ * only meaningful against the build the gate judges.
  *
  * WHAT IS GIVEN UP BY NOT USING `next/dynamic`: nothing that is used here.
  * `dynamic()` adds a preload handle, a `loading` slot and SSR control. This

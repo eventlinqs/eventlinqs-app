@@ -119,7 +119,7 @@ describe('the deferred measurement tree', () => {
     // THE BOUNDARY DEFERS WITH A BARE import() AND NOT WITH next/dynamic, and
     // that is a measurement rather than a style: dynamic() put its loadable
     // runtime into the shared shell, which is the first load of all 141 routes,
-    // for 1426 bytes gzip and one extra chunk. See measurement-boot.tsx and
+    // for 1306 bytes gzip and one extra chunk. See measurement-boot.tsx and
     // scripts/guards/no-loadable-in-the-root-shell.mjs, which blocks the build
     // if it comes back.
     const boot = readFileSync(BOOT, 'utf8')

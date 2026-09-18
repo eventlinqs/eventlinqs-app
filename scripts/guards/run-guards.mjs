@@ -917,7 +917,7 @@ const GUARDS = [
   // tickets. It surfaced as a 372-byte budget overage, 48 times smaller than
   // its own cause, which is why a comment was never going to hold it.
   'scripts/guards/no-client-redis-import.mjs',
-  // next/dynamic costs 1426 bytes gzip and a whole extra chunk in the SHARED
+  // next/dynamic costs 1306 bytes gzip and a whole extra chunk in the SHARED
   // shell, which is the first load of all 141 routes, and the shell uses none
   // of the preloading, loading slot or SSR control it buys. One dynamic() call
   // added to defer six components out of the root layout gave back 1099 of the
