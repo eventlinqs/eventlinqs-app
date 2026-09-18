@@ -1,7 +1,12 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
-import { HeroMedia } from '@/components/media'
+// Imported from the module rather than the barrel ON PURPOSE. The barrel
+// re-exports every media surface, and measured on the build of 18 September
+// 2026 that put the whole media library, EventCardMedia and its hint table
+// included, into the first load of every auth route. An auth page renders one
+// photograph and no cards.
+import { HeroMedia } from '@/components/media/HeroMedia'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 
 type Props = {

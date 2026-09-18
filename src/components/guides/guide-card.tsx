@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Clock } from 'lucide-react'
-import { GuideCardImage } from '@/components/media'
+import { GuideCardImage } from '@/components/media/GuideCardImage'
 import type { GuideIndexEntry } from './guide-index'
 
 /**

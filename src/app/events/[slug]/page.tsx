@@ -29,7 +29,7 @@ import { priceMoveNotesByTier, summarisePriceHistory } from '@/lib/pricing/price
 import { PriceHistoryPanel } from '@/components/features/events/price-history-panel'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'

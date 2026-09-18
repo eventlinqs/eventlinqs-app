@@ -1,4 +1,4 @@
-import { HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 
 /**

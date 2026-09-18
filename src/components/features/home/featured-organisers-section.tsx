@@ -20,7 +20,7 @@
  */
 
 import Link from 'next/link'
-import { OrganiserAvatar } from '@/components/media'
+import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
 import { SECTION_DEFAULT, CONTAINER } from '@/lib/ui/spacing'
 
 export type FeaturedOrganiserNextEvent = {

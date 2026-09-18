@@ -1,5 +1,5 @@
 import { AlertTriangle, Info } from 'lucide-react'
-import { GuideShotImage } from '@/components/media'
+import { GuideShotImage } from '@/components/media/GuideShotImage'
 import { applyLiveValues } from '@/lib/guides'
 import type { GuideBlock, GuideLiveValues } from '@/lib/guides/types'
 

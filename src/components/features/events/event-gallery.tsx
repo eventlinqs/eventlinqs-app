@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { usePortalReady } from '@/lib/hooks/use-portal-ready'
-import { GalleryImage } from '@/components/media'
+import { GalleryImage } from '@/components/media/GalleryImage'
 import type { GalleryImage as GalleryItem } from '@/lib/media/event-media-model'
 
 // Event gallery, rendered BELOW the hero on the event detail page. Each tile is a

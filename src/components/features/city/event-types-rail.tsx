@@ -3,6 +3,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { CITY_EVENT_TYPES } from '@/lib/cities/data'
+import { STANDARD_TILE_CELL } from '@/lib/ui/rhythm'
 
 interface Props {
   citySlug: string
@@ -35,11 +36,12 @@ export function EventTypesRail({ citySlug, cityName, images }: Props) {
             <Link
               key={t.slug}
               href={`/events?city=${citySlug}&event_type=${t.slug}`}
-              className="group relative block w-[240px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[260px]"
+              className={`group relative block ${STANDARD_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
             >
               <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
                 {img ? (
                   <CityTileImage
+                    layout="rail-standard-tile"
                     src={img}
                     alt={`${t.label} in ${cityName}`}
                     className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"

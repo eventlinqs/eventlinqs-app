@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
-import { HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
 import { pickCuratedHomepageHero } from '@/lib/images/homepage-hero-curated'
 import { HERO_SCRIM_GRADIENT } from './hero-scrim'
 import { getFeaturedHeroBackground, isComposedCover } from '@/lib/images/event-media'

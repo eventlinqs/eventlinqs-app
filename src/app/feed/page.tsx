@@ -9,6 +9,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { EventCard } from '@/components/features/events/event-card'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
+import { FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 
 // Per-user surface: never cached, never indexed. Not a public LCP/SEO page.
 export const dynamic = 'force-dynamic'
@@ -93,8 +94,8 @@ export default async function ForYouFeedPage() {
               }}
             >
               {events.slice(0, 12).map(e => (
-                <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                  <EventCard event={e} variant="rail" />
+                <div key={e.id} className={FLAT_RAIL_CELL}>
+                  <EventCard event={e} variant="rail-flat" />
                 </div>
               ))}
             </SnapRailScroller>

@@ -953,6 +953,33 @@ const DRILLS = [
     expect: 'not on the reviewed list',
   },
   /*
+   * lcp-preload-in-the-first-flush (close-out C8B.3), two drills.
+   *
+   * THE SECOND IS THE ONE WORTH READING. It reproduces the exact change that was
+   * built, measured and reverted on 18 September 2026: the page component made
+   * synchronous and its whole body, hero included, handed to a streamed child.
+   * That shape wins 324 ms of time to first byte and loses 507 ms of hero
+   * discovery, and it is a plausible refactor rather than an obvious mistake,
+   * which is precisely why it needs a gate rather than a note.
+   */
+  {
+    name: 'the homepage hero is wrapped in a streaming boundary',
+    guard: `${GUARDS}/lcp-preload-in-the-first-flush.mjs`,
+    file: 'src/app/page.tsx',
+    find: '        <FeaturedHero events={upcoming} />',
+    replace: '        <Suspense fallback={null}><FeaturedHero events={upcoming} /></Suspense>',
+    expect: '<Suspense> boundary',
+  },
+  {
+    name: 'the homepage hero moves into a streamed child (the measured, reverted shape)',
+    guard: `${GUARDS}/lcp-preload-in-the-first-flush.mjs`,
+    file: 'src/app/page.tsx',
+    find: 'export default async function HomePage() {',
+    replace:
+      'export default function HomePage() {\n  return <Suspense fallback={null}><HomeDocument /></Suspense>\n}\n\nasync function HomeDocument() {',
+    expect: 'does not render <FeaturedHero>',
+  },
+  /*
    * weak-network-contract (close-out C8B.5, Scope v5 10.3), five drills, one per
    * clause plus the silent-catch case.
    *
@@ -4089,6 +4116,130 @@ const DRILLS = [
     replace: '    guard: `${GUARDS}/attribution-one-record.mjs`,',
     expect: 'attribution-one-record-per-order-never-billable-when-reversed.mjs is registered in',
   },
+  // -------------------------------------------------------------------------
+  // no-loadable-in-platform-chrome. BOTH HALVES, because this guard exists
+  // precisely because its older sibling reported a confident PASS on the defect
+  // it was written for: no-loadable-in-the-root-shell is rooted at
+  // src/app/layout, SiteHeader is not under src/app/layout, and so two pieces
+  // of header chrome carried next/dynamic past a green gate for a day. A guard
+  // built to cover another guard's blind spot has to prove it can fail.
+  // -------------------------------------------------------------------------
+  {
+    name: 'header chrome goes back to deferring its panel with next/dynamic',
+    guard: `${GUARDS}/no-loadable-in-platform-chrome.mjs`,
+    file: 'src/components/layout/header-search-trigger.tsx',
+    find: "import { useDeferredComponent } from '@/components/ui/use-deferred-component'",
+    replace: "import dynamic from 'next/dynamic'",
+    expect: 'module(s) in the platform chrome import',
+  },
+  {
+    // The clause that stops this guard going the way of the one it backs up. A
+    // walk whose roots are gone finds an empty closure and reports PASS, which
+    // is the exact shape of a gate that has quietly stopped checking anything.
+    name: 'the platform chrome is renamed and the guard is left pointing at nothing',
+    guard: `${GUARDS}/no-loadable-in-platform-chrome.mjs`,
+    file: 'scripts/guards/no-loadable-in-platform-chrome.mjs',
+    find: "const ROOTS = ['src/components/layout/site-header', 'src/components/layout/site-footer']",
+    replace: "const ROOTS = ['src/components/layout/site-header-gone', 'src/components/layout/site-footer']",
+    expect: 'are not on disk',
+  },
+  // -------------------------------------------------------------------------
+  // interaction-only-chrome-is-split. This guard had NO drill until 19
+  // September 2026, which is how its clause 2 came to require the literal
+  // `dynamic(` wrapper rather than the call-form `import()` that actually
+  // causes the split. It then failed both of its own registered surfaces for
+  // moving OFF next/dynamic onto a cheaper deferral, which is a gate refusing
+  // an improvement. The matcher was corrected and this drill is what holds it.
+  // The planted static import fires clause 2 and clause 3 together, which is
+  // the real-world shape: the "tidy-up" that deletes the deferral writes the
+  // static import in the same edit.
+  // -------------------------------------------------------------------------
+  {
+    name: 'a deferred chrome import is tidied back into a static one',
+    guard: `${GUARDS}/interaction-only-chrome-is-split.mjs`,
+    file: 'src/components/layout/header-search-trigger.tsx',
+    find: "    import('./header-search-overlay').then(m => m.HeaderSearchOverlay),",
+    replace: "    Promise.resolve(HeaderSearchOverlayStatic),",
+    expect: 'no longer reaches ./header-search-overlay through a deferred',
+  },
+  {
+    name: 'a rail cell is widened in the class string and its pixel pair is left behind',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/lib/ui/rhythm.ts',
+    find: "export const CITY_TILE_CELL = 'w-[280px] shrink-0 snap-start sm:w-[340px]' as const",
+    replace: "export const CITY_TILE_CELL = 'w-[280px] shrink-0 snap-start sm:w-[400px]' as const",
+    expect: 'renders at 280/400 and CITY_TILE_PX says 280/340',
+  },
+  {
+    name: 'a rail hint is edited by hand until it no longer describes its cell',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: "  railCityTile: '(min-width: 640px) 340px, 280px',",
+    replace: "  railCityTile: '(min-width: 640px) 288px, 256px',",
+    expect: 'MEDIA_SIZES.railCityTile is',
+  },
+  {
+    name: 'a twelfth rail cell width is typed into a feature file instead of imported',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/features/home/sounds-rail.tsx',
+    find: '    <div className={SCENE_TILE_CELL}>',
+    replace: '    <div className="w-[152px] shrink-0 snap-start sm:w-[170px]">',
+    expect: 'a rail cell width is written here rather than imported',
+  },
+  {
+    name: 'a raw sizes string reappears in feature code, outside the media layer',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: '            alt=""',
+    replace: '            alt="" sizes="(max-width: 768px) 100vw, 1280px"',
+    expect: 'a raw sizes string',
+  },
+  {
+    name: 'a variant is added to the union and nobody gives it a hint',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/EventCardMedia.tsx',
+    find: "  | 'marquee'",
+    replace: "  | 'marquee'\n  | 'drill-unmapped-variant'",
+    expect: "the variant 'drill-unmapped-variant' has no entry in SIZES_BY_VARIANT",
+  },
+  {
+    name: 'a hint is left in the table after its last reader is deleted',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: "  marquee: '280px',",
+    replace: "  marquee: '280px',\n  drillDeadHint: '123px',",
+    expect: 'is declared and nothing reads it',
+  },
+  {
+    name: 'sizes.ts gains an import and stops being a leaf, which is what cost 49KB across 61 routes',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: '/**\n * Centralised `sizes` hints for next/image.',
+    replace:
+      "import { RHYTHM_GAP } from '@/lib/ui/rhythm'\n\nvoid RHYTHM_GAP\n" +
+      '/**\n * Centralised `sizes` hints for next/image.',
+    expect: 'sizes.ts has gained an import',
+  },
+  {
+    name: 'a feature file goes back to importing the media barrel',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/auth/auth-shell.tsx',
+    find: "import { HeroMedia } from '@/components/media/HeroMedia'",
+    replace: "import { HeroMedia } from '@/components/media'",
+    expect: 'imports from the media barrel',
+  },
+  {
+    name: 'the cell geometry file is renamed away and the guard cannot compare anything',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    // The pairing moved out of sizes.ts on 18 September 2026, because putting it
+    // there gave the most widely imported module in the media layer an import
+    // and cost 49,014 bytes of gzip across 61 routes. This drill went STALE in
+    // that move and said so on its next run, which is what a stale anchor is for.
+    file: 'src/components/media/rail-cell-hints.ts',
+    find: "  { key: 'railCityTile', px: CITY_TILE_PX, name: 'CITY_TILE_PX' },",
+    replace: "  { key: 'railCityTile', px: GONE_TILE_PX, name: 'GONE_TILE_PX' },",
+    expect: 'which src/lib/ui/rhythm.ts does not declare',
+  },
 
   /*
    * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of
@@ -4178,6 +4329,59 @@ const DRILLS = [
     find: "import { useEffect, useState, type ComponentType } from 'react'",
     replace: "import { useEffect, useState, type ComponentType } from 'react'\nimport dynamic from 'next/dynamic'",
     expect: "in the root client shell import 'next/dynamic'",
+  },
+
+  /*
+   * edge-cache-is-viewer-independent, four drills, one per clause that carries
+   * the defect it was written for. Added by lane B on 19 September 2026, in the
+   * merge that brought the guard in, because the moment it was registered
+   * `every-guard-has-been-seen-to-fail` refused the build and named it: it
+   * blocked every build and nobody had ever watched it go red.
+   *
+   * THE DEFECT IS WORTH RESTATING because it decides what a drill has to plant.
+   * `/events` was publicly edge-cached while rendering the per-viewer header,
+   * so one signed-in visitor's display name, initials and email local part were
+   * storable at Vercel's edge and servable to strangers for 60 seconds, and 300
+   * more while stale. Production answered `X-Vercel-Cache: HIT` with `Age: 80`,
+   * so it was real rather than theoretical.
+   *
+   * The two halves are drilled SEPARATELY because neither is redundant and a
+   * single drill would let either one rot unnoticed: `missing` stops a
+   * signed-in render being STORED, `staticSafe` stops a signed-in visitor being
+   * SERVED a stored copy, and the guard's own header says the edge looks a URL
+   * up before any function runs, so cookies are not in its key.
+   */
+  {
+    name: 'a publicly cached route loses the cookie condition that stops a signed-in render being stored',
+    guard: `${GUARDS}/edge-cache-is-viewer-independent.mjs`,
+    file: 'next.config.ts',
+    find: "        source: '/events',\n        missing: [{ type: 'cookie', key: 'el-signed-in' }],",
+    replace: "        source: '/events',",
+    expect: 'edge-cached publicly with no',
+  },
+  {
+    name: 'a publicly cached page goes back to the per-viewer header',
+    guard: `${GUARDS}/edge-cache-is-viewer-independent.mjs`,
+    file: 'src/app/events/page.tsx',
+    find: '      <SiteHeader staticSafe />',
+    replace: '      <SiteHeader />',
+    expect: 'which reads the session',
+  },
+  {
+    name: 'the shelf life in the header rule and the one in the page stop agreeing',
+    guard: `${GUARDS}/edge-cache-is-viewer-independent.mjs`,
+    file: 'src/app/events/page.tsx',
+    find: 'export const revalidate = 60',
+    replace: 'export const revalidate = 300',
+    expect: 'answer the same question',
+  },
+  {
+    name: 'a cache rule is left behind pointing at a route that has moved',
+    guard: `${GUARDS}/edge-cache-is-viewer-independent.mjs`,
+    file: 'next.config.ts',
+    find: "        source: '/events',\n        missing:",
+    replace: "        source: '/events-moved-away',\n        missing:",
+    expect: 'no page route answers it under src/app',
   },
 ]
 

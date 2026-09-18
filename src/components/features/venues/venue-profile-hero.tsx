@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { BrandedPlaceholder, HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
+import { BrandedPlaceholder } from '@/components/media/decorative/branded-placeholder'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { MapPin, Users } from 'lucide-react'
 

@@ -14,6 +14,7 @@ import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { CityContent, SuburbContent } from '@/lib/cities/data'
 import { getSuburb } from '@/lib/cities/data'
+import { WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 
 interface Props {
   city: CityContent
@@ -93,8 +94,8 @@ export function SuburbLandingPage({
             }}
           >
             {weekendEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
@@ -162,11 +163,11 @@ export function SuburbLandingPage({
                 <Link
                   key={s.slug}
                   href={`/city/${city.slug}/${sub}`}
-                  className="group block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                  className={`group block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
                     {img ? (
-                      <CityTileImage src={img} alt={`${s.name} - ${city.name}`} />
+                      <CityTileImage src={img} alt={`${s.name} - ${city.name}`} layout="rail-wide-tile" />
                     ) : (
                       <div
                         aria-hidden

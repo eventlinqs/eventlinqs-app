@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { EventCardMedia } from '@/components/media'
-import { BrandedPlaceholder } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
+import { BrandedPlaceholder } from '@/components/media/decorative/branded-placeholder'
 import { getEventMedia, type EventMediaInput } from '@/lib/images/event-media'
 import type { FeaturedHeroEvent } from '@/components/features/events/featured-event-hero'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'

@@ -73,8 +73,15 @@
  *                              without a declared maintainer
  *   no-silent-catch            no catch around I/O discards its error in silence
  *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
+ *   interaction-only-chrome-is-split  the search overlay and the city dialog are reached
+ *                              only by a dynamic import, so they are not first-load
+ *                              JavaScript on every one of the 133 routes
+ *   edge-cache-is-viewer-independent  a route that is edge-cached publicly renders the
+ *                              anonymous header and never stores a signed-in render
  *   no-client-redis-import     no client component pulls @upstash/redis into the bundle
  *   no-loadable-in-the-root-shell  nothing in the root layout's client chunk imports next/dynamic
+ *   no-loadable-in-platform-chrome  nor does anything behind the site header or footer,
+ *                              which the root-shell closure does not reach
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
@@ -256,6 +263,17 @@
  *   one-priority-image        a document preloads its LCP candidate and nothing else: every
  *                              priority grant is a named candidate, none reaches past the
  *                              first item (close-out C8)
+ *   lcp-preload-in-the-first-flush
+ *                             the image that decides the paint is rendered by the page
+ *                              itself, ahead of every streaming boundary, so its preload
+ *                              leaves in the first chunk. Streaming the shell first was
+ *                              measured and cost 597 ms of LCP (close-out C8B.3)
+ *   image-hints-match-the-cell
+ *                             the `sizes` hint a component declares is the width its cell
+ *                              actually is: every rail cell says its two numbers twice and
+ *                              both agree, every rail hint is derived from a cell, no cell
+ *                              width or raw sizes string is written anywhere else, no hint
+ *                              is dead and every variant is mapped (close-out C8B.3)
  *   weak-network-contract     the checkout survives a submit that never reached the server,
  *                              the root service worker keeps only content-hashed assets so
  *                              no cache can serve a stale price, it registers after the
@@ -932,6 +950,26 @@ const GUARDS = [
   // 2026-08-25 rebuilt it in one line, in bill-ref.ts, and nothing but a bigger
   // bundle would have said so.
   'scripts/guards/no-client-sentry-import.mjs',
+  // THE SAME DEFECT ONE LAYER OUT: chrome that only an action can reveal, sitting
+  // in the platform-wide client shell because the header is in the root layout.
+  // The global search overlay and the city dialog were both there, on /offline
+  // and /unsubscribe/[token] as much as on the homepage. Moving them behind
+  // next/dynamic took 509,320 bytes off the platform across 133 routes with 0
+  // routes worse, and took three public routes back under the Scope v5 10.3
+  // budget. initial-bundle-budget would catch a straight reintroduction, but its
+  // marks are rewritten by hand whenever a growth is justified, and after any
+  // such rewrite a static import that crept back is the new normal. This names
+  // that edit.
+  'scripts/guards/interaction-only-chrome-is-split.mjs',
+  // A ROUTE WHOSE RESPONSES ARE SHARED AT THE EDGE MAY NOT RENDER ONE VISITOR'S
+  // NAME. /events carried `CDN-Cache-Control: public, s-maxage=60` with no
+  // signed-in exclusion while rendering the ordinary `<SiteHeader />`, which
+  // puts the signed-in visitor's initials and display name in the markup, and
+  // that display name falls back to the local part of their email. Production
+  // answered `X-Vercel-Cache: HIT, Age: 80` on that URL, so the cache was real.
+  // Its two siblings had both halves of the protection; this one had neither.
+  // Found by building this guard rather than by a visitor, on 18 September 2026.
+  'scripts/guards/edge-cache-is-viewer-independent.mjs',
   // THE SAME RULE, A DIFFERENT SERVER-ONLY DEPENDENCY, AND IT WAS ALREADY LIVE.
   // src/lib/redis/client.ts imports @upstash/redis and a 16.0 KB Buffer
   // polyfill. One import from the ticket selector into sale-status.ts, which
@@ -948,6 +986,16 @@ const GUARDS = [
   // /press and /offline, none of which names the cause. A bare import() defers
   // the same tree for nothing. Route-level lazy wrappers are untouched.
   'scripts/guards/no-loadable-in-the-root-shell.mjs',
+  // THE SAME RULE, THE CHUNK THE GUARD ABOVE CANNOT REACH. SiteHeader is not
+  // in the root layout: 22 route files import it directly and the rest reach
+  // it through the page templates, so the root-shell closure never touches it.
+  // Two pieces of header chrome deferred their panels with dynamic() on
+  // 17 September and the root-shell guard reported PASS on both, while each
+  // file's own comment asserted it WAS in the root layout. The blind spot and
+  // the false justification were the same belief, so neither corrected the
+  // other. This one is rooted at the header and the footer, the two client
+  // subtrees that are on every page by construction.
+  'scripts/guards/no-loadable-in-platform-chrome.mjs',
   // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
   // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
   // printing a tidy list of 200s the whole time; its replacement then reported
@@ -1534,6 +1582,15 @@ const GUARDS = [
   // seconds for it. Every priority grant is a named LCP candidate; a grant that
   // reaches past the first item fails. Drilled red and green.
   'scripts/guards/one-priority-image.mjs',
+  // Close-out C8B.3 (18 September 2026): on a route whose LCP element is an image
+  // the DATABASE chooses, that image is rendered by the page component itself and
+  // ahead of every streaming boundary, so its preload leaves in the first chunk.
+  // Written after the opposite was tried and measured: flushing the shell first
+  // won 324 ms of time to first byte and lost 507 ms of hero discovery, for 597 ms
+  // more LCP and six points of performance score at matched machine speed. The
+  // boundaries BELOW the hero are correct and are not counted. Drilled red and
+  // green, including the exact shape that was reverted.
+  'scripts/guards/lcp-preload-in-the-first-flush.mjs',
   // Close-out C8B.5 (15 September 2026), Scope v5 10.3: the platform's contract
   // with a weak network. The checkout survives a submit that never reaches the
   // server (it used to throw the buyer to the error boundary and lose every
@@ -1541,6 +1598,14 @@ const GUARDS = [
   // assets so no cache can ever serve a stale price, it registers after the
   // paint, and /offline is a real route classified never. Four clauses, each
   // drilled red and green.
+  // Close-out C8B.3 (18 September 2026): a `sizes` hint is a promise about layout
+  // that the browser believes at parse time, and nothing else in the toolchain can
+  // notice when it stops being true. Driven at nine viewports, three hints were
+  // serving thirteen layouts: the homepage fetched a 1080px image for a 278px slot
+  // at 1440 and a 1920px one at 1920, the city tiles fetched 640px for a slot
+  // needing 644 and were BLURRY, and a 56px dashboard thumbnail fetched 640px.
+  // Five clauses, each drilled red and green.
+  'scripts/guards/image-hints-match-the-cell.mjs',
   'scripts/guards/weak-network-contract.mjs',
   // Close-out C17 (7 September 2026): the homepage hero never renders without
   // imagery. Production showed a flat navy panel the day every event had ended;

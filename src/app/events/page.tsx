@@ -32,6 +32,10 @@ const MELBOURNE_FALLBACK = { lat: -37.8136, lng: 144.9631 }
 // ISR: re-render every 60 seconds. Pages with searchParams stay dynamic on
 // filtered URLs but the bare /events route now caches. Geo detection moved
 // off the server (no headers() call) so the shell is cookies/headers-free.
+// That last sentence was only half true until 18 September 2026: geo detection
+// had indeed moved off the server, but `<SiteHeader />` was still reading the
+// session cookie on every render, on a route whose responses are shared at the
+// edge. The header is `staticSafe` now and the shell is genuinely cookie-free.
 // The hero strip + filter bar render in the immediate shell (the LCP anchor);
 // the popular rail and results grid stream behind in-page <Suspense> with
 // designed skeletons - NOT a segment loading.tsx (that would wrap the
@@ -126,7 +130,17 @@ export default async function EventsPage({ searchParams }: Props) {
           />
         </>
       )}
-      <SiteHeader />
+      {/* staticSafe: this route is edge-cached publicly (next.config.ts), and
+          the edge keys on the URL alone, so whatever this renders can be served
+          to any visitor. The ordinary header reads the session and renders the
+          signed-in visitor's initials and display name; on a shared response
+          that is one visitor's identity handed to the next. Close-out C8,
+          18 September 2026. Its two siblings, /events/[slug] and
+          /events/browse/[city], have always rendered the anonymous header for
+          this reason; this route was the one that did not.
+          scripts/guards/edge-cache-is-viewer-independent.mjs refuses the pair
+          from coming apart again. */}
+      <SiteHeader staticSafe />
       <main className="flex-1">
         {/* Checkout bounced this buyer here. Tell them why, before anything
             else, or their held seats simply disappeared.

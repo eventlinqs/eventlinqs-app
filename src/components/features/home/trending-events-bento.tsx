@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { EventCardMedia } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { formatEventDateShort } from '@/lib/dates/event-time'
 

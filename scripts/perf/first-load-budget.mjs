@@ -222,7 +222,9 @@ function printTable(result) {
 
   if (coverage.absent.length) {
     console.log('')
-    console.log(`NOT IN THIS BUILD, declared conditional (${coverage.absent.length}):`)
+    // NOT "not in this build": this table reads first-load chunks only, so a
+    // feature loaded by dynamic import is absent here and present on disk.
+    console.log(`IN NO ROUTE'S FIRST LOAD, declared conditional (${coverage.absent.length}):`)
     for (const a of coverage.absent) console.log(`  ${a}`)
   }
   if (coverage.dead.length) {

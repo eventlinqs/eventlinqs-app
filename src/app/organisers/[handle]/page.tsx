@@ -31,6 +31,7 @@ import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { getFoundingBadge } from '@/lib/organisers/founding-badge'
 import { loadDiscoveryRows, countOrganiser } from '@/lib/seo/discovery-counts'
 import { organiserIndexingFor } from '@/lib/seo/discovery-threshold'
+import { WIDE_TILE_CELL , FLAT_RAIL_CELL , TEXT_CARD_CELL } from '@/lib/ui/rhythm'
 
 export const revalidate = 300
 
@@ -398,8 +399,8 @@ export default async function OrganiserProfilePage({ params }: Props) {
               }}
             >
               {upcoming.slice(0, 12).map(e => (
-                <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                  <EventCard event={e} variant="rail" />
+                <div key={e.id} className={FLAT_RAIL_CELL}>
+                  <EventCard event={e} variant="rail-flat" />
                 </div>
               ))}
             </SnapRailScroller>
@@ -457,11 +458,11 @@ export default async function OrganiserProfilePage({ params }: Props) {
                 <Link
                   key={slug}
                   href={`/city/${slug}`}
-                  className="group block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                  className={`group block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
                 >
                   <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
                     {img ? (
-                      <CityTileImage src={img} alt={`${name} on EventLinqs`} />
+                      <CityTileImage src={img} alt={`${name} on EventLinqs`} layout="rail-wide-tile" />
                     ) : (
                       <div
                         aria-hidden
@@ -507,7 +508,7 @@ export default async function OrganiserProfilePage({ params }: Props) {
                 <Link
                   key={v.handle}
                   href={`/venues/${v.handle}`}
-                  className="group flex w-[260px] shrink-0 snap-start flex-col gap-2 rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                  className={`group flex ${TEXT_CARD_CELL} flex-col gap-2 rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
                 >
                   <p className="font-display text-base font-semibold text-[var(--text-primary)]">
                     {v.name}

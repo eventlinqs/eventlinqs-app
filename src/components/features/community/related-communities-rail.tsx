@@ -52,6 +52,7 @@ export function RelatedCommunitiesRail({ related, images }: Props) {
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--color-navy-950)]">
                   {img ? (
                     <CityTileImage
+                      layout="grid-one-two-three-sm"
                       src={img}
                       alt={`${community.displayName} on EventLinqs`}
                       className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"

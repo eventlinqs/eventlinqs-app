@@ -2009,6 +2009,76 @@ const ROOT = join(HERE, '..', '..')
  * that reading would have exempted the exact pages Scope v5 10.3 is about. The
  * test pins all nine of those routes as public so the reading cannot drift back.
  *
+ * 2026-09-18: raised 421/5178 -> 422/5189. Close-out C8, the platform-wide
+ * client shell. One file, eleven tests:
+ * tests/component/layout/interaction-only-chrome, which runs the two surfaces
+ * that moved out of the shell (the global search overlay and the city dialog)
+ * now that a dynamic import stands between the header and both of them.
+ * The two worth naming are the same-tick pair. The obvious test here is a
+ * trap: "nothing is rendered before the interaction" passes against the OLD
+ * code too, because both surfaces already returned null while closed, so a
+ * test written that way would read as proof of the split and prove nothing.
+ * The tick after the click is the one thing that tells a resolved static
+ * import from a dynamic one, and both were drilled red by making each import
+ * static again.
+ *
+ * 2026-09-18: raised 422/5189 -> 423/5202. Close-out C8, the edge cache that
+ * was holding one visitor's name. One file, thirteen tests:
+ * tests/unit/security/edge-cache-viewer-independence, which holds both halves
+ * of the fix to /events (the signed-in exclusion on the cache rule, and the
+ * anonymous header on the page) and the reader the guard shares with it.
+ * The two worth naming are the reader tests, and they are there because the
+ * fix's own explanatory comment contains the literal
+ * `missing: [{ type: 'cookie', key: 'el-signed-in' }]` directly above the rule
+ * it describes. A checker that read comments would find that text and pass a
+ * rule carrying no such condition, which is the check reporting the
+ * documentation instead of the code. One test plants exactly that shape.
+ *
+ * 2026-09-18: raised 423/5202 -> 423/5212. Close-out C8B.3, the 22 city browse
+ * pages joining the shared set: they answered MISS on 8 of 8 warm production
+ * samples, so every visitor and every crawler was paying for a fresh render.
+ * No new file; ten tests added to
+ * tests/unit/security/edge-cache-viewer-independence.
+ * The two worth naming are the shelf-life pair. `s-maxage` and
+ * `export const revalidate` answer the same question in two files read by two
+ * different systems, which is the shape Law 9 records for .nvmrc against the
+ * Vercel dashboard: they disagreed for months with nothing able to notice. The
+ * only thing comparing them here was a COMMENT claiming the agreement in prose.
+ * Both were drilled red by moving s-maxage away from the page's number, and the
+ * guard clause beside them (clause 7) was drilled red a second way, by
+ * commenting the page's `revalidate` out rather than deleting it, which also
+ * proves the clause reads the comment-stripped source.
+ *
+ * 2026-09-18: raised 423/5212 -> 424/5225. Close-out C8B.3, the LCP preload that
+ * must leave in the first chunk. One new file,
+ * tests/unit/guards/lcp-preload-in-the-first-flush.test.ts, thirteen tests.
+ * The guard it covers was written AFTER the opposite change was built and
+ * measured: flushing the homepage shell before the query won 324 ms of time to
+ * first byte and lost 507 ms of hero discovery, for 597 ms more LCP and six
+ * points of score at matched machine speed, so it was reverted under C8B.3 and
+ * the arrangement that won is now held by a gate.
+ * The test worth naming is the nesting pair. An early version of the guard
+ * asked whether the default export's body CONTAINED `<Suspense`, and
+ * src/app/page.tsx already carries two of those for its below-fold rails, so the
+ * clause was true no matter what happened to the boundary it existed to police.
+ * It counts nesting DEPTH now, and two tests hold both halves: a hero ahead of
+ * legitimate boundaries is depth 0, and a hero inside one is depth 1.
+ *
+ * 2026-09-18 (later): raised 424/5225 -> 425/5261. Close-out C8B.3, the `sizes`
+ * hint that stopped describing its slot. One new file,
+ * tests/unit/media/image-hints-match-the-cell.test.ts, thirty-six tests.
+ * The test worth naming is the SENSITIVITY one. The grid assertions are
+ * arithmetic, and arithmetic that cannot fail proves nothing, so the file
+ * measures the hint this item REPLACED against the same ladder and asserts it
+ * comes out wrong in both directions: under-fetching between 640 and 767 where
+ * it claimed two columns and the grid was still one, and over-fetching past the
+ * container cap where a vw term keeps growing and the column does not. The
+ * replacement is then asserted correct at the same four viewports.
+ * The parser the file checks with is a deliberately SEPARATE implementation
+ * from anything in src/: if the product built the hint and the test read it back
+ * with the same code, the pair would agree about a rule neither of them holds.
+ * The counts below are MEASURED from the run that raised them, never predicted.
+ *
  * 2026-09-16 (lane B, merging verify/l5-launch-readiness a THIRD time): both
  * comment histories above are kept verbatim, again, and again they do not form
  * one chain. Lane B counted 417/5393 on a tree without lane A's money-chain
@@ -2197,9 +2267,64 @@ const ROOT = join(HERE, '..', '..')
  * tests/unit/notifications/organiser-sales-policy and
  * tests/unit/notifications/organiser-sales-digest. 448 + 3 = 451, so the count is
  * explained by the merge rather than by a file that stopped collecting.
+ *
+ * 2026-09-19, LANE C, the merge of verify/l5-launch-readiness plus the move off
+ * next/dynamic in the platform chrome: 451 files / 5837 tests, 0 failed and 0
+ * skipped, measured by `npm run gate:push -- --only suite` on the merged tree.
+ *
+ * The jump from 446 is mostly the merge: this floor was lane A's, measured on a
+ * tree that held lane C only as far as 32d8515c, so five lane C files and their
+ * tests were already running and simply were not in the number.
+ *
+ * ONE new file of this item's own, tests/component/ui/use-deferred-component,
+ * eight tests, holding the hook that replaced `next/dynamic` behind the site
+ * header. The test worth naming is the RACE one, and it is worth naming because
+ * the test it replaced could not fail. The obvious way to prove the hook's
+ * cancellation is to unmount mid-flight and assert React logged no "setState on
+ * an unmounted component" warning; that test was written, and it passed with
+ * the cancellation deleted, because React 19 removed that warning. The drill is
+ * the only reason anybody knows. What cancellation actually buys is that a
+ * superseded in-flight load cannot overwrite a newer one, so that is what is
+ * asserted now, and deleting `cancelled` takes exactly that one test red.
+ *
+ * THE COUNTS ARE MEASURED FROM THE RUN THAT RAISED THEM, never predicted. That
+ * run was the SECOND of two: the first reported one failure in
+ * tests/component/layout/interaction-only-chrome (escape_closes_the_dialog)
+ * which did not reproduce in the second full run nor when the file was run on
+ * its own, on a machine shared with two other build lanes. It is recorded as a
+ * flake in C:/dev/REVIEW-QUEUE-C.md rather than absorbed into this baseline,
+ * which is what the failure message below asks for.
+ *
+ * 2026-09-19 (lane B, the EIGHTH merge of verify/l5-launch-readiness, taking in
+ * lane C's da659bb8 and the move of the header chrome off next/dynamic). BOTH
+ * HISTORIES KEPT AGAIN, and the pair below is MEASURED ON THIS TREE rather than
+ * taken from either side: lane B stood at 451/5823 and lane C at 451/5837, and
+ * neither pair describes a tree that holds both.
+ *
+ * MEASURED: 456 files, 5914 tests, 0 failed, 0 skipped, through the gate's own
+ * suite step. Evidence: C:\dev\EVIDENCE\LB-MERGE8\gate-suite-after-merge8.txt
+ *
+ * CHECKABLE RATHER THAN ASSERTED, and the arithmetic is worth writing out
+ * because a grep of this repository CANNOT reproduce it. Five test files arrive
+ * with this merge and no file of either side disappears:
+ *   tests/component/layout/interaction-only-chrome.test.tsx
+ *   tests/component/ui/use-deferred-component.test.tsx
+ *   tests/unit/guards/lcp-preload-in-the-first-flush.test.ts
+ *   tests/unit/media/image-hints-match-the-cell.test.ts
+ *   tests/unit/security/edge-cache-viewer-independence.test.ts
+ * 451 + 5 = 456, which is the file count.
+ *
+ * The test count does NOT fall out of counting `it(` in those five files, and
+ * the difference is the part worth recording. They hold 66 grep-visible cases,
+ * which would predict 5889 and be 25 short. Two of them are table driven, and
+ * an `it.each` table is ONE line to a grep and one test PER ROW at runtime. Run
+ * on their own, image-hints-match-the-cell and edge-cache-viewer-independence
+ * report 59 tests against 34 grep-visible cases, so the five tables add 25.
+ * 66 + 25 = 91, and 5823 + 91 = 5914. A predicted count would have been wrong
+ * by 25 here, which is why this file asks for a measurement and not a sum.
  */
-const MIN_FILES = 451
-const MIN_TESTS = 5823
+const MIN_FILES = 456
+const MIN_TESTS = 5914
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -25,7 +25,14 @@ export function SectionViewImage({ src, alt, className = '' }: Props) {
       src={safeSrc}
       alt={alt}
       fill
-      sizes={MEDIA_SIZES.card}
+      /* Both callers render this inside a sidebar panel whose width is set by
+         the surrounding checkout or builder layout rather than by a grid, and
+         neither is a public route the image-hint drive covers. It is given the
+         most generous desktop hint on the platform deliberately: a panel is
+         narrower than a third of the viewport everywhere it appears, so this
+         cannot under-fetch, and being unmeasured it is not claimed to be
+         minimal. */
+      sizes={MEDIA_SIZES.gridOneTwoThree}
       quality={MEDIA_QUALITY.card}
       loading="lazy"
       decoding="async"

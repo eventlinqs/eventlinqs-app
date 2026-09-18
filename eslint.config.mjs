@@ -83,12 +83,12 @@ const eslintConfig = defineConfig([
             {
               name: "next/image",
               message:
-                "Direct `next/image` is forbidden in feature code. Import from `@/components/media` (HeroMedia, EventCardMedia, CityTileImage, OrganiserAvatar, CategoryTileImage). See docs/MEDIA-ARCHITECTURE.md §11.",
+                "Direct `next/image` is forbidden in feature code. Import the surface you need from its own module: `@/components/media/HeroMedia`, `@/components/media/EventCardMedia`, `@/components/media/CityTileImage`, `@/components/media/OrganiserAvatar`, `@/components/media/CategoryTileImage`. Never from a barrel: one existed until 18 September 2026 and put the whole media library into the first load of 63 routes. See docs/MEDIA-ARCHITECTURE.md §11.",
             },
             {
               name: "next/legacy/image",
               message:
-                "next/legacy/image is forbidden - use the modern next/image via @/components/media.",
+                "next/legacy/image is forbidden - use the modern next/image through the media surface module you need, under @/components/media/.",
             },
           ],
         },
