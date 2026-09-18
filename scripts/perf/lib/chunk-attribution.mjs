@@ -84,7 +84,20 @@ export const FEATURE_MARKERS = [
     why: "replayIntegration's own option names and the recorder's own identifier",
     counted: 2,
     alwaysPresent: false,
-    absentWhen: 'NEXT_PUBLIC_SENTRY_DSN is empty, so no SDK is built into the bundle at all',
+    /*
+     * CORRECTED 18 September 2026, because the old sentence named a cause that
+     * was not the cause and sent a reader looking for a missing DSN.
+     *
+     * This table reads FIRST-LOAD chunks only (see readFirstLoad: the map is
+     * filled from each route's own chunk list plus the shell and the polyfill
+     * bundle). The recorder is armed by a dynamic import on the visitor's first
+     * interaction, so it is in NO route's first-load list and this marker matches
+     * nothing, whatever the DSN says. Measured on the build of 18 September under
+     * the gate's own environment with the DSN SET: 1 chunk on disk carries the
+     * recorder's markers and 3 carry the SDK's, and this marker still reported
+     * absent. That is sentry-off-the-paint-path.mjs working, not a missing SDK.
+     */
+    absentWhen: 'it is armed by a dynamic import on first interaction, so it is in no route first load; it is also absent from the build entirely when NEXT_PUBLIC_SENTRY_DSN is empty, and this table cannot tell those two apart',
   },
   {
     feature: 'error reporting SDK',
@@ -94,7 +107,10 @@ export const FEATURE_MARKERS = [
     why: "the SDK's own global carrier",
     counted: 2,
     alwaysPresent: false,
-    absentWhen: 'NEXT_PUBLIC_SENTRY_DSN is empty (see docs/perf/CHUNK-COST-TABLE-2026-09-08.md)',
+    // Same correction as the recorder above: the SDK boots by dynamic import off
+    // the paint path, so it is never first-load. An empty DSN also removes it
+    // from the build, and this table cannot see which of the two is true.
+    absentWhen: 'it boots by dynamic import off the paint path, so it is in no route first load; an empty NEXT_PUBLIC_SENTRY_DSN also removes it from the build (see docs/perf/CHUNK-COST-TABLE-2026-09-08.md)',
   },
   {
     feature: 'React DOM',

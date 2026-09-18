@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
+import { WIDE_TILE_CELL } from '@/lib/ui/rhythm'
 
 export function citySlugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -49,11 +50,12 @@ export function CommunitiesByCityRail({ communitySlug, communityName, cities, im
             <Link
               key={city}
               href={`/community/${communitySlug}/${slug}`}
-              className="group relative block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+              className={`group relative block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
             >
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
                 {img ? (
                   <CityTileImage
+                    layout="rail-wide-tile"
                     src={img}
                     alt={`${communityName} events in ${city}`}
                     className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"

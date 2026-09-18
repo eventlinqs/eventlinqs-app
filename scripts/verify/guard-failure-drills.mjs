@@ -928,6 +928,33 @@ const DRILLS = [
     expect: 'not on the reviewed list',
   },
   /*
+   * lcp-preload-in-the-first-flush (close-out C8B.3), two drills.
+   *
+   * THE SECOND IS THE ONE WORTH READING. It reproduces the exact change that was
+   * built, measured and reverted on 18 September 2026: the page component made
+   * synchronous and its whole body, hero included, handed to a streamed child.
+   * That shape wins 324 ms of time to first byte and loses 507 ms of hero
+   * discovery, and it is a plausible refactor rather than an obvious mistake,
+   * which is precisely why it needs a gate rather than a note.
+   */
+  {
+    name: 'the homepage hero is wrapped in a streaming boundary',
+    guard: `${GUARDS}/lcp-preload-in-the-first-flush.mjs`,
+    file: 'src/app/page.tsx',
+    find: '        <FeaturedHero events={upcoming} />',
+    replace: '        <Suspense fallback={null}><FeaturedHero events={upcoming} /></Suspense>',
+    expect: '<Suspense> boundary',
+  },
+  {
+    name: 'the homepage hero moves into a streamed child (the measured, reverted shape)',
+    guard: `${GUARDS}/lcp-preload-in-the-first-flush.mjs`,
+    file: 'src/app/page.tsx',
+    find: 'export default async function HomePage() {',
+    replace:
+      'export default function HomePage() {\n  return <Suspense fallback={null}><HomeDocument /></Suspense>\n}\n\nasync function HomeDocument() {',
+    expect: 'does not render <FeaturedHero>',
+  },
+  /*
    * weak-network-contract (close-out C8B.5, Scope v5 10.3), five drills, one per
    * clause plus the silent-catch case.
    *
@@ -3420,6 +3447,83 @@ const DRILLS = [
     replace: '"marks": {\n    "/drill-not-a-byte-count": null,',
     expect: 'which is not a byte count',
   },
+  {
+    name: 'a rail cell is widened in the class string and its pixel pair is left behind',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/lib/ui/rhythm.ts',
+    find: "export const CITY_TILE_CELL = 'w-[280px] shrink-0 snap-start sm:w-[340px]' as const",
+    replace: "export const CITY_TILE_CELL = 'w-[280px] shrink-0 snap-start sm:w-[400px]' as const",
+    expect: 'renders at 280/400 and CITY_TILE_PX says 280/340',
+  },
+  {
+    name: 'a rail hint is edited by hand until it no longer describes its cell',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: "  railCityTile: '(min-width: 640px) 340px, 280px',",
+    replace: "  railCityTile: '(min-width: 640px) 288px, 256px',",
+    expect: 'MEDIA_SIZES.railCityTile is',
+  },
+  {
+    name: 'a twelfth rail cell width is typed into a feature file instead of imported',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/features/home/sounds-rail.tsx',
+    find: '    <div className={SCENE_TILE_CELL}>',
+    replace: '    <div className="w-[152px] shrink-0 snap-start sm:w-[170px]">',
+    expect: 'a rail cell width is written here rather than imported',
+  },
+  {
+    name: 'a raw sizes string reappears in feature code, outside the media layer',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: '            alt=""',
+    replace: '            alt="" sizes="(max-width: 768px) 100vw, 1280px"',
+    expect: 'a raw sizes string',
+  },
+  {
+    name: 'a variant is added to the union and nobody gives it a hint',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/EventCardMedia.tsx',
+    find: "  | 'marquee'",
+    replace: "  | 'marquee'\n  | 'drill-unmapped-variant'",
+    expect: "the variant 'drill-unmapped-variant' has no entry in SIZES_BY_VARIANT",
+  },
+  {
+    name: 'a hint is left in the table after its last reader is deleted',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: "  marquee: '280px',",
+    replace: "  marquee: '280px',\n  drillDeadHint: '123px',",
+    expect: 'is declared and nothing reads it',
+  },
+  {
+    name: 'sizes.ts gains an import and stops being a leaf, which is what cost 49KB across 61 routes',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: '/**\n * Centralised `sizes` hints for next/image.',
+    replace:
+      "import { RHYTHM_GAP } from '@/lib/ui/rhythm'\n\nvoid RHYTHM_GAP\n" +
+      '/**\n * Centralised `sizes` hints for next/image.',
+    expect: 'sizes.ts has gained an import',
+  },
+  {
+    name: 'a feature file goes back to importing the media barrel',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/auth/auth-shell.tsx',
+    find: "import { HeroMedia } from '@/components/media/HeroMedia'",
+    replace: "import { HeroMedia } from '@/components/media'",
+    expect: 'imports from the media barrel',
+  },
+  {
+    name: 'the cell geometry file is renamed away and the guard cannot compare anything',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    // The pairing moved out of sizes.ts on 18 September 2026, because putting it
+    // there gave the most widely imported module in the media layer an import
+    // and cost 49,014 bytes of gzip across 61 routes. This drill went STALE in
+    // that move and said so on its next run, which is what a stale anchor is for.
+    file: 'src/components/media/rail-cell-hints.ts',
+    find: "  { key: 'railCityTile', px: CITY_TILE_PX, name: 'CITY_TILE_PX' },",
+    replace: "  { key: 'railCityTile', px: GONE_TILE_PX, name: 'GONE_TILE_PX' },",
+    expect: 'which src/lib/ui/rhythm.ts does not declare',
 
   /*
    * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of

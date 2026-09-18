@@ -51,7 +51,6 @@ export function CategoryHeroEmpty({
           <HeroMedia
             image={coverImage}
             alt=""
-            sizes="(max-width: 768px) 100vw, 1280px"
             priority={false}
           />
           {/* Dark navy overlay for white-text legibility (homepage pattern). */}

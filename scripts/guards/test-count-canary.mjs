@@ -2009,6 +2009,76 @@ const ROOT = join(HERE, '..', '..')
  * that reading would have exempted the exact pages Scope v5 10.3 is about. The
  * test pins all nine of those routes as public so the reading cannot drift back.
  *
+ * 2026-09-18: raised 421/5178 -> 422/5189. Close-out C8, the platform-wide
+ * client shell. One file, eleven tests:
+ * tests/component/layout/interaction-only-chrome, which runs the two surfaces
+ * that moved out of the shell (the global search overlay and the city dialog)
+ * now that a dynamic import stands between the header and both of them.
+ * The two worth naming are the same-tick pair. The obvious test here is a
+ * trap: "nothing is rendered before the interaction" passes against the OLD
+ * code too, because both surfaces already returned null while closed, so a
+ * test written that way would read as proof of the split and prove nothing.
+ * The tick after the click is the one thing that tells a resolved static
+ * import from a dynamic one, and both were drilled red by making each import
+ * static again.
+ *
+ * 2026-09-18: raised 422/5189 -> 423/5202. Close-out C8, the edge cache that
+ * was holding one visitor's name. One file, thirteen tests:
+ * tests/unit/security/edge-cache-viewer-independence, which holds both halves
+ * of the fix to /events (the signed-in exclusion on the cache rule, and the
+ * anonymous header on the page) and the reader the guard shares with it.
+ * The two worth naming are the reader tests, and they are there because the
+ * fix's own explanatory comment contains the literal
+ * `missing: [{ type: 'cookie', key: 'el-signed-in' }]` directly above the rule
+ * it describes. A checker that read comments would find that text and pass a
+ * rule carrying no such condition, which is the check reporting the
+ * documentation instead of the code. One test plants exactly that shape.
+ *
+ * 2026-09-18: raised 423/5202 -> 423/5212. Close-out C8B.3, the 22 city browse
+ * pages joining the shared set: they answered MISS on 8 of 8 warm production
+ * samples, so every visitor and every crawler was paying for a fresh render.
+ * No new file; ten tests added to
+ * tests/unit/security/edge-cache-viewer-independence.
+ * The two worth naming are the shelf-life pair. `s-maxage` and
+ * `export const revalidate` answer the same question in two files read by two
+ * different systems, which is the shape Law 9 records for .nvmrc against the
+ * Vercel dashboard: they disagreed for months with nothing able to notice. The
+ * only thing comparing them here was a COMMENT claiming the agreement in prose.
+ * Both were drilled red by moving s-maxage away from the page's number, and the
+ * guard clause beside them (clause 7) was drilled red a second way, by
+ * commenting the page's `revalidate` out rather than deleting it, which also
+ * proves the clause reads the comment-stripped source.
+ *
+ * 2026-09-18: raised 423/5212 -> 424/5225. Close-out C8B.3, the LCP preload that
+ * must leave in the first chunk. One new file,
+ * tests/unit/guards/lcp-preload-in-the-first-flush.test.ts, thirteen tests.
+ * The guard it covers was written AFTER the opposite change was built and
+ * measured: flushing the homepage shell before the query won 324 ms of time to
+ * first byte and lost 507 ms of hero discovery, for 597 ms more LCP and six
+ * points of score at matched machine speed, so it was reverted under C8B.3 and
+ * the arrangement that won is now held by a gate.
+ * The test worth naming is the nesting pair. An early version of the guard
+ * asked whether the default export's body CONTAINED `<Suspense`, and
+ * src/app/page.tsx already carries two of those for its below-fold rails, so the
+ * clause was true no matter what happened to the boundary it existed to police.
+ * It counts nesting DEPTH now, and two tests hold both halves: a hero ahead of
+ * legitimate boundaries is depth 0, and a hero inside one is depth 1.
+ *
+ * 2026-09-18 (later): raised 424/5225 -> 425/5261. Close-out C8B.3, the `sizes`
+ * hint that stopped describing its slot. One new file,
+ * tests/unit/media/image-hints-match-the-cell.test.ts, thirty-six tests.
+ * The test worth naming is the SENSITIVITY one. The grid assertions are
+ * arithmetic, and arithmetic that cannot fail proves nothing, so the file
+ * measures the hint this item REPLACED against the same ladder and asserts it
+ * comes out wrong in both directions: under-fetching between 640 and 767 where
+ * it claimed two columns and the grid was still one, and over-fetching past the
+ * container cap where a vw term keeps growing and the column does not. The
+ * replacement is then asserted correct at the same four viewports.
+ * The parser the file checks with is a deliberately SEPARATE implementation
+ * from anything in src/: if the product built the hint and the test read it back
+ * with the same code, the pair would agree about a rule neither of them holds.
+ * The counts below are MEASURED from the run that raised them, never predicted.
+ */
  * 2026-09-16 (lane B, merging verify/l5-launch-readiness a THIRD time): both
  * comment histories above are kept verbatim, again, and again they do not form
  * one chain. Lane B counted 417/5393 on a tree without lane A's money-chain

@@ -402,13 +402,40 @@ const nextConfig: NextConfig = {
       // scraping Open Graph tags) is served from Vercel's CDN instead of
       // re-rendering against the database on every hit. CDN-Cache-Control only
       // affects Vercel's edge cache, NOT the browser Cache-Control, so it does
-      // not fight Next's per-page no-store. Both routes are anonymous (no
-      // cookies in the render path), so a shared cached response is safe.
+      // not fight Next's per-page no-store.
+      //
+      // THIS COMMENT USED TO END "Both routes are anonymous (no cookies in the
+      // render path), so a shared cached response is safe", AND THAT WAS FALSE
+      // FOR /events (close-out C8, 18 September 2026). It rendered the ordinary
+      // `<SiteHeader />`, which reads the session cookie and renders the signed-in
+      // visitor's initials and display name, and `deriveAccountUser` falls back to
+      // the LOCAL PART OF THEIR EMAIL when the profile carries no name. That
+      // response carried `CDN-Cache-Control: public, s-maxage=60` with no
+      // exclusion, so one signed-in visitor's identity was storable at the edge
+      // and servable to every other visitor for up to 60 seconds, 300 more while
+      // stale. Driven against this build before the fix: /events returned the
+      // public header for a request carrying `el-signed-in=1`, while
+      // /events/:slug, which has the exclusion, withheld it.
+      //
+      // BOTH HALVES ARE NEEDED AND NEITHER IS SUFFICIENT.
+      //   `missing` stops a signed-in render from ever being STORED.
+      //   `staticSafe` stops a per-viewer render from EXISTING on a route whose
+      //   responses are shared, which matters because the edge looks a URL up
+      //   before any function runs and cookies are not part of its key
+      //   (src/lib/auth/signed-in-marker.ts, measured on the C13 preview), so a
+      //   signed-in visitor can still be SERVED an anonymous cached copy. With
+      //   staticSafe that copy is byte-identical to their own render.
+      // scripts/guards/edge-cache-is-viewer-independent.mjs holds both.
       {
         // /events is dynamic (reads searchParams), so without this it is
         // never edge-cached. s-maxage 60s with 5-minute stale-while-revalidate
-        // matches the page's `revalidate = 60`.
+        // matches the page's `revalidate = 60`. Query strings are part of the
+        // Vercel cache key for a function response, so /events?category=music
+        // and /events are separate entries
+        // (https://vercel.com/docs/caching/cdn-cache/purge, "The request URL
+        // (query strings are ignored for static files)", fetched 2026-09-18).
         source: '/events',
+        missing: [{ type: 'cookie', key: 'el-signed-in' }],
         headers: [
           { key: 'CDN-Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=300' },
         ],
@@ -433,6 +460,53 @@ const nextConfig: NextConfig = {
         missing: [{ type: 'cookie', key: 'el-signed-in' }],
         headers: [
           { key: 'CDN-Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=86400' },
+        ],
+      },
+      {
+        // THE 22 CITY BROWSE PAGES WERE REBUILT FROM THE DATABASE ON EVERY
+        // SINGLE VISIT (close-out C8B.3, 18 September 2026). Measured against
+        // production before this rule existed, 8 warm samples per route:
+        //
+        //   /events                   HIT  x8   warm 185 ms   origin 301 ms
+        //   /events/browse/melbourne  MISS x8   warm 276 ms   origin 309 ms
+        //   /events/browse/sydney     MISS x8   warm 276 ms   origin 269 ms
+        //   /events/browse/brisbane   MISS x8   warm 272 ms   origin 286 ms
+        //
+        // Not a cold cache: MISS on every warm sample, and the warm and
+        // cache-busted medians on the three browse pages are the same number to
+        // within the noise (+33, -7, +14 ms) because with nothing stored a warm
+        // request IS an origin render. The sibling that does have this rule
+        // saves 116 ms of first byte per request, and C8B.1's cost table found
+        // first byte to be the largest phase of the paint.
+        // scripts/perf/edge-cache-saving.mjs re-runs that table.
+        //
+        // WHY THIS ROUTE AND NOT THE OTHER 28. It is the only indexable family
+        // that already renders `<SiteHeader staticSafe />`, so sharing it
+        // changes what NOBODY sees. The homepage, the city, community and
+        // category pages render the per-viewer header through PageShell, and
+        // caching those would take a signed-in visitor's avatar off 464 pages.
+        // That is a product decision and it is in REVIEW-QUEUE-C.md with three
+        // costed options, not something this rule quietly presumes.
+        //
+        // s-maxage EQUALS the page's own `export const revalidate = 120`, and
+        // scripts/guards/edge-cache-is-viewer-independent.mjs clause 7 now
+        // fails the build if any rule here drifts from its page's number. The
+        // two values answer the same question - how stale may this page be -
+        // and until that clause existed the answer was written twice with
+        // nothing comparing them.
+        //
+        // stale-while-revalidate is 300 rather than the 86400 used by
+        // /events/:slug, DELIBERATELY. This route is `conditional` in the
+        // indexing policy: its robots meta flips between noindex and index with
+        // the city's own event count. A day-long stale window could hand a
+        // crawler a noindex copy for a day after the city crossed the
+        // threshold, which is the exact defect SEO3 was opened to fix. 300
+        // bounds the staleness at seven minutes and costs nothing measurable,
+        // because the 120-second fresh window already serves the traffic.
+        source: '/events/browse/:city',
+        missing: [{ type: 'cookie', key: 'el-signed-in' }],
+        headers: [
+          { key: 'CDN-Cache-Control', value: 'public, s-maxage=120, stale-while-revalidate=300' },
         ],
       },
     ]

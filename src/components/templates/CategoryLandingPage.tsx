@@ -142,7 +142,7 @@ export function CategoryLandingPage({
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {liveEvents.map(event => (
-                <EventCard key={event.id} event={event} />
+                <EventCard key={event.id} event={event} variant="grid-one-three" />
               ))}
             </div>
           </>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
 import { LAUNCH_HERO } from '@/lib/images/launch-photos'
 import { LaunchComposer } from '@/components/launch/launch-composer'
 

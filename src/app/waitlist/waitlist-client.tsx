@@ -92,7 +92,7 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
                   }`}
                 >
                   {city.image ? (
-                    <CityTileImage src={city.image} alt={`${city.name}, ${city.state}`} />
+                    <CityTileImage src={city.image} alt={`${city.name}, ${city.state}`} layout="grid-two-three-four" />
                   ) : (
                     <div
                       aria-hidden

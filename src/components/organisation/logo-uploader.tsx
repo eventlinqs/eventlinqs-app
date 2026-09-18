@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react'
 import { Trash2, Upload } from 'lucide-react'
-import { OrganiserLogoMark } from '@/components/media'
+import { OrganiserLogoMark } from '@/components/media/OrganiserLogoMark'
 import { removeOrganisationLogo, uploadOrganisationLogo } from '@/lib/organisation/logo'
 import { IMAGE_ACCEPT_ATTR, MIN_LOGO_LONG_EDGE } from '@/lib/media/limits'
 

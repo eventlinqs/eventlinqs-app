@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { CityTileImage } from '@/components/media'
+import { CityTileImage } from '@/components/media/CityTileImage'
+import { COMPACT_TILE_CELL } from '@/lib/ui/rhythm'
 
 /**
  * CityRailTile: 220-280px snap-start city tile for the By City rail.
@@ -27,10 +28,11 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
   return (
     <Link
       href={`/events/browse/${encodeURIComponent(slug)}`}
-      className="group flex w-[220px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:w-[260px]"
+      className={`group flex ${COMPACT_TILE_CELL} flex-col overflow-hidden rounded-lg border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2`}
     >
       <div className="relative aspect-[3/2] overflow-hidden bg-[var(--surface-1)]">
         <CityTileImage
+          layout="rail-compact-tile"
           src={imageSrc}
           alt=""
           className="transition-transform duration-700 ease-out group-hover:scale-105"

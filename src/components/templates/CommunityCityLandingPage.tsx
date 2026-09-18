@@ -16,6 +16,7 @@ import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { CommunityContent } from '@/lib/communities/data'
 import type { CityContent } from '@/lib/cities/data'
+import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 
 interface RelatedIntersection {
   communitySlug: string
@@ -150,8 +151,8 @@ export function CommunityCityLandingPage({
             }}
           >
             {thisWeekendEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
@@ -173,8 +174,8 @@ export function CommunityCityLandingPage({
             }}
           >
             {thisWeekEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
@@ -198,11 +199,11 @@ export function CommunityCityLandingPage({
                 <Link
                   key={sc.slug}
                   href={`/events?community=${community.slug}&sub_community=${sc.slug}&city=${citySlug}`}
-                  className="group block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                  className={`group block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
                 >
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
                     {img ? (
-                      <CityTileImage src={img} alt={`${sc.label} in ${cityName}`} />
+                      <CityTileImage src={img} alt={`${sc.label} in ${cityName}`} layout="rail-wide-tile" />
                     ) : (
                       <div
                         aria-hidden
@@ -243,8 +244,8 @@ export function CommunityCityLandingPage({
             }}
           >
             {popularEvents.slice(0, 12).map(e => (
-              <div key={e.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={e} variant="rail" />
+              <div key={e.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={e} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>
@@ -333,11 +334,11 @@ export function CommunityCityLandingPage({
               <Link
                 key={item.citySlug}
                 href={`/community/${item.communitySlug}/${item.citySlug}`}
-                className="group block w-[240px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[260px]"
+                className={`group block ${STANDARD_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
               >
                 <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
                   {item.image ? (
-                    <CityTileImage src={item.image} alt={`${item.communityLabel} in ${item.cityLabel}`} />
+                    <CityTileImage src={item.image} alt={`${item.communityLabel} in ${item.cityLabel}`} layout="rail-standard-tile" />
                   ) : (
                     <div
                       aria-hidden
@@ -385,11 +386,11 @@ export function CommunityCityLandingPage({
               <Link
                 key={item.slug}
                 href={`/community/${item.slug}/${citySlug}`}
-                className="group block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                className={`group block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
               >
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--color-navy-950)]">
                   {item.image ? (
-                    <CityTileImage src={item.image} alt={`${item.label} in ${cityName}`} />
+                    <CityTileImage src={item.image} alt={`${item.label} in ${cityName}`} layout="rail-wide-tile" />
                   ) : (
                     <div
                       aria-hidden

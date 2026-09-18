@@ -288,7 +288,7 @@ export function QueueRoom({
           image). Sits behind everything; content stays legible on the overlay. */}
       {coverImageUrl && (
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          <HeroMedia image={coverImageUrl} alt="" sizes="100vw" priority />
+          <HeroMedia image={coverImageUrl} alt="" priority />
           <div className="absolute inset-0 bg-ink-900/85" />
           <div className="absolute inset-0 bg-gradient-to-b from-ink-900/70 via-ink-900/85 to-ink-900" />
         </div>

@@ -61,6 +61,7 @@ export async function CommunityValueBand() {
         {tiles.map(t => (
           <CommunityTile
             key={t.slug}
+            layout="grid-two-three-six"
             community={{
               href: `/community/${t.slug}`,
               imageSrc: t.imageSrc,

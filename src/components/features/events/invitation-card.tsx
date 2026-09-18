@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import { EVENT_CARD_CELL, FEATURE_CARD_CELL, SQUARE_CARD_CELL } from '@/lib/ui/rhythm'
 
 /**
  * InvitationCard - the launch-day sparse-rail device (2026-07-12).
@@ -46,10 +47,13 @@ export const INVITATION_ANGLE_ORDER: readonly InvitationAngle[] = [
   'referrer',
 ]
 
+// The invitation card tops up a thin rail, so it occupies the SAME cell as the
+// real card beside it. Sharing the constants is what keeps the two the same
+// width: they were two copies of the same three numbers until 18 September 2026.
 const WIDTHS: Record<InvitationVariant, string> = {
-  feature: 'w-[300px] shrink-0 snap-start sm:w-[420px]',
-  square: 'w-[180px] shrink-0 snap-start sm:w-[200px]',
-  landscape: 'w-[240px] shrink-0 snap-start sm:w-[280px]',
+  feature: FEATURE_CARD_CELL,
+  square: SQUARE_CARD_CELL,
+  landscape: EVENT_CARD_CELL,
 }
 
 interface Props {

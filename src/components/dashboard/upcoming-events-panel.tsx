@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { Calendar, MapPin, PlusCircle } from 'lucide-react'
-import { EventCardMedia } from '@/components/media'
-
+import { EventCardMedia } from '@/components/media/EventCardMedia'
 export type UpcomingEvent = {
   id: string
   slug: string
@@ -62,7 +61,7 @@ export function UpcomingEventsPanel({ events }: { events: UpcomingEvent[] }) {
                         <EventCardMedia
                           src={event.cover_image_url}
                           alt=""
-                          variant="rail"
+                          variant="list-thumb"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-ink-400">

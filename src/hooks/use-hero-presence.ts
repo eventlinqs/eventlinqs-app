@@ -11,7 +11,7 @@ import { useHeroPresence } from '@/contexts/hero-presence-context'
  *
  * Caller pattern:
  *
- *   import { HeroMedia } from '@/components/media'
+ *   import { HeroMedia } from '@/components/media/HeroMedia'
  *   import { useRegisterHero } from '@/hooks/use-hero-presence'
  *
  *   export function HeroMediaTracked(props: ComponentProps<typeof HeroMedia>) {

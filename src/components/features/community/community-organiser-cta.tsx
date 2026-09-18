@@ -1,7 +1,6 @@
 import { Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { HeroMedia } from '@/components/media'
-
+import { HeroMedia } from '@/components/media/HeroMedia'
 interface Props {
   communitySlug: string
   communityName: string

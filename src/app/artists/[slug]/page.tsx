@@ -23,6 +23,7 @@ import { EventVideo } from '@/components/features/events/event-video'
 import { StructuredRequestButton } from '@/components/marketplace/structured-request-button'
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
+import { FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
 
 export const revalidate = 300
 
@@ -265,8 +266,8 @@ export default async function ArtistProfilePage({ params }: Props) {
             }}
           >
             {showCards.map((card) => (
-              <div key={card.id} className="w-[280px] shrink-0 snap-start">
-                <EventCard event={card} variant="rail" />
+              <div key={card.id} className={FLAT_RAIL_CELL}>
+                <EventCard event={card} variant="rail-flat" />
               </div>
             ))}
           </SnapRailScroller>

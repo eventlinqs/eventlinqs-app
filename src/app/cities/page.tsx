@@ -174,7 +174,7 @@ async function CityTile({
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl bg-ink-200">
         {image ? (
-          <CityTileImage src={image} alt={`${entry.name}, ${entry.state}`} priority={priority} />
+          <CityTileImage src={image} alt={`${entry.name}, ${entry.state}`} layout="grid-two-three-four" priority={priority} />
         ) : (
           <div
             aria-hidden

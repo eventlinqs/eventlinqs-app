@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { MapPin } from 'lucide-react'
-import { EventCardMedia, type EventCardMediaVariant } from '@/components/media'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
+import type { EventCardMediaVariant } from '@/components/media/EventCardMedia'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { SaveEventButton } from './save-event-button'
 import type { EventInventory } from '@/lib/redis/inventory-cache'
@@ -58,12 +59,25 @@ type Props = {
   initiallySaved?: boolean
   priority?: boolean
   /**
-   * Layout context. Drives the underlying EventCardMedia variant so the
-   * srcset hint matches the actual rendered width. Pass `"rail"` when the
-   * card sits in a horizontal rail (fixed ~256-288px tile) so the browser
-   * does not download a 750w image for a 254 CSS px slot.
+   * Layout context. Drives the underlying EventCardMedia variant so the srcset
+   * hint matches the width this card actually renders at.
+   *
+   * The default is the ladder eight templates render
+   * (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3`), so those callers say nothing.
+   * Every other caller names its own ladder or cell, because until 18 September
+   * 2026 they all shared one hint and it was wrong for all of them: two-up was
+   * claimed to begin at 640 where it begins at 768, so every card between those
+   * two widths was fetched at half the size it rendered at.
    */
-  variant?: Extract<EventCardMediaVariant, 'card' | 'rail'>
+  variant?: Extract<
+    EventCardMediaVariant,
+    | 'grid-one-two-three'
+    | 'grid-one-two-three-sm'
+    | 'grid-one-three'
+    | 'grid-one-two-three-four'
+    | 'grid-one-two-four'
+    | 'rail-flat'
+  >
 }
 
 function formatDate(iso: string) {
@@ -98,7 +112,7 @@ function buildInventory(tiers: EventCardTier[]): EventInventory {
   return { total_sold, total_reserved, total_capacity, available, percent_sold }
 }
 
-export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false, variant = 'card' }: Props) {
+export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false, variant = 'grid-one-two-three' }: Props) {
   const {
     id, slug, title, cover_image_url, start_date,
     venue_city, venue_country, created_at, category, ticket_tiers,

@@ -1,5 +1,5 @@
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
-import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
+import { RHYTHM_GAP, CITY_TILE_CELL , EVENT_CARD_CELL } from '@/lib/ui/rhythm'
 
 /**
  * Loading skeletons for the streamed homepage rail sections.
@@ -15,7 +15,7 @@ import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
 function CardSkeleton() {
   return (
     <div
-      className="flex w-[240px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] sm:w-[280px]"
+      className={`flex ${EVENT_CARD_CELL} flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)]`}
       aria-hidden
     >
       <div className="aspect-[16/10] animate-pulse bg-ink-200/60" />

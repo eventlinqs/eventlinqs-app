@@ -215,7 +215,7 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
           <EventCardMedia
             src={event.cover_image_url}
             alt={event.title}
-            variant="card"
+            variant="grid-one-two-three-sm"
             className="transition-transform duration-500 group-hover:scale-105"
           />
         ) : (

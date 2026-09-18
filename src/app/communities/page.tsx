@@ -194,7 +194,7 @@ async function CommunityTile({
     >
       <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-ink-200">
         {image ? (
-          <CategoryTileImage src={image} alt={`${entry.displayName} community`} priority={priority} />
+          <CategoryTileImage src={image} alt={`${entry.displayName} community`} layout="grid-two-four-five" priority={priority} />
         ) : (
           <div
             aria-hidden

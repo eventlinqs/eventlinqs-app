@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageShell } from '@/components/layout/PageShell'
-import { HeroMedia } from '@/components/media'
+import { HeroMedia } from '@/components/media/HeroMedia'
 import { FORECAST_HERO } from '@/lib/images/forecast-photos'
 import { HERO_SCRIM_GRADIENT } from '@/components/features/home/hero-scrim'
 import { ContentSection } from '@/components/layout/ContentSection'
