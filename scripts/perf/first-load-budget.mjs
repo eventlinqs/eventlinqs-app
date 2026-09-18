@@ -99,6 +99,20 @@ export function baselineFrom(result, previous = null) {
       'does not match, initial-bundle-budget.mjs REPORTS the comparison instead of failing on it, and the ' +
       'absolute Scope budget, the unmarked-route clause and the stale-mark clause still block everywhere.',
     _measuredOn: measurementIdentity(ROOT),
+    _takingAMarkDoc:
+      'TWO RULES FOR TAKING A MARK, both learned by a refused push on 18 September 2026. ' +
+      'ONE: take it from a GATE build, never a bare `next build`. pre-push-gate.mjs sets ' +
+      'NEXT_PUBLIC_SENTRY_DSN to a parity DSN when the environment has none, and that value is INLINED at ' +
+      'build time, so a bare build emits a framework chunk 124 bytes smaller than the one any deployment ' +
+      'serves. Marks taken that way were 120 bytes low on all 141 routes at once. ' +
+      'TWO: take it from a build of the EXACT tree being pushed, including comment-only edits. Chunk ' +
+      'filenames are content-addressed and the turbopack runtime chunk LISTS them, so rehashing a module ' +
+      'rewrites that list character for character at the same length and it gzips differently. Measured: a ' +
+      'comment change in one component moved two shared chunks by +4 and -1 gzip bytes with their RAW sizes ' +
+      'byte-identical (11246 and 20986), failing all 141 routes by +3. ' +
+      'That is noise of a few bytes which no amount of care in the code can remove, and the answer is NOT to ' +
+      'give the guard a tolerance: an exact ratchet with a known procedure beats a fuzzy one. The procedure ' +
+      'is: finish every change under src/, then build, then write the baseline, then commit the marks alone.',
     _overBudgetDoc:
       'PUBLIC routes over the budget today. Every entry is dated, says why, and says what would fix it. ' +
       'The guard FAILS on a public route over budget with no entry here, and FAILS on an entry whose route ' +
