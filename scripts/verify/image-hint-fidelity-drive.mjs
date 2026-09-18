@@ -150,9 +150,21 @@ const paths = (rawPaths.length ? rawPaths : ['home', 'events', 'cities', 'commun
  */
 const AUTHED_PATHS = ['/dashboard/events/[id]/launch-kit']
 
-/** Only TEST is ever written to. Production is a different project ref and the
- *  drive stops rather than discovering that from a row. */
-const TEST_PROJECT_REF = 'vkapkibzokmfaxqogypq'
+/**
+ * Only TEST is ever written to. Production is a different project ref and the
+ * drive stops rather than discovering that from a row.
+ *
+ * IT IS CALLED `TEST_REF` RATHER THAN ANYTHING MORE DESCRIPTIVE, on purpose.
+ * `scripts/guards/no-unguarded-production-write.mjs` recognises three guarded
+ * shapes, and the one this file uses is a ref token within five lines of a
+ * refusal. It spells the recognised tokens out, `TEST_REF` among them, and the
+ * first draft here named the constant `TEST_PROJECT_REF` forty lines above the
+ * throw. The guard was right to refuse: a reader of the check site could not see
+ * which project it admitted. The preflight is NOT used instead because it
+ * refuses outright when it cannot resolve a project, and a public-only
+ * `--no-authed` run against a preview legitimately has no Supabase at all.
+ */
+const TEST_REF = 'vkapkibzokmfaxqogypq'
 
 /**
  * A lane-B organiser with one published event, signed in through the real login
@@ -173,9 +185,9 @@ const TEST_PROJECT_REF = 'vkapkibzokmfaxqogypq'
 async function buildAuthedFixture(browser) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-  if (!supabaseUrl.includes(TEST_PROJECT_REF)) {
+  if (!supabaseUrl.includes(TEST_REF)) {
     throw new Error(
-      `the authed routes only ever touch TEST ${TEST_PROJECT_REF}, and NEXT_PUBLIC_SUPABASE_URL is ${supabaseUrl || '(empty)'}`,
+      `the authed routes only ever touch TEST ${TEST_REF}, and NEXT_PUBLIC_SUPABASE_URL is ${supabaseUrl || '(empty)'}`,
     )
   }
   if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not in the environment, so no fixture can be made')

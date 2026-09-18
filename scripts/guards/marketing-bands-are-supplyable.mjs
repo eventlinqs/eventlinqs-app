@@ -440,6 +440,20 @@ for (const [variant, declared] of Object.entries(LAYOUT_SLOTS)) {
   }
 }
 
+/*
+ * THE FAILURES ARE PRINTED BEFORE THE WORK REPORT, and the order is the point.
+ * They used to be printed after it, and `declareWork`'s zero-work clause exits
+ * the process the moment a count comes back zero, so the SPECIFIC diagnosis was
+ * swallowed by the generic one exactly when it was most wanted. Drilled: renaming
+ * AUTHED_PATHS away made this guard say "authed route came back zero" and never
+ * say "the AUTHED_PATHS list could not be found", which is the sentence that
+ * tells a reader what to type. Both now print.
+ */
+if (failures.length) {
+  console.error('marketing-bands-are-supplyable: FAIL')
+  for (const f of failures) console.error(`  ${f}`)
+}
+
 declareWork('marketing-bands-are-supplyable', {
   did: {
     'page swept for a marketing band or tile': pages.length,
@@ -462,11 +476,7 @@ if (ceiling !== null && stillSoft.size) {
   )
 }
 
-if (failures.length) {
-  console.error('marketing-bands-are-supplyable: FAIL')
-  for (const f of failures) console.error(`  ${f}`)
-  process.exit(1)
-}
+if (failures.length) process.exit(1)
 
 console.log(
   `marketing-bands-are-supplyable: PASS - ${bandPages.length} band-bearing route(s) in the drive's public list and ` +
