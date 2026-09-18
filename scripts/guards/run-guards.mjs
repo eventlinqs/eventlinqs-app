@@ -12,6 +12,7 @@
  *   sender-single-source       one definition of the sending identity
  *   no-unguarded-credential-form  no password field submittable before hydration
  *   no-control-characters      no heredoc-corrupted byte in any source file
+ *   no-drill-residue           no killed guard-failure drill leaves a mutated file
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   canonical-host             one definition of the canonical host, resolved everywhere
@@ -580,6 +581,15 @@ const GUARDS = [
   'scripts/guards/sender-single-source.mjs',
   'scripts/guards/no-unguarded-credential-form.mjs',
   'scripts/guards/no-control-characters.mjs',
+  // The guard-failure drill harness mutates a real source file and restored it
+  // in a `finally`, which does not run when the process is killed. It was killed
+  // twice in two days: a power loss put `process.exit(1)` into the guard above
+  // and into commit 1aa059f6, where it exited 1 with no output at all and read
+  // as a real finding for a day; a usage-limit kill left an auth provider
+  // hardcoded on in the login page. This one fails while any drill journal entry
+  // is open, so a crash can only ever ADD evidence, and it offers the one-command
+  // undo rather than a description of one.
+  'scripts/guards/no-drill-residue.mjs',
   'scripts/guards/auth-autocomplete-guard.mjs',
   // One definition of the canonical host. The same wrong-domain defect had
   // landed in six places, including four share-card generators that printed it
