@@ -4721,6 +4721,27 @@ const DRILLS = [
       'className="group card-hover-transition flex flex-col rounded-2xl overflow-hidden bg-[var(--surface-0)] border border-[var(--surface-2)] shadow-[var(--shadow-card)] hover:-translate-y-1 hover:border-[var(--surface-2)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"',
     expect: 'character class literal (limit 120 in a per-card file)',
   },
+  /* The SHARED CHROME, added 19 September 2026 with the third collapse. One
+   * drill per half of the new contract: the composite itself, and clause A2's
+   * exact call-site rule, which is what catches a link family going back to
+   * writing its class list out once per link on every page. */
+  {
+    name: 'a chrome composite every page renders per link is deleted from globals.css',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/app/globals.css',
+    find: '@utility chrome-footer-link {',
+    replace: '@utility chrome-footer-link-renamed {',
+    expect: '@utility chrome-footer-link is not defined in src/app/globals.css',
+  },
+  {
+    name: 'the header nav goes back to writing its 338-character class list per link',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/layout/site-header-client.tsx',
+    find: 'className="chrome-nav-link"',
+    replace:
+      'className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors whitespace-nowrap rounded-lg"',
+    expect: 'does not reference chrome-nav-link',
+  },
   {
     name: 'the flight matcher goes blind and the calibration refuses rather than reporting a clean build',
     guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,

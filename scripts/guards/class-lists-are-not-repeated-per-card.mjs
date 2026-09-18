@@ -136,6 +136,47 @@ const COMPOSITES = [
   'save-event-btn-dark',
   'save-event-btn-light',
   'event-card-save',
+  /* The shared chrome, collapsed 19 September 2026. Not a card family: these
+   * render once per LINK, on every page, which is why the same figures came
+   * back on all five routes sampled. */
+  'chrome-footer-link',
+  'chrome-footer-social',
+  'chrome-footer-legal',
+  'chrome-footer-accordion-link',
+  'chrome-footer-title',
+  'chrome-nav-link',
+  'chrome-drawer-link',
+  'chrome-bottom-item',
+  'chrome-wordmark',
+  'chrome-wordmark-link',
+]
+
+/**
+ * Clause A2: the CALL SITES, added 19 September 2026 with the chrome collapse.
+ *
+ * WHY THIS IS NOT JUST MORE ENTRIES IN CARD_FILES. That list carries a
+ * 120-character literal limit, which is right for a file whose every literal
+ * is paid per card. The chrome files are not that shape: `site-header-client`
+ * holds the search pill, the account menu and the drawer, most of it written
+ * once per page and legitimately long. Holding them to the card limit would
+ * have failed on literals that are not defects, and a guard that fails on
+ * things that are fine is a guard somebody switches off.
+ *
+ * So the contract here is exact instead: this file must name this composite.
+ * That is what catches the revert - a call site that goes back to writing the
+ * list out - without judging anything else in the file.
+ */
+const COMPOSITE_CALL_SITES = [
+  { file: 'src/components/layout/site-footer.tsx', composite: 'chrome-footer-title' },
+  { file: 'src/components/layout/site-footer.tsx', composite: 'chrome-footer-link' },
+  { file: 'src/components/layout/site-footer.tsx', composite: 'chrome-footer-social' },
+  { file: 'src/components/layout/site-footer.tsx', composite: 'chrome-footer-legal' },
+  { file: 'src/components/layout/footer-accordion.tsx', composite: 'chrome-footer-accordion-link' },
+  { file: 'src/components/layout/site-header-client.tsx', composite: 'chrome-nav-link' },
+  { file: 'src/components/layout/site-header-client.tsx', composite: 'chrome-drawer-link' },
+  { file: 'src/components/layout/mobile-bottom-nav.tsx', composite: 'chrome-bottom-item' },
+  { file: 'src/components/ui/eventlinqs-logo.tsx', composite: 'chrome-wordmark' },
+  { file: 'src/components/ui/eventlinqs-logo.tsx', composite: 'chrome-wordmark-link' },
 ]
 const GLOBALS = 'src/app/globals.css'
 /**
@@ -300,8 +341,9 @@ if (!existsSync(globalsPath)) {
      * "a composite ... is deleted from globals.css" found it on its first run. */
     if (!new RegExp(`@utility\\s+${name}\\s*\\{`).test(css)) {
       faults.push(
-        `A: @utility ${name} is not defined in ${GLOBALS}. A card family renders it on every card, ` +
-          `so deleting it silently strips the card's border, shadow, padding, hover lift or focus ring.`,
+        `A: @utility ${name} is not defined in ${GLOBALS}. It is rendered once per card or once per ` +
+          `link on every page that uses it, so deleting it strips whatever it declared - a border, a ` +
+          `padding, a hover colour, a focus ring - and nothing else goes red.`,
       )
     }
   }
@@ -332,6 +374,23 @@ for (const file of CARD_FILES) {
           `payload. Put it in globals.css as an @utility with @apply. Literal begins: ${value.slice(0, 60)}`,
       )
     }
+  }
+}
+
+/* ── Clause A2: the chrome call sites ─────────────────────────────────────── */
+for (const { file, composite } of COMPOSITE_CALL_SITES) {
+  const path = join(ROOT, file)
+  clauseAChecks += 1
+  if (!existsSync(path)) {
+    faults.push(`A2: ${file} does not exist, so the ${composite} contract cannot be judged`)
+    continue
+  }
+  if (!readFileSync(path, 'utf8').includes(composite)) {
+    faults.push(
+      `A2: ${file} does not reference ${composite}. That composite exists for this call site, so ` +
+        `either the class list has been written out again - once per link, on every page - or the ` +
+        `composite is now dead and belongs deleted rather than orphaned.`,
+    )
   }
 }
 

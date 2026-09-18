@@ -581,6 +581,103 @@ html[data-motion="1"] .group:hover .card-hover-wash {
   @apply absolute right-3 top-3 shadow-[var(--shadow-card)];
 }
 
+/* ─── The shared chrome: the class lists every page repeats per link ─────── */
+/*
+ * WHY THESE EXIST, and it is the third measurement of the same shape.
+ *
+ * Close-out C8 EXECUTION METHOD clause C8B.3, 19 September 2026. After the two
+ * card families were collapsed, the largest repeated class values LEFT on
+ * /events were not cards at all: they were the chrome. The header, the footer,
+ * the mobile drawer and the mobile bottom bar render on EVERY page, and their
+ * link class lists are written once per link:
+ *
+ *     56 chars x 69   the footer's column links
+ *     91 chars x 30   the footer's social controls
+ *    114 chars x 18   the footer's legal row
+ *     84 chars x 19   the footer accordion's links (mobile)
+ *    338 chars x  4   the header's primary nav links
+ *    255 chars x  4   the mobile drawer's links
+ *
+ * measured identically on all five routes sampled, because that is what shared
+ * chrome means: about 13.5 KB of removable repeats in EVERY document the
+ * platform serves, markup and RSC payload together.
+ *
+ * THE COUNT IS DOUBLE THE LINKS ON PURPOSE. 69 is not 69 links: the footer has
+ * 63 anchors and React serialises the tree again for hydration, so most values
+ * appear twice. A composite removes both copies.
+ *
+ * Held by scripts/verify/card-class-collapse-drive.mjs, which reads EVERY link
+ * in the chrome - keyed by where it points, not by position - at 390/768/1440
+ * in both motion branches, and treats a key that appears on one tree only as a
+ * fault rather than a skip.
+ */
+@utility chrome-footer-link {
+  @apply text-sm text-white/70 transition-colors hover:text-white;
+}
+
+@utility chrome-footer-social {
+  @apply flex h-11 w-11 items-center justify-center text-white/70 transition-colors
+    hover:text-white;
+}
+
+@utility chrome-footer-legal {
+  @apply inline-flex min-h-11 min-w-11 items-center justify-center text-xs text-white/70
+    transition-colors hover:text-white;
+}
+
+/* The mobile accordion's links. Same family as the column links above and a
+ * different control: 44px tall, because on a phone it is the hit area. */
+@utility chrome-footer-accordion-link {
+  @apply flex min-h-11 items-center text-sm text-white/70 transition-colors hover:text-white;
+}
+
+@utility chrome-footer-title {
+  @apply text-xs font-semibold uppercase tracking-widest text-white/70;
+}
+
+/* The header's primary nav link. `min-h-11` is the 44px hit area inside the
+ * 64px bar (the link box was the 20px text line) and `rounded-lg` is the
+ * control radius, so the focus ring adds no fourth radius to the page. */
+@utility chrome-nav-link {
+  @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-sm
+    font-medium whitespace-nowrap text-white/85 transition-colors
+    hover:text-[var(--brand-accent)]
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]
+    focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)];
+}
+
+/*
+ * The mobile drawer's links. `text-ink-700` WAS in this list and is not a
+ * colour: the theme has no --color-ink-700, so it generated nothing and the
+ * link has always inherited. Same finding as the save control's, same
+ * treatment - removed here, and the 300-odd other occurrences are a design
+ * ruling recorded in REVIEW-QUEUE-C.md rather than a substitution made in
+ * passing.
+ */
+@utility chrome-drawer-link {
+  @apply flex min-h-[44px] items-center rounded-lg px-4 py-3 text-base font-medium
+    transition-colors hover:bg-ink-100 hover:text-gold-600
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]
+    focus-visible:ring-inset;
+}
+
+/* The mobile bottom bar's item. Its COLOUR is not here: the active item is
+ * gold and the rest are white/65, and that is the one thing that differs. */
+@utility chrome-bottom-item {
+  @apply flex h-full flex-col items-center justify-center gap-1 transition-colors;
+}
+
+/* The wordmark, and the link it sits in. Both render in the header and again
+ * in the footer, and the logo is rendered by more than one surface. */
+@utility chrome-wordmark {
+  @apply inline-flex items-baseline font-display font-extrabold tracking-tight;
+}
+@utility chrome-wordmark-link {
+  @apply inline-flex min-h-11 items-center rounded-lg transition-colors hover:text-gold-500
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400
+    focus-visible:ring-offset-2;
+}
+
 /* ─── M5 typography utility classes ──────────────────────────────────────── */
 /*
  * Pair font-size + line-height + weight per spec in one class.
