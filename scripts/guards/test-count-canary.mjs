@@ -2427,9 +2427,24 @@ const ROOT = join(HERE, '..', '..')
  * (37 -> 43), plus lane B's four files and their 38.
  *   460 + 4 + 1 = 465 files
  *   5999 + 38 + 14 + 6 = 6057 tests
+ *
+ * 2026-09-19, close-out C8B.1. A mobile run printed an LCP of 3,740 ms above a
+ * phase split that summed to 1,881 ms, and the reporter said nothing about the
+ * two being different quantities: the score is computed from the SIMULATED
+ * paint and the split describes the OBSERVED one. The reconciliation, and the
+ * refusal to print a split that no longer sums to the paint it splits, moved
+ * into scripts/perf/lib/lcp-breakdown.mjs where it is tested against reports
+ * whose answers are known - including the real one that produced it.
+ *
+ * MEASURED: 466 files, 6068 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: one new file, tests/unit/perf/lcp-breakdown.test.ts, holding 11
+ * cases.
+ *   465 + 1 = 466 files
+ *   6057 + 11 = 6068 tests
  */
-const MIN_FILES = 465
-const MIN_TESTS = 6057
+const MIN_FILES = 466
+const MIN_TESTS = 6068
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
