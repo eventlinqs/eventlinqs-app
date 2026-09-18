@@ -4125,6 +4125,7 @@ export type Database = {
           referred_by_organisation_id: string | null
           refund_window_days: number
           risk_tier: string
+          sales_notification_mode: string
           slug: string
           status: Database["public"]["Enums"]["org_status"]
           stripe_account_country: string | null
@@ -4166,6 +4167,7 @@ export type Database = {
           referred_by_organisation_id?: string | null
           refund_window_days?: number
           risk_tier?: string
+          sales_notification_mode?: string
           slug: string
           status?: Database["public"]["Enums"]["org_status"]
           stripe_account_country?: string | null
@@ -4207,6 +4209,7 @@ export type Database = {
           referred_by_organisation_id?: string | null
           refund_window_days?: number
           risk_tier?: string
+          sales_notification_mode?: string
           slug?: string
           status?: Database["public"]["Enums"]["org_status"]
           stripe_account_country?: string | null
@@ -4278,6 +4281,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "organiser_api_keys_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organiser_sales_digest_sends: {
+        Row: {
+          currency: string
+          digest_date: string
+          gross_cents: number
+          organisation_id: string
+          sale_count: number
+          sent_at: string
+        }
+        Insert: {
+          currency?: string
+          digest_date: string
+          gross_cents?: number
+          organisation_id: string
+          sale_count?: number
+          sent_at?: string
+        }
+        Update: {
+          currency?: string
+          digest_date?: string
+          gross_cents?: number
+          organisation_id?: string
+          sale_count?: number
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_sales_digest_sends_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"

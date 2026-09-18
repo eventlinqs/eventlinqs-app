@@ -174,7 +174,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           ? `${origin}/unsubscribe/digest/${token}`
           : `${origin}/account/notifications`,
       })
-      await sendEmail({ to: testTo, subject, html, text })
+      await sendEmail({
+        to: testTo,
+        subject,
+        html,
+        text,
+        messageType: 'platform_weekly_digest',
+        recipientRole: 'platform_owner',
+      })
       results.push({ city: citySlug, testSentTo: testTo, events: events.length })
       continue
     }
@@ -188,7 +195,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         unsubscribeUrl: `${origin}/unsubscribe/digest/${recipient.unsubscribeToken}`,
       })
       try {
-        await sendEmail({ to: recipient.email, subject, html, text })
+        await sendEmail({
+          to: recipient.email,
+          subject,
+          html,
+          text,
+          messageType: 'attendee_event_alert',
+          recipientRole: 'prospect',
+        })
         sent += 1
       } catch {
         // One bad address never stops the run; the count stays honest.

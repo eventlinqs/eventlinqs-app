@@ -1,4 +1,5 @@
 import { canonicalHost } from '@/lib/site-url'
+import { assertRecipientDeclared } from '@/lib/notifications/recipient-matrix'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mailTransportReady, resolveMailTransport } from '@/lib/email/transport-ready'
 import { printConsoleEmail } from '@/lib/email/send'
@@ -249,6 +250,12 @@ export async function sendConfirmationEmail(
 
   const firstName = deriveFirstName(buyerName)
   const html = buildConfirmationEmailHtml(order, event, tickets, receipt_url, firstName)
+
+  // MONEY FIX B3. This transport is not `sendEmail` (it builds its own Resend
+  // client for the inline QR attachments), so it carries its own matrix check.
+  // Without this the single most important message the platform sends would be
+  // the one message outside the declaration.
+  assertRecipientDeclared('order_confirmation_and_ticket', 'buyer')
 
   /*
    * The console transport, so the buyer's ticket email can actually be OBSERVED

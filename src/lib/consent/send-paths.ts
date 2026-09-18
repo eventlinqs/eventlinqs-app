@@ -66,6 +66,27 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
       'The weekly local digest promotes other organisers events to a city list. It is the marketing the ledger exists for, and its recipient list is filtered through the resolver.',
   },
   {
+    file: 'src/lib/notifications/organiser-sale-notify.ts',
+    kind: 'transactional',
+    purpose: 'organiser_sale',
+    reason:
+      'Tells an organiser a ticket sold on their own event. It reports what happened to their money, to them, and gating it on a marketing consent would mean an organiser who declined marketing never learned they had been paid. Close-out MONEY FIX B4.',
+  },
+  {
+    file: 'src/lib/notifications/organiser-sales-digest.ts',
+    kind: 'transactional',
+    purpose: 'organiser_sale',
+    reason:
+      'The same facts as organiser-sale-notify, rolled up to one message a day because that is the default preference. It promotes nothing and reaches nobody but the organiser whose sales it reports.',
+  },
+  {
+    file: 'src/lib/notifications/organiser-event-notify.ts',
+    kind: 'transactional',
+    purpose: 'organiser_event_published',
+    reason:
+      'Tells an organiser their own event is live, in response to their own publish. Close-out MONEY FIX B4, and the message clause 2 of every-message-has-a-declared-recipient requires to balance the owner platform_event_published feed.',
+  },
+  {
     file: 'src/lib/email/order-confirmation.ts',
     kind: 'transactional',
     purpose: 'order_confirmation',

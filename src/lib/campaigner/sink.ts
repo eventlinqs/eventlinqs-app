@@ -102,6 +102,8 @@ export function liveTransport(): CampaignTransport {
       const result = await sendEmail({
         to: payload.destination,
         subject: payload.subject,
+        messageType: 'campaign_send',
+        recipientRole: 'prospect',
         html: payload.html,
         text: payload.body,
       })

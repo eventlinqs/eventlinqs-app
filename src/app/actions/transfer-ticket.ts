@@ -104,6 +104,8 @@ export async function transferTicket(
       await sendEmail({
         to: email,
         subject: `You have been sent a ticket to ${title}`,
+        messageType: 'ticket_transfer_received',
+        recipientRole: 'ticket_holder',
         html: `<!doctype html><html><body style="margin:0;background:#f6f7f9;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:560px;margin:0 auto;padding:32px 24px">
     <div style="background:#ffffff;border:1px solid #e7e9ee;border-radius:14px;padding:28px">

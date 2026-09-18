@@ -117,6 +117,8 @@ export async function sendRefundRequestedToOrganiser(admin: SupabaseClient, requ
   await sendEmail({
     to,
     subject: `Refund requested: ${event?.title ?? 'your event'} (order ${order?.order_number ?? ''})`,
+    messageType: 'organiser_refund_requested',
+    recipientRole: 'organiser',
     html,
     text,
   })
@@ -169,5 +171,12 @@ export async function sendRefundDecisionToBuyer(admin: SupabaseClient, requestId
   }
 
   const { html, text } = wrap(title, lines, { label: 'View your order', url: orderUrl })
-  await sendEmail({ to, subject: `${title}: ${event?.title ?? 'your order'}`, html, text })
+  await sendEmail({
+    to,
+    subject: `${title}: ${event?.title ?? 'your order'}`,
+    html,
+    text,
+    messageType: 'refund_request_decision',
+    recipientRole: 'buyer',
+  })
 }

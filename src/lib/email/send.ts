@@ -1,5 +1,9 @@
 import { Resend } from 'resend'
 import { getEmailFrom, getNoReplyFrom } from './sender'
+import {
+  assertRecipientDeclared,
+  type RecipientRole,
+} from '@/lib/notifications/recipient-matrix'
 
 /**
  * THE TRANSPORT. Three modules, three separate concerns, one definition each.
@@ -123,6 +127,20 @@ export type SendEmailInput = {
   /** Optional plain-text part. Resend will derive one if omitted, but
    * supplying a hand-tuned text alternative improves deliverability. */
   text?: string
+  /**
+   * WHAT THIS MESSAGE IS, declared in src/lib/notifications/recipient-matrix.ts.
+   * Required, per close-out MONEY FIX B3: a type absent from the matrix cannot
+   * be sent. Making it optional would mean every existing send site kept its
+   * old behaviour and only new ones were governed, which is the opposite of
+   * what the item asks for.
+   */
+  messageType: string
+  /**
+   * WHO THIS PARTICULAR SEND IS FOR. Checked against the roles the matrix
+   * declares for `messageType`, so a send site aiming the buyer's ticket at the
+   * platform owner is refused rather than delivered.
+   */
+  recipientRole: RecipientRole
 }
 
 /**
@@ -215,6 +233,14 @@ export function printConsoleEmail(input: { to: string; subject: string; html?: s
 }
 
 export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> {
+  // MONEY FIX B3, read at SEND time rather than in a test. This throws
+  // UndeclaredMessageTypeError for a type the matrix does not declare, and
+  // UndeclaredRecipientRoleError when the role is not one that type reaches.
+  // It sits above the console transport so a local drive is governed by the
+  // same rule as production: the console transport exists to prove these paths,
+  // and a proof that skips the check proves the wrong thing.
+  assertRecipientDeclared(input.messageType, input.recipientRole)
+
   // Single source: resolveFrom() delegates to sender.ts, so the health check
   // and the sender can never disagree about who this platform sends as.
   const from = resolveFrom()

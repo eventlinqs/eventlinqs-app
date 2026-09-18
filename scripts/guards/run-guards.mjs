@@ -175,6 +175,11 @@
  *                              refused by the FEE AMOUNT: a deliberately waived fee is a
  *                              legitimate zero and an unexplained zero still is not
  *                              (close-out MONEY FIX A1.7)
+ *   every-message-has-a-declared-recipient
+ *                              every outbound message names a type the recipient matrix
+ *                              declares, no transport escapes the matrix, and no message about
+ *                              an organiser's event reaches the platform owner while the
+ *                              organiser is told nothing (close-out MONEY FIX B3)
  *   inventory-lock-integrity   two buyers can never be sold the same seat
  *   no-unowned-organisation-read  a service-role read of an organisation's sale posture, or a
  *                              service-role call to the publish gate, must prove the caller
@@ -1273,6 +1278,14 @@ const GUARDS = [
   // every paid ticket for the organisers the growth plan exists to recruit was
   // refused at checkout with a pricing error that refreshing could never clear.
   'scripts/guards/funds-reach-the-organiser.mjs',
+  // MONEY FIX B3. The companion to funds-reach-the-organiser: that one makes the
+  // MONEY reach the organiser, this one makes the NEWS reach them. MKLStudios
+  // sold two tickets on 10 September 2026 and the only human told was the
+  // platform owner, because `order_paid` is a PLATFORM notification and no
+  // organiser counterpart existed anywhere in the tree. A message that was never
+  // written cannot be caught by testing the messages that were, so the check has
+  // to be a declaration every send is judged against.
+  'scripts/guards/every-message-has-a-declared-recipient.mjs',
   'scripts/guards/no-ambiguous-embed.mjs',
   // Measured 2026-08-19 against the real TEST database: 50 simultaneous buyers
   // against ONE seat, live create_reservation -> 1 won. Same body with FOR UPDATE

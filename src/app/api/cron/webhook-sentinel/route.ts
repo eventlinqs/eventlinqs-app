@@ -69,6 +69,8 @@ export async function GET(request: NextRequest) {
       await sendEmail({
         to: ALERT_TO(),
         subject: `Payment sentinel ALERT: ${failures[0].probableCause ?? failures[0].name}`,
+        messageType: 'platform_sentinel_alert',
+        recipientRole: 'platform_owner',
         text: `The payment sentinel found a problem.\n\nDeployment: ${deployment}\nWebhook path: ${origin}/api/webhooks/stripe\nTime: ${new Date().toISOString()}\n\n${lines}\n\nRunbook: docs/payments/WEBHOOK-CANON.md\n\nEventLinqs payment sentinel`,
         html: `<p><strong>The payment sentinel found a problem.</strong></p><p>Deployment: ${deployment}<br/>Webhook path: ${origin}/api/webhooks/stripe<br/>Time: ${new Date().toISOString()}</p><pre>${lines}</pre><p>Runbook: docs/payments/WEBHOOK-CANON.md</p><p>EventLinqs payment sentinel</p>`,
       })

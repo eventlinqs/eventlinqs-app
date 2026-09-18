@@ -125,6 +125,8 @@ export async function dispatchMarketplaceAlert(
       await sendEmail({
         to,
         subject: input.title,
+        messageType: 'marketplace_supplier_notice',
+        recipientRole: 'organiser',
         html: marketplaceEmailHtml(payload, input.ctaLabel, manageUrl),
         text: `${payload.body}\n\n${payload.url}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, ${contactAddress('hello')}`,
       })

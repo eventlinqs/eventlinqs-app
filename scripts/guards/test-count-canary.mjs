@@ -2169,8 +2169,37 @@ const ROOT = join(HERE, '..', '..')
  * tests/unit/perf/vitest-pool-start-failures. 443 + 5 = 448, so the count is
  * explained by the merge and not by a file that quietly stopped collecting.
  */
-const MIN_FILES = 448
-const MIN_TESTS = 5794
+/*
+ * 2026-09-18, MONEY FIX B3 and B4: 446 files / 5746 tests, 0 failed and 0
+ * skipped (C:\dev\_a-b3-suite.txt).
+ *
+ * Three new files: the recipient matrix, the organiser sales policy and the
+ * daily digest. The floor moves UP to what the green run measured, which is the
+ * only direction it ever moves.
+ */
+/*
+ * 2026-09-19 (lane B, merging verify/l5-launch-readiness a SEVENTH time, this one
+ * taking in lane A's 36fb1817 of 23:40, which arrived thirteen minutes after the
+ * sixth merge resolved this same file). BOTH HISTORIES KEPT AGAIN.
+ *
+ * Lane B measured 448/5794 on the sixth merge. Lane A measured 446/5746 on its
+ * own branch, and its three new files (the recipient matrix, the organiser sales
+ * policy and the daily digest) are not in that 448. Neither pair describes this
+ * tree and the larger of two partial counts is still a guess, which is what this
+ * file has now said seven times.
+ *
+ * THE PAIR BELOW IS MEASURED ON THIS TREE through the gate's own suite step.
+ * Evidence: C:\dev\EVIDENCE\LB-MERGE6\gate-suite-after-merge7.txt
+ *
+ * MEASURED: 451 files, 5823 tests, 0 failed, 0 skipped. Checkable rather than
+ * asserted, the same way the last one was: 448 plus the THREE test files lane A
+ * added in MONEY FIX B3 and B4, which are tests/unit/notifications/recipient-matrix,
+ * tests/unit/notifications/organiser-sales-policy and
+ * tests/unit/notifications/organiser-sales-digest. 448 + 3 = 451, so the count is
+ * explained by the merge rather than by a file that stopped collecting.
+ */
+const MIN_FILES = 451
+const MIN_TESTS = 5823
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

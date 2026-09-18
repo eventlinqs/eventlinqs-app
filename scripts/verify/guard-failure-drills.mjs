@@ -3194,6 +3194,13 @@ const DRILLS = [
      * after the eleven undrilled guards were drilled, which is the behaviour
      * its own header promises and the third time this file has recorded it.
      * A drill that cannot aim is reported, never skipped.
+     *
+     * BOTH LANES FOUND THIS INDEPENDENTLY ON THE SAME DAY and fixed it to the
+     * same three lines, which is why only the notes conflicted when the branches
+     * met: lane A's commit 36fb1817 records it as defect 2 of the four it found
+     * on the way to the recipient matrix. Two lanes arriving at one answer is
+     * the harness reporting a stale drill loudly enough that neither could miss
+     * it, which is the argument for reporting rather than skipping.
      */
     name: "the organiser catalogue stops selecting on 'active', and the guard's rule stops being true",
     guard: `${GUARDS}/fixtures-are-not-published.mjs`,
@@ -3358,6 +3365,64 @@ const DRILLS = [
     find: '  if (!org.stripe_payouts_enabled) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
     replace: '  if (false) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
     expect: 'no longer tests `!org.stripe_payouts_enabled`',
+  },
+  /*
+   * MONEY FIX B3, the five drills for every-message-has-a-declared-recipient.
+   *
+   * The first two are the defect itself from both directions: an organiser
+   * message that stops being sent, and an owner message that stops naming the
+   * organiser message that balances it. MKLStudios sold two tickets on
+   * 10 September 2026 and the only human told was the platform owner, and the
+   * reason nothing caught it is that the organiser's message did not exist to
+   * be broken. A guard against a missing message has to be a declaration.
+   */
+  {
+    name: 'the owner is told about a sale and the organiser message that balances it is gone',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/notifications/recipient-matrix.ts',
+    find: "    organiserToldBy: 'organiser_first_sale',",
+    replace: '',
+    expect: 'is neither a recipient nor named in organiserToldBy',
+  },
+  {
+    name: 'the companion is named but nothing in the tree ever sends it',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/notifications/recipient-matrix.ts',
+    find: "    organiserToldBy: 'organiser_first_sale',",
+    replace: "    organiserToldBy: 'organiser_hears_about_it_somehow',",
+    expect: 'nothing in src/ ever sends that type',
+  },
+  {
+    name: 'a send site stops declaring what its message is',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/refunds/notify.ts',
+    find: "    messageType: 'organiser_refund_requested',",
+    replace: '',
+    expect: 'calls sendEmail() without a messageType',
+  },
+  {
+    name: 'the central transport stops enforcing the matrix',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/email/send.ts',
+    find: '  assertRecipientDeclared(input.messageType, input.recipientRole)',
+    replace: '  // assertRecipientDeclared(input.messageType, input.recipientRole)',
+    expect: 'no longer calls assertRecipientDeclared',
+  },
+  {
+    name: "the buyer's ticket transport stops checking, which is how it escaped before",
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/email/order-confirmation.ts',
+    find: "  assertRecipientDeclared('order_confirmation_and_ticket', 'buyer')",
+    replace: "  // assertRecipientDeclared('order_confirmation_and_ticket', 'buyer')",
+    expect: 'is a transport but never calls assertRecipientDeclared',
+  },
+  {
+    name: 'a payout message starts consulting the sales off switch',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/payouts/email.ts',
+    find: "    .select('id, name, owner_id')",
+    replace: "    .select('id, name, owner_id, sales_notification_mode')",
+    expect: "reads 'sales_notification_mode'",
   },
   /*
    * initial-bundle-budget, the CONTRACT half (close-out C8B.3, 15 September
