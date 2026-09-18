@@ -2069,9 +2069,20 @@ const ROOT = join(HERE, '..', '..')
  * reporting as genuine drift, and the fix must not become a way to launder a
  * real foreign key change. Measured through the gate's own suite step:
  * 442 files, 5741 tests, 0 failed, 0 skipped.
+ *
+ * 2026-09-18 (lane B, close-out LBG1): raised 442/5741 -> 443/5750. One file
+ * and nine tests. tests/unit/guards/every-guard-has-been-seen-to-fail pins the
+ * two readers behind the new registered guard that asks whether every guard in
+ * run-guards.mjs has ever been watched to fail. Both readers were wrong on
+ * their first run in the dangerous direction, reporting MORE drills than exist:
+ * a substring search counted five guards as drilled that are only NAMED in the
+ * harness's prose, and the parse that replaced it counted a `guard:` field
+ * quoted inside a drill string, which is a shape that guard's own second drill
+ * has to write. Measured through the gate's own suite step: 443 files, 5750
+ * tests, 0 failed, 0 skipped.
  */
-const MIN_FILES = 442
-const MIN_TESTS = 5741
+const MIN_FILES = 443
+const MIN_TESTS = 5750
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

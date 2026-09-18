@@ -287,9 +287,22 @@ function driveSelectors() {
   const found = []
   const SELECTOR = /getByRole\(\s*'button'\s*,\s*\{\s*name:\s*(\/(?:\\.|[^/\\\n])+\/[a-z]*)/g
   for (const file of mjsFiles(SCRIPTS)) {
-    // The guard's own source quotes these patterns in its prose and its
-    // messages. It is not a drive and must not judge itself.
+    /*
+     * TWO FILES QUOTE A SELECTOR AS DATA RATHER THAN USING ONE, and neither is
+     * a drive. Skipping them is the same judgement made twice, not an exception
+     * list that can grow: a file qualifies only if it never opens a browser.
+     *
+     *   1. THIS GUARD, which quotes the banned prefix pattern in its prose and
+     *      in the sentence it prints when it catches one.
+     *   2. THE DRILL HARNESS, which must write the loose selector into a drill
+     *      to prove this guard still catches it. Found on 18 September 2026 by
+     *      writing that drill: the entry went into the tree, and this guard
+     *      immediately failed the UNMUTATED tree, naming a drill entry as a
+     *      drive that presses the wrong button. The drill was correct and the
+     *      reading was not.
+     */
     if (file.endsWith('drive-quantity-control-selector.mjs')) continue
+    if (file.endsWith('guard-failure-drills.mjs')) continue
     const src = readFileSync(join(ROOT, file), 'utf8')
     let m
     while ((m = SELECTOR.exec(src))) {

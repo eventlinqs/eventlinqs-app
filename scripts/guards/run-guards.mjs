@@ -118,6 +118,12 @@
  *                              never 403, every payload names its organisation, the
  *                              key lookup is uncached, and the key screen reads the
  *                              caps it documents rather than typing them
+ *   every-guard-has-been-seen-to-fail
+ *                              every guard registered in this file has a drill in
+ *                              scripts/verify/guard-failure-drills.mjs that has
+ *                              actually made it fail, against a dated baseline of
+ *                              the 63 that predate the rule; a guard that has never
+ *                              been watched to fail is a green light nobody earned
  *   product-loops-carry-their-parameters  the ticket email, rendered, carries the
  *                              run-your-event line and both parameters; the
  *                              confirmation page, the share bar and the
@@ -1148,6 +1154,14 @@ const GUARDS = [
   // and cannot be written through, and proves an out of scope id answers 404
   // rather than the 403 that would confirm the row exists.
   'scripts/guards/api-v1-organiser-scope.mjs',
+  // A guard nobody has ever seen fail is not a guard, and on 18 September 2026
+  // 63 of the 148 entry points in this very list had never been made to fail by
+  // anything. Eleven of those were drilled properly that day and the drilling
+  // found three real defects in guards that had been passing confidently for a
+  // week. This fails the build when a guard is registered here with no drill in
+  // scripts/verify/guard-failure-drills.mjs, against a dated baseline of the 63
+  // that predate it, so the debt is visible and cannot grow.
+  'scripts/guards/every-guard-has-been-seen-to-fail.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and
