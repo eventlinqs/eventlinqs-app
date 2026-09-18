@@ -222,6 +222,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/auth/reset-password', klass: 'never', why: 'authentication' },
   { route: '/checkout/[reservation_id]', klass: 'never', why: 'transactional' },
   { route: '/dashboard', klass: 'never', why: 'authenticated' },
+  { route: '/dashboard/api-keys', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/create', klass: 'never', why: 'authenticated' },
   { route: '/dashboard/events/[id]', klass: 'never', why: 'authenticated' },

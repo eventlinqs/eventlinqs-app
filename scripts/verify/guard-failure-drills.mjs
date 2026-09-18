@@ -3319,6 +3319,104 @@ const DRILLS = [
     replace: '"marks": {\n    "/drill-not-a-byte-count": null,',
     expect: 'which is not a byte count',
   },
+  /*
+   * API1, eleven drills, one per check in api-v1-organiser-scope.
+   *
+   * Every one of these is a way the public API could quietly start serving one
+   * organiser another organiser's rows, or start telling the holder of a key
+   * that a uuid they may not read is nonetheless real. The guard passed on its
+   * first run, which is exactly the condition under which a blind guard goes
+   * unnoticed, so each clause is planted individually rather than the file
+   * being broken once and the whole thing called drilled.
+   */
+  {
+    name: 'a public API query loses the organisation predicate',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/reads.ts',
+    find: "      .from(API_V1_RESOURCES.events)\n      .select('*', { count: 'exact' })\n      .eq('organisation_id', scope.organisationId)",
+    replace: "      .from(API_V1_RESOURCES.events)\n      .select('*', { count: 'exact' })",
+    expect: 'does not carry',
+  },
+  {
+    name: 'a public API query reads the underlying table instead of the scoped view',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/reads.ts',
+    find: '      .from(API_V1_RESOURCES.events)',
+    replace: "      .from('events')",
+    expect: 'which is not one of the scoped API views',
+  },
+  {
+    name: 'the read only API grows a write',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/reads.ts',
+    find: "      .from(API_V1_RESOURCES.events)\n      .select('*', { count: 'exact' })",
+    replace: "      .from(API_V1_RESOURCES.events)\n      .update({ title: 'x' })\n      .select('*', { count: 'exact' })",
+    expect: 'this surface is read only',
+  },
+  {
+    name: 'a route file starts querying for itself',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/app/api/v1/events/route.ts',
+    find: "  return handleList(request, 'events')",
+    replace: "  void createAdminClient().from('events')\n  return handleList(request, 'events')",
+    expect: 'a route file may not query',
+  },
+  {
+    name: 'an out of scope id starts answering 403 instead of 404',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/handlers.ts',
+    find: '  const id = asUuid(rawId)',
+    replace: '  const forbidden = 403\n  void forbidden\n  const id = asUuid(rawId)',
+    expect: 'existence oracle',
+  },
+  {
+    name: 'a handler builds a response of its own, without the organisation id on it',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/handlers.ts',
+    find: '  const admitted = await admit(request)\n  if (!admitted.ok) return admitted.response\n  const { scope } = admitted\n\n  const params',
+    replace: '  const admitted = await admit(request)\n  if (!admitted.ok) return NextResponse.json({ ok: false })\n  const { scope } = admitted\n\n  const params',
+    expect: 'builds its own response',
+  },
+  {
+    name: 'a second reader of the scoped views appears somewhere else in src',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/handlers.ts',
+    find: "import { applyRateLimit } from '@/lib/rate-limit/middleware'",
+    replace: "import { applyRateLimit } from '@/lib/rate-limit/middleware'\nconst elsewhere = 'api_v1_orders'\nvoid elsewhere",
+    expect: 'only src',
+  },
+  {
+    name: 'a scoped view stops carrying the column every API query filters on',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'supabase/migrations/20260918000010_organiser_api_keys.sql',
+    find: 'select\n  t.id,\n  e.organisation_id,',
+    replace: 'select\n  t.id,',
+    expect: 'the predicate every API query carries would match nothing',
+  },
+  {
+    name: 'the read only views become writable again',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'supabase/migrations/20260918000010_organiser_api_keys.sql',
+    find: 'revoke insert, update, delete, truncate on public.api_v1_events from public, anon, authenticated, service_role;',
+    replace: '-- revoke removed by the drill',
+    expect: 'a read only surface must be read only in the database',
+  },
+  {
+    name: 'the key lookup grows a cache, so a revoked key keeps working',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/keys.ts',
+    find: "import { createAdminClient } from '@/lib/supabase/admin'",
+    replace: "import { createAdminClient } from '@/lib/supabase/admin'\nconst seen = new Map()\nvoid seen",
+    expect: 'must read the database on every request',
+  },
+  {
+    name: 'the key screen types a cap instead of reading it',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/app/(dashboard)/dashboard/api-keys/page.tsx',
+    find: '              {DEFAULT_PAGE_SIZE} by default, {MAX_PAGE_SIZE} at most',
+    replace: '              {50} by default, {MAX_PAGE_SIZE} at most',
+    expect: 'is typed onto the key screen',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

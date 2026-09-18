@@ -315,7 +315,21 @@ export type Database = {
             foreignKeyName: "audience_members_last_event_id_fkey"
             columns: ["last_event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_members_last_event_id_fkey"
+            columns: ["last_event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audience_members_last_order_id_fkey"
+            columns: ["last_order_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_orders"
             referencedColumns: ["id"]
           },
           {
@@ -443,6 +457,13 @@ export type Database = {
             columns: ["artist_id"]
             isOneToOne: false
             referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
             referencedColumns: ["id"]
           },
           {
@@ -649,7 +670,21 @@ export type Database = {
             foreignKeyName: "community_contributions_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_contributions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_contributions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "api_v1_orders"
             referencedColumns: ["id"]
           },
           {
@@ -979,6 +1014,13 @@ export type Database = {
             foreignKeyName: "discount_code_usages_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_code_usages_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -1049,6 +1091,13 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "discount_codes_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "discount_codes_event_id_fkey"
             columns: ["event_id"]
@@ -1184,6 +1233,13 @@ export type Database = {
             foreignKeyName: "event_addons_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_addons_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -1223,6 +1279,13 @@ export type Database = {
             columns: ["artist_id"]
             isOneToOne: false
             referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_artists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
             referencedColumns: ["id"]
           },
           {
@@ -1284,6 +1347,13 @@ export type Database = {
           url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "event_stream_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "event_stream_links_event_id_fkey"
             columns: ["event_id"]
@@ -1650,6 +1720,13 @@ export type Database = {
             foreignKeyName: "events_parent_event_id_fkey"
             columns: ["parent_event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_parent_event_id_fkey"
+            columns: ["parent_event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -1996,6 +2073,13 @@ export type Database = {
             foreignKeyName: "gigs_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gigs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -2028,6 +2112,13 @@ export type Database = {
           organisation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "kit_poster_downloads_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "kit_poster_downloads_event_id_fkey"
             columns: ["event_id"]
@@ -2307,6 +2398,13 @@ export type Database = {
             foreignKeyName: "marketing_attribution_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: true
+            referencedRelation: "api_v1_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -2392,6 +2490,13 @@ export type Database = {
             foreignKeyName: "marketing_attribution_reversal_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_reversal_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -2444,6 +2549,13 @@ export type Database = {
           volume_cap?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "marketing_campaign_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "marketing_campaign_event_id_fkey"
             columns: ["event_id"]
@@ -2838,6 +2950,13 @@ export type Database = {
             foreignKeyName: "marketing_match_run_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_match_run_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -2955,6 +3074,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "marketing_link"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "marketing_order_signal_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "api_v1_orders"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "marketing_order_signal_order_id_fkey"
@@ -3701,6 +3827,13 @@ export type Database = {
             foreignKeyName: "notifications_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -3764,6 +3897,13 @@ export type Database = {
             columns: ["addon_id"]
             isOneToOne: false
             referencedRelation: "event_addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_orders"
             referencedColumns: ["id"]
           },
           {
@@ -3873,6 +4013,13 @@ export type Database = {
             columns: ["discount_code_id"]
             isOneToOne: false
             referencedRelation: "discount_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
             referencedColumns: ["id"]
           },
           {
@@ -4091,6 +4238,53 @@ export type Database = {
           },
         ]
       }
+      organiser_api_keys: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          last_used_at: string | null
+          name: string
+          organisation_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          token_hash: string
+          token_prefix: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_used_at?: string | null
+          name: string
+          organisation_id: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          token_hash: string
+          token_prefix: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_used_at?: string | null
+          name?: string
+          organisation_id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          token_hash?: string
+          token_prefix?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_api_keys_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organiser_balance_ledger: {
         Row: {
           created_at: string
@@ -4129,6 +4323,13 @@ export type Database = {
           reference_type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "organiser_balance_ledger_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organiser_balance_ledger_event_id_fkey"
             columns: ["event_id"]
@@ -4199,7 +4400,21 @@ export type Database = {
             foreignKeyName: "organiser_marketing_consents_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_marketing_consents_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_marketing_consents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_orders"
             referencedColumns: ["id"]
           },
           {
@@ -4281,6 +4496,13 @@ export type Database = {
             foreignKeyName: "payments_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -4330,6 +4552,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payout_holds_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payout_holds_event_id_fkey"
             columns: ["event_id"]
@@ -4405,6 +4634,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payouts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payouts_event_id_fkey"
             columns: ["event_id"]
@@ -4503,7 +4739,21 @@ export type Database = {
             foreignKeyName: "platform_notifications_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_notifications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_orders"
             referencedColumns: ["id"]
           },
           {
@@ -4581,6 +4831,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pricing_rules_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pricing_rules_event_id_fkey"
             columns: ["event_id"]
@@ -4927,6 +5184,13 @@ export type Database = {
             foreignKeyName: "refund_request_tickets_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_attendees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_request_tickets_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
             referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
@@ -4995,7 +5259,21 @@ export type Database = {
             foreignKeyName: "refund_requests_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_orders"
             referencedColumns: ["id"]
           },
           {
@@ -5046,6 +5324,13 @@ export type Database = {
             columns: ["refund_id"]
             isOneToOne: false
             referencedRelation: "refunds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_tickets_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_attendees"
             referencedColumns: ["id"]
           },
           {
@@ -5138,6 +5423,13 @@ export type Database = {
             foreignKeyName: "refunds_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5188,6 +5480,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "reservations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reservations_event_id_fkey"
             columns: ["event_id"]
@@ -5246,6 +5545,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "saved_events_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "saved_events_event_id_fkey"
             columns: ["event_id"]
@@ -5313,6 +5619,13 @@ export type Database = {
           seat_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "seat_holds_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "seat_holds_event_id_fkey"
             columns: ["event_id"]
@@ -5518,6 +5831,13 @@ export type Database = {
             foreignKeyName: "seats_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seats_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -5581,6 +5901,13 @@ export type Database = {
             foreignKeyName: "share_link_events_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_link_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -5629,6 +5956,13 @@ export type Database = {
             columns: ["artist_id"]
             isOneToOne: false
             referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
             referencedColumns: ["id"]
           },
           {
@@ -5687,6 +6021,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "squad_members_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "squad_members_order_id_fkey"
             columns: ["order_id"]
@@ -5753,6 +6094,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "squads_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "squads_event_id_fkey"
             columns: ["event_id"]
@@ -5824,7 +6172,21 @@ export type Database = {
             foreignKeyName: "stream_messages_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stream_messages_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stream_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_attendees"
             referencedColumns: ["id"]
           },
           {
@@ -6052,6 +6414,13 @@ export type Database = {
             foreignKeyName: "ticket_price_history_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_price_history_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -6121,7 +6490,21 @@ export type Database = {
             foreignKeyName: "ticket_scans_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_scans_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_scans_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_attendees"
             referencedColumns: ["id"]
           },
           {
@@ -6220,6 +6603,13 @@ export type Database = {
             foreignKeyName: "ticket_tiers_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_tiers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -6265,7 +6655,21 @@ export type Database = {
             foreignKeyName: "ticket_transfers_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_transfers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_transfers_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_attendees"
             referencedColumns: ["id"]
           },
           {
@@ -6352,7 +6756,21 @@ export type Database = {
             foreignKeyName: "tickets_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_orders"
             referencedColumns: ["id"]
           },
           {
@@ -6586,6 +7004,13 @@ export type Database = {
             foreignKeyName: "venue_payouts_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_payouts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -6649,7 +7074,21 @@ export type Database = {
             foreignKeyName: "venue_share_ledger_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_share_ledger_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_share_ledger_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_orders"
             referencedColumns: ["id"]
           },
           {
@@ -6796,6 +7235,13 @@ export type Database = {
             foreignKeyName: "virtual_queue_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_queue_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -6845,6 +7291,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "waitlist_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "waitlist_event_id_fkey"
             columns: ["event_id"]
@@ -6901,6 +7354,276 @@ export type Database = {
       }
     }
     Views: {
+      api_v1_attendees: {
+        Row: {
+          checked_in: boolean | null
+          created_at: string | null
+          event_id: string | null
+          event_title: string | null
+          first_scanned_at: string | null
+          holder_email: string | null
+          holder_name: string | null
+          id: string | null
+          last_scanned_at: string | null
+          order_id: string | null
+          order_number: string | null
+          organisation_id: string | null
+          scan_count: number | null
+          status: string | null
+          ticket_code: string | null
+          ticket_tier_id: string | null
+          ticket_tier_name: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_ticket_tier_id_fkey"
+            columns: ["ticket_tier_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_v1_events: {
+        Row: {
+          category_id: string | null
+          city_primary: string | null
+          community_primary: string | null
+          cover_image_url: string | null
+          created_at: string | null
+          end_date: string | null
+          event_type: Database["public"]["Enums"]["event_type"] | null
+          id: string | null
+          is_free: boolean | null
+          max_capacity: number | null
+          organisation_id: string | null
+          published_at: string | null
+          slug: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["event_status"] | null
+          summary: string | null
+          timezone: string | null
+          title: string | null
+          updated_at: string | null
+          venue_city: string | null
+          venue_country: string | null
+          venue_name: string | null
+          venue_state: string | null
+          visibility: Database["public"]["Enums"]["event_visibility"] | null
+        }
+        Insert: {
+          category_id?: string | null
+          city_primary?: string | null
+          community_primary?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          event_type?: Database["public"]["Enums"]["event_type"] | null
+          id?: string | null
+          is_free?: boolean | null
+          max_capacity?: number | null
+          organisation_id?: string | null
+          published_at?: string | null
+          slug?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["event_status"] | null
+          summary?: string | null
+          timezone?: string | null
+          title?: string | null
+          updated_at?: string | null
+          venue_city?: string | null
+          venue_country?: string | null
+          venue_name?: string | null
+          venue_state?: string | null
+          visibility?: Database["public"]["Enums"]["event_visibility"] | null
+        }
+        Update: {
+          category_id?: string | null
+          city_primary?: string | null
+          community_primary?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          event_type?: Database["public"]["Enums"]["event_type"] | null
+          id?: string | null
+          is_free?: boolean | null
+          max_capacity?: number | null
+          organisation_id?: string | null
+          published_at?: string | null
+          slug?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["event_status"] | null
+          summary?: string | null
+          timezone?: string | null
+          title?: string | null
+          updated_at?: string | null
+          venue_city?: string | null
+          venue_country?: string | null
+          venue_name?: string | null
+          venue_state?: string | null
+          visibility?: Database["public"]["Enums"]["event_visibility"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "event_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_city_primary_fkey"
+            columns: ["city_primary"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "events_community_primary_fkey"
+            columns: ["community_primary"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "events_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_v1_orders: {
+        Row: {
+          addon_total_cents: number | null
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string | null
+          currency: string | null
+          discount_cents: number | null
+          event_id: string | null
+          fee_pass_type: Database["public"]["Enums"]["fee_pass_type"] | null
+          founding_fee_waived_cents: number | null
+          guest_email: string | null
+          guest_name: string | null
+          id: string | null
+          order_number: string | null
+          organisation_id: string | null
+          platform_fee_cents: number | null
+          status: Database["public"]["Enums"]["order_status"] | null
+          subtotal_cents: number | null
+          tax_cents: number | null
+          total_cents: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          addon_total_cents?: number | null
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          discount_cents?: number | null
+          event_id?: string | null
+          fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"] | null
+          founding_fee_waived_cents?: number | null
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: string | null
+          order_number?: string | null
+          organisation_id?: string | null
+          platform_fee_cents?: number | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          subtotal_cents?: number | null
+          tax_cents?: number | null
+          total_cents?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          addon_total_cents?: number | null
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          discount_cents?: number | null
+          event_id?: string | null
+          fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"] | null
+          founding_fee_waived_cents?: number | null
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: string | null
+          order_number?: string | null
+          organisation_id?: string | null
+          platform_fee_cents?: number | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          subtotal_cents?: number | null
+          tax_cents?: number | null
+          total_cents?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_attribution_invariant_breaches: {
         Row: {
           breach: string | null
@@ -6960,6 +7683,13 @@ export type Database = {
             foreignKeyName: "marketing_attribution_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: true
+            referencedRelation: "api_v1_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_attribution_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -6975,6 +7705,13 @@ export type Database = {
             columns: ["recipient_id"]
             isOneToOne: false
             referencedRelation: "marketing_recipient"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
             referencedColumns: ["id"]
           },
           {

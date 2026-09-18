@@ -73,6 +73,17 @@ const AUTH = [
   { re: /requireCronAuth\s*\(/, how: 'CRON_SECRET' },
   { re: /constructWebhookEvent|constructEvent/, how: 'Stripe signature' },
   { re: /resolveOrganiserScope\s*\(/, how: 'organiser scope' },
+  // Added 2026-09-18 with API1, and it was a real blind spot rather than a new
+  // need: `resolveOrganiserScope` is a thin wrapper that DELEGATES to
+  // `resolveOrganisationScope` (src/lib/payouts/auth.ts says so in its own
+  // header), and 13 files under src/app call the underlying one directly. The
+  // audit knew the wrapper's name and not the thing that does the work.
+  { re: /resolveOrganisationScope\s*\(/, how: 'organisation scope: getUser, then the id must be in the callers own owned list' },
+  // The public read API. Every v1 route file delegates to one of these two and
+  // holds no client of its own, which is not a convention here: it is enforced
+  // by scripts/guards/api-v1-organiser-scope.mjs, which fails the build if a
+  // route file contains `.from(` at all.
+  { re: /handleList\s*\(|handleItem\s*\(/, how: 'API v1 handlers: authenticateApiKey reads the key hash on every request, uncached' },
   { re: /getOrganiserEvent\s*\(/, how: 'organiser event gate' },
   { re: /requireAdmin|assertAdmin|requireCapability/, how: 'admin capability' },
   { re: /verifyHealthToken|HEALTH_CHECK_TOKEN/, how: 'health token' },
@@ -85,6 +96,8 @@ const AUTH = [
 const AUTHZ = [
   { re: /getOrganiserEvent\s*\(/, how: 'getOrganiserEvent (owner gate)' },
   { re: /resolveOrganiserScope\s*\(/, how: 'resolveOrganiserScope (owner gate)' },
+  { re: /resolveOrganisationScope\s*\(/, how: 'resolveOrganisationScope (owner gate): an id not in the callers own list is refused, never served' },
+  { re: /handleList\s*\(|handleItem\s*\(/, how: 'API v1 handlers: every read carries eq(organisation_id, scope.organisationId), held by a registered blocking guard' },
   { re: /owner_id\s*!==\s*\w+\.id|\w+\.owner_id\s*!==/, how: 'explicit owner_id comparison' },
   { re: /\.eq\(\s*['"]owner_id['"]\s*,\s*\w+(\.id)?\s*\)/, how: "eq('owner_id', user)" },
   { re: /\.eq\(\s*['"]user_id['"]\s*,\s*\w+(\.id)?\s*\)/, how: "eq('user_id', user)" },

@@ -2055,9 +2055,23 @@ const ROOT = join(HERE, '..', '..')
  * card processing". Two of those six tests fail against the code as it stood.
  * Measured through the gate's own suite step: 440 files, 5698 tests, 0 failed,
  * 0 skipped.
+ *
+ * 2026-09-18 (lane B, close-out API1, later again): raised 440/5698 ->
+ * 442/5741. Two files and 43 tests. tests/unit/growth/organiser-api pins the
+ * pure half of the organiser scoped read only API: the token shape, what the
+ * hash is over, that a credential is only ever read from the Authorization
+ * header, that a page request clamps rather than refuses, and that every
+ * response carries the organisation id while the one refusal that cannot is the
+ * one raised before a key is known. tests/unit/ci/types-drift-view-relationships
+ * pins a LOOSENING of the drift analyser, which is why it is nine tests and six
+ * of them are negatives: creating a view adds a relationship entry to every
+ * table that points at what the view selects, so 49 correct differences were
+ * reporting as genuine drift, and the fix must not become a way to launder a
+ * real foreign key change. Measured through the gate's own suite step:
+ * 442 files, 5741 tests, 0 failed, 0 skipped.
  */
-const MIN_FILES = 440
-const MIN_TESTS = 5698
+const MIN_FILES = 442
+const MIN_TESTS = 5741
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

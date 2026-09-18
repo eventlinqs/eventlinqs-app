@@ -110,6 +110,14 @@
  *                              method sentence is chosen by the method used, the
  *                              measured claim stays out of reach, and the call to
  *                              action sits below the result
+ *   api-v1-organiser-scope     no row leaves the public read API without the
+ *                              organisation predicate in its query: no route file
+ *                              can query for itself, the reader is the only reader,
+ *                              the three views carry the scope column and cannot be
+ *                              written through, an out of scope id answers 404 and
+ *                              never 403, every payload names its organisation, the
+ *                              key lookup is uncached, and the key screen reads the
+ *                              caps it documents rather than typing them
  *   product-loops-carry-their-parameters  the ticket email, rendered, carries the
  *                              run-your-event line and both parameters; the
  *                              confirmation page, the share bar and the
@@ -1131,6 +1139,15 @@ const GUARDS = [
   // agreeing with what the platform charges, or the method sentence goes
   // missing and arithmetic starts reading as a prediction.
   'scripts/guards/forecast-reads-every-number.mjs',
+  // Close-out API1. The public read API's one promise is that a key for
+  // organiser A cannot see organiser B, and the whole of it rests on a single
+  // predicate being present on every query the surface makes. A predicate that
+  // is present by convention fails silently: the route works, the tests pass,
+  // and it returns everybody's rows. This proves the predicate, proves that no
+  // route file can query around it, proves the views it names carry the column
+  // and cannot be written through, and proves an out of scope id answers 404
+  // rather than the 403 that would confirm the row exists.
+  'scripts/guards/api-v1-organiser-scope.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and

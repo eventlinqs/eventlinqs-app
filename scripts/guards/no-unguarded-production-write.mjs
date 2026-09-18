@@ -125,13 +125,61 @@ const TEST_SUPABASE_REF = 'vkapkibzokmfaxqogypq'
  *                      file to prove a guard fires. It opens no connection of its
  *                      own, and a guard that fails on its own test fixtures
  *                      teaches people to delete the fixtures.
+ *   api-v1 scope       added 2026-09-18 with API1. Same class as the drills: it
+ *                      holds `.insert(`, `.update(` and `.delete(` as the list of
+ *                      mutations it REFUSES to find on the API read path, and the
+ *                      word service_role because it checks that the migration
+ *                      revokes writes from that role. It reads files with
+ *                      readFileSync and imports no database client of any kind,
+ *                      which is checked below rather than asserted here. The
+ *                      preflight is not an option for it: it runs in prebuild on
+ *                      the Vercel build host where no project can be resolved, and
+ *                      assertNotProduction refuses outright when it cannot tell,
+ *                      so adding it would fail every deployment.
  */
-const EXCLUDED = new Set([
+/*
+ * THE LIST IS TWO LISTS, because the four entries were never one kind of thing
+ * and treating them as one is what made the check below wrong on its first
+ * attempt: it read the guard's own regexes, saw the text `@supabase/supabase-js`
+ * in a pattern, and failed the guard for importing what it was searching for.
+ */
+
+/** The machinery. These files ARE the credential and connection handling. */
+const EXCLUDED_IMPLEMENTATION = [
   'scripts/guards/no-unguarded-production-write.mjs',
   'scripts/lib/production-write-preflight.mjs',
   'scripts/lib/db-credentials.mjs',
+]
+
+/**
+ * Files that merely NAME the shapes and open nothing. This claim is checked
+ * below rather than trusted, because without a check the set is a list somebody
+ * appends to, and the next entry is how the guard stops being one.
+ */
+const EXCLUDED_NAMES_ONLY = [
   'scripts/verify/guard-failure-drills.mjs',
-])
+  'scripts/guards/api-v1-organiser-scope.mjs',
+]
+
+const EXCLUDED = new Set([...EXCLUDED_IMPLEMENTATION, ...EXCLUDED_NAMES_ONLY])
+
+const IMPORTS_A_CLIENT = [
+  "from '@supabase/supabase-js'",
+  "require('@supabase/supabase-js')",
+  "from 'pg'",
+  "require('pg')",
+]
+for (const rel of EXCLUDED_NAMES_ONLY) {
+  const src = readFileSync(join(ROOT, rel), 'utf8')
+  const found = IMPORTS_A_CLIENT.filter((needle) => src.includes(needle))
+  if (found.length > 0) {
+    console.error(
+      `[no-unguarded-production-write] FAIL: ${rel} is excluded as naming the shapes only, ` +
+        `but it imports a database client (${found.join(', ')}). Move it off that list or off the client.`,
+    )
+    process.exit(1)
+  }
+}
 
 const CREDENTIAL = /SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SERVICE_ROLE_KEY_PREVIEW|SUPABASE_SECRET_KEY|service_role/
 const MUTATION = /\.insert\(|\.upsert\(|\.update\(|\.delete\(|\.rpc\(|\.upload\(|\.remove\(|createUser\(|deleteUser\(|updateUserById\(|inviteUserByEmail\(|method\s*:\s*['"`](POST|PUT|PATCH|DELETE)['"`]/
