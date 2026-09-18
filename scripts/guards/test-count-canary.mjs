@@ -2204,9 +2204,23 @@ const ROOT = join(HERE, '..', '..')
  * its own, on a machine shared with two other build lanes. It is recorded as a
  * flake in C:/dev/REVIEW-QUEUE-C.md rather than absorbed into this baseline,
  * which is what the failure message below asks for.
+ *
+ * 19 SEPTEMBER 2026, lane C, 451/5837 -> 452/5866. ONE new file,
+ * tests/unit/media/candidate-ladder, 29 tests, holding the arithmetic behind
+ * scripts/guards/candidate-ladder-has-no-dead-rung.mjs: which configured image
+ * width a browser can select for a given slot, and the floor below which
+ * next/image will not emit one at all.
+ *
+ * THE CASE WORTH NAMING is "does NOT read a media-query breakpoint as a slot".
+ * The first derivation matched `(\d+)px` across the whole hint, so
+ * `(max-width: 639px) 100vw, 320px` declared three slots instead of one, and the
+ * two breakpoints then made ladder rungs look alive that nothing renders at.
+ * The guard passed on the real tree while doing that, because it failed in the
+ * permissive direction, which is the only direction a gate can fail quietly in.
+ * The test found it; reading the code had not.
  */
-const MIN_FILES = 451
-const MIN_TESTS = 5837
+const MIN_FILES = 452
+const MIN_TESTS = 5866
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -75,6 +75,13 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { declareWork } from '../lib/work-report.mjs'
+/*
+ * The two parsers are SHARED with candidate-ladder-has-no-dead-rung.mjs, which
+ * reads the same two files for a different question. Two guards holding private
+ * copies of one parsing rule is exactly the drift this family exists to stop,
+ * and this guard's own header already says so about the pairing table.
+ */
+import { parseCellPx, parseHints } from './lib/candidate-ladder.mjs'
 
 const ROOT = process.cwd()
 const SRC = join(ROOT, 'src')
@@ -180,13 +187,8 @@ if (rhythmRaw !== null && sizesRaw !== null && pairsRaw !== null) {
   for (const m of rhythm.matchAll(/export const (\w+_CELL) = '([^']*)' as const/g)) {
     cellClass.set(m[1], m[2])
   }
-  /** name -> { cell, base, sm } */
-  const cellPx = new Map()
-  for (const m of rhythm.matchAll(
-    /export const (\w+_PX) = \{ cell: (\w+), base: (\d+), sm: (\d+) \}/g,
-  )) {
-    cellPx.set(m[1], { cell: m[2], base: Number(m[3]), sm: Number(m[4]) })
-  }
+  /** name -> { cell, base, sm }, parsed by the shared reader. */
+  const cellPx = parseCellPx(rhythm)
 
   if (cellPx.size === 0) {
     fail(RHYTHM, 'no `*_PX` cell declarations were found at all, so clauses 1 and 2 would pass vacuously')
@@ -223,22 +225,12 @@ if (rhythmRaw !== null && sizesRaw !== null && pairsRaw !== null) {
 
   /* ---------------- clause 2: each rail hint is derived from its cell ------- */
 
-  /** The MEDIA_SIZES object literal, bounded so a later object cannot leak in. */
-  const tableStart = sizes.indexOf('export const MEDIA_SIZES = {')
-  const tableEnd = sizes.indexOf('\n} as const', tableStart)
-  if (tableStart === -1 || tableEnd === -1) {
+  /** key -> literal, bounded so a later object in the file cannot leak in. */
+  const parsed = parseHints(sizes)
+  if (parsed === null) {
     fail(SIZES, 'the MEDIA_SIZES object literal could not be located, so no hint can be checked')
   }
-  const table = tableStart === -1 ? '' : sizes.slice(tableStart, tableEnd)
-  /** key -> literal */
-  const hint = new Map()
-  for (const m of table.matchAll(/^\s{2}'?([A-Za-z][\w-]*)'?:\s*$|^\s{2}'?([A-Za-z][\w-]*)'?:\s*'([^']*)',/gm)) {
-    if (m[3] !== undefined) hint.set(m[2], m[3])
-  }
-  /* A hint whose literal wrapped onto its own line. */
-  for (const m of table.matchAll(/^\s{2}'?([A-Za-z][\w-]*)'?:\s*\n\s*'([^']*)',/gm)) {
-    hint.set(m[1], m[2])
-  }
+  const hint = parsed ?? new Map()
 
   hintsInTable = hint.size
   if (hint.size === 0) {

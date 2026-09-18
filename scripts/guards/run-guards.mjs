@@ -256,6 +256,12 @@
  *                              both agree, every rail hint is derived from a cell, no cell
  *                              width or raw sizes string is written anywhere else, no hint
  *                              is dead and every variant is mapped (close-out C8B.3)
+ *   candidate-ladder-has-no-dead-rung
+ *                             every width `next.config.ts` offers is one some declared slot
+ *                              can select, and every declared slot is reachable at the 2x
+ *                              contract. A width nobody selects is still written into the
+ *                              srcset of every fixed-width image, 1,404 times on the
+ *                              homepage at about 230 bytes each (close-out C8B.3)
  *   weak-network-contract     the checkout survives a submit that never reached the server,
  *                              the root service worker keeps only content-hashed assets so
  *                              no cache can serve a stale price, it registers after the
@@ -1558,6 +1564,14 @@ const GUARDS = [
   // needing 644 and were BLURRY, and a 56px dashboard thumbnail fetched 640px.
   // Five clauses, each drilled red and green.
   'scripts/guards/image-hints-match-the-cell.mjs',
+  // Close-out C8B.3 (19 September 2026): the two width lists in next.config.ts are
+  // a CLAIM about the slots this platform renders, and the claim had already gone
+  // stale. Their own comment named "16, 32, 192, 256, 288, 320 and 512" as the
+  // fixed sizes in use; the sizes rework of 18 September moved the smallest slot to
+  // 24, and 16 went on being emitted 142 times across the fifteen pinned routes for
+  // a slot that no longer existed. Next 16 removed 16 from its own default for the
+  // same reason. Three clauses, each drilled red and green.
+  'scripts/guards/candidate-ladder-has-no-dead-rung.mjs',
   'scripts/guards/weak-network-contract.mjs',
   // Close-out C17 (7 September 2026): the homepage hero never renders without
   // imagery. Production showed a flat navy panel the day every event had ended;

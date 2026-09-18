@@ -120,6 +120,7 @@ function analyse(html) {
   const gz = gzipSync(Buffer.from(html)).length
   let srcsetBytes = 0
   let candidates = 0
+  let firstCandidate = null
   const byRole = new Map()
 
   /*
@@ -136,6 +137,7 @@ function analyse(html) {
     if (!set) continue
     const value = set[1]
     const n = value.split(',').length
+    if (firstCandidate === null) firstCandidate = value.split(',')[0].trim()
     const role = text.match(SIZES_ATTR)?.[1] ?? '(no sizes: fixed width, x descriptors)'
     srcsetBytes += value.length
     candidates += n
@@ -146,9 +148,31 @@ function analyse(html) {
     byRole.set(role, entry)
   }
 
+  /*
+   * ONE CANDIDATE, VERBATIM, AND ITS PARTS. A count and a total cannot tell you
+   * WHY a candidate costs what it costs, and the two levers are different work:
+   * fewer candidates is a framework question, shorter candidates is a src
+   * question. The sample is the served bytes, never a reconstruction.
+   */
+  const sample = firstCandidate
+    ? (() => {
+        const url = firstCandidate.split(' ')[0]
+        const encodedSrc = /[?&]url=([^&]*)/.exec(url)?.[1] ?? ''
+        return {
+          candidate: firstCandidate,
+          bytes: firstCandidate.length,
+          encodedSrcBytes: encodedSrc.length,
+          decodedSrc: decodeURIComponent(encodedSrc),
+          srcSharePercent:
+            firstCandidate.length === 0 ? 0 : (encodedSrc.length / firstCandidate.length) * 100,
+        }
+      })()
+    : null
+
   return {
     documentBytes: total,
     gzipBytes: gz,
+    sample,
     srcsetBytes,
     candidates,
     sharePercent: total === 0 ? 0 : (srcsetBytes / total) * 100,
@@ -192,6 +216,13 @@ for (const path of paths) {
     `  document ${a.documentBytes} B raw / ${a.gzipBytes} B gzip     srcset ${a.srcsetBytes} B` +
       ` in ${a.candidates} candidates  (${a.sharePercent.toFixed(1)}% of the document)`,
   )
+  if (a.sample) {
+    console.log(
+      `    one candidate is ${a.sample.bytes} B, of which ${a.sample.encodedSrcBytes} B ` +
+        `(${a.sample.srcSharePercent.toFixed(1)}%) is the encoded src`,
+    )
+    console.log(`    ${a.sample.candidate}`)
+  }
   for (const r of a.byRole) {
     const each = Math.round(r.candidates / r.images)
     console.log(
