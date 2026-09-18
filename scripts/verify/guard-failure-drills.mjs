@@ -4347,6 +4347,43 @@ const DRILLS = [
   },
 
   /*
+   * THE TILE, added 19 September 2026 with the authed half of the drive. The
+   * guard's header used to say it could not judge `tile` because the one call
+   * site was behind a login nothing signed in to. The hint over that call site
+   * was wrong the whole time and under-fetched at 6 of 9 viewports, so the hole
+   * became three more clauses and these three drills.
+   */
+  {
+    name: 'a route that renders a marketing tile drops out of the fidelity drive authed list',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'scripts/verify/image-hint-fidelity-drive.mjs',
+    find: "const AUTHED_PATHS = ['/dashboard/events/[id]/launch-kit']",
+    replace: "const AUTHED_PATHS = ['/dashboard/events/[id]/door']",
+    expect: 'is not in AUTHED_PATHS',
+  },
+  {
+    name: 'the authed route list is renamed away and the guard judges no tile route at all',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'scripts/verify/image-hint-fidelity-drive.mjs',
+    find: 'const AUTHED_PATHS = [',
+    replace: 'const AUTHED_ROUTES = [',
+    expect: 'the AUTHED_PATHS list could not be found',
+  },
+  {
+    name: 'a layout excluded from the raster-ceiling clause loses the reason for the exclusion',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'scripts/guards/marketing-bands-are-supplyable.mjs',
+    // Emptied, not shortened. The drill one entry above was written the wrong
+    // way round the first time (it trimmed a sentence that stayed over the
+    // 40-character floor, the guard passed, and the DRILL was the thing that was
+    // wrong), so this one deletes the value outright.
+    find:
+      "    rasterWhy: 'an ORGANISER-SUPPLIED event cover sits behind this tile rather than a licensed library raster, so the library ingest ceiling is not the ceiling over it and judging it against one would be judging the wrong file. Law 6 governs what may be done with it: render what was supplied, never invent pixels it does not have.',",
+    replace: "    rasterWhy: '',",
+    expect: 'is excluded from the raster-ceiling clause with no',
+  },
+
+  /*
    * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of
    * scripts/guards/no-drill-residue.mjs.
    *

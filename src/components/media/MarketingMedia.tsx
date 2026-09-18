@@ -27,7 +27,10 @@ import { BrandedPlaceholder } from './decorative/branded-placeholder'
  *     content column above `lg` and one column below it.
  *   - 'band-full-column' : a band filling the whole capped content column.
  *   - 'band-full-bleed'  : a band the full viewport wide, outside any container.
- *   - 'tile'             : a marketing grid tile.
+ *   - 'tile-dashboard-half-column' : a tile in a two-up grid inside the
+ *                          DASHBOARD container, beside the sidebar. Its ladder
+ *                          is not any public page's, which is why it wore a
+ *                          public grid's hint and under-fetched for months.
  *
  * Always lazy (below the fold by definition - the hero is HeroMedia, the only
  * priority image per route). Renders into a `fill` parent that sets the aspect.
@@ -37,7 +40,7 @@ export type MarketingMediaVariant =
   | 'band-half-column'
   | 'band-full-column'
   | 'band-full-bleed'
-  | 'tile'
+  | 'tile-dashboard-half-column'
 
 interface Props {
   /** Raster URL from the platform photo library. SVG falls back gracefully. */
@@ -56,7 +59,7 @@ const SIZES_BY_VARIANT: Record<MarketingMediaVariant, string> = {
   'band-half-column': MEDIA_SIZES.bandHalfColumn,
   'band-full-column': MEDIA_SIZES.bandFullColumn,
   'band-full-bleed': MEDIA_SIZES.bandFullBleed,
-  tile: MEDIA_SIZES.featureTile,
+  'tile-dashboard-half-column': MEDIA_SIZES.tileDashboardHalfColumn,
 }
 
 export function MarketingMedia({

@@ -512,7 +512,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                 visual anchor (details stay below the image, never on it). */}
             <div className="overflow-hidden rounded-xl border border-ink-100 shadow-sm">
               <div className="relative aspect-[1200/630]">
-                <MarketingMedia src={event.cover_image_url ?? ''} alt="" variant="tile" />
+                <MarketingMedia src={event.cover_image_url ?? ''} alt="" variant="tile-dashboard-half-column" />
               </div>
               <div className="flex items-center justify-between bg-[#0A1628] px-3 py-1.5">
                 <span className="shrink-0 font-display text-[10px] font-bold uppercase tracking-[0.2em] text-white">
