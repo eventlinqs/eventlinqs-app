@@ -4336,8 +4336,13 @@ const DRILLS = [
     name: 'an exemption in the register loses the reason that justifies it',
     guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
     file: 'scripts/guards/marketing-bands-are-supplyable.mjs',
-    find: "why: 'the /about story band is the full viewport",
-    replace: "why: 'because",
+    // The first version of this drill shortened the sentence to "because" and
+    // the guard PASSED, correctly: what was left still ran past the 40-character
+    // floor. The drill was wrong, not the guard, and only running it red found
+    // that. It now empties the reason, which is the thing the clause is for.
+    find:
+      "    why: 'the /about story band is the full viewport, so a 2x screen at 1920 needs 3840 physical pixels and the hero raster ceiling is 1920. Same owner action, same law.',",
+    replace: "    why: '',",
     expect: 'indistinguishable from a forgotten one',
   },
 
