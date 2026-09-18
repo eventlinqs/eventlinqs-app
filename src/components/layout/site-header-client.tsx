@@ -11,7 +11,6 @@ import { SiteHeaderAccountDropdown } from './site-header-account-dropdown'
 import { useHeaderScrollState } from '@/hooks/use-header-scroll-state'
 import { useHeroPresence } from '@/contexts/hero-presence-context'
 import type { DetectedLocation } from '@/lib/geo/detect'
-import type { PickerCityGroups } from '@/lib/locations/picker-cities'
 
 /**
  * Custom event name dispatched on `window` after LocationPicker writes a
@@ -40,7 +39,6 @@ const NAV_LINKS = [
 
 interface SiteHeaderClientProps {
   location: DetectedLocation
-  cities: PickerCityGroups
   /** Resolved Supabase user (minimal identity) or null when anonymous. */
   user: AccountUser | null
   /** Authenticated user's email; surfaces in the avatar dropdown header. */
@@ -122,7 +120,7 @@ export function readCityCookie(): DetectedLocation | null {
  *   - HeroMedia itself is NOT mutated; only a thin tracker wrapper
  *     registers with the HeroPresenceProvider.
  */
-export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = false }: SiteHeaderClientProps) {
+export function SiteHeaderClient({ location, user, userEmail, isAdmin = false }: SiteHeaderClientProps) {
   const dropdownUser = user && userEmail ? { ...user, email: userEmail } : null
   const [isOpen, setIsOpen] = useState(false)
 
@@ -292,7 +290,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
             </div>
 
             <div className="hidden lg:block">
-              <LocationPicker currentLocation={displayLocation} cities={cities} variant="onDark" />
+              <LocationPicker currentLocation={displayLocation} variant="onDark" />
             </div>
 
             {dropdownUser ? (
@@ -413,7 +411,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = 
 
         <nav className="flex-1 overflow-y-auto px-4 py-6" aria-label="Mobile navigation">
           <div className="mb-4">
-            <LocationPicker currentLocation={displayLocation} cities={cities} variant="inline" onChange={closeSheet} />
+            <LocationPicker currentLocation={displayLocation} variant="inline" onChange={closeSheet} />
           </div>
           <ul className="space-y-1">
             {NAV_LINKS.map(link => (

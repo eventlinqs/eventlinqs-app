@@ -1,13 +1,17 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDeferredComponent } from './use-deferred-component'
 import { MapPinIcon } from './location-picker-icons'
+import {
+  fetchPickerCatalogue,
+  loadedPickerCatalogue,
+  type PickerCatalogue,
+} from '@/lib/locations/picker-cities-client'
 import type { DetectedLocation } from '@/lib/geo/detect'
-import type { PickerCityGroups } from '@/lib/locations/picker-cities'
 
 /**
- * THE DIALOG IS FETCHED ON INTENT, NOT ON EVERY PAGE LOAD.
+ * THE DIALOG IS FETCHED ON INTENT, NOT ON EVERY PAGE LOAD, AND SO IS ITS DATA.
  *
  * This component renders in the site header, and the site header is imported by
  * 22 route files directly plus the page templates the rest use, so its client
@@ -41,15 +45,37 @@ import type { PickerCityGroups } from '@/lib/locations/picker-cities'
  * city never pays. One who does shows intent first: the pointer enters the
  * trigger, or focus lands on it by keyboard, and the chunk is requested then.
  *
- * WHAT MOVED WITH THE DIALOG. Its own state moved too, so closing now unmounts
- * rather than resetting four `useState` values by hand. `closeDialog` below is
- * therefore shorter than the one it replaces and does the same two things that
- * were ever visible: it closes, and it returns focus to the trigger.
+ * ============================================================================
+ * THE DATA FOLLOWS THE CODE, AND UNTIL 19 SEPTEMBER 2026 IT DID NOT
+ * ============================================================================
+ *
+ * This component used to take a `cities` prop: the whole merged catalogue,
+ * every Australian city with its latitude and longitude, handed across the
+ * server/client boundary by the header. Splitting the CODE did nothing to it. A
+ * prop that crosses that boundary is serialised into the RSC payload of the
+ * document, so the catalogue shipped in the HTML of every page whether the
+ * dialog opened or not, and on a page with no events on it at all it was among
+ * the largest things there:
+ *
+ *   /login   document 95,832 B, flight payload 83,282 B (86.9 percent)
+ *            the catalogue inside it: 6,152 B, 6.4 percent of the document,
+ *            serialised TWICE because the header renders this component for the
+ *            desktop bar and again for the mobile sheet
+ *
+ * It now arrives from `/api/location/cities` on the SAME arming signal as the
+ * chunk, so a visitor who shows intent fetches both in parallel and a visitor
+ * who never touches the picker fetches neither.
+ * `scripts/guards/no-catalogue-in-every-document.mjs` holds it there, in the
+ * built documents rather than in the source.
+ *
+ * WHAT A VISITOR SEES IF THE DATA HAS NOT LANDED WHEN THEY CLICK. The dialog
+ * opens with its search box and a designed skeleton where the list goes, and
+ * settles into the list. It is not a new failure mode invented here: the CHUNK
+ * has always been able to arrive after the click, and before this change that
+ * showed as a button which did nothing at all.
  */
 interface LocationPickerProps {
   currentLocation: DetectedLocation
-  /** Curated + dynamic picker cities. Fetched server-side and passed in. */
-  cities: PickerCityGroups
   /** Visual variant. `pill` = main bar button (light bg). `onDark` = pill on dark/glass header. `inline` = full-width row in mobile sheet. */
   variant?: 'pill' | 'onDark' | 'inline'
   /** Optional callback fired after selection closes (e.g. to close mobile sheet). */
@@ -58,20 +84,54 @@ interface LocationPickerProps {
 
 export function LocationPicker({
   currentLocation,
-  cities,
   variant = 'pill',
   onChange,
 }: LocationPickerProps) {
   const [open, setOpen] = useState(false)
   const [armed, setArmed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const [catalogue, setCatalogue] = useState<PickerCatalogue | null>(null)
+  const [catalogueFailed, setCatalogueFailed] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
-  /** Request the dialog chunk. Safe to call repeatedly. */
+  /** Request the dialog chunk and its catalogue. Safe to call repeatedly. */
   const arm = useCallback(() => setArmed(true), [])
 
   const LocationPickerPanel = useDeferredComponent(armed, () =>
     import('./location-picker-panel').then(m => m.LocationPickerPanel),
   )
+
+  useEffect(() => {
+    if (!armed) return
+    // Another picker on this page may already hold it. `fetchPickerCatalogue`
+    // would answer from the same store, but reading it first keeps the common
+    // second-picker case out of the promise queue entirely.
+    const already = loadedPickerCatalogue()
+    if (already) {
+      setCatalogue(already)
+      return
+    }
+    let cancelled = false
+    setCatalogueFailed(false)
+    fetchPickerCatalogue().then(
+      next => {
+        if (!cancelled) setCatalogue(next)
+      },
+      error => {
+        if (cancelled) return
+        console.error('[location-picker] could not load the city catalogue:', error)
+        setCatalogueFailed(true)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [armed, attempt])
+
+  const retryCatalogue = useCallback(() => {
+    setCatalogueFailed(false)
+    setAttempt(n => n + 1)
+  }, [])
 
   const closeDialog = useCallback(() => {
     setOpen(false)
@@ -124,7 +184,9 @@ export function LocationPicker({
       {LocationPickerPanel && open ? (
         <LocationPickerPanel
           currentLocation={currentLocation}
-          cities={cities}
+          cities={catalogue}
+          citiesFailed={catalogueFailed}
+          onRetryCities={retryCatalogue}
           onClose={closeDialog}
           onChange={onChange}
         />

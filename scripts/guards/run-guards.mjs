@@ -320,6 +320,13 @@
  *                              ever go down. Two modes: this half judges the contract and
  *                              weighs nothing, npm's postbuild runs it with --built and
  *                              weighs the build (C8B.3/C8B.4)
+ *   no-catalogue-in-every-document
+ *                             a reference list read only after an action is not serialised
+ *                              into the document of every page. Two modes, as above: this
+ *                              half judges the contract, postbuild's --built weighs the
+ *                              built documents. It passes by finding NOTHING, so it
+ *                              calibrates its own matcher against a known positive first
+ *                              (C8B.3)
  *   all-in-pricing            no buyer is shown a number they will not pay: the fee value has
  *                              ONE source, every buyer-facing price surface resolves it live,
  *                              and no cart total is a per-ticket figure multiplied (SEO4)
@@ -973,6 +980,16 @@ const GUARDS = [
   // such rewrite a static import that crept back is the new normal. This names
   // that edit.
   'scripts/guards/interaction-only-chrome-is-split.mjs',
+  // THE HALF OF THAT SPLIT NOTHING WAS WATCHING: the code moved and the DATA did
+  // not. The header handed the whole picker city catalogue to the client
+  // component as a prop, and a prop crossing the server/client boundary is
+  // serialised into the RSC payload whether the component reading it ever mounts
+  // or not. 6,988 bytes, twice, on every page of the platform, 7.29 percent of
+  // the login document, for a dialog almost nobody opens. initial-bundle-budget
+  // recorded the JavaScript win while the same feature's bytes sat in the HTML
+  // where no gate was looking. THIS HALF WEIGHS NOTHING and says so; the proof is
+  // the same file run with --built from npm's postbuild (close-out C8B.3).
+  'scripts/guards/no-catalogue-in-every-document.mjs',
   // A ROUTE WHOSE RESPONSES ARE SHARED AT THE EDGE MAY NOT RENDER ONE VISITOR'S
   // NAME. /events carried `CDN-Cache-Control: public, s-maxage=60` with no
   // signed-in exclusion while rendering the ordinary `<SiteHeader />`, which

@@ -18,6 +18,7 @@ import {
   analyseDocument,
   candidateLists,
   candidateSample,
+  catalogueWeight,
   flightPayload,
 } from '../../../scripts/perf/lib/document-weight.mjs'
 
@@ -133,5 +134,112 @@ describe('analyseDocument on a document shaped like the served ones', () => {
       '<img sizes="b" srcset="1 1w" alt="">' +
       FLIGHT
     expect(analyseDocument(two).byRole.map(r => r.sizes)).toEqual(['a', 'b'])
+  })
+})
+
+/**
+ * THE CATALOGUE MATCHER, WHICH FAILS THE OPPOSITE WAY ROUND FROM EVERYTHING
+ * ABOVE IT.
+ *
+ * `flightPayload` reporting zero is loud: `analyseDocument` throws on it. The
+ * catalogue matcher CANNOT throw on zero, because zero is the state the work
+ * exists to reach, so a matcher that has silently stopped matching produces the
+ * same answer as a platform that is clean. `scripts/guards/
+ * no-catalogue-in-every-document.mjs` calibrates itself against a known
+ * positive before it judges anything for exactly that reason, and these cases
+ * are the other half of it: they pin the shapes the calibration asserts.
+ */
+describe('catalogueWeight', () => {
+  /** A row as it arrives inside a flight chunk: JSON inside a JS string, quotes escaped. */
+  const escapedRow = (slug: string) =>
+    `{\\"city\\":\\"${slug}\\",\\"slug\\":\\"${slug}\\",\\"latitude\\":-37.8,\\"isLaunchCity\\":true}`
+  /** The same row inside a `.rsc` payload, where nothing is escaped. */
+  const plainRow = (slug: string) =>
+    `{"city":"${slug}","slug":"${slug}","latitude":-37.8,"isLaunchCity":true}`
+
+  it('reads a row in the escaped form a flight chunk carries', () => {
+    const r = catalogueWeight(`<script>x ${escapedRow('geelong')} y</script>`, { marker: 'isLaunchCity' })
+    expect(r.rows).toBe(1)
+    expect(r.distinct).toBe(1)
+    expect(r.bySlug).toEqual([['geelong', 1]])
+    expect(r.bytes).toBe(escapedRow('geelong').length)
+  })
+
+  it('reads the same row unescaped, because an .rsc payload is not inside a string', () => {
+    const r = catalogueWeight(plainRow('geelong'), { marker: 'isLaunchCity' })
+    expect(r.rows).toBe(1)
+    expect(r.bytes).toBe(plainRow('geelong').length)
+  })
+
+  it('counts how many WHOLE copies of the catalogue a document carries', () => {
+    // The header renders the picker for the desktop bar and again for the
+    // mobile sheet, so the real documents carried two. A count of rows alone
+    // cannot tell two copies of twenty cities from one copy of forty.
+    const two = [escapedRow('melbourne'), escapedRow('geelong'), escapedRow('melbourne'), escapedRow('geelong')].join(',')
+    const r = catalogueWeight(two, { marker: 'isLaunchCity' })
+    expect(r.rows).toBe(4)
+    expect(r.distinct).toBe(2)
+    expect(r.copies).toBe(2)
+  })
+
+  it('is not anchored on the field ORDER, so reordering a mapper cannot blind it', () => {
+    const marked = '{\\"isLaunchCity\\":true,\\"slug\\":\\"hobart\\",\\"city\\":\\"Hobart\\"}'
+    const r = catalogueWeight(marked, { marker: 'isLaunchCity' })
+    expect(r.rows).toBe(1)
+    expect(r.bySlug).toEqual([['hobart', 1]])
+  })
+
+  it('counts the flat array form too, which carries no per-row marker', () => {
+    const arr = '\\"validSlugs\\":[\\"melbourne\\",\\"geelong\\"]'
+    const r = catalogueWeight(arr, { marker: 'isLaunchCity', arrayKeys: ['validSlugs'] })
+    expect(r.rows).toBe(0)
+    expect(r.arrays).toBe(1)
+    expect(r.bytes).toBe(arr.length)
+  })
+
+  it('reports zero on a clean document rather than throwing, because zero is the goal', () => {
+    const r = catalogueWeight('<html><body>nothing here</body></html>', { marker: 'isLaunchCity' })
+    expect(r.bytes).toBe(0)
+    expect(r.rows).toBe(0)
+    expect(r.copies).toBe(0)
+  })
+
+  it('REFUSES when it matches objects it cannot name, because that is the wrong thing counted', () => {
+    // The marker is present and no row has a slug: the matcher is reading some
+    // other object's field. A byte count attributed to the wrong thing reads as
+    // a finding and is not one.
+    expect(() =>
+      catalogueWeight('{\\"someOther\\":1,\\"isLaunchCity\\":true}', { marker: 'isLaunchCity' }),
+    ).toThrow(/REFUSING/)
+  })
+
+  it('refuses a call with no marker rather than measuring nothing', () => {
+    expect(() => catalogueWeight('anything', {})).toThrow(/needs a marker/)
+  })
+
+  it('takes the row itself and not the object wrapping it', () => {
+    // The rows arrive inside the props object of a client component, so the
+    // enclosing braces are always somebody else's. The scan has to land on the
+    // row, or every measurement includes the wrapper and is too big.
+    const wrapped = '{\\"cities\\":[{\\"slug\\":\\"perth\\",\\"isLaunchCity\\":true}]}'
+    const r = catalogueWeight(wrapped, { marker: 'isLaunchCity' })
+    expect(r.rows).toBe(1)
+    expect(r.bySlug).toEqual([['perth', 1]])
+    expect(r.bytes).toBe('{\\"slug\\":\\"perth\\",\\"isLaunchCity\\":true}'.length)
+  })
+
+  it('does not count an object that is not flat, because the scan cannot have bounded it', () => {
+    // A nested object AFTER the marker puts the first closing brace inside the
+    // nested one, so the slice is not a whole row. Counting it would attribute
+    // a partial, arbitrary byte count to the catalogue.
+    const notFlat = '{\\"slug\\":\\"perth\\",\\"isLaunchCity\\":true,\\"meta\\":{\\"x\\":1}}'
+    expect(catalogueWeight(notFlat, { marker: 'isLaunchCity' }).rows).toBe(0)
+  })
+
+  it('reports the share as a share of the whole document', () => {
+    const row = escapedRow('perth')
+    const html = `<html>${row}</html>`
+    const r = catalogueWeight(html, { marker: 'isLaunchCity' })
+    expect(r.sharePercent).toBeCloseTo((row.length / html.length) * 100, 6)
   })
 })
