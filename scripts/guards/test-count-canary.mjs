@@ -2071,8 +2071,23 @@ const ROOT = join(HERE, '..', '..')
  * (every useConsent consumer sits inside the tree that is now lazily fetched,
  * which is the assumption that makes deferring the provider safe).
  */
-const MIN_FILES = 441
-const MIN_TESTS = 5703
+/*
+ * 2026-09-18, LB3: 442 files / 5711 tests, 0 failed and 0 skipped, measured by
+ * `npm run gate:push -- --only suite` (C:\dev\_a-lb3-suite.txt), where this
+ * guard again said so itself: "the suite has GROWN (442/5711 against
+ * 441/5703), raise the baseline in this file so the new floor is held".
+ *
+ * Eight tests in one file, and that file exists because the guard it backs
+ * SHIPPED BLIND. tests/unit/perf/root-shell-has-no-loadable.test.ts holds the
+ * matcher behind scripts/guards/no-loadable-in-the-root-shell.mjs shape by
+ * shape, after the first version of that matcher put \s inside a TEMPLATE
+ * LITERAL, where it is not a recognised escape: the backslash was dropped, the
+ * pattern compiled to `from s*`, and the guard reported a confident PASS
+ * against a file whose third line was the banned import. Only the red half of
+ * the drill found it. These cases are what keep it found.
+ */
+const MIN_FILES = 442
+const MIN_TESTS = 5711
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

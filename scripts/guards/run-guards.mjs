@@ -74,6 +74,7 @@
  *   no-silent-catch            no catch around I/O discards its error in silence
  *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
  *   no-client-redis-import     no client component pulls @upstash/redis into the bundle
+ *   no-loadable-in-the-root-shell  nothing in the root layout's client chunk imports next/dynamic
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
@@ -916,6 +917,14 @@ const GUARDS = [
   // tickets. It surfaced as a 372-byte budget overage, 48 times smaller than
   // its own cause, which is why a comment was never going to hold it.
   'scripts/guards/no-client-redis-import.mjs',
+  // next/dynamic costs 1426 bytes gzip and a whole extra chunk in the SHARED
+  // shell, which is the first load of all 141 routes, and the shell uses none
+  // of the preloading, loading slot or SSR control it buys. One dynamic() call
+  // added to defer six components out of the root layout gave back 1099 of the
+  // 3938 bytes it saved, and surfaced as 116 identical faults on routes like
+  // /press and /offline, none of which names the cause. A bare import() defers
+  // the same tree for nothing. Route-level lazy wrappers are untouched.
+  'scripts/guards/no-loadable-in-the-root-shell.mjs',
   // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
   // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
   // printing a tidy list of 200s the whole time; its replacement then reported

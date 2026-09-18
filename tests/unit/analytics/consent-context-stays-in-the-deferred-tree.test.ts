@@ -6,6 +6,7 @@ import { join } from 'node:path'
 // three consumers, and then failed because a doc comment exports no component.
 // scripts/guards/lib/source.mjs has a whole heading about that failure mode.
 import { stripNonCode } from '../../../scripts/guards/lib/source.mjs'
+import { importsBareSpecifier } from '../../../scripts/guards/lib/bare-import.mjs'
 
 /**
  * THE MEASUREMENT TREE IS DEFERRED, AND THESE ARE THE THINGS THAT KEEP IT SAFE
@@ -108,14 +109,26 @@ describe('the deferred measurement tree', () => {
   })
 
   it('the_boot_boundary_is_a_client_component_because_a_server_one_cannot_split', () => {
-    // next@16 lazy-loading guide: "When a Server Component dynamically imports
-    // a Client Component, automatic code splitting is currently not supported"
-    // and "`ssr: false` option will only work for Client Components". The root
-    // layout is a Server Component, so without this boundary the dynamic() call
-    // produces no split at all and the file would claim a saving it never made.
+    // A Server Component cannot split a Client Component out of itself:
+    // next@16 lazy-loading guide, "When a Server Component dynamically imports
+    // a Client Component, automatic code splitting is currently not supported".
+    // The root layout is a Server Component, so without this one-line client
+    // boundary the deferral produces no split at all and the file would claim a
+    // saving it never made.
+    //
+    // THE BOUNDARY DEFERS WITH A BARE import() AND NOT WITH next/dynamic, and
+    // that is a measurement rather than a style: dynamic() put its loadable
+    // runtime into the shared shell, which is the first load of all 141 routes,
+    // for 1426 bytes gzip and one extra chunk. See measurement-boot.tsx and
+    // scripts/guards/no-loadable-in-the-root-shell.mjs, which blocks the build
+    // if it comes back.
     const boot = readFileSync(BOOT, 'utf8')
     expect(boot.startsWith("'use client'")).toBe(true)
-    expect(boot).toMatch(/dynamic\(\s*\(\)\s*=>\s*import\('\.\/measurement-stack'\)/)
-    expect(boot).toMatch(/ssr:\s*false/)
+    expect(boot).toMatch(/import\('\.\/measurement-stack'\)/)
+    // Through the matcher rather than a substring, for the reason at the top of
+    // this file: that comment block NAMES next/dynamic in order to explain why
+    // it is not used, and a substring test would read the explanation as the
+    // defect it warns about.
+    expect(importsBareSpecifier(boot, 'next/dynamic')).toBe(false)
   })
 })

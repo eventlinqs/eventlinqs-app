@@ -1,6 +1,6 @@
 'use client'
 
-import dynamic from 'next/dynamic'
+import { useEffect, useState, type ComponentType } from 'react'
 
 /**
  * THE MEASUREMENT TREE, FETCHED AS ITS OWN CHUNK INSTEAD OF IN EVERY FIRST
@@ -37,36 +37,75 @@ import dynamic from 'next/dynamic'
  *                                         client, so its server output is
  *                                         empty on every render
  *
- * So `ssr: false` removes no markup from any page: the server already sent
- * none. What changes is only WHEN the JavaScript arrives, and it now arrives
- * in its own chunk after hydration rather than ahead of first paint. The
- * components' own comments already claimed they "never cost LCP"; this is what
- * makes the bytes agree with the claim.
+ * So deferring removes no markup from any page: the server already sent none.
+ * What changes is only WHEN the JavaScript arrives, and it now arrives in its
+ * own chunk after hydration rather than ahead of first paint. The components'
+ * own comments already claimed they "never cost LCP"; this is what makes the
+ * bytes agree with the claim.
  *
  * The consent banner is `position: fixed` at the foot of the window and
  * reserves its own space through `useReservedSpace`, so arriving a chunk later
  * moves nothing that was already painted.
  *
  * ============================================================================
- * WHY THE dynamic() CALL IS IN A CLIENT COMPONENT
+ * WHY THIS IS A BARE `import()` AND NOT `next/dynamic`, WITH THE MEASUREMENT
  * ============================================================================
  *
- * It has to be. Next 16's own guide is explicit, and both halves of it apply:
+ * This boundary was written with `dynamic(() => import('./measurement-stack'),
+ * { ssr: false })` on 18 September. It split the chunk correctly and it left
+ * 1099 bytes gzip behind on EVERY route, which the ratchet then reported 116
+ * times over, and the first reading of that residual blamed `RegisterAppWorker`.
+ * That reading was wrong and `git log` says so: `register-app-worker.tsx` was
+ * added at 6bf6bc66, long before the marks in `perf-budget.json` were written
+ * at 8c2bd2da, so its bytes have been inside the mark the whole time.
  *
- *   "When a Server Component dynamically imports a Client Component,
- *    automatic code splitting is currently not supported."
- *   "`ssr: false` option will only work for Client Components, move it into
- *    Client Components ensure the client code-splitting working properly."
+ * The residual was `next/dynamic` itself. Nothing in the root layout's client
+ * shell had ever imported it: the four other lazy wrappers on the platform
+ * (`seat-selector-lazy`, `venue-map-lazy`, `m5-events-map-lazy`, the events
+ * page's map) are all route-level, so their copy of the loadable runtime is
+ * paid for by the routes that use them. Putting the first `dynamic()` call into
+ * the shell moved that runtime into the first load of all 141 routes to defer
+ * one tree that a bare `import()` defers just as well.
  *
- *   node_modules/next/dist/docs/01-app/02-guides/lazy-loading.md, next@16.3.0
+ *     WITH next/dynamic   13 shared chunks   161851 bytes gzip   +1099 over mark
+ *     WITH import()       12 shared chunks   160425 bytes gzip    -327 under it
  *
- * The root layout is a Server Component, so calling `dynamic()` there would
- * have produced no split at all and the 3938 bytes would have stayed exactly
- * where they were, with a file in the tree claiming otherwise. This one-line
- * client boundary is the whole reason the split happens.
+ * 1426 bytes gzip, and one whole chunk that stops being fetched at all, off the
+ * first load of all 141 routes. The ratchet went from 134 faults to 16 on that
+ * one edit, because 116 of them were this one number reported once per route.
+ *
+ * Measured on the same toolchain, both numbers being the gzip total of the
+ * chunks common to every route in `.next/diagnostics/route-bundle-stats.json`,
+ * which is the same file `scripts/guards/initial-bundle-budget.mjs --built`
+ * weighs.
+ *
+ * WHAT IS GIVEN UP BY NOT USING `next/dynamic`: nothing that is used here.
+ * `dynamic()` adds a preload handle, a `loading` slot and SSR control. This
+ * tree renders null on the server either way, wants no loading state, and is
+ * never preloaded. The three lines below are the whole of what it was doing.
+ *
+ * HYDRATION IS SAFE BY CONSTRUCTION. The server renders null because effects
+ * do not run there; the client's FIRST render also renders null because the
+ * state starts null; the tree appears only on the render after the effect, so
+ * there is no markup for React to reconcile and no mismatch to suppress.
+ *
+ * `tests/unit/analytics/consent-context-stays-in-the-deferred-tree.test.ts`
+ * holds this shape, and `scripts/guards/no-loadable-in-the-root-shell.mjs`
+ * fails the build if `next/dynamic` is imported anywhere the root layout's
+ * client shell can reach.
  */
-const MeasurementStack = dynamic(() => import('./measurement-stack'), { ssr: false })
-
 export function MeasurementBoot() {
-  return <MeasurementStack />
+  const [Stack, setStack] = useState<ComponentType | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void import('./measurement-stack').then(mod => {
+      if (!cancelled) setStack(() => mod.default)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return Stack ? <Stack /> : null
 }
