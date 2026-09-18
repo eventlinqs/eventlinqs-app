@@ -7,7 +7,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { reportClientError } from '@/lib/observability/client-error-report'
 import { MapPinIcon } from './location-picker-icons'
 import type { DetectedLocation } from '@/lib/geo/detect'
-import type { PickerCity, PickerCityGroups } from '@/lib/locations/picker-cities'
+import type { PickerCity } from '@/lib/locations/picker-cities'
+import type { PickerCatalogue } from '@/lib/locations/picker-cities-client'
 
 /**
  * THE CITY DIALOG, SPLIT OUT SO IT IS NOT IN THE PLATFORM-WIDE CLIENT SHELL.
@@ -51,6 +52,13 @@ function readCurrentQueryString(): string {
   if (typeof window === 'undefined') return ''
   return window.location.search.replace(/^\?/, '')
 }
+
+/**
+ * The skeleton rows shown while the catalogue is in flight. Six, because six
+ * 44px rows plus their gaps fill the list area of this dialog at 390 without
+ * overflowing it, so the settle into the real list moves nothing.
+ */
+const SKELETON_ROWS = [0, 1, 2, 3, 4, 5]
 
 function SearchIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
@@ -150,7 +158,22 @@ function CityList({
 
 export interface LocationPickerPanelProps {
   currentLocation: DetectedLocation
-  cities: PickerCityGroups
+  /**
+   * The catalogue, or null while it is still on its way.
+   *
+   * IT IS NULLABLE BECAUSE IT IS NO LONGER IN THE DOCUMENT. Until 19 September
+   * 2026 the whole list was a prop handed down from the server, which meant it
+   * was serialised into the RSC payload of every page on the platform whether
+   * this dialog opened or not. It is fetched on the same arming signal as this
+   * component's own chunk now (see `location-picker.tsx`), so by the time a
+   * visitor clicks it has usually landed, and when it has not this component
+   * says so rather than rendering an empty list.
+   */
+  cities: PickerCatalogue | null
+  /** The catalogue request failed. Renders the retry, never an empty list. */
+  citiesFailed?: boolean
+  /** Ask the parent for the catalogue again. */
+  onRetryCities?: () => void
   /** Close the dialog. The parent owns `open` and returns focus to the trigger. */
   onClose: () => void
   /** Optional callback fired after a selection closes (e.g. to close a mobile sheet). */
@@ -160,6 +183,8 @@ export interface LocationPickerPanelProps {
 export function LocationPickerPanel({
   currentLocation,
   cities,
+  citiesFailed = false,
+  onRetryCities,
   onClose,
   onChange,
 }: LocationPickerPanelProps) {
@@ -174,10 +199,10 @@ export function LocationPickerPanel({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const allCities = useMemo<PickerCity[]>(
-    () => [
-      ...cities.australia,
-      ...cities.internationalByCountry.flatMap(g => g.cities),
-    ],
+    () =>
+      cities === null
+        ? []
+        : [...cities.australia, ...cities.internationalByCountry.flatMap(g => g.cities)],
     [cities],
   )
 
@@ -389,7 +414,14 @@ export function LocationPickerPanel({
           <button
             type="button"
             onClick={useMyLocation}
-            disabled={geoBusy}
+            /*
+             * DISABLED UNTIL THE CATALOGUE IS HERE, because the match is made
+             * against it. With an empty list the haversine search finds nothing
+             * and the visitor is told "Could not match your location to a
+             * supported city", which is a false statement about their city
+             * rather than a true one about our timing.
+             */
+            disabled={geoBusy || cities === null}
             className={[
               'mt-3 flex w-full items-center justify-center gap-2 h-11 rounded-lg',
               'border border-ink-200 bg-white text-sm font-medium text-ink-900',
@@ -408,7 +440,60 @@ export function LocationPickerPanel({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
-          {filteredMatches.length === 0 ? (
+          {citiesFailed ? (
+            /*
+             * THE FAILURE IS NAMED, NEVER RENDERED AS AN EMPTY LIST. A visitor
+             * shown no cities concludes the platform has none, which is the
+             * exact shape of the Geelong report the search matcher above was
+             * hardened for: "I typed a city that exists and got nothing".
+             */
+            <div className="flex flex-col items-center gap-3 py-8 text-center" role="alert">
+              <p className="text-sm text-ink-700">
+                The city list did not load. Your current city is unchanged.
+              </p>
+              {onRetryCities && (
+                <button
+                  type="button"
+                  onClick={onRetryCities}
+                  /*
+                   * `bg-navy-950`, NOT `bg-navy`. There is no `navy` colour in
+                   * this Tailwind build: globals.css defines `--color-navy-950`
+                   * and nothing else in that family, so `bg-navy` compiles to no
+                   * rule at all and the button paints white text on the white
+                   * dialog. It was written `bg-navy` here first, the jsdom test
+                   * found the button by its accessible name and passed, the
+                   * driven assertion found the failure message and passed, and
+                   * the SCREENSHOT is what showed a button nobody could see.
+                   */
+                  className={[
+                    'min-h-[44px] rounded-full bg-navy-950 px-6 text-sm font-medium text-white',
+                    'transition-colors duration-200 hover:bg-navy-950/90',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]',
+                  ].join(' ')}
+                >
+                  Try again
+                </button>
+              )}
+            </div>
+          ) : cities === null ? (
+            /*
+             * A DESIGNED SKELETON, NOT A SPINNER, and `role="status"` rather
+             * than a bare div with an aria-label: a generic role is PROHIBITED
+             * from carrying an accessible name, and the identical mistake on the
+             * seat chart cost the accessibility floor 0.97 against 1.00 on the
+             * very run that proved its performance fix.
+             *
+             * The rows are the height of the real ones (44px plus the 4px gap),
+             * so the settle is zero-shift.
+             */
+            <div role="status" aria-live="polite" className="space-y-1">
+              <span className="sr-only">Loading the city list</span>
+              <div className="mb-2 h-3 w-20 rounded bg-ink-100" />
+              {SKELETON_ROWS.map(row => (
+                <div key={row} className="h-11 rounded-lg bg-ink-100" />
+              ))}
+            </div>
+          ) : filteredMatches.length === 0 ? (
             <p className="py-6 text-center text-sm text-ink-600">
               No cities match &ldquo;{query}&rdquo;. Try another search.
             </p>

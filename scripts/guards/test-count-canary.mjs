@@ -2366,9 +2366,23 @@ const ROOT = join(HERE, '..', '..')
  *   5914 + 29 + 17 = 5960 tests
  * Neither of those two files is table driven, which is why a sum works here and
  * did not there. The measurement is still what set the number.
+ *
+ * 2026-09-19 (lane C, close-out C8B.3: the city catalogue out of every document).
+ *
+ * MEASURED: 459 files, 5985 tests, 0 failed, 0 skipped, `npx vitest run` on this
+ * tree.
+ *
+ * CHECKABLE, and it checks out: one new file,
+ * tests/component/layout/city-dialog-fetches-its-own-catalogue.test.tsx (14),
+ * and eleven cases added to tests/unit/perf/document-weight.test.ts, which goes
+ * 17 to 28.
+ *   458 + 1 = 459 files
+ *   5960 + 14 + 11 = 5985 tests
+ * Neither file is table driven, so a sum is a fair check here. The measurement
+ * is still what set the number.
  */
-const MIN_FILES = 458
-const MIN_TESTS = 5960
+const MIN_FILES = 459
+const MIN_TESTS = 5985
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

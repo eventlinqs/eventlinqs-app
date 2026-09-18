@@ -42,6 +42,16 @@
  *                     share a long prefix and compress about 56 to 1, so a raw
  *                     number quoted alone flatters and a gzip number quoted
  *                     alone hides what a throttled CPU has to parse.
+ *
+ *   A CATALOGUE       rows of a reference list serialised into the flight
+ *                     payload as the props of a client component. Counted
+ *                     separately from the payload that holds them because they
+ *                     are the one part of it that is not the page: a city list
+ *                     is the same on every route, so a copy of it in every
+ *                     document is a cost with no reader. Added 19 September
+ *                     2026 (close-out C8B.3) after the origin cost table found
+ *                     the picker's 20-city catalogue serialised twice into a
+ *                     login page.
  */
 import { gzipSync } from 'node:zlib'
 
@@ -123,6 +133,114 @@ export function flightPayload(html) {
     bytes += tag[1].length
   }
   return { bytes, scripts }
+}
+
+/**
+ * A REFERENCE CATALOGUE SERIALISED INTO THE DOCUMENT, AND HOW MANY TIMES.
+ *
+ * ============================================================================
+ * WHAT IT MATCHES, AND WHY IT IS ANCHORED ON A FIELD NAME
+ * ============================================================================
+ *
+ * Inside the flight payload a client component's props are JSON inside a
+ * JavaScript string literal, so every quote arrives escaped:
+ *
+ *     ...,{\"city\":\"Geelong\",\"slug\":\"geelong\",...,\"isLaunchCity\":true},...
+ *
+ * `marker` is a field name that only that catalogue's rows carry, and the row
+ * is taken as the flat object around it: back to the nearest `{`, forward to
+ * the first `}`. Anchoring on a FIELD rather than on the field ORDER is
+ * deliberate. Serialisation order follows the object literal that produced it,
+ * so a matcher written against the order goes quietly blind the day somebody
+ * reorders two lines in a mapper, and a quiet zero from a reporter is the
+ * failure this module exists to refuse.
+ *
+ * `arrayKeys` picks up the flat `["melbourne","sydney",...]` forms of the same
+ * catalogue, which carry no per-row marker at all.
+ *
+ * ============================================================================
+ * THE REFUSAL, AND THE ONE ZERO THAT IS NOT A FAILURE
+ * ============================================================================
+ *
+ * Unlike the flight payload, ZERO IS THE GOAL STATE here: a document with no
+ * catalogue in it is the thing the work is for, so this cannot refuse on zero.
+ * What it does refuse is INCOHERENCE: rows matched whose slug cannot be read.
+ * That means the marker is matching something which is not a row of this
+ * catalogue, and a byte count attributed to the wrong thing is worse than no
+ * byte count at all.
+ *
+ * ============================================================================
+ * WHAT IT CANNOT SEE
+ * ============================================================================
+ *
+ * A row whose string value contains a `}`. No city on earth has one, and the
+ * alternative is a JSON parser pointed at a partially escaped fragment, which
+ * would be a larger thing to get wrong. Stated rather than left to be found.
+ */
+/**
+ * @param {string} html the served or built document
+ * @param {{ marker?: string, arrayKeys?: string[] }} [options]
+ */
+export function catalogueWeight(html, { marker, arrayKeys = [] } = {}) {
+  if (typeof marker !== 'string' || marker === '') {
+    throw new Error('REFUSING: catalogueWeight needs a marker field name to anchor a row on.')
+  }
+  const markerAt = new RegExp(`\\\\?"${marker}\\\\?":`, 'g')
+  const slugOf = /\\?"slug\\?":\\?"([^"\\]+)/
+
+  let rowBytes = 0
+  let rows = 0
+  const bySlug = new Map()
+  for (const hit of html.matchAll(markerAt)) {
+    // The row is the flat object AROUND the marker: back to the nearest `{`,
+    // forward to the first `}`. Never "the marker and everything up to the next
+    // brace", which would only work while the marker happened to be the last
+    // field and would go silently blind the day two lines in a mapper swap.
+    const open = html.lastIndexOf('{', hit.index)
+    const close = html.indexOf('}', hit.index)
+    if (open === -1 || close === -1) continue
+    const text = html.slice(open, close + 1)
+    // A second `{` inside means the scan ran past the row's own opening brace,
+    // so this is not one flat row and counting it would inflate the answer.
+    if (text.indexOf('{', 1) !== -1) continue
+    rowBytes += text.length
+    rows += 1
+    const slug = slugOf.exec(text)?.[1]
+    if (slug) bySlug.set(slug, (bySlug.get(slug) ?? 0) + 1)
+  }
+
+  if (rows > 0 && bySlug.size === 0) {
+    throw new Error(
+      `REFUSING: ${rows} object(s) carry the field "${marker}" and not one of them has a readable ` +
+        'slug, so the marker is matching something that is not a row of this catalogue. A byte ' +
+        'count attributed to the wrong thing reads as a finding and is not one.',
+    )
+  }
+
+  let arrayBytes = 0
+  let arrays = 0
+  for (const key of arrayKeys) {
+    const pattern = new RegExp(`\\\\?"${key}\\\\?":\\[[^\\]]*\\]`, 'g')
+    for (const hit of html.matchAll(pattern)) {
+      arrayBytes += hit[0].length
+      arrays += 1
+    }
+  }
+
+  const bytes = rowBytes + arrayBytes
+  const distinct = bySlug.size
+  return {
+    bytes,
+    rowBytes,
+    arrayBytes,
+    rows,
+    arrays,
+    distinct,
+    /** How many whole copies of the catalogue the document carries. */
+    copies: distinct === 0 ? 0 : Math.max(...bySlug.values()),
+    sharePercent: html.length === 0 ? 0 : (bytes / html.length) * 100,
+    bySlug: [...bySlug.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
+  }
 }
 
 /**

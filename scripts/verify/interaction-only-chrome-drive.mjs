@@ -70,6 +70,8 @@
 import { chromium } from 'playwright'
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { catalogueWeight } from '../perf/lib/document-weight.mjs'
+import { CATALOGUES } from '../perf/lib/catalogues.mjs'
 
 const args = process.argv.slice(2)
 const FUNCTIONAL_ONLY = args.includes('--functional-only')
@@ -111,6 +113,30 @@ const VIEWPORTS = [
   { label: '768', width: 768, height: 1024 },
   { label: '1440', width: 1440, height: 900 },
 ]
+
+/**
+ * THE ENDPOINT THE CITY DIALOG'S DATA NOW COMES FROM (close-out C8B.3).
+ *
+ * Splitting the dialog's CODE did nothing for its DATA: the catalogue was a
+ * prop, and a prop crossing the server/client boundary is serialised into the
+ * document whether the component reading it ever mounts or not. 6,988 bytes on
+ * every page of the platform, twice, 7.29 percent of the login document.
+ *
+ * The two assertions below are the pair that means something together and
+ * nothing apart: the catalogue is NOT in the served document, and the request
+ * for it happens ON THE INTERACTION. Absence alone is satisfied by deleting the
+ * feature; a request alone is satisfied by fetching it on mount, which moves the
+ * cost rather than removing it (close-out C8B.4).
+ */
+const CITY_CATALOGUE_ENDPOINT = '/api/location/cities'
+
+/**
+ * Served documents swept for a catalogue. `/login` and `/events` are here
+ * because they are DYNAMIC: no prerendered file exists for them, so
+ * scripts/guards/no-catalogue-in-every-document.mjs cannot weigh them and only a
+ * request can. `/login` is the one the cost table found this on.
+ */
+const DOCUMENT_SWEEP = ['/', '/login', '/events', '/pricing']
 
 /**
  * Is this control somewhere a finger or a pointer could actually land?
@@ -213,12 +239,43 @@ async function main() {
   }
   if (!FUNCTIONAL_ONLY) console.log(`${TAG} the server on ${BASE} is serving this tree's build ${localBuildId}`)
 
+  /*
+   * ---- THE CATALOGUE IS NOT IN THE SERVED DOCUMENT ----
+   *
+   * Asked of the SERVER rather than of the browser, and once rather than per
+   * viewport, because what a document contains does not depend on how wide the
+   * window is. It runs in --functional-only too: a prop is serialised by the
+   * server in dev exactly as it is in a build, so this half is answerable there.
+   */
+  for (const path of DOCUMENT_SWEEP) {
+    const res = await fetch(`${BASE}${path}`, { headers: { 'user-agent': TAG } }).catch(() => null)
+    if (res === null || !res.ok) {
+      check(false, `the document sweep could not read ${path} (${res ? res.status : 'no response'})`)
+      continue
+    }
+    const html = await res.text()
+    for (const catalogue of CATALOGUES) {
+      const weight = catalogueWeight(html, { marker: catalogue.marker, arrayKeys: catalogue.arrayKeys })
+      check(
+        weight.bytes === 0,
+        `${path}: the "${catalogue.name}" catalogue is not in the served document (${weight.bytes} B, ` +
+          `${weight.rows} row(s), ${weight.copies} copy(ies) of ${html.length} B)`,
+      )
+    }
+  }
+
   const browser = await chromium.launch()
   try {
     for (const vp of VIEWPORTS) {
       console.log(`${TAG} ${vp.width}x${vp.height}`)
       const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } })
       const page = await context.newPage()
+
+      /** Every request for the city catalogue this page made, in order. */
+      const catalogueRequests = []
+      page.on('request', req => {
+        if (req.url().includes(CITY_CATALOGUE_ENDPOINT)) catalogueRequests.push(req.url())
+      })
 
       /** name -> body, for every JavaScript chunk this page actually fetched. */
       const fetched = new Map()
@@ -254,6 +311,15 @@ async function main() {
             (carriers.length ? ` (found in ${carriers.map(([u]) => u.split('/').pop()).join(', ')})` : ''),
         )
       }
+
+      // ---- THE CATALOGUE IS NOT REQUESTED ON LOAD ----
+      // Half of a pair. On its own it is satisfied by a dialog with no cities in
+      // it, so the other half is asserted after the click below and a run that
+      // never reaches it is reported as a fault there.
+      check(
+        catalogueRequests.length === 0,
+        `${vp.label}: the city catalogue is not requested on load (${catalogueRequests.length} request(s) to ${CITY_CATALOGUE_ENDPOINT})`,
+      )
 
       const loadedUrls = new Set(fetched.keys())
       await page.screenshot({ path: join(OUT, `shell-${vp.label}.png`), fullPage: false })
@@ -350,15 +416,78 @@ async function main() {
           `${vp.label}: the city dialog ARRIVED on the interaction, in ${carriers.length} newly fetched chunk(s) of ${after.length}`,
         )
 
-        // It has to still WORK, not merely arrive.
+        // ---- THE OTHER HALF OF THE PAIR: it ARRIVED on the interaction ----
+        check(
+          catalogueRequests.length > 0,
+          `${vp.label}: the city catalogue was requested ON THE INTERACTION ` +
+            `(${catalogueRequests.length} request(s) to ${CITY_CATALOGUE_ENDPOINT}); this is what ` +
+            `makes the absence on load mean something rather than meaning the list is gone`,
+        )
+
+        // It has to still WORK, not merely arrive. With the catalogue now coming
+        // off the wire, this is also the proof that what arrived reached the
+        // list: a dialog rendering an empty catalogue would find no Geelong.
         const search = page.getByPlaceholder('Search for a city')
         if (await search.count() > 0) {
           await search.fill('geel')
-          await page.waitForTimeout(300)
+          await page.waitForTimeout(600)
           const matched = await page.getByText('Geelong').count()
           check(matched > 0, `${vp.label}: the dialog's own search still filters ("geel" finds Geelong)`)
         } else {
           check(false, `${vp.label}: the dialog has no city search box`)
+        }
+
+        // The failure state is real and reachable, not a branch nobody has run.
+        // Asked at 390 only: it is one code path, and repeating it at three
+        // widths would be three screenshots of the same paragraph.
+        if (vp.label === '390') {
+          const failing = await context.newPage()
+          await failing.route(`**${CITY_CATALOGUE_ENDPOINT}`, r => r.fulfill({ status: 503, body: '{"error":"unavailable"}' }))
+          await failing.goto(BASE, { waitUntil: 'domcontentloaded' })
+          const menu = failing.getByRole('button', { name: 'Open navigation menu' })
+          if (await menu.count() > 0 && await menu.isVisible()) {
+            await menu.click()
+            await failing.waitForTimeout(600)
+          }
+          const trigger = failing.getByRole('button', { name: /Change location/ }).first()
+          if (await reachableTrigger(failing, trigger, vp)) {
+            await trigger.click()
+            await failing.waitForTimeout(1500)
+            const said = await failing.getByText('The city list did not load').count()
+            check(said > 0, `${vp.label}: a 503 on the catalogue shows the dialog's failure state, not an empty list`)
+            const emptyClaim = await failing.getByText(/No cities match/).count()
+            check(emptyClaim === 0, `${vp.label}: a 503 never tells a visitor that no city matches`)
+
+            /*
+             * THE RECOVERY HAS TO BE VISIBLE, NOT MERELY PRESENT, and this
+             * assertion exists because the first version of this drive did not
+             * make it and was wrong in the most embarrassing way available. The
+             * retry button carried `bg-navy`, which is not a colour in this
+             * Tailwind build (globals.css defines `--color-navy-950` and nothing
+             * called `navy`), so it compiled to no rule and painted white text on
+             * the white dialog. The jsdom test found it by accessible name and
+             * passed. The assertion above found the message and passed. Only the
+             * SCREENSHOT showed a failure state with no way out of it.
+             *
+             * A transparent background under white text is the shape of that
+             * defect, so that is what is asked.
+             */
+            const retry = failing.getByRole('button', { name: 'Try again' })
+            const paint = await retry.count() === 0 ? null : await retry.evaluate(el => {
+              const cs = getComputedStyle(el)
+              return { bg: cs.backgroundColor, color: cs.color }
+            })
+            const transparent = paint === null || /rgba\(\s*\d+,\s*\d+,\s*\d+,\s*0\s*\)/.test(paint.bg) || paint.bg === 'transparent'
+            check(
+              paint !== null && !transparent,
+              `${vp.label}: the failure state's "Try again" is actually painted ` +
+                `(background ${paint ? paint.bg : 'no such button'}, text ${paint ? paint.color : '-'})`,
+            )
+            await failing.screenshot({ path: join(OUT, `city-catalogue-failed-${vp.label}.png`), fullPage: false })
+          } else {
+            check(false, `${vp.label}: could not reach the picker to drive the catalogue failure state`)
+          }
+          await failing.close()
         }
 
         await page.keyboard.press('Escape')

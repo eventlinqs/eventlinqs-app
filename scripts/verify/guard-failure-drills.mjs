@@ -4488,6 +4488,73 @@ const DRILLS = [
     replace: "        source: '/events-moved-away',\n        missing:",
     expect: 'no page route answers it under src/app',
   },
+
+  /*
+   * THE CATALOGUE IN EVERY DOCUMENT, FOUR DRILLS (close-out C8B.3,
+   * 19 September 2026), one per clause of the CONTRACT half.
+   *
+   * The half that WEIGHS runs from npm's postbuild with --built, and it cannot
+   * be drilled here because this harness mutates source and runs a guard: there
+   * is no build in the loop. IT HAS BEEN SEEN RED ANYWAY, and on the real defect
+   * rather than a planted one. Run against the gate build of 19 September 2026
+   * made BEFORE the fix it refused 42 documents carrying 150,360 bytes of
+   * catalogue, exit 1, and the output is kept at
+   * C:\dev\EVIDENCE\C8B3-CATALOGUE\guard-red-on-champion.txt. Saying which half
+   * is drilled here and which was drilled by hand is the point: claiming both
+   * were drilled the same way is the shape this harness exists to stop.
+   *
+   * THE FOURTH DRILL IS THE ONE THAT MATTERS. This guard passes by finding
+   * NOTHING, so a blind matcher and a clean platform produce the same green.
+   * That drill blinds the matcher and proves the calibration catches it.
+   */
+  {
+    name: 'the field the catalogue matcher is anchored on is renamed in its row type',
+    guard: `${GUARDS}/no-catalogue-in-every-document.mjs`,
+    file: 'src/lib/locations/picker-cities.ts',
+    /*
+     * THE FIRST VERSION OF THIS DRILL DID NOT FIRE, and the guard was the thing
+     * that was wrong. Its clause searched the whole file, and `isLaunchCity` is
+     * written four times there, so renaming the DECLARATION left three
+     * assignments carrying the string and the guard passed on a tree where the
+     * field it is anchored on no longer existed. The clause is now scoped to the
+     * exported row type, which is the one place the name has to be.
+     */
+    find: '  /** True when the slug matches a LAUNCH_TARGET_CITIES entry. */\n  isLaunchCity: boolean',
+    replace: '  /** True when the slug matches a LAUNCH_TARGET_CITIES entry. */\n  isCuratedLaunchCity: boolean',
+    expect: 'no longer appears in PickerCity',
+  },
+  {
+    name: 'the endpoint that replaced the prop is pointed at a file that is not there',
+    guard: `${GUARDS}/no-catalogue-in-every-document.mjs`,
+    file: 'scripts/perf/lib/catalogues.mjs',
+    find: "    servedBy: 'src/app/api/location/cities/route.ts',",
+    replace: "    servedBy: 'src/app/api/location/cities-renamed/route.ts',",
+    expect: 'is not in the tree',
+  },
+  {
+    name: 'postbuild stops running the half that actually weighs a document',
+    guard: `${GUARDS}/no-catalogue-in-every-document.mjs`,
+    file: 'package.json',
+    find: ' && node scripts/guards/no-catalogue-in-every-document.mjs --built',
+    replace: '',
+    expect: 'there is no proof at all, only a promise',
+  },
+  {
+    name: 'the matcher goes blind on the unescaped payload and the calibration catches it',
+    guard: `${GUARDS}/no-catalogue-in-every-document.mjs`,
+    file: 'scripts/perf/lib/document-weight.mjs',
+    /*
+     * The optional backslash is what lets ONE matcher read both the escaped form
+     * inside a flight chunk and the plain form inside an .rsc payload. Making it
+     * mandatory leaves the guard reading .html perfectly and blind to every .rsc
+     * file in the build, which is exactly the half-blindness no green run could
+     * ever show. The calibration's second probe is the plain form, so it is the
+     * thing that notices.
+     */
+    find: 'new RegExp(`\\\\\\\\?"${marker}\\\\\\\\?":`',
+    replace: 'new RegExp(`\\\\\\\\"${marker}\\\\\\\\":`',
+    expect: 'CALIBRATION FAILED',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { HeaderSearchTrigger } from '@/components/layout/header-search-trigger'
 import { LocationPicker } from '@/components/ui/location-picker'
+import { resetPickerCatalogueForTests } from '@/lib/locations/picker-cities-client'
 import type { DetectedLocation } from '@/lib/geo/detect'
-import type { PickerCityGroups } from '@/lib/locations/picker-cities'
 
 /**
  * C8 SHELL. The search overlay and the city dialog are reached by a dynamic
@@ -40,13 +40,21 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
 }))
 
-const CITIES: PickerCityGroups = {
+/*
+ * THE CATALOGUE COMES OFF THE WIRE NOW, NOT OFF A PROP. It was a `cities` prop
+ * until 19 September 2026, and that prop was serialised into the RSC payload of
+ * every page on the platform: 6,988 bytes, twice, on a login page. The dialog
+ * fetches it on the same arming signal as its own chunk. What that move does to
+ * the dialog is proven in city-dialog-fetches-its-own-catalogue.test.tsx; what
+ * matters HERE is only that the split these tests were written for still holds,
+ * so the response is stubbed and never asserted on.
+ */
+const CATALOGUE = {
   australia: [
     { city: 'Melbourne', country: 'Australia', countryCode: 'AU', slug: 'melbourne', latitude: -37.81, longitude: 144.96, isLaunchCity: true },
     { city: 'Geelong', country: 'Australia', countryCode: 'AU', slug: 'geelong', latitude: -38.15, longitude: 144.36, isLaunchCity: true },
   ],
   internationalByCountry: [],
-  validSlugs: ['melbourne', 'geelong'],
 }
 
 const LOCATION: DetectedLocation = {
@@ -58,7 +66,15 @@ const LOCATION: DetectedLocation = {
   source: 'cookie',
 }
 
-afterEach(cleanup)
+beforeEach(() => {
+  resetPickerCatalogueForTests()
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => CATALOGUE }) as unknown as Response))
+})
+
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('the global search overlay is not in the shell', () => {
   test('the_trigger_paints_on_its_own_with_no_dialog_behind_it', () => {
@@ -106,14 +122,14 @@ describe('the global search overlay is not in the shell', () => {
 
 describe('the city dialog is not in the shell', () => {
   test('the_trigger_paints_on_its_own_with_no_dialog_behind_it', () => {
-    render(<LocationPicker currentLocation={LOCATION} cities={CITIES} />)
+    render(<LocationPicker currentLocation={LOCATION} />)
     expect(screen.getByRole('button', { name: /Change location/ })).toBeTruthy()
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByText('Geelong')).toBeNull()
   })
 
   test('the_dialog_is_not_in_the_dom_in_the_same_tick_as_the_click', () => {
-    render(<LocationPicker currentLocation={LOCATION} cities={CITIES} />)
+    render(<LocationPicker currentLocation={LOCATION} />)
     fireEvent.click(screen.getByRole('button', { name: /Change location/ }))
     // See the note on the overlay's twin: a static import would have the whole
     // city list committed synchronously here.
@@ -122,14 +138,14 @@ describe('the city dialog is not in the shell', () => {
   })
 
   test('clicking_the_trigger_opens_the_dialog_with_its_cities', async () => {
-    render(<LocationPicker currentLocation={LOCATION} cities={CITIES} />)
+    render(<LocationPicker currentLocation={LOCATION} />)
     fireEvent.click(screen.getByRole('button', { name: /Change location/ }))
     expect(await screen.findByRole('dialog')).toBeTruthy()
     expect(screen.getByText('Geelong')).toBeTruthy()
   })
 
   test('escape_closes_the_dialog', async () => {
-    render(<LocationPicker currentLocation={LOCATION} cities={CITIES} />)
+    render(<LocationPicker currentLocation={LOCATION} />)
     fireEvent.click(screen.getByRole('button', { name: /Change location/ }))
     await screen.findByRole('dialog')
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -144,7 +160,7 @@ describe('the city dialog is not in the shell', () => {
      * unmounts them. The user-visible contract is identical and this asserts it
      * rather than trusting the refactor.
      */
-    render(<LocationPicker currentLocation={LOCATION} cities={CITIES} />)
+    render(<LocationPicker currentLocation={LOCATION} />)
     fireEvent.click(screen.getByRole('button', { name: /Change location/ }))
     await screen.findByRole('dialog')
     const search = screen.getByPlaceholderText('Search for a city')
@@ -162,7 +178,7 @@ describe('the city dialog is not in the shell', () => {
   test('the_trigger_still_names_the_current_city_before_anything_is_fetched', () => {
     // The trigger is the only part of this surface that paints on first render,
     // so it is the only part a deferral could have taken away by accident.
-    render(<LocationPicker currentLocation={LOCATION} cities={CITIES} />)
+    render(<LocationPicker currentLocation={LOCATION} />)
     expect(screen.getByText('Melbourne')).toBeTruthy()
   })
 })

@@ -79,7 +79,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { startGateServer, envFor } from '../ops/pre-push-gate.mjs'
-import { analyseDocument } from './lib/document-weight.mjs'
+import { analyseDocument, catalogueWeight } from './lib/document-weight.mjs'
+import { CATALOGUES } from './lib/catalogues.mjs'
 
 const args = process.argv.slice(2)
 const SERVE = args.includes('--serve')
@@ -146,7 +147,21 @@ for (const path of paths) {
     writeFileSync(join(dir, `${name}.html`), html)
   }
   const a = analyseDocument(html)
-  report.routes.push({ path, ...a })
+  /*
+   * THE CATALOGUES, MEASURED ON THE SERVED DOCUMENT AND NOT ONLY ON THE BUILT
+   * ONE. The built documents are the deterministic comparison, but they are
+   * prerendered with whatever the data layer answered at build time, and this
+   * platform's picker catalogue GROWS at runtime: the `cities` table and the
+   * distinct venue cities of published events are merged in on the first
+   * request that misses the one-hour cache. A built document therefore
+   * UNDERSTATES what a visitor downloads, and a saving quoted from it alone is
+   * quoted from the smaller of the two numbers.
+   */
+  const catalogues = CATALOGUES.map(c => ({
+    name: c.name,
+    ...catalogueWeight(html, { marker: c.marker, arrayKeys: c.arrayKeys }),
+  }))
+  report.routes.push({ path, ...a, catalogues })
 
   console.log('')
   console.log(`${path}`)
@@ -158,6 +173,12 @@ for (const path of paths) {
     `    flight payload ${a.flightBytes} B in ${a.flightScripts} script tags ` +
       `(${a.flightSharePercent.toFixed(1)}% of the document): the same tree again, as script`,
   )
+  for (const c of catalogues) {
+    console.log(
+      `    catalogue "${c.name}": ${c.bytes} B, ${c.rows} row(s), ${c.distinct} distinct, ` +
+        `${c.copies} copy(ies) (${c.sharePercent.toFixed(2)}% of the document)`,
+    )
+  }
   if (a.sample) {
     console.log(
       `    one candidate is ${a.sample.bytes} B, of which ${a.sample.encodedSrcBytes} B ` +
