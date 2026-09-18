@@ -4,7 +4,12 @@ import { join } from 'node:path'
 // Plain .mjs modules with no type declarations, imported the way every other
 // guard test in this suite imports one.
 import { FEATURE_MARKERS, attribute, markerCoverage, UNATTRIBUTED } from '../../../scripts/perf/lib/chunk-attribution.mjs'
-import { SCOPE_10_3_BUDGET_BYTES, readFirstLoad } from '../../../scripts/perf/lib/first-load.mjs'
+import {
+  SCOPE_10_3_BUDGET_BYTES,
+  readFirstLoad,
+  measurementIdentity,
+  identityMismatch,
+} from '../../../scripts/perf/lib/first-load.mjs'
 import { audienceOf, audienceDisagreements, INTERNAL_PREFIXES } from '../../../scripts/perf/lib/route-audience.mjs'
 
 /**
@@ -176,5 +181,93 @@ describe('perf-budget.json, the recorded marks', () => {
       expect(entry.why, `${route} does not say why`).toBeTruthy()
       expect(entry.fix, `${route} does not say what would fix it`).toBeTruthy()
     }
+  })
+})
+
+/**
+ * WHAT A MARK IS A FACT ABOUT (17 September 2026, lane A).
+ *
+ * The `--built` ratchet arrived on 16 September and blocked the push lane on its
+ * first run: 132 of 133 routes reported as "grew ... (+0.0 KB)" against a
+ * baseline written mid-session in the same commit that carried the later edits
+ * it predates. Two full builds of the same tree then measured byte-identical on
+ * all 133 routes, so the scales are steady and the mark was simply taken
+ * elsewhere.
+ *
+ * The part that had not happened yet is the one these tests exist for. npm runs
+ * `postbuild` after `build`, `build` is what Vercel runs, and no Vercel build had
+ * ever executed this guard. A win32 mark judging a Linux production build would
+ * have failed the DEPLOYMENT on a difference that says nothing about the code.
+ */
+describe('a mark records the conditions it was taken under', () => {
+  const budget = existsSync(BUDGET_FILE) ? JSON.parse(readFileSync(BUDGET_FILE, 'utf8')) : {}
+
+  it('names the platform, arch, node and next that produced it', () => {
+    expect(budget._measuredOn, 'perf-budget.json has no _measuredOn block').toBeTruthy()
+    for (const field of ['platform', 'arch', 'node', 'next']) {
+      expect(typeof budget._measuredOn[field], `_measuredOn.${field} is not a string`).toBe('string')
+      expect((budget._measuredOn[field] as string).length, `_measuredOn.${field} is empty`).toBeGreaterThan(0)
+    }
+  })
+
+  it('reports the installed next, not the range asked for in package.json', () => {
+    const installed = JSON.parse(
+      readFileSync(join(ROOT, 'node_modules', 'next', 'package.json'), 'utf8'),
+    ) as { version: string }
+    expect(measurementIdentity(ROOT).next).toBe(installed.version)
+    // The distinction is the point: package.json carries a range, and a range is
+    // an intention rather than the thing that emitted these bytes.
+    const declared = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>
+    }
+    expect(declared.dependencies?.next).toBeTruthy()
+  })
+
+  /*
+   * AN IDENTITY ALWAYS MATCHES ITSELF, which is the only claim about THIS host
+   * that is true on EVERY host.
+   *
+   * The first version of this test asserted `identityMismatch(budget._measuredOn,
+   * ROOT)` was null, meaning "the committed baseline was measured on the machine
+   * running this test". That is true on the machine that wrote it and false
+   * everywhere else, and CI runs `ubuntu-latest` while the committed baseline
+   * records win32, so it would have gone red on CI on the push that carried it.
+   * The local gate would have been green, which is the worse half: a test that
+   * encodes one machine as the world passes exactly where it is written and
+   * fails where it is read.
+   *
+   * Whether the marks are stale for the host doing the judging is the GUARD's
+   * question, and it already answers it per build, failing where the comparison
+   * is sound and reporting where it is not. A portable test cannot ask it.
+   */
+  it('reports no mismatch against an identity taken on this very host', () => {
+    expect(identityMismatch(measurementIdentity(ROOT), ROOT)).toBeNull()
+  })
+
+  it('refuses to read an absent identity as a match, which would disarm the ratchet silently', () => {
+    for (const absent of [undefined, null, 'win32', 42]) {
+      expect(identityMismatch(absent as never, ROOT)).toContain('no measuring identity')
+    }
+  })
+
+  it('names every field that differs, and says which side is which', () => {
+    const here = measurementIdentity(ROOT)
+    const reason = identityMismatch({ ...here, platform: 'linux' }, ROOT)
+    expect(reason).toContain('platform')
+    expect(reason).toContain('"linux"')
+    expect(reason).toContain(JSON.stringify(here.platform))
+  })
+
+  it('treats a node or next change as a different toolchain, not a passing detail', () => {
+    const here = measurementIdentity(ROOT)
+    expect(identityMismatch({ ...here, node: '20.0.0' }, ROOT)).toContain('node')
+    expect(identityMismatch({ ...here, next: '15.0.0' }, ROOT)).toContain('next')
+    expect(identityMismatch({ ...here, arch: 'arm64' }, ROOT)).toContain('arch')
+  })
+
+  it('a field missing from the recorded identity is a mismatch rather than a wildcard', () => {
+    const { platform, ...withoutPlatform } = measurementIdentity(ROOT)
+    expect(platform).toBeTruthy()
+    expect(identityMismatch(withoutPlatform as never, ROOT)).toContain('platform')
   })
 })

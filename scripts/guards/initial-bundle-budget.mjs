@@ -52,11 +52,24 @@
  *    for why the indexing policy's own `never` set was the wrong reading and
  *    would have exempted exactly the pages this budget exists for.
  *
- * 2. NO ROUTE MAY EXCEED ITS RECORDED MARK. Every route, public and internal.
- *    This is the ratchet: whatever the organiser console weighs today it may
- *    never weigh more, and every improvement locks itself in the moment the
- *    mark is rewritten. It is what holds the 29 internal routes that are over
- *    the Scope budget and cannot be brought under it in one item.
+ * 2. NO ROUTE MAY EXCEED ITS RECORDED MARK, ON A BUILD THE MARK CAN JUDGE.
+ *    Every route, public and internal. This is the ratchet: whatever the
+ *    organiser console weighs today it may never weigh more, and every
+ *    improvement locks itself in the moment the mark is rewritten. It is what
+ *    holds the 29 internal routes that are over the Scope budget and cannot be
+ *    brought under it in one item.
+ *
+ *    THE QUALIFIER IS NOT A LOOPHOLE AND IT WAS ADDED THE DAY THE RATCHET FIRST
+ *    RAN. A mark is a gzip byte count of what one toolchain emitted, so the
+ *    comparison is a fair one against a build from the same toolchain and a
+ *    category error against a different one. `postbuild` runs this guard, npm
+ *    runs `postbuild` after `build`, and `build` is what VERCEL runs, so a mark
+ *    written on win32 would otherwise have judged a Linux production build and
+ *    failed the deployment on a difference that says nothing about the code.
+ *    perf-budget.json therefore records `_measuredOn`, the ratchet FAILS where
+ *    that matches and REPORTS where it does not, and clauses 1, 1b, 3, 4 and 5
+ *    block on every host regardless. The conditions are checked in the contract
+ *    half too, so the field cannot be quietly dropped to disarm the ratchet.
  *
  * 3. THE MARKS MUST DESCRIBE THE PLATFORM. Every route the build emits has a
  *    mark and every mark names a route that exists. A budget file that has
@@ -91,7 +104,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
-import { SCOPE_10_3_BUDGET_BYTES, kb } from '../perf/lib/first-load.mjs'
+import { SCOPE_10_3_BUDGET_BYTES, kb, identityMismatch } from '../perf/lib/first-load.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -141,6 +154,36 @@ function judgeContract() {
         `${SCOPE_10_3_BUDGET_BYTES} (200 KB). The number in the file is not the authority and may not disagree ` +
         `with SCOPE_10_3_BUDGET_BYTES in scripts/perf/lib/first-load.mjs.`,
     )
+  }
+
+  /*
+   * THE MARKS MUST SAY WHAT THEY WERE MEASURED ON.
+   *
+   * Without this field `identityMismatch` reads the baseline as un-comparable
+   * and the ratchet reports everywhere, which is a ratchet that has silently
+   * stopped ratcheting. It is checked in the CONTRACT half, which runs on every
+   * commit and weighs nothing, so dropping the field fails on the next push
+   * rather than on the next build that happens to grow.
+   */
+  judged += 1
+  const identity = baseline._measuredOn
+  if (!identity || typeof identity !== 'object') {
+    failures.push(
+      `${BASELINE_FILE} carries no \`_measuredOn\`. A mark is a gzip byte count of what one toolchain emitted, ` +
+        `and without the conditions it was taken under the ratchet cannot tell a fair comparison from a ` +
+        `cross-toolchain one, so it reports everywhere and holds nothing. Rewrite with ` +
+        `\`node scripts/perf/first-load-budget.mjs --write-baseline\`.`,
+    )
+  } else {
+    for (const field of ['platform', 'arch', 'node', 'next']) {
+      judged += 1
+      if (typeof identity[field] !== 'string' || identity[field].length === 0) {
+        failures.push(
+          `${BASELINE_FILE}: \`_measuredOn.${field}\` is ${JSON.stringify(identity[field] ?? null)} rather than a ` +
+            `non-empty string. Every field is compared exactly, so a missing one would match nothing for ever.`,
+        )
+      }
+    }
   }
 
   const marks = Object.entries(baseline.marks)
@@ -197,6 +240,21 @@ async function judgeBuilt() {
   const register = baseline.overBudget ?? {}
   const overScope = []
   const registered = []
+
+  /*
+   * CAN THIS HOST JUDGE THAT MARK? Asked once, before the loop, because the
+   * answer is the same for all 133 routes and because a per-route message would
+   * print the same sentence 133 times.
+   *
+   * The reasoning lives in scripts/perf/lib/first-load.mjs beside
+   * `measurementIdentity`. In one line: a mark is a gzip byte count of what one
+   * toolchain emitted, the ratchet is a fair comparison only against a build
+   * from the same one, and `postbuild` runs this guard on the VERCEL BUILD HOST
+   * as well as here. Nothing else is relaxed by a mismatch.
+   */
+  const notComparable = identityMismatch(baseline._measuredOn, ROOT)
+  const grew = []
+
   for (const row of result.routes) {
     judged += 1
     const mark = baseline.marks[row.route]
@@ -208,13 +266,9 @@ async function judgeBuilt() {
           `Add it with: node scripts/perf/first-load-budget.mjs --write-baseline`,
       )
     } else if (row.gzip > mark) {
-      // Clause 2, the ratchet.
-      failures.push(
-        `${row.route} grew: ${kb(row.gzip)} KB gzip against a recorded mark of ${kb(mark)} KB ` +
-          `(+${kb(row.gzip - mark)} KB). First-load JavaScript may only ever go down. If the growth is ` +
-          `intended and justified, say so in the commit and rewrite the mark with ` +
-          `\`node scripts/perf/first-load-budget.mjs --write-baseline\`.`,
-      )
+      // Clause 2, the ratchet. Collected rather than reported here so the
+      // comparability question is answered once, below, for all of them.
+      grew.push({ route: row.route, gzip: row.gzip, mark })
     }
 
     // Clause 1, the Scope budget, blocking for a public route unless the breach
@@ -243,6 +297,51 @@ async function judgeBuilt() {
         }
       }
     }
+  }
+
+  /*
+   * CLAUSE 2's VERDICT, once, for every route that grew.
+   *
+   * IN BYTES AS WELL AS KB, and that is not a detail. The message this replaces
+   * read "grew: 175.5 KB gzip against a recorded mark of 175.5 KB (+0.0 KB)" on
+   * 132 routes: a growth report naming no growth, because every figure was
+   * rounded to a tenth of a kilobyte and the real difference was 4 to 16 bytes.
+   * A reader could not tell a rounding artefact from a regression, and the only
+   * move the message offered was to rewrite the mark.
+   */
+  if (grew.length) {
+    const worst = [...grew].sort((a, b) => b.gzip - b.mark - (a.gzip - a.mark))
+    const lines = worst.map(
+      (g) =>
+        `${g.route}: ${g.gzip} bytes gzip (${kb(g.gzip)} KB) against a mark of ${g.mark} ` +
+        `(${kb(g.mark)} KB), +${g.gzip - g.mark} bytes`,
+    )
+    if (notComparable) {
+      notes.push(
+        `${grew.length} route(s) measure more than their mark, and this host CANNOT JUDGE THAT. ${notComparable}.`,
+      )
+      notes.push(
+        '    A mark is a gzip byte count of what one toolchain emitted. Comparing it to a build from a ' +
+          'different one is not a stricter gate, it is a different measurement, and failing a deployment on ' +
+          'it would teach everybody to reach for --write-baseline, which is how a ratchet becomes a rubber ' +
+          'stamp. The absolute Scope budget, the unmarked-route clause and the stale-mark clause all still ' +
+          'blocked this build.',
+      )
+      for (const l of worst.slice(0, 5).map((g) => `    ${g.route}: +${g.gzip - g.mark} bytes`)) notes.push(l)
+      if (worst.length > 5) notes.push(`    ... and ${worst.length - 5} more.`)
+    } else {
+      for (const l of lines) {
+        failures.push(
+          `${l}. First-load JavaScript may only ever go down. If the growth is intended and justified, say so ` +
+            `in the commit and rewrite the mark with \`node scripts/perf/first-load-budget.mjs --write-baseline\`.`,
+        )
+      }
+    }
+  } else if (notComparable) {
+    notes.push(
+      `the marks were taken elsewhere and no route exceeds them anyway (${notComparable}), so the ratchet had ` +
+        'nothing to say on this host either way.',
+    )
   }
 
   // Clause 1b: an entry whose route is no longer over budget. The register must
@@ -321,12 +420,12 @@ async function judgeBuilt() {
       `${overScope.filter((r) => r.audience === 'public').length}, of which ${registered.length} registered.`,
   )
 
-  return { judged, failures, notes, weighed: result.routes.length }
+  return { judged, failures, notes, weighed: result.routes.length, ratchetHeld: !notComparable }
 }
 
 async function main() {
   const built = process.argv.includes(BUILT_FLAG)
-  const { judged, failures, notes = [], weighed = 0 } = built ? await judgeBuilt() : judgeContract()
+  const { judged, failures, notes = [], weighed = 0, ratchetHeld = true } = built ? await judgeBuilt() : judgeContract()
 
   declareWork('initial-bundle-budget', {
     did: built
@@ -347,10 +446,16 @@ async function main() {
     // Deliberately NOT "no public route over the budget". Three are, they are
     // registered, and a pass line that rounded that away would be the exact
     // reporting C8B.6 forbids.
+    //
+    // And deliberately NOT "no route is above its mark" when the ratchet only
+    // REPORTED. It said that once, on a host it had already told the reader it
+    // could not judge, and a summary that contradicts the note three lines above
+    // it is worse than no summary. Drilled: C:\dev\EVIDENCE\MONEY\bundle-guard-drills.txt.
     console.log(
       `${TAG} PASS - ${judged} check(s) on the build output: every public route over ` +
-        `${kb(SCOPE_10_3_BUDGET_BYTES)} KB gzip is registered with a date and a reason, no route is above its ` +
-        `mark, every route is marked, and no always-present attribution marker is dead.`,
+        `${kb(SCOPE_10_3_BUDGET_BYTES)} KB gzip is registered with a date and a reason, ` +
+        `${ratchetHeld ? 'no route is above its mark' : 'the ratchet REPORTED rather than judged (see the note above)'}, ` +
+        `every route is marked, and no always-present attribution marker is dead.`,
     )
   } else {
     console.log(

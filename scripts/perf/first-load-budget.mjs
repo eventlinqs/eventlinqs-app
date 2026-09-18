@@ -36,7 +36,7 @@
 import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { readFirstLoad, bodies, kb, SCOPE_10_3_BUDGET_BYTES } from './lib/first-load.mjs'
+import { readFirstLoad, bodies, kb, SCOPE_10_3_BUDGET_BYTES, measurementIdentity } from './lib/first-load.mjs'
 import { markerCoverage } from './lib/chunk-attribution.mjs'
 import { audienceOf, classifyRoutes, audienceDisagreements } from './lib/route-audience.mjs'
 
@@ -93,6 +93,12 @@ export function baselineFrom(result, previous = null) {
       'A mark may only ever go DOWN. Rewrite with: node scripts/perf/first-load-budget.mjs --write-baseline',
     _budgetBytes: SCOPE_10_3_BUDGET_BYTES,
     _budgetSource: 'Scope v5 section 10.3, pulled forward by the close-out on 7 September 2026',
+    _measuredOnDoc:
+      'The conditions these marks were taken under. A mark is a gzip byte count of what one toolchain ' +
+      'emitted, so the ratchet is only a fair comparison against a build from the same one. On a host that ' +
+      'does not match, initial-bundle-budget.mjs REPORTS the comparison instead of failing on it, and the ' +
+      'absolute Scope budget, the unmarked-route clause and the stale-mark clause still block everywhere.',
+    _measuredOn: measurementIdentity(ROOT),
     _overBudgetDoc:
       'PUBLIC routes over the budget today. Every entry is dated, says why, and says what would fix it. ' +
       'The guard FAILS on a public route over budget with no entry here, and FAILS on an entry whose route ' +
