@@ -621,9 +621,46 @@ const nextConfig: NextConfig = {
      *                  the opposite of the intent. Verified: the hero is served
      *                  at w=750 as a 33 KB AVIF.
      *   3840           the full-bleed hero on a 2x desktop still needs it.
+     *
+     * ------------------------------------------------------------------------
+     * 16 REMOVED, 19 September 2026 (close-out C8 EXECUTION METHOD, C8B.3).
+     * ------------------------------------------------------------------------
+     *
+     * The list above says the fixed sizes in use are "16, 32, 192, 256, 288,
+     * 320 and 512". That sentence stopped being true on 18 September, when the
+     * `sizes` rework replaced three shared hints with twenty-two derived ones,
+     * and nothing could notice: a width list is a CLAIM about the slots the
+     * platform renders, and the slots live in three other files.
+     *
+     * THE SMALLEST SLOT ON THIS PLATFORM IS 24 CSS PIXELS (the `xs` avatar,
+     * MEDIA_SIZES.avatarXs). A browser picks the smallest candidate that is at
+     * least the slot times the device pixel ratio, so the smallest width any
+     * image here can ever select is the first rung at or above 24, which is 32.
+     * Nothing can select 16 at any device pixel ratio, and a viewport-relative
+     * hint cannot even EMIT it: next/image filters those to widths at or above
+     * deviceSizes[0] times the smallest vw ratio, and the smallest ratio
+     * declared in MEDIA_SIZES is 21vw, which is 134 pixels.
+     *
+     * MEASURED, not reasoned: it was being emitted 142 times across the fifteen
+     * pinned gate routes, once in every candidate list of every fixed-width
+     * image, at about 230 bytes each.
+     *   C:\dev\EVIDENCE\C8B3-CANDIDATES\before.json
+     *
+     * Next.js removed 16 from its OWN default for this exact reason: "very few
+     * projects ever serve 16 pixels width images ... Removing this setting
+     * reduces the size of the srcset attribute shipped to the browser"
+     * (node_modules/next/dist/docs/01-app/02-guides/upgrading/version-16.md,
+     * "`imageSizes` Default (Breaking change)", Next 16.3.0). Carrying it was a
+     * default this repository had opted back into without a reason that still
+     * held.
+     *
+     * HELD BY A GATE so the claim cannot go stale again:
+     * scripts/guards/candidate-ladder-has-no-dead-rung.mjs derives the slots
+     * from rhythm.ts and sizes.ts on every build and fails when a rung is
+     * unreachable, or when a slot has outgrown the top of the ladder.
      */
     deviceSizes: [640, 750, 828, 1080, 1920, 3840],
-    imageSizes: [16, 32, 64, 128, 256, 384],
+    imageSizes: [32, 64, 128, 256, 384],
     // Constrain quality to brand tiers. Mirrors MEDIA_QUALITY in
     // src/components/media/quality.ts. A forgotten quality={100} on a
     // feature component will now be rejected at build time rather than

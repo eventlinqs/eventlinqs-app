@@ -213,6 +213,14 @@ export const MEDIA_SIZES = {
    *  640px-wide image for a 56px square: x11.4, the worst single ratio found. */
   listThumb: '56px',
 
+  /** Avatar - extra small (24px). THE SMALLEST SLOT ON THE PLATFORM, and the
+   *  reason it is here rather than inline in the component: the configured
+   *  width ladder in next.config.ts is derived from the slots this table
+   *  declares, and until 19 September 2026 this one was a bare '24px' literal
+   *  inside OrganiserAvatar. The ladder's own comment still claimed a 16px
+   *  fixed size was in use, because the only file that could have contradicted
+   *  it did not know this slot existed. */
+  avatarXs: '24px',
   /** Avatar - topbar (32px on every breakpoint) */
   avatarTopbar: '32px',
   /** Avatar - small (32px) */
