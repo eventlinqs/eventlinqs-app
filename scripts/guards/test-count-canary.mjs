@@ -2404,9 +2404,32 @@ const ROOT = join(HERE, '..', '..')
  * to 37.
  *   460 + 0 = 460 files
  *   5990 + 9 = 5999 tests
+ *
+ * 2026-09-19, close-out C8B.3, the BROWSE card family (`EventCard`) collapsed:
+ * fifteen composites, and six inline style objects per card that moved into
+ * them. /events fell 397,482 -> 339,541 B, /city/melbourne by 146,544 B and
+ * /categories/music by 73,272 B. Two new pure things are tested rather than
+ * trusted: `transition-equivalence`, which is how a drive tells "0.2s, 0.2s"
+ * from "0.2s" on two properties without pretending they behave differently,
+ * and `styleAttributeWeight`, the reporter row that could not see an inline
+ * style at all until now.
+ *
+ * THE FLOOR MOVES BY MORE THAN THIS LANE ADDED, and the difference is measured
+ * rather than assumed: four test files arrived on this branch with lane A's
+ * merges of lane B (consent/truncated-ledger-sends, guards/supabase-select-
+ * chains, media/launch-kit-tile-hint, supabase/read-every-row) and were never
+ * counted into this baseline. Run on their own they report 38 tests.
+ *
+ * MEASURED: 465 files, 6057 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: one new file, tests/unit/perf/transition-equivalence.test.ts,
+ * holding 14 cases, plus 6 more in tests/unit/perf/document-weight.test.ts
+ * (37 -> 43), plus lane B's four files and their 38.
+ *   460 + 4 + 1 = 465 files
+ *   5999 + 38 + 14 + 6 = 6057 tests
  */
-const MIN_FILES = 460
-const MIN_TESTS = 5999
+const MIN_FILES = 465
+const MIN_TESTS = 6057
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

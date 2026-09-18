@@ -191,6 +191,25 @@ for (const path of paths) {
         `${row.value.slice(0, 58)}`,
     )
   }
+  /* The inline-style row, added 19 September 2026 with the browse card
+   * collapse. A `style={{ ... }}` object is paid per instance in the markup
+   * AND again as a serialised object in the payload, exactly as a class list
+   * is, and nothing here could see it until now. Not all of it is removable:
+   * Next's `fill` images set six positioning declarations inline on every
+   * image, which is the framework's and not ours. `repeats` is the actionable
+   * half. */
+  console.log(
+    `    inline styles ${a.styleAttributes.bytes} B in ${a.styleAttributes.occurrences} attributes ` +
+      `(${a.styleAttributes.sharePercent.toFixed(1)}% of the document), ${a.styleAttributes.distinct} distinct, ` +
+      `of which ${a.styleAttributes.repeatBytes} B is a value said again`,
+  )
+  for (const row of a.styleAttributes.byValue.slice(0, 3)) {
+    if (row.repeatBytes === 0) break
+    console.log(
+      `      ${String(row.repeatBytes).padStart(7)} B repeats   ${row.count} x ${row.value.length} chars   ` +
+        `${row.value.slice(0, 58)}`,
+    )
+  }
   for (const c of catalogues) {
     console.log(
       `    catalogue "${c.name}": ${c.bytes} B, ${c.rows} row(s), ${c.distinct} distinct, ` +
