@@ -222,9 +222,41 @@ if (!registry) {
       )
     }
   }
-  for (const [file] of registry) {
+  /*
+   * EVERY MARKETING PATH IS JUDGED, NOT ONLY THE ONES THAT IMPORT A TRANSPORT
+   * THEMSELVES. Found on 18 September 2026 by drilling this guard red for the
+   * first time: the drill removed the resolver call from
+   * src/lib/campaigner/run.ts, which is the module that decides who receives a
+   * campaign, and the guard passed.
+   *
+   * The reason is one hop. The sweep above judges files matching
+   * TRANSPORT_IMPORTS, and run.ts reaches the transport through './sink'
+   * instead of importing it. So the file classified in the registry as a
+   * MARKETING send path, by hand, with a reason written beside it, was exempt
+   * from the one clause that classification exists to trigger. The registry was
+   * right and the enforcement did not reach it.
+   *
+   * The classification is now what selects a file, which is what it was always
+   * meant to be: calling something a marketing send path IS the assertion that
+   * it chooses recipients, and choosing recipients without the resolver is the
+   * failure. The transport sweep above is kept and is a different question: it
+   * catches a file that reaches a transport and is in no classification at all.
+   */
+  for (const [file, kind] of registry) {
     if (!existsSync(join(ROOT, file))) {
       fail('clause 4', `src/lib/consent/send-paths.ts lists ${file}, which no longer exists`)
+      continue
+    }
+    if (kind !== 'marketing') continue
+    // The sweep above already judged this one; saying it twice helps nobody.
+    if (reaching.some((r) => r.file === file)) continue
+    const source = readFileSync(join(ROOT, file), 'utf8')
+    if (!RESOLVER_CALLS.some((re) => re.test(source))) {
+      sendPathsJudged += 1
+      fail(
+        'clause 4',
+        `${file} is registered as a marketing send path and never calls the resolver. Filter its recipients through resolveSend or filterPermittedRecipients.`,
+      )
     }
   }
 }

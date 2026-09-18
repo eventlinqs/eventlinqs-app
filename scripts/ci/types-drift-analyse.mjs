@@ -559,7 +559,54 @@ export function ddlExplainsDelta(delta, ddl, setofMap = new Map()) {
   if (at.type === 'relationships') {
     // A foreign key moved. Only a migration that touches THIS table's
     // constraints or recreates it can account for that.
-    return has((d) => (d.table === at.table && ['create-table', 'drop-table', 'add-column', 'drop-column'].includes(d.kind)) || (d.kind === 'create-view' && d.table === at.table))
+    if (has((d) => (d.table === at.table && ['create-table', 'drop-table', 'add-column', 'drop-column'].includes(d.kind)) || (d.kind === 'create-view' && d.table === at.table))) {
+      return true
+    }
+
+    /*
+     * A NEW VIEW CHANGES THE RELATIONSHIPS OF EVERY TABLE THAT POINTS AT WHAT IT
+     * SELECTS FROM, AND NOT ITS OWN.
+     *
+     * Found on 18 September 2026 by API1, which adds three views over `events`,
+     * `orders` and `tickets`. `supabase gen types` lists, for every foreign key,
+     * one entry per relation the target can be reached through, so creating
+     * `api_v1_events` added a second entry to the Relationships of all 40 tables
+     * carrying an `event_id`. Not one of those tables is named by the migration,
+     * so the rule above could not explain any of them and 49 correct differences
+     * reported as genuine drift.
+     *
+     * The direction and the strictness are kept. This explains the delta ONLY
+     * when EVERY entry that differs names a relation the pending migration
+     * itself creates or drops. An entry naming anything else, a changed column
+     * list, or a changed isOneToOne still fails, so a real foreign key change
+     * riding along inside the same array cannot be laundered by it.
+     */
+    // A delta side is a LEAF OBJECT, `{ optional, type }`, and the array text is
+    // on `.type`. Reading the object itself yields "[object Object]", which
+    // splits into one entry that matches nothing and quietly explains nothing.
+    const entries = (side) =>
+      String(side?.type ?? '')
+        .split('},')
+        .map((e) => e.trim())
+        .filter(Boolean)
+    const committedEntries = entries(delta.committed)
+    const liveEntries = entries(delta.live)
+    const onlyInCommitted = committedEntries.filter((e) => !liveEntries.includes(e))
+    const onlyInLive = liveEntries.filter((e) => !committedEntries.includes(e))
+
+    const namesA = (kinds) => (entry) => {
+      const m = /referencedRelation:\s*"([^"]+)"/.exec(entry)
+      return Boolean(m) && has((d) => kinds.includes(d.kind) && d.table === m[1])
+    }
+
+    // Committed-only entries are things the pending migration CREATES; live-only
+    // entries are things it DROPS. Both sides must be fully accounted for, and a
+    // delta with nothing on either side is not explained by anything.
+    if (onlyInCommitted.length === 0 && onlyInLive.length === 0) return false
+    return (
+      onlyInCommitted.every(namesA(['create-view', 'create-table'])) &&
+      onlyInLive.every(namesA(['drop-view', 'drop-table']))
+    )
   }
 
   if (at.type === 'enum' || at.type === 'composite') {

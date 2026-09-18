@@ -120,6 +120,20 @@
  *                              method sentence is chosen by the method used, the
  *                              measured claim stays out of reach, and the call to
  *                              action sits below the result
+ *   api-v1-organiser-scope     no row leaves the public read API without the
+ *                              organisation predicate in its query: no route file
+ *                              can query for itself, the reader is the only reader,
+ *                              the three views carry the scope column and cannot be
+ *                              written through, an out of scope id answers 404 and
+ *                              never 403, every payload names its organisation, the
+ *                              key lookup is uncached, and the key screen reads the
+ *                              caps it documents rather than typing them
+ *   every-guard-has-been-seen-to-fail
+ *                              every guard registered in this file has a drill in
+ *                              scripts/verify/guard-failure-drills.mjs that has
+ *                              actually made it fail, against a dated baseline of
+ *                              the 63 that predate the rule; a guard that has never
+ *                              been watched to fail is a green light nobody earned
  *   product-loops-carry-their-parameters  the ticket email, rendered, carries the
  *                              run-your-event line and both parameters; the
  *                              confirmation page, the share bar and the
@@ -141,6 +155,10 @@
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
+ *   drive-quantity-control-selector  the money drives press the button they name: the
+ *                              selector is anchored, it matches the label the product
+ *                              puts on the tier increase control, and nothing else in
+ *                              src/ answers to it
  *   positioning-lock           no user-facing surface calls EventLinqs a ticketing platform
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
@@ -262,6 +280,12 @@
  *                              contract. A width nobody selects is still written into the
  *                              srcset of every fixed-width image, 1,404 times on the
  *                              homepage at about 230 bytes each (close-out C8B.3)
+ *   marketing-bands-are-supplyable
+ *                             every route that renders a marketing band is measured by the
+ *                              fidelity drive, every band variant is on its own hint whose
+ *                              fixed term matches its declared slot, and a band the
+ *                              licensed raster cannot supply is named with a date and a
+ *                              reason instead of passing quietly (lane B, 19 Sep 2026)
  *   weak-network-contract     the checkout survives a submit that never reached the server,
  *                              the root service worker keeps only content-hashed assets so
  *                              no cache can serve a stale price, it registers after the
@@ -1108,6 +1132,19 @@ const GUARDS = [
   // set of numbers, and holds /organisers and /pricing to rendering the fee as a
   // read rather than a sentence. Drilled red by changing one number in the copy.
   'scripts/guards/founding-offer-matches-configuration.mjs',
+  // Close-out FO1 (18 September 2026). Every driven proof that a ticket can be
+  // bought goes through one helper, and that helper asked Playwright for a
+  // button whose name merely STARTED with "add". On 14 September an "Add to
+  // calendar" button shipped above the ticket panel, so from that day every
+  // money drive opened a calendar menu, left the quantity at 0, and reported
+  // that the ticket panel had never rendered. It had. A loose selector does not
+  // fail; it indicts the product for the harness's mistake, in detail, and is
+  // believed. This holds the drive's selector to the label the product actually
+  // puts on the control the drive presses, requires it to be anchored at both
+  // ends, and fails if any other button in src/ answers to it. Drilled red both
+  // ways: the old prefix selector back in the helper (it names "Add to
+  // calendar" and eleven more), and the product renaming its own tier label.
+  'scripts/guards/drive-quantity-control-selector.mjs',
   // Close-out OL1 (13 September 2026). /organisers is now the page every
   // outreach message sends a stranger to, and it gained a block that shows the
   // newest published event as a real card. The cheapest way to make that block
@@ -1201,6 +1238,23 @@ const GUARDS = [
   // agreeing with what the platform charges, or the method sentence goes
   // missing and arithmetic starts reading as a prediction.
   'scripts/guards/forecast-reads-every-number.mjs',
+  // Close-out API1. The public read API's one promise is that a key for
+  // organiser A cannot see organiser B, and the whole of it rests on a single
+  // predicate being present on every query the surface makes. A predicate that
+  // is present by convention fails silently: the route works, the tests pass,
+  // and it returns everybody's rows. This proves the predicate, proves that no
+  // route file can query around it, proves the views it names carry the column
+  // and cannot be written through, and proves an out of scope id answers 404
+  // rather than the 403 that would confirm the row exists.
+  'scripts/guards/api-v1-organiser-scope.mjs',
+  // A guard nobody has ever seen fail is not a guard, and on 18 September 2026
+  // 63 of the 148 entry points in this very list had never been made to fail by
+  // anything. Eleven of those were drilled properly that day and the drilling
+  // found three real defects in guards that had been passing confidently for a
+  // week. This fails the build when a guard is registered here with no drill in
+  // scripts/verify/guard-failure-drills.mjs, against a dated baseline of the 63
+  // that predate it, so the debt is visible and cannot grow.
+  'scripts/guards/every-guard-has-been-seen-to-fail.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and
@@ -1572,6 +1626,14 @@ const GUARDS = [
   // a slot that no longer existed. Next 16 removed 16 from its own default for the
   // same reason. Three clauses, each drilled red and green.
   'scripts/guards/candidate-ladder-has-no-dead-rung.mjs',
+  // Lane B (19 September 2026): the marketing bands on /organisers and /about were
+  // under-fetched at every desktop width and every gate was green, because the one
+  // gate that could see a band did not have those routes in its list. Three clauses:
+  // every route rendering a band is measured by the fidelity drive, every band
+  // variant is on its own hint whose fixed term matches its declared slot, and a
+  // band the licensed raster cannot supply is named with a date and a reason rather
+  // than left silent. Drilled red and green.
+  'scripts/guards/marketing-bands-are-supplyable.mjs',
   'scripts/guards/weak-network-contract.mjs',
   // Close-out C17 (7 September 2026): the homepage hero never renders without
   // imagery. Production showed a flat navy panel the day every event had ended;

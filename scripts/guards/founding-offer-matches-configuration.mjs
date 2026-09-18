@@ -64,6 +64,18 @@ const PRICING_TEMPLATE = 'src/components/templates/PricingPage.tsx'
 const faults = []
 const checks = { 'offer claim': 0, 'sql cap literal': 0, 'fee literal pattern': 0, 'fallback figure': 0 }
 
+/**
+ * Source with block comments and whole-line comments removed, so a rule
+ * EXPLAINED in prose cannot be mistaken for a rule OBEYED in code.
+ */
+function withoutComments(source) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .split(String.fromCharCode(10))
+    .filter(line => !line.trim().startsWith('*') && !line.trim().startsWith('//'))
+    .join(String.fromCharCode(10))
+}
+
 function read(rel) {
   const file = join(ROOT, rel)
   if (!existsSync(file)) {
@@ -233,9 +245,24 @@ if (locked) {
   for (const rel of [ORGANISERS_TEMPLATE, PRICING_TEMPLATE]) {
     const source = read(rel)
     if (!source) continue
-    if (!source.includes('getLivePublicFee')) {
+    /*
+     * THE CALL, IN CODE, NOT THE MENTION, for the same reason recorded in
+     * scripts/guards/forecast-reads-every-number.mjs on 18 September 2026: an
+     * import line, or a comment explaining where the fee comes from, satisfied
+     * `includes('getLivePublicFee')` on its own. Both of these templates carry
+     * the name in prose as well as calling it, so the weaker test could never
+     * have gone red here no matter what the page rendered.
+     *
+     * COMMENTS ARE STRIPPED FIRST, and that is not belt and braces: the second
+     * attempt at this check tested for the name followed by a parenthesis, and
+     * OrganisersLandingPage.tsx:196 carries the words "getLivePublicFee
+     * (displayed == charged)" inside a comment. The drill replaced the real
+     * call and the guard went on passing, on the strength of a comment
+     * explaining the very rule it was failing to enforce.
+     */
+    if (!/\bgetLivePublicFee\s*\(/.test(withoutComments(source))) {
       faults.push(
-        `${rel} does not call getLivePublicFee. The fee on a public page is a READ from pricing_rules, never a sentence somebody typed, or the page and the checkout can tell different stories`,
+        `${rel} does not CALL getLivePublicFee. The fee on a public page is a READ from pricing_rules, never a sentence somebody typed, or the page and the checkout can tell different stories. An import of the name, or a comment naming it, is not a read`,
       )
     }
     for (const literal of FEE_LITERALS) {

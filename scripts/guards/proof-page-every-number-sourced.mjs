@@ -221,7 +221,11 @@ declareWork('proof-page-every-number-sourced', {
     'figure judged': assignments.length,
     'migration read': migrationCount,
   },
-  found: { 'unsourced or typed figure': faults.length },
+  // 'unsourced or typed figure' made the shared pluraliser print "0 unsourced ors
+  // typed figure": it reads 'typed' as the first participle and pluralises the word
+  // before it, which was 'or'. A label whose head noun comes first, with the
+  // qualifier after a preposition, is handled correctly.
+  found: { 'figure with no source behind it': faults.length },
 })
 
 console.log(

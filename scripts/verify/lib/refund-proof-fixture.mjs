@@ -334,7 +334,28 @@ export async function drivePurchase(page, { base, slug, qty, buyerEmail, shot = 
    * answer exists: against `next dev` the first request for a route compiles
    * it, so the control appears seconds after the event is on screen.
    */
-  const quantityControl = () => page.getByRole('button', { name: /^(\+|increase|add)/i }).first()
+  /*
+   * REASON THREE, THE SELECTOR ITSELF (lane B, 18 September 2026), and it is
+   * the worst of the three because it accuses the product of both the others.
+   *
+   * This read `/^(\+|increase|add)/i` and took `.first()`. On 14 September lane
+   * C shipped an "Add to calendar" button onto the event page (SEO5, commit
+   * ee8d09da) which sits ABOVE the ticket panel in the DOM and whose accessible
+   * name begins with "Add". Every drive through this helper then opened a
+   * calendar menu, left the quantity on 0, and reported the reserve button
+   * ABSENT, because at zero tickets the product correctly labels its CTA
+   * "Select tickets to continue" rather than "Checkout · $x". Three viewports
+   * of "the panel never rendered" against a panel that had rendered perfectly.
+   *
+   * So the name is now the product's OWN accessible name and nothing looser:
+   * `aria-label={`Increase ${tier.name} quantity`}` in
+   * src/components/checkout/ticket-selector.tsx. A prefix match is an invitation
+   * for the next button anyone adds above this one to answer to it.
+   * scripts/guards/drive-quantity-control-selector.mjs holds the two together
+   * and fails the build if either side moves alone.
+   */
+  const quantityControl = () =>
+    page.getByRole('button', { name: /^increase .+ quantity$/i }).first()
   let plus = quantityControl()
   try {
     await plus.waitFor({ state: 'visible', timeout: 45000 })

@@ -56,7 +56,35 @@ const LABEL = {
  */
 export async function answerTheCookieBanner(page, options = {}) {
   const answer = options.answer ?? 'decline'
-  const timeout = options.timeout ?? 8000
+  const timeout = options.timeout ?? 30000
+
+  /*
+   * ASK WHETHER IT WILL EVER APPEAR BEFORE WAITING FOR IT, so the wait can be
+   * long without costing anything.
+   *
+   * 18 September 2026, the three lane merge. The banner moved into
+   * `components/analytics/measurement-stack.tsx`, which the root layout now
+   * fetches as its own chunk AFTER hydration, to get 3938 bytes gzip of
+   * measurement code out of the first load of every route. Nothing about what a
+   * visitor receives changed, but the banner now arrives strictly later than it
+   * used to, and 8000ms stopped being a safe answer to "has it mounted yet" on a
+   * dev server three lanes share. A miss here is SILENT: this returns false, no
+   * caller reads it, and the banner sits across the foot of every capture that
+   * follows, which is the exact defect this file was written to end.
+   *
+   * Raising the timeout alone would have been wrong. Most calls are on a page
+   * where the decision was already made in the same browser context, so the
+   * banner is never going to render and every one of those calls would pay the
+   * full wait. The consent decision is stored in a cookie (`el_consent`, see
+   * src/lib/analytics/consent.ts), so the question "will a banner appear" has a
+   * real answer that costs one evaluate. When the answer is no, this returns at
+   * once; when it is yes, it can afford to wait properly.
+   */
+  const alreadyAnswered = await page
+    .evaluate(() => document.cookie.split('; ').some(c => c.startsWith('el_consent=')))
+    .catch(() => false)
+  if (alreadyAnswered) return false
+
   const banner = page.locator(BANNER).first()
   try {
     await banner.waitFor({ state: 'visible', timeout })

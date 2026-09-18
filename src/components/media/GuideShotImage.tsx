@@ -26,7 +26,7 @@ export function GuideShotImage({ src, alt, className = '' }: Props) {
       src={safeSrc}
       alt={alt}
       fill
-      sizes={MEDIA_SIZES.featureBand}
+      sizes={MEDIA_SIZES.guideShot}
       quality={MEDIA_QUALITY.card}
       loading="lazy"
       decoding="async"

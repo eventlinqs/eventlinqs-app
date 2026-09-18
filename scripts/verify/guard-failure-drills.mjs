@@ -107,6 +107,31 @@ const NEW_EFFECTIVE_RECONCILE = effectiveDefinitionOf('reconcile_refund')
  * migration later. Derived now, so the next redefinition cannot repeat it.
  */
 const NEW_EFFECTIVE_RESERVATION = effectiveDefinitionOf('create_reservation')
+
+/*
+ * THE LOCKED FEE, DERIVED, so a drill cannot pin the founder's own number.
+ *
+ * founding-offer-matches-configuration builds the literals it FORBIDS out of
+ * the PRICING-LOCK block, which is the right design: changing the fee changes
+ * what may not be typed. A drill for that clause has to plant the current
+ * forbidden literal, and writing "3.5" into this file would mean the day the
+ * founder edits the fee in /admin/pricing and the lock block, this drill stops
+ * firing and reports DID NOT FAIL about a guard that is working perfectly.
+ *
+ * It is read out of src/lib/pricing/public-fee.ts rather than out of
+ * docs/PRICING.md, for two reasons. The fallback constant is under src/ and is
+ * therefore in the Vercel upload, so nothing here acquires a docs read; and the
+ * guard being drilled ASSERTS that constant equals the lock block, so if the
+ * two ever disagree that guard fails on its own clause 4 before this matters.
+ */
+function lockedPercentFromFallback() {
+  const file = 'src/lib/pricing/public-fee.ts'
+  if (!existsSync(join(ROOT, file))) return null
+  const m = readFileSync(join(ROOT, file), 'utf8').match(/percent:\s*([\d.]+)/)
+  return m ? m[1] : null
+}
+const LOCKED_PERCENT = lockedPercentFromFallback()
+console.log(`[drills] locked fee percentage, derived: ${LOCKED_PERCENT ?? '(unreadable)'}`)
 console.log(`[drills] effective confirm_order:   ${NEW_EFFECTIVE_CONFIRM}`)
 console.log(`[drills] effective reconcile_refund: ${NEW_EFFECTIVE_RECONCILE}`)
 console.log(`[drills] effective create_reservation: ${NEW_EFFECTIVE_RESERVATION}`)
@@ -3183,13 +3208,29 @@ const DRILLS = [
     expect: 'inserts organisations from a variable, so this guard cannot see',
   },
   {
-    name: "the sitemap stops selecting organisers on 'active', and the guard's rule stops being true",
+    /*
+     * RE-AIMED 18 September 2026, and the drift is the point.
+     *
+     * This drill pointed at `src/app/sitemap.ts`, where the organiser
+     * predicate used to live. On 16 September the three catalogue reads moved
+     * into `src/lib/seo/sitemap-catalogue.ts`, the guard's PREMISES list was
+     * re-derived to follow them, and this drill was not: it went on naming a
+     * file that no longer carries the anchor.
+     *
+     * The harness caught it as STALE the first time the whole array was run
+     * after the eleven undrilled guards were drilled, which is the behaviour
+     * its own header promises and the third time this file has recorded it.
+     * A drill that cannot aim is reported, never skipped.
+     *
+     * BOTH LANES FOUND THIS INDEPENDENTLY ON THE SAME DAY and fixed it to the
+     * same three lines, which is why only the notes conflicted when the branches
+     * met: lane A's commit 36fb1817 records it as defect 2 of the four it found
+     * on the way to the recipient matrix. Two lanes arriving at one answer is
+     * the harness reporting a stale drill loudly enough that neither could miss
+     * it, which is the argument for reporting rather than skipping.
+     */
+    name: "the organiser catalogue stops selecting on 'active', and the guard's rule stops being true",
     guard: `${GUARDS}/fixtures-are-not-published.mjs`,
-    // RE-ANCHORED 18 September 2026, lane A. The organiser select moved out of
-    // src/app/sitemap.ts into the catalogue module in a lane C refactor. The
-    // GUARD was updated with it (PREMISES already names sitemap-catalogue.ts);
-    // only this drill was left behind, so it could not plant its fault and
-    // stopped proving the clause while the harness still counted it.
     file: 'src/lib/seo/sitemap-catalogue.ts',
     find: ".eq('status', 'active')",
     replace: ".eq('status', 'approved')",
@@ -3447,6 +3488,634 @@ const DRILLS = [
     replace: '"marks": {\n    "/drill-not-a-byte-count": null,',
     expect: 'which is not a byte count',
   },
+  /*
+   * API1, eleven drills, one per check in api-v1-organiser-scope.
+   *
+   * Every one of these is a way the public API could quietly start serving one
+   * organiser another organiser's rows, or start telling the holder of a key
+   * that a uuid they may not read is nonetheless real. The guard passed on its
+   * first run, which is exactly the condition under which a blind guard goes
+   * unnoticed, so each clause is planted individually rather than the file
+   * being broken once and the whole thing called drilled.
+   */
+  {
+    name: 'a public API query loses the organisation predicate',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/reads.ts',
+    find: "      .from(API_V1_RESOURCES.events)\n      .select('*', { count: 'exact' })\n      .eq('organisation_id', scope.organisationId)",
+    replace: "      .from(API_V1_RESOURCES.events)\n      .select('*', { count: 'exact' })",
+    expect: 'does not carry',
+  },
+  {
+    name: 'a public API query reads the underlying table instead of the scoped view',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/reads.ts',
+    find: '      .from(API_V1_RESOURCES.events)',
+    replace: "      .from('events')",
+    expect: 'which is not one of the scoped API views',
+  },
+  {
+    name: 'the read only API grows a write',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/reads.ts',
+    find: "      .from(API_V1_RESOURCES.events)\n      .select('*', { count: 'exact' })",
+    replace: "      .from(API_V1_RESOURCES.events)\n      .update({ title: 'x' })\n      .select('*', { count: 'exact' })",
+    expect: 'this surface is read only',
+  },
+  {
+    name: 'a route file starts querying for itself',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/app/api/v1/events/route.ts',
+    find: "  return handleList(request, 'events')",
+    replace: "  void createAdminClient().from('events')\n  return handleList(request, 'events')",
+    expect: 'a route file may not query',
+  },
+  {
+    name: 'an out of scope id starts answering 403 instead of 404',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/handlers.ts',
+    find: '  const id = asUuid(rawId)',
+    replace: '  const forbidden = 403\n  void forbidden\n  const id = asUuid(rawId)',
+    expect: 'existence oracle',
+  },
+  {
+    name: 'a handler builds a response of its own, without the organisation id on it',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/handlers.ts',
+    find: '  const admitted = await admit(request)\n  if (!admitted.ok) return admitted.response\n  const { scope } = admitted\n\n  const params',
+    replace: '  const admitted = await admit(request)\n  if (!admitted.ok) return NextResponse.json({ ok: false })\n  const { scope } = admitted\n\n  const params',
+    expect: 'builds its own response',
+  },
+  {
+    name: 'a second reader of the scoped views appears somewhere else in src',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/handlers.ts',
+    find: "import { applyRateLimit } from '@/lib/rate-limit/middleware'",
+    replace: "import { applyRateLimit } from '@/lib/rate-limit/middleware'\nconst elsewhere = 'api_v1_orders'\nvoid elsewhere",
+    expect: 'only src',
+  },
+  {
+    name: 'a scoped view stops carrying the column every API query filters on',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'supabase/migrations/20260918000020_organiser_api_keys.sql',
+    find: 'select\n  t.id,\n  e.organisation_id,',
+    replace: 'select\n  t.id,',
+    expect: 'the predicate every API query carries would match nothing',
+  },
+  {
+    name: 'the read only views become writable again',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'supabase/migrations/20260918000020_organiser_api_keys.sql',
+    find: 'revoke insert, update, delete, truncate on public.api_v1_events from public, anon, authenticated, service_role;',
+    replace: '-- revoke removed by the drill',
+    expect: 'a read only surface must be read only in the database',
+  },
+  {
+    name: 'the key lookup grows a cache, so a revoked key keeps working',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/lib/api/v1/keys.ts',
+    find: "import { createAdminClient } from '@/lib/supabase/admin'",
+    replace: "import { createAdminClient } from '@/lib/supabase/admin'\nconst seen = new Map()\nvoid seen",
+    expect: 'must read the database on every request',
+  },
+  {
+    name: 'the key screen types a cap instead of reading it',
+    guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
+    file: 'src/app/(dashboard)/dashboard/api-keys/page.tsx',
+    find: '              {DEFAULT_PAGE_SIZE} by default, {MAX_PAGE_SIZE} at most',
+    replace: '              {50} by default, {MAX_PAGE_SIZE} at most',
+    expect: 'is typed onto the key screen',
+  },
+
+  /* =======================================================================
+   * ELEVEN GUARDS THAT WERE REGISTERED, BLOCKING, AND HAD NEVER BEEN SEEN TO
+   * FAIL. Lane B, 18 September 2026.
+   *
+   * Each of the guards below was proven red once, by hand, in the session that
+   * wrote it, with the output pasted into an evidence file. That is a claim
+   * about a session nobody can replay. The harness this array feeds exists
+   * because of the difference between the two, and its own header says so in
+   * its first line: "A guard never seen to fail is not a guard."
+   *
+   * The gap was found by counting rather than by remembering: 148 entry points
+   * are registered in run-guards.mjs and 69 of them had no drill, of which
+   * eleven belong to lane B. The other 58 belong to the other lanes and are
+   * reported to their owners rather than drilled here.
+   *
+   * WHAT WAS LOOKED FOR FIRST AND NOT FOUND, recorded so the absence is
+   * evidence rather than an omission: lane A shipped a guard on 18 September
+   * whose matcher was built in a template literal, where `\s` is not a
+   * recognised escape and the lexer drops the backslash, so the pattern
+   * compiled to `from s*` and reported PASS about a file that violated it.
+   * Every one of lane B's eighteen guards was scanned for that shape. None
+   * carries it: the only two template literals holding a class escape are
+   * `String.raw` tagged, which preserves the backslash, and every candidate
+   * across the other 402 guard and verify scripts is a comment or an embedded
+   * regex literal. The drills below therefore prove the clauses, not the
+   * syntax.
+   * ======================================================================= */
+
+  /*
+   * matcher-consented-and-capped (GA2), two drills, one per structural half.
+   * The guard's data half can only report on rows that exist, and a platform
+   * that has produced no match run has none, so the half that must never be
+   * able to pass vacuously is this one.
+   */
+  {
+    name: 'the consent trigger on the matcher score table is dropped and never put back',
+    guard: `${GUARDS}/matcher-consented-and-capped.mjs`,
+    file: 'supabase/migrations/20260913000050_matcher.sql',
+    find: 'create trigger trg_match_score_requires_live_consent\n  before insert on public.marketing_match_score\n  for each row execute function public.match_score_requires_live_consent();',
+    replace: '-- the trigger a later migration dropped and nobody put back',
+    expect: 'no migration puts the consent-and-cap trigger',
+  },
+  {
+    name: 'the matcher invariant view is renamed, so the guard reads a name nothing defines',
+    guard: `${GUARDS}/matcher-consented-and-capped.mjs`,
+    file: 'supabase/migrations/20260913000050_matcher.sql',
+    find: 'create or replace view public.marketing_match_invariant_breaches as',
+    replace: 'create or replace view public.marketing_match_breaches as',
+    expect: 'is not defined by any migration',
+  },
+
+  /*
+   * campaigner-allowlist-and-cap-in-database (GA4), six drills, one per
+   * structural clause. Each is the shape of a real regression: a constraint
+   * dropped in a later migration, a trigger lost in a rewrite, a view renamed.
+   * All six are drilled because the guard's own header says the data half can
+   * be clean simply because nobody has sent anything yet.
+   */
+  {
+    name: 'the send table loses the COMPOSITE key onto the allowlist',
+    guard: `${GUARDS}/campaigner-allowlist-and-cap-in-database.mjs`,
+    file: 'supabase/migrations/20260913000070_campaigner.sql',
+    find: '  constraint marketing_send_recipient_is_allowlisted\n    foreign key (allowlist_id, campaign_id, channel_code)\n    references public.marketing_recipient_allowlist (id, campaign_id, channel_code),',
+    replace: '  constraint marketing_send_recipient_is_allowlisted\n    foreign key (allowlist_id)\n    references public.marketing_recipient_allowlist (id),',
+    expect: 'COMPOSITE foreign key onto the allowlist',
+  },
+  {
+    name: 'an allowlist row is admitted with consent_state false',
+    guard: `${GUARDS}/campaigner-allowlist-and-cap-in-database.mjs`,
+    file: 'supabase/migrations/20260913000070_campaigner.sql',
+    find: '  constraint marketing_recipient_allowlist_consent_must_be_true check (consent_state),',
+    replace: '  -- the check a later migration dropped while tidying',
+    expect: 'refuses an allowlist row whose consent state is false',
+  },
+  {
+    name: 'a consent scoped to email is allowed to admit somebody to an SMS list',
+    guard: `${GUARDS}/campaigner-allowlist-and-cap-in-database.mjs`,
+    file: 'supabase/migrations/20260913000070_campaigner.sql',
+    find: "    check (consent_channel_scope = 'both' or consent_channel_scope = channel_code),",
+    replace: "    check (consent_channel_scope in ('email', 'sms', 'both')),",
+    expect: 'refuses an allowlist row whose consent scope does not cover its own channel',
+  },
+  {
+    name: 'the volume cap becomes an application check instead of a trigger',
+    guard: `${GUARDS}/campaigner-allowlist-and-cap-in-database.mjs`,
+    file: 'supabase/migrations/20260913000070_campaigner.sql',
+    find: 'create trigger trg_marketing_send_respects_cap\n  before insert on public.marketing_send\n  for each row execute function public.marketing_send_respects_cap();',
+    replace: '-- the cap is applied in src/lib/campaigner/run.ts now',
+    expect: 'no migration puts the volume cap trigger',
+  },
+  {
+    name: 'a machine-drafted message can move itself out of draft with nobody reading it',
+    guard: `${GUARDS}/campaigner-allowlist-and-cap-in-database.mjs`,
+    file: 'supabase/migrations/20260913000070_campaigner.sql',
+    find: 'create trigger trg_marketing_send_requires_approval\n  before insert or update on public.marketing_send\n  for each row execute function public.marketing_send_requires_approval();',
+    replace: '-- approval is checked before the insert is built',
+    expect: 'no migration puts the approval trigger',
+  },
+  {
+    name: 'the campaigner invariant view is renamed out from under the guard',
+    guard: `${GUARDS}/campaigner-allowlist-and-cap-in-database.mjs`,
+    file: 'supabase/migrations/20260913000070_campaigner.sql',
+    find: 'create or replace view public.marketing_send_invariant_breaches as',
+    replace: 'create or replace view public.marketing_send_breaches as',
+    expect: 'is not defined by any migration',
+  },
+
+  /*
+   * consent-ledger-is-evidence (GA1 v3), six drills, one per clause plus the
+   * taxonomy. Clause 4 is drilled on the campaigner's own runner rather than on
+   * a file invented for the purpose, because that is the module that actually
+   * reaches a transport with a marketing message.
+   */
+  {
+    name: 'the consent ledger stops refusing DELETE at the database',
+    guard: `${GUARDS}/consent-ledger-is-evidence.mjs`,
+    file: 'supabase/migrations/20260913000040_consent_ledger.sql',
+    find: 'create trigger trg_consent_events_no_delete\n  before delete on public.consent_events\n  for each statement execute function public.refuse_ledger_mutation();',
+    replace: '-- deletes are prevented by the application',
+    expect: 'does not refuse DELETE at the database',
+  },
+  {
+    name: 'a consent event is allowed to carry empty wording',
+    guard: `${GUARDS}/consent-ledger-is-evidence.mjs`,
+    file: 'supabase/migrations/20260913000040_consent_ledger.sql',
+    find: '  constraint consent_events_wording_present check (length(btrim(wording)) > 0),',
+    replace: '  -- wording is validated in the action',
+    expect: 'refuses empty wording on public.consent_events',
+  },
+  {
+    name: 'the audience table stops asking the resolver before it accepts a row',
+    guard: `${GUARDS}/consent-ledger-is-evidence.mjs`,
+    file: 'supabase/migrations/20260913000040_consent_ledger.sql',
+    find: '  for each row execute function public.audience_requires_live_consent();',
+    replace: '  for each row execute function public.audience_touch_updated_at();',
+    expect: 'does not refuse a row the resolver refuses',
+  },
+  {
+    name: 'the campaign runner stops filtering its recipients through the resolver',
+    guard: `${GUARDS}/consent-ledger-is-evidence.mjs`,
+    file: 'src/lib/campaigner/run.ts',
+    find: '    const verdict = await resolveSend(admin, {',
+    replace: '    const verdict = await decideSend(admin, {',
+    expect: 'is registered as a marketing send path and never calls the resolver',
+  },
+  {
+    name: 'the unsubscribe page starts asking who the visitor is',
+    guard: `${GUARDS}/consent-ledger-is-evidence.mjs`,
+    file: 'src/app/unsubscribe/[token]/page.tsx',
+    find: "import { createAdminClient } from '@/lib/supabase/admin'",
+    replace: "import { createAdminClient } from '@/lib/supabase/admin'\nimport { requireUser } from '@/lib/auth/require-user'",
+    expect: 'Unsubscribing and exercising a privacy right must never require a login',
+  },
+  {
+    name: 'a consent purpose covers something in TypeScript that it does not cover in SQL',
+    guard: `${GUARDS}/consent-ledger-is-evidence.mjs`,
+    file: 'src/lib/consent/purposes.ts',
+    find: "    covers: ['platform_local_digest'],",
+    replace: '    covers: [],',
+    expect: 'is a send decision that disagrees with itself',
+  },
+
+  /*
+   * audience-consent-is-the-title-deed (GA1 v3), five drills. The two
+   * one-decision-two-languages clauses are drilled from the TypeScript side,
+   * because that is the side a refactor moves.
+   */
+  {
+    name: 'an audience row is allowed to exist without consent',
+    guard: `${GUARDS}/audience-consent-is-the-title-deed.mjs`,
+    file: 'supabase/migrations/20260913000030_audience_asset.sql',
+    find: '  constraint audience_members_consent_must_be_true\n    check (consent_state is true),',
+    replace: '  -- consent is checked by the writer',
+    expect: 'no migration constrains audience_members.consent_state to TRUE',
+  },
+  {
+    name: 'a consent record is allowed to store no wording at all',
+    guard: `${GUARDS}/audience-consent-is-the-title-deed.mjs`,
+    file: 'supabase/migrations/20260913000030_audience_asset.sql',
+    find: '  constraint audience_members_consent_text_present\n    check (length(btrim(consent_text)) > 0),',
+    replace: '  -- the wording is validated in the action',
+    expect: 'constrains audience_members.consent_text to be non-empty',
+  },
+  {
+    name: 'the waitlist unsubscribe page starts reading a session',
+    guard: `${GUARDS}/audience-consent-is-the-title-deed.mjs`,
+    file: 'src/app/waitlist/unsubscribe/[token]/page.tsx',
+    find: "import { contactAddress } from '@/lib/email/sender'",
+    replace:
+      "import { contactAddress } from '@/lib/email/sender'\nimport { requireUser } from '@/lib/auth/require-user'",
+    expect: 'unsubscribe asks who the visitor is',
+  },
+  {
+    name: 'a price band boundary moves in TypeScript and not in SQL',
+    guard: `${GUARDS}/audience-consent-is-the-title-deed.mjs`,
+    file: 'src/lib/audience/segments.ts',
+    find: "  if (unitCents < 3000) return 'under-30'",
+    replace: "  if (unitCents < 2500) return 'under-30'",
+    expect: 'disagrees: SQL says under',
+  },
+  {
+    name: 'a community gains a tag in the bridge that the database does not map',
+    guard: `${GUARDS}/audience-consent-is-the-title-deed.mjs`,
+    file: 'src/lib/communities/tag-bridge.ts',
+    find: 'const COMMUNITY_TO_TAGS',
+    replace: "const COMMUNITY_TO_TAGS_UNUSED: Record<string, string[]> = { 'first-nations': ['a-tag-no-migration-seeds'] }\nvoid COMMUNITY_TO_TAGS_UNUSED\nconst COMMUNITY_TO_TAGS",
+    expect: 'is in the tag bridge and not in community_tag_map',
+  },
+
+  /*
+   * no-analytics-before-consent (AN1), five drills, one per clause. The first
+   * is the one the guard exists for: a second place that names a tracker host,
+   * which is by definition the place nobody gated.
+   */
+  {
+    name: 'a second file names an advertising host, outside the one gate',
+    guard: `${GUARDS}/no-analytics-before-consent.mjs`,
+    file: 'src/lib/analytics/funnel.ts',
+    find: 'export',
+    replace: "const ENDPOINT = 'https://connect.facebook.net/en_US/fbevents.js'\nvoid ENDPOINT\n\nexport",
+    expect: 'names the provider host connect.facebook.net',
+  },
+  {
+    name: 'the gate renders its tags before the consent decision has been read',
+    guard: `${GUARDS}/no-analytics-before-consent.mjs`,
+    file: 'src/components/analytics/gated-analytics.tsx',
+    find: '  if (loading) return null',
+    replace: '  if (loading) { /* the cookie is still being read */ }',
+    expect: 'no longer refuses to render while the decision is still being read',
+  },
+  {
+    name: 'a provider is gated on its key alone, and loads for everybody',
+    guard: `${GUARDS}/no-analytics-before-consent.mjs`,
+    file: 'src/components/analytics/gated-analytics.tsx',
+    find: "  const loadMeta = mayLoad({ decision, category: 'advertising', identifier: metaPixel })",
+    replace: '  const loadMeta = Boolean(metaPixel)',
+    expect: 'Every provider asks BOTH questions',
+  },
+  {
+    name: 'the default consent decision starts granting a category',
+    guard: `${GUARDS}/no-analytics-before-consent.mjs`,
+    file: 'src/lib/analytics/consent.ts',
+    find: 'export const NO_CONSENT: ConsentDecision = {\n  analytics: false,',
+    replace: 'export const NO_CONSENT: ConsentDecision = {\n  analytics: true,',
+    expect: 'NO_CONSENT grants a category',
+  },
+  {
+    name: 'a malformed consent cookie stops answering "they have not agreed"',
+    guard: `${GUARDS}/no-analytics-before-consent.mjs`,
+    file: 'src/lib/analytics/consent.ts',
+    find: "    if (!raw || typeof raw !== 'object') return NO_CONSENT\n    if (raw.v !== CONSENT_VERSION) return NO_CONSENT",
+    replace: "    if (!raw || typeof raw !== 'object') return allGranted()\n    if (raw.v !== CONSENT_VERSION) return allGranted()",
+    expect: 'path(s) returning NO_CONSENT',
+  },
+
+  /*
+   * organiser-page-is-a-read (OL1), four drills, one per clause.
+   *
+   * THE FOURTH ONE EXISTS BECAUSE THE CLAUSE HAD TO BE REWRITTEN TO HAVE IT.
+   * That clause asserts the copy gate still walks src/, and it used to pass if
+   * any of three text patterns matched anywhere in scripts/copy-tell-gate.mjs.
+   * That file names the root twice, once in the scan that enforces the copy
+   * laws and once in a coverage measurement that enforces nothing, and this
+   * harness replaces the first match only, so no planted regression could make
+   * the clause false. A clause nothing can falsify is not enforcing anything.
+   * It now reads the body of scanRoots() and the drill below narrows it.
+   */
+  {
+    name: 'the copy gate narrows its scan to src/app and the organiser page drops out of the copy laws',
+    guard: `${GUARDS}/organiser-page-is-a-read.mjs`,
+    file: 'scripts/copy-tell-gate.mjs',
+    find: "  const roots = [path.join(ROOT, 'src')]",
+    replace: "  const roots = [path.join(ROOT, 'src', 'app')]",
+    expect: 'no longer roots the walk at src/',
+  },
+  {
+    name: 'the live proof block stops reading the catalogue and becomes a screenshot',
+    guard: `${GUARDS}/organiser-page-is-a-read.mjs`,
+    file: 'src/components/templates/OrganisersLandingPage.tsx',
+    find: '    getNewestPublishedEvent(),',
+    replace: '    Promise.resolve({ slug: "warehouse-party", title: "Warehouse Party" }),',
+    expect: 'does not call getNewestPublishedEvent()',
+  },
+  {
+    name: 'one signup button is pointed straight at the signup path and records nothing',
+    guard: `${GUARDS}/organiser-page-is-a-read.mjs`,
+    file: 'src/components/templates/OrganisersLandingPage.tsx',
+    find: '<Button variant="primary" size="lg" href={withSignupSource(ORGANISER_SIGNUP_PATH)}>',
+    replace: '<Button variant="primary" size="lg" href="/organisers/signup">',
+    expect: 'straight at /organisers/signup',
+  },
+  {
+    name: "the founder's address is typed onto a public page instead of composed",
+    guard: `${GUARDS}/organiser-page-is-a-read.mjs`,
+    file: 'src/components/templates/OrganisersLandingPage.tsx',
+    find: "href={contactMailto('hello', FOUNDING_OFFER.founderCtaSubject)}",
+    replace: 'href="mailto:hello@eventlinqs.com.au"',
+    expect: 'no longer opens the founder button through contactMailto',
+  },
+
+  /*
+   * product-loops-carry-their-parameters (PL1), four drills. The first is the
+   * valuable one: the ticket email is RENDERED by the guard through the real
+   * builders, so this proves the assertion is made against the email a buyer
+   * would receive rather than against the source of a branch that never runs.
+   */
+  {
+    name: 'the ticket email loses the parameter that says where the organiser came from',
+    guard: `${GUARDS}/product-loops-carry-their-parameters.mjs`,
+    file: 'src/lib/email/order-confirmation.ts',
+    find: '<a href="${organiserLoopUrl(siteUrl, LOOP_SOURCES.TICKET)}"',
+    replace: '<a href="${siteUrl}/organisers"',
+    expect: 'is missing the source parameter src=',
+  },
+  {
+    name: 'a loop link is typed by hand somewhere in the product',
+    guard: `${GUARDS}/product-loops-carry-their-parameters.mjs`,
+    file: 'src/lib/growth/referrals.ts',
+    find: 'export',
+    replace: "const TYPED_BY_HAND = '/organisers?src=ticket-email'\nvoid TYPED_BY_HAND\n\nexport",
+    expect: 'types a loop link by hand',
+  },
+  {
+    name: 'the confirmation page loses the marker the driven proof finds the block by',
+    guard: `${GUARDS}/product-loops-carry-their-parameters.mjs`,
+    file: 'src/app/orders/[order_id]/confirmation/page.tsx',
+    find: '          data-loop="organiser-invite"',
+    replace: '          data-loop="organiser-invitation"',
+    expect: 'has lost the data-loop marker',
+  },
+  {
+    name: 'the share bar stops putting every channel through one builder',
+    guard: `${GUARDS}/product-loops-carry-their-parameters.mjs`,
+    file: 'src/components/features/events/event-share-bar.tsx',
+    find: '  const urlFor = (channel: ShareChannel): string => withShareSource(',
+    replace: '  const urlFor = (channel: ShareChannel): string => String(',
+    expect: 'no longer passes every shared link through withShareSource',
+  },
+
+  /*
+   * proof-page-every-number-sourced (GA5), four drills. This is the page a fee
+   * is defended on, so the clause that matters most is the one that refuses a
+   * figure which cannot name where it came from.
+   */
+  {
+    name: 'a figure on the proof page is produced without naming its source',
+    guard: `${GUARDS}/proof-page-every-number-sourced.mjs`,
+    file: 'src/lib/proof/compose.ts',
+    find: '  figures[FIGURE.SENDS_DISPATCHED] = sourced(',
+    replace: '  figures[FIGURE.SENDS_DISPATCHED] = countOf(',
+    expect: 'which is neither sourced(...) nor unavailable(...)',
+  },
+  {
+    name: 'a number is typed into the proof page rendering path',
+    guard: `${GUARDS}/proof-page-every-number-sourced.mjs`,
+    file: 'src/lib/proof/present.ts',
+    find: "import { formatMoneyDisplay } from '@/lib/money/format'",
+    replace: "import { formatMoneyDisplay } from '@/lib/money/format'\nconst ROUNDING = 137\nvoid ROUNDING",
+    expect: 'is written into the rendering path',
+  },
+  {
+    name: 'a commission rate is typed onto the page instead of read',
+    guard: `${GUARDS}/proof-page-every-number-sourced.mjs`,
+    file: 'src/lib/proof/present.ts',
+    find: "import { formatMoneyDisplay } from '@/lib/money/format'",
+    replace: "import { formatMoneyDisplay } from '@/lib/money/format'\nconst RATE = 'our 6% commission'\nvoid RATE",
+    expect: 'a percentage is written into the rendering path',
+  },
+  {
+    name: 'the database stops refusing a snapshot holding a figure nothing sources',
+    guard: `${GUARDS}/proof-page-every-number-sourced.mjs`,
+    file: 'supabase/migrations/20260913000080_proof_page.sql',
+    find: '  constraint marketing_proof_snapshot_every_figure_is_sourced\n    check (public.marketing_proof_every_figure_is_sourced(figures, sources))',
+    replace: '  constraint marketing_proof_snapshot_figures_present\n    check (figures is not null)',
+    expect: 'so the rule lives only in application code',
+  },
+
+  /*
+   * forecast-reads-every-number (FT1), five drills. FT1's own GUARD line asks
+   * for exactly the first of these: "Proven red by hard coding the fee, then
+   * green." It was, once, by hand. This is that proof made repeatable, plus the
+   * other four clauses the guard grew.
+   */
+  {
+    name: 'the forecast hard-codes the fee instead of reading the one the checkout charges',
+    guard: `${GUARDS}/forecast-reads-every-number.mjs`,
+    file: 'src/lib/forecast/read.ts',
+    find: '  const fee = await getLivePublicFee()',
+    replace: '  const fee = { percent: 6, fixedCents: 0, currency: "AUD", label: "6%" }',
+    expect: 'no longer CALLS getLivePublicFee',
+  },
+  {
+    name: 'a percentage is typed into the forecast',
+    guard: `${GUARDS}/forecast-reads-every-number.mjs`,
+    file: 'src/lib/forecast/present.ts',
+    find: 'export',
+    replace: "const RATE_NOTE = 'we take 6% of each ticket'\nvoid RATE_NOTE\n\nexport",
+    expect: 'a percentage is written into the forecast',
+  },
+  {
+    name: 'the forecast carries a taxonomy list of its own instead of reading one',
+    guard: `${GUARDS}/forecast-reads-every-number.mjs`,
+    file: 'src/app/forecast/page.tsx',
+    find: 'export default async function',
+    replace: "const EVENT_TYPES = ['music', 'comedy']\nvoid EVENT_TYPES\n\nexport default async function",
+    expect: 'carries a taxonomy list of its own',
+  },
+  {
+    name: 'the forecast claims a measured range while the calculation is arithmetic',
+    guard: `${GUARDS}/forecast-reads-every-number.mjs`,
+    file: 'src/lib/forecast/method.ts',
+    find: 'export const MEASURED_IS_REACHABLE = false',
+    replace: 'export const MEASURED_IS_REACHABLE = true',
+    expect: 'says the measured claim is reachable',
+  },
+  {
+    name: 'the result marker is renamed, so nothing can judge that the CTA sits below it',
+    guard: `${GUARDS}/forecast-reads-every-number.mjs`,
+    file: 'src/app/forecast/page.tsx',
+    find: '            data-forecast="break-even"',
+    replace: '            data-forecast="break-even-result"',
+    expect: 'is missing the result or the call-to-action marker',
+  },
+
+  /*
+   * founding-offer-matches-configuration (FO1), five drills. The offer is
+   * published, is repeated in every outreach message, and is charged by a
+   * different module from the one that prints it, so each drill is a way the
+   * page and the invoice come to disagree.
+   */
+  {
+    name: 'the engine changes the founding cap and the published page does not',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/lib/payments/founding-waiver.ts',
+    find: 'export const FOUNDING_WAIVER_CAP = 50',
+    replace: 'export const FOUNDING_WAIVER_CAP = 75',
+    expect: 'and the engine that charges uses',
+  },
+  {
+    name: 'a published claim is deleted from the offer instead of corrected',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/lib/organisers/founding-offer.ts',
+    find: "    '3 more fee-free months for every organiser you refer who runs an event',",
+    replace: "    'More fee-free months for every organiser you refer who runs an event',",
+    expect: 'no longer states',
+  },
+  {
+    name: 'the fee is typed onto the organiser page instead of read',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/components/templates/OrganisersLandingPage.tsx',
+    find: 'export async function OrganisersLandingPage',
+    replace: `const HEADLINE_RATE = 'just ${LOCKED_PERCENT}% per ticket'\nvoid HEADLINE_RATE\n\nexport async function OrganisersLandingPage`,
+    expect: 'as a literal. Render fee.label from getLivePublicFee instead',
+    stale: LOCKED_PERCENT ? null : 'the locked percentage could not be derived from src/lib/pricing/public-fee.ts',
+  },
+  {
+    name: 'the organiser page stops reading the fee and only mentions the resolver',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/components/templates/OrganisersLandingPage.tsx',
+    find: '    getLivePublicFee(),',
+    replace: '    Promise.resolve(FALLBACK_PUBLIC_FEE),',
+    expect: 'does not CALL getLivePublicFee',
+  },
+  {
+    name: 'the last-resort fee fallback goes stale against the lock block',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/lib/pricing/public-fee.ts',
+    find: 'fixedCents:',
+    replace: 'fixedCents: 149, unusedFixedCents:',
+    expect: 'while the lock block says',
+  },
+  {
+    name: 'the displayed waiver is read with a client that cannot see it',
+    guard: `${GUARDS}/founding-offer-matches-configuration.mjs`,
+    file: 'src/lib/pricing/event-fee-config.ts',
+    find: '        createAdminClient() as unknown as OrganisationReadClient,',
+    replace: '        (await createServerClient()) as unknown as OrganisationReadClient,',
+    expect: 'reads the founding waiver with something other than createAdminClient()',
+  },
+
+  /*
+   * drive-quantity-control-selector (FO1, 18 September), two drills. This guard
+   * was itself written after a loose selector spent four days accusing the
+   * product of a defect that was the harness's, so the drill that matters is
+   * the one that puts the loose selector back.
+   */
+  {
+    name: 'the money drives go back to a prefix selector, and press whatever sits higher',
+    guard: `${GUARDS}/drive-quantity-control-selector.mjs`,
+    file: 'scripts/verify/lib/refund-proof-fixture.mjs',
+    find: "    page.getByRole('button', { name: /^increase .+ quantity$/i }).first()",
+    replace: "    page.getByRole('button', { name: /^(\\+|increase|add)/i }).first()",
+    expect: 'which is not anchored at both ends',
+  },
+  {
+    name: 'the product stops labelling the control every money drive presses',
+    guard: `${GUARDS}/drive-quantity-control-selector.mjs`,
+    file: 'src/components/checkout/ticket-selector.tsx',
+    find: 'aria-label={`Increase ${tier.name} quantity`}',
+    replace: 'aria-label={`Add one ${tier.name}`}',
+    expect: 'does not match',
+  },
+
+  /*
+   * every-guard-has-been-seen-to-fail, two drills. The guard that asks whether
+   * every guard has a drill has two of its own, which is the least it can do.
+   *
+   * The two regressions are the two halves of the same mistake: a guard added
+   * to the registry and never drilled, and a drill that stops aiming at the
+   * guard it was written for. The second is not hypothetical inside this file:
+   * its own header records three occasions when a drill went on reporting green
+   * while aimed at a target that had moved.
+   */
+  {
+    name: 'a new guard is registered as blocking and nobody ever makes it fail',
+    guard: `${GUARDS}/every-guard-has-been-seen-to-fail.mjs`,
+    file: 'scripts/guards/run-guards.mjs',
+    find: "  'scripts/guards/api-v1-organiser-scope.mjs',",
+    replace: "  'scripts/guards/api-v1-organiser-scope.mjs',\n  'scripts/guards/a-new-guard-nobody-drilled.mjs',",
+    expect: 'a-new-guard-nobody-drilled.mjs is registered in',
+  },
+  {
+    name: 'a guard is renamed and its only drill is left aiming at the old name',
+    guard: `${GUARDS}/every-guard-has-been-seen-to-fail.mjs`,
+    file: 'scripts/verify/guard-failure-drills.mjs',
+    find: '    guard: `${GUARDS}/attribution-one-record-per-order-never-billable-when-reversed.mjs`,',
+    replace: '    guard: `${GUARDS}/attribution-one-record.mjs`,',
+    expect: 'attribution-one-record-per-order-never-billable-when-reversed.mjs is registered in',
+  },
   // -------------------------------------------------------------------------
   // no-loadable-in-platform-chrome. BOTH HALVES, because this guard exists
   // precisely because its older sibling reported a confident PASS on the defect
@@ -3607,6 +4276,72 @@ const DRILLS = [
   },
 
   /*
+   * THE MARKETING BANDS (lane B, 19 September 2026). One drill per clause of
+   * scripts/guards/marketing-bands-are-supplyable.mjs.
+   *
+   * The guard exists because /organisers and /about shipped under-fetched bands
+   * at every desktop width with every gate green. The gate that could have seen
+   * them, image-hint-fidelity-drive.mjs, simply did not have those routes in its
+   * list, so clause 1 is a route list that cannot be forgotten quietly.
+   */
+  {
+    name: 'a route that renders a marketing band drops out of the fidelity drive list',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'scripts/verify/image-hint-fidelity-drive.mjs',
+    find: "'communities', 'organisers'",
+    replace: "'communities'",
+    expect: 'is not in the default route list',
+  },
+  {
+    name: 'two band variants are pointed at one hint, which is the whole fault',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'src/components/media/MarketingMedia.tsx',
+    find: "'band-full-column': MEDIA_SIZES.bandFullColumn",
+    replace: "'band-full-column': MEDIA_SIZES.bandHalfColumn",
+    expect: 'One hint cannot be right for two layouts',
+  },
+  {
+    name: "a band hint's fixed term drifts away from the slot the guard declares",
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: '(max-width: 1399px) 100vw, 1340px',
+    replace: '(max-width: 1399px) 100vw, 1280px',
+    expect: 'Move both or neither',
+  },
+  {
+    name: 'a band hint loses the fixed term that holds it above the container cap',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: "bandHalfColumn: '(max-width: 1023px) 100vw, (max-width: 1399px) 50vw, 640px'",
+    replace: "bandHalfColumn: '(max-width: 1023px) 100vw, 50vw'",
+    expect: 'does not end in a fixed pixel term',
+  },
+  {
+    name: 'a band the raster cannot supply is left out of the register',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'scripts/guards/marketing-bands-are-supplyable.mjs',
+    find: "    variant: 'band-full-bleed',",
+    replace: "    variant: 'band-half-column',",
+    expect: 'it is not in this guard',
+  },
+  {
+    name: 'the soft register outlives its defect once the raster ceiling rises',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'src/lib/images/spine.ts',
+    find: '  hero: 1920,',
+    replace: '  hero: 4096,',
+    expect: 'a register that outlives its defect is a mute button',
+  },
+  {
+    name: 'an exemption in the register loses the reason that justifies it',
+    guard: `${GUARDS}/marketing-bands-are-supplyable.mjs`,
+    file: 'scripts/guards/marketing-bands-are-supplyable.mjs',
+    find: "why: 'the /about story band is the full viewport",
+    replace: "why: 'because",
+    expect: 'indistinguishable from a forgotten one',
+  },
+
+  /*
    * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of
    * scripts/guards/no-drill-residue.mjs.
    *
@@ -3649,6 +4384,104 @@ const DRILLS = [
     find: 'const ROOT = process.cwd()',
     replace: 'const ROOT = process.cwd()\nprocess.exit(1) // planted by the F1.1 drill, restored in the finally',
     expect: "still carries a drill's planted sabotage line",
+  },
+  /*
+   * TWO GUARDS THAT ARRIVED IN THE SAME MERGE WITH NO DRILL, DRILLED HERE.
+   *
+   * Both are lane A's, both were registered in run-guards.mjs on 18 September
+   * 2026, and the merge of that work into lane/b-growth on 19 September made
+   * every-guard-has-been-seen-to-fail go red naming exactly these two. That is
+   * the rule working rather than a complaint: it printed the command that
+   * watches each one fail, and the answer to it is a drill, never a baseline
+   * entry. Only THIS file changes. Neither guard is touched.
+   */
+  /*
+   * The first plants the EXACT edge lane A removed. `sale-status.ts` wanted one
+   * pure value, the Connect country-to-currency map, and reached it through
+   * `./application-fee`, which reaches `pricing-rules` and from there
+   * `@/lib/redis/client` and a 16.0 KB Buffer polyfill. `ticket-selector.tsx` is
+   * a client component that imports `sale-status`, so the chain the guard
+   * reports is the one that really shipped 17.5 KB of server code to a buyer's
+   * phone. The fix was a leaf module, `./connect-currency`, and this drill
+   * un-does exactly that one line.
+   */
+  {
+    name: 'a client component reaches the Redis client again through the payments chain',
+    guard: `${GUARDS}/no-client-redis-import.mjs`,
+    file: 'src/lib/payments/sale-status.ts',
+    find: "import { getCurrencyForCountry } from './connect-currency'",
+    replace: "import { getCurrencyForCountry } from './application-fee'",
+    expect: 'client component(s) reach the Redis client',
+  },
+  /*
+   * The second plants `next/dynamic` back into the root layout's client shell,
+   * in `measurement-boot.tsx`, which is the one 'use client' module the shell
+   * reaches and the exact file the import was taken out of. The cost it recreates
+   * is 1306 bytes gzip and one whole shared chunk in the first load of all 141
+   * routes, which the bundle ratchet reports as 116 identical faults on routes
+   * that measure nothing. This guard names the cause instead, so it has to be
+   * seen to name it.
+   */
+  {
+    name: "the root layout's client shell imports next/dynamic again",
+    guard: `${GUARDS}/no-loadable-in-the-root-shell.mjs`,
+    file: 'src/components/analytics/measurement-boot.tsx',
+    find: "import { useEffect, useState, type ComponentType } from 'react'",
+    replace: "import { useEffect, useState, type ComponentType } from 'react'\nimport dynamic from 'next/dynamic'",
+    expect: "in the root client shell import 'next/dynamic'",
+  },
+
+  /*
+   * edge-cache-is-viewer-independent, four drills, one per clause that carries
+   * the defect it was written for. Added by lane B on 19 September 2026, in the
+   * merge that brought the guard in, because the moment it was registered
+   * `every-guard-has-been-seen-to-fail` refused the build and named it: it
+   * blocked every build and nobody had ever watched it go red.
+   *
+   * THE DEFECT IS WORTH RESTATING because it decides what a drill has to plant.
+   * `/events` was publicly edge-cached while rendering the per-viewer header,
+   * so one signed-in visitor's display name, initials and email local part were
+   * storable at Vercel's edge and servable to strangers for 60 seconds, and 300
+   * more while stale. Production answered `X-Vercel-Cache: HIT` with `Age: 80`,
+   * so it was real rather than theoretical.
+   *
+   * The two halves are drilled SEPARATELY because neither is redundant and a
+   * single drill would let either one rot unnoticed: `missing` stops a
+   * signed-in render being STORED, `staticSafe` stops a signed-in visitor being
+   * SERVED a stored copy, and the guard's own header says the edge looks a URL
+   * up before any function runs, so cookies are not in its key.
+   */
+  {
+    name: 'a publicly cached route loses the cookie condition that stops a signed-in render being stored',
+    guard: `${GUARDS}/edge-cache-is-viewer-independent.mjs`,
+    file: 'next.config.ts',
+    find: "        source: '/events',\n        missing: [{ type: 'cookie', key: 'el-signed-in' }],",
+    replace: "        source: '/events',",
+    expect: 'edge-cached publicly with no',
+  },
+  {
+    name: 'a publicly cached page goes back to the per-viewer header',
+    guard: `${GUARDS}/edge-cache-is-viewer-independent.mjs`,
+    file: 'src/app/events/page.tsx',
+    find: '      <SiteHeader staticSafe />',
+    replace: '      <SiteHeader />',
+    expect: 'which reads the session',
+  },
+  {
+    name: 'the shelf life in the header rule and the one in the page stop agreeing',
+    guard: `${GUARDS}/edge-cache-is-viewer-independent.mjs`,
+    file: 'src/app/events/page.tsx',
+    find: 'export const revalidate = 60',
+    replace: 'export const revalidate = 300',
+    expect: 'answer the same question',
+  },
+  {
+    name: 'a cache rule is left behind pointing at a route that has moved',
+    guard: `${GUARDS}/edge-cache-is-viewer-independent.mjs`,
+    file: 'next.config.ts',
+    find: "        source: '/events',\n        missing:",
+    replace: "        source: '/events-moved-away',\n        missing:",
+    expect: 'no page route answers it under src/app',
   },
 ]
 
@@ -3738,32 +4571,53 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
 let passed = 0
 const failed = []
 
-console.log('\n=== GUARD FAILURE DRILLS ===\n')
-console.log('Each drill introduces a real regression, runs the guard, and restores the file.\n')
-
 /*
- * `--only <substring>` RUNS THE DRILLS WHOSE NAME CONTAINS IT.
+ * --only <substring> RUNS A SUBSET, AND SAYS SO LOUDLY EVERY TIME.
  *
- * Added because there are 242 drills and two of them run the whole guard runner,
- * so a full pass is minutes long, and a NEW drill entry that was never executed
- * is the precise failure this harness warns about in its own output: a drill
- * that never runs looks identical to a drill that passes.
+ * Added 18 September 2026 while drilling eleven guards that had never been seen
+ * to fail. Iterating on one drill's expected reason meant running all 270 of
+ * them, each spawning a guard, which is minutes per attempt and mutates the
+ * working tree the whole time, on a machine three lanes share.
  *
- * It refuses a substring that matches nothing rather than reporting 0/0 green,
- * for the same reason.
+ * THE DANGER IS OBVIOUS AND IS DESIGNED AGAINST: a filtered run that looks like
+ * a full one is a green light nobody earned. So a filtered run announces the
+ * filter before it starts, prints SUBSET on every summary line, and ends with a
+ * final line that says in words that this is NOT the full harness. The
+ * pre-push gate and every other caller pass no argument and are unaffected.
+ *
+ * 18 September 2026, the merge: LANE A WROTE THE SAME FLAG ON THE SAME DAY, in
+ * the same file, and the two declarations collided on `onlyAt`, so keeping both
+ * was a SyntaxError rather than a choice. This one is kept because it is the
+ * superset: it accepts a comma separated list, matches a GUARD PATH as well as a
+ * drill name, and refuses a `--only` with no argument at all. Lane A's version
+ * matched one substring against names only. Its reasoning is kept here because
+ * it names a cost this comment did not: two of these drills run the WHOLE guard
+ * runner, so a full pass is minutes rather than seconds, and a new drill entry
+ * that was never executed looks identical to one that passed.
  */
 const onlyAt = process.argv.indexOf('--only')
-const ONLY = onlyAt === -1 ? null : process.argv[onlyAt + 1]
-const SELECTED = ONLY ? DRILLS.filter((d) => d.name.includes(ONLY)) : DRILLS
-if (ONLY) {
-  if (SELECTED.length === 0) {
-    console.error(`[drills] --only ${JSON.stringify(ONLY)} matched none of the ${DRILLS.length} drills.`)
-    process.exit(1)
-  }
-  console.log(`[drills] --only ${JSON.stringify(ONLY)}: ${SELECTED.length} of ${DRILLS.length} drill(s).`)
+const only = onlyAt === -1 ? null : process.argv[onlyAt + 1]
+if (onlyAt !== -1 && !only) {
+  console.error('--only needs a substring to match drill names against')
+  process.exit(2)
+}
+const onlyParts = only ? only.split(',').map((p) => p.trim()).filter(Boolean) : []
+const selected = only
+  ? DRILLS.filter((d) => onlyParts.some((p) => d.name.includes(p) || d.guard.includes(p)))
+  : DRILLS
+if (only && selected.length === 0) {
+  console.error(`--only ${only} matched no drill. Nothing was run, which is not a pass.`)
+  process.exit(2)
 }
 
-for (const drill of SELECTED) {
+console.log('\n=== GUARD FAILURE DRILLS ===\n')
+if (only) {
+  console.log(`*** SUBSET ONLY: --only ${only} selected ${selected.length} of ${DRILLS.length} drills. ***`)
+  console.log('*** This is NOT the full harness and must never be quoted as one. ***\n')
+}
+console.log('Each drill introduces a real regression, runs the guard, and restores the file.\n')
+
+for (const drill of selected) {
   /*
    * A drill that could not aim is STALE, exactly like a missing anchor: it is
    * reported as a problem and fails the harness, never skipped in silence.
@@ -3881,7 +4735,11 @@ if (after.code !== 0) {
   console.log('  all guards PASS on the restored tree.')
 }
 
-console.log(`\n=== ${passed}/${SELECTED.length} drills fired correctly ===\n`)
+console.log(`\n=== ${passed}/${selected.length} drills fired correctly ===\n`)
+if (only) {
+  console.log(`*** SUBSET ONLY: ${selected.length} of ${DRILLS.length} drills ran, filtered by --only ${only}. ***`)
+  console.log('*** The full harness has NOT been run. Run it with no arguments before claiming it green. ***\n')
+}
 
 if (failed.length > 0) {
   for (const f of failed) console.error(`  PROBLEM: ${f}`)

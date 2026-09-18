@@ -303,9 +303,25 @@ describe('the mechanism stays wired in', () => {
     expect(registry).toContain("'scripts/guards/no-drill-residue.mjs'")
   })
 
+  /*
+   * THE ANCHOR IS A SHAPE RATHER THAN ONE SPELLING, and the reason is the merge
+   * of 19 September 2026. Both lanes added a `--only` filter to the harness on
+   * the same day, in the same file, and the two declarations collided on
+   * `onlyAt`, so keeping both was a SyntaxError rather than a choice. The
+   * surviving one is lane B's superset (a comma separated list, matching a guard
+   * path as well as a drill name) and its loop variable is `selected`, so this
+   * assertion's literal `SELECTED` matched nothing and the test failed on an
+   * ordering that had not moved.
+   *
+   * What it is ACTUALLY about is the ordering: the harness must restore a
+   * previous interrupted run BEFORE it starts drilling, or a killed run's
+   * residue is still in the tree while the next run mutates it. That is what is
+   * pinned. The name of the collection it iterates is not, and hard-coding one
+   * spelling of it turned a naming detail into a red suite.
+   */
   test('the harness restores a previous interrupted run before it drills', () => {
     const heals = HARNESS_CODE.indexOf('journal.restoreAll(ROOT)')
-    const loop = HARNESS_CODE.indexOf('for (const drill of SELECTED)')
+    const loop = HARNESS_CODE.search(/for \(const drill of (SELECTED|selected)\)/)
     expect(heals).toBeGreaterThan(-1)
     expect(loop).toBeGreaterThan(-1)
     expect(heals).toBeLessThan(loop)

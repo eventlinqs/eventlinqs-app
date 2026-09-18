@@ -174,9 +174,22 @@ for (const [rel, source] of [
 {
   const reader = read(READ)
   if (reader) {
-    if (!reader.includes('getLivePublicFee')) {
+    /*
+     * THE CALL, NOT THE MENTION. Until 18 September 2026 this read
+     * `includes('getLivePublicFee')`, which an IMPORT LINE satisfies on its
+     * own. Found by drilling this guard red for the first time: the drill
+     * replaced the call with a hard-coded rate object, left
+     * `import { getLivePublicFee } from '@/lib/pricing/live-fee'` at the top
+     * exactly as a real regression would, and the guard passed.
+     *
+     * That is the precise thing FT1's GUARD line asks this to catch, in its own
+     * words: "Proven red by hard coding the fee, then green." It would not have
+     * been. A name in an import says the module was reachable once, never that
+     * a value came from it.
+     */
+    if (!/\bgetLivePublicFee\s*\(/.test(renderingCode(reader))) {
       faults.push(
-        `${READ} no longer reads the fee through getLivePublicFee. That resolver is the same one the CHARGE uses, which is the only reason a figure quoted here cannot drift from a figure charged later.`,
+        `${READ} no longer CALLS getLivePublicFee. That resolver is the same one the CHARGE uses, which is the only reason a figure quoted here cannot drift from a figure charged later. An import of the name is not a read of the fee.`,
       )
     }
     if (page && /platformFeePercent\s*:\s*\d/.test(renderingCode(page))) {
