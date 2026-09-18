@@ -222,6 +222,44 @@ await ttfb(`${base}/`) // warm-up, discarded
 const ttfbs = []
 for (let i = 0; i < samples; i++) ttfbs.push(await ttfb(`${base}/`))
 
+/*
+ * THE LADDER, and it is here because the residual below is 75% of the first
+ * byte and "framework, render, first flush" names three things rather than
+ * measuring any of them.
+ *
+ * The residual cannot be broken down from inside this process. It CAN be
+ * bracketed, by asking the SAME server for pages that render progressively more
+ * of the same tree and sampling them identically:
+ *
+ *   a credential form   the shared chrome and almost nothing else
+ *   a prose page        the chrome plus a long static body, no images, no query
+ *   a results grid      the chrome plus ~24 cards behind one query
+ *   the homepage        the chrome plus ~124 images across twenty rails
+ *
+ * The difference between the first and the last is the closest thing to "what
+ * the rails cost the origin" that can be had without instrumenting the render,
+ * and the document size is printed beside each one so a reader can see whether
+ * the two move together.
+ *
+ * WHAT IT IS NOT: an attribution. A page is not a sum of its parts and these
+ * four differ in more than their card count. It brackets the residual; it does
+ * not explain it.
+ */
+const ladderPaths = args.filter(a => a.startsWith('--path=')).map(a => a.split('=')[1])
+const ladder = []
+for (const raw of ladderPaths) {
+  if (raw.startsWith('/') || /^[A-Za-z]:/.test(raw)) {
+    refuse(`--path=${raw} arrived with a leading slash or a drive letter; MSYS rewrote it`)
+  }
+  const path = raw === 'home' ? '/' : `/${raw}`
+  const url = `${base}${path}`
+  await ttfb(url) // warm-up, discarded
+  const runs = []
+  for (let i = 0; i < samples; i++) runs.push(await ttfb(url))
+  const bytes = (await (await fetch(url, { cache: 'no-store' })).text()).length
+  ladder.push({ path, medianMs: median(runs), runs, documentBytes: bytes })
+}
+
 const { createClient } = await import('@supabase/supabase-js')
 const { loadHomeUpcoming } = await import('@/lib/events/home-queries.ts')
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -241,9 +279,39 @@ for (let i = 0; i < samples; i++) {
   rowCount = rows.length
 }
 
+/*
+ * THE WIRE FLOOR, and it is the number that decides whether the query above is
+ * worth attacking AT ALL from this machine.
+ *
+ * A query median is `round trip + work`, and on a developer laptop reaching a
+ * hosted database over a domestic connection the round trip can be most of it.
+ * Optimising against a number that is mostly somebody's internet is how a
+ * session spends a day making a query 20 ms faster inside a 180 ms wire.
+ *
+ * So the cheapest possible request is timed through the SAME warm client: one
+ * column, one row, no predicate worth planning. What is left after subtracting
+ * it is the closest honest estimate of the query's own work, and the estimate
+ * is labelled as an estimate rather than printed as a fact.
+ *
+ * It CANNOT be subtracted from the served TTFB. The server is a different
+ * process with its own connection, and on Vercel the function and the database
+ * are in one region while this laptop is not. Production's wire is smaller than
+ * this one and nothing here measures it.
+ */
+const floors = []
+await supabase.from('events').select('id').limit(1) // warm-up, discarded
+for (let i = 0; i < samples; i++) {
+  const started = performance.now()
+  const { error } = await supabase.from('events').select('id').limit(1)
+  if (error) refuse(`the wire-floor probe failed: ${error.message}`)
+  floors.push(performance.now() - started)
+}
+
 const ttfbMedian = median(ttfbs)
 const queryMedian = median(queries)
+const floorMedian = median(floors)
 const residual = ttfbMedian - queryMedian
+const queryWork = queryMedian - floorMedian
 
 console.log('')
 console.log(`  database host        ${new URL(url).host}`)
@@ -255,6 +323,29 @@ console.log(
   `  residual             ${Math.round(residual)} ms   (framework, render, first flush: not one thing)`,
 )
 console.log(`  query share          ${((queryMedian / ttfbMedian) * 100).toFixed(1)}%`)
+if (ladder.length > 0) {
+  console.log('')
+  console.log('  the ladder, same server, same sampling, brackets the residual:')
+  for (const rung of ladder) {
+    console.log(
+      `    ${rung.path.padEnd(28)} TTFB ${String(Math.round(rung.medianMs)).padStart(5)} ms   ` +
+        `document ${String(rung.documentBytes).padStart(8)} B   samples ${show(rung.runs)}`,
+    )
+  }
+}
+console.log('')
+console.log(`  wire floor   median  ${Math.round(floorMedian)} ms   samples ${show(floors)}`)
+console.log(
+  `    of the query median, about ${Math.round(floorMedian)} ms is the round trip from THIS machine ` +
+    `and about ${Math.round(queryWork)} ms is the query's own work (an estimate, not a fact: same ` +
+    'client, different statement).',
+)
+if (floorMedian > queryMedian * 0.5) {
+  console.log(
+    '    MORE THAN HALF THE QUERY MEDIAN IS THE WIRE. This machine cannot rank a change to',
+    "    that query: the signal is smaller than this connection's own spread. Rank it on the runner.",
+  )
+}
 
 if (outArg) {
   const out = resolve(outArg)
@@ -270,8 +361,12 @@ if (outArg) {
         rowCount,
         ttfbMs: ttfbs,
         queryMs: queries,
+        ladder,
+        wireFloorMs: floors,
         ttfbMedianMs: ttfbMedian,
         queryMedianMs: queryMedian,
+        wireFloorMedianMs: floorMedian,
+        queryWorkEstimateMs: queryWork,
         residualMs: residual,
         takenAt: new Date().toISOString(),
       },

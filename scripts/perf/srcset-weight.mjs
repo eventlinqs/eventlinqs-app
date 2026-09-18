@@ -77,15 +77,23 @@
  *   node scripts/perf/srcset-weight.mjs https://www.eventlinqs.com.au --path=home --out=x.json
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { gzipSync } from 'node:zlib'
+import { dirname, join, resolve } from 'node:path'
 import { startGateServer, envFor } from '../ops/pre-push-gate.mjs'
+import { analyseDocument } from './lib/document-weight.mjs'
 
 const args = process.argv.slice(2)
 const SERVE = args.includes('--serve')
 const PORT = Number(args.find(a => a.startsWith('--port='))?.split('=')[1] ?? 3200)
 let base = (args.find(a => a.startsWith('http')) ?? `http://127.0.0.1:${PORT}`).replace(/\/$/, '')
 const outArg = args.find(a => a.startsWith('--out='))?.split('=')[1]
+/*
+ * `--dump=DIR` writes each served document to disk. It exists because the two
+ * biggest things in these documents, the candidate lists and the flight
+ * payload, are only ANSWERABLE by reading the bytes: a share tells you a
+ * question is worth asking and never what the answer is. The alternative was
+ * a second harness that serves the build again to fetch the same page twice.
+ */
+const dumpArg = args.find(a => a.startsWith('--dump='))?.split('=')[1]
 const rawPaths = args.filter(a => a.startsWith('--path=')).map(a => a.split('=')[1])
 
 if (rawPaths.length === 0) {
@@ -105,82 +113,6 @@ for (const p of rawPaths) {
 }
 /** `home` is the one path that cannot be written without a slash. */
 const paths = rawPaths.map(p => (p === 'home' ? '/' : `/${p}`))
-
-/**
- * Every srcset-bearing attribute in the document: `srcset` on an <img> and
- * `imagesrcset` on a preload <link>. Next serves the latter lower-cased in the
- * HTML even though the React prop is `imageSrcSet`, so the match is
- * case-insensitive rather than trusting either spelling.
- */
-const SRCSET = /\b(?:image)?srcset="([^"]*)"/gi
-const SIZES_ATTR = /\b(?:image)?sizes="([^"]*)"/i
-
-function analyse(html) {
-  const total = html.length
-  const gz = gzipSync(Buffer.from(html)).length
-  let srcsetBytes = 0
-  let candidates = 0
-  let firstCandidate = null
-  const byRole = new Map()
-
-  /*
-   * The `sizes` that produced a given `srcset` is the one in the SAME tag, so
-   * tags are walked rather than the two attribute lists being zipped together.
-   * Zipping them silently mis-attributes every cost the moment one tag carries
-   * a srcset and no sizes, which is exactly what a fixed-width image looks like
-   * after it is fixed.
-   */
-  for (const tag of html.matchAll(/<(?:img|link)\b[^>]*>/g)) {
-    const text = tag[0]
-    SRCSET.lastIndex = 0
-    const set = SRCSET.exec(text)
-    if (!set) continue
-    const value = set[1]
-    const n = value.split(',').length
-    if (firstCandidate === null) firstCandidate = value.split(',')[0].trim()
-    const role = text.match(SIZES_ATTR)?.[1] ?? '(no sizes: fixed width, x descriptors)'
-    srcsetBytes += value.length
-    candidates += n
-    const entry = byRole.get(role) ?? { images: 0, candidates: 0, bytes: 0 }
-    entry.images += 1
-    entry.candidates += n
-    entry.bytes += value.length
-    byRole.set(role, entry)
-  }
-
-  /*
-   * ONE CANDIDATE, VERBATIM, AND ITS PARTS. A count and a total cannot tell you
-   * WHY a candidate costs what it costs, and the two levers are different work:
-   * fewer candidates is a framework question, shorter candidates is a src
-   * question. The sample is the served bytes, never a reconstruction.
-   */
-  const sample = firstCandidate
-    ? (() => {
-        const url = firstCandidate.split(' ')[0]
-        const encodedSrc = /[?&]url=([^&]*)/.exec(url)?.[1] ?? ''
-        return {
-          candidate: firstCandidate,
-          bytes: firstCandidate.length,
-          encodedSrcBytes: encodedSrc.length,
-          decodedSrc: decodeURIComponent(encodedSrc),
-          srcSharePercent:
-            firstCandidate.length === 0 ? 0 : (encodedSrc.length / firstCandidate.length) * 100,
-        }
-      })()
-    : null
-
-  return {
-    documentBytes: total,
-    gzipBytes: gz,
-    sample,
-    srcsetBytes,
-    candidates,
-    sharePercent: total === 0 ? 0 : (srcsetBytes / total) * 100,
-    byRole: [...byRole.entries()]
-      .sort((a, b) => b[1].bytes - a[1].bytes)
-      .map(([sizes, v]) => ({ sizes, ...v })),
-  }
-}
 
 let stopServer = null
 if (SERVE) {
@@ -207,7 +139,13 @@ for (const path of paths) {
     process.exit(1)
   }
   const html = await res.text()
-  const a = analyse(html)
+  if (dumpArg) {
+    const dir = resolve(dumpArg)
+    mkdirSync(dir, { recursive: true })
+    const name = (path === '/' ? 'home' : path.slice(1)).replace(/[^a-z0-9]+/gi, '-')
+    writeFileSync(join(dir, `${name}.html`), html)
+  }
+  const a = analyseDocument(html)
   report.routes.push({ path, ...a })
 
   console.log('')
@@ -215,6 +153,10 @@ for (const path of paths) {
   console.log(
     `  document ${a.documentBytes} B raw / ${a.gzipBytes} B gzip     srcset ${a.srcsetBytes} B` +
       ` in ${a.candidates} candidates  (${a.sharePercent.toFixed(1)}% of the document)`,
+  )
+  console.log(
+    `    flight payload ${a.flightBytes} B in ${a.flightScripts} script tags ` +
+      `(${a.flightSharePercent.toFixed(1)}% of the document): the same tree again, as script`,
   )
   if (a.sample) {
     console.log(

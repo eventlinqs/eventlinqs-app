@@ -2218,9 +2218,22 @@ const ROOT = join(HERE, '..', '..')
  * The guard passed on the real tree while doing that, because it failed in the
  * permissive direction, which is the only direction a gate can fail quietly in.
  * The test found it; reading the code had not.
+ *
+ * 19 SEPTEMBER 2026, lane C, second raise of the day, 452/5866 -> 453/5883. ONE
+ * new file, tests/unit/perf/document-weight, 17 tests, holding the analysis that
+ * says what a served document is made of.
+ *
+ * THESE ARE TESTS FOR A REPORTER, which fails a different way from a guard: it
+ * does not go red, it prints a number. The matcher for Next's flight payload was
+ * written with a word boundary that a shell turned into a literal BACKSPACE
+ * byte. The expression stayed VALID and matched no script tag on earth, and
+ * "flight payload 0 B (0.0% of the document)" would have gone into a commit
+ * message as a fact about this platform. Six of these seventeen go red on
+ * exactly that byte, and the analysis now refuses the zero rather than printing
+ * it.
  */
-const MIN_FILES = 452
-const MIN_TESTS = 5866
+const MIN_FILES = 453
+const MIN_TESTS = 5883
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
