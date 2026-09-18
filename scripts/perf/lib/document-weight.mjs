@@ -317,6 +317,75 @@ const CLASS_FLIGHT_RE = new RegExp(
   'g',
 )
 
+/**
+ * WHAT THE `style` ATTRIBUTE COSTS, which is the half the class-list row
+ * cannot see.
+ *
+ * Added 19 September 2026 (close-out C8B.3, the browse card collapse). The
+ * class-list row found that /events was 26.6% class attributes and led
+ * straight to a collapse; while doing it, six of `EventCard`'s elements turned
+ * out to set `style={{ ... }}` with design tokens - the body's padding, the
+ * meta row's gap, the footer's gap and padding, the price's size and weight,
+ * the title's transition - and NOTHING in this reporter could see them. They
+ * were 16,203 B of one /events document, 12,121 B of it a value said again.
+ *
+ * AN INLINE STYLE IS PAID THE SAME WAY A CLASS LIST IS, twice: once in the
+ * markup as `style="..."` and again in the RSC payload as a serialised object,
+ * `\"style\":{\"paddingTop\":\"...\"}`. The object form is LONGER than the
+ * markup form, so a reader who counts only the markup under-reports it.
+ *
+ * IT IS NOT ALL REMOVABLE, and saying so is the point of reporting
+ * `repeatBytes` separately. Next's own `fill` images set six positioning
+ * declarations inline on every image and that is the framework's, not ours.
+ * What is actionable is a value a COMPONENT writes per instance, which is
+ * exactly what `repeatBytes` ranks.
+ */
+export function styleAttributeWeight(html) {
+  const counts = new Map()
+  for (const re of [STYLE_ATTR_RE, STYLE_FLIGHT_RE]) {
+    re.lastIndex = 0
+    let match
+    while ((match = re.exec(html)) !== null) {
+      const value = match[1]
+      counts.set(value, (counts.get(value) ?? 0) + 1)
+    }
+  }
+  let bytes = 0
+  let repeatBytes = 0
+  let occurrences = 0
+  const byValue = []
+  for (const [value, count] of counts) {
+    bytes += value.length * count
+    occurrences += count
+    if (count > 1) repeatBytes += value.length * (count - 1)
+    byValue.push({ value, count, bytes: value.length * count, repeatBytes: value.length * (count - 1) })
+  }
+  byValue.sort((a, b) => b.repeatBytes - a.repeatBytes)
+  return {
+    bytes,
+    repeatBytes,
+    occurrences,
+    distinct: counts.size,
+    sharePercent: html.length === 0 ? 0 : (bytes / html.length) * 100,
+    byValue,
+  }
+}
+
+/** `style="..."` in the markup. */
+const STYLE_ATTR_RE = /style="([^"]+)"/g
+/**
+ * `\"style\":{...}` inside a flight chunk. The object is matched to its
+ * closing brace WITHOUT nesting, which is right for a style object (its values
+ * are strings and numbers, never objects) and would be wrong for anything
+ * else. Written from a character code for the same reason the className
+ * matcher is: the escaping does not survive a shell heredoc, and a matcher
+ * that quietly matches nothing is the failure this module refuses.
+ */
+const STYLE_FLIGHT_RE = new RegExp(
+  `style${BACKSLASH}${BACKSLASH}":(\\{[^{}]+\\})`,
+  'g',
+)
+
 export function analyseDocument(html, { expectFlight = true } = {}) {
   const documentBytes = html.length
   const gzipBytes = gzipSync(Buffer.from(html)).length
@@ -336,6 +405,7 @@ export function analyseDocument(html, { expectFlight = true } = {}) {
     documentBytes,
     gzipBytes,
     classLists: classListWeight(html),
+    styleAttributes: styleAttributeWeight(html),
     flightBytes: flight.bytes,
     flightScripts: flight.scripts,
     flightSharePercent: documentBytes === 0 ? 0 : (flight.bytes / documentBytes) * 100,

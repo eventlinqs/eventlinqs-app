@@ -34,17 +34,29 @@
  *
  * Saying that plainly is the point. The served-document half is covered by
  * `scripts/verify/card-class-collapse-drive.mjs`, which serves the build and
- * measures the real homepage; this guard holds the three things that CAN be
- * judged without a server, and a reader should not mistake its green for the
- * drive's.
+ * measures the real homepage AND /events; this guard holds the three things
+ * that CAN be judged without a server, and a reader should not mistake its
+ * green for the drive's.
+ *
+ * THE SECOND FAMILY, 19 September 2026. `EventCard` is the browse card and it
+ * renders on eighteen surfaces. On /events its class values were 105,684 B,
+ * 26.6% of a 397,482 B document, 88,323 B of it a value said again, and the
+ * surface list alone was 428 characters said 40 times. It also carried six
+ * INLINE STYLE objects per card, which no clause here can see: an inline style
+ * is not a class attribute. That half is measured by the drive and by
+ * scripts/perf/lib/document-weight.mjs, and is named here so the gap is a
+ * known one rather than a surprise.
  *
  * ============================================================================
  * THREE CLAUSES
  * ============================================================================
  *
- *   A  CONTRACT. The three composites exist in globals.css and the home card
- *      files have not re-inlined them. This is what catches a revert, and it is
- *      the only clause that is exact rather than heuristic.
+ *   A  CONTRACT. Every composite exists in globals.css and no per-card file
+ *      has re-inlined one. This is what catches a revert, and it is the only
+ *      clause that is exact rather than heuristic. It covers TWO card families
+ *      now: the home rail card (8 composites) and the browse card
+ *      (`EventCard` and the save control inside it, 15 composites,
+ *      collapsed 19 September 2026).
  *
  *   B  RATCHET, platform-wide, with a REVIEWED BASELINE. No class literal in
  *      src/ over MAX_LITERAL characters unless it is listed below with a date
@@ -75,7 +87,7 @@
  * have helped; the shape was the problem.
  *
  * It has since been collapsed (it is `rail-arrow-btn` now, and snap-rail.tsx is
- * in HOME_CARD_FILES so clause A holds it), but the GAP is still real and the
+ * in CARD_FILES so clause A holds it), but the GAP is still real and the
  * next concatenation will be just as invisible. What catches that shape is the
  * `class lists` row scripts/perf/lib/document-weight.mjs now reports on every
  * served document, ranked by REMOVABLE bytes. The guard holds the source; the
@@ -104,9 +116,34 @@ const COMPOSITES = [
   'home-card-price',
   'rail-arrow-btn',
   'rail-header-link',
+  /* The browse card family (`EventCard`), collapsed 19 September 2026. A
+   * second family rather than a reuse of the home card's: it is a different
+   * component with different values (its own radius scale, `scale-[1.025]`,
+   * a 4:3 media box from the md step) and folding the two together would have
+   * changed one of them to save bytes in the other. */
+  'event-card-surface',
+  'event-card-media',
+  'event-card-zoom',
+  'event-card-badge',
+  'event-card-pill',
+  'event-card-body',
+  'event-card-date',
+  'event-card-title',
+  'event-card-meta',
+  'event-card-footer',
+  'event-card-price',
+  'save-event-btn',
+  'save-event-btn-dark',
+  'save-event-btn-light',
+  'event-card-save',
 ]
 const GLOBALS = 'src/app/globals.css'
-const HOME_CARD_FILES = [
+/**
+ * The per-item component files: every one of these renders ONCE PER CARD (or
+ * once per rail, on every page), so a class literal written here is paid per
+ * item in the markup and again in the RSC payload.
+ */
+const CARD_FILES = [
   'src/components/features/home/cards.tsx',
   'src/components/features/home/sounds-rail.tsx',
   /* snap-rail.tsx is here because it holds the ONE canonical rail control
@@ -114,9 +151,14 @@ const HOME_CARD_FILES = [
    * so a class list re-inlined here is multiplied by every rail on every page
    * rather than by the cards in one. */
   'src/components/ui/snap-rail.tsx',
+  /* The browse card and the save control inside it. event-card.tsx renders on
+   * EIGHTEEN surfaces, which is why its 428-character surface list was the
+   * largest repeated value on /events before it was collapsed. */
+  'src/components/features/events/event-card.tsx',
+  'src/components/features/events/save-event-button.tsx',
 ]
 /** A collapsed file has no class literal anywhere near the old 464. */
-const HOME_MAX_LITERAL = 120
+const CARD_MAX_LITERAL = 120
 
 /**
  * REVIEWED EXEMPTIONS for clause A, 19 September 2026. Same shape and same
@@ -129,7 +171,7 @@ const HOME_MAX_LITERAL = 120
  * two once-per-rail literals would have made the clause blind to a 289-
  * character literal arriving in a card, which is the thing it is for.
  */
-const HOME_BASELINE = [
+const CARD_BASELINE = [
   {
     file: 'src/components/features/home/cards.tsx',
     startsWith: 'flex w-full flex-col items-start justify-center gap-2 rounded-2xl border border-dashed',
@@ -173,11 +215,10 @@ const BASELINE = [
     startsWith: 'inline-flex min-h-11 items-center rounded-lg bg-gold-500',
     why: 'the event page Get Tickets CTA, written twice in one file. Once per page each. Lane A owns the checkout entry point.',
   },
-  {
-    file: 'src/components/features/events/event-card.tsx',
-    startsWith: 'group card-hover-transition flex flex-col rounded-2xl',
-    why: 'THE NEXT ITEM, and it is the same defect this guard was written for. 428 chars x 32 cards on /events = 13,696 B of markup plus its flight copy; class values are 107,234 B, 26.9% of that 399,029 B document. Measured 19 September 2026. Lane C. Not collapsed in the same pass because it is a different component family with different values (card-hover-transition, scale-[1.025]) and folding it in would have doubled the item mid-flight.',
-  },
+  /* The 428-character event-card surface list stood here from the day this
+   * guard was written until 19 September 2026, as "THE NEXT ITEM". It was the
+   * next item: it is `event-card-surface` now and the entry is gone, which is
+   * what a baseline entry is supposed to do. */
   {
     file: 'src/components/features/events/hero-carousel-client.tsx',
     startsWith: 'absolute right-4 top-1/2 z-20 hidden h-11 w-11',
@@ -259,13 +300,13 @@ if (!existsSync(globalsPath)) {
      * "a composite ... is deleted from globals.css" found it on its first run. */
     if (!new RegExp(`@utility\\s+${name}\\s*\\{`).test(css)) {
       faults.push(
-        `A: @utility ${name} is not defined in ${GLOBALS}. The home card family renders it on every card, ` +
-          `so deleting it silently strips the card's border, shadow, hover lift or focus ring.`,
+        `A: @utility ${name} is not defined in ${GLOBALS}. A card family renders it on every card, ` +
+          `so deleting it silently strips the card's border, shadow, padding, hover lift or focus ring.`,
       )
     }
   }
 }
-for (const file of HOME_CARD_FILES) {
+for (const file of CARD_FILES) {
   const path = join(ROOT, file)
   if (!existsSync(path)) {
     faults.push(`A: ${file} does not exist; the home card contract cannot be judged`)
@@ -279,14 +320,14 @@ for (const file of HOME_CARD_FILES) {
   }
   for (const { line, value } of literalsIn(text)) {
     clauseAChecks += 1
-    if (value.length > HOME_MAX_LITERAL) {
-      const exempt = HOME_BASELINE.find(b => b.file === file && value.startsWith(b.startsWith))
+    if (value.length > CARD_MAX_LITERAL) {
+      const exempt = CARD_BASELINE.find(b => b.file === file && value.startsWith(b.startsWith))
       if (exempt) {
         homeBaselineHits.add(`${exempt.file}|${exempt.startsWith}`)
         continue
       }
       faults.push(
-        `A: ${file}:${line} carries a ${value.length}-character class literal (limit ${HOME_MAX_LITERAL} in a home card file). ` +
+        `A: ${file}:${line} carries a ${value.length}-character class literal (limit ${CARD_MAX_LITERAL} in a per-card file). ` +
           `These components render once per card, so a literal here is paid per card in the markup AND again in the RSC ` +
           `payload. Put it in globals.css as an @utility with @apply. Literal begins: ${value.slice(0, 60)}`,
       )
@@ -324,7 +365,7 @@ for (const b of BASELINE) {
     )
   }
 }
-for (const b of HOME_BASELINE) {
+for (const b of CARD_BASELINE) {
   if (!homeBaselineHits.has(`${b.file}|${b.startsWith}`)) {
     notes.push(
       `A: exemption no longer matches anything and should be deleted: ${b.file} "${b.startsWith.slice(0, 44)}"`,

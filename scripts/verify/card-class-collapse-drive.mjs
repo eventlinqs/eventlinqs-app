@@ -44,15 +44,32 @@
  * anchor to an event carrying an image and a heading - so the same elements are
  * measured on both trees. The comparison also REFUSES when it compared nothing.
  *
- * Usage:
- *   node scripts/verify/card-class-collapse-drive.mjs --serve --port=3200 --out=before.json
- *   node scripts/verify/card-class-collapse-drive.mjs --serve --port=3200 --out=after.json --expect=before.json
+ * ============================================================================
+ * IT MEASURES MORE THAN ONE CARD FAMILY, AND MORE THAN ONE PAGE
+ * ============================================================================
+ *
+ * Added 19 September 2026 for the browse card (`EventCard`), the second family
+ * to be collapsed. It is a DIFFERENT component from the home rail card, it
+ * renders on eighteen surfaces, and on /events its class values are 26.6% of
+ * the document. Giving it a second copy of this file would have meant two
+ * harnesses to keep honest, so `--path=` was added instead and the role
+ * finders are structural enough to serve both shapes.
+ *
+ * A role a page does not have reads `null`, and null on one side with a value
+ * on the other is a FAULT rather than a skip - that is what stops a selector
+ * that has gone blind from passing as "this page simply has no price".
+ *
+ * Usage (paths carry NO leading slash: MSYS rewrites a leading slash to a
+ * Windows path before node sees it):
+ *   node scripts/verify/card-class-collapse-drive.mjs --serve --port=3200 --path=home --out=before.json
+ *   node scripts/verify/card-class-collapse-drive.mjs --serve --port=3200 --path=home --path=events --out=after.json --expect=before.json
  */
 import { chromium } from 'playwright'
 import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { startGateServer, envFor } from '../ops/pre-push-gate.mjs'
 import { refuseUnlessThePortIsFree } from './lib/port-is-ours.mjs'
+import { comparableValue } from './lib/transition-equivalence.mjs'
 
 const TAG = '[card-class-collapse]'
 const args = process.argv.slice(2)
@@ -62,6 +79,17 @@ const OUT = args.find(a => a.startsWith('--out='))?.split('=')[1]
 const EXPECT = args.find(a => a.startsWith('--expect='))?.split('=')[1]
 const SHOTS = args.find(a => a.startsWith('--shots='))?.split('=')[1]
 let BASE = args.find(a => a.startsWith('http')) ?? `http://127.0.0.1:${PORT}`
+
+/**
+ * The pages to measure. `home` is the literal root; anything else is taken as
+ * a path. Defaults to the homepage alone so every earlier invocation of this
+ * drive still means what it meant.
+ */
+const PATHS = (() => {
+  const given = args.filter(a => a.startsWith('--path=')).map(a => a.split('=')[1])
+  if (given.length === 0) return ['/']
+  return given.map(p => (p === 'home' || p === '' ? '/' : p.startsWith('/') ? p : `/${p}`))
+})()
 
 const VIEWPORTS = [
   { label: '390', width: 390, height: 844 },
@@ -161,7 +189,62 @@ const PROPS = {
   label: ['font-size', 'font-weight', 'font-family', 'letter-spacing', 'text-transform', 'color'],
   date: ['font-size', 'font-weight', 'letter-spacing', 'text-transform', 'color'],
   price: ['font-size', 'font-weight', 'font-family', 'color'],
+  /*
+   * THE BROWSE CARD'S OWN ROLES, added 19 September 2026.
+   *
+   * These five carry properties the home card family never had in this drive,
+   * and each one is here because the collapse MOVES it rather than renames it:
+   * the body's padding, the meta row's gap, the footer's gap and padding-top,
+   * the price's size and weight and the title's transition all arrived as
+   * INLINE STYLES (`style={{ ... }}`), which is a per-card cost in the markup
+   * and again as a serialised object in the flight payload. An inline style
+   * beats every class in the cascade, so moving one into a class is the change
+   * most able to go quietly wrong, and it is measured here property by
+   * property because of that.
+   */
+  media: ['position', 'aspect-ratio', 'overflow-x', 'overflow-y', 'background-color', 'border-radius'],
+  body: ['display', 'flex-grow', 'flex-direction', 'padding-top', 'padding-bottom', 'padding-left', 'padding-right'],
+  meta: ['display', 'align-items', 'gap', 'margin-top', 'font-size', 'line-height', 'font-weight', 'color'],
+  footer: ['display', 'align-items', 'justify-content', 'margin-top', 'gap', 'padding-top'],
+  priceText: ['font-family', 'font-size', 'font-weight', 'color'],
+  badge: [
+    'position',
+    'left',
+    'top',
+    'display',
+    'align-items',
+    'border-radius',
+    'padding-left',
+    'padding-right',
+    'padding-top',
+    'padding-bottom',
+    'font-size',
+    'font-weight',
+    'text-transform',
+    'letter-spacing',
+    'background-color',
+    'color',
+    'box-shadow',
+  ],
+  save: [
+    'display',
+    'width',
+    'height',
+    'position',
+    'right',
+    'top',
+    'border-radius',
+    'background-color',
+    'color',
+    'box-shadow',
+    'transition-property',
+    'transition-duration',
+    'scale',
+  ],
 }
+
+/** Every role the sampler reads, in the order a reader would meet them. */
+const ROLES = ['card', 'media', 'image', 'badge', 'save', 'body', 'label', 'title', 'meta', 'footer', 'priceText', 'date', 'price']
 
 /**
  * The canonical rail control (`ARROW_BTN` in src/components/ui/snap-rail.tsx).
@@ -220,12 +303,13 @@ if (SERVE) {
  */
 function sampleScript(count) {
   return `(() => {
-    const PROPS_CARD = ${JSON.stringify(PROPS.card)};
-    const PROPS_IMAGE = ${JSON.stringify(PROPS.image)};
-    const PROPS_TITLE = ${JSON.stringify(PROPS.title)};
-    const PROPS_LABEL = ${JSON.stringify(PROPS.label)};
-    const PROPS_DATE = ${JSON.stringify(PROPS.date)};
-    const PROPS_PRICE = ${JSON.stringify(PROPS.price)};
+    const PROPS = ${JSON.stringify(PROPS)};
+    const PROPS_CARD = PROPS.card;
+    const PROPS_IMAGE = PROPS.image;
+    const PROPS_TITLE = PROPS.title;
+    const PROPS_LABEL = PROPS.label;
+    const PROPS_DATE = PROPS.date;
+    const PROPS_PRICE = PROPS.price;
     const read = (el, props) => {
       const cs = getComputedStyle(el);
       const o = {};
@@ -244,18 +328,53 @@ function sampleScript(count) {
        * and reported the veil's computed style as the card's date and price -
        * font-weight 400 and no uppercase, which is what gave it away. */
       const spans = [...a.querySelectorAll('span')].filter(s => !s.hasAttribute('aria-hidden'));
+      /*
+       * THE BROWSE CARD'S PARTS, FOUND BY STRUCTURE AND NEVER BY THE CLASS
+       * UNDER TEST. The media box is whatever holds the image, the body is
+       * whatever holds the heading, the meta row is the paragraph carrying the
+       * pin icon, the footer is the body's last child and the price is the
+       * paragraph inside it. A page without one of these reports null for it,
+       * and the comparison treats null-on-one-side as a fault.
+       */
+      const media = img.parentElement;
+      const body = h3.parentElement;
+      const badge = media ? media.querySelector('span:not([aria-hidden])') : null;
+      const save = media ? media.querySelector('button[aria-label]') : null;
+      const meta = body ? [...body.querySelectorAll(':scope > p')].find(p => p.querySelector('svg')) : null;
+      const footer = body && body.lastElementChild && body.lastElementChild.tagName === 'DIV'
+        ? body.lastElementChild
+        : null;
+      const priceText = footer ? footer.querySelector('p') : null;
       return {
         href: a.getAttribute('href'),
         cardClassLength: (a.getAttribute('class') || '').length,
         imageClassLength: (img.getAttribute('class') || '').length,
         titleClassLength: (h3.getAttribute('class') || '').length,
         labelClassLength: label ? (label.getAttribute('class') || '').length : null,
+        mediaClassLength: media ? (media.getAttribute('class') || '').length : null,
+        bodyClassLength: body ? (body.getAttribute('class') || '').length : null,
+        saveClassLength: save ? (save.getAttribute('class') || '').length : null,
+        /* The inline styles the collapse moves into classes. Recorded as
+         * LENGTHS so the saving is visible in the drive's own output, and as a
+         * count so a style attribute that survives the change is not silently
+         * lost among computed values that match. */
+        inlineStyleChars:
+          [a, media, img, body, h3, meta, footer, priceText, label]
+            .filter(Boolean)
+            .reduce((n, el) => n + (el.getAttribute('style') || '').length, 0),
         card: read(a, PROPS_CARD),
         image: read(img, PROPS_IMAGE),
         title: read(h3, PROPS_TITLE),
         label: label ? read(label, PROPS_LABEL) : null,
         date: spans[0] ? read(spans[0], PROPS_DATE) : null,
         price: spans[1] ? read(spans[1], PROPS_PRICE) : null,
+        media: media ? read(media, PROPS.media) : null,
+        body: body ? read(body, PROPS.body) : null,
+        badge: badge ? read(badge, PROPS.badge) : null,
+        save: save ? read(save, PROPS.save) : null,
+        meta: meta ? read(meta, PROPS.meta) : null,
+        footer: footer ? read(footer, PROPS.footer) : null,
+        priceText: priceText ? read(priceText, PROPS.priceText) : null,
       };
     });
   })()`
@@ -298,18 +417,19 @@ const capture = {}
 
 const browser = await chromium.launch()
 try {
+ for (const path of PATHS) {
   for (const vp of VIEWPORTS) {
    for (const motion of MOTION_STATES) {
-    const key = `${vp.label}/${motion.label}`
-    console.log(`${TAG} ${vp.width}x${vp.height}  prefers-reduced-motion: ${motion.label}`)
+    const key = `${path} ${vp.label}/${motion.label}`
+    console.log(`${TAG} ${path}  ${vp.width}x${vp.height}  prefers-reduced-motion: ${motion.label}`)
     const context = await browser.newContext({
       viewport: { width: vp.width, height: vp.height },
       reducedMotion: motion.reducedMotion,
       ...(motion.userAgent ? { userAgent: motion.userAgent } : {}),
     })
     const page = await context.newPage()
-    const res = await page.goto(`${BASE}/`, { waitUntil: 'networkidle' })
-    check(res?.status() === 200, `${key}: the homepage answered ${res?.status()}`)
+    const res = await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle' })
+    check(res?.status() === 200, `${key}: the page answered ${res?.status()}`)
 
     /* Recorded so a reader can tell WHICH branch each capture exercised.
      * html[data-motion="1"] is set pre-paint by the head bootstrap and is what
@@ -366,11 +486,13 @@ try {
 
     if (SHOTS) {
       mkdirSync(SHOTS, { recursive: true })
-      await page.screenshot({ path: `${SHOTS}/home-${vp.label}-${motion.label}.png`, fullPage: false })
+      const slug = path === '/' ? 'home' : path.replace(/^\//, '').replace(/\//g, '-')
+      await page.screenshot({ path: `${SHOTS}/${slug}-${vp.label}-${motion.label}.png`, fullPage: false })
     }
     await context.close()
    }
   }
+ }
 } finally {
   await browser.close()
   if (stopServer) await stopServer()
@@ -406,7 +528,7 @@ if (EXPECT) {
   }
   const before = JSON.parse(readFileSync(EXPECT, 'utf8'))
   let compared = 0
-  const keys = VIEWPORTS.flatMap(v => MOTION_STATES.map(m => `${v.label}/${m.label}`))
+  const keys = PATHS.flatMap(p => VIEWPORTS.flatMap(v => MOTION_STATES.map(m => `${p} ${v.label}/${m.label}`)))
   for (const vp of keys) {
     const b = before[vp]
     const a = capture[vp]
@@ -425,7 +547,7 @@ if (EXPECT) {
       if (b.rest[i].href !== a.rest[i].href) {
         notes.push(`${vp} card ${i}: href moved (${b.rest[i].href} -> ${a.rest[i].href}), styles still compared`)
       }
-      for (const role of ['card', 'image', 'title', 'label', 'date', 'price']) {
+      for (const role of ROLES) {
         if (!b.rest[i][role] || !a.rest[i][role]) {
           if (b.rest[i][role] !== a.rest[i][role]) {
             faults.push(`${vp} card ${i} ${role}: present on one tree and absent on the other`)
@@ -434,8 +556,15 @@ if (EXPECT) {
         }
         for (const prop of PROPS[role]) {
           compared += 1
-          const was = b.rest[i][role][prop]
-          const now = a.rest[i][role][prop]
+          /* Read through `comparableValue`, which expands a single
+           * transition-duration / timing-function across the property list
+           * exactly as CSS does. A shorthand declares the duration once per
+           * property and a longhand declares it once for all of them; the
+           * behaviour is identical and only the serialisation differs. It
+           * cannot hide a value that genuinely changed - see
+           * scripts/verify/lib/transition-equivalence.mjs and its tests. */
+          const was = comparableValue(b.rest[i][role], prop)
+          const now = comparableValue(a.rest[i][role], prop)
           if (was !== now) faults.push(`${vp} card ${i} ${role} ${prop}: was "${was}", now "${now}"`)
         }
       }
@@ -462,8 +591,10 @@ if (EXPECT) {
       }
       for (const prop of ARROW_PROPS) {
         compared += 1
-        if (bs[prop] !== as[prop]) {
-          faults.push(`${vp} rail arrow ${state} ${prop}: was "${bs[prop]}", now "${as[prop]}"`)
+        const was = comparableValue(bs, prop)
+        const now = comparableValue(as, prop)
+        if (was !== now) {
+          faults.push(`${vp} rail arrow ${state} ${prop}: was "${was}", now "${now}"`)
         }
       }
     }
@@ -473,6 +604,12 @@ if (EXPECT) {
         `title ${b.rest[0].titleClassLength} -> ${a.rest[0].titleClassLength}, ` +
         `label ${b.rest[0].labelClassLength} -> ${a.rest[0].labelClassLength}, ` +
         `rail arrow ${b.arrows?.classLength} -> ${a.arrows?.classLength}`,
+    )
+    console.log(
+      `${TAG} ${vp}: media ${b.rest[0].mediaClassLength} -> ${a.rest[0].mediaClassLength}, ` +
+        `body ${b.rest[0].bodyClassLength} -> ${a.rest[0].bodyClassLength}, ` +
+        `save ${b.rest[0].saveClassLength} -> ${a.rest[0].saveClassLength}, ` +
+        `inline style ${b.rest[0].inlineStyleChars} -> ${a.rest[0].inlineStyleChars} chars on one card`,
     )
   }
   check(compared > 0, `the comparison examined ${compared} computed values (a comparison of nothing is not a pass)`)
@@ -484,4 +621,7 @@ if (faults.length) {
   for (const f of faults) console.error(`${TAG}   ${f}`)
   process.exit(1)
 }
-console.log(`${TAG} PASS - ${VIEWPORTS.length} viewport(s), rest + hover + focus-visible, 0 faults`)
+console.log(
+  `${TAG} PASS - ${PATHS.length} path(s) (${PATHS.join(', ')}), ${VIEWPORTS.length} viewport(s), ` +
+    `rest + hover + focus-visible, 0 faults`,
+)

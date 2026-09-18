@@ -428,6 +428,159 @@ html[data-motion="1"] .group:hover .card-hover-wash {
     focus-visible:ring-offset-2;
 }
 
+/* ─── Browse card system (EventCard): the second card family ─────────────── */
+/*
+ * WHY THESE EXIST, and like the home card family above it is a measurement.
+ *
+ * Close-out C8 EXECUTION METHOD clause C8B.3, 19 September 2026, second card
+ * family. `EventCard` is the browse card: it renders on EIGHTEEN surfaces
+ * (/events, every city, suburb, category, community-by-city, organiser, venue,
+ * artist and the feed), and on /events its class values are 105,684 B - 26.6%
+ * of a 397,482 B document - of which 88,323 B is a value said again. The card
+ * surface alone is 428 characters said 40 times.
+ *
+ * IT IS PAID TWICE, once in the markup and again in the RSC payload, for the
+ * same reason the home card was: a class list written as a string literal in a
+ * component is re-serialised for every instance React renders.
+ *
+ * AND THIS FAMILY CARRIES A SECOND COST THE HOME CARD DID NOT: inline styles.
+ * Six of its elements set `style={{ ... }}` with design tokens - the body's
+ * padding, the meta row's gap, the footer's gap and padding, the price's size
+ * and weight, the title's transition - and an inline style is paid per card in
+ * the markup AND serialised again as an object in the flight payload. Those
+ * declarations move in here as plain CSS rather than as @apply, because
+ * `padding: var(--space-card-padding-y) var(--space-card-padding-x)` IS the
+ * declaration the inline style set: there is nothing to translate and so
+ * nothing to translate wrongly.
+ *
+ * WHAT DELIBERATELY DID NOT MOVE, and each is a cascade fact rather than an
+ * oversight:
+ *
+ *   `.type-micro` / `.type-small` stay at the call site. They are UNLAYERED
+ *   rules, and unlayered CSS beats everything in `@layer utilities` whatever
+ *   its specificity, so folding their font-size into a composite would have
+ *   been fine but folding the eyebrow's `font-weight: 600` in would NOT: the
+ *   unlayered `.type-micro { font-weight: 500 }` would win and the eyebrow
+ *   would silently drop a weight. That one stays an inline style.
+ *
+ *   `.card-hover-img` stays on the image. Its `transition` is already fully
+ *   overridden by `.card-media-img` (declared later in this file), so moving
+ *   it into a utility would have promoted a dead declaration into a live one
+ *   that beats `.card-media-img` and would have cost the hover brightening its
+ *   easing. The composite carries the two variants only.
+ *
+ * Held by scripts/verify/card-class-collapse-drive.mjs, which now drives
+ * /events as well as the homepage and compares every one of these properties
+ * before and after at 390/768/1440 in both motion branches.
+ */
+@utility event-card-surface {
+  @apply flex flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)]
+    bg-[var(--surface-0)] shadow-[var(--shadow-card)]
+    transition-[transform,box-shadow] duration-200 ease-out
+    hover:-translate-y-1 hover:border-[var(--surface-2)] hover:shadow-[var(--shadow-card-hover)]
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]
+    focus-visible:ring-offset-2
+    motion-reduce:transition-none motion-reduce:hover:translate-y-0;
+}
+
+/* The media box. 16:9 on mobile, 4:3 from the md step, per the card spec. */
+@utility event-card-media {
+  @apply relative aspect-video overflow-hidden bg-[var(--surface-1)] md:aspect-[4/3];
+}
+
+/* The image zoom that rides the card hover. Paired with `.card-media-img`
+ * (the brightness half of the hover illumination law) and with
+ * `.card-hover-img`, both of which stay on the element. */
+@utility event-card-zoom {
+  @apply group-hover:scale-[1.025] motion-reduce:group-hover:scale-100;
+}
+
+/* The M5 social-proof badge, top-left of the media box. Its COLOUR is not
+ * here: `BADGE_STYLES` picks one per badge kind and stays at the call site. */
+@utility event-card-badge {
+  @apply absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold uppercase
+    tracking-widest shadow-[var(--shadow-card)];
+}
+
+/* The category pill, the same corner when no badge was supplied. */
+@utility event-card-pill {
+  @apply absolute left-3 top-3 inline-flex items-center rounded-full
+    bg-[var(--surface-0)]/95 px-2.5 py-1 text-xs font-bold uppercase tracking-widest
+    text-[var(--text-primary)] shadow-[var(--shadow-card)];
+}
+
+/* The card body. The padding was four inline declarations on every card. */
+@utility event-card-body {
+  @apply flex flex-1 flex-col;
+  padding: var(--space-card-padding-y) var(--space-card-padding-x);
+}
+
+/* The eyebrow above the title. `type-micro` and the 600 weight stay at the
+ * call site, for the unlayered-cascade reason written above. */
+@utility event-card-date {
+  @apply font-display uppercase tracking-widest text-[var(--brand-accent-strong)];
+}
+
+@utility event-card-title {
+  @apply mt-1 font-headline text-lg font-bold leading-snug tracking-[-0.01em]
+    text-[var(--text-primary)] line-clamp-2 underline-offset-4
+    decoration-[var(--brand-accent)] decoration-2 group-hover:underline;
+  transition: text-decoration-color var(--motion-quick);
+}
+
+/* The date/location row. `gap` was an inline style, which is why the two call
+ * sites could carry `gap-1` and `gap-1.5` and render identically: both were
+ * dead. One gap now, from the token that was always winning. */
+@utility event-card-meta {
+  @apply mt-1.5 flex items-center text-[var(--text-secondary)];
+  gap: var(--space-tight-gap);
+}
+
+@utility event-card-footer {
+  @apply mt-auto flex items-center justify-between;
+  gap: var(--space-tight-gap);
+  padding-top: var(--space-tight-gap);
+}
+
+@utility event-card-price {
+  @apply font-display text-[var(--text-primary)];
+  font-size: var(--type-body);
+  font-weight: 600;
+}
+
+/* The save (heart) control. It renders inside every browse card and again on
+ * the event page, and its 122 shared characters were written per instance. The
+ * variant and saved-state colours stay at the call site: they are the two
+ * things that actually differ. */
+@utility save-event-btn {
+  @apply inline-flex h-11 w-11 items-center justify-center rounded-full
+    transition-[transform,background-color,color] duration-200 hover:scale-110;
+}
+
+/* Its two variants. Over a photograph (`dark`) and on a light card (`light`). */
+@utility save-event-btn-dark {
+  @apply border border-white/30 bg-ink-900/70 text-white hover:bg-ink-900/85;
+}
+/*
+ * `text-ink-700` WAS IN THIS LIST AND IS NOT A COLOUR. The theme defines
+ * --color-ink-950/900/800/600/400/200/100 and no 700, there is no
+ * tailwind.config to define one, so the class has always generated nothing and
+ * the resting heart simply inherits the card's colour. Tailwind's scanner
+ * drops an unknown utility in a class attribute silently; @apply REFUSES it,
+ * which is the only reason this was ever found - the build went red on it.
+ * Removing it changes no pixel (the drive reports rgb(10, 22, 40) either side)
+ * and deciding what colour it SHOULD have been is a design call, not a byte
+ * one. 131 more occurrences across 65 files are in REVIEW-QUEUE-C.md.
+ */
+@utility save-event-btn-light {
+  @apply bg-white/95 hover:text-coral-500;
+}
+
+/* Where the browse card hangs it: the top-right corner of the media box. */
+@utility event-card-save {
+  @apply absolute right-3 top-3 shadow-[var(--shadow-card)];
+}
+
 /* ─── M5 typography utility classes ──────────────────────────────────────── */
 /*
  * Pair font-size + line-height + weight per spec in one class.

@@ -21,6 +21,7 @@ import {
   catalogueWeight,
   classListWeight,
   flightPayload,
+  styleAttributeWeight,
 } from '../../../scripts/perf/lib/document-weight.mjs'
 
 const FLIGHT = '<script>self.__next_f.push([1,"3:[\\"$\\",\\"div\\",null,{}]\\n"])</script>'
@@ -319,5 +320,56 @@ describe('classListWeight', () => {
   it('is carried on analyseDocument, so the reporter cannot drift from the analysis', () => {
     const html = `<div class="alpha beta"></div>${FLIGHT}`
     expect(analyseDocument(html).classLists.bytes).toBe(classListWeight(html).bytes)
+  })
+})
+
+/**
+ * styleAttributeWeight. The half the class-list row cannot see, added with the
+ * browse card collapse (close-out C8B.3, 19 September 2026): `EventCard` set
+ * six `style={{ ... }}` objects per card, 16,203 B of one /events document,
+ * and no row in this reporter could see any of it.
+ */
+describe('styleAttributeWeight', () => {
+  it('counts a style attribute in the markup', () => {
+    const r = styleAttributeWeight('<div style="gap:4px"></div>')
+    expect(r.distinct).toBe(1)
+    expect(r.occurrences).toBe(1)
+    expect(r.bytes).toBe('gap:4px'.length)
+  })
+
+  it('counts the serialised OBJECT in the flight payload too, which is the longer of the two forms', () => {
+    const markup = '<div style="gap:4px"></div>'
+    const object = '{\\"gap\\":\\"4px\\"}'
+    const flight = `<script>self.__next_f.push([1,"style\\":${object}"])</script>`
+    const r = styleAttributeWeight(markup + flight)
+    expect(r.occurrences).toBe(2)
+    expect(r.distinct).toBe(2)
+    expect(r.bytes).toBe('gap:4px'.length + object.length)
+  })
+
+  it('charges repeatBytes for every copy after the first, which is what a class can delete', () => {
+    const one = styleAttributeWeight('<div style="gap:4px"></div>')
+    expect(one.repeatBytes).toBe(0)
+    const four = styleAttributeWeight('<div style="gap:4px"></div>'.repeat(4))
+    expect(four.repeatBytes).toBe('gap:4px'.length * 3)
+  })
+
+  it('does not let one style object swallow the next', () => {
+    const two = `<script>self.__next_f.push([1,"style\\":{a}x style\\":{b}"])</script>`
+    const r = styleAttributeWeight(two)
+    expect(r.occurrences).toBe(2)
+    expect(r.distinct).toBe(2)
+  })
+
+  it('returns zeroes for a document with no style attribute rather than throwing', () => {
+    const r = styleAttributeWeight('<html><body><p>nothing inline here</p></body></html>')
+    expect(r.distinct).toBe(0)
+    expect(r.bytes).toBe(0)
+    expect(r.repeatBytes).toBe(0)
+  })
+
+  it('is carried on analyseDocument, so the reporter cannot drift from the analysis', () => {
+    const html = `<div style="gap:4px"></div>${FLIGHT}`
+    expect(analyseDocument(html).styleAttributes.bytes).toBe(styleAttributeWeight(html).bytes)
   })
 })

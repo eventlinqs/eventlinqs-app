@@ -1045,10 +1045,20 @@ const DRILLS = [
   },
   {
     name: 'a card body padded with an inline 17px instead of the token',
+    /*
+     * RE-AIMED 19 September 2026. This drill anchored on `event-card.tsx`'s
+     * inline `paddingTop: 'var(--space-card-padding-y)'`, and the browse card
+     * collapse (close-out C8B.3) moved that declaration into the
+     * `event-card-body` composite, so the anchor stopped existing and the
+     * drill reported STALE - which is the harness doing its job. The same
+     * shape lives in the organiser card, so the drill moves rather than dies:
+     * what it proves is that the TSX branch of the spacing guard reads inline
+     * style objects, and that is unchanged.
+     */
     guard: `${GUARDS}/no-hardcoded-spacing.mjs`,
-    file: 'src/components/features/events/event-card.tsx',
-    find: "          paddingTop: 'var(--space-card-padding-y)',",
-    replace: "          paddingTop: '17px',",
+    file: 'src/components/features/home/featured-organisers-section.tsx',
+    find: "        padding: 'var(--space-card-padding-x)',",
+    replace: "        padding: '17px',",
     expect: 'off the spacing scale',
   },
   {
@@ -4676,7 +4686,7 @@ const DRILLS = [
     file: 'src/components/features/home/cards.tsx',
     find: "const SURFACE = 'group h-full home-card-surface'",
     replace: "const SURFACE = 'group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-[var(--shadow-card)] transition-[transform,box-shadow,color] duration-200 ease-out hover:-translate-y-1'",
-    expect: 'character class literal (limit 120 in a home card file)',
+    expect: 'character class literal (limit 120 in a per-card file)',
   },
   {
     name: 'a new class literal over the platform limit arrives outside the reviewed baseline',
@@ -4685,6 +4695,31 @@ const DRILLS = [
     find: "const IMG_MOTION = 'home-card-zoom'",
     replace: "const IMG_MOTION = 'home-card-zoom'\nconst DRILL_ONLY = 'flex w-full flex-col items-center justify-between gap-4 rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-6 text-sm font-semibold uppercase tracking-widest text-[var(--text-primary)] shadow-[var(--shadow-card)] transition-[transform,box-shadow,color] duration-200 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'",
     expect: 'character class literal (limit 400)',
+  },
+  /* ---------------------------------------------------------------------
+   * The BROWSE card family (EventCard), added 19 September 2026 with the
+   * second collapse. Two drills rather than four: clause B and the
+   * calibration are family-agnostic and are already drilled above, so
+   * repeating them would prove the same code twice. What is genuinely new is
+   * that clause A now judges two more files and twelve more composites, and
+   * each half of that is drilled here.
+   * ------------------------------------------------------------------- */
+  {
+    name: 'a composite the browse card renders on every card is deleted from globals.css',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/app/globals.css',
+    find: '@utility event-card-body {',
+    replace: '@utility event-card-body-renamed {',
+    expect: '@utility event-card-body is not defined in src/app/globals.css',
+  },
+  {
+    name: 'the browse card re-inlines the 428-character list the composite replaced',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/features/events/event-card.tsx',
+    find: 'className="group event-card-surface"',
+    replace:
+      'className="group card-hover-transition flex flex-col rounded-2xl overflow-hidden bg-[var(--surface-0)] border border-[var(--surface-2)] shadow-[var(--shadow-card)] hover:-translate-y-1 hover:border-[var(--surface-2)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"',
+    expect: 'character class literal (limit 120 in a per-card file)',
   },
   {
     name: 'the flight matcher goes blind and the calibration refuses rather than reporting a clean build',
