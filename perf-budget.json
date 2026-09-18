@@ -10,23 +10,7 @@
     "next": "16.3.0"
   },
   "_overBudgetDoc": "PUBLIC routes over the budget today. Every entry is dated, says why, and says what would fix it. The guard FAILS on a public route over budget with no entry here, and FAILS on an entry whose route is no longer over budget, so this register can neither grow by accident nor outlive the defect. Written by a person; --write-baseline preserves it and never adds to it.",
-  "overBudget": {
-    "/e/[code]": {
-      "since": "2026-09-15",
-      "why": "@upstash/redis and the 16.0 KB Node Buffer polyfill it drags reach the browser on this route. The chain, traced through value imports with 'use server' modules excluded: src/components/checkout/ticket-selector.tsx -> src/lib/payments/sale-status.ts (for describeSaleRefusal, a pure copy function) -> application-fee.ts -> pricing-rules.ts -> src/lib/redis/client.ts -> @upstash/redis. 17.5 KB gzip of server-only code, 48 times the 372-byte overage.",
-      "fix": "Move getCurrencyForCountry and its CONNECT_CURRENCY_MAP out of application-fee.ts into a leaf module that imports nothing, re-export them from application-fee.ts so no caller changes, and point sale-status.ts at the leaf. That is the whole of what sale-status takes from the fee resolver, so it is a move rather than a behaviour change. BORDER raised to lane A on 17 September 2026 (C:/dev/REVIEW-QUEUE-C.md): src/lib/payments is lane A's slice and application-fee.ts is under active change there for MONEY FIX, so lane C did not make it. This fix line said 15 September and named a larger change until 17 September; the border had not in fact been written on that date and the sentence was corrected rather than left standing."
-    },
-    "/events/[slug]": {
-      "since": "2026-09-15",
-      "why": "@upstash/redis and the 16.0 KB Node Buffer polyfill it drags reach the browser on this route. The chain, traced through value imports with 'use server' modules excluded: src/components/checkout/ticket-selector.tsx -> src/lib/payments/sale-status.ts (for describeSaleRefusal, a pure copy function) -> application-fee.ts -> pricing-rules.ts -> src/lib/redis/client.ts -> @upstash/redis. 17.5 KB gzip of server-only code, 48 times the 372-byte overage.",
-      "fix": "Move getCurrencyForCountry and its CONNECT_CURRENCY_MAP out of application-fee.ts into a leaf module that imports nothing, re-export them from application-fee.ts so no caller changes, and point sale-status.ts at the leaf. That is the whole of what sale-status takes from the fee resolver, so it is a move rather than a behaviour change. BORDER raised to lane A on 17 September 2026 (C:/dev/REVIEW-QUEUE-C.md): src/lib/payments is lane A's slice and application-fee.ts is under active change there for MONEY FIX, so lane C did not make it. This fix line said 15 September and named a larger change until 17 September; the border had not in fact been written on that date and the sentence was corrected rather than left standing."
-    },
-    "/events/[slug]/holder": {
-      "since": "2026-09-15",
-      "why": "@upstash/redis and the 16.0 KB Node Buffer polyfill it drags reach the browser on this route. The chain, traced through value imports with 'use server' modules excluded: src/components/checkout/ticket-selector.tsx -> src/lib/payments/sale-status.ts (for describeSaleRefusal, a pure copy function) -> application-fee.ts -> pricing-rules.ts -> src/lib/redis/client.ts -> @upstash/redis. 17.5 KB gzip of server-only code, 48 times the 372-byte overage.",
-      "fix": "Move getCurrencyForCountry and its CONNECT_CURRENCY_MAP out of application-fee.ts into a leaf module that imports nothing, re-export them from application-fee.ts so no caller changes, and point sale-status.ts at the leaf. That is the whole of what sale-status takes from the fee resolver, so it is a move rather than a behaviour change. BORDER raised to lane A on 17 September 2026 (C:/dev/REVIEW-QUEUE-C.md): src/lib/payments is lane A's slice and application-fee.ts is under active change there for MONEY FIX, so lane C did not make it. This fix line said 15 September and named a larger change until 17 September; the border had not in fact been written on that date and the sentence was corrected rather than left standing."
-    }
-  },
+  "overBudget": {},
   "marks": {
     "/": 177374,
     "/_not-found": 160752,
@@ -112,10 +96,10 @@
     "/design/cards": 168955,
     "/dev/logo-preview": 160752,
     "/dev/shell-preview": 164328,
-    "/e/[code]": 205185,
+    "/e/[code]": 198065,
     "/events": 187238,
-    "/events/[slug]": 205185,
-    "/events/[slug]/holder": 205185,
+    "/events/[slug]": 198065,
+    "/events/[slug]/holder": 198065,
     "/events/[slug]/with/[artist]": 161151,
     "/events/browse/[city]": 187045,
     "/faith/[faith]": 171968,

@@ -73,6 +73,7 @@
  *                              without a declared maintainer
  *   no-silent-catch            no catch around I/O discards its error in silence
  *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
+ *   no-client-redis-import     no client component pulls @upstash/redis into the bundle
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
@@ -907,6 +908,14 @@ const GUARDS = [
   // 2026-08-25 rebuilt it in one line, in bill-ref.ts, and nothing but a bigger
   // bundle would have said so.
   'scripts/guards/no-client-sentry-import.mjs',
+  // THE SAME RULE, A DIFFERENT SERVER-ONLY DEPENDENCY, AND IT WAS ALREADY LIVE.
+  // src/lib/redis/client.ts imports @upstash/redis and a 16.0 KB Buffer
+  // polyfill. One import from the ticket selector into sale-status.ts, which
+  // took a single currency helper from application-fee.ts, put 17.5 KB gzip of
+  // that on the event page and the checkout: the two surfaces that sell
+  // tickets. It surfaced as a 372-byte budget overage, 48 times smaller than
+  // its own cause, which is why a comment was never going to hold it.
+  'scripts/guards/no-client-redis-import.mjs',
   // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
   // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
   // printing a tidy list of 200s the whole time; its replacement then reported

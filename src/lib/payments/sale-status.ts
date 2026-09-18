@@ -2,7 +2,16 @@ import type { Organisation } from '@/types/database'
 // The SAME currency-map check the charge precondition uses. Imported rather than
 // duplicated so the gate and the precondition cannot drift apart on which
 // countries are supported.
-import { getCurrencyForCountry } from './application-fee'
+//
+// FROM THE LEAF, NOT FROM application-fee.ts, AND THAT IS LOAD-BEARING. This
+// module is reached from `ticket-selector.tsx`, a client component, so every
+// value import here is shipped to a buyer's browser. Importing this one
+// function from the fee resolver pulled pricing-rules, the Redis client,
+// `@upstash/redis` and a 16.0 KB Node Buffer polyfill onto the event page and
+// the checkout. `connect-currency.ts` imports nothing and must stay that way.
+// `application-fee.ts` re-exports the same two members, so the gate and the
+// precondition still read one table.
+import { getCurrencyForCountry } from './connect-currency'
 // One mechanism for every gate boundary. See required-fields.ts for why a cast
 // is not enough and why absent is not false.
 import { verifyRowFields } from './required-fields'

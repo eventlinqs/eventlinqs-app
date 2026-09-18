@@ -24,104 +24,37 @@
  * what TypeScript does. A dynamic `await import()` of the Sentry module from a
  * client component would not be caught here, and is not the shape that has ever
  * gone wrong: sentry-client-boot.ts loads the SDK that way ON PURPOSE.
+ *
+ * THE GRAPH MOVED OUT ON 18 SEPTEMBER 2026, AND IT WAS NOT A TIDY-UP. This file
+ * carried its own resolver, and that resolver cut an absolute path back to a
+ * repo-relative one with `.split('/el-moat/').pop()`, which only works in a
+ * checkout whose directory is named `el-moat`. In every other worktree it
+ * returned the absolute path unchanged, no absolute id matched a key in the
+ * graph, and so EVERY RELATIVE IMPORT IN THE TREE WAS SILENTLY DROPPED while
+ * this guard went on printing `0 client components reach it. PASS`. Measured in
+ * the lane A worktree that day: 438 of 3241 value imports, 13.5 per cent of the
+ * graph, invisible. `scripts/guards/lib/import-graph.mjs` now owns the
+ * resolution, resolves with `relative(cwd, abs)` so it is correct in any
+ * directory, and this guard prints its edge count so the same blindness would
+ * show up next time as a number that collapsed.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, dirname, resolve } from 'node:path'
+import { buildImportGraph, pathToTarget } from './lib/import-graph.mjs'
 
-const SEP = String.fromCharCode(92)
 const SENTRY_MODULE = 'src/lib/observability/sentry'
-const EXT = ['.ts', '.tsx', '.mjs', '.js']
 
-function walk(dir, out = []) {
-  for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry === '.next') continue
-    const p = join(dir, entry)
-    if (statSync(p).isDirectory()) walk(p, out)
-    else if (/\.(ts|tsx)$/.test(entry)) out.push(p)
-  }
-  return out
-}
-
-const norm = (p) => p.replaceAll(SEP, '/')
-
-/** Resolve a specifier to a repo-relative module id, or null if it leaves src/. */
-function resolveSpec(fromFile, spec) {
-  let base
-  if (spec.startsWith('@/')) base = 'src/' + spec.slice(2)
-  else if (spec.startsWith('.')) base = norm(resolve(dirname(fromFile), spec)).split('/el-moat/').pop()
-  else return null
-  for (const e of EXT) {
-    try {
-      if (statSync(base + e).isFile()) return base
-    } catch {
-      // Not this extension. The loop tries the next one; a specifier that
-      // matches none is reported as unresolved by returning null below, which
-      // is why this catch does not need to say anything.
-    }
-  }
-  try {
-    for (const e of EXT) if (statSync(join(base, 'index' + e)).isFile()) return base + '/index'
-  } catch {
-    // Same: a directory with no index is simply not a module in src/.
-  }
-  return null
-}
-
-const files = walk('src')
-const valueImports = new Map()
-const isClient = new Set()
-const isServerAction = new Set()
-
-for (const file of files) {
-  const rel = norm(file).replace(/\.(tsx?)$/, '')
-  const src = readFileSync(file, 'utf8')
-  if (/^\s*['"]use client['"]/m.test(src)) isClient.add(rel)
-  // A 'use server' module is a BUNDLE BOUNDARY, not an edge. Importing it from a
-  // client component gets a network proxy, not the module's bytes, so following
-  // through it would report a client bundle that does not exist. Getting this
-  // wrong is not hypothetical: without it this guard reported 41 violations, 39
-  // of which were server actions.
-  if (/^\s*['"]use server['"]/m.test(src)) isServerAction.add(rel)
-  const edges = []
-  const re = /import\s+(type\s+)?([^'"]*?)from\s+['"]([^'"]+)['"]/g
-  let m
-  while ((m = re.exec(src)) !== null) {
-    // `import type { X }` and `import { type X }` are both erased by tsc.
-    const clause = m[2] ?? ''
-    if (m[1]) continue
-    if (/^\s*\{\s*(type\s+[^,}]+,?\s*)+\}\s*$/.test(clause)) continue
-    const target = resolveSpec(file, m[3])
-    if (target) edges.push(target)
-  }
-  valueImports.set(rel, edges)
-}
-
-// Which modules reach the Sentry module through value imports?
-const reaches = new Map()
-function reachesSentry(mod, seen = new Set()) {
-  if (mod === SENTRY_MODULE) return [mod]
-  if (reaches.has(mod)) return reaches.get(mod)
-  if (seen.has(mod)) return null
-  if (isServerAction.has(mod)) return null
-  seen.add(mod)
-  for (const next of valueImports.get(mod) ?? []) {
-    const path = reachesSentry(next, seen)
-    if (path) {
-      const full = [mod, ...path]
-      reaches.set(mod, full)
-      return full
-    }
-  }
-  return null
-}
+const graph = buildImportGraph()
+const { files, isClient, isServerAction, edgeCount } = graph
 
 const violations = []
 for (const mod of isClient) {
-  const path = reachesSentry(mod)
+  const path = pathToTarget(graph, mod, SENTRY_MODULE, new Map())
   if (path) violations.push(path)
 }
 
-console.log(`no-client-sentry-import: ${files.length} modules read, ${isClient.size} client components, ${isServerAction.size} 'use server' boundaries`)
+console.log(
+  `no-client-sentry-import: ${files.length} modules read, ${edgeCount} value imports, ` +
+    `${isClient.size} client components, ${isServerAction.size} 'use server' boundaries`,
+)
 console.log(`  target: ${SENTRY_MODULE} (statically imports @sentry/nextjs)`)
 console.log(`  the Sentry-free seam for client code: src/lib/observability/client-error-report`)
 

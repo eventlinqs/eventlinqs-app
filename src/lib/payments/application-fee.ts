@@ -1,52 +1,34 @@
 import type { Organisation } from '@/types/database'
 import type { FeeBreakdown } from './payment-calculator'
+import { getCurrencyForCountry } from './connect-currency'
 import {
   getApplicationFeeCompositionMode,
   getReservePercentage,
   type ApplicationFeeCompositionMode,
 } from './pricing-rules'
 
-/**
- * Currency that EventLinqs charges in for a given Stripe Connect country.
+/*
+ * THE CONNECT CURRENCY MAP MOVED OUT, AND IT MOVED OUT FOR A REASON.
  *
- * The country-to-currency map is structural (Stripe Connect supports a fixed
- * list of country/currency pairs), not pricing policy. It stays in code; per-
- * country pricing values live in pricing_rules.
+ * `getCurrencyForCountry` and its `CONNECT_CURRENCY_MAP` now live in
+ * `./connect-currency`, a module that imports nothing. They are re-exported
+ * here unchanged so that every caller of `application-fee.ts` keeps working
+ * exactly as it did, and none of them was touched.
+ *
+ * The move is not tidying. `sale-status.ts` took this one function from this
+ * file, `ticket-selector.tsx` is a client component that imports
+ * `sale-status.ts`, and that single edge dragged pricing-rules, the Redis
+ * client, `@upstash/redis` and a 16.0 KB Node Buffer polyfill into the browser
+ * on the event page and the checkout: 17.5 KB gzip of server-only code on the
+ * two surfaces that sell tickets. `connect-currency.ts` records the whole
+ * story and says why it must stay a leaf.
+ *
+ * NOTHING ABOUT WHAT ANY FEE RESOLVES TO CHANGED. The map is byte-for-byte the
+ * one that stood here, the function body is the one that stood here, and the
+ * fee composition below still reads every pricing value through
+ * `pricing-rules`. This is a move.
  */
-const CONNECT_CURRENCY_MAP: Record<string, string> = {
-  AU: 'AUD',
-  GB: 'GBP',
-  US: 'USD',
-  CA: 'CAD',
-  NZ: 'NZD',
-  IE: 'EUR',
-  AT: 'EUR',
-  BE: 'EUR',
-  BG: 'EUR',
-  HR: 'EUR',
-  CY: 'EUR',
-  CZ: 'EUR',
-  DK: 'EUR',
-  EE: 'EUR',
-  FI: 'EUR',
-  FR: 'EUR',
-  DE: 'EUR',
-  GR: 'EUR',
-  HU: 'EUR',
-  IT: 'EUR',
-  LV: 'EUR',
-  LT: 'EUR',
-  LU: 'EUR',
-  MT: 'EUR',
-  NL: 'EUR',
-  PL: 'EUR',
-  PT: 'EUR',
-  RO: 'EUR',
-  SK: 'EUR',
-  SI: 'EUR',
-  ES: 'EUR',
-  SE: 'EUR',
-}
+export { CONNECT_CURRENCY_MAP, getCurrencyForCountry } from './connect-currency'
 
 export type ChargePreconditionFailure =
   | 'org_not_connected'
@@ -64,11 +46,6 @@ export class ChargePreconditionError extends Error {
     this.name = 'ChargePreconditionError'
     this.reason = reason
   }
-}
-
-export function getCurrencyForCountry(country: string | null | undefined): string | null {
-  if (!country) return null
-  return CONNECT_CURRENCY_MAP[country.toUpperCase()] ?? null
 }
 
 /**
