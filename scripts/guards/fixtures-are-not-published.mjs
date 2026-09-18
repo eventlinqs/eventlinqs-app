@@ -460,7 +460,11 @@ function main() {
 
   declareWork('fixtures-are-not-published', {
     did: { 'drive read': files.length, 'fixture write judged': writesJudged, 'premise checked': PREMISES.length },
-    found: { 'fixture the sitemap would publish': problems.length, 'premise that has moved': premiseFailures.length },
+    // Both labels are shaped for scripts/lib/work-report.mjs, which pluralises the
+    // HEAD NOUN and finds the head at the first participle or preposition. With
+    // neither present it takes the LAST word, so 'fixture the sitemap would publish'
+    // printed "0 fixture the sitemap would publishes".
+    found: { 'fixture that the sitemap would publish': problems.length, 'moved premise': premiseFailures.length },
   })
 
   if (premiseFailures.length > 0) {
