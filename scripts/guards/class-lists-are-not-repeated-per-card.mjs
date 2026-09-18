@@ -68,15 +68,18 @@
  *
  * AND CLAUSE B IS BLIND TO A CONCATENATION, WHICH IS NOT A THEORETICAL GAP.
  * It reads string LITERALS, so a class list assembled from several short ones
- * is invisible to it however long the result is. The largest repeated class
- * value on the homepage after this item is `ARROW_BTN` in
- * src/components/ui/snap-rail.tsx: 642 characters, 24 times, 14,766 B of
- * repeats - and it is built as six concatenated literals, none over 400, so
- * this clause passes it. Raising the limit would not help; the shape is the
- * problem. What catches it is the `class lists` row that
- * scripts/perf/lib/document-weight.mjs now reports on every served document,
- * ranked by removable bytes. The guard holds the source; the reporter measures
- * the output; neither is told it is doing the other's job.
+ * is invisible to it however long the result is. That is exactly how
+ * `ARROW_BTN` in src/components/ui/snap-rail.tsx got to 642 characters, shipped
+ * 22 times on the homepage for 14,766 B of repeats, while being six
+ * concatenated literals none of which reached 400. Raising the limit would not
+ * have helped; the shape was the problem.
+ *
+ * It has since been collapsed (it is `rail-arrow-btn` now, and snap-rail.tsx is
+ * in HOME_CARD_FILES so clause A holds it), but the GAP is still real and the
+ * next concatenation will be just as invisible. What catches that shape is the
+ * `class lists` row scripts/perf/lib/document-weight.mjs now reports on every
+ * served document, ranked by REMOVABLE bytes. The guard holds the source; the
+ * reporter measures the output; neither is told it is doing the other's job.
  *
  * Usage:
  *   node scripts/guards/class-lists-are-not-repeated-per-card.mjs
@@ -92,11 +95,25 @@ const BUILT = process.argv.includes('--built')
 const APP = join(ROOT, '.next', 'server', 'app')
 
 /** Clause A: the composites, and the files that must use them. */
-const COMPOSITES = ['home-card-surface', 'home-card-zoom', 'home-card-title']
+const COMPOSITES = [
+  'home-card-surface',
+  'home-card-zoom',
+  'home-card-title',
+  'home-card-label',
+  'home-card-date',
+  'home-card-price',
+  'rail-arrow-btn',
+  'rail-header-link',
+]
 const GLOBALS = 'src/app/globals.css'
 const HOME_CARD_FILES = [
   'src/components/features/home/cards.tsx',
   'src/components/features/home/sounds-rail.tsx',
+  /* snap-rail.tsx is here because it holds the ONE canonical rail control
+   * (CLAUDE.md, Rail Control System) and every rail on the platform renders it,
+   * so a class list re-inlined here is multiplied by every rail on every page
+   * rather than by the cards in one. */
+  'src/components/ui/snap-rail.tsx',
 ]
 /** A collapsed file has no class literal anywhere near the old 464. */
 const HOME_MAX_LITERAL = 120

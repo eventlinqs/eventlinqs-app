@@ -246,17 +246,13 @@ function useScrollState() {
 // and goes to a clearly-muted fill when disabled at a rail end. No glass, no
 // translucency. This is the single source of the rail-control look - every
 // rail renders RailArrows, never its own button markup.
-const ARROW_BTN =
-  'flex h-11 w-11 items-center justify-center rounded-full ' +
-  'bg-[var(--color-ink-900)] text-white ' +
-  'shadow-[var(--shadow-card)] ' +
-  'transition-[transform,background-color,box-shadow,color] duration-200 ease-out ' +
-  'hover:-translate-y-0.5 hover:bg-[var(--color-navy-950)] hover:text-[var(--color-gold-400)] ' +
-  'hover:shadow-[var(--shadow-card-hover)] ' +
-  'active:translate-y-0 active:scale-95 active:duration-75 ' +
-  'disabled:cursor-not-allowed disabled:bg-[var(--surface-2)] disabled:text-[var(--text-muted)] ' +
-  'disabled:shadow-none disabled:translate-y-0 ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2'
+// The composite lives in globals.css as @utility rail-arrow-btn, built with
+// @apply from exactly these utilities. It is here as a name rather than a list
+// because 642 characters shipped 22 times on the homepage alone, once in the
+// markup and again in the RSC payload (close-out C8B.3). The look is unchanged
+// and card-class-collapse-drive.mjs compares the enabled AND disabled computed
+// styles either side of the collapse.
+const ARROW_BTN = 'rail-arrow-btn'
 
 /**
  * RailArrows - the canonical rail control pair. Top-right, header-anchored,
@@ -415,7 +411,7 @@ export function SnapRailScroller({
             {header.headerLink ? (
               <Link
                 href={header.headerLink.href}
-                className="hidden min-h-11 items-center whitespace-nowrap text-sm font-medium text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:inline-flex"
+                className="rail-header-link"
               >
                 {header.headerLink.label} &rsaquo;
               </Link>
@@ -479,7 +475,7 @@ export function SnapRail({
               href={headerLink.href}
               // min-h-11 + inline-flex: the 44px hit area the touch-target law
               // asks for; the text line alone was 20px tall.
-              className="hidden min-h-11 items-center whitespace-nowrap text-sm font-medium text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:inline-flex"
+              className="rail-header-link"
             >
               {headerLink.label} &rsaquo;
             </Link>

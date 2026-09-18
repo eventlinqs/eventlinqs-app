@@ -85,11 +85,10 @@ const IMG_WRAP = 'relative overflow-hidden bg-[var(--surface-1)]'
 // gesture rather than a slow drift. Reduced-motion holds the image still.
 const IMG_MOTION = 'home-card-zoom'
 // text-xs (12px) is the micro step of the one scale; 11px was off it.
-const LABEL =
-  'font-display text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]'
+const LABEL = 'home-card-label'
 const TITLE = 'home-card-title'
-const DATE = 'font-semibold uppercase tracking-wide text-[var(--brand-accent-strong)]'
-const PRICE = 'font-headline font-bold text-[var(--text-primary)]'
+const DATE = 'home-card-date'
+const PRICE = 'home-card-price'
 
 /** 1. Standard landscape event card (default rail card). */
 export function EventCardLandscape({ event }: { event: HomeCardEvent }) {
