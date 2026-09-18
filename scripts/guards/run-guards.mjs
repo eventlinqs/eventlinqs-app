@@ -161,6 +161,11 @@
  *   one-priority-image        a document preloads its LCP candidate and nothing else: every
  *                              priority grant is a named candidate, none reaches past the
  *                              first item (close-out C8)
+ *   lcp-preload-in-the-first-flush
+ *                             the image that decides the paint is rendered by the page
+ *                              itself, ahead of every streaming boundary, so its preload
+ *                              leaves in the first chunk. Streaming the shell first was
+ *                              measured and cost 597 ms of LCP (close-out C8B.3)
  *   weak-network-contract     the checkout survives a submit that never reached the server,
  *                              the root service worker keeps only content-hashed assets so
  *                              no cache can serve a stale price, it registers after the
@@ -1226,6 +1231,15 @@ const GUARDS = [
   // seconds for it. Every priority grant is a named LCP candidate; a grant that
   // reaches past the first item fails. Drilled red and green.
   'scripts/guards/one-priority-image.mjs',
+  // Close-out C8B.3 (18 September 2026): on a route whose LCP element is an image
+  // the DATABASE chooses, that image is rendered by the page component itself and
+  // ahead of every streaming boundary, so its preload leaves in the first chunk.
+  // Written after the opposite was tried and measured: flushing the shell first
+  // won 324 ms of time to first byte and lost 507 ms of hero discovery, for 597 ms
+  // more LCP and six points of performance score at matched machine speed. The
+  // boundaries BELOW the hero are correct and are not counted. Drilled red and
+  // green, including the exact shape that was reverted.
+  'scripts/guards/lcp-preload-in-the-first-flush.mjs',
   // Close-out C8B.5 (15 September 2026), Scope v5 10.3: the platform's contract
   // with a weak network. The checkout survives a submit that never reaches the
   // server (it used to throw the buyer to the error boundary and lose every

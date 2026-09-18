@@ -1852,9 +1852,25 @@ const ROOT = join(HERE, '..', '..')
  * guard clause beside them (clause 7) was drilled red a second way, by
  * commenting the page's `revalidate` out rather than deleting it, which also
  * proves the clause reads the comment-stripped source.
+ *
+ * 2026-09-18: raised 423/5212 -> 424/5225. Close-out C8B.3, the LCP preload that
+ * must leave in the first chunk. One new file,
+ * tests/unit/guards/lcp-preload-in-the-first-flush.test.ts, thirteen tests.
+ * The guard it covers was written AFTER the opposite change was built and
+ * measured: flushing the homepage shell before the query won 324 ms of time to
+ * first byte and lost 507 ms of hero discovery, for 597 ms more LCP and six
+ * points of score at matched machine speed, so it was reverted under C8B.3 and
+ * the arrangement that won is now held by a gate.
+ * The test worth naming is the nesting pair. An early version of the guard
+ * asked whether the default export's body CONTAINED `<Suspense`, and
+ * src/app/page.tsx already carries two of those for its below-fold rails, so the
+ * clause was true no matter what happened to the boundary it existed to police.
+ * It counts nesting DEPTH now, and two tests hold both halves: a hero ahead of
+ * legitimate boundaries is depth 0, and a hero inside one is depth 1.
+ * The counts below are MEASURED from the run that raised them, never predicted.
  */
-const MIN_FILES = 423
-const MIN_TESTS = 5212
+const MIN_FILES = 424
+const MIN_TESTS = 5225
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

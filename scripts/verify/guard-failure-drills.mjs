@@ -882,6 +882,33 @@ const DRILLS = [
     expect: 'not on the reviewed list',
   },
   /*
+   * lcp-preload-in-the-first-flush (close-out C8B.3), two drills.
+   *
+   * THE SECOND IS THE ONE WORTH READING. It reproduces the exact change that was
+   * built, measured and reverted on 18 September 2026: the page component made
+   * synchronous and its whole body, hero included, handed to a streamed child.
+   * That shape wins 324 ms of time to first byte and loses 507 ms of hero
+   * discovery, and it is a plausible refactor rather than an obvious mistake,
+   * which is precisely why it needs a gate rather than a note.
+   */
+  {
+    name: 'the homepage hero is wrapped in a streaming boundary',
+    guard: `${GUARDS}/lcp-preload-in-the-first-flush.mjs`,
+    file: 'src/app/page.tsx',
+    find: '        <FeaturedHero events={upcoming} />',
+    replace: '        <Suspense fallback={null}><FeaturedHero events={upcoming} /></Suspense>',
+    expect: '<Suspense> boundary',
+  },
+  {
+    name: 'the homepage hero moves into a streamed child (the measured, reverted shape)',
+    guard: `${GUARDS}/lcp-preload-in-the-first-flush.mjs`,
+    file: 'src/app/page.tsx',
+    find: 'export default async function HomePage() {',
+    replace:
+      'export default function HomePage() {\n  return <Suspense fallback={null}><HomeDocument /></Suspense>\n}\n\nasync function HomeDocument() {',
+    expect: 'does not render <FeaturedHero>',
+  },
+  /*
    * weak-network-contract (close-out C8B.5, Scope v5 10.3), five drills, one per
    * clause plus the silent-catch case.
    *
