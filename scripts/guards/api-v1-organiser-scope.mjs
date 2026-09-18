@@ -70,7 +70,7 @@ const HANDLERS = join('src', 'lib', 'api', 'v1', 'handlers.ts')
 const RESPONSE = join('src', 'lib', 'api', 'v1', 'response.ts')
 const KEYS = join('src', 'lib', 'api', 'v1', 'keys.ts')
 const SCREEN = join('src', 'app', '(dashboard)', 'dashboard', 'api-keys', 'page.tsx')
-const MIGRATION = join('supabase', 'migrations', '20260918000010_organiser_api_keys.sql')
+const MIGRATION = join('supabase', 'migrations', '20260918000020_organiser_api_keys.sql')
 
 /** The three objects the API may read, and the one column every one of them carries. */
 const VIEWS = ['api_v1_events', 'api_v1_orders', 'api_v1_attendees']
@@ -341,7 +341,11 @@ for (const match of screenCode.matchAll(/(?<![\w.])(\d+(?:\.\d+)?)(?![\w.])/g)) 
 // ---------------------------------------------------------------------------
 declareWork('api-v1-organiser-scope', {
   did,
-  found: { 'unscoped or unprovable read on the public API': faults.length },
+  // The label is shaped so scripts/lib/work-report.mjs pluralises the HEAD NOUN.
+  // It finds the head at the first participle or preposition, so a label whose
+  // first participle is the noun itself ('unscoped or unprovable read') made it
+  // pluralise the word BEFORE that, and this guard printed "0 unprovables read".
+  found: { 'read that cannot be proved scoped to one organisation': faults.length },
 })
 
 console.log(

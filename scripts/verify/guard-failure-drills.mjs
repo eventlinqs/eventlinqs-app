@@ -3465,7 +3465,7 @@ const DRILLS = [
   {
     name: 'a scoped view stops carrying the column every API query filters on',
     guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
-    file: 'supabase/migrations/20260918000010_organiser_api_keys.sql',
+    file: 'supabase/migrations/20260918000020_organiser_api_keys.sql',
     find: 'select\n  t.id,\n  e.organisation_id,',
     replace: 'select\n  t.id,',
     expect: 'the predicate every API query carries would match nothing',
@@ -3473,7 +3473,7 @@ const DRILLS = [
   {
     name: 'the read only views become writable again',
     guard: `${GUARDS}/api-v1-organiser-scope.mjs`,
-    file: 'supabase/migrations/20260918000010_organiser_api_keys.sql',
+    file: 'supabase/migrations/20260918000020_organiser_api_keys.sql',
     find: 'revoke insert, update, delete, truncate on public.api_v1_events from public, anon, authenticated, service_role;',
     replace: '-- revoke removed by the drill',
     expect: 'a read only surface must be read only in the database',

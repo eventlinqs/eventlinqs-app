@@ -144,7 +144,7 @@ started from). Plus the lane B run prompt, plus the standing rules.
 | # | Verdict | Evidence |
 |---|---|---|
 | 25 | MET | API1 was the only item worked. The prior ten plus FT1 were verified already closed with evidence before starting, not re-done |
-| 26 | MET | `supabase/migrations/20260918000010_organiser_api_keys.sql`, applied to TEST and read back by query |
+| 26 | MET | `supabase/migrations/20260918000020_organiser_api_keys.sql`, applied to TEST and read back by query |
 | 27 | MET | 13 new source files, 4 modified |
 | 28 | MET | 43 new tests across two files, all passing |
 | 29 | MET | Nine defects found and every one fixed: six guard findings, two screenshot findings, one lint finding. Plus four harness defects. None deferred |

@@ -272,7 +272,7 @@ describe('the readable surface is three objects and no more', () => {
 
   it('and the migration creates every one of them, with the scope column on it', () => {
     const sql = readFileSync(
-      join(ROOT, 'supabase/migrations/20260918000010_organiser_api_keys.sql'),
+      join(ROOT, 'supabase/migrations/20260918000020_organiser_api_keys.sql'),
       'utf8',
     )
     for (const view of Object.values(API_V1_RESOURCES)) {
@@ -285,7 +285,7 @@ describe('the readable surface is three objects and no more', () => {
 
   it('and the QR signing secret is in none of them', () => {
     const sql = readFileSync(
-      join(ROOT, 'supabase/migrations/20260918000010_organiser_api_keys.sql'),
+      join(ROOT, 'supabase/migrations/20260918000020_organiser_api_keys.sql'),
       'utf8',
     )
     const start = sql.indexOf('create or replace view public.api_v1_attendees')

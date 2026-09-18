@@ -192,7 +192,7 @@ export const STORED_AGGREGATES = [
     summarises: null,
     maintenance: 'not-in-class',
     maintainedBy:
-      'Nothing maintains it, because it is not a stored column. api_v1_attendees is a VIEW (migration 20260918000010) and this is tickets.scan_count read straight through, so the verdict above for tickets.scan_count is the verdict here.',
+      'Nothing maintains it, because it is not a stored column. api_v1_attendees is a VIEW (migration 20260918000020) and this is tickets.scan_count read straight through, so the verdict above for tickets.scan_count is the verdict here.',
     reconciled: false,
     caveat: null,
     decision:

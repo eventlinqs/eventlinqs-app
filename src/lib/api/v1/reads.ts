@@ -16,7 +16,7 @@ import type { ApiKeyScope } from './keys'
  * is why the predicate can be identical across three resources whose underlying
  * tables are not: `tickets` has no organisation_id at all, and the view does
  * that join once, in the database. The reasoning in full is at the top of
- * supabase/migrations/20260918000010_organiser_api_keys.sql.
+ * supabase/migrations/20260918000020_organiser_api_keys.sql.
  *
  * THE SERVICE ROLE, AND WHY THAT IS NOT A HOLE. These views are readable by
  * `service_role` and by nobody else (the migration revokes `anon` and
