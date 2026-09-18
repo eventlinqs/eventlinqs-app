@@ -4242,6 +4242,40 @@ const DRILLS = [
   },
 
   /*
+   * THE WIDTH LADDER, THREE DRILLS (close-out C8B.3, 19 September 2026).
+   *
+   * The first one restores the exact defect the guard was written for: the rung
+   * that was live when the ladder was last trimmed and dead the moment the
+   * smallest slot moved from 16 CSS pixels to 24. It is the drill that matters,
+   * because a guard against a stale claim has to be shown refusing the stale
+   * claim itself rather than a synthetic one.
+   */
+  {
+    name: 'the dead 16px rung is put back into the width ladder',
+    guard: `${GUARDS}/candidate-ladder-has-no-dead-rung.mjs`,
+    file: 'next.config.ts',
+    find: '    imageSizes: [32, 64, 128, 256, 384],',
+    replace: '    imageSizes: [16, 32, 64, 128, 256, 384],',
+    expect: 'the width 16 is offered and nothing can select it',
+  },
+  {
+    name: 'a slot grows past the top of the ladder, which no hint can fix',
+    guard: `${GUARDS}/candidate-ladder-has-no-dead-rung.mjs`,
+    file: 'src/components/media/sizes.ts',
+    find: "  fullBleed: '(max-width: 768px) 75vw, 1920px',",
+    replace: "  fullBleed: '(max-width: 768px) 75vw, 2400px',",
+    expect: 'and the widest width offered is 3840',
+  },
+  {
+    name: 'the width ladder is renamed away and the guard judges an empty list',
+    guard: `${GUARDS}/candidate-ladder-has-no-dead-rung.mjs`,
+    file: 'next.config.ts',
+    find: '    deviceSizes: [640, 750, 828, 1080, 1920, 3840],',
+    replace: '    deviceSizesRenamed: [640, 750, 828, 1080, 1920, 3840],',
+    expect: 'could not both be read as number lists',
+  },
+
+  /*
    * THE MARKETING BANDS (lane B, 19 September 2026). One drill per clause of
    * scripts/guards/marketing-bands-are-supplyable.mjs.
    *

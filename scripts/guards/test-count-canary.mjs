@@ -2295,6 +2295,33 @@ const ROOT = join(HERE, '..', '..')
  * flake in C:/dev/REVIEW-QUEUE-C.md rather than absorbed into this baseline,
  * which is what the failure message below asks for.
  *
+ * 19 SEPTEMBER 2026, lane C, 451/5837 -> 452/5866. ONE new file,
+ * tests/unit/media/candidate-ladder, 29 tests, holding the arithmetic behind
+ * scripts/guards/candidate-ladder-has-no-dead-rung.mjs: which configured image
+ * width a browser can select for a given slot, and the floor below which
+ * next/image will not emit one at all.
+ *
+ * THE CASE WORTH NAMING is "does NOT read a media-query breakpoint as a slot".
+ * The first derivation matched `(\d+)px` across the whole hint, so
+ * `(max-width: 639px) 100vw, 320px` declared three slots instead of one, and the
+ * two breakpoints then made ladder rungs look alive that nothing renders at.
+ * The guard passed on the real tree while doing that, because it failed in the
+ * permissive direction, which is the only direction a gate can fail quietly in.
+ * The test found it; reading the code had not.
+ *
+ * 19 SEPTEMBER 2026, lane C, second raise of the day, 452/5866 -> 453/5883. ONE
+ * new file, tests/unit/perf/document-weight, 17 tests, holding the analysis that
+ * says what a served document is made of.
+ *
+ * THESE ARE TESTS FOR A REPORTER, which fails a different way from a guard: it
+ * does not go red, it prints a number. The matcher for Next's flight payload was
+ * written with a word boundary that a shell turned into a literal BACKSPACE
+ * byte. The expression stayed VALID and matched no script tag on earth, and
+ * "flight payload 0 B (0.0% of the document)" would have gone into a commit
+ * message as a fact about this platform. Six of these seventeen go red on
+ * exactly that byte, and the analysis now refuses the zero rather than printing
+ * it.
+ *
  * 2026-09-19 (lane B, the EIGHTH merge of verify/l5-launch-readiness, taking in
  * lane C's da659bb8 and the move of the header chrome off next/dynamic). BOTH
  * HISTORIES KEPT AGAIN, and the pair below is MEASURED ON THIS TREE rather than
@@ -2322,9 +2349,26 @@ const ROOT = join(HERE, '..', '..')
  * report 59 tests against 34 grep-visible cases, so the five tables add 25.
  * 66 + 25 = 91, and 5823 + 91 = 5914. A predicted count would have been wrong
  * by 25 here, which is why this file asks for a measurement and not a sum.
+ *
+ * 2026-09-19 (lane C, resolving lane A's merge of lane/c-ux into the push lane).
+ * BOTH HISTORIES KEPT, and the pair below is MEASURED ON THE MERGED TREE: lane B
+ * stood at 456/5914 and lane C at 453/5883, and neither describes a tree holding
+ * both.
+ *
+ * MEASURED: 458 files, 5960 tests, 0 failed, 0 skipped, through the gate's own
+ * suite step.
+ *
+ * CHECKABLE, and it checks out exactly, which is worth saying because the entry
+ * above this one records an arithmetic that did NOT: two test files arrive with
+ * this merge, tests/unit/media/candidate-ladder (29) and tests/unit/perf/
+ * document-weight (17), and no file of either side disappears.
+ *   456 + 2 = 458 files
+ *   5914 + 29 + 17 = 5960 tests
+ * Neither of those two files is table driven, which is why a sum works here and
+ * did not there. The measurement is still what set the number.
  */
-const MIN_FILES = 456
-const MIN_TESTS = 5914
+const MIN_FILES = 458
+const MIN_TESTS = 5960
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

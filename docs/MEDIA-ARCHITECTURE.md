@@ -120,10 +120,33 @@ the LAYOUT, never from taste and never from a measurement taken at one viewport.
   perfectly well formed. The one deliberate exception is `fullBleed` on mobile,
   documented in the file and exempted BY NAME in the drive.
 
+**The hint decides which candidate is CHOSEN. The width ladder decides how many
+are OFFERED, and that is a document cost rather than an image one.**
+
+`images.deviceSizes` and `images.imageSizes` in `next.config.ts` are emitted into
+the `srcset` of every fixed-width image, so the two lists are a CLAIM about the
+slots this platform renders and they are paid once per image, in the HTML. On the
+homepage that is 1,404 candidate URLs across 124 images, 30.5% of a 1,039,112
+byte document, and 83% of each URL is the percent-encoded storage src repeated
+identically twelve times.
+
+A hint expressed only in CSS pixels emits EVERY rung, because that is the branch
+`getWidths` takes when it finds no `vw` term; a hint carrying one can never emit
+a rung below `deviceSizes[0]` times the smallest ratio. Both facts come from
+`node_modules/next/dist/shared/lib/get-img-props.js`, and together they make
+"can anything select this rung" decidable from source.
+
+The claim goes stale in silence, because the slots live in three other files. It
+already had: the comment above those two lists named "16, 32, 192, 256, 288, 320
+and 512" as the fixed sizes in use, and the `sizes` rework of 18 September 2026
+moved the smallest slot to 24 CSS pixels without touching it.
+
 | Gate | What it proves |
 |---|---|
 | `scripts/guards/image-hints-match-the-cell.mjs` (registered, blocking) | every rail cell says its two numbers twice and both agree; every rail hint is derived from a cell; no cell width or raw `sizes` string is written anywhere else; no hint is dead and every variant is mapped |
-| `scripts/verify/image-hint-fidelity-drive.mjs` | no image is fetched smaller than its slot, in a real browser, at nine viewports on four routes |
+| `scripts/guards/candidate-ladder-has-no-dead-rung.mjs` (registered, blocking) | every configured width is one some declared slot can select at 1x or 2x, or sits above the floor where a `vw` hint can still emit it; and no declared slot has outgrown the top of the ladder, which is an under-fetch no hint can fix |
+| `scripts/verify/image-hint-fidelity-drive.mjs` | no image is fetched smaller than its slot, in a real browser, at nine viewports on four routes; and nothing is OFFERED that the configured ladder no longer carries, read from the served DOM rather than from the config |
+| `scripts/perf/srcset-weight.mjs` | what the candidate lists cost in the document: bytes, candidates and share per route, with one candidate quoted verbatim and split into its parts |
 | `scripts/perf/image-hint-fidelity.mjs` | the measurement the two above were written from: chosen candidate against rendered slot, per hint, per viewport |
 
 Variants on each component pull their hint from the map. **Never** inline a

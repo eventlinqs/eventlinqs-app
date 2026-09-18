@@ -41,7 +41,7 @@ const PIXELS_BY_SIZE: Record<OrganiserAvatarSize, number> = {
 }
 
 const SIZES_HINT_BY_SIZE: Record<OrganiserAvatarSize, string> = {
-  xs: '24px',
+  xs: MEDIA_SIZES.avatarXs,
   sm: MEDIA_SIZES.avatarSm,
   md: MEDIA_SIZES.avatarMd,
   topbar: MEDIA_SIZES.avatarTopbar,

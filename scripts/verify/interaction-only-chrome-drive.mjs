@@ -43,12 +43,47 @@
  *   matches this tree's .next/BUILD_ID before anything is asserted.
  *
  * Run: node scripts/verify/interaction-only-chrome-drive.mjs [baseUrl]
+ *
+ * ============================================================================
+ * --functional-only, AND WHY IT IS NOT A SOFTER VERSION OF THIS DRIVE
+ * ============================================================================
+ *
+ * The chunk assertions above need a PRODUCTION build, and on this machine the
+ * build belongs to one lane, so a lane that has only `next dev` running cannot
+ * make them. `--functional-only` runs the half that a dev server CAN answer
+ * honestly - the surfaces open, they close, and nothing overflows at 390 - and
+ * REFUSES to make the deferral claim at all.
+ *
+ * That refusal is not caution, it is correctness. Measured against the dev
+ * server on 19 September 2026: `next dev` serves
+ * `src_components_analytics_measurement-stack_tsx_*.js` on the homepage, and
+ * that module is lane A's deliberately deferred measurement tree. Dev compiles
+ * and ships eagerly, so the "in none of the chunks fetched on load" assertion
+ * would report a FAULT against code that is correctly deferred in the build
+ * anybody deploys. A drive that ran it in dev would not be weaker, it would be
+ * WRONG.
+ *
+ * The mode still proves the server is this worktree's, by a different route:
+ * dev chunks are unminified, so a source identifier this lane has and the
+ * others do not is visible in what the server actually serves.
  */
 import { chromium } from 'playwright'
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
-const BASE = process.argv[2] || 'http://localhost:3200'
+const args = process.argv.slice(2)
+const FUNCTIONAL_ONLY = args.includes('--functional-only')
+const BASE = args.find(a => !a.startsWith('--')) || 'http://localhost:3200'
+
+/**
+ * An identifier that exists in THIS worktree and not in the other lanes'.
+ *
+ * It stands in for the build-id probe when there is no build to probe. It is a
+ * source identifier rather than copy on purpose: `next dev` does not minify, so
+ * it survives into the served chunk verbatim, and it is checked for PRESENCE in
+ * something the server actually sent rather than read off disk.
+ */
+const WORKTREE_MARKER = 'useDeferredComponent'
 const OUT = 'C:/dev/EVIDENCE/C8-SHELL/driven'
 const TAG = '[interaction-only-chrome-drive]'
 
@@ -124,9 +159,33 @@ async function main() {
   // THE SERVER MUST BE THIS TREE'S BUILD. Three lanes run on this machine and a
   // drive that measures another lane's server reports a fault that belongs to
   // the machine (see scripts/verify/lib/port-is-ours.mjs for the incident).
+  if (FUNCTIONAL_ONLY) {
+    console.log(`${TAG} ====================================================================`)
+    console.log(`${TAG} FUNCTIONAL ONLY. The chunk assertions are NOT RUN and NOTHING in this`)
+    console.log(`${TAG} run says the chrome is deferred. dev serves deferred modules eagerly,`)
+    console.log(`${TAG} so running them here would report a fault against correct code.`)
+    console.log(`${TAG} What IS asserted: the surfaces open, they close, and nothing overflows.`)
+    console.log(`${TAG} ====================================================================`)
+    const html = await fetch(BASE).then(r => r.text()).catch(() => '')
+    const chunkUrls = [...html.matchAll(/\/_next\/static\/chunks\/[^"']+\.js/g)].map(m => m[0])
+    let served = false
+    for (const u of chunkUrls) {
+      const body = await fetch(`${BASE}${u}`).then(r => r.text()).catch(() => '')
+      if (body.includes(WORKTREE_MARKER)) { served = true; break }
+    }
+    if (!served) {
+      console.error(`${TAG} none of the ${chunkUrls.length} chunk(s) on ${BASE} contains ${WORKTREE_MARKER}.`)
+      console.error(`${TAG} whatever is on ${BASE} is not this worktree's tree, and this machine runs`)
+      console.error(`${TAG} three lanes. Nothing is asserted against somebody else's server.`)
+      process.exit(1)
+    }
+    console.log(`${TAG} ${BASE} is serving this worktree's source (${WORKTREE_MARKER} found in a served chunk)`)
+  }
+
   const localBuildId = existsSync('.next/BUILD_ID') ? readFileSync('.next/BUILD_ID', 'utf8').trim() : null
-  if (!localBuildId) {
-    console.error(`${TAG} no .next/BUILD_ID in this worktree. Build before driving.`)
+  if (!FUNCTIONAL_ONLY && !localBuildId) {
+    console.error(`${TAG} no .next/BUILD_ID in this worktree. Build before driving,`)
+    console.error(`${TAG} or run with --functional-only to drive the half a dev server can answer.`)
     process.exit(1)
   }
 
@@ -144,15 +203,15 @@ async function main() {
    * server before this was relied on: this tree's id answers 200, and an id that
    * is not a build answers 404.
    */
-  const probe = `${BASE}/_next/static/${localBuildId}/_ssgManifest.js`
-  const probeStatus = await fetch(probe).then(r => r.status).catch(() => 0)
-  if (probeStatus !== 200) {
+  const probe = FUNCTIONAL_ONLY ? null : `${BASE}/_next/static/${localBuildId}/_ssgManifest.js`
+  const probeStatus = probe === null ? 200 : await fetch(probe).then(r => r.status).catch(() => 0)
+  if (!FUNCTIONAL_ONLY && probeStatus !== 200) {
     console.error(`${TAG} ${probe} answered ${probeStatus}, not 200.`)
     console.error(`${TAG} whatever is on ${BASE} is not this tree's build (${localBuildId}), and this machine`)
     console.error(`${TAG} runs three lanes. Nothing is asserted against somebody else's server.`)
     process.exit(1)
   }
-  console.log(`${TAG} the server on ${BASE} is serving this tree's build ${localBuildId}`)
+  if (!FUNCTIONAL_ONLY) console.log(`${TAG} the server on ${BASE} is serving this tree's build ${localBuildId}`)
 
   const browser = await chromium.launch()
   try {
@@ -185,6 +244,9 @@ async function main() {
       // ---- ON LOAD: neither surface may be in anything the browser fetched ----
       const onLoad = [...fetched.entries()]
       for (const surface of SURFACES) {
+        // Skipped in FUNCTIONAL_ONLY: dev ships deferred modules eagerly, so this
+        // would fault on code the build defers correctly. See the header.
+        if (FUNCTIONAL_ONLY) continue
         const carriers = onLoad.filter(([, body]) => body && markersIn(body, surface).length > 0)
         check(
           carriers.length === 0,
@@ -239,7 +301,7 @@ async function main() {
 
         const after = [...fetched.entries()].filter(([u]) => !loadedUrls.has(u))
         const carriers = after.filter(([, body]) => body && markersIn(body, SURFACES[0]).length > 0)
-        check(
+        if (!FUNCTIONAL_ONLY) check(
           carriers.length > 0,
           `${vp.label}: the search overlay ARRIVED on the interaction, in ${carriers.length} newly fetched chunk(s)` +
             ` of ${after.length} (this is what makes the absence above mean something)`,
@@ -283,7 +345,7 @@ async function main() {
 
         const after = [...fetched.entries()].filter(([u]) => !beforeCity.has(u))
         const carriers = after.filter(([, body]) => body && markersIn(body, SURFACES[1]).length > 0)
-        check(
+        if (!FUNCTIONAL_ONLY) check(
           carriers.length > 0,
           `${vp.label}: the city dialog ARRIVED on the interaction, in ${carriers.length} newly fetched chunk(s) of ${after.length}`,
         )
@@ -321,13 +383,17 @@ async function main() {
   console.log('')
   for (const n of notes) console.log(`${TAG} note: ${n}`)
   console.log(`${TAG} did ${assertionsMade} assertion(s) across ${VIEWPORTS.length} viewport(s)`)
+  if (FUNCTIONAL_ONLY) {
+    console.log(`${TAG} FUNCTIONAL ONLY: the surfaces were driven and the deferral was NOT asserted.`)
+    console.log(`${TAG} A green run here is NOT evidence that the chrome is out of the first load.`)
+  }
   console.log(`${TAG} found ${faults.length} fault(s)`)
   writeFileSync(join(OUT, 'result.json'), JSON.stringify({ assertionsMade, faults, notes }, null, 2))
   if (faults.length > 0) {
     console.error(`${TAG} FAIL`)
     process.exit(1)
   }
-  console.log(`${TAG} PASS`)
+  console.log(FUNCTIONAL_ONLY ? `${TAG} PASS (functional only)` : `${TAG} PASS`)
 }
 
 main().catch(err => {

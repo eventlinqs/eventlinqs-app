@@ -81,10 +81,11 @@
  *
  *   node --env-file=.env.local scripts/verify/image-hint-fidelity-drive.mjs --serve --port=3200
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
 import { startGateServer, envFor } from '../ops/pre-push-gate.mjs'
+import { readLadder } from '../guards/lib/candidate-ladder.mjs'
 
 const TAG = '[image-hint-fidelity-drive]'
 const args = process.argv.slice(2)
@@ -120,6 +121,18 @@ const paths = (rawPaths.length ? rawPaths : ['home', 'events', 'cities', 'commun
   return p === 'home' ? '/' : `/${p}`
 })
 
+/**
+ * The configured ladder, read from next.config.ts by the same reader the guard
+ * uses. Not retyped here: a drive with its own copy of the list would agree with
+ * itself about a number neither of them holds.
+ */
+const ladderConfig = readLadder(readFileSync('next.config.ts', 'utf8'))
+if (ladderConfig === null) {
+  console.error(`${TAG} REFUSING: deviceSizes and imageSizes could not be read out of next.config.ts.`)
+  process.exit(1)
+}
+const LADDER = ladderConfig.ladder
+
 const results = []
 function record(name, ok, detail) {
   results.push({ name, ok, detail })
@@ -145,6 +158,21 @@ const PROBE = () => {
         null,
     }
   })
+}
+
+/**
+ * Every distinct `w=` a candidate list OFFERS, as opposed to the one the browser
+ * CHOSE. Clause 1 judges the choice; this judges the bill: an offered width no
+ * slot can select is still ~230 bytes of document, once per image.
+ */
+const OFFERED = () => {
+  const widths = new Set()
+  for (const img of document.querySelectorAll('img')) {
+    for (const m of (img.getAttribute('srcset') ?? '').matchAll(/[?&]w=(\d+)/g)) {
+      widths.add(Number(m[1]))
+    }
+  }
+  return [...widths].sort((a, b) => a - b)
 }
 
 const BYTES = () =>
@@ -198,6 +226,7 @@ try {
 
       const route = { path, widths: [] }
       const under = []
+      const offered = new Set()
       let judgedTotal = 0
       let inDomTotal = 0
       let worst = { ratio: Infinity }
@@ -212,6 +241,7 @@ try {
         await revealEverything(page)
         const images = await page.evaluate(PROBE)
         const bytes = await page.evaluate(BYTES)
+        for (const w of await page.evaluate(OFFERED)) offered.add(w)
 
         const judged = images.filter(i => i.decoded && i.chosenWidth && i.slotWidth > 0)
         judgedTotal += judged.length
@@ -266,6 +296,27 @@ try {
               .map(u => `${u.width}: a ${u.slotWidth}px slot needs ${u.need} and the browser chose ${u.chosenWidth} (x${u.ratio}) - ${u.heading ?? 'unnamed'}, sizes=${u.sizes}`)
               .join('\n        '),
       )
+
+      /*
+       * CLAUSE 3, added 19 September 2026 with the width ladder.
+       * `scripts/guards/candidate-ladder-has-no-dead-rung.mjs` proves from SOURCE
+       * that every configured width is one some declared slot can select. This
+       * proves the other end of the same claim, from the bytes a browser was
+       * actually served: nothing is offered that the ladder no longer carries.
+       * The guard can be right about a config the build does not use; this
+       * cannot.
+       */
+      const offLadder = [...offered].filter(w => !LADDER.includes(w))
+      record(
+        `clause 3: every width offered on ${path} is on the configured ladder`,
+        offLadder.length === 0,
+        offLadder.length === 0
+          ? `${offered.size} distinct widths offered across ${WIDTHS.length} viewports, ` +
+            `smallest ${Math.min(...offered)}, largest ${Math.max(...offered)}`
+          : `offered and not on the ladder: ${offLadder.join(', ')}. The served build and ` +
+            'next.config.ts disagree, so the guard is judging a config this build did not use.',
+      )
+      route.offeredWidths = [...offered]
 
       route.judged = judgedTotal
       route.imagesInDom = inDomTotal
