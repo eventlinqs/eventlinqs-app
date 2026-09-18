@@ -2057,8 +2057,22 @@ const ROOT = join(HERE, '..', '..')
  * suite actually runs here, which is the precise move the failure message below
  * refuses, so the measured count is what stands.
  */
-const MIN_FILES = 439
-const MIN_TESTS = 5697
+/*
+ * 2026-09-18, LB2: 441 files / 5703 tests, 0 failed and 0 skipped, measured by
+ * `git push` running the whole gate (C:\dev\_a-lb2-push2.txt), where the suite
+ * step passed and this guard said so itself: "the suite has GROWN (441/5703
+ * against 439/5697), raise the baseline in this file so the new floor is held".
+ *
+ * Six tests in two files, both of them locks on the bundle work rather than new
+ * product surface: tests/unit/payments/connect-currency-is-a-leaf.test.ts (the
+ * leaf that keeps @upstash/redis out of the checkout imports nothing, and the
+ * re-export is identity) and
+ * tests/unit/analytics/consent-context-stays-in-the-deferred-tree.test.ts
+ * (every useConsent consumer sits inside the tree that is now lazily fetched,
+ * which is the assumption that makes deferring the provider safe).
+ */
+const MIN_FILES = 441
+const MIN_TESTS = 5703
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
