@@ -100,6 +100,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, dirname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { stripJsComments } from './lib/strip-js-comments.mjs'
 
 const TAG = '[class-lists-are-not-repeated-per-card]'
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -149,6 +150,12 @@ const COMPOSITES = [
   'chrome-bottom-item',
   'chrome-wordmark',
   'chrome-wordmark-link',
+  /* Not a class list at all, and here because it has the same failure mode: a
+   * one-line deletion that nothing else notices. `cv-section` is what stops
+   * every homepage rail laying out before the first paint (close-out C8,
+   * 6 September 2026). Removing it costs measured milliseconds on every
+   * visit and breaks no test, no type and no screenshot. */
+  'cv-section',
 ]
 
 /**
@@ -177,6 +184,10 @@ const COMPOSITE_CALL_SITES = [
   { file: 'src/components/layout/mobile-bottom-nav.tsx', composite: 'chrome-bottom-item' },
   { file: 'src/components/ui/eventlinqs-logo.tsx', composite: 'chrome-wordmark' },
   { file: 'src/components/ui/eventlinqs-logo.tsx', composite: 'chrome-wordmark-link' },
+  /* SECTION_RAIL is how `cv-section` reaches every rail section on the
+   * homepage. The class existing in globals.css is worth nothing if the one
+   * constant that applies it stops doing so. */
+  { file: 'src/lib/ui/spacing.ts', composite: 'cv-section' },
 ]
 const GLOBALS = 'src/app/globals.css'
 /**
@@ -356,7 +367,8 @@ for (const file of CARD_FILES) {
   }
   const text = readFileSync(path, 'utf8')
   clauseAChecks += 1
-  const usesOne = COMPOSITES.some(name => text.includes(name))
+  /* Comment-blind for the same reason clause A2 is. */
+  const usesOne = COMPOSITES.some(name => stripJsComments(text).includes(name))
   if (!usesOne) {
     faults.push(`A: ${file} references none of the composites (${COMPOSITES.join(', ')}); the collapse has been undone`)
   }
@@ -385,7 +397,11 @@ for (const { file, composite } of COMPOSITE_CALL_SITES) {
     faults.push(`A2: ${file} does not exist, so the ${composite} contract cannot be judged`)
     continue
   }
-  if (!readFileSync(path, 'utf8').includes(composite)) {
+  /* COMMENTS ARE NOT CODE, and the drill proved it matters: `cv-section` was
+   * deleted from SECTION_RAIL's value while the comment beside it still said
+   * the word, and this clause passed on a tree where every homepage rail had
+   * stopped skipping below-the-fold layout. */
+  if (!stripJsComments(readFileSync(path, 'utf8')).includes(composite)) {
     faults.push(
       `A2: ${file} does not reference ${composite}. That composite exists for this call site, so ` +
         `either the class list has been written out again - once per link, on every page - or the ` +

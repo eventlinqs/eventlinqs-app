@@ -4743,6 +4743,17 @@ const DRILLS = [
     expect: 'does not reference chrome-nav-link',
   },
   {
+    /* cv-section is not a class list; it is held by the same guard because it
+     * fails the same way - a one-line deletion that costs measured
+     * milliseconds on every homepage visit and breaks no test. */
+    name: 'the homepage rails stop skipping below-fold layout because SECTION_RAIL lost the class',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/lib/ui/spacing.ts',
+    find: "export const SECTION_RAIL    = 'cv-section py-6 sm:py-8' as const",
+    replace: "export const SECTION_RAIL    = 'py-6 sm:py-8' as const",
+    expect: 'does not reference cv-section',
+  },
+  {
     name: 'the flight matcher goes blind and the calibration refuses rather than reporting a clean build',
     guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
     file: 'scripts/guards/class-lists-are-not-repeated-per-card.mjs',

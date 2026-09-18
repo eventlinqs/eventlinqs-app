@@ -80,6 +80,30 @@ export function ContentSection({
     <section
       id={id}
       aria-labelledby={ariaLabelledby}
+      /*
+       * `cv-section` WAS ADDED HERE ON 19 SEPTEMBER 2026 AND REVERTED THE
+       * SAME DAY, and the reason is recorded so the next session does not
+       * spend the afternoon rediscovering it (close-out C8B.3).
+       *
+       * The homepage rails have carried `content-visibility: auto` with
+       * `contain-intrinsic-size: auto 480px` since 6 September and no other
+       * surface had it. Putting it on this component gave it to every
+       * template that uses one, and it worked: on /city/melbourne style
+       * recalculation fell to 104-130 ms against 171-231 ms across three
+       * sessions of the tree without it, while the control page's did not
+       * move.
+       *
+       * IT ALSO MADE THE PAGE GROW 45 TO 103 PER CENT UNDER THE READER. 480px
+       * is a rail - a heading and one row of cards - and the sections this
+       * component wraps are grids two and three times that, so the browser's
+       * reserved estimate was wrong for nine sections at once and the
+       * document's height climbed from 7,551px to 12,055px as it was scrolled.
+       * Isolated on the same build by forcing the treatment off in the
+       * browser: 59.6% with it, 0.0% without.
+       *
+       * What this needs is a per-section estimate, not the homepage's
+       * constant. That is a measured job per template and it is not this one.
+       */
       className={`relative ${surfaces[surface]} ${pads[pad]} ${className}`}
     >
       {topBorder && (

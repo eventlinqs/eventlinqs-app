@@ -2442,9 +2442,23 @@ const ROOT = join(HERE, '..', '..')
  * cases.
  *   465 + 1 = 466 files
  *   6057 + 11 = 6068 tests
+ *
+ * 2026-09-19, close-out C8B.3. A guard drill deleted `cv-section` from the one
+ * constant that applies it to every homepage rail, and the guard PASSED: the
+ * COMMENT on the same line still said the word. Comments are not code, so the
+ * contract reads source with its comments removed - by a tokeniser rather
+ * than a regular expression, because `s.replace(/\/\/.*$/gm, '')` eats the
+ * second half of every 'https://...' in the repository.
+ *
+ * MEASURED: 467 files, 6078 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: one new file, tests/unit/guards/strip-js-comments.test.ts,
+ * holding 10 cases.
+ *   466 + 1 = 467 files
+ *   6068 + 10 = 6078 tests
  */
-const MIN_FILES = 466
-const MIN_TESTS = 6068
+const MIN_FILES = 467
+const MIN_TESTS = 6078
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
