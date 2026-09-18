@@ -12,6 +12,7 @@
  *   sender-single-source       one definition of the sending identity
  *   no-unguarded-credential-form  no password field submittable before hydration
  *   no-control-characters      no heredoc-corrupted byte in any source file
+ *   no-drill-residue           no killed guard-failure drill leaves a mutated file
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   canonical-host             one definition of the canonical host, resolved everywhere
@@ -72,6 +73,8 @@
  *                              without a declared maintainer
  *   no-silent-catch            no catch around I/O discards its error in silence
  *   no-client-sentry-import    no client component pulls @sentry/nextjs into the bundle
+ *   no-client-redis-import     no client component pulls @upstash/redis into the bundle
+ *   no-loadable-in-the-root-shell  nothing in the root layout's client chunk imports next/dynamic
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
@@ -672,6 +675,15 @@ const GUARDS = [
   'scripts/guards/sender-single-source.mjs',
   'scripts/guards/no-unguarded-credential-form.mjs',
   'scripts/guards/no-control-characters.mjs',
+  // The guard-failure drill harness mutates a real source file and restored it
+  // in a `finally`, which does not run when the process is killed. It was killed
+  // twice in two days: a power loss put `process.exit(1)` into the guard above
+  // and into commit 1aa059f6, where it exited 1 with no output at all and read
+  // as a real finding for a day; a usage-limit kill left an auth provider
+  // hardcoded on in the login page. This one fails while any drill journal entry
+  // is open, so a crash can only ever ADD evidence, and it offers the one-command
+  // undo rather than a description of one.
+  'scripts/guards/no-drill-residue.mjs',
   'scripts/guards/auth-autocomplete-guard.mjs',
   // One definition of the canonical host. The same wrong-domain defect had
   // landed in six places, including four share-card generators that printed it
@@ -915,6 +927,22 @@ const GUARDS = [
   // 2026-08-25 rebuilt it in one line, in bill-ref.ts, and nothing but a bigger
   // bundle would have said so.
   'scripts/guards/no-client-sentry-import.mjs',
+  // THE SAME RULE, A DIFFERENT SERVER-ONLY DEPENDENCY, AND IT WAS ALREADY LIVE.
+  // src/lib/redis/client.ts imports @upstash/redis and a 16.0 KB Buffer
+  // polyfill. One import from the ticket selector into sale-status.ts, which
+  // took a single currency helper from application-fee.ts, put 17.5 KB gzip of
+  // that on the event page and the checkout: the two surfaces that sell
+  // tickets. It surfaced as a 372-byte budget overage, 48 times smaller than
+  // its own cause, which is why a comment was never going to hold it.
+  'scripts/guards/no-client-redis-import.mjs',
+  // next/dynamic costs 1306 bytes gzip and a whole extra chunk in the SHARED
+  // shell, which is the first load of all 141 routes, and the shell uses none
+  // of the preloading, loading slot or SSR control it buys. One dynamic() call
+  // added to defer six components out of the root layout gave back 1099 of the
+  // 3938 bytes it saved, and surfaced as 116 identical faults on routes like
+  // /press and /offline, none of which names the cause. A bare import() defers
+  // the same tree for nothing. Route-level lazy wrappers are untouched.
+  'scripts/guards/no-loadable-in-the-root-shell.mjs',
   // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
   // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
   // printing a tidy list of 200s the whole time; its replacement then reported

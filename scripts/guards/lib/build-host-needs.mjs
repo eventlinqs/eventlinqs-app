@@ -92,6 +92,9 @@ export const DECLARED = {
   'scripts/pricing-derive.mjs': {
     docs: 'recomputes every worked fee figure in docs/PRICING.md from that document own PRICING-LOCK block, which is the whole check. Registered in run-guards.mjs from scripts/, so the old directory-shaped scan never saw it.',
   },
+  'scripts/guards/no-drill-residue.mjs': {
+    git: 'asks git ls-files whether anything under .drill-journal is TRACKED, which nothing but git can answer. Its other two clauses need no repository: the journal is read from disk and the tree is enumerated by the git-free walk, so on the build host clause 2 SKIPs by name and the rest still judge.',
+  },
   'scripts/verify/migration-collision-guard.mjs': {
     git: 'asks git for-each-ref for every local and remote branch, to catch two branches claiming one migration version. On the build host it SKIPs by name, which the Vercel log of ffded236 shows it already doing.',
   },

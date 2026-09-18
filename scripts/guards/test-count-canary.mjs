@@ -45,7 +45,8 @@
 import { spawnSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { poolStartFailures } from './lib/vitest-pool.mjs'
+import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -2081,8 +2082,95 @@ const ROOT = join(HERE, '..', '..')
  * has to write. Measured through the gate's own suite step: 443 files, 5750
  * tests, 0 failed, 0 skipped.
  */
-const MIN_FILES = 443
-const MIN_TESTS = 5750
+/*
+ * 2026-09-18, THE THREE LANE MERGE: 439 files / 5697 tests, 0 failed and 0
+ * skipped, measured on Node 24.19.0 on this merged tree by
+ * `npm run gate:push -- --only suite` before the merge was committed, which is
+ * the order this file argues for above and the order lane B could not follow.
+ *
+ * WHAT THE THREE SIDES SAID, recorded because a floor is the one number nobody
+ * can check later. Lane A stood at 422/5202. Lane B measured 438/5673 on its
+ * own branch, which carries lane A only as far as the merge it took in on
+ * 17 September. The owner asked for 421/5185 in the instruction that ordered
+ * this merge, which was the measurement of verify/l5-launch-readiness at
+ * b3cc6317 at 12:43 that day, before the last four lane A commits and before
+ * any of this. All three were true about the tree in front of them and none of
+ * them is true about this one.
+ *
+ * A BASELINE IS A FLOOR AND IT ONLY EVER MOVES UP. Writing the lowest of those
+ * three claims would have taken the floor 18 files and 512 tests below what the
+ * suite actually runs here, which is the precise move the failure message below
+ * refuses, so the measured count is what stands.
+ */
+/*
+ * 2026-09-18, LB2: 441 files / 5703 tests, 0 failed and 0 skipped, measured by
+ * `git push` running the whole gate (C:\dev\_a-lb2-push2.txt), where the suite
+ * step passed and this guard said so itself: "the suite has GROWN (441/5703
+ * against 439/5697), raise the baseline in this file so the new floor is held".
+ *
+ * Six tests in two files, both of them locks on the bundle work rather than new
+ * product surface: tests/unit/payments/connect-currency-is-a-leaf.test.ts (the
+ * leaf that keeps @upstash/redis out of the checkout imports nothing, and the
+ * re-export is identity) and
+ * tests/unit/analytics/consent-context-stays-in-the-deferred-tree.test.ts
+ * (every useConsent consumer sits inside the tree that is now lazily fetched,
+ * which is the assumption that makes deferring the provider safe).
+ */
+/*
+ * 2026-09-18, LB3: 442 files / 5711 tests, 0 failed and 0 skipped, measured by
+ * `npm run gate:push -- --only suite` (C:\dev\_a-lb3-suite.txt), where this
+ * guard again said so itself: "the suite has GROWN (442/5711 against
+ * 441/5703), raise the baseline in this file so the new floor is held".
+ *
+ * Eight tests in one file, and that file exists because the guard it backs
+ * SHIPPED BLIND. tests/unit/perf/root-shell-has-no-loadable.test.ts holds the
+ * matcher behind scripts/guards/no-loadable-in-the-root-shell.mjs shape by
+ * shape, after the first version of that matcher put \s inside a TEMPLATE
+ * LITERAL, where it is not a recognised escape: the backslash was dropped, the
+ * pattern compiled to `from s*`, and the guard reported a confident PASS
+ * against a file whose third line was the banned import. Only the red half of
+ * the drill found it. These cases are what keep it found.
+ */
+/*
+ * 2026-09-18, LB3 again: 443 files / 5717 tests, 0 failed and 0 skipped
+ * (C:\dev\_a-lb3-suite5.txt).
+ *
+ * Six tests in one file, and that file is the reason this guard stopped blaming
+ * the tree for the runner. tests/unit/perf/vitest-pool-start-failures.test.ts
+ * holds the matcher that reads a vitest WORKER START FAILURE out of a run, the
+ * shape that cost eleven files and 75 tests earlier the same day and was read at
+ * the time as eleven files that had "stopped collecting". Its first case is the
+ * text vitest actually printed, kept verbatim, because the first version of that
+ * matcher was blind to it.
+ */
+/*
+ * 2026-09-19 (lane B, merging verify/l5-launch-readiness a SIXTH time, the
+ * overlap lane A's watchdog aborted on at 21:31 on 18 September). BOTH COMMENT
+ * HISTORIES ABOVE ARE KEPT VERBATIM and they are still two lineages rather than
+ * one chain. Lane B's last pair, 443/5750, was measured on lane/b-growth, which
+ * has never held lane A's LB2 or LB3 work. Lane A's last pair, 443/5717, was
+ * measured on verify/l5-launch-readiness, which has never held GA1 to GA5, PL1,
+ * FT1, API1 or LBG1. The two counts land on the same file count by coincidence
+ * and neither describes this tree. Lane A also recorded above that lane B's
+ * earlier 438/5673 pair described lane/b-growth alone and was superseded by the
+ * three-lane measurement; that reading is correct and is why the larger of two
+ * partial counts is still a guess.
+ *
+ * THE PAIR BELOW IS MEASURED ON THIS MERGED TREE through the gate's own suite
+ * step, 0 failed and 0 skipped, which is the only thing this lane can honestly
+ * write here. Evidence: C:\dev\EVIDENCE\LB-MERGE6\gate-suite.txt
+ *
+ * MEASURED: 448 files, 5794 tests, 0 failed, 0 skipped. The arithmetic is
+ * checkable rather than asserted: lane B's 443 files plus the FIVE test files
+ * lane A added in LB2 and LB3, which are
+ * tests/unit/guards/no-drill-residue, tests/unit/payments/connect-currency-is-a-leaf,
+ * tests/unit/analytics/consent-context-stays-in-the-deferred-tree,
+ * tests/unit/perf/root-shell-has-no-loadable and
+ * tests/unit/perf/vitest-pool-start-failures. 443 + 5 = 448, so the count is
+ * explained by the merge and not by a file that quietly stopped collecting.
+ */
+const MIN_FILES = 448
+const MIN_TESTS = 5794
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
@@ -2173,8 +2261,43 @@ const result = spawnSync(
   { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: gitEnv() },
 )
 
+/**
+ * A WORKER THAT NEVER STARTED IS NOT A FILE THAT STOPPED COLLECTING, AND THIS
+ * GUARD USED TO CALL IT ONE.
+ *
+ * On 18 September 2026 a gate run reported 431 files against a baseline of 442
+ * and said "the suite is running LESS than it used to", which sent the search
+ * into the tree. The cause was in vitest's own output, which this guard captures
+ * and then threw away:
+ *
+ *     Error: [vitest-pool]: Failed to start forks worker for test files ...
+ *     Caused by: Error: [vitest-pool-runner]: Timeout waiting for worker to respond
+ *
+ * A file whose worker never started registers nothing at all, so it is
+ * indistinguishable in the JSON report from a file somebody deleted. The
+ * distinction only exists on stderr, so it is read from there and said out loud.
+ * The run STILL FAILS: a suite that did not run every test is not evidence of
+ * anything. What changes is that it names the runner rather than the tree.
+ */
+const poolFailures = poolStartFailures(`${result.stdout ?? ''}\n${result.stderr ?? ''}`)
+const reportPoolFailure = () => {
+  if (poolFailures.length === 0) return
+  console.error(
+    `\n[test-count-canary] ${poolFailures.length} vitest WORKER(S) FAILED TO START. This is the runner, not the tree:`,
+  )
+  for (const f of poolFailures) console.error(`    ${f}`)
+  console.error(
+    '  Those files registered nothing, so they are indistinguishable in the JSON report\n' +
+      '  from files that were deleted. vitest START_TIMEOUT is a hardcoded 60s and is not\n' +
+      '  configurable; the lever is fewer concurrent workers (maxWorkers in\n' +
+      '  vitest.config.ts) or less else running on the machine. This run is still a FAILURE,\n' +
+      '  because a suite that did not run every test proves nothing.',
+  )
+}
+
 if (!existsSync(REPORT)) {
   console.error(`[test-count-canary] vitest wrote no JSON report at ${REPORT_NAME}, so nothing can be counted.`)
+  reportPoolFailure()
   console.error('--- vitest stdout (tail) ---')
   console.error((result.stdout ?? '').slice(-1500))
   console.error('--- vitest stderr (tail) ---')
@@ -2357,12 +2480,74 @@ if (failed > 0) {
     )
   }
 }
+/**
+ * WHICH FILES DID NOT RUN, BY NAME.
+ *
+ * This guard used to report a shortfall and then tell the reader to go and find
+ * the cause with `npx vitest run`, which is advice rather than a diagnosis. On
+ * 18 September 2026 it refused a push with "only 431 test FILES ran, baseline is
+ * 442", and the eleven files were not recoverable from its output at all: it
+ * runs vitest with `--reporter=json` into a file and then deletes it, so there
+ * was no vitest output left to read. A re-run of the same tree collected all
+ * 442, which made the eleven a mystery rather than a finding.
+ *
+ * It already holds everything needed to answer the question. The JSON report
+ * names every file that DID run, and the two `include` globs in
+ * vitest.config.ts say which files SHOULD have. The difference is the answer,
+ * and it is printed rather than described.
+ *
+ * The globs are matched by suffix rather than by a glob library, deliberately:
+ * they are `tests/unit/ ** /*.test.ts` and `tests/component/ ** /*.test.tsx`,
+ * and a walker plus an extension test says exactly that with nothing to keep in
+ * step with a dependency. If a third project is ever added to the config, this
+ * list has to gain it, and the count printed beside the names is what will say
+ * so: an on-disk total that disagrees with the baseline means this list is
+ * stale, not that the suite shrank.
+ */
+/** Windows paths from `join()` carry backslashes; vitest reports forward ones. */
+const norm = p => p.split(String.fromCharCode(92)).join('/')
+const testFilesOnDisk = () => {
+  const found = []
+  const walk = dir => {
+    let entries
+    try {
+      entries = readdirSync(dir)
+    } catch (error) {
+      // The directory is named by vitest.config.ts, so its absence is a real
+      // finding about this list being stale rather than something to swallow.
+      console.log(`[test-count-canary] ${dir} could not be read (${error.message}), so the on-disk list is incomplete`)
+      return
+    }
+    for (const entry of entries) {
+      const p = join(dir, entry)
+      if (statSync(p).isDirectory()) walk(p)
+      else if (/\.test\.tsx?$/.test(entry)) found.push(norm(p))
+    }
+  }
+  walk(join(ROOT, 'tests', 'unit'))
+  walk(join(ROOT, 'tests', 'component'))
+  return found.map(p => p.replace(norm(ROOT) + '/', ''))
+}
+
 if (files < MIN_FILES) {
+  const ran = new Set(
+    (Array.isArray(report.testResults) ? report.testResults : []).map(r =>
+      (r.name ?? '').replace(/\\/g, '/').replace(norm(ROOT) + '/', ''),
+    ),
+  )
+  const onDisk = testFilesOnDisk()
+  const missing = onDisk.filter(f => !ran.has(f)).sort()
   problems.push(
     `only ${files} test FILES ran, baseline is ${MIN_FILES}.\n` +
       '      A file that fails to COLLECT is reported by vitest as "no tests", not as a\n' +
       '      failure, so this is very often a file that crashed at module scope rather\n' +
-      '      than a file somebody deleted.',
+      '      than a file somebody deleted.\n' +
+      `      ${onDisk.length} file(s) match the vitest include globs on disk; ${ran.size} of them ran.\n` +
+      (missing.length > 0
+        ? '      DID NOT RUN:\n' + missing.map(f => `        ${f}`).join('\n')
+        : '      Every file on disk ran, so the shortfall is against the BASELINE rather than\n' +
+          '      against the tree: files were deleted, or this list does not cover a third\n' +
+          '      vitest project added to vitest.config.ts.'),
   )
 }
 if (tests < MIN_TESTS) {
@@ -2388,15 +2573,49 @@ if (skipped > MAX_SKIPPED) {
 }
 
 if (problems.length > 0) {
-  console.error('\n[test-count-canary] FAILED. The suite is running LESS than it used to.\n')
+  /*
+   * THE HEADER SAYS WHICH KIND OF PROBLEM IT WAS, because "running LESS" was
+   * printed for both kinds and is only true of one.
+   *
+   * On 18 September 2026 this guard printed "The suite is running LESS than it
+   * used to" on a run of 422 files and 5201 tests against a baseline of 421 and
+   * 5178. The suite had GROWN. One test had failed, which is a completely
+   * different finding with a completely different next step, and the header sent
+   * the reader looking for a file that had stopped collecting. The detail lines
+   * below it were correct and named the failing test exactly, which is the worse
+   * shape rather than the better one: a summary that contradicts the note three
+   * lines beneath it is worse than no summary at all. The same ruling was applied
+   * to initial-bundle-budget's PASS line on the same day.
+   *
+   * The two are distinguished by the floors, which are the only thing this
+   * guard's own name is about.
+   */
+  const ranLess = files < MIN_FILES || tests < MIN_TESTS || skipped > MAX_SKIPPED
+  console.error(
+    `\n[test-count-canary] FAILED. ${
+      ranLess
+        ? 'The suite is running LESS than it used to.'
+        : `The floors held (${files} files, ${tests} tests against ${MIN_FILES}/${MIN_TESTS}), so nothing stopped running: the suite FAILED on its own results. Read the lines below, not the floors.`
+    }\n`,
+  )
   for (const p of problems) console.error(`  - ${p}\n`)
   console.error(
-    '  Find the file that stopped collecting before touching the baseline. Run\n' +
-      '  `npx vitest run` and look for a file reporting "no tests" or a suite-level\n' +
-      '  error rather than a test-level one.\n\n' +
-      '  Lowering MIN_FILES or MIN_TESTS to go green is the move this guard exists to\n' +
-      '  stop. It needs a founder ruling and a note on the constant.\n',
+    ranLess
+      ? '  Find the file that stopped collecting before touching the baseline. Run\n' +
+          '  `npx vitest run` and look for a file reporting "no tests" or a suite-level\n' +
+          '  error rather than a test-level one.\n\n' +
+          '  Lowering MIN_FILES or MIN_TESTS to go green is the move this guard exists to\n' +
+          '  stop. It needs a founder ruling and a note on the constant.\n'
+      : // Sending a reader to hunt for a file that stopped collecting, when the
+        // floors say none did, is the same misdirection the header carried.
+        '  The floors are not the finding here, so do NOT touch the baseline. Fix the\n' +
+          '  named failure(s) above, then re-run. If a named test does not reproduce on\n' +
+          '  its own, it is a flake and belongs in the review queue rather than in a\n' +
+          '  baseline change.\n',
   )
+  // Last, so it is the thing left on screen: if workers failed to start, every
+  // count above is a symptom and none of it is about the tree.
+  reportPoolFailure()
   process.exit(1)
 }
 

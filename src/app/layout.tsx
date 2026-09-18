@@ -8,13 +8,7 @@ import { HeaderScrollSentinel } from '@/components/layout/header-scroll-sentinel
 import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
-import { ReferralCapture } from '@/components/growth/referral-capture'
-import { ArrivalCapture } from '@/components/growth/arrival-capture'
-import { ClickIdentifierRelay } from '@/components/growth/click-identifier-relay'
-import { ConsentProvider } from '@/components/analytics/consent-provider'
-import { ConsentBanner } from '@/components/analytics/consent-banner'
-import { GatedAnalytics } from '@/components/analytics/gated-analytics'
-import { FunnelLanded } from '@/components/analytics/funnel-landed'
+import { MeasurementBoot } from '@/components/analytics/measurement-boot'
 import { RegisterAppWorker } from '@/components/pwa/register-app-worker'
 import { getSiteUrl } from '@/lib/site-url'
 import { siteVerificationMetadata } from '@/lib/seo/site-verification'
@@ -234,36 +228,17 @@ export default function RootLayout({
            *  paint the strip (close-out UX5). */}
           <MainContentFrame>{children}</MainContentFrame>
           <MobileBottomNav />
-          {/* First-touch attribution capture (acquisition loop). Renders null
-           *  and runs only in a post-paint effect, so it never costs LCP. */}
-          <ReferralCapture />
-          {/* HOW THIS ACCOUNT ARRIVED (close-out AN1). A sibling of the
-           *  referral capture above rather than part of it: that one answers
-           *  "who referred this person", this one answers "which surface
-           *  brought them", and they are read by different code at different
-           *  moments. Renders null, post-paint, nothing identifying. */}
-          <ArrivalCapture />
-          {/* THE CLICK IDENTIFIER, CARRIED OUT OF THE ADDRESS (close-out GA3).
-           *  Rung 2 of the attribution ladder: the person who was sent the
-           *  address rather than the person who opened the tracked link. Beside
-           *  the arrival capture rather than inside it, because that one is
-           *  first touch and answers which surface brought an account, and this
-           *  one is last touch and answers which message produced a sale.
-           *  Renders null, post-paint, one session cookie or none. */}
-          <ClickIdentifierRelay />
-          {/* MEASUREMENT, AND THE ONLY WAY IT LOADS (close-out AN1).
-           *  The provider holds the decision, the banner takes it, and the
-           *  gate emits a third-party script only when the person agreed AND
-           *  the owner configured that provider. Nothing here renders anything
-           *  visible until a visitor who has never answered arrives, and
-           *  nothing here requests anything at all before that. Plausible
-           *  above is outside this gate on purpose: it is cookieless and
-           *  stores nothing on the device (see lib/analytics/providers.ts). */}
-          <ConsentProvider>
-            <GatedAnalytics />
-            <FunnelLanded />
-            <ConsentBanner />
-          </ConsentProvider>
+          {/* MEASUREMENT AND ATTRIBUTION, AS ONE DEFERRED CHUNK.
+           *  The six components that used to be written out here in full
+           *  (close-out AN1 and GA3) are unchanged and still mount in the same
+           *  order with the same nesting; they now live in
+           *  components/analytics/measurement-stack.tsx and are fetched after
+           *  hydration instead of ahead of first paint. All six render nothing
+           *  into the server HTML and all six work in post-paint effects, so
+           *  no markup and no first paint moved: only 3938 bytes gzip, off the
+           *  first load of 133 routes. measurement-boot.tsx records the
+           *  measurement and why the dynamic() call cannot sit in this file. */}
+          <MeasurementBoot />
           {/* The root service worker, so a navigation with no signal answers
            *  with an EventLinqs page instead of the browser's error page
            *  (close-out C8B.5, Scope v5 10.3). Renders null and registers only

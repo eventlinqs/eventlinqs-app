@@ -116,9 +116,24 @@ describe('AN1 acceptance 1: what a signup records about how it arrived', () => {
 
   it('is captured on the first page of any kind, not only on an event page', () => {
     // The SALE attribution is captured on event pages, which is the right place
-    // for it. An organiser can land anywhere, so this one is in the root layout.
+    // for it. An organiser can land anywhere, so this one is platform-wide.
+    //
+    // IT IS STILL PLATFORM-WIDE, IT IS JUST NO LONGER WRITTEN OUT IN THE LAYOUT.
+    // On 18 September 2026 the six measurement and attribution components moved
+    // out of the root layout into components/analytics/measurement-stack.tsx,
+    // which the layout mounts through measurement-boot.tsx as one lazily
+    // fetched chunk. They were costing +3938 bytes gzip in the first load of
+    // every route, on 133 routes, and all six render nothing into the server
+    // HTML, so nothing about what a visitor receives changed.
+    //
+    // So the assertion follows the boundary instead of stopping at the first
+    // link. Both halves are required: the layout must mount the boundary, and
+    // the boundary's tree must mount this capture. Checking only one of them
+    // would pass with the capture mounted nowhere.
     const layout = readFileSync(join(ROOT, 'src/app/layout.tsx'), 'utf8')
-    expect(layout).toContain('<ArrivalCapture />')
+    expect(layout).toContain('<MeasurementBoot />')
+    const stack = readFileSync(join(ROOT, 'src/components/analytics/measurement-stack.tsx'), 'utf8')
+    expect(stack).toContain('<ArrivalCapture />')
   })
 
   it('is first touch: the writer only writes when the cookie is absent', () => {

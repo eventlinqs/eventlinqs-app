@@ -237,3 +237,12 @@ docs/verification/lh-local/
 # deleted when the proof is recorded; ignoring them means a forgotten one can
 # never be committed by accident.
 .tmp-*.mjs
+
+# The guard-failure drill harness's crash-safety journal (see
+# scripts/verify/lib/drill-journal.mjs). An entry holds one machine's
+# pre-mutation bytes and pid, written before a drill touches a file and deleted
+# once the restore is observed. It is a RUN STATE, never source: committing one
+# would put a lane's half-finished drill into everybody's tree and would make
+# scripts/guards/no-drill-residue.mjs fail in every checkout for ever, which is
+# how a gate gets switched off. The guard checks that it stays untracked.
+.drill-journal/

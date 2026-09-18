@@ -212,12 +212,12 @@ if (runGuardsSource && drillsSource) {
 declareWork('every-guard-has-been-seen-to-fail', {
   did: {
     'registered entry point read': registered.length,
-    'guard the drill harness aims at': drilled.length,
+    'guard with a drill in the harness': drilled.length,
     'baseline entry checked': BASELINE.length,
   },
-  found: { 'blocking guard nobody has ever seen fail': faults.length },
+  found: { 'blocking guard with no drill': faults.length },
   zeroIsFine: {
-    'blocking guard nobody has ever seen fail':
+    'blocking guard with no drill':
       'zero is the goal state: every guard registered since ' + EFFECTIVE_FROM + ' has a drill',
   },
   exitOnZero: false,

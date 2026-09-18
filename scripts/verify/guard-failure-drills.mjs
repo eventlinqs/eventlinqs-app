@@ -17,18 +17,56 @@
  *   - autocomplete="email" on a sign-in field     the "Chrome offered nothing" defect
  *   - a missing name attribute                    same defect, other half
  *
- * Files are restored in a `finally`, and the harness re-verifies a clean pass
- * at the end, so an interrupted run cannot leave a mutated tree behind.
+ * Files are restored in a `finally`, the restore is then OBSERVED rather than
+ * assumed, and the harness re-verifies a clean pass at the end.
+ *
+ * THIS PARAGRAPH USED TO CLAIM THAT THE `finally` MEANT "an interrupted run
+ * cannot leave a mutated tree behind". It did not, and the false assurance cost
+ * two sessions: a power loss on 16 September 2026 committed `process.exit(1)`
+ * into no-control-characters.mjs, and a usage-limit kill on 17 September left
+ * `<LoginForm googleEnabled={true} />` in the login page. A `finally` runs when
+ * a block exits and never when a process is killed. Crash safety comes from the
+ * on-disk journal instead (scripts/verify/lib/drill-journal.mjs): the original
+ * bytes are recorded BEFORE each mutation, an interrupted run therefore leaves
+ * an entry behind, and scripts/guards/no-drill-residue.mjs fails the build while
+ * any entry exists.
  *
  * Usage: node scripts/verify/guard-failure-drills.mjs
+ *        node scripts/verify/guard-failure-drills.mjs --restore   (undo an
+ *        interrupted run, in one command, from the bytes in the journal)
  */
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { resolveVercelToken } from '../lib/vercel-login.mjs'
+import * as journal from './lib/drill-journal.mjs'
 
 const ROOT = process.cwd()
 const GUARDS = 'scripts/guards'
+
+/*
+ * `--restore` RUNS BEFORE ANYTHING ELSE IN THIS FILE, and that placement is the
+ * point rather than tidiness.
+ *
+ * It is the repair command for a tree a killed drill left mutated, so it is
+ * reached exactly when things have already gone wrong. Everything below this
+ * block resolves an effective migration, asks Vercel for a deployment held in
+ * ERROR, reads the CLI login and lists open pull requests. A repair that needs a
+ * token and a network is a repair that is unavailable on the aeroplane, on a
+ * flat battery, and on the machine whose power just failed, which is the only
+ * kind of machine that ever needs it.
+ *
+ * It reads nothing but the journal and the files the journal names.
+ */
+if (process.argv.includes('--restore')) {
+  const { restored, stuck } = journal.restoreAll(ROOT)
+  for (const f of restored) console.log(`[drills] restored ${f}`)
+  for (const s of stuck) console.error(`[drills] COULD NOT RESTORE ${s.entryPath}: ${s.why}`)
+  if (restored.length === 0 && stuck.length === 0) {
+    console.log('[drills] the journal is empty: no drill was interrupted, nothing to restore.')
+  }
+  process.exit(stuck.length > 0 ? 1 : 0)
+}
 
 /*
  * THE EFFECTIVE MIGRATION. A guard reads the LAST migration that defines a
@@ -3986,6 +4024,96 @@ const DRILLS = [
     replace: '    guard: `${GUARDS}/attribution-one-record.mjs`,',
     expect: 'attribution-one-record-per-order-never-billable-when-reversed.mjs is registered in',
   },
+
+  /*
+   * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of
+   * scripts/guards/no-drill-residue.mjs.
+   *
+   * The guard exists because THIS FILE left a mutated source file in the tree
+   * twice in two days: a power loss on 16 September 2026 committed
+   * `process.exit(1)` into no-control-characters.mjs, and a usage-limit kill on
+   * 17 September left an auth provider hardcoded on in the login page. The
+   * header above claimed a `finally` made that impossible. A `finally` runs when
+   * a block exits and never when a process is killed.
+   *
+   * THE FIRST DRILL NEEDS NO SABOTAGE AT ALL, which is the neatest possible
+   * demonstration. Every file drill now opens a journal entry before it mutates,
+   * so simply BEING mid-drill is the condition the guard refuses. The mutation
+   * below is deliberately inert and lands in a .json file, which clause 3 does
+   * not read, so the only thing the guard can be objecting to is the open entry.
+   */
+  {
+    name: 'a drill is mid-flight and the tree does not say so',
+    guard: `${GUARDS}/no-drill-residue.mjs`,
+    file: 'perf-budget.json',
+    find: '"marks": {',
+    replace: '"marks": {\n    "/drill-journal-open": 1,',
+    expect: 'has an OPEN drill journal entry',
+  },
+  /*
+   * THE OTHER HALF, and the one that covers the 16 September case specifically.
+   * Residue that was already COMMITTED has no journal entry to find, because the
+   * journal is gitignored and a fresh checkout has none. Every plant that
+   * executes carries a `planted by the <id> drill` label, so that phrase in a
+   * tracked source file is residue by definition.
+   *
+   * It plants the EXACT line from commit b3cc6317, in the exact file, at the
+   * exact anchor, so this drill fails if the guard ever stops recognising the
+   * real thing rather than a paraphrase of it.
+   */
+  {
+    name: "an interrupted drill's sabotage line was committed and nothing notices",
+    guard: `${GUARDS}/no-drill-residue.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace: 'const ROOT = process.cwd()\nprocess.exit(1) // planted by the F1.1 drill, restored in the finally',
+    expect: "still carries a drill's planted sabotage line",
+  },
+  /*
+   * TWO GUARDS THAT ARRIVED IN THE SAME MERGE WITH NO DRILL, DRILLED HERE.
+   *
+   * Both are lane A's, both were registered in run-guards.mjs on 18 September
+   * 2026, and the merge of that work into lane/b-growth on 19 September made
+   * every-guard-has-been-seen-to-fail go red naming exactly these two. That is
+   * the rule working rather than a complaint: it printed the command that
+   * watches each one fail, and the answer to it is a drill, never a baseline
+   * entry. Only THIS file changes. Neither guard is touched.
+   */
+  /*
+   * The first plants the EXACT edge lane A removed. `sale-status.ts` wanted one
+   * pure value, the Connect country-to-currency map, and reached it through
+   * `./application-fee`, which reaches `pricing-rules` and from there
+   * `@/lib/redis/client` and a 16.0 KB Buffer polyfill. `ticket-selector.tsx` is
+   * a client component that imports `sale-status`, so the chain the guard
+   * reports is the one that really shipped 17.5 KB of server code to a buyer's
+   * phone. The fix was a leaf module, `./connect-currency`, and this drill
+   * un-does exactly that one line.
+   */
+  {
+    name: 'a client component reaches the Redis client again through the payments chain',
+    guard: `${GUARDS}/no-client-redis-import.mjs`,
+    file: 'src/lib/payments/sale-status.ts',
+    find: "import { getCurrencyForCountry } from './connect-currency'",
+    replace: "import { getCurrencyForCountry } from './application-fee'",
+    expect: 'client component(s) reach the Redis client',
+  },
+  /*
+   * The second plants `next/dynamic` back into the root layout's client shell,
+   * in `measurement-boot.tsx`, which is the one 'use client' module the shell
+   * reaches and the exact file the import was taken out of. The cost it recreates
+   * is 1306 bytes gzip and one whole shared chunk in the first load of all 141
+   * routes, which the bundle ratchet reports as 116 identical faults on routes
+   * that measure nothing. This guard names the cause instead, so it has to be
+   * seen to name it.
+   */
+  {
+    name: "the root layout's client shell imports next/dynamic again",
+    guard: `${GUARDS}/no-loadable-in-the-root-shell.mjs`,
+    file: 'src/components/analytics/measurement-boot.tsx',
+    find: "import { useEffect, useState, type ComponentType } from 'react'",
+    replace: "import { useEffect, useState, type ComponentType } from 'react'\nimport dynamic from 'next/dynamic'",
+    expect: "in the root client shell import 'next/dynamic'",
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
@@ -4006,6 +4134,71 @@ function anchorRegex(anchor) {
   return new RegExp(escaped.replace(/\r?\n/g, '\\r?\\n'))
 }
 
+/*
+ * CRASH SAFETY, WHICH THE `finally` BELOW IS NOT.
+ *
+ * The header of this file used to claim that restoring in a `finally` meant "an
+ * interrupted run cannot leave a mutated tree behind". A `finally` runs when the
+ * block exits and does not run when the process is killed, and this harness has
+ * now been killed mid-drill twice: power loss on 16 September 2026, which put
+ * `process.exit(1)` into no-control-characters.mjs and into commit 1aa059f6, and
+ * a usage-limit kill on 17 September, which left `<LoginForm googleEnabled={true} />`
+ * in the login page while the push lane measured a bundle baseline against it.
+ *
+ * So the original bytes are now written to the journal BEFORE the file is
+ * touched, and the entry is deleted only after the restore is OBSERVED. A killed
+ * run leaves its entry, scripts/guards/no-drill-residue.mjs fails the build while
+ * any entry exists, and `--restore` puts every journalled file back in one
+ * command. The full reasoning lives in scripts/verify/lib/drill-journal.mjs.
+ *
+ * The signal handlers below are a courtesy, not the mechanism: they catch a
+ * Ctrl-C or a `taskkill` without `/f`, and they cannot catch a SIGKILL or a
+ * power cut. Only the journal covers those, which is the whole point of putting
+ * the safety net on disk instead of in the process.
+ */
+/*
+ * A PREVIOUS RUN'S DAMAGE IS REPAIRED BEFORE THIS ONE PLANTS ANYTHING, because
+ * a drill that reads a mutated file as its "original" would record the sabotage
+ * as the thing to restore to, and the residue would become permanent at the
+ * moment it was next drilled.
+ */
+{
+  const { restored, stuck } = journal.restoreAll(ROOT)
+  for (const f of restored) console.log(`[drills] a previous run was interrupted; restored ${f}`)
+  if (stuck.length > 0) {
+    for (const s of stuck) console.error(`[drills] COULD NOT RESTORE ${s.entryPath}: ${s.why}`)
+    console.error('[drills] refusing to drill on a tree whose previous damage cannot be undone.')
+    process.exit(1)
+  }
+}
+
+/** Open handles, so a caught signal can put every one of them back. */
+const openHandles = new Set()
+
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
+  process.on(signal, () => {
+    for (const h of openHandles) {
+      try {
+        writeFileSync(h.path, h.handle.original)
+        journal.close(ROOT, h.handle)
+      } catch (error) {
+        /*
+         * The journal entry survives this, and no-drill-residue will refuse the
+         * next build because of it, which is the designed outcome. The error is
+         * still named: a reader who sees the guard fire tomorrow should be able
+         * to find the reason the automatic restore could not happen today.
+         */
+        console.error(
+          `[drills] could not restore ${h.handle.relPath} on ${signal}, so its journal entry stands: ` +
+            `${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+    }
+    console.error(`\n[drills] ${signal}: restored ${openHandles.size} mutated file(s) and exited.`)
+    process.exit(130)
+  })
+}
+
 let passed = 0
 const failed = []
 
@@ -4022,6 +4215,16 @@ const failed = []
  * filter before it starts, prints SUBSET on every summary line, and ends with a
  * final line that says in words that this is NOT the full harness. The
  * pre-push gate and every other caller pass no argument and are unaffected.
+ *
+ * 19 September 2026, the merge: LANE A WROTE THE SAME FLAG ON THE SAME DAY, in
+ * the same file, and the two declarations collided on `onlyAt`, so keeping both
+ * was a SyntaxError rather than a choice. This one is kept because it is the
+ * superset: it accepts a comma separated list, matches a GUARD PATH as well as a
+ * drill name, and refuses a `--only` with no argument at all. Lane A's version
+ * matched one substring against names only. Its reasoning is kept here because
+ * it names a cost this comment did not: two of these drills run the WHOLE guard
+ * runner, so a full pass is minutes rather than seconds, and a new drill entry
+ * that was never executed looks identical to one that passed.
  */
 const onlyAt = process.argv.indexOf('--only')
 const only = onlyAt === -1 ? null : process.argv[onlyAt + 1]
@@ -4071,8 +4274,17 @@ for (const drill of selected) {
     continue
   }
 
+  /*
+   * The journal entry is written BEFORE the mutation, never after, so the
+   * window in which the tree is mutated and unrecorded does not exist.
+   */
+  let handle = null
   try {
-    if (mutates) writeFileSync(path, original.replace(anchor, drill.replace))
+    if (mutates) {
+      handle = journal.open(ROOT, drill.file, { drill: drill.name, planted: drill.replace })
+      openHandles.add({ path, handle })
+      writeFileSync(path, original.replace(anchor, drill.replace))
+    }
     const { code, out } = run(drill.guard, drill.env ?? null)
 
     /*
@@ -4128,7 +4340,18 @@ for (const drill of selected) {
     console.log(`  FAILS AS EXPECTED  ${drill.name}`)
     console.log(`      exit ${code}: ${line}\n`)
   } finally {
-    if (mutates) writeFileSync(path, original)
+    if (mutates) {
+      writeFileSync(path, original)
+      /*
+       * OBSERVED, NEVER ASSUMED. `close` re-reads the file and keeps the journal
+       * entry when the bytes do not match, so a write that half-succeeded, on a
+       * disk three worktrees share, leaves the alarm standing rather than a tree
+       * that only looks restored.
+       */
+      const closed = journal.close(ROOT, handle)
+      if (!closed.ok) failed.push(`${drill.name}: ${closed.why}`)
+      for (const h of openHandles) if (h.handle === handle) openHandles.delete(h)
+    }
   }
 }
 
