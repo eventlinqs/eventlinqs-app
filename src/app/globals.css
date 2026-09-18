@@ -349,6 +349,17 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body);
+  /* THE CONSENT BANNER RESERVES ITS OWN SPACE (close-out AN1, 14 September
+     2026). The banner is a fixed strip at the foot of the window, and measured
+     at 390 it stood 286 pixels tall over an /admin/login page that does not
+     scroll: the Sign in button sat entirely underneath it with no way to reach
+     it. A control a finger lands on that does nothing is the same defect as a
+     dead link, and worse on a phone where the whole strip reads as the page.
+     This makes the document taller by exactly the banner's height while it is
+     up, so everything the banner covers can be scrolled clear of it, and the
+     variable falls to zero the moment the question is answered. The banner
+     writes it in src/components/analytics/consent-banner.tsx. */
+  padding-bottom: var(--el-consent-banner-height, 0px);
 }
 
 /* ─── WCAG 2.2 AA focus indicator - gold, keyboard-only ─────────────────── */

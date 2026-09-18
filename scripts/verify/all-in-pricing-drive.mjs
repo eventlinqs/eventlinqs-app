@@ -187,7 +187,18 @@ async function createLaneCEvent(passType) {
       end_date: new Date(start.getTime() + 4 * 3600 * 1000).toISOString(),
       timezone: 'Australia/Melbourne',
       status: 'published',
-      visibility: 'public',
+      /*
+       * UNLISTED, NOT PUBLIC, 17 September 2026. This drive opens exactly one
+       * route, /events/<slug>, and that page screens out only `private`
+       * (src/app/events/[slug]/page.tsx), so an unlisted fixture renders in
+       * full and every all-in figure this drive reads is unchanged.
+       *
+       * A public one would be published into the sitemap, on a database three
+       * lanes share and one lane deletes from, which is a fixture advertised to
+       * Google for as long as it lives. PUBLIC_EVENT_MATCH excludes unlisted,
+       * so this row is never in the catalogue at all.
+       */
+      visibility: 'unlisted',
       fee_pass_type: passType,
       venue_name: 'Lane C Proof Room',
       venue_address: '1 Lane C Street',

@@ -79,9 +79,21 @@ export const RESERVED_CODES: readonly string[] = [
   'about', 'account', 'actions', 'admin', 'api', 'artist', 'artists', 'auth',
   'careers', 'categories', 'checkout', 'cities', 'city', 'communities',
   'community', 'contact', 'dashboard', 'design', 'dev', 'e', 'events', 'faith',
-  'feed', 'for-organisers', 'forgot-password', 'gigs', 'guides', 'help', 'join',
+  'feed', 'for-organisers', 'forecast', 'forgot-password', 'gigs', 'guides', 'help', 'join',
   'launch',
-  'legal', 'login', 'offline', 'orders', 'organisers', 'press', 'pricing', 'queue', 's',
+  // The GA3 tracked link, the /m route. A share code that shadowed it would
+  // take over the address the attribution spine mints links on, which is the
+  // basis of an invoice. The guard caught this before one could be minted.
+  //
+  // NO SQUARE BRACKET AND NO APOSTROPHE IN THIS COMMENT, and both matter.
+  // short-link-namespace finds the end of this array with the first closing
+  // bracket after the assignment, and reads the entries by pairing single
+  // quotes, so a dynamic segment written out in full truncates the list and a
+  // possessive apostrophe re-pairs every quote after it. Either one makes the
+  // guard report almost every route in the app as unreserved, which is how the
+  // first two versions of this line failed.
+  'm',
+  'legal', 'login', 'marketing', 'offline', 'orders', 'organisers', 'press', 'pricing', 'queue', 's',
   'scan', 'signup', 'squad', 't', 'tickets', 'unsubscribe', 'venues',
   'verify-email-sent', 'waitlist',
   // Held back on purpose: the permanent redirects from the community rename,

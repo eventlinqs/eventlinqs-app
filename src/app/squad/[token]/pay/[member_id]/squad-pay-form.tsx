@@ -13,7 +13,7 @@ import {
   recordSquadMemberMarketingConsent,
 } from '@/app/actions/squad-checkout'
 import { Button } from '@/components/ui/Button'
-import { MarketingConsent } from '@/components/checkout/marketing-consent'
+import { MarketingConsent, type PlatformConsentWording } from '@/components/checkout/marketing-consent'
 
 interface SquadPayFormProps {
   memberId: string
@@ -24,6 +24,9 @@ interface SquadPayFormProps {
   pricePerSpotCents: number
   currency: string
   publishableKey: string
+  /** GA1's reversal condition, resolved on the server from `audience_capture`.
+   *  False removes the EventLinqs marketing question from this form. */
+  platformWording: PlatformConsentWording | null
 }
 
 function formatPrice(cents: number, currency: string) {
@@ -38,12 +41,14 @@ function InnerPayForm({
   pricePerSpotCents,
   currency,
   squadToken,
+  platformWording,
 }: {
   memberId: string
   organiserName: string
   pricePerSpotCents: number
   currency: string
   squadToken: string
+  platformWording: PlatformConsentWording | null
 }) {
   const stripe = useStripe()
   const elements = useElements()
@@ -68,13 +73,18 @@ function InnerPayForm({
         return
       }
 
-      // Record consent before confirming payment. Best-effort: a failure here
-      // must never block the payment.
-      if (organiserConsent || platformConsent) {
-        await recordSquadMemberMarketingConsent(memberId, organiserConsent, platformConsent, squadToken).catch(
-          () => {},
-        )
-      }
+      /*
+       * Record the marketing answer before confirming payment. Best-effort: a
+       * failure here must never block the payment.
+       *
+       * ALWAYS CALLED, EVEN WHEN BOTH BOXES ARE LEFT ALONE. It used to be
+       * skipped in that case, which made a squad buyer who was asked and said
+       * no indistinguishable from one who was never asked. The server records
+       * the decline; nothing is granted by calling this with two falses.
+       */
+      await recordSquadMemberMarketingConsent(memberId, organiserConsent, platformConsent, squadToken).catch(
+        () => {},
+      )
 
       const { error: confirmError } = await stripe.confirmPayment({
         elements,
@@ -99,6 +109,7 @@ function InnerPayForm({
           platformConsent={platformConsent}
           onOrganiserChange={setOrganiserConsent}
           onPlatformChange={setPlatformConsent}
+          platformWording={platformWording}
         />
       </div>
 
@@ -139,6 +150,7 @@ export function SquadPayForm({
   pricePerSpotCents,
   currency,
   publishableKey,
+  platformWording,
 }: SquadPayFormProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -212,6 +224,7 @@ export function SquadPayForm({
         pricePerSpotCents={pricePerSpotCents}
         currency={currency}
         squadToken={squadToken}
+        platformWording={platformWording}
       />
     </Elements>
   )

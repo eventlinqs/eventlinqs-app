@@ -343,12 +343,12 @@ function matchBrace(s, open) {
 const ADMITTED = [
   {
     file: 'src/app/squad/[token]/pay/[member_id]/squad-pay-form.tsx',
-    line: 73,
+    line: 84,
     why:
-      'Recording marketing consent, deliberately best-effort and explicitly caught: it sits between the card ' +
+      'Recording the marketing ANSWER, deliberately best-effort and explicitly caught: it sits between the card ' +
       'submission and stripe.confirmPayment, and the buyer is mid-payment. A consent-ledger fault must never ' +
       'interrupt a payment or put a scary message in front of someone whose card is being charged. The consent ' +
-      'itself is not a control the user is waiting on a result from; the payment is, and that one speaks.',
+      'itself is not a control the user is waiting on a result from; the payment is, and that one speaks. Close-out GA1 moved the line and widened what is recorded: the call now runs even when both boxes are left alone, because a decline is a fact worth keeping, so silence covers a no as well as a yes.',
   },
 ]
 

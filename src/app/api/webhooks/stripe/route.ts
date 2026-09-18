@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { assertRecipientDeclared } from '@/lib/notifications/recipient-matrix'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -17,6 +18,7 @@ import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
 import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
+import { notifyOrganiserOfSale } from '@/lib/notifications/organiser-sale-notify'
 import { voidPayoutById, getStripeClient } from '@/lib/payments/payout'
 import { getAppUrl } from '@/lib/site-url'
 import { reverseOrganiserTransferForRefund } from '@/lib/payments/event-transfer'
@@ -440,6 +442,48 @@ async function handlePaymentSucceeded(
       payment_intent_id: intent.id,
     })
     console.error('[webhook] connect ledger write threw (non-fatal, continuing):', ledgerErr)
+  }
+
+  /*
+   * MONEY FIX B4. TELL THE ORGANISER THEY MADE A SALE.
+   *
+   * This is the message that did not exist. `order_paid` is the PLATFORM feed
+   * and always was, which is how MKLStudios sold two tickets on 10 September
+   * 2026 with the platform owner as the only human told.
+   *
+   * It sits AFTER the ledger write and is non-fatal for the same reason the
+   * ledger write is: the buyer already holds their tickets, and no
+   * notification may put a confirmed order at risk by making Stripe retry.
+   */
+  try {
+    const organisationId = intent.metadata?.organisation_id ?? null
+    const eventId = intent.metadata?.event_id ?? null
+    if (organisationId && eventId) {
+      const saleNotice = await notifyOrganiserOfSale(adminClient, {
+        organisationId,
+        eventId,
+        orderId: order_id,
+      })
+      if (saleNotice.status === 'skipped') {
+        console.warn('[webhook] organiser sale notice skipped', {
+          orderId: order_id,
+          reason: saleNotice.reason,
+        })
+      }
+    } else {
+      console.warn(
+        '[webhook] organiser sale notice skipped: intent carries no organisation_id/event_id',
+        { orderId: order_id },
+      )
+    }
+  } catch (saleErr) {
+    captureException(saleErr, {
+      scope: 'stripe-webhook',
+      handler: 'organiser-sale-notify',
+      order_id,
+      payment_intent_id: intent.id,
+    })
+    console.error('[webhook] organiser sale notice threw (non-fatal, continuing):', saleErr)
   }
 
   // Venue Revenue Sharing Program REMOVED (founder decision 2026-07-05):
@@ -1524,6 +1568,8 @@ async function handleRefundNotCompleted(refund: Stripe.Refund) {
     await sendEmail({
       to: alertDestination(),
       subject: `Refund did not complete: ${order?.order_number ?? row.order_id} owes ${amount}`,
+      messageType: 'refund_did_not_complete',
+      recipientRole: 'platform_owner',
       text:
         'A refund failed at the bank. The money came back to the EventLinqs Stripe balance '
         + `and the buyer did NOT receive it.\n\n${detail}\n\n`
@@ -1883,6 +1929,9 @@ async function sendRefundConfirmationEmail(
     organiserName,
     organiserContactEmail,
   })
+
+  // MONEY FIX B3: a third transport, gated like the other three.
+  assertRecipientDeclared('refund_completed', 'buyer')
 
   if (resolveMailTransport() === 'console') {
     printConsoleEmail({ to: buyerEmail, subject: refundSubject, html: refundHtml })

@@ -161,3 +161,97 @@ export function bodies(chunks) {
 }
 
 export const kb = (bytes) => (bytes / 1024).toFixed(1)
+
+/**
+ * ============================================================================
+ * WHAT A MARK IS A FACT ABOUT, AND WHAT IT IS NOT
+ * ============================================================================
+ *
+ * A mark in perf-budget.json is a GZIP BYTE COUNT of files a particular
+ * toolchain emitted. The ratchet in scripts/guards/initial-bundle-budget.mjs
+ * compares this build against that number and fails on any increase, which is
+ * exactly right when both sides came off the same toolchain and is a category
+ * error when they did not.
+ *
+ * THE FAILURE THAT PUT THIS HERE, 17 September 2026. The `--built` half was
+ * added on 16 September with a baseline written mid-session, and the same commit
+ * carried later edits the baseline predates. The next build measured 4 to 16
+ * bytes MORE on 132 of 133 routes and the gate reported all 132 as "grew ...
+ * (+0.0 KB)", which is a growth message that names no growth. The push lane was
+ * blocked by a number that had never been measured against the tree it judged.
+ *
+ * PROVEN DETERMINISTIC FIRST, because the fix depends on which it is: two full
+ * builds of the SAME source on this machine measured byte-identical on all 133
+ * routes (C:\dev\EVIDENCE\MONEY\bundle-determinism.txt). So the bytes are a
+ * stable fact about a toolchain, and the only question is whether the mark and
+ * the build came off the same one.
+ *
+ * AND THE ONE THAT HAD NOT HAPPENED YET, which is the reason this is a fix and
+ * not a baseline rewrite. `postbuild` runs this guard with `--built`, and npm
+ * runs `postbuild` after `build`, which is the command Vercel runs. No Vercel
+ * build had ever executed it, because the guard arrived unpushed. A mark written
+ * on win32 and judged against a Linux build would have failed the PRODUCTION
+ * DEPLOYMENT, and the remedy anyone reaches for under that pressure is
+ * `--write-baseline`, which is how a ratchet quietly becomes a rubber stamp.
+ * Whether a Next build is byte-identical across operating systems is UNSOURCED
+ * and was not assumed in either direction: the mark simply records the
+ * conditions it was taken under, and says so when they differ.
+ *
+ * So the ratchet is authoritative where the comparison is sound and REPORTS
+ * where it is not. Nothing else relaxes: the absolute Scope v5 10.3 budget, the
+ * unmarked-route clause and the stale-mark clause block on every host.
+ */
+export function measurementIdentity(root = process.cwd()) {
+  return {
+    platform: process.platform,
+    arch: process.arch,
+    node: process.versions.node,
+    next: installedNextVersion(root),
+  }
+}
+
+/**
+ * The version on disk, never the range in package.json.
+ *
+ * "A lockfile entry is an intention, the installed tree is the fact" is already
+ * law here for a dependency on a user-content path (CLAUDE.md, dependency bumps),
+ * and it is the same distinction: what emitted these bytes is the package that
+ * ran, not the one that was asked for.
+ */
+function installedNextVersion(root) {
+  try {
+    return JSON.parse(readFileSync(join(root, 'node_modules', 'next', 'package.json'), 'utf8')).version ?? null
+  } catch (error) {
+    /*
+     * SPOKEN, because null here is not a neutral value. A recorded identity with
+     * a null `next` matches no host for ever, so the ratchet would report rather
+     * than judge on every machine including the one that wrote the mark, and it
+     * would do so in a line about platforms that never mentions the real cause.
+     */
+    console.warn(
+      `[first-load] the installed next version could not be read, so the measuring identity records it as ` +
+        `null and will match no host: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    return null
+  }
+}
+
+/**
+ * Why this host cannot be judged against that recorded identity, or null when
+ * it can.
+ *
+ * A missing identity is NOT treated as "comparable". A mark with no conditions
+ * recorded is a mark whose conditions are unknown, and reading unknown as
+ * matching is the assumption this whole module exists to stop.
+ */
+export function identityMismatch(recorded, root = process.cwd()) {
+  if (!recorded || typeof recorded !== 'object') {
+    return 'the baseline records no measuring identity at all, so there is nothing to compare this host against'
+  }
+  const here = measurementIdentity(root)
+  const differing = Object.keys(here).filter((k) => recorded[k] !== here[k])
+  if (differing.length === 0) return null
+  return differing
+    .map((k) => `${k}: the mark was taken on ${JSON.stringify(recorded[k] ?? null)}, this build ran on ${JSON.stringify(here[k])}`)
+    .join('; ')
+}

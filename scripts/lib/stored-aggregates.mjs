@@ -220,6 +220,28 @@ export const STORED_AGGREGATES = [
       "NOT A SUMMARY OF ROWS. It is the hold row's OWN balance, not a total over other rows. organisations.hold_amount_cents is the figure that totals these, and that one IS reconciled above and does drift.",
   },
   {
+    column: 'audience_members.order_count',
+    summarises: 'public.orders where status = confirmed, for this buyer',
+    maintenance: 'trigger',
+    maintainedBy:
+      'public.refresh_audience_member, called by trg_audience_on_order_confirmed on public.orders, by trg_audience_on_consent_event on public.consent_events and by trg_audience_on_suppression_event on public.suppression_events (close-out GA1 v3: the ledger drives it, and the older trigger on public.marketing_consents now fires from the projection rather than from application code).',
+    reconciled: true,
+    caveat: null,
+    decision:
+      'RECOMPUTED FROM SCRATCH ON EVERY REFRESH, never incremented. Close-out GA1 chose a full recount over a delta precisely to stay out of this class: there is no += anywhere, so there is no way for it to drift, and a missed trigger costs one stale row rather than a permanently wrong number. The same call recomputes lifetime_spend_cents, first_order_at and last_order_at from the same read, so the four can never disagree with each other either.',
+  },
+  {
+    column: 'marketing_match_run.returned_count',
+    summarises: 'public.marketing_match_score rows belonging to this run',
+    maintenance: 'application',
+    maintainedBy:
+      'src/lib/matching/run.ts, in one UPDATE at the end of the run that writes the length of the list it just inserted.',
+    reconciled: true,
+    caveat: null,
+    decision:
+      'A RUN IS IMMUTABLE ONCE FINISHED, which is what takes this out of the drift class. The score rows for a run are inserted once, in one statement, and nothing on the platform adds to or removes from a finished run: there is no += anywhere and no second writer. The count is written from the array that was inserted rather than incremented per row, so the only way it can disagree with the rows is if the insert failed, and that path returns an error and leaves returned_count at its zero default rather than claiming a number. audience_considered and suppressed_by_reason on the same row are the same shape for the same reason.',
+  },
+  {
     column: 'digest_sends.event_count',
     summarises: null,
     maintenance: 'not-in-class',
@@ -237,6 +259,25 @@ export const STORED_AGGREGATES = [
     reconciled: false,
     caveat: null,
     decision: 'Same as digest_sends.event_count: a log row.',
+  },
+  {
+    column: 'organiser_sales_digest_sends.sale_count',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy: 'written once, by the digest send that created the row.',
+    reconciled: false,
+    caveat: null,
+    decision:
+      'A HISTORICAL RECORD of what one daily digest told an organiser, not a live aggregate. It is supposed to keep saying what the message claimed even after the orders it counted are refunded, because the point of keeping it is to reconcile the message against the orders later. Same class as digest_sends.event_count (close-out MONEY FIX B4).',
+  },
+  {
+    column: 'organiser_sales_digest_sends.gross_cents',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy: 'written once, by the digest send that created the row.',
+    reconciled: false,
+    caveat: null,
+    decision: 'Same as organiser_sales_digest_sends.sale_count: what one message said, on the day it said it.',
   },
   {
     column: 'discount_codes.max_uses',

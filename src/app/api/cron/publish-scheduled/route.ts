@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { notifyOrganiserEventPublished } from '@/lib/notifications/organiser-event-notify'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { publishScheduledEvents } from '@/lib/events/publish-scheduled'
@@ -81,6 +82,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // `revalidateEventSurfacesFromRouteHandler` for the citation and for why
       // `{ expire: 0 }` makes it immediate rather than stale-while-revalidate.
       await revalidateEventSurfacesFromRouteHandlerById(admin, outcome.eventId)
+
+      // MONEY FIX B4. A scheduled publish is a publish, so the organiser hears
+      // the same thing they would have heard had they pressed the button. It
+      // is awaited rather than fired and forgotten because a cron handler that
+      // returns can have its work cut short, and a notification nobody waited
+      // for is a notification nobody sent.
+      const published = await notifyOrganiserEventPublished({ eventId: outcome.eventId })
+      if (published.status === 'skipped') {
+        console.warn(
+          `[cron/publish-scheduled] organiser not told about ${outcome.slug}: ${published.reason}`,
+        )
+      }
     }
   }
 

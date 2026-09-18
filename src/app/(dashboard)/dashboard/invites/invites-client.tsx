@@ -13,6 +13,8 @@ export function InvitesClient({
   initialInvites,
   allowance,
   acceptedCount,
+  referralsConfirmed,
+  referralsPending,
   feeFreeUntil,
   waiverActive,
   cities,
@@ -20,6 +22,13 @@ export function InvitesClient({
   initialInvites: InviteRow[]
   allowance: number
   acceptedCount: number
+  /**
+   * Referrals that have EARNED months: organisers who joined through this
+   * organisation's link and whose first paid ticket has sold (close-out FO1).
+   */
+  referralsConfirmed: number
+  /** Joined through the link, no paid ticket sold yet, so nothing credited. */
+  referralsPending: number
   /**
    * Every Australian city, passed in rather than imported here. The picker
    * used to be two hardcoded <option> elements, Geelong and Melbourne, which
@@ -95,7 +104,15 @@ export function InvitesClient({
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Invites left" value={`${remaining} of ${allowance}`} />
-        <Stat label="Organisers joined" value={String(acceptedCount)} />
+        <Stat
+          label="Referrals counted"
+          value={String(referralsConfirmed)}
+          hint={
+            referralsPending > 0
+              ? `${acceptedCount} joined through your links. ${referralsPending} of them have not sold a paid ticket yet, so they have not earned you months`
+              : `${acceptedCount} joined through your links. Each one earns you months when their first paid ticket sells`
+          }
+        />
         <Stat
           label={waiverActive ? 'Platform fee waived until' : 'Platform fee waiver'}
           value={waiverLabel}

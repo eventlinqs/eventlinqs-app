@@ -5,7 +5,12 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isFlagEnabled } from '@/lib/flags'
 import { getRequestOrigin } from '@/lib/site-origin'
-import { INVITES_PER_FOUNDING_ORGANISER, REFERRAL_BONUS_MONTHS } from '@/lib/founding/invites'
+import {
+  INVITES_PER_FOUNDING_ORGANISER,
+  REFERRAL_BONUS_MONTHS,
+  FOUNDING_SPOT_CAP,
+  getFoundingReferralSummary,
+} from '@/lib/founding/invites'
 import { getCity } from '@/lib/cities/data'
 import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
@@ -87,6 +92,16 @@ export default async function InvitesPage({
   }))
   const acceptedCount = rows.filter(r => r.status === 'accepted').length
 
+  // WHAT HAS ACTUALLY BEEN EARNED, close-out FO1. "Organisers joined" counted
+  // accepted invites, which under the old rule was the same thing as months
+  // credited because the credit landed at signup. It is not the same thing any
+  // more: the three months arrive when the referred organiser's first paid
+  // ticket sells, so the screen has to separate the two or it promises time the
+  // charge has not granted.
+  const referrals = org.is_founding
+    ? await getFoundingReferralSummary(org.id)
+    : { confirmed: 0, pending: 0 }
+
   return (
     <div className="mx-auto max-w-3xl">
       {scope.ok ? (
@@ -103,8 +118,8 @@ export default async function InvitesPage({
         </p>
         <h1 className="mt-1 font-display text-2xl font-bold text-ink-900">Invite fellow organisers</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-600">
-          Every organiser you bring on earns you {REFERRAL_BONUS_MONTHS} more fee-free months, and gives them
-          their own founding spot while any of the 50 remain.
+          Every organiser you bring on earns you {REFERRAL_BONUS_MONTHS} more fee-free months once they sell
+          their first paid ticket, and gives them their own founding spot while any of the {FOUNDING_SPOT_CAP} remain.
         </p>
       </div>
 
@@ -115,6 +130,8 @@ export default async function InvitesPage({
           feeFreeUntil={org.founding_fee_free_until ?? null}
           waiverActive={isWaiverActive(org.founding_fee_free_until)}
           acceptedCount={acceptedCount}
+          referralsConfirmed={referrals.confirmed}
+          referralsPending={referrals.pending}
           cities={getAllCities().map(c => ({ slug: c.slug, name: c.name, state: c.state }))}
         />
       ) : (

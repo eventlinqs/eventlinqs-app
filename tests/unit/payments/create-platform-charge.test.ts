@@ -28,6 +28,7 @@ function makeFees(overrides: Partial<FeeBreakdown> = {}): FeeBreakdown {
     total_cents: 10_800,
     currency: 'AUD',
     fee_pass_type: 'pass_to_buyer',
+    founding_fee_waived_cents: 0,
     fee_waived: false,
     breakdown_display: {
       tickets: [],

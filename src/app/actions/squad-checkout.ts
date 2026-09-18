@@ -7,10 +7,9 @@ import { getDefaultGateway } from '@/lib/payments/gateway-factory'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { createPlatformCharge } from '@/lib/payments/create-platform-charge'
 import { ChargePreconditionError } from '@/lib/payments/application-fee'
-import {
-  recordOrganiserMarketingConsent,
-  recordPlatformUpdateConsent,
-} from '@/lib/consent/record'
+import { recordOrganiserMarketingConsent } from '@/lib/consent/record'
+import { recordCheckoutMarketingAnswer } from '@/lib/consent/checkout-answer'
+import { recordClickSignalForOrder } from '@/lib/attribution/checkout-signal'
 import { assertSquadAccess, type SquadAccessRow } from '@/lib/squads/access'
 import type { FeePassType } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
@@ -170,6 +169,9 @@ export async function createSquadMemberPaymentIntent(
       addon_total_cents: 0,
       platform_fee_cents: fees.platform_fee_cents,
       processing_fee_cents: fees.payment_processing_fee_cents,
+      // Close-out FO1: what the Founding Organiser offer cost on this order.
+      // Zero on every order whose organiser is not inside a fee-free window.
+      founding_fee_waived_cents: fees.founding_fee_waived_cents,
       tax_cents: fees.tax_cents,
       discount_cents: 0,
       total_cents: fees.total_cents,
@@ -182,6 +184,14 @@ export async function createSquadMemberPaymentIntent(
     console.error('[squad-checkout] order insert error:', orderError)
     return { error: 'Failed to create order. Please try again.' }
   }
+
+  /*
+   * WHICH TRACKED LINK, IF ANY (close-out GA3). Here for the same reason it is
+   * in the ordinary checkout: this is the first moment an order id exists, and
+   * GA3's invariant is one attribution record per order, never zero, which
+   * includes the orders a squad creates. Never throws, never blocks.
+   */
+  await recordClickSignalForOrder(order_id)
 
   // Create order item (1 ticket)
   const { error: itemError } = await adminClient
@@ -301,7 +311,23 @@ function chargePreconditionMessage(reason: ChargePreconditionError['reason']): s
  * Record a squad member's marketing consent (Spam Act). The squad order is
  * created up front when the payment intent mounts, so consent is captured
  * separately at submit time from the squad pay form. Per-organiser, best-effort,
- * never blocks payment. Records nothing when neither box is ticked.
+ * never blocks payment.
+ *
+ * TWO DEFECTS FIXED HERE IN GA1, both found by reading this beside the main
+ * checkout it is supposed to mirror.
+ *
+ * 1. THE BOX PROMISED ONE THING AND THE RECORD WENT SOMEWHERE ELSE. This form
+ *    renders the same component as the main checkout, so a squad buyer read
+ *    "a weekly local digest and occasional EventLinqs updates", and their tick
+ *    was written to `email_subscribers`, which the digest has never read: it
+ *    reads `marketing_consents` and the city waitlist
+ *    (src/lib/broadcast/digest-audience.ts). So a squad buyer who said yes was
+ *    promised a weekly email that would never arrive, and was given no
+ *    unsubscribe token, because the token lives on the row that was not
+ *    written. It goes to the same place the main checkout writes now.
+ * 2. THE ANSWER WAS ONLY RECORDED WHEN IT WAS YES. Ticking nothing returned
+ *    early and recorded nothing, so a squad decline was indistinguishable from
+ *    never being asked. It is recorded now, exactly as the main checkout does.
  */
 export async function recordSquadMemberMarketingConsent(
   memberId: string,
@@ -309,8 +335,6 @@ export async function recordSquadMemberMarketingConsent(
   platformConsent: boolean,
   squadToken: string,
 ): Promise<{ ok: boolean }> {
-  if (!organiserConsent && !platformConsent) return { ok: true }
-
   try {
     const adminClient = createAdminClient()
     const supabase = await createClient()
@@ -365,9 +389,17 @@ export async function recordSquadMemberMarketingConsent(
         at,
       })
     }
-    if (platformConsent) {
-      await recordPlatformUpdateConsent(adminClient, { email, source: 'squad-checkout' })
-    }
+    // The same shared rule the main checkout calls, for the reason recorded in
+    // src/lib/consent/checkout-answer.ts: a consent rule that lives inside one
+    // purchase path is a rule the other two do not have, and this is the path
+    // that proved it by writing a consent with no city.
+    await recordCheckoutMarketingAnswer(adminClient, {
+      email,
+      ticked: platformConsent,
+      captureSurface: 'squad-checkout',
+      eventId: event.id,
+      at,
+    })
     return { ok: true }
   } catch (error) {
     captureException(error, { where: 'app/actions/squad-checkout:373' })

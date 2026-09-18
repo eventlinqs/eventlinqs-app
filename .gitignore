@@ -206,8 +206,21 @@ docs/verification/lh-local/
 # server writes its own log and none of them may dirty the tree.
 .tmp-serve.log
 .tmp-serve.err.log
+# The same, per lane, when three worktrees drive against three ports at once.
 .tmp-serve-*.log
 .tmp-serve-*.err.log
+.tmp-upstash*.log
+.tmp-stripe-listen.log
+#
+# AND ANY OTHER `.tmp-*` LOG, WHICH IS THE POINT OF THIS LINE.
+#
+# The entries above were added one at a time as each new harness invented a new
+# name, and one escaped: `.tmp-lane-b-stripe-listen.log` matches none of them,
+# and it holds the `whsec_` signing secret `stripe listen` mints for the session.
+# A list of exact names is a list that is always one name short, and the thing it
+# lets through is a credential in the tree. The named lines are kept anyway, so a
+# reader can see which harness invented which name.
+.tmp-*.log
 
 # The parity check's last result (close-out PARITY1). A RUN RESULT, not source:
 # it is written by scripts/ops/parity-check.mjs and read by the daily digest,
@@ -224,3 +237,12 @@ docs/verification/lh-local/
 # deleted when the proof is recorded; ignoring them means a forgotten one can
 # never be committed by accident.
 .tmp-*.mjs
+
+# The guard-failure drill harness's crash-safety journal (see
+# scripts/verify/lib/drill-journal.mjs). An entry holds one machine's
+# pre-mutation bytes and pid, written before a drill touches a file and deleted
+# once the restore is observed. It is a RUN STATE, never source: committing one
+# would put a lane's half-finished drill into everybody's tree and would make
+# scripts/guards/no-drill-residue.mjs fail in every checkout for ever, which is
+# how a gate gets switched off. The guard checks that it stays untracked.
+.drill-journal/

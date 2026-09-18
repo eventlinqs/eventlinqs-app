@@ -12,6 +12,7 @@
  *   sender-single-source       one definition of the sending identity
  *   no-unguarded-credential-form  no password field submittable before hydration
  *   no-control-characters      no heredoc-corrupted byte in any source file
+ *   no-drill-residue           no killed guard-failure drill leaves a mutated file
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   canonical-host             one definition of the canonical host, resolved everywhere
@@ -36,6 +37,31 @@
  *   shared-log-is-opened-for-append  a descriptor handed to a child process is
  *                              opened for append, so a second writer on the same
  *                              file cannot be overwritten by a stale offset
+ *   lane-tagged-privilege-writes  a script that grants a Founding Organiser
+ *                              window on shared TEST restricts its subject to its
+ *                              own lane's rows, because a window makes the platform
+ *                              fee zero and a zero keep is refused at the payment
+ *                              step, so one left on another lane's charge fixture
+ *                              fails that lane's proof for a reason not in its tree
+ *   drive-usage-names-what-it-needs  a drive's header names every loader flag and
+ *                              environment variable that drive needs, so the
+ *                              evidence behind a closure can be reproduced
+ *   fixtures-are-not-published  a drive's fixture is never given the two values the
+ *                              sitemap selects on, because three lanes share one TEST
+ *                              database and a published URL deleted minutes later
+ *                              answers 404 to whoever reads the snapshot next
+ *   proof-reads-never-discard-their-error  on the campaign proof page a read that
+ *                              failed becomes a 500, never a printed zero and never
+ *                              a 404, because that page defends a fee with numbers
+ *   no-published-lane-b-fixture-on-test  and the same rule asked of the DATABASE:
+ *                              no lane B fixture is left published on shared TEST,
+ *                              whoever left it and whenever, because a leftover is a
+ *                              state and only a question finds one
+ *   every-order-carries-its-attribution  an order is never created by a path that
+ *                              skips the write-time attribution capture, and the
+ *                              repair for the ones it still misses is on a
+ *                              schedule, because the guard that reads the rows
+ *                              skips in CI and never runs on production at all
  *   busy-region-names-itself   a loading skeleton that names itself carries a role
  *                              allowed to have a name, never a bare aria-label
  *   labels-name-the-right-control  and that label points at the control it describes,
@@ -52,6 +78,8 @@
  *                              JavaScript on every one of the 133 routes
  *   edge-cache-is-viewer-independent  a route that is edge-cached publicly renders the
  *                              anonymous header and never stores a signed-in render
+ *   no-client-redis-import     no client component pulls @upstash/redis into the bundle
+ *   no-loadable-in-the-root-shell  nothing in the root layout's client chunk imports next/dynamic
  *   steps-declare-work     every CI step prints how much work it did, and zero fails
  *   curated-categories-exist  every curated homepage category slug exists in the database
  *   no-banned-word-anywhere  the banned word in identifiers, slugs, paths and keys, not only copy
@@ -62,6 +90,55 @@
  *   one-visibility-source      one public-visibility rule, and every event cache tag is invalidated
  *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
  *   one-fee-copy               no customer-facing surface names a second fee
+ *   no-analytics-before-consent  no measurement or advertising host is reachable
+ *                              without consent, and the default is refusal
+ *   organiser-page-is-a-read   the live proof block on /organisers is a read from the
+ *                              catalogue, the surface is named inside the copy gate, and
+ *                              every signup button carries the source AN1 counts
+ *   audience-consent-is-the-title-deed  an audience row cannot exist without a
+ *                              consent state of true and a non-empty consent wording,
+ *                              no unsubscribe surface asks anybody to log in, and the
+ *                              community taxonomy and the price bands say the same
+ *                              thing in SQL and in TypeScript
+ *   matcher-consented-and-capped  no stored match run holds somebody the consent
+ *                              resolver refuses, and none holds more people than its
+ *                              own cap
+ *   attribution-one-record-per-order-never-billable-when-reversed  every order
+ *                              carries exactly one stored attribution decision, an
+ *                              unattributed one says so with a reason, and nothing
+ *                              reports billable while a reversal exists for it
+ *   campaigner-allowlist-and-cap-in-database  no send row can exist whose
+ *                              recipient is not allowlisted with consent true for that
+ *                              campaign and channel, no SMS rests on a consent scoped
+ *                              to email, no campaign exceeds its own volume cap, and
+ *                              nothing leaves draft without an approval for its segment
+ *   forecast-reads-every-number  no fee, price or taxonomy value is typed into
+ *                              the public forecast tool, the fee comes from the
+ *                              one resolver, the taxonomy from the database, the
+ *                              method sentence is chosen by the method used, the
+ *                              measured claim stays out of reach, and the call to
+ *                              action sits below the result
+ *   product-loops-carry-their-parameters  the ticket email, rendered, carries the
+ *                              run-your-event line and both parameters; the
+ *                              confirmation page, the share bar and the
+ *                              organiser dashboard build their links through the
+ *                              one builder; and nothing types an attributed
+ *                              organiser link by hand
+ *   proof-page-every-number-sourced  every figure on the campaign proof page is
+ *                              produced through a source or a stated absence, no
+ *                              number, currency or percentage is typed into the
+ *                              rendering path, and the database refuses a stored
+ *                              snapshot holding a figure nothing sources
+ *   consent-ledger-is-evidence  the consent and suppression ledgers refuse UPDATE and
+ *                              DELETE at the database, an event cannot carry empty
+ *                              wording or a null tenant, no audience row can exist for
+ *                              somebody the resolver refuses, every module that can
+ *                              reach a mail transport is classified and every marketing
+ *                              one calls the resolver, and no rights or unsubscribe
+ *                              surface reads a session
+ *   founding-offer-matches-configuration  the published Founding Organiser numbers,
+ *                              the fifty in the SQL, and the fee sentence on /organisers
+ *                              and /pricing all agree with the configuration
  *   positioning-lock           no user-facing surface calls EventLinqs a ticketing platform
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
@@ -85,6 +162,11 @@
  *                              refused by the FEE AMOUNT: a deliberately waived fee is a
  *                              legitimate zero and an unexplained zero still is not
  *                              (close-out MONEY FIX A1.7)
+ *   every-message-has-a-declared-recipient
+ *                              every outbound message names a type the recipient matrix
+ *                              declares, no transport escapes the matrix, and no message about
+ *                              an organiser's event reaches the platform owner while the
+ *                              organiser is told nothing (close-out MONEY FIX B3)
  *   inventory-lock-integrity   two buyers can never be sold the same seat
  *   no-unowned-organisation-read  a service-role read of an organisation's sale posture, or a
  *                              service-role call to the publish gate, must prove the caller
@@ -596,6 +678,15 @@ const GUARDS = [
   'scripts/guards/sender-single-source.mjs',
   'scripts/guards/no-unguarded-credential-form.mjs',
   'scripts/guards/no-control-characters.mjs',
+  // The guard-failure drill harness mutates a real source file and restored it
+  // in a `finally`, which does not run when the process is killed. It was killed
+  // twice in two days: a power loss put `process.exit(1)` into the guard above
+  // and into commit 1aa059f6, where it exited 1 with no output at all and read
+  // as a real finding for a day; a usage-limit kill left an auth provider
+  // hardcoded on in the login page. This one fails while any drill journal entry
+  // is open, so a crash can only ever ADD evidence, and it offers the one-command
+  // undo rather than a description of one.
+  'scripts/guards/no-drill-residue.mjs',
   'scripts/guards/auth-autocomplete-guard.mjs',
   // One definition of the canonical host. The same wrong-domain defect had
   // landed in six places, including four share-card generators that printed it
@@ -723,6 +814,73 @@ const GUARDS = [
   // where three were sent, while the database and the engine both said three.
   // NO APOSTROPHES IN THIS BLOCK, see the note above the RLS entry.
   'scripts/guards/shared-log-is-opened-for-append.mjs',
+  // A drive's documented command names everything that drive actually needs.
+  // Three incidents in one day, 14 September 2026, all in lane B's own drives
+  // and all found by running exactly what the header said: an1-consent-drive
+  // named neither loader flag nor SERVER_LOG and reported 'no confirmation link
+  // was printed' and 'the role is attendee after confirming' before throwing
+  // part way through; pl1-loops-drive named the loaders and not SERVER_LOG and
+  // reported 'the weekly query counted 0 referred signups'. Every one of those
+  // messages accuses the product and not one was about the product, which is
+  // the property that makes it worth a guard: the damage lands in the harness's
+  // own evidence. A drive is what a closure block cites, so a drive nobody can
+  // reproduce is a closure resting on somebody's shell history. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs.
+  // Three lanes share TEST vkapkibzokmfaxqogypq. On 14 September 2026 lane B's
+  // FO1 offer drive was found granting and revoking Founding Organiser windows on
+  // whichever organisation happened to be first, which on that day meant lane A's
+  // refund fixtures and lane C's events. A window sets the platform fee to zero and
+  // a zero keep is refused at the payment step, so it makes another lane's proof
+  // fail at Stripe with the cause nowhere in that lane's tree. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/lane-tagged-privilege-writes.mjs',
+  'scripts/guards/drive-usage-names-what-it-needs.mjs',
+  // On 14 September 2026 lane B's PL1 fixture refused lane A's push at step 13 of
+  // 16: an organisation created `active` and an event created `public` are exactly
+  // what src/app/sitemap.ts selects on, so for the minutes that fixture lived the
+  // platform advertised an organiser profile and a venue page that were about to be
+  // deleted, and another lane's server had already cached that snapshot for its 300
+  // second revalidate window. Deleting the rows does not undo the advertising. The
+  // same shape cost production 48 URLs answering 404 to Googlebot on 25 August 2026.
+  // This guard also checks its own premise, because a rule about what the sitemap
+  // publishes is worthless the day the sitemap publishes something else. Drilled red
+  // in scripts/verify/guard-failure-drills.mjs, four ways.
+  'scripts/guards/fixtures-are-not-published.mjs',
+  // 15 September 2026, found by driving rather than by reading. GA5's drive said
+  // the proof page did not read as the with-sales state and the leading number
+  // rendered at 0 pixels. The server log carried the cause: a ConnectTimeoutError
+  // to Supabase, for about a minute. Every read in src/lib/proof/read.ts dropped
+  // its error, so the campaign read returned null and the page answered 404 for a
+  // campaign that exists, and the orders read would have returned an empty list,
+  // which downstream is not an error at all. It is zero revenue, printed as a
+  // figure, on the one page whose stated law is that a figure which cannot name
+  // its source renders as words and never as a zero. Drilled red two ways in
+  // scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/proof-reads-never-discard-their-error.mjs',
+  // The third lock on the same law, and the only one that asks the world. The
+  // static guard reads the drives; each drive asks about its own run; this asks
+  // what is on TEST right now. On 13 September 2026 a GA5 run left a published
+  // fixture event with four confirmed orders behind it, GA5 reported 'left as
+  // found' on every run afterwards because it counted campaign rows, and it sat in
+  // the sitemap for two days. Neither of the other two locks can see that: the
+  // source was already being changed and the run had long since ended. SKIPS by
+  // name where there is no database, as schema-ahead-of-code does. Drilled red in
+  // scripts/verify/guard-failure-drills.mjs by removing the FO1 exemption, and its
+  // decision is driven both ways over synthetic rows in
+  // tests/unit/guards/no-published-lane-b-fixture-on-test.test.ts, because proving
+  // the interesting half against the real database means committing the incident.
+  'scripts/guards/no-published-lane-b-fixture-on-test.mjs',
+  // 15 September 2026. GA3's invariant guard reads the database, and its own
+  // header says what it cannot do: in CI it points at a PLACEHOLDER project and
+  // skips, and on production nothing runs it at all. So the rule that every
+  // order carries exactly one stored attribution decision was defended by four
+  // call sites remembering one function, plus an ops script a person runs by
+  // hand after a build reds on a different machine. This checks the two halves
+  // that ARE source facts: every order insert under src/ is paired with the
+  // write-time capture, and the healer is on a schedule. Both derived by reading
+  // src/ rather than listed, so the fifth insert site is judged the day it is
+  // written. Drilled red both ways in scripts/verify/guard-failure-drills.mjs.
+  'scripts/guards/every-order-carries-its-attribution.mjs',
   // Close-out L5 (9 September 2026): the launch readiness report is a rendering
   // of the adjudication in scripts/verify/launch-readiness.mjs, re-rendered here
   // and compared byte for byte, so a row cannot be improved by editing the
@@ -792,6 +950,22 @@ const GUARDS = [
   // Its two siblings had both halves of the protection; this one had neither.
   // Found by building this guard rather than by a visitor, on 18 September 2026.
   'scripts/guards/edge-cache-is-viewer-independent.mjs',
+  // THE SAME RULE, A DIFFERENT SERVER-ONLY DEPENDENCY, AND IT WAS ALREADY LIVE.
+  // src/lib/redis/client.ts imports @upstash/redis and a 16.0 KB Buffer
+  // polyfill. One import from the ticket selector into sale-status.ts, which
+  // took a single currency helper from application-fee.ts, put 17.5 KB gzip of
+  // that on the event page and the checkout: the two surfaces that sell
+  // tickets. It surfaced as a 372-byte budget overage, 48 times smaller than
+  // its own cause, which is why a comment was never going to hold it.
+  'scripts/guards/no-client-redis-import.mjs',
+  // next/dynamic costs 1306 bytes gzip and a whole extra chunk in the SHARED
+  // shell, which is the first load of all 141 routes, and the shell uses none
+  // of the preloading, loading slot or SSR control it buys. One dynamic() call
+  // added to defer six components out of the root layout gave back 1099 of the
+  // 3938 bytes it saved, and surfaced as 116 identical faults on routes like
+  // /press and /offline, none of which names the cause. A bare import() defers
+  // the same tree for nothing. Route-level lazy wrappers are untouched.
+  'scripts/guards/no-loadable-in-the-root-shell.mjs',
   // A STEP THAT CLAIMS WORK MUST SAY HOW MUCH IT DID. A CI step named
   // "Warm ISR + the next/image optimiser" warmed no images at all, for weeks,
   // printing a tidy list of 200s the whole time; its replacement then reported
@@ -906,6 +1080,109 @@ const GUARDS = [
   // GENERATOR: run it with --write to regenerate, and with no arguments, which
   // is how the runner invokes it, it checks.
   'scripts/pricing-derive.mjs',
+  // Close-out FO1 (13 September 2026). The Founding Organiser offer is
+  // published on /organisers and repeated word for word in every outreach
+  // message: fifty organisers, six fee-free months, three more per referral,
+  // terms applied before the first on-sale. Every one of those numbers was a
+  // string in a copy file that no gate compared with the constants the charge
+  // actually uses, and the cap was ALSO a literal in two SQL functions that
+  // TypeScript cannot see. This holds the copy, the code and the database to one
+  // set of numbers, and holds /organisers and /pricing to rendering the fee as a
+  // read rather than a sentence. Drilled red by changing one number in the copy.
+  'scripts/guards/founding-offer-matches-configuration.mjs',
+  // Close-out OL1 (13 September 2026). /organisers is now the page every
+  // outreach message sends a stranger to, and it gained a block that shows the
+  // newest published event as a real card. The cheapest way to make that block
+  // look good on a thin day is to paste an event into it, and nothing would
+  // fail: the page would read better and would be lying to the people it is
+  // recruiting. This holds the block to a read, names the surface so a
+  // narrowing of the copy gate's walk cannot quietly drop it, and requires
+  // every signup button to carry the source AN1 counts. Drilled red by pasting
+  // an event slug into the template.
+  'scripts/guards/organiser-page-is-a-read.mjs',
+  // Close-out AN1 (13 September 2026). The platform now loads four third-party
+  // measurement scripts, three of which can recognise a person on other sites,
+  // and the rule is that none is requested until somebody says yes. The failure
+  // is silent in the worst direction: the page still works, the data still
+  // flows, and the tracker loads for exactly the person who took the trouble to
+  // refuse. This holds every provider host to the one gate, requires that gate
+  // to ask BOTH questions (the category and the identifier), and requires the
+  // default to be refusal on every path the decoder can take. The network half,
+  // loading three pages with no consent and watching every request, is the
+  // driven proof; a guard that needs a running server cannot run on the build
+  // host and would be dropped from the chain. Drilled red.
+  'scripts/guards/no-analytics-before-consent.mjs',
+  // Close-out GA1 (13 September 2026). The platform now keeps an audience of
+  // proven buyers, and consent is the title deed to it: an audience without
+  // provable consent cannot be used and cannot be sold. ACMA's enforcement
+  // record covers both halves, and the dates are stated correctly here because
+  // an earlier version of this comment had two of them wrong: TAB was penalised
+  // 4,003,270 dollars in June 2025 and 2.7 million dollars again in July 2026,
+  // mostly for messages with no unsubscribe; the Commonwealth Bank was
+  // penalised 7.5 million dollars announced in October 2024, for 34.8 million
+  // messages to people who had not consented or had withdrawn. So the entry and
+  // the exit are held equally hard. Three GA1 clauses: the CHECK that refuses
+  // an unconsented row, the CHECK that refuses empty wording, and no session on
+  // any unsubscribe surface. Two more, because a trigger cannot call
+  // TypeScript and the two languages must not drift: the community token map
+  // and the price bands. Drilled red on the constraint and on the drift.
+  'scripts/guards/audience-consent-is-the-title-deed.mjs',
+  // Close-out GA1 v3. The consent LEDGER, which is a different claim from the
+  // audience above it: a consent record is evidence of what one person was
+  // shown and agreed to, so it is append only, it carries the tenant and the
+  // scope from its first line, and the resolver that reads it is the only door
+  // a message can leave by. Five clauses, each drilled red: the database
+  // refuses UPDATE and DELETE on both ledgers, an event cannot be empty
+  // evidence, an audience row cannot exist for somebody the resolver refuses,
+  // no module can reach a mail transport without being classified in the send
+  // path registry (and a marketing one without calling the resolver), and no
+  // unsubscribe or privacy rights surface reads a session.
+  'scripts/guards/consent-ledger-is-evidence.mjs',
+  // Close-out GA2. The matcher produces the list a campaign will one day send
+  // against, so two things about a stored run must hold: nobody in it is
+  // somebody the consent resolver refuses, and no run holds more score rows
+  // than the cap recorded on it. The trigger stops a bad row arriving; this
+  // asks whether one is there, which a dropped or disabled trigger makes a
+  // different question. Drilled red on both clauses with the database's own
+  // protection removed, which is how a row like that would ever exist.
+  'scripts/guards/matcher-consented-and-capped.mjs',
+  // Close-out GA3. The attribution table is the basis of an invoice, so every
+  // order carries exactly one stored decision, never zero and never two, an
+  // order no campaign produced says so with a reason rather than being absent,
+  // and nothing reports billable while a reversal exists for it. Drilled red on
+  // both clauses: an attribution row deleted for one lane-B order, and a
+  // reversal inserted against a billable one with the database's own recompute
+  // removed, which is how a row like that would ever exist.
+  'scripts/guards/attribution-one-record-per-order-never-billable-when-reversed.mjs',
+  // Close-out GA4. The Spam Act is enforced hard here and the two failure modes
+  // an autonomous sender produces, messaging people who did not consent and
+  // volume nobody authorised, are each capable of ending this business. So the
+  // allowlist and the cap are database constraints rather than application
+  // checks, and this asserts both that the constraints are still there and that
+  // no row has slipped past them. Drilled red three times with every application
+  // level check removed: a send to somebody absent from the allowlist, an SMS to
+  // somebody whose consent covers email, and the insert that exceeds the cap.
+  'scripts/guards/campaigner-allowlist-and-cap-in-database.mjs',
+  // Close-out GA5. A client will not keep paying a commission they cannot check,
+  // and the moment a number appears on the proof page that nobody can trace, the
+  // page stops being proof and becomes a claim. This reads the rendering path
+  // out of the repository, so it needs no database and runs everywhere. Drilled
+  // red by replacing one figure with a typed literal, which it names by figure
+  // and by file, and by removing the snapshot constraint from the migration.
+  'scripts/guards/proof-page-every-number-sourced.mjs',
+  // Close-out PL1. The two product loops, and the failure that is quiet in the
+  // direction that costs most: the loop still works, people still arrive, and
+  // the parameter that says where they came from is gone, so the item is judged
+  // on a number nobody collected. It RENDERS the ticket email in a child
+  // process rather than reading its source, because a line inside a branch that
+  // never runs is in the source and not in the email.
+  'scripts/guards/product-loops-carry-their-parameters.mjs',
+  // Close-out FT1. The free forecast tool is the strongest reason a stranger
+  // has to trust this platform, and there are two ways it stops being that: a
+  // fee, price or taxonomy value gets typed into it and it quietly stops
+  // agreeing with what the platform charges, or the method sentence goes
+  // missing and arithmetic starts reading as a prediction.
+  'scripts/guards/forecast-reads-every-number.mjs',
   // Founder ruling 2026-08-15: nothing on this platform stays partially built.
   // Held unregistered while it reported 57 hits, because a gate that cannot go
   // green is a gate somebody switches off. All 57 are now classified and
@@ -989,6 +1266,14 @@ const GUARDS = [
   // every paid ticket for the organisers the growth plan exists to recruit was
   // refused at checkout with a pricing error that refreshing could never clear.
   'scripts/guards/funds-reach-the-organiser.mjs',
+  // MONEY FIX B3. The companion to funds-reach-the-organiser: that one makes the
+  // MONEY reach the organiser, this one makes the NEWS reach them. MKLStudios
+  // sold two tickets on 10 September 2026 and the only human told was the
+  // platform owner, because `order_paid` is a PLATFORM notification and no
+  // organiser counterpart existed anywhere in the tree. A message that was never
+  // written cannot be caught by testing the messages that were, so the check has
+  // to be a declaration every send is judged against.
+  'scripts/guards/every-message-has-a-declared-recipient.mjs',
   'scripts/guards/no-ambiguous-embed.mjs',
   // Measured 2026-08-19 against the real TEST database: 50 simultaneous buyers
   // against ONE seat, live create_reservation -> 1 won. Same body with FOR UPDATE

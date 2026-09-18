@@ -9,6 +9,9 @@ import {
   normaliseConsentEmail,
 } from './wording'
 import { captureException } from '@/lib/observability/sentry'
+import { LOCAL_DIGEST_PURPOSE, scopesForPurpose } from './purposes'
+import { recordConsentEvent, recordSuppressionEvent } from './ledger'
+import { resolveSend } from './resolver'
 
 type Admin = SupabaseClient<Database>
 
@@ -87,10 +90,19 @@ export async function recordPlatformUpdateConsent(
 }
 
 /**
- * Record (or refresh) the express weekly-local-digest consent (Broadcast
- * Layer SPEC 3.1) in marketing_consents: city scoped, wording recorded
- * verbatim, token preserved on update so old unsubscribe links keep working.
- * Best-effort: never throws into checkout or signup.
+ * Record the express weekly-local-digest consent (Broadcast Layer SPEC 3.1).
+ *
+ * CLOSE-OUT GA1 v3 CHANGED WHERE THIS LANDS, AND NOTHING ELSE ABOUT IT. It used
+ * to upsert public.marketing_consents, which held the current state and threw
+ * the history away. It now writes ONE APPEND-ONLY EVENT to the consent ledger,
+ * and a database trigger keeps marketing_consents in step, so every caller
+ * keeps working, every unsubscribe token already in an inbox keeps working, and
+ * the evidence of what each person was shown is kept for ever instead of being
+ * overwritten by their next answer.
+ *
+ * City scoped, wording recorded verbatim, best effort: never throws into a
+ * checkout or a signup, because a marketing record is not worth somebody's
+ * ticket.
  */
 export async function recordPlatformDigestConsent(
   admin: Admin,
@@ -111,23 +123,85 @@ export async function recordPlatformDigestConsent(
   try {
     const email = normaliseConsentEmail(params.email)
     if (!email) return false
-    const { error } = await admin.from('marketing_consents').upsert(
-      {
-        email,
-        user_id: params.userId ?? null,
-        city_slug: params.citySlug ?? null,
-        status: 'granted',
-        consent_text: params.consentText ?? DIGEST_CONSENT_WORDING,
-        consent_version: params.consentVersion ?? DIGEST_CONSENT_WORDING_VERSION,
-        source: params.source ?? 'checkout',
-        updated_at: params.at,
-        revoked_at: null,
-      },
-      { onConflict: 'email' },
-    )
-    return !error
+    const scopes = scopesForPurpose(LOCAL_DIGEST_PURPOSE)
+    return await recordConsentEvent(admin, {
+      email,
+      purpose: LOCAL_DIGEST_PURPOSE,
+      decision: 'granted',
+      wording: params.consentText ?? DIGEST_CONSENT_WORDING,
+      wordingVersion: params.consentVersion ?? DIGEST_CONSENT_WORDING_VERSION,
+      channelScope: 'email',
+      thirdPartyScope: scopes.thirdPartyScope,
+      suppressionScope: scopes.suppressionScope,
+      captureSurface: params.source ?? 'checkout',
+      citySlug: params.citySlug ?? null,
+      at: params.at,
+    })
   } catch (error) {
-    captureException(error, { where: 'lib/consent/record:130' })
+    captureException(error, { where: 'lib/consent/record:recordPlatformDigestConsent' })
+    return false
+  }
+}
+
+/**
+ * Record that this address WAS ASKED for platform marketing consent and said no.
+ *
+ * Close-out GA1. Until now an unticked box recorded nothing at all, so "asked
+ * and declined" and "never asked" were the same absence. They are not the same
+ * thing. The decline is evidence that the question was put and answered, which
+ * is exactly what an audit of a marketing list wants to see, and it is the
+ * denominator of the opt-in rate GA1's reversal condition is measured on.
+ *
+ * A DECLINE CAN NEVER REVOKE A CONSENT. A returning buyer who leaves the box
+ * unticked on their second purchase has not withdrawn anything: under the Spam
+ * Act a withdrawal is a deliberate act and an untouched checkbox is not one.
+ *
+ * That rule and the ledger's "latest event wins" rule pull against each other,
+ * and the resolution is written here rather than left to a reader: the decline
+ * is recorded only when the resolver does not currently permit this address.
+ * Where a live grant exists, an untouched box records NOTHING, because writing
+ * a later declined event would have silently revoked a consent the person never
+ * touched. Where there is no live grant, the decline is written and is real
+ * evidence that the question was put and answered.
+ *
+ * Best-effort, exactly like the grant: never throws into a checkout.
+ */
+export async function recordPlatformDigestDecline(
+  admin: Admin,
+  params: {
+    email: string
+    source?: string
+    at: string
+    consentText?: string
+    consentVersion?: string
+  },
+): Promise<boolean> {
+  try {
+    const email = normaliseConsentEmail(params.email)
+    if (!email) return false
+
+    const live = await resolveSend(admin, {
+      email,
+      purpose: LOCAL_DIGEST_PURPOSE,
+      channel: 'email',
+    })
+    if (live.permitted) return false
+
+    const scopes = scopesForPurpose(LOCAL_DIGEST_PURPOSE)
+    return await recordConsentEvent(admin, {
+      email,
+      purpose: LOCAL_DIGEST_PURPOSE,
+      decision: 'declined',
+      wording: params.consentText ?? DIGEST_CONSENT_WORDING,
+      wordingVersion: params.consentVersion ?? DIGEST_CONSENT_WORDING_VERSION,
+      channelScope: 'email',
+      thirdPartyScope: scopes.thirdPartyScope,
+      suppressionScope: scopes.suppressionScope,
+      captureSurface: params.source ?? 'checkout',
+      at: params.at,
+    })
+  } catch (error) {
+    captureException(error, { where: 'lib/consent/record:recordPlatformDigestDecline' })
     return false
   }
 }
@@ -150,16 +224,26 @@ export interface DigestUnsubscribeResult {
  * would hold a link that does nothing, which is the one failure the Spam Act
  * does not forgive.
  *
- * The consent-token path is the existing withdrawal, unchanged.
+ * CLOSE-OUT GA1 v3: A WITHDRAWAL IS NOW TWO LEDGER FACTS, NOT AN UPDATE.
  *
- * The waitlist-token path records the withdrawal in `marketing_consents`,
- * because that table is the single suppression list the audience merge
- * consults for BOTH sources. It carries the waitlist row's own consent
- * evidence across (the exact wording, its version, and when it was given) so
- * the audit trail reads truthfully: this person consented on that date under
- * that wording, and withdrew on this one. Where a `marketing_consents` row
- * already exists its recorded evidence is left untouched and only its status
- * moves, so no earlier grant is ever overwritten.
+ * It records a withdrawn consent event, carrying the exact wording the person
+ * originally agreed to, and a suppression event scoped to every EventLinqs
+ * facilitated message on every channel, which is what the wording promises.
+ * The projection trigger moves public.marketing_consents to withdrawn, so the
+ * digest, the audience asset and the preference centre all see it at once and
+ * every unsubscribe link already in an inbox keeps working.
+ *
+ * ONE CLICK STOPS EVERYTHING, ON EVERY CHANNEL. The suppression is written with
+ * channel `both`, so there is no state in which somebody who stopped email
+ * still receives SMS. It is scoped to this tenant, so it can never destroy a
+ * future client's own separately collected list.
+ *
+ * IDEMPOTENT. A second visit writes nothing and reports the same answer, which
+ * is what a person pressing it twice expects to see.
+ *
+ * The waitlist-token path carries the waitlist row's own consent evidence into
+ * the ledger, so the trail reads truthfully: this person consented on that date
+ * under that wording, and withdrew on this one.
  *
  * The waitlist MEMBERSHIP is deliberately left in place: they asked to be
  * told when their city opens, and this click was about the weekly email. The
@@ -176,19 +260,24 @@ export async function withdrawDigestByAnyToken(
 
   const { data: consentRow } = await admin
     .from('marketing_consents')
-    .select('email, status')
+    .select('email, status, consent_text, consent_version, city_slug')
     .eq('unsubscribe_token', token)
     .maybeSingle()
 
   if (consentRow) {
+    const email = normaliseConsentEmail(consentRow.email)
     if (consentRow.status === 'withdrawn') {
-      return { source: 'consent', email: consentRow.email, alreadyWithdrawn: true }
+      return { source: 'consent', email, alreadyWithdrawn: true }
     }
-    await admin
-      .from('marketing_consents')
-      .update({ status: 'withdrawn', revoked_at: at, updated_at: at })
-      .eq('unsubscribe_token', token)
-    return { source: 'consent', email: consentRow.email, alreadyWithdrawn: false }
+    await writeWithdrawalToLedger(admin, {
+      email,
+      wording: consentRow.consent_text,
+      wordingVersion: consentRow.consent_version,
+      citySlug: consentRow.city_slug,
+      captureSurface: 'unsubscribe-token',
+      at,
+    })
+    return { source: 'consent', email, alreadyWithdrawn: false }
   }
 
   const { data: waitlistRow } = await admin
@@ -206,31 +295,67 @@ export async function withdrawDigestByAnyToken(
     .eq('email', email)
     .maybeSingle()
 
-  if (existing) {
-    if (existing.status === 'withdrawn') {
-      return { source: 'waitlist', email, alreadyWithdrawn: true }
-    }
-    await admin
-      .from('marketing_consents')
-      .update({ status: 'withdrawn', revoked_at: at, updated_at: at })
-      .eq('id', existing.id)
-    return { source: 'waitlist', email, alreadyWithdrawn: false }
+  if (existing?.status === 'withdrawn') {
+    return { source: 'waitlist', email, alreadyWithdrawn: true }
   }
 
-  const { error } = await admin.from('marketing_consents').insert({
+  const written = await writeWithdrawalToLedger(admin, {
     email,
-    city_slug: waitlistRow.city_slug,
-    status: 'withdrawn',
-    consent_text: waitlistRow.consent_text,
-    consent_version: waitlistRow.consent_version,
-    source: 'city-waitlist',
-    granted_at: waitlistRow.created_at,
-    revoked_at: at,
-    updated_at: at,
+    wording: waitlistRow.consent_text,
+    wordingVersion: waitlistRow.consent_version,
+    citySlug: waitlistRow.city_slug,
+    captureSurface: 'waitlist-token',
+    at,
   })
-  if (error) return null
+  if (!written) return null
 
   return { source: 'waitlist', email, alreadyWithdrawn: false }
+}
+
+/**
+ * The two facts a withdrawal is, written once so every route that can withdraw
+ * writes the same pair. The suppression is what the resolver reads; the consent
+ * event is what an auditor reads.
+ */
+async function writeWithdrawalToLedger(
+  admin: Admin,
+  params: {
+    email: string
+    wording: string | null
+    wordingVersion: string | null
+    citySlug?: string | null
+    captureSurface: string
+    at: string
+  },
+): Promise<boolean> {
+  const scopes = scopesForPurpose(LOCAL_DIGEST_PURPOSE)
+  const recorded = await recordConsentEvent(admin, {
+    email: params.email,
+    purpose: LOCAL_DIGEST_PURPOSE,
+    decision: 'withdrawn',
+    // The withdrawal carries the words it withdraws, so the pair reads as one
+    // story. Where a source held no wording, the fallback is the standard
+    // digest sentence rather than an empty string the ledger would refuse.
+    wording: params.wording?.trim() || DIGEST_CONSENT_WORDING,
+    wordingVersion: params.wordingVersion?.trim() || DIGEST_CONSENT_WORDING_VERSION,
+    channelScope: 'email',
+    thirdPartyScope: scopes.thirdPartyScope,
+    suppressionScope: scopes.suppressionScope,
+    captureSurface: params.captureSurface,
+    citySlug: params.citySlug ?? null,
+    at: params.at,
+  })
+
+  const suppressed = await recordSuppressionEvent(admin, {
+    email: params.email,
+    channel: 'both',
+    scope: 'all_marketing',
+    reason: 'the person unsubscribed from EventLinqs marketing',
+    requestSource: params.captureSurface,
+    at: params.at,
+  })
+
+  return recorded && suppressed
 }
 
 /**
@@ -275,6 +400,10 @@ export async function findDigestUnsubscribeTarget(
 /**
  * Withdraw digest consent for an email directly (the signed-in preference
  * centre path, where the user proves ownership by session rather than token).
+ *
+ * The same pair of ledger facts as the token path, for the same reason: a
+ * withdrawal recorded one way in one place and another way in another is how a
+ * suppression goes missing.
  */
 export async function withdrawDigestConsentByEmail(
   admin: Admin,
@@ -284,13 +413,21 @@ export async function withdrawDigestConsentByEmail(
   try {
     const normalised = normaliseConsentEmail(email)
     if (!normalised) return false
-    const { error } = await admin
+    const { data: existing } = await admin
       .from('marketing_consents')
-      .update({ status: 'withdrawn', revoked_at: at, updated_at: at })
+      .select('consent_text, consent_version, city_slug')
       .eq('email', normalised)
-    return !error
+      .maybeSingle()
+    return await writeWithdrawalToLedger(admin, {
+      email: normalised,
+      wording: existing?.consent_text ?? null,
+      wordingVersion: existing?.consent_version ?? null,
+      citySlug: existing?.city_slug ?? null,
+      captureSurface: 'preference-centre',
+      at,
+    })
   } catch (error) {
-    captureException(error, { where: 'lib/consent/record:293' })
+    captureException(error, { where: 'lib/consent/record:withdrawDigestConsentByEmail' })
     return false
   }
 }

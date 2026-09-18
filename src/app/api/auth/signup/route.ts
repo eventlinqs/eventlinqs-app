@@ -11,6 +11,8 @@ import {
 } from '@/lib/growth/referrals'
 import { recordPlatformDigestConsent } from '@/lib/consent/record'
 import { KIT_DRAFT_COOKIE, isKitDraftToken } from '@/lib/growth/kit-draft'
+import { arrivalUtmObject, decodeArrival } from '@/lib/growth/arrival'
+import { normaliseHeardFrom } from '@/lib/growth/heard-from'
 import { trackEmailCapturedAfterRenderServer } from '@/lib/analytics/plausible'
 import {
   authMessage,
@@ -43,6 +45,14 @@ const BodySchema = z.object({
   ref: z.string().max(24).optional(),
   refSource: z.string().max(40).optional(),
   refEvent: z.string().max(160).optional(),
+  // HOW THIS ACCOUNT ARRIVED (close-out AN1): the encoded first-touch cookie,
+  // forwarded by the form. Bounded here as well as at the writer, because a
+  // cookie is user-writable and this endpoint is public.
+  arrival: z.string().max(1024).optional(),
+  // The one question. Both optional and never a condition of signing up: an
+  // unrecognised answer is dropped by normaliseHeardFrom rather than stored.
+  heardFrom: z.string().max(40).optional(),
+  heardFromOther: z.string().max(200).optional(),
   // Optional, unticked-by-default digest opt-in (Broadcast Layer SPEC 3.1).
   // Never a signup condition: the account is created whether or not it is set.
   digestOptIn: z.boolean().optional(),
@@ -287,7 +297,59 @@ export async function POST(request: NextRequest) {
   // failure here must never fail an otherwise successful signup.
   const captured = capturedFromBody(body)
   const newUserId = data?.user?.id
-  if (captured && newUserId) {
+
+  /*
+   * WHERE THIS ACCOUNT CAME FROM (close-out AN1), written in the SAME statement
+   * as the referral attribution above.
+   *
+   * It is one update rather than two because a second write is a second thing
+   * that can half-succeed, and an account with a source but no referral, or the
+   * other way round, is a row nobody can interpret. The referral fields stay in
+   * `metadata` because that is where the existing loop reads them; the six
+   * arrival fields go into columns, because the weekly line AGGREGATES them
+   * across every organiser and a group-by over a JSONB key is a scan of the
+   * whole table.
+   *
+   * BEST EFFORT, exactly as before: a failure here must never fail an otherwise
+   * successful signup. A person who has just created an account and is told it
+   * did not work, because telemetry could not be recorded, is a real loss; a
+   * missing source is not.
+   */
+  const arrival = decodeArrival(body.arrival ?? null)
+  const heard = normaliseHeardFrom({ heardFrom: body.heardFrom, heardFromOther: body.heardFromOther })
+
+  /*
+   * WHO INTRODUCED THEM (close-out PL1), resolved BEFORE the write and written
+   * as null when it cannot be resolved.
+   *
+   * `profiles.referred_by` is a foreign key, so an id that decodes cleanly but
+   * names nobody would make the whole update below fail, and that update also
+   * carries AN1's six arrival fields. A stale referral link would then cost the
+   * platform the source of every account that arrived through one, which is the
+   * exact opposite of what this item is for. So the referrer is CONFIRMED to
+   * exist first, and a code that names nobody is recorded as no referrer at all
+   * rather than taking the rest of the row down with it.
+   *
+   * The code can arrive two ways and both are read: the first-touch referral
+   * cookie the existing loop sets, and AN1's arrival record. They agree in
+   * practice; where they do not, the referral cookie wins, because it is first
+   * touch by design and the arrival record is last-page-before-signup.
+   */
+  const claimedReferrer = captured?.referredBy ?? decodeRefCode(arrival.ref)
+  let referredBy: string | null = null
+  if (claimedReferrer && claimedReferrer !== newUserId) {
+    const { data: referrer } = await admin.from('profiles').select('id').eq('id', claimedReferrer).maybeSingle()
+    if (referrer?.id) referredBy = referrer.id
+    else console.warn('[auth/signup] a referral code decoded to a profile that does not exist; recorded as no referrer')
+  }
+  const hasArrivalToStore =
+    Boolean(captured) ||
+    heard.heardFrom !== null ||
+    Boolean(arrival.src || arrival.landingPath || arrival.referrerHost) ||
+    arrivalUtmObject(arrival) !== null ||
+    referredBy !== null
+
+  if (hasArrivalToStore && newUserId) {
     try {
       const { data: existing } = await admin
         .from('profiles')
@@ -298,10 +360,16 @@ export async function POST(request: NextRequest) {
       await admin
         .from('profiles')
         .update({
-          metadata: {
-            ...prior,
-            attribution: toAttributionRecord(captured, new Date().toISOString()),
-          },
+          metadata: captured
+            ? { ...prior, attribution: toAttributionRecord(captured, new Date().toISOString()) }
+            : prior,
+          signup_heard_from: heard.heardFrom,
+          signup_heard_from_other: heard.heardFromOther,
+          signup_src: arrival.src,
+          signup_landing_path: arrival.landingPath,
+          signup_referrer_host: arrival.referrerHost,
+          signup_utm: arrivalUtmObject(arrival),
+          referred_by: referredBy,
         })
         .eq('id', newUserId)
     } catch (error) {

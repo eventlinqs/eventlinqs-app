@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { notifyOrganiserEventPublished } from '@/lib/notifications/organiser-event-notify'
 import { isLooserOrEqual, explainTightening, policyFromEvent, type RefundPolicy } from '@/lib/refunds/policy'
 import { checkSellable } from '@/lib/events/sellable-guard'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -24,6 +25,7 @@ import { deploymentEnvironment, judgeVenueSave } from '@/lib/geo/venue-save-rule
 import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
 import { getSiteUrl } from '@/lib/site-url'
 import { trackEventPublishedServer } from '@/lib/analytics/plausible'
+import { captureFunnelServer } from '@/lib/analytics/funnel-server'
 import type { EventStatus, EventVisibility, EventType, TicketTierType, FeePassType, Json } from '@/types/database'
 import { actionRateLimit } from '@/lib/rate-limit/action'
 import { readStreamLink, writeStreamLink } from '@/lib/stream/link'
@@ -491,6 +493,13 @@ export async function createEvent(input: CreateEventInput): Promise<ActionResult
       is_free: input.ticket_tiers.every(t => t.price === 0) ? 1 : 0,
       first_publish: 1,
     })
+    // The same activation, in the organiser funnel (close-out AN1). Ids only,
+    // keyed by the organisation rather than by a person, and it never blocks
+    // the publish.
+    void captureFunnelServer('event_published', {
+      organisationId: input.organisationId,
+      properties: { event_id: input.eventId, first_publish: 1 },
+    })
   }
 
   return {}
@@ -846,6 +855,10 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       is_free: input.ticket_tiers.every(t => t.price === 0) ? 1 : 0,
       first_publish: 1,
     })
+    void captureFunnelServer('event_published', {
+      organisationId: event.organisation_id,
+      properties: { event_id: input.eventId, first_publish: 1 },
+    })
   }
 
   redirect('/dashboard/events?saved=1')
@@ -909,6 +922,15 @@ export async function publishEvent(eventId: string): Promise<ActionResult> {
     is_free: (tiers ?? []).every(t => t.price === 0) ? 1 : 0,
     first_publish: event.status === 'draft' ? 1 : 0,
   })
+  void captureFunnelServer('event_published', {
+    organisationId: event.organisation_id,
+    properties: { event_id: eventId, first_publish: event.status === 'draft' ? 1 : 0 },
+  })
+
+  // MONEY FIX B4: "event published or approved". The owner's business feed has
+  // carried this since UX3; the organiser had no counterpart until now. `void`
+  // because publishing must never fail on a mail server.
+  void notifyOrganiserEventPublished({ eventId })
 
   return {}
 }

@@ -167,6 +167,8 @@ export async function sendSignupConfirmation(input: {
   return sendEmail({
     to: input.to,
     subject: CONFIRM_SIGNUP.title,
+    messageType: 'auth_confirm_signup',
+    recipientRole: 'account_holder',
     html: authEmailHtml(CONFIRM_SIGNUP, input.confirmationUrl),
     text: authEmailText(CONFIRM_SIGNUP, input.confirmationUrl),
   })
@@ -179,6 +181,8 @@ export async function sendPasswordReset(input: {
   return sendEmail({
     to: input.to,
     subject: RESET_PASSWORD.title,
+    messageType: 'auth_reset_password',
+    recipientRole: 'account_holder',
     html: authEmailHtml(RESET_PASSWORD, input.resetUrl),
     text: authEmailText(RESET_PASSWORD, input.resetUrl),
   })
@@ -191,6 +195,8 @@ export async function sendMagicLink(input: {
   return sendEmail({
     to: input.to,
     subject: MAGIC_LINK.title,
+    messageType: 'auth_magic_link',
+    recipientRole: 'account_holder',
     html: authEmailHtml(MAGIC_LINK, input.signInUrl),
     text: authEmailText(MAGIC_LINK, input.signInUrl),
   })

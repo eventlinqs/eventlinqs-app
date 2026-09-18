@@ -27,7 +27,9 @@ export type PolicyName =
   | 'share-track'
   | 'ledger-demand'
   | 'waitlist-join'
+  | 'forecast-run'
   | 'newsletter-subscribe'
+  | 'marketing-rights'
   | 'ai-chat'
   | 'ai-chat-daily'
   | 'gig-post'
@@ -177,6 +179,20 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'The slot ledger demand beacon per IP. The two anonymous actions only (a page view and a sold-out view); every action that carries an address is written server side by the code that observed it, so this endpoint cannot be used to invent a contactable person. Rows are deduped per visitor per slot per day by their occurrence key, so this cap only bounds junk traffic. FAIL-OPEN, the same posture as share-track: losing a view beacon to a Redis blip is a gap in a history table, and refusing one would be a failed request on an event page.',
+  },
+  'marketing-rights': {
+    keyPrefix: 'mkt-rights',
+    limit: 10,
+    windowSec: 600,
+    rationale:
+      'The no-token privacy rights form (APP 7.6 stop-facilitation) per IP per 10 min. It is public and unauthenticated and writes one suppression row per submission, so it is a write-amplification target like newsletter-subscribe. Ten covers a household clearing several addresses in one sitting and bounces a scripted flood. Deliberately fail-OPEN, and the reason is the direction the surface points: it can only ever STOP mail. A Redis blip that blocked somebody exercising a privacy right would be the platform refusing to honour a legal right to protect itself from writes, which is the wrong trade in a way that launch-email is not.',
+  },
+  'forecast-run': {
+    keyPrefix: 'fc-run',
+    limit: 20,
+    windowSec: 600,
+    rationale:
+      'Public forecast tool runs per IP per 10 min (close-out FT1). The surface is public, unauthenticated and WRITES a row, so it is a table-flooding target, and twenty in ten minutes is generous for the thing it is: an organiser trying three prices and two room sizes against their own night is six runs, and a curious one doing it twice over is still inside it. FAIL-OPEN, deliberately, and the unit is what abuse actually costs. This endpoint sends nothing: no email leaves our domain, no third party is billed, and the worst a flood achieves is rows in a table nothing public can read (forecast_runs has RLS on with no policy). Losing a real organiser their first result to a Redis blip is the more expensive failure, and it is the first thing that person ever sees of this platform. The email field on the same submit does NOT change that posture, because nothing is sent from it: it is stored for the owner to answer by hand, under wording stored beside it.',
   },
   'newsletter-subscribe': {
     keyPrefix: 'nl-sub',

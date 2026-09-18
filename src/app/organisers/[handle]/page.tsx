@@ -28,6 +28,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
+import { getFoundingBadge } from '@/lib/organisers/founding-badge'
 import { loadDiscoveryRows, countOrganiser } from '@/lib/seo/discovery-counts'
 import { organiserIndexingFor } from '@/lib/seo/discovery-threshold'
 import { WIDE_TILE_CELL , FLAT_RAIL_CELL , TEXT_CARD_CELL } from '@/lib/ui/rhythm'
@@ -292,12 +293,18 @@ export default async function OrganiserProfilePage({ params }: Props) {
     : `${organisation.name} on EventLinqs.`
 
   // Cities they organise in - photographic tiles (Pexels-backed).
-  const cityImageEntries = await Promise.all(
-    cities.slice(0, 12).map(async name => {
-      const slug = citySlugify(name)
-      return [name, slug, await getCityPhoto(slug)] as const
-    }),
-  )
+  // Close-out FO1: one of the first fifty, read on the server with the service
+  // role so no column is granted to anon. The two reads are independent, so
+  // they run together rather than one after the other.
+  const [foundingBadge, cityImageEntries] = await Promise.all([
+    getFoundingBadge(organisation.id),
+    Promise.all(
+      cities.slice(0, 12).map(async name => {
+        const slug = citySlugify(name)
+        return [name, slug, await getCityPhoto(slug)] as const
+      }),
+    ),
+  ])
 
   // OP7 (Batch 8.3 wire-up) - venues this organiser uses, ordered by
   // event count. Sourced from events.venue_name across upcoming + past.
@@ -359,6 +366,7 @@ export default async function OrganiserProfilePage({ params }: Props) {
           coverImage={null}
           logoUrl={organisation.logo_url}
           subtitle={subtitle}
+          founding={foundingBadge.isFounding}
           stats={[
             { label: totalEvents === 1 ? 'event' : 'events', value: totalEvents, icon: 'cal' },
             { label: cities.length === 1 ? 'city' : 'cities', value: cities.length, icon: 'pin' },

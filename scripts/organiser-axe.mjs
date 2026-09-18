@@ -1,10 +1,25 @@
 // Organiser rebuild - axe-core WCAG 2.0/2.1 A/AA scan on /organisers at
-// mobile + desktop against the production server (npm run start, :3000).
+// mobile + desktop.
+//
+// Usage: node scripts/organiser-axe.mjs [BASE]   (or BASE=... / BASE_URL=...)
 import { chromium } from 'playwright'
 import { AxeBuilder } from '@axe-core/playwright'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 
-const BASE = 'http://localhost:3000'
+/*
+ * IT CAN BE AIMED, AND UNTIL 14 September 2026 IT COULD NOT. This was the bare
+ * literal `http://localhost:3000` with no override of any kind, written when
+ * one checkout on this machine meant one port. Three lanes now run three dev
+ * servers on three ports and NONE of them is 3000, so the scan could not be
+ * run at all: it died with ERR_CONNECTION_REFUSED, which is the lucky outcome.
+ * The unlucky one is a lane that happens to be on 3000, where it would have
+ * scanned another lane's tree and reported the number as this one's.
+ *
+ * `BASE_URL` is accepted as well as `BASE` because scripts/axe-shared-chrome.mjs
+ * reads that name, and a reader who has just run one of these should not have to
+ * discover that the pair spell it differently.
+ */
+const BASE = (process.argv[2] || process.env.BASE || process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
 const OUT = 'docs/benchmark/system-pass/surface-6/rebuild-2026-06-07/axe'
 if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true })
 

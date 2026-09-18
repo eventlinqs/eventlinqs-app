@@ -54,6 +54,19 @@ export type PricingRuleType =
   | 'payout_schedule_days'
   | 'application_fee_composition_mode'
   | 'venue_revenue_share_percentage'
+  /*
+   * Close-out GA5. What a Fullproof AI client pays on sales a campaign
+   * produced, as a percentage. It lives HERE rather than in a table of its own
+   * because pricing_rules is this platform's one money configuration and a
+   * second one would be a second place a money value lives.
+   *
+   * IT IS NOT THE TICKETING FEE AND NEVER APPEARS BESIDE ONE. The one fee law
+   * governs what a BUYER pays for a ticket; this is what a CLIENT pays for
+   * sales we produced. Different payer, different product, different surface:
+   * the proof page never shows the ticketing fee and no customer facing surface
+   * shows this one.
+   */
+  | 'marketing_commission_percentage'
 
 export type PricingRuleValueType = 'percentage' | 'fixed' | 'integer'
 

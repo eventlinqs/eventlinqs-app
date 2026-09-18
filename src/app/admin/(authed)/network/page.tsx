@@ -7,6 +7,13 @@ import { getDemandSignal } from '@/lib/admin/demand-signal'
 import { FOUNDING_SPOT_CAP, foundingCityName } from '@/lib/founding/invites'
 import { getWaitlistCities } from '@/lib/waitlist/city-waitlist'
 import { WaitlistBridge } from './waitlist-bridge'
+import { FoundingTerms, type FoundingTermsRow } from './founding-terms'
+import {
+  FOUNDING_INITIAL_MONTHS,
+  FOUNDING_REFERRAL_MONTHS,
+  FOUNDING_WAIVER_CAP,
+  isWaiverActive,
+} from '@/lib/payments/founding-waiver'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -23,7 +30,11 @@ export const metadata = {
  * waitlist-to-invite bridge, covering every Australian city rather than a
  * launch subset (nationwide from day one, founder ruling 2026-08-23).
  */
-export default async function AdminNetworkPage() {
+export default async function AdminNetworkPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ org?: string }>
+}) {
   const session = await requireAdminSession()
   if (!can(session, 'admin.network.manage')) redirect('/admin')
   await recordAuditEvent({ action: 'admin.network.view', session })
@@ -62,6 +73,62 @@ export default async function AdminNetworkPage() {
   const bridgeRows = (openEntries ?? [])
     .filter(e => e.role === 'organiser' && !invitedEmails.has(e.email.toLowerCase()))
     .map(e => ({ id: e.id, name: e.full_name, email: e.email, city: foundingCityName(e.city_slug) }))
+
+  // FOUNDING TERMS, close-out FO1. Every organisation that already holds a
+  // window, plus the most recent accounts, so the owner can grant one to an
+  // organiser they have just recruited without hunting for an id. Real rows
+  // only; nothing here is fabricated and nothing is paginated away silently,
+  // because a hidden organisation is one the owner cannot grant terms to.
+  //
+  // AND IT IS SEARCHABLE, because a list is not a way to find one of 250
+  // organisations. Found on 13 September by driving it: the owner could not
+  // reach the organisation they had just recruited, because it was not among
+  // the fifty most recent, and a control the owner cannot reach is a control
+  // that does not exist.
+  const foundingQuery = (await searchParams)?.org?.trim() ?? ''
+  let termQuery = admin
+    .from('organisations')
+    .select('id, name, slug, is_founding, founding_fee_free_until, created_at')
+  if (foundingQuery) {
+    // PostgREST `or` takes a comma-separated filter list; a comma inside the
+    // pattern would split it, so one is refused rather than silently searching
+    // for half a name.
+    const safe = foundingQuery.replace(/[,()]/g, ' ').trim()
+    termQuery = termQuery.or(`name.ilike.%${safe}%,slug.ilike.%${safe}%`)
+  }
+  const { data: termRows } = await termQuery
+    .order('founding_fee_free_until', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  const termOrgs = termRows ?? []
+  const holders = termOrgs.filter(o => o.founding_fee_free_until !== null).length
+  const referralCounts = new Map<string, number>()
+  if (termOrgs.length > 0) {
+    const { data: credited } = await admin
+      .from('organisations')
+      .select('referred_by_organisation_id')
+      .in(
+        'referred_by_organisation_id',
+        termOrgs.map(o => o.id),
+      )
+      .not('referral_credited_at', 'is', null)
+    for (const row of credited ?? []) {
+      const key = row.referred_by_organisation_id
+      if (!key) continue
+      referralCounts.set(key, (referralCounts.get(key) ?? 0) + 1)
+    }
+  }
+
+  const foundingTermRows: FoundingTermsRow[] = termOrgs.map(o => ({
+    id: o.id,
+    name: o.name ?? 'Unnamed organisation',
+    slug: o.slug ?? null,
+    isFounding: o.is_founding === true,
+    feeFreeUntil: o.founding_fee_free_until ?? null,
+    active: isWaiverActive(o.founding_fee_free_until),
+    referralsConfirmed: referralCounts.get(o.id) ?? 0,
+  }))
 
   return (
     <div>
@@ -139,6 +206,50 @@ export default async function AdminNetworkPage() {
           they joined, and every email carries the one-click leave link.
         </p>
         <WaitlistBridge rows={bridgeRows} spotsRemaining={signal.founding.spotsRemaining} />
+      </section>
+
+      {/* Founding terms, by hand */}
+      <section className="mt-8">
+        <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-[0.14em] text-white/60">
+          Founding terms
+        </h2>
+        <p className="mb-3 max-w-2xl text-sm text-white/60">
+          Grant, extend or revoke a Founding Organiser fee-free window. The charge reads this field on every order,
+          so a change here applies to the next order placed, with no deploy. Every change is written to the audit log
+          with who made it and what it moved. The list shows every organisation holding a window first, then the
+          newest accounts; search by name or handle to reach any other.
+        </p>
+        <form method="get" action="/admin/network" className="mb-3 flex flex-wrap items-center gap-2">
+          <label htmlFor="org-search" className="text-xs text-white/60">
+            Find an organisation
+          </label>
+          <input
+            id="org-search"
+            name="org"
+            type="search"
+            defaultValue={foundingQuery}
+            placeholder="Name or handle"
+            className="min-h-[40px] min-w-[220px] rounded-full border border-white/20 bg-[#131A2A] px-4 text-sm text-white placeholder:text-white/30"
+          />
+          <button
+            type="submit"
+            className="inline-flex min-h-[40px] items-center rounded-full border border-white/25 px-4 text-sm font-semibold text-white"
+          >
+            Search
+          </button>
+          {foundingQuery ? (
+            <a href="/admin/network" className="text-xs text-white/50 underline">
+              Clear
+            </a>
+          ) : null}
+        </form>
+        <FoundingTerms
+          rows={foundingTermRows}
+          cap={FOUNDING_WAIVER_CAP}
+          holders={holders}
+          initialMonths={FOUNDING_INITIAL_MONTHS}
+          referralMonths={FOUNDING_REFERRAL_MONTHS}
+        />
       </section>
     </div>
   )

@@ -8,7 +8,7 @@ import { HeaderScrollSentinel } from '@/components/layout/header-scroll-sentinel
 import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { SiteSchemaJsonLd } from '@/components/seo/site-schema-jsonld'
-import { ReferralCapture } from '@/components/growth/referral-capture'
+import { MeasurementBoot } from '@/components/analytics/measurement-boot'
 import { RegisterAppWorker } from '@/components/pwa/register-app-worker'
 import { getSiteUrl } from '@/lib/site-url'
 import { siteVerificationMetadata } from '@/lib/seo/site-verification'
@@ -103,12 +103,17 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true },
   },
   /*
-   * SEARCH CONSOLE OWNERSHIP (close-out SEO2 step 2). Emits
-   * <meta name="google-site-verification" content="..."> when, and only when,
-   * GOOGLE_SITE_VERIFICATION holds a usable token; nothing otherwise. The token
-   * is minted by a signed-in Google account, which is the one irreducible act,
-   * and everything either side of it is `npm run seo2:verify-property`. See
-   * src/lib/seo/site-verification.ts.
+   * SEARCH CONSOLE OWNERSHIP (close-out AN1 step 4, and close-out SEO2 step 2,
+   * which are the same requirement reached from two lanes). Indexing (C19) is a
+   * claim until Search Console is reading it back, and the property cannot be
+   * verified until Google can see the token on the live site.
+   *
+   * Emits <meta name="google-site-verification" content="..."> when, and only
+   * when, GOOGLE_SITE_VERIFICATION holds a usable token; nothing otherwise. An
+   * empty meta tag is not a neutral absence, it is a verification that fails
+   * with a tag that looks correct. The token is minted by a signed-in Google
+   * account, which is the one irreducible act, and everything either side of it
+   * is `npm run seo2:verify-property`. See src/lib/seo/site-verification.ts.
    */
   ...siteVerificationMetadata(),
   openGraph: {
@@ -223,9 +228,17 @@ export default function RootLayout({
            *  paint the strip (close-out UX5). */}
           <MainContentFrame>{children}</MainContentFrame>
           <MobileBottomNav />
-          {/* First-touch attribution capture (acquisition loop). Renders null
-           *  and runs only in a post-paint effect, so it never costs LCP. */}
-          <ReferralCapture />
+          {/* MEASUREMENT AND ATTRIBUTION, AS ONE DEFERRED CHUNK.
+           *  The six components that used to be written out here in full
+           *  (close-out AN1 and GA3) are unchanged and still mount in the same
+           *  order with the same nesting; they now live in
+           *  components/analytics/measurement-stack.tsx and are fetched after
+           *  hydration instead of ahead of first paint. All six render nothing
+           *  into the server HTML and all six work in post-paint effects, so
+           *  no markup and no first paint moved: only 3938 bytes gzip, off the
+           *  first load of 133 routes. measurement-boot.tsx records the
+           *  measurement and why the dynamic() call cannot sit in this file. */}
+          <MeasurementBoot />
           {/* The root service worker, so a navigation with no signal answers
            *  with an EventLinqs page instead of the browser's error page
            *  (close-out C8B.5, Scope v5 10.3). Renders null and registers only

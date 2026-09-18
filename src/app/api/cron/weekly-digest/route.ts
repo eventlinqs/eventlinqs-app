@@ -11,6 +11,8 @@ import {
   fetchDigestRecipients,
   resolveDigestPeriod,
 } from '@/lib/broadcast/digest'
+import { filterPermittedRecipients } from '@/lib/consent/resolver'
+import { LOCAL_DIGEST_PURPOSE } from '@/lib/consent/purposes'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -81,12 +83,35 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       continue
     }
 
-    const [recipients, events] = await Promise.all([
+    const [candidates, events] = await Promise.all([
       fetchDigestRecipients(admin, citySlug),
       // The origin is what turns each event row into a tracked short link, so
       // the clicks this send produces reach the organiser's reach panel.
       fetchDigestEvents(admin, citySlug, period, 10, origin, city.name),
     ])
+
+    /*
+     * THE RESOLVER IS THE DOOR, close-out GA1.
+     *
+     * The two consent sources this route already merged each carry their own
+     * rules, and both of them decide by reading a CURRENT state. The ledger
+     * decides by reading the EVIDENCE: the latest recorded event for this
+     * tenant, purpose and person, the channel it covers, its age, and any
+     * suppression recorded since. Every address the digest is about to write
+     * to is put to it, and a refusal is counted rather than swallowed, because
+     * "we did not send" is only worth something if it can say why.
+     *
+     * It can only ever REMOVE somebody from a list this route already built,
+     * so the failure mode is a marketing email that does not go out.
+     */
+    const verdicts = await filterPermittedRecipients(
+      admin,
+      candidates.map((r) => r.email),
+      { purpose: LOCAL_DIGEST_PURPOSE, channel: 'email' },
+    )
+    const permitted = new Set(verdicts.permitted)
+    const recipients = candidates.filter((r) => permitted.has(r.email.toLowerCase()))
+    const refusedByLedger = verdicts.refused.length
 
     if (events.length === 0) {
       results.push({ city: citySlug, skipped: 'no_events', recipients: recipients.length })
@@ -101,6 +126,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         // Source is named per address so the bridge is legible in the probe:
         // 'waitlist' is a person the digest could not reach before.
         recipientEmails: recipients.map((r) => `${r.email} (${r.source})`),
+        refusedByLedger,
+        refusalReasons: verdicts.refused.map((r) => `${r.email}: ${r.reason}`),
         events: events.length,
         eventTitles: events.map((e) => e.title),
         eventUrls: events.map((e) => e.url),
@@ -147,7 +174,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           ? `${origin}/unsubscribe/digest/${token}`
           : `${origin}/account/notifications`,
       })
-      await sendEmail({ to: testTo, subject, html, text })
+      await sendEmail({
+        to: testTo,
+        subject,
+        html,
+        text,
+        messageType: 'platform_weekly_digest',
+        recipientRole: 'platform_owner',
+      })
       results.push({ city: citySlug, testSentTo: testTo, events: events.length })
       continue
     }
@@ -161,7 +195,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         unsubscribeUrl: `${origin}/unsubscribe/digest/${recipient.unsubscribeToken}`,
       })
       try {
-        await sendEmail({ to: recipient.email, subject, html, text })
+        await sendEmail({
+          to: recipient.email,
+          subject,
+          html,
+          text,
+          messageType: 'attendee_event_alert',
+          recipientRole: 'prospect',
+        })
         sent += 1
       } catch {
         // One bad address never stops the run; the count stays honest.
@@ -177,7 +218,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       recipient_count: sent,
     })
 
-    results.push({ city: citySlug, sent, events: events.length })
+    results.push({ city: citySlug, sent, events: events.length, refusedByLedger })
   }
 
   return NextResponse.json({ ok: true, period, sentTotal, cities: results })

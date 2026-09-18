@@ -17,18 +17,56 @@
  *   - autocomplete="email" on a sign-in field     the "Chrome offered nothing" defect
  *   - a missing name attribute                    same defect, other half
  *
- * Files are restored in a `finally`, and the harness re-verifies a clean pass
- * at the end, so an interrupted run cannot leave a mutated tree behind.
+ * Files are restored in a `finally`, the restore is then OBSERVED rather than
+ * assumed, and the harness re-verifies a clean pass at the end.
+ *
+ * THIS PARAGRAPH USED TO CLAIM THAT THE `finally` MEANT "an interrupted run
+ * cannot leave a mutated tree behind". It did not, and the false assurance cost
+ * two sessions: a power loss on 16 September 2026 committed `process.exit(1)`
+ * into no-control-characters.mjs, and a usage-limit kill on 17 September left
+ * `<LoginForm googleEnabled={true} />` in the login page. A `finally` runs when
+ * a block exits and never when a process is killed. Crash safety comes from the
+ * on-disk journal instead (scripts/verify/lib/drill-journal.mjs): the original
+ * bytes are recorded BEFORE each mutation, an interrupted run therefore leaves
+ * an entry behind, and scripts/guards/no-drill-residue.mjs fails the build while
+ * any entry exists.
  *
  * Usage: node scripts/verify/guard-failure-drills.mjs
+ *        node scripts/verify/guard-failure-drills.mjs --restore   (undo an
+ *        interrupted run, in one command, from the bytes in the journal)
  */
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { resolveVercelToken } from '../lib/vercel-login.mjs'
+import * as journal from './lib/drill-journal.mjs'
 
 const ROOT = process.cwd()
 const GUARDS = 'scripts/guards'
+
+/*
+ * `--restore` RUNS BEFORE ANYTHING ELSE IN THIS FILE, and that placement is the
+ * point rather than tidiness.
+ *
+ * It is the repair command for a tree a killed drill left mutated, so it is
+ * reached exactly when things have already gone wrong. Everything below this
+ * block resolves an effective migration, asks Vercel for a deployment held in
+ * ERROR, reads the CLI login and lists open pull requests. A repair that needs a
+ * token and a network is a repair that is unavailable on the aeroplane, on a
+ * flat battery, and on the machine whose power just failed, which is the only
+ * kind of machine that ever needs it.
+ *
+ * It reads nothing but the journal and the files the journal names.
+ */
+if (process.argv.includes('--restore')) {
+  const { restored, stuck } = journal.restoreAll(ROOT)
+  for (const f of restored) console.log(`[drills] restored ${f}`)
+  for (const s of stuck) console.error(`[drills] COULD NOT RESTORE ${s.entryPath}: ${s.why}`)
+  if (restored.length === 0 && stuck.length === 0) {
+    console.log('[drills] the journal is empty: no drill was interrupted, nothing to restore.')
+  }
+  process.exit(stuck.length > 0 ? 1 : 0)
+}
 
 /*
  * THE EFFECTIVE MIGRATION. A guard reads the LAST migration that defines a
@@ -406,6 +444,14 @@ const DRILLS = [
     replace: '',
     expect: '/scan/[eventId] is classified never and nothing in its metadata chain declares noindex',
   },
+  /*
+   * RE-AIMED 15 September 2026. This drill had been STALE and therefore not
+   * running: SEO3 step 2 made the discovery threshold owner-editable, so the
+   * sitemap line grew a `, threshold` argument and the anchor stopped matching.
+   * A drill that cannot aim reads in a summary exactly like a drill that passed,
+   * which is the failure mode the harness exists to prevent, so it is fixed here
+   * rather than left in the four-that-did-not-fire footnote of another report.
+   */
   {
     name: 'the sitemap publishes a templated family without the threshold gate',
     guard: `${GUARDS}/indexing-policy.mjs`,
@@ -3033,6 +3079,224 @@ const DRILLS = [
     expect: 'No push to a working branch could be found',
   },
   /*
+   * drive-usage-names-what-it-needs, two drills, one per requirement it can
+   * judge. Each removes the flag from a header that legitimately needs it and
+   * expects the guard to name that drive, because a guard that says only FAIL
+   * sends the reader through 28 files.
+   *
+   * The requirement is real in both cases and was established by running the
+   * command rather than by reading it: without the alias loader node cannot
+   * resolve the @/ imports the src module reaches, and without the server-only
+   * shim it throws ERR_MODULE_NOT_FOUND on a package that exists only inside
+   * Next.
+   */
+  {
+    name: 'a drive that needs the alias loader stops naming it',
+    guard: `${GUARDS}/drive-usage-names-what-it-needs.mjs`,
+    file: 'scripts/verify/ft1-forecast-drive.mjs',
+    find: ' *        --import ./scripts/lib/src-alias-loader.mjs',
+    replace: ' *        (the loader flag removed by the drill)',
+    expect: 'ft1-forecast-drive.mjs: the header never names src-alias-loader',
+  },
+  {
+    name: 'a drive that needs the server-only shim stops naming it',
+    guard: `${GUARDS}/drive-usage-names-what-it-needs.mjs`,
+    file: 'scripts/verify/ga3-attribution-drive.mjs',
+    find: ' *     node --import ./scripts/lib/server-only-shim.mjs',
+    replace: ' *     node (the shim flag removed by the drill)',
+    expect: 'ga3-attribution-drive.mjs: the header never names server-only-shim',
+  },
+  /*
+   * The third requirement, added 14 September 2026. ft1-forecast-drive run
+   * exactly as its header then read reported the fee as $68.50 three times over
+   * a configuration change, which says the displayed fee does not follow
+   * pricing_rules. It does. The drive's own invalidation was a no-op because
+   * its process had no cache store, and the store is not a guess: the drive
+   * IMPORTS an invalidate function out of src/.
+   */
+  {
+    name: 'a drive that clears a cache stops naming the store it lives in',
+    guard: `${GUARDS}/drive-usage-names-what-it-needs.mjs`,
+    file: 'scripts/verify/ft1-forecast-drive.mjs',
+    find: ' *   UPSTASH_REDIS_REST_URL=http://127.0.0.1:8179 UPSTASH_REDIS_REST_TOKEN=local',
+    replace: ' *   (the store removed by the drill)',
+    expect: 'ft1-forecast-drive.mjs: the header never names UPSTASH_REDIS_REST_URL',
+  },
+  /*
+   * lane-tagged-privilege-writes. The drill takes the lane filter out of the
+   * FO1 offer drive's own selection, which is EXACTLY the state the file was in
+   * on the morning of 14 September 2026 when it was found granting founding
+   * windows on lane A's refund fixtures and lane C's events.
+   *
+   * The anchor is `isLaneB`, which is the file's ONLY lane PREDICATE. Its other
+   * ten lane tags are names it gives rows it creates, and the guard does not
+   * accept those, for the reason written in the guard: this very file named
+   * every row lane-b on the morning it was granting windows to lane A's.
+   */
+  {
+    name: 'a drive that grants a founding window stops saying whose row it is',
+    guard: `${GUARDS}/lane-tagged-privilege-writes.mjs`,
+    file: 'scripts/verify/fo1-founding-offer-drive.mjs',
+    find: "return /lane-b/i.test(`${org?.name ?? ''} ${org?.slug ?? ''}`)",
+    replace: 'return true',
+    expect: 'fo1-founding-offer-drive.mjs: calls admin_set_founding_waiver and never restricts its',
+  },
+  /*
+   * fixtures-are-not-published, four drills, because the guard makes four
+   * distinct claims and three of them had never been seen failing.
+   *
+   * The first two are the incident itself: on 14 September 2026 PL1's fixture
+   * carried exactly these two literals and its deleted rows refused lane A's
+   * push with two RULE 2 faults on URLs lane A had never heard of.
+   *
+   * The third is this guard's own blind spot, deliberately made loud. A row
+   * built as a variable and inserted by name is a write the static reader cannot
+   * judge, and the first version of the guard passed one silently:
+   * community-threshold-drive builds its rows that way and was reported clean.
+   *
+   * The fourth is the premise. The rule is only true while the sitemap still
+   * selects on those literals, and a guard whose premise has moved keeps passing
+   * while the thing it protects stops being protected.
+   */
+  {
+    name: 'a drive fixture event goes back to being publicly visible',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: "      visibility: 'unlisted',",
+    replace: "      visibility: 'public',",
+    expect: "writes visibility: 'public', which publishes /events/<slug>",
+  },
+  {
+    name: 'a drive fixture organisation goes back to being active',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: "owner_id: fixture.organiserId, status: 'pending' })",
+    replace: "owner_id: fixture.organiserId, status: 'active' })",
+    expect: "inserts organisations with status: 'active'",
+  },
+  {
+    name: 'a fixture organisation is built as a variable, where no static reader can judge it',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: ".insert({ name: `Lane B PL1 ${STAMP}`, slug: `${LANE}-org-${STAMP}`, owner_id: fixture.organiserId, status: 'pending' })",
+    replace: '.insert(organisationRow)',
+    expect: 'inserts organisations from a variable, so this guard cannot see',
+  },
+  {
+    name: "the sitemap stops selecting organisers on 'active', and the guard's rule stops being true",
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    // RE-ANCHORED 18 September 2026, lane A. The organiser select moved out of
+    // src/app/sitemap.ts into the catalogue module in a lane C refactor. The
+    // GUARD was updated with it (PREMISES already names sitemap-catalogue.ts);
+    // only this drill was left behind, so it could not plant its fault and
+    // stopped proving the clause while the harness still counted it.
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: ".eq('status', 'active')",
+    replace: ".eq('status', 'approved')",
+    expect: "THIS GUARD'S PREMISE HAS MOVED",
+  },
+  /*
+   * proof-reads-never-discard-their-error, two drills, one per way a read on
+   * that surface can stop telling a failure from an absence.
+   *
+   * Both are the state src/lib/proof/read.ts was actually in on the morning of
+   * 15 September 2026, when a ConnectTimeoutError to Supabase made the campaign
+   * proof page answer 404 for a campaign that exists. The orders read was the
+   * same shape and would have printed zero revenue instead.
+   */
+  {
+    name: 'a ledger read on the proof page stops binding its error',
+    guard: `${GUARDS}/proof-reads-never-discard-their-error.mjs`,
+    file: 'src/lib/proof/read.ts',
+    find: '  const { data: slot, error: slotError } = await admin',
+    replace: '  const { data: slot } = await admin',
+    expect: 'destructures { data } from an await and never binds',
+  },
+  {
+    name: 'a figure read on the proof page stops going through mustRead',
+    guard: `${GUARDS}/proof-reads-never-discard-their-error.mjs`,
+    file: 'src/lib/proof/read.ts',
+    find: "  const sendRows = await mustRead('the sends', () =>",
+    replace: '  const { data: sendRows } = await (async () =>',
+    expect: 'never binds `error`',
+  },
+  /*
+   * no-published-lane-b-fixture-on-test. The drill removes the FO1 exemption,
+   * and the guard then names the four fixtures it was allowing: real rows, on
+   * the real database, through the real fetch.
+   *
+   * WHAT THIS DRILL DELIBERATELY DOES NOT DO is create a published fixture to
+   * be caught. That would mean putting a real organiser page into the sitemap of
+   * a database three lanes share, for as long as the drill runs, which is
+   * precisely the incident the guard exists to prevent. The catching half is
+   * driven over synthetic rows in
+   * tests/unit/guards/no-published-lane-b-fixture-on-test.test.ts, including the
+   * exact leftover that started this: lane-b-ga5-event-202609131728 at all three
+   * of its URLs.
+   */
+  {
+    name: 'the persistent-fixture exemption is removed, and the published rows are named',
+    guard: `${GUARDS}/no-published-lane-b-fixture-on-test.mjs`,
+    file: 'scripts/guards/no-published-lane-b-fixture-on-test.mjs',
+    find: "    prefix: 'lane-b-fo1-',",
+    replace: "    prefix: 'lane-b-fo1-NOT-THIS-ONE-',",
+    expect: 'are PUBLISHED on the database three lanes share',
+  },
+  /*
+   * every-order-carries-its-attribution, three drills, one per way an order can
+   * come to exist with no stored attribution decision.
+   *
+   * The first two are the write-time half and they are the realistic ones: a new
+   * checkout path that forgets the capture entirely, and an existing file that
+   * grows a second insert and keeps its one call. The second is the nastier
+   * shape, because the file still looks correct at a glance and a grep for the
+   * function name finds it.
+   *
+   * The third is the heal-time half. It removes the schedule rather than the
+   * route, because a route that exists and is never invoked is the exact defect
+   * cron-routes-scheduled was written for, and it is the one a reader is most
+   * likely to reintroduce by editing vercel.json.
+   */
+  {
+    name: 'an order-creating path stops calling the write-time attribution capture',
+    guard: `${GUARDS}/every-order-carries-its-attribution.mjs`,
+    file: 'src/app/actions/register-free.ts',
+    find: '  await recordClickSignalForOrder(order_id)',
+    replace: '  void order_id',
+    expect: 'never calls recordClickSignalForOrder',
+  },
+  {
+    name: 'a file grows a second order insert and keeps its single capture call',
+    guard: `${GUARDS}/every-order-carries-its-attribution.mjs`,
+    file: 'src/app/actions/register-free.ts',
+    find: "  const { error: orderError } = await adminClient.from('orders').insert({",
+    replace:
+      "  if (false as boolean) await adminClient.from('orders').insert({ id: order_id })\n  const { error: orderError } = await adminClient.from('orders').insert({",
+    expect: 'calls recordClickSignalForOrder only 1 time(s)',
+  },
+  {
+    name: 'the attribution backstop is left in the tree with no schedule behind it',
+    guard: `${GUARDS}/every-order-carries-its-attribution.mjs`,
+    file: 'vercel.json',
+    find: '      "path": "/api/cron/attribution-backstop",',
+    replace: '      "path": "/api/cron/attribution-backstop-NOT-THIS-ONE",',
+    expect: 'has no entry in vercel.json crons, so it never runs',
+  },
+  /*
+   * The resolution grace is declared once, in the product, and both the healer
+   * and the invariant guard read that one declaration. This drills the reader
+   * rather than the number: move the constant and the guard must refuse to run
+   * rather than quietly fall back to a window of its own.
+   */
+  {
+    name: 'the resolution grace window stops being readable, and the guard refuses rather than assuming one',
+    guard: `${GUARDS}/attribution-one-record-per-order-never-billable-when-reversed.mjs`,
+    file: 'src/lib/attribution/backstop.ts',
+    find: 'export const RESOLUTION_GRACE_MS = 5 * 60 * 1000',
+    replace: 'export const RESOLUTION_GRACE_MS = graceFromSomewhereElse()',
+    expect: 'no longer exports RESOLUTION_GRACE_MS as a literal',
+  },
+  /*
    * MONEY FIX A1.7, the six drills for funds-reach-the-organiser.
    *
    * The first is the defect itself, and it is the one that matters: the charge
@@ -3087,6 +3351,64 @@ const DRILLS = [
     find: '  if (!org.stripe_payouts_enabled) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
     replace: '  if (false) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
     expect: 'no longer tests `!org.stripe_payouts_enabled`',
+  },
+  /*
+   * MONEY FIX B3, the five drills for every-message-has-a-declared-recipient.
+   *
+   * The first two are the defect itself from both directions: an organiser
+   * message that stops being sent, and an owner message that stops naming the
+   * organiser message that balances it. MKLStudios sold two tickets on
+   * 10 September 2026 and the only human told was the platform owner, and the
+   * reason nothing caught it is that the organiser's message did not exist to
+   * be broken. A guard against a missing message has to be a declaration.
+   */
+  {
+    name: 'the owner is told about a sale and the organiser message that balances it is gone',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/notifications/recipient-matrix.ts',
+    find: "    organiserToldBy: 'organiser_first_sale',",
+    replace: '',
+    expect: 'is neither a recipient nor named in organiserToldBy',
+  },
+  {
+    name: 'the companion is named but nothing in the tree ever sends it',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/notifications/recipient-matrix.ts',
+    find: "    organiserToldBy: 'organiser_first_sale',",
+    replace: "    organiserToldBy: 'organiser_hears_about_it_somehow',",
+    expect: 'nothing in src/ ever sends that type',
+  },
+  {
+    name: 'a send site stops declaring what its message is',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/refunds/notify.ts',
+    find: "    messageType: 'organiser_refund_requested',",
+    replace: '',
+    expect: 'calls sendEmail() without a messageType',
+  },
+  {
+    name: 'the central transport stops enforcing the matrix',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/email/send.ts',
+    find: '  assertRecipientDeclared(input.messageType, input.recipientRole)',
+    replace: '  // assertRecipientDeclared(input.messageType, input.recipientRole)',
+    expect: 'no longer calls assertRecipientDeclared',
+  },
+  {
+    name: "the buyer's ticket transport stops checking, which is how it escaped before",
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/email/order-confirmation.ts',
+    find: "  assertRecipientDeclared('order_confirmation_and_ticket', 'buyer')",
+    replace: "  // assertRecipientDeclared('order_confirmation_and_ticket', 'buyer')",
+    expect: 'is a transport but never calls assertRecipientDeclared',
+  },
+  {
+    name: 'a payout message starts consulting the sales off switch',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/payouts/email.ts',
+    find: "    .select('id, name, owner_id')",
+    replace: "    .select('id, name, owner_id, sales_notification_mode')",
+    expect: "reads 'sales_notification_mode'",
   },
   /*
    * initial-bundle-budget, the CONTRACT half (close-out C8B.3, 15 September
@@ -3202,6 +3524,50 @@ const DRILLS = [
     find: "  { key: 'railCityTile', px: CITY_TILE_PX, name: 'CITY_TILE_PX' },",
     replace: "  { key: 'railCityTile', px: GONE_TILE_PX, name: 'GONE_TILE_PX' },",
     expect: 'which src/lib/ui/rhythm.ts does not declare',
+
+  /*
+   * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of
+   * scripts/guards/no-drill-residue.mjs.
+   *
+   * The guard exists because THIS FILE left a mutated source file in the tree
+   * twice in two days: a power loss on 16 September 2026 committed
+   * `process.exit(1)` into no-control-characters.mjs, and a usage-limit kill on
+   * 17 September left an auth provider hardcoded on in the login page. The
+   * header above claimed a `finally` made that impossible. A `finally` runs when
+   * a block exits and never when a process is killed.
+   *
+   * THE FIRST DRILL NEEDS NO SABOTAGE AT ALL, which is the neatest possible
+   * demonstration. Every file drill now opens a journal entry before it mutates,
+   * so simply BEING mid-drill is the condition the guard refuses. The mutation
+   * below is deliberately inert and lands in a .json file, which clause 3 does
+   * not read, so the only thing the guard can be objecting to is the open entry.
+   */
+  {
+    name: 'a drill is mid-flight and the tree does not say so',
+    guard: `${GUARDS}/no-drill-residue.mjs`,
+    file: 'perf-budget.json',
+    find: '"marks": {',
+    replace: '"marks": {\n    "/drill-journal-open": 1,',
+    expect: 'has an OPEN drill journal entry',
+  },
+  /*
+   * THE OTHER HALF, and the one that covers the 16 September case specifically.
+   * Residue that was already COMMITTED has no journal entry to find, because the
+   * journal is gitignored and a fresh checkout has none. Every plant that
+   * executes carries a `planted by the <id> drill` label, so that phrase in a
+   * tracked source file is residue by definition.
+   *
+   * It plants the EXACT line from commit b3cc6317, in the exact file, at the
+   * exact anchor, so this drill fails if the guard ever stops recognising the
+   * real thing rather than a paraphrase of it.
+   */
+  {
+    name: "an interrupted drill's sabotage line was committed and nothing notices",
+    guard: `${GUARDS}/no-drill-residue.mjs`,
+    file: 'scripts/guards/no-control-characters.mjs',
+    find: 'const ROOT = process.cwd()',
+    replace: 'const ROOT = process.cwd()\nprocess.exit(1) // planted by the F1.1 drill, restored in the finally',
+    expect: "still carries a drill's planted sabotage line",
   },
 ]
 
@@ -3223,13 +3589,100 @@ function anchorRegex(anchor) {
   return new RegExp(escaped.replace(/\r?\n/g, '\\r?\\n'))
 }
 
+/*
+ * CRASH SAFETY, WHICH THE `finally` BELOW IS NOT.
+ *
+ * The header of this file used to claim that restoring in a `finally` meant "an
+ * interrupted run cannot leave a mutated tree behind". A `finally` runs when the
+ * block exits and does not run when the process is killed, and this harness has
+ * now been killed mid-drill twice: power loss on 16 September 2026, which put
+ * `process.exit(1)` into no-control-characters.mjs and into commit 1aa059f6, and
+ * a usage-limit kill on 17 September, which left `<LoginForm googleEnabled={true} />`
+ * in the login page while the push lane measured a bundle baseline against it.
+ *
+ * So the original bytes are now written to the journal BEFORE the file is
+ * touched, and the entry is deleted only after the restore is OBSERVED. A killed
+ * run leaves its entry, scripts/guards/no-drill-residue.mjs fails the build while
+ * any entry exists, and `--restore` puts every journalled file back in one
+ * command. The full reasoning lives in scripts/verify/lib/drill-journal.mjs.
+ *
+ * The signal handlers below are a courtesy, not the mechanism: they catch a
+ * Ctrl-C or a `taskkill` without `/f`, and they cannot catch a SIGKILL or a
+ * power cut. Only the journal covers those, which is the whole point of putting
+ * the safety net on disk instead of in the process.
+ */
+/*
+ * A PREVIOUS RUN'S DAMAGE IS REPAIRED BEFORE THIS ONE PLANTS ANYTHING, because
+ * a drill that reads a mutated file as its "original" would record the sabotage
+ * as the thing to restore to, and the residue would become permanent at the
+ * moment it was next drilled.
+ */
+{
+  const { restored, stuck } = journal.restoreAll(ROOT)
+  for (const f of restored) console.log(`[drills] a previous run was interrupted; restored ${f}`)
+  if (stuck.length > 0) {
+    for (const s of stuck) console.error(`[drills] COULD NOT RESTORE ${s.entryPath}: ${s.why}`)
+    console.error('[drills] refusing to drill on a tree whose previous damage cannot be undone.')
+    process.exit(1)
+  }
+}
+
+/** Open handles, so a caught signal can put every one of them back. */
+const openHandles = new Set()
+
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
+  process.on(signal, () => {
+    for (const h of openHandles) {
+      try {
+        writeFileSync(h.path, h.handle.original)
+        journal.close(ROOT, h.handle)
+      } catch (error) {
+        /*
+         * The journal entry survives this, and no-drill-residue will refuse the
+         * next build because of it, which is the designed outcome. The error is
+         * still named: a reader who sees the guard fire tomorrow should be able
+         * to find the reason the automatic restore could not happen today.
+         */
+        console.error(
+          `[drills] could not restore ${h.handle.relPath} on ${signal}, so its journal entry stands: ` +
+            `${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+    }
+    console.error(`\n[drills] ${signal}: restored ${openHandles.size} mutated file(s) and exited.`)
+    process.exit(130)
+  })
+}
+
 let passed = 0
 const failed = []
 
 console.log('\n=== GUARD FAILURE DRILLS ===\n')
 console.log('Each drill introduces a real regression, runs the guard, and restores the file.\n')
 
-for (const drill of DRILLS) {
+/*
+ * `--only <substring>` RUNS THE DRILLS WHOSE NAME CONTAINS IT.
+ *
+ * Added because there are 242 drills and two of them run the whole guard runner,
+ * so a full pass is minutes long, and a NEW drill entry that was never executed
+ * is the precise failure this harness warns about in its own output: a drill
+ * that never runs looks identical to a drill that passes.
+ *
+ * It refuses a substring that matches nothing rather than reporting 0/0 green,
+ * for the same reason.
+ */
+const onlyAt = process.argv.indexOf('--only')
+const ONLY = onlyAt === -1 ? null : process.argv[onlyAt + 1]
+const SELECTED = ONLY ? DRILLS.filter((d) => d.name.includes(ONLY)) : DRILLS
+if (ONLY) {
+  if (SELECTED.length === 0) {
+    console.error(`[drills] --only ${JSON.stringify(ONLY)} matched none of the ${DRILLS.length} drills.`)
+    process.exit(1)
+  }
+  console.log(`[drills] --only ${JSON.stringify(ONLY)}: ${SELECTED.length} of ${DRILLS.length} drill(s).`)
+}
+
+for (const drill of SELECTED) {
   /*
    * A drill that could not aim is STALE, exactly like a missing anchor: it is
    * reported as a problem and fails the harness, never skipped in silence.
@@ -3255,8 +3708,17 @@ for (const drill of DRILLS) {
     continue
   }
 
+  /*
+   * The journal entry is written BEFORE the mutation, never after, so the
+   * window in which the tree is mutated and unrecorded does not exist.
+   */
+  let handle = null
   try {
-    if (mutates) writeFileSync(path, original.replace(anchor, drill.replace))
+    if (mutates) {
+      handle = journal.open(ROOT, drill.file, { drill: drill.name, planted: drill.replace })
+      openHandles.add({ path, handle })
+      writeFileSync(path, original.replace(anchor, drill.replace))
+    }
     const { code, out } = run(drill.guard, drill.env ?? null)
 
     /*
@@ -3312,7 +3774,18 @@ for (const drill of DRILLS) {
     console.log(`  FAILS AS EXPECTED  ${drill.name}`)
     console.log(`      exit ${code}: ${line}\n`)
   } finally {
-    if (mutates) writeFileSync(path, original)
+    if (mutates) {
+      writeFileSync(path, original)
+      /*
+       * OBSERVED, NEVER ASSUMED. `close` re-reads the file and keeps the journal
+       * entry when the bytes do not match, so a write that half-succeeded, on a
+       * disk three worktrees share, leaves the alarm standing rather than a tree
+       * that only looks restored.
+       */
+      const closed = journal.close(ROOT, handle)
+      if (!closed.ok) failed.push(`${drill.name}: ${closed.why}`)
+      for (const h of openHandles) if (h.handle === handle) openHandles.delete(h)
+    }
   }
 }
 
@@ -3327,7 +3800,7 @@ if (after.code !== 0) {
   console.log('  all guards PASS on the restored tree.')
 }
 
-console.log(`\n=== ${passed}/${DRILLS.length} drills fired correctly ===\n`)
+console.log(`\n=== ${passed}/${SELECTED.length} drills fired correctly ===\n`)
 
 if (failed.length > 0) {
   for (const f of failed) console.error(`  PROBLEM: ${f}`)

@@ -225,6 +225,14 @@ const NO_ANONYMOUS_VALUE = {
   '/waitlist/unsubscribe/[token]': 'the same, for a waitlist',
   '/unsubscribe/recovery/[token]':
     'the same, for the recovery engine (close-out D2). A malformed one answered 500 on production on 12 September 2026 and is now not found',
+  '/marketing/preferences/[token]': [
+    'THE SAME per-recipient token as /unsubscribe/[token], established rather than assumed:',
+    'the page resolves it through findSubjectByToken (src/lib/consent/ledger.ts:221), which reads',
+    '`unsubscribe_token` on marketing_consents and then on city_waitlist_signups. It is minted per',
+    'recipient per send, so there is no value an anonymous sweep can hold. Arrived with the lane B',
+    'consent ledger (close-out GA1) and was the one UNEXPLAINED gap this sweep reported on',
+    '18 September 2026. The unparameterised /marketing/preferences IS driven and answers 200.',
+  ].join(' '),
   '/launch/k/[code]': 'a Launch Kit code, minted when an organiser publishes',
   '/launch/with/[code]': 'the same Launch Kit code',
   '/events/[slug]/holder': 'the holder view of an event, reached with a bearer ticket',

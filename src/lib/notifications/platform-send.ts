@@ -1,4 +1,5 @@
 import 'server-only'
+import { platformNotificationMessageType } from './recipient-matrix'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email/send'
 import { alertDestination } from '@/lib/env/destinations'
@@ -224,7 +225,17 @@ export async function dispatchPendingPlatformNotifications(options: {
     const attempt = row.attempts + 1
     try {
       const { html, text } = bodyFor(row, siteUrl)
-      await sendEmail({ to, subject: subjectFor(row), html, text })
+      await sendEmail({
+        to,
+        subject: subjectFor(row),
+        html,
+        text,
+        // The owner's feed carries five kinds; each one has its own declared
+        // message type so `order_paid` and `event_published` have to answer
+        // for the organiser as well (see the matrix, and clause 2).
+        messageType: platformNotificationMessageType(row.kind),
+        recipientRole: 'platform_owner',
+      })
       await recordOutcome(admin, row.id, {
         delivery_state: 'sent',
         channel: 'email',
@@ -351,6 +362,8 @@ export async function sendHeldDigest(options: {
     await sendEmail({
       to: alertDestination(),
       subject: digestSubjectFor(rows.length),
+      messageType: 'platform_notification_digest',
+      recipientRole: 'platform_owner',
       html,
       text,
     })

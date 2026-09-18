@@ -157,10 +157,14 @@ const PUBLIC_BY_DESIGN = {
   'api/auth/magic-link/POST': 'magic link request; generic response, rate limited',
   'api/auth/resend-verification/POST': 'verification resend; generic response, rate limited',
   'api/newsletter/subscribe/POST': 'public newsletter opt-in',
+  'forecast/actions.ts::runForecast':
+    'close-out FT1, the free public forecast tool. It is public BY DESIGN and requiring a caller identity would defeat the point of it: FT1 says in terms that there is no account and no email wall, because the organiser it is written for has not signed up yet and is deciding whether to. What it does is bounded. It READS nothing about anybody: the taxonomy and the fee come from public configuration through the anon client, and it touches no person, no event and no order. It WRITES one row to forecast_runs, a table with RLS on and no policy, so nothing public can read it back, and the row holds only what the submitter typed about their own hypothetical night. The optional address is refused by a database check constraint unless the consent wording it was given under is stored with it. Abuse is bounded by the forecast-run rate limit, and the worst a flood achieves is rows in a table nobody can read: it sends no email, bills no third party and grants no access.',
   'api/location/set/POST': 'writes a non-sensitive location preference cookie',
   'api/home/surprise/GET': 'returns a random published event',
   'api/ai/status/GET': 'reports whether the assistant is configured',
   'api/broadcast/track/POST': 'anonymous view beacon, deduped server-side',
+  'm/[code]/GET':
+    'GA3 tracked link. It is an address printed in a message and on a poster, so requiring a caller identity would defeat the entire point of it. What it exposes is bounded by design: the code is opaque and random over 36^12, it is format-gated before any query, an unknown or inactive code answers 404, and a resolved one answers a 307 to a path that was stored at mint time and is a PUBLIC event page. It reads nothing about the caller and writes one click row plus one cookie holding a click id, which is a lookup key rather than a credential: a forged one resolves to no row and the resolver falls to the next rung. It cannot be used to learn that an unpublished event exists, because the target is whatever the link was minted for and a link is only minted for an event the organiser is selling.',
   'api/ledger/demand/POST':
     'anonymous demand beacon for the slot ledger. It accepts ONLY the two actions that carry no person (a page view and a sold-out view); every demand action that carries an address is written server side by the code that observed it. The slot is resolved from the database and a draft, private or cancelled event is refused exactly as its page would be, so it cannot be used to learn that an unpublished event exists. Deduped per visitor per slot per day and rate limited.',
   'api/tickets/[code]/qr/GET': 'BEARER auth: (ticket_code, secret) pair is the credential',
@@ -189,6 +193,12 @@ const PUBLIC_BY_DESIGN = {
   'actions/consent.ts::unsubscribeFromDigestAction': 'per-row unsubscribe token IS the credential; returns void, so no enumeration',
   'actions/consent.ts::unsubscribeFromOrganiserAction': 'per-row unsubscribe token IS the credential; returns void',
   'actions/discount-codes.ts::validateDiscountCode': 'a guest applies a discount code at checkout',
+  'actions/marketing-rights.ts::stopFacilitationByTokenAction':
+    'APP 7.6, by the per-message token, which IS the credential; returns void, writes only a suppression, and a right behind a login is a right nobody exercises',
+  'actions/marketing-rights.ts::unsubscribeEverythingByTokenAction':
+    'the same token, the same rule as the other unsubscribe actions; returns void so nothing can be enumerated with it',
+  'actions/marketing-rights.ts::stopFacilitationByEmailAction':
+    'APP 7.6 from the privacy policy, keyed by a typed address and DELIBERATELY unverified: it can only ever stop mail, it answers identically whether or not the address is known, and it is rate limited by the marketing-rights policy',
   'actions/email-subscribe.ts::submitEmailSignup': 'public newsletter opt-in',
   'actions/queue.ts::getQueuePosition': 'reads a position by queue id; positions are not sensitive',
   'actions/queue.ts::validateQueueToken': 'verifies a signed admission token; the signature is the credential',

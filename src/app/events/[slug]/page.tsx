@@ -93,6 +93,8 @@ import { describeCountries } from '@/lib/stream/countries'
 import { getSiteUrl } from '@/lib/site-url'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
 import { OrganiserProse } from '@/components/ui/organiser-prose'
+import { getFoundingBadge } from '@/lib/organisers/founding-badge'
+import { FoundingOrganiserBadge } from '@/components/features/organisers/founding-organiser-badge'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
 // from Postgres). Personalisation that previously made this dynamic
@@ -829,9 +831,16 @@ export default async function EventDetailPage({ params }: Props) {
    * refusal come from the same place and cannot tell different stories.
    */
   const isPaidEvent = eventIsPaid(allTiers)
-  const organiserSale = isPaidEvent
-    ? await organiserCanSell(event.organisation_id)
-    : { sellable: true, lookupFailed: false }
+  // Close-out FO1: the words "Founding Organiser" on the event page, resolved
+  // on the server with the service role so no column is granted to anon. It
+  // rides alongside the sale gate rather than after it, because a second
+  // serial round trip on the LCP page would be paid by every visitor.
+  const [organiserSale, foundingBadge] = await Promise.all([
+    isPaidEvent
+      ? organiserCanSell(event.organisation_id)
+      : Promise.resolve({ sellable: true, lookupFailed: false }),
+    getFoundingBadge(event.organisation_id),
+  ])
 
   const saleDecision = ticketsOnSaleDetailed({
     isPaidEvent,
@@ -1338,6 +1347,11 @@ export default async function EventDetailPage({ params }: Props) {
                 {event.organisation && (
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
+                  {foundingBadge.isFounding ? (
+                    <div className="mt-3">
+                      <FoundingOrganiserBadge />
+                    </div>
+                  ) : null}
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
                     <div className="flex flex-wrap items-start gap-4">
                       {/* THE CARD LINKS TO THE ORGANISER (close-out UX1, found

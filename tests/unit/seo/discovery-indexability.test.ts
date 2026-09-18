@@ -378,6 +378,9 @@ const ALWAYS_PUBLISHED = [
   '/communities',
   '/cities',
   '/organisers',
+  // FT1's free forecast tool, added here 17 September 2026 when it arrived in
+  // this tree. Saying it out loud is the whole point of typing this list.
+  '/forecast',
   '/pricing',
   '/guides',
   '/legal/terms',

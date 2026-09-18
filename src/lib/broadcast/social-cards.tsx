@@ -6,6 +6,7 @@ import { renderCardPng } from '@/lib/broadcast/card-raster'
 import { BODY_FAMILY, DISPLAY_FAMILY, loadCardFonts } from '@/lib/broadcast/card-fonts'
 import { bodyTextMeasurer, displayTextMeasurer } from '@/lib/broadcast/card-metrics'
 import { printableHost } from '@/lib/site-url'
+import { ORGANISER_PATH } from '@/lib/growth/loops'
 import {
   SOCIAL_CARD_FORMATS,
   SOCIAL_CARD_MAX_BYTES,
@@ -453,19 +454,46 @@ function QrTile({ qr, px, size }: { qr: string; px: Px; size: number }) {
 
 function Wordmark({ px, size }: { px: Px; size: number }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexShrink: 0,
-        color: 'rgba(255,255,255,0.58)',
-        fontFamily: DISPLAY_FAMILY,
-        fontWeight: 700,
-        fontSize: size,
-        letterSpacing: px(1.4),
-      }}
-    >
-      <span>Ticketing by EVENTLINQS</span>
-      <span style={{ color: GOLD_DEEP }}>.</span>
+    <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, gap: px(4) }}>
+      <div
+        style={{
+          display: 'flex',
+          color: 'rgba(255,255,255,0.58)',
+          fontFamily: DISPLAY_FAMILY,
+          fontWeight: 700,
+          fontSize: size,
+          letterSpacing: px(1.4),
+        }}
+      >
+        <span>Ticketing by EVENTLINQS</span>
+        <span style={{ color: GOLD_DEEP }}>.</span>
+      </div>
+      {/*
+        CLOSE-OUT PL1, THE LOOP LINE, AND THE ONE PLACE IT CANNOT CARRY ITS
+        PARAMETER.
+
+        A raster is not a link. `?src=ticket` on a printed address is noise
+        nobody types, so this prints the PATH and nothing else, and the
+        deviation is recorded rather than dressed up: arrivals from a card read
+        as direct in AN1's count, and the card's own reach is measured by the
+        tracked short code the QR beside this already carries.
+
+        SMALLER AND FAINTER THAN THE CREDIT ABOVE IT, on purpose. This is an
+        organiser's promotional artwork for their night. One quiet line at the
+        foot is an invitation; anything louder is us advertising on their card.
+      */}
+      <div
+        style={{
+          display: 'flex',
+          color: 'rgba(255,255,255,0.42)',
+          fontFamily: BODY_FAMILY,
+          fontWeight: 600,
+          fontSize: Math.round(size * 0.72),
+          letterSpacing: px(0.4),
+        }}
+      >
+        <span>{`Run your event at ${printableHost()}${ORGANISER_PATH}`}</span>
+      </div>
     </div>
   )
 }

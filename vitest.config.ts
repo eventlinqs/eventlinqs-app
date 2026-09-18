@@ -46,6 +46,49 @@ export default defineConfig({
      */
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    /*
+     * HOW MANY WORKER PROCESSES, AND WHY IT IS NOT "AS MANY AS THERE ARE CORES".
+     *
+     * The paragraph above is about a test being too SLOW. This one is about a
+     * worker that never STARTS, which looks nothing like a slow test and is much
+     * worse, because vitest reports it as files that simply are not there.
+     *
+     * Measured on 18 September 2026, running `npx vitest run` on a clean tree:
+     *
+     *   Error: [vitest-pool]: Failed to start forks worker for test files
+     *     tests/unit/maps/auth-failure-hook.test.ts.
+     *   Caused by: Error: [vitest-pool-runner]: Timeout waiting for worker to respond
+     *    Test Files  441 passed (441)
+     *
+     * 441 of 442. Nothing failed. One file was never run and the suite still
+     * called itself green, and it is only the test-count canary that turns that
+     * into a refusal at all. Earlier the same day the same cause took ELEVEN
+     * files and 75 tests out of a gate run, and the reading at the time was that
+     * eleven files had "stopped collecting", which sent the search into the tree
+     * instead of at the runner.
+     *
+     * THE CAUSE IS MEMORY, NOT CORES. This machine has 12 cores and 16.6 GB, and
+     * it is shared: three build lanes and a marketing process run on it at once.
+     * Free memory measured while this was happening was 6.2 GB. vitest's default
+     * is one fork per core less one, so it was starting eleven Node processes,
+     * each carrying a full module graph, into that. `START_TIMEOUT` in vitest's
+     * pool is a hardcoded 60 seconds (node_modules/vitest/dist/chunks/
+     * cli-api.Cjt90eJu.js:2782) and is not configurable, so there is no knob on
+     * that side: the only lever is asking for fewer processes at once.
+     *
+     * THIS DOES NOT WEAKEN ANYTHING. Every test still runs and every test still
+     * has to pass; the only thing that changes is how many run at the same
+     * moment.
+     *
+     * `maxWorkers` is the vitest 4 spelling and it is TOP LEVEL, not under
+     * `poolOptions`: that key does not exist in this version's `InlineConfig`
+     * and typecheck says so (read from node_modules/vitest/dist/chunks/
+     * reporters.d.CEnv6XRv.d.ts, "Maximum number or percentage of workers to run
+     * tests in"). A fixed 6 rather than a percentage, deliberately: a percentage
+     * would also halve a CI runner, where 4 cores are already the constraint and
+     * nothing else is competing. As a MAXIMUM, 6 simply never binds there.
+     */
+    maxWorkers: 6,
     projects: [
       {
         extends: true,
