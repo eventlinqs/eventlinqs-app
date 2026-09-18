@@ -368,6 +368,66 @@ html[data-motion="1"] .group:hover .card-hover-wash {
     transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)];
 }
 
+/* The card eyebrow: genre, community or event type, above the title. Its size
+ * IS here, unlike the title's, because every card renders it at the same
+ * 12px micro step and there is nothing for a call site to vary. */
+@utility home-card-label {
+  @apply font-display text-xs font-semibold uppercase tracking-widest
+    text-[var(--brand-accent-strong)];
+}
+
+/* The card's date and price, the two halves of the footer row. Sizes stay at
+ * the call site: the square tile runs them a step smaller than the landscape
+ * card and the feature card a step larger. */
+@utility home-card-date {
+  @apply font-semibold uppercase tracking-wide text-[var(--brand-accent-strong)];
+}
+@utility home-card-price {
+  @apply font-headline font-bold text-[var(--text-primary)];
+}
+
+/* ─── The one rail control ────────────────────────────────────────────────── */
+/*
+ * `ARROW_BTN` from src/components/ui/snap-rail.tsx: 642 characters, and the
+ * homepage rendered it 22 times, in the markup and again in the RSC payload.
+ * It is the single largest repeated class value on the platform's busiest page.
+ *
+ * It collapses cleanly for the same reason it was already a single constant:
+ * CLAUDE.md's Rail Control System makes it ONE canonical control that every
+ * rail renders and no surface re-rolls, so a composite class is a more honest
+ * expression of that law than a string a component hands out.
+ *
+ * FIVE STATE GROUPS, and three of them are invisible to a resting screenshot:
+ * hover, active, disabled (a rail at either end) and focus-visible. The drive
+ * that holds this compares the enabled AND disabled states, because the muted
+ * disabled fill is design law and a rest-only proof would let it be deleted.
+ */
+/* The rail header's "View all" link. It was written out TWICE in snap-rail.tsx,
+ * 310 identical characters at two call sites, which is a duplication defect
+ * before it is a byte one: a change to one would have silently diverged from
+ * the other. `min-h-11` + `sm:inline-flex` is the 44px hit area the touch-target
+ * law asks for (the text line alone is 20px tall); the link is hidden below the
+ * `sm` step, where the rail header has no room for it. */
+@utility rail-header-link {
+  @apply hidden min-h-11 items-center whitespace-nowrap text-sm font-medium
+    text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)]
+    focus-visible:outline-none focus-visible:rounded-lg focus-visible:ring-2
+    focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:inline-flex;
+}
+
+@utility rail-arrow-btn {
+  @apply flex h-11 w-11 items-center justify-center rounded-full
+    bg-[var(--color-ink-900)] text-white shadow-[var(--shadow-card)]
+    transition-[transform,background-color,box-shadow,color] duration-200 ease-out
+    hover:-translate-y-0.5 hover:bg-[var(--color-navy-950)] hover:text-[var(--color-gold-400)]
+    hover:shadow-[var(--shadow-card-hover)]
+    active:translate-y-0 active:scale-95 active:duration-75
+    disabled:cursor-not-allowed disabled:bg-[var(--surface-2)] disabled:text-[var(--text-muted)]
+    disabled:shadow-none disabled:translate-y-0
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]
+    focus-visible:ring-offset-2;
+}
+
 /* ─── M5 typography utility classes ──────────────────────────────────────── */
 /*
  * Pair font-size + line-height + weight per spec in one class.

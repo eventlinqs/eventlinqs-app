@@ -158,7 +158,35 @@ const PROPS = {
     'transition-duration',
     '-webkit-line-clamp',
   ],
+  label: ['font-size', 'font-weight', 'font-family', 'letter-spacing', 'text-transform', 'color'],
+  date: ['font-size', 'font-weight', 'letter-spacing', 'text-transform', 'color'],
+  price: ['font-size', 'font-weight', 'font-family', 'color'],
 }
+
+/**
+ * The canonical rail control (`ARROW_BTN` in src/components/ui/snap-rail.tsx).
+ * It is measured in THREE states because two of its five class groups only
+ * exist in states a resting screenshot never reaches: `disabled:` at a rail
+ * end, and `focus-visible:`. Collapsing a 642-character list and proving only
+ * the resting state would leave the muted disabled fill and the gold ring
+ * unproven, and both are design law (CLAUDE.md, Rail Control System).
+ */
+const ARROW_PROPS = [
+  'display',
+  'width',
+  'height',
+  'border-radius',
+  'background-color',
+  'color',
+  'box-shadow',
+  'transition-property',
+  'transition-duration',
+  'transition-timing-function',
+  'translate',
+  'scale',
+  'cursor',
+  'outline-style',
+]
 
 const faults = []
 const notes = []
@@ -195,6 +223,9 @@ function sampleScript(count) {
     const PROPS_CARD = ${JSON.stringify(PROPS.card)};
     const PROPS_IMAGE = ${JSON.stringify(PROPS.image)};
     const PROPS_TITLE = ${JSON.stringify(PROPS.title)};
+    const PROPS_LABEL = ${JSON.stringify(PROPS.label)};
+    const PROPS_DATE = ${JSON.stringify(PROPS.date)};
+    const PROPS_PRICE = ${JSON.stringify(PROPS.price)};
     const read = (el, props) => {
       const cs = getComputedStyle(el);
       const o = {};
@@ -206,18 +237,60 @@ function sampleScript(count) {
     return anchors.slice(0, ${count}).map(a => {
       const img = a.querySelector('img');
       const h3 = a.querySelector('h3');
+      const label = a.querySelector('p');
+      /* HoverWash renders TWO aria-hidden spans (media-grade-veil and
+       * card-hover-wash) inside the card's media div, and they come FIRST in
+       * document order. The first version of this took spans[0] and spans[1]
+       * and reported the veil's computed style as the card's date and price -
+       * font-weight 400 and no uppercase, which is what gave it away. */
+      const spans = [...a.querySelectorAll('span')].filter(s => !s.hasAttribute('aria-hidden'));
       return {
         href: a.getAttribute('href'),
         cardClassLength: (a.getAttribute('class') || '').length,
         imageClassLength: (img.getAttribute('class') || '').length,
         titleClassLength: (h3.getAttribute('class') || '').length,
+        labelClassLength: label ? (label.getAttribute('class') || '').length : null,
         card: read(a, PROPS_CARD),
         image: read(img, PROPS_IMAGE),
         title: read(h3, PROPS_TITLE),
+        label: label ? read(label, PROPS_LABEL) : null,
+        date: spans[0] ? read(spans[0], PROPS_DATE) : null,
+        price: spans[1] ? read(spans[1], PROPS_PRICE) : null,
       };
     });
   })()`
 }
+
+/**
+ * The rail arrows, in all three states. `disabled` is read from a rail that is
+ * scrolled to its start (the previous control is disabled there), and focus is
+ * read after focusing the enabled one.
+ */
+const ARROW_SCRIPT = `(() => {
+  const PROPS = ${JSON.stringify(ARROW_PROPS)};
+  const read = (el) => {
+    const cs = getComputedStyle(el);
+    const o = {};
+    for (const p of PROPS) o[p] = cs.getPropertyValue(p).trim();
+    return o;
+  };
+  /* RailArrows label themselves "Scroll <rail> left|right". Matching
+   * /previous|next/ instead found the HERO CAROUSEL's controls ("Previous
+   * event"), which are a different component with a different class list, and
+   * the drive would have proved the wrong button unchanged. The 298-character
+   * translucent control it measured was the giveaway: ARROW_BTN is 642
+   * characters and opaque. */
+  const buttons = [...document.querySelectorAll('button[aria-label]')]
+    .filter(b => /^Scroll .+ (left|right)$/.test(b.getAttribute('aria-label') || ''));
+  const enabled = buttons.find(b => !b.disabled) || null;
+  const disabled = buttons.find(b => b.disabled) || null;
+  return {
+    found: buttons.length,
+    classLength: enabled ? (enabled.getAttribute('class') || '').length : null,
+    enabled: enabled ? read(enabled) : null,
+    disabled: disabled ? read(disabled) : null,
+  };
+})()`
 
 const FIRST_CARD = `[...document.querySelectorAll('a[href^="/events/"]')].filter(x => x.querySelector('img') && x.querySelector('h3'))[0]`
 
@@ -286,7 +359,10 @@ try {
       return { boxShadow: cs.boxShadow, outlineStyle: cs.outlineStyle, outlineColor: cs.outlineColor };
     })()`)
 
-    capture[key] = { dataMotion, rest, hovered, focused }
+    const arrows = await page.evaluate(ARROW_SCRIPT)
+    check(arrows.found > 0, `${key}: ${arrows.found} rail arrow control(s) found to measure`)
+
+    capture[key] = { dataMotion, rest, hovered, focused, arrows }
 
     if (SHOTS) {
       mkdirSync(SHOTS, { recursive: true })
@@ -349,7 +425,13 @@ if (EXPECT) {
       if (b.rest[i].href !== a.rest[i].href) {
         notes.push(`${vp} card ${i}: href moved (${b.rest[i].href} -> ${a.rest[i].href}), styles still compared`)
       }
-      for (const role of ['card', 'image', 'title']) {
+      for (const role of ['card', 'image', 'title', 'label', 'date', 'price']) {
+        if (!b.rest[i][role] || !a.rest[i][role]) {
+          if (b.rest[i][role] !== a.rest[i][role]) {
+            faults.push(`${vp} card ${i} ${role}: present on one tree and absent on the other`)
+          }
+          continue
+        }
         for (const prop of PROPS[role]) {
           compared += 1
           const was = b.rest[i][role][prop]
@@ -366,10 +448,31 @@ if (EXPECT) {
       compared += 1
       if (b.focused[k] !== a.focused[k]) faults.push(`${vp} focus-visible ${k}: was "${b.focused[k]}", now "${a.focused[k]}"`)
     }
+    /* The rail arrow, enabled AND disabled. The disabled state is only reached
+     * at a rail end and carries a class group of its own; leaving it out would
+     * let the muted fill be deleted silently. */
+    for (const state of ['enabled', 'disabled']) {
+      const bs = b.arrows?.[state]
+      const as = a.arrows?.[state]
+      if (!bs || !as) {
+        if (Boolean(bs) !== Boolean(as)) {
+          faults.push(`${vp} rail arrow ${state}: present on one tree and absent on the other`)
+        }
+        continue
+      }
+      for (const prop of ARROW_PROPS) {
+        compared += 1
+        if (bs[prop] !== as[prop]) {
+          faults.push(`${vp} rail arrow ${state} ${prop}: was "${bs[prop]}", now "${as[prop]}"`)
+        }
+      }
+    }
     console.log(
       `${TAG} ${vp}: card class attribute ${b.rest[0].cardClassLength} -> ${a.rest[0].cardClassLength} chars, ` +
         `image ${b.rest[0].imageClassLength} -> ${a.rest[0].imageClassLength}, ` +
-        `title ${b.rest[0].titleClassLength} -> ${a.rest[0].titleClassLength}`,
+        `title ${b.rest[0].titleClassLength} -> ${a.rest[0].titleClassLength}, ` +
+        `label ${b.rest[0].labelClassLength} -> ${a.rest[0].labelClassLength}, ` +
+        `rail arrow ${b.arrows?.classLength} -> ${a.arrows?.classLength}`,
     )
   }
   check(compared > 0, `the comparison examined ${compared} computed values (a comparison of nothing is not a pass)`)
