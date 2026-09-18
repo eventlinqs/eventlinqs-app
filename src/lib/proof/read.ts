@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import { getPricingRule } from '@/lib/payments/pricing-rules'
 import { captureException } from '@/lib/observability/sentry'
@@ -111,6 +112,29 @@ async function mustRead<R extends { data: unknown; error: unknown }>(
   return data as R['data']
 }
 
+/**
+ * The same contract as `mustRead`, for a read that must return EVERY row.
+ *
+ * Supabase stops a response at 1,000 rows and says nothing about the ones it
+ * left out. On this page that is not a missing row, it is a smaller number: an
+ * event with more than a thousand orders in the window would have had its
+ * revenue, its attributed share and its net ledger figure all computed from
+ * the first thousand, and the page exists to DEFEND a fee with those figures.
+ * The failure is wrapped as a `ProofReadFailed` like every other read here, so
+ * the page shows its own honest failure rather than a plausible smaller total.
+ */
+async function mustReadEvery<T>(
+  what: string,
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  try {
+    return await readEveryRow<T>(what, page)
+  } catch (error) {
+    captureException(error, { where: `lib/proof/read:${what}` })
+    throw new ProofReadFailed(what, error)
+  }
+}
+
 export async function readProof(campaignId: string, now = new Date()): Promise<ProofReadResult | null> {
   const admin = createAdminClient()
 
@@ -135,15 +159,16 @@ export async function readProof(campaignId: string, now = new Date()): Promise<P
   const windowTo = now.toISOString()
 
   /* THE REVENUE. An error here would read as zero, so it is never an error here. */
-  const orderRows = await mustRead('the orders in the window', () =>
+  const orders = await mustReadEvery('the orders in the window', (from, to) =>
     admin
       .from('orders')
       .select('id, order_number, total_cents, status, created_at, currency')
       .eq('event_id', campaign.event_id)
       .gte('created_at', windowFrom)
-      .lte('created_at', windowTo),
+      .lte('created_at', windowTo)
+      .order('id', { ascending: true })
+      .range(from, to),
   )
-  const orders = orderRows ?? []
 
   const orderIds = orders.map(o => o.id)
   const attributions = new Map<string, ProofOrder['attribution']>()
@@ -155,13 +180,19 @@ export async function readProof(campaignId: string, now = new Date()): Promise<P
         admin
           .from('marketing_attribution')
           .select('order_id, campaign_id, decision, billable, rung, explanation')
-          .in('order_id', slice),
+          .in('order_id', slice)
+          // One decision per order, and the slice is 200 orders.
+          .limit(200),
       ),
-      mustRead('the attribution reversals', () =>
+      // An order can carry more than one reversal, so this one is paged rather
+      // than bounded by the slice size.
+      mustReadEvery('the attribution reversals', (from, to) =>
         admin
           .from('marketing_attribution_reversal')
           .select('id, order_id, reversed_amount_cents, reason')
-          .in('order_id', slice),
+          .in('order_id', slice)
+          .order('id', { ascending: true })
+          .range(from, to),
       ),
     ])
     for (const row of attrRows ?? []) {
@@ -190,13 +221,20 @@ export async function readProof(campaignId: string, now = new Date()): Promise<P
     reversals: reversals.get(o.id) ?? [],
   }))
 
-  const sendRows = await mustRead('the sends', () =>
-    admin.from('marketing_send').select('id, channel_code, state').eq('campaign_id', campaign.id),
+  // The send count is the cost side of the arithmetic this page publishes.
+  const sendRows = await mustReadEvery('the sends', (from, to) =>
+    admin
+      .from('marketing_send')
+      .select('id, channel_code, state')
+      .eq('campaign_id', campaign.id)
+      .order('id', { ascending: true })
+      .range(from, to),
   )
-  const sends: ProofSend[] = (sendRows ?? []).map(s => ({ id: s.id, channelCode: s.channel_code, state: s.state }))
+  const sends: ProofSend[] = sendRows.map(s => ({ id: s.id, channelCode: s.channel_code, state: s.state }))
 
   const channelRows = await mustRead('the channel costs', () =>
-    admin.from('marketing_channel').select('code, cost_per_send_cents'),
+    // The channel code table: email and sms today, bounded rather than ceilinged.
+    admin.from('marketing_channel').select('code, cost_per_send_cents').limit(100),
   )
   const channelCostCents: Record<string, number | null> = {}
   for (const c of channelRows ?? []) {
@@ -255,18 +293,23 @@ export async function readProof(campaignId: string, now = new Date()): Promise<P
   if (slotError) {
     captureException(slotError, { where: 'lib/proof/read:ledger-slot' })
   } else if (slot) {
-    const { data: entries, error: entriesError } = await admin
-      .from('ledger_entries')
-      .select('id, amount_cents, occurred_at')
-      .eq('slot_id', slot.id)
-      .gte('occurred_at', windowFrom)
-      .lte('occurred_at', windowTo)
-    if (entriesError) {
-      captureException(entriesError, { where: 'lib/proof/read:ledger-entries' })
-    } else {
-      const rows = entries ?? []
+    try {
+      // The net ledger figure this page prints. Paged, because a busy event's
+      // entries pass a thousand and a short read would understate the net.
+      const rows = await readEveryRow('the ledger entries in the window', (from, to) =>
+        admin
+          .from('ledger_entries')
+          .select('id, amount_cents, occurred_at')
+          .eq('slot_id', slot.id)
+          .gte('occurred_at', windowFrom)
+          .lte('occurred_at', windowTo)
+          .order('id', { ascending: true })
+          .range(from, to),
+      )
       ledgerEntryIds = rows.map(e => String(e.id))
       ledgerNetCents = rows.reduce((total, e) => total + Number(e.amount_cents ?? 0), 0)
+    } catch (entriesError) {
+      captureException(entriesError, { where: 'lib/proof/read:ledger-entries' })
     }
   }
 

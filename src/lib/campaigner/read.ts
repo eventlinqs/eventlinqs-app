@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { formatEventDate } from '@/lib/dates/event-time'
 import { getSiteUrl } from '@/lib/site-url'
 import { trackedLinkPath } from '@/lib/attribution/route-config'
@@ -79,6 +80,8 @@ export async function listCampaigns(): Promise<CampaignListRow[]> {
     .from('events')
     .select('id, title')
     .in('id', rows.map(r => r.event_id))
+    // One title per listed campaign, and the list above is capped at 40.
+    .limit(40)
   const titles = new Map((events ?? []).map(e => [e.id, e.title]))
 
   const out: CampaignListRow[] = []
@@ -122,7 +125,9 @@ export async function readCampaign(campaignId: string, channelCode: string): Pro
       .eq('id', campaign.event_id)
       .maybeSingle(),
     admin.from('organisations').select('id, name').eq('id', campaign.organisation_id).maybeSingle(),
-    admin.from('marketing_channel').select('code, display_name'),
+    // The channel code table: email and sms today, and a bound rather than a
+    // silent ceiling if a third is ever added.
+    admin.from('marketing_channel').select('code, display_name').limit(100),
   ])
   const channelName = new Map((channels ?? []).map(c => [c.code, c.display_name]))
 
@@ -134,6 +139,8 @@ export async function readCampaign(campaignId: string, channelCode: string): Pro
     .select('id, step_order, channel_code, days_remaining_min, days_remaining_max, template_key, min_hours_since_previous_send')
     .eq('sequence_id', campaign.sequence_id ?? '')
     .order('step_order', { ascending: true })
+    // A sequence is a handful of steps. The bound is stated, not assumed.
+    .limit(200)
   const steps: PacingStep[] = (stepRows ?? []).map(s => ({
     id: s.id,
     stepOrder: s.step_order,
@@ -144,13 +151,21 @@ export async function readCampaign(campaignId: string, channelCode: string): Pro
     minHoursSincePreviousSend: s.min_hours_since_previous_send,
   }))
 
-  const { data: allowRows } = await admin
-    .from('marketing_recipient_allowlist')
-    .select('id, audience_member_id, consent_channel_scope, match_run_id')
-    .eq('campaign_id', campaign.id)
-    .eq('channel_code', channelCode)
-    .order('admitted_at', { ascending: true })
-  const allowlist = allowRows ?? []
+  /*
+   * THE WHOLE ALLOWLIST. Its length is the number this screen reports as the
+   * size of the send AND the number the segment fingerprint is built from, so
+   * a truncated read would approve a sample for a segment that does not exist.
+   */
+  const allowlist = await readEveryRow('marketing_recipient_allowlist', (from, to) =>
+    admin
+      .from('marketing_recipient_allowlist')
+      .select('id, audience_member_id, consent_channel_scope, match_run_id')
+      .eq('campaign_id', campaign.id)
+      .eq('channel_code', channelCode)
+      .order('admitted_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
 
   const runIds = allowlist.map(r => r.match_run_id).filter((v): v is string => Boolean(v))
   const fingerprint =
@@ -171,22 +186,31 @@ export async function readCampaign(campaignId: string, channelCode: string): Pro
         .maybeSingle()
     : { data: null }
 
-  const { data: sends } = await admin
-    .from('marketing_send')
-    .select('state, channel_code')
-    .eq('campaign_id', campaign.id)
-  const sendRows = sends ?? []
+  // Every send this campaign has made. `capUsed` is counted from these rows,
+  // so a short read reports a cap as unspent when it is not.
+  const sendRows = await readEveryRow('marketing_send', (from, to) =>
+    admin
+      .from('marketing_send')
+      .select('state, channel_code')
+      .eq('campaign_id', campaign.id)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
   const capUsed = sendRows.filter(s => s.channel_code === channelCode).length
   const stateCounts = new Map<string, number>()
   for (const s of sendRows) stateCounts.set(s.state, (stateCounts.get(s.state) ?? 0) + 1)
 
-  const { data: skips } = await admin
-    .from('marketing_send_skip')
-    .select('reason')
-    .eq('campaign_id', campaign.id)
-    .eq('channel_code', channelCode)
+  const skips = await readEveryRow('marketing_send_skip', (from, to) =>
+    admin
+      .from('marketing_send_skip')
+      .select('reason')
+      .eq('campaign_id', campaign.id)
+      .eq('channel_code', channelCode)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
   const skipCounts = new Map<string, number>()
-  for (const s of skips ?? []) skipCounts.set(s.reason, (skipCounts.get(s.reason) ?? 0) + 1)
+  for (const s of skips) skipCounts.set(s.reason, (skipCounts.get(s.reason) ?? 0) + 1)
 
   const { data: identity } = await admin
     .from('marketing_sender_identity')

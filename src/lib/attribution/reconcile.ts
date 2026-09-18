@@ -1,4 +1,5 @@
 import 'server-only'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { captureException } from '@/lib/observability/sentry'
 import { reversalOwedForOrderState, REVERSAL_REASON } from './reversal'
@@ -54,12 +55,20 @@ export async function reconcileReversals(): Promise<ReconcileResult> {
     ranAt,
   }
 
-  const { data: attributions, error } = await admin
-    .from('marketing_attribution')
-    .select('order_id')
-    .eq('decision', 'attributed')
-  if (error) throw new Error(`marketing_attribution read failed: ${error.message}`)
-  const orderIds = (attributions ?? []).map(a => a.order_id)
+  /*
+   * EVERY ATTRIBUTED ORDER. Reconciliation reverses the attributions whose
+   * orders were refunded, so an order missing from this read keeps a billable
+   * attribution against a refunded order: a charge for a sale that came back.
+   */
+  const attributions = await readEveryRow('the attributed orders', (from, to) =>
+    admin
+      .from('marketing_attribution')
+      .select('order_id')
+      .eq('decision', 'attributed')
+      .order('order_id', { ascending: true })
+      .range(from, to),
+  )
+  const orderIds = attributions.map(a => a.order_id)
   result.attributionsRead = orderIds.length
   if (orderIds.length === 0) return result
 
@@ -69,6 +78,8 @@ export async function reconcileReversals(): Promise<ReconcileResult> {
       .from('orders')
       .select('id, status, total_cents')
       .in('id', orderIds.slice(i, i + 200))
+      // Keyed by id, so at most the 200 asked for.
+      .limit(200)
     if (ordersError) throw new Error(`orders read failed: ${ordersError.message}`)
     orders.push(...((data ?? []) as { id: string; status: string; total_cents: number }[]))
   }
@@ -77,12 +88,18 @@ export async function reconcileReversals(): Promise<ReconcileResult> {
   // that actually completed count: a pending one has taken no money back yet.
   const refundedByOrder = new Map<string, number>()
   for (let i = 0; i < orderIds.length; i += 200) {
-    const { data } = await admin
-      .from('refunds')
-      .select('order_id, amount_cents, status')
-      .in('order_id', orderIds.slice(i, i + 200))
-      .eq('status', 'completed')
-    for (const row of data ?? []) {
+    // An order can carry more than one completed refund, so the slice bounds
+    // the orders and nothing bounds the rows: paged rather than limited.
+    const data = await readEveryRow('the completed refunds', (from, to) =>
+      admin
+        .from('refunds')
+        .select('order_id, amount_cents, status')
+        .in('order_id', orderIds.slice(i, i + 200))
+        .eq('status', 'completed')
+        .order('id', { ascending: true })
+        .range(from, to),
+    )
+    for (const row of data) {
       refundedByOrder.set(row.order_id, (refundedByOrder.get(row.order_id) ?? 0) + Number(row.amount_cents))
     }
   }

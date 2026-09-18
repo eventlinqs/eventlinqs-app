@@ -1,4 +1,5 @@
 import 'server-only'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveAndStoreOrder } from './store'
 
@@ -102,14 +103,21 @@ interface BreachRow {
 
 async function unrecordedOrders(): Promise<BreachRow[]> {
   const admin = createAdminClient()
-  const { data, error } = await admin
-    .from('marketing_attribution_invariant_breaches')
-    .select('order_id, order_reference')
-    .eq('breach', NO_RECORD_BREACH)
-  if (error) {
-    throw new Error(`marketing_attribution_invariant_breaches read failed: ${error.message}`)
-  }
-  return (data ?? []).filter((row): row is BreachRow & { order_id: string } => Boolean(row.order_id))
+  /*
+   * EVERY BREACH, NOT THE FIRST THOUSAND. This is the list of orders with no
+   * attribution record at all, and the backstop heals exactly what it reads:
+   * a truncated read leaves the remainder unrecorded for ever while reporting
+   * that it healed everything it found.
+   */
+  const data = await readEveryRow('marketing_attribution_invariant_breaches', (from, to) =>
+    admin
+      .from('marketing_attribution_invariant_breaches')
+      .select('order_id, order_reference')
+      .eq('breach', NO_RECORD_BREACH)
+      .order('order_id', { ascending: true })
+      .range(from, to),
+  )
+  return data.filter((row): row is BreachRow & { order_id: string } => Boolean(row.order_id))
 }
 
 /**
@@ -133,6 +141,8 @@ export async function healUnrecordedOrders(now: Date = new Date()): Promise<Back
       .select('id')
       .in('id', ids.slice(i, i + 200))
       .gt('created_at', cutoff)
+      // Keyed by id, so at most the 200 asked for.
+      .limit(200)
     if (error) throw new Error(`orders read failed: ${error.message}`)
     for (const row of data ?? []) young.add(row.id)
   }

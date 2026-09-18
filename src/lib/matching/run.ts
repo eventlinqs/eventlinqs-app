@@ -5,6 +5,7 @@ import { captureException } from '@/lib/observability/sentry'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { normaliseSubjectEmail, LOCAL_DIGEST_PURPOSE } from '@/lib/consent/purposes'
 import { filterPermittedRecipients } from '@/lib/consent/resolver'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { readMatchConfig, configSnapshot } from './config'
 import { type AudienceRowForScoring, type EventForScoring, type MatchConfig } from './score'
 import { composeRun } from './compose'
@@ -56,8 +57,12 @@ async function loadEvent(admin: Admin, eventId: string) {
     event.category_id
       ? admin.from('event_categories').select('slug').eq('id', event.category_id).maybeSingle()
       : Promise.resolve({ data: null }),
-    admin.from('ticket_tiers').select('price').eq('event_id', eventId).eq('is_active', true),
-    admin.from('community_tag_map').select('community_slug, tokens'),
+    // One event's active tiers. The bound is far above any real event and is
+    // stated rather than left to the server's invisible 1,000-row ceiling.
+    admin.from('ticket_tiers').select('price').eq('event_id', eventId).eq('is_active', true).limit(500),
+    readEveryRow('community_tag_map', (from, to) =>
+      admin.from('community_tag_map').select('community_slug, tokens').order('community_slug').range(from, to),
+    ).then(data => ({ data })),
   ])
 
   const prices = (tiers ?? []).map(t => t.price).sort((a, b) => a - b)
@@ -124,25 +129,54 @@ export async function produceMatchRun(
 
   const cap = Math.max(1, Math.min(params.cap ?? config.maxRecipientsPerRun, config.maxRecipientsPerRun))
 
-  const { data: audienceRows } = await admin
-    .from('audience_members')
-    .select(
-      'id, email, category_slugs, community_slugs, city_slugs, postcode, price_band, last_order_at, lifetime_spend_cents, consent_channel',
-    )
-  const audience = audienceRows ?? []
+  /*
+   * THE WHOLE AUDIENCE, NOT THE FIRST THOUSAND OF IT. Unbounded until
+   * 19 September 2026: past a thousand members the matcher would have scored
+   * a thousand people and silently ignored everybody else, for ever, with the
+   * run reporting a healthy match count the whole time.
+   */
+  const audience = await readEveryRow('audience_members', (from, to) =>
+    admin
+      .from('audience_members')
+      .select(
+        'id, email, category_slugs, community_slugs, city_slugs, postcode, price_band, last_order_at, lifetime_spend_cents, consent_channel',
+      )
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
 
   // The facts suppression needs, gathered once for the whole audience rather
   // than per person: one query each instead of three per row.
   const emails = audience.map(m => normaliseSubjectEmail(m.email))
   const [permitted, ticketHolders, sends, suppressions] = await Promise.all([
     filterPermittedRecipients(admin, emails, { purpose: LOCAL_DIGEST_PURPOSE, channel, now }),
-    admin
-      .from('orders')
-      .select('guest_email, user_id')
-      .eq('event_id', params.eventId)
-      .eq('status', 'confirmed'),
-    admin.from('recovery_sends').select('contact_email, sent_at'),
-    admin.from('recovery_suppressions').select('contact_email, reason'),
+    /*
+     * ALL THREE ARE SUPPRESSION LISTS, SO A SHORT READ SENDS RATHER THAN
+     * WITHHOLDS. A sold-out event passes a thousand confirmed orders easily,
+     * and a truncated holder list means mailing "come to this" to people
+     * holding a ticket for it. A truncated recovery_suppressions means mailing
+     * somebody who asked not to be. Paged, and the pager throws rather than
+     * returning a short list.
+     */
+    readEveryRow('the event’s confirmed orders', (from, to) =>
+      admin
+        .from('orders')
+        .select('guest_email, user_id')
+        .eq('event_id', params.eventId)
+        .eq('status', 'confirmed')
+        .order('id', { ascending: true })
+        .range(from, to),
+    ).then(data => ({ data })),
+    readEveryRow('recovery_sends', (from, to) =>
+      admin.from('recovery_sends').select('contact_email, sent_at').order('id', { ascending: true }).range(from, to),
+    ).then(data => ({ data })),
+    readEveryRow('recovery_suppressions', (from, to) =>
+      admin
+        .from('recovery_suppressions')
+        .select('contact_email, reason')
+        .order('id', { ascending: true })
+        .range(from, to),
+    ).then(data => ({ data })),
   ])
 
   const permittedSet = new Set(permitted.permitted)

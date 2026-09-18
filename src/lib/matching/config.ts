@@ -33,8 +33,14 @@ export async function readMatchConfig(admin: Admin): Promise<MatchConfig> {
       )
       .eq('id', true)
       .maybeSingle(),
-    admin.from('marketing_match_weights').select('component, weight, sentence').order('weight', { ascending: false }),
-    admin.from('marketing_match_postcode_bands').select('band, shared_prefix, fit, label').order('band'),
+    // Both are small authored configuration tables. The bound is stated so a
+    // silently dropped weight can never change what the matcher scores.
+    admin
+      .from('marketing_match_weights')
+      .select('component, weight, sentence')
+      .order('weight', { ascending: false })
+      .limit(200),
+    admin.from('marketing_match_postcode_bands').select('band, shared_prefix, fit, label').order('band').limit(200),
   ])
 
   if (configResult.error || !configResult.data) {

@@ -2,6 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import {
   PLATFORM_TENANT_SLUG,
   isTransactionalPurpose,
@@ -78,6 +79,18 @@ export async function resolveSend(
       return { permitted: false, reason: `unknown tenant ${tenantSlug}`, decidingEventId: null }
     }
 
+    /*
+     * THE 200 IS A BOUND AND IT FAILS CLOSED, WHICH IS WHY IT IS NOT PAGED.
+     *
+     * Both reads are NEWEST FIRST, and `decideSend` uses exactly two things:
+     * the latest event whose purpose covers this one, and the suppressions at
+     * or after it. Taking the newest 200 can therefore only ever discard rows
+     * OLDER than the deciding one. In the worst case a person with 200 newer
+     * events of other purposes hides their own grant and the message is
+     * REFUSED. Never the reverse. Do not replace this with an unbounded select:
+     * that is the defect this file was corrected for on 19 September 2026, and
+     * unbounded is not the same as complete.
+     */
     const [eventResult, suppressionResult, policyResult] = await Promise.all([
       admin
         .from('consent_events')
@@ -191,23 +204,46 @@ export async function filterPermittedRecipients(
     const chunks: string[][] = []
     for (let i = 0; i < normalised.length; i += CHUNK) chunks.push(normalised.slice(i, i + CHUNK))
 
-    const [eventPages, suppressionPages, policyResult] = await Promise.all([
+    /*
+     * EVERY ROW, NOT THE FIRST THOUSAND. A hundred addresses is a hundred
+     * PEOPLE and an unknown number of ROWS: this ledger is append-only, so a
+     * long-standing buyer accumulates an event for every preference change,
+     * checkout answer and unsubscribe they ever made. Supabase caps a response
+     * at 1,000 rows and reports the truncation nowhere (HTTP 200, no error);
+     * this read carried no order, so WHICH rows were dropped was whatever the
+     * query plan happened to produce.
+     *
+     * That is the one truncation that can send a message rather than withhold
+     * one. `decideSend` takes the LATEST event per person: drop somebody's
+     * withdrawal, keep the grant underneath it, and the platform mails a person
+     * who unsubscribed. Every other truncation on this path fails closed; this
+     * one failed open.
+     */
+    const [eventRows, suppressionRows, policyResult] = await Promise.all([
       Promise.all(
         chunks.map(chunk =>
-          admin
-            .from('consent_events')
-            .select('id, subject_email, purpose, channel_scope, decision, occurred_at, wording_version')
-            .eq('tenant_id', tenant.id)
-            .in('subject_email', chunk),
+          readEveryRow('the consent ledger', (from, to) =>
+            admin
+              .from('consent_events')
+              .select('id, subject_email, purpose, channel_scope, decision, occurred_at, wording_version')
+              .eq('tenant_id', tenant.id)
+              .in('subject_email', chunk)
+              .order('id', { ascending: true })
+              .range(from, to),
+          ),
         ),
       ),
       Promise.all(
         chunks.map(chunk =>
-          admin
-            .from('suppression_events')
-            .select('id, subject_email, channel, scope, occurred_at')
-            .eq('tenant_id', tenant.id)
-            .in('subject_email', chunk),
+          readEveryRow('the suppression ledger', (from, to) =>
+            admin
+              .from('suppression_events')
+              .select('id, subject_email, channel, scope, occurred_at')
+              .eq('tenant_id', tenant.id)
+              .in('subject_email', chunk)
+              .order('id', { ascending: true })
+              .range(from, to),
+          ),
         ),
       ),
       admin.from('consent_policy').select('max_age_months').eq('id', true).maybeSingle(),
@@ -218,12 +254,11 @@ export async function filterPermittedRecipients(
      * and treating the missing half as "no consent recorded" would refuse real
      * people for a network blip, so any failure raises and the whole list fails
      * closed together, which at least says the same thing about everybody.
+     * `readEveryRow` throws on a failed page, so a chunk that could not be read
+     * in full reaches the catch below rather than arriving as a short list.
      */
-    for (const page of [...eventPages, ...suppressionPages]) {
-      if (page.error) throw new Error(`the consent ledger could not be read: ${page.error.message}`)
-    }
-    const eventResult = { data: eventPages.flatMap(page => page.data ?? []) }
-    const suppressionResult = { data: suppressionPages.flatMap(page => page.data ?? []) }
+    const eventResult = { data: eventRows.flat() }
+    const suppressionResult = { data: suppressionRows.flat() }
 
     const maxAgeMonths = policyResult.data?.max_age_months ?? CONSENT_MAX_AGE_MONTHS_FALLBACK
     const permitted: string[] = []
