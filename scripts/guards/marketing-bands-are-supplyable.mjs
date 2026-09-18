@@ -70,13 +70,16 @@
  * claimed `(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px`, which
  * describes a three-up public grid. Its call site is a HALF of the 1400px
  * dashboard column beside a sidebar. Driven at DPR 2 once the drive was taught
- * to sign in (`C:\dev\EVIDENCE\LB-TILE\before-drive.txt`):
+ * to sign in (`C:\dev\EVIDENCE\LB-TILE\before\report.json`):
  *
+ *     1920  a 636px slot needed 1272, the browser chose 640   x0.50
  *      640  a 540px slot needed 1080, the browser chose 640   x0.59
  *     1440  a 504px slot needed 1008, the browser chose 640   x0.64
- *      360  a 276px slot needed  552, the browser chose 384   x0.70
  *
- * Six of the nine viewports under-fetched. So the drive grew `AUTHED_PATHS`, the
+ * SEVEN of the nine viewports under-fetched, and the worst of them is the line
+ * that was hardest to see: the drive printed six and stopped, so x0.50 at 1920
+ * sat in the report while the console showed x0.59 as the floor. It prints the
+ * count now. So the drive grew `AUTHED_PATHS`, the
  * variant is now named for its layout, and clause 1 requires a page rendering a
  * TILE to be in that authed list exactly as a page rendering a BAND must be in
  * the public one. A guard that names what it cannot see is better than one that

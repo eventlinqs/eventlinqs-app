@@ -220,13 +220,22 @@ export const MEDIA_SIZES = {
    *
    *  IT WAS `(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px`, which
    *  describes a three-up public grid this call site has never been in, and it
-   *  under-fetched at 6 of the 9 viewports the drive claims the contract at.
+   *  under-fetched at 7 of the 9 viewports the drive claims the contract at.
    *  Driven at DPR 2 on 19 September 2026
-   *  (`C:\dev\EVIDENCE\LB-TILE\before-drive.txt`):
+   *  (`C:\dev\EVIDENCE\LB-TILE\before\report.json`):
    *
+   *      1920  a 636px slot needed 1272, the browser chose 640   x0.50
    *       640  a 540px slot needed 1080, the browser chose 640   x0.59
    *      1440  a 504px slot needed 1008, the browser chose 640   x0.64
-   *       360  a 276px slot needed  552, the browser chose 384   x0.70
+   *
+   *  The 1920 line is quoted first because it was the one nobody saw: the drive
+   *  printed its first six under-fetches and stopped, so the worst of the seven
+   *  was in the report and not on the screen. It prints the count now.
+   *
+   *  As a RATIO of hint to slot, 8 of the 9 were short; 390 is the extra one and
+   *  the candidate ladder rescued it, because 50vw of 390 is 195 and 195x2
+   *  rounds up to the 640 rung, which clears a 612 need by accident. A hint that
+   *  is only right because of rounding is not right.
    *
    *  It stood uncorrected because it could not be measured: the route is behind
    *  a login and this drive signed in to nothing. That is now `AUTHED_PATHS` in
