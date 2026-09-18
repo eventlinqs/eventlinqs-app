@@ -45,7 +45,7 @@
 import { spawnSync } from 'node:child_process'
 
 import { gitEnv } from '../lib/git-env.mjs'
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -2307,12 +2307,74 @@ if (failed > 0) {
         : '      (the report named none, which means the failure is at suite level)'),
   )
 }
+/**
+ * WHICH FILES DID NOT RUN, BY NAME.
+ *
+ * This guard used to report a shortfall and then tell the reader to go and find
+ * the cause with `npx vitest run`, which is advice rather than a diagnosis. On
+ * 18 September 2026 it refused a push with "only 431 test FILES ran, baseline is
+ * 442", and the eleven files were not recoverable from its output at all: it
+ * runs vitest with `--reporter=json` into a file and then deletes it, so there
+ * was no vitest output left to read. A re-run of the same tree collected all
+ * 442, which made the eleven a mystery rather than a finding.
+ *
+ * It already holds everything needed to answer the question. The JSON report
+ * names every file that DID run, and the two `include` globs in
+ * vitest.config.ts say which files SHOULD have. The difference is the answer,
+ * and it is printed rather than described.
+ *
+ * The globs are matched by suffix rather than by a glob library, deliberately:
+ * they are `tests/unit/ ** /*.test.ts` and `tests/component/ ** /*.test.tsx`,
+ * and a walker plus an extension test says exactly that with nothing to keep in
+ * step with a dependency. If a third project is ever added to the config, this
+ * list has to gain it, and the count printed beside the names is what will say
+ * so: an on-disk total that disagrees with the baseline means this list is
+ * stale, not that the suite shrank.
+ */
+/** Windows paths from `join()` carry backslashes; vitest reports forward ones. */
+const norm = p => p.split(String.fromCharCode(92)).join('/')
+const testFilesOnDisk = () => {
+  const found = []
+  const walk = dir => {
+    let entries
+    try {
+      entries = readdirSync(dir)
+    } catch (error) {
+      // The directory is named by vitest.config.ts, so its absence is a real
+      // finding about this list being stale rather than something to swallow.
+      console.log(`[test-count-canary] ${dir} could not be read (${error.message}), so the on-disk list is incomplete`)
+      return
+    }
+    for (const entry of entries) {
+      const p = join(dir, entry)
+      if (statSync(p).isDirectory()) walk(p)
+      else if (/\.test\.tsx?$/.test(entry)) found.push(norm(p))
+    }
+  }
+  walk(join(ROOT, 'tests', 'unit'))
+  walk(join(ROOT, 'tests', 'component'))
+  return found.map(p => p.replace(norm(ROOT) + '/', ''))
+}
+
 if (files < MIN_FILES) {
+  const ran = new Set(
+    (Array.isArray(report.testResults) ? report.testResults : []).map(r =>
+      (r.name ?? '').replace(/\\/g, '/').replace(norm(ROOT) + '/', ''),
+    ),
+  )
+  const onDisk = testFilesOnDisk()
+  const missing = onDisk.filter(f => !ran.has(f)).sort()
   problems.push(
     `only ${files} test FILES ran, baseline is ${MIN_FILES}.\n` +
       '      A file that fails to COLLECT is reported by vitest as "no tests", not as a\n' +
       '      failure, so this is very often a file that crashed at module scope rather\n' +
-      '      than a file somebody deleted.',
+      '      than a file somebody deleted.\n' +
+      `      ${onDisk.length} file(s) match the vitest include globs on disk; ${ran.size} of them ran.\n` +
+      (missing.length > 0
+        ? '      DID NOT RUN:\n' + missing.map(f => `        ${f}`).join('\n')
+        : '      Every file on disk ran, so the shortfall is against the BASELINE rather than\n' +
+          '      against the tree: files were deleted, or this list does not cover a third\n' +
+          '      vitest project added to vitest.config.ts.'),
   )
 }
 if (tests < MIN_TESTS) {
