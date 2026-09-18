@@ -4216,7 +4216,7 @@ const failed = []
  * final line that says in words that this is NOT the full harness. The
  * pre-push gate and every other caller pass no argument and are unaffected.
  *
- * 19 September 2026, the merge: LANE A WROTE THE SAME FLAG ON THE SAME DAY, in
+ * 18 September 2026, the merge: LANE A WROTE THE SAME FLAG ON THE SAME DAY, in
  * the same file, and the two declarations collided on `onlyAt`, so keeping both
  * was a SyntaxError rather than a choice. This one is kept because it is the
  * superset: it accepts a comma separated list, matches a GUARD PATH as well as a

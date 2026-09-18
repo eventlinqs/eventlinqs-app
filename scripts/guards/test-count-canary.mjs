@@ -2144,8 +2144,8 @@ const ROOT = join(HERE, '..', '..')
  * matcher was blind to it.
  */
 /*
- * 2026-09-19 (lane B, merging verify/l5-launch-readiness a SIXTH time, the
- * overlap lane A's watchdog aborted on at 21:31 on 18 September). BOTH COMMENT
+ * 2026-09-18, late (lane B, merging verify/l5-launch-readiness a SIXTH time,
+ * the overlap lane A's watchdog aborted on at 21:31 the same day). BOTH COMMENT
  * HISTORIES ABOVE ARE KEPT VERBATIM and they are still two lineages rather than
  * one chain. Lane B's last pair, 443/5750, was measured on lane/b-growth, which
  * has never held lane A's LB2 or LB3 work. Lane A's last pair, 443/5717, was
