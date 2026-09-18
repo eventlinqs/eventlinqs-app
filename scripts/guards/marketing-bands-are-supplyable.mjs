@@ -78,7 +78,6 @@ const MEDIA = 'src/components/media/MarketingMedia.tsx'
 const SIZES = 'src/components/media/sizes.ts'
 const SPINE = 'src/lib/images/spine.ts'
 const DRIVE = 'scripts/verify/image-hint-fidelity-drive.mjs'
-const TARGET = 'src/components/media/MarketingMedia'
 
 const failures = []
 const fail = (where, message) => failures.push(`${where}\n    ${message}`)
