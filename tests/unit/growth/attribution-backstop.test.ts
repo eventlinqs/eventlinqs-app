@@ -56,15 +56,36 @@ const state: {
   breachReads: 0,
 }
 
+/*
+ * THE VIEW, MODELLED WITH ITS PAGING.
+ *
+ * The backstop pages this read (readEveryRow) since 19 September 2026, because
+ * an unbounded response stops at 1,000 rows in silence and would leave the
+ * remainder unrecorded for ever. A mock that answers `.range()` by ignoring it
+ * would let a broken pager pass, so this one slices.
+ *
+ * `breachReads` counts LOGICAL reads, not requests: a read starts at range 0,
+ * and the follow-up page that proves the end has been reached is part of the
+ * same question. Every test that counts reads is asking how many times the view
+ * was consulted, which is still exactly what it counts.
+ */
 function viewBuilder() {
   const b: Record<string, unknown> = {}
+  let from = 0
+  let to = Number.POSITIVE_INFINITY
   b.select = () => b
   b.eq = () => b
+  b.order = () => b
+  b.range = (f: number, t: number) => {
+    from = f
+    to = t
+    return b
+  }
   ;(b as { then: unknown }).then = (resolve: (v: unknown) => void) => {
-    state.breachReads += 1
+    if (from === 0) state.breachReads += 1
     if (state.breachReadFails) return resolve({ data: null, error: { message: state.breachReadFails } })
     const rows = state.breachReads === 1 || state.breachesAfter === null ? state.breaches : state.breachesAfter
-    return resolve({ data: rows, error: null })
+    return resolve({ data: rows.slice(from, to + 1), error: null })
   }
   return b
 }
@@ -74,6 +95,7 @@ function ordersBuilder() {
   b.select = () => b
   b.in = () => b
   b.gt = () => b
+  b.limit = () => b
   ;(b as { then: unknown }).then = (resolve: (v: unknown) => void) => {
     if (state.ordersReadFails) return resolve({ data: null, error: { message: state.ordersReadFails } })
     return resolve({ data: state.youngOrderIds.map(id => ({ id })), error: null })
@@ -210,7 +232,12 @@ describe('the backstop never reports success when it could not look', () => {
   it('throws when the breaches view cannot be read', async () => {
     state.breachReadFails = 'connection terminated'
 
-    await expect(healUnrecordedOrders()).rejects.toThrow(/marketing_attribution_invariant_breaches read failed/)
+    // The wording moved when this read was paged on 19 September 2026; the
+    // contract did not. It still throws rather than reporting an empty heal,
+    // and it still names the view, which is what an operator greps for.
+    await expect(healUnrecordedOrders()).rejects.toThrow(
+      /marketing_attribution_invariant_breaches could not be read in full: connection terminated/,
+    )
   })
 
   it('throws when the orders read that decides the grace split fails', async () => {

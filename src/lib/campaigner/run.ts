@@ -1,4 +1,5 @@
 import 'server-only'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveSend } from '@/lib/consent/resolver'
 import { FACILITATED_MARKETING_PURPOSE, type ConsentChannel } from '@/lib/consent/purposes'
@@ -127,6 +128,8 @@ export async function runCampaign(params: {
     .select('id, step_order, channel_code, days_remaining_min, days_remaining_max, template_key, min_hours_since_previous_send')
     .eq('sequence_id', campaign.sequence_id ?? '')
     .order('step_order', { ascending: true })
+    // A sequence is a handful of steps. The bound is stated, not assumed.
+    .limit(200)
   const steps: PacingStep[] = (stepRows ?? []).map(s => ({
     id: s.id,
     stepOrder: s.step_order,
@@ -146,13 +149,23 @@ export async function runCampaign(params: {
     .limit(1)
     .maybeSingle()
 
-  const { data: allowRows } = await admin
-    .from('marketing_recipient_allowlist')
-    .select('id, audience_member_id, channel_code, consent_channel_scope, match_run_id')
-    .eq('campaign_id', campaign.id)
-    .eq('channel_code', params.channelCode)
-    .order('admitted_at', { ascending: true })
-  const allowlist = (allowRows ?? []) as AllowlistRow[]
+  /*
+   * EVERY ADMITTED RECIPIENT. This list is who the run sends to, and its
+   * LENGTH is folded into the segment fingerprint the approval is keyed by. A
+   * truncated read would both silently drop everybody past the thousandth and
+   * fingerprint a segment that never existed, so an approval granted on the
+   * screen would not match the one the run computed.
+   */
+  const allowlist = (await readEveryRow('marketing_recipient_allowlist', (from, to) =>
+    admin
+      .from('marketing_recipient_allowlist')
+      .select('id, audience_member_id, channel_code, consent_channel_scope, match_run_id')
+      .eq('campaign_id', campaign.id)
+      .eq('channel_code', params.channelCode)
+      .order('admitted_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to),
+  )) as AllowlistRow[]
   result.considered = allowlist.length
 
   if (allowlist.length === 0) return result
@@ -179,7 +192,11 @@ export async function runCampaign(params: {
   const members = new Map<string, { email: string }>()
   const memberIds = allowlist.map(r => r.audience_member_id)
   for (let i = 0; i < memberIds.length; i += 100) {
-    const { data } = await admin.from('audience_members').select('id, email').in('id', memberIds.slice(i, i + 100))
+    const { data } = await admin
+      .from('audience_members')
+      .select('id, email')
+      .in('id', memberIds.slice(i, i + 100))
+      .limit(100)
     for (const m of data ?? []) members.set(m.id, { email: m.email })
   }
 
@@ -191,15 +208,27 @@ export async function runCampaign(params: {
       .from('marketing_consents')
       .select('email, unsubscribe_token')
       .in('email', emails.slice(i, i + 100))
+      .limit(100)
     for (const row of data ?? []) tokens.set(row.email.toLowerCase(), row.unsubscribe_token)
   }
 
-  const { data: priorSends } = await admin
-    .from('marketing_send')
-    .select('allowlist_id, sequence_step_id, created_at, state')
-    .eq('campaign_id', campaign.id)
+  /*
+   * WHAT HAS ALREADY BEEN SENT, ALL OF IT. This is the only thing stopping a
+   * person receiving the same step twice: a recipient missing from this map
+   * reads as never sent to. A thousand-row ceiling on a campaign that has sent
+   * more than a thousand messages is therefore a DUPLICATE SEND, to the
+   * earliest recipients, every run.
+   */
+  const priorSends = await readEveryRow('marketing_send', (from, to) =>
+    admin
+      .from('marketing_send')
+      .select('allowlist_id, sequence_step_id, created_at, state')
+      .eq('campaign_id', campaign.id)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
   const sentByAllowlist = new Map<string, { stepIds: string[]; last: string | null }>()
-  for (const s of priorSends ?? []) {
+  for (const s of priorSends) {
     const entry = sentByAllowlist.get(s.allowlist_id) ?? { stepIds: [], last: null }
     if (s.sequence_step_id) entry.stepIds.push(s.sequence_step_id)
     if (!entry.last || s.created_at > entry.last) entry.last = s.created_at
@@ -208,7 +237,12 @@ export async function runCampaign(params: {
 
   const templates = new Map<string, { key: string; channelCode: string; subjectTemplate: string; bodyTemplate: string }>()
   {
-    const { data } = await admin.from('marketing_template').select('key, channel_code, subject_template, body_template')
+    // The template library, a small authored table. Bounded so a ceiling can
+    // never quietly remove the template a step names.
+    const { data } = await admin
+      .from('marketing_template')
+      .select('key, channel_code, subject_template, body_template')
+      .limit(500)
     for (const t of data ?? []) {
       templates.set(t.key, {
         key: t.key,
@@ -234,14 +268,18 @@ export async function runCampaign(params: {
    * campaign rather than holding it.
    */
   if (result.approved && transport) {
-    const { data: drafts } = await admin
-      .from('marketing_send')
-      .select('id, channel_code, destination, rendered_subject, rendered_body, rendered_html')
-      .eq('campaign_id', campaign.id)
-      .eq('channel_code', params.channelCode)
-      .eq('segment_fingerprint', result.segmentFingerprint)
-      .eq('state', 'draft')
-    for (const draft of drafts ?? []) {
+    const drafts = await readEveryRow('the approved drafts', (from, to) =>
+      admin
+        .from('marketing_send')
+        .select('id, channel_code, destination, rendered_subject, rendered_body, rendered_html')
+        .eq('campaign_id', campaign.id)
+        .eq('channel_code', params.channelCode)
+        .eq('segment_fingerprint', result.segmentFingerprint)
+        .eq('state', 'draft')
+        .order('id', { ascending: true })
+        .range(from, to),
+    )
+    for (const draft of drafts) {
       try {
         const delivery = await transport.deliver({
           channelCode: draft.channel_code,

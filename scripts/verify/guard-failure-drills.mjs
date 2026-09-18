@@ -3257,8 +3257,12 @@ const DRILLS = [
     name: 'a figure read on the proof page stops going through mustRead',
     guard: `${GUARDS}/proof-reads-never-discard-their-error.mjs`,
     file: 'src/lib/proof/read.ts',
-    find: "  const sendRows = await mustRead('the sends', () =>",
-    replace: '  const { data: sendRows } = await (async () =>',
+    // Re-anchored 19 September 2026: the sends read became a PAGED read
+    // (mustReadEvery) when the 1,000-row ceiling was closed, and this drill
+    // reported itself STALE rather than quietly verifying nothing. The channel
+    // costs read is the one that still goes through mustRead directly.
+    find: "  const channelRows = await mustRead('the channel costs', () =>",
+    replace: '  const { data: channelRows } = await (async () =>',
     expect: 'never binds `error`',
   },
   /*
@@ -4381,6 +4385,66 @@ const DRILLS = [
       "    rasterWhy: 'an ORGANISER-SUPPLIED event cover sits behind this tile rather than a licensed library raster, so the library ingest ceiling is not the ceiling over it and judging it against one would be judging the wrong file. Law 6 governs what may be done with it: render what was supplied, never invent pixels it does not have.',",
     replace: "    rasterWhy: '',",
     expect: 'is excluded from the raster-ceiling clause with no',
+  },
+
+  /*
+   * no-silent-row-ceiling (lane B, 19 September 2026), five drills.
+   *
+   * The guard exists because a read with no bound is silently truncated at
+   * 1,000 rows by the server, with HTTP 200 and no error. Three drills remove a
+   * bound from a real read; two break the pager itself in the two ways a pager
+   * is broken, both of which pass every test that does not fake a server with a
+   * LOWER ceiling than the page size.
+   */
+  {
+    name: 'a configuration read in the matcher loses its stated bound',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/matching/config.ts',
+    find: ".order('band').limit(200),",
+    replace: ".order('band'),",
+    expect: 'reads marketing_match_postcode_bands with no bound',
+  },
+  {
+    name: 'a paged read loses the order that makes paging deterministic',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/matching/run.ts',
+    find:
+      "      admin.from('recovery_sends').select('contact_email, sent_at').order('id', { ascending: true }).range(from, to),",
+    replace: "      admin.from('recovery_sends').select('contact_email, sent_at').range(from, to),",
+    expect: 'pages recovery_sends with .range() and no .order()',
+  },
+  {
+    name: 'the audience screen goes back to reading the consent ledger unbounded',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/audience/read.ts',
+    find:
+      "        .order('id', { ascending: true })\n        .range(from, to),",
+    replace: '',
+    expect: 'with no bound',
+  },
+  {
+    name: 'the pager advances by the page size instead of by the rows it received',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/supabase/read-every-row.ts',
+    find: '    from += batch.length',
+    replace: '    from += pageSize',
+    expect: 'no longer advances by the rows it received',
+  },
+  {
+    name: 'the pager stops on a short page, which a lowered project ceiling makes every page',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/supabase/read-every-row.ts',
+    find: '    if (batch.length === 0) return rows',
+    replace: '    if (batch.length < pageSize) return rows',
+    expect: 'stops on a SHORT page',
+  },
+  {
+    name: 'the guard is pointed at a directory that does not exist and would sweep nothing',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'scripts/guards/no-silent-row-ceiling.mjs',
+    find: "  'src/lib/consent',",
+    replace: "  'src/lib/consent-ledger',",
+    expect: 'a scope that scans nothing reports PASS',
   },
 
   /*

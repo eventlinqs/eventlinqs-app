@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { resolveSend } from '@/lib/consent/resolver'
 import { FACILITATED_MARKETING_PURPOSE, type ConsentChannel } from '@/lib/consent/purposes'
 import { captureException } from '@/lib/observability/sentry'
@@ -40,14 +41,23 @@ export async function admitMatchRunToAllowlist(params: {
   const admin = createAdminClient()
   const result: AdmissionResult = { considered: 0, admitted: 0, alreadyOn: 0, refused: [] }
 
-  const { data: scores, error: scoresError } = await admin
-    .from('marketing_match_score')
-    .select('audience_member_id')
-    .eq('run_id', params.matchRunId)
-    .order('rank', { ascending: true })
-  if (scoresError) throw new Error(`marketing_match_score read failed: ${scoresError.message}`)
+  /*
+   * ONE RUN'S SCORES, ALL OF THEM. A match run is capped in the matcher, but
+   * the cap is configuration and has been above a thousand; an unbounded read
+   * here would have admitted the first thousand of a larger run and reported
+   * the short number as the considered total.
+   */
+  const scores = await readEveryRow('marketing_match_score', (from, to) =>
+    admin
+      .from('marketing_match_score')
+      .select('audience_member_id')
+      .eq('run_id', params.matchRunId)
+      .order('rank', { ascending: true })
+      .order('audience_member_id', { ascending: true })
+      .range(from, to),
+  )
 
-  const memberIds = [...new Set((scores ?? []).map(s => s.audience_member_id))]
+  const memberIds = [...new Set(scores.map(s => s.audience_member_id))]
   result.considered = memberIds.length
   if (memberIds.length === 0) return result
 
@@ -57,16 +67,28 @@ export async function admitMatchRunToAllowlist(params: {
       .from('audience_members')
       .select('id, email')
       .in('id', memberIds.slice(i, i + 100))
+      // At most the 100 ids asked for, because id is the key. Stated so the
+      // bound is in the source rather than in the server's invisible ceiling.
+      .limit(100)
     if (error) throw new Error(`audience_members read failed: ${error.message}`)
     members.push(...(data ?? []))
   }
 
-  const { data: existing } = await admin
-    .from('marketing_recipient_allowlist')
-    .select('audience_member_id')
-    .eq('campaign_id', params.campaignId)
-    .eq('channel_code', params.channelCode)
-  const alreadyOn = new Set((existing ?? []).map(r => r.audience_member_id))
+  /*
+   * WHO IS ALREADY ON THE LIST. A truncated answer here is not a missing row,
+   * it is a DUPLICATE SEND: everybody past the thousandth reads as new and is
+   * admitted a second time.
+   */
+  const existing = await readEveryRow('marketing_recipient_allowlist', (from, to) =>
+    admin
+      .from('marketing_recipient_allowlist')
+      .select('audience_member_id')
+      .eq('campaign_id', params.campaignId)
+      .eq('channel_code', params.channelCode)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
+  const alreadyOn = new Set(existing.map(r => r.audience_member_id))
 
   for (const member of members) {
     if (alreadyOn.has(member.id)) {

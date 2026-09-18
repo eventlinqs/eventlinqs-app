@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { normaliseSubjectEmail } from '@/lib/consent/purposes'
 import { captureException } from '@/lib/observability/sentry'
@@ -64,6 +65,8 @@ async function loadClicksForEvents(eventIds: string[]): Promise<Map<string, Reso
       .from('marketing_campaign')
       .select('id, event_id, name, attribution_window_days')
       .in('event_id', eventIds.slice(i, i + 100))
+      // One campaign per event on this path; the slice is 100 events.
+      .limit(100)
     if (error) throw new Error(`marketing_campaign read failed: ${error.message}`)
     campaigns.push(...(data ?? []))
   }
@@ -80,17 +83,28 @@ async function loadClicksForEvents(eventIds: string[]): Promise<Map<string, Reso
   }[] = []
   const ids = campaigns.map(c => c.id)
   for (let i = 0; i < ids.length; i += 100) {
-    const { data, error } = await admin
-      .from('marketing_click')
-      .select('id, campaign_id, channel_code, partner_id, recipient_id, occurred_at')
-      .in('campaign_id', ids.slice(i, i + 100))
-    if (error) throw new Error(`marketing_click read failed: ${error.message}`)
-    clicks.push(...(data ?? []))
+    /*
+     * MANY CLICKS PER CAMPAIGN, so the slice size bounds the campaigns and
+     * nothing bounds the rows. A truncated click list is an order that cannot
+     * find the click that earned it, which reads on the proof page as a
+     * campaign that sold nothing.
+     */
+    clicks.push(
+      ...(await readEveryRow('marketing_click', (from, to) =>
+        admin
+          .from('marketing_click')
+          .select('id, campaign_id, channel_code, partner_id, recipient_id, occurred_at')
+          .in('campaign_id', ids.slice(i, i + 100))
+          .order('id', { ascending: true })
+          .range(from, to),
+      )),
+    )
   }
 
   const channelNames = new Map<string, string>()
   {
-    const { data } = await admin.from('marketing_channel').select('code, display_name')
+    // The channel code table, bounded rather than left to a silent ceiling.
+    const { data } = await admin.from('marketing_channel').select('code, display_name').limit(100)
     for (const row of data ?? []) channelNames.set(row.code, row.display_name)
   }
 
@@ -102,6 +116,8 @@ async function loadClicksForEvents(eventIds: string[]): Promise<Map<string, Reso
       .from('marketing_recipient')
       .select('id, audience_members(email)')
       .in('id', recipientIds.slice(i, i + 100))
+      // Keyed by id, so at most the 100 asked for.
+      .limit(100)
     if (error) throw new Error(`marketing_recipient read failed: ${error.message}`)
     for (const row of data ?? []) {
       /*
@@ -149,14 +165,25 @@ async function loadClicksForEvents(eventIds: string[]): Promise<Map<string, Reso
  */
 async function spentClickIds(excludeOrderId: string | null): Promise<Set<string>> {
   const admin = createAdminClient()
-  const { data, error } = await admin
-    .from('marketing_attribution')
-    .select('order_id, click_id')
-    .eq('billable', true)
-    .not('click_id', 'is', null)
-  if (error) throw new Error(`marketing_attribution read failed: ${error.message}`)
+  /*
+   * EVERY CLICK ALREADY SPENT, AND THIS ONE IS MONEY.
+   *
+   * A click missing from this set reads as unspent, and an unspent click can
+   * be attributed to a SECOND order. Past a thousand billable attributions an
+   * unbounded read would have started handing the same click out twice, which
+   * is a double charge defended by a proof page quoting the same click.
+   */
+  const data = await readEveryRow('the spent clicks', (from, to) =>
+    admin
+      .from('marketing_attribution')
+      .select('order_id, click_id')
+      .eq('billable', true)
+      .not('click_id', 'is', null)
+      .order('order_id', { ascending: true })
+      .range(from, to),
+  )
   const out = new Set<string>()
-  for (const row of data ?? []) {
+  for (const row of data) {
     if (excludeOrderId && row.order_id === excludeOrderId) continue
     if (row.click_id) out.add(row.click_id)
   }
@@ -304,24 +331,32 @@ export async function backfillAttributions(options: { onlyMissing?: boolean } = 
   const admin = createAdminClient()
   const onlyMissing = options.onlyMissing ?? true
 
-  const orders: OrderRow[] = []
-  const pageSize = 1000
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await admin
+  /*
+   * THIS LOOP USED TO BE WRITTEN BY HAND HERE, AND IT CARRIED BOTH OF THE
+   * DEFECTS `readEveryRow` EXISTS FOR. It advanced by the page size rather
+   * than by the rows received, so a project whose ceiling had been lowered
+   * below 1,000 would have stopped after one page believing it had read
+   * everything; and it ordered by `created_at` alone, which is not a total
+   * order, so two orders sharing a timestamp across a page boundary could be
+   * returned twice or skipped entirely.
+   */
+  const orders = (await readEveryRow('orders', (from, to) =>
+    admin
       .from('orders')
       .select('id, order_number, event_id, guest_email, user_id, created_at')
       .order('created_at', { ascending: true })
-      .range(from, from + pageSize - 1)
-    if (error) throw new Error(`orders read failed: ${error.message}`)
-    orders.push(...((data ?? []) as OrderRow[]))
-    if (!data || data.length < pageSize) break
-  }
+      .order('id', { ascending: true })
+      .range(from, to),
+  )) as OrderRow[]
 
   const existing = new Set<string>()
   {
-    const { data, error } = await admin.from('marketing_attribution').select('order_id')
-    if (error) throw new Error(`marketing_attribution read failed: ${error.message}`)
-    for (const row of data ?? []) existing.add(row.order_id)
+    // Which orders already have a decision. A short read here re-decides an
+    // order that was already decided.
+    const data = await readEveryRow('the existing attributions', (from, to) =>
+      admin.from('marketing_attribution').select('order_id').order('order_id', { ascending: true }).range(from, to),
+    )
+    for (const row of data) existing.add(row.order_id)
   }
 
   const todo = onlyMissing ? orders.filter(o => !existing.has(o.id)) : orders
@@ -335,14 +370,27 @@ export async function backfillAttributions(options: { onlyMissing?: boolean } = 
   const emailByUser = new Map<string, string>()
   const userIds = [...new Set(todo.map(o => o.user_id).filter((v): v is string => Boolean(v)))]
   for (let i = 0; i < userIds.length; i += 200) {
-    const { data } = await admin.from('profiles').select('id, email').in('id', userIds.slice(i, i + 200))
+    const { data } = await admin
+      .from('profiles')
+      .select('id, email')
+      .in('id', userIds.slice(i, i + 200))
+      // Keyed by id, so at most the 200 asked for.
+      .limit(200)
     for (const p of data ?? []) if (p.email) emailByUser.set(p.id, p.email)
   }
 
   const signals = new Map<string, { click_id: string | null; query_identifiers: unknown; cookie_present: boolean }>()
   {
-    const { data } = await admin.from('marketing_order_signal').select('order_id, click_id, query_identifiers, cookie_present')
-    for (const row of data ?? []) signals.set(row.order_id, row)
+    // The signal that identifies which click an order came from. A truncated
+    // read is an order silently attributed to nobody.
+    const data = await readEveryRow('the order signals', (from, to) =>
+      admin
+        .from('marketing_order_signal')
+        .select('order_id, click_id, query_identifiers, cookie_present')
+        .order('order_id', { ascending: true })
+        .range(from, to),
+    )
+    for (const row of data) signals.set(row.order_id, row)
   }
 
   const spent = await spentClickIds(null)

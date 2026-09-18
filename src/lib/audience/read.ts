@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import {
   AUDIENCE_PRICE_BANDS,
   AUDIENCE_RECENCY_BANDS,
@@ -89,10 +90,14 @@ function tally(rows: (string[] | null)[]): AudienceCount[] {
 export async function getAudienceDashboard(): Promise<AudienceDashboard> {
   const admin = createAdminClient()
 
-  const [membersRes, eventsRes, policyRes] = await Promise.all([
-    admin
-      .from('audience_members')
-      .select('city_slugs, community_slugs, category_slugs, price_band, last_order_at, lifetime_spend_cents'),
+  const [members, events, policyRes] = await Promise.all([
+    readEveryRow('audience_members', (from, to) =>
+      admin
+        .from('audience_members')
+        .select('city_slugs, community_slugs, category_slugs, price_band, last_order_at, lifetime_spend_cents')
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
     /*
      * THE COUNTS COME OUT OF THE LEDGER, NOT OUT OF THE PROJECTION.
      *
@@ -103,19 +108,36 @@ export async function getAudienceDashboard(): Promise<AudienceDashboard> {
      * path applies, so this page and the next send cannot tell different
      * stories about the same buyer.
      */
-    admin
-      .from('consent_events')
-      .select('subject_email, decision, occurred_at')
-      .order('occurred_at', { ascending: true }),
+    /*
+     * PAGED, BECAUSE THE CEILING DELETED THE ANSWERS THIS PAGE IS ABOUT.
+     *
+     * This read was unbounded until 19 September 2026. Supabase returns at most
+     * 1,000 rows per response and says nothing when it truncates, and the order
+     * below is OLDEST FIRST, so the rows the ceiling removed were precisely the
+     * newest ones: the decisions. Measured on TEST the day it was found, with
+     * 9,490 events in the table, this screen reported 997 people asked, 1
+     * withdrawal, 0 declines and a 100% opt-in rate. The ledger held 9,364
+     * people, 53 withdrawals, 102 declines and 98.9%.
+     *
+     * The id is the tie-break: `occurred_at` alone is not a total order, and
+     * paging on a non-total order can return one row twice and skip another.
+     */
+    readEveryRow('consent_events', (from, to) =>
+      admin
+        .from('consent_events')
+        .select('subject_email, decision, occurred_at')
+        .order('occurred_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
     admin.from('consent_policy').select('max_age_months').eq('id', true).maybeSingle(),
   ])
 
-  const members = membersRes.data ?? []
   const maxAgeMonths = policyRes.data?.max_age_months ?? 24
 
   // Ordered oldest first above, so the last write per address wins.
   const latest = new Map<string, { decision: string; occurredAt: string }>()
-  for (const row of eventsRes.data ?? []) {
+  for (const row of events) {
     latest.set(row.subject_email, { decision: row.decision, occurredAt: row.occurred_at })
   }
   const states = [...latest.values()]

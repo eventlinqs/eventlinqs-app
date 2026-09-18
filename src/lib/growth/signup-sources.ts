@@ -1,4 +1,5 @@
 import 'server-only'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { captureException } from '@/lib/observability/sentry'
 import { heardFromLabel, HEARD_FROM_UNANSWERED_LABEL } from './heard-from'
@@ -63,13 +64,25 @@ export async function getOrganiserSignupSources(opts?: {
   const since = opts?.since ?? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   try {
     const admin = createAdminClient()
-    const { data, error } = await admin
-      .from('profiles')
-      .select('signup_heard_from, signup_src, referred_by')
-      .eq('role', 'organiser')
-      .gte('created_at', since.toISOString())
-      .lt('created_at', now.toISOString())
-    if (error) {
+    /*
+     * EVERY ORGANISER WHO SIGNED UP IN THE WINDOW. This is the number the
+     * growth levers are judged by, so a ceiling that quietly stopped at a
+     * thousand would report a recruitment week as smaller than it was and
+     * would do it more the better the week went.
+     */
+    let data
+    try {
+      data = await readEveryRow('the weekly organiser signups', (from, to) =>
+        admin
+          .from('profiles')
+          .select('signup_heard_from, signup_src, referred_by')
+          .eq('role', 'organiser')
+          .gte('created_at', since.toISOString())
+          .lt('created_at', now.toISOString())
+          .order('id', { ascending: true })
+          .range(from, to),
+      )
+    } catch (error) {
       console.error('[signup-sources] could not read the weekly organiser signups:', error)
       return { total: 0, heardFrom: [], surfaces: [], referred: 0, unavailable: true }
     }

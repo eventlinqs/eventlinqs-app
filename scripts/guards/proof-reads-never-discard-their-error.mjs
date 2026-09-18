@@ -75,11 +75,21 @@ export function awaitedDestructures(src) {
 }
 
 /**
- * Is this read routed through `mustRead`? Those destructure nothing: they take
- * the row directly, because mustRead has already refused on an error.
+ * Is this read routed through a door that refuses on an error? Those
+ * destructure nothing: they take the rows directly, because the door has
+ * already thrown.
+ *
+ * THERE ARE TWO DOORS AND THEY ARE THE SAME DOOR. `mustReadEvery` arrived on
+ * 19 September 2026 when the reads that feed a printed figure were paged, so a
+ * 1,000-row ceiling could no longer quietly shrink the revenue this page
+ * publishes. It wraps `readEveryRow` and throws the same `ProofReadFailed`, so
+ * a read through it satisfies this guard for the same reason.
+ *
+ * Counted with an explicit alternation rather than a prefix match, so a third
+ * name has to be added here deliberately rather than inherited by spelling.
  */
 export function readsThroughMustRead(src) {
-  return [...stripComments(src).matchAll(/\bmustRead\s*\(/g)].length
+  return [...stripComments(src).matchAll(/\b(?:mustRead|mustReadEvery)\s*\(/g)].length
 }
 
 /** What one file does wrong. Exported so the drill and the unit test can call it. */

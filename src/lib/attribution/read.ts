@@ -154,6 +154,9 @@ export async function readAttributionForOrder(reference: string): Promise<Attrib
     .select('id, reason, reversed_amount_cents, reversed_at, source')
     .eq('order_id', order.id)
     .order('reversed_at', { ascending: false })
+    // One order's reversals. Bounded far above anything real, and stated here
+    // rather than left to the server's invisible 1,000-row ceiling.
+    .limit(500)
 
   const reversals: ReversalView[] = (reversalRows ?? []).map(r => ({
     id: r.id,

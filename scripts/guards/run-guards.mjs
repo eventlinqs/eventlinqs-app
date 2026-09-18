@@ -286,6 +286,13 @@
  *                              fixed term matches its declared slot, and a band the
  *                              licensed raster cannot supply is named with a date and a
  *                              reason instead of passing quietly (lane B, 19 Sep 2026)
+ *   no-silent-row-ceiling     no read in the consent, marketing, matching, attribution or
+ *                              proof path can be truncated in silence. Supabase stops a
+ *                              response at 1,000 rows with no error, which had the admin
+ *                              audience screen reporting 997 people out of 9,364 and 0
+ *                              declines out of 102. Every read pages through readEveryRow
+ *                              or states its own bound, and a paged read carries a stable
+ *                              order (lane B, 19 Sep 2026)
  *   weak-network-contract     the checkout survives a submit that never reached the server,
  *                              the root service worker keeps only content-hashed assets so
  *                              no cache can serve a stale price, it registers after the
@@ -1230,6 +1237,14 @@ const GUARDS = [
   // path registry (and a marketing one without calling the resolver), and no
   // unsubscribe or privacy rights surface reads a session.
   'scripts/guards/consent-ledger-is-evidence.mjs',
+  // The 1,000-row ceiling. Supabase truncates a response at a project setting
+  // this repository cannot read, with HTTP 200 and no error, so a read that
+  // states no bound is a read that may already be wrong. Measured the day this
+  // was written: consent_events held 9,490 rows and an unbounded select
+  // returned 1,000, which had the audience screen reporting no declines at all
+  // when 102 people had declined. Every read in the marketing path now pages or
+  // states its bound, and this fails the build when a new one does neither.
+  'scripts/guards/no-silent-row-ceiling.mjs',
   // Close-out GA2. The matcher produces the list a campaign will one day send
   // against, so two things about a stored run must hold: nobody in it is
   // somebody the consent resolver refuses, and no run holds more score rows

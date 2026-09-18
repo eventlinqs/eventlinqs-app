@@ -44,7 +44,12 @@ export default async function AdminCampaignsPage({ searchParams }: Props) {
 
   const { campaign: campaignId, channel } = await searchParams
   const admin = createAdminClient()
-  const { data: channelRows } = await admin.from('marketing_channel').select('code, display_name').order('code')
+  // The channel code table: bounded rather than left to a silent ceiling.
+  const { data: channelRows } = await admin
+    .from('marketing_channel')
+    .select('code, display_name')
+    .order('code')
+    .limit(100)
   const channels = (channelRows ?? []).map(c => ({ code: c.code, displayName: c.display_name }))
   const channelCode = channel ?? channels[0]?.code ?? ''
 

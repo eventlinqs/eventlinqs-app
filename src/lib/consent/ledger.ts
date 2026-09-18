@@ -1,4 +1,5 @@
 import 'server-only'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
@@ -297,26 +298,43 @@ export async function readSubjectHistory(
       .maybeSingle()
     if (!tenant?.id) return empty
 
-    const [consentResult, suppressionResult] = await Promise.all([
-      admin
-        .from('consent_events')
-        .select(
-          'id, purpose, decision, channel_scope, wording, wording_version, capture_surface, third_party_scope, suppression_scope, city_slug, occurred_at',
-        )
-        .eq('tenant_id', tenant.id)
-        .eq('subject_email', normalised)
-        .order('occurred_at', { ascending: false }),
-      admin
-        .from('suppression_events')
-        .select('id, channel, scope, reason, request_source, occurred_at')
-        .eq('tenant_id', tenant.id)
-        .eq('subject_email', normalised)
-        .order('occurred_at', { ascending: false }),
+    /*
+     * ONE PERSON'S WHOLE HISTORY, PAGED, BECAUSE THIS IS THE ANSWER TO A LEGAL
+     * QUESTION. This read backs the preferences page a person reads about
+     * themselves and the admin screen a complaint is answered from. A silent
+     * 1,000-row ceiling would answer a request for everything held about
+     * somebody with most of it, which is the one failure this surface cannot
+     * have. Ordered newest first for display, with the id as the tie-break so
+     * paging is over a total order.
+     */
+    const [consentRows, suppressionRows] = await Promise.all([
+      readEveryRow('the subject consent history', (from, to) =>
+        admin
+          .from('consent_events')
+          .select(
+            'id, purpose, decision, channel_scope, wording, wording_version, capture_surface, third_party_scope, suppression_scope, city_slug, occurred_at',
+          )
+          .eq('tenant_id', tenant.id)
+          .eq('subject_email', normalised)
+          .order('occurred_at', { ascending: false })
+          .order('id', { ascending: false })
+          .range(from, to),
+      ),
+      readEveryRow('the subject suppression history', (from, to) =>
+        admin
+          .from('suppression_events')
+          .select('id, channel, scope, reason, request_source, occurred_at')
+          .eq('tenant_id', tenant.id)
+          .eq('subject_email', normalised)
+          .order('occurred_at', { ascending: false })
+          .order('id', { ascending: false })
+          .range(from, to),
+      ),
     ])
 
     return {
       email: normalised,
-      consents: (consentResult.data ?? []).map((row) => ({
+      consents: consentRows.map((row) => ({
         id: row.id,
         purpose: row.purpose,
         decision: row.decision as ConsentDecisionValue,
@@ -329,7 +347,7 @@ export async function readSubjectHistory(
         citySlug: row.city_slug,
         occurredAt: row.occurred_at,
       })),
-      suppressions: (suppressionResult.data ?? []).map((row) => ({
+      suppressions: suppressionRows.map((row) => ({
         id: row.id,
         channel: row.channel as ConsentChannelScope,
         scope: row.scope as SuppressionScope,
