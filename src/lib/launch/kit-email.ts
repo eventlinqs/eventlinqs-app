@@ -88,5 +88,12 @@ export async function sendKitEmail(input: {
   url: string
 }): Promise<void> {
   const { subject, html, text } = buildKitEmail({ title: input.title, url: input.url })
-  await sendEmail({ to: input.to.trim(), subject, html, text })
+  await sendEmail({
+    to: input.to.trim(),
+    subject,
+    html,
+    text,
+    messageType: 'organiser_launch_kit',
+    recipientRole: 'organiser',
+  })
 }

@@ -129,7 +129,12 @@ export async function joinCityWaitlist(input: {
       marketingOptIn,
       unsubscribeUrl: `${origin}/waitlist/unsubscribe/${row.unsubscribe_token}`,
     })
-    const { id } = await sendEmail({ to: email, ...message })
+    const { id } = await sendEmail({
+      to: email,
+      ...message,
+      messageType: 'waitlist_place_available',
+      recipientRole: 'prospect',
+    })
     confirmationEmailed = true
     console.log(`[waitlist] confirmation sent to ${email} (resend id ${id})`)
   } catch (err) {

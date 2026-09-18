@@ -261,6 +261,25 @@ export const STORED_AGGREGATES = [
     decision: 'Same as digest_sends.event_count: a log row.',
   },
   {
+    column: 'organiser_sales_digest_sends.sale_count',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy: 'written once, by the digest send that created the row.',
+    reconciled: false,
+    caveat: null,
+    decision:
+      'A HISTORICAL RECORD of what one daily digest told an organiser, not a live aggregate. It is supposed to keep saying what the message claimed even after the orders it counted are refunded, because the point of keeping it is to reconcile the message against the orders later. Same class as digest_sends.event_count (close-out MONEY FIX B4).',
+  },
+  {
+    column: 'organiser_sales_digest_sends.gross_cents',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy: 'written once, by the digest send that created the row.',
+    reconciled: false,
+    caveat: null,
+    decision: 'Same as organiser_sales_digest_sends.sale_count: what one message said, on the day it said it.',
+  },
+  {
     column: 'discount_codes.max_uses',
     summarises: null,
     maintenance: 'not-in-class',

@@ -82,6 +82,10 @@
       "schedule": "* * * * *"
     },
     {
+      "path": "/api/cron/organiser-sales-digest",
+      "schedule": "10 7 * * *"
+    },
+    {
       "path": "/api/cron/queue-admit",
       "schedule": "* * * * *"
     },

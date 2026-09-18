@@ -59,6 +59,8 @@ export async function sendHandoffEmail(opts: {
     const { id } = await sendEmail({
       to: getSupportInbox(),
       subject: `Support handoff from the ${assistant} assistant`,
+      messageType: 'support_handoff',
+      recipientRole: 'support',
       html,
       text: `Assistant: ${assistant}\nUser email: ${userEmail ?? 'not provided'}\nReference: ${who}\n\n${text}`,
     })

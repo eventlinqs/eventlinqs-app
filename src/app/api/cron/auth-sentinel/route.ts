@@ -246,6 +246,8 @@ async function checkMailTransport(): Promise<CheckResult> {
     const { id } = await sendEmail({
       to: TRANSPORT_SINK,
       subject: 'EventLinqs auth sentinel transport probe',
+      messageType: 'platform_transport_probe',
+      recipientRole: 'platform_owner',
       text: `Scheduled transport probe. Sender: ${getEmailFrom()}. No action needed.`,
       html: `<p>Scheduled transport probe. Sender: ${getEmailFrom()}. No action needed.</p>`,
     })
@@ -470,6 +472,8 @@ export async function GET(request: NextRequest) {
       await sendEmail({
         to: ALERT_TO(),
         subject: `${PENDING_ALERT_SUBJECT}: ${failures[0].probableCause ?? failures[0].name}`,
+        messageType: 'platform_sentinel_alert',
+        recipientRole: 'platform_owner',
         text: body,
         html: `<p><strong>The auth sentinel found a problem.</strong></p><p>Deployment: ${deployment}<br/>Site: ${origin}<br/>Time: ${new Date().toISOString()}</p><pre>${lines}</pre><p>Runbook: docs/hardening/auth/FOUNDER-STEPS.md</p><p>EventLinqs auth sentinel</p>`,
       })

@@ -127,6 +127,8 @@ export async function dispatchAlert(input: DispatchInput): Promise<DispatchResul
       await sendEmail({
         to,
         subject: `${payload.title}: ${ctx.eventTitle}`,
+        messageType: 'attendee_event_alert',
+        recipientRole: 'prospect',
         html: alertEmailHtml(payload, manageUrl),
         text: `${payload.body}\n\n${payload.url}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, ${contactAddress('hello')}`,
       })

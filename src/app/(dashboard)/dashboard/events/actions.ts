@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { notifyOrganiserEventPublished } from '@/lib/notifications/organiser-event-notify'
 import { isLooserOrEqual, explainTightening, policyFromEvent, type RefundPolicy } from '@/lib/refunds/policy'
 import { checkSellable } from '@/lib/events/sellable-guard'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -925,6 +926,11 @@ export async function publishEvent(eventId: string): Promise<ActionResult> {
     organisationId: event.organisation_id,
     properties: { event_id: eventId, first_publish: event.status === 'draft' ? 1 : 0 },
   })
+
+  // MONEY FIX B4: "event published or approved". The owner's business feed has
+  // carried this since UX3; the organiser had no counterpart until now. `void`
+  // because publishing must never fail on a mail server.
+  void notifyOrganiserEventPublished({ eventId })
 
   return {}
 }

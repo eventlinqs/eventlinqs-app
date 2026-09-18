@@ -2099,8 +2099,16 @@ const ROOT = join(HERE, '..', '..')
  * text vitest actually printed, kept verbatim, because the first version of that
  * matcher was blind to it.
  */
-const MIN_FILES = 443
-const MIN_TESTS = 5717
+/*
+ * 2026-09-18, MONEY FIX B3 and B4: 446 files / 5746 tests, 0 failed and 0
+ * skipped (C:\dev\_a-b3-suite.txt).
+ *
+ * Three new files: the recipient matrix, the organiser sales policy and the
+ * daily digest. The floor moves UP to what the green run measured, which is the
+ * only direction it ever moves.
+ */
+const MIN_FILES = 446
+const MIN_TESTS = 5746
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -78,6 +78,8 @@ export async function inviteWaitlistEntry(signupId: string): Promise<{ ok?: true
     await sendEmail({
       to: entry.email,
       subject: `Your founding invitation for ${cityName}`,
+      messageType: 'founding_invitation',
+      recipientRole: 'prospect',
       text: [
         `Hi ${firstName},`,
         '',

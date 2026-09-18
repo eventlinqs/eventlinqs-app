@@ -3158,7 +3158,12 @@ const DRILLS = [
   {
     name: "the sitemap stops selecting organisers on 'active', and the guard's rule stops being true",
     guard: `${GUARDS}/fixtures-are-not-published.mjs`,
-    file: 'src/app/sitemap.ts',
+    // RE-ANCHORED 18 September 2026, lane A. The organiser select moved out of
+    // src/app/sitemap.ts into the catalogue module in a lane C refactor. The
+    // GUARD was updated with it (PREMISES already names sitemap-catalogue.ts);
+    // only this drill was left behind, so it could not plant its fault and
+    // stopped proving the clause while the harness still counted it.
+    file: 'src/lib/seo/sitemap-catalogue.ts',
     find: ".eq('status', 'active')",
     replace: ".eq('status', 'approved')",
     expect: "THIS GUARD'S PREMISE HAS MOVED",
@@ -3319,6 +3324,64 @@ const DRILLS = [
     find: '  if (!org.stripe_payouts_enabled) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
     replace: '  if (false) {\n    throw new ChargePreconditionError(\n      \'org_charges_disabled\',',
     expect: 'no longer tests `!org.stripe_payouts_enabled`',
+  },
+  /*
+   * MONEY FIX B3, the five drills for every-message-has-a-declared-recipient.
+   *
+   * The first two are the defect itself from both directions: an organiser
+   * message that stops being sent, and an owner message that stops naming the
+   * organiser message that balances it. MKLStudios sold two tickets on
+   * 10 September 2026 and the only human told was the platform owner, and the
+   * reason nothing caught it is that the organiser's message did not exist to
+   * be broken. A guard against a missing message has to be a declaration.
+   */
+  {
+    name: 'the owner is told about a sale and the organiser message that balances it is gone',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/notifications/recipient-matrix.ts',
+    find: "    organiserToldBy: 'organiser_first_sale',",
+    replace: '',
+    expect: 'is neither a recipient nor named in organiserToldBy',
+  },
+  {
+    name: 'the companion is named but nothing in the tree ever sends it',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/notifications/recipient-matrix.ts',
+    find: "    organiserToldBy: 'organiser_first_sale',",
+    replace: "    organiserToldBy: 'organiser_hears_about_it_somehow',",
+    expect: 'nothing in src/ ever sends that type',
+  },
+  {
+    name: 'a send site stops declaring what its message is',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/refunds/notify.ts',
+    find: "    messageType: 'organiser_refund_requested',",
+    replace: '',
+    expect: 'calls sendEmail() without a messageType',
+  },
+  {
+    name: 'the central transport stops enforcing the matrix',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/email/send.ts',
+    find: '  assertRecipientDeclared(input.messageType, input.recipientRole)',
+    replace: '  // assertRecipientDeclared(input.messageType, input.recipientRole)',
+    expect: 'no longer calls assertRecipientDeclared',
+  },
+  {
+    name: "the buyer's ticket transport stops checking, which is how it escaped before",
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/email/order-confirmation.ts',
+    find: "  assertRecipientDeclared('order_confirmation_and_ticket', 'buyer')",
+    replace: "  // assertRecipientDeclared('order_confirmation_and_ticket', 'buyer')",
+    expect: 'is a transport but never calls assertRecipientDeclared',
+  },
+  {
+    name: 'a payout message starts consulting the sales off switch',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/payouts/email.ts',
+    find: "    .select('id, name, owner_id')",
+    replace: "    .select('id, name, owner_id, sales_notification_mode')",
+    expect: "reads 'sales_notification_mode'",
   },
   /*
    * initial-bundle-budget, the CONTRACT half (close-out C8B.3, 15 September

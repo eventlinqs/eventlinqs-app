@@ -187,6 +187,8 @@ export async function reassignSeatOccupant(
       await sendEmail({
         to: ticket.holder_email,
         subject: `Your seat for ${event.title} has been updated`,
+        messageType: 'seat_updated',
+        recipientRole: 'ticket_holder',
         text: `Hi ${ticket.holder_name ?? 'there'},\n\nThe organiser has updated your seat for ${event.title}.\n\nYour new seat: ${toLabel}${fromLabel ? `\nPrevious seat: ${fromLabel}` : ''}\n\nYour ticket and its QR code stay exactly the same - the seat shown on it has already been updated, and the door scanner knows. Nothing else about your order changes.\n\nEventLinqs`,
         html: `<p>Hi ${ticket.holder_name ?? 'there'},</p><p>The organiser has updated your seat for <strong>${event.title}</strong>.</p><p><strong>Your new seat: ${toLabel}</strong>${fromLabel ? `<br/>Previous seat: ${fromLabel}` : ''}</p><p>Your ticket and its QR code stay exactly the same - the seat shown on it has already been updated, and the door scanner knows. Nothing else about your order changes.</p><p>EventLinqs</p>`,
       })
@@ -252,6 +254,8 @@ export async function assignTicketToSeat(
       await sendEmail({
         to: ticket.holder_email,
         subject: `Your seat for ${event.title} has been assigned`,
+        messageType: 'seat_assigned',
+        recipientRole: 'ticket_holder',
         text: `Hi ${ticket.holder_name ?? 'there'},\n\nThe organiser has assigned your seat for ${event.title}.\n\nYour seat: ${toLabel}\n\nYour ticket and its QR code stay exactly the same - the seat now shows on the ticket, and the door scanner knows. Nothing else about your order changes.\n\nEventLinqs`,
         html: `<p>Hi ${ticket.holder_name ?? 'there'},</p><p>The organiser has assigned your seat for <strong>${event.title}</strong>.</p><p><strong>Your seat: ${toLabel}</strong></p><p>Your ticket and its QR code stay exactly the same - the seat now shows on the ticket, and the door scanner knows. Nothing else about your order changes.</p><p>EventLinqs</p>`,
       })
