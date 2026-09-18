@@ -68,7 +68,7 @@
  * aliased re-export, neither of which exists in this tree and both of which
  * would fail typecheck or lint first.
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { buildImportGraph } from './lib/import-graph.mjs'
 import { importsBareSpecifier } from './lib/bare-import.mjs'
 
@@ -105,17 +105,23 @@ function rootClientShell() {
   return { entries, shell }
 }
 
-const importsBanned = mod => {
-  for (const ext of ['.tsx', '.ts']) {
-    try {
-      return importsBareSpecifier(readFileSync(mod + ext, 'utf8'), BANNED)
-    } catch {
-      // Not this extension. The graph keys are extensionless; the next one is
-      // tried, and a module matching neither cannot be a source file at all.
-    }
-  }
-  return false
+/**
+ * Graph ids are extensionless, so the file behind one has to be found. This
+ * ASKS which extension exists rather than reading and catching the failure:
+ * `no-silent-catch.mjs` is right that a swallowed filesystem read is an
+ * incident nobody hears about, and it failed the build on the first version of
+ * this function, which had exactly that. There is nothing to catch here now.
+ */
+const sourceOf = mod => {
+  for (const ext of ['.tsx', '.ts']) if (existsSync(mod + ext)) return readFileSync(mod + ext, 'utf8')
+  // A graph id always came from a real file on disk (`walk()` only collects
+  // .ts/.tsx, and a directory import is keyed `/index`), so reaching here means
+  // the graph and the filesystem disagree, which is worth saying rather than
+  // treating as "no violation".
+  throw new Error(`${mod} is in the import graph but neither ${mod}.tsx nor ${mod}.ts is on disk`)
 }
+
+const importsBanned = mod => importsBareSpecifier(sourceOf(mod), BANNED)
 
 const { entries, shell } = rootClientShell()
 const violations = [...shell].filter(importsBanned).sort()
