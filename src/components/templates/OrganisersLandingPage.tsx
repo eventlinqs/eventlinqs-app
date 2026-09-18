@@ -163,7 +163,7 @@ function FeatureBandRow({ band }: { band: FeatureBand }) {
             <MarketingMedia
               src={band.image.src}
               alt={band.image.alt}
-              variant="band"
+              variant="band-half-column"
               objectPosition={band.image.objectPosition}
             />
           </div>
@@ -406,7 +406,7 @@ function FoundingOfferBand() {
           <MarketingMedia
             src={ORGANISER_BANDS.founding.src}
             alt=""
-            variant="band"
+            variant="band-full-column"
             objectPosition={ORGANISER_BANDS.founding.objectPosition}
           />
           <div

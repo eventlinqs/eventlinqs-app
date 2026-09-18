@@ -55,22 +55,29 @@
  * THE DEFAULT ROUTE LIST, AND THE TWO ROUTES DELIBERATELY NOT IN IT
  * ============================================================================
  *
- * The default is `/`, `/events`, `/cities`, `/communities`: the three routes the
- * C8B.1 cost table named, plus the community index. They pass.
+ * The default was `/`, `/events`, `/cities`, `/communities`: the three routes the
+ * C8B.1 cost table named, plus the community index.
  *
- * `--path=organisers` and `--path=about` FAIL, and that is a real defect rather
- * than a harness problem. Both render a `MarketingMedia variant="band"`, and that
- * one variant dresses two different layouts, which is the same fault this whole
- * item exists to fix:
+ * `/organisers`, `/about` and `/waitlist` JOINED THAT LIST on 19 September 2026,
+ * and the reason is worth keeping because it is the whole lesson of this file.
+ * They were left out, so nothing measured them, so they shipped bands that were
+ * under-fetched at every desktop width while every gate stayed green:
  *
- *     /organisers 1920   a 636px contained band    needs 1272, chose 1920  x1.51
- *     /organisers 1920   a 1334px full-width band  needs 2668, chose 1920  x0.72
- *     /about      1920   a 1920px full-bleed band  needs 3840, chose 1920  x0.50
+ *     /organisers 1280   a 1214px band needed 2428, the browser chose 1920  x0.79
+ *     /organisers 1440   a 1334px band needed 2668, the browser chose 1920  x0.72
+ *     /about      1920   a 1920px band needed 3840, the browser chose 1920  x0.50
  *
- * Fixing it means splitting the variant and editing the marketing surfaces, which
- * are lane B's, so lane C measured it, drove it, and handed it over rather than
- * editing another lane's pages. The numbers and the fix are the BORDER line in
- * C:\dev\REVIEW-QUEUE-C.md. Add those two paths to this drive the day it lands.
+ * `MarketingMedia` now carries one variant per band layout and all three pass.
+ * A route list is only a default until somebody forgets to extend it, so
+ * `scripts/guards/marketing-bands-are-supplyable.mjs` walks the import graph and
+ * FAILS THE BUILD if a page renders a marketing band on a route that is not in
+ * the list below. Forgetting is no longer possible quietly.
+ *
+ * THE HALF THIS DRIVE STILL CANNOT SEE, and it is named here rather than in a
+ * closed session: it compares the width the browser REQUESTED with the slot, and
+ * never opens the bytes that came back. Two bands are still soft because the
+ * licensed raster caps at 1920 (`ROLE_WIDTH.hero`), which no hint can raise.
+ * That guard's clause 3 holds it; this drive would report PASS over it.
  *
  *   node --env-file=.env.local scripts/verify/image-hint-fidelity-drive.mjs --serve --port=3200
  */
@@ -101,7 +108,7 @@ const SHOT_WIDTHS = [390, 768, 1440]
 const DELIBERATE_UNDERFETCH = '(max-width: 768px) 75vw, 1920px'
 
 const rawPaths = args.filter(a => a.startsWith('--path=')).map(a => a.split('=')[1])
-const paths = (rawPaths.length ? rawPaths : ['home', 'events', 'cities', 'communities']).map(p => {
+const paths = (rawPaths.length ? rawPaths : ['home', 'events', 'cities', 'communities', 'organisers', 'about', 'waitlist']).map(p => {
   if (p.startsWith('/') || /^[A-Za-z]:/.test(p)) {
     console.error(
       `${TAG} REFUSING: --path=${p} arrived with a leading slash or a drive letter.\n` +

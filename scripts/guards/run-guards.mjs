@@ -274,6 +274,12 @@
  *                              both agree, every rail hint is derived from a cell, no cell
  *                              width or raw sizes string is written anywhere else, no hint
  *                              is dead and every variant is mapped (close-out C8B.3)
+ *   marketing-bands-are-supplyable
+ *                             every route that renders a marketing band is measured by the
+ *                              fidelity drive, every band variant is on its own hint whose
+ *                              fixed term matches its declared slot, and a band the
+ *                              licensed raster cannot supply is named with a date and a
+ *                              reason instead of passing quietly (lane B, 19 Sep 2026)
  *   weak-network-contract     the checkout survives a submit that never reached the server,
  *                              the root service worker keeps only content-hashed assets so
  *                              no cache can serve a stale price, it registers after the
@@ -1606,6 +1612,14 @@ const GUARDS = [
   // needing 644 and were BLURRY, and a 56px dashboard thumbnail fetched 640px.
   // Five clauses, each drilled red and green.
   'scripts/guards/image-hints-match-the-cell.mjs',
+  // Lane B (19 September 2026): the marketing bands on /organisers and /about were
+  // under-fetched at every desktop width and every gate was green, because the one
+  // gate that could see a band did not have those routes in its list. Three clauses:
+  // every route rendering a band is measured by the fidelity drive, every band
+  // variant is on its own hint whose fixed term matches its declared slot, and a
+  // band the licensed raster cannot supply is named with a date and a reason rather
+  // than left silent. Drilled red and green.
+  'scripts/guards/marketing-bands-are-supplyable.mjs',
   'scripts/guards/weak-network-contract.mjs',
   // Close-out C17 (7 September 2026): the homepage hero never renders without
   // imagery. Production showed a flat navy panel the day every event had ended;
