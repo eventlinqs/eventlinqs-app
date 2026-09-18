@@ -2018,9 +2018,25 @@ const ROOT = join(HERE, '..', '..')
  *
  * THE PAIR BELOW IS MEASURED ON THE MERGED TREE, 0 failed and 0 skipped, which
  * is the only thing this lane can honestly write here.
+ *
+ * 2026-09-17 (lane B, the same merge finished): the pair above was left at
+ * 0/0, and a floor of zero is not a measurement, it is this guard switched
+ * off while its own comment says it was measured. Nothing can fall below
+ * zero, so for a day the canary could not have noticed the entire suite
+ * failing to collect, which is the single thing it exists for. It is
+ * precisely the move the failure message below forbids, performed on the
+ * guard by the guard's own author.
+ *
+ * The honest reason it happened: the merge was committed before the suite
+ * could be run, so there was no measured number to write, and 0/0 went in as
+ * a placeholder that nothing would refuse. The pair below is now the real
+ * count of the merged tree, taken from a clean run of
+ * `npm run gate:push -- --only suite`: 438 files, 5673 tests, 0 failed,
+ * 0 skipped. Three of those tests were failing when the merge landed and are
+ * fixed rather than counted around, and one is new.
  */
-const MIN_FILES = 0
-const MIN_TESTS = 0
+const MIN_FILES = 438
+const MIN_TESTS = 5673
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

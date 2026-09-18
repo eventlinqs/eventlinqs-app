@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { writesIn, setsField, judgeDrive } from '../../../scripts/guards/fixtures-are-not-published.mjs'
+import { writesIn, setsField, judgeDrive, BASELINE, PREMISES } from '../../../scripts/guards/fixtures-are-not-published.mjs'
 import { venueHandle, SITEMAP_EVENT_MATCH, SITEMAP_ORGANISER_STATUS, laneFixturesStillPublished } from '../../../scripts/verify/lib/sitemap-footprint.mjs'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
 import { venueSlugify } from '@/lib/venues/resolver'
@@ -102,10 +102,15 @@ describe('judgeDrive', () => {
     const drives = readdirSync(dir).filter((f) => f.endsWith('-drive.mjs'))
     expect(drives.length).toBeGreaterThan(20)
     const offenders = drives.flatMap((f) => judgeDrive(f, readFileSync(join(dir, f), 'utf8')))
-    // The three on the baseline prove public visibility itself; everything else must be silent.
-    const unexcused = offenders.filter(
-      (p: { drive: string }) => p.drive !== 'community-threshold-drive.mjs' && p.drive !== 'seo1-structured-data-drive.mjs',
-    )
+    /*
+     * THE EXCUSED SET IS READ OUT OF THE GUARD'S OWN BASELINE, never named here.
+     * This test used to name two drives by hand, and on 17 September 2026 the
+     * baseline grew two more for lane C's SEO drives: the guard passed and this
+     * test failed about the identical tree, which is a disagreement between two
+     * copies of one list rather than a finding about the product.
+     */
+    const excused = new Set((BASELINE as { drive: string }[]).map((b) => b.drive))
+    const unexcused = offenders.filter((p: { drive: string }) => !excused.has(p.drive))
     expect(unexcused).toEqual([])
   })
 })
@@ -115,8 +120,32 @@ describe('the runtime half asks the same question as the product', () => {
     expect(SITEMAP_EVENT_MATCH).toEqual({ ...PUBLIC_EVENT_MATCH })
   })
 
-  test("the sitemap's organiser predicate is still the status this copy names", () => {
-    expect(readFileSync(join(ROOT, 'src/app/sitemap.ts'), 'utf8')).toContain(`.eq('status', '${SITEMAP_ORGANISER_STATUS}')`)
+  /*
+   * RE-AIMED 17 September 2026. This used to assert the organiser predicate
+   * against src/app/sitemap.ts by name. The three catalogue reads moved into
+   * src/lib/seo/sitemap-catalogue.ts when lane C's SEO2 arrived, the guard's
+   * PREMISES list was re-aimed at the new address, and this hand-written copy
+   * was not, so it failed pointing at a file that no longer holds the predicate.
+   *
+   * It now walks the guard's own PREMISES, so the guard and the test can never
+   * be aimed at different files again, and the organiser status is still checked
+   * against the product's own constant on top of that.
+   */
+  test('every premise the guard depends on still matches where the guard says it lives', () => {
+    const premises = PREMISES as { file: string; needle: string; why: string }[]
+    expect(premises.length).toBeGreaterThan(0)
+    for (const premise of premises) {
+      expect(readFileSync(join(ROOT, premise.file), 'utf8'), `${premise.file} no longer contains ${premise.needle}`).toContain(
+        premise.needle,
+      )
+    }
+  })
+
+  test("the organiser predicate the premises pin is the status this copy names", () => {
+    const premises = PREMISES as { file: string; needle: string }[]
+    const organiser = premises.find((p) => p.needle.includes("'status'"))
+    expect(organiser, 'no premise pins the organiser status any more').toBeDefined()
+    expect(organiser!.needle).toBe(`.eq('status', '${SITEMAP_ORGANISER_STATUS}')`)
   })
 
   test('venueHandle is venueSlugify, on every venue name lane B fixtures use', () => {

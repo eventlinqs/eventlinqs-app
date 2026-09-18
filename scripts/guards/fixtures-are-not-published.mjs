@@ -133,7 +133,14 @@ const MUST_BE_LITERAL = ['organisations']
  * that is not public would prove nothing. They still carry the hazard, and that
  * is recorded rather than hidden: see REVIEW-QUEUE-B.md, line beginning BORDER.
  */
-const BASELINE = [
+/*
+ * EXPORTED, so the unit test can derive the excused set from THIS list rather
+ * than keeping a second copy of it. A second copy is what broke on 17 September
+ * 2026: two entries were added here for lane C's SEO drives and the test still
+ * named two drives by hand, so the guard passed and the test failed about the
+ * same tree. One list, read twice.
+ */
+export const BASELINE = [
   {
     drive: 'community-threshold-drive.mjs',
     write: "events.visibility='public'",
@@ -336,7 +343,12 @@ export function judgeDrive(name, src) {
  * a catalogue that still selects correctly but is no longer read by the sitemap
  * cannot leave this guard confidently enforcing a rule about nothing.
  */
-const PREMISES = [
+/*
+ * EXPORTED for the same reason as BASELINE: the test asserts every premise
+ * still matches, so re-aiming one here re-aims the test with it, and a premise
+ * that moves can never leave a passing test pinned to the old address.
+ */
+export const PREMISES = [
   {
     file: 'src/lib/seo/sitemap-catalogue.ts',
     needle: ".eq('status', 'active')",
