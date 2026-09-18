@@ -4592,6 +4592,44 @@ const DRILLS = [
     replace: 'new RegExp(`\\\\\\\\"${marker}\\\\\\\\":`',
     expect: 'CALIBRATION FAILED',
   },
+  /* ---------------------------------------------------------------------
+   * class-lists-are-not-repeated-per-card (close-out C8B.3, 19 Sept 2026).
+   * One drill per clause, plus the calibration. Clause C passes by finding
+   * NOTHING, so the calibration drill is the one that matters most: it is the
+   * only one that proves a blinded matcher refuses instead of reporting green.
+   * ------------------------------------------------------------------- */
+  {
+    name: 'a composite the home cards render on every card is deleted from globals.css',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/app/globals.css',
+    find: '@utility home-card-surface {',
+    replace: '@utility home-card-surface-renamed {',
+    expect: 'is not defined in src/app/globals.css',
+  },
+  {
+    name: 'a card component re-inlines the class list the composite replaced',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/features/home/cards.tsx',
+    find: "const SURFACE = 'group h-full home-card-surface'",
+    replace: "const SURFACE = 'group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-[var(--shadow-card)] transition-[transform,box-shadow,color] duration-200 ease-out hover:-translate-y-1'",
+    expect: 'character class literal (limit 120 in a home card file)',
+  },
+  {
+    name: 'a new class literal over the platform limit arrives outside the reviewed baseline',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/features/home/sounds-rail.tsx',
+    find: "const IMG_MOTION = 'home-card-zoom'",
+    replace: "const IMG_MOTION = 'home-card-zoom'\nconst DRILL_ONLY = 'flex w-full flex-col items-center justify-between gap-4 rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-6 text-sm font-semibold uppercase tracking-widest text-[var(--text-primary)] shadow-[var(--shadow-card)] transition-[transform,box-shadow,color] duration-200 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'",
+    expect: 'character class literal (limit 400)',
+  },
+  {
+    name: 'the flight matcher goes blind and the calibration refuses rather than reporting a clean build',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'scripts/guards/class-lists-are-not-repeated-per-card.mjs',
+    find: "const CLASS_FLIGHT = new RegExp(`className${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
+    replace: "const CLASS_FLIGHT = new RegExp(`classNameXX${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
+    expect: 'REFUSING: the calibration probe was found',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

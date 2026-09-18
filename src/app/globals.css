@@ -305,6 +305,69 @@ html[data-motion="1"] .group:hover .card-hover-wash {
   .card-media-img { transition: none; }
 }
 
+/* ─── Home card system: the three class lists every card repeats ──────────── */
+/*
+ * WHY THESE EXIST, and it is a byte measurement rather than a style opinion.
+ *
+ * Close-out C8 EXECUTION METHOD clause C8B.3, 19 September 2026. The homepage
+ * document is 1,007,295 B and 34.9% of it is `class` attribute values:
+ *
+ *     markup   class="..."      195,365 B   19.4% of the document
+ *     flight   \"className\":   156,478 B   15.5% of the document
+ *
+ * across 131 distinct values of which 98 repeat. The card surface list alone is
+ * 464 characters and ships 104 times. It is paid TWICE - once in the markup and
+ * again in the RSC payload - because a class list written as a string literal in
+ * a component is re-serialised for every instance React renders. A composite
+ * class ships its NAME instead, so both copies shrink together.
+ *
+ * WHY @apply AND NOT HAND-WRITTEN CSS. Hand-translating `focus-visible:ring-2`
+ * or `transition-[transform,box-shadow,color]` means re-deriving Tailwind's ring
+ * custom properties and this theme's `ease-out` (which is NOT Tailwind's
+ * default: it resolves to cubic-bezier(0.16, 1, 0.3, 1) here). @apply emits
+ * exactly what the utilities emit, so the collapse cannot drift from the design
+ * system by hand. It is held by scripts/verify/card-class-collapse-drive.mjs,
+ * which compares getComputedStyle before and after at 390/768/1440 in BOTH
+ * motion branches, at rest, on hover and under :focus-visible.
+ *
+ * `group` IS NOT IN HERE and must not be: it is a variant marker that carries no
+ * declarations of its own, and the `group-hover:` rules below are written
+ * against it. The card components keep `group` on the element.
+ */
+/*
+ * `h-full` IS DELIBERATELY NOT IN HERE. The rail card family stretches to its
+ * cell (the founder's rail-symmetry law, so every card's footer baseline lines
+ * up) and the sounds rail's tiles do not. Folding h-full in would have silently
+ * changed the sounds rail's layout to buy twelve tiles' worth of bytes, so the
+ * one class the two families differ by stays at the call site and everything
+ * they share is collapsed.
+ */
+@utility home-card-surface {
+  @apply flex w-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)]
+    bg-[var(--surface-0)] shadow-[var(--shadow-card)]
+    transition-[transform,box-shadow,color] duration-200 ease-out
+    hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)]
+    motion-reduce:transition-none motion-reduce:hover:translate-y-0
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]
+    focus-visible:ring-offset-2;
+}
+
+/* The inner-media zoom that rides the card hover. Paired with `.card-media-img`
+ * (the brightness half of the hover illumination law), never a replacement for
+ * it: that class stays on the image and is rendered by the media components. */
+@utility home-card-zoom {
+  @apply transition-transform duration-200 ease-out group-hover:scale-[1.03]
+    motion-reduce:transition-none motion-reduce:group-hover:scale-100;
+}
+
+/* Card title. The SIZE is deliberately NOT here: six card shapes render this
+ * with six different `text-*` steps, and folding a size in would make one of
+ * them wrong. Only the properties every card title shares are collapsed. */
+@utility home-card-title {
+  @apply font-headline font-bold leading-snug tracking-tight text-[var(--text-primary)]
+    transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)];
+}
+
 /* ─── M5 typography utility classes ──────────────────────────────────────── */
 /*
  * Pair font-size + line-height + weight per spec in one class.
