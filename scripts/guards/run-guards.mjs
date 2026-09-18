@@ -327,6 +327,15 @@
  *                              built documents. It passes by finding NOTHING, so it
  *                              calibrates its own matcher against a known positive first
  *                              (C8B.3)
+ *   class-lists-are-not-repeated-per-card
+ *                             a class list a component repeats per item is a composite
+ *                              utility, not a string literal: the homepage shipped one
+ *                              464-character class value 104 times, in the markup AND
+ *                              again in the RSC payload. Three clauses: the composites
+ *                              exist and the card files have not re-inlined them; no new
+ *                              class literal over 400 chars outside the reviewed baseline;
+ *                              and --built weighs repeats in the built documents. It
+ *                              cannot see a DYNAMIC route and says so (C8B.3)
  *   all-in-pricing            no buyer is shown a number they will not pay: the fee value has
  *                              ONE source, every buyer-facing price surface resolves it live,
  *                              and no cart total is a per-ticket figure multiplied (SEO4)
@@ -990,6 +999,17 @@ const GUARDS = [
   // where no gate was looking. THIS HALF WEIGHS NOTHING and says so; the proof is
   // the same file run with --built from npm's postbuild (close-out C8B.3).
   'scripts/guards/no-catalogue-in-every-document.mjs',
+  // A CLASS LIST A COMPONENT REPEATS PER ITEM IS A COMPOSITE UTILITY, NOT A
+  // STRING LITERAL. The homepage shipped one 464-character class value 104
+  // times, once in the markup and again in the RSC payload, which is 34.9% of a
+  // 1,007,295 B document spent on class attributes. Collapsing the home card
+  // family took the document to 850,054 B. This half judges the CONTRACT (the
+  // composites exist, the card files have not re-inlined them, and no new class
+  // literal over 400 chars arrives outside the reviewed baseline); postbuild's
+  // --built weighs the built documents. It CANNOT see the homepage, which is a
+  // dynamic route, and says so: card-class-collapse-drive.mjs covers that
+  // (close-out C8B.3).
+  'scripts/guards/class-lists-are-not-repeated-per-card.mjs',
   // A ROUTE WHOSE RESPONSES ARE SHARED AT THE EDGE MAY NOT RENDER ONE VISITOR'S
   // NAME. /events carried `CDN-Cache-Control: public, s-maxage=60` with no
   // signed-in exclusion while rendering the ordinary `<SiteHeader />`, which

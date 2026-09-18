@@ -65,29 +65,36 @@ export interface CityTileData {
 // three elevations platform-wide and every inline value was a fourth.
 // transition-[transform,box-shadow,color]: `transition-all` animates every
 // property including layout ones (the M5 spec forbids it).
-const SURFACE =
-  'group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] ' +
-  'shadow-[var(--shadow-card)] transition-[transform,box-shadow,color] duration-200 ease-out ' +
-  'hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2'
+// THESE THREE ARE COMPOSITE UTILITIES IN globals.css, NOT LITERALS HERE, and
+// the reason is measured rather than stylistic (close-out C8B.3, 19 September
+// 2026). A class list written as a literal in a card component is serialised
+// once into the markup and AGAIN into the RSC payload, for every card rendered.
+// The surface list was 464 characters and the homepage ships 104 cards, so it
+// cost 96,512 bytes of one document. A composite ships its name instead and
+// both copies shrink together. The declarations are identical: globals.css
+// builds them with @apply from the same utilities that used to be written here,
+// and card-class-collapse-drive.mjs compares the computed styles either side of
+// the change at three viewports in both motion branches.
+//
+// `group` stays on the element: it is a variant marker with no declarations,
+// and the group-hover rules in globals.css are written against it.
+const SURFACE = 'group h-full home-card-surface'
 const IMG_WRAP = 'relative overflow-hidden bg-[var(--surface-1)]'
 // Inner-media zoom tuned to the raised Motion bar: 1.03 scale at ~200ms ease-out
 // (was 1.05 / 700ms), so the lift + shadow + zoom read as one quick, premium
 // gesture rather than a slow drift. Reduced-motion holds the image still.
-const IMG_MOTION =
-  'transition-transform duration-200 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100'
+const IMG_MOTION = 'home-card-zoom'
 // text-xs (12px) is the micro step of the one scale; 11px was off it.
 const LABEL =
   'font-display text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]'
-const TITLE =
-  'font-headline font-bold leading-snug tracking-tight text-[var(--text-primary)] transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]'
+const TITLE = 'home-card-title'
 const DATE = 'font-semibold uppercase tracking-wide text-[var(--brand-accent-strong)]'
 const PRICE = 'font-headline font-bold text-[var(--text-primary)]'
 
 /** 1. Standard landscape event card (default rail card). */
 export function EventCardLandscape({ event }: { event: HomeCardEvent }) {
   return (
-    <Link href={event.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
+    <Link href={event.href} prefetch={false} className={SURFACE}>
       <div className={`${IMG_WRAP} aspect-[16/10]`}>
         <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-event-card" priority={event.priority} className={IMG_MOTION} />
       </div>
@@ -109,7 +116,7 @@ export function EventCardLandscape({ event }: { event: HomeCardEvent }) {
 /** 2. Compact square tile (genre and trending rails). */
 export function EventCardSquare({ event }: { event: HomeCardEvent }) {
   return (
-    <Link href={event.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
+    <Link href={event.href} prefetch={false} className={SURFACE}>
       <div className={`${IMG_WRAP} aspect-square`}>
         <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-square-card" priority={event.priority} className={IMG_MOTION} />
       </div>
@@ -129,7 +136,7 @@ export function EventCardSquare({ event }: { event: HomeCardEvent }) {
 /** 3. Wide feature card (lead item in a rail). */
 export function EventCardFeature({ event, blurb }: { event: HomeCardEvent; blurb?: string }) {
   return (
-    <Link href={event.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
+    <Link href={event.href} prefetch={false} className={SURFACE}>
       <div className={`${IMG_WRAP} aspect-[16/9]`}>
         <EventCardMedia src={event.imageSrc} alt={event.alt} variant="rail-feature-card" priority={event.priority ?? false} className={IMG_MOTION} />
       </div>
@@ -188,7 +195,7 @@ export function CommunityTile({
   layout: 'rail-community-tile' | 'grid-two-three-six'
 }) {
   return (
-    <Link href={community.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
+    <Link href={community.href} prefetch={false} className={SURFACE}>
       <div className={`${IMG_WRAP} aspect-[4/5]`}>
         <EventCardMedia
           src={community.imageSrc ?? ''}
@@ -210,7 +217,7 @@ export function CommunityTile({
 /** 4. City tile - image with the city name BELOW it, never on it. */
 export function CityTile({ city }: { city: CityTileData }) {
   return (
-    <Link href={city.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
+    <Link href={city.href} prefetch={false} className={SURFACE}>
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
         <CityTileImage src={city.imageSrc} alt={city.alt} layout="rail-city-tile" priority={city.priority} objectPosition={city.objectPosition} className={IMG_MOTION} />
       </div>
@@ -243,7 +250,7 @@ export interface CategoryTileData {
  */
 export function CategoryTile({ category }: { category: CategoryTileData }) {
   return (
-    <Link href={category.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
+    <Link href={category.href} prefetch={false} className={SURFACE}>
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
         <CategoryTileImage src={category.imageSrc} alt={category.alt} layout="rail-compact-tile" priority={category.priority} objectPosition={category.objectPosition} className={IMG_MOTION} />
       </div>

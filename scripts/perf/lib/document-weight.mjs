@@ -251,6 +251,72 @@ export function catalogueWeight(html, { marker, arrayKeys = [] } = {}) {
  * harness failing, not the platform succeeding, and it is thrown rather than
  * returned so no caller can print it as a row.
  */
+/**
+ * WHAT THE `class` ATTRIBUTE COSTS, and how much of it is one value said again.
+ *
+ * Added 19 September 2026 (close-out C8B.3) after the origin cost table was
+ * read a second time. The srcset rows explained 29% of the homepage document
+ * and the flight row explained 36.6%, and NOTHING explained the rest. It was
+ * class attributes: 195,365 B in the markup and 156,478 B more inside the
+ * flight payload, 34.9% of the document between them, across 131 distinct
+ * values of which 98 repeated.
+ *
+ * BOTH FORMS ARE COUNTED, and counting only one would halve every number. A
+ * class list appears as `class="..."` in the markup and AGAIN as
+ * `\"className\":\"...\"` inside the RSC payload, because React serialises the
+ * tree a second time for hydration. That is why collapsing a card's class list
+ * into a composite utility saves twice what a reader expects.
+ *
+ * `repeatBytes` IS THE ACTIONABLE NUMBER, not `bytes`. A document has to say
+ * each distinct class list at least once; what is removable is every copy after
+ * the first, which is what a composite utility collapses.
+ */
+export function classListWeight(html) {
+  const counts = new Map()
+  for (const re of [CLASS_ATTR_RE, CLASS_FLIGHT_RE]) {
+    re.lastIndex = 0
+    let match
+    while ((match = re.exec(html)) !== null) {
+      const value = match[1]
+      counts.set(value, (counts.get(value) ?? 0) + 1)
+    }
+  }
+  let bytes = 0
+  let repeatBytes = 0
+  let occurrences = 0
+  const byValue = []
+  for (const [value, count] of counts) {
+    bytes += value.length * count
+    occurrences += count
+    if (count > 1) repeatBytes += value.length * (count - 1)
+    byValue.push({ value, count, bytes: value.length * count, repeatBytes: value.length * (count - 1) })
+  }
+  byValue.sort((a, b) => b.repeatBytes - a.repeatBytes)
+  return {
+    bytes,
+    repeatBytes,
+    occurrences,
+    distinct: counts.size,
+    sharePercent: html.length === 0 ? 0 : (bytes / html.length) * 100,
+    byValue,
+  }
+}
+
+/** `class="..."` in the markup. */
+const CLASS_ATTR_RE = /class="([^"]+)"/g
+/**
+ * `\"className\":\"...\"` inside a flight chunk. The framework escapes each
+ * quote with ONE backslash because the payload is a JavaScript string literal.
+ * Built from a character code rather than written out, because the escaping
+ * survives neither a shell heredoc nor a careless edit, and a matcher that
+ * quietly matches nothing is the failure this module exists to refuse.
+ */
+const BACKSLASH = String.fromCharCode(92)
+const CLASS_FLIGHT_RE = new RegExp(
+  `className${BACKSLASH}${BACKSLASH}":${BACKSLASH}${BACKSLASH}"([^${BACKSLASH}${BACKSLASH}]+)${BACKSLASH}${BACKSLASH}"`,
+  'g',
+)
+
 export function analyseDocument(html, { expectFlight = true } = {}) {
   const documentBytes = html.length
   const gzipBytes = gzipSync(Buffer.from(html)).length
@@ -269,6 +335,7 @@ export function analyseDocument(html, { expectFlight = true } = {}) {
   return {
     documentBytes,
     gzipBytes,
+    classLists: classListWeight(html),
     flightBytes: flight.bytes,
     flightScripts: flight.scripts,
     flightSharePercent: documentBytes === 0 ? 0 : (flight.bytes / documentBytes) * 100,

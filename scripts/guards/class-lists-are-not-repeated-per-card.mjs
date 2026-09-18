@@ -1,0 +1,407 @@
+/**
+ * GUARD: a class list a component repeats per item is a composite utility, not
+ * a string literal written out once per render.
+ *
+ * ============================================================================
+ * WHY THIS EXISTS, with the measurement that produced it
+ * ============================================================================
+ *
+ * Close-out C8 EXECUTION METHOD clause C8B.3, 19 September 2026, found by the
+ * origin cost table. The served homepage document was 1,007,295 B and 34.9% of
+ * it was `class` attribute values:
+ *
+ *     markup   class="..."      195,365 B   19.4% of the document
+ *     flight   \"className\":   156,478 B   15.5% of the document
+ *
+ * across 131 distinct values of which 98 repeated. ONE value, 464 characters
+ * long, shipped 104 times. It is paid TWICE - once in the markup and again in
+ * the RSC payload - because a class list written as a string literal inside a
+ * component is re-serialised for every instance React renders. Collapsing the
+ * home card family's three lists into composite utilities in globals.css took
+ * the homepage document to 850,054 B (-157,216 B, -15.6%) and its flight
+ * payload from 368,851 to 290,192 B (-21.3%), with first-load JavaScript
+ * unchanged to the byte and 726 computed style values identical either side.
+ *
+ * ============================================================================
+ * WHAT THIS GUARD CAN AND CANNOT SEE, STATED FIRST
+ * ============================================================================
+ *
+ * IT CANNOT SEE THE DOCUMENT THE DEFECT LIVED IN. The homepage is a DYNAMIC
+ * route, so no file for it exists after a build; only 66 documents (11 .html
+ * and 55 .rsc) are written, and the worst repeat cost among all of them is
+ * 3,808 B. A guard that judged only built output would therefore have reported
+ * a clean pass on the tree that carried a 96,512-byte defect.
+ *
+ * Saying that plainly is the point. The served-document half is covered by
+ * `scripts/verify/card-class-collapse-drive.mjs`, which serves the build and
+ * measures the real homepage; this guard holds the three things that CAN be
+ * judged without a server, and a reader should not mistake its green for the
+ * drive's.
+ *
+ * ============================================================================
+ * THREE CLAUSES
+ * ============================================================================
+ *
+ *   A  CONTRACT. The three composites exist in globals.css and the home card
+ *      files have not re-inlined them. This is what catches a revert, and it is
+ *      the only clause that is exact rather than heuristic.
+ *
+ *   B  RATCHET, platform-wide, with a REVIEWED BASELINE. No class literal in
+ *      src/ over MAX_LITERAL characters unless it is listed below with a date
+ *      and an owner. This is what would have caught the original defect on the
+ *      day it was written. It carries a baseline rather than failing outright
+ *      because eight such literals exist today across three lanes' files, and a
+ *      guard that fails another lane's untouched code is a push refused at
+ *      minute forty of a forty-eight minute gate. Baseline entries that no
+ *      longer match anything are REPORTED, so the list cannot rot into an
+ *      unexamined one.
+ *
+ *   C  FACT, --built. No class value may cost more than REPEAT_BUDGET bytes in
+ *      repeats within one built document. Weak for the reason above, and kept
+ *      because it is the only clause that reads what the build actually wrote.
+ *
+ * Clause B is a LENGTH rule and the real cost is length x multiplicity, which
+ * is not knowable from source. A 561-character literal in the hero renders
+ * once and is harmless; a 200-character literal in a card renders 300 times and
+ * is not. Length is the proxy that is available at prebuild, and the drive is
+ * what measures the product.
+ *
+ * AND CLAUSE B IS BLIND TO A CONCATENATION, WHICH IS NOT A THEORETICAL GAP.
+ * It reads string LITERALS, so a class list assembled from several short ones
+ * is invisible to it however long the result is. The largest repeated class
+ * value on the homepage after this item is `ARROW_BTN` in
+ * src/components/ui/snap-rail.tsx: 642 characters, 24 times, 14,766 B of
+ * repeats - and it is built as six concatenated literals, none over 400, so
+ * this clause passes it. Raising the limit would not help; the shape is the
+ * problem. What catches it is the `class lists` row that
+ * scripts/perf/lib/document-weight.mjs now reports on every served document,
+ * ranked by removable bytes. The guard holds the source; the reporter measures
+ * the output; neither is told it is doing the other's job.
+ *
+ * Usage:
+ *   node scripts/guards/class-lists-are-not-repeated-per-card.mjs
+ *   node scripts/guards/class-lists-are-not-repeated-per-card.mjs --built
+ */
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { join, dirname, relative, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const TAG = '[class-lists-are-not-repeated-per-card]'
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
+const BUILT = process.argv.includes('--built')
+const APP = join(ROOT, '.next', 'server', 'app')
+
+/** Clause A: the composites, and the files that must use them. */
+const COMPOSITES = ['home-card-surface', 'home-card-zoom', 'home-card-title']
+const GLOBALS = 'src/app/globals.css'
+const HOME_CARD_FILES = [
+  'src/components/features/home/cards.tsx',
+  'src/components/features/home/sounds-rail.tsx',
+]
+/** A collapsed file has no class literal anywhere near the old 464. */
+const HOME_MAX_LITERAL = 120
+
+/**
+ * REVIEWED EXEMPTIONS for clause A, 19 September 2026. Same shape and same
+ * discipline as the clause B baseline: keyed by file and by a stable prefix,
+ * dated, with the reason, and reported when it stops matching.
+ *
+ * The limit is deliberately tight (120) because these files hold components
+ * that render once per CARD. What lives in them and does NOT is the empty
+ * state, which renders once per empty rail. Raising the limit to accommodate
+ * two once-per-rail literals would have made the clause blind to a 289-
+ * character literal arriving in a card, which is the thing it is for.
+ */
+const HOME_BASELINE = [
+  {
+    file: 'src/components/features/home/cards.tsx',
+    startsWith: 'flex w-full flex-col items-start justify-center gap-2 rounded-2xl border border-dashed',
+    why: 'the rail empty state, not a card. Renders once per EMPTY rail, so its 138 characters are paid once and there is nothing to multiply.',
+  },
+  {
+    file: 'src/components/features/home/cards.tsx',
+    startsWith: 'mt-2 inline-flex min-h-[44px] items-center rounded-full',
+    why: 'the empty state CTA. Once per empty rail, as above.',
+  },
+]
+
+/** Clause B. */
+const MAX_LITERAL = 400
+
+/**
+ * REVIEWED BASELINE, 19 September 2026. Every class literal in src/ over
+ * MAX_LITERAL characters on the day this guard was written, with who owns the
+ * file and what should happen to it. `file:line` is deliberately NOT the key -
+ * a line number moves with any edit above it - so entries are keyed by file and
+ * by a stable prefix of the literal itself.
+ */
+const BASELINE = [
+  {
+    file: 'src/components/features/home/FeaturedHeroClient.tsx',
+    startsWith: 'sr-only focus-visible:not-sr-only',
+    why: 'the hero skip/pause control. Renders ONCE per page, so its length costs 561 bytes, not 561 x n. Lane C, not worth collapsing.',
+  },
+  {
+    file: 'src/components/features/home/FeaturedHeroClient.tsx',
+    startsWith: 'plausible-event-name=hero_get_tickets_click',
+    why: 'the hero CTA. Once per page. Lane C, not worth collapsing.',
+  },
+  {
+    file: 'src/components/features/home/FeaturedHero.tsx',
+    startsWith: 'inline-flex h-12 items-center justify-center rounded-full',
+    why: 'the server-rendered hero CTA, the same control as above. Once per page. Lane C.',
+  },
+  {
+    file: 'src/app/events/[slug]/page.tsx',
+    startsWith: 'inline-flex min-h-11 items-center rounded-lg bg-gold-500',
+    why: 'the event page Get Tickets CTA, written twice in one file. Once per page each. Lane A owns the checkout entry point.',
+  },
+  {
+    file: 'src/components/features/events/event-card.tsx',
+    startsWith: 'group card-hover-transition flex flex-col rounded-2xl',
+    why: 'THE NEXT ITEM, and it is the same defect this guard was written for. 428 chars x 32 cards on /events = 13,696 B of markup plus its flight copy; class values are 107,234 B, 26.9% of that 399,029 B document. Measured 19 September 2026. Lane C. Not collapsed in the same pass because it is a different component family with different values (card-hover-transition, scale-[1.025]) and folding it in would have doubled the item mid-flight.',
+  },
+  {
+    file: 'src/components/features/events/hero-carousel-client.tsx',
+    startsWith: 'absolute right-4 top-1/2 z-20 hidden h-11 w-11',
+    why: 'carousel next control. Once per carousel. Lane C.',
+  },
+  {
+    file: 'src/components/features/events/hero-carousel-client.tsx',
+    startsWith: 'absolute left-4 top-1/2 z-20 hidden h-11 w-11',
+    why: 'carousel previous control. Once per carousel. Lane C.',
+  },
+]
+
+/** Clause C. Highest repeat cost measured across the 66 built documents on the
+ *  day this was written was 3,808 B (_not-found.html). */
+const REPEAT_BUDGET = 6000
+
+/**
+ * Looks like a Tailwind class list, rather than any long string. Requires four
+ * distinct utility-shaped tokens AND a space, so a URL, a sentence of copy or a
+ * base64 blob is not mistaken for one.
+ */
+const UTILITY_TOKEN =
+  /(?:^|\s)(?:(?:hover|focus|focus-visible|group-hover|motion-reduce|sm|md|lg|xl|dark):)*(?:flex|grid|block|inline-flex|hidden|w-|h-|min-h-|p[xytblr]?-|m[xytblr]?-|text-|bg-|border|rounded|shadow|transition|duration-|ease-|gap-|items-|justify-|font-|leading-|tracking-|overflow-|absolute|relative|object-|aspect-|line-clamp|sr-only|z-)/g
+
+function looksLikeClassList(value) {
+  if (!value.includes(' ')) return false
+  const hits = value.match(UTILITY_TOKEN)
+  return Boolean(hits && hits.length >= 4)
+}
+
+/** Every single- or double-quoted literal on a line, with its line number. */
+const LITERAL = /'([^'\n]{40,})'|"([^"\n]{40,})"/g
+
+function literalsIn(text) {
+  const out = []
+  const lines = text.split('\n')
+  for (let i = 0; i < lines.length; i += 1) {
+    LITERAL.lastIndex = 0
+    let m
+    while ((m = LITERAL.exec(lines[i])) !== null) {
+      const value = m[1] ?? m[2]
+      if (looksLikeClassList(value)) out.push({ line: i + 1, value })
+    }
+  }
+  return out
+}
+
+function walk(dir, test, out = []) {
+  if (!existsSync(dir)) return out
+  for (const name of readdirSync(dir)) {
+    const path = join(dir, name)
+    if (statSync(path).isDirectory()) {
+      walk(path, test, out)
+      continue
+    }
+    if (test(name)) out.push(path)
+  }
+  return out
+}
+
+const faults = []
+const notes = []
+const rel = p => relative(ROOT, p).split(sep).join('/')
+
+/* ── Clause A: the contract ────────────────────────────────────────────────── */
+let clauseAChecks = 0
+const homeBaselineHits = new Set()
+const globalsPath = join(ROOT, GLOBALS)
+if (!existsSync(globalsPath)) {
+  faults.push(`${GLOBALS} does not exist, so the composites cannot be checked`)
+} else {
+  const css = readFileSync(globalsPath, 'utf8')
+  for (const name of COMPOSITES) {
+    clauseAChecks += 1
+    /* ANCHORED TO THE OPENING BRACE, NOT TO A WORD BOUNDARY, and the first
+     * version used `\b`. A hyphen is not a word character, so `home-card-surface\b`
+     * matched inside `home-card-surface-renamed` and the guard passed on a tree
+     * where the composite had been renamed out from under 104 cards. The drill
+     * "a composite ... is deleted from globals.css" found it on its first run. */
+    if (!new RegExp(`@utility\\s+${name}\\s*\\{`).test(css)) {
+      faults.push(
+        `A: @utility ${name} is not defined in ${GLOBALS}. The home card family renders it on every card, ` +
+          `so deleting it silently strips the card's border, shadow, hover lift or focus ring.`,
+      )
+    }
+  }
+}
+for (const file of HOME_CARD_FILES) {
+  const path = join(ROOT, file)
+  if (!existsSync(path)) {
+    faults.push(`A: ${file} does not exist; the home card contract cannot be judged`)
+    continue
+  }
+  const text = readFileSync(path, 'utf8')
+  clauseAChecks += 1
+  const usesOne = COMPOSITES.some(name => text.includes(name))
+  if (!usesOne) {
+    faults.push(`A: ${file} references none of the composites (${COMPOSITES.join(', ')}); the collapse has been undone`)
+  }
+  for (const { line, value } of literalsIn(text)) {
+    clauseAChecks += 1
+    if (value.length > HOME_MAX_LITERAL) {
+      const exempt = HOME_BASELINE.find(b => b.file === file && value.startsWith(b.startsWith))
+      if (exempt) {
+        homeBaselineHits.add(`${exempt.file}|${exempt.startsWith}`)
+        continue
+      }
+      faults.push(
+        `A: ${file}:${line} carries a ${value.length}-character class literal (limit ${HOME_MAX_LITERAL} in a home card file). ` +
+          `These components render once per card, so a literal here is paid per card in the markup AND again in the RSC ` +
+          `payload. Put it in globals.css as an @utility with @apply. Literal begins: ${value.slice(0, 60)}`,
+      )
+    }
+  }
+}
+
+/* ── Clause B: the platform-wide ratchet, with its reviewed baseline ───────── */
+const baselineHits = new Set()
+let overLimit = 0
+const srcFiles = walk(join(ROOT, 'src'), n => n.endsWith('.tsx') || n.endsWith('.ts'))
+for (const path of srcFiles) {
+  const file = rel(path)
+  const text = readFileSync(path, 'utf8')
+  for (const { line, value } of literalsIn(text)) {
+    if (value.length <= MAX_LITERAL) continue
+    overLimit += 1
+    const entry = BASELINE.find(b => b.file === file && value.startsWith(b.startsWith))
+    if (entry) {
+      baselineHits.add(`${entry.file}|${entry.startsWith}`)
+      continue
+    }
+    faults.push(
+      `B: ${file}:${line} carries a ${value.length}-character class literal (limit ${MAX_LITERAL}). ` +
+        `If it renders once per page it is cheap and belongs in this guard's reviewed baseline with a date and a reason; ` +
+        `if it renders per item it is paid twice per item and belongs in globals.css as an @utility. ` +
+        `Literal begins: ${value.slice(0, 60)}`,
+    )
+  }
+}
+for (const b of BASELINE) {
+  if (!baselineHits.has(`${b.file}|${b.startsWith}`)) {
+    notes.push(
+      `B: baseline entry no longer matches anything and should be deleted: ${b.file} "${b.startsWith.slice(0, 44)}"`,
+    )
+  }
+}
+for (const b of HOME_BASELINE) {
+  if (!homeBaselineHits.has(`${b.file}|${b.startsWith}`)) {
+    notes.push(
+      `A: exemption no longer matches anything and should be deleted: ${b.file} "${b.startsWith.slice(0, 44)}"`,
+    )
+  }
+}
+
+/* ── Clause C: the built documents ────────────────────────────────────────── */
+const BS = String.fromCharCode(92)
+const CLASS_ATTR = /class="([^"]{20,})"/g
+const CLASS_FLIGHT = new RegExp(`className${BS}${BS}":${BS}${BS}"([^${BS}${BS}]{20,})${BS}${BS}"`, 'g')
+
+function repeatCosts(text) {
+  const counts = new Map()
+  for (const re of [CLASS_ATTR, CLASS_FLIGHT]) {
+    re.lastIndex = 0
+    let m
+    while ((m = re.exec(text)) !== null) counts.set(m[1], (counts.get(m[1]) ?? 0) + 1)
+  }
+  const out = []
+  for (const [value, n] of counts) if (n > 1) out.push({ value, count: n, bytes: value.length * (n - 1) })
+  return out.sort((a, b) => b.bytes - a.bytes)
+}
+
+/**
+ * CALIBRATION. This clause can only fail by FINDING something, so a matcher
+ * that has gone blind and a build that is clean produce the same green. Both
+ * matchers are run over a document built here whose answer is known, and the
+ * guard REFUSES rather than reporting a pass it did not earn.
+ */
+const probeClass = 'probe-one probe-two probe-three rounded-2xl shadow-lg'
+/* The flight form is a JS string literal, so the framework escapes each quote
+ * as ONE backslash followed by a quote. The first version of this probe wrote
+ * TWO, the matcher found only the markup pair, and the calibration refused
+ * rather than reporting a pass over a half-blind instrument - which is the
+ * whole reason this clause exists. */
+const flightPair = `className${BS}":${BS}"${probeClass}${BS}"`
+const probeDoc =
+  `<div class="${probeClass}"></div><div class="${probeClass}"></div>` +
+  `<script>self.__next_f.push([1,"${flightPair}${flightPair}"])</script>`
+const probe = repeatCosts(probeDoc).find(r => r.value === probeClass)
+if (!probe) {
+  console.error(`${TAG} REFUSING: the calibration probe was not found by its own matchers.`)
+  console.error(`${TAG} Nothing below would be a finding about this platform, so no verdict is given.`)
+  process.exit(1)
+}
+if (probe.count < 4) {
+  console.error(`${TAG} REFUSING: the calibration probe was found ${probe.count} time(s), expected 4 (2 markup + 2 flight).`)
+  console.error(`${TAG} One of the two matchers is blind, so a clean report would be meaningless.`)
+  process.exit(1)
+}
+
+let documentsWeighed = 0
+let worst = { bytes: 0 }
+if (BUILT) {
+  if (!existsSync(APP)) {
+    console.error(`${TAG} REFUSING: --built was given but ${rel(APP)} does not exist. Run a build first.`)
+    process.exit(1)
+  }
+  for (const path of walk(APP, n => n.endsWith('.html') || n.endsWith('.rsc'))) {
+    documentsWeighed += 1
+    const text = readFileSync(path, 'utf8')
+    for (const row of repeatCosts(text)) {
+      if (row.bytes > worst.bytes) worst = { ...row, document: rel(path) }
+      if (row.bytes > REPEAT_BUDGET) {
+        faults.push(
+          `C: ${rel(path)} repeats one ${row.value.length}-character class value ${row.count} times, ` +
+            `costing ${row.bytes} B beyond the first (budget ${REPEAT_BUDGET}). Collapse it into an @utility. ` +
+            `Value begins: ${row.value.slice(0, 60)}`,
+        )
+      }
+    }
+  }
+  if (documentsWeighed === 0) {
+    console.error(`${TAG} REFUSING: --built weighed 0 documents. A step that performed no work is not a step that passed.`)
+    process.exit(1)
+  }
+}
+
+for (const n of notes) console.log(`${TAG} note: ${n}`)
+if (faults.length) {
+  console.error(`${TAG} FAIL - ${faults.length} fault(s)`)
+  for (const f of faults) console.error(`${TAG}   ${f}`)
+  process.exit(1)
+}
+console.log(
+  `${TAG} calibration ok (probe found ${probe.count} times, ${probe.bytes} B of repeats). ` +
+    `A: ${clauseAChecks} contract check(s) on ${COMPOSITES.length} composite(s). ` +
+    `B: ${srcFiles.length} source file(s), ${overLimit} literal(s) over ${MAX_LITERAL} chars, ` +
+    `${BASELINE.length} reviewed baseline entr(ies).` +
+    (BUILT
+      ? ` C: ${documentsWeighed} built document(s), worst repeat ${worst.bytes} B against a budget of ${REPEAT_BUDGET}` +
+        (worst.document ? ` (${worst.document})` : '') +
+        '.'
+      : ' C: not run (no --built); the served homepage is covered by card-class-collapse-drive.mjs, not by this guard.'),
+)
+console.log(`${TAG} PASS`)

@@ -19,6 +19,7 @@ import {
   candidateLists,
   candidateSample,
   catalogueWeight,
+  classListWeight,
   flightPayload,
 } from '../../../scripts/perf/lib/document-weight.mjs'
 
@@ -241,5 +242,82 @@ describe('catalogueWeight', () => {
     const html = `<html>${row}</html>`
     const r = catalogueWeight(html, { marker: 'isLaunchCity' })
     expect(r.sharePercent).toBeCloseTo((row.length / html.length) * 100, 6)
+  })
+})
+
+
+/**
+ * classListWeight. The analysis behind close-out C8B.3: the homepage spent
+ * 34.9% of a 1,007,295 B document on class attributes, 98 of 131 distinct
+ * values repeating, one of them 464 characters long shipped 104 times.
+ */
+describe('classListWeight', () => {
+  it('counts a class attribute in the markup', () => {
+    const r = classListWeight('<div class="alpha beta"></div>')
+    expect(r.distinct).toBe(1)
+    expect(r.occurrences).toBe(1)
+    expect(r.bytes).toBe('alpha beta'.length)
+  })
+
+  it('counts the SAME list again when it appears in the flight payload, because the browser pays for both', () => {
+    const markup = '<div class="CARD"></div>'
+    const flight = `<script>self.__next_f.push([1,"FLIGHT"])</script>`.replace('FLIGHT', 'className\\":\\"CARD\\"')
+    const r = classListWeight(markup + flight)
+    expect(r.occurrences).toBe(2)
+    expect(r.distinct).toBe(1)
+    expect(r.bytes).toBe('CARD'.length * 2)
+  })
+
+  it('charges repeatBytes for every copy after the first, and nothing for the first', () => {
+    const one = classListWeight('<div class="alpha beta"></div>')
+    expect(one.repeatBytes).toBe(0)
+    const three = classListWeight('<div class="alpha beta"></div>'.repeat(3))
+    expect(three.repeatBytes).toBe('alpha beta'.length * 2)
+  })
+
+  it('keeps two different values apart rather than summing them into one row', () => {
+    const r = classListWeight('<div class="alpha beta"></div><div class="gamma delta"></div>')
+    expect(r.distinct).toBe(2)
+    expect(r.repeatBytes).toBe(0)
+  })
+
+  it('ranks byValue by what is REMOVABLE, so a short list said often outranks a long one said twice', () => {
+    // This is the whole point of the metric. `long` is the bigger single value
+    // and the bigger total; `short` is the bigger DEFECT, because a composite
+    // utility can delete 9 copies of it and only 1 copy of the other.
+    const short = 'p-1 shadow-sm' // 13 chars
+    const long = 'p-2 rounded-2xl border shadow-lg transition-colors duration-200 ease-out' // 71
+    const html = `<div class="${short}"></div>`.repeat(10) + `<div class="${long}"></div>`.repeat(2)
+    const r = classListWeight(html)
+    expect(short.length * 9).toBeGreaterThan(long.length * 1)
+    expect(r.byValue[0].value).toBe(short)
+    expect(r.byValue[0].repeatBytes).toBe(short.length * 9)
+    expect(r.byValue[1].repeatBytes).toBe(long.length * 1)
+    // ... and `long` is nonetheless the larger value, which is what makes
+    // ranking by total size the wrong answer.
+    expect(long.length).toBeGreaterThan(short.length)
+  })
+
+  it('reports the share of the document the class attributes occupy', () => {
+    const html = '<div class="alpha beta"></div>'
+    const r = classListWeight(html)
+    expect(r.sharePercent).toBeCloseTo(('alpha beta'.length / html.length) * 100, 6)
+  })
+
+  it('returns zeroes for a document with no class attribute rather than throwing', () => {
+    const r = classListWeight('<html><body><p>no classes here</p></body></html>')
+    expect(r.distinct).toBe(0)
+    expect(r.bytes).toBe(0)
+    expect(r.repeatBytes).toBe(0)
+  })
+
+  it('does not treat className inside ordinary prose as an attribute', () => {
+    const r = classListWeight('<p>the className prop is a string</p>')
+    expect(r.distinct).toBe(0)
+  })
+
+  it('is carried on analyseDocument, so the reporter cannot drift from the analysis', () => {
+    const html = `<div class="alpha beta"></div>${FLIGHT}`
+    expect(analyseDocument(html).classLists.bytes).toBe(classListWeight(html).bytes)
   })
 })

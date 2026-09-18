@@ -2390,9 +2390,23 @@ const ROOT = join(HERE, '..', '..')
  * holding 5 cases.
  *   459 + 1 = 460 files
  *   5985 + 5 = 5990 tests
+ *
+ * 2026-09-19, close-out C8B.3, the home card class lists collapsed into three
+ * composite utilities. The homepage document fell 1,007,270 -> 850,054 B and
+ * its flight payload 368,851 -> 290,192 B, with first-load JavaScript unchanged
+ * to the byte. The analysis behind it, classListWeight, is a new pure function
+ * and is tested rather than trusted.
+ *
+ * MEASURED: 460 files, 5999 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: no new FILE (the cases were added to an existing one), and nine
+ * new cases in tests/unit/perf/document-weight.test.ts, which took it from 28
+ * to 37.
+ *   460 + 0 = 460 files
+ *   5990 + 9 = 5999 tests
  */
 const MIN_FILES = 460
-const MIN_TESTS = 5990
+const MIN_TESTS = 5999
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

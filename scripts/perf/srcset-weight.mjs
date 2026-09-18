@@ -179,6 +179,18 @@ for (const path of paths) {
     `    flight payload ${a.flightBytes} B in ${a.flightScripts} script tags ` +
       `(${a.flightSharePercent.toFixed(1)}% of the document): the same tree again, as script`,
   )
+  console.log(
+    `    class lists ${a.classLists.bytes} B in ${a.classLists.occurrences} attributes ` +
+      `(${a.classLists.sharePercent.toFixed(1)}% of the document), ${a.classLists.distinct} distinct, ` +
+      `of which ${a.classLists.repeatBytes} B is a value said again`,
+  )
+  for (const row of a.classLists.byValue.slice(0, 3)) {
+    if (row.repeatBytes === 0) break
+    console.log(
+      `      ${String(row.repeatBytes).padStart(7)} B repeats   ${row.count} x ${row.value.length} chars   ` +
+        `${row.value.slice(0, 58)}`,
+    )
+  }
   for (const c of catalogues) {
     console.log(
       `    catalogue "${c.name}": ${c.bytes} B, ${c.rows} row(s), ${c.distinct} distinct, ` +
