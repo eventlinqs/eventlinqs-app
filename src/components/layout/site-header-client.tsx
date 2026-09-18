@@ -259,7 +259,7 @@ export function SiteHeaderClient({ location, user, userEmail, isAdmin = false }:
                 // min-h-11: a 44px hit area inside the 64px bar (the link box
                 // was the 20px text line). rounded-lg: the control radius, so
                 // the focus ring does not add a fourth radius to the page.
-                className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] rounded-lg"
+                className="chrome-nav-link"
               >
                 {link.label}
               </Link>
@@ -418,12 +418,7 @@ export function SiteHeaderClient({ location, user, userEmail, isAdmin = false }:
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className={[
-                    'flex min-h-[44px] items-center rounded-lg px-4 py-3',
-                    'text-base font-medium text-ink-700 hover:bg-ink-100 hover:text-gold-600',
-                    'transition-colors focus-visible:outline-none focus-visible:ring-2',
-                    'focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset',
-                  ].join(' ')}
+                  className="chrome-drawer-link"
                   onClick={closeSheet}
                 >
                   {link.label}

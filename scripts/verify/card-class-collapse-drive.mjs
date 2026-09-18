@@ -247,6 +247,50 @@ const PROPS = {
 const ROLES = ['card', 'media', 'image', 'badge', 'save', 'body', 'label', 'title', 'meta', 'footer', 'priceText', 'date', 'price']
 
 /**
+ * THE SHARED CHROME, added 19 September 2026 for the third collapse.
+ *
+ * The header, the footer, the mobile drawer and the mobile bottom bar render
+ * on EVERY page, so a class list written per link there is multiplied by every
+ * link on every page: measured at about 13.5 KB of removable repeats per
+ * document, on all five routes sampled, before this.
+ *
+ * EVERY LINK IS MEASURED, KEYED BY WHERE IT POINTS. Not a representative one:
+ * the footer has thirty-five anchors in four different families, and a
+ * collapse that got one family right and another subtly wrong would pass a
+ * spot check. A key present on one tree and missing on the other is a fault,
+ * so a link that disappears cannot read as a link that did not change.
+ */
+const CHROME_PROPS = [
+  'display',
+  'align-items',
+  'justify-content',
+  'flex-direction',
+  'min-height',
+  'min-width',
+  'height',
+  'width',
+  'font-size',
+  'font-weight',
+  'font-family',
+  'line-height',
+  'letter-spacing',
+  'text-transform',
+  'color',
+  'background-color',
+  'border-radius',
+  'padding-top',
+  'padding-bottom',
+  'padding-left',
+  'padding-right',
+  'margin-bottom',
+  'gap',
+  'white-space',
+  'transition-property',
+  'transition-duration',
+  'transition-timing-function',
+]
+
+/**
  * The canonical rail control (`ARROW_BTN` in src/components/ui/snap-rail.tsx).
  * It is measured in THREE states because two of its five class groups only
  * exist in states a resting screenshot never reaches: `disabled:` at a rail
@@ -270,6 +314,28 @@ const ARROW_PROPS = [
   'cursor',
   'outline-style',
 ]
+
+/**
+ * Chrome entries by key, WITH AN OCCURRENCE INDEX, and the index is not
+ * decoration.
+ *
+ * Keyed on destination and label alone, the footer's 63 anchors collapsed to
+ * 35 entries in this Map, because the desktop columns and the mobile
+ * accordion link to the same places. A whole link family was being dropped by
+ * the comparison and reported as though it had been measured. The index is
+ * per duplicate key in document order, so it is stable for the same page and
+ * every element is compared against the one that stood in its position.
+ */
+function keyedByOccurrence(entries) {
+  const out = new Map()
+  const seen = new Map()
+  for (const e of entries ?? []) {
+    const n = (seen.get(e.key) ?? 0) + 1
+    seen.set(e.key, n)
+    out.set(`${e.key}#${n}`, e)
+  }
+  return out
+}
 
 const faults = []
 const notes = []
@@ -413,6 +479,51 @@ const ARROW_SCRIPT = `(() => {
 
 const FIRST_CARD = `[...document.querySelectorAll('a[href^="/events/"]')].filter(x => x.querySelector('img') && x.querySelector('h3'))[0]`
 
+/**
+ * Every link and label in the shared chrome, found by landmark and keyed by
+ * destination. `footer`, `header` and the two navs are found by their element
+ * or their accessible name - never by the class under test - so the same
+ * elements are measured on both trees.
+ */
+const CHROME_SCRIPT = `(() => {
+  const PROPS = ${JSON.stringify(CHROME_PROPS)};
+  const read = (el) => {
+    const cs = getComputedStyle(el);
+    const o = {};
+    for (const p of PROPS) o[p] = cs.getPropertyValue(p).trim();
+    return o;
+  };
+  const label = (el) => (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 28);
+  const entry = (el) => ({
+    key: (el.getAttribute('href') || el.tagName) + '|' + label(el),
+    classLength: (el.getAttribute('class') || '').length,
+    props: read(el),
+  });
+  const group = (root, selector) => (root ? [...root.querySelectorAll(selector)].map(entry) : []);
+
+  const footer = document.querySelector('footer');
+  const header = document.querySelector('header');
+  const bottomNav = document.querySelector('nav[aria-label="Primary"]');
+  const drawer = document.querySelector('[aria-label="Mobile navigation"]');
+  return {
+    footerLinks: group(footer, 'a'),
+    /* The column headings: the only <p> elements the footer renders directly
+     * inside a column, and the thing a collapse of the link family could
+     * knock sideways without touching a link. */
+    footerTitles: group(footer, 'p'),
+    headerLinks: group(header, 'a'),
+    headerButtons: group(header, 'button[aria-label]'),
+    bottomNavItems: group(bottomNav, 'a'),
+    drawerLinks: group(drawer, 'a'),
+    counts: {
+      footerLinks: footer ? footer.querySelectorAll('a').length : 0,
+      headerLinks: header ? header.querySelectorAll('a').length : 0,
+      bottomNavItems: bottomNav ? bottomNav.querySelectorAll('a').length : 0,
+      drawerLinks: drawer ? drawer.querySelectorAll('a').length : 0,
+    },
+  };
+})()`
+
 const capture = {}
 
 const browser = await chromium.launch()
@@ -482,7 +593,29 @@ try {
     const arrows = await page.evaluate(ARROW_SCRIPT)
     check(arrows.found > 0, `${key}: ${arrows.found} rail arrow control(s) found to measure`)
 
-    capture[key] = { dataMotion, rest, hovered, focused, arrows }
+    /*
+     * THE CHROME. At 390 the mobile drawer is opened first, because its links
+     * are a fifth family and they do not exist in the DOM until the sheet is
+     * open. Below the lg step the desktop nav is `hidden`, and above it the
+     * drawer trigger is not rendered, so the two never both appear - which is
+     * why this is conditional rather than always-on, and why the comparison
+     * keys on the element rather than on a position.
+     */
+    if (vp.width < 1024) {
+      const trigger = page.locator('header button[aria-label="Open navigation menu"]')
+      if (await trigger.count()) {
+        await trigger.first().click()
+        await page.waitForTimeout(450)
+      }
+    }
+    const chrome = await page.evaluate(CHROME_SCRIPT)
+    check(
+      chrome.counts.footerLinks > 0 && chrome.counts.headerLinks > 0,
+      `${key}: chrome found ${chrome.counts.footerLinks} footer link(s), ${chrome.counts.headerLinks} header link(s), ` +
+        `${chrome.counts.bottomNavItems} bottom-bar item(s), ${chrome.counts.drawerLinks} drawer link(s)`,
+    )
+
+    capture[key] = { dataMotion, rest, hovered, focused, arrows, chrome }
 
     if (SHOTS) {
       mkdirSync(SHOTS, { recursive: true })
@@ -605,6 +738,37 @@ if (EXPECT) {
         `label ${b.rest[0].labelClassLength} -> ${a.rest[0].labelClassLength}, ` +
         `rail arrow ${b.arrows?.classLength} -> ${a.arrows?.classLength}`,
     )
+    /*
+     * THE CHROME, family by family, keyed by destination. A key on one side
+     * only is a fault rather than a skip: a link that vanished must not read
+     * as a link that did not change.
+     */
+    for (const family of ['footerLinks', 'footerTitles', 'headerLinks', 'headerButtons', 'bottomNavItems', 'drawerLinks']) {
+      const was = keyedByOccurrence(b.chrome?.[family])
+      const now = keyedByOccurrence(a.chrome?.[family])
+      for (const [k, e] of was) {
+        if (!now.has(k)) {
+          faults.push(`${vp} chrome ${family}: "${k}" was present before and is gone`)
+          continue
+        }
+        for (const prop of CHROME_PROPS) {
+          compared += 1
+          const before = comparableValue(e.props, prop)
+          const after = comparableValue(now.get(k).props, prop)
+          if (before !== after) {
+            faults.push(`${vp} chrome ${family} "${k}" ${prop}: was "${before}", now "${after}"`)
+          }
+        }
+      }
+      for (const k of now.keys()) {
+        if (!was.has(k)) faults.push(`${vp} chrome ${family}: "${k}" appeared and was not there before`)
+      }
+      const sumWas = [...was.values()].reduce((n, e) => n + e.classLength, 0)
+      const sumNow = [...now.values()].reduce((n, e) => n + e.classLength, 0)
+      if (was.size > 0) {
+        console.log(`${TAG} ${vp}: chrome ${family} ${was.size} element(s), class chars ${sumWas} -> ${sumNow}`)
+      }
+    }
     console.log(
       `${TAG} ${vp}: media ${b.rest[0].mediaClassLength} -> ${a.rest[0].mediaClassLength}, ` +
         `body ${b.rest[0].bodyClassLength} -> ${a.rest[0].bodyClassLength}, ` +

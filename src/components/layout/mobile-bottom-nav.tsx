@@ -139,7 +139,7 @@ export function MobileBottomNav() {
                 aria-label={label}
                 aria-current={active ? 'page' : undefined}
                 className={[
-                  'flex h-full flex-col items-center justify-center gap-1 transition-colors',
+                  'chrome-bottom-item',
                   active
                     ? 'text-[var(--brand-accent)]'
                     : 'text-white/65 hover:text-white',
