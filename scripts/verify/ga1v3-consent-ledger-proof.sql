@@ -24,8 +24,28 @@ declare
   v_client uuid;
   v_event_id uuid;
   v_verdict record;
-  v_email text := 'ledger.lane-b@lane-b.eventlinqs.test';
-  v_other text := 'client.lane-b@lane-b.eventlinqs.test';
+  /*
+   * EVERY RUN IS A DIFFERENT PERSON, AND IT HAS TO BE (close-out FO1,
+   * 18 September 2026).
+   *
+   * These were two fixed addresses, and this proof therefore passed exactly
+   * once and then failed for thirty minutes. The grant below is stamped
+   * `now() - 1 hour` and the withdrawal `now() - 30 minutes`; consent events
+   * are append only and are deliberately never deleted, so a second run
+   * inside half an hour inserted a grant OLDER than the previous run’s
+   * withdrawal. Latest event wins, correctly, so the resolver refused and
+   * three checks reported "the resolver permits the granted subject" as a
+   * FAILURE. The resolver was right. The proof was asking about a person who
+   * had unsubscribed in an earlier run.
+   *
+   * This is the append-only property working exactly as the item requires, so
+   * the fix is not to weaken it or to tidy the rows away: it is to stop
+   * pretending each run is the same human being.
+   */
+  v_run text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSUS');
+  v_email text := 'ledger.lane-b-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSUS') || '@lane-b.eventlinqs.test';
+  v_other text := 'client.lane-b-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSUS') || '@lane-b.eventlinqs.test';
+  v_stale text := 'stale.lane-b-' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSUS') || '@lane-b.eventlinqs.test';
   v_count int;
 begin
   select id into v_tenant from public.marketing_tenants where slug = 'eventlinqs';
@@ -143,11 +163,11 @@ begin
     tenant_id, subject_email, purpose, channel_scope, decision, wording, wording_version,
     capture_surface, third_party_scope, suppression_scope, occurred_at
   ) values (
-    v_tenant, 'stale.lane-b@lane-b.eventlinqs.test', 'facilitated_event_marketing', 'both', 'granted',
+    v_tenant, v_stale, 'facilitated_event_marketing', 'both', 'granted',
     'An old consent, given a long time ago.', 'v1', 'checkout',
     'events ticketed on EventLinqs', 'every EventLinqs facilitated message', now() - interval '30 months'
   );
-  select * into v_verdict from public.consent_permits('eventlinqs', 'stale.lane-b@lane-b.eventlinqs.test', 'email', 'facilitated_event_marketing');
+  select * into v_verdict from public.consent_permits('eventlinqs', v_stale, 'email', 'facilitated_event_marketing');
   insert into proof(check_name, detail, verdict)
   values ('consent_older_than_threshold_is_refused_until_regranted', v_verdict.reason,
           case when v_verdict.permitted then 'FAIL' else 'PASS' end);
@@ -162,6 +182,11 @@ end $$;
 
 -- ── The named database-level refusals, application code nowhere in sight ───
 do $$
+declare
+  -- Its own run tag: this block is a separate DO and cannot see the first
+  -- one's variables. Same reason as above, the subjects must be fresh, because
+  -- consent_events is append only and these rows outlive the run.
+  v_run text := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSUS');
 begin
   begin
     update public.consent_events set decision = 'granted' where subject_email like '%lane-b%';
@@ -205,7 +230,7 @@ begin
       capture_surface, third_party_scope, suppression_scope
     ) values (
       (select id from public.marketing_tenants where slug = 'eventlinqs'),
-      'empty.lane-b@lane-b.eventlinqs.test', 'facilitated_event_marketing', 'email', 'granted',
+      'empty.lane-b-' || v_run || '@lane-b.eventlinqs.test', 'facilitated_event_marketing', 'email', 'granted',
       '   ', 'v1', 'checkout', 'x', 'y'
     );
     insert into proof(check_name, detail, verdict)
@@ -220,7 +245,7 @@ begin
       tenant_id, subject_email, purpose, channel_scope, decision, wording, wording_version,
       capture_surface, third_party_scope, suppression_scope
     ) values (
-      null, 'notenant.lane-b@lane-b.eventlinqs.test', 'facilitated_event_marketing', 'email', 'granted',
+      null, 'notenant.lane-b-' || v_run || '@lane-b.eventlinqs.test', 'facilitated_event_marketing', 'email', 'granted',
       'Wording that is present.', 'v1', 'checkout', 'x', 'y'
     );
     insert into proof(check_name, detail, verdict)
@@ -235,7 +260,7 @@ begin
       email, consent_at, consent_text, consent_version, consent_source,
       first_order_at, last_order_at, price_band
     ) values (
-      'ledger.lane-b@lane-b.eventlinqs.test', now(), 'Some wording.', 'v1', 'checkout',
+      'refused.lane-b-' || v_run || '@lane-b.eventlinqs.test', now(), 'Some wording.', 'v1', 'checkout',
       now(), now(), 'free'
     );
     insert into proof(check_name, detail, verdict)
@@ -252,6 +277,8 @@ declare
   v_before jsonb;
   v_after jsonb;
   v_emails text[];
+  v_lost text[];
+  v_gained text[];
 begin
   select coalesce(jsonb_agg(to_jsonb(a) - 'id' - 'created_at' - 'refreshed_at' order by a.email), '[]'::jsonb)
     into v_before
@@ -268,9 +295,35 @@ begin
     into v_after
     from public.audience_members a;
 
+  -- A FAILURE HERE NAMES THE SUBJECT, never just a count (close-out FO1,
+  -- 18 September 2026). This reported "rows before 2, after 1", which says a
+  -- row did not come back without saying whose, and the reader then has to
+  -- reconstruct the whole transaction to find out. The emails that vanished and
+  -- the emails that appeared are both listed, because a rebuild can be wrong in
+  -- either direction.
+  select coalesce(array_agg(e order by e), '{}') into v_lost
+    from (
+      select jsonb_array_elements(v_before) ->> 'email' as e
+      except
+      select jsonb_array_elements(v_after) ->> 'email'
+    ) t;
+  select coalesce(array_agg(e order by e), '{}') into v_gained
+    from (
+      select jsonb_array_elements(v_after) ->> 'email' as e
+      except
+      select jsonb_array_elements(v_before) ->> 'email'
+    ) t;
+
   insert into proof(check_name, detail, verdict)
   values ('the audience is rebuildable from the ledgers and the orders, identically',
-          'rows before ' || jsonb_array_length(v_before)::text || ', after ' || jsonb_array_length(v_after)::text,
+          'rows before ' || jsonb_array_length(v_before)::text || ', after ' || jsonb_array_length(v_after)::text
+            || case when cardinality(v_lost) > 0 then '; did not come back: ' || array_to_string(v_lost, ', ') else '' end
+            || case when cardinality(v_gained) > 0 then '; appeared from nowhere: ' || array_to_string(v_gained, ', ') else '' end
+            || case
+                 when cardinality(v_lost) = 0 and cardinality(v_gained) = 0 and v_before <> v_after
+                 then '; the same subjects, but a column differs'
+                 else ''
+               end,
           case when v_before = v_after then 'PASS' else 'FAIL' end);
 end $$;
 

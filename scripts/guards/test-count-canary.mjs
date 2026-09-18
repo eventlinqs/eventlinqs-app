@@ -2115,9 +2115,36 @@ const VITEST = join(ROOT, 'node_modules', 'vitest', 'vitest.mjs')
 // how a drill set core.bare=true on the shared config and broke `git status`
 // in all nine worktrees at once. Clearing it here severs the class for every
 // current and future test at once.
+/*
+ * TWO REPORTERS, AND THE SECOND ONE IS THE POINT (close-out FO1, 18 September
+ * 2026).
+ *
+ * The JSON reporter is what this guard counts from, and it is also what loses
+ * the evidence. When vitest cannot serialise a failure it writes the literal
+ * string `STACK_TRACE_ERROR` into `failureMessages` along with the stack of
+ * where the test was DEFINED, not where it failed. This step then reported, in
+ * full:
+ *
+ *     1 test(s) FAILED.
+ *       tests/component/fee-sentence-spacing.test.tsx > /organisers states ...
+ *         Error: STACK_TRACE_ERROR
+ *             at task (.../chunk-artifact.js:1784:27)
+ *
+ * which names the test and says nothing whatever about what went wrong. An
+ * ordinary assertion failure survives the round trip perfectly, so this only
+ * bites on the errors that are hardest to reason about, which is the worst
+ * possible time to lose the message. Two runs were spent proving the failure
+ * was not reproducible outside this step, and the message that would have
+ * shortened that to one look had been thrown away before anybody read it.
+ *
+ * The `dot` reporter is silent on success and prints the LIVE error object on
+ * failure, so it never went through serialisation. `--outputFile.json=` is the
+ * per-reporter form and resolves against the project root exactly as the bare
+ * `--outputFile` did, which the counting below still depends on.
+ */
 const result = spawnSync(
   process.execPath,
-  [VITEST, 'run', '--reporter=json', `--outputFile=${REPORT_NAME}`],
+  [VITEST, 'run', '--reporter=dot', '--reporter=json', `--outputFile.json=${REPORT_NAME}`],
   { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: gitEnv() },
 )
 
@@ -2276,6 +2303,34 @@ if (failed > 0) {
         ? failing.join('\n')
         : '      (the report named none, which means the failure is at suite level)'),
   )
+
+  /*
+   * AND THE CHILD'S OWN WORDS, for the failures the JSON reporter flattened
+   * into "STACK_TRACE_ERROR" (close-out FO1, 18 September 2026). vitest runs
+   * here with `--reporter=dot` as well, which is silent while everything
+   * passes and prints the LIVE error object when something does not, so it
+   * never goes through the serialisation that loses the message. It is captured
+   * rather than inherited because this guard parses nothing from stdout, so it
+   * has to be printed deliberately, and only when there is a failure to explain.
+   */
+  const childOutput = `${result.stdout ?? ''}${result.stderr ?? ''}`.trimEnd()
+  /*
+   * FROM THE "Failed Tests" BANNER, NOT THE LAST N LINES. A tail was the first
+   * attempt and it printed eighty lines of `captureException` chatter from
+   * tests that PASSED, because the suite logs a great deal of expected stderr
+   * on its way through. vitest prints its failure section last and marks it, so
+   * the marker is the anchor and the tail is only the fallback for a failure
+   * that never reached that section.
+   */
+  const banner = childOutput.search(/Failed Tests \d+/)
+  const excerpt = banner === -1 ? childOutput.split('\n').slice(-40) : childOutput.slice(banner).split('\n').slice(0, 120)
+  if (excerpt.join('').trim()) {
+    problems.push(
+      "vitest's own report of those failures, which survives errors the JSON reporter cannot\n" +
+        `      serialise${banner === -1 ? ' (no failure section was printed, so this is the tail)' : ''}:\n` +
+        excerpt.map(l => `      ${l}`).join('\n'),
+    )
+  }
 }
 if (files < MIN_FILES) {
   problems.push(
