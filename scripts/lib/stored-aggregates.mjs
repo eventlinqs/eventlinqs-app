@@ -188,6 +188,17 @@ export const STORED_AGGREGATES = [
       'NOT A SUMMARY OF ROWS. ticket_scans logs EVERY attempt including failures and not-founds; scan_count counts successful admits only. They answer different questions and neither is a copy of the other.',
   },
   {
+    column: 'api_v1_attendees.scan_count',
+    summarises: null,
+    maintenance: 'not-in-class',
+    maintainedBy:
+      'Nothing maintains it, because it is not a stored column. api_v1_attendees is a VIEW (migration 20260918000020) and this is tickets.scan_count read straight through, so the verdict above for tickets.scan_count is the verdict here.',
+    reconciled: false,
+    caveat: null,
+    decision:
+      'API1 added the view and the enumeration correctly noticed a new object with a column called scan_count. A view column cannot drift from the column it selects, so there is nothing separate to maintain or reconcile; what would be a real defect is the view growing a column that is a stored count of its own, and that would arrive here as a new entry rather than under this one.',
+  },
+  {
     column: 'tier_access_codes.current_uses',
     summarises: null,
     maintenance: 'application',

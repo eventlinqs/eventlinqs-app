@@ -3,7 +3,8 @@
  *
  * THE QUESTION THIS SETTLES. The Launch Kit's central claim is a reach panel
  * showing tickets sold per channel. That claim rests on one cookie surviving a
- * journey it does not control: `el_share_code` is set at `/s/[code]`, and the
+ * journey it does not control: `el_share_code` is set by the tracked share
+ * address (/e/[code] today, /s/[code] before it), and the
  * conversion is written much later, on the order confirmation render, after the
  * browser has left the site for Stripe and come back. Nothing in the codebase
  * proves that survival. `reach-integrity` cannot settle it either: production
@@ -18,8 +19,10 @@
  *   1. mint      - the public share-link endpoint returns a real short URL, and
  *                  the row lands in TEST (this is also the database guard: a
  *                  server pointed at production could not create this row here)
- *   2. click     - /s/[code] 302s to the event page, records a click, and sets
- *                  the cookie. Asserted from the browser's own cookie jar
+ *   2. click     - the tracked address reaches the event page, records a click,
+ *                  and sets the cookie. Asserted from the browser's own cookie
+ *                  jar. The address is taken from the mint response rather than
+ *                  assumed, so a route rename cannot make this step lie
  *   3. survival  - the cookie is still present at checkout, and again on the
  *                  confirmation page after the round trip through Stripe
  *   4. conversion- a share_link_events row of kind 'conversion' exists carrying
@@ -49,11 +52,30 @@ const PROD_REF = 'gndnldyfudbytbboxesk'
 const TEST_REF = 'vkapkibzokmfaxqogypq'
 const SHARE_COOKIE = 'el_share_code'
 
+/*
+ * THE ENV FILE IS FOUND, NOT ASSUMED (close-out FO1, 18 September 2026).
+ *
+ * This read `.env.test` and nothing else. That file is gitignored, so it exists
+ * in the main checkout and in NO worktree, and this proof therefore could not be
+ * run from a lane at all: it died on ENOENT before it reached its own safety
+ * stop. A proof that only runs in one directory on one machine is a proof
+ * nobody re-runs.
+ *
+ * The safety stop below is unchanged and is what actually matters: whichever
+ * file is found, the project reference is checked, and a run pointed at
+ * production stops.
+ */
+const ENV_FILES = ['.env.test', '.env.local']
+const envFile = ENV_FILES.find(f => fs.existsSync(f))
+if (!envFile) {
+  throw new Error(`no environment file: looked for ${ENV_FILES.join(', ')} in ${process.cwd()}`)
+}
 const env = {}
-for (const line of fs.readFileSync('.env.test', 'utf8').split(/\r?\n/)) {
+for (const line of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
   const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
   if (m) env[m[1]] = m[2].replace(/^['"]|['"]$/g, '')
 }
+console.log(`[share-e2e] environment from ${envFile}`)
 const SB = (env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '')
 const SVC = env.SUPABASE_SERVICE_ROLE_KEY
 if (SB.includes(PROD_REF)) throw new Error('SAFETY STOP: pointed at the PRODUCTION project')
@@ -102,6 +124,26 @@ async function candidateEvents() {
 }
 
 const result = { base: BASE, startedAt: new Date().toISOString(), guestEmail: GUEST_EMAIL }
+/*
+ * EACH RUN IS A DIFFERENT VISITOR, ON PURPOSE (close-out FO1, 18 September
+ * 2026). Clicks de-duplicate per link per visitor for an hour
+ * (CLICK_DEDUPE_WINDOW_SECONDS in src/lib/broadcast/crawler.ts), and the mint
+ * endpoint hands back the SAME link for the same event and channel rather than
+ * minting a new one. The visitor hash is built from the IP and the user agent,
+ * and on a laptop the IP never changes, so two runs inside an hour were one
+ * visitor tapping one link twice: the product correctly recorded nothing the
+ * second time and the drive reported "click-recorded 1 -> 1" as a failure.
+ *
+ * A proof that can only pass once an hour is a proof that mostly fails, and
+ * the thing it accuses is the de-duplication that is working. So the run
+ * carries its own user agent. It is a normal Chrome string with a run-unique
+ * suffix, and deliberately contains no token isPreviewCrawler looks for,
+ * because a crawler records no click at all.
+ */
+const RUN_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
+  `Chrome/140.0.0.0 Safari/537.36 EventLinqsShareProof/${Date.now()}`
+
 const browser = await chromium.launch()
 
 try {
@@ -114,7 +156,7 @@ try {
   for (const ev of candidates.slice(0, 6)) {
     if (done) break
     console.log(`[drive] ${ev.slug}`)
-    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, userAgent: RUN_USER_AGENT })
     const page = await ctx.newPage()
 
     try {
@@ -131,7 +173,17 @@ try {
         await ctx.close()
         continue
       }
-      const code = shortUrl.split('/s/')[1]
+      /*
+       * THE CODE IS THE LAST PATH SEGMENT OF WHATEVER THE ENDPOINT RETURNED,
+       * never a split on a hard-coded prefix (close-out FO1, 18 September 2026).
+       * This read `shortUrl.split('/s/')[1]`. The share address moved to
+       * /e/[code], which renders the event page on one request instead of
+       * bouncing through a redirect, so the split returned undefined and the
+       * run died at its own safety stop claiming "the server under test is not
+       * writing to TEST". The server was writing to TEST perfectly. The drive
+       * was asking about a code it had failed to parse.
+       */
+      const code = new URL(shortUrl).pathname.split('/').filter(Boolean).pop()
 
       // The database guard. This row can only be in TEST if the server under
       // test writes to TEST, so a misconfigured base URL stops here rather than
@@ -148,9 +200,29 @@ try {
       // --- 2. CLICK ------------------------------------------------------
       const clicksBefore = (await q(`share_link_events?link_id=eq.${linkId}&kind=eq.click&select=id`)).length
       await page.goto(shortUrl, { waitUntil: 'load', timeout: 90000 })
-      const landedOnEvent = new RegExp(`/events/${ev.slug}`).test(page.url())
-      step('redirect', landedOnEvent, `landed on ${page.url()}`)
-      if (!landedOnEvent) throw new Error('the tracked link did not land on the event page')
+      /*
+       * THE VISITOR IS ON THE EVENT PAGE. WHETHER THE URL CHANGED IS NOT THE
+       * QUESTION (close-out FO1, 18 September 2026).
+       *
+       * This asserted that page.url() had become /events/<slug>, which made a
+       * REDIRECT part of the contract. The tracked address deliberately stopped
+       * redirecting: /e/[code] resolves the code, books the click, and renders
+       * the event page component on ONE request, and the reasoning is written
+       * out in src/app/e/[code]/page.tsx (a hop costs a round trip on a phone
+       * in a venue). So the drive failed with "the tracked link did not land on
+       * the event page" while standing on the event page.
+       *
+       * What a sharer actually needs is that the person who tapped their link
+       * is looking at the event. That is asserted from the RENDERED PAGE: the
+       * event's own title, and its ticket panel. Either address satisfies it,
+       * and a page that 200s while rendering something else does not.
+       */
+      const title = (await page.title()) || ''
+      const onEventPage =
+        new RegExp(`/events/${ev.slug}`).test(page.url()) ||
+        (title.includes(ev.title) && (await page.getByRole('button', { name: /^increase .+ quantity$/i }).count()) > 0)
+      step('landed-on-the-event', onEventPage, `${page.url()} titled "${title}"`)
+      if (!onEventPage) throw new Error(`the tracked link did not reach the event page: ${page.url()} titled "${title}"`)
 
       const cookieAfterClick = (await ctx.cookies()).find((c) => c.name === SHARE_COOKIE)
       step(
@@ -158,13 +230,20 @@ try {
         cookieAfterClick?.value === code,
         cookieAfterClick ? `${SHARE_COOKIE}=${cookieAfterClick.value}` : `${SHARE_COOKIE} was never set`,
       )
-      if (cookieAfterClick?.value !== code) throw new Error('the share cookie was not set by /s/[code]')
+      if (cookieAfterClick?.value !== code) throw new Error(`the share cookie was not set by ${new URL(shortUrl).pathname}`)
 
       const clicksAfter = (await q(`share_link_events?link_id=eq.${linkId}&kind=eq.click&select=id`)).length
       step('click-recorded', clicksAfter > clicksBefore, `${clicksBefore} -> ${clicksAfter} click rows`)
 
       // --- 3. PURCHASE ---------------------------------------------------
-      const plus = page.getByRole('button', { name: /^(\+|increase|add)/i }).first()
+      // THE NAME IS THE PRODUCT'S OWN, ANCHORED AT BOTH ENDS (close-out FO1,
+      // 18 September 2026). This read /^(\+|increase|add)/i and took .first(),
+      // so from 14 September it pressed the "Add to calendar" button that ships
+      // above the ticket panel, left the quantity at 0, and reported the ticket
+      // panel as missing. src/components/checkout/ticket-selector.tsx labels the
+      // control `Increase ${tier.name} quantity`; guarded by
+      // scripts/guards/drive-quantity-control-selector.mjs.
+      const plus = page.getByRole('button', { name: /^increase .+ quantity$/i }).first()
       if (!(await plus.count())) {
         console.log('  no quantity control, skipping')
         await ctx.close()

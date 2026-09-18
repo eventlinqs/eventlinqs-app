@@ -68,11 +68,33 @@ function read(rel) {
 
 const copyGate = read(COPY_GATE)
 if (copyGate) {
-  // The gate walks roots; each surface file has to live under one of them.
-  const walksSrc = /walk\(path\.join\(ROOT, 'src'\)\)/.test(copyGate) || /roots\.push\(path\.join\(ROOT, 'src'\)\)/.test(copyGate) || /path\.join\(ROOT, 'src'\)/.test(copyGate)
-  if (!walksSrc) {
+  /*
+   * THE SCAN ROOT, READ OUT OF THE ONE FUNCTION THAT DECIDES IT.
+   *
+   * Until 18 September 2026 this asked whether the TEXT `path.join(ROOT, 'src')`
+   * appeared anywhere in the copy gate, under three alternative patterns of
+   * which the third was a superset of the other two. That could not be made
+   * false by any single edit, because the copy gate names that root twice: once
+   * in `scanRoots()`, which is the walk that enforces the copy laws, and once
+   * at the bottom in a COVERAGE measurement that enforces nothing. Narrowing
+   * the real scan to `src/app` would have left the coverage line matching and
+   * this clause green, while the objection answers, the offer and the founder's
+   * own words on /organisers dropped out of the copy laws entirely.
+   *
+   * Found by trying to drill it: the clause is the one part of this guard that
+   * no planted regression could make fail, which is the definition of a clause
+   * that is not enforcing anything. It now reads the body of `scanRoots` and
+   * nothing else, so the coverage line is irrelevant and a narrowed scan is a
+   * build failure.
+   */
+  const scanRoots = copyGate.match(/function scanRoots\(\)\s*\{([\s\S]*?)\n\}/)
+  if (!scanRoots) {
     faults.push(
-      `${COPY_GATE} no longer walks src/, so the named /organisers files are outside the copy gate. The copy laws would still pass, on a page nobody was reading`,
+      `${COPY_GATE} no longer declares scanRoots(), so this guard cannot tell which directories the copy gate walks. THIS CLAUSE'S PREMISE HAS MOVED: find where the scan root is decided now and re-aim this check at it, never delete it`,
+    )
+  } else if (!/path\.join\(ROOT, 'src'\)/.test(scanRoots[1])) {
+    faults.push(
+      `${COPY_GATE} scanRoots() no longer roots the walk at src/, so the named /organisers files are outside the copy gate. The copy laws would still pass, on a page nobody was reading`,
     )
   }
   for (const rel of SURFACE) {

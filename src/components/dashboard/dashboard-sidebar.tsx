@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Gift,
   Hourglass,
+  KeyRound,
   LayoutDashboard,
   PanelLeft,
   PlusCircle,
@@ -62,6 +63,10 @@ const ITEMS: Item[] = [
   // Venue revenue entry removed with the Venue Revenue Sharing Program
   // (founder decision 2026-07-05).
   { href: '/dashboard/organisation', label: 'Organisation', icon: Settings, organiserOnly: true },
+  // API1. The read-only API is the data-ownership promise kept continuously
+  // rather than once, so the door to it sits in the nav beside the organisation
+  // it is scoped to, not behind a URL the organiser has to be told about.
+  { href: '/dashboard/api-keys', label: 'API keys', icon: KeyRound, organiserOnly: true },
   { href: '/help', label: 'Help', icon: HelpCircle, external: true },
 ]
 

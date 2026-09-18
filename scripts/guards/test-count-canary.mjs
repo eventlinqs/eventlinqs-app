@@ -2100,13 +2100,57 @@ const ROOT = join(HERE, '..', '..')
  *
  * The honest reason it happened: the merge was committed before the suite
  * could be run, so there was no measured number to write, and 0/0 went in as
- * a placeholder that nothing would refuse. Lane B then measured its own
- * branch with a clean run of `npm run gate:push -- --only suite`: 438
- * files, 5673 tests, 0 failed, 0 skipped. Three of those tests were failing
- * when the merge landed and are fixed rather than counted around, and one
- * is new. That pair described lane/b-growth, and it was superseded one day
- * later by the measurement directly below, which is of the tree that
- * actually carries all three lanes.
+ * a placeholder that nothing would refuse. The pair below is now the real
+ * count of the merged tree, taken from a clean run of
+ * `npm run gate:push -- --only suite`: 438 files, 5673 tests, 0 failed,
+ * 0 skipped. Three of those tests were failing when the merge landed and are
+ * fixed rather than counted around, and one is new.
+ *
+ * 2026-09-18 (lane B, close-out FO1): raised 438/5673 -> 439/5692. One file
+ * and nineteen tests: tests/unit/guards/jsx-buttons, which pins the reader
+ * behind scripts/guards/drive-quantity-control-selector.mjs. That guard
+ * promises no other button in the tree answers to the selector every money
+ * drive presses, and the promise is worth exactly what the reader is worth:
+ * its first draft found the end of a JSX open tag with indexOf('>'), landed
+ * inside the `=>` of an onClick handler, and so could not see the "Add to
+ * calendar" button that had broken every money drive four days earlier.
+ * Measured on a clean `npx vitest run`: 439 files, 5692 tests, 0 failed,
+ * 0 skipped.
+ *
+ * 2026-09-18 (lane B, close-out FO1, later the same day): raised 439/5692 ->
+ * 440/5698. One file and six tests: tests/component/waived-fee-sentence, which
+ * pins what a buyer is TOLD when the platform fee is waived. A Founding
+ * Organiser's rates are both zero, and every number on the ticket panel was
+ * already right for them, so the driven purchase proof passed while the panel
+ * said "It includes the EventLinqs fee of 0% plus Free per ticket, which covers
+ * card processing". Two of those six tests fail against the code as it stood.
+ * Measured through the gate's own suite step: 440 files, 5698 tests, 0 failed,
+ * 0 skipped.
+ *
+ * 2026-09-18 (lane B, close-out API1, later again): raised 440/5698 ->
+ * 442/5741. Two files and 43 tests. tests/unit/growth/organiser-api pins the
+ * pure half of the organiser scoped read only API: the token shape, what the
+ * hash is over, that a credential is only ever read from the Authorization
+ * header, that a page request clamps rather than refuses, and that every
+ * response carries the organisation id while the one refusal that cannot is the
+ * one raised before a key is known. tests/unit/ci/types-drift-view-relationships
+ * pins a LOOSENING of the drift analyser, which is why it is nine tests and six
+ * of them are negatives: creating a view adds a relationship entry to every
+ * table that points at what the view selects, so 49 correct differences were
+ * reporting as genuine drift, and the fix must not become a way to launder a
+ * real foreign key change. Measured through the gate's own suite step:
+ * 442 files, 5741 tests, 0 failed, 0 skipped.
+ *
+ * 2026-09-18 (lane B, close-out LBG1): raised 442/5741 -> 443/5750. One file
+ * and nine tests. tests/unit/guards/every-guard-has-been-seen-to-fail pins the
+ * two readers behind the new registered guard that asks whether every guard in
+ * run-guards.mjs has ever been watched to fail. Both readers were wrong on
+ * their first run in the dangerous direction, reporting MORE drills than exist:
+ * a substring search counted five guards as drilled that are only NAMED in the
+ * harness's prose, and the parse that replaced it counted a `guard:` field
+ * quoted inside a drill string, which is a shape that guard's own second drill
+ * has to write. Measured through the gate's own suite step: 443 files, 5750
+ * tests, 0 failed, 0 skipped.
  */
 /*
  * 2026-09-18, THE THREE LANE MERGE: 439 files / 5697 tests, 0 failed and 0
@@ -2170,6 +2214,32 @@ const ROOT = join(HERE, '..', '..')
  * matcher was blind to it.
  */
 /*
+ * 2026-09-18, late (lane B, merging verify/l5-launch-readiness a SIXTH time,
+ * the overlap lane A's watchdog aborted on at 21:31 the same day). BOTH COMMENT
+ * HISTORIES ABOVE ARE KEPT VERBATIM and they are still two lineages rather than
+ * one chain. Lane B's last pair, 443/5750, was measured on lane/b-growth, which
+ * has never held lane A's LB2 or LB3 work. Lane A's last pair, 443/5717, was
+ * measured on verify/l5-launch-readiness, which has never held GA1 to GA5, PL1,
+ * FT1, API1 or LBG1. The two counts land on the same file count by coincidence
+ * and neither describes this tree. Lane A also recorded above that lane B's
+ * earlier 438/5673 pair described lane/b-growth alone and was superseded by the
+ * three-lane measurement; that reading is correct and is why the larger of two
+ * partial counts is still a guess.
+ *
+ * THE PAIR BELOW IS MEASURED ON THIS MERGED TREE through the gate's own suite
+ * step, 0 failed and 0 skipped, which is the only thing this lane can honestly
+ * write here. Evidence: C:\dev\EVIDENCE\LB-MERGE6\gate-suite.txt
+ *
+ * MEASURED: 448 files, 5794 tests, 0 failed, 0 skipped. The arithmetic is
+ * checkable rather than asserted: lane B's 443 files plus the FIVE test files
+ * lane A added in LB2 and LB3, which are
+ * tests/unit/guards/no-drill-residue, tests/unit/payments/connect-currency-is-a-leaf,
+ * tests/unit/analytics/consent-context-stays-in-the-deferred-tree,
+ * tests/unit/perf/root-shell-has-no-loadable and
+ * tests/unit/perf/vitest-pool-start-failures. 443 + 5 = 448, so the count is
+ * explained by the merge and not by a file that quietly stopped collecting.
+ */
+/*
  * 2026-09-18, MONEY FIX B3 and B4: 446 files / 5746 tests, 0 failed and 0
  * skipped (C:\dev\_a-b3-suite.txt).
  *
@@ -2178,6 +2248,26 @@ const ROOT = join(HERE, '..', '..')
  * only direction it ever moves.
  */
 /*
+ * 2026-09-19 (lane B, merging verify/l5-launch-readiness a SEVENTH time, this one
+ * taking in lane A's 36fb1817 of 23:40, which arrived thirteen minutes after the
+ * sixth merge resolved this same file). BOTH HISTORIES KEPT AGAIN.
+ *
+ * Lane B measured 448/5794 on the sixth merge. Lane A measured 446/5746 on its
+ * own branch, and its three new files (the recipient matrix, the organiser sales
+ * policy and the daily digest) are not in that 448. Neither pair describes this
+ * tree and the larger of two partial counts is still a guess, which is what this
+ * file has now said seven times.
+ *
+ * THE PAIR BELOW IS MEASURED ON THIS TREE through the gate's own suite step.
+ * Evidence: C:\dev\EVIDENCE\LB-MERGE6\gate-suite-after-merge7.txt
+ *
+ * MEASURED: 451 files, 5823 tests, 0 failed, 0 skipped. Checkable rather than
+ * asserted, the same way the last one was: 448 plus the THREE test files lane A
+ * added in MONEY FIX B3 and B4, which are tests/unit/notifications/recipient-matrix,
+ * tests/unit/notifications/organiser-sales-policy and
+ * tests/unit/notifications/organiser-sales-digest. 448 + 3 = 451, so the count is
+ * explained by the merge rather than by a file that stopped collecting.
+ *
  * 2026-09-19, LANE C, the merge of verify/l5-launch-readiness plus the move off
  * next/dynamic in the platform chrome: 451 files / 5837 tests, 0 failed and 0
  * skipped, measured by `npm run gate:push -- --only suite` on the merged tree.
@@ -2204,9 +2294,37 @@ const ROOT = join(HERE, '..', '..')
  * its own, on a machine shared with two other build lanes. It is recorded as a
  * flake in C:/dev/REVIEW-QUEUE-C.md rather than absorbed into this baseline,
  * which is what the failure message below asks for.
+ *
+ * 2026-09-19 (lane B, the EIGHTH merge of verify/l5-launch-readiness, taking in
+ * lane C's da659bb8 and the move of the header chrome off next/dynamic). BOTH
+ * HISTORIES KEPT AGAIN, and the pair below is MEASURED ON THIS TREE rather than
+ * taken from either side: lane B stood at 451/5823 and lane C at 451/5837, and
+ * neither pair describes a tree that holds both.
+ *
+ * MEASURED: 456 files, 5914 tests, 0 failed, 0 skipped, through the gate's own
+ * suite step. Evidence: C:\dev\EVIDENCE\LB-MERGE8\gate-suite-after-merge8.txt
+ *
+ * CHECKABLE RATHER THAN ASSERTED, and the arithmetic is worth writing out
+ * because a grep of this repository CANNOT reproduce it. Five test files arrive
+ * with this merge and no file of either side disappears:
+ *   tests/component/layout/interaction-only-chrome.test.tsx
+ *   tests/component/ui/use-deferred-component.test.tsx
+ *   tests/unit/guards/lcp-preload-in-the-first-flush.test.ts
+ *   tests/unit/media/image-hints-match-the-cell.test.ts
+ *   tests/unit/security/edge-cache-viewer-independence.test.ts
+ * 451 + 5 = 456, which is the file count.
+ *
+ * The test count does NOT fall out of counting `it(` in those five files, and
+ * the difference is the part worth recording. They hold 66 grep-visible cases,
+ * which would predict 5889 and be 25 short. Two of them are table driven, and
+ * an `it.each` table is ONE line to a grep and one test PER ROW at runtime. Run
+ * on their own, image-hints-match-the-cell and edge-cache-viewer-independence
+ * report 59 tests against 34 grep-visible cases, so the five tables add 25.
+ * 66 + 25 = 91, and 5823 + 91 = 5914. A predicted count would have been wrong
+ * by 25 here, which is why this file asks for a measurement and not a sum.
  */
-const MIN_FILES = 451
-const MIN_TESTS = 5837
+const MIN_FILES = 456
+const MIN_TESTS = 5914
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
@@ -2264,9 +2382,36 @@ const VITEST = join(ROOT, 'node_modules', 'vitest', 'vitest.mjs')
 // how a drill set core.bare=true on the shared config and broke `git status`
 // in all nine worktrees at once. Clearing it here severs the class for every
 // current and future test at once.
+/*
+ * TWO REPORTERS, AND THE SECOND ONE IS THE POINT (close-out FO1, 18 September
+ * 2026).
+ *
+ * The JSON reporter is what this guard counts from, and it is also what loses
+ * the evidence. When vitest cannot serialise a failure it writes the literal
+ * string `STACK_TRACE_ERROR` into `failureMessages` along with the stack of
+ * where the test was DEFINED, not where it failed. This step then reported, in
+ * full:
+ *
+ *     1 test(s) FAILED.
+ *       tests/component/fee-sentence-spacing.test.tsx > /organisers states ...
+ *         Error: STACK_TRACE_ERROR
+ *             at task (.../chunk-artifact.js:1784:27)
+ *
+ * which names the test and says nothing whatever about what went wrong. An
+ * ordinary assertion failure survives the round trip perfectly, so this only
+ * bites on the errors that are hardest to reason about, which is the worst
+ * possible time to lose the message. Two runs were spent proving the failure
+ * was not reproducible outside this step, and the message that would have
+ * shortened that to one look had been thrown away before anybody read it.
+ *
+ * The `dot` reporter is silent on success and prints the LIVE error object on
+ * failure, so it never went through serialisation. `--outputFile.json=` is the
+ * per-reporter form and resolves against the project root exactly as the bare
+ * `--outputFile` did, which the counting below still depends on.
+ */
 const result = spawnSync(
   process.execPath,
-  [VITEST, 'run', '--reporter=json', `--outputFile=${REPORT_NAME}`],
+  [VITEST, 'run', '--reporter=dot', '--reporter=json', `--outputFile.json=${REPORT_NAME}`],
   { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: gitEnv() },
 )
 
@@ -2460,6 +2605,34 @@ if (failed > 0) {
         ? failing.join('\n')
         : '      (the report named none, which means the failure is at suite level)'),
   )
+
+  /*
+   * AND THE CHILD'S OWN WORDS, for the failures the JSON reporter flattened
+   * into "STACK_TRACE_ERROR" (close-out FO1, 18 September 2026). vitest runs
+   * here with `--reporter=dot` as well, which is silent while everything
+   * passes and prints the LIVE error object when something does not, so it
+   * never goes through the serialisation that loses the message. It is captured
+   * rather than inherited because this guard parses nothing from stdout, so it
+   * has to be printed deliberately, and only when there is a failure to explain.
+   */
+  const childOutput = `${result.stdout ?? ''}${result.stderr ?? ''}`.trimEnd()
+  /*
+   * FROM THE "Failed Tests" BANNER, NOT THE LAST N LINES. A tail was the first
+   * attempt and it printed eighty lines of `captureException` chatter from
+   * tests that PASSED, because the suite logs a great deal of expected stderr
+   * on its way through. vitest prints its failure section last and marks it, so
+   * the marker is the anchor and the tail is only the fallback for a failure
+   * that never reached that section.
+   */
+  const banner = childOutput.search(/Failed Tests \d+/)
+  const excerpt = banner === -1 ? childOutput.split('\n').slice(-40) : childOutput.slice(banner).split('\n').slice(0, 120)
+  if (excerpt.join('').trim()) {
+    problems.push(
+      "vitest's own report of those failures, which survives errors the JSON reporter cannot\n" +
+        `      serialise${banner === -1 ? ' (no failure section was printed, so this is the tail)' : ''}:\n` +
+        excerpt.map(l => `      ${l}`).join('\n'),
+    )
+  }
 }
 /**
  * WHICH FILES DID NOT RUN, BY NAME.

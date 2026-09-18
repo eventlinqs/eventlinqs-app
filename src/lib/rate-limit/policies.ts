@@ -42,6 +42,8 @@ export type PolicyName =
   | 'launch-email'
   | 'launch-upload'
   | 'stream-message'
+  | 'api-v1-auth'
+  | 'api-v1-read'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -306,5 +308,19 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Livestream room posts (chat, questions, reactions) on /api/stream/[code]/messages, 20 per minute PER TICKET. KEYED BY the ticket id, passed explicitly, never the IP: a household watching one stream on one connection holds several tickets and must not share a bucket, and this platform has met the carrier-NAT bucket twice before (launch-artefact, launch-compose-daily). The bucket cannot be named until the bearer gate has resolved the ticket, so the limiter sits AFTER resolveStreamAccess, and a stranger with the wrong secret is refused as not found before ever reaching it. Twenty a minute is a fast typist in a busy room and is useless for flooding it: the organiser can hide any message, and every row is bounded to 500 characters by the schema. FAIL-OPEN: the write is a 500 character row in our own database, the same posture as share-track and newsletter-subscribe. The audit (scripts/verify/rate-limit-audit.mjs) will note a Sentry capture behind this route; it fires only on a database error, never per request, so volume cannot reach it.',
+  },
+  'api-v1-auth': {
+    keyPrefix: 'apiv1-a',
+    limit: 120,
+    windowSec: 60,
+    rationale:
+      'The PRE-AUTHENTICATION bucket on the public read API (/api/v1/*), 120 a minute PER IP. It exists because api-v1-read is keyed by the ORGANISATION and therefore cannot run until a key has been recognised, which is the same ordering ruling payouts-read settled on 19 August 2026 and it leaves the same gap: a caller presenting a wrong key is never named, so it can never be throttled by the organiser bucket. This is that gap, and nothing more. It is NOT sized as a defence against guessing the token, because the token is 40 base36 characters over 32 random bytes and guessing it is not a threat a limiter is the right answer to; it is sized to stop a broken client or a scanner spending our database on failed lookups. 120 is two a second, comfortably above a legitimate integration that has simply not been given a key yet and is retrying. FAIL-OPEN: the work behind it is one indexed equality on a unique index with no metered spend anywhere, so a Redis outage must not take every organiser integration offline with it.',
+  },
+  'api-v1-read': {
+    keyPrefix: 'apiv1-r',
+    limit: 1000,
+    windowSec: 60,
+    rationale:
+      'The organiser tier on the public read API (/api/v1/*), 1000 a minute PER ORGANISATION. The number is not chosen here: it is the "1000 requests/minute for organiser APIs" tier published in docs/EventLinqs_Scope_v5.md section 4.1, alongside 100 for anonymous and 300 for authenticated. KEYED BY organisationId, passed explicitly, which is why this limiter sits AFTER authenticateApiKey rather than at the top of the handler: the bucket cannot be named until the key names it, and keying it by IP instead would put every integration behind one office or one carrier NAT into a single window, which is the bucket this platform has already met three times (launch-artefact, launch-compose-daily, payouts-read). An organiser holding several keys shares one window, deliberately: the tier belongs to the tenant, not to the credential, so minting a second key must not double the allowance. FAIL-OPEN: three read-only views, no write, no metered third party spend, and the scope predicate rather than this limit is what bounds what a caller can reach.',
   },
 }
