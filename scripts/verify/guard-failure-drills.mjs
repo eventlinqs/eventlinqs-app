@@ -3177,14 +3177,28 @@ const DRILLS = [
     name: 'sizes.ts gains an import and stops being a leaf, which is what cost 49KB across 61 routes',
     guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
     file: 'src/components/media/sizes.ts',
-    find: '/**' + chr(10) + ' * Centralised `sizes` hints for next/image.',
-    replace: "import { RHYTHM_GAP } from '@/lib/ui/rhythm'" + chr(10) + chr(10) + 'void RHYTHM_GAP' + chr(10) + '/**' + chr(10) + ' * Centralised `sizes` hints for next/image.',
+    find: '/**\n * Centralised `sizes` hints for next/image.',
+    replace:
+      "import { RHYTHM_GAP } from '@/lib/ui/rhythm'\n\nvoid RHYTHM_GAP\n" +
+      '/**\n * Centralised `sizes` hints for next/image.',
     expect: 'sizes.ts has gained an import',
+  },
+  {
+    name: 'a feature file goes back to importing the media barrel',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/auth/auth-shell.tsx',
+    find: "import { HeroMedia } from '@/components/media/HeroMedia'",
+    replace: "import { HeroMedia } from '@/components/media'",
+    expect: 'imports from the media barrel',
   },
   {
     name: 'the cell geometry file is renamed away and the guard cannot compare anything',
     guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
-    file: 'src/components/media/sizes.ts',
+    // The pairing moved out of sizes.ts on 18 September 2026, because putting it
+    // there gave the most widely imported module in the media layer an import
+    // and cost 49,014 bytes of gzip across 61 routes. This drill went STALE in
+    // that move and said so on its next run, which is what a stale anchor is for.
+    file: 'src/components/media/rail-cell-hints.ts',
     find: "  { key: 'railCityTile', px: CITY_TILE_PX, name: 'CITY_TILE_PX' },",
     replace: "  { key: 'railCityTile', px: GONE_TILE_PX, name: 'GONE_TILE_PX' },",
     expect: 'which src/lib/ui/rhythm.ts does not declare',

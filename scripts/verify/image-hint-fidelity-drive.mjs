@@ -51,6 +51,27 @@
  *   prints how many of the images in the DOM were judged so the coverage is a
  *   number rather than an impression.
  *
+ * ============================================================================
+ * THE DEFAULT ROUTE LIST, AND THE TWO ROUTES DELIBERATELY NOT IN IT
+ * ============================================================================
+ *
+ * The default is `/`, `/events`, `/cities`, `/communities`: the three routes the
+ * C8B.1 cost table named, plus the community index. They pass.
+ *
+ * `--path=organisers` and `--path=about` FAIL, and that is a real defect rather
+ * than a harness problem. Both render a `MarketingMedia variant="band"`, and that
+ * one variant dresses two different layouts, which is the same fault this whole
+ * item exists to fix:
+ *
+ *     /organisers 1920   a 636px contained band    needs 1272, chose 1920  x1.51
+ *     /organisers 1920   a 1334px full-width band  needs 2668, chose 1920  x0.72
+ *     /about      1920   a 1920px full-bleed band  needs 3840, chose 1920  x0.50
+ *
+ * Fixing it means splitting the variant and editing the marketing surfaces, which
+ * are lane B's, so lane C measured it, drove it, and handed it over rather than
+ * editing another lane's pages. The numbers and the fix are the BORDER line in
+ * C:\dev\REVIEW-QUEUE-C.md. Add those two paths to this drive the day it lands.
+ *
  *   node --env-file=.env.local scripts/verify/image-hint-fidelity-drive.mjs --serve --port=3200
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
