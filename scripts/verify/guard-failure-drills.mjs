@@ -4949,8 +4949,17 @@ const DRILLS = [
     name: 'the matcher door stops composing the visibility rule and offers every event ever published',
     guard: `${GUARDS}/matcher-offers-an-event-not-yet-over.mjs`,
     file: 'src/lib/matching/events.ts',
-    find: 'await applyPublicEventVisibility(',
-    replace: 'await noVisibilityRuleAtAll(',
+    /*
+     * THE ANCHOR CARRIES ITS NEXT LINE, and it has to. The call was unwrapped
+     * from an `await` into a `readOrThrow(... () => ...)` thunk so the order and
+     * the limit sit inside the chain no-silent-row-ceiling walks, which left
+     * this drill matching `await applyPublicEventVisibility(` and finding
+     * nothing: STALE, reported on 20 September 2026. The bare name is no good
+     * either, because the comment fifteen lines above mentions it and would be
+     * rewritten instead of the call.
+     */
+    find: "    applyPublicEventVisibility(\n      admin.from(\'events\')",
+    replace: "    noVisibilityRuleAtAll(\n      admin.from(\'events\')",
     expect: 'no longer composes applyPublicEventVisibility',
   },
   {
@@ -6172,6 +6181,89 @@ const DRILLS = [
     replace:
       "const NOT_THIS_LANE = [{ table: 'audience_members', trigger: 'trg_audience_requires_live_consent', lane: 'a drill', why: 'a drill' }]",
     expect: 'no longer matches a trigger with the defect',
+  },
+
+  /*
+   * one-lawful-writer-of-the-fee (lane B, 20 September 2026), seven drills.
+   *
+   * THE FIRST ONE IS THE TREE AS IT ACTUALLY STOOD THIS MORNING, and it is the
+   * whole reason the guard exists: put the direct INSERT back and /admin/pricing
+   * stops being able to save anything at all, exactly as it could not between
+   * 27 July and 20 September. It was driven against TEST before the fix was
+   * written, 23505 on the AU region default at version 3, so "nobody would
+   * write it that way" is not a defence: somebody already had.
+   */
+  {
+    name: 'the fee writer goes back to inserting directly and leaving the old row open',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'src/lib/admin/pricing.ts',
+    find: "const { data, error } = await admin.rpc('write_pricing_rule', {",
+    replace: "const { data, error } = await admin.from('pricing_rules').insert({",
+    expect: 'calls .insert() on pricing_rules directly',
+  },
+  {
+    /*
+     * THE SECOND REFUSAL, 23514. The form shipped defaultValue={0} against a
+     * column constrained to > 0, so the override form as rendered submitted the
+     * one value the database rejects and the screen blamed the target id.
+     */
+    name: 'the percentage bound drifts back to admitting the zero the database refuses',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'src/app/admin/(authed)/pricing/actions.ts',
+    find: '  currency: z.string().length(3),\n  platform_fee_percentage: z.coerce.number().gt(0).max(100),',
+    replace: '  currency: z.string().length(3),\n  platform_fee_percentage: z.coerce.number().min(0).max(100),',
+    expect: 'so the schema must use .gt(0)',
+  },
+  {
+    name: 'a fee control offers a minimum the database will not accept',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'src/app/admin/(authed)/pricing/page.tsx',
+    find: '              min="0.01"\n              max="100"\n              required\n              placeholder="e.g. 2.5"',
+    replace: '              min="0"\n              max="100"\n              required\n              placeholder="e.g. 2.5"',
+    expect: 'offers min="0" on platform_fee_percentage',
+  },
+  {
+    /*
+     * THE ZERO FALLBACK. On TEST the IE/EUR scope holds none of the three
+     * rules, so `?? 0` is not hypothetical: it is what the Europe row rendered,
+     * and it is why that row could not be saved.
+     */
+    name: 'a scope with no rule yet goes back to being handed a zero it cannot save',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'src/app/admin/(authed)/pricing/page.tsx',
+    find: 'defaultValue={row.platformFeePercentage.value ?? undefined}',
+    replace: 'defaultValue={row.platformFeePercentage.value ?? 0}',
+    expect: 'defaults platform_fee_percentage to 0',
+  },
+  {
+    name: 'the fee writer is opened up to a browser session',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'supabase/migrations/20260920000010_the_writer_stamps_the_previous_row.sql',
+    find: ') to service_role;',
+    replace: ') to service_role, authenticated;',
+    expect: 'to authenticated',
+  },
+  {
+    name: 'the writer the code is required to call stops existing',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'supabase/migrations/20260920000010_the_writer_stamps_the_previous_row.sql',
+    find: 'create or replace function public.write_pricing_rule(',
+    replace: 'create or replace function public.write_pricing_rule_renamed(',
+    expect: 'no migration declares public.write_pricing_rule',
+  },
+  {
+    /*
+     * THE BOUND IS DERIVED, NOT TYPED. Relax the CHECK and the guard must turn
+     * round and demand `.min(0)` of the code it currently requires `.gt(0)` of.
+     * A guard carrying the number itself would go quietly green here, which is
+     * how the code and the constraint drifted apart in the first place.
+     */
+    name: 'the constraint is relaxed and the code is not brought with it',
+    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    file: 'supabase/migrations/20260520000001_schema_hygiene.sql',
+    find: '       AND value_percentage > 0',
+    replace: '       AND value_percentage >= 0',
+    expect: 'so the schema must use .min(0)',
   },
 ]
 

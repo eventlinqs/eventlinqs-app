@@ -215,6 +215,12 @@
  *                              the database issues when the parent goes, by an event list,
  *                              a when clause or an early return, so an account closure is
  *                              never refused on the grounds of a price or a consent age
+ *   one-lawful-writer-of-the-fee  every write to pricing_rules goes through the one
+ *                              database function that stamps the open row and inserts the
+ *                              next version in ONE transaction, the Zod bound on the fee
+ *                              percentage is DERIVED from the live CHECK rather than typed
+ *                              in, no control offers a value the constraint refuses, and
+ *                              execute on the writer is granted to service_role alone
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -2319,6 +2325,22 @@ const GUARDS = [
   // tree already uses (an event list, a when clause, an early return) rather
   // than imposing one on two triggers that were correct before it existed.
   'scripts/guards/a-referential-null-is-not-an-edit.mjs',
+
+  // LB-OVERRIDE0, 20 September 2026. The founder's only control over the
+  // platform fee could not save anything, and the database had already written
+  // down why: uq_pricing_rules_one_open_per_scope (migration 20260727000002)
+  // says in its own COMMENT that "writers must stamp the previous row before
+  // inserting the next version", and no writer was changed that day. So from
+  // 27 July every save on /admin/pricing was refused by the index it had just
+  // been handed, region defaults included, and nothing in the tree could
+  // notice, because the obligation lived in a database comment and the breach
+  // lived in TypeScript. Driven on TEST: 23505 on the AU region default at
+  // version 3. A second refusal sat on top, 23514, because the override form
+  // shipped defaultValue={0} on a column constrained to > 0. This guard holds
+  // the seam between the migration and the code: one writer, a Zod bound
+  // DERIVED from the CHECK rather than typed in, no control that offers a
+  // value the database refuses, and execute granted to service_role alone.
+  'scripts/guards/one-lawful-writer-of-the-fee.mjs',
 
   // The same incident from the other side. `evidence-outlives-the-account`
   // guards the CAUSE (a cascading key into a table that refuses UPDATE); this

@@ -75,6 +75,50 @@ function startsRegex(src, i) {
   return true
 }
 
+/**
+ * Does the candidate regex literal at `i` actually CLOSE before the newline?
+ *
+ * A regex literal cannot contain a raw line break, so a `/` with no unescaped
+ * closing `/` on its own line was never a regex and must not be consumed as
+ * one.
+ *
+ * WHY THIS WAS ADDED, 20 September 2026. `startsRegex` reads the last
+ * significant character, and after a quote or a brace it answers "a regex may
+ * begin here". That is exactly the shape of a self-closing JSX tag:
+ *
+ *     className="...focus:outline-none"
+ *     />
+ *
+ * so the `/` of `/>` was read as opening a regex and the rest of that line,
+ * `>` included, was blanked. MEASURED across this tree before the fix: 430 of
+ * 529 .tsx files scanned wrongly, about 11,892 non-comment characters blanked.
+ *
+ * It fails in the DANGEROUS direction, the same one the regex branch below was
+ * written to close: blanked text matches no pattern, so every guard built on
+ * this view reports that part of the line clean. It also silently defeats any
+ * guard that locates a JSX element by searching for its `/>`, which is how it
+ * was found.
+ *
+ * The rule is general rather than a JSX special case, because a special case
+ * would need to know about JSX and this scanner deliberately does not.
+ */
+function closesOnSameLine(src, i) {
+  let j = i + 1
+  let inClass = false
+  while (j < src.length && src[j] !== '\n') {
+    const c = src[j]
+    if (c === '\\') {
+      j += 2
+      continue
+    }
+    if (c === '[') inClass = true
+    else if (c === ']') inClass = false
+    else if (c === '/' && !inClass) return true
+    j += 1
+  }
+  return false
+}
+
 function scan(src, { blankStrings }) {
   let out = ''
   let i = 0
@@ -116,7 +160,25 @@ function scan(src, { blankStrings }) {
      * The body is consumed here with character classes respected, because `/`
      * inside `[...]` does not end the literal.
      */
-    if (src[i] === '/' && startsRegex(src, i)) {
+    /*
+     * `/>` IS A CLOSING JSX TAG, NEVER THE START OF A REGEX.
+     *
+     * This handles the case closesOnSameLine cannot: an inline JSX line
+     * carrying two self-closing tags, such as
+     *
+     *     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+     *
+     * where the first `/` does find a later `/` on its own line and so still
+     * looks like a closed literal.
+     *
+     * A regex literal MAY legally begin with `>` (`/>=/` is valid), so this is
+     * a trade rather than a law, and it was measured rather than assumed:
+     * grep over every .ts file in src/ and scripts/ finds NO regex literal
+     * beginning with `>`, while `/>` closes a tag in 430 .tsx files. If one is
+     * ever written, its body is exposed as code instead of blanked, which is
+     * the direction that makes a guard noisy rather than blind.
+     */
+    if (src[i] === '/' && src[i + 1] !== '>' && startsRegex(src, i) && closesOnSameLine(src, i)) {
       out += ' '
       i += 1
       let inClass = false
