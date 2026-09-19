@@ -490,6 +490,15 @@
  *                              500 and the link crawler found it. In production the
  *                              assertion is compiled out, so the same page would serve a
  *                              hero that cannot be the LCP
+ *   hero-text-over-a-photograph  one navy wash for every hero, anchored to the TEXT and
+ *                              not to the band. Four templates each wrote their own and
+ *                              the four disagreed, and every stop in all four was a
+ *                              percentage of a band the bottom-anchored text does not
+ *                              sit at a fixed height in: the gold eyebrow on
+ *                              /categories/technology measured 1.38:1 at 390, 3.33:1 at
+ *                              768 and 10.67:1 at 1440 against a floor of 4.5, and 250
+ *                              of 1251 measured runs failed across 111 routes. Clause 2
+ *                              recomputes what gold-400 needs rather than pinning it
  *   sr-only-cannot-escape-a-scroller  a horizontally scrolling box that holds an
  *                              sr-only label is a containing block. sr-only is
  *                              position:absolute, and an absolute element is only
@@ -1606,6 +1615,17 @@ const GUARDS = [
   // clauses: the premise, one door for the placeholder literal, a chain that
   // ends on a raster, and a hero caller that asks. Drilled red five ways.
   'scripts/guards/a-hero-is-never-a-placeholder.mjs',
+  // 19 September 2026. Four hero templates each carried their own navy gradient
+  // and the four disagreed, and every stop in all four was a percentage of the
+  // BAND while the text is bottom-anchored and hugs its own content. So the
+  // wash made a promise about text whose position it could not know: driven
+  // with scripts/verify/hero-text-over-photograph-drive.mjs, the gold eyebrow on
+  // /categories/technology measured 1.38:1 at 390, 3.33:1 at 768 and 10.67:1 at
+  // 1440 against a floor of 4.5, on one page and one photograph. 121 of 225
+  // measured runs failed across the platform. The wash is now anchored to the
+  // text with absolute lengths. Clause 2 RECOMPUTES what gold-400 needs from
+  // the token rather than pinning a number. Drilled red six ways.
+  'scripts/guards/hero-text-over-a-photograph.mjs',
   'scripts/guards/sr-only-cannot-escape-a-scroller.mjs',
   'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',

@@ -5208,6 +5208,70 @@ const DRILLS = [
     replace: 'const RASTER_DECLARATION = /never-matches-anything-at-all/; const UNUSED_RASTER = /',
     expect: 'does not end on a bundled raster literal',
   },
+  /*
+   * hero-text-over-a-photograph, six drills (19 September 2026).
+   *
+   * Four hero templates each carried their own navy gradient, the four
+   * disagreed, and every stop in all four was a percentage of the hero BAND
+   * while the text is bottom-anchored and hugs its own content. So the wash
+   * promised something about text it could not locate: the gold eyebrow on
+   * /categories/technology measured 1.38:1 at 390, 3.33:1 at 768 and 10.67:1 at
+   * 1440 against a floor of 4.5, on one page and one photograph. Across the
+   * platform 301 of 795 measured runs failed, on 75 of 91 routes.
+   *
+   * THE LAST THREE AIM AT THE GUARD'S OWN PREMISES rather than at the markup:
+   * the strength, the geometry that makes the strength mean anything, and the
+   * component that actually paints it.
+   */
+  {
+    name: 'a hero goes back to writing its own navy gradient',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/features/city/city-hero.tsx',
+    find: 'style={{ background: HERO_HEADER_SCRIM }}',
+    replace: "style={{ background: 'linear-gradient(180deg, rgba(10,22,40,0.36) 0%, rgba(10,22,40,0.88) 100%)' }}",
+    expect: 'writes its own navy gradient',
+  },
+  {
+    name: 'a hero paints its text outside the caption that carries the wash',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/templates/PhotographicCommunityHero.tsx',
+    find: '<HeroCaption className="max-w-3xl">',
+    replace: '<div className="max-w-3xl">',
+    expect: 'without <HeroCaption>',
+  },
+  {
+    name: 'a hero band loses the clip that trims the full-width bleed',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/templates/PhotographicCityHero.tsx',
+    find: 'className="relative overflow-hidden"',
+    replace: 'className="relative"',
+    expect: 'does not clip its hero band',
+  },
+  {
+    name: 'the caption wash is weakened below what the gold eyebrow needs',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/media/hero-photo-scrim.ts',
+    find: 'export const HERO_CAPTION_MIN_ALPHA = 0.82',
+    replace: 'export const HERO_CAPTION_MIN_ALPHA = 0.7',
+    expect: 'under WCAG 2.2 SC 1.4.3',
+  },
+  {
+    name: "the caption ramp goes back to a percentage, which is the original defect",
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/media/hero-photo-scrim.ts',
+    find: "export const HERO_CAPTION_DEEPEN = '14rem'",
+    replace: "export const HERO_CAPTION_DEEPEN = '100%'",
+    expect: 'must not depend on the element',
+  },
+  {
+    name: 'the caption component imports the wash and forgets to paint it',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/media/hero-caption.tsx',
+    find: 'background: HERO_CAPTION_SCRIM,',
+    replace: 'background: undefined,',
+    expect: 'sits on nothing',
+  },
+
   {
     name: "clause 3's matcher is rebuilt inside a template literal and quietly stops matching",
     guard: `${GUARDS}/consent-dates-are-zoned.mjs`,

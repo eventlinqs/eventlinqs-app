@@ -1,4 +1,6 @@
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
+import { HERO_HEADER_SCRIM, HERO_NO_PHOTO_FIELD } from '@/components/media/hero-photo-scrim'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 
 /**
@@ -34,28 +36,21 @@ export function PhotographicCommunityHero({ eyebrow, title, subtitle, imageSrc, 
           <div
             aria-hidden
             className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(135deg, rgb(10,22,40) 0%, rgb(20,32,56) 50%, rgb(10,22,40) 100%)',
-            }}
+            style={{ background: HERO_NO_PHOTO_FIELD }}
           />
         )}
-        {/* Top scrim (0% to 12%) ensures the sticky header's white nav
-         *  remains AA-readable when the underlying photograph contains
-         *  a bright sky band. Beneath it the original bottom-up ramp
-         *  continues, leaving the centre of the hero photo unobscured.
-         *  Fix from Batch 11.0 founder review (header-bleed on bright
-         *  /community and /city heroes). */}
+        {/* The header wash, which keeps the sticky header's white nav readable
+         *  when the photograph carries a bright sky band (Fix from Batch 11.0
+         *  founder review: header-bleed on bright /community and /city heroes).
+         *  The text below carries its own wash, anchored to itself rather than
+         *  to this band, which is what makes its contrast a guarantee. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0.36) 0%, rgba(10,22,40,0.12) 20%, rgba(10,22,40,0.42) 52%, rgba(10,22,40,0.90) 100%)',
-          }}
+          style={{ background: HERO_HEADER_SCRIM }}
         />
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-4 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-14">
-          <div className="max-w-3xl">
+          <HeroCaption className="max-w-3xl">
             <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-accent)]">
               {eyebrow}
             </p>
@@ -68,7 +63,7 @@ export function PhotographicCommunityHero({ eyebrow, title, subtitle, imageSrc, 
             <p className="mt-3 max-w-2xl text-sm font-medium leading-relaxed text-white/85 sm:text-base">
               {subtitle}
             </p>
-          </div>
+          </HeroCaption>
         </div>
       </div>
     </section>

@@ -1,4 +1,6 @@
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
+import { HERO_HEADER_SCRIM, HERO_NO_PHOTO_FIELD } from '@/components/media/hero-photo-scrim'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 
 /**
@@ -57,27 +59,23 @@ export function PhotographicCityHero({ city, country, total, descriptor, imageSr
           <div
             aria-hidden
             className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(135deg, rgb(10,22,40) 0%, rgb(20,32,56) 50%, rgb(10,22,40) 100%)',
-            }}
+            style={{ background: HERO_NO_PHOTO_FIELD }}
           />
         )}
-        {/* Top scrim (0% to 12%) plus the original bottom-up ramp.
-         *  Top scrim ensures the sticky header's white nav remains
-         *  AA-readable when the photograph has a bright sky band.
-         *  Fix from Batch 11.0 founder review. */}
+        {/* The header wash. Its 0.55-to-0.20-by-12% shape is the Batch 11.0
+         *  founder review fix that keeps the sticky header's white nav
+         *  AA-readable over a bright sky band, kept exactly. What used to
+         *  follow it - a bottom-up ramp expressed as percentages of this band -
+         *  is gone: the text is bottom-anchored and hugs its own content, so a
+         *  percentage of the band could never say where the text had landed. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0.55) 0%, rgba(10,22,40,0.20) 12%, rgba(10,22,40,0.65) 45%, rgba(10,22,40,0.92) 100%)',
-          }}
+          style={{ background: HERO_HEADER_SCRIM }}
         />
         {/* Left-anchored content column */}
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-4 pb-8 sm:px-6 sm:pb-10 lg:px-8 lg:pb-12">
-          <div className="max-w-2xl">
+          <HeroCaption className="max-w-2xl">
             <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-accent)]">
               {country}
             </p>
@@ -93,7 +91,7 @@ export function PhotographicCityHero({ city, country, total, descriptor, imageSr
             <p className="mt-3 text-sm font-medium text-white/85 sm:text-base">
               {totalLabel}
             </p>
-          </div>
+          </HeroCaption>
         </div>
       </div>
     </section>
