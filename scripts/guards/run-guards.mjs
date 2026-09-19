@@ -577,6 +577,9 @@
  *                             contexts, because one trapped inside a transformed
  *                             ancestor PAINTS correctly and cannot be clicked, and
  *                             nothing else on this platform can see that.
+ *   the-gmv-screen-reads-every-row  the admin GMV dashboard reads every order and
+ *                             refund, in a stable order, and fails loudly rather
+ *                             than rendering a silent zero
  *   the-recovery-stop-list-is-whole  a marketing withdrawal reaches the
  *                             abandoned-checkout sender, and its suppression list
  *                             is read whole rather than to the first 1,000 names
@@ -2101,6 +2104,23 @@ const GUARDS = [
   //
   // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-RECOVERYSTOP\drills.txt).
   'scripts/guards/the-recovery-stop-list-is-whole.mjs',
+
+  // Lane B, 20 September 2026, found by the same scan that produced the guard
+  // above and in the same failure family.
+  //
+  // the-gmv-screen-reads-every-row: getAnalyticsDashboard summed two UNBOUNDED
+  // selects over orders and refunds, with no .order() and with `error`
+  // discarded. Supabase stops at 1,000 rows in silence, so past the ceiling the
+  // founder's GMV would have been the total of an ARBITRARY thousand rows, and
+  // a read that FAILED rendered a GMV of zero, which is indistinguishable on
+  // that screen from a payments outage. TEST held 801 AUD orders, 199 short.
+  //
+  // Scoped to the one file on purpose: no-silent-row-ceiling does not cover
+  // src/lib/admin, and widening it would go red on about twenty reads today.
+  // Those are raised in REVIEW-QUEUE-B.md rather than hidden.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-GMVWHOLE\drills.txt).
+  'scripts/guards/the-gmv-screen-reads-every-row.mjs',
 
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context

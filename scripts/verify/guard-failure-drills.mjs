@@ -5552,6 +5552,88 @@ const DRILLS = [
    * write it that way" is not a defence: somebody already had.
    */
   /*
+   * the-gmv-screen-reads-every-row (lane B, 20 September 2026), six drills.
+   *
+   * The screen the founder reads the business off summed two unbounded selects
+   * with no order and a discarded error. TEST held 801 AUD orders against a
+   * ceiling of 1,000, so it was 199 sales from reporting a GMV that stops
+   * growing, and a failed read already rendered zero revenue.
+   */
+  {
+    name: 'the GMV orders read goes back to an unbounded select',
+    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    file: 'src/lib/admin/analytics.ts',
+    find:
+      "      .eq('currency', ANALYTICS_CURRENCY)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace: "      .eq('currency', ANALYTICS_CURRENCY),",
+    expect: 'reads orders with no bound',
+  },
+  {
+    name: 'the GMV refunds read goes back to an unbounded select',
+    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    file: 'src/lib/admin/analytics.ts',
+    find:
+      "        .eq('currency', ANALYTICS_CURRENCY)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('currency', ANALYTICS_CURRENCY),",
+    expect: 'reads refunds with no bound',
+  },
+  {
+    /*
+     * A ranged read with no total order is not paging: Postgres may hand back
+     * one row in two windows and another in none, so the total is wrong in both
+     * directions at once.
+     */
+    name: 'the GMV orders read pages without a stable order',
+    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    file: 'src/lib/admin/analytics.ts',
+    find:
+      "      .eq('currency', ANALYTICS_CURRENCY)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace: "      .eq('currency', ANALYTICS_CURRENCY)\n" + '      .range(from, to),',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    name: 'the GMV refunds read pages without a stable order',
+    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    file: 'src/lib/admin/analytics.ts',
+    find:
+      "        .eq('currency', ANALYTICS_CURRENCY)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('currency', ANALYTICS_CURRENCY)\n" + '        .range(from, to),',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE SECOND HALF OF THE ORIGINAL DEFECT. `const { data } = await ...`
+     * dropped `error`, so a read that FAILED rendered a GMV of zero. A founder
+     * acts on zero revenue and cannot tell it from a payments outage.
+     */
+    name: 'a GMV read goes back to discarding its error',
+    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    file: 'src/lib/admin/analytics.ts',
+    find: '    const { data: orgs, error: orgError } = await db',
+    replace: '    const { data: orgs } = await db',
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * A GUARD THAT CANNOT FIND ITS SUBJECT MUST NOT REPORT PASS. Move the money
+     * dashboard and this has to say so rather than scanning nothing quietly.
+     */
+    name: 'the money dashboard moves and the guard is left judging nothing',
+    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    file: 'scripts/guards/the-gmv-screen-reads-every-row.mjs',
+    find: "const SCREEN = 'src/lib/admin/analytics.ts'",
+    replace: "const SCREEN = 'src/lib/admin/analytics-moved-away.ts'",
+    expect: 'does not exist',
+  },
+  /*
    * the-recovery-stop-list-is-whole (lane B, 20 September 2026), seven drills.
    *
    * The guard exists because two guards already stood over this engine and both
