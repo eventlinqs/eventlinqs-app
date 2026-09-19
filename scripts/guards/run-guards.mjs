@@ -509,6 +509,13 @@
  *                              element. Holds the growing variant too: giving it a
  *                              height or a max-height restores the 390 clipping it
  *                              exists to end (637px of content in a 439px box)
+ *   a-hero-is-never-a-placeholder  a hero is a photograph or it is nothing. The
+ *                              category photo resolver answers "no photograph" with a
+ *                              branded SVG, a non-empty string wins the `??` chain, and
+ *                              HeroMedia refuses an SVG: /categories/technology answered
+ *                              500 and the link crawler found it. In production the
+ *                              assertion is compiled out, so the same page would serve a
+ *                              hero that cannot be the LCP
  *   sr-only-cannot-escape-a-scroller  a horizontally scrolling box that holds an
  *                              sr-only label is a containing block. sr-only is
  *                              position:absolute, and an absolute element is only
@@ -1633,6 +1640,14 @@ const GUARDS = [
   // out: /admin/users 569 and /admin/events 594 against 390. /admin/orders, with
   // identical table markup and no sr-only inside it, measured 390 and is the
   // control. Drilled red on five of the eight and green again.
+  // 19 September 2026. Found by scripts/link-integrity-crawl.mjs:
+  // "500 /categories/technology (linked from: /categories/music)", and in the
+  // log "[HeroMedia] image must be a raster URL (got SVG)". The page passed the
+  // photo resolver's branded placeholder straight into the hero, and a non-empty
+  // string wins `??`, so the hero's own bundled last resort never ran. Four
+  // clauses: the premise, one door for the placeholder literal, a chain that
+  // ends on a raster, and a hero caller that asks. Drilled red five ways.
+  'scripts/guards/a-hero-is-never-a-placeholder.mjs',
   'scripts/guards/sr-only-cannot-escape-a-scroller.mjs',
   'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',

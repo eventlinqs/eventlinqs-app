@@ -5153,6 +5153,61 @@ const DRILLS = [
     replace: '.sr-only { position: static; }\n:root {',
     expect: 'redefines .sr-only',
   },
+
+  /*
+   * a-hero-is-never-a-placeholder, five drills (19 September 2026).
+   *
+   * The link crawler found /categories/technology answering 500, linked from
+   * /categories/music, with "[HeroMedia] image must be a raster URL (got SVG)"
+   * in the log. The photo resolver answers "no photograph" with a branded SVG,
+   * a non-empty string wins the `??` chain, and the hero's own bundled last
+   * resort never ran. In PRODUCTION the assertion is compiled out, so the same
+   * page would have served a hero that cannot be the LCP, silently.
+   *
+   * THE LAST TWO AIM AT THE GUARD'S OWN PREMISES rather than at the markup: the
+   * refusal it protects, and the matcher that decides whether a chain ends on a
+   * raster.
+   */
+  {
+    name: 'the category page goes back to passing the placeholder straight into its hero',
+    guard: `${GUARDS}/a-hero-is-never-a-placeholder.mjs`,
+    file: 'src/app/categories/[slug]/page.tsx',
+    find: 'heroImage={isBrandedFallbackPhoto(photo) ? null : photo.src}',
+    replace: 'heroImage={photo.src}',
+    expect: 'without asking isBrandedFallbackPhoto',
+  },
+  {
+    name: 'a second file keeps its own private copy of the placeholder path',
+    guard: `${GUARDS}/a-hero-is-never-a-placeholder.mjs`,
+    file: 'src/lib/images/event-media.ts',
+    find: 'const FALLBACK_POSTER = BRANDED_FALLBACK_PHOTO.src',
+    replace: "const FALLBACK_POSTER = '/images/event-fallback-hero.svg'",
+    expect: 'names the placeholder path',
+  },
+  {
+    name: "the category hero's chain goes back to ending on whatever the caller passed",
+    guard: `${GUARDS}/a-hero-is-never-a-placeholder.mjs`,
+    file: 'src/components/templates/PhotographicCategoryHero.tsx',
+    find: 'const src = spine?.src ?? HERO_RASTER_BY_SLUG[slug] ?? fallbackImage ?? HERO_RASTER_DEFAULT',
+    replace: 'const src = spine?.src ?? HERO_RASTER_BY_SLUG[slug] ?? fallbackImage',
+    expect: 'does not end on a bundled raster literal',
+  },
+  {
+    name: 'HeroMedia stops refusing an SVG and the guard refuses rather than judging on',
+    guard: `${GUARDS}/a-hero-is-never-a-placeholder.mjs`,
+    file: 'src/components/media/HeroMedia.tsx',
+    find: 'must be a raster URL',
+    replace: 'must be a bitmap URL',
+    expect: 'no longer refuses an SVG',
+  },
+  {
+    name: "the raster-chain matcher quietly stops recognising a named constant",
+    guard: `${GUARDS}/a-hero-is-never-a-placeholder.mjs`,
+    file: 'scripts/guards/a-hero-is-never-a-placeholder.mjs',
+    find: 'const RASTER_DECLARATION = /',
+    replace: 'const RASTER_DECLARATION = /never-matches-anything-at-all/; const UNUSED_RASTER = /',
+    expect: 'does not end on a bundled raster literal',
+  },
   {
     name: "clause 3's matcher is rebuilt inside a template literal and quietly stops matching",
     guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
