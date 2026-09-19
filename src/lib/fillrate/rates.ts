@@ -17,21 +17,53 @@
  * counts once against three rather than once against one.
  */
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { SOURCE_SYSTEM } from '@/lib/ledger/types'
 
 type Db = ReturnType<typeof createAdminClient>
 
 export type SendingRates = { sent: number; unsubscribed: number; complained: number }
 
+/**
+ * THE NUMERATOR IS PAGED AND THE DENOMINATOR IS A COUNT, and the first version
+ * of this had one of the two right.
+ *
+ * `sent` was always a `head: true` count, which the server answers in a header
+ * and never truncates. The suppression read was an unbounded select, and
+ * Supabase caps one response at a fixed number of rows, 1,000 by default
+ * (https://supabase.com/docs/reference/javascript/select, fetched 2026-09-19),
+ * silently: HTTP 200, `error` null. Measured against this project on
+ * 20 September 2026: `Content-Range: 0-999/14364` on a 14,364 row table.
+ *
+ * WHICH WAY THAT FAILS IS THE POINT. These two numbers are the REVERSAL
+ * CONDITION: enough unsubscribes or complaints and the sequence cuts to one
+ * message or stops entirely. Truncating the numerator while the denominator
+ * stays exact UNDERSTATES both rates, so the brake that exists to stop the
+ * engine mailing a list that is complaining about it reads the complaints as a
+ * smaller fraction than they are, and holds off exactly when it should fire.
+ * Past 1,000 suppressions the brake could never engage at all.
+ *
+ * The read also discarded its error and counted an unreadable list as a clean
+ * one. `readEveryRow` throws on a failed page instead, so a sweep that cannot
+ * establish its own safety numbers fails rather than sending on the strength of
+ * a zero it never measured.
+ */
 export async function sendingRates(db: Db = createAdminClient()): Promise<SendingRates> {
   const [{ count: sent }, suppressions] = await Promise.all([
     db.from('recovery_sends').select('id', { count: 'exact', head: true }).eq('source_system', SOURCE_SYSTEM),
-    db.from('recovery_suppressions').select('reason').eq('source_system', SOURCE_SYSTEM),
+    readEveryRow<{ reason: string }>('the suppression reasons', (from, to) =>
+      db
+        .from('recovery_suppressions')
+        .select('reason')
+        .eq('source_system', SOURCE_SYSTEM)
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
   ])
 
   let unsubscribed = 0
   let complained = 0
-  for (const row of (suppressions.data ?? []) as Array<{ reason: string }>) {
+  for (const row of suppressions) {
     if (row.reason === 'unsubscribed') unsubscribed += 1
     else if (row.reason === 'complained') complained += 1
   }
