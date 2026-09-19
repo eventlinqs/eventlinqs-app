@@ -116,6 +116,10 @@ describe('every hero that paints text on a photograph', () => {
     'src/components/templates/PhotographicCityHero.tsx',
     'src/components/templates/PhotographicCommunityHero.tsx',
     'src/components/features/city/city-hero.tsx',
+    // The fifth, and the one that hid longest: its ramp reached opaque navy at
+    // the foot of the band, so every run on it passed at 1440 while the meta
+    // line read 3.85:1 at 390. A stronger percentage is still a percentage.
+    'src/app/events/[slug]/page.tsx',
   ]
 
   it.each(HEROES)('%s writes no navy gradient of its own', file => {
@@ -124,7 +128,8 @@ describe('every hero that paints text on a photograph', () => {
   })
 
   it.each(HEROES)('%s puts its text inside <HeroCaption>', file => {
-    expect(readFileSync(file, 'utf8')).toContain('HeroCaption')
+    // The opening tag, not the identifier: an unused import would satisfy that.
+    expect(readFileSync(file, 'utf8')).toMatch(/<HeroCaption[\s>]/)
   })
 
   it.each(HEROES)('%s clips its band, which is what trims the full-width bleed', file => {

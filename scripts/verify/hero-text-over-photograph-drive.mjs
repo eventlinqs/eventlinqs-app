@@ -13,12 +13,22 @@
  *
  * HOW THE BACKGROUND IS OBTAINED, with no heuristic anywhere in it. For each
  * text run the page is screenshotted TWICE at the same scroll offset: once as
- * shipped, and once with `visibility: hidden` on that one element. Visibility
- * preserves layout, so the second capture is the identical frame with the
- * glyphs removed and whatever was behind them revealed. The glyph pixels are
- * then the pixels that DIFFER between the two captures, and the background
- * under each of them is its value in the second capture. Nothing is sampled
- * "near" the text and nothing is averaged over a box.
+ * shipped, and once with `color: transparent` on that one element. The glyph
+ * pixels are then the pixels that DIFFER between the two captures, and the
+ * background under each of them is its value in the second capture. Nothing is
+ * sampled "near" the text and nothing is averaged over a box.
+ *
+ * WHY THE GLYPHS ARE UNPAINTED RATHER THAN THE ELEMENT HIDDEN. The first
+ * version used `visibility: hidden`, which preserves layout and looked
+ * equivalent. It is not, and /events/[slug] is where that showed: its category
+ * chip carries its OWN opaque backing, so hiding the element took the backing
+ * away with the text and the "revealed" pixels were the photograph the chip
+ * covers. The chip measured 1.87:1 against a background no reader ever sees.
+ * Making the text transparent removes the glyphs and NOTHING else, so a run is
+ * always judged against what actually sits behind it, whether that is a
+ * photograph or its own pill. It also removed the need to skip self-backed runs
+ * at all, which is why 135 runs that the earlier sweep declined to measure are
+ * now measured.
  *
  * WHICH PIXELS COUNT. Antialiased edge pixels carry only a fraction of the
  * foreground colour, so judging them would overstate the fault. Only CORE
@@ -66,12 +76,14 @@ const args = process.argv.slice(2)
 let out = 'C:/dev/EVIDENCE/HERO-CONTRAST'
 let label = 'run'
 let shots = false
+let routesFile = null
 const only = []
 for (let i = 0; i < args.length; i += 1) {
   if (args[i] === '--out') out = args[++i]
   else if (args[i] === '--label') label = args[++i]
   else if (args[i] === '--only') only.push(args[++i])
   else if (args[i] === '--shots') shots = true
+  else if (args[i] === '--routes-file') routesFile = args[++i]
 }
 out = join(out, `drive-${label}`)
 mkdirSync(out, { recursive: true })
@@ -150,6 +162,14 @@ const TEMPLATE_ROUTES = {
   'src/components/templates/PhotographicCommunityHero.tsx': '/community/',
   'src/components/features/city/city-hero.tsx': '/city/',
 }
+/*
+ * THE EVENT HERO IS THE ONE FAMILY THIS CHECK CANNOT COVER FROM SOURCE, said
+ * here rather than left as an absence. Its slugs are database rows, so the only
+ * honest way to name them is to read them back out of the product's own sitemap
+ * and hand them in with --routes-file. `src/app/events/[slug]/page.tsx` is
+ * therefore absent from the table above ON PURPOSE, and is measured by the
+ * separate run recorded beside this drive's evidence.
+ */
 for (const [file, prefix] of Object.entries(TEMPLATE_ROUTES)) {
   readFileSync(file, 'utf8') // throws loudly if a template was renamed
   if (!ROUTES.some(r => r.startsWith(prefix))) {
@@ -162,7 +182,25 @@ console.log(
   `[hero-contrast] enumerated ${CATEGORIES.length} categories, ${CITIES.length} cities, ${SUBURBS.length} suburbs, ${COMMUNITIES.length} communities -> ${ROUTES.length} routes`,
 )
 
-const TARGETS = only.length ? ROUTES.filter(r => only.includes(r)) : ROUTES
+/*
+ * A ROUTE LIST FROM OUTSIDE, for the families whose slugs are ROWS rather than
+ * source. Event detail slugs exist only in the database, so the honest way to
+ * name them is to read them back out of the product's own sitemap and hand the
+ * list in, never to type one.
+ */
+const FROM_FILE = routesFile
+  ? readFileSync(routesFile, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(l => l.startsWith('/'))
+  : []
+if (routesFile && FROM_FILE.length === 0) {
+  console.error(`[hero-contrast] BROKEN DRIVE: ${routesFile} held no route beginning with '/'.`)
+  process.exit(1)
+}
+
+const TARGETS = FROM_FILE.length
+  ? FROM_FILE
+  : only.length
+    ? ROUTES.filter(r => only.includes(r))
+    : ROUTES
 if (only.length && TARGETS.length !== only.length) {
   console.error(`[hero-contrast] --only named a route this drive does not know: ${only.filter(o => !ROUTES.includes(o)).join(', ')}`)
   process.exit(1)
@@ -263,27 +301,13 @@ try {
        * so matching a class would measure whichever template the author of the
        * drive happened to read. A run is any element inside the hero band that
        * owns visible text of its own and paints no opaque background behind it.
-       * An element WITH an opaque backing (the event page's pill) is excluded
-       * and counted, because its contrast is a declared pair and is a different
-       * gate's business.
+       * Every run is measured, including one that carries its own backing: the
+       * method below reveals whatever is genuinely behind the glyphs, so a pill
+       * is judged on its pill and a headline on its photograph.
        */
       const runs = await page.evaluate(sel => {
         const band = document.querySelector(sel)
         if (!band) return []
-        const opaque = el => {
-          let n = el
-          while (n && n !== band.parentElement) {
-            const cs = getComputedStyle(n)
-            const m = cs.backgroundColor.match(/rgba?\(([^)]+)\)/)
-            if (m) {
-              const p = m[1].split(/[,\s/]+/).filter(Boolean).map(parseFloat)
-              const a = p.length > 3 ? p[3] : 1
-              if (a >= 0.7) return true
-            }
-            n = n.parentElement
-          }
-          return false
-        }
         const found = []
         for (const el of band.querySelectorAll('*')) {
           const own = [...el.childNodes]
@@ -296,7 +320,6 @@ try {
           if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.05) continue
           const b = el.getBoundingClientRect()
           if (b.width < 2 || b.height < 2) continue
-          const backed = opaque(el)
           /* The browser resolves the colour, whatever space the stylesheet
            * wrote it in. A 1x1 canvas filled with the computed string reports
            * the sRGB triple and the alpha, which is exactly what is painted. */
@@ -324,7 +347,6 @@ try {
             fontSize: parseFloat(cs.fontSize),
             fontWeight: cs.fontWeight,
             rect: { x: b.x, y: b.y, width: b.width, height: b.height },
-            backed,
           })
           el.setAttribute('data-hero-run', String(found.length - 1))
         }
@@ -341,19 +363,15 @@ try {
       let measured = 0
 
       for (const [i, run] of runs.entries()) {
-        if (run.backed) {
-          rows.push({ route, viewport: vp.label, text: run.text, skipped: 'opaque backing' })
-          continue
-        }
-        // Hide this one run; layout is preserved, so the frame is identical.
+        // Unpaint this one run's glyphs; nothing else about the frame changes.
         await page.evaluate(n => {
           const el = document.querySelector(`[data-hero-run="${n}"]`)
-          if (el) el.style.visibility = 'hidden'
+          if (el) el.style.color = 'transparent'
         }, i)
         const bare = await raw(await page.screenshot())
         await page.evaluate(n => {
           const el = document.querySelector(`[data-hero-run="${n}"]`)
-          if (el) el.style.visibility = ''
+          if (el) el.style.color = ''
         }, i)
 
         const fg = run.rgb

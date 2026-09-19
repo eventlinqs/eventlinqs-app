@@ -34,6 +34,8 @@ import { PriceHistoryPanel } from '@/components/features/events/price-history-pa
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
+import { HERO_HEADER_SCRIM } from '@/components/media/hero-photo-scrim'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
@@ -1031,18 +1033,23 @@ export default async function EventDetailPage({ params }: Props) {
               kenBurns={media.kenBurns}
               objectPosition={media.objectPosition}
             />
+            {/* The header wash only. What used to sit here was this hero's own
+                bottom-up ramp, expressed as percentages of a band the text does
+                not occupy a fixed share of: at 390 the meta line read 3.85:1 and
+                the venue 4.20:1 against the 4.5:1 floor of WCAG 2.2 SC 1.4.3
+                (https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
+                while the identical markup passed at 1440. <HeroCaption> anchors
+                the wash to the text instead, which is what makes the floor a
+                guarantee. See src/components/media/hero-photo-scrim.ts. */}
             <div
               className="absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(180deg, rgba(10,22,40,0.3) 0%, rgba(10,22,40,0.55) 55%, rgba(10,14,26,1) 100%)',
-              }}
+              style={{ background: HERO_HEADER_SCRIM }}
               aria-hidden
             />
           </div>
 
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
-            <div className="max-w-3xl animate-fade-rise">
+            <HeroCaption className="max-w-3xl animate-fade-rise">
               {event.category && (
                 <span className="inline-flex rounded-full border border-gold-500/40 bg-ink-900/85 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-gold-400 shadow-[var(--shadow-card)]">
                   {event.category.name}
@@ -1113,7 +1120,7 @@ export default async function EventDetailPage({ params }: Props) {
                *  this batch; trust now lives at the moment that drives
                *  the conversion. */}
               <EventTrustSignals variant="dark" />
-            </div>
+            </HeroCaption>
           </div>
         </section>
 
