@@ -2604,9 +2604,22 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   475 + 1 = 476 files
  *   6179 + 12 = 6191 tests
+ *
+ * 2026-09-19, lane C, event dates in the event's zone. Eight components
+ * formatted an event date with timeZone 'UTC', so every event starting before
+ * 10:00 AEST showed the PREVIOUS DAY on its card.
+ * tests/unit/events/event-dates-in-the-event-zone.test.ts holds the twelve
+ * cases, five for the formatters and seven for the guard that keeps them.
+ *
+ * MEASURED: 477 files, 6203 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   476 + 1 = 477 files
+ *   6191 + 12 = 6203 tests
  */
-const MIN_FILES = 476
-const MIN_TESTS = 6191
+const MIN_FILES = 477
+const MIN_TESTS = 6203
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

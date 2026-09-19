@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import { MapPin } from 'lucide-react'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 import type { EventCardMediaVariant } from '@/components/media/EventCardMedia'
@@ -42,6 +43,14 @@ export type EventCardData = {
   cover_image_url: string | null
   thumbnail_url: string | null
   start_date: string
+  /**
+   * The EVENT own IANA zone, so the date on this card is the day the event
+   * happens rather than the day it happens in UTC. REQUIRED rather than
+   * optional: an optional field would have let every existing caller keep
+   * printing the wrong day in silence, and the compiler naming each one is
+   * the only way to be sure they were all found.
+   */
+  timezone: string | null
   venue_name: string | null
   venue_city: string | null
   venue_country: string | null
@@ -80,14 +89,7 @@ type Props = {
   >
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
-}
+
 
 function formatPrice(
   tiers: EventCardTier[],
@@ -114,7 +116,7 @@ function buildInventory(tiers: EventCardTier[]): EventInventory {
 
 export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false, variant = 'grid-one-two-three' }: Props) {
   const {
-    id, slug, title, cover_image_url, start_date,
+    id, slug, title, cover_image_url, start_date, timezone,
     venue_city, venue_country, created_at, category, ticket_tiers,
     organisation, badge,
   } = event
@@ -217,7 +219,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
             className="type-micro event-card-date"
             style={{ fontWeight: 600 }}
           >
-            {formatDate(start_date)}
+            {formatEventDateShort(start_date, timezone)}
           </p>
         )}
 
@@ -235,7 +237,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
            * ever applied: the inline `gap` token beat both. One row now. */
           <p className="type-small event-card-meta">
             <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-            <span>{formatDate(start_date)}</span>
+            <span>{formatEventDateShort(start_date, timezone)}</span>
             {location && (
               <>
                 <span aria-hidden="true">·</span>

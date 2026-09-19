@@ -556,6 +556,7 @@ type RawRow = {
   gallery_urls: string[] | null
   start_date: string
   end_date: string
+  timezone: string | null
   venue_name: string | null
   venue_city: string | null
   venue_country: string | null
@@ -577,7 +578,7 @@ type RawRow = {
 
 const DEFAULT_PAGE_SIZE = 24
 const BASE_SELECT =
-  'id, slug, title, summary, description, cover_image_url, thumbnail_url, gallery_urls, start_date, end_date, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(id, name, slug), organisation:organisations(id, name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, description, cover_image_url, thumbnail_url, gallery_urls, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(id, name, slug), organisation:organisations(id, name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 function normaliseRelation<T>(rel: T | T[] | null): T | null {
   if (rel === null || rel === undefined) return null
@@ -637,6 +638,7 @@ function toPublicEventRow(raw: RawRow): PublicEventRow {
     gallery_urls: raw.gallery_urls,
     start_date: raw.start_date,
     end_date: raw.end_date,
+    timezone: raw.timezone,
     venue_name: raw.venue_name,
     venue_city: raw.venue_city,
     venue_country: raw.venue_country,

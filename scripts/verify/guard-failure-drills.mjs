@@ -1579,6 +1579,33 @@ const DRILLS = [
     expect: 'no longer exports weekendWindowUtc',
   },
   /*
+   * event-dates-in-the-event-zone, TWO DRILLS (19 September 2026).
+   *
+   * The first puts the defect back on the highest-traffic card on the
+   * platform. Eight components shipped this shape at once and every morning
+   * event in Australia showed the wrong DAY, because an event starting before
+   * 10:00 AEST is on the previous day in UTC. The second is the quiet one: a
+   * rename of the formatter everything is sent to, which without clause 2
+   * would leave the guard giving an impossible instruction and reporting a
+   * pass.
+   */
+  {
+    name: 'a card pins its date to UTC again, so every morning event shows the previous day',
+    guard: `${GUARDS}/event-dates-in-the-event-zone.mjs`,
+    file: 'src/components/features/events/event-bento-tile.tsx',
+    find: "          {formatEventDateShort(event.start_date, event.timezone)}",
+    replace: "          {new Date(event.start_date).toLocaleDateString('en-AU', { timeZone: 'UTC' })}",
+    expect: 'pins a date to UTC on a surface that renders for a reader',
+  },
+  {
+    name: 'the shared date formatter is renamed, so every surface is sent to a function that is not there',
+    guard: `${GUARDS}/event-dates-in-the-event-zone.mjs`,
+    file: 'src/lib/dates/event-time.ts',
+    find: "export function formatEventDateShort(",
+    replace: "export function formatEventDateShortRenamed(",
+    expect: 'no longer exports formatEventDateShort',
+  },
+  /*
    * one-db-connection-source, four drills, one per banned shape.
    *
    * These exist because the guard they exercise was written after two hours were

@@ -68,6 +68,7 @@
  *                              not at the one that happens to sit beside it
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
  *   one-weekend-definition     nothing but listing-window.ts decides when the weekend is
+ *   event-dates-in-the-event-zone  no rendering surface pins a date to UTC
  *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
  *                              names a column that does not exist
  *   maintained-aggregates      no cache tag without an invalidation, no stored counter
@@ -982,6 +983,12 @@ const GUARDS = [
   // weekend off the rail whose only job is to show it; /api/home/surprise read
   // the server's clock and labelled a Monday morning pick 'Weekend energy'.
   'scripts/guards/one-weekend-definition.mjs',
+  // EIGHT COMPONENTS AT ONCE. Every reader is between UTC+8 and UTC+11, so
+  // an event starting before 10:00 AEST showed the PREVIOUS DAY on its card:
+  // every morning market, workshop and Saturday sport on the platform. The bug
+  // was already known and already fixed on ONE rail, and the other eight were
+  // left standing because nothing looked for them.
+  'scripts/guards/event-dates-in-the-event-zone.mjs',
   'scripts/guards/sitemap-resolves.mjs',
   // A SECOND COPY MUST HAVE SOMETHING KEEPING IT IN STEP. Four failures of this
   // one class landed in a week, in four different mechanisms: a cached rail with

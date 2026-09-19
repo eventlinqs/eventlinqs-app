@@ -61,6 +61,34 @@ const MUST_NOT_BE_ON = ['lane-c-weekend-monday-morning']
 
 mkdirSync(OUT, { recursive: true })
 
+/**
+ * The label the Saturday fixture's card MUST carry, and the one it must not.
+ *
+ * DERIVED, NEVER HARDCODED. The fixture is seeded relative to the CURRENT
+ * weekend, so a literal "Sat, 19 Sept" in this file would be correct for one
+ * weekend and quietly wrong for every other one, which is a check that rots into
+ * a false failure. Both labels are built with the same Intl options the card
+ * uses, from the same clock.
+ *
+ * `wrong` is the previous day: the UTC day for a 09:00 AEST event, which is what
+ * eight components printed before the shared formatter replaced them.
+ */
+function weekendDates(now) {
+  const zone = 'Australia/Sydney'
+  const label = d =>
+    new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short', day: 'numeric', month: 'short' })
+      .format(d)
+      .replace(/ | /g, ' ')
+  const local = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  const [y, m, d] = local.split('-').map(Number)
+  const today = new Date(Date.UTC(y, m - 1, d))
+  const dow = today.getUTCDay()
+  const toSaturday = dow === 6 ? 0 : dow === 0 ? -1 : 6 - dow
+  const saturday = new Date(Date.UTC(y, m - 1, d + toSaturday, 12))
+  const friday = new Date(saturday.getTime() - 24 * 3600000)
+  return { right: label(saturday), wrong: label(friday) }
+}
+
 const results = []
 let failures = 0
 const check = (name, ok, detail) => {
@@ -123,6 +151,37 @@ try {
 
     const heading = (await rail.locator('h2, h3').first().textContent().catch(() => '')) ?? ''
     check(`${width}px: the rail carries its heading`, heading.trim().length > 0, `"${heading.trim()}"`)
+
+    /*
+     * THE DATE ON THE CARD, WHICH IS A SECOND DEFECT ON THE SAME RAIL.
+     *
+     * Eight components formatted an event date with `timeZone: 'UTC'`. The
+     * Saturday 09:00 AEST fixture is Friday 23:00 UTC, so before that fix this
+     * card read "Fri, 18 Sept" under an event that happens on Saturday the 19th.
+     * That is every morning event in Australia showing the wrong DAY, and it was
+     * found by READING this drive's screenshot rather than its report.
+     *
+     * The assertion is on the DAY NAME and the DATE NUMBER together, because
+     * either alone can pass by accident: a weekday is right one time in seven,
+     * and a date number is shared by the card next to it.
+     */
+    /*
+     * NO WORD BOUNDARIES IN THIS MATCH, and that is a harness lesson rather than
+     * a style choice. The first version asked for `/\bSat\b/` and FAILED on a
+     * page that was correct, because textContent concatenates sibling elements
+     * with no separator: the card reads "GeelongSat, 19 Sept", so there is no
+     * word boundary before "Sat". A harness that fails loudly on working code is
+     * the thing this repository has already lost a day to, so the match is on
+     * the rendered label exactly as a reader sees it.
+     */
+    const saturday = weekendDates(new Date())
+    const card = rail.locator('a[href="/events/lane-c-weekend-saturday-morning"]').first()
+    const cardText = ((await card.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ')
+    check(
+      `${width}px: the Saturday 09:00 card is dated ${saturday.right}, not ${saturday.wrong}`,
+      cardText.includes(saturday.right) && !cardText.includes(saturday.wrong),
+      `card reads "${cardText.trim().slice(0, 90)}"`,
+    )
 
     const file = join(OUT, `weekend-rail-${width}.png`)
     await rail.screenshot({ path: file }).catch(async () => {
