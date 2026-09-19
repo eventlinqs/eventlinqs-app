@@ -281,6 +281,12 @@ export async function readArtistCatalogue(admin: AdminClient = createAdminClient
       .from('event_artists')
       .select('artist_id, event_id')
       .eq('status', 'confirmed')
+      // DETERMINISTIC ORDER, for the reason readEventCatalogue gives above:
+      // without an explicit ORDER BY, PostgREST returns rows in Postgres
+      // physical order, which changes as rows are updated. That decides WHICH
+      // rows the cap below truncates, so an unordered paged read publishes a
+      // different set of artists on different runs of the same tree.
+      .order('event_id', { ascending: true })
       .limit(CATALOGUE_ROW_CAP)
     if (lineup.error) return { rows: [], error: lineup.error.message }
     const lineupRows = (lineup.data ?? []) as { artist_id: string; event_id: string }[]
@@ -291,6 +297,7 @@ export async function readArtistCatalogue(admin: AdminClient = createAdminClient
       .select('id, start_date, end_date, timezone')
       .in('id', [...new Set(lineupRows.map(r => r.event_id))])
       .match(PUBLIC_EVENT_MATCH)
+      .order('id', { ascending: true })
       .limit(CATALOGUE_ROW_CAP)
     if (events.error) return { rows: [], error: events.error.message }
 

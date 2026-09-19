@@ -2460,9 +2460,24 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE: the gate printed both pairs side by side on the line above.
  *   466 + 3 = 469 files
  *   6068 + 29 = 6097 tests
+ *
+ * 2026-09-19, lane A, the two files this run added while unblocking the push.
+ * tests/unit/media/avatar-sizes-is-a-leaf.test.ts holds the four cases that keep
+ * the dashboard shell out of the media hint table, and
+ * tests/unit/seo/artist-catalogue-is-linked.test.ts holds the seven that keep an
+ * unreachable artist out of the sitemap. One further case was added to the
+ * existing tests/unit/ci/gate-url-determinism.test.ts, which is why the test
+ * count moves by twelve and the file count by two.
+ *
+ * MEASURED: 471 files, 6109 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\_a-r20-suite2.txt).
+ *
+ * CHECKABLE:
+ *   469 + 2 = 471 files
+ *   6097 + 4 + 7 + 1 = 6109 tests
  */
-const MIN_FILES = 469
-const MIN_TESTS = 6097
+const MIN_FILES = 471
+const MIN_TESTS = 6109
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
