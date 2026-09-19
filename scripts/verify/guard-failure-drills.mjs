@@ -5552,7 +5552,7 @@ const DRILLS = [
    * write it that way" is not a defence: somebody already had.
    */
   /*
-   * the-money-screens-read-every-row (lane B, 20 September 2026), six drills.
+   * the-founder-screens-read-every-row (lane B, 20 September 2026), nine drills, plus six more below for the demand signal.
    *
    * The screen the founder reads the business off summed two unbounded selects
    * with no order and a discarded error. TEST held 801 AUD orders against a
@@ -5561,7 +5561,7 @@ const DRILLS = [
    */
   {
     name: 'the GMV orders read goes back to an unbounded select',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "      .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -5572,7 +5572,7 @@ const DRILLS = [
   },
   {
     name: 'the GMV refunds read goes back to an unbounded select',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "        .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -5588,7 +5588,7 @@ const DRILLS = [
      * directions at once.
      */
     name: 'the GMV orders read pages without a stable order',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "      .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -5599,7 +5599,7 @@ const DRILLS = [
   },
   {
     name: 'the GMV refunds read pages without a stable order',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "        .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -5615,7 +5615,7 @@ const DRILLS = [
      * acts on zero revenue and cannot tell it from a payments outage.
      */
     name: 'a GMV read goes back to discarding its error',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find: '    const { data: orgs, error: orgError } = await db',
     replace: '    const { data: orgs } = await db',
@@ -5629,7 +5629,7 @@ const DRILLS = [
      * being charged vanishes from the only screen that lists overrides.
      */
     name: 'the fee-override list goes back to an unbounded read of pricing_rules',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/pricing.ts',
     find:
       "      .order('version', { ascending: false })\n" +
@@ -5646,7 +5646,7 @@ const DRILLS = [
      * at all, and the second key is why the header says what it says.
      */
     name: 'the fee-override list pages pricing_rules with no order at all',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/pricing.ts',
     find:
       "      .order('version', { ascending: false })\n" +
@@ -5664,7 +5664,7 @@ const DRILLS = [
      * no fee configured.
      */
     name: 'the current-fee read goes back to discarding its error',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
     file: 'src/lib/admin/pricing.ts',
     find: '  const { data, error } = await admin',
     replace: '  const { data } = await admin',
@@ -5675,12 +5675,92 @@ const DRILLS = [
      * A GUARD THAT CANNOT FIND ITS SUBJECT MUST NOT REPORT PASS. Move the money
      * dashboard and this has to say so rather than scanning nothing quietly.
      */
-    name: 'a money screen moves and the guard is left judging nothing for it',
-    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
-    file: 'scripts/guards/the-money-screens-read-every-row.mjs',
-    find: "const SCREENS = ['src/lib/admin/analytics.ts', 'src/lib/admin/pricing.ts']",
-    replace: "const SCREENS = ['src/lib/admin/analytics-moved-away.ts', 'src/lib/admin/pricing.ts']",
+    name: 'a founder screen moves and the guard is left judging nothing for it',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'scripts/guards/the-founder-screens-read-every-row.mjs',
+    find: "  'src/lib/admin/analytics.ts',\n",
+    replace: "  'src/lib/admin/analytics-moved-away.ts',\n",
     expect: 'does not exist',
+  },
+  /*
+   * The demand signal joined the guard on 20 September 2026, six more drills.
+   *
+   * /admin/network is where the founder decides which city has tipped and who
+   * to invite next. Its per-city read was unbounded AND unordered, five of its
+   * figures were `count ?? 0`, and the read that subtracts the already-invited
+   * is the one that fails towards doing too much rather than too little.
+   */
+  {
+    name: 'the per-city waitlist demand goes back to an unbounded read',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/demand-signal.ts',
+    find:
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),\n' +
+      '  )\n',
+    replace: '  )\n',
+    expect: 'reads city_waitlist_signups with no bound',
+  },
+  {
+    name: 'the per-city waitlist demand pages with no stable order',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/demand-signal.ts',
+    find:
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),\n' +
+      '  )\n',
+    replace: '      .range(from, to),\n  )\n',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * CLAUSE 5, THE ONE THE FIRST FIX WOULD HAVE WALKED PAST. Name the result
+     * rather than destructuring it, coalesce the count, and every figure on the
+     * screen is a lie again while clause 4 sees nothing to judge.
+     */
+    name: 'a Launch Kit figure goes back to rendering a failed count as zero',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/demand-signal.ts',
+    find: "      eventsPublished: countOrRaise('events published', publishedRes),",
+    replace: '      eventsPublished: publishedRes.count ?? 0,',
+    expect: 'coalesces the count',
+  },
+  {
+    /*
+     * THE SUPPRESSION LIST. Truncated or failed, this read puts organisers who
+     * have already had their founding invitation back on the list to be emailed
+     * a second one.
+     */
+    name: 'the already-invited list goes back to an unbounded read of founding_invites',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find:
+      "        .eq('inviter_kind', 'founder')\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('inviter_kind', 'founder'),",
+    expect: 'reads founding_invites with no bound',
+  },
+  {
+    /*
+     * The bound moved back off the builder and onto the await, which is the
+     * same query and an invisible bound: the chain walker cannot follow a
+     * variable across statements and neither can a reader.
+     */
+    name: 'the founding terms list is bounded somewhere the reader cannot see',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find: '    .limit(FOUNDING_TERMS_SHOWN)\n',
+    replace: '\n',
+    expect: 'reads organisations with no bound',
+  },
+  {
+    name: 'the founding terms read goes back to discarding its error',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find: '  const { data: termRows, error: termError } = await termQuery',
+    replace: '  const { data: termRows } = await termQuery',
+    expect: 'destructures `data` and not `error`',
   },
   /*
    * the-recovery-stop-list-is-whole (lane B, 20 September 2026), seven drills.

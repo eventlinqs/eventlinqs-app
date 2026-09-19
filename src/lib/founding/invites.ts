@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { countOrRaise } from '@/lib/supabase/count-or-raise'
 import { recordAnonAuditEvent } from '@/lib/admin/audit'
 import {
   foundingGrantVerdict,
@@ -81,20 +82,30 @@ export type FoundingCounts = {
   invitesAccepted: number
 }
 
-/** Live, real counts for the programme (no fabricated numbers). */
+/**
+ * Live, real counts for the programme (no fabricated numbers).
+ *
+ * A FAILED COUNT RAISES RATHER THAN READING AS ZERO. These four numbers are the
+ * top of the founder's demand-signal screen, and the one he acts on is SPOTS
+ * REMAINING, which is derived by subtraction: `taken ?? 0` on a failed read
+ * renders the whole programme as untouched, so a screen that could not reach
+ * the database says all fifty founding spots are free. That is the one wrong
+ * answer that causes an action, and it is indistinguishable at the UI from the
+ * truth on the day the platform launches.
+ */
 export async function getFoundingCounts(): Promise<FoundingCounts> {
   const admin = createAdminClient()
-  const [{ count: taken }, { count: issued }, { count: accepted }] = await Promise.all([
+  const [takenRes, issuedRes, acceptedRes] = await Promise.all([
     admin.from('organisations').select('id', { count: 'exact', head: true }).eq('is_founding', true),
     admin.from('founding_invites').select('id', { count: 'exact', head: true }),
     admin.from('founding_invites').select('id', { count: 'exact', head: true }).eq('status', 'accepted'),
   ])
-  const spotsTaken = taken ?? 0
+  const spotsTaken = countOrRaise('founding spots taken', takenRes)
   return {
     spotsTaken,
     spotsRemaining: Math.max(0, FOUNDING_SPOT_CAP - spotsTaken),
-    invitesIssued: issued ?? 0,
-    invitesAccepted: accepted ?? 0,
+    invitesIssued: countOrRaise('founding invites issued', issuedRes),
+    invitesAccepted: countOrRaise('founding invites accepted', acceptedRes),
   }
 }
 
