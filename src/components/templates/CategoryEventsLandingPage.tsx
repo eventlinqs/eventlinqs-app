@@ -8,6 +8,7 @@ import { PhotographicCategoryHero } from '@/components/templates/PhotographicCat
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { CommunityOrganiserCtaPanel } from '@/components/features/community/community-organiser-cta'
 import { EventCard } from '@/components/features/events/event-card'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { CategoryEditorial } from '@/lib/categories/category-editorial'
 
@@ -117,7 +118,13 @@ export function CategoryEventsLandingPage({ name, editorial, heroImage, events, 
         </div>
       </ContentSection>
 
-      <ContentSection surface="base" width="wide" topBorder reveal>
+      <ContentSection
+        surface="base"
+        width="wide"
+        topBorder
+        reveal
+        intrinsicSize={eventGridIntrinsicSize(events.length)}
+      >
         {events.length > 0 ? (
           <>
             <div className="mb-8">

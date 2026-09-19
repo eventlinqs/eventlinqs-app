@@ -16,6 +16,7 @@ function toCardData(e: PublicEventRow): EventCardData {
     cover_image_url: e.cover_image_url,
     thumbnail_url: e.thumbnail_url,
     start_date: e.start_date,
+    timezone: e.timezone,
     venue_name: e.venue_name,
     venue_city: e.venue_city,
     venue_country: e.venue_country,

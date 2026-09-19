@@ -65,8 +65,20 @@ if (branchStart === -1 || branchEnd === -1) {
   if (!branch.includes('pickCuratedHomepageHero(')) {
     fail(`${HERO_TSX}: the empty branch does not pick from the curated set (pickCuratedHomepageHero); a hardcoded image is not the fallback the close-out asked for`)
   }
-  if (!/HERO_SCRIM_GRADIENT/.test(branch)) {
-    fail(`${HERO_TSX}: the empty branch does not paint the shared hero scrim (HERO_SCRIM_GRADIENT); text would sit on an unprotected image`)
+  /*
+   * THE NAME OF THE SHARED WASH CHANGED ON 20 SEPTEMBER 2026, and this clause
+   * is about the PROPERTY, not the identifier. It used to require
+   * HERO_SCRIM_GRADIENT, which was a percentage of the hero BAND while the text
+   * is bottom-anchored and hugs its own content, so the wash never knew where
+   * the words had landed: driven on the homepage carousel it left the gold
+   * eyebrow at 2.53:1 on two of five slides at 390, against WCAG 2.2 SC 1.4.3's
+   * 4.5:1. The homepage now uses <HeroCaption>, the one wash anchored to the
+   * text, which `hero-text-over-a-photograph.mjs` holds to its strength and its
+   * geometry. Requiring the old identifier here would have forced the defect
+   * back in to keep a guard green.
+   */
+  if (!/<HeroCaption[\s>]/.test(branch)) {
+    fail(`${HERO_TSX}: the empty branch does not wrap its text in <HeroCaption>; text would sit on an unprotected image`)
   }
 }
 

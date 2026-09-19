@@ -10,7 +10,7 @@ import {
   isHeroCategorySlug,
 } from '@/lib/hero-categories'
 import { getPublishableCategories, getPublishableCategory } from '@/lib/categories/taxonomy'
-import { getCategoryPhoto } from '@/lib/images/category-photo'
+import { getCategoryPhoto, isBrandedFallbackPhoto } from '@/lib/images/category-photo'
 import { CategoryLandingPage } from '@/components/templates/CategoryLandingPage'
 import { CategoryEventsLandingPage } from '@/components/templates/CategoryEventsLandingPage'
 import { EventCollectionJsonLd } from '@/components/seo/event-collection-jsonld'
@@ -203,7 +203,15 @@ export default async function CategoryPage({ params }: Props) {
       <CategoryEventsLandingPage
         name={real!.name}
         editorial={real!.editorial}
-        heroImage={photo.src}
+        /*
+         * NULL, NOT THE SENTINEL, when the resolver had no photograph.
+         * `photo.src` is the branded SVG placeholder in that case, and the hero
+         * chain is `spine ?? bundled ?? fallbackImage ?? HERO_RASTER_DEFAULT`:
+         * a non-empty string wins the `??` and the hero's own last resort never
+         * runs. HeroMedia then refuses the SVG and /categories/technology
+         * answered 500, which is how the link crawler found this.
+         */
+        heroImage={isBrandedFallbackPhoto(photo) ? null : photo.src}
         events={liveEvents}
         siblings={all.filter(c => c.slug !== real!.slug).map(c => ({ slug: c.slug, name: c.name }))}
       />

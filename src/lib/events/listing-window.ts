@@ -167,6 +167,28 @@ export function localDayOfWeek(date: Date, zone: string): number {
 }
 
 /**
+ * Hour of the day (0 to 23) at `date`, IN `zone`.
+ *
+ * The companion to `localDayOfWeek`, and it exists for the same reason:
+ * `Date.prototype.getHours()` answers for the SERVER's zone, which on Vercel is
+ * UTC. Anything deciding whether it is "tonight" in Australia from that number
+ * is eight to eleven hours out, which is enough to call Saturday 20:00 in
+ * Melbourne a daytime pick (close-out: the /api/home/surprise label).
+ *
+ * `hourCycle: 'h23'` is set explicitly because en-AU formats midnight as "24"
+ * under the default h12-derived cycle, and a 24 read as a number is a silent
+ * off-by-one at exactly the boundary this function exists to get right.
+ */
+export function localHourOfDay(date: Date, zone: string): number {
+  const hour = new Intl.DateTimeFormat('en-GB', {
+    timeZone: zone,
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).format(date)
+  return Number(hour)
+}
+
+/**
  * The upcoming weekend, Saturday 00:00 to the last instant of Sunday, in
  * `zone`. On a Sunday the weekend already under way is the one meant, so it
  * steps back a day rather than jumping forward six.

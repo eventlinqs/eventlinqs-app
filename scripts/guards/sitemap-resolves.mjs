@@ -38,7 +38,7 @@
  * `src/lib/seo/sitemap-catalogue.ts` so that a build-time guard could EXECUTE
  * them against the database (`sitemap.ts` reaches `next/cache` and cannot be
  * run outside Next). Both files are read here, and the catalogue is required to
- * still emit all three families: a guard whose subject moves out from under it
+ * still emit all four families: a guard whose subject moves out from under it
  * goes quiet rather than red, which is precisely the failure mode that let the
  * venue block publish nothing for its whole life.
  *
@@ -54,7 +54,16 @@
  *      in EITHER file exists on that table in the generated types
  *      (src/types/database.ts). This is the 42703 check.
  *   D. no `catch { }` in either file swallows its error without reporting it.
- *   E. the catalogue still emits an events, an organisers and a venues path.
+ *   E. the catalogue still emits an events, an organisers, a venues and an
+ *      artists path.
+ *   F. every `readArtistCatalogue(` call in src/app/sitemap.ts sits inside an
+ *      `isFeatureEnabled('broadcast_artists')` block. The route 404s whenever
+ *      that flag is off and it is OFF ON PRODUCTION, and
+ *      scripts/guards/lib/sitemap-catalogue-probe.mjs MODELS that gate rather
+ *      than executing sitemap.ts, so the model can drift from the file in
+ *      silence. The decision is pure and lives in
+ *      scripts/guards/lib/artist-sitemap-gate.mjs, which carries the whole
+ *      account of what drifting would cost.
  *
  * NOT CHECKED HERE, and named so the silence is not mistaken for coverage:
  *   - whether a given ROW resolves. `/events/<slug>` for a deleted event is a
@@ -64,6 +73,7 @@
  *     `export const revalidate` in the file, and the sweep is what proves it.
  */
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { artistBlockIsFlagGated } from './lib/artist-sitemap-gate.mjs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -268,7 +278,7 @@ function cataloguePathShapes(src) {
 }
 
 const catalogueShapes = cataloguePathShapes(catalogueSrc)
-for (const family of ['/events/PARAM', '/organisers/PARAM', '/venues/PARAM']) {
+for (const family of ['/events/PARAM', '/organisers/PARAM', '/venues/PARAM', '/artists/PARAM']) {
   if (!catalogueShapes.includes(family)) {
     fail(
       `${CATALOGUE} no longer builds ${family}. Every sitemap defect on record is a family that stopped ` +
@@ -276,6 +286,16 @@ for (const family of ['/events/PARAM', '/organisers/PARAM', '/venues/PARAM']) {
     )
   }
 }
+
+/*
+ * CLAUSE F. The artist family is the only row-derived family behind a feature
+ * flag, and the probe that compares it against the database MODELS that flag
+ * rather than executing sitemap.ts. Delete the gate from the file and the model
+ * keeps agreeing with itself while production publishes a 404 for every artist.
+ * The reasoning in full is in scripts/guards/lib/artist-sitemap-gate.mjs.
+ */
+const artistGate = artistBlockIsFlagGated(sitemapSrc)
+if (!artistGate.gated) fail(artistGate.reason)
 
 const localShapes = [...localPathShapes(sitemapSrc), ...catalogueShapes]
 const shapes = []
@@ -455,6 +475,7 @@ console.log(
 console.log(`[sitemap-resolves]   ${uniqueShapes.length} URL shape(s) published:`)
 for (const s of uniqueShapes) console.log(`[sitemap-resolves]     ${s}`)
 console.log(`[sitemap-resolves]   ${redirectSources.length} permanent redirect source(s) read from ${REDIRECTS}`)
+console.log(`[sitemap-resolves]   artist flag gate: ${artistGate.reason}`)
 console.log(`[sitemap-resolves]   ${queries.length} table quer(ies), ${columnsChecked} column reference(s) checked against ${TYPES}`)
 console.log('[sitemap-resolves] NOT checked here (by design): whether a given ROW resolves, and whether the')
 console.log('[sitemap-resolves]   deployed sitemap is stale. Both are deployment properties and are measured by')

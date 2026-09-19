@@ -55,6 +55,18 @@ const state = vi.hoisted(() => ({
   /** What the admin client serves per table. */
   events: [] as Array<Record<string, unknown>>,
   organisations: [] as Array<Record<string, unknown>>,
+  /**
+   * What the WEEKEND query sees.
+   *
+   * The stub cannot read a predicate, so every events query would otherwise get
+   * `state.events` and `/this-weekend` would be published whenever the platform
+   * held any event at all, which is not the rule and would make this test agree
+   * with itself. The weekend query is the only events read in the sitemap that
+   * bounds `start_date`, so the chain below swaps to this list the moment it
+   * sees that bound. The two lists are therefore independent: an event can be in
+   * the catalogue and not on this weekend, which is the ordinary case.
+   */
+  weekend: [] as Array<Record<string, unknown>>,
   /** The owner's live indexing threshold. */
   threshold: 1,
 }))
@@ -69,11 +81,24 @@ const state = vi.hoisted(() => ({
  * whatever order the storage engine happened to return. That is the same defect
  * class the sitemap's own events query carries a comment about.
  */
-function chain(rows: unknown[]) {
+function chain(rows: unknown[], weekendRows?: unknown[]) {
   let out = rows
   const self: Record<string, unknown> = {}
-  for (const method of ['select', 'match', 'not', 'eq', 'in', 'or', 'limit', 'gte', 'lte', 'is']) {
+  for (const method of ['select', 'match', 'not', 'eq', 'in', 'or', 'limit', 'lte', 'is', 'range']) {
     self[method] = () => self
+  }
+  /*
+   * `.gte('start_date', ...)` IS THE WEEKEND QUERY AND NOTHING ELSE.
+   *
+   * Every other events read in the sitemap bounds nothing on start_date: the
+   * event catalogue orders by slug, the venue and organiser reads project other
+   * columns, and the listing window arrives as `.or(...)` rather than a bound.
+   * So this one filter is enough to tell the two apart without teaching the stub
+   * to parse PostgREST.
+   */
+  self.gte = (column: string) => {
+    if (column === 'start_date' && weekendRows) out = weekendRows
+    return self
   }
   self.order = (column: string, opts?: { ascending?: boolean }) => {
     const dir = opts?.ascending === false ? -1 : 1
@@ -85,7 +110,10 @@ function chain(rows: unknown[]) {
     })
     return self
   }
-  self.then = (resolve: (v: unknown) => unknown) => resolve({ data: out, error: null })
+  // `count` is served because `fetchPublicEvents` asks for `{ count: 'exact' }`
+  // and decides the weekend surface's indexability from it. Every other reader
+  // ignores the field.
+  self.then = (resolve: (v: unknown) => unknown) => resolve({ data: out, error: null, count: out.length })
   return self
 }
 
@@ -103,7 +131,10 @@ vi.mock('@/lib/supabase/public-client', () => ({
 
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({
-    from: (table: string) => chain(table === 'organisations' ? state.organisations : state.events),
+    from: (table: string) =>
+      table === 'organisations'
+        ? chain(state.organisations)
+        : chain(state.events, state.weekend),
   }),
 }))
 
@@ -409,6 +440,7 @@ describe('the sitemap publishes exactly the pages that are indexable', () => {
       { slug: 'comedy', name: 'Comedy', sort_order: 9 },
       { slug: 'music', name: 'Music', sort_order: 1 },
     ]
+    state.weekend = []
   })
 
   test('sitemap_contains_no_noindex_page', async () => {
@@ -473,9 +505,49 @@ describe('the sitemap publishes exactly the pages that are indexable', () => {
     }
     expect(urls).not.toContain('/organisers/lane-c-empty')
 
+    // THE WEEKEND SURFACE IS ABSENT, and that is the case worth pinning.
+    // `state.events` holds a published event, so the platform is not empty; what
+    // it holds nothing of is THIS WEEKEND. A page whose contents expire every
+    // Sunday night must leave the sitemap on its own, and the only way to see
+    // that is a catalogue that is full and a weekend that is not.
+    expect(urls).not.toContain('/this-weekend')
+
     // NO QUERY STRING EVER. A sitemap URL carrying one is the filter-as-a-page
     // shape this item exists to remove.
     expect(urls.filter(u => u.includes('?'))).toEqual([])
+  })
+
+  test('sitemap_publishes_the_weekend_only_while_it_holds_events', async () => {
+    state.discovery = []
+    state.events = [{ slug: 'lane-c-comedy-night', venue_name: 'Lane C Hall', updated_at: null }]
+    state.organisations = []
+
+    state.weekend = []
+    expect(await generate()).not.toContain('/this-weekend')
+
+    vi.resetModules()
+    state.weekend = [
+      {
+        id: 'lane-c-weekend-1',
+        slug: 'lane-c-saturday-night',
+        title: 'Lane C Saturday Night',
+        start_date: '2026-09-19T09:00:00.000Z',
+        end_date: '2026-09-19T13:00:00.000Z',
+        timezone: 'Australia/Sydney',
+        cover_image_url: 'https://example.test/cover.avif',
+        ticket_tiers: [],
+      },
+    ]
+    expect(await generate()).toContain('/this-weekend')
+
+    /*
+     * AND THE OWNER'S THRESHOLD GOVERNS IT LIKE EVERY OTHER CONDITIONAL PAGE.
+     * One event on the weekend, a threshold of two, and the URL leaves again.
+     */
+    vi.resetModules()
+    state.threshold = 2
+    expect(await generate()).not.toContain('/this-weekend')
+    state.threshold = 1
   })
 
   test('sitemap_count_equals_indexable_count', async () => {
@@ -549,6 +621,9 @@ describe('the sitemap publishes exactly the pages that are indexable', () => {
       }
     }
     expected += state.events.length
+    // The weekend surface, published on the same rule as every other
+    // conditional page and counted the same way.
+    expected += yes(state.weekend.length)
     for (const org of state.organisations) {
       expected += isOrganiserProfileIndexable(
         countOrganiser(rows, org.id as string),

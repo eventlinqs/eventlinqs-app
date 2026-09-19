@@ -37,7 +37,10 @@ export const DISCOVER = [
   // Preset values come from PRESETS in search-params.ts:
   //   7d = next 7 days, weekend = upcoming weekend, free = preset=free.
   { label: 'This week',         href: '/events?preset=7d' },
-  { label: 'This weekend',      href: '/events?preset=weekend' },
+  // The weekend is the one preset with a real page of its own (close-out AQ3).
+  // A footer link is a crawlable link, and pointing it at a query string that
+  // self-canonicalises to /events spent it on a page that already has one.
+  { label: 'This weekend',      href: '/this-weekend' },
   { label: 'Free events',       href: '/events?preset=free' },
 ]
 

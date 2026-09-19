@@ -101,7 +101,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
       </section>
 
       {/* Staff list */}
-      <div className="mb-10 overflow-x-auto rounded-lg border border-white/[0.08]">
+      <div className="relative mb-10 overflow-x-auto rounded-lg border border-white/[0.08]">
         <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="border-b border-white/[0.08] text-left text-white/50">
@@ -148,7 +148,7 @@ export default async function AdminStaffPage({ searchParams }: { searchParams: S
           The baseline each role carries. Per-admin overrides (set on a staff member) tune this for
           one person; a super admin always has everything.
         </p>
-        <div className="overflow-x-auto rounded-lg border border-white/[0.08]">
+        <div className="relative overflow-x-auto rounded-lg border border-white/[0.08]">
           <table className="w-full min-w-[680px] text-sm">
             <thead>
               <tr className="border-b border-white/[0.08] text-left text-white/50">

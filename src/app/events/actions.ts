@@ -89,6 +89,7 @@ export async function loadEventsInBbox(
       title: e.title,
       venue_city: e.venue_city,
       start_date: e.start_date,
+      timezone: e.timezone,
       starting_from_cents: lowestPaid,
       is_free: e.is_free === true || (e.ticket_tiers.length > 0 && lowestPaid === null),
       currency,

@@ -1,8 +1,9 @@
+import { formatEventDate } from '@/lib/dates/event-time'
 import Link from 'next/link'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { HeroMedia } from '@/components/media/HeroMedia'
 import { pickCuratedHomepageHero } from '@/lib/images/homepage-hero-curated'
-import { HERO_SCRIM_GRADIENT } from './hero-scrim'
+import { HeroCaption } from '@/components/media/hero-caption'
 import { getFeaturedHeroBackground, isComposedCover } from '@/lib/images/event-media'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { FeaturedHeroClient, type FeaturedHeroSlide } from './FeaturedHeroClient'
@@ -29,18 +30,10 @@ import { BRAND_TAGLINE_PHRASE_BOUND } from '@/lib/brand/positioning'
 
 const MAX_SLIDES = 5
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-}
+
 
 function detailLine(event: BentoEvent): string {
-  const parts = [event.venue_name, event.venue_city, formatDate(event.start_date)]
+  const parts = [event.venue_name, event.venue_city, formatEventDate(event.start_date, event.timezone)]
     .map(p => (p ?? '').toString().trim())
     .filter(Boolean)
   return parts.join('  |  ')
@@ -110,9 +103,8 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
             is the LCP of a homepage with no featured event. */}
         <div className="relative hero-marketing w-full">
           <HeroMedia image={curated.image} alt={curated.alt} priority />
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: HERO_SCRIM_GRADIENT }} />
           <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
-            <div className="max-w-2xl hero-enter">
+            <HeroCaption className="max-w-2xl" contentClassName="hero-enter">
               <p
                 className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
                 style={{ fontWeight: 600 }}
@@ -138,7 +130,7 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
                   Browse all events
                 </Link>
               </div>
-            </div>
+            </HeroCaption>
           </div>
         </div>
       </section>

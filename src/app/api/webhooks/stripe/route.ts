@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { assertRecipientDeclared } from '@/lib/notifications/recipient-matrix'
+import {
+  notifyOrganiserOfCompletedRefund,
+  notifyOrganiserOfDispute,
+  notifyOrganiserRefundDidNotComplete,
+} from '@/lib/notifications/organiser-money-notify'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -1562,6 +1567,27 @@ async function handleRefundNotCompleted(refund: Stripe.Refund) {
     failure_reason: refund.failure_reason ?? null,
   })
 
+  /*
+   * MONEY FIX B4, FOUND BY CLAUSE 4 OF THE GUARD RATHER THAN BY READING.
+   * `refund_did_not_complete` declares roles ['organiser', 'platform_owner'] and
+   * the only send below is to the owner. Clause 2 judges the DECLARATION, which
+   * names both and is lawful; nothing judged the SENDS, so the owner has been
+   * the sole reader of a message about an organiser's buyer being out of pocket.
+   * The organiser leg goes first, because it is the one that was missing.
+   */
+  const organiserToldOfFailure = await notifyOrganiserRefundDidNotComplete(adminClient, {
+    orderId: row.order_id,
+    amountCents: refund.amount ?? 0,
+    currency: String(refund.currency ?? 'aud').toUpperCase(),
+  })
+  if (organiserToldOfFailure.status !== 'sent') {
+    console.warn('[webhook] the organiser was NOT told a refund on their event failed', {
+      order_id: row.order_id,
+      stripe_refund_id: refund.id,
+      reason: organiserToldOfFailure.reason,
+    })
+  }
+
   // The alert IS the fix. Non-fatal: a Resend outage must not make the webhook retry,
   // because the refunds row is already marked and a retry would only re-send email.
   try {
@@ -1756,6 +1782,29 @@ async function postReconcileSideEffects(
     })
     console.error('[webhook] sendRefundConfirmationEmail failed:', err)
   })
+
+  /*
+   * MONEY FIX B4: "the organiser receives every refund on their event".
+   * `refund_completed` has declared roles ['buyer', 'organiser'] since the
+   * matrix was written and only the buyer was ever sent it.
+   *
+   * A SEPARATE CALL, NOT A SECOND RECIPIENT ON THE BUYER'S SEND, and that is
+   * the whole point: sendRefundConfirmationEmail begins `if (!buyerEmail)
+   * return`, which is right for the buyer and would have silenced the organiser
+   * for a reason that has nothing to do with them.
+   */
+  const organiserToldOfRefund = await notifyOrganiserOfCompletedRefund(adminClient, {
+    orderId: refund.order_id,
+    amountCents: stripeRefund.amount,
+    currency: (charge.currency ?? 'aud').toUpperCase(),
+    ticketCount,
+  })
+  if (organiserToldOfRefund.status !== 'sent') {
+    console.warn('[webhook] the organiser was not told about a settled refund', {
+      order_id: refund.order_id,
+      reason: organiserToldOfRefund.reason,
+    })
+  }
 }
 
 /**
@@ -1822,6 +1871,28 @@ async function orphanOrderLevelVoid(
     })
     console.error('[webhook] sendRefundConfirmationEmail (orphan) failed:', err)
   })
+
+  /*
+   * MONEY FIX B4, THE SAME MESSAGE ON THE OTHER REFUND PATH. A refund made from
+   * the Stripe dashboard arrives here rather than through a refunds row, and an
+   * organiser told about refunds on one path and not the other is worse than
+   * one told about neither: it reads as though the quiet refunds did not happen.
+   *
+   * The amount is the charge's CUMULATIVE `amount_refunded`, which is what this
+   * path has, and the caveat is the same one the buyer's copy carries above.
+   */
+  const organiserToldOfOrphanRefund = await notifyOrganiserOfCompletedRefund(adminClient, {
+    orderId: payment.order_id,
+    amountCents: charge.amount_refunded ?? 0,
+    currency: (charge.currency ?? 'aud').toUpperCase(),
+    ticketCount: (refundedItems ?? []).reduce((n, i) => n + (i.quantity ?? 0), 0),
+  })
+  if (organiserToldOfOrphanRefund.status !== 'sent') {
+    console.warn('[webhook] the organiser was not told about a settled refund (orphan path)', {
+      order_id: payment.order_id,
+      reason: organiserToldOfOrphanRefund.reason,
+    })
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2421,6 +2492,40 @@ async function handleConnectDisputeEvent(
       shareCents: freeze?.share_cents,
       alreadyFrozen: Boolean(freeze?.already_frozen),
     })
+
+    /*
+     * MONEY FIX B4: "every dispute immediately and marked urgent".
+     *
+     * Everything above this line freezes the organiser's share so it can never
+     * be paid out while the dispute is open, and then wrote a line to a server
+     * log. Their money stopped moving and the only party told was the platform.
+     * A dispute also has a deadline, so silence here is the most expensive
+     * version of the defect this item exists to end.
+     *
+     * NOT ON A REPLAY. `freeze_chargeback` is idempotent on the dispute id and
+     * reports `already_frozen` when it has seen this one before; Stripe retries
+     * deliveries, and an organiser sent the same chargeback warning four times
+     * learns to ignore the fifth.
+     *
+     * NON-FATAL: the freeze is already applied and must not be re-run because a
+     * mail server was down.
+     */
+    if (!freeze?.already_frozen) {
+      const told = await notifyOrganiserOfDispute(adminClient, {
+        orderId,
+        disputeAmountCents: dispute.amount,
+        currency: (dispute.currency ?? 'aud').toUpperCase(),
+        evidenceDueBy: dispute.evidence_details?.due_by ?? null,
+      })
+      if (told.status !== 'sent') {
+        console.warn('[disputes] the organiser was NOT told about a chargeback on their event', {
+          eventId,
+          disputeId: dispute.id,
+          orderId,
+          reason: told.reason,
+        })
+      }
+    }
     return
   }
 

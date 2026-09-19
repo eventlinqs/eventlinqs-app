@@ -29,7 +29,11 @@
  * and it does not test behaviour: tests/unit/payments/money-chain.test.ts does
  * that. Clause two covers the CHARGE-time refusal for a disabled organiser; the
  * publish-time refusal is A3 layer two and is not yet built, which is recorded
- * here rather than implied by silence.
+ * here rather than implied by silence. Clause four covers A3 layer three, the
+ * daily settlement reconciliation, and covers its SHAPE only: that it exists,
+ * is wired to the rule, refuses an unauthorised caller, repairs nothing, and
+ * names the charge. Whether it finds anything is a question for the live
+ * balance, which no guard can read.
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -263,6 +267,95 @@ if (calculator) {
   }
 }
 
+// -- CLAUSE FOUR ------------------------------------------------------------
+// A3 LAYER THREE. THE DAILY SETTLEMENT RECONCILIATION IS REAL, READ ONLY, AND
+// NAMES THE MONEY.
+//
+// WHY A GUARD AND NOT ONLY A TEST. This reconciliation is the only thing that
+// would notice the MKLStudios condition happening again, and it is a SCHEDULED
+// job, which is the one kind of code whose absence is silent: a route nobody
+// invokes emits no error and passes every test that calls it directly. The unit
+// tests prove the rule. They cannot prove the rule is still wired to a caller,
+// still refuses an unauthorised one, still reads rather than repairs, and still
+// prints the charge id that identifies the money in Stripe's own dashboard.
+//
+// THE SCHEDULE ITSELF is checked by scripts/guards/cron-routes-scheduled.mjs,
+// which owns that invariant for every cron route. This clause asserts the route
+// EXISTS and does its job, which is the half that guard would pass vacuously on
+// if the route and its schedule were deleted together.
+
+const RECONCILER = 'src/lib/payments/platform-settlement-reconcile.ts'
+const LISTER = 'src/lib/stripe/settled-charges.ts'
+const SETTLEMENT_CRON = 'src/app/api/cron/platform-settlement-reconcile/route.ts'
+
+const reconciler = read(RECONCILER)
+if (reconciler) {
+  const writeVerbs = ['.insert(', '.update(', '.upsert(', '.delete(', '.rpc(']
+  const writesFound = writeVerbs.filter((v) => reconciler.includes(v))
+  if (writesFound.length > 0) {
+    failures.push(
+      `${RECONCILER}: calls ${writesFound.join(', ')}. The settlement reconciliation must only READ. One that repaired what it found would destroy the evidence of how the money came to be adrift, which is the only reason it exists.`,
+    )
+  } else {
+    passes.push('the settlement reconciliation only reads; it repairs nothing')
+  }
+
+  const describeAt = reconciler.indexOf('export function describeFinding(')
+  const formatAt = reconciler.indexOf('function formatMoney(')
+  if (describeAt === -1 || formatAt === -1 || formatAt < describeAt) {
+    failures.push(
+      `${RECONCILER}: describeFinding is gone or has moved, so this clause cannot check that a finding names its charge`,
+    )
+  } else {
+    const describeBody = reconciler.slice(describeAt, formatAt)
+    // Counted rather than parsed: there is one branch per finding kind and each
+    // must name the charge. Counting survives a reworded sentence; a parser
+    // would not.
+    const named = describeBody.split('${chargeId}').length - 1
+    if (!describeBody.includes('unrouted_ticket_charge')) {
+      failures.push(
+        `${RECONCILER}: describeFinding no longer distinguishes unrouted_ticket_charge, so the two findings can no longer be told apart`,
+      )
+    } else if (named < 2) {
+      failures.push(
+        `${RECONCILER}: only ${named} describeFinding branch(es) name the charge id. A P0 that does not name the charge cannot be matched to money in Stripe, which makes it unactionable.`,
+      )
+    } else {
+      passes.push('every settlement finding names the charge id')
+    }
+  }
+}
+
+const lister = read(LISTER)
+if (lister) {
+  const stripeWrite = /stripe\s*\.\s*\w+\s*\.\s*(create|update|del|cancel|capture)\s*\(/.exec(lister)
+  if (stripeWrite) {
+    failures.push(
+      `${LISTER}: calls stripe.*.${stripeWrite[1]}(). The reader of the platform balance must never write to Stripe.`,
+    )
+  } else {
+    passes.push('the platform balance reader makes no Stripe write')
+  }
+}
+
+const settlementCron = read(SETTLEMENT_CRON)
+if (settlementCron) {
+  if (!/scanPlatformSettlement\s*\(/.test(settlementCron)) {
+    failures.push(
+      `${SETTLEMENT_CRON}: does not call scanPlatformSettlement, so the daily schedule points at a job that judges nothing and the platform balance goes unreconciled for ever`,
+    )
+  } else {
+    passes.push('the daily settlement reconciliation is wired to the rule')
+  }
+  if (!/requireCronAuth\s*\(/.test(settlementCron)) {
+    failures.push(
+      `${SETTLEMENT_CRON}: does not call requireCronAuth, so a money reconciliation naming charge ids and organisation names is publicly triggerable`,
+    )
+  } else {
+    passes.push('the settlement reconciliation refuses an unauthorised caller')
+  }
+}
+
 console.log(`[funds-reach-the-organiser] ${passes.length} structural guarantee(s) verified:`)
 for (const p of passes) console.log(`    PASS  ${p}`)
 console.log(
@@ -272,6 +365,13 @@ console.log(
   '          may not go on sale for an organiser who is not enabled) is MONEY FIX A3 layer two',
 )
 console.log('          and is not built yet, so this guard does not claim it.')
+console.log(
+  '    NOTE  clause four covers A3 layer three, the daily settlement reconciliation, and covers',
+)
+console.log(
+  '          its SHAPE only. Whether it FINDS anything is a question for the live balance, which',
+)
+console.log('          no guard can read; scripts/verify/platform-settlement-reconcile-proof.mjs does.')
 
 if (failures.length > 0) {
   console.error(
@@ -288,5 +388,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  '[funds-reach-the-organiser] PASS - every ticket charge names a destination, refuses an organiser who cannot be paid, and is never refused by the fee amount alone.',
+  '[funds-reach-the-organiser] PASS - every ticket charge names a destination, refuses an organiser who cannot be paid, is never refused by the fee amount alone, and the daily settlement reconciliation is wired, read-only and names every charge.',
 )

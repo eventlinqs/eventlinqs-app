@@ -89,7 +89,7 @@ export default async function GstReportPage({
             ) : null}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-ink-200 bg-white">
+          <div className="relative overflow-x-auto rounded-xl border border-ink-200 bg-white">
             <table className="w-full text-sm">
               <caption className="sr-only">GST collected by quarter</caption>
               <thead>

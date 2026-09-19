@@ -105,7 +105,8 @@ export default function CareersPage() {
         variant="premium"
       />
 
-      <ContentSection surface="base" width="default">
+      {/* 1,519px at 390, the tallest band on this page. */}
+      <ContentSection surface="base" width="default" skipOffscreen={false}>
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
           <div>
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">

@@ -586,6 +586,35 @@ const DRILLS = [
     expect: 'organisers URL(s) in the sitemap have no row behind them and would answer 404',
   },
   /*
+   * THE ARTIST FAMILY, TWO DRILLS (19 September 2026).
+   *
+   * The first is the defect that exposed the gap, reproduced rather than
+   * described: on 19 September the sitemap advertised four artist pages whose
+   * only events had ended, and the reachability crawl found one answering 200
+   * with nothing on the site linking to it. Deleting the listing window from
+   * the reader re-creates exactly that, and TEST still holds those four cold
+   * artists, so the drill has real rows to go wrong with rather than a fixture.
+   *
+   * The second is the 42703 again, asked of the family that had no guard at
+   * all until now. It is the one that hid the venue block for its whole life.
+   */
+  {
+    name: 'the artist reader forgets the listing window, so artists whose events have ended are advertised again',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "        .filter(e => typeof e.start_date === 'string' && isStillListed(e, now))",
+    replace: "        .filter(e => typeof e.start_date === 'string')",
+    expect: 'artists URL(s) in the sitemap have no row behind them and would answer 404',
+  },
+  {
+    name: 'the artist query names a column that does not exist, so the family would publish nothing',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .select('slug, updated_at')\n      .in('id', artistIds)",
+    replace: "      .select('handle, updated_at')\n      .in('id', artistIds)",
+    expect: 'the sitemap would publish NO artists URL at all and say nothing about it',
+  },
+  /*
    * all-in-pricing (close-out SEO4), THREE DRILLS, one per clause. The item asks
    * for the guard to be "proven red by displaying a ticket price without its
    * fee, then green", which is the second of these; the other two are the
@@ -926,6 +955,22 @@ const DRILLS = [
     find: '<HeroMedia image={curated.image} alt={curated.alt} priority />',
     replace: '<div aria-hidden className="absolute inset-0" />',
     expect: 'renders no HeroMedia',
+  },
+  {
+    /*
+     * Added 20 September 2026 with the clause it drills. This used to require
+     * the identifier HERO_SCRIM_GRADIENT, and that wash was a percentage of the
+     * band while the text is bottom-anchored, so it left the gold eyebrow at
+     * 2.53:1 on two of the five homepage slides at 390. The clause now requires
+     * the PROPERTY - the text sits inside the wash that is anchored to it - and
+     * this drill is what proves the new clause can still fire.
+     */
+    name: 'the no-event hero paints its text outside the caption wash',
+    guard: `${GUARDS}/homepage-hero-never-empty.mjs`,
+    file: 'src/components/features/home/FeaturedHero.tsx',
+    find: '<HeroCaption className="max-w-2xl hero-enter">',
+    replace: '<div className="max-w-2xl hero-enter">',
+    expect: 'does not wrap its text in <HeroCaption>',
   },
   {
     name: 'a curated hero entry names a raster that does not exist',
@@ -1487,6 +1532,168 @@ const DRILLS = [
     find: "    console.error('[sitemap] artist block failed:', err)",
     replace: '    void err',
     expect: 'catch block that reports nothing',
+  },
+  /*
+   * CLAUSES E AND F OF sitemap-resolves, THE ARTIST HALF (19 September 2026).
+   *
+   * Clause F is the one worth explaining. The comparison guard MODELS the
+   * `broadcast_artists` gate because it cannot execute sitemap.ts, and a model
+   * that drifts from the file drifts SILENTLY and in the worst direction:
+   * delete the `if` and the model keeps agreeing with itself while production,
+   * where that flag is OFF, hands Googlebot a 404 for every artist row on the
+   * platform. Nothing else in the tree would notice. This drill deletes it.
+   */
+  {
+    name: 'the artist block in the sitemap loses its feature-flag gate, which no comparison could see',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: "    if (await isFeatureEnabled('broadcast_artists')) {",
+    replace: "    if (true) {",
+    expect: 'outside any `if (await isFeatureEnabled(',
+  },
+  {
+    name: 'the catalogue stops building an artists path, so the family disappears in silence',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      rows.push({ path: `/artists/${slug}`,",
+    replace: "      rows.push({ path: `/performers/${slug}`,",
+    expect: 'no longer builds /artists/PARAM',
+  },
+  /*
+   * one-weekend-definition, THREE DRILLS (19 September 2026).
+   *
+   * This definition has been got wrong SIX times. Four copies were found and
+   * consolidated by the header on listing-window.ts; two more were still live
+   * on 19 September and that consolidation had no way to see them. The first
+   * two drills put each of those two back, in the exact shape it had. The
+   * third is the quiet one: rename the definition and clause 1 becomes
+   * unsatisfiable while a guard without clause 2 would report a pass on a tree
+   * that no longer defines a weekend anywhere.
+   */
+  {
+    name: 'the homepage builds its own weekend again, on a UTC day',
+    guard: `${GUARDS}/one-weekend-definition.mjs`,
+    file: 'src/app/page.tsx',
+    find: "import { weekendWindowUtc } from '@/lib/events/listing-window'",
+    replace: "const weekendWindowUtc = (n) => ({ from: new Date(n.setUTCHours(0,0,0,0)), to: new Date() })",
+    expect: 'src/app/page.tsx decides something about the WEEKEND',
+  },
+  {
+    name: 'the surprise label reads the server clock again, so a Monday morning is Weekend energy',
+    guard: `${GUARDS}/one-weekend-definition.mjs`,
+    file: 'src/app/api/home/surprise/route.ts',
+    find: "import { listingWindowOrPredicate, localDayOfWeek, localHourOfDay } from '@/lib/events/listing-window'",
+    replace: "const localDayOfWeek = (d) => d.getDay(); const localHourOfDay = (d) => d.getHours();",
+    expect: 'src/app/api/home/surprise/route.ts decides something about the WEEKEND',
+  },
+  {
+    name: 'the weekend definition is renamed, so every file is sent to a function that is not there',
+    guard: `${GUARDS}/one-weekend-definition.mjs`,
+    file: 'src/lib/events/listing-window.ts',
+    find: "export function weekendWindowUtc(",
+    replace: "export function weekendWindowUtcRenamed(",
+    expect: 'no longer exports weekendWindowUtc',
+  },
+  /*
+   * event-dates-in-the-event-zone, TWO DRILLS (19 September 2026).
+   *
+   * The first puts the defect back on the highest-traffic card on the
+   * platform. Eight components shipped this shape at once and every morning
+   * event in Australia showed the wrong DAY, because an event starting before
+   * 10:00 AEST is on the previous day in UTC. The second is the quiet one: a
+   * rename of the formatter everything is sent to, which without clause 2
+   * would leave the guard giving an impossible instruction and reporting a
+   * pass.
+   */
+  {
+    name: 'a card pins its date to UTC again, so every morning event shows the previous day',
+    guard: `${GUARDS}/event-dates-in-the-event-zone.mjs`,
+    file: 'src/components/features/events/event-bento-tile.tsx',
+    find: "          {formatEventDateShort(event.start_date, event.timezone)}",
+    replace: "          {new Date(event.start_date).toLocaleDateString('en-AU', { timeZone: 'UTC' })}",
+    expect: 'pins a date to UTC on a surface that renders for a reader',
+  },
+  {
+    name: 'the shared date formatter is renamed, so every surface is sent to a function that is not there',
+    guard: `${GUARDS}/event-dates-in-the-event-zone.mjs`,
+    file: 'src/lib/dates/event-time.ts',
+    find: "export function formatEventDateShort(",
+    replace: "export function formatEventDateShortRenamed(",
+    expect: 'no longer exports formatEventDateShort',
+  },
+  /*
+   * weekend-surface-one-decision, SIX DRILLS, one per clause (19 September 2026).
+   *
+   * /this-weekend is the only page on the platform whose contents expire on a
+   * schedule, so every one of these is a state the tree will genuinely be one
+   * edit away from. The last one is the defect the item found rather than
+   * introduced: a date preset that REPLACED the listing window instead of
+   * narrowing it, which had /events?preset=weekend listing gigs that finished
+   * yesterday while the homepage rail above the same link did not.
+   */
+  {
+    name: 'the sitemap publishes the weekend even when nothing is on it',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '  if (isDiscoveryIndexable(weekendSurface.total, threshold)) {',
+    replace: '  if (weekendSurface.total >= 0) {',
+    expect: 'without an isDiscoveryIndexable',
+  },
+  {
+    name: 'the page stops deciding its own robots directive from the weekend count',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/app/this-weekend/page.tsx',
+    find: '    ...(await discoveryIndexingFor(total, WEEKEND_SURFACE_PATH)),',
+    replace: '    robots: { index: true, follow: true },',
+    expect: 'does not decide its robots directive',
+  },
+  {
+    name: 'the weekend surface is renamed, so the page and the sitemap are sent to a function that is not there',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/weekend-surface.ts',
+    find: 'export async function loadWeekendSurface(',
+    replace: 'export async function loadWeekendSurfaceRenamed(',
+    expect: 'no longer exports loadWeekendSurface',
+  },
+  {
+    name: 'the day split is renamed in the leaf, where the fixture seeder reads it from outside Next',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/weekend-days.ts',
+    find: 'export function groupWeekendByDay<',
+    replace: 'export function groupWeekendByDayRenamed<',
+    expect: 'no longer exports groupWeekendByDay',
+  },
+  {
+    name: 'the read module stops re-exporting the leaf, so one surface becomes two unrelated imports',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/weekend-surface.ts',
+    find: "export * from './weekend-days'",
+    replace: "export type { WeekendDay } from './weekend-days'",
+    expect: 'no longer re-exports',
+  },
+  {
+    name: 'the sitemap writes the weekend path as a literal, so two strings must match and nothing checks',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '      url: `${baseUrl}${WEEKEND_SURFACE_PATH}`,',
+    replace: "      url: `${baseUrl}` + '/this-weekend',",
+    expect: 'writes the path',
+  },
+  {
+    name: 'the weekend page is reclassified always, so an empty weekend is published every week',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/seo/indexing-policy.ts',
+    find: "{ route: '/this-weekend', klass: 'conditional'",
+    replace: "{ route: '/this-weekend', klass: 'always'",
+    expect: "must be 'conditional'",
+  },
+  {
+    name: 'a date preset replaces the listing window again, so a finished gig is still on this weekend',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/fetchers.ts',
+    find: '  q = q.or(listingWindowOrPredicate(now))',
+    replace: '  if (!window) q = q.or(listingWindowOrPredicate(now))',
+    expect: 'applies the listing window behind a condition',
   },
   /*
    * one-db-connection-source, four drills, one per banned shape.
@@ -3411,6 +3618,36 @@ const DRILLS = [
     expect: 'no longer tests `!org.stripe_payouts_enabled`',
   },
   /*
+   * MONEY FIX A3 layer three, the three drills for clause four. The first is
+   * the one that matters: a reconciliation that repairs what it finds destroys
+   * the evidence of how the money came to be adrift, and it would do so while
+   * reporting a clean balance every morning.
+   */
+  {
+    name: 'the settlement reconciliation starts repairing what it finds instead of reporting it',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/platform-settlement-reconcile.ts',
+    find: "      .select('reference_id')",
+    replace: "      .upsert({ reference_id: 'repaired' })",
+    expect: 'must only READ',
+  },
+  {
+    name: 'a settlement finding stops naming the charge, so nobody can match it to money in Stripe',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/platform-settlement-reconcile.ts',
+    find: '`${money} settled on the platform balance as charge ${chargeId} carrying no transfer_group, `',
+    replace: '`${money} settled on the platform balance carrying no transfer_group, `',
+    expect: 'name the charge id',
+  },
+  {
+    name: 'the daily schedule is left pointing at a settlement job that judges nothing',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/app/api/cron/platform-settlement-reconcile/route.ts',
+    find: 'report = await scanPlatformSettlement(createAdminClient(), {',
+    replace: 'report = await noSuchScan(createAdminClient(), {',
+    expect: 'judges nothing',
+  },
+  /*
    * MONEY FIX B3, the five drills for every-message-has-a-declared-recipient.
    *
    * The first two are the defect itself from both directions: an organiser
@@ -3459,6 +3696,34 @@ const DRILLS = [
     find: "  assertRecipientDeclared('order_confirmation_and_ticket', 'buyer')",
     replace: "  // assertRecipientDeclared('order_confirmation_and_ticket', 'buyer')",
     expect: 'is a transport but never calls assertRecipientDeclared',
+  },
+  /*
+   * CLAUSE 4, TWO DRILLS (close-out MONEY FIX B4, 19 September 2026, lane A).
+   *
+   * Clause 4 exists because clause 2 judges the DECLARATION and nothing judged
+   * the SENDS, so a type naming BOTH the owner and the organiser passed while
+   * every send site reached only the owner. It found `refund_did_not_complete`
+   * live in exactly that state the day it was written.
+   *
+   * Each drill removes the organiser's only route to one of these messages, in
+   * the two ways that have actually happened: a send site that stops naming the
+   * type at all, and a money message that goes back to being owner-only.
+   */
+  {
+    name: "the organiser's chargeback warning stops naming its message type",
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/notifications/organiser-money-notify.ts',
+    find: "      messageType: 'organiser_dispute_opened',",
+    replace: "      messageType: 'organiser_event_published',",
+    expect: "'organiser_dispute_opened' declares the organiser as a recipient and nothing in src/ sends it to one",
+  },
+  {
+    name: 'a failed refund goes back to telling the owner and not the organiser',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/notifications/organiser-money-notify.ts',
+    find: "      messageType: 'refund_did_not_complete',",
+    replace: "      messageType: 'organiser_event_published',",
+    expect: "'refund_did_not_complete' declares the organiser as a recipient and nothing in src/ sends it to one",
   },
   {
     name: 'a payout message starts consulting the sales off switch',
@@ -4793,6 +5058,295 @@ const DRILLS = [
     replace: 'const SANITISES_AT_SOURCE = /never-matches-anything-at-all/; const UNUSED_SANITISES = /',
     expect: 'no longer matches',
   },
+
+  /*
+   * THE FIVE DEBTS LANE C PAID, one drill each (19 September 2026).
+   *
+   * They were in the register when the guard shipped, which meant the guard
+   * PRINTED them and could not FAIL on them. They are ordinary files now, so
+   * each drill puts the interpolation back and shows the build refusing. A debt
+   * that is paid and not drilled is a debt that comes back on the next
+   * copy-paste, which is how four of these five arrived in the first place.
+   *
+   * Measured against TEST before any of them was touched:
+   *   .or(`title.ilike.%Night, Geelong%,slug.ilike.%Night, Geelong%`)
+   *     -> PGRST100 failed to parse logic tree
+   *   the same search, escaped -> 3 rows, all of the shape "... Night, Geelong"
+   */
+  {
+    name: 'the admin user search goes back to interpolating a raw term, so "Smith, John" 500s',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/users.ts',
+    find: "q = q.or(ilikeAnyOf(['email', 'full_name', 'display_name'], filters.search))",
+    replace: 'q = q.or(`email.ilike.%${filters.search}%,full_name.ilike.%${filters.search}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the admin event search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/events.ts',
+    find: "q = q.or(ilikeAnyOf(['title', 'slug'], filters.search))",
+    replace: 'q = q.or(`title.ilike.%${filters.search}%,slug.ilike.%${filters.search}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the admin organiser search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find: "q = q.or(ilikeAnyOf(['name', 'slug', 'email'], filters.search))",
+    replace: 'q = q.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the global admin search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/search.ts',
+    find: "or(ilikeAnyOf(['title', 'slug'], q))",
+    replace: 'or(`title.ilike.%${q}%,slug.ilike.%${q}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the public organiser search scope goes back to its own private copy of the escape',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/events/search-scopes.ts',
+    find: "or(ilikeAnyOf(['name', 'slug'], term))",
+    replace: 'or(`name.ilike.%${term}%,slug.ilike.%${term}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+
+  /*
+   * sr-only-cannot-escape-a-scroller, six drills (19 September 2026).
+   *
+   * sr-only is position:absolute, and an absolutely positioned element is
+   * clipped by an ancestor's overflow ONLY when that ancestor is its CONTAINING
+   * BLOCK. Nine containers held a screen-reader label and were not one, so the
+   * label was laid out at its position in the FULL scroll width. Measured at 390:
+   * /admin/users 569, /admin/events 594, /admin/organisers 605, against a
+   * control of 390 on /admin/orders, whose table markup is identical and whose
+   * cells carry no sr-only.
+   *
+   * ONE DRILL AIMS AT THE PREMISE RATHER THAN AT THE MARKUP. The rule is only
+   * true while sr-only is absolutely positioned. If a stylesheet redefines it the
+   * guard must say so loudly rather than keep failing builds over a rule that has
+   * stopped being true.
+   */
+  {
+    name: 'the admin user table stops being a containing block for its own screen-reader labels',
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/app/admin/(authed)/users/page.tsx',
+    find: 'className="relative overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]"',
+    replace: 'className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]"',
+    expect: 'but is not a containing block',
+  },
+  {
+    name: 'the admin event table stops being a containing block for its own screen-reader labels',
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/app/admin/(authed)/events/page.tsx',
+    find: 'className="relative overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]"',
+    replace: 'className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]"',
+    expect: 'but is not a containing block',
+  },
+  {
+    name: 'the fee table on /admin/pricing stops being a containing block',
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/app/admin/(authed)/pricing/page.tsx',
+    find: 'className="relative overflow-x-auto rounded-lg border border-white/[0.08]"',
+    replace: 'className="overflow-x-auto rounded-lg border border-white/[0.08]"',
+    expect: 'but is not a containing block',
+  },
+  {
+    name: "the organiser's GST report table stops being a containing block",
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/app/(dashboard)/dashboard/reports/gst/page.tsx',
+    find: 'className="relative overflow-x-auto rounded-xl border border-ink-200 bg-white"',
+    replace: 'className="overflow-x-auto rounded-xl border border-ink-200 bg-white"',
+    expect: 'but is not a containing block',
+  },
+  {
+    name: 'the city picker dialog stops being a containing block for its own labels',
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/components/ui/location-picker-panel.tsx',
+    find: 'className="relative flex w-full max-w-lg max-h-[calc(100vh-2rem)] flex-col overflow-hidden',
+    replace: 'className="flex w-full max-w-lg max-h-[calc(100vh-2rem)] flex-col overflow-hidden',
+    expect: 'but is not a containing block',
+  },
+  {
+    name: "the premise moves: a stylesheet redefines sr-only and the guard refuses rather than judging on",
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/app/globals.css',
+    find: ':root {',
+    replace: '.sr-only { position: static; }\n:root {',
+    expect: 'redefines .sr-only',
+  },
+
+  /*
+   * a-hero-is-never-a-placeholder, five drills (19 September 2026).
+   *
+   * The link crawler found /categories/technology answering 500, linked from
+   * /categories/music, with "[HeroMedia] image must be a raster URL (got SVG)"
+   * in the log. The photo resolver answers "no photograph" with a branded SVG,
+   * a non-empty string wins the `??` chain, and the hero's own bundled last
+   * resort never ran. In PRODUCTION the assertion is compiled out, so the same
+   * page would have served a hero that cannot be the LCP, silently.
+   *
+   * THE LAST TWO AIM AT THE GUARD'S OWN PREMISES rather than at the markup: the
+   * refusal it protects, and the matcher that decides whether a chain ends on a
+   * raster.
+   */
+  {
+    name: 'the category page goes back to passing the placeholder straight into its hero',
+    guard: `${GUARDS}/a-hero-is-never-a-placeholder.mjs`,
+    file: 'src/app/categories/[slug]/page.tsx',
+    find: 'heroImage={isBrandedFallbackPhoto(photo) ? null : photo.src}',
+    replace: 'heroImage={photo.src}',
+    expect: 'without asking isBrandedFallbackPhoto',
+  },
+  {
+    name: 'a second file keeps its own private copy of the placeholder path',
+    guard: `${GUARDS}/a-hero-is-never-a-placeholder.mjs`,
+    file: 'src/lib/images/event-media.ts',
+    find: 'const FALLBACK_POSTER = BRANDED_FALLBACK_PHOTO.src',
+    replace: "const FALLBACK_POSTER = '/images/event-fallback-hero.svg'",
+    expect: 'names the placeholder path',
+  },
+  {
+    name: "the category hero's chain goes back to ending on whatever the caller passed",
+    guard: `${GUARDS}/a-hero-is-never-a-placeholder.mjs`,
+    file: 'src/components/templates/PhotographicCategoryHero.tsx',
+    find: 'const src = spine?.src ?? HERO_RASTER_BY_SLUG[slug] ?? fallbackImage ?? HERO_RASTER_DEFAULT',
+    replace: 'const src = spine?.src ?? HERO_RASTER_BY_SLUG[slug] ?? fallbackImage',
+    expect: 'does not end on a bundled raster literal',
+  },
+  {
+    name: 'HeroMedia stops refusing an SVG and the guard refuses rather than judging on',
+    guard: `${GUARDS}/a-hero-is-never-a-placeholder.mjs`,
+    file: 'src/components/media/HeroMedia.tsx',
+    find: 'must be a raster URL',
+    replace: 'must be a bitmap URL',
+    expect: 'no longer refuses an SVG',
+  },
+  {
+    name: "the raster-chain matcher quietly stops recognising a named constant",
+    guard: `${GUARDS}/a-hero-is-never-a-placeholder.mjs`,
+    file: 'scripts/guards/a-hero-is-never-a-placeholder.mjs',
+    find: 'const RASTER_DECLARATION = /',
+    replace: 'const RASTER_DECLARATION = /never-matches-anything-at-all/; const UNUSED_RASTER = /',
+    expect: 'does not end on a bundled raster literal',
+  },
+  /*
+   * hero-text-over-a-photograph, six drills (19 September 2026).
+   *
+   * Four hero templates each carried their own navy gradient, the four
+   * disagreed, and every stop in all four was a percentage of the hero BAND
+   * while the text is bottom-anchored and hugs its own content. So the wash
+   * promised something about text it could not locate: the gold eyebrow on
+   * /categories/technology measured 1.38:1 at 390, 3.33:1 at 768 and 10.67:1 at
+   * 1440 against a floor of 4.5, on one page and one photograph. Across the
+   * platform 301 of 795 measured runs failed, on 75 of 91 routes.
+   *
+   * THE LAST THREE AIM AT THE GUARD'S OWN PREMISES rather than at the markup:
+   * the strength, the geometry that makes the strength mean anything, and the
+   * component that actually paints it.
+   */
+  /*
+   * THE SEVENTH AND EIGHTH AIM AT THE LIST ITSELF, added 20 September 2026.
+   *
+   * The guard opened by saying its heroes were "derived from the one thing they
+   * all must do rather than listed", and then listed five files. The derivation
+   * was performed for the first time on 20 September and returned THIRTEEN. The
+   * eight that had never been on the list carried eight more hand-written navy
+   * gradients, measured at 1.01:1 on /waitlist and /about and 1.04:1 on
+   * /organisers against a 4.5:1 floor, while the guard printed PASS.
+   *
+   * Drill 7 breaks a hero the OLD hand-written list did not contain. Against
+   * that list it could not have fired at all; against the derivation it must.
+   * Drill 8 aims at the ratchet: the register's one non-border entry says the
+   * empty state's photographic branch has no caller, and the guard must notice
+   * the moment that stops being true.
+   */
+  {
+    name: 'a hero the old hand-written list never held loses its caption',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/app/about/page.tsx',
+    find: '<HeroCaption className="max-w-2xl" contentClassName="hero-enter">',
+    replace: '<div className="max-w-2xl">',
+    expect: 'src/app/about/page.tsx paints hero text without <HeroCaption>',
+  },
+  {
+    name: 'the register says the empty state has no photographic caller, and a caller appears',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/templates/CityLandingPage.tsx',
+    find: '<CategoryHeroEmpty\n            eyebrow={city.name.toUpperCase()}',
+    replace: '<CategoryHeroEmpty\n            coverImage="/images/hero/curated-1.avif"\n            eyebrow={city.name.toUpperCase()}',
+    expect: 'has stopped being true',
+  },
+  {
+    /*
+     * The ninth, and the one no drive could ever have replaced. `.hero-enter`
+     * staggers its DIRECT children, and <HeroCaption> puts two elements between
+     * its className and the text, so a stagger written there animates the wash
+     * and the whole block rather than the eyebrow, headline, meta and CTA in
+     * turn. The stagger is armed only under html[data-motion="1"], which
+     * headless agents are deliberately never given, so every screenshot shows
+     * the correct settled frame. This mistake was made for real while
+     * converting the heroes on 20 September 2026.
+     */
+    name: 'a hero puts its child stagger two elements above the text it staggers',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/app/waitlist/page.tsx',
+    find: '<HeroCaption className="max-w-2xl" contentClassName="hero-enter">',
+    replace: '<HeroCaption className="max-w-2xl hero-enter">',
+    expect: 'which is two elements above the text',
+  },
+  {
+    name: 'a hero goes back to writing its own navy gradient',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/features/city/city-hero.tsx',
+    find: 'style={{ background: HERO_HEADER_SCRIM }}',
+    replace: "style={{ background: 'linear-gradient(180deg, rgba(10,22,40,0.36) 0%, rgba(10,22,40,0.88) 100%)' }}",
+    expect: 'writes its own navy gradient',
+  },
+  {
+    name: 'a hero paints its text outside the caption that carries the wash',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/templates/PhotographicCommunityHero.tsx',
+    find: '<HeroCaption className="max-w-3xl">',
+    replace: '<div className="max-w-3xl">',
+    expect: 'without <HeroCaption>',
+  },
+  {
+    name: 'a hero band loses the clip that trims the full-width bleed',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/templates/PhotographicCityHero.tsx',
+    find: 'className="relative overflow-hidden"',
+    replace: 'className="relative"',
+    expect: 'does not clip its hero band',
+  },
+  {
+    name: 'the caption wash is weakened below what the gold eyebrow needs',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/media/hero-photo-scrim.ts',
+    find: 'export const HERO_CAPTION_MIN_ALPHA = 0.82',
+    replace: 'export const HERO_CAPTION_MIN_ALPHA = 0.7',
+    expect: 'under WCAG 2.2 SC 1.4.3',
+  },
+  {
+    name: "the caption ramp goes back to a percentage, which is the original defect",
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/media/hero-photo-scrim.ts',
+    find: "export const HERO_CAPTION_DEEPEN = '14rem'",
+    replace: "export const HERO_CAPTION_DEEPEN = '100%'",
+    expect: 'must not depend on the element',
+  },
+  {
+    name: 'the caption component imports the wash and forgets to paint it',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/media/hero-caption.tsx',
+    find: 'background: HERO_CAPTION_SCRIM,',
+    replace: 'background: undefined,',
+    expect: 'sits on nothing',
+  },
+
   {
     name: "clause 3's matcher is rebuilt inside a template literal and quietly stops matching",
     guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
@@ -5091,12 +5645,166 @@ const DRILLS = [
     expect: 'does not reference chrome-nav-link',
   },
   {
+    name: 'every interior template stops skipping below-fold layout because ContentSection dropped the class',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/layout/ContentSection.tsx',
+    find: "className={`${skipOffscreen ? 'cv-section ' : ''}relative",
+    replace: "className={`${skipOffscreen ? '' : ''}relative",
+    expect: 'does not reference cv-section',
+  },
+  {
+    /* cv-section is not a class list; it is held by the same guard because it
+     * fails the same way - a one-line deletion that costs measured
+     * milliseconds on every homepage visit and breaks no test. */
+    name: 'the homepage rails stop skipping below-fold layout because SECTION_RAIL lost the class',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/lib/ui/spacing.ts',
+    find: "export const SECTION_RAIL    = 'cv-section py-6 sm:py-8' as const",
+    replace: "export const SECTION_RAIL    = 'py-6 sm:py-8' as const",
+    expect: 'does not reference cv-section',
+  },
+  {
     name: 'the flight matcher goes blind and the calibration refuses rather than reporting a clean build',
     guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
     file: 'scripts/guards/class-lists-are-not-repeated-per-card.mjs',
     find: "const CLASS_FLIGHT = new RegExp(`className${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
     replace: "const CLASS_FLIGHT = new RegExp(`classNameXX${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
     expect: 'REFUSING: the calibration probe was found',
+  },
+
+  /*
+   * THE RESERVED HEIGHT OF AN EVENT GRID, FIVE DRILLS, ONE PER CLAUSE
+   * (close-out C8B.3, 19 September 2026).
+   *
+   * The guard holds a number that is EXACT today - the reservation reproduces
+   * the measured section to within a pixel - and an exact number is a claim
+   * about eight pieces of markup that do not announce themselves when they
+   * change. Each drill below moves one of them and shows the build refusing.
+   */
+  {
+    name: 'reserved height: an event grid goes back to laying out in full before first paint',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/components/templates/SuburbLandingPage.tsx',
+    find: '        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}',
+    replace: '        skipOffscreen={false}',
+    expect: 'reserves a rail',
+  },
+  {
+    name: 'reserved height: a section reserves room for the array it was handed and renders a slice of it',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/components/templates/CityLandingPage.tsx',
+    find: '        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}',
+    replace: '        intrinsicSize={eventGridIntrinsicSize(allEvents.length)}',
+    expect: 'and renders shownEvents.map',
+  },
+  {
+    name: 'reserved height: the grid gutter is widened and the reservation is left describing the old one',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/lib/ui/event-grid-intrinsic.ts',
+    find: "  gridClass: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3',",
+    replace: "  gridClass: 'grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3',",
+    expect: 'the gutter is 24px, which is gap-6',
+  },
+  {
+    name: 'reserved height: the spacing scale is redefined under a module that reads it as pixels',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/app/globals.css',
+    find: '  --container-7xl: 87.5rem; /* 1400px */',
+    replace: '  --container-7xl: 87.5rem; /* 1400px */\n  --spacing: 0.3rem;',
+    expect: 'declares --spacing:',
+  },
+  {
+    name: 'reserved height: the reservation switches to the two-column height at the wrong breakpoint',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/app/globals.css',
+    find: '@media (width >= 48rem) {',
+    replace: '@media (width >= 40rem) {',
+    expect: 'does not declare the md reservation on .cv-measured at 48rem',
+  },
+  {
+    name: 'reserved height: the drive goes back to comparing a content box with a border box',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'scripts/verify/event-grid-intrinsic-drive.mjs',
+    find: '          const reservedBorderBox = estimate + (g.sectionPadTop ?? 0) + (g.sectionPadBottom ?? 0)',
+    replace: '          const reservedBorderBoxRenamed = estimate',
+    expect: "no longer adds the section's padding",
+  },
+  {
+    name: 'reserved height: the stylesheet formula is edited by hand and stops matching the module',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/app/globals.css',
+    find: '+ 168.5px) + 88px);',
+    replace: '+ 168.5px) + 96px);',
+    expect: 'does not declare the base reservation the module generates',
+  },
+  /*
+   * SURFACE FLAG COLOURS. The three shapes the defect actually took, and the
+   * one it could take next. The shared empty state branched seven colours on
+   * its photo/canvas flag and left two behind, in OPPOSITE directions, which is
+   * why clause 1 alone is not enough: a branch that points the wrong way round
+   * satisfies it and paints 1.59:1 anyway.
+   */
+  {
+    name: 'surface colours: the trust-pillar icon stops branching and paints gold-400 on the light card at 1.59:1',
+    guard: `${GUARDS}/surface-flag-colours-branch.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "shrink-0 ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}",
+    replace: 'shrink-0 text-[var(--brand-accent)]',
+    expect: 'is painted unconditionally',
+  },
+  {
+    name: 'surface colours: the eyebrow stops branching and paints gold-800 on the photo hero at 2.70:1',
+    guard: `${GUARDS}/surface-flag-colours-branch.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "tracking-[0.18em] ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}",
+    replace: 'tracking-[0.18em] text-[var(--brand-accent-strong)]',
+    expect: 'is painted unconditionally',
+  },
+  {
+    name: 'surface colours: the icon branches the WRONG WAY ROUND, which clause 1 alone would pass',
+    guard: `${GUARDS}/surface-flag-colours-branch.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "shrink-0 ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}",
+    replace: "shrink-0 ${onPhoto ? 'text-[var(--brand-accent-strong)]' : 'text-[var(--brand-accent)]'}",
+    expect: 'which is the wrong way round',
+  },
+  /*
+   * HERO SCALE. The growing variant exists because a fixed box clipped 637px of
+   * content into 439px at 390 on 19 September 2026. The plausible next edit is
+   * somebody deciding the card is too tall and handing that rule a height back,
+   * which restores the clipping silently, so that is drill one.
+   */
+  {
+    name: 'hero scale: the growing variant is given a height back, which is exactly how the clipping returns',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/app/globals.css',
+    find: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); }',
+    replace: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); height: var(--hero-scale); }',
+    expect: 'gives .hero-marketing-grow a height',
+  },
+  {
+    name: 'hero scale: the growing variant is given a max-height, which clips the same content from the other end',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/app/globals.css',
+    find: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); }',
+    replace: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); max-height: 600px; }',
+    expect: 'gives .hero-marketing-grow a max-height',
+  },
+  {
+    name: 'hero scale: the scale is written back as a literal instead of read from the one custom property',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/app/globals.css',
+    find: '.hero-marketing { height: var(--hero-scale); }',
+    replace: '.hero-marketing { height: 52vh; }',
+    expect: 'sets a hero height literal',
+  },
+  {
+    name: 'hero scale: a page overrides the shared scale on the hero element itself',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "'hero-marketing-grow border border-ink-100",
+    replace: "'hero-marketing-grow h-[44vh] border border-ink-100",
+    expect: 'on the same element as the hero class',
   },
 
   /*

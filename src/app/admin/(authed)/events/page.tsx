@@ -125,7 +125,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
         </div>
       </form>
 
-      <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
+      <div className="relative overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
         <table className="w-full min-w-[820px] text-left text-sm">
           <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50">
             <tr>

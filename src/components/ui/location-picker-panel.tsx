@@ -365,7 +365,7 @@ export function LocationPickerPanel({
         role="dialog"
         aria-modal="true"
         aria-labelledby="location-picker-title"
-        className="flex w-full max-w-lg max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="relative flex w-full max-w-lg max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
         <div className="flex shrink-0 items-center justify-between border-b border-ink-100 px-5 py-4">
           <div className="flex items-center gap-2">

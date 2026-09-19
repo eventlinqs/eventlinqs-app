@@ -13,6 +13,7 @@ import { CityTileImage } from '@/components/media/CityTileImage'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
 import { VenueMap } from '@/components/features/events/venue-map'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -46,6 +47,13 @@ interface VenueOrganiserAggregate {
   eventCount: number
   logoUrl: string | null
 }
+
+/**
+ * How many past events the archive grid shows. It was the literal 12 inside
+ * `.slice(0, 12)`; it is named because the reserved height is derived from
+ * the same number.
+ */
+const PAST_EVENTS_SHOWN = 12
 
 async function fetchVenueEventsByName(venueName: string) {
   const supabase = createPublicClient()
@@ -147,6 +155,11 @@ export default async function VenueProfilePage({ params }: Props) {
   if (!venue) notFound()
 
   const { upcoming, past } = await fetchVenueEventsByName(venue.name)
+
+  /* ONE array feeds both the reserved height and the cards: the section
+   * declares the height of what it renders, not of what it was handed
+   * (close-out C8B.3, 19 September 2026). */
+  const pastShown = past.slice(0, PAST_EVENTS_SHOWN)
 
   // Aggregate organisers using this venue (top by event count).
   const orgCounts = new Map<string, VenueOrganiserAggregate>()
@@ -330,8 +343,13 @@ export default async function VenueProfilePage({ params }: Props) {
         </ContentSection>
 
         {/* VP5 Past events grid */}
-        {past.length > 0 ? (
-          <ContentSection surface="alt" width="wide" topBorder>
+        {pastShown.length > 0 ? (
+          <ContentSection
+            surface="alt"
+            width="wide"
+            topBorder
+            intrinsicSize={eventGridIntrinsicSize(pastShown.length)}
+          >
             <div className="mb-6">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
                 Past events
@@ -341,7 +359,7 @@ export default async function VenueProfilePage({ params }: Props) {
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {past.slice(0, 12).map(e => (
+              {pastShown.map(e => (
                 <EventCard key={e.id} event={e} />
               ))}
             </div>

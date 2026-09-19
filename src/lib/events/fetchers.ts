@@ -551,6 +551,7 @@ type RawRow = {
   gallery_urls: string[] | null
   start_date: string
   end_date: string
+  timezone: string | null
   venue_name: string | null
   venue_city: string | null
   venue_country: string | null
@@ -572,7 +573,7 @@ type RawRow = {
 
 const DEFAULT_PAGE_SIZE = 24
 const BASE_SELECT =
-  'id, slug, title, summary, description, cover_image_url, thumbnail_url, gallery_urls, start_date, end_date, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(id, name, slug), organisation:organisations(id, name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, description, cover_image_url, thumbnail_url, gallery_urls, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(id, name, slug), organisation:organisations(id, name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 function normaliseRelation<T>(rel: T | T[] | null): T | null {
   if (rel === null || rel === undefined) return null
@@ -632,6 +633,7 @@ function toPublicEventRow(raw: RawRow): PublicEventRow {
     gallery_urls: raw.gallery_urls,
     start_date: raw.start_date,
     end_date: raw.end_date,
+    timezone: raw.timezone,
     venue_name: raw.venue_name,
     venue_city: raw.venue_city,
     venue_country: raw.venue_country,
@@ -839,17 +841,7 @@ export async function fetchPublicEvents(
     query = query.eq('is_free', true)
   }
 
-  const window = presetWindow(filters.preset, now)
-  if (window) {
-    query = query.gte('start_date', window.from)
-    if (window.to) query = query.lte('start_date', window.to)
-  } else {
-    // LISTED UNTIL IT HAS ENDED, not until it has started. This replaced
-    // `start_date >= now`, which removed an event from discovery the moment it
-    // began: a 09:00 gig was invisible at 09:01, on the day it was on. The rule
-    // and the reason live in src/lib/events/listing-window.ts.
-    query = query.or(listingWindowOrPredicate(now))
-  }
+  query = applyDateWindow(query, filters.preset, now)
 
   if (filters.from) query = query.gte('start_date', filters.from)
   if (filters.to) query = query.lte('start_date', filters.to)
@@ -908,6 +900,71 @@ export async function fetchPublicEvents(
   return { events, total, page, pageSize, totalPages }
 }
 
+
+/**
+ * A query builder, reduced to the three methods this helper calls. Structural,
+ * so the helper can be exercised by a test with no Supabase client and no
+ * network, which is the only way the ORDER of the filters can be pinned.
+ */
+export interface DateWindowQuery {
+  gte(column: string, value: string): DateWindowQuery
+  lte(column: string, value: string): DateWindowQuery
+  or(filters: string): DateWindowQuery
+}
+
+/**
+ * NARROW TO THE DATE PRESET, AND THEN STILL DROP WHAT HAS ENDED.
+ *
+ * ============================================================================
+ * THE DEFECT THIS CLOSES (19 September 2026, found while building /this-weekend)
+ * ============================================================================
+ *
+ * The two public fetchers each carried this block, character for character:
+ *
+ *     const window = presetWindow(filters.preset, now)
+ *     if (window) { gte(from); lte(to) } else { or(listingWindowOrPredicate) }
+ *
+ * The `else` is the bug. The founder ruled on 16 August 2026 that "discovery
+ * shows an event until it has ACTUALLY ENDED, not until it has started", and
+ * `listingWindowOrPredicate` is that rule. Written as an `else`, the rule was
+ * applied to the UNFILTERED catalogue and skipped the moment a reader chose a
+ * date preset, so the five preset windows were the only surfaces on the
+ * platform still listing events that had finished.
+ *
+ * MEASURED, NOT ASSERTED. The homepage rail "On this weekend" filters a set
+ * that has already been through the listing window, so it drops a Saturday
+ * morning gig once it has ended. The "View all" beneath that rail goes to
+ * `/events?preset=weekend`, which did not. The two disagreed by exactly the
+ * events that had finished: the SAME rail-versus-its-own-View-all divergence
+ * that the weekend-window item closed a day earlier on a different axis, left
+ * standing because nothing compared the two predicates.
+ *
+ * THE PRESET AND THE LISTING WINDOW ANSWER DIFFERENT QUESTIONS and both have to
+ * be asked. The preset answers "is it on this weekend"; the listing window
+ * answers "is it still on". An event that started at 09:00 on Saturday and
+ * finished at noon is inside the weekend and is over, and a page called This
+ * Weekend that offers a ticket to it on Sunday evening is selling something
+ * that has been and gone.
+ *
+ * ONE COPY, because there were two identical ones and a fix applied to one of
+ * them would have been invisible on the other.
+ */
+export function applyDateWindow<Q extends DateWindowQuery>(
+  query: Q,
+  preset: string | undefined,
+  now: Date,
+): Q {
+  let q: DateWindowQuery = query
+  const window = presetWindow(preset, now)
+  if (window) {
+    q = q.gte('start_date', window.from)
+    if (window.to) q = q.lte('start_date', window.to)
+  }
+  // ALWAYS, never an else. See the header: this is the rule, and a preset is a
+  // narrowing on top of it rather than a replacement for it.
+  q = q.or(listingWindowOrPredicate(now))
+  return q as Q
+}
 
 /**
  * Cached variant for anonymous default-case browsing. Uses the admin client
@@ -1101,17 +1158,7 @@ async function runFetchPublicEventsAdmin(
   query = applyOps(query, await resolveEventFilterOps(supabase as unknown as LookupClient, forResolver))
   if (filters.preset === 'free') query = query.eq('is_free', true)
 
-  const window = presetWindow(filters.preset, now)
-  if (window) {
-    query = query.gte('start_date', window.from)
-    if (window.to) query = query.lte('start_date', window.to)
-  } else {
-    // LISTED UNTIL IT HAS ENDED, not until it has started. This replaced
-    // `start_date >= now`, which removed an event from discovery the moment it
-    // began: a 09:00 gig was invisible at 09:01, on the day it was on. The rule
-    // and the reason live in src/lib/events/listing-window.ts.
-    query = query.or(listingWindowOrPredicate(now))
-  }
+  query = applyDateWindow(query, filters.preset, now)
 
   if (filters.from) query = query.gte('start_date', filters.from)
   if (filters.to) query = query.lte('start_date', filters.to)

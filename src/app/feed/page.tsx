@@ -10,6 +10,7 @@ import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { EventCard } from '@/components/features/events/event-card'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 
 // Per-user surface: never cached, never indexed. Not a public LCP/SEO page.
 export const dynamic = 'force-dynamic'
@@ -29,6 +30,9 @@ export const metadata: Metadata = {
  * page renders the shared designed empty state prompting them to start
  * following, never a bare "no results".
  */
+/** How many of the ranked events the top rail takes before the grid. */
+const RAIL_PICKS = 12
+
 export default async function ForYouFeedPage() {
   const supabase = await createClient()
   const {
@@ -48,6 +52,11 @@ export default async function ForYouFeedPage() {
   // Empty graph OR a graph with no upcoming matches both resolve to the same
   // designed prompt: start following so the feed has something to rank.
   const showEmpty = !hasGraph || events.length === 0
+
+  /* The rail takes the first twelve; the grid takes what is left. ONE array
+   * feeds both the reserved height and the cards, so the section declares the
+   * height of what it renders (close-out C8B.3, 19 September 2026). */
+  const moreForYou = events.slice(RAIL_PICKS)
 
   return (
     <PageShell>
@@ -93,7 +102,7 @@ export default async function ForYouFeedPage() {
                 headerLink: { href: '/events', label: 'Browse all' },
               }}
             >
-              {events.slice(0, 12).map(e => (
+              {events.slice(0, RAIL_PICKS).map(e => (
                 <div key={e.id} className={FLAT_RAIL_CELL}>
                   <EventCard event={e} variant="rail-flat" />
                 </div>
@@ -101,8 +110,13 @@ export default async function ForYouFeedPage() {
             </SnapRailScroller>
           </ContentSection>
 
-          {events.length > 12 ? (
-            <ContentSection surface="base" width="wide" topBorder>
+          {moreForYou.length > 0 ? (
+            <ContentSection
+              surface="base"
+              width="wide"
+              topBorder
+              intrinsicSize={eventGridIntrinsicSize(moreForYou.length)}
+            >
               <div className="mb-6">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
                   More for you
@@ -112,7 +126,7 @@ export default async function ForYouFeedPage() {
                 </h2>
               </div>
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {events.slice(12).map(e => (
+                {moreForYou.map(e => (
                   <EventCard key={e.id} event={e} />
                 ))}
               </div>

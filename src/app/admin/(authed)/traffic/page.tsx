@@ -189,7 +189,23 @@ export default async function AdminTrafficPage({ searchParams }: Props) {
             check that events are published.
           </p>
         ) : (
-          <div className="mt-6 md:overflow-x-auto">
+          /*
+           * `relative` IS LOAD-BEARING, NOT DECORATION. The caption below is
+           * `sr-only`, which is `position: absolute`, and an absolutely
+           * positioned element is clipped by an ancestor's overflow ONLY when
+           * that ancestor is its containing block. Overflow alone does not make
+           * one. Without it the label is laid out at its position in the FULL
+           * table width, outside the scroller, and the document grows to fit
+           * it: lane C measured 569px against a 390px viewport on /admin/users
+           * that way, which renders the whole screen at about 69 per cent.
+           * `sr-only-cannot-escape-a-scroller` fails the build on it.
+           *
+           * AND THIS IS A JS COMMENT RATHER THAN A `{/* *\/}` ONE, because a
+           * JSX comment inside a ternary's parentheses is a SECOND expression
+           * where only one is allowed. I made exactly that mistake on
+           * /admin/pricing this morning and every admin route answered 500.
+           */
+          <div className="relative mt-6 md:overflow-x-auto">
             <table className="w-full border-collapse text-sm md:min-w-[40rem]">
               <caption className="sr-only">
                 Event page visits, orders and tickets by traffic channel, {windowLabel(days)}

@@ -80,6 +80,13 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
       'The same facts as organiser-sale-notify, rolled up to one message a day because that is the default preference. It promotes nothing and reaches nobody but the organiser whose sales it reports.',
   },
   {
+    file: 'src/lib/notifications/organiser-money-notify.ts',
+    kind: 'transactional',
+    purpose: 'organiser_money_event',
+    reason:
+      'The four money messages an organiser was never sent: a refund that settled on their event, a refund that failed at the bank and left their buyer out of pocket, a chargeback that has frozen their share, and a Connect account that has stopped being able to take money. Every one reports what has happened to THEIR money, to them, and none may be switched off by anyone (close-out MONEY FIX B4 reversal condition). Gating any of them on a marketing consent would mean an organiser who declined marketing was never told their money had stopped moving, which is the defect this item exists to end rather than a use of the ledger.',
+  },
+  {
     file: 'src/lib/notifications/organiser-event-notify.ts',
     kind: 'transactional',
     purpose: 'organiser_event_published',
@@ -204,6 +211,13 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     kind: 'operations',
     purpose: 'platform_operations',
     reason: 'Alerts the platform when a connected account diverges from its recorded state.',
+  },
+  {
+    file: 'src/app/api/cron/platform-settlement-reconcile/route.ts',
+    kind: 'operations',
+    purpose: 'platform_operations',
+    reason:
+      'Alerts the platform when money has settled on its own balance that nothing records as owed onward to an organiser (MONEY FIX A3 layer three). It reaches one address, the alert destination, and never an organiser or a buyer: the finding is that the platform books are wrong, and until that is investigated there is no fact to tell anybody else.',
   },
   {
     file: 'src/lib/campaigner/sink.ts',

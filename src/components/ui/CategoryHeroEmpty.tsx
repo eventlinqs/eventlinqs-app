@@ -28,6 +28,21 @@ interface CategoryHeroEmptyProps {
  *
  * NOT a replacement for EmptyState (that primitive remains for placeholder
  * pages). This is the category/filter marketing moment, not a "nothing here".
+ *
+ * EVERY COLOUR HERE BRANCHES ON `onPhoto`, INCLUDING THE GOLD ONES. The two
+ * gold tiers are not interchangeable: gold-400 (--brand-accent) reads 10.33:1
+ * on navy-950 and 1.59:1 on surface-1, gold-800 (--brand-accent-strong) reads
+ * 6.09:1 on surface-1 and 2.70:1 on navy-950. Both ratios are computed from
+ * globals.css by tests/unit/a11y/hero-empty-gold-tiers.test.ts, so a retune of
+ * either token fails there rather than here. The floors are WCAG 2.2 SC 1.4.3
+ * (4.5:1, normal text - this eyebrow is 12px)
+ * https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html and SC
+ * 1.4.11 (3:1, graphical objects)
+ * https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html, both
+ * fetched 2026-09-19. The eyebrow tier on the photo hero is additionally fixed
+ * by the CLAUDE.md hero law ("a GOLD eyebrow, --brand-accent on the dark
+ * hero"). scripts/guards/surface-flag-colours-branch.mjs fails the build if a
+ * gold foreground in a surface-flagged file stops branching.
  */
 export function CategoryHeroEmpty({
   eyebrow,
@@ -43,7 +58,7 @@ export function CategoryHeroEmpty({
   const onPhoto = !!coverImage
   return (
     <div
-      className={`hero-marketing relative overflow-hidden rounded-2xl ${onPhoto ? 'bg-[var(--color-navy-950)]' : 'border border-ink-100 bg-[var(--surface-1)]'}`}
+      className={`relative overflow-hidden rounded-2xl ${onPhoto ? 'hero-marketing bg-[var(--color-navy-950)]' : 'hero-marketing-grow border border-ink-100 bg-[var(--surface-1)]'}`}
     >
       {/* ── Background: photograph OR light canvas pattern ───────── */}
       {onPhoto ? (
@@ -93,7 +108,7 @@ export function CategoryHeroEmpty({
       <div className="relative z-10 flex flex-col items-start justify-center p-8 md:p-12 lg:p-16 max-w-3xl">
         {/* Eyebrow pill */}
         {eyebrow && (
-          <span className="mb-6 inline-flex items-center rounded-full border border-[var(--brand-accent)]/30 bg-[var(--brand-accent)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+          <span className={`mb-6 inline-flex items-center rounded-full border border-[var(--brand-accent)]/30 bg-[var(--brand-accent)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}`}>
             {eyebrow}
           </span>
         )}
@@ -127,7 +142,7 @@ export function CategoryHeroEmpty({
               const Icon = pillar.icon
               return (
                 <div key={pillar.label} className="flex items-center gap-2.5">
-                  <Icon className="h-[18px] w-[18px] shrink-0 text-[var(--brand-accent)]" />
+                  <Icon className={`h-[18px] w-[18px] shrink-0 ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}`} />
                   <span className={`text-sm font-medium ${onPhoto ? 'text-white/60' : 'text-[var(--text-secondary)]'}`}>{pillar.label}</span>
                 </div>
               )

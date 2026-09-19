@@ -11,6 +11,8 @@ export type MapEventPoint = {
   title: string
   venue_city: string | null
   start_date: string
+  /** The EVENT own IANA zone, so a map pin prints the day the event happens. */
+  timezone: string | null
   starting_from_cents: number | null
   is_free: boolean
   currency: string
