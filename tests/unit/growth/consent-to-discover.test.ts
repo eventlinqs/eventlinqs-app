@@ -14,7 +14,7 @@
  *   3. a declined buyer is excluded from every discovery query
  *        here, behaviourally through the one resolver, plus the enumeration of
  *        what "every discovery query" is. The build-failing half is
- *        scripts/guards/discovery-asks-the-consent-door.mjs.
+ *        scripts/guards/discovery-consent-is-asked-once-and-never-preticked.mjs.
  *   4. checkout conversion measured before and after, and the two percent rule
  *        here, exhaustively, against fixed rows rather than a shared database.
  */
@@ -34,6 +34,7 @@ import {
   formatRate,
   CAPTURE_CONVERSION_FALL_LIMIT_POINTS,
   CAPTURE_CONVERSION_MINIMUM_SAMPLE,
+  CONVERSION_VERDICT_WORDS,
 } from '@/lib/consent/capture-conversion-math'
 import { buildCaptureConversionReport } from '@/lib/consent/capture-conversion'
 import { decideSend, type LedgerConsentEvent } from '@/lib/consent/decide'
@@ -455,6 +456,37 @@ describe('AQ1: the placement log is append only, and the database enforces it', 
     expect(MIGRATION).toContain('select min(occurred_at)')
     expect(MIGRATION).toContain("where purpose = 'facilitated_event_marketing'")
     expect(MIGRATION).toMatch(/coalesce\([\s\S]*now\(\)\s*\)/)
+  })
+})
+
+describe('AQ1: the rule is unmissable, and the click it asks for carries its evidence', () => {
+  const PAGE = read('src/app/admin/(authed)/audience/page.tsx')
+
+  it('says the verdict in the summary row, not only in a paragraph further down', () => {
+    // A rule nobody remembers to scroll to is a rule that never fires.
+    expect(PAGE).toContain('Does asking cost sales')
+    expect(PAGE).toContain('CONVERSION_VERDICT_WORDS[conversion.theQuestionArriving.verdict]')
+  })
+
+  it('the tile and the sentence read the SAME verdict, so they cannot disagree', () => {
+    expect(PAGE).toMatch(/data-conversion-verdict=\{conversion\.theQuestionArriving\.verdict\}/)
+    expect(Object.keys(CONVERSION_VERDICT_WORDS).sort()).toEqual([
+      'hold',
+      'move',
+      'not-enough-evidence',
+    ])
+  })
+
+  it('warns only when the rule actually says move', () => {
+    expect(PAGE).toMatch(/verdict === 'move' \? 'warn' : 'ok'/)
+  })
+
+  it('writes the measurement into the reason when it says move, and nothing when it does not', () => {
+    expect(PAGE).toMatch(/arriving\.verdict === 'move'/)
+    expect(PAGE).toContain('defaultValue={suggestedReason}')
+    // An empty default leaves the field required and the owner writing their
+    // own words, which is correct when the platform has no finding to offer.
+    expect(PAGE).toMatch(/:\s*''/)
   })
 })
 

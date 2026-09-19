@@ -221,3 +221,15 @@ export function conversionSentence(
     ? `${movement} That is past the ${fallLimit} point limit, so the question moves to the ticket page.`
     : `${movement} That is inside the ${fallLimit} point limit, so the question stays where it is.`
 }
+
+/**
+ * The verdict in three words, for the summary row a person reads first.
+ *
+ * Defined here rather than in the page so the tile and the sentence below it
+ * can never say different things about the same verdict.
+ */
+export const CONVERSION_VERDICT_WORDS: Record<ConversionVerdict, string> = {
+  move: 'Yes, move it',
+  hold: 'No, it holds',
+  'not-enough-evidence': 'Too early to say',
+}

@@ -16,6 +16,7 @@ import {
   conversionSentence,
   formatRate,
   CAPTURE_CONVERSION_FALL_LIMIT_POINTS,
+  CONVERSION_VERDICT_WORDS,
 } from '@/lib/consent/capture-conversion-math'
 import {
   CAPTURE_PLACEMENTS,
@@ -97,6 +98,21 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
 
   const placementNow = conversion.currentPlacement ?? DEFAULT_CAPTURE_PLACEMENT
   const placementDecision = conversion.decisions[conversion.decisions.length - 1] ?? null
+  const arriving = conversion.theQuestionArriving
+  /*
+   * When the rule says move, the reason is written for the owner rather than
+   * left to them. A placement row's whole value six months from now is being
+   * able to ask why the question moved, and "because conversion fell 3.1
+   * points, 466 of 1120 against 512 of 1100" answers that where "moving it"
+   * does not. They can still type over it.
+   */
+  const suggestedReason =
+    arriving.verdict === 'move'
+      ? `Conversion fell ${Math.abs(arriving.deltaPoints ?? 0).toFixed(1)} points once the question ` +
+        `was asked at checkout (${arriving.before.converted} of ${arriving.before.settled} before, ` +
+        `${arriving.after.converted} of ${arriving.after.settled} after), past the ` +
+        `${CAPTURE_CONVERSION_FALL_LIMIT_POINTS} point limit, so the capture moves to the ticket page.`
+      : ''
 
   /*
    * A LOOKUP IS A READ OF SOMEBODY'S RECORD, SO IT IS AUDITED AS ONE.
@@ -155,6 +171,21 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
           hint="Feature flags, audience_capture"
           status={capturing ? 'ok' : 'warn'}
         />
+        {/*
+          AQ1's rule, in the row a person reads first.
+          The verdict is computed and spelled out further down the page, but a
+          rule nobody remembers to scroll to is a rule that never fires. When it
+          says move, this tile says move, and the control below carries the
+          measurement into its own reason so the click is evidenced.
+        */}
+        <div data-capture-verdict-tile={conversion.theQuestionArriving.verdict}>
+          <AdminStatTile
+            label="Does asking cost sales"
+            value={CONVERSION_VERDICT_WORDS[conversion.theQuestionArriving.verdict]}
+            hint={`The ${CAPTURE_CONVERSION_FALL_LIMIT_POINTS} point rule, asked at checkout`}
+            status={conversion.theQuestionArriving.verdict === 'move' ? 'warn' : 'ok'}
+          />
+        </div>
       </div>
 
       <section className="mb-8 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
@@ -279,6 +310,7 @@ export default async function AdminAudiencePage({ searchParams }: Props) {
                 type="text"
                 required
                 minLength={10}
+                defaultValue={suggestedReason}
                 placeholder="Conversion fell past the limit, so the capture moves"
                 className="mt-1 h-11 w-full min-w-[18rem] rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-sm text-white placeholder:text-white/30 focus:border-[var(--brand-accent)] focus:outline-none"
               />

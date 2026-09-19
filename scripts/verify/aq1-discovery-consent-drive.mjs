@@ -122,6 +122,16 @@ async function signInAsAdmin(page) {
     page.locator('button[type="submit"]').first().click(),
   ])
   await page.waitForTimeout(2000)
+  /*
+   * ASSERT THE SIGN IN, AND PHOTOGRAPH IT WHEN IT FAILS. Without this the next
+   * step times out at a control on a page that was never reached, and the
+   * report names that control, which is an accusation against working code.
+   */
+  if (/\/admin\/login/.test(page.url())) {
+    await page.screenshot({ path: join(out, 'admin-sign-in-refused.png'), fullPage: false })
+    const said = (await page.locator('body').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 300)
+    throw new Error(`the admin sign in did not leave /admin/login. The page said: ${said}`)
+  }
 }
 
 /**
@@ -318,11 +328,31 @@ try {
 
     const reservationId = await proceedToCheckout(page)
     const box = page.locator('#platform-marketing-consent')
-    const present = await box.count()
+    /*
+     * RELOAD BEFORE ACCUSING, AND SAY HOW MANY TIMES IT TOOK.
+     *
+     * The checkout asks nothing at all when getCurrentConsentWording comes back
+     * null, which is GA1's deliberate posture: a surface that cannot read the
+     * record asks nothing rather than asking under wording it cannot prove. A
+     * transient read against TEST therefore produces a page with no question on
+     * it, and one render cannot tell that apart from the question being broken.
+     * This drive saw exactly that once, at 768 only, with a 200 and nothing in
+     * the server log. A defect does not recover on a reload; a blink does, and
+     * the count below says which happened.
+     */
+    let reloads = 0
+    let present = await box.count()
+    while (present === 0 && reloads < 3) {
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 })
+      await page.waitForTimeout(1200)
+      reloads += 1
+      present = await box.count()
+    }
     check(
       `aq1.checkout-placement.${vp.label}.the-payment-step-asks-once`,
       present === 1,
-      `${present} discovery box(es) on /checkout/${reservationId}`,
+      `${present} discovery box(es) on /checkout/${reservationId}` +
+        (reloads > 0 ? `, after ${reloads} reload(s): the first render read no wording record` : ', on the first render'),
     )
     const checkedAtRender = present === 1 ? await box.isChecked() : null
     check(
@@ -583,6 +613,28 @@ try {
       ['move', 'hold', 'not-enough-evidence'].includes(verdict),
       `the rule answered ${verdict}`,
     )
+    /*
+     * THE SUMMARY ROW AND THE PARAGRAPH MUST AGREE. They are two renderings of
+     * one verdict and they are far apart on the page, which is exactly the
+     * distance across which a screen starts saying two things.
+     */
+    const VERDICT_WORDS = { move: 'Yes, move it', hold: 'No, it holds', 'not-enough-evidence': 'Too early to say' }
+    const tileVerdict = await page
+      .locator('[data-capture-verdict-tile]')
+      .first()
+      .getAttribute('data-capture-verdict-tile')
+      .catch(() => null)
+    const tileWords = await page
+      .locator('[data-capture-verdict-tile]')
+      .first()
+      .innerText()
+      .catch(() => '')
+    check(
+      `aq1.measurement.${vp.label}.the-summary-row-says-the-same-verdict-as-the-paragraph`,
+      tileVerdict === verdict && tileWords.includes(VERDICT_WORDS[verdict]),
+      `the tile reads "${tileWords.replace(/\s+/g, ' ').trim()}" for verdict ${tileVerdict}, and the paragraph answered ${verdict}`,
+    )
+
     const inForce = await page
       .locator('[data-capture-placement]')
       .first()
