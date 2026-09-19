@@ -134,14 +134,45 @@ describe('the sitemap the gate reads is itself ordered', () => {
     // no slug column and the handle is derived from the name. Pinning the column
     // name asserted a coincidence rather than the rule, and the rule is "a paged
     // query is ordered", not "a paged query is ordered by slug".
-    const sitemap = readFileSync(join(REPO_ROOT, 'src/app/sitemap.ts'), 'utf8')
-    const chains = [...sitemap.matchAll(/\.from\('(\w+)'\)([\s\S]{0,900}?)(?=\n\s*(?:if|for|\}|const)\s)/g)]
-    const paged = chains.filter(c => /\.limit\(\d+\)/.test(c[2]))
-    expect(paged.length).toBeGreaterThan(0)
+    // BOTH FILES ARE READ, AND THE SECOND ONE IS WHY THIS WENT RED ON
+    // 19 SEPTEMBER 2026. This used to read src/app/sitemap.ts alone. Moving the
+    // artist family into the catalogue module left that file with NO direct
+    // query at all, so `paged.length` was 0 and the guard against a vacuous pass
+    // fired exactly as it should have: the rule had not stopped mattering, the
+    // queries had moved. Reading both means the rule follows the queries, and a
+    // query that comes back to sitemap.ts is still judged.
+    const sources = [
+      ['src/app/sitemap.ts', readFileSync(join(REPO_ROOT, 'src/app/sitemap.ts'), 'utf8')],
+      [
+        'src/lib/seo/sitemap-catalogue.ts',
+        readFileSync(join(REPO_ROOT, 'src/lib/seo/sitemap-catalogue.ts'), 'utf8'),
+      ],
+    ] as const
+
+    const paged: { file: string; table: string; body: string }[] = []
+    for (const [file, src] of sources) {
+      for (const c of src.matchAll(/\.from\('(\w+)'\)([\s\S]{0,900}?)(?=\n\s*(?:if|for|\}|const)\s)/g)) {
+        if (/\.limit\(/.test(c[2])) paged.push({ file, table: c[1], body: c[2] })
+      }
+    }
+    expect(
+      paged.length,
+      'no paged sitemap query was found in either file, so this test judged nothing',
+    ).toBeGreaterThan(0)
+
     for (const c of paged) {
+      /*
+       * NO EXCEPTION FOR A QUERY NARROWED BY `in()`, and one was drafted and
+       * removed on 19 September 2026. The artist reader's first query had a
+       * `.limit()` and no `.order()`, this test caught it, and the tempting
+       * answer was to widen the rule to accept "narrowed to rows already
+       * chosen". Narrowing bounds WHICH rows can come back; it does not decide
+       * which ones the cap keeps when there are more than the cap. The query
+       * declares its order instead, which cost one line.
+       */
       expect(
-        /\.order\(\s*'[a-z_]+'\s*,\s*\{\s*ascending:/.test(c[2]),
-        `the sitemap's paged query on '${c[1]}' has a .limit() and no explicit .order()`,
+        /\.order\(\s*'[a-z_]+'\s*,\s*\{\s*ascending:/.test(c.body),
+        `${c.file}: the paged query on '${c.table}' has a .limit() and no explicit .order()`,
       ).toBe(true)
     }
   })

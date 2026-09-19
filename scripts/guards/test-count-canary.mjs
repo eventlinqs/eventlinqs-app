@@ -2504,6 +2504,35 @@ const ROOT = join(HERE, '..', '..')
  *   466 + 3 = 469 files
  *   6068 + 29 = 6097 tests
  *
+ * 2026-09-19, lane A, the two files this run added while unblocking the push.
+ * tests/unit/media/avatar-sizes-is-a-leaf.test.ts holds the four cases that keep
+ * the dashboard shell out of the media hint table, and
+ * tests/unit/seo/artist-catalogue-is-linked.test.ts holds the seven that keep an
+ * unreachable artist out of the sitemap. One further case was added to the
+ * existing tests/unit/ci/gate-url-determinism.test.ts, which is why the test
+ * count moves by twelve and the file count by two.
+ *
+ * MEASURED: 471 files, 6109 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\_a-r20-suite2.txt).
+ *
+ * CHECKABLE:
+ *   469 + 2 = 471 files
+ *   6097 + 4 + 7 + 1 = 6109 tests
+ *
+ * 2026-09-19, lane A, close-out MONEY FIX B4. The four money messages an
+ * organiser was never sent now have senders, and
+ * tests/unit/notifications/organiser-money-notify.test.ts holds the fourteen
+ * cases that judge the SENDS rather than the declaration. The item's own named
+ * tests for these messages already existed and already passed while nothing
+ * sent them, because they read the matrix.
+ *
+ * MEASURED: 472 files, 6123 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\_a-r20-suite3.txt).
+ *
+ * CHECKABLE:
+ *   471 + 1 = 472 files
+ *   6109 + 14 = 6123 tests
+ *
  * 2026-09-19, lane C, resolving the two above. Both sides raised the
  * floor on the same day from different trees - 470/6114 here, 469/6097
  * there - and neither describes a tree holding both. The arithmetic is
@@ -2521,9 +2550,34 @@ const ROOT = join(HERE, '..', '..')
  *   471 + 1 = 472 files
  *   6119 + 16 = 6135 tests
  * Measured by this guard's own run, not counted by hand.
+ *
+ * 2026-09-19, lane C, the merge of verify/l5-launch-readiness into lane/c-ux.
+ * BOTH BLOCKS ABOVE ARE KEPT because each is how its own side is checked, and
+ * neither describes a tree holding both. Each side held 472 test files and each
+ * contributed two the other had never held: this lane
+ * tests/unit/guards/strip-js-comments.test.ts and
+ * tests/unit/perf/event-grid-intrinsic.test.ts, lane A
+ * tests/unit/notifications/organiser-money-notify.test.ts and
+ * tests/unit/seo/artist-catalogue-is-linked.test.ts. Writing either side's pair
+ * onto the merged tree would lower the floor below what the merged tree actually
+ * runs, which is the one thing this guard exists to notice.
+ *
+ * MEASURED on the tree holding both, by this guard's own run rather than counted
+ * by hand: 474 files, 6156 tests, 0 failed, 0 skipped.
+ *
+ * THE FILE COUNT IS CHECKABLE AND THE TEST COUNT IS NOT, and that is said here
+ * rather than papered over with arithmetic that happens to land:
+ *   472 + 2 = 474 files.
+ *   6123 + 26 = 6149 tests, which is SEVEN SHORT of the measured 6156. This
+ *   lane's two files hold 26 cases, measured by running them alone. The seven
+ *   are verify's own later work, committed AFTER lane A wrote 6123 at ee2aa8bc:
+ *   14963fd3 and ec65a689 add cases to tests/unit/ci/gate-url-determinism.test.ts
+ *   and tests/unit/seo/artist-catalogue-is-linked.test.ts. A floor derived from
+ *   the two written pairs would therefore have been seven cases low, which is
+ *   exactly why the number below is measured and not derived.
  */
-const MIN_FILES = 472
-const MIN_TESTS = 6135
+const MIN_FILES = 474
+const MIN_TESTS = 6156
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

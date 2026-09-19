@@ -3460,6 +3460,34 @@ const DRILLS = [
     replace: "  // assertRecipientDeclared('order_confirmation_and_ticket', 'buyer')",
     expect: 'is a transport but never calls assertRecipientDeclared',
   },
+  /*
+   * CLAUSE 4, TWO DRILLS (close-out MONEY FIX B4, 19 September 2026, lane A).
+   *
+   * Clause 4 exists because clause 2 judges the DECLARATION and nothing judged
+   * the SENDS, so a type naming BOTH the owner and the organiser passed while
+   * every send site reached only the owner. It found `refund_did_not_complete`
+   * live in exactly that state the day it was written.
+   *
+   * Each drill removes the organiser's only route to one of these messages, in
+   * the two ways that have actually happened: a send site that stops naming the
+   * type at all, and a money message that goes back to being owner-only.
+   */
+  {
+    name: "the organiser's chargeback warning stops naming its message type",
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/notifications/organiser-money-notify.ts',
+    find: "      messageType: 'organiser_dispute_opened',",
+    replace: "      messageType: 'organiser_event_published',",
+    expect: "'organiser_dispute_opened' declares the organiser as a recipient and nothing in src/ sends it to one",
+  },
+  {
+    name: 'a failed refund goes back to telling the owner and not the organiser',
+    guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,
+    file: 'src/lib/notifications/organiser-money-notify.ts',
+    find: "      messageType: 'refund_did_not_complete',",
+    replace: "      messageType: 'organiser_event_published',",
+    expect: "'refund_did_not_complete' declares the organiser as a recipient and nothing in src/ sends it to one",
+  },
   {
     name: 'a payout message starts consulting the sales off switch',
     guard: `${GUARDS}/every-message-has-a-declared-recipient.mjs`,

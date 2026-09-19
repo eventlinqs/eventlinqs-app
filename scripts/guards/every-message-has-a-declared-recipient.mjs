@@ -304,6 +304,75 @@ function main() {
     }
   }
 
+  /* ── Clause 4. A message the organiser is declared to receive is SENT to them ──
+   *
+   * WHAT CLAUSE 2 CANNOT SEE, and this is the hole it left. Clause 2 judges the
+   * DECLARATION: it fails a type whose recipient set names the platform owner
+   * and not the organiser. A type that names BOTH is lawful to it, however many
+   * of its send sites reach only the owner. The matrix is a promise; only a send
+   * site keeps it.
+   *
+   * It found a live one the day it was written. `refund_did_not_complete` has
+   * declared roles ['organiser', 'platform_owner'] since 18 September, with the
+   * description "A refund on their event failed to settle and the buyer is still
+   * owed", and the single send in the Stripe webhook was
+   * `recipientRole: 'platform_owner'` to the alert address. The owner was the
+   * only human told that an organiser's buyer was out of pocket, which is the
+   * MKLStudios defect wearing a lawful declaration.
+   *
+   * WHAT IT CHECKS, STATED NARROWLY SO A PASS IS NOT READ AS MORE. For each type
+   * the organiser is declared to receive about their own event, some file
+   * outside the matrix must NAME that type, and that file must either send to an
+   * organiser itself or be imported by a file that does. It reads source text:
+   * it cannot prove the organiser send in that file is the one carrying this
+   * type, and it does not try to. The failure it closes is the one that has
+   * actually happened three times in this item: a type declared for the
+   * organiser that NOTHING anywhere sends to an organiser.
+   *
+   * THE IMPORT HOP IS NOT A LOOPHOLE, IT IS THE SHAPE OF THE SALE MESSAGES.
+   * `organiser_first_sale` and `organiser_sale` are named in
+   * organiser-sales-policy.ts, a pure decision module with no transport, and the
+   * send site computes `messageType` from its return value while declaring
+   * `recipientRole: 'organiser'`. Requiring the literal and the role in one file
+   * would demand that a decision module import a transport, which is exactly the
+   * separation clause 1c exists to protect.
+   */
+  const ORGANISER_SEND_MARKER = (code) =>
+    code.includes("recipientRole: 'organiser'") ||
+    (code.includes('assertRecipientDeclared(') && code.includes("'organiser')"))
+
+  const outsideMatrix = files.filter((f) => f.rel !== MATRIX)
+  const sendersToOrganiser = outsideMatrix.filter((f) => ORGANISER_SEND_MARKER(f.code))
+  /** Basenames a file with an organiser send imports, so a decision module it uses counts. */
+  const importedBySender = new Set()
+  for (const g of sendersToOrganiser) {
+    for (const m of g.code.matchAll(/from\s+'([^']+)'/g)) {
+      const base = m[1].split('/').pop()
+      if (base) importedBySender.add(base)
+    }
+  }
+  const reachedBySender = (rel) => {
+    const base = rel.split('/').pop().replace(/\.tsx?$/, '')
+    return importedBySender.has(base)
+  }
+
+  for (const entry of matrix.entries) {
+    if (!entry.concernsOrganiserEvent) continue
+    if (!entry.roles.includes('organiser')) continue
+    judged += 1
+    const naming = outsideMatrix.filter((f) => f.code.includes(`'${entry.type}'`) || f.code.includes(`"${entry.type}"`))
+    const satisfied = naming.some((f) => ORGANISER_SEND_MARKER(f.code) || reachedBySender(f.rel))
+    if (!satisfied) {
+      faults.push(
+        `${MATRIX}: '${entry.type}' declares the organiser as a recipient and nothing in src/ sends it to one. ` +
+          (naming.length === 0
+            ? 'No file outside the matrix names the type at all.'
+            : `It is named in ${naming.map((f) => f.rel).join(', ')}, and none of those sends to an organiser or is imported by a file that does.`) +
+          ' Clause 4: a declared recipient the code never reaches is a promise with nothing behind it.',
+      )
+    }
+  }
+
   if (faults.length > 0) {
     for (const f of faults) console.error(`${TAG} FAIL: ${f}`)
   }
