@@ -586,6 +586,35 @@ const DRILLS = [
     expect: 'organisers URL(s) in the sitemap have no row behind them and would answer 404',
   },
   /*
+   * THE ARTIST FAMILY, TWO DRILLS (19 September 2026).
+   *
+   * The first is the defect that exposed the gap, reproduced rather than
+   * described: on 19 September the sitemap advertised four artist pages whose
+   * only events had ended, and the reachability crawl found one answering 200
+   * with nothing on the site linking to it. Deleting the listing window from
+   * the reader re-creates exactly that, and TEST still holds those four cold
+   * artists, so the drill has real rows to go wrong with rather than a fixture.
+   *
+   * The second is the 42703 again, asked of the family that had no guard at
+   * all until now. It is the one that hid the venue block for its whole life.
+   */
+  {
+    name: 'the artist reader forgets the listing window, so artists whose events have ended are advertised again',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "        .filter(e => typeof e.start_date === 'string' && isStillListed(e, now))",
+    replace: "        .filter(e => typeof e.start_date === 'string')",
+    expect: 'artists URL(s) in the sitemap have no row behind them and would answer 404',
+  },
+  {
+    name: 'the artist query names a column that does not exist, so the family would publish nothing',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .select('slug, updated_at')\n      .in('id', artistIds)",
+    replace: "      .select('handle, updated_at')\n      .in('id', artistIds)",
+    expect: 'the sitemap would publish NO artists URL at all and say nothing about it',
+  },
+  /*
    * all-in-pricing (close-out SEO4), THREE DRILLS, one per clause. The item asks
    * for the guard to be "proven red by displaying a ticket price without its
    * fee, then green", which is the second of these; the other two are the
@@ -1487,6 +1516,32 @@ const DRILLS = [
     find: "    console.error('[sitemap] artist block failed:', err)",
     replace: '    void err',
     expect: 'catch block that reports nothing',
+  },
+  /*
+   * CLAUSES E AND F OF sitemap-resolves, THE ARTIST HALF (19 September 2026).
+   *
+   * Clause F is the one worth explaining. The comparison guard MODELS the
+   * `broadcast_artists` gate because it cannot execute sitemap.ts, and a model
+   * that drifts from the file drifts SILENTLY and in the worst direction:
+   * delete the `if` and the model keeps agreeing with itself while production,
+   * where that flag is OFF, hands Googlebot a 404 for every artist row on the
+   * platform. Nothing else in the tree would notice. This drill deletes it.
+   */
+  {
+    name: 'the artist block in the sitemap loses its feature-flag gate, which no comparison could see',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: "    if (await isFeatureEnabled('broadcast_artists')) {",
+    replace: "    if (true) {",
+    expect: 'outside any `if (await isFeatureEnabled(',
+  },
+  {
+    name: 'the catalogue stops building an artists path, so the family disappears in silence',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      rows.push({ path: `/artists/${slug}`,",
+    replace: "      rows.push({ path: `/performers/${slug}`,",
+    expect: 'no longer builds /artists/PARAM',
   },
   /*
    * one-db-connection-source, four drills, one per banned shape.

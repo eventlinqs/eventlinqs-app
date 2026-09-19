@@ -2575,9 +2575,24 @@ const ROOT = join(HERE, '..', '..')
  *   and tests/unit/seo/artist-catalogue-is-linked.test.ts. A floor derived from
  *   the two written pairs would therefore have been seven cases low, which is
  *   exactly why the number below is measured and not derived.
+ *
+ * 2026-09-19, lane C, the fourth sitemap family. Artists were a row-derived
+ * sitemap family that no guard compared against the database, which is how the
+ * platform advertised four artist pages nothing on the site linked to.
+ * tests/unit/guards/artist-sitemap-gate.test.ts holds the fifteen cases behind
+ * clause F of sitemap-resolves, and eight more cases went into the existing
+ * tests/unit/guards/sitemap-covers-the-catalogue.test.ts, which is why the file
+ * count moves by one and the test count by twenty-three.
+ *
+ * MEASURED: 475 files, 6179 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   474 + 1 = 475 files
+ *   6156 + 15 + 8 = 6179 tests
  */
-const MIN_FILES = 474
-const MIN_TESTS = 6156
+const MIN_FILES = 475
+const MIN_TESTS = 6179
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
