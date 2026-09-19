@@ -2740,9 +2740,27 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   489 + 1 = 490 files
  *   6368 + 9 + 1 = 6378 tests
+ *
+ * 2026-09-19, lane C, the hero that was a placeholder. The link-integrity
+ * crawler found /categories/technology answering 500 with "[HeroMedia] image
+ * must be a raster URL (got SVG)". tests/component/category-hero-is-a-photograph.test.tsx
+ * holds the seven cases: the sentinel is an SVG and is recognised by the
+ * exported test rather than a copied literal, the hero renders a raster for
+ * eight slugs with no photograph of their own, it uses the page's photograph
+ * when there is one, and the last resort is category-neutral rather than the
+ * Afrobeats community raster. That last case was WATCHED TO FAIL against the
+ * shipped constant (C:\dev\EVIDENCE\HERO-SVG	ests-watched-to-fail.txt); it
+ * could never have failed before, because the value was unreachable.
+ *
+ * MEASURED: 491 files, 6385 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\EVIDENCE\HERO-SVG\gate-suite.txt).
+ *
+ * CHECKABLE:
+ *   490 + 1 = 491 files
+ *   6378 + 7 = 6385 tests
  */
-const MIN_FILES = 490
-const MIN_TESTS = 6378
+const MIN_FILES = 491
+const MIN_TESTS = 6385
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -31,7 +31,26 @@ const HERO_RASTER_BY_SLUG: Record<string, string> = {
   owambe: '/images/hero/owambe.jpg',
 }
 
-const HERO_RASTER_DEFAULT = '/images/hero/afrobeats.jpg'
+/**
+ * THE LAST RESORT, AND WHY IT IS NOT A COMMUNITY PHOTOGRAPH ANY MORE.
+ *
+ * This used to be the Afrobeats raster, and the note on `fallbackImage` below
+ * already argued against it in terms: a category landing opening on "a
+ * photograph of a community dance floor ... is a worse failure than a missing
+ * image because it is confidently wrong".
+ *
+ * It was UNREACHABLE while it was wrong, which is the only reason that argument
+ * was never tested: the page always passed a non-empty `fallbackImage`, so the
+ * `??` chain stopped one step early. Fixing that (the page now passes null when
+ * it has no photograph) made this the value that actually renders on
+ * /categories/technology, so it had to become true as well as reachable.
+ *
+ * It is a daytime festival crowd from the licensed platform library, already
+ * bundled and already used on the homepage: category-neutral, so it is never
+ * confidently wrong, and a RASTER, so the hero can be the LCP. Nothing here is
+ * invented; the asset and the slot both already existed.
+ */
+const HERO_RASTER_DEFAULT = '/images/hero/homepage-day-festival.jpg'
 
 interface Props {
   slug: string
@@ -43,13 +62,21 @@ interface Props {
    * spine nor a bundled raster covers this slug.
    *
    * WHY IT EXISTS (close-out SEO3 step 4). The chain below used to end at
-   * `HERO_RASTER_DEFAULT`, which is the Afrobeats raster. That was correct while
-   * this route served seven hero slugs, six of them African community landings.
-   * It stopped being correct the moment the route began serving the 22 real
-   * categories: `/categories/technology` would have opened on a photograph of a
-   * community dance floor, which is a worse failure than a missing image because
-   * it is confidently wrong. The page resolves a category photo and hands it in
-   * here, and the branded fallback behind that is still never a blank tile.
+   * `HERO_RASTER_DEFAULT`, which was then the Afrobeats raster. That was correct
+   * while this route served seven hero slugs, six of them African community
+   * landings. It stopped being correct the moment the route began serving the 22
+   * real categories: `/categories/technology` would have opened on a photograph
+   * of a community dance floor, which is a worse failure than a missing image
+   * because it is confidently wrong. The page resolves a category photo and
+   * hands it in here.
+   *
+   * IT MUST BE A PHOTOGRAPH OR NULL, NEVER A PLACEHOLDER (19 September 2026).
+   * The page used to pass `photo.src` unconditionally, and that is the branded
+   * SVG when the resolver has no photograph. A non-empty string wins the `??`,
+   * so the default below never ran and `HeroMedia` was handed an SVG: 500 in
+   * development, and a hero that cannot be the LCP in production. The page now
+   * asks `isBrandedFallbackPhoto` and passes null instead, which is also why the
+   * default finally had to become category-neutral.
    */
   fallbackImage?: string | null
   /**

@@ -1,4 +1,4 @@
-import { getCategoryPhoto } from './category-photo'
+import { getCategoryPhoto, BRANDED_FALLBACK_PHOTO, isBrandedFallbackPhoto } from './category-photo'
 import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
 
 // M6+: add in-app curated image library for organisers. Until then, branded
@@ -43,7 +43,13 @@ export interface EventMediaInput {
   category?: { slug?: string | null; name?: string | null } | null
 }
 
-const FALLBACK_POSTER = '/images/event-fallback-hero.svg'
+/*
+ * THE POSTER PLACEHOLDER IS THE ONE DECLARED IN category-photo.ts. This file
+ * used to carry a private copy of the literal to compare against, which is the
+ * same decision spelled twice; /categories/[slug] then made the third spelling
+ * of it by not comparing at all and put an SVG into a hero.
+ */
+const FALLBACK_POSTER = BRANDED_FALLBACK_PHOTO.src
 
 export async function getEventMedia(event: EventMediaInput): Promise<EventMedia> {
   if (event.video_url) {
@@ -72,7 +78,7 @@ export async function getEventMedia(event: EventMediaInput): Promise<EventMedia>
   }
 
   const photo = await getCategoryPhoto(event.category?.slug, event.title)
-  if (photo.src !== FALLBACK_POSTER) {
+  if (!isBrandedFallbackPhoto(photo)) {
     return {
       kind: 'still-kenburns',
       src: photo.src,
@@ -113,7 +119,7 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
   }
 
   const photo = await getCategoryPhoto(event.category?.slug, event.title)
-  if (photo.src !== FALLBACK_POSTER) {
+  if (!isBrandedFallbackPhoto(photo)) {
     return {
       kind: 'still-kenburns',
       src: photo.src,
