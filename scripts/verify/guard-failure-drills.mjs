@@ -1606,6 +1606,80 @@ const DRILLS = [
     expect: 'no longer exports formatEventDateShort',
   },
   /*
+   * weekend-surface-one-decision, SIX DRILLS, one per clause (19 September 2026).
+   *
+   * /this-weekend is the only page on the platform whose contents expire on a
+   * schedule, so every one of these is a state the tree will genuinely be one
+   * edit away from. The last one is the defect the item found rather than
+   * introduced: a date preset that REPLACED the listing window instead of
+   * narrowing it, which had /events?preset=weekend listing gigs that finished
+   * yesterday while the homepage rail above the same link did not.
+   */
+  {
+    name: 'the sitemap publishes the weekend even when nothing is on it',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '  if (isDiscoveryIndexable(weekendSurface.total, threshold)) {',
+    replace: '  if (weekendSurface.total >= 0) {',
+    expect: 'without an isDiscoveryIndexable',
+  },
+  {
+    name: 'the page stops deciding its own robots directive from the weekend count',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/app/this-weekend/page.tsx',
+    find: '    ...(await discoveryIndexingFor(total, WEEKEND_SURFACE_PATH)),',
+    replace: '    robots: { index: true, follow: true },',
+    expect: 'does not decide its robots directive',
+  },
+  {
+    name: 'the weekend surface is renamed, so the page and the sitemap are sent to a function that is not there',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/weekend-surface.ts',
+    find: 'export async function loadWeekendSurface(',
+    replace: 'export async function loadWeekendSurfaceRenamed(',
+    expect: 'no longer exports loadWeekendSurface',
+  },
+  {
+    name: 'the day split is renamed in the leaf, where the fixture seeder reads it from outside Next',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/weekend-days.ts',
+    find: 'export function groupWeekendByDay<',
+    replace: 'export function groupWeekendByDayRenamed<',
+    expect: 'no longer exports groupWeekendByDay',
+  },
+  {
+    name: 'the read module stops re-exporting the leaf, so one surface becomes two unrelated imports',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/weekend-surface.ts',
+    find: "export * from './weekend-days'",
+    replace: "export type { WeekendDay } from './weekend-days'",
+    expect: 'no longer re-exports',
+  },
+  {
+    name: 'the sitemap writes the weekend path as a literal, so two strings must match and nothing checks',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '      url: `${baseUrl}${WEEKEND_SURFACE_PATH}`,',
+    replace: "      url: `${baseUrl}` + '/this-weekend',",
+    expect: 'writes the path',
+  },
+  {
+    name: 'the weekend page is reclassified always, so an empty weekend is published every week',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/seo/indexing-policy.ts',
+    find: "{ route: '/this-weekend', klass: 'conditional'",
+    replace: "{ route: '/this-weekend', klass: 'always'",
+    expect: "must be 'conditional'",
+  },
+  {
+    name: 'a date preset replaces the listing window again, so a finished gig is still on this weekend',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/fetchers.ts',
+    find: '  q = q.or(listingWindowOrPredicate(now))',
+    replace: '  if (!window) q = q.or(listingWindowOrPredicate(now))',
+    expect: 'applies the listing window behind a condition',
+  },
+  /*
    * one-db-connection-source, four drills, one per banned shape.
    *
    * These exist because the guard they exercise was written after two hours were

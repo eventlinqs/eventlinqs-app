@@ -110,6 +110,27 @@ if (!template) {
   console.error(`${TAG} REFUSED: no lane-c published event with a cover image to take an organisation from. Nothing was written.`)
   process.exit(1)
 }
+
+/*
+ * THE COVER IS A PHOTOGRAPH, NOT WHATEVER THE TEMPLATE EVENT HAPPENED TO CARRY.
+ *
+ * Added 19 September 2026 while building /this-weekend, where these three
+ * fixtures also appear. The template row's cover was portrait poster artwork
+ * with ANOTHER event's name and date rendered into the pixels, so the weekend
+ * page showed "Northside Sound Launch lane-c 0064572, Sunday 4 October" in the
+ * artwork above a card reading "Lane C weekend proof, Saturday night, Sat 19
+ * Sept", cropped hard into a 16:9 box. Cropping a portrait poster is correct
+ * PRODUCT behaviour (Law 6: we render what the organiser supplies) and it is a
+ * useless fixture, because a screenshot nobody can read proves nothing.
+ *
+ * `images.pexels.com` covers in this catalogue are landscape photographs of a
+ * room full of people, which is the shape the card is. The fallback is the
+ * template's own cover, so this can never leave a fixture with no image at all.
+ */
+const [photo] = await read(
+  'events?select=cover_image_url&status=eq.published&visibility=eq.public&cover_image_url=like.*pexels.com*&order=slug.asc&limit=1',
+)
+const coverImage = photo?.cover_image_url ?? template.cover_image_url
 console.log(`${TAG} template enumerated from an existing lane-c event: organisation ${template.organisation_id}`)
 
 /* ------------------------------------ the three instants, from the shared rule */
@@ -180,8 +201,8 @@ await upsert(
     organisation_id: template.organisation_id,
     created_by: template.created_by,
     category_id: template.category_id,
-    cover_image_url: template.cover_image_url,
-    thumbnail_url: template.cover_image_url,
+    cover_image_url: coverImage,
+    thumbnail_url: coverImage,
     start_date: p.startsAt.toISOString(),
     /*
      * EACH FIXTURE ENDS AT THE LAST INSTANT OF ITS OWN LOCAL DAY, and both the

@@ -2617,9 +2617,27 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   476 + 1 = 477 files
  *   6191 + 12 = 6203 tests
+ *
+ * 2026-09-19, lane C, the weekend surface (close-out AQ3). `/this-weekend` is a
+ * real page instead of a fourth door into `/events?preset=weekend`.
+ * tests/unit/events/weekend-surface.test.ts holds twelve cases: the day split by
+ * the event's own zone including a Perth Saturday that is Sunday in Sydney, and
+ * the preset that used to REPLACE the listing window instead of narrowing it.
+ * tests/component/weekend-landing-page.test.tsx holds six, for the two states
+ * the page renders and the count that may never return to a line of its own.
+ * The nineteenth is one new case in tests/unit/seo/discovery-indexability.test.ts,
+ * which now generates the real sitemap against a weekend fixture as well as a
+ * catalogue one and proves the URL leaves when the weekend empties.
+ *
+ * MEASURED: 479 files, 6222 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   477 + 2 = 479 files
+ *   6203 + 12 + 6 + 1 = 6222 tests
  */
-const MIN_FILES = 477
-const MIN_TESTS = 6203
+const MIN_FILES = 479
+const MIN_TESTS = 6222
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

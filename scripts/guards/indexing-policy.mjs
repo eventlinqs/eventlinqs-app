@@ -289,6 +289,21 @@ const SITEMAP_PATH_OF = {
   // here anyway. Its gate is `isOrganiserProfileIndexable`, which the predicate
   // below accepts alongside `isDiscoveryIndexable`.
   '/organisers/[handle]': '/organisers/${o.slug}',
+  /*
+   * THE ONE CONDITIONAL FAMILY THAT IS A SINGLE URL, NOT A LOOP (close-out AQ3).
+   *
+   * `/this-weekend` is one page, so the sitemap writes it as one `if` rather
+   * than inside a `for`. The window arithmetic below runs from the previous
+   * `for (` to the next one, which on a single entry is a wide window and could
+   * in principle find a neighbouring family's gate. What makes that safe is not
+   * this guard: `scripts/guards/weekend-surface-one-decision.mjs` clause 3
+   * requires the `isDiscoveryIndexable(weekendSurface.total, threshold)` gate to
+   * sit immediately around this URL, within 400 characters, on the same count
+   * the page decides its own robots directive from. This entry is here so the
+   * family is not simply UNKNOWN to the policy guard, which is a worse state
+   * than a wide window.
+   */
+  '/this-weekend': '${WEEKEND_SURFACE_PATH}',
 }
 let gatedFamilies = 0
 for (const [route, klass] of classified) {

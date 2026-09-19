@@ -4,6 +4,7 @@ import { getAllCommunities } from '@/lib/communities/data'
 import { getAllFaiths } from '@/lib/faiths/data'
 import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
 import { getSiteUrl } from '@/lib/site-url'
+import { loadWeekendSurface, WEEKEND_SURFACE_PATH } from '@/lib/events/weekend-surface'
 import { GUIDES } from '@/lib/guides'
 import { getAllHeroCategories } from '@/lib/hero-categories'
 import { getPublishableCategories } from '@/lib/categories/taxonomy'
@@ -260,6 +261,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     })),
   ]
+
+  /*
+   * THE WEEKEND SURFACE, /this-weekend (close-out AQ3).
+   *
+   * PUBLISHED ONLY WHILE IT HOLDS EVENTS, on the SAME count the page's own
+   * metadata decides its robots directive from, because both come out of
+   * `loadWeekendSurface`. There is one function and one cache entry behind the
+   * page, this line and the filter at `/events?preset=weekend`, so a sitemap
+   * that advertises a noindex URL is not something this can express.
+   *
+   * IT IS THE ONE PAGE ON THE PLATFORM GUARANTEED TO EMPTY ITSELF, every Sunday
+   * night, which is why AQ3's reversal condition ("if a surface cannot be filled
+   * with real events it is not published") matters here more than anywhere else.
+   * `changeFrequency: 'daily'` rather than weekly for the same reason: its
+   * contents genuinely turn over inside a week.
+   */
+  const weekendSurface = await loadWeekendSurface()
+  if (isDiscoveryIndexable(weekendSurface.total, threshold)) {
+    entries.push({
+      url: `${baseUrl}${WEEKEND_SURFACE_PATH}`,
+      changeFrequency: 'daily',
+      priority: 0.9,
+    })
+  }
 
   // CATEGORY LANDING PAGES. These were missing from the sitemap entirely, which
   // is the largest single omission found in the 23 August 2026 audit: they are

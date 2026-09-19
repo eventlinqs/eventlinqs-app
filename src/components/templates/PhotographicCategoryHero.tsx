@@ -52,15 +52,40 @@ interface Props {
    * here, and the branded fallback behind that is still never a blank tile.
    */
   fallbackImage?: string | null
+  /**
+   * What the fallback photograph SHOWS, used only when `fallbackImage` is the
+   * one that wins.
+   *
+   * WHY IT IS OPTIONAL AND WHY IT EXISTS (close-out AQ3, 19 September 2026).
+   * The alt below is built from the page TITLE, which describes the page rather
+   * than the picture. That is the champion behaviour on twenty-two category
+   * landings and is not changed here. `/this-weekend` resolves its hero from
+   * `src/lib/images/weekend-photos.ts`, which already holds the sentence that
+   * says what is in the frame, and throwing that away to re-derive a worse one
+   * would be the template winning an argument with the data.
+   */
+  fallbackAlt?: string
+  /** The focal point that goes with `fallbackImage`. Same rule as the alt. */
+  fallbackObjectPosition?: string
 }
 
-export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle, fallbackImage = null }: Props) {
+export function PhotographicCategoryHero({
+  slug,
+  eyebrow,
+  title,
+  subtitle,
+  fallbackImage = null,
+  fallbackAlt,
+  fallbackObjectPosition,
+}: Props) {
   // Spine-first: the licensed category hero. Falls back to the bundled community
   // raster (old slugs), then to the photo the page resolved, then the default.
   const spine = getSpineCategoryHero(slug)
   const src = spine?.src ?? HERO_RASTER_BY_SLUG[slug] ?? fallbackImage ?? HERO_RASTER_DEFAULT
-  const objectPosition = spine?.objectPosition ?? '50% 30%'
-  const alt = `${title} on EventLinqs`
+  const usingFallback = !spine && !HERO_RASTER_BY_SLUG[slug] && Boolean(fallbackImage)
+  const objectPosition =
+    spine?.objectPosition ?? (usingFallback ? fallbackObjectPosition ?? '50% 30%' : '50% 30%')
+  const alt = usingFallback && fallbackAlt ? fallbackAlt : `${title} on EventLinqs`
 
   return (
     <section

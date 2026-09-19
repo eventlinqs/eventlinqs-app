@@ -69,6 +69,7 @@
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
  *   one-weekend-definition     nothing but listing-window.ts decides when the weekend is
  *   event-dates-in-the-event-zone  no rendering surface pins a date to UTC
+ *   weekend-surface-one-decision  /this-weekend leaves the sitemap when it empties
  *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
  *                              names a column that does not exist
  *   maintained-aggregates      no cache tag without an invalidation, no stored counter
@@ -989,6 +990,14 @@ const GUARDS = [
   // was already known and already fixed on ONE rail, and the other eight were
   // left standing because nothing looked for them.
   'scripts/guards/event-dates-in-the-event-zone.mjs',
+  // THE ONE PAGE THAT EMPTIES ITSELF ON A SCHEDULE. /this-weekend has nothing on
+  // it from Sunday night onwards, and AQ3 rules that a surface that cannot be
+  // filled is not published. The page's robots directive and the sitemap's
+  // decision to publish the URL are two readings of one number, and an
+  // unconditional entries.push in sitemap.ts is a one-line edit away at all
+  // times. This also holds the fix that made a date preset NARROW the listing
+  // window instead of replacing it.
+  'scripts/guards/weekend-surface-one-decision.mjs',
   'scripts/guards/sitemap-resolves.mjs',
   // A SECOND COPY MUST HAVE SOMETHING KEEPING IT IN STEP. Four failures of this
   // one class landed in a week, in four different mechanisms: a cached rail with

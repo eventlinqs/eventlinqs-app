@@ -15,6 +15,7 @@ import {
   toBentoEvent,
 } from '@/lib/events/home-queries'
 import { weekendWindowUtc } from '@/lib/events/listing-window'
+import { WEEKEND_SURFACE_PATH } from '@/lib/events/weekend-surface'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
@@ -176,8 +177,10 @@ export default async function HomePage() {
    * copy built on `setHours`". This homepage block was a FIFTH copy that
    * consolidation never reached, and it is the reason the "View all" link under
    * this rail could answer with a different set of events than the rail above
-   * it: that link goes to `/events?preset=weekend`, which has been asking the
-   * shared rule all along.
+   * it: that link went to `/events?preset=weekend`, which has been asking the
+   * shared rule all along. It now goes to `/this-weekend`, the real page built
+   * on the same rule (close-out AQ3), and the rail, the page and the filter are
+   * three views of one query.
    *
    * `to` is INCLUSIVE (the last instant of Sunday), which is why the comparison
    * below is `<=` where the old exclusive bound used `<`.
@@ -348,7 +351,7 @@ export default async function HomePage() {
           railLabel="Events this weekend"
           invitationSubject="weekend"
           events={thisWeekend}
-          viewAllHref="/events?preset=weekend"
+          viewAllHref={WEEKEND_SURFACE_PATH}
         />
 
         <EventRailSection

@@ -139,9 +139,21 @@ const ERROR_BUDGET = 0.10
 
 const faults = []
 const notes = []
-function check(ok, message) {
+/**
+ * `message` describes the FAULT, because that is what a fault list has to say.
+ * `okMessage` is what to print when the check passed, and it exists because
+ * without it this line read
+ *
+ *     ok   the section declares NO reservation the browser could resolve
+ *
+ * on every successful run, which states the opposite of what happened. An
+ * instrument whose whole value is being believed must not print the failure
+ * text beside a pass. Only the negated assertions need one; the rest already
+ * read correctly either way.
+ */
+function check(ok, message, okMessage) {
   if (!ok) faults.push(message)
-  console.log(`${TAG}   ${ok ? 'ok  ' : 'FAIL'} ${message}`)
+  console.log(`${TAG}   ${ok ? 'ok  ' : 'FAIL'} ${ok && okMessage ? okMessage : message}`)
 }
 
 let stopServer = null
@@ -619,6 +631,8 @@ if (DERIVE) {
             `(computed contain-intrinsic-size: ${g.containIntrinsicSize}). Either the section is not carrying ` +
             `.cv-measured, or the rule in globals.css names a custom property the component does not write, ` +
             `or the built stylesheet is stale.`,
+          `${key} grid ${i}: the section declares a reservation the browser resolved ` +
+            `(computed contain-intrinsic-size: ${g.containIntrinsicSize}).`,
         )
 
         if (estimate !== null) {
