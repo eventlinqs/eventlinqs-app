@@ -84,28 +84,6 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
         </div>
       )}
 
-      {/*
-        `relative` IS LOAD-BEARING AND IS NOT DECORATION.
-
-        Every `<label className="sr-only">` in the cells below is
-        `position: absolute`, and Tailwind's sr-only leaves the box at its
-        STATIC position, which is inside a table that is `min-w-[680px]`. An
-        absolutely positioned element resolves against its nearest POSITIONED
-        ancestor, so with a static wrapper these labels escape the scroll
-        container entirely and land in the document's own overflow.
-
-        MEASURED at 390 on 19 September 2026: documentElement.scrollWidth 633
-        against an innerWidth of 390, and `window.scrollTo(2000, 0)` really
-        moved the page 243px sideways. Making the wrapper a containing block
-        returns it to 390, and so does hiding the sixteen labels, which is what
-        identified them. `overflow-x: hidden` on the wrapper changes nothing,
-        because containment was never the problem.
-
-        The overrides table lower down carries `relative` for the same reason.
-        Its wrapper takes no comment of its own because it sits inside a ternary
-        branch, where a JSX comment beside the element is a second child and a
-        parse error.
-      */}
       <div className="relative overflow-x-auto rounded-lg border border-white/[0.08]">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
