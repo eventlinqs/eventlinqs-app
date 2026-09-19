@@ -2485,9 +2485,39 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   467 + 3 = 470 files
  *   6085 + 29 = 6114 tests
+ *
+ * 2026-09-19, lane A, the three-lane merge. The floor had not moved since it was
+ * written, while the watchdog merged twenty more lane B and lane C commits into
+ * verify/l5-launch-readiness. The gate measured the merged tree at d6e8ce0e and
+ * reported the growth itself: "[test-count-canary] the suite has GROWN
+ * (469/6097 against 466/6068). raise the baseline in this file so the new floor
+ * is held."
+ *
+ * A FLOOR THAT LAGS THE SUITE IS NOT A FLOOR. Three files and twenty-nine tests
+ * could have stopped running and this guard would have said nothing, which is
+ * the exact silence it exists to break.
+ *
+ * MEASURED: 469 files, 6097 tests, 0 failed, 0 skipped, in the pre-push gate
+ * run of 2026-09-19 on d6e8ce0e (C:\dev\_a-r20-push.txt).
+ *
+ * CHECKABLE: the gate printed both pairs side by side on the line above.
+ *   466 + 3 = 469 files
+ *   6068 + 29 = 6097 tests
+ *
+ * 2026-09-19, lane C, resolving the two above. Both sides raised the
+ * floor on the same day from different trees - 470/6114 here, 469/6097
+ * there - and neither describes a tree holding both. The arithmetic is
+ * kept because it is how each side is checked, and the pair below is
+ * MEASURED on the merged tree rather than chosen from a side.
+ *
+ * MEASURED on the tree holding both: 471 files, 6119 tests, 0 failed,
+ * 0 skipped. Lane A's one new file (media/avatar-sizes-is-a-leaf) and its 5
+ * cases are the difference from this lane's 470/6114:
+ *   470 + 1 = 471 files
+ *   6114 + 5 = 6119 tests
  */
-const MIN_FILES = 470
-const MIN_TESTS = 6114
+const MIN_FILES = 471
+const MIN_TESTS = 6119
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

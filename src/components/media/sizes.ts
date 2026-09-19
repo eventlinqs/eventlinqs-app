@@ -247,21 +247,34 @@ export const MEDIA_SIZES = {
    *  640px-wide image for a 56px square: x11.4, the worst single ratio found. */
   listThumb: '56px',
 
-  /** Avatar - extra small (24px). THE SMALLEST SLOT ON THE PLATFORM, and the
-   *  reason it is here rather than inline in the component: the configured
-   *  width ladder in next.config.ts is derived from the slots this table
-   *  declares, and until 19 September 2026 this one was a bare '24px' literal
-   *  inside OrganiserAvatar. The ladder's own comment still claimed a 16px
-   *  fixed size was in use, because the only file that could have contradicted
-   *  it did not know this slot existed. */
+  /* THE FIVE AVATAR SLOTS ARE ALSO DECLARED IN `./avatar-sizes`, AS FINISHED
+   * STRINGS IN BOTH PLACES, AND THAT DUPLICATION IS DELIBERATE.
+   *
+   * WHY THEY ARE ALSO OVER THERE, measured on the build of 19 September 2026:
+   * `dashboard-topbar.tsx` renders `OrganiserAvatar`, which imported THIS file,
+   * and `MEDIA_SIZES` is one object literal, so importing one member ships all
+   * of it. Every dashboard route's FIRST LOAD carried a 21,005 byte chunk
+   * holding every hint on the platform, hero to gallery, in order to render one
+   * 32px circle.
+   *
+   * WHY THEY ARE STILL HERE. This table is what the configured width ladder in
+   * next.config.ts is derived from, and the derivation reads STRING LITERALS.
+   * Replacing these five with `AVATAR_SIZES.xs` and friends was tried in this
+   * same change and `candidate-ladder-has-no-dead-rung` immediately caught it:
+   * "the width 32 is offered and nothing can select it ... the smallest fixed
+   * slot on the platform is 56 CSS pixels". The ladder had lost the avatars.
+   *
+   * WHY NOT AN IMPORT. `image-hints-match-the-cell` refuses one, by name: "it is
+   * the most widely reached module in the media layer, so whatever it imports
+   * reaches every route that renders any image. Keep the finished strings here."
+   *
+   * SO THE DRIFT IS CLOSED BY A TEST RATHER THAN BY A REFERENCE:
+   * `tests/unit/media/avatar-sizes-is-a-leaf.test.ts` fails if either
+   * declaration changes without the other. */
   avatarXs: '24px',
-  /** Avatar - topbar (32px on every breakpoint) */
   avatarTopbar: '32px',
-  /** Avatar - small (32px) */
   avatarSm: '32px',
-  /** Avatar - medium (48px) */
   avatarMd: '48px',
-  /** Avatar - large (96px) */
   avatarLg: '96px',
 } as const
 
