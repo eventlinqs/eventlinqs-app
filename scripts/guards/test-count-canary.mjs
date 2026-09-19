@@ -2590,9 +2590,23 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   474 + 1 = 475 files
  *   6156 + 15 + 8 = 6179 tests
+ *
+ * 2026-09-19, lane C, the weekend read in the right zone. The homepage built its
+ * own Saturday-to-Sunday window on a UTC day and /api/home/surprise read the
+ * server's clock, so a quarter of next weekend was missing from the weekend rail
+ * and a Monday morning pick was labelled "Weekend energy".
+ * tests/unit/events/weekend-in-the-right-zone.test.ts holds the twelve cases,
+ * seven for the window and five for localHourOfDay.
+ *
+ * MEASURED: 476 files, 6191 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   475 + 1 = 476 files
+ *   6179 + 12 = 6191 tests
  */
-const MIN_FILES = 475
-const MIN_TESTS = 6179
+const MIN_FILES = 476
+const MIN_TESTS = 6191
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

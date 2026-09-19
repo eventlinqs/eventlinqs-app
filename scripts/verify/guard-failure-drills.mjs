@@ -1544,6 +1544,41 @@ const DRILLS = [
     expect: 'no longer builds /artists/PARAM',
   },
   /*
+   * one-weekend-definition, THREE DRILLS (19 September 2026).
+   *
+   * This definition has been got wrong SIX times. Four copies were found and
+   * consolidated by the header on listing-window.ts; two more were still live
+   * on 19 September and that consolidation had no way to see them. The first
+   * two drills put each of those two back, in the exact shape it had. The
+   * third is the quiet one: rename the definition and clause 1 becomes
+   * unsatisfiable while a guard without clause 2 would report a pass on a tree
+   * that no longer defines a weekend anywhere.
+   */
+  {
+    name: 'the homepage builds its own weekend again, on a UTC day',
+    guard: `${GUARDS}/one-weekend-definition.mjs`,
+    file: 'src/app/page.tsx',
+    find: "import { weekendWindowUtc } from '@/lib/events/listing-window'",
+    replace: "const weekendWindowUtc = (n) => ({ from: new Date(n.setUTCHours(0,0,0,0)), to: new Date() })",
+    expect: 'src/app/page.tsx decides something about the WEEKEND',
+  },
+  {
+    name: 'the surprise label reads the server clock again, so a Monday morning is Weekend energy',
+    guard: `${GUARDS}/one-weekend-definition.mjs`,
+    file: 'src/app/api/home/surprise/route.ts',
+    find: "import { listingWindowOrPredicate, localDayOfWeek, localHourOfDay } from '@/lib/events/listing-window'",
+    replace: "const localDayOfWeek = (d) => d.getDay(); const localHourOfDay = (d) => d.getHours();",
+    expect: 'src/app/api/home/surprise/route.ts decides something about the WEEKEND',
+  },
+  {
+    name: 'the weekend definition is renamed, so every file is sent to a function that is not there',
+    guard: `${GUARDS}/one-weekend-definition.mjs`,
+    file: 'src/lib/events/listing-window.ts',
+    find: "export function weekendWindowUtc(",
+    replace: "export function weekendWindowUtcRenamed(",
+    expect: 'no longer exports weekendWindowUtc',
+  },
+  /*
    * one-db-connection-source, four drills, one per banned shape.
    *
    * These exist because the guard they exercise was written after two hours were

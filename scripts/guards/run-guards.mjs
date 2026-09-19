@@ -67,6 +67,7 @@
  *   labels-name-the-right-control  and that label points at the control it describes,
  *                              not at the one that happens to sit beside it
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
+ *   one-weekend-definition     nothing but listing-window.ts decides when the weekend is
  *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
  *                              names a column that does not exist
  *   maintained-aggregates      no cache tag without an invalidation, no stored counter
@@ -975,6 +976,12 @@ const GUARDS = [
   // /categories/* URLs this repository 308s away; and no tie at all between the
   // shapes published and the routes that exist. A sweep of the 586 URLs the
   // production sitemap published returned 48 hard 404s.
+  // SIX COPIES OF ONE DEFINITION, four removed by a consolidation that could not
+  // see the other two. The homepage built its own weekend from getUTCDay and ran
+  // it Saturday 10:00 to Monday 10:00 Melbourne time, dropping a quarter of the
+  // weekend off the rail whose only job is to show it; /api/home/surprise read
+  // the server's clock and labelled a Monday morning pick 'Weekend energy'.
+  'scripts/guards/one-weekend-definition.mjs',
   'scripts/guards/sitemap-resolves.mjs',
   // A SECOND COPY MUST HAVE SOMETHING KEEPING IT IN STEP. Four failures of this
   // one class landed in a week, in four different mechanisms: a cached rail with

@@ -14,6 +14,8 @@ import {
   loadHomeUpcoming,
   toBentoEvent,
 } from '@/lib/events/home-queries'
+import { weekendWindowUtc } from '@/lib/events/listing-window'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { EventRailSection } from '@/components/features/home/event-rail-section'
@@ -153,22 +155,39 @@ export default async function HomePage() {
     .slice(0, 10)
 
   // ── Rail slices ───────────────────────────────────────────────
-  // Saturday-Sunday window for the upcoming weekend.
-  const weekendStart = (() => {
-    const d = new Date(nowIso)
-    const day = d.getUTCDay()
-    const daysToSat = (6 - day + 7) % 7
-    d.setUTCDate(d.getUTCDate() + daysToSat)
-    d.setUTCHours(0, 0, 0, 0)
-    return d
-  })()
-  const weekendEnd = new Date(weekendStart)
-  weekendEnd.setUTCDate(weekendEnd.getUTCDate() + 2)
+  /*
+   * THE WEEKEND IS THE PLATFORM'S OWN DEFINITION, NOT A FIFTH COPY OF IT.
+   *
+   * What stood here was a Saturday-to-Sunday window built with `getUTCDay()`
+   * and `setUTCHours`, so it described a weekend in UTC on a platform whose
+   * every event happens between UTC+8 and UTC+11. The two edges were wrong by
+   * the size of the offset: on 19 September 2026 the window ran from Saturday
+   * 10:00 to Monday 10:00 Melbourne time, which DROPPED Saturday morning and
+   * ADMITTED Monday morning.
+   *
+   * It was not a rounding error. Measured against the TEST catalogue the same
+   * day, three of the twelve events on next weekend start on Saturday at 09:40
+   * Melbourne, which is Friday 23:40 UTC: a quarter of the weekend was invisible
+   * on the rail whose whole job is to show it.
+   *
+   * `weekendWindowUtc` already existed and its own header says why: "ONE
+   * DEFINITION, because there were FOUR: the /events weekend preset, the city
+   * page, the suburb page and the community-by-city page each carried their own
+   * copy built on `setHours`". This homepage block was a FIFTH copy that
+   * consolidation never reached, and it is the reason the "View all" link under
+   * this rail could answer with a different set of events than the rail above
+   * it: that link goes to `/events?preset=weekend`, which has been asking the
+   * shared rule all along.
+   *
+   * `to` is INCLUSIVE (the last instant of Sunday), which is why the comparison
+   * below is `<=` where the old exclusive bound used `<`.
+   */
+  const weekend = weekendWindowUtc(new Date(nowIso), PLATFORM_TIME_ZONE)
 
   const thisWeekend = upcoming
     .filter(e => {
       const t = new Date(e.start_date).getTime()
-      return t >= weekendStart.getTime() && t < weekendEnd.getTime()
+      return t >= weekend.from.getTime() && t <= weekend.to.getTime()
     })
     .slice(0, 10)
 
