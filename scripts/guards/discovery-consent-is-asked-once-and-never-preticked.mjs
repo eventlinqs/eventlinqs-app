@@ -48,6 +48,7 @@ import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs'
 import { join, dirname, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
+import { callsFunction } from './lib/names-and-calls.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -121,38 +122,6 @@ function withoutComments(source) {
     .split('\n')
     .filter(line => !/^\s*(\/\/|\*)/.test(line))
     .join('\n')
-}
-
-/**
- * IS THIS FUNCTION ACTUALLY CALLED HERE, rather than merely mentioned.
- *
- * THE DRILL FOUND THIS, not a reading of the code. Two of the five drills
- * passed on a violating tree because the first draft asked `includes(name)`,
- * and an import line carries the name as happily as a call does: renaming the
- * CALL left the import behind and the guard reported PASS over a page that no
- * longer resolved the placement. A declaration does the same thing, which is
- * how the two percent clause failed for the wrong reason.
- *
- * So the test is the one LB-FLAGCACHE arrived at on 19 September: a helper must
- * be CALLED somewhere that is neither its import nor its own declaration.
- */
-function callsFunction(source, name) {
-  const lines = source.split('\n')
-  const kept = []
-  let insideImport = false
-  for (const line of lines) {
-    if (insideImport) {
-      if (/from\s+['"]/.test(line)) insideImport = false
-      continue
-    }
-    if (/^\s*import\b/.test(line)) {
-      if (!/from\s+['"]/.test(line)) insideImport = true
-      continue
-    }
-    if (new RegExp('(function|const|let|var)\\s+' + name + '\\b').test(line)) continue
-    kept.push(line)
-  }
-  return new RegExp('\\b' + name + '\\s*\\(').test(kept.join('\n'))
 }
 
 function walk(dir, out = []) {

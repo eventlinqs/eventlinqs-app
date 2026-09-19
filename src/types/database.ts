@@ -1330,6 +1330,61 @@ export type Database = {
         }
         Relationships: []
       }
+      event_group_rates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_id: string
+          id: string
+          min_group_size: number
+          ticket_tier_id: string
+          unit_price_cents: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_id: string
+          id?: string
+          min_group_size?: number
+          ticket_tier_id: string
+          unit_price_cents: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_id?: string
+          id?: string
+          min_group_size?: number
+          ticket_tier_id?: string
+          unit_price_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_group_rates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "api_v1_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_group_rates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_group_rates_ticket_tier_id_fkey"
+            columns: ["ticket_tier_id"]
+            isOneToOne: true
+            referencedRelation: "ticket_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_stream_links: {
         Row: {
           event_id: string
@@ -8023,6 +8078,49 @@ export type Database = {
         Returns: Json
       }
       event_lifecycle_guards: { Args: never; Returns: Json }
+      resolve_pricing_value: {
+        Args: {
+          p_country_code: string
+          p_currency: string
+          p_event_id: string
+          p_organisation_id: string
+          p_rule_type: string
+        }
+        Returns: {
+          country_code: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          effective_from: string
+          effective_until: string | null
+          event_id: string | null
+          event_type: string
+          id: string
+          organisation_id: string | null
+          organiser_tier: string
+          rule_type: string
+          value_cents: number | null
+          value_integer: number | null
+          value_percentage: number | null
+          value_type: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pricing_rules"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      group_rate_floor_cents: {
+        Args: {
+          p_country_code: string
+          p_currency: string
+          p_event_id: string
+          p_organisation_id: string
+        }
+        Returns: number
+      }
       event_money_record_counts: { Args: { p_event_id: string }; Returns: Json }
       event_money_record_counts_many: {
         Args: { p_event_ids: string[] }
