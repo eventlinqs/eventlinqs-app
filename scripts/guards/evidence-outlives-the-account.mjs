@@ -13,7 +13,7 @@
  *   ERROR: 42501: append only: UPDATE on public.marketing_capture_placement is
  *   refused. A consent record is evidence of what a person was shown and agreed
  *   to, so it is never altered and never removed.
- *   CONTEXT: SQL statement "UPDATE ONLY public.marketing_capture_placement
+ *   CONTEXT:  SQL statement "UPDATE ONLY public.marketing_capture_placement
  *            SET decided_by = NULL WHERE $1 = decided_by"
  *
  * TWO CLAUSES WRITTEN THE SAME DAY, EACH CORRECT ALONE:
@@ -54,142 +54,39 @@
  * WHAT IT CANNOT SEE, STATED RATHER THAN IMPLIED
  * ===========================================================================
  *
- * It reads the migration FILES in version order and replays adds and drops, so
- * it judges the schema this tree would build. It does not connect to a database
- * and cannot see a constraint somebody added by hand.
+ * It judges the schema the migration FILES would build, through the shared
+ * parser in `lib/referential-keys.mjs`. It does not connect to a database.
  *
- * It judges UNCONDITIONAL refusals only. `event_group_rates` carries a FOR EACH
- * ROW trigger that judges the PRICE and a `created_by ... on delete set null`,
- * and that pair passes today and can only refuse once the floor has moved under
- * an existing rate. That is a latent trap rather than a live defect, it is
- * recorded in REVIEW-QUEUE-B.md, and this guard deliberately does not claim to
- * cover it, because a guard that quietly widens its own subject is a guard
- * nobody can predict.
+ * ITS OWN PARSER USED TO LIVE HERE AND IT WAS READING A THIRD OF THE SCHEMA.
+ * Two line-anchored regular expressions required a column's type and the word
+ * `references` to sit on ONE LINE, which is two of the FIVE shapes this
+ * repository writes keys in; a replay that applied every CREATE and then every
+ * DROP deleted the triggers it had just made; a multi-column key lost every
+ * column but the last; and renames, `add column if not exists` over an existing
+ * column and `create constraint trigger` were all unmodelled. Measured against
+ * TEST on 19 September 2026 it saw 113 of the 114 keys it should have and 16 of
+ * the 78 triggers. The parser now lives in the shared library, is calibrated
+ * against every shape, and is checked against the live database by
+ * `scripts/verify/referential-keys-agree-with-the-database.mjs`.
+ *
+ * It judges UNCONDITIONAL refusals ONLY, which is the statement-level case.
+ * The ROW-level case, where a trigger judges the row's own contents and can
+ * refuse a referential null for a reason that has nothing to do with the
+ * delete, is a different rule with a different fix and it belongs to
+ * `a-referential-null-is-not-an-edit.mjs`. The two share this file's parser and
+ * between them cover both halves.
  */
-import { readdirSync, readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import {
+  calibrationFailures,
+  migrationFiles,
+  replaySchema,
+  withoutComments,
+} from './lib/referential-keys.mjs'
 import { declareWork } from '../lib/work-report.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const ROOT = join(HERE, '..', '..')
-const MIGRATIONS = join(ROOT, 'supabase', 'migrations')
 export const TAG = '[evidence-outlives-the-account]'
 
-
-const bare = name => String(name).replace(/^public\./, '').replace(/"/g, '').trim().toLowerCase()
-
-/**
- * Column-level foreign keys carrying a referential ACTION, inside a create table.
- *
- * Only `set null` and `cascade` matter here: those are the two that make the
- * database touch the child row when the parent goes. `no action` and `restrict`
- * refuse the parent delete outright, which is loud rather than silent and is a
- * different decision.
- */
-const COLUMN_FK =
-  /^\s*"?([a-z_][a-z0-9_]*)"?\s+[a-z ]*\breferences\s+([a-z_.]+)\s*\([^)]*\)\s*on\s+delete\s+(set\s+null|cascade)/gim
-
-/** `alter table x add column y ... references z(...) on delete set null` */
-const ALTER_ADD_FK =
-  /alter\s+table\s+(?:if\s+exists\s+)?([a-z_.]+)[\s\S]{0,400}?add\s+column\s+(?:if\s+not\s+exists\s+)?"?([a-z_][a-z0-9_]*)"?\s+[a-z ]*\breferences\s+([a-z_.]+)\s*\([^)]*\)\s*on\s+delete\s+(set\s+null|cascade)/gi
-
-/** `alter table x drop constraint [if exists] name` */
-const DROP_CONSTRAINT = /alter\s+table\s+(?:if\s+exists\s+)?([a-z_.]+)\s+drop\s+constraint\s+(?:if\s+exists\s+)?"?([a-z_][a-z0-9_]*)"?/gi
-
-/** `create trigger n before update on public.t for each statement execute function public.refuse...` */
-/** The one unconditional refusal this tree uses, named once. */
-const REFUSAL = 'refuse_ledger_mutation'
-
-const STATEMENT_REFUSAL = new RegExp(
-  `create\\s+trigger\\s+[a-z_0-9]+\\s+before\\s+(update|delete|truncate)\\s+on\\s+([a-z_.]+)` +
-    `\\s+for\\s+each\\s+statement\\s+execute\\s+(?:function|procedure)\\s+[a-z_.]*${REFUSAL}`,
-  'gi',
-)
-
-/** `drop trigger [if exists] n on public.t` */
-const DROP_TRIGGER = /drop\s+trigger\s+(?:if\s+exists\s+)?([a-z_0-9]+)\s+on\s+([a-z_.]+)/gi
-
-/** Table blocks, so a column FK is attributed to the table that declares it. */
-function tableBlocks(sql) {
-  const blocks = []
-  const re = /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_.]+)\s*\(/gi
-  let m
-  while ((m = re.exec(sql)) !== null) {
-    let depth = 1
-    let i = re.lastIndex
-    while (i < sql.length && depth > 0) {
-      if (sql[i] === '(') depth += 1
-      else if (sql[i] === ')') depth -= 1
-      i += 1
-    }
-    blocks.push({ table: bare(m[1]), body: sql.slice(re.lastIndex, i - 1) })
-  }
-  return blocks
-}
-
-/** Strips `--` line comments so prose about a constraint is not read as one. */
-export function withoutComments(sql) {
-  return sql
-    .split(/\r?\n/)
-    .map(line => line.replace(/--.*$/, ''))
-    .join('\n')
-}
-
-/**
- * Replays every migration in version order and returns the schema it builds:
- * which tables refuse a statement outright, and which cascading keys survive.
- */
-export function replay(files) {
-  const refuses = new Map() // table -> Set of 'update' | 'delete'
-  const keys = new Map() // `${table}.${constraint}` -> { table, column, parent, action, file }
-  const droppedTriggers = new Set()
-
-  for (const { name, sql: raw } of files) {
-    const sql = withoutComments(raw)
-
-    for (const [, kind, table] of sql.matchAll(STATEMENT_REFUSAL)) {
-      const t = bare(table)
-      if (!refuses.has(t)) refuses.set(t, new Set())
-      refuses.get(t).add(kind.toLowerCase())
-    }
-    for (const [, trigger, table] of sql.matchAll(DROP_TRIGGER)) {
-      droppedTriggers.add(`${bare(table)}.${trigger.toLowerCase()}`)
-    }
-
-    for (const block of tableBlocks(sql)) {
-      COLUMN_FK.lastIndex = 0
-      for (const [, column, parent, action] of block.body.matchAll(COLUMN_FK)) {
-        const constraint = `${block.table}_${column}_fkey`
-        keys.set(`${block.table}.${constraint}`, {
-          table: block.table,
-          column,
-          parent: bare(parent),
-          action: action.replace(/\s+/g, ' ').toLowerCase(),
-          file: name,
-        })
-      }
-    }
-
-    for (const [, table, column, parent, action] of sql.matchAll(ALTER_ADD_FK)) {
-      const t = bare(table)
-      const constraint = `${t}_${column}_fkey`
-      keys.set(`${t}.${constraint}`, {
-        table: t,
-        column,
-        parent: bare(parent),
-        action: action.replace(/\s+/g, ' ').toLowerCase(),
-        file: name,
-      })
-    }
-
-    for (const [, table, constraint] of sql.matchAll(DROP_CONSTRAINT)) {
-      keys.delete(`${bare(table)}.${constraint.toLowerCase()}`)
-    }
-  }
-
-  return { refuses, keys, droppedTriggers }
-}
+export { withoutComments }
 
 /** The pairs that make a parent row undeletable. */
 export function collisions({ refuses, keys }) {
@@ -208,21 +105,20 @@ export function collisions({ refuses, keys }) {
 }
 
 function main() {
-  const names = readdirSync(MIGRATIONS)
-    .filter(f => f.endsWith('.sql'))
-    .sort()
-  const files = names.map(name => ({ name, sql: readFileSync(join(MIGRATIONS, name), 'utf8') }))
-  const schema = replay(files)
+  const files = migrationFiles()
+  const schema = replaySchema(files)
   const found = collisions(schema)
 
   /*
-   * CALIBRATION. Every clause above is a regular expression over SQL, and a
-   * regular expression that has stopped matching reports a confident pass. So
-   * the parsers are run against a synthetic schema that is known to be wrong,
-   * and the guard REFUSES rather than passing if its own probe comes back clean.
+   * CALIBRATION. Every clause here rests on a parser, and a parser that has
+   * stopped matching reports a confident pass. The shared library exercises
+   * each declaration shape against SQL known to declare exactly one key; this
+   * guard then exercises its OWN rule, the collision, against a schema known to
+   * be wrong. It REFUSES rather than passing if either probe comes back clean.
    */
-  const probes = []
-  const probeSchema = replay([
+  const probes = calibrationFailures()
+
+  const probeSchema = replaySchema([
     {
       name: 'probe.sql',
       sql: `
@@ -237,54 +133,23 @@ function main() {
     },
   ])
   if (collisions(probeSchema).length !== 1) probes.push('a set-null key into an update-refusing table is not caught')
-  const droppedProbe = replay([
+
+  const cascadeProbe = replaySchema([
     {
       name: 'probe.sql',
       sql: `
         create table public.b_probe_ledger (
           id uuid primary key,
-          decided_by uuid references auth.users(id) on delete set null
+          order_id uuid references public.orders(id) on delete cascade
         );
-        create trigger trg_b_probe_ledger_no_update
-          before update on public.b_probe_ledger
+        create trigger trg_b_probe_ledger_no_delete
+          before delete on public.b_probe_ledger
           for each statement execute function public.refuse_ledger_mutation();
-        alter table public.b_probe_ledger
-          drop constraint if exists b_probe_ledger_decided_by_fkey;
       `,
     },
   ])
-  if (collisions(droppedProbe).length !== 0) probes.push('a key that was later dropped is still reported')
-  /*
-   * THE COMMENT PROBE, AND WHY IT IS SHAPED THIS WAY. Its first version put the
-   * foreign key itself in a comment, and it could never have failed: the column
-   * matcher is line-anchored, so a line beginning `--` was never going to match
-   * whether comments were stripped or not. It reported a working stripper while
-   * testing nothing, which is the exact shape of guard this file distrusts.
-   *
-   * So the comment here is a DROP that would, if believed, make a live and
-   * dangerous key disappear. Stripped, the collision stands and is caught.
-   * Unstripped, the guard would quietly report the schema as safe.
-   */
-  const commentProbe = replay([
-    {
-      name: 'probe.sql',
-      sql: `
-        create table public.c_probe_ledger (
-          id uuid primary key,
-          decided_by uuid references auth.users(id) on delete set null
-        );
-        create trigger trg_c_probe_ledger_no_update
-          before update on public.c_probe_ledger
-          for each statement execute function public.refuse_ledger_mutation();
-        -- ONE LINE ON PURPOSE: the drop matcher is not line-anchored, so a
-        -- comment split across two lines would not match it even unstripped,
-        -- and the probe would prove nothing. The first version was split, and
-        -- its drill sat there saying DID NOT FAIL until it was read properly.
-        -- alter table public.c_probe_ledger drop constraint if exists c_probe_ledger_decided_by_fkey;
-      `,
-    },
-  ])
-  if (collisions(commentProbe).length !== 1) probes.push('a drop written only in a comment is honoured as a real one')
+  if (collisions(cascadeProbe).length !== 1) probes.push('a cascading key into a delete-refusing table is not caught')
+
   if (schema.refuses.size === 0) probes.push('no table in this tree is seen to refuse anything')
   if (schema.keys.size === 0) probes.push('no cascading foreign key is seen in this tree at all')
 

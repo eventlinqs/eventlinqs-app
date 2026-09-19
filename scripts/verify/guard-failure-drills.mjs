@@ -5389,15 +5389,15 @@ const DRILLS = [
   {
     name: 'the guard stops recognising a statement level refusal',
     guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
-    file: 'scripts/guards/evidence-outlives-the-account.mjs',
-    find: "const REFUSAL = 'refuse_ledger_mutation'",
+    file: 'scripts/guards/lib/referential-keys.mjs',
+    find: "export const REFUSAL = 'refuse_ledger_mutation'",
     replace: "const REFUSAL = 'a_function_no_migration_in_this_tree_uses'",
     expect: 'REFUSING: the calibration probe',
   },
   {
     name: 'the guard stops honouring a constraint that was later dropped',
     guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
-    file: 'scripts/guards/evidence-outlives-the-account.mjs',
+    file: 'scripts/guards/lib/referential-keys.mjs',
     find: 'const DROP_CONSTRAINT = /alter',
     replace: 'const DROP_CONSTRAINT = /never-matches-a-drop-at-all/gi\nconst UNUSED_DROP_CONSTRAINT = /alter',
     expect: 'REFUSING: the calibration probe',
@@ -5405,7 +5405,7 @@ const DRILLS = [
   {
     name: 'the guard starts believing a drop that was only ever written in a comment',
     guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
-    file: 'scripts/guards/evidence-outlives-the-account.mjs',
+    file: 'scripts/guards/lib/referential-keys.mjs',
     find: "    .map(line => line.replace(/--.*$/, ''))",
     replace: '    .map(line => line)',
     expect: 'REFUSING: the calibration probe',
@@ -5454,6 +5454,82 @@ const DRILLS = [
     find: 'process.exitCode = 1',
     replace: 'void 0',
     expect: 'no longer fails the run',
+  },
+
+  /*
+   * a-referential-null-is-not-an-edit (lane B, 19 September 2026), seven drills.
+   *
+   * THE FIRST TWO ARE THE TREE AS IT ACTUALLY STOOD THIS MORNING: take the
+   * column list off either trigger and the defect comes straight back. Both
+   * were driven against TEST before the fix was written, and the second one
+   * arms itself with the calendar, so "nobody would do that" is not a defence.
+   */
+  {
+    name: 'the group rate floor goes back to judging a price on an account closure',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'supabase/migrations/20260919000140_a_referential_null_is_not_an_edit.sql',
+    find: '  before insert or update of event_id, ticket_tier_id, unit_price_cents\n  on public.event_group_rates',
+    replace: '  before insert or update on public.event_group_rates',
+    expect: 'event_group_rates.trg_event_group_rates_floor',
+  },
+  {
+    name: 'the consent check goes back to judging a deleted order',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'supabase/migrations/20260919000140_a_referential_null_is_not_an_edit.sql',
+    find: '  before insert or update of email\n  on public.audience_members',
+    replace: '  before insert or update on public.audience_members',
+    expect: 'audience_members.trg_audience_requires_live_consent',
+  },
+  {
+    name: 'a column list is made to name the very key a parent delete blanks',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'supabase/migrations/20260919000140_a_referential_null_is_not_an_edit.sql',
+    find: '  before insert or update of event_id, ticket_tier_id, unit_price_cents\n  on public.event_group_rates',
+    replace: '  before insert or update of event_id, ticket_tier_id, unit_price_cents, created_by\n  on public.event_group_rates',
+    expect: 'which the database blanks when a parent row is deleted',
+  },
+  {
+    /*
+     * THE DRIFT, WHICH IS THE WORSE HALF. A column list that stops covering
+     * what the function reads does not refuse anything loudly: the check simply
+     * stops running, and a group rate under the floor goes in unopposed.
+     */
+    name: 'a column list stops covering a column the function still reads',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'supabase/migrations/20260919000140_a_referential_null_is_not_an_edit.sql',
+    find: '  before insert or update of event_id, ticket_tier_id, unit_price_cents\n  on public.event_group_rates',
+    replace: '  before insert or update of event_id, ticket_tier_id\n  on public.event_group_rates',
+    expect: 'silently stops running',
+  },
+  {
+    name: 'the guard stops being able to read an event list at all',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'scripts/guards/lib/referential-keys.mjs',
+    find: 'const UPDATE_OF = /',
+    replace: 'const UPDATE_OF = /never-matches-a-column-list/\nconst UNUSED_UPDATE_OF = /',
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: 'the guard starts demanding a column the function only stamps',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'scripts/guards/a-referential-null-is-not-an-edit.mjs',
+    find: '    if (!readElsewhere) read.delete(name)',
+    replace: '    void readElsewhere',
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    /*
+     * THE LIST CAN ONLY SHRINK. An entry that stops matching a real defect is
+     * a finding, which is the only thing that stops a baseline rotting into an
+     * unexamined list.
+     */
+    name: 'a trigger is excused as another lane’s when it does not have the defect',
+    guard: `${GUARDS}/a-referential-null-is-not-an-edit.mjs`,
+    file: 'scripts/guards/a-referential-null-is-not-an-edit.mjs',
+    find: 'const NOT_THIS_LANE = []',
+    replace:
+      "const NOT_THIS_LANE = [{ table: 'audience_members', trigger: 'trg_audience_requires_live_consent', lane: 'a drill', why: 'a drill' }]",
+    expect: 'no longer matches a trigger with the defect',
   },
 ]
 

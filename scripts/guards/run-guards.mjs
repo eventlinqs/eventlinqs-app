@@ -206,6 +206,12 @@
  *                              carries a foreign key that cascades into it, because the
  *                              referential action runs its statement whether or not a row
  *                              matches and the parent then cannot be deleted by anybody
+ *   a-referential-null-is-not-an-edit  the row-level half: a BEFORE UPDATE FOR EACH ROW
+ *                              trigger that can raise, on a table carrying an
+ *                              `on delete set null` key, must decline to judge the UPDATE
+ *                              the database issues when the parent goes, by an event list,
+ *                              a when clause or an early return, so an account closure is
+ *                              never refused on the grounds of a price or a consent age
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -2171,6 +2177,21 @@ const GUARDS = [
   // reported a clean tear-down. The guard replays the migrations in order,
   // honours later drops, and refuses the pair.
   'scripts/guards/evidence-outlives-the-account.mjs',
+
+  // The ROW-LEVEL half of the same fault, found on 19 September 2026 by reading
+  // the note `evidence-outlives-the-account` left about what it deliberately did
+  // NOT cover. `on delete set null` issues `UPDATE child SET fk = NULL`, which
+  // is how an account, an order or an event is deleted; a BEFORE UPDATE FOR EACH
+  // ROW trigger with no column list re-judges the whole row on it, against
+  // TODAY'S configuration. Driven on TEST: moving the fee in /admin/pricing made
+  // the person who set a group rate undeletable with a complaint about a price,
+  // and tightening the consent age policy made an audience member, the order
+  // they last bought and the event they last attended all undeletable. The
+  // second arms itself with the calendar, because consent ages out at 24 months
+  // and nothing sweeps. The guard accepts all three protective constructs this
+  // tree already uses (an event list, a when clause, an early return) rather
+  // than imposing one on two triggers that were correct before it existed.
+  'scripts/guards/a-referential-null-is-not-an-edit.mjs',
 
   // The same incident from the other side. `evidence-outlives-the-account`
   // guards the CAUSE (a cascading key into a table that refuses UPDATE); this
