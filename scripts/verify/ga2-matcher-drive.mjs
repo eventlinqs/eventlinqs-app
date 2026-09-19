@@ -63,6 +63,7 @@ import { chromium, BASE } from '../journeys/harness.mjs'
 import { invalidateFeatureFlag, FEATURE_FLAG_CACHE_TTL_SECONDS } from '../../src/lib/flags/broadcast.ts'
 import { sitemapFootprint, laneFixturesStillPublished } from './lib/sitemap-footprint.mjs'
 import { answerTheCookieBanner as answerTheBanner } from './lib/cookie-banner.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 /*
  * THE CONSENT BANNER. One shared implementation (scripts/verify/lib/cookie-banner.mjs),
@@ -442,7 +443,18 @@ async function teardown() {
     await db.from('events').delete().eq('id', fixture.eventId)
   }
   if (fixture.organisationId) await db.from('organisations').delete().eq('id', fixture.organisationId)
-  if (fixture.ownerId) await db.auth.admin.deleteUser(fixture.ownerId).catch(() => {})
+  if (fixture.ownerId) await tearDownAccountOrFailTheRun(db, fixture.ownerId)
+  // THE ADMIN THIS DRIVE CREATES WAS NEVER REMOVED. Found on 19 September 2026
+  // by counting what was left on TEST rather than by reading this function: 42
+  // lane B accounts remained and most of them were named `-admin`, one per GA2
+  // run since the drive was written, each carrying a `super_admin` row in
+  // `admin_users`. The teardown deleted the owner and stopped. Same shape as
+  // ga3, ga4 and ga5, which all remove both.
+  if (fixture.adminId) {
+    await db.from('admin_users').delete().eq('id', fixture.adminId)
+    await db.from('profiles').delete().eq('id', fixture.adminId)
+    await tearDownAccountOrFailTheRun(db, fixture.adminId)
+  }
 }
 
 async function run() {

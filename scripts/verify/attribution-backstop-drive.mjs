@@ -58,6 +58,7 @@ import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { sitemapFootprint, laneFixturesStillPublished } from './lib/sitemap-footprint.mjs'
 import { createProofAdmin, removeProofAdmin, signInAsOwner } from './lib/fo1-founding-admin.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 const args = process.argv.slice(2)
 let out = null
@@ -253,7 +254,7 @@ async function teardown() {
   if (fixture.organisationId) await db.from('organisations').delete().eq('id', fixture.organisationId)
   if (fixture.ownerId) {
     await db.from('profiles').delete().eq('id', fixture.ownerId)
-    await db.auth.admin.deleteUser(fixture.ownerId).catch(() => {})
+    await tearDownAccountOrFailTheRun(db, fixture.ownerId)
   }
   await removeProofAdmin(db, fixture.admin)
 }

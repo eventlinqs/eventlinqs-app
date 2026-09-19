@@ -50,6 +50,7 @@ import { createClient } from '@supabase/supabase-js'
 import { chromium, BASE, messagesOnScreen } from '../journeys/harness.mjs'
 import { chooseFoundingDriveTarget } from './lib/fo1-founding-admin.mjs'
 import { buildFixture } from './lib/refund-proof-fixture.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 const args = process.argv.slice(2)
 let out = null
@@ -668,7 +669,7 @@ try {
   }
   if (adminUserId) {
     await db.from('admin_users').delete().eq('id', adminUserId)
-    await db.auth.admin.deleteUser(adminUserId).catch(() => {})
+    await tearDownAccountOrFailTheRun(db, adminUserId)
   }
   if (browser) await browser.close()
 }

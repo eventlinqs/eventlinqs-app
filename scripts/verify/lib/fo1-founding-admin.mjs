@@ -12,6 +12,7 @@
  * TEST ONLY. Every caller asserts the TEST Supabase ref before importing rows.
  */
 import { randomUUID } from 'node:crypto'
+import { tearDownAccountOrFailTheRun } from './teardown-account.mjs'
 
 /**
  * A throwaway super-admin, created here rather than borrowed, because the
@@ -36,7 +37,7 @@ export async function removeProofAdmin(db, admin) {
   if (!admin?.id) return
   await db.from('admin_users').delete().eq('id', admin.id)
   await db.from('profiles').delete().eq('id', admin.id)
-  await db.auth.admin.deleteUser(admin.id).catch(() => {})
+  await tearDownAccountOrFailTheRun(db, admin.id)
 }
 
 /** Signs in at the real /admin/login. Returns true when the console was reached. */
