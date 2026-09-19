@@ -60,6 +60,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { chromium } from 'playwright'
+import { AxeBuilder } from '@axe-core/playwright'
 import { createClient } from '@supabase/supabase-js'
 import { MEASURE_VIEWPORT_FIT, judgeSurface } from './lib/viewport-fit.mjs'
 import { createProofAdmin, removeProofAdmin, signInAsOwner } from './lib/fo1-founding-admin.mjs'
@@ -255,6 +256,23 @@ async function main() {
         const fit = await page.evaluate(`(${MEASURE_VIEWPORT_FIT})()`)
         const faults = judgeSurface({ label: '/admin/pricing', width: viewport.width, fit, totals: [] })
         record(`${viewport.name}: nothing on /admin/pricing is clipped past the right edge`, faults.length === 0, faults.join('; '))
+
+        /*
+         * ACCESSIBILITY ON THE SURFACE THIS ITEM CHANGED. The controls gained
+         * `required`, lost their defaults and the three alert banners were
+         * rewritten, so this screen is an AFFECTED SURFACE and the Definition of
+         * Done asks for zero serious or critical violations on it. It is behind
+         * admin auth, so scripts/axe-lane-b-surfaces.mjs cannot reach it and the
+         * check belongs here, in the run that is already signed in.
+         */
+        const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+        const serious = axe.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
+        record(
+          `${viewport.name}: /admin/pricing has no serious or critical axe violation`,
+          serious.length === 0,
+          serious.map((v) => `${v.id} x${v.nodes.length}`).join('; ') ||
+            `${axe.violations.length} violation(s) below serious`,
+        )
 
         /*
          * THE CONTROL NO LONGER OFFERS THE ZERO. Read off the rendered element
