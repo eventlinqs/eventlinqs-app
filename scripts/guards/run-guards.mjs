@@ -170,6 +170,11 @@
  *                              PostgREST or(...) is escaped through the one door
  *                              or sanitised at its source, because a comma in an
  *                              unescaped term is parsed as another filter clause
+ *   a-failed-read-is-not-a-fact-about-a-person  on the marketing send path a read
+ *                              goes through a door that throws, or binds its own
+ *                              error, because a failure there is written into an
+ *                              append-only ledger as a sentence about a named
+ *                              person and counted onto /admin/campaigns
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -2060,6 +2065,22 @@ const GUARDS = [
   // postbuild half is still wired). The proof is the same file run with
   // --built from npm's postbuild, against the build that just finished.
   'scripts/guards/initial-bundle-budget.mjs',
+
+  // Found 19 September 2026 by reading the send path against the doctrine two
+  // other guards already carry. In src/lib/campaigner/run.ts SIX reads discarded
+  // their error, and each failure had a false sentence already written for it:
+  // "the audience row this admission points at no longer exists", "this address
+  // has no consent record carrying an unsubscribe token", and, from ONE failed
+  // read of a small authored table, "the step names a template that does not
+  // exist" against EVERY recipient on the campaign. Those sentences are written
+  // into public.marketing_send_skip, which is append-only, and counted onto
+  // /admin/campaigns, so a blink became a permanent statement about a named
+  // person. The same file checks its error on line 92 and then does not repeat
+  // it six times below. Elsewhere in scope the same shape told a person their
+  // unsubscribe link "is not valid". 48 sites across 11 files, all closed
+  // through the doors, and the matcher sees ARRAY destructuring, which the
+  // sibling guard cannot and which is the spelling two of those sites used.
+  'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

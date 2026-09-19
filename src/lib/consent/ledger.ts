@@ -1,5 +1,6 @@
 import 'server-only'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { ReadFailed, readOrThrow } from '@/lib/supabase/read-or-throw'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
@@ -128,11 +129,16 @@ export async function recordConsentEvent(
     if (!email) return false
 
     const tenantSlug = params.tenantSlug ?? PLATFORM_TENANT_SLUG
-    const { data: tenant } = await admin
-      .from('marketing_tenants')
-      .select('id')
-      .eq('slug', tenantSlug)
-      .maybeSingle()
+    /*
+     * THROUGH THE DOOR, SO A BLINK IS NOT "NO SUCH TENANT". Without it a failed
+     * read returned false here, before the catch below, so the ledger write
+     * that a person's unsubscribe or consent depends on was abandoned with
+     * nothing logged anywhere. `readOrThrow` throws, the catch records it, and
+     * the caller still sees false - but now somebody can find out why.
+     */
+    const tenant = await readOrThrow('consent ledger tenant', () =>
+      admin.from('marketing_tenants').select('id').eq('slug', tenantSlug).maybeSingle(),
+    )
     if (!tenant?.id) return false
 
     const { error } = await admin.from('consent_events').insert({
@@ -186,11 +192,16 @@ export async function recordSuppressionEvent(
     if (!email) return false
 
     const tenantSlug = params.tenantSlug ?? PLATFORM_TENANT_SLUG
-    const { data: tenant } = await admin
-      .from('marketing_tenants')
-      .select('id')
-      .eq('slug', tenantSlug)
-      .maybeSingle()
+    /*
+     * THROUGH THE DOOR, SO A BLINK IS NOT "NO SUCH TENANT". Without it a failed
+     * read returned false here, before the catch below, so the ledger write
+     * that a person's unsubscribe or consent depends on was abandoned with
+     * nothing logged anywhere. `readOrThrow` throws, the catch records it, and
+     * the caller still sees false - but now somebody can find out why.
+     */
+    const tenant = await readOrThrow('consent ledger tenant', () =>
+      admin.from('marketing_tenants').select('id').eq('slug', tenantSlug).maybeSingle(),
+    )
     if (!tenant?.id) return false
 
     const { error } = await admin.from('suppression_events').insert({
@@ -223,24 +234,33 @@ export async function findSubjectByToken(admin: Admin, token: string): Promise<s
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
     return null
   }
+  /*
+   * A FAILED READ HERE TELLS A PERSON THEIR UNSUBSCRIBE LINK IS NOT VALID.
+   *
+   * null from this function makes /marketing/preferences/[token] render "This
+   * link is not valid", and that page is the unsubscribe facility the Spam Act
+   * 2003 is about. Both reads discarded their error, so a dropped socket became
+   * a permanent-looking refusal of a right, on the one surface where it must
+   * never happen. Through the door, and the catch re-raises a read failure
+   * rather than folding it back into the same null.
+   */
   try {
-    const { data: consentRow } = await admin
-      .from('marketing_consents')
-      .select('email')
-      .eq('unsubscribe_token', token)
-      .maybeSingle()
+    const consentRow = await readOrThrow('unsubscribe token, platform consent', () =>
+      admin.from('marketing_consents').select('email').eq('unsubscribe_token', token).maybeSingle(),
+    )
     if (consentRow?.email) return normaliseSubjectEmail(consentRow.email)
 
-    const { data: waitlistRow } = await admin
-      .from('city_waitlist_signups')
-      .select('email')
-      .eq('unsubscribe_token', token)
-      .maybeSingle()
+    const waitlistRow = await readOrThrow('unsubscribe token, city waitlist', () =>
+      admin.from('city_waitlist_signups').select('email').eq('unsubscribe_token', token).maybeSingle(),
+    )
     if (waitlistRow?.email) return normaliseSubjectEmail(waitlistRow.email)
 
     return null
   } catch (error) {
     captureException(error, { where: 'lib/consent/ledger:findSubjectByToken' })
+    // "Not valid" is a statement about the token. A read that failed is not
+    // evidence about the token, so it is raised and the page answers 500.
+    if (error instanceof ReadFailed) throw error
     return null
   }
 }
@@ -291,11 +311,9 @@ export async function readSubjectHistory(
   if (!normalised) return empty
 
   try {
-    const { data: tenant } = await admin
-      .from('marketing_tenants')
-      .select('id')
-      .eq('slug', tenantSlug)
-      .maybeSingle()
+    const tenant = await readOrThrow('subject history tenant', () =>
+      admin.from('marketing_tenants').select('id').eq('slug', tenantSlug).maybeSingle(),
+    )
     if (!tenant?.id) return empty
 
     /*
@@ -358,6 +376,16 @@ export async function readSubjectHistory(
     }
   } catch (error) {
     captureException(error, { where: 'lib/consent/ledger:readSubjectHistory' })
-    return empty
+    /*
+     * AN EMPTY HISTORY IS AN ANSWER TO A LEGAL QUESTION AND IT MUST BE TRUE.
+     *
+     * This backs the preferences page a person reads about themselves and the
+     * admin screen a complaint is answered from. "We hold nothing about you" is
+     * a statement; a read that failed is not evidence for it. Note that
+     * `readEveryRow` above ALREADY throws on a failed page, and this catch was
+     * quietly turning every one of those into the same empty answer.
+     */
+    if (error instanceof ReadFailed) throw error
+    throw new ReadFailed('consent subject history', error)
   }
 }

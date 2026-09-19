@@ -1,4 +1,5 @@
 import 'server-only'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { applyPublicEventVisibility } from '@/lib/events/public-visibility'
@@ -89,9 +90,19 @@ export async function readMatchableEvents(admin: Admin, now: Date, limit = 40): 
    * (node_modules/@supabase/postgrest-js/src/PostgrestTransformBuilder.ts), so
    * the object the visibility rule then filters is the same builder.
    */
-  const { data } = await applyPublicEventVisibility(
-    admin.from('events').select(COLUMNS).order('start_date', { ascending: true }).limit(limit),
-    { now },
+  /*
+   * THROUGH THE DOOR, BECAUSE AN EMPTY CANDIDATE LIST IS AN ANSWER.
+   *
+   * This read discarded its error, so a failed request became "there are no
+   * events to match", the matcher scored nobody, and /admin/matches reported a
+   * run of zero. Nothing about that reads as a fault. A throw answers 500 and
+   * says ask again.
+   */
+  const data = await readOrThrow('matchable events', () =>
+    applyPublicEventVisibility(
+      admin.from('events').select(COLUMNS).order('start_date', { ascending: true }).limit(limit),
+      { now },
+    ),
   )
   return ((data ?? []) as Row[]).map(toMatchable)
 }
@@ -105,6 +116,10 @@ export async function readMatchableEvents(admin: Admin, now: Date, limit = 40): 
  * bound lives on the list and not here.
  */
 export async function readEventForMatching(admin: Admin, id: string): Promise<MatchableEvent | null> {
-  const { data } = await admin.from('events').select(COLUMNS).eq('id', id).maybeSingle()
+  // null here is "no such event", which the screen may say. A failed read is
+  // not that, so it raises rather than becoming the same sentence.
+  const data = await readOrThrow('matching event by id', () =>
+    admin.from('events').select(COLUMNS).eq('id', id).maybeSingle(),
+  )
   return data ? toMatchable(data as Row) : null
 }

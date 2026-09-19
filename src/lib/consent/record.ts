@@ -9,6 +9,7 @@ import {
   normaliseConsentEmail,
 } from './wording'
 import { captureException } from '@/lib/observability/sentry'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { LOCAL_DIGEST_PURPOSE, scopesForPurpose } from './purposes'
 import { recordConsentEvent, recordSuppressionEvent } from './ledger'
 import { resolveSend } from './resolver'
@@ -274,11 +275,23 @@ export async function withdrawDigestByAnyToken(
     return null
   }
 
-  const { data: consentRow } = await admin
-    .from('marketing_consents')
-    .select('email, status, consent_text, consent_version, city_slug')
-    .eq('unsubscribe_token', token)
-    .maybeSingle()
+  /*
+   * THROUGH THE DOOR, BECAUSE null FROM HERE IS "THIS LINK IS NOT VALID".
+   *
+   * Every read in this file that resolves an unsubscribe token used to discard
+   * its error, so a dropped socket told a person their unsubscribe link was not
+   * valid, or that they were already withdrawn when they were not. That is the
+   * Spam Act facility itself. A read failure now raises and the surface answers
+   * 500, which says ask again; only the database saying "no row" still means no
+   * such token.
+   */
+  const consentRow = await readOrThrow('withdraw token, platform consent', () =>
+    admin
+      .from('marketing_consents')
+      .select('email, status, consent_text, consent_version, city_slug')
+      .eq('unsubscribe_token', token)
+      .maybeSingle(),
+  )
 
   if (consentRow) {
     const email = normaliseConsentEmail(consentRow.email)
@@ -296,20 +309,20 @@ export async function withdrawDigestByAnyToken(
     return { source: 'consent', email, alreadyWithdrawn: false }
   }
 
-  const { data: waitlistRow } = await admin
-    .from('city_waitlist_signups')
-    .select('email, city_slug, consent_text, consent_version, created_at')
-    .eq('unsubscribe_token', token)
-    .maybeSingle()
+  const waitlistRow = await readOrThrow('withdraw token, city waitlist', () =>
+    admin
+      .from('city_waitlist_signups')
+      .select('email, city_slug, consent_text, consent_version, created_at')
+      .eq('unsubscribe_token', token)
+      .maybeSingle(),
+  )
 
   if (!waitlistRow) return null
 
   const email = normaliseConsentEmail(waitlistRow.email)
-  const { data: existing } = await admin
-    .from('marketing_consents')
-    .select('id, status')
-    .eq('email', email)
-    .maybeSingle()
+  const existing = await readOrThrow('withdraw token, existing consent', () =>
+    admin.from('marketing_consents').select('id, status').eq('email', email).maybeSingle(),
+  )
 
   if (existing?.status === 'withdrawn') {
     return { source: 'waitlist', email, alreadyWithdrawn: true }
@@ -388,27 +401,25 @@ export async function findDigestUnsubscribeTarget(
     return null
   }
 
-  const { data: consentRow } = await admin
-    .from('marketing_consents')
-    .select('status')
-    .eq('unsubscribe_token', token)
-    .maybeSingle()
+  const consentRow = await readOrThrow('token state, platform consent', () =>
+    admin.from('marketing_consents').select('status').eq('unsubscribe_token', token).maybeSingle(),
+  )
   if (consentRow) {
     return { source: 'consent', alreadyWithdrawn: consentRow.status === 'withdrawn' }
   }
 
-  const { data: waitlistRow } = await admin
-    .from('city_waitlist_signups')
-    .select('email')
-    .eq('unsubscribe_token', token)
-    .maybeSingle()
+  const waitlistRow = await readOrThrow('token state, city waitlist', () =>
+    admin.from('city_waitlist_signups').select('email').eq('unsubscribe_token', token).maybeSingle(),
+  )
   if (!waitlistRow) return null
 
-  const { data: suppression } = await admin
-    .from('marketing_consents')
-    .select('status')
-    .eq('email', normaliseConsentEmail(waitlistRow.email))
-    .maybeSingle()
+  const suppression = await readOrThrow('token state, suppression', () =>
+    admin
+      .from('marketing_consents')
+      .select('status')
+      .eq('email', normaliseConsentEmail(waitlistRow.email))
+      .maybeSingle(),
+  )
 
   return { source: 'waitlist', alreadyWithdrawn: suppression?.status === 'withdrawn' }
 }
@@ -429,11 +440,27 @@ export async function withdrawDigestConsentByEmail(
   try {
     const normalised = normaliseConsentEmail(email)
     if (!normalised) return false
-    const { data: existing } = await admin
+    /*
+     * THE ONE READ ON THIS PATH THAT MUST NOT STOP THE WITHDRAWAL.
+     *
+     * Everything else here raises, because null means "not valid". This read
+     * only fetches the WORDING the consent was taken under, to store beside the
+     * withdrawal as evidence. Losing that evidence is a real cost; refusing to
+     * record somebody's unsubscribe because we could not look it up is a far
+     * larger one, and it is the failure the Spam Act is about. So the error is
+     * bound, recorded, and the withdrawal proceeds with what is known.
+     */
+    const { data: existing, error: existingError } = await admin
       .from('marketing_consents')
       .select('consent_text, consent_version, city_slug')
       .eq('email', normalised)
       .maybeSingle()
+    if (existingError) {
+      captureException(existingError, {
+        where: 'lib/consent/record:withdrawDigestByEmail',
+        note: 'the wording this consent was taken under could not be read; the withdrawal was still recorded, without it',
+      })
+    }
     return await writeWithdrawalToLedger(admin, {
       email: normalised,
       wording: existing?.consent_text ?? null,
@@ -466,11 +493,13 @@ export async function withdrawOrganiserConsentByToken(
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
     return null
   }
-  const { data: row } = await admin
-    .from('organiser_marketing_consents')
-    .select('id, status, organisation:organisations(name)')
-    .eq('unsubscribe_token', token)
-    .maybeSingle()
+  const row = await readOrThrow('organiser consent token', () =>
+    admin
+      .from('organiser_marketing_consents')
+      .select('id, status, organisation:organisations(name)')
+      .eq('unsubscribe_token', token)
+      .maybeSingle(),
+  )
   if (!row) return null
 
   const organisationName =

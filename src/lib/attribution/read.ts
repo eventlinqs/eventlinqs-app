@@ -1,4 +1,5 @@
 import 'server-only'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatMoney } from '@/lib/money/format'
 import { formatPlatformDate } from '@/lib/dates/event-time'
@@ -134,29 +135,43 @@ export async function readAttributionForOrder(reference: string): Promise<Attrib
   const trimmed = reference.trim().toUpperCase()
   if (!trimmed) return null
 
-  const { data: order } = await admin
-    .from('orders')
-    .select('id, order_number, status, currency')
-    .eq('order_number', trimmed)
-    .maybeSingle()
+  /*
+   * THROUGH THE DOOR, BECAUSE THIS SCREEN ANSWERS WHO EARNED A SALE.
+   *
+   * null from the order read made /admin/attribution say the order number is
+   * not known. A failed attribution read made it say the order was never
+   * attributed. A failed reversal read made a reversed attribution look live.
+   * All three were discarded errors and all three are statements about money.
+   */
+  const order = await readOrThrow('attribution order lookup', () =>
+    admin
+      .from('orders')
+      .select('id, order_number, status, currency')
+      .eq('order_number', trimmed)
+      .maybeSingle(),
+  )
   if (!order) return null
 
-  const { data: row } = await admin
-    .from('marketing_attribution')
-    .select(
-      'order_id, decision, rung, model_name, model_version, confidence, campaign_id, channel_code, partner_id, recipient_id, forwarded, billable, explanation, resolved_at, candidate_clicks',
-    )
-    .eq('order_id', order.id)
-    .maybeSingle()
+  const row = await readOrThrow('attribution decision', () =>
+    admin
+      .from('marketing_attribution')
+      .select(
+        'order_id, decision, rung, model_name, model_version, confidence, campaign_id, channel_code, partner_id, recipient_id, forwarded, billable, explanation, resolved_at, candidate_clicks',
+      )
+      .eq('order_id', order.id)
+      .maybeSingle(),
+  )
 
-  const { data: reversalRows } = await admin
-    .from('marketing_attribution_reversal')
-    .select('id, reason, reversed_amount_cents, reversed_at, source')
-    .eq('order_id', order.id)
-    .order('reversed_at', { ascending: false })
-    // One order's reversals. Bounded far above anything real, and stated here
-    // rather than left to the server's invisible 1,000-row ceiling.
-    .limit(500)
+  const reversalRows = await readOrThrow('attribution reversals', () =>
+    admin
+      .from('marketing_attribution_reversal')
+      .select('id, reason, reversed_amount_cents, reversed_at, source')
+      .eq('order_id', order.id)
+      .order('reversed_at', { ascending: false })
+      // One order's reversals. Bounded far above anything real, and stated here
+      // rather than left to the server's invisible 1,000-row ceiling.
+      .limit(500),
+  )
 
   const reversals: ReversalView[] = (reversalRows ?? []).map(r => ({
     id: r.id,

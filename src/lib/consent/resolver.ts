@@ -3,6 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import {
   PLATFORM_TENANT_SLUG,
   isTransactionalPurpose,
@@ -70,11 +72,19 @@ export async function resolveSend(
   }
 
   try {
-    const { data: tenant } = await admin
-      .from('marketing_tenants')
-      .select('id')
-      .eq('slug', tenantSlug)
-      .maybeSingle()
+    /*
+     * THROUGH THE DOOR, SO THE REFUSAL NAMES THE RIGHT CAUSE.
+     *
+     * This read discarded its error, so a failure left `tenant` null and the
+     * refusal below said "unknown tenant platform" - about the platform's own
+     * tenant, which has existed since GA1. That sentence is not a nuisance: it
+     * is stored as the detail of a marketing_send_skip row and read back as
+     * evidence. `readOrThrow` raises instead, the catch at the bottom of this
+     * function answers with the true reason, and the send still fails CLOSED.
+     */
+    const tenant = await readOrThrow('consent resolver tenant', () =>
+      admin.from('marketing_tenants').select('id').eq('slug', tenantSlug).maybeSingle(),
+    )
     if (!tenant?.id) {
       return { permitted: false, reason: `unknown tenant ${tenantSlug}`, decidingEventId: null }
     }
@@ -179,11 +189,19 @@ export async function filterPermittedRecipients(
   }
 
   try {
-    const { data: tenant } = await admin
-      .from('marketing_tenants')
-      .select('id')
-      .eq('slug', tenantSlug)
-      .maybeSingle()
+    /*
+     * THROUGH THE DOOR, SO THE REFUSAL NAMES THE RIGHT CAUSE.
+     *
+     * This read discarded its error, so a failure left `tenant` null and the
+     * refusal below said "unknown tenant platform" - about the platform's own
+     * tenant, which has existed since GA1. That sentence is not a nuisance: it
+     * is stored as the detail of a marketing_send_skip row and read back as
+     * evidence. `readOrThrow` raises instead, the catch at the bottom of this
+     * function answers with the true reason, and the send still fails CLOSED.
+     */
+    const tenant = await readOrThrow('consent resolver tenant', () =>
+      admin.from('marketing_tenants').select('id').eq('slug', tenantSlug).maybeSingle(),
+    )
     if (!tenant?.id) {
       return { permitted: [], refused: normalised.map((email) => ({ email, reason: `unknown tenant ${tenantSlug}` })) }
     }
@@ -198,11 +216,15 @@ export async function filterPermittedRecipients(
      * matches out of five hundred consented people and every one of them was
      * recorded as "the consent resolver does not permit". Fail-closed is right
      * and it is exactly what made the fault look like a policy decision instead
-     * of a broken query. A hundred at a time keeps every URL short.
+     * of a broken query.
+     *
+     * A HUNDRED AT A TIME WAS STILL THE WRONG BOUND, because the thing being
+     * bounded is BYTES. An address may legally be 254 characters (RFC 5321
+     * 4.5.3.1.3), so a hundred of them is about 25 KB against a documented
+     * 16 KB. `chunkInFilterValues` bounds both, and its header carries the
+     * citation and the measurement taken on this project.
      */
-    const CHUNK = 100
-    const chunks: string[][] = []
-    for (let i = 0; i < normalised.length; i += CHUNK) chunks.push(normalised.slice(i, i + CHUNK))
+    const chunks = chunkInFilterValues(normalised)
 
     /*
      * EVERY ROW, NOT THE FIRST THOUSAND. A hundred addresses is a hundred

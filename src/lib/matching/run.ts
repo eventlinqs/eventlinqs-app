@@ -1,4 +1,5 @@
 import 'server-only'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { captureException } from '@/lib/observability/sentry'
@@ -46,23 +47,42 @@ export interface MatchRunResult {
 
 /** The event facts the scorer needs, and the published check the run refuses on. */
 async function loadEvent(admin: Admin, eventId: string) {
-  const { data: event } = await admin
-    .from('events')
-    .select('id, slug, title, status, visibility, category_id, community_primary, city_primary, venue_postal_code, tags')
-    .eq('id', eventId)
-    .maybeSingle()
+  /*
+   * EVERY READ THROUGH THE DOOR, BECAUSE A MATCH RUN THAT FOUND NOBODY IS A
+   * RESULT SOMEBODY ACTS ON.
+   *
+   * `null` from here makes the run refuse with "no such event". An empty tier
+   * list silently changes the price band every candidate is scored against, and
+   * an empty community map silently removes a whole scoring dimension. Each was
+   * a discarded error, and none of them reads as a fault on /admin/matches: it
+   * reads as a poor match.
+   */
+  const event = await readOrThrow('match run event', () =>
+    admin
+      .from('events')
+      .select('id, slug, title, status, visibility, category_id, community_primary, city_primary, venue_postal_code, tags')
+      .eq('id', eventId)
+      .maybeSingle(),
+  )
   if (!event) return null
 
-  const [{ data: category }, { data: tiers }, { data: communityMap }] = await Promise.all([
-    event.category_id
-      ? admin.from('event_categories').select('slug').eq('id', event.category_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+  // Bound to a local so the narrowing survives into the closure: inside an
+  // arrow, `event.category_id` is widened back to `string | null`.
+  const categoryId = event.category_id
+  const [category, tiers, communityMap] = await Promise.all([
+    categoryId
+      ? readOrThrow('match run category', () =>
+          admin.from('event_categories').select('slug').eq('id', categoryId).maybeSingle(),
+        )
+      : Promise.resolve(null),
     // One event's active tiers. The bound is far above any real event and is
     // stated rather than left to the server's invisible 1,000-row ceiling.
-    admin.from('ticket_tiers').select('price').eq('event_id', eventId).eq('is_active', true).limit(500),
+    readOrThrow('match run ticket tiers', () =>
+      admin.from('ticket_tiers').select('price').eq('event_id', eventId).eq('is_active', true).limit(500),
+    ),
     readEveryRow('community_tag_map', (from, to) =>
       admin.from('community_tag_map').select('community_slug, tokens').order('community_slug').range(from, to),
-    ).then(data => ({ data })),
+    ),
   ])
 
   const prices = (tiers ?? []).map(t => t.price).sort((a, b) => a - b)

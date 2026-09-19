@@ -5089,6 +5089,86 @@ const DRILLS = [
     replace: "const CLASS_FLIGHT = new RegExp(`classNameXX${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
     expect: 'REFUSING: the calibration probe was found',
   },
+
+  /*
+   * a-failed-read-is-not-a-fact-about-a-person (lane B, 19 September 2026),
+   * six drills.
+   *
+   * The guard exists because a failed read on the send path is not an empty
+   * rail and not a 404: it is written into public.marketing_send_skip, which is
+   * append-only, as a sentence about a named person, and counted onto
+   * /admin/campaigns. One failed read of the small authored template table used
+   * to record "the step names a template that does not exist" against EVERY
+   * recipient on the campaign.
+   *
+   * THE SECOND DRILL IS THE ONE THAT EARNS THE GUARD. The sibling guard's
+   * matcher is `const {...} = await`, which cannot see an ARRAY destructure, and
+   * two of the forty-eight sites were spelled that way, including the event and
+   * organisation read this drill restores. A guard whose matcher cannot see the
+   * commonest spelling reports the absence of what it never looked at.
+   *
+   * THE LAST TWO AIM AT THE GUARD ITSELF rather than at the product, because
+   * both of its counters can come back zero while it prints PASS: a scope that
+   * scans nothing, and a matcher that matches nothing. Lane A lost a whole guard
+   * to the second of those on 18 September, to a `${BSL}s` inside a template
+   * literal.
+   */
+  {
+    name: 'the campaigner template read goes back to discarding its error',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/campaigner/run.ts',
+    find: "const data = await readOrThrow('campaigner template library', () =>",
+    replace: "const { data } = await (() =>",
+    expect: 'src/lib/campaigner/run.ts',
+  },
+  {
+    name: 'the event and organisation reads go back to an ARRAY destructure that drops both errors',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/campaigner/run.ts',
+    find: '  const [event, organisation] = await Promise.all([\n    readOrThrow(',
+    replace: '  const [{ data: event }, { data: organisation }] = await Promise.all([\n    readOrThrow(',
+    expect: 'element 1 of an array destructure',
+  },
+  {
+    name: "the unsubscribe token lookup goes back to calling a person's live link invalid",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/consent/ledger.ts',
+    find: "const consentRow = await readOrThrow('unsubscribe token, platform consent', () =>",
+    replace: 'const { data: consentRow } = await (() =>',
+    expect: 'src/lib/consent/ledger.ts',
+  },
+  {
+    name: 'the register names a file this guard no longer scans',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: "file: 'src/lib/consent/digest-city.ts',",
+    replace: "file: 'src/lib/consent/digest-city-renamed.ts',",
+    expect: 'no longer matches a scanned file',
+  },
+  {
+    name: 'the guard scans no send-path files at all while still reporting a pass',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: "['src/lib/campaigner', 'a permanent skip row and a counted reason on /admin/campaigns'],",
+    replace: "['src/lib/campaigner-gone', 'a permanent skip row and a counted reason on /admin/campaigns'],",
+    expect: 'A scope that scans nothing reports a pass',
+  },
+  {
+    name: "the guard's own matcher quietly stops seeing an object destructure",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: `for (const m of code.matchAll(/(?:const|let|var)${BSL}s*${BSL}{([^{}]*)${BSL}}${BSL}s*=${BSL}s*await${BSL}b/g)) {`,
+    replace: `for (const m of code.matchAll(/(?:const|let|var)${BSL}s*${BSL}{([^{}]*)${BSL}}${BSL}s*=${BSL}s*await${BSL}b/g)) {\n    if (m) continue`,
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: "the guard's own matcher quietly stops seeing an ARRAY destructure",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {`,
+    replace: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {\n      if (inner) continue`,
+    expect: 'REFUSING: the calibration probe',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

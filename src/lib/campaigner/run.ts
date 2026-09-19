@@ -1,5 +1,7 @@
 import 'server-only'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveSend } from '@/lib/consent/resolver'
 import { FACILITATED_MARKETING_PURPOSE, type ConsentChannel } from '@/lib/consent/purposes'
@@ -112,25 +114,57 @@ export async function runCampaign(params: {
     errors: [],
   }
 
-  const [{ data: event }, { data: organisation }] = await Promise.all([
-    admin
-      .from('events')
-      .select('id, title, slug, start_date, timezone, venue_name, venue_city')
-      .eq('id', campaign.event_id)
-      .maybeSingle(),
-    admin.from('organisations').select('id, name').eq('id', campaign.organisation_id).maybeSingle(),
+  /*
+   * EVERY READ BELOW GOES THROUGH THE DOOR, AND THE REASON IS THE SENTENCE IT
+   * USED TO PRODUCE.
+   *
+   * This function's job is to decide, per person, whether a message goes, and
+   * to WRITE DOWN why when it does not. Those sentences are read back as
+   * evidence: they are stored in public.marketing_send_skip, which is
+   * append-only, and counted onto /admin/campaigns. A read that discarded its
+   * error could not tell a failure from an absence, so each one had a false
+   * sentence waiting for it - "the audience row no longer exists", "this
+   * address has no consent record", "the step names a template that does not
+   * exist" - about a named person, permanently.
+   *
+   * `readOrThrow` (src/lib/supabase/read-or-throw.ts) retries a transient
+   * blink, answers null only when the database itself said "no row", and throws
+   * otherwise. `runCampaignAction` turns that throw into a sentence on the
+   * screen, so the run reports the truth and records nothing about anybody.
+   * Held by scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs.
+   */
+  const [event, organisation] = await Promise.all([
+    readOrThrow('campaigner event', () =>
+      admin
+        .from('events')
+        .select('id, title, slug, start_date, timezone, venue_name, venue_city')
+        .eq('id', campaign.event_id)
+        .maybeSingle(),
+    ),
+    readOrThrow('campaigner organisation', () =>
+      admin.from('organisations').select('id, name').eq('id', campaign.organisation_id).maybeSingle(),
+    ),
   ])
   if (!event || !organisation) throw new Error(`campaign ${campaign.reference} has no event or no organisation`)
 
   result.daysRemaining = daysRemainingToEvent(event.start_date, now)
 
-  const { data: stepRows } = await admin
-    .from('marketing_sequence_step')
-    .select('id, step_order, channel_code, days_remaining_min, days_remaining_max, template_key, min_hours_since_previous_send')
-    .eq('sequence_id', campaign.sequence_id ?? '')
-    .order('step_order', { ascending: true })
-    // A sequence is a handful of steps. The bound is stated, not assumed.
-    .limit(200)
+  /*
+   * A FAILED STEP READ IS NOT AN EMPTY SEQUENCE. An empty sequence sends the
+   * whole allowlist into `planNextSend` with nothing to plan, and every one of
+   * them is recorded with a pacing reason that describes a SCHEDULE. Nobody
+   * reading "no step covers this many days out" would look for a database
+   * fault.
+   */
+  const stepRows = await readOrThrow('campaigner sequence steps', () =>
+    admin
+      .from('marketing_sequence_step')
+      .select('id, step_order, channel_code, days_remaining_min, days_remaining_max, template_key, min_hours_since_previous_send')
+      .eq('sequence_id', campaign.sequence_id ?? '')
+      .order('step_order', { ascending: true })
+      // A sequence is a handful of steps. The bound is stated, not assumed.
+      .limit(200),
+  )
   const steps: PacingStep[] = (stepRows ?? []).map(s => ({
     id: s.id,
     stepOrder: s.step_order,
@@ -141,14 +175,21 @@ export async function runCampaign(params: {
     minHoursSincePreviousSend: s.min_hours_since_previous_send,
   }))
 
-  const { data: identity } = await admin
-    .from('marketing_sender_identity')
-    .select('id, from_name, reply_to, identity_line, is_verified')
-    .eq('organisation_id', campaign.organisation_id)
-    .eq('is_verified', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  /*
+   * A FAILED IDENTITY READ IS NOT A MISSING IDENTITY. The block below records
+   * SENDER_IDENTITY_MISSING against every recipient on the campaign, which
+   * tells the organiser to go and verify a sender they have already verified.
+   */
+  const identity = await readOrThrow('campaigner sender identity', () =>
+    admin
+      .from('marketing_sender_identity')
+      .select('id, from_name, reply_to, identity_line, is_verified')
+      .eq('organisation_id', campaign.organisation_id)
+      .eq('is_verified', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  )
 
   /*
    * EVERY ADMITTED RECIPIENT. This list is who the run sends to, and its
@@ -182,35 +223,60 @@ export async function runCampaign(params: {
     allowlistSize: allowlist.length,
   })
 
-  const { data: approval } = await admin
-    .from('marketing_send_approval')
-    .select('id')
-    .eq('campaign_id', campaign.id)
-    .eq('segment_fingerprint', result.segmentFingerprint)
-    .maybeSingle()
+  /*
+   * A FAILED APPROVAL READ IS NOT A MISSING APPROVAL. It leaves every message
+   * in draft and reports "nothing left draft, because this segment is not
+   * approved" to a person who approved it, which sends them looking for an
+   * approval button they have already pressed.
+   */
+  const approval = await readOrThrow('campaigner segment approval', () =>
+    admin
+      .from('marketing_send_approval')
+      .select('id')
+      .eq('campaign_id', campaign.id)
+      .eq('segment_fingerprint', result.segmentFingerprint)
+      .maybeSingle(),
+  )
   result.approved = Boolean(approval)
 
+  /*
+   * A CHUNK THAT FAILED IS NOT A HUNDRED PEOPLE WHO ARE NOT THERE. A member
+   * missing from this map is recorded as "the audience row this admission
+   * points at no longer exists", permanently, about somebody whose row is fine.
+   */
   const members = new Map<string, { email: string }>()
   const memberIds = allowlist.map(r => r.audience_member_id)
-  for (let i = 0; i < memberIds.length; i += 100) {
-    const { data } = await admin
-      .from('audience_members')
-      .select('id, email')
-      .in('id', memberIds.slice(i, i + 100))
-      .limit(100)
-    for (const m of data ?? []) members.set(m.id, { email: m.email })
+  for (const chunk of chunkInFilterValues(memberIds)) {
+    const rows = await readOrThrow('campaigner audience members', () =>
+      admin.from('audience_members').select('id, email').in('id', chunk).limit(chunk.length),
+    )
+    for (const m of rows ?? []) members.set(m.id, { email: m.email })
   }
 
-  // The unsubscribe token GA1 already minted for each address. No second token.
+  /*
+   * The unsubscribe token GA1 already minted for each address. No second token.
+   *
+   * CHUNKED BY BYTES, NOT BY COUNT, AND THAT IS THIS READ'S OWN DEFECT RATHER
+   * THAN A GENERAL TIDINESS. It is the only read on this path keyed by an
+   * EMAIL, and an address may legally be 254 characters, so a hundred of them
+   * is about 25 KB of URL against a documented 16 KB limit
+   * (src/lib/supabase/in-chunks.ts carries the citation and the measurement).
+   * The request failed, the error was discarded, and every one of those people
+   * was recorded as having "no consent record carrying an unsubscribe token"
+   * while their consent sat in the ledger, granted.
+   */
   const tokens = new Map<string, string>()
   const emails = [...members.values()].map(m => m.email)
-  for (let i = 0; i < emails.length; i += 100) {
-    const { data } = await admin
-      .from('marketing_consents')
-      .select('email, unsubscribe_token')
-      .in('email', emails.slice(i, i + 100))
-      .limit(100)
-    for (const row of data ?? []) tokens.set(row.email.toLowerCase(), row.unsubscribe_token)
+  for (const chunk of chunkInFilterValues(emails)) {
+    const rows = await readOrThrow('campaigner unsubscribe tokens', () =>
+      admin
+        .from('marketing_consents')
+        .select('email, unsubscribe_token')
+        .in('email', chunk)
+        // One row per address: marketing_consents is unique (email).
+        .limit(chunk.length),
+    )
+    for (const row of rows ?? []) tokens.set(row.email.toLowerCase(), row.unsubscribe_token)
   }
 
   /*
@@ -238,12 +304,22 @@ export async function runCampaign(params: {
 
   const templates = new Map<string, { key: string; channelCode: string; subjectTemplate: string; bodyTemplate: string }>()
   {
-    // The template library, a small authored table. Bounded so a ceiling can
-    // never quietly remove the template a step names.
-    const { data } = await admin
-      .from('marketing_template')
-      .select('key, channel_code, subject_template, body_template')
-      .limit(500)
+    /*
+     * The template library, a small authored table. Bounded so a ceiling can
+     * never quietly remove the template a step names.
+     *
+     * AND THROUGH THE DOOR, because this is the single worst of the six. One
+     * failed read of one small table left the map empty, and the loop below
+     * then recorded "the step names a template that does not exist" against
+     * EVERY recipient on the campaign. An organiser reading that would go and
+     * rebuild a template that was never missing.
+     */
+    const data = await readOrThrow('campaigner template library', () =>
+      admin
+        .from('marketing_template')
+        .select('key, channel_code, subject_template, body_template')
+        .limit(500),
+    )
     for (const t of data ?? []) {
       templates.set(t.key, {
         key: t.key,
@@ -401,9 +477,20 @@ export async function runCampaign(params: {
     }
 
     try {
-      // A GA3 recipient row, so the tracked link is minted FOR this person and
-      // the sale it produces can be credited to them.
-      const { data: recipient } = await admin
+      /*
+       * A GA3 recipient row, so the tracked link is minted FOR this person and
+       * the sale it produces can be credited to them.
+       *
+       * THE ERROR IS BOUND BECAUSE A NULL HERE IS NOT A REFUSAL, IT IS AN
+       * UNATTRIBUTABLE SEND. `recipient?.id ?? null` silently mints a link
+       * belonging to nobody, the message still goes, and the sale it produces
+       * can never be credited back to the person it was sent to. That is the
+       * whole reason GA3 was built before GA4. The throw is caught by this
+       * loop's own catch and reported as an error on the run, so one bad row
+       * does not stop the campaign and no message is sent that cannot be
+       * attributed.
+       */
+      const { data: recipient, error: recipientError } = await admin
         .from('marketing_recipient')
         .upsert(
           {
@@ -415,12 +502,19 @@ export async function runCampaign(params: {
         )
         .select('id')
         .single()
+      if (recipientError || !recipient) {
+        throw new Error(
+          `the recipient row could not be written, so this send would not be attributable: ${
+            recipientError?.message ?? 'no row came back'
+          }`,
+        )
+      }
 
       const link = await mintTrackedLink({
         campaignId: campaign.id,
         channelCode: row.channel_code,
         eventSlug: event.slug,
-        recipientId: recipient?.id ?? null,
+        recipientId: recipient.id,
       })
 
       /*
