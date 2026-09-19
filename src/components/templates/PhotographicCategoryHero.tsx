@@ -1,4 +1,6 @@
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
+import { HERO_HEADER_SCRIM } from '@/components/media/hero-photo-scrim'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { getSpineCategoryHero } from '@/lib/images/spine'
 
@@ -122,18 +124,15 @@ export function PhotographicCategoryHero({
       <HeroPresenceMarker />
       <div className="hero-marketing relative w-full">
         <HeroMedia image={src} alt={alt} objectPosition={objectPosition} priority />
-        {/* Darkened gradient: bottom-up navy so headline stays readable */}
+        {/* The header wash only. The text carries its own, anchored to itself. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0.55) 0%, rgba(10,22,40,0.18) 12%, rgba(10,22,40,0.35) 45%, rgba(10,22,40,0.85) 100%)',
-          }}
+          style={{ background: HERO_HEADER_SCRIM }}
         />
         {/* Left-anchored content column - no body copy on the brightest band */}
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-4 pb-10 sm:px-6 sm:pb-14 lg:px-8 lg:pb-20">
-          <div className="max-w-2xl">
+          <HeroCaption className="max-w-2xl">
             <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-accent)]">
               {eyebrow}
             </p>
@@ -146,7 +145,7 @@ export function PhotographicCategoryHero({
             <p className="mt-4 max-w-xl text-base leading-relaxed text-white/85 sm:text-lg">
               {subtitle}
             </p>
-          </div>
+          </HeroCaption>
         </div>
       </div>
     </section>

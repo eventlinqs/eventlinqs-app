@@ -2758,9 +2758,28 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   490 + 1 = 491 files
  *   6378 + 7 = 6385 tests
+ *
+ * 2026-09-19 (hero text over a photograph): raised 491/6385 -> 492/6404.
+ * tests/unit/a11y/hero-text-over-a-photograph.test.ts holds nineteen cases over
+ * the one hero wash: that its strength still clears what gold-400 needs against
+ * a WHITE photograph (recomputed from the token, not pinned), that the white
+ * headline and the 85 per cent subtitle clear their own floors on it, that both
+ * ends of the ramp are absolute lengths rather than percentages, and that none
+ * of the four hero templates writes a navy gradient of its own any more. The
+ * first case was WATCHED TO FAIL by weakening the wash to 0.7
+ * (C:\dev\EVIDENCE\HERO-CONTRAST\tests-watched-to-fail.txt): 3.63:1 against the
+ * 4.5 floor. Nineteen cases arrive as +19 because three of them are `it.each`
+ * over the four templates.
+ *
+ * MEASURED: 492 files, 6404 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\EVIDENCE\HERO-CONTRAST\gate-suite.txt).
+ *
+ * CHECKABLE:
+ *   491 + 1 = 492 files
+ *   6385 + 19 = 6404 tests
  */
-const MIN_FILES = 491
-const MIN_TESTS = 6385
+const MIN_FILES = 492
+const MIN_TESTS = 6404
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
