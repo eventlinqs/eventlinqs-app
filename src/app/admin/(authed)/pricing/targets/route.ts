@@ -3,6 +3,7 @@ import { getAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatEventDate } from '@/lib/dates/event-time'
+import { ilikeAnyOf } from '@/lib/supabase/or-filter'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,12 +29,22 @@ export async function GET(request: Request): Promise<NextResponse> {
   if (q.length < 2) return NextResponse.json({ results: [] })
 
   const admin = createAdminClient()
+  /*
+   * ESCAPED, because inside or(...) a comma is GRAMMAR. Until 19 September 2026
+   * this was `%${q}%` dropped straight into the filter, so a query carrying a
+   * comma answered PGRST100, the route answered 500, and the picker showed
+   * nothing with no way to know a comma was the reason. Four of the first 320
+   * event titles on TEST carry one and they are all of the shape
+   * "Something Night, Geelong". See src/lib/supabase/or-filter.ts.
+   */
   const term = `%${q}%`
 
   if (kind === 'organisation') {
     const { data, error } = await admin
       .from('organisations')
       .select('id, name')
+      // .ilike() passes its value as its own parameter, so it is NOT the or()
+      // grammar and a comma in it is data. Verified against TEST, not assumed.
       .ilike('name', term)
       .order('name', { ascending: true })
       .limit(10)
@@ -46,7 +57,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   const { data, error } = await admin
     .from('events')
     .select('id, title, slug, start_date, timezone, organisations(name)')
-    .or(`title.ilike.${term},slug.ilike.${term}`)
+    .or(ilikeAnyOf(['title', 'slug'], q))
     .order('start_date', { ascending: false })
     .limit(10)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

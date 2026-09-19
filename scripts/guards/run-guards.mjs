@@ -166,6 +166,10 @@
  *                              bounded read: the door composes the platform's own
  *                              visibility rule at a given instant, and no matcher
  *                              surface reads a list of events around it
+ *   or-filter-values-are-escaped  a free-text search term dropped into a
+ *                              PostgREST or(...) is escaped through the one door
+ *                              or sanitised at its source, because a comma in an
+ *                              unescaped term is parsed as another filter clause
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -1262,6 +1266,15 @@ const GUARDS = [
   // anybody could still go to. This holds the bound on end_date in one door and
   // fails the build when any matcher surface reads a LIST of events around it.
   'scripts/guards/matcher-offers-an-event-not-yet-over.mjs',
+  // Found 19 September 2026 by probing the fee-override picker against TEST.
+  // Inside a PostgREST or(...) a comma is GRAMMAR, so an unescaped search term
+  // carrying one answers PGRST100 and the screen shows nothing: four of the
+  // first 320 event titles on TEST are of the shape "Something Night, Geelong".
+  // The escape existed privately in fetchers.ts and the same decision had since
+  // been made three more times in three different ways and missed in six reads.
+  // This holds the one door and prints a dated register of the six that are not
+  // lane B's files to change.
+  'scripts/guards/or-filter-values-are-escaped.mjs',
   // Close-out GA3. The attribution table is the basis of an invoice, so every
   // order carries exactly one stored decision, never zero and never two, an
   // order no campaign produced says so with a reason rather than being absent,

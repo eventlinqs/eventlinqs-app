@@ -4686,6 +4686,61 @@ const DRILLS = [
     replace: 'async function readMatchableEvents',
     expect: 'no longer exports readMatchableEvents',
   },
+
+  /*
+   * or-filter-values-are-escaped (lane B, 19 September 2026), five drills.
+   *
+   * The guard exists because a comma inside a PostgREST or(...) is GRAMMAR. An
+   * unescaped term carrying one answers PGRST100, the route answers 500, and
+   * the screen shows nothing with no way to know a comma was the reason. Four
+   * of the first 320 event titles on TEST are of the shape
+   * "Something Night, Geelong".
+   *
+   * THE LAST DRILL AIMS AT THE MATCHER RATHER THAN AT THE CODE. The clause that
+   * accepts a file sanitising at its source is the weaker of the two tiers, and
+   * if its pattern stops matching, two correct reads in fetchers.ts start
+   * failing and somebody "fixes" a file that was never wrong.
+   */
+  {
+    name: 'the fee-override picker goes back to interpolating a raw search term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/app/admin/(authed)/pricing/targets/route.ts',
+    find: ".or(ilikeAnyOf(['title', 'slug'], q))",
+    replace: '.or(`title.ilike.${term},slug.ilike.${term}`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the founding-terms organisation search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find: "termQuery = termQuery.or(ilikeAnyOf(['name', 'slug'], foundingQuery))",
+    replace: 'termQuery = termQuery.or(`name.ilike.%${foundingQuery}%,slug.ilike.%${foundingQuery}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the or() escape door stops exporting half of itself',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/supabase/or-filter.ts',
+    find: 'export function ilikeAnyOf',
+    replace: 'function ilikeAnyOf',
+    expect: 'no longer exports ilikeAnyOf',
+  },
+  {
+    name: 'the or() guard sweeps no files at all while still reporting OK',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'scripts/guards/or-filter-values-are-escaped.mjs',
+    find: `!/${BSL}.test${BSL}.tsx?$/.test(entry)) out.push(full)`,
+    replace: `!/${BSL}.(ts|tsx)$/.test(entry)) out.push(full)`,
+    expect: 'the sweep matched no files at all',
+  },
+  {
+    name: "the or() guard's source-sanitiser matcher quietly stops matching",
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'scripts/guards/or-filter-values-are-escaped.mjs',
+    find: 'const SANITISES_AT_SOURCE = /',
+    replace: 'const SANITISES_AT_SOURCE = /never-matches-anything-at-all/; const UNUSED_SANITISES = /',
+    expect: 'no longer matches',
+  },
   {
     name: "clause 3's matcher is rebuilt inside a template literal and quietly stops matching",
     guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
