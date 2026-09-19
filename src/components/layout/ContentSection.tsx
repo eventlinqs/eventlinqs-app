@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Reveal } from '@/components/ui/reveal'
+import type { IntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 
 type SurfaceName = 'base' | 'alt' | 'dark'
 type WidthName = 'prose' | 'default' | 'wide'
@@ -44,14 +45,15 @@ interface ContentSectionProps {
    * ContentSection-bearing route at 390 on 19 September 2026 found only FIVE
    * sections over 1,500px on the whole platform - the city's "all events"
    * grid (9,067px), the category's (9,043px), the suburb's (3,535px), the
-   * careers pitch (1,519px) and the waitlist's city chooser (2,469px). Each
-   * passes `skipOffscreen={false}` with its measurement beside it.
+   * careers pitch (1,519px) and the waitlist's city chooser (2,469px).
    *
-   * A SIXTH is opted out by SHAPE rather than by measurement and is marked as
-   * such: the community-by-city page's "all events" grid is the same
-   * component arrangement as the city page's, on a route the sweep did not
-   * reach. Assuming it behaves like its twin is a judgement; pretending it
-   * was measured would be a lie.
+   * THREE OF THOSE FIVE NO LONGER USE THIS FLAG, and nor does the
+   * community-by-city twin of the first. Later the same day their height
+   * turned out to be COMPUTABLE - `n` cards in 1, 2 or 3 columns - so they
+   * declare it through `intrinsicSize` below and skip layout like everything
+   * else. What is left opting out by measurement is the careers pitch and the
+   * waitlist's city chooser: neither is a grid of anything, so neither has a
+   * height anybody can derive.
    *
    * WHY IT MATTERS THAT THEY DO. With the treatment on all of them,
    * /city/melbourne grew from 7,551px to 12,055px as it was scrolled - the
@@ -61,6 +63,24 @@ interface ContentSectionProps {
    * section should be run against before it is added without this flag.
    */
   skipOffscreen?: boolean
+  /**
+   * The ROWS this section's grid will have at each column band, which is all
+   * the stylesheet needs to compute its height. Supplied by
+   * `eventGridIntrinsicSize(n)` for the nine event grids, whose height is `n`
+   * cards in 1, 2 or 3 columns and is therefore computable at render time
+   * rather than guessed at 480px.
+   *
+   * When present it REPLACES `skipOffscreen`: the section carries
+   * `.cv-measured` and reserves its own declared height instead of the rail
+   * step. When it is `null` - which is what the estimator returns for an empty
+   * grid, because a section with no events renders the shared empty state and
+   * not cards - `skipOffscreen` governs as before.
+   *
+   * The measurement, the formula and the three things it cannot know are in
+   * src/lib/ui/event-grid-intrinsic.ts. Proven by
+   * scripts/verify/event-grid-intrinsic-drive.mjs.
+   */
+  intrinsicSize?: IntrinsicSize | null
 }
 
 const surfaces: Record<SurfaceName, string> = {
@@ -104,11 +124,24 @@ export function ContentSection({
   topBorder = false,
   reveal = false,
   skipOffscreen = true,
+  intrinsicSize = null,
 }: ContentSectionProps) {
   return (
     <section
       id={id}
       aria-labelledby={ariaLabelledby}
+      /* Three integers, not three calc() strings. The formula they multiply
+       * is in globals.css; sending it per page measured 470 bytes per
+       * document across the markup and the flight payload. */
+      style={
+        intrinsicSize
+          ? ({
+              '--cv-r-base': intrinsicSize.base,
+              '--cv-r-md': intrinsicSize.md,
+              '--cv-r-lg': intrinsicSize.lg,
+            } as CSSProperties)
+          : undefined
+      }
       /*
        * `cv-section` here is the treatment the homepage rails have carried
        * since close-out C8 (6 September 2026). It reached no other surface
@@ -116,11 +149,15 @@ export function ContentSection({
        * 1,866 nodes across 11 sections with none of it and spending 705 ms
        * in Style & Layout before it could paint.
        *
-       * It is ON by default and OFF for the five sections on the platform
-       * that are too tall for a 480px estimate - see `skipOffscreen` above,
-       * where the measurement and the failure it prevents are written down.
+       * It is ON by default and OFF for the sections on the platform that are
+       * too tall for a 480px estimate - see `skipOffscreen` above, where the
+       * measurement and the failure it prevents are written down.
+       *
+       * `.cv-measured` (19 September 2026) is the third state and it wins:
+       * a section that KNOWS its height reserves that, and the four "all
+       * events" grids know theirs. See `intrinsicSize`.
        */
-      className={`${skipOffscreen ? 'cv-section ' : ''}relative ${surfaces[surface]} ${pads[pad]} ${className}`}
+      className={`${intrinsicSize ? 'cv-measured ' : skipOffscreen ? 'cv-section ' : ''}relative ${surfaces[surface]} ${pads[pad]} ${className}`}
     >
       {topBorder && (
         <div

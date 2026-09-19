@@ -9,6 +9,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -172,6 +173,13 @@ async function fetchOrganiser(slug: string): Promise<PublicOrganisation | null> 
   return (data as PublicOrganisation | null) ?? null
 }
 
+/**
+ * How many past events the archive grid shows. It was the literal 12 inside
+ * `.slice(0, 12)`; it is named because the reserved height is derived from
+ * the same number.
+ */
+const PAST_EVENTS_SHOWN = 12
+
 async function fetchOrganiserEvents(orgId: string) {
   const supabase = createPublicClient()
   const baseSelect =
@@ -266,6 +274,11 @@ export default async function OrganiserProfilePage({ params }: Props) {
   if (!organisation) notFound()
 
   const { upcoming, past } = await fetchOrganiserEvents(organisation.id)
+
+  /* ONE array feeds both the reserved height and the cards: the section
+   * declares the height of what it renders, not of what it was handed
+   * (close-out C8B.3, 19 September 2026). */
+  const pastShown = past.slice(0, PAST_EVENTS_SHOWN)
 
   // Stats: total events (upcoming + past), unique cities.
   const totalEvents = upcoming.length + past.length
@@ -421,8 +434,13 @@ export default async function OrganiserProfilePage({ params }: Props) {
         </ContentSection>
 
         {/* OP4 Past events grid - hide when none */}
-        {past.length > 0 ? (
-          <ContentSection surface="base" width="wide" topBorder>
+        {pastShown.length > 0 ? (
+          <ContentSection
+            surface="base"
+            width="wide"
+            topBorder
+            intrinsicSize={eventGridIntrinsicSize(pastShown.length)}
+          >
             <div className="mb-6">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
                 Past events
@@ -432,7 +450,7 @@ export default async function OrganiserProfilePage({ params }: Props) {
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {past.slice(0, 12).map(e => (
+              {pastShown.map(e => (
                 <EventCard key={e.id} event={e} />
               ))}
             </div>

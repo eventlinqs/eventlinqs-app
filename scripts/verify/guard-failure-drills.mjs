@@ -4939,6 +4939,72 @@ const DRILLS = [
     replace: "const CLASS_FLIGHT = new RegExp(`classNameXX${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
     expect: 'REFUSING: the calibration probe was found',
   },
+
+  /*
+   * THE RESERVED HEIGHT OF AN EVENT GRID, FIVE DRILLS, ONE PER CLAUSE
+   * (close-out C8B.3, 19 September 2026).
+   *
+   * The guard holds a number that is EXACT today - the reservation reproduces
+   * the measured section to within a pixel - and an exact number is a claim
+   * about eight pieces of markup that do not announce themselves when they
+   * change. Each drill below moves one of them and shows the build refusing.
+   */
+  {
+    name: 'reserved height: an event grid goes back to laying out in full before first paint',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/components/templates/SuburbLandingPage.tsx',
+    find: '        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}',
+    replace: '        skipOffscreen={false}',
+    expect: 'reserves a rail',
+  },
+  {
+    name: 'reserved height: a section reserves room for the array it was handed and renders a slice of it',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/components/templates/CityLandingPage.tsx',
+    find: '        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}',
+    replace: '        intrinsicSize={eventGridIntrinsicSize(allEvents.length)}',
+    expect: 'and renders shownEvents.map',
+  },
+  {
+    name: 'reserved height: the grid gutter is widened and the reservation is left describing the old one',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/lib/ui/event-grid-intrinsic.ts',
+    find: "  gridClass: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3',",
+    replace: "  gridClass: 'grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3',",
+    expect: 'the gutter is 24px, which is gap-6',
+  },
+  {
+    name: 'reserved height: the spacing scale is redefined under a module that reads it as pixels',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/app/globals.css',
+    find: '  --container-7xl: 87.5rem; /* 1400px */',
+    replace: '  --container-7xl: 87.5rem; /* 1400px */\n  --spacing: 0.3rem;',
+    expect: 'declares --spacing:',
+  },
+  {
+    name: 'reserved height: the reservation switches to the two-column height at the wrong breakpoint',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/app/globals.css',
+    find: '@media (width >= 48rem) {',
+    replace: '@media (width >= 40rem) {',
+    expect: 'does not declare the md reservation on .cv-measured at 48rem',
+  },
+  {
+    name: 'reserved height: the drive goes back to comparing a content box with a border box',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'scripts/verify/event-grid-intrinsic-drive.mjs',
+    find: '          const reservedBorderBox = estimate + (g.sectionPadTop ?? 0) + (g.sectionPadBottom ?? 0)',
+    replace: '          const reservedBorderBoxRenamed = estimate',
+    expect: "no longer adds the section's padding",
+  },
+  {
+    name: 'reserved height: the stylesheet formula is edited by hand and stops matching the module',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/app/globals.css',
+    find: '+ 168.5px) + 88px);',
+    replace: '+ 168.5px) + 96px);',
+    expect: 'does not declare the base reservation the module generates',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

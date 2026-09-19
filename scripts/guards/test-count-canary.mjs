@@ -2515,9 +2515,15 @@ const ROOT = join(HERE, '..', '..')
  * cases are the difference from this lane's 470/6114:
  *   470 + 1 = 471 files
  *   6114 + 5 = 6119 tests
+ *
+ * RAISED AGAIN, 19 September 2026, lane C, on the tree that holds the merge
+ * plus `tests/unit/perf/event-grid-intrinsic.test.ts`:
+ *   471 + 1 = 472 files
+ *   6119 + 16 = 6135 tests
+ * Measured by this guard's own run, not counted by hand.
  */
-const MIN_FILES = 471
-const MIN_TESTS = 6119
+const MIN_FILES = 472
+const MIN_TESTS = 6135
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

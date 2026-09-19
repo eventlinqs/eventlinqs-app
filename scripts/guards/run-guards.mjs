@@ -289,6 +289,10 @@
  *                              contract. A width nobody selects is still written into the
  *                              srcset of every fixed-width image, 1,404 times on the
  *                              homepage at about 230 bytes each (close-out C8B.3)
+ *   event-grid-reserves-its-own-height
+ *                             every event grid declares the height it will be, from the
+ *                              count it renders, and every number that height is built
+ *                              from still describes the markup it names (close-out C8B.3)
  *   marketing-bands-are-supplyable
  *                             every route that renders a marketing band is measured by the
  *                              fidelity drive, every band variant is on its own hint whose
@@ -1710,6 +1714,16 @@ const GUARDS = [
   // a slot that no longer existed. Next 16 removed 16 from its own default for the
   // same reason. Three clauses, each drilled red and green.
   'scripts/guards/candidate-ladder-has-no-dead-rung.mjs',
+  // Close-out C8B.3 (19 September 2026): the four "all events" grids had NO
+  // below-fold treatment, because 480px on a 9,067px section is wrong by 1,789%
+  // and applying it anyway grew /city/melbourne 60% under the reader. Their height
+  // is arithmetic - n cards in 1, 2 or 3 columns - so they declare it, to within a
+  // pixel of the measured page. Its FIRST run found five more event grids nobody
+  // had counted (the feed, the organiser and venue archives, the community grid
+  // and the category-events landing page), every one of them reserving a rail's
+  // 480px for a section thousands of pixels tall. Five clauses, each drilled red
+  // and green.
+  'scripts/guards/event-grid-reserves-its-own-height.mjs',
   // Lane B (19 September 2026): the marketing bands on /organisers and /about were
   // under-fetched at every desktop width and every gate was green, because the one
   // gate that could see a band did not have those routes in its list. Three clauses:

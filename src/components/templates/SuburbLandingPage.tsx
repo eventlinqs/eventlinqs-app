@@ -15,6 +15,14 @@ import type { ComponentType } from 'react'
 import type { CityContent, SuburbContent } from '@/lib/cities/data'
 import { getSuburb } from '@/lib/cities/data'
 import { WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+
+/**
+ * How many of the suburb's events the grid shows. It was the literal 24
+ * inside `.slice(0, 24)`; it is named because the reserved height is now
+ * derived from the same number (close-out C8B.3, 19 September 2026).
+ */
+const ALL_EVENTS_SHOWN = 24
 
 interface Props {
   city: CityContent
@@ -47,6 +55,10 @@ export function SuburbLandingPage({
   weekendEvents,
   relatedSuburbImages,
 }: Props) {
+  /* ONE array feeds both the reserved height and the cards, so the section
+   * declares the height of what it renders rather than of what it was
+   * handed. */
+  const shownEvents = events.slice(0, ALL_EVENTS_SHOWN)
   const relatedItems = suburb.relatedSuburbs
     .map(s => getSuburb(s))
     .filter((x): x is NonNullable<typeof x> => x !== null)
@@ -102,8 +114,16 @@ export function SuburbLandingPage({
         </ContentSection>
       ) : null}
 
-      {/* 3,535px at 390: the events grid lays out with the page. */}
-      <ContentSection id="all-events" surface="base" width="wide" topBorder skipOffscreen={false}>
+      {/* 3,535px at 390, against the 480px `cv-section` reserves for a rail.
+          The section declares its own height instead: see
+          src/lib/ui/event-grid-intrinsic.ts. */}
+      <ContentSection
+        id="all-events"
+        surface="base"
+        width="wide"
+        topBorder
+        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
+      >
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -122,9 +142,9 @@ export function SuburbLandingPage({
             Open in browse view &rsaquo;
           </Link>
         </div>
-        {events.length > 0 ? (
+        {shownEvents.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {events.slice(0, 24).map(e => (
+            {shownEvents.map(e => (
               <EventCard key={e.id} event={e} />
             ))}
           </div>

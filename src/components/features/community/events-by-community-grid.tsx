@@ -5,6 +5,7 @@ import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 
 interface Props {
   communitySlug: string
@@ -28,7 +29,13 @@ export function AllEventsGridByCommunity({
   events,
 }: Props) {
   return (
-    <ContentSection surface="base" width="wide" topBorder reveal>
+    <ContentSection
+      surface="base"
+      width="wide"
+      topBorder
+      reveal
+      intrinsicSize={eventGridIntrinsicSize(events.length)}
+    >
       {events.length > 0 ? (
         <>
           <div className="mb-8 flex items-end justify-between gap-4">

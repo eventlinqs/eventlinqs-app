@@ -21,6 +21,7 @@ import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { EventCard } from '@/components/features/events/event-card'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { HeroCategory } from '@/lib/hero-categories'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 
 /** Map string icon names (stored in data file) to actual Lucide components. */
 const ICON_MAP: Record<string, ComponentType<LucideProps>> = {
@@ -126,9 +127,14 @@ export function CategoryLandingPage({
       </ContentSection>
 
       {/* ── 4. Live events OR CategoryHeroEmpty ──────────────────── */}
-      {/* 9,043px at 390: the category events grid lays out with the page,
-          because the 480px estimate `cv-section` reserves is for a rail. */}
-      <ContentSection surface="base" width="wide" skipOffscreen={false}>
+      {/* 9,043px at 390, against the 480px `cv-section` reserves for a rail.
+          The section declares its own height instead, from the number of cards
+          it is about to render: src/lib/ui/event-grid-intrinsic.ts. Its
+          heading block is 24px shorter at 390 and 8px taller at 768 and 1440
+          than the three templates that carry an eyebrow, which is 0.26% and
+          0.19% of this section and is named in the module rather than
+          corrected with a second constant. */}
+      <ContentSection surface="base" width="wide" intrinsicSize={eventGridIntrinsicSize(liveEvents.length)}>
         {liveEvents.length > 0 ? (
           <>
             <div className="mb-8 flex items-end justify-between gap-4">

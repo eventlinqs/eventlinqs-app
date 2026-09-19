@@ -19,6 +19,15 @@ import type { ComponentType } from 'react'
 import type { CityContent, SuburbContent } from '@/lib/cities/data'
 import { getAllCities, getCity } from '@/lib/cities/data'
 import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
+
+/**
+ * How many of the city's events the grid shows. It was the literal 24 inside
+ * `.slice(0, 24)`; it is named because the reserved height is now derived
+ * from the same number and a ceiling two things depend on should be one
+ * thing (close-out C8B.3, 19 September 2026).
+ */
+const ALL_EVENTS_SHOWN = 24
 
 interface Props {
   city: CityContent
@@ -82,6 +91,10 @@ export function CityLandingPage({
   suburbs,
   mapPins,
 }: Props) {
+  /* ONE array feeds both the reserved height and the cards, so the two can
+   * never disagree: the section declares the height of what it renders, not
+   * the height of what it was handed. */
+  const shownEvents = allEvents.slice(0, ALL_EVENTS_SHOWN)
   const allCities = getAllCities()
   const relatedItems = city.relatedCities
     .map(slug => getCity(slug))
@@ -266,9 +279,19 @@ export function CityLandingPage({
       ) : null}
 
       {/* S12 All city events grid. */}
-      {/* 9,067px at 390 on 19 September 2026: far too tall for the 480px
-          estimate `cv-section` reserves, so this one lays out with the page. */}
-      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal skipOffscreen={false}>
+      {/* 9,067px at 390 on 19 September 2026, which is 1,789% past the 480px
+          `cv-section` reserves for a rail - so this section declares its own
+          height instead. 24 cards in 1, 2 or 3 columns is arithmetic, not a
+          guess: src/lib/ui/event-grid-intrinsic.ts, proven to the pixel by
+          scripts/verify/event-grid-intrinsic-drive.mjs. */}
+      <ContentSection
+        id="all-events"
+        surface="base"
+        width="wide"
+        topBorder
+        reveal
+        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
+      >
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -287,9 +310,9 @@ export function CityLandingPage({
             Open in browse view &rsaquo;
           </Link>
         </div>
-        {allEvents.length > 0 ? (
+        {shownEvents.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {allEvents.slice(0, 24).map(e => (
+            {shownEvents.map(e => (
               <EventCard key={e.id} event={e} />
             ))}
           </div>
