@@ -26,6 +26,11 @@
  * three lanes build on this machine and a port is not proof of ownership.
  *
  *   node scripts/dev/lane-b-serve-with-stripe.mjs            # start
+ *   node scripts/dev/lane-b-serve-with-stripe.mjs --measurement-ids
+ *                                                # start, plus four FAKE
+ *                                                # provider identifiers so
+ *                                                # AN1's consent gate has
+ *                                                # something to open onto
  *   node scripts/dev/lane-b-serve-with-stripe.mjs --status   # report only
  *   node scripts/dev/lane-b-serve-with-stripe.mjs --stop     # stop what it started
  */
@@ -46,6 +51,31 @@ const mode = process.argv.includes('--stop')
   : process.argv.includes('--status')
     ? 'status'
     : 'start'
+
+/**
+ * FOUR IDENTIFIERS SO THE CONSENT GATE HAS SOMETHING TO OPEN ONTO.
+ *
+ * Law 10, added 19 September 2026. AN1 acceptance 2's positive half cannot be
+ * driven against a server that was given no provider identifiers: the gate
+ * correctly renders nothing, so accepting and refusing produce the same empty
+ * network log and the drive has nothing to tell them apart with. The step that
+ * fixes that is "export four variables into the environment of the server, not
+ * of the drive", which is a distinction that costs an hour the first time
+ * somebody gets it the wrong way round. So it is one flag.
+ *
+ * THE VALUES ARE DELIBERATELY, VISIBLY FAKE. They are never real accounts, they
+ * name this lane in their own text, and nothing ever reaches the third parties:
+ * the drive aborts every request to a provider host at the route layer, so the
+ * attempt is recorded and Google and Meta receive nothing. Minting the real
+ * ones is the owner's step and stays his (FOUNDER STEPS in AN1).
+ */
+const FAKE_MEASUREMENT_IDS = {
+  NEXT_PUBLIC_POSTHOG_KEY: 'phc_lane_b_local_drive_not_a_real_key',
+  NEXT_PUBLIC_GA4_MEASUREMENT_ID: 'G-LANEBLOCAL0',
+  NEXT_PUBLIC_GOOGLE_ADS_ID: 'AW-0000000000',
+  NEXT_PUBLIC_META_PIXEL_ID: '000000000000000',
+}
+const withMeasurementIds = process.argv.includes('--measurement-ids')
 
 const say = m => console.log(`[lane-b-serve] ${m}`)
 const die = m => {
@@ -276,6 +306,13 @@ const env = {
   UPSTASH_REDIS_REST_TOKEN: 'local',
   NEXT_PUBLIC_APP_URL: `http://localhost:${PORT}`,
   ORDER_ACCESS_SECRET: file.ORDER_ACCESS_SECRET || 'lane-b-local-order-access-secret-32c',
+  ...(withMeasurementIds ? FAKE_MEASUREMENT_IDS : {}),
+}
+if (withMeasurementIds) {
+  say(
+    `measurement identifiers: four FAKE local values in the SERVER's environment (${Object.keys(FAKE_MEASUREMENT_IDS).join(', ')}), ` +
+      'so the consent gate has something to open onto. They are not real accounts and the drive aborts every provider request at the route layer.',
+  )
 }
 writeFileSync(SERVER_LOG, '')
 spawn(process.execPath, [resolve(ROOT, 'node_modules/next/dist/bin/next'), 'dev', '-p', String(PORT)], {
