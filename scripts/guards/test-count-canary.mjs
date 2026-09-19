@@ -2472,9 +2472,22 @@ const ROOT = join(HERE, '..', '..')
  * to 50.
  *   467 + 0 = 467 files
  *   6078 + 7 = 6085 tests
+ *
+ * 2026-09-19, the merge of verify/l5-launch-readiness into lane/c-ux. The two
+ * sides auto-merged this file for once, which means the floor it carried was
+ * ONE SIDE'S rather than the merged tree's. It is measured here instead: lane
+ * B's three new files (consent/ledger-dates-are-australian,
+ * consent/one-click-unsubscribe, email/one-click-headers-reach-the-provider)
+ * report 29 tests when run on their own.
+ *
+ * MEASURED on the merged tree: 470 files, 6114 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE:
+ *   467 + 3 = 470 files
+ *   6085 + 29 = 6114 tests
  */
-const MIN_FILES = 467
-const MIN_TESTS = 6085
+const MIN_FILES = 470
+const MIN_TESTS = 6114
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
