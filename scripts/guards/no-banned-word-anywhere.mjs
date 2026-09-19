@@ -118,6 +118,11 @@ const EXEMPT = [
     occurrences: null,
     why: 'the guard that holds those names in place: it has to spell both the real name and the corrupted form it hunts',
   },
+  {
+    file: 'src/lib/growth/source-categories.generated.ts',
+    occurrences: 2,
+    why: "close-out AQ3. Google's published table of traffic sources, fetched by scripts/ops/refresh-ga-source-categories.mjs and sealed with a digest scripts/guards/organic-is-not-direct.mjs recomputes on every build. Two of its 819 rows are the name of a third-party social network that carries the banned letters. Under the founder ruling of 3 September 2026 the ban never applied to other people's organisations, and this is the strongest case of it: EventLinqs writes not one word of this file, cannot edit it without breaking the seal, and renaming a row would make the table stop being the published answer it is cited as. The budget is EXACT, so a refresh that brings a third such name lands here for a decision rather than passing quietly",
+  },
 ]
 
 /** Whole directories exempt as a class, with the reason. */

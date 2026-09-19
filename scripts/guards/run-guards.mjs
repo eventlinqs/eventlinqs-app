@@ -193,6 +193,14 @@
  *                              view, because a drive process cannot invalidate the
  *                              server's flag cache and one render can be made from
  *                              a value up to the cache TTL out of date
+ *   organic-is-not-direct     the traffic-channel table is Google's published answer and
+ *                              is sealed with a digest, no client component ships its 819
+ *                              rows, and no surface reports the organic search figure
+ *                              without reading the direct one beside it (AQ3)
+ *   evidence-outlives-the-account  no table whose UPDATE or DELETE is refused outright
+ *                              carries a foreign key that cascades into it, because the
+ *                              referential action runs its statement whether or not a row
+ *                              matches and the parent then cannot be deleted by anybody
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -2128,6 +2136,36 @@ const GUARDS = [
   // exposed the same way, including one that had already thought about it and
   // wrote a third spelling of the same silent no-op. The guard prints them.
   'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+
+  // Close-out AQ3 (lane B, 19 September 2026). AQ3's acceptance line is "organic
+  // attributed orders reported separately from direct", and the three ways of
+  // losing it are all source-level. FIRST, which sites are search engines is a
+  // third-party specification: Google's own published table carries the bare
+  // token `google` and NO entry for google.com.au, so the obvious
+  // host-against-the-list implementation would have reported every visit Google
+  // sends us as a referral and answered "is the search work paying off" with a
+  // confident permanent no. The table is fetched, not typed, and sealed with a
+  // digest this guard recomputes, so the hand edit somebody will want to make
+  // (adding `brave`, which really is absent) fails the build instead. SECOND, it
+  // is 819 rows and about 26 KB, and one import from a client component ships
+  // all of it, which is the exact shape lane A measured on 19 September when 28
+  // dashboard routes each carried 21,005 bytes of image hints to draw one 32px
+  // circle. THIRD, the acceptance line itself: a surface naming the organic
+  // figure must name direct beside it.
+  'scripts/guards/organic-is-not-direct.mjs',
+
+  // Found 19 September 2026 while tearing down the AQ3 drive: NO ACCOUNT ON THE
+  // PLATFORM COULD BE DELETED. `marketing_capture_placement.decided_by` carried
+  // `on delete set null` and the table carried a FOR EACH STATEMENT refusal of
+  // every UPDATE, both written the same morning and each correct alone. The
+  // referential action runs its UPDATE whether or not one row matches, and a
+  // statement-level trigger fires on an update of nothing, so a thirteen-row
+  // table made every auth.users delete fail, everywhere, including account
+  // closure in the product. It was invisible because every drive teardown ends
+  // `.catch(() => {})`, so eighteen accounts piled up on TEST while every run
+  // reported a clean tear-down. The guard replays the migrations in order,
+  // honours later drops, and refuses the pair.
+  'scripts/guards/evidence-outlives-the-account.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

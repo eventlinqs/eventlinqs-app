@@ -5316,6 +5316,100 @@ const DRILLS = [
     replace: "  const shares = await fetchMyShares(user.id)\n  await supabase.from('event_group_rates').select('id')",
     expect: 'shows the group rate, and nothing charges it',
   },
+
+  /*
+   * organic-is-not-direct (lane B, close-out AQ3, 19 September 2026), five
+   * drills, one per way of losing the acceptance line.
+   *
+   * THE FIRST IS THE EDIT SOMEBODY WILL ACTUALLY MAKE. search.brave.com really
+   * is absent from Google's published table, so Brave traffic really does read
+   * as a referral, and adding `brave` by hand looks like fixing a bug. It is
+   * not: it is this repository asserting a third-party specification from
+   * memory, which is exactly what Law 7 forbids and what the seal refuses.
+   */
+  {
+    name: 'a search engine is added to the published table by hand',
+    guard: `${GUARDS}/organic-is-not-direct.mjs`,
+    file: 'src/lib/growth/source-categories.generated.ts',
+    find: `  "bing": 'search',`,
+    replace: `  "bing": 'search',\n  "brave": 'search',`,
+    expect: 'has been edited by hand',
+  },
+  {
+    name: 'the generated table loses the banner that is a reader only warning',
+    guard: `${GUARDS}/organic-is-not-direct.mjs`,
+    file: 'src/lib/growth/source-categories.generated.ts',
+    find: ' * GENERATED FILE. DO NOT EDIT BY HAND.',
+    replace: ' * A perfectly ordinary file somebody may edit.',
+    expect: 'has lost its',
+  },
+  {
+    name: 'the table loses the citation that makes it evidence rather than an opinion',
+    guard: `${GUARDS}/organic-is-not-direct.mjs`,
+    file: 'src/lib/growth/source-categories.generated.ts',
+    find: '  rules:',
+    replace: '  notTheRules:',
+    expect: 'no longer carries its provenance',
+  },
+  {
+    name: 'a client component imports the classifier and ships the whole table to a phone',
+    guard: `${GUARDS}/organic-is-not-direct.mjs`,
+    file: 'src/components/analytics/consent-banner.tsx',
+    find: "import { useConsent } from './consent-provider'",
+    replace:
+      "import { useConsent } from './consent-provider'\n" +
+      "import { channelForVisit } from '@/lib/growth/traffic-channel'\n" +
+      'void channelForVisit',
+    expect: 'client component(s) reach',
+  },
+  {
+    name: 'the free traffic page stops naming direct beside organic search',
+    guard: `${GUARDS}/organic-is-not-direct.mjs`,
+    file: 'src/app/admin/(authed)/traffic/page.tsx',
+    find: '  const direct = summary.direct',
+    replace: '  const direct = summary.organicSearch',
+    expect: 'never name direct',
+  },
+
+  /*
+   * evidence-outlives-the-account (lane B, 19 September 2026), four drills.
+   *
+   * THE FIRST IS THE TREE AS IT ACTUALLY STOOD THIS MORNING: put the foreign key
+   * back and no account on the platform can be deleted again, which is what the
+   * AQ3 teardown discovered after eighteen of them had quietly piled up on TEST.
+   */
+  {
+    name: 'the foreign key that made every account undeletable is put back',
+    guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
+    file: 'supabase/migrations/20260919000130_evidence_outlives_the_account.sql',
+    find: 'alter table public.marketing_capture_placement\n  drop constraint if exists marketing_capture_placement_decided_by_fkey;',
+    replace: '-- the drop, removed by a drill',
+    expect: 'a parent row can never be deleted',
+  },
+  {
+    name: 'the guard stops recognising a statement level refusal',
+    guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
+    file: 'scripts/guards/evidence-outlives-the-account.mjs',
+    find: "const REFUSAL = 'refuse_ledger_mutation'",
+    replace: "const REFUSAL = 'a_function_no_migration_in_this_tree_uses'",
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: 'the guard stops honouring a constraint that was later dropped',
+    guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
+    file: 'scripts/guards/evidence-outlives-the-account.mjs',
+    find: 'const DROP_CONSTRAINT = /alter',
+    replace: 'const DROP_CONSTRAINT = /never-matches-a-drop-at-all/gi\nconst UNUSED_DROP_CONSTRAINT = /alter',
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: 'the guard starts believing a drop that was only ever written in a comment',
+    guard: `${GUARDS}/evidence-outlives-the-account.mjs`,
+    file: 'scripts/guards/evidence-outlives-the-account.mjs',
+    find: "    .map(line => line.replace(/--.*$/, ''))",
+    replace: '    .map(line => line)',
+    expect: 'REFUSING: the calibration probe',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */
