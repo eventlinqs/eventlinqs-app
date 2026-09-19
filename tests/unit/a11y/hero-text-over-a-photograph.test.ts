@@ -13,7 +13,16 @@ import {
  * A `.mjs` under scripts/ is deliberate: this is the same module the build-time
  * guard loads, so the suite cannot agree with a second copy of the rules.
  */
-import { NOT_YET_ON_THE_SHARED_WASH as REGISTER, allSourceFiles, deriveHeroFiles } from '../../../scripts/guards/lib/hero-files.mjs'
+import {
+  NOT_YET_ON_THE_SHARED_WASH as REGISTER,
+  allSourceFiles,
+  derivePhotographicTextSurfaces,
+  gradientWashAlphas,
+  paintsOwnWash,
+} from '../../../scripts/guards/lib/hero-files.mjs'
+
+/** Every file that paints text over a photograph, as paths. */
+const deriveSurfaces = () => derivePhotographicTextSurfaces().map(x => x.file)
 
 const NOT_YET_ON_THE_SHARED_WASH: string[] = (REGISTER as Array<{ file: string }>).map(e => e.file)
 
@@ -134,21 +143,29 @@ describe('the hero header wash', () => {
  * and the guard, the drive and this suite all read that one function. Adding a
  * hero cannot leave any of the three behind.
  */
-describe('every hero that paints text on a photograph', () => {
-  const HEROES = deriveHeroFiles()
+describe('every surface that paints text on a photograph', () => {
+  const HEROES = deriveSurfaces()
   const registered = new Set(NOT_YET_ON_THE_SHARED_WASH)
   const held = HEROES.filter(f => !registered.has(f))
 
   it('derives the heroes rather than trusting a list, and finds every family', () => {
     // A derivation that quietly returns three files is worse than no
     // derivation, so the count is asserted against what the platform has.
-    expect(HEROES.length).toBeGreaterThanOrEqual(13)
+    expect(HEROES.length).toBeGreaterThanOrEqual(19)
     for (const known of [
       'src/components/templates/PhotographicCategoryHero.tsx',
       'src/components/features/city/city-hero.tsx',
       'src/app/events/[slug]/page.tsx',
       'src/components/features/home/FeaturedHeroClient.tsx',
       'src/app/waitlist/page.tsx',
+      // The five the hero-scale derivation could never see, because none of
+      // them is a hero and none carries the locked scale token. The auth panel
+      // is the one that was measured at 1.00:1 on every sign-in page.
+      'src/components/auth/auth-shell.tsx',
+      'src/components/features/venues/venue-profile-hero.tsx',
+      'src/components/marketplace/marketplace-hero.tsx',
+      'src/app/queue/[slug]/queue-room.tsx',
+      'src/app/(dashboard)/dashboard/events/[id]/launch-kit/page.tsx',
     ]) {
       expect(HEROES).toContain(known)
     }
@@ -158,9 +175,31 @@ describe('every hero that paints text on a photograph', () => {
     expect(HEROES).not.toContain('src/app/events/[slug]/loading.tsx')
   })
 
-  it.each(held)('%s writes no navy gradient of its own', file => {
-    const src = readFileSync(file, 'utf8')
-    expect(src).not.toMatch(/linear-gradient\([^)]*rgba?\(\s*10\s*,\s*22\s*,\s*40/)
+  it.each(held)('%s writes no wash of its own', file => {
+    // A wash is any TRANSLUCENT DARK gradient, not one particular triple: the
+    // assertion used to name rgba(10,22,40), and the auth panel washed its
+    // photograph in rgba(10,14,26), which is not the brand navy and would have
+    // satisfied the old form. ONE implementation, shared with the guard,
+    // because the first copy of this arithmetic written here had a nesting bug
+    // that made it match nothing at all.
+    const alphas = gradientWashAlphas(readFileSync(file, 'utf8'))
+    expect(alphas, `${file} paints its own wash at alpha ${alphas.join(', ')}`).toEqual([])
+  })
+
+  it('the wash detector reads a real gradient, whose stops are themselves function calls', () => {
+    // The regression this pins: a non-greedy body stopped at the FIRST close
+    // paren, which belongs to the rgba, so no complete stop was ever inside it
+    // and the clause matched nothing on any file. A drill firing a violation at
+    // a live guard is what found it.
+    expect(
+      paintsOwnWash('background: linear-gradient(180deg, rgba(10,22,40,0.36) 0%, rgba(10,22,40,0.88) 100%)'),
+    ).toBe(true)
+    // Gold is decoration, not a wash: FeaturedHeroClient paints an indicator ramp.
+    expect(paintsOwnWash('linear-gradient(90deg, rgba(232,183,56,0) 0%, rgba(232,183,56,0.7) 86%)')).toBe(false)
+    // Opaque is a field, not a wash: three heroes declare the no-photo navy.
+    expect(paintsOwnWash('linear-gradient(135deg, rgb(10,22,40) 0%, rgb(20,32,56) 50%)')).toBe(false)
+    // A comment quoting the gradient somebody DELETED is a record, not a wash.
+    expect(paintsOwnWash('/* was: linear-gradient(180deg, rgba(10,22,40,0.55) 0%) */')).toBe(false)
   })
 
   it.each(held)('%s puts its text inside <HeroCaption>', file => {
@@ -198,26 +237,50 @@ describe('every hero that paints text on a photograph', () => {
 })
 
 /*
- * THE RATCHET. Four heroes are not yet on the shared wash: three sit behind the
- * lane border (they are lane B's organiser marketing surfaces, measured and
- * recorded in REVIEW-QUEUE-C.md), and one has a photographic branch no caller
- * can reach. The register is allowed to shrink and nothing else.
+ * THE RATCHET. Nine surfaces are not yet on the shared wash. Three sit behind
+ * the lane border (lane B's organiser marketing surfaces, measured and recorded
+ * in REVIEW-QUEUE-C.md); the other six each state a condition that this test
+ * and the guard both re-evaluate. The register is allowed to shrink and nothing
+ * else.
+ *
+ * WHY THE NUMBER WENT 4 -> 6 ON 20 SEPTEMBER 2026, because a rising ratchet
+ * count is exactly what this test exists to make somebody justify. No debt was
+ * added. The SUBJECT SET widened: the derivation stopped keying on the locked
+ * hero scale, which the constitution itself carves two exceptions out of, and
+ * went from 13 files to 19. Six files were invisible to every check on the
+ * platform until that day, and the two worst of them were FIXED rather than
+ * registered: the auth panel, whose wordmark measured 1.00:1 on every sign-in
+ * page, and the /about story band at 3.80:1. Three more were CONVERTED to the
+ * shared wash in the same pass and are not in the register at all. What is
+ * registered is only what genuinely cannot or should not be converted, and both
+ * new entries carry a `stillTrue` the guard runs on every build.
+ *
+ * IT WAS BRIEFLY 9. Three of those were false positives of a derivation that
+ * climbed past a photograph's own flow box, and they were answered by fixing
+ * the climb rather than by writing three excuses.
  */
 describe('the heroes not yet on the shared wash', () => {
   it('is a debt that only ever shrinks: nothing may be added to it here', () => {
-    // The number is asserted so that adding a fifth entry fails this test and
-    // has to be argued for, rather than appearing in a diff as one more line.
-    expect(NOT_YET_ON_THE_SHARED_WASH).toHaveLength(4)
+    // The number is asserted so that adding an entry fails this test and has to
+    // be argued for, rather than appearing in a diff as one more line.
+    expect(NOT_YET_ON_THE_SHARED_WASH).toHaveLength(6)
+  })
+
+  it('every entry that is not a lane border states a condition the guard re-evaluates', () => {
+    // An entry with no `stillTrue` is a sentence. An entry with one is a claim
+    // that fails the build the day it stops being true. Only a border - work
+    // this lane is forbidden to do - is allowed to be the former.
+    const withoutCondition = REGISTER.filter(e => !e.stillTrue && !/^B /.test(e.lane))
+    expect(withoutCondition.map(e => e.file)).toEqual([])
   })
 
   it.each(NOT_YET_ON_THE_SHARED_WASH)('%s is still a hero, so the entry still means something', file => {
-    expect(deriveHeroFiles()).toContain(file)
+    expect(deriveSurfaces()).toContain(file)
   })
 
   it.each(NOT_YET_ON_THE_SHARED_WASH)('%s has not already been converted, which would make its entry stale', file => {
     const src = readFileSync(file, 'utf8')
-    const converted =
-      !/linear-gradient\([^)]*rgba?\(\s*10\s*,\s*22\s*,\s*40/.test(src) && /<HeroCaption[\s>]/.test(src)
+    const converted = !paintsOwnWash(src) && /<HeroCaption[\s>]/.test(src)
     expect(converted).toBe(false)
   })
 

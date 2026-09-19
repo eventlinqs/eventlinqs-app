@@ -32,7 +32,12 @@
  * redone from the new values. Nothing here is a number copied from a review.
  */
 import { existsSync, readFileSync } from 'node:fs'
-import { NOT_YET_ON_THE_SHARED_WASH, deriveHeroFiles } from './lib/hero-files.mjs'
+import {
+  NOT_YET_ON_THE_SHARED_WASH,
+  derivePhotographicTextSurfaces,
+  paintsOwnWash,
+  stripComments,
+} from './lib/hero-files.mjs'
 
 const FAILURES = []
 const fail = (clause, message) => FAILURES.push(`${clause}: ${message}`)
@@ -54,8 +59,20 @@ const GLOBALS = 'src/app/globals.css'
  * /waitlist with 100 per cent of its pixels failing, a headline at 1.49:1 on
  * /organisers, an eyebrow at 1.01:1 on /about. The guard passed every one of
  * those builds and was correct about all five files it could see.
+ *
+ * AND ON 20 SEPTEMBER THAT DERIVATION WAS WIDENED AGAIN, for a reason worth
+ * keeping because it is subtler than the first. Deriving from the LOCKED HERO
+ * SCALE is a real derivation, and the constitution carves an exception out of
+ * that very token in the paragraph that locks it: the two profile heroes keep
+ * their own inline scale. So the mark had documented blind spots, and behind
+ * them sat the auth brand panel, whose EVENTLINQS wordmark was painting
+ * `text-ink-900` on a photograph at 1.00:1 with 100 per cent of its 586 core
+ * pixels below floor, on every sign-in and sign-up page on the platform. The
+ * subject list is now every file that paints text over a full-bleed photograph,
+ * whatever it is called and whatever scale it uses: 22 files, against 13.
  */
-const HERO_FILES = deriveHeroFiles()
+const SURFACES = derivePhotographicTextSurfaces()
+const HERO_FILES = SURFACES.map(s => s.file)
 
 /** Missing is a FINDING here, not an exception to swallow, so absence is asked
  * about rather than caught. */
@@ -72,6 +89,19 @@ const read = f => (existsSync(f) ? readFileSync(f, 'utf8') : null)
  * unused import satisfies is not guarding anything.
  */
 const withoutImports = src => src.replace(/^\s*import[\s\S]*?from\s+'[^']*'\s*$/gm, '')
+
+/**
+ * The file as CODE: no imports, no comments.
+ *
+ * THE SECOND HALF OF THIS WAS ADDED ON 20 SEPTEMBER 2026 BY A DRILL. The
+ * caption clause matched `<HeroCaption` anywhere in the source, and the
+ * conversion of `auth-shell.tsx` carries a comment explaining what
+ * `<HeroCaption>` now guarantees there. So the drill that tore the caption out
+ * of the auth panel left that sentence behind, and the guard read its own
+ * documentation and passed. It is the same hole as the unused import above,
+ * one layer along: a guard that a COMMENT satisfies is not guarding either.
+ */
+const asCode = src => stripComments(withoutImports(src))
 
 /* ── WCAG 2.2, evaluated here rather than quoted ───────────────────────────
  * https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
@@ -100,10 +130,20 @@ if (!caption) fail('4', `${CAPTION_COMPONENT} is missing: nothing renders the ca
 if (!globals) fail('2', `${GLOBALS} is missing: the gold token cannot be read`)
 
 /* ── CLAUSE 1. ONE WASH, DECLARED ONCE ─────────────────────────────────────
- * No hero file may write its own navy gradient. This is the clause that would
- * have refused the four divergent gradients the incident was made of.
+ * No file in this class may write its own wash. This is the clause that would
+ * have refused the four divergent gradients the first incident was made of.
+ *
+ * IT USED TO MATCH ONE COLOUR, AND THAT WAS A HOLE. The pattern was
+ * `rgba(10,22,40`, the brand navy, written out. `auth-shell.tsx` washed its
+ * photograph in `rgba(10,14,26)`, which is not the brand navy at all and which
+ * the design system's "no new colours" rule already forbids, so the one file on
+ * the platform whose wordmark was measured at 1.00:1 would have walked past
+ * this clause even if it had been in the subject list. A wash is not a
+ * particular triple; it is a TRANSLUCENT DARK gradient, and that is now what is
+ * matched. Gold stays legal: `FeaturedHeroClient` paints an indicator ramp in
+ * rgba(232,183,56) and a brand hairline, and neither is a wash.
  */
-const NAVY_GRADIENT = /linear-gradient\([^)]*rgba?\(\s*10\s*,\s*22\s*,\s*40/
+const writesOwnWash = paintsOwnWash
 
 const registered = new Map(NOT_YET_ON_THE_SHARED_WASH.map(e => [e.file, e]))
 
@@ -120,7 +160,7 @@ for (const entry of NOT_YET_ON_THE_SHARED_WASH) {
     continue
   }
   const src = read(entry.file)
-  const converted = src !== null && !NAVY_GRADIENT.test(src) && /<HeroCaption[\s>]/.test(withoutImports(src))
+  const converted = src !== null && !writesOwnWash(src) && /<HeroCaption[\s>]/.test(asCode(src))
   if (converted) {
     fail(
       '0',
@@ -135,7 +175,7 @@ for (const entry of NOT_YET_ON_THE_SHARED_WASH) {
   }
 }
 
-for (const f of HERO_FILES) {
+for (const { file: f, bands } of SURFACES) {
   const src = read(f)
   if (src === null) {
     fail('1', `${f} was derived as a hero and cannot be read`)
@@ -144,16 +184,35 @@ for (const f of HERO_FILES) {
   /* A registered hero is still REPORTED, never silently skipped, so the debt
    * is visible on every run rather than only in this file's source. */
   if (registered.has(f)) continue
-  if (NAVY_GRADIENT.test(src)) {
+  if (writesOwnWash(src)) {
     fail(
       '1',
       `${f} writes its own navy gradient. Every hero wash comes from ${SCRIM_MODULE}; hand-written gradients disagreeing with each other is the defect this guard exists for.`,
     )
   }
-  if (!/<HeroCaption[\s>]/.test(withoutImports(src))) {
-    fail('4', `${f} paints hero text without <HeroCaption>, so nothing guarantees it clears its contrast floor`)
+  /*
+   * ONE CAPTION PER BAND, NOT ONE PER FILE.
+   *
+   * THIS CLAUSE USED TO ASK "does this file contain a <HeroCaption> anywhere",
+   * and a drill on 20 September 2026 showed what that is worth. `/about` paints
+   * TWO photographic bands - the hero and the story band - so tearing the
+   * caption out of the hero left the story band's behind and the guard passed
+   * on a tree with an unprotected hero in it. Files with more than one band are
+   * not exotic: /about and the organisers landing page both have two.
+   *
+   * The count comes from the derivation, which counts BANDS rather than
+   * painters, so a carousel that renders five slides from one map body still
+   * needs exactly one.
+   */
+  const captions = (asCode(src).match(/<HeroCaption[\s>]/g) ?? []).length
+  if (captions < bands) {
+    fail(
+      '4',
+      `${f} paints hero text without <HeroCaption>, so nothing guarantees it clears its contrast floor` +
+        (bands > 1 ? ` (${bands} photographic bands in this file, ${captions} caption(s))` : ''),
+    )
   }
-  if (!/overflow-hidden/.test(src)) {
+  if (!/overflow-hidden/.test(asCode(src))) {
     fail('4', `${f} does not clip its hero band, and the caption wash bleeds full width expecting it to`)
   }
 }
