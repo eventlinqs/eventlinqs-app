@@ -158,9 +158,14 @@
  *                              the exact specified bytes, the address those headers name is
  *                              a route that answers POST, and GET on it withdraws nothing
  *   consent-dates-are-zoned  no date a person reads on a consent, audience or
- *                              marketing surface is assembled from UTC getters or
- *                              formatted without naming a time zone, and the consent
- *                              ledger renders through the one platform formatter
+ *                              marketing surface is assembled from UTC getters,
+ *                              formatted without naming a time zone, or cut out of
+ *                              an ISO string, and the consent ledger renders
+ *                              through the one platform formatter
+ *   matcher-offers-an-event-not-yet-over  the matcher's event picker is one
+ *                              bounded read: the door composes the platform's own
+ *                              visibility rule at a given instant, and no matcher
+ *                              surface reads a list of events around it
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -1248,6 +1253,15 @@ const GUARDS = [
   // different question. Drilled red on both clauses with the database's own
   // protection removed, which is how a row like that would ever exist.
   'scripts/guards/matcher-consented-and-capped.mjs',
+  // Close-out GA2, second defect, found 19 September 2026 by trying to drive the
+  // screen. The picker on /admin/matches read published public events ordered by
+  // start_date ascending with NO bound on time, under a comment claiming it
+  // listed the soonest. That is the forty OLDEST events the platform has ever
+  // had: on TEST, 101 of 276 were already over and the list began in June, so
+  // the screen that decides who hears about an event could not be pointed at one
+  // anybody could still go to. This holds the bound on end_date in one door and
+  // fails the build when any matcher surface reads a LIST of events around it.
+  'scripts/guards/matcher-offers-an-event-not-yet-over.mjs',
   // Close-out GA3. The attribution table is the basis of an invoice, so every
   // order carries exactly one stored decision, never zero and never two, an
   // order no campaign produced says so with a reason rather than being absent,

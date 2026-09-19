@@ -8,6 +8,8 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { readMatchConfig } from '@/lib/matching/config'
 import { methodSentence, type BreakdownEntry } from '@/lib/matching/score'
 import { SUPPRESSION_SENTENCES, type SuppressionReason } from '@/lib/matching/suppress'
+import { formatEventDate, formatPlatformDate } from '@/lib/dates/event-time'
+import { readMatchableEvents, readEventForMatching } from '@/lib/matching/events'
 import { MatchRunForm } from './match-run-form'
 
 export const dynamic = 'force-dynamic'
@@ -51,15 +53,19 @@ export default async function AdminMatchesPage({ searchParams }: Props) {
   const { event: eventId } = await searchParams
   const admin = createAdminClient()
 
-  const [enabled, recentEvents] = await Promise.all([
+  /*
+   * THE PICKER IS BOUND BY TIME, AND THE BOUND LIVES IN ONE PLACE.
+   *
+   * This read used to be composed here: published, public, ordered by
+   * start_date ascending, forty of them, and no bound on time at all, under a
+   * comment claiming it listed the soonest events. Ordering EVERY published
+   * event ascending and taking forty gives the forty OLDEST the platform has
+   * ever had: on TEST, 101 of 276 were already over and the picker offered
+   * nothing but June. See src/lib/matching/events.ts.
+   */
+  const [enabled, matchable] = await Promise.all([
     isFeatureEnabled('marketing_matcher_enabled'),
-    admin
-      .from('events')
-      .select('id, title, slug, start_date')
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .order('start_date', { ascending: true })
-      .limit(40),
+    readMatchableEvents(admin, new Date()),
   ])
 
   let config = null
@@ -71,8 +77,7 @@ export default async function AdminMatchesPage({ searchParams }: Props) {
   }
 
   const selected = eventId
-    ? (recentEvents.data ?? []).find(e => e.id === eventId) ??
-      (await admin.from('events').select('id, title, slug, start_date').eq('id', eventId).maybeSingle()).data
+    ? (matchable.find(e => e.id === eventId) ?? (await readEventForMatching(admin, eventId)))
     : null
 
   const { data: run } = eventId
@@ -123,11 +128,31 @@ export default async function AdminMatchesPage({ searchParams }: Props) {
            * published event rendered a picker that could not show it, which is
            * how the button came to refuse an event the page was describing.
            */
+          /*
+           * THE DATE IS RENDERED HERE, ON THE SERVER, AND TRAVELS AS A LABEL.
+           *
+           * An event's date takes the EVENT's zone (src/lib/dates/event-time.ts).
+           * The picker used to slice the first ten characters off the stored
+           * instant, which is the UTC calendar date, and that is a day EARLY for
+           * every event whose local start is before its own offset: before 10 am
+           * in Sydney, before 8 am in Perth. Rendering it here rather than in the
+           * client also keeps @/lib/dates/event-time out of this route's bundle.
+           */
           events={[
-            ...(selected && !(recentEvents.data ?? []).some(e => e.id === selected.id)
-              ? [{ id: selected.id, title: selected.title, startDate: selected.start_date }]
+            ...(selected && !matchable.some(e => e.id === selected.id)
+              ? [
+                  {
+                    id: selected.id,
+                    title: selected.title,
+                    dateLabel: formatEventDate(selected.startDate, selected.timezone),
+                  },
+                ]
               : []),
-            ...(recentEvents.data ?? []).map(e => ({ id: e.id, title: e.title, startDate: e.start_date })),
+            ...matchable.map(e => ({
+              id: e.id,
+              title: e.title,
+              dateLabel: formatEventDate(e.startDate, e.timezone),
+            })),
           ]}
           selectedEventId={selected?.id ?? ''}
           defaultCap={config?.maxRecipientsPerRun ?? 0}
@@ -210,7 +235,7 @@ export default async function AdminMatchesPage({ searchParams }: Props) {
             <h2 className="font-display text-lg font-semibold text-white">How the score is worked out</h2>
             <p className="mt-2 text-sm text-white/70">
               Method {run.method_name} version {run.method_version}, run{' '}
-              {new Date(run.started_at).toISOString().slice(0, 10)}.
+              {formatPlatformDate(run.started_at)}.
             </p>
             {config && <p className="mt-2 text-sm text-white/60">{methodSentence(config)}</p>}
           </section>

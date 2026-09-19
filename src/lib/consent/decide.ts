@@ -13,6 +13,13 @@
  * and touches nothing else. src/lib/consent/resolver.ts is the half that reads
  * the ledger.
  *
+ * ONE IMPORT BEYOND ITS OWN TYPES, AND IT IS THE DATE FORMATTER. The verdict's
+ * reason is prose a person reads back as evidence, and it is stored as the
+ * detail of every marketing_send_skip row. It used to slice the first ten
+ * characters off the ISO instant, which is the UTC calendar date and is a day
+ * early for every Australian evening. formatPlatformDate is pure, so this file
+ * is still a function of its arguments and still testable with no database.
+ *
  * THE ONE DUPLICATION, STATED RATHER THAN HIDDEN. public.consent_permits in
  * supabase/migrations/20260913000040_consent_ledger.sql carries the same rules
  * in SQL, because the audience asset is maintained by a trigger (a paid order
@@ -20,6 +27,7 @@
  * call TypeScript. The drive compares the two across a matrix of subjects
  * rather than assuming they agree.
  */
+import { formatPlatformDate } from '@/lib/dates/event-time'
 import {
   type ConsentChannel,
   type ConsentChannelScope,
@@ -183,14 +191,14 @@ export function decideSend(
   if (blocking) {
     return {
       permitted: false,
-      reason: `a ${blocking.scope} suppression recorded on ${blocking.occurredAt.slice(0, 10)} stops this message`,
+      reason: `a ${blocking.scope} suppression recorded on ${formatPlatformDate(blocking.occurredAt)} stops this message`,
       decidingEventId: deciding.id,
     }
   }
 
   return {
     permitted: true,
-    reason: `granted on ${deciding.occurredAt.slice(0, 10)} under wording ${deciding.wordingVersion}`,
+    reason: `granted on ${formatPlatformDate(deciding.occurredAt)} under wording ${deciding.wordingVersion}`,
     decidingEventId: deciding.id,
   }
 }

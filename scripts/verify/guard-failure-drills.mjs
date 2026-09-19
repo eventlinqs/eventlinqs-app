@@ -4585,6 +4585,120 @@ const DRILLS = [
   },
 
   /*
+   * consent-dates-are-zoned CLAUSE 3 (lane B, 19 September 2026), four drills.
+   *
+   * The clause exists because this guard had a blind spot for a day: it read
+   * three getters and two formatters, and could not see the COMMONEST way to
+   * render a UTC date, which is slicing the first ten characters off an ISO
+   * string. Four live renderings in its own path did exactly that while it
+   * printed OK.
+   *
+   * THE FOURTH DRILL AIMS AT THE MATCHER RATHER THAN AT THE CODE, and it is the
+   * one worth reading. It rebuilds ISO_SLICE inside a TEMPLATE LITERAL, where a
+   * backslash class is not an escape, which is precisely how a guard in this
+   * tree shipped blind on 18 September and reported PASS over the thing it
+   * banned. The clause's own probes must catch that on every run.
+   */
+  {
+    name: 'the matcher run date goes back to slicing the ISO string',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/app/admin/(authed)/matches/page.tsx',
+    find: '{formatPlatformDate(run.started_at)}.',
+    replace: '{new Date(run.started_at).toISOString().slice(0, 10)}.',
+    expect: 'cuts a date out of .toISOString()',
+  },
+  {
+    name: 'the match event picker goes back to slicing the stored instant',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/app/admin/(authed)/matches/match-run-form.tsx',
+    find: '{event.title} ({event.dateLabel})',
+    replace: '{event.title} ({event.startDate.slice(0, 10)})',
+    expect: 'takes the first ten characters of startDate',
+  },
+  {
+    name: 'the consent door goes back to slicing its own evidence date',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/lib/consent/decide.ts',
+    find: 'reason: `granted on ${formatPlatformDate(deciding.occurredAt)} under wording',
+    replace: 'reason: `granted on ${deciding.occurredAt.slice(0, 10)} under wording',
+    expect: 'takes the first ten characters of occurredAt',
+  },
+  {
+    /*
+     * THIS ONE PROVES THE SCOPE RATHER THAN THE CLAUSE. The pricing screens were
+     * outside the guard's directory list until 19 September, which is how a UTC
+     * event date survived in the picker a fee override is attached from. If the
+     * pricing directory ever leaves SCOPE again, this drill stops firing.
+     */
+    name: 'the fee-override picker goes back to slicing, in a directory the guard used not to sweep',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/app/admin/(authed)/pricing/targets/route.ts',
+    find: "const date = e.start_date ? formatEventDate(e.start_date, e.timezone) : ''",
+    replace: "const date = e.start_date ? new Date(e.start_date).toISOString().slice(0, 10) : ''",
+    expect: 'cuts a date out of .toISOString()',
+  },
+
+  /*
+   * matcher-offers-an-event-not-yet-over (lane B, 19 September 2026), four
+   * drills.
+   *
+   * The guard exists because the matcher's event picker read published public
+   * events ordered ascending with no bound on time, which is the forty OLDEST
+   * events the platform has ever had. On TEST that was 101 finished events and a
+   * list beginning in June. Nothing threw and nothing was empty.
+   *
+   * THE SECOND DRILL IS THE ONE WORTH READING. It leaves the visibility rule in
+   * place and only takes away the instant handed to it. The picker still behaves
+   * correctly in production, and the bound becomes unprovable at any chosen
+   * time, which is how a correct-looking read stops being testable without
+   * anybody noticing.
+   */
+  {
+    name: 'the matcher door stops composing the visibility rule and offers every event ever published',
+    guard: `${GUARDS}/matcher-offers-an-event-not-yet-over.mjs`,
+    file: 'src/lib/matching/events.ts',
+    find: 'await applyPublicEventVisibility(',
+    replace: 'await noVisibilityRuleAtAll(',
+    expect: 'no longer composes applyPublicEventVisibility',
+  },
+  {
+    name: 'the matcher door keeps the rule but hands it no instant, so the bound cannot be proven',
+    guard: `${GUARDS}/matcher-offers-an-event-not-yet-over.mjs`,
+    file: 'src/lib/matching/events.ts',
+    find: '    { now },',
+    replace: '    {},',
+    expect: 'hands it no instant',
+  },
+  {
+    name: 'the matcher screen composes its own list of events beside the door',
+    guard: `${GUARDS}/matcher-offers-an-event-not-yet-over.mjs`,
+    file: 'src/app/admin/(authed)/matches/page.tsx',
+    find: '  const admin = createAdminClient()',
+    replace:
+      "  const admin = createAdminClient(); const extra = await admin.from('events').select('id').limit(40)",
+    expect: 'reads a LIST of events directly',
+  },
+  {
+    name: "the matcher guard's own door disappears",
+    guard: `${GUARDS}/matcher-offers-an-event-not-yet-over.mjs`,
+    file: 'src/lib/matching/events.ts',
+    find: 'export async function readMatchableEvents',
+    replace: 'async function readMatchableEvents',
+    expect: 'no longer exports readMatchableEvents',
+  },
+  {
+    name: "clause 3's matcher is rebuilt inside a template literal and quietly stops matching",
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'scripts/guards/consent-dates-are-zoned.mjs',
+    find: 'const ISO_SLICE = /',
+    replace:
+      'const ISO_SLICE = new RegExp(`' +
+      BSL + '.toISOString' + BSL + 's*' + BSL + '.' + BSL + "s*slice" +
+      '`); const UNUSED_ISO_SLICE = /',
+    expect: 'no longer matches',
+  },
+
+  /*
    * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of
    * scripts/guards/no-drill-residue.mjs.
    *
