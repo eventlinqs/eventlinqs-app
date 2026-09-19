@@ -5763,6 +5763,71 @@ const DRILLS = [
     expect: 'destructures `data` and not `error`',
   },
   /*
+   * The organiser screens joined the guard on 20 September 2026, five drills.
+   *
+   * `countEventsAndVolume` exists because a stored counter drifted, and its own
+   * header promises the figure "cannot be wrong" now that the rows are counted.
+   * Both counting reads were unbounded, so the drift returns by another route.
+   */
+  {
+    name: 'the organiser event count goes back to an unbounded read',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find:
+      "        .in('organisation_id', orgIds)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .in('organisation_id', orgIds),",
+    expect: 'reads events with no bound',
+  },
+  {
+    name: 'the organiser event count pages with no stable order',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find:
+      "        .in('organisation_id', orgIds)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .in('organisation_id', orgIds)\n        .range(from, to),",
+    expect: 'with .range() and no .order()',
+  },
+  {
+    name: 'the organiser lifetime volume goes back to an unbounded read',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find:
+      "          .eq('status', 'confirmed')\n" +
+      "          .order('id', { ascending: true })\n" +
+      '          .range(from, to),',
+    replace: "          .eq('status', 'confirmed'),",
+    expect: 'reads orders with no bound',
+  },
+  {
+    /*
+     * A failed read returned null, and the route above renders null as "not
+     * found": the screen told the founder a live organisation did not exist.
+     */
+    name: 'the organiser detail read goes back to discarding its error',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find: '  const { data: org, error: orgError } = await admin',
+    replace: '  const { data: org } = await admin',
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * CLAUSE 5 AGAIN, and this one fired on the fix itself while it was being
+     * written: `(cascade.count ?? 0) > 0` files "nothing needed pausing" and
+     * "the count did not come back" under the same audit entry.
+     */
+    name: 'the suspend cascade goes back to coalescing the count it audits',
+    guard: `${GUARDS}/the-founder-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find: '    } else if (cascade.count === null) {',
+    replace: '    } else if ((cascade.count ?? 0) < 0) {',
+    expect: 'coalesces the count',
+  },
+  /*
    * the-recovery-stop-list-is-whole (lane B, 20 September 2026), seven drills.
    *
    * The guard exists because two guards already stood over this engine and both

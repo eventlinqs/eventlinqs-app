@@ -113,6 +113,15 @@ const TAG = '[the-founder-screens-read-every-row]'
  *                   fee-free window. Its discarded errors told him a person did
  *                   not exist, or minted a second invite code for somebody who
  *                   already held one.
+ *   organisers.ts   the organiser list and detail. `countEventsAndVolume` exists
+ *                   BECAUSE a stored counter drifted, and its own header says
+ *                   the figure "cannot be wrong" now that the rows are counted.
+ *                   Both of those reads were unbounded, so past the ceiling the
+ *                   same drift returns by another route: the page size bounds
+ *                   the question at 25 organisers and not the answer, and
+ *                   twenty-five organisers with forty confirmed orders each is
+ *                   a thousand rows. `getOrganiserDetail` dropped its error and
+ *                   rendered a live organisation as not found.
  */
 const SCREENS = [
   'src/lib/admin/analytics.ts',
@@ -120,6 +129,7 @@ const SCREENS = [
   'src/lib/admin/demand-signal.ts',
   'src/app/admin/(authed)/network/page.tsx',
   'src/app/admin/(authed)/network/actions.ts',
+  'src/lib/admin/organisers.ts',
 ]
 
 const failures = []
