@@ -305,6 +305,379 @@ html[data-motion="1"] .group:hover .card-hover-wash {
   .card-media-img { transition: none; }
 }
 
+/* ─── Home card system: the three class lists every card repeats ──────────── */
+/*
+ * WHY THESE EXIST, and it is a byte measurement rather than a style opinion.
+ *
+ * Close-out C8 EXECUTION METHOD clause C8B.3, 19 September 2026. The homepage
+ * document is 1,007,295 B and 34.9% of it is `class` attribute values:
+ *
+ *     markup   class="..."      195,365 B   19.4% of the document
+ *     flight   \"className\":   156,478 B   15.5% of the document
+ *
+ * across 131 distinct values of which 98 repeat. The card surface list alone is
+ * 464 characters and ships 104 times. It is paid TWICE - once in the markup and
+ * again in the RSC payload - because a class list written as a string literal in
+ * a component is re-serialised for every instance React renders. A composite
+ * class ships its NAME instead, so both copies shrink together.
+ *
+ * WHY @apply AND NOT HAND-WRITTEN CSS. Hand-translating `focus-visible:ring-2`
+ * or `transition-[transform,box-shadow,color]` means re-deriving Tailwind's ring
+ * custom properties and this theme's `ease-out` (which is NOT Tailwind's
+ * default: it resolves to cubic-bezier(0.16, 1, 0.3, 1) here). @apply emits
+ * exactly what the utilities emit, so the collapse cannot drift from the design
+ * system by hand. It is held by scripts/verify/card-class-collapse-drive.mjs,
+ * which compares getComputedStyle before and after at 390/768/1440 in BOTH
+ * motion branches, at rest, on hover and under :focus-visible.
+ *
+ * `group` IS NOT IN HERE and must not be: it is a variant marker that carries no
+ * declarations of its own, and the `group-hover:` rules below are written
+ * against it. The card components keep `group` on the element.
+ */
+/*
+ * `h-full` IS DELIBERATELY NOT IN HERE. The rail card family stretches to its
+ * cell (the founder's rail-symmetry law, so every card's footer baseline lines
+ * up) and the sounds rail's tiles do not. Folding h-full in would have silently
+ * changed the sounds rail's layout to buy twelve tiles' worth of bytes, so the
+ * one class the two families differ by stays at the call site and everything
+ * they share is collapsed.
+ */
+@utility home-card-surface {
+  @apply flex w-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)]
+    bg-[var(--surface-0)] shadow-[var(--shadow-card)]
+    transition-[transform,box-shadow,color] duration-200 ease-out
+    hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)]
+    motion-reduce:transition-none motion-reduce:hover:translate-y-0
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]
+    focus-visible:ring-offset-2;
+}
+
+/* The inner-media zoom that rides the card hover. Paired with `.card-media-img`
+ * (the brightness half of the hover illumination law), never a replacement for
+ * it: that class stays on the image and is rendered by the media components. */
+@utility home-card-zoom {
+  @apply transition-transform duration-200 ease-out group-hover:scale-[1.03]
+    motion-reduce:transition-none motion-reduce:group-hover:scale-100;
+}
+
+/* Card title. The SIZE is deliberately NOT here: six card shapes render this
+ * with six different `text-*` steps, and folding a size in would make one of
+ * them wrong. Only the properties every card title shares are collapsed. */
+@utility home-card-title {
+  @apply font-headline font-bold leading-snug tracking-tight text-[var(--text-primary)]
+    transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)];
+}
+
+/* The card eyebrow: genre, community or event type, above the title. Its size
+ * IS here, unlike the title's, because every card renders it at the same
+ * 12px micro step and there is nothing for a call site to vary. */
+@utility home-card-label {
+  @apply font-display text-xs font-semibold uppercase tracking-widest
+    text-[var(--brand-accent-strong)];
+}
+
+/* The card's date and price, the two halves of the footer row. Sizes stay at
+ * the call site: the square tile runs them a step smaller than the landscape
+ * card and the feature card a step larger. */
+@utility home-card-date {
+  @apply font-semibold uppercase tracking-wide text-[var(--brand-accent-strong)];
+}
+@utility home-card-price {
+  @apply font-headline font-bold text-[var(--text-primary)];
+}
+
+/* ─── The one rail control ────────────────────────────────────────────────── */
+/*
+ * `ARROW_BTN` from src/components/ui/snap-rail.tsx: 642 characters, and the
+ * homepage rendered it 22 times, in the markup and again in the RSC payload.
+ * It is the single largest repeated class value on the platform's busiest page.
+ *
+ * It collapses cleanly for the same reason it was already a single constant:
+ * CLAUDE.md's Rail Control System makes it ONE canonical control that every
+ * rail renders and no surface re-rolls, so a composite class is a more honest
+ * expression of that law than a string a component hands out.
+ *
+ * FIVE STATE GROUPS, and three of them are invisible to a resting screenshot:
+ * hover, active, disabled (a rail at either end) and focus-visible. The drive
+ * that holds this compares the enabled AND disabled states, because the muted
+ * disabled fill is design law and a rest-only proof would let it be deleted.
+ */
+/* The rail header's "View all" link. It was written out TWICE in snap-rail.tsx,
+ * 310 identical characters at two call sites, which is a duplication defect
+ * before it is a byte one: a change to one would have silently diverged from
+ * the other. `min-h-11` + `sm:inline-flex` is the 44px hit area the touch-target
+ * law asks for (the text line alone is 20px tall); the link is hidden below the
+ * `sm` step, where the rail header has no room for it. */
+@utility rail-header-link {
+  @apply hidden min-h-11 items-center whitespace-nowrap text-sm font-medium
+    text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)]
+    focus-visible:outline-none focus-visible:rounded-lg focus-visible:ring-2
+    focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:inline-flex;
+}
+
+@utility rail-arrow-btn {
+  @apply flex h-11 w-11 items-center justify-center rounded-full
+    bg-[var(--color-ink-900)] text-white shadow-[var(--shadow-card)]
+    transition-[transform,background-color,box-shadow,color] duration-200 ease-out
+    hover:-translate-y-0.5 hover:bg-[var(--color-navy-950)] hover:text-[var(--color-gold-400)]
+    hover:shadow-[var(--shadow-card-hover)]
+    active:translate-y-0 active:scale-95 active:duration-75
+    disabled:cursor-not-allowed disabled:bg-[var(--surface-2)] disabled:text-[var(--text-muted)]
+    disabled:shadow-none disabled:translate-y-0
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]
+    focus-visible:ring-offset-2;
+}
+
+/* ─── Browse card system (EventCard): the second card family ─────────────── */
+/*
+ * WHY THESE EXIST, and like the home card family above it is a measurement.
+ *
+ * Close-out C8 EXECUTION METHOD clause C8B.3, 19 September 2026, second card
+ * family. `EventCard` is the browse card: it renders on EIGHTEEN surfaces
+ * (/events, every city, suburb, category, community-by-city, organiser, venue,
+ * artist and the feed), and on /events its class values are 105,684 B - 26.6%
+ * of a 397,482 B document - of which 88,323 B is a value said again. The card
+ * surface alone is 428 characters said 40 times.
+ *
+ * IT IS PAID TWICE, once in the markup and again in the RSC payload, for the
+ * same reason the home card was: a class list written as a string literal in a
+ * component is re-serialised for every instance React renders.
+ *
+ * AND THIS FAMILY CARRIES A SECOND COST THE HOME CARD DID NOT: inline styles.
+ * Six of its elements set `style={{ ... }}` with design tokens - the body's
+ * padding, the meta row's gap, the footer's gap and padding, the price's size
+ * and weight, the title's transition - and an inline style is paid per card in
+ * the markup AND serialised again as an object in the flight payload. Those
+ * declarations move in here as plain CSS rather than as @apply, because
+ * `padding: var(--space-card-padding-y) var(--space-card-padding-x)` IS the
+ * declaration the inline style set: there is nothing to translate and so
+ * nothing to translate wrongly.
+ *
+ * WHAT DELIBERATELY DID NOT MOVE, and each is a cascade fact rather than an
+ * oversight:
+ *
+ *   `.type-micro` / `.type-small` stay at the call site. They are UNLAYERED
+ *   rules, and unlayered CSS beats everything in `@layer utilities` whatever
+ *   its specificity, so folding their font-size into a composite would have
+ *   been fine but folding the eyebrow's `font-weight: 600` in would NOT: the
+ *   unlayered `.type-micro { font-weight: 500 }` would win and the eyebrow
+ *   would silently drop a weight. That one stays an inline style.
+ *
+ *   `.card-hover-img` stays on the image. Its `transition` is already fully
+ *   overridden by `.card-media-img` (declared later in this file), so moving
+ *   it into a utility would have promoted a dead declaration into a live one
+ *   that beats `.card-media-img` and would have cost the hover brightening its
+ *   easing. The composite carries the two variants only.
+ *
+ * Held by scripts/verify/card-class-collapse-drive.mjs, which now drives
+ * /events as well as the homepage and compares every one of these properties
+ * before and after at 390/768/1440 in both motion branches.
+ */
+@utility event-card-surface {
+  @apply flex flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)]
+    bg-[var(--surface-0)] shadow-[var(--shadow-card)]
+    transition-[transform,box-shadow] duration-200 ease-out
+    hover:-translate-y-1 hover:border-[var(--surface-2)] hover:shadow-[var(--shadow-card-hover)]
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)]
+    focus-visible:ring-offset-2
+    motion-reduce:transition-none motion-reduce:hover:translate-y-0;
+}
+
+/* The media box. 16:9 on mobile, 4:3 from the md step, per the card spec. */
+@utility event-card-media {
+  @apply relative aspect-video overflow-hidden bg-[var(--surface-1)] md:aspect-[4/3];
+}
+
+/* The image zoom that rides the card hover. Paired with `.card-media-img`
+ * (the brightness half of the hover illumination law) and with
+ * `.card-hover-img`, both of which stay on the element. */
+@utility event-card-zoom {
+  @apply group-hover:scale-[1.025] motion-reduce:group-hover:scale-100;
+}
+
+/* The M5 social-proof badge, top-left of the media box. Its COLOUR is not
+ * here: `BADGE_STYLES` picks one per badge kind and stays at the call site. */
+@utility event-card-badge {
+  @apply absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold uppercase
+    tracking-widest shadow-[var(--shadow-card)];
+}
+
+/* The category pill, the same corner when no badge was supplied. */
+@utility event-card-pill {
+  @apply absolute left-3 top-3 inline-flex items-center rounded-full
+    bg-[var(--surface-0)]/95 px-2.5 py-1 text-xs font-bold uppercase tracking-widest
+    text-[var(--text-primary)] shadow-[var(--shadow-card)];
+}
+
+/* The card body. The padding was four inline declarations on every card. */
+@utility event-card-body {
+  @apply flex flex-1 flex-col;
+  padding: var(--space-card-padding-y) var(--space-card-padding-x);
+}
+
+/* The eyebrow above the title. `type-micro` and the 600 weight stay at the
+ * call site, for the unlayered-cascade reason written above. */
+@utility event-card-date {
+  @apply font-display uppercase tracking-widest text-[var(--brand-accent-strong)];
+}
+
+@utility event-card-title {
+  @apply mt-1 font-headline text-lg font-bold leading-snug tracking-[-0.01em]
+    text-[var(--text-primary)] line-clamp-2 underline-offset-4
+    decoration-[var(--brand-accent)] decoration-2 group-hover:underline;
+  transition: text-decoration-color var(--motion-quick);
+}
+
+/* The date/location row. `gap` was an inline style, which is why the two call
+ * sites could carry `gap-1` and `gap-1.5` and render identically: both were
+ * dead. One gap now, from the token that was always winning. */
+@utility event-card-meta {
+  @apply mt-1.5 flex items-center text-[var(--text-secondary)];
+  gap: var(--space-tight-gap);
+}
+
+@utility event-card-footer {
+  @apply mt-auto flex items-center justify-between;
+  gap: var(--space-tight-gap);
+  padding-top: var(--space-tight-gap);
+}
+
+@utility event-card-price {
+  @apply font-display text-[var(--text-primary)];
+  font-size: var(--type-body);
+  font-weight: 600;
+}
+
+/* The save (heart) control. It renders inside every browse card and again on
+ * the event page, and its 122 shared characters were written per instance. The
+ * variant and saved-state colours stay at the call site: they are the two
+ * things that actually differ. */
+@utility save-event-btn {
+  @apply inline-flex h-11 w-11 items-center justify-center rounded-full
+    transition-[transform,background-color,color] duration-200 hover:scale-110;
+}
+
+/* Its two variants. Over a photograph (`dark`) and on a light card (`light`). */
+@utility save-event-btn-dark {
+  @apply border border-white/30 bg-ink-900/70 text-white hover:bg-ink-900/85;
+}
+/*
+ * `text-ink-700` WAS IN THIS LIST AND IS NOT A COLOUR. The theme defines
+ * --color-ink-950/900/800/600/400/200/100 and no 700, there is no
+ * tailwind.config to define one, so the class has always generated nothing and
+ * the resting heart simply inherits the card's colour. Tailwind's scanner
+ * drops an unknown utility in a class attribute silently; @apply REFUSES it,
+ * which is the only reason this was ever found - the build went red on it.
+ * Removing it changes no pixel (the drive reports rgb(10, 22, 40) either side)
+ * and deciding what colour it SHOULD have been is a design call, not a byte
+ * one. 131 more occurrences across 65 files are in REVIEW-QUEUE-C.md.
+ */
+@utility save-event-btn-light {
+  @apply bg-white/95 hover:text-coral-500;
+}
+
+/* Where the browse card hangs it: the top-right corner of the media box. */
+@utility event-card-save {
+  @apply absolute right-3 top-3 shadow-[var(--shadow-card)];
+}
+
+/* ─── The shared chrome: the class lists every page repeats per link ─────── */
+/*
+ * WHY THESE EXIST, and it is the third measurement of the same shape.
+ *
+ * Close-out C8 EXECUTION METHOD clause C8B.3, 19 September 2026. After the two
+ * card families were collapsed, the largest repeated class values LEFT on
+ * /events were not cards at all: they were the chrome. The header, the footer,
+ * the mobile drawer and the mobile bottom bar render on EVERY page, and their
+ * link class lists are written once per link:
+ *
+ *     56 chars x 69   the footer's column links
+ *     91 chars x 30   the footer's social controls
+ *    114 chars x 18   the footer's legal row
+ *     84 chars x 19   the footer accordion's links (mobile)
+ *    338 chars x  4   the header's primary nav links
+ *    255 chars x  4   the mobile drawer's links
+ *
+ * measured identically on all five routes sampled, because that is what shared
+ * chrome means: about 13.5 KB of removable repeats in EVERY document the
+ * platform serves, markup and RSC payload together.
+ *
+ * THE COUNT IS DOUBLE THE LINKS ON PURPOSE. 69 is not 69 links: the footer has
+ * 63 anchors and React serialises the tree again for hydration, so most values
+ * appear twice. A composite removes both copies.
+ *
+ * Held by scripts/verify/card-class-collapse-drive.mjs, which reads EVERY link
+ * in the chrome - keyed by where it points, not by position - at 390/768/1440
+ * in both motion branches, and treats a key that appears on one tree only as a
+ * fault rather than a skip.
+ */
+@utility chrome-footer-link {
+  @apply text-sm text-white/70 transition-colors hover:text-white;
+}
+
+@utility chrome-footer-social {
+  @apply flex h-11 w-11 items-center justify-center text-white/70 transition-colors
+    hover:text-white;
+}
+
+@utility chrome-footer-legal {
+  @apply inline-flex min-h-11 min-w-11 items-center justify-center text-xs text-white/70
+    transition-colors hover:text-white;
+}
+
+/* The mobile accordion's links. Same family as the column links above and a
+ * different control: 44px tall, because on a phone it is the hit area. */
+@utility chrome-footer-accordion-link {
+  @apply flex min-h-11 items-center text-sm text-white/70 transition-colors hover:text-white;
+}
+
+@utility chrome-footer-title {
+  @apply text-xs font-semibold uppercase tracking-widest text-white/70;
+}
+
+/* The header's primary nav link. `min-h-11` is the 44px hit area inside the
+ * 64px bar (the link box was the 20px text line) and `rounded-lg` is the
+ * control radius, so the focus ring adds no fourth radius to the page. */
+@utility chrome-nav-link {
+  @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-sm
+    font-medium whitespace-nowrap text-white/85 transition-colors
+    hover:text-[var(--brand-accent)]
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]
+    focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)];
+}
+
+/*
+ * The mobile drawer's links. `text-ink-700` WAS in this list and is not a
+ * colour: the theme has no --color-ink-700, so it generated nothing and the
+ * link has always inherited. Same finding as the save control's, same
+ * treatment - removed here, and the 300-odd other occurrences are a design
+ * ruling recorded in REVIEW-QUEUE-C.md rather than a substitution made in
+ * passing.
+ */
+@utility chrome-drawer-link {
+  @apply flex min-h-[44px] items-center rounded-lg px-4 py-3 text-base font-medium
+    transition-colors hover:bg-ink-100 hover:text-gold-600
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]
+    focus-visible:ring-inset;
+}
+
+/* The mobile bottom bar's item. Its COLOUR is not here: the active item is
+ * gold and the rest are white/65, and that is the one thing that differs. */
+@utility chrome-bottom-item {
+  @apply flex h-full flex-col items-center justify-center gap-1 transition-colors;
+}
+
+/* The wordmark, and the link it sits in. Both render in the header and again
+ * in the footer, and the logo is rendered by more than one surface. */
+@utility chrome-wordmark {
+  @apply inline-flex items-baseline font-display font-extrabold tracking-tight;
+}
+@utility chrome-wordmark-link {
+  @apply inline-flex min-h-11 items-center rounded-lg transition-colors hover:text-gold-500
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400
+    focus-visible:ring-offset-2;
+}
+
 /* ─── M5 typography utility classes ──────────────────────────────────────── */
 /*
  * Pair font-size + line-height + weight per spec in one class.

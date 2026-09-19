@@ -44,14 +44,12 @@ const SOUNDS: Sound[] = [
 
 // The same finish as the home card family (cards.tsx SURFACE): the two card
 // elevation tokens, explicit transition properties, never transition-all.
-const SURFACE =
-  'group flex w-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] ' +
-  'shadow-[var(--shadow-card)] transition-[transform,box-shadow,color] duration-200 ease-out ' +
-  'hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2'
+// The composite in globals.css, shared with the home card family. It carries
+// every class this string used to spell out EXCEPT h-full, which these tiles
+// deliberately do not take (see the note beside @utility home-card-surface).
+const SURFACE = 'group home-card-surface'
 
-const IMG_MOTION =
-  'transition-transform duration-200 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100'
+const IMG_MOTION = 'home-card-zoom'
 
 async function toTile(sound: Sound) {
   // Spine-first: the licensed scene photo is the slot image. Pexels stays the
@@ -72,7 +70,7 @@ function SoundTile({ tile }: { tile: Sound & { image: string; alt: string; objec
           <EventCardMedia src={tile.image} alt={tile.alt} variant="rail-scene-tile" objectPosition={tile.objectPosition} className={IMG_MOTION} />
         </div>
         <div className="p-3">
-          <h3 className="font-headline text-sm font-bold leading-snug tracking-tight text-[var(--text-primary)] transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]">
+          <h3 className="text-sm home-card-title">
             {tile.label}
           </h3>
         </div>

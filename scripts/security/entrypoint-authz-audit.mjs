@@ -190,6 +190,8 @@ const PUBLIC_BY_DESIGN = {
   'api/stream/[code]/messages/POST':
     'BEARER auth as the GET, then rate limited per ticket (stream-message) before the service role writes one bounded row',
   'api/og/event/[slug]/GET': 'public Open Graph image for a published event',
+  'api/location/cities/GET':
+    'the city list the location dialog picks from, which an anonymous visitor uses before they have an account, so a caller identity would defeat the surface. It exposes nothing that was not already public: the curated launch cities, the `cities` taxonomy table, and the distinct venue cities of PUBLISHED events, which is the same set the sitemap lists. It reads nothing about the caller and writes nothing. It exists because handing that catalogue to the client as a prop serialised it into the RSC payload of every page on the platform, 6,988 bytes twice, 7.29 percent of the login document, for a dialog almost nobody opens (close-out C8B.3)',
   'api/events/[id]/seats/GET':
     'the seat chart a buyer picks from, which must be readable without an account. It is NOT open: the event is resolved through PUBLIC_EVENT_MATCH, the one shared visibility rule, so a draft, private or cancelled event answers 404 exactly as its page does, and the read goes through the ANON client so RLS enforces the same rule a second time. It exists because passing the seats as a prop serialised 1,200 rows into the document of every seated event, 571KB of HTML with 85 percent of it inline script',
   'auth/callback/GET': 'OAuth/PKCE callback; the code is the credential',

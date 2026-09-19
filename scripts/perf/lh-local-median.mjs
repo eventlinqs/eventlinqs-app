@@ -57,6 +57,7 @@ import { writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { optimisedImageUrls } from '../ci/warm-preview.mjs'
 import { lcpElement as readLcpElement, scriptBytes as readScriptBytes } from '../ci/lighthouse-truth-table.mjs'
 import { startGateServer, envFor } from '../ops/pre-push-gate.mjs'
+import { explainPhases } from './lib/lcp-breakdown.mjs'
 
 const args = process.argv.slice(2)
 const runsArg = args.find((a) => a.startsWith('--runs='))
@@ -205,28 +206,23 @@ async function warm(url) {
  */
 
 /**
- * THE FOUR PHASES OF THE LCP, WHICH IS THE ONLY THING THAT SAYS WHERE TO WORK.
+ * THE PHASES OF THE LCP, WHICH IS THE ONLY THING THAT SAYS WHERE TO WORK.
  *
- * An LCP of 3,495 ms is not actionable. The same 3,495 ms split as "2,100 of it
- * is time to first byte" and "2,100 of it is element render delay" point at
+ * An LCP of 3,495 ms is not actionable. The same 3,495 ms split as "2,100 of
+ * it is time to first byte" and "2,100 of it is element render delay" point at
  * opposite halves of the platform: the first is the server and the cache, the
  * second is script on the main thread. C8B.1's rule ("without it every change
  * after it is a guess") is about exactly this distinction.
  *
- * Lighthouse publishes the split in `lcp-breakdown-insight` as a table of
- * label/duration rows. The labels are Lighthouse's own words and are kept
- * verbatim rather than mapped onto names of ours, so a Lighthouse release that
- * renames one is visible here instead of being silently folded into a bucket.
+ * THE SPLIT AND THE SCORE ARE DIFFERENT QUANTITIES, and this reporter used to
+ * print them side by side without saying so. The phases come from
+ * `lcp-breakdown-insight` and describe the OBSERVED paint; the LCP the score
+ * is computed from is the SIMULATED one. On the homepage on 19 September 2026
+ * they read 1,881 ms and 3,740 ms in the same report. The reconciliation, the
+ * invariant that keeps it honest across Lighthouse releases, and the refusal
+ * when they stop agreeing all live in ./lib/lcp-breakdown.mjs, where they are
+ * tested against reports whose answers are known.
  */
-export function lcpPhases(lhr) {
-  const items = lhr?.audits?.['lcp-breakdown-insight']?.details?.items ?? []
-  const table = items.find((i) => i?.type === 'table')
-  const out = {}
-  for (const row of table?.items ?? []) {
-    if (typeof row?.label === 'string' && typeof row?.duration === 'number') out[row.label] = row.duration
-  }
-  return out
-}
 
 /*
  * THE BUILD IS SERVED THE WAY THE GATE SERVES IT, OR NOT BY THIS SCRIPT AT ALL.
@@ -267,6 +263,9 @@ for (const p of paths) {
   const bytes = []
   const benches = []
   const phaseRuns = []
+  /* The observed paint, kept beside the simulated one so the summary can name
+   * both rather than leaving a reader to assume they are the same number. */
+  const observedRuns = []
   let lcpElement = 'not reported'
 
   for (let i = 0; i < RUNS; i += 1) {
@@ -301,17 +300,51 @@ for (const p of paths) {
        */
       const found = readLcpElement(lhr)
       if (found && !found.startsWith('not reported')) lcpElement = found
-      const phases = lcpPhases(lhr)
+      const explained = explainPhases(lhr)
+      const phases = explained.trustworthy ? explained.phases : {}
       phaseRuns.push(phases)
+      if (typeof explained.observed === 'number') observedRuns.push(explained.observed)
 
       process.stdout.write(
         `  run ${i + 1}: perf ${score === null ? 'NULL' : score.toFixed(2)}  LCP ${Math.round(lcp)}ms  TBT ${Math.round(tbt)}ms  main ${Math.round(main)}ms  script ${Math.round(bs / 1024)}KB  bench ${Math.round(bench)}\n`,
       )
+      /* The split is labelled OBSERVED and carries the paint it sums to,
+       * because the LCP on the line above is the SIMULATED one the score is
+       * computed from and the two are different quantities. When they stop
+       * agreeing, the note is printed instead of a split nothing supports. */
       const phaseLine = Object.entries(phases)
         .map(([k, v]) => `${k} ${Math.round(v)}ms`)
         .join(' | ')
-      if (phaseLine) process.stdout.write(`          LCP phases: ${phaseLine}\n`)
-      writeFileSync(`docs/verification/lh-local/${p.replaceAll('/', '_') || 'root'}-run${i + 1}.json`, JSON.stringify({ score, lcp, tbt, main, scriptBytes: bs, benchmarkIndex: bench, lcpElement, phases }, null, 2))
+      if (phaseLine) {
+        process.stdout.write(
+          `          OBSERVED LCP ${Math.round(explained.observed)}ms = ${phaseLine}` +
+            `  (the scored LCP above is the SIMULATED ${Math.round(lcp)}ms)\n`,
+        )
+      } else {
+        process.stdout.write(`          LCP phases NOT reported: ${explained.note}\n`)
+      }
+      writeFileSync(
+        `docs/verification/lh-local/${p.replaceAll('/', '_') || 'root'}-run${i + 1}.json`,
+        JSON.stringify(
+          {
+            score,
+            /* `lcp` is kept under its old name so nothing reading these files
+             * breaks, and named again as what it actually is. */
+            lcp,
+            simulatedLcp: lcp,
+            observedLcp: explained.observed,
+            tbt,
+            main,
+            scriptBytes: bs,
+            benchmarkIndex: bench,
+            lcpElement,
+            phases,
+            phasesTrustworthy: explained.trustworthy,
+          },
+          null,
+          2,
+        ),
+      )
     } finally {
       /* chrome-launcher removes its own temp profile on kill, and on Windows
        * that races the still-exiting browser and throws EPERM. The measurement
@@ -333,6 +366,9 @@ for (const p of paths) {
     main: median(mains),
     scriptBytes: median(bytes),
     benchmarkIndex: median(benches),
+    /* Null rather than 0 when no run reported one: a paint nobody observed is
+     * a different fact from a paint at time zero. */
+    observedLcp: observedRuns.length > 0 ? median(observedRuns) : null,
     // One median per phase, over the runs that reported that phase. A phase
     // Lighthouse did not report on a run is absent from that run rather than
     // counted as zero, which would drag the median toward a value nothing
@@ -359,7 +395,12 @@ for (const p of paths) {
   const medPhases = Object.entries(row.phases)
     .map(([k, v]) => `${k} ${Math.round(v)}ms`)
     .join(' | ')
-  if (medPhases) process.stdout.write(`  MEDIAN LCP phases: ${medPhases}\n`)
+  if (medPhases) {
+    process.stdout.write(
+      `  MEDIAN OBSERVED LCP ${Math.round(row.observedLcp)}ms = ${medPhases}\n` +
+        `  (the MEDIAN line above carries the SIMULATED LCP, which is the one the score is computed from)\n`,
+    )
+  }
 }
 
 process.stdout.write(`\n${'='.repeat(72)}\nMEDIAN OF ${RUNS}, ${DESKTOP ? 'desktop' : 'mobile'}, warmed, base ${base}\n${'='.repeat(72)}\n`)

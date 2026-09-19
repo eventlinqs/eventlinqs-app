@@ -9,7 +9,7 @@
     "dev": "next dev",
     "prebuild": "node scripts/check-disk-space.mjs && node scripts/check-public-env.mjs && node scripts/check-pricing-lock.mjs && node scripts/guards/run-guards.mjs && node scripts/prebuild-fixture.mjs",
     "build": "next build",
-    "postbuild": "node scripts/guards/card-raster-traced.mjs --built && node scripts/guards/initial-bundle-budget.mjs --built",
+    "postbuild": "node scripts/guards/card-raster-traced.mjs --built && node scripts/guards/initial-bundle-budget.mjs --built && node scripts/guards/no-catalogue-in-every-document.mjs --built && node scripts/guards/class-lists-are-not-repeated-per-card.mjs --built",
     "start": "next start",
     "reclaim": "node scripts/reclaim-space.mjs",
     "lint": "eslint --max-warnings=0",

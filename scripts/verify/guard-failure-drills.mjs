@@ -1048,10 +1048,20 @@ const DRILLS = [
   },
   {
     name: 'a card body padded with an inline 17px instead of the token',
+    /*
+     * RE-AIMED 19 September 2026. This drill anchored on `event-card.tsx`'s
+     * inline `paddingTop: 'var(--space-card-padding-y)'`, and the browse card
+     * collapse (close-out C8B.3) moved that declaration into the
+     * `event-card-body` composite, so the anchor stopped existing and the
+     * drill reported STALE - which is the harness doing its job. The same
+     * shape lives in the organiser card, so the drill moves rather than dies:
+     * what it proves is that the TSX branch of the spacing guard reads inline
+     * style objects, and that is unchanged.
+     */
     guard: `${GUARDS}/no-hardcoded-spacing.mjs`,
-    file: 'src/components/features/events/event-card.tsx',
-    find: "          paddingTop: 'var(--space-card-padding-y)',",
-    replace: "          paddingTop: '17px',",
+    file: 'src/components/features/home/featured-organisers-section.tsx',
+    find: "        padding: 'var(--space-card-padding-x)',",
+    replace: "        padding: '17px',",
     expect: 'off the spacing scale',
   },
   {
@@ -4249,6 +4259,39 @@ const DRILLS = [
   },
 
   /*
+   * THE AVATAR SLOTS ARE DECLARED TWICE ON PURPOSE, SO BOTH WAYS THAT CAN GO
+   * WRONG ARE DRILLED (19 September 2026, lane A).
+   *
+   * `OrganiserAvatar` is in the dashboard shell, and `MEDIA_SIZES` is one
+   * object literal, so importing one member of it put a 21,005 byte chunk
+   * carrying every hint on the platform into the first load of thirty dashboard
+   * routes. The component reads a leaf instead. The slots stay declared in
+   * `sizes.ts` because the configured width ladder is derived from it, and
+   * neither file may reference the other: `image-hints-match-the-cell` refuses
+   * an import in sizes.ts, and `candidate-ladder-has-no-dead-rung` refuses a
+   * reference because the ladder is derived by reading string literals.
+   *
+   * So clause 5 verifies the duplication instead of excusing it, and a clause
+   * nobody has seen fail is not a clause.
+   */
+  {
+    name: 'the avatar leaf drifts from the hint table it must agree with',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/avatar-sizes.ts',
+    find: "  topbar: '32px',",
+    replace: "  topbar: '30px',",
+    expect: 'does not declare "32px"',
+  },
+  {
+    name: 'the avatar component stops reading the leaf, so a declared slot renders nothing',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/OrganiserAvatar.tsx',
+    find: '  topbar: AVATAR_SIZES.topbar,',
+    replace: "  topbar: '32px',",
+    expect: 'is declared and nothing reads it',
+  },
+
+  /*
    * THE WIDTH LADDER, THREE DRILLS (close-out C8B.3, 19 September 2026).
    *
    * The first one restores the exact defect the guard was written for: the rung
@@ -4894,6 +4937,157 @@ const DRILLS = [
     find: "        source: '/events',\n        missing:",
     replace: "        source: '/events-moved-away',\n        missing:",
     expect: 'no page route answers it under src/app',
+  },
+
+  /*
+   * THE CATALOGUE IN EVERY DOCUMENT, FOUR DRILLS (close-out C8B.3,
+   * 19 September 2026), one per clause of the CONTRACT half.
+   *
+   * The half that WEIGHS runs from npm's postbuild with --built, and it cannot
+   * be drilled here because this harness mutates source and runs a guard: there
+   * is no build in the loop. IT HAS BEEN SEEN RED ANYWAY, and on the real defect
+   * rather than a planted one. Run against the gate build of 19 September 2026
+   * made BEFORE the fix it refused 42 documents carrying 150,360 bytes of
+   * catalogue, exit 1, and the output is kept at
+   * C:\dev\EVIDENCE\C8B3-CATALOGUE\guard-red-on-champion.txt. Saying which half
+   * is drilled here and which was drilled by hand is the point: claiming both
+   * were drilled the same way is the shape this harness exists to stop.
+   *
+   * THE FOURTH DRILL IS THE ONE THAT MATTERS. This guard passes by finding
+   * NOTHING, so a blind matcher and a clean platform produce the same green.
+   * That drill blinds the matcher and proves the calibration catches it.
+   */
+  {
+    name: 'the field the catalogue matcher is anchored on is renamed in its row type',
+    guard: `${GUARDS}/no-catalogue-in-every-document.mjs`,
+    file: 'src/lib/locations/picker-cities.ts',
+    /*
+     * THE FIRST VERSION OF THIS DRILL DID NOT FIRE, and the guard was the thing
+     * that was wrong. Its clause searched the whole file, and `isLaunchCity` is
+     * written four times there, so renaming the DECLARATION left three
+     * assignments carrying the string and the guard passed on a tree where the
+     * field it is anchored on no longer existed. The clause is now scoped to the
+     * exported row type, which is the one place the name has to be.
+     */
+    find: '  /** True when the slug matches a LAUNCH_TARGET_CITIES entry. */\n  isLaunchCity: boolean',
+    replace: '  /** True when the slug matches a LAUNCH_TARGET_CITIES entry. */\n  isCuratedLaunchCity: boolean',
+    expect: 'no longer appears in PickerCity',
+  },
+  {
+    name: 'the endpoint that replaced the prop is pointed at a file that is not there',
+    guard: `${GUARDS}/no-catalogue-in-every-document.mjs`,
+    file: 'scripts/perf/lib/catalogues.mjs',
+    find: "    servedBy: 'src/app/api/location/cities/route.ts',",
+    replace: "    servedBy: 'src/app/api/location/cities-renamed/route.ts',",
+    expect: 'is not in the tree',
+  },
+  {
+    name: 'postbuild stops running the half that actually weighs a document',
+    guard: `${GUARDS}/no-catalogue-in-every-document.mjs`,
+    file: 'package.json',
+    find: ' && node scripts/guards/no-catalogue-in-every-document.mjs --built',
+    replace: '',
+    expect: 'there is no proof at all, only a promise',
+  },
+  {
+    name: 'the matcher goes blind on the unescaped payload and the calibration catches it',
+    guard: `${GUARDS}/no-catalogue-in-every-document.mjs`,
+    file: 'scripts/perf/lib/document-weight.mjs',
+    /*
+     * The optional backslash is what lets ONE matcher read both the escaped form
+     * inside a flight chunk and the plain form inside an .rsc payload. Making it
+     * mandatory leaves the guard reading .html perfectly and blind to every .rsc
+     * file in the build, which is exactly the half-blindness no green run could
+     * ever show. The calibration's second probe is the plain form, so it is the
+     * thing that notices.
+     */
+    find: 'new RegExp(`\\\\\\\\?"${marker}\\\\\\\\?":`',
+    replace: 'new RegExp(`\\\\\\\\"${marker}\\\\\\\\":`',
+    expect: 'CALIBRATION FAILED',
+  },
+  /* ---------------------------------------------------------------------
+   * class-lists-are-not-repeated-per-card (close-out C8B.3, 19 Sept 2026).
+   * One drill per clause, plus the calibration. Clause C passes by finding
+   * NOTHING, so the calibration drill is the one that matters most: it is the
+   * only one that proves a blinded matcher refuses instead of reporting green.
+   * ------------------------------------------------------------------- */
+  {
+    name: 'a composite the home cards render on every card is deleted from globals.css',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/app/globals.css',
+    find: '@utility home-card-surface {',
+    replace: '@utility home-card-surface-renamed {',
+    expect: 'is not defined in src/app/globals.css',
+  },
+  {
+    name: 'a card component re-inlines the class list the composite replaced',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/features/home/cards.tsx',
+    find: "const SURFACE = 'group h-full home-card-surface'",
+    replace: "const SURFACE = 'group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-[var(--shadow-card)] transition-[transform,box-shadow,color] duration-200 ease-out hover:-translate-y-1'",
+    expect: 'character class literal (limit 120 in a per-card file)',
+  },
+  {
+    name: 'a new class literal over the platform limit arrives outside the reviewed baseline',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/features/home/sounds-rail.tsx',
+    find: "const IMG_MOTION = 'home-card-zoom'",
+    replace: "const IMG_MOTION = 'home-card-zoom'\nconst DRILL_ONLY = 'flex w-full flex-col items-center justify-between gap-4 rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-6 text-sm font-semibold uppercase tracking-widest text-[var(--text-primary)] shadow-[var(--shadow-card)] transition-[transform,box-shadow,color] duration-200 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'",
+    expect: 'character class literal (limit 400)',
+  },
+  /* ---------------------------------------------------------------------
+   * The BROWSE card family (EventCard), added 19 September 2026 with the
+   * second collapse. Two drills rather than four: clause B and the
+   * calibration are family-agnostic and are already drilled above, so
+   * repeating them would prove the same code twice. What is genuinely new is
+   * that clause A now judges two more files and twelve more composites, and
+   * each half of that is drilled here.
+   * ------------------------------------------------------------------- */
+  {
+    name: 'a composite the browse card renders on every card is deleted from globals.css',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/app/globals.css',
+    find: '@utility event-card-body {',
+    replace: '@utility event-card-body-renamed {',
+    expect: '@utility event-card-body is not defined in src/app/globals.css',
+  },
+  {
+    name: 'the browse card re-inlines the 428-character list the composite replaced',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/features/events/event-card.tsx',
+    find: 'className="group event-card-surface"',
+    replace:
+      'className="group card-hover-transition flex flex-col rounded-2xl overflow-hidden bg-[var(--surface-0)] border border-[var(--surface-2)] shadow-[var(--shadow-card)] hover:-translate-y-1 hover:border-[var(--surface-2)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"',
+    expect: 'character class literal (limit 120 in a per-card file)',
+  },
+  /* The SHARED CHROME, added 19 September 2026 with the third collapse. One
+   * drill per half of the new contract: the composite itself, and clause A2's
+   * exact call-site rule, which is what catches a link family going back to
+   * writing its class list out once per link on every page. */
+  {
+    name: 'a chrome composite every page renders per link is deleted from globals.css',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/app/globals.css',
+    find: '@utility chrome-footer-link {',
+    replace: '@utility chrome-footer-link-renamed {',
+    expect: '@utility chrome-footer-link is not defined in src/app/globals.css',
+  },
+  {
+    name: 'the header nav goes back to writing its 338-character class list per link',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/layout/site-header-client.tsx',
+    find: 'className="chrome-nav-link"',
+    replace:
+      'className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors whitespace-nowrap rounded-lg"',
+    expect: 'does not reference chrome-nav-link',
+  },
+  {
+    name: 'the flight matcher goes blind and the calibration refuses rather than reporting a clean build',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'scripts/guards/class-lists-are-not-repeated-per-card.mjs',
+    find: "const CLASS_FLIGHT = new RegExp(`className${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
+    replace: "const CLASS_FLIGHT = new RegExp(`classNameXX${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
+    expect: 'REFUSING: the calibration probe was found',
   },
 ]
 

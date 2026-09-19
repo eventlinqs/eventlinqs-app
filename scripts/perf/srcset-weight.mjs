@@ -79,7 +79,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { startGateServer, envFor } from '../ops/pre-push-gate.mjs'
-import { analyseDocument } from './lib/document-weight.mjs'
+import { analyseDocument, catalogueWeight } from './lib/document-weight.mjs'
+import { CATALOGUES } from './lib/catalogues.mjs'
 
 const args = process.argv.slice(2)
 const SERVE = args.includes('--serve')
@@ -146,7 +147,27 @@ for (const path of paths) {
     writeFileSync(join(dir, `${name}.html`), html)
   }
   const a = analyseDocument(html)
-  report.routes.push({ path, ...a })
+  /*
+   * THE CATALOGUES, MEASURED ON THE SERVED DOCUMENT AND NOT ONLY ON THE BUILT
+   * ONE. The built documents are the deterministic comparison; these are what a
+   * visitor actually downloads, and the two are assembled at different moments.
+   *
+   * ON THE TREE OF 19 SEPTEMBER 2026 THEY AGREE EXACTLY: 20 distinct cities and
+   * 6,988 bytes, built and served. That is worth writing down rather than
+   * assuming, because the obvious guess is wrong in BOTH directions. The guess
+   * that a built document understates it is wrong here (checked: the 20 rows the
+   * endpoint returns are exactly LAUNCH_TARGET_CITIES). The guess that they must
+   * therefore always agree is also wrong: `getPickerCities` merges the `cities`
+   * table and the distinct venue cities of published events on top of the
+   * curated list, so a build made before an organiser publishes in a new town
+   * and a request made after it are answering different questions. The served
+   * number is the one a visitor pays, so it is the one measured here.
+   */
+  const catalogues = CATALOGUES.map(c => ({
+    name: c.name,
+    ...catalogueWeight(html, { marker: c.marker, arrayKeys: c.arrayKeys }),
+  }))
+  report.routes.push({ path, ...a, catalogues })
 
   console.log('')
   console.log(`${path}`)
@@ -158,6 +179,43 @@ for (const path of paths) {
     `    flight payload ${a.flightBytes} B in ${a.flightScripts} script tags ` +
       `(${a.flightSharePercent.toFixed(1)}% of the document): the same tree again, as script`,
   )
+  console.log(
+    `    class lists ${a.classLists.bytes} B in ${a.classLists.occurrences} attributes ` +
+      `(${a.classLists.sharePercent.toFixed(1)}% of the document), ${a.classLists.distinct} distinct, ` +
+      `of which ${a.classLists.repeatBytes} B is a value said again`,
+  )
+  for (const row of a.classLists.byValue.slice(0, 3)) {
+    if (row.repeatBytes === 0) break
+    console.log(
+      `      ${String(row.repeatBytes).padStart(7)} B repeats   ${row.count} x ${row.value.length} chars   ` +
+        `${row.value.slice(0, 58)}`,
+    )
+  }
+  /* The inline-style row, added 19 September 2026 with the browse card
+   * collapse. A `style={{ ... }}` object is paid per instance in the markup
+   * AND again as a serialised object in the payload, exactly as a class list
+   * is, and nothing here could see it until now. Not all of it is removable:
+   * Next's `fill` images set six positioning declarations inline on every
+   * image, which is the framework's and not ours. `repeats` is the actionable
+   * half. */
+  console.log(
+    `    inline styles ${a.styleAttributes.bytes} B in ${a.styleAttributes.occurrences} attributes ` +
+      `(${a.styleAttributes.sharePercent.toFixed(1)}% of the document), ${a.styleAttributes.distinct} distinct, ` +
+      `of which ${a.styleAttributes.repeatBytes} B is a value said again`,
+  )
+  for (const row of a.styleAttributes.byValue.slice(0, 3)) {
+    if (row.repeatBytes === 0) break
+    console.log(
+      `      ${String(row.repeatBytes).padStart(7)} B repeats   ${row.count} x ${row.value.length} chars   ` +
+        `${row.value.slice(0, 58)}`,
+    )
+  }
+  for (const c of catalogues) {
+    console.log(
+      `    catalogue "${c.name}": ${c.bytes} B, ${c.rows} row(s), ${c.distinct} distinct, ` +
+        `${c.copies} copy(ies) (${c.sharePercent.toFixed(2)}% of the document)`,
+    )
+  }
   if (a.sample) {
     console.log(
       `    one candidate is ${a.sample.bytes} B, of which ${a.sample.encodedSrcBytes} B ` +

@@ -59,7 +59,7 @@ export function FooterAccordion({
             <li key={link.href}>
               <a
                 href={link.href}
-                className={`flex min-h-11 items-center text-sm text-white/70 transition-colors hover:text-white ${i === links.length - 1 ? 'mb-2' : ''}`}
+                className={`chrome-footer-accordion-link ${i === links.length - 1 ? 'mb-2' : ''}`}
               >
                 {link.label}
               </a>

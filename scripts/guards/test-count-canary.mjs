@@ -2366,9 +2366,118 @@ const ROOT = join(HERE, '..', '..')
  *   5914 + 29 + 17 = 5960 tests
  * Neither of those two files is table driven, which is why a sum works here and
  * did not there. The measurement is still what set the number.
+ *
+ * 2026-09-19 (lane C, close-out C8B.3: the city catalogue out of every document).
+ *
+ * MEASURED: 459 files, 5985 tests, 0 failed, 0 skipped, `npx vitest run` on this
+ * tree.
+ *
+ * CHECKABLE, and it checks out: one new file,
+ * tests/component/layout/city-dialog-fetches-its-own-catalogue.test.tsx (14),
+ * and eleven cases added to tests/unit/perf/document-weight.test.ts, which goes
+ * 17 to 28.
+ *   458 + 1 = 459 files
+ *   5960 + 14 + 11 = 5985 tests
+ * Neither file is table driven, so a sum is a fair check here. The measurement
+ * is still what set the number.
+ *
+ * 2026-09-19, the same item, one commit later: the cache-control header on the
+ * new endpoint was wrong and the fix is pinned by a test rather than a comment.
+ *
+ * MEASURED: 460 files, 5990 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: one new file, tests/unit/locations/picker-cities-endpoint.test.ts,
+ * holding 5 cases.
+ *   459 + 1 = 460 files
+ *   5985 + 5 = 5990 tests
+ *
+ * 2026-09-19, close-out C8B.3, the home card class lists collapsed into three
+ * composite utilities. The homepage document fell 1,007,270 -> 850,054 B and
+ * its flight payload 368,851 -> 290,192 B, with first-load JavaScript unchanged
+ * to the byte. The analysis behind it, classListWeight, is a new pure function
+ * and is tested rather than trusted.
+ *
+ * MEASURED: 460 files, 5999 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: no new FILE (the cases were added to an existing one), and nine
+ * new cases in tests/unit/perf/document-weight.test.ts, which took it from 28
+ * to 37.
+ *   460 + 0 = 460 files
+ *   5990 + 9 = 5999 tests
+ *
+ * 2026-09-19, close-out C8B.3, the BROWSE card family (`EventCard`) collapsed:
+ * fifteen composites, and six inline style objects per card that moved into
+ * them. /events fell 397,482 -> 339,541 B, /city/melbourne by 146,544 B and
+ * /categories/music by 73,272 B. Two new pure things are tested rather than
+ * trusted: `transition-equivalence`, which is how a drive tells "0.2s, 0.2s"
+ * from "0.2s" on two properties without pretending they behave differently,
+ * and `styleAttributeWeight`, the reporter row that could not see an inline
+ * style at all until now.
+ *
+ * THE FLOOR MOVES BY MORE THAN THIS LANE ADDED, and the difference is measured
+ * rather than assumed: four test files arrived on this branch with lane A's
+ * merges of lane B (consent/truncated-ledger-sends, guards/supabase-select-
+ * chains, media/launch-kit-tile-hint, supabase/read-every-row) and were never
+ * counted into this baseline. Run on their own they report 38 tests.
+ *
+ * MEASURED: 465 files, 6057 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: one new file, tests/unit/perf/transition-equivalence.test.ts,
+ * holding 14 cases, plus 6 more in tests/unit/perf/document-weight.test.ts
+ * (37 -> 43), plus lane B's four files and their 38.
+ *   460 + 4 + 1 = 465 files
+ *   5999 + 38 + 14 + 6 = 6057 tests
+ *
+ * 2026-09-19, close-out C8B.1. A mobile run printed an LCP of 3,740 ms above a
+ * phase split that summed to 1,881 ms, and the reporter said nothing about the
+ * two being different quantities: the score is computed from the SIMULATED
+ * paint and the split describes the OBSERVED one. The reconciliation, and the
+ * refusal to print a split that no longer sums to the paint it splits, moved
+ * into scripts/perf/lib/lcp-breakdown.mjs where it is tested against reports
+ * whose answers are known - including the real one that produced it.
+ *
+ * MEASURED: 466 files, 6068 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: one new file, tests/unit/perf/lcp-breakdown.test.ts, holding 11
+ * cases.
+ *   465 + 1 = 466 files
+ *   6057 + 11 = 6068 tests
+ *
+ * 2026-09-19, lane A, the three-lane merge. The floor had not moved since it was
+ * written, while the watchdog merged twenty more lane B and lane C commits into
+ * verify/l5-launch-readiness. The gate measured the merged tree at d6e8ce0e and
+ * reported the growth itself: "[test-count-canary] the suite has GROWN
+ * (469/6097 against 466/6068). raise the baseline in this file so the new floor
+ * is held."
+ *
+ * A FLOOR THAT LAGS THE SUITE IS NOT A FLOOR. Three files and twenty-nine tests
+ * could have stopped running and this guard would have said nothing, which is
+ * the exact silence it exists to break.
+ *
+ * MEASURED: 469 files, 6097 tests, 0 failed, 0 skipped, in the pre-push gate
+ * run of 2026-09-19 on d6e8ce0e (C:\dev\_a-r20-push.txt).
+ *
+ * CHECKABLE: the gate printed both pairs side by side on the line above.
+ *   466 + 3 = 469 files
+ *   6068 + 29 = 6097 tests
+ *
+ * 2026-09-19, lane A, the two files this run added while unblocking the push.
+ * tests/unit/media/avatar-sizes-is-a-leaf.test.ts holds the four cases that keep
+ * the dashboard shell out of the media hint table, and
+ * tests/unit/seo/artist-catalogue-is-linked.test.ts holds the seven that keep an
+ * unreachable artist out of the sitemap. One further case was added to the
+ * existing tests/unit/ci/gate-url-determinism.test.ts, which is why the test
+ * count moves by twelve and the file count by two.
+ *
+ * MEASURED: 471 files, 6109 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\_a-r20-suite2.txt).
+ *
+ * CHECKABLE:
+ *   469 + 2 = 471 files
+ *   6097 + 4 + 7 + 1 = 6109 tests
  */
-const MIN_FILES = 458
-const MIN_TESTS = 5960
+const MIN_FILES = 471
+const MIN_TESTS = 6109
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

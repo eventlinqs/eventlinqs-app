@@ -143,11 +143,11 @@ interface FooterColumnProps {
 function DesktopColumn({ title, links }: FooterColumnProps) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-widest text-white/70">{title}</p>
+      <p className="chrome-footer-title">{title}</p>
       <ul className="mt-3 space-y-2">
         {links.map(link => (
           <li key={link.href}>
-            <a href={link.href} className="text-sm text-white/70 transition-colors hover:text-white">
+            <a href={link.href} className="chrome-footer-link">
               {link.label}
             </a>
           </li>
@@ -176,7 +176,7 @@ function SocialRow() {
           key={it.label}
           href={it.href}
           aria-label={`EventLinqs on ${it.label}`}
-          className="flex h-11 w-11 items-center justify-center text-white/70 transition-colors hover:text-white"
+          className="chrome-footer-social"
         >
           {it.icon}
         </a>
@@ -345,7 +345,7 @@ export function SiteFooter() {
             <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
               {LEGAL.map(link => (
                 <li key={link.href}>
-                  <a href={link.href} className="inline-flex min-h-11 min-w-11 items-center justify-center text-xs text-white/70 transition-colors hover:text-white">
+                  <a href={link.href} className="chrome-footer-legal">
                     {link.label}
                   </a>
                 </li>

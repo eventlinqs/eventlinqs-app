@@ -174,6 +174,7 @@ let hintsChecked = 0
 let hintsInTable = 0
 let variantsChecked = 0
 let filesScanned = 0
+let avatarSlotsRedirected = 0
 
 if (rhythmRaw !== null && sizesRaw !== null && pairsRaw !== null) {
   const rhythm = stripComments(rhythmRaw)
@@ -277,14 +278,88 @@ if (rhythmRaw !== null && sizesRaw !== null && pairsRaw !== null) {
     .filter(f => f !== SIZES)
     .map(f => stripComments(read(f) ?? ''))
     .join('\n')
+
+  /*
+   * THE FIVE AVATAR SLOTS ARE READ THROUGH A SECOND DECLARATION, AND THIS
+   * CLAUSE VERIFIES THAT SECOND DECLARATION RATHER THAN EXCUSING IT.
+   *
+   * WHY THEY ARE NOT READ DIRECTLY, measured on the build of 19 September 2026.
+   * `OrganiserAvatar` is rendered by `dashboard-topbar.tsx`, which is the
+   * dashboard SHELL, so it is in the first load of every dashboard route.
+   * `MEDIA_SIZES` is one object literal, so importing one member ships all of
+   * it: thirty routes carried a 21,005 byte chunk holding every hint on the
+   * platform in order to render one 32px circle. The component now reads
+   * `avatar-sizes.ts`, a leaf that imports nothing.
+   *
+   * WHY THE SLOTS STAY DECLARED HERE. The configured width ladder in
+   * next.config.ts is derived from THIS table, and `candidate-ladder-has-no-
+   * dead-rung` reported "the width 32 is offered and nothing can select it" the
+   * moment they left it. A slot the ladder cannot see is a rung nothing can
+   * reach.
+   *
+   * WHY THIS IS NOT AN EXEMPTION LIST. Clause 5 exists because "a hint nobody
+   * uses is one somebody reuses by name later without checking what layout it
+   * describes". For these five the layout IS described and IS used, through a
+   * declaration that must carry the SAME STRING. So the check is not skipped,
+   * it is redirected: the leaf must declare the same value AND something must
+   * read the leaf. A drifted copy fails here, which is the failure that would
+   * otherwise only show up as a blurry avatar.
+   */
+  const AVATAR_LEAF = 'src/components/media/avatar-sizes.ts'
+  const AVATAR_KEY_BY_HINT = new Map([
+    ['avatarXs', 'xs'],
+    ['avatarTopbar', 'topbar'],
+    ['avatarSm', 'sm'],
+    ['avatarMd', 'md'],
+    ['avatarLg', 'lg'],
+  ])
+  const leafRaw = read(AVATAR_LEAF)
+  const leaf = leafRaw === null ? '' : stripComments(leafRaw)
+
   for (const key of hint.keys()) {
-    if (!allCode.includes(`MEDIA_SIZES.${key}`)) {
+    if (allCode.includes(`MEDIA_SIZES.${key}`)) continue
+
+    const leafKey = AVATAR_KEY_BY_HINT.get(key)
+    if (leafKey === undefined) {
       fail(
         SIZES,
         `MEDIA_SIZES.${key} is declared and nothing reads it. A hint nobody uses is one somebody ` +
           'reuses by name later without checking what layout it describes.',
       )
+      continue
     }
+
+    if (leafRaw === null) {
+      fail(
+        SIZES,
+        `MEDIA_SIZES.${key} is read through ${AVATAR_LEAF} and that file does not exist, so the ` +
+          'slot is declared for the width ladder and rendered by nothing.',
+      )
+      continue
+    }
+
+    const declared = hint.get(key)
+    if (!leaf.includes(`${leafKey}: '${declared}'`)) {
+      fail(
+        AVATAR_LEAF,
+        `AVATAR_SIZES.${leafKey} does not declare "${declared}", which is what MEDIA_SIZES.${key} ` +
+          'says. The two declarations exist because neither file may reference the other, so a ' +
+          'difference between them means the avatar renders at one size and the width ladder is ' +
+          'derived from another.',
+      )
+      continue
+    }
+
+    if (!allCode.includes(`AVATAR_SIZES.${leafKey}`)) {
+      fail(
+        AVATAR_LEAF,
+        `AVATAR_SIZES.${leafKey} is declared and nothing reads it, so MEDIA_SIZES.${key} is a hint ` +
+          'no rendered image uses.',
+      )
+      continue
+    }
+
+    avatarSlotsRedirected += 1
   }
 
   const mediaRaw = read('src/components/media/EventCardMedia.tsx')
@@ -387,6 +462,7 @@ declareWork('image-hints-match-the-cell', {
     'rail hint derived from a cell': hintsChecked,
     'hint read out of MEDIA_SIZES': hintsInTable,
     'media variant checked for a hint': variantsChecked,
+    'avatar slot read through the leaf declaration': avatarSlotsRedirected,
     'source file swept for a stray cell or a raw sizes string': filesScanned,
   },
   found: { 'hint that does not match its layout': failures.length },

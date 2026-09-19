@@ -22,9 +22,7 @@ export function SaveEventButton({
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
-  const base = variant === 'dark'
-    ? 'bg-ink-900/70 border border-white/30 text-white hover:bg-ink-900/85'
-    : 'bg-white/95 text-ink-700 hover:text-coral-500'
+  const base = variant === 'dark' ? 'save-event-btn-dark' : 'save-event-btn-light'
 
   const savedState = saved ? 'bg-gold-500 border-gold-500 text-ink-900' : ''
 
@@ -67,7 +65,12 @@ export function SaveEventButton({
       aria-label={saved ? 'Remove from saved' : 'Save event'}
       aria-pressed={saved}
       disabled={isPending}
-      className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition-[transform,background-color,color] duration-200 hover:scale-110 ${base} ${savedState} ${className}`}
+      /* The 122 shared characters are `save-event-btn` in globals.css
+       * (close-out C8B.3, 19 September 2026). This control renders inside
+       * every browse card, so the list was written out once per card in the
+       * markup and again in the RSC payload. Only the two things that differ
+       * - the variant colour and the saved state - stay here. */
+      className={`save-event-btn ${base} ${savedState} ${className}`}
     >
       <Heart className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} />
     </button>
