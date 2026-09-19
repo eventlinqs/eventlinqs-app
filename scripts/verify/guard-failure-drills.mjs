@@ -5033,6 +5033,61 @@ const DRILLS = [
     replace: 'const SANITISES_AT_SOURCE = /never-matches-anything-at-all/; const UNUSED_SANITISES = /',
     expect: 'no longer matches',
   },
+
+  /*
+   * THE FIVE DEBTS LANE C PAID, one drill each (19 September 2026).
+   *
+   * They were in the register when the guard shipped, which meant the guard
+   * PRINTED them and could not FAIL on them. They are ordinary files now, so
+   * each drill puts the interpolation back and shows the build refusing. A debt
+   * that is paid and not drilled is a debt that comes back on the next
+   * copy-paste, which is how four of these five arrived in the first place.
+   *
+   * Measured against TEST before any of them was touched:
+   *   .or(`title.ilike.%Night, Geelong%,slug.ilike.%Night, Geelong%`)
+   *     -> PGRST100 failed to parse logic tree
+   *   the same search, escaped -> 3 rows, all of the shape "... Night, Geelong"
+   */
+  {
+    name: 'the admin user search goes back to interpolating a raw term, so "Smith, John" 500s',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/users.ts',
+    find: "q = q.or(ilikeAnyOf(['email', 'full_name', 'display_name'], filters.search))",
+    replace: 'q = q.or(`email.ilike.%${filters.search}%,full_name.ilike.%${filters.search}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the admin event search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/events.ts',
+    find: "q = q.or(ilikeAnyOf(['title', 'slug'], filters.search))",
+    replace: 'q = q.or(`title.ilike.%${filters.search}%,slug.ilike.%${filters.search}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the admin organiser search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find: "q = q.or(ilikeAnyOf(['name', 'slug', 'email'], filters.search))",
+    replace: 'q = q.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the global admin search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/search.ts',
+    find: "or(ilikeAnyOf(['title', 'slug'], q))",
+    replace: 'or(`title.ilike.%${q}%,slug.ilike.%${q}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the public organiser search scope goes back to its own private copy of the escape',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/events/search-scopes.ts',
+    find: "or(ilikeAnyOf(['name', 'slug'], term))",
+    replace: 'or(`name.ilike.%${term}%,slug.ilike.%${term}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
   {
     name: "clause 3's matcher is rebuilt inside a template literal and quietly stops matching",
     guard: `${GUARDS}/consent-dates-are-zoned.mjs`,

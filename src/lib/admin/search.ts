@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ilikeAnyOf } from '@/lib/supabase/or-filter'
 import { listProfiles } from '@/lib/admin/users'
 
 /**
@@ -29,11 +30,10 @@ export async function globalAdminSearch(query: string): Promise<AdminSearchResul
   if (!q) return base
 
   const db = createAdminClient()
-  const term = `%${q}%`
 
   const [orgRes, evRes, users] = await Promise.all([
-    db.from('organisations').select('id, name, slug').or(`name.ilike.${term},slug.ilike.${term}`).limit(LIMIT),
-    db.from('events').select('id, title, slug, status').or(`title.ilike.${term},slug.ilike.${term}`).limit(LIMIT),
+    db.from('organisations').select('id, name, slug').or(ilikeAnyOf(['name', 'slug'], q)).limit(LIMIT),
+    db.from('events').select('id, title, slug, status').or(ilikeAnyOf(['title', 'slug'], q)).limit(LIMIT),
     listProfiles({ search: q, page: 1 }).catch(() => null),
   ])
 

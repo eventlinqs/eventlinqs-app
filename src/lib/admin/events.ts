@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ilikeAnyOf } from '@/lib/supabase/or-filter'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { hasRealCover } from '@/lib/events/publish-gate'
 import { ARCHIVED_STATUS, canArchive, restoreTarget } from '@/lib/event-lifecycle'
@@ -131,10 +132,7 @@ export async function listEvents(filters: EventListFilters): Promise<EventListRe
     .range(fromIdx, fromIdx + PAGE_SIZE)
 
   if (filters.status && filters.status !== 'all') q = q.eq('status', filters.status)
-  if (filters.search) {
-    const term = `%${filters.search}%`
-    q = q.or(`title.ilike.${term},slug.ilike.${term}`)
-  }
+  if (filters.search) q = q.or(ilikeAnyOf(['title', 'slug'], filters.search))
 
   const { data, error } = await q
   if (error) throw error

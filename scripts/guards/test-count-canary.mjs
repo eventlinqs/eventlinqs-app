@@ -2703,9 +2703,29 @@ const ROOT = join(HERE, '..', '..')
  * MEASURED on the tree holding both, by the suite rather than counted by hand:
  * 488 files, 6337 tests, 0 failed, 0 skipped
  * (`npm run gate:push -- --only suite`, C:\dev\EVIDENCE\_c-merge2-suite.txt).
+ *
+ * 2026-09-19, lane C, the admin search boxes that answered 500 on a comma.
+ * tests/unit/admin/search-terms-are-escaped.test.ts holds the thirty-one cases:
+ * five hostile terms against each of the four reads that were fixed, plus the
+ * columns each is entitled to search, plus the empty search that must send no
+ * filter at all, plus the topbar search that reads three tables at once and used
+ * to say "Nothing matched" about a row that exists. Five of them were WATCHED TO
+ * FAIL against the shipped code, one file at a time
+ * (C:\dev\EVIDENCE\OR-FILTER	ests-watched-to-fail.txt).
+ *
+ * tests/unit/supabase/or-filter.test.ts gained no cases: its private copy of the
+ * clause splitter moved to tests/helpers/postgrest-or.ts so both files judge the
+ * grammar with one parser, which is the same lesson the guard beside it teaches.
+ *
+ * MEASURED: 489 files, 6368 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\EVIDENCE\OR-FILTER\gate-suite.txt).
+ *
+ * CHECKABLE:
+ *   488 + 1 = 489 files
+ *   6337 + 31 = 6368 tests
  */
-const MIN_FILES = 488
-const MIN_TESTS = 6337
+const MIN_FILES = 489
+const MIN_TESTS = 6368
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

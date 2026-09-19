@@ -1,5 +1,6 @@
 import type Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ilikeAnyOf } from '@/lib/supabase/or-filter'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { retrieveAccount } from '@/lib/stripe/connect'
 import { captureException } from '@/lib/observability/sentry'
@@ -165,10 +166,7 @@ export async function listOrganisations(filters: OrganiserListFilters): Promise<
     .range(fromIdx, fromIdx + PAGE_SIZE) // fetch one extra to detect hasMore
 
   if (filters.status && filters.status !== 'all') q = q.eq('status', filters.status)
-  if (filters.search) {
-    const term = `%${filters.search}%`
-    q = q.or(`name.ilike.${term},slug.ilike.${term},email.ilike.${term}`)
-  }
+  if (filters.search) q = q.or(ilikeAnyOf(['name', 'slug', 'email'], filters.search))
 
   const { data, error } = await q
   if (error) throw error
