@@ -213,6 +213,13 @@ export const SEND_PATHS: readonly SendPathEntry[] = [
     reason: 'Alerts the platform when a connected account diverges from its recorded state.',
   },
   {
+    file: 'src/app/api/cron/platform-settlement-reconcile/route.ts',
+    kind: 'operations',
+    purpose: 'platform_operations',
+    reason:
+      'Alerts the platform when money has settled on its own balance that nothing records as owed onward to an organiser (MONEY FIX A3 layer three). It reaches one address, the alert destination, and never an organiser or a buyer: the finding is that the platform books are wrong, and until that is investigated there is no fact to tell anybody else.',
+  },
+  {
     file: 'src/lib/campaigner/sink.ts',
     kind: 'transport',
     purpose: '',

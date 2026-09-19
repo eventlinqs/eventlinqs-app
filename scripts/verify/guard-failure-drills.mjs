@@ -3411,6 +3411,36 @@ const DRILLS = [
     expect: 'no longer tests `!org.stripe_payouts_enabled`',
   },
   /*
+   * MONEY FIX A3 layer three, the three drills for clause four. The first is
+   * the one that matters: a reconciliation that repairs what it finds destroys
+   * the evidence of how the money came to be adrift, and it would do so while
+   * reporting a clean balance every morning.
+   */
+  {
+    name: 'the settlement reconciliation starts repairing what it finds instead of reporting it',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/platform-settlement-reconcile.ts',
+    find: "      .select('reference_id')",
+    replace: "      .upsert({ reference_id: 'repaired' })",
+    expect: 'must only READ',
+  },
+  {
+    name: 'a settlement finding stops naming the charge, so nobody can match it to money in Stripe',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/platform-settlement-reconcile.ts',
+    find: '`${money} settled on the platform balance as charge ${chargeId} carrying no transfer_group, `',
+    replace: '`${money} settled on the platform balance carrying no transfer_group, `',
+    expect: 'name the charge id',
+  },
+  {
+    name: 'the daily schedule is left pointing at a settlement job that judges nothing',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/app/api/cron/platform-settlement-reconcile/route.ts',
+    find: 'report = await scanPlatformSettlement(createAdminClient(), {',
+    replace: 'report = await noSuchScan(createAdminClient(), {',
+    expect: 'judges nothing',
+  },
+  /*
    * MONEY FIX B3, the five drills for every-message-has-a-declared-recipient.
    *
    * The first two are the defect itself from both directions: an organiser
