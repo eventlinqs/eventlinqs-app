@@ -2475,9 +2475,23 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   469 + 2 = 471 files
  *   6097 + 4 + 7 + 1 = 6109 tests
+ *
+ * 2026-09-19, lane A, close-out MONEY FIX B4. The four money messages an
+ * organiser was never sent now have senders, and
+ * tests/unit/notifications/organiser-money-notify.test.ts holds the fourteen
+ * cases that judge the SENDS rather than the declaration. The item's own named
+ * tests for these messages already existed and already passed while nothing
+ * sent them, because they read the matrix.
+ *
+ * MEASURED: 472 files, 6123 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\_a-r20-suite3.txt).
+ *
+ * CHECKABLE:
+ *   471 + 1 = 472 files
+ *   6109 + 14 = 6123 tests
  */
-const MIN_FILES = 471
-const MIN_TESTS = 6109
+const MIN_FILES = 472
+const MIN_TESTS = 6123
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
