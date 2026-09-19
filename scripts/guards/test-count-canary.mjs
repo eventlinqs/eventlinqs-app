@@ -2771,15 +2771,25 @@ const ROOT = join(HERE, '..', '..')
  * 4.5 floor. Nineteen cases arrive as +19 because three of them are `it.each`
  * over the four templates.
  *
- * MEASURED: 492 files, 6404 tests, 0 failed, 0 skipped
+ * Then 6404 -> 6407 in the same item, when /events/[slug] turned out to be a
+ * FIFTH hero with the same defect and joined the three `it.each` blocks: three
+ * more cases, one per block, for one more file. Its ramp was the strongest of
+ * the five and reached opaque navy at the foot of the band, so every run on it
+ * passed at 1440 while the meta line read 3.85:1 at 390 against the 4.5:1 floor
+ * of WCAG 2.2 SC 1.4.3
+ * (https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html). That is
+ * the whole lesson of the item in one page: a stronger percentage is still a
+ * percentage.
+ *
+ * MEASURED: 492 files, 6407 tests, 0 failed, 0 skipped
  * (`npm run gate:push -- --only suite`, C:\dev\EVIDENCE\HERO-CONTRAST\gate-suite.txt).
  *
  * CHECKABLE:
  *   491 + 1 = 492 files
- *   6385 + 19 = 6404 tests
+ *   6385 + 19 + 3 = 6407 tests
  */
 const MIN_FILES = 492
-const MIN_TESTS = 6404
+const MIN_TESTS = 6407
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

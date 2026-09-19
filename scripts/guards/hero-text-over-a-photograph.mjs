@@ -50,6 +50,15 @@ const HERO_FILES = [
   'src/components/templates/PhotographicCityHero.tsx',
   'src/components/templates/PhotographicCommunityHero.tsx',
   'src/components/features/city/city-hero.tsx',
+  /*
+   * The event page was the fifth, and it was nearly missed because its curve
+   * was the strongest of the five: it reaches opaque navy at the foot of the
+   * band, so at 1440 every run on it passed. At 390 the meta line read 3.85:1
+   * and the venue 4.20:1 against the 4.5:1 floor of WCAG 2.2 SC 1.4.3
+   * (https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+   * A stronger percentage is still a percentage.
+   */
+  'src/app/events/[slug]/page.tsx',
 ]
 
 /** Missing is a FINDING here, not an exception to swallow, so absence is asked
