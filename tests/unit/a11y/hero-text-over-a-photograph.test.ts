@@ -8,6 +8,14 @@ import {
   HERO_CAPTION_SCRIM,
   HERO_HEADER_SCRIM,
 } from '@/components/media/hero-photo-scrim'
+/*
+ * The one derivation, read here exactly as the guard and the drive read it.
+ * A `.mjs` under scripts/ is deliberate: this is the same module the build-time
+ * guard loads, so the suite cannot agree with a second copy of the rules.
+ */
+import { NOT_YET_ON_THE_SHARED_WASH as REGISTER, allSourceFiles, deriveHeroFiles } from '../../../scripts/guards/lib/hero-files.mjs'
+
+const NOT_YET_ON_THE_SHARED_WASH: string[] = (REGISTER as Array<{ file: string }>).map(e => e.file)
 
 /**
  * HERO TEXT OVER A PHOTOGRAPH, 19 September 2026.
@@ -110,29 +118,120 @@ describe('the hero header wash', () => {
   })
 })
 
+/*
+ * THE LIST THAT USED TO STAND HERE WAS THE THIRD COPY OF ONE MISTAKE.
+ *
+ * This block named the same five files the guard named, and the drive's own
+ * coverage table named four of them. All three claimed to cover "every hero
+ * that paints text on a photograph"; all three were typed by hand; and on
+ * 20 September 2026 the derivation was performed for the first time and
+ * returned THIRTEEN. The eight nobody had listed each carried their own navy
+ * gradient, and driving them measured 34 runs below their WCAG 2.2 SC 1.4.3
+ * floor, the worst a gold eyebrow at 1.01:1 on /waitlist with 100 per cent of
+ * its pixels failing.
+ *
+ * So the set is now DERIVED, in one place, by scripts/guards/lib/hero-files.mjs,
+ * and the guard, the drive and this suite all read that one function. Adding a
+ * hero cannot leave any of the three behind.
+ */
 describe('every hero that paints text on a photograph', () => {
-  const HEROES = [
-    'src/components/templates/PhotographicCategoryHero.tsx',
-    'src/components/templates/PhotographicCityHero.tsx',
-    'src/components/templates/PhotographicCommunityHero.tsx',
-    'src/components/features/city/city-hero.tsx',
-    // The fifth, and the one that hid longest: its ramp reached opaque navy at
-    // the foot of the band, so every run on it passed at 1440 while the meta
-    // line read 3.85:1 at 390. A stronger percentage is still a percentage.
-    'src/app/events/[slug]/page.tsx',
-  ]
+  const HEROES = deriveHeroFiles()
+  const registered = new Set(NOT_YET_ON_THE_SHARED_WASH)
+  const held = HEROES.filter(f => !registered.has(f))
 
-  it.each(HEROES)('%s writes no navy gradient of its own', file => {
+  it('derives the heroes rather than trusting a list, and finds every family', () => {
+    // A derivation that quietly returns three files is worse than no
+    // derivation, so the count is asserted against what the platform has.
+    expect(HEROES.length).toBeGreaterThanOrEqual(13)
+    for (const known of [
+      'src/components/templates/PhotographicCategoryHero.tsx',
+      'src/components/features/city/city-hero.tsx',
+      'src/app/events/[slug]/page.tsx',
+      'src/components/features/home/FeaturedHeroClient.tsx',
+      'src/app/waitlist/page.tsx',
+    ]) {
+      expect(HEROES).toContain(known)
+    }
+    // The skeleton carries the hero scale and paints no photograph: there is
+    // nothing for a wash to protect, and it is excluded by the second mark
+    // rather than by name.
+    expect(HEROES).not.toContain('src/app/events/[slug]/loading.tsx')
+  })
+
+  it.each(held)('%s writes no navy gradient of its own', file => {
     const src = readFileSync(file, 'utf8')
     expect(src).not.toMatch(/linear-gradient\([^)]*rgba?\(\s*10\s*,\s*22\s*,\s*40/)
   })
 
-  it.each(HEROES)('%s puts its text inside <HeroCaption>', file => {
+  it.each(held)('%s puts its text inside <HeroCaption>', file => {
     // The opening tag, not the identifier: an unused import would satisfy that.
     expect(readFileSync(file, 'utf8')).toMatch(/<HeroCaption[\s>]/)
   })
 
-  it.each(HEROES)('%s clips its band, which is what trims the full-width bleed', file => {
+  it.each(held)('%s clips its band, which is what trims the full-width bleed', file => {
     expect(readFileSync(file, 'utf8')).toContain('overflow-hidden')
+  })
+
+  /*
+   * `.hero-enter` staggers its DIRECT children (globals.css:
+   * `html[data-motion="1"] .hero-enter > *`), and <HeroCaption> puts two
+   * elements between its own className and the text. A stagger written on
+   * `className` therefore animates the wash as item one and the whole text
+   * block as item two, so the eyebrow, headline, meta and CTA arrive together
+   * instead of 70ms apart: the Motion law's hero entrance, quietly deleted.
+   *
+   * NOTHING DRIVEN CAN CATCH IT. The stagger arms only under
+   * `data-motion="1"`, which headless agents are deliberately never given, so
+   * every screenshot and every contrast sweep shows the correct settled frame.
+   * It was a real mistake made while converting these heroes on 20 September
+   * 2026, and reading the stylesheet is what found it.
+   */
+  it.each(held)('%s staggers the text itself, not the wash above it', file => {
+    const src = readFileSync(file, 'utf8')
+    for (const tag of src.matchAll(/<HeroCaption\b[\s\S]*?>/g)) {
+      const outer = tag[0].match(/(?<!content)className=(?:"([^"]*)"|\{`([^`]*)`\})/)
+      const value = outer ? (outer[1] ?? outer[2] ?? '') : ''
+      expect(value).not.toMatch(/\bhero-enter\b/)
+      expect(value).not.toMatch(/\bhero-slide-content\b/)
+    }
+  })
+})
+
+/*
+ * THE RATCHET. Four heroes are not yet on the shared wash: three sit behind the
+ * lane border (they are lane B's organiser marketing surfaces, measured and
+ * recorded in REVIEW-QUEUE-C.md), and one has a photographic branch no caller
+ * can reach. The register is allowed to shrink and nothing else.
+ */
+describe('the heroes not yet on the shared wash', () => {
+  it('is a debt that only ever shrinks: nothing may be added to it here', () => {
+    // The number is asserted so that adding a fifth entry fails this test and
+    // has to be argued for, rather than appearing in a diff as one more line.
+    expect(NOT_YET_ON_THE_SHARED_WASH).toHaveLength(4)
+  })
+
+  it.each(NOT_YET_ON_THE_SHARED_WASH)('%s is still a hero, so the entry still means something', file => {
+    expect(deriveHeroFiles()).toContain(file)
+  })
+
+  it.each(NOT_YET_ON_THE_SHARED_WASH)('%s has not already been converted, which would make its entry stale', file => {
+    const src = readFileSync(file, 'utf8')
+    const converted =
+      !/linear-gradient\([^)]*rgba?\(\s*10\s*,\s*22\s*,\s*40/.test(src) && /<HeroCaption[\s>]/.test(src)
+    expect(converted).toBe(false)
+  })
+
+  it('the shared empty state is registered only while its photographic branch has no caller', () => {
+    // `onPhoto` is `!!coverImage`. The day a caller passes one, that branch
+    // ships a 0.42 navy wash under a headline and the entry stops being true.
+    const callers = allSourceFiles().filter(
+      f => !f.endsWith('src/components/ui/CategoryHeroEmpty.tsx') && readFileSync(f, 'utf8').includes('<CategoryHeroEmpty'),
+    )
+    expect(callers.length).toBeGreaterThanOrEqual(10)
+    for (const f of callers) {
+      for (const call of readFileSync(f, 'utf8').matchAll(/<CategoryHeroEmpty\b[^>]*>/g)) {
+        expect(call[0]).not.toMatch(/\bcoverImage\s*=/)
+      }
+    }
   })
 })

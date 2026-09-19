@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
 import { MarketingMedia } from '@/components/media/MarketingMedia'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { Button } from '@/components/ui/Button'
@@ -65,16 +66,15 @@ export default async function WaitlistPage() {
             objectPosition={WAITLIST_HERO.objectPosition}
             priority
           />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(to top, rgba(10,22,40,0.84) 0%, rgba(10,22,40,0.54) 20%, rgba(10,22,40,0.24) 44%, rgba(10,22,40,0.06) 68%, rgba(10,22,40,0) 88%)',
-            }}
-          />
+          {/* The bottom-up gradient that used to sit here was a percentage of
+              the band while the text is bottom-anchored and hugs its content,
+              so the wash never knew where the words had landed. Measured
+              20 September 2026 this hero was the worst on the platform: the
+              eyebrow read 1.01:1 at 390 and 1.06:1 at 768 with 100 per cent of
+              its pixels below WCAG 2.2 SC 1.4.3's 4.5:1, and the headline read
+              1.73:1 against the 3:1 large-text floor. */}
           <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 pt-20 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
-            <div className="hero-enter max-w-2xl">
+            <HeroCaption className="max-w-2xl" contentClassName="hero-enter">
               <p
                 className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
                 style={{ fontWeight: 600 }}
@@ -96,7 +96,7 @@ export default async function WaitlistPage() {
                   Choose your city
                 </Button>
               </div>
-            </div>
+            </HeroCaption>
           </div>
         </div>
       </section>

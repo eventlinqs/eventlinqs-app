@@ -2787,9 +2787,32 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   491 + 1 = 492 files
  *   6385 + 19 + 3 = 6407 tests
+ *
+ * 2026-09-20 (the hero list that was never derived): raised 492/6407 -> 492/6439.
+ * No new FILE: the 32 cases were added to the a11y file that already existed,
+ * because the set of heroes stopped being typed by hand and became a derivation
+ * (scripts/guards/lib/hero-files.mjs), so the suite now asserts the derivation,
+ * the ratchet of heroes not yet converted, the one entry whose reason is checked
+ * rather than asserted, and the placement of the child stagger, which is the one
+ * thing in this item that no driven proof could ever have caught.
+ *
+ * THE FLOOR IS THE COUNT A GREEN RUN MEASURED, AND ONE RUN WAS NOT USED.
+ * Four full suite runs were taken across this item. One of them registered a
+ * count one lower AND carried a failure: a timing flake in
+ * tests/component/layout/interaction-only-chrome.test.tsx, which passes 11 of
+ * 11 twice on its own with green full runs either side (recorded in
+ * REVIEW-QUEUE-C.md, not fixed here). A run that failed is not a measurement of
+ * the floor, so it was discarded rather than averaged in. 6439 is what the
+ * final green run measured on the finished tree.
+ *
+ * MEASURED: 492 files, 6439 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\EVIDENCE\HERO-CAROUSEL\gate-suite.txt).
+ *
+ * CHECKABLE:
+ *   6407 + 32 = 6439 tests
  */
 const MIN_FILES = 492
-const MIN_TESTS = 6407
+const MIN_TESTS = 6439
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
