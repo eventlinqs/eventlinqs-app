@@ -5828,6 +5828,67 @@ const DRILLS = [
     expect: 'coalesces the count',
   },
   /*
+   * the-audit-log-says-when-it-could-not-write (lane B, 20 September 2026),
+   * five drills.
+   *
+   * Both writers inserted with no destructure, and a PostgREST client reports a
+   * refused write in `error` rather than throwing, so the try/catch could not
+   * see the failure it was written for. The catch then logged only outside
+   * production. Every drill below is one of the two defects, or the half of the
+   * contract that was right.
+   */
+  {
+    name: 'the audit insert goes back to ignoring whether the row was written',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    const { error } = await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: session.userId,',
+    replace: '    await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: session.userId,',
+    expect: 'without binding `error`',
+  },
+  {
+    name: 'the anonymous audit insert goes back to ignoring it too',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    const { error } = await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: null,',
+    replace: '    await createAdminClient()\n      .from(\'audit_log\')\n      .insert({\n        actor_id: null,',
+    expect: 'without binding `error`',
+  },
+  {
+    /*
+     * THE ONE THAT MADE IT SILENT WHERE IT MATTERS. Reporting only outside
+     * production is how this module went quiet in the environment where a
+     * missing entry is evidence of nothing having happened.
+     */
+    name: 'the audit failure path is gated on the environment again',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: "  console.error('[audit] the entry for %s was NOT written: %s', action, reason)",
+    replace:
+      "  if (process.env.NODE_ENV !== 'production') console.error('[audit] the entry for %s was NOT written: %s', action, reason)",
+    expect: 'gates something on NODE_ENV',
+  },
+  {
+    name: 'a writer stops reaching the error reporter',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    if (error) return auditCouldNotBeWritten(action, new Error(error.message))\n    return { recorded: true }\n  } catch (err) {\n    return auditCouldNotBeWritten(action, err)\n  }\n}\n\nexport async function recordAnonAuditEvent',
+    replace: '    if (error) return { recorded: false }\n    return { recorded: true }\n  } catch (err) {\n    void err\n    return { recorded: false }\n  }\n}\n\nexport async function recordAnonAuditEvent',
+    expect: 'never reaches captureException',
+  },
+  {
+    /*
+     * THE HALF OF THE ORIGINAL CONTRACT THAT WAS RIGHT, and the easiest thing
+     * to lose while fixing the rest: an audit failure must not fail the action
+     * that was already taken.
+     */
+    name: 'the audit writer starts throwing, and fails the action it was only supposed to record',
+    guard: `${GUARDS}/the-audit-log-says-when-it-could-not-write.mjs`,
+    file: 'src/lib/admin/audit.ts',
+    find: '    if (error) return auditCouldNotBeWritten(action, new Error(error.message))',
+    replace: '    if (error) throw new Error(error.message)',
+    expect: 'contains a `throw`',
+  },
+  /*
    * the-recovery-stop-list-is-whole (lane B, 20 September 2026), eleven drills.
    *
    * The guard exists because two guards already stood over this engine and both

@@ -586,6 +586,12 @@
  *   the-recovery-stop-list-is-whole  a marketing withdrawal reaches the
  *                             abandoned-checkout sender, and its suppression list
  *                             is read whole rather than to the first 1,000 names
+ *   the-audit-log-says-when-it-could-not-write  both audit writers bind the
+ *                             error a PostgREST client REPORTS rather than
+ *                             throws, report every failure in every environment
+ *                             including production, and still never throw, so an
+ *                             entry nobody can find cannot be mistaken for an
+ *                             action nobody took
  *   recovery-only-writes-to-people-who-asked  every recovery message names the
  *                             recorded engagement that authorised it, the six
  *                             refusals still exist, and no message goes without a
@@ -2107,6 +2113,28 @@ const GUARDS = [
   //
   // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-RECOVERYSTOP\drills.txt).
   'scripts/guards/the-recovery-stop-list-is-whole.mjs',
+
+  // Lane B, 20 September 2026, found while adding two audit actions to the
+  // organiser suspend cascade and reading what happens when one fails.
+  //
+  // the-audit-log-says-when-it-could-not-write: BOTH writers in
+  // src/lib/admin/audit.ts inserted with no destructure at all, and a PostgREST
+  // client REPORTS a refused write in `error` rather than throwing, so the
+  // try/catch around them could not see the failure it was written for: it only
+  // ever guarded headers(). And the catch logged only when NODE_ENV is not
+  // production, so the one environment where an audit trail is evidence is the
+  // one where its absence left no trace.
+  //
+  // This platform suspends organisers, moves fee-free windows and holds payouts
+  // through those two functions. An entry nobody can find afterwards cannot be
+  // told apart from an action nobody took.
+  //
+  // Clause 4 holds the half of the original contract that was RIGHT: neither
+  // writer may throw, because failing the caller would leave the platform in a
+  // state its own error says did not happen.
+  //
+  // Drilled red five ways and green (C:\dev\EVIDENCE\LB-AUDITLOUD\drills.txt).
+  'scripts/guards/the-audit-log-says-when-it-could-not-write.mjs',
 
   // Lane B, 20 September 2026, found by the same scan that produced the guard
   // above and in the same failure family.
