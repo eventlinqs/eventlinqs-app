@@ -1,5 +1,4 @@
 import type { MetadataRoute } from 'next'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getPickerCities } from '@/lib/locations/picker-cities'
 import { getAllCommunities } from '@/lib/communities/data'
 import { getAllFaiths } from '@/lib/faiths/data'
