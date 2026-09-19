@@ -162,7 +162,11 @@ describe('a chargeback opened against their event', () => {
       currency: 'AUD',
       evidenceDueBy: null,
     })
-    const text: string = sent.mock.calls[0][0].text
+    // `text` is optional on the transport's input, so it is narrowed here
+    // rather than asserted: a send that stopped carrying a plain-text body
+    // would otherwise make the two checks below pass vacuously on undefined.
+    const text = sent.mock.calls[0][0].text
+    expect(typeof text).toBe('string')
     expect(text).toContain('The window to respond is short')
     expect(text).not.toMatch(/\b\d+\s*days?\b/)
   })
