@@ -14,6 +14,7 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { isDiscoveryIndexable } from '@/lib/seo/indexing-policy'
 import { resolveDiscoveryThreshold } from '@/lib/seo/discovery-threshold'
 import {
+  readArtistCatalogue,
   readEventCatalogue,
   readOrganiserCatalogue,
   readVenueCatalogue,
@@ -506,23 +507,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
    * a 404 for every artist the moment production has any. Asking the same
    * question the page asks is the only way the two can agree.
    */
+  /*
+   * READ THROUGH THE CATALOGUE MODULE, LIKE THE OTHER ROW-DERIVED FAMILIES, AND
+   * NO LONGER `artists.select('slug')` WITH NO PREDICATE AT ALL.
+   *
+   * That query advertised EVERY artist row to Google whether or not any page on
+   * the site reached it, and on 19 September 2026 the reachability crawl caught
+   * exactly that: "/artists/aurora-skies-wrejiu answers 200, and NOTHING on the
+   * crawled site links to it". The only internal link to an artist anywhere is
+   * the confirmed lineup on an event page, and all four of the events carrying
+   * one had ended. `readArtistCatalogue` asks the question the links answer.
+   * See its header for what was measured and for the two explanations it killed.
+   */
   try {
     if (await isFeatureEnabled('broadcast_artists')) {
-      const admin = createAdminClient()
-      const { data: artists, error: artistError } = await admin
-        .from('artists')
-        .select('slug, updated_at')
-        .not('slug', 'is', null)
-        .order('slug', { ascending: true })
-        .limit(5000)
-      if (artistError) {
-        console.error('[sitemap] artists could not be read:', artistError)
+      const artistCatalogue = await readArtistCatalogue()
+      if (artistCatalogue.error) {
+        // NOT SWALLOWED, for the reason the venue block above gives: a bare
+        // catch is what hid a 42703 for the whole life of that block.
+        console.error('[sitemap] artists could not be read:', artistCatalogue.error)
       }
-      for (const a of artists ?? []) {
-        if (!a.slug) continue
+      for (const row of artistCatalogue.rows) {
         entries.push({
-          url: `${baseUrl}/artists/${a.slug}`,
-          ...(a.updated_at ? { lastModified: new Date(a.updated_at) } : {}),
+          url: `${baseUrl}${row.path}`,
+          ...(row.lastModified ? { lastModified: new Date(row.lastModified) } : {}),
           changeFrequency: 'weekly',
           priority: 0.5,
         })

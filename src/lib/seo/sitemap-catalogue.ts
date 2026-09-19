@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PUBLIC_EVENT_MATCH } from '@/lib/events/public-visibility'
+import { isStillListed } from '@/lib/events/listing-window'
 import { venueSlugify } from '@/lib/venues/resolver'
 import { isOrganiserProfileIndexable } from '@/lib/seo/indexing-policy'
 
@@ -203,6 +204,125 @@ export async function readVenueCatalogue(admin: AdminClient = createAdminClient(
     const rows: CatalogueRow[] = []
     for (const handle of [...handles.keys()].sort()) {
       rows.push({ path: `/venues/${handle}`, lastModified: handles.get(handle) ?? null })
+    }
+    return { rows, error: null }
+  } catch (err) {
+    return { rows: [], error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/**
+ * Every artist profile the site currently LINKS TO, as `/artists/{slug}`.
+ *
+ * THE DEFECT, 19 September 2026, and it refused a push of 151 commits:
+ *
+ *     [internal-reachability] FAIL: /artists/[slug] is classed always (a page we
+ *     want ranked), /artists/aurora-skies-wrejiu answers 200, and NOTHING on the
+ *     crawled site links to it.
+ *
+ * THE BLOCK THIS REPLACES read `artists.select('slug, updated_at')` with no
+ * predicate at all: every artist row was advertised to Google whether or not any
+ * page reached it. The ONLY internal link to an artist profile anywhere on this
+ * platform is the confirmed lineup on an event page
+ * (`src/app/events/[slug]/page.tsx`), and every discovery surface is
+ * forward-looking by design, so an artist whose nights are all over is reachable
+ * from nothing.
+ *
+ * TWO WRONG EXPLANATIONS WERE KILLED BY MEASUREMENT FIRST, and both are recorded
+ * because each would have produced a different and wrong fix:
+ *
+ *   NOT "the artists have no events". All four artist rows on TEST are on a
+ *     CONFIRMED lineup of a published, public event.
+ *   NOT "RLS hides the lineup from an anonymous reader". The anonymous client
+ *     reads those same rows (2, 2, 1, 2), so the event pages render the links.
+ *
+ * What is actually true is that all four of those events have ENDED: 8 July,
+ * 14 August, 21 August, and 18 September, which was the day before this was
+ * written. Seventy-seven LIVE events are linked and crawled, and not one of them
+ * has a lineup. So the check was correct, nothing in the tree had changed, and
+ * the platform had simply gone on telling Google about four pages a visitor
+ * could no longer reach.
+ *
+ * THE WINDOW IS WHY THIS DIFFERS FROM THE EVENT AND VENUE READERS ABOVE, which
+ * deliberately keep publishing a past event. An event page is content about a
+ * real night and its long tail is worth accumulating; a venue page lists that
+ * history. An artist page is reachable ONLY through a live lineup, and the
+ * founder's standing ruling on the artist layer is that it "is not marketed
+ * until there are events worth attaching artists to"
+ * (src/lib/flags/broadcast.ts, 2026-08-15). Advertising an artist nothing links
+ * to is marketing it.
+ *
+ * THE WINDOW IS THE PLATFORM'S OWN, NOT A SECOND COPY OF IT. The rows are
+ * filtered with `isStillListed`, the same function every discovery surface uses,
+ * applied in JavaScript rather than rebuilt as a PostgREST predicate. A second
+ * dialect of the listing rule is a new way for the sitemap and the pages to
+ * disagree, which is the whole failure this module exists to prevent.
+ */
+export async function readArtistCatalogue(admin: AdminClient = createAdminClient()): Promise<CatalogueRead> {
+  try {
+    /*
+     * THREE PLAIN QUERIES, NO EMBEDS, AND THE SHAPE IS NOT A STYLE CHOICE.
+     *
+     * The first version asked one question with `artists!inner(...)` and
+     * `events!inner(...)`, which reads well and was refused by a registered
+     * guard: `sitemap-resolves` attributes every column in a select to the
+     * table being queried, so it reported `event_artists.timezone` and five
+     * more "which does not exist in src/types/database.ts". The guard was not
+     * wrong to refuse. It exists because a column that does not exist makes
+     * Postgres answer 42703 and a catch turn that into an empty sitemap
+     * section, which is exactly how the venue block published nothing for its
+     * whole life, and a guard that cannot read the query cannot protect it.
+     *
+     * The order is also deliberate. Confirmed lineup rows are the SMALLEST set
+     * on this path, so asking them first bounds both `in()` lists by the number
+     * of lineup rows rather than by the number of events on the platform.
+     */
+    const lineup = await admin
+      .from('event_artists')
+      .select('artist_id, event_id')
+      .eq('status', 'confirmed')
+      .limit(CATALOGUE_ROW_CAP)
+    if (lineup.error) return { rows: [], error: lineup.error.message }
+    const lineupRows = (lineup.data ?? []) as { artist_id: string; event_id: string }[]
+    if (lineupRows.length === 0) return { rows: [], error: null }
+
+    const events = await admin
+      .from('events')
+      .select('id, start_date, end_date, timezone')
+      .in('id', [...new Set(lineupRows.map(r => r.event_id))])
+      .match(PUBLIC_EVENT_MATCH)
+      .limit(CATALOGUE_ROW_CAP)
+    if (events.error) return { rows: [], error: events.error.message }
+
+    // THE WINDOW IS THE PLATFORM'S OWN, applied with `isStillListed`, the same
+    // function every discovery surface uses. A second dialect of the listing
+    // rule written as a PostgREST predicate is a new way for the sitemap and
+    // the pages to disagree, which is the failure this module exists to prevent.
+    const now = new Date()
+    const liveEventIds = new Set(
+      ((events.data ?? []) as { id: string; start_date: string; end_date: string | null; timezone: string | null }[])
+        .filter(e => typeof e.start_date === 'string' && isStillListed(e, now))
+        .map(e => e.id),
+    )
+    if (liveEventIds.size === 0) return { rows: [], error: null }
+
+    const artistIds = [...new Set(lineupRows.filter(r => liveEventIds.has(r.event_id)).map(r => r.artist_id))]
+    if (artistIds.length === 0) return { rows: [], error: null }
+
+    const artists = await admin
+      .from('artists')
+      .select('slug, updated_at')
+      .in('id', artistIds)
+      .not('slug', 'is', null)
+      .order('slug', { ascending: true })
+      .limit(CATALOGUE_ROW_CAP)
+    if (artists.error) return { rows: [], error: artists.error.message }
+
+    const rows: CatalogueRow[] = []
+    for (const a of (artists.data ?? []) as { slug: string | null; updated_at: string | null }[]) {
+      const slug = typeof a.slug === 'string' ? a.slug.trim() : ''
+      if (!slug) continue
+      rows.push({ path: `/artists/${slug}`, lastModified: typeof a.updated_at === 'string' ? a.updated_at : null })
     }
     return { rows, error: null }
   } catch (err) {
