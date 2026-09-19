@@ -5552,7 +5552,7 @@ const DRILLS = [
    * write it that way" is not a defence: somebody already had.
    */
   /*
-   * the-gmv-screen-reads-every-row (lane B, 20 September 2026), six drills.
+   * the-money-screens-read-every-row (lane B, 20 September 2026), six drills.
    *
    * The screen the founder reads the business off summed two unbounded selects
    * with no order and a discarded error. TEST held 801 AUD orders against a
@@ -5561,7 +5561,7 @@ const DRILLS = [
    */
   {
     name: 'the GMV orders read goes back to an unbounded select',
-    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "      .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -5572,7 +5572,7 @@ const DRILLS = [
   },
   {
     name: 'the GMV refunds read goes back to an unbounded select',
-    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "        .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -5588,7 +5588,7 @@ const DRILLS = [
      * directions at once.
      */
     name: 'the GMV orders read pages without a stable order',
-    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "      .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -5599,7 +5599,7 @@ const DRILLS = [
   },
   {
     name: 'the GMV refunds read pages without a stable order',
-    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find:
       "        .eq('currency', ANALYTICS_CURRENCY)\n" +
@@ -5615,7 +5615,7 @@ const DRILLS = [
      * acts on zero revenue and cannot tell it from a payments outage.
      */
     name: 'a GMV read goes back to discarding its error',
-    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
+    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
     file: 'src/lib/admin/analytics.ts',
     find: '    const { data: orgs, error: orgError } = await db',
     replace: '    const { data: orgs } = await db',
@@ -5623,14 +5623,63 @@ const DRILLS = [
   },
   {
     /*
+     * `pricing_rules` is APPEND-ONLY and versioned, so it grows for ever by
+     * design. Truncation here is not an undercount, it is an ABSENCE: the loop
+     * keeps the first row per target, so a live per-event override that IS
+     * being charged vanishes from the only screen that lists overrides.
+     */
+    name: 'the fee-override list goes back to an unbounded read of pricing_rules',
+    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/pricing.ts',
+    find:
+      "      .order('version', { ascending: false })\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{',
+    replace: "      .order('version', { ascending: false }) as unknown as PromiseLike<{",
+    expect: 'reads pricing_rules with no bound',
+  },
+  {
+    /*
+     * `version` is NOT unique across scopes, so paging on it alone is undefined:
+     * Postgres may hand one row back in two windows and another in none. The
+     * guard cannot check uniqueness, but it can insist a paged read is ordered
+     * at all, and the second key is why the header says what it says.
+     */
+    name: 'the fee-override list pages pricing_rules with no order at all',
+    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/pricing.ts',
+    find:
+      "      .order('version', { ascending: false })\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to) as unknown as PromiseLike<{',
+    replace: '      .range(from, to) as unknown as PromiseLike<{',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * The fee screen's own read of the CURRENT value. Dropping `error` made a
+     * failed read indistinguishable from a scope with no rule yet, and since
+     * LB-OVERRIDE0 a null value renders the control on its placeholder, so an
+     * unreachable database showed a fee screen that looked like a platform with
+     * no fee configured.
+     */
+    name: 'the current-fee read goes back to discarding its error',
+    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    file: 'src/lib/admin/pricing.ts',
+    find: '  const { data, error } = await admin',
+    replace: '  const { data } = await admin',
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
      * A GUARD THAT CANNOT FIND ITS SUBJECT MUST NOT REPORT PASS. Move the money
      * dashboard and this has to say so rather than scanning nothing quietly.
      */
-    name: 'the money dashboard moves and the guard is left judging nothing',
-    guard: `${GUARDS}/the-gmv-screen-reads-every-row.mjs`,
-    file: 'scripts/guards/the-gmv-screen-reads-every-row.mjs',
-    find: "const SCREEN = 'src/lib/admin/analytics.ts'",
-    replace: "const SCREEN = 'src/lib/admin/analytics-moved-away.ts'",
+    name: 'a money screen moves and the guard is left judging nothing for it',
+    guard: `${GUARDS}/the-money-screens-read-every-row.mjs`,
+    file: 'scripts/guards/the-money-screens-read-every-row.mjs',
+    find: "const SCREENS = ['src/lib/admin/analytics.ts', 'src/lib/admin/pricing.ts']",
+    replace: "const SCREENS = ['src/lib/admin/analytics-moved-away.ts', 'src/lib/admin/pricing.ts']",
     expect: 'does not exist',
   },
   /*

@@ -577,9 +577,10 @@
  *                             contexts, because one trapped inside a transformed
  *                             ancestor PAINTS correctly and cannot be clicked, and
  *                             nothing else on this platform can see that.
- *   the-gmv-screen-reads-every-row  the admin GMV dashboard reads every order and
- *                             refund, in a stable order, and fails loudly rather
- *                             than rendering a silent zero
+ *   the-money-screens-read-every-row  the admin GMV dashboard and the fee-override
+ *                             screen read every row, in a stable order, and fail
+ *                             loudly rather than rendering a silent zero or
+ *                             hiding a live fee override
  *   the-recovery-stop-list-is-whole  a marketing withdrawal reaches the
  *                             abandoned-checkout sender, and its suppression list
  *                             is read whole rather than to the first 1,000 names
@@ -2108,7 +2109,7 @@ const GUARDS = [
   // Lane B, 20 September 2026, found by the same scan that produced the guard
   // above and in the same failure family.
   //
-  // the-gmv-screen-reads-every-row: getAnalyticsDashboard summed two UNBOUNDED
+  // the-money-screens-read-every-row: TWO screens. getAnalyticsDashboard summed two UNBOUNDED
   // selects over orders and refunds, with no .order() and with `error`
   // discarded. Supabase stops at 1,000 rows in silence, so past the ceiling the
   // founder's GMV would have been the total of an ARBITRARY thousand rows, and
@@ -2119,8 +2120,14 @@ const GUARDS = [
   // src/lib/admin, and widening it would go red on about twenty reads today.
   // Those are raised in REVIEW-QUEUE-B.md rather than hidden.
   //
-  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-GMVWHOLE\drills.txt).
-  'scripts/guards/the-gmv-screen-reads-every-row.mjs',
+  // readActiveOverrides on /admin/pricing had the same shape over `pricing_rules`,
+  // which is append-only and versioned and so grows for ever. Truncation there is
+  // an ABSENCE rather than an undercount: the loop keeps the first row per target,
+  // so a live per-event fee override that IS being charged vanishes from the only
+  // screen that lists what overrides the default.
+  //
+  // Drilled red nine ways and green (C:\dev\EVIDENCE\LB-GMVWHOLE\drills.txt).
+  'scripts/guards/the-money-screens-read-every-row.mjs',
 
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context

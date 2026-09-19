@@ -1,6 +1,6 @@
 /**
- * GUARD: THE SCREEN THE FOUNDER READS THE BUSINESS OFF READS EVERY ROW, OR SAYS
- * IT COULD NOT.
+ * GUARD: THE SCREENS THE FOUNDER READS THE MONEY OFF READ EVERY ROW, OR SAY THEY
+ * COULD NOT.
  *
  * ---------------------------------------------------------------------------
  * THE DEFECT THIS EXISTS TO STOP, measured on TEST on 20 September 2026.
@@ -59,23 +59,42 @@ import { selectChainsIn, boundednessOf, headOnlySelectLines } from './lib/supaba
 import { declareWork } from '../lib/work-report.mjs'
 
 const ROOT = resolve(import.meta.dirname, '..', '..')
-const TAG = '[the-gmv-screen-reads-every-row]'
+const TAG = '[the-money-screens-read-every-row]'
 
-/** The money dashboard. One file, named, so the guard cannot quietly scan nothing. */
-const SCREEN = 'src/lib/admin/analytics.ts'
+/**
+ * THE MONEY SCREENS, NAMED, so the guard cannot quietly scan nothing. Each is
+ * checked to exist: a path that has been renamed away would otherwise judge
+ * nothing and report PASS, which is how a scanner lies.
+ *
+ *   analytics.ts  the GMV dashboard. Summed two unbounded selects.
+ *   pricing.ts    the fee screen. `readActiveOverrides` listed every live
+ *                 per-organiser and per-event fee override from an unbounded
+ *                 read of `pricing_rules`, a table that is APPEND-ONLY and
+ *                 versioned and therefore grows for ever by design. Truncation
+ *                 there is not an undercount, it is an ABSENCE: the loop keeps
+ *                 the first row per target, so a target whose rows fell past
+ *                 the ceiling vanished from the only screen that lists what is
+ *                 overriding the platform default, while still being charged.
+ */
+const SCREENS = ['src/lib/admin/analytics.ts', 'src/lib/admin/pricing.ts']
 
 const failures = []
 const notes = []
 const work = { reads: 0, bounded: 0, ordered: 0, destructures: 0 }
 
+for (const SCREEN of SCREENS) {
 const absolute = resolve(ROOT, SCREEN)
 if (!existsSync(absolute)) {
   failures.push(
-    `${SCREEN} does not exist. Either the money dashboard moved, in which case this guard now ` +
-      'judges nothing and reports PASS, or it was deleted. Fix the path rather than the symptom.',
+    `${SCREEN} does not exist. Either a money screen moved, in which case this guard now ` +
+      'judges nothing for it and would report PASS, or it was deleted. Fix the path rather than the symptom.',
   )
 } else {
   // ------------------------------------------------------------ clauses 1, 2
+  const readsBefore = work.reads
+  const boundedBefore = work.bounded
+  const orderedBefore = work.ordered
+  const destructuresBefore = work.destructures
   const heads = headOnlySelectLines(absolute)
   for (const chain of selectChainsIn(absolute)) {
     if (!chain.methods.includes('select')) continue
@@ -105,13 +124,16 @@ if (!existsSync(absolute)) {
     }
   }
 
-  if (work.reads === 0) {
+  if (work.reads === readsBefore) {
     failures.push(
       `no select was found in ${SCREEN} at all. A scanner that judges nothing reports PASS, which ` +
         'is the one thing this guard must never do.',
     )
   } else {
-    notes.push(`${work.bounded} of ${work.reads} read(s) bounded, ${work.ordered} of them paged with an order`)
+    notes.push(
+      `${SCREEN}: ${work.bounded - boundedBefore} of ${work.reads - readsBefore} read(s) bounded, ` +
+        `${work.ordered - orderedBefore} of them paged with an order`,
+    )
   }
 
   // ---------------------------------------------------------------- clause 3
@@ -129,12 +151,14 @@ if (!existsSync(absolute)) {
     if (/\berror\b/.test(names)) continue
     const line = lineAt(source, match.index)
     failures.push(
-      `${SCREEN}:${line} destructures \`data\` and not \`error\`, so a read that FAILED would fall ` +
-        'through to the `?? []` below it and the dashboard would show a GMV of zero. A founder acts ' +
-        'on zero revenue, and on this screen it is indistinguishable from a payments outage.',
+      `${SCREEN}:${line} destructures \`data\` and not \`error\`, so a read that FAILED is ` +
+        'indistinguishable from a read that found nothing. On the GMV screen that renders zero ' +
+        'revenue; on the fee screen it renders a platform with no fee configured. Both are numbers ' +
+        'a founder acts on, and neither can be told apart from an outage.',
     )
   }
-  notes.push(`${work.destructures} direct read destructure(s) judged for a discarded error`)
+  notes.push(`${SCREEN}: ${work.destructures - destructuresBefore} direct read destructure(s) judged for a discarded error`)
+}
 }
 
 // --------------------------------------------------------------------------
@@ -146,8 +170,9 @@ if (failures.length > 0) {
   console.error(TAG + ' ' + failures.length + ' failure(s).')
 }
 
-declareWork('the-gmv-screen-reads-every-row', {
+declareWork('the-money-screens-read-every-row', {
   did: {
+    'money screen judged': SCREENS.length,
     'read judged': work.reads,
     'read destructure judged': work.destructures + work.reads,
   },
@@ -156,4 +181,4 @@ declareWork('the-gmv-screen-reads-every-row', {
 
 if (failures.length > 0) process.exit(1)
 
-console.log(TAG + ' OK - the GMV screen reads every row, in a stable order, and fails loudly.')
+console.log(TAG + ' OK - every money screen reads every row, in a stable order, and fails loudly.')
