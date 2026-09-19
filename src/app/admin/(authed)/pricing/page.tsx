@@ -84,7 +84,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-white/[0.08]">
+      <div className="relative overflow-x-auto rounded-lg border border-white/[0.08]">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
             <tr className="border-b border-white/[0.08] text-left text-white/50">
@@ -193,7 +193,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
         </header>
 
         {overrides.length > 0 ? (
-          <div className="mb-6 overflow-x-auto rounded-lg border border-white/[0.08]">
+          <div className="relative mb-6 overflow-x-auto rounded-lg border border-white/[0.08]">
             <table className="w-full min-w-[680px] text-sm">
               <thead>
                 <tr className="border-b border-white/[0.08] text-left text-white/50">

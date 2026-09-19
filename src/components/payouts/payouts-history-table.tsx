@@ -120,7 +120,7 @@ export function PayoutsHistoryTable({ initialPage, organisationId }: PayoutsHist
         </p>
       )}
 
-      <div className="mt-4 overflow-x-auto">
+      <div className="relative mt-4 overflow-x-auto">
         <table className="min-w-full divide-y divide-ink-100 text-sm">
           <thead>
             <tr className="text-left text-xs font-semibold uppercase tracking-wider text-ink-600">

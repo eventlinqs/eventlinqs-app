@@ -2723,9 +2723,26 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   488 + 1 = 489 files
  *   6337 + 31 = 6368 tests
+ *
+ * 2026-09-19, lane C, the screen-reader label that escaped the box that scrolls
+ * it. tests/unit/a11y/sr-only-cannot-escape-a-scroller.test.ts holds nine cases
+ * and EXECUTES the guard against synthetic trees, red and green, including the
+ * exact shape that defeated the guard's first version: the label rendered by a
+ * sibling component in the same file rather than lexically inside the container.
+ * tests/unit/dashboard/main-column-shrinks.test.ts gains one, for the containing
+ * block the attendee wrapper now is; its other two cases were RELAXED rather
+ * than added to, because they pinned the ORDER of utility classes and went red
+ * against a correct change.
+ *
+ * MEASURED: 490 files, 6378 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\EVIDENCE\VIEWPORT-WIDTH\gate-suite.txt).
+ *
+ * CHECKABLE:
+ *   489 + 1 = 490 files
+ *   6368 + 9 + 1 = 6378 tests
  */
-const MIN_FILES = 489
-const MIN_TESTS = 6368
+const MIN_FILES = 490
+const MIN_TESTS = 6378
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

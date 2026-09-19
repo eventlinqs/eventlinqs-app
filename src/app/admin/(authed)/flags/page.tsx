@@ -68,7 +68,7 @@ export default async function AdminFlagsPage({ searchParams }: { searchParams: S
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-white/[0.08]">
+      <div className="relative overflow-x-auto rounded-lg border border-white/[0.08]">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
             <tr className="border-b border-white/[0.08] text-left text-white/50">

@@ -5088,6 +5088,71 @@ const DRILLS = [
     replace: 'or(`name.ilike.%${term}%,slug.ilike.%${term}%`)',
     expect: 'builds an or() ilike pattern by interpolation, unescaped',
   },
+
+  /*
+   * sr-only-cannot-escape-a-scroller, six drills (19 September 2026).
+   *
+   * sr-only is position:absolute, and an absolutely positioned element is
+   * clipped by an ancestor's overflow ONLY when that ancestor is its CONTAINING
+   * BLOCK. Nine containers held a screen-reader label and were not one, so the
+   * label was laid out at its position in the FULL scroll width. Measured at 390:
+   * /admin/users 569, /admin/events 594, /admin/organisers 605, against a
+   * control of 390 on /admin/orders, whose table markup is identical and whose
+   * cells carry no sr-only.
+   *
+   * ONE DRILL AIMS AT THE PREMISE RATHER THAN AT THE MARKUP. The rule is only
+   * true while sr-only is absolutely positioned. If a stylesheet redefines it the
+   * guard must say so loudly rather than keep failing builds over a rule that has
+   * stopped being true.
+   */
+  {
+    name: 'the admin user table stops being a containing block for its own screen-reader labels',
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/app/admin/(authed)/users/page.tsx',
+    find: 'className="relative overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]"',
+    replace: 'className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]"',
+    expect: 'but is not a containing block',
+  },
+  {
+    name: 'the admin event table stops being a containing block for its own screen-reader labels',
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/app/admin/(authed)/events/page.tsx',
+    find: 'className="relative overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]"',
+    replace: 'className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]"',
+    expect: 'but is not a containing block',
+  },
+  {
+    name: 'the fee table on /admin/pricing stops being a containing block',
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/app/admin/(authed)/pricing/page.tsx',
+    find: 'className="relative overflow-x-auto rounded-lg border border-white/[0.08]"',
+    replace: 'className="overflow-x-auto rounded-lg border border-white/[0.08]"',
+    expect: 'but is not a containing block',
+  },
+  {
+    name: "the organiser's GST report table stops being a containing block",
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/app/(dashboard)/dashboard/reports/gst/page.tsx',
+    find: 'className="relative overflow-x-auto rounded-xl border border-ink-200 bg-white"',
+    replace: 'className="overflow-x-auto rounded-xl border border-ink-200 bg-white"',
+    expect: 'but is not a containing block',
+  },
+  {
+    name: 'the city picker dialog stops being a containing block for its own labels',
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/components/ui/location-picker-panel.tsx',
+    find: 'className="relative flex w-full max-w-lg max-h-[calc(100vh-2rem)] flex-col overflow-hidden',
+    replace: 'className="flex w-full max-w-lg max-h-[calc(100vh-2rem)] flex-col overflow-hidden',
+    expect: 'but is not a containing block',
+  },
+  {
+    name: "the premise moves: a stylesheet redefines sr-only and the guard refuses rather than judging on",
+    guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
+    file: 'src/app/globals.css',
+    find: ':root {',
+    replace: '.sr-only { position: static; }\n:root {',
+    expect: 'redefines .sr-only',
+  },
   {
     name: "clause 3's matcher is rebuilt inside a template literal and quietly stops matching",
     guard: `${GUARDS}/consent-dates-are-zoned.mjs`,

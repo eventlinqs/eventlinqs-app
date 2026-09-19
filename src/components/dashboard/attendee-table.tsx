@@ -134,7 +134,7 @@ export function AttendeeTable({ attendees, ticketTypes }: AttendeeTableProps) {
           role="region"
           aria-label="Attendee list"
           tabIndex={0}
-          className="overflow-x-auto rounded-xl border border-ink-200 bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+          className="relative overflow-x-auto rounded-xl border border-ink-200 bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
         >
           <table className="w-full text-sm">
             <thead>
