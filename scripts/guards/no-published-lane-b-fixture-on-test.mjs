@@ -192,7 +192,10 @@ async function main() {
 
   declareWork('no-published-lane-b-fixture-on-test', {
     did: { 'lane B organisation read': organisations.length, 'lane B event read': events.length },
-    found: { 'lane B fixture the sitemap publishes': published.length },
+    // NAMED SO IT PLURALISES. declareWork appends an s to the key, so
+    // 'lane B fixture the sitemap publishes' printed as 'publisheses' on every
+    // run of a blocking guard.
+    found: { 'published lane B fixture in the sitemap': published.length },
     zeroIsFine: {
       'lane B organisation read': 'a tree with no lane B fixtures on TEST is the clean state, not a failure to look',
       'lane B event read': 'the same',
