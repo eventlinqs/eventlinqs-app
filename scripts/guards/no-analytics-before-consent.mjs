@@ -31,6 +31,17 @@
  *      the gate writes the four names out; if the registry gains a fifth and
  *      the gate does not, the fifth silently never loads and the platform
  *      quietly measures nothing while reporting that it does.
+ *   6. A PROVIDER IDENTIFIER IS READ ONLY WHERE READING IT MEANS SOMETHING.
+ *      Nowhere under src/ but the gate and the server capture, and NOWHERE
+ *      under scripts/ at all: a NEXT_PUBLIC value reaches a browser because the
+ *      SERVER inlined it, so a verification script reading its own environment
+ *      is answering a question about a different machine. The version of the
+ *      AN1 drive that did this reported 36 of 36 while testing nothing about
+ *      the half it claimed to test. Added 19 September 2026.
+ *   7. THE DRIVE'S JUDGEMENT AND THE GATE NAME THE SAME SCRIPT ELEMENTS. The
+ *      drive learns what the browser was given by looking for the gate's script
+ *      elements by id; a rename on one side alone leaves it looking for
+ *      something that cannot appear and calling the platform unconfigured.
  *
  * WHY IT IS STATIC AND NOT A BROWSER. The registered guards run on `prebuild`,
  * including on the Vercel build host, where there is no server to load a page
@@ -68,7 +79,13 @@ const HOST_ALLOWED = [
 ]
 
 const faults = []
-const checks = { 'source file swept': 0, 'provider judged': 0, 'gate property asserted': 0 }
+const checks = {
+  'source file swept': 0,
+  'provider judged': 0,
+  'gate property asserted': 0,
+  'identifier read judged': 0,
+  'gate script element judged': 0,
+}
 
 function read(rel) {
   const file = join(ROOT, rel)
@@ -147,6 +164,112 @@ if (gate) {
   }
 }
 
+/* ---- 6. no verification decides from its own environment what the browser got */
+
+/**
+ * A `NEXT_PUBLIC_*` value reaches a browser because the SERVER inlined it at
+ * compile time. A script under scripts/ is a different process with a different
+ * environment, so `process.env.NEXT_PUBLIC_POSTHOG_KEY` there answers a
+ * question about the wrong machine.
+ *
+ * WHY THIS IS A CLAUSE AND NOT A NOTE. It was in `an1-consent-drive.mjs` from
+ * 14 to 19 September and it failed in both directions at once. With the four
+ * names absent from the drive's shell it asserted zero requests after
+ * accepting, which is character for character what the refusal check three
+ * lines above already asserts, so the positive half of acceptance 2 went
+ * untested while the run printed 36 of 36. And with the four names present in
+ * the drive's shell but not the server's it would have demanded requests from a
+ * browser that was correctly given nothing, and accused a working platform.
+ *
+ * What the browser was given is OBSERVED IN THE BROWSER: the gate's own script
+ * elements, judged by scripts/verify/lib/an1-accepted-loads.mjs.
+ *
+ * NAMING one of these variables as a string is fine and is not what this looks
+ * for: scripts/ops/set-measurement-identifiers.mjs exists to write them, and a
+ * refusal message has to be able to say which one is missing. What is refused
+ * is READING the value.
+ */
+const IDENTIFIER_READ_ALLOWED = [
+  {
+    path: 'src/components/analytics/gated-analytics.tsx',
+    why: 'the gate itself, where the literal member expression is the only form Next inlines',
+  },
+  {
+    path: 'src/lib/analytics/funnel-server.ts',
+    why: 'the server capture for the one step a browser cannot witness: it runs IN the server, so its own environment is the right one to read',
+  },
+]
+
+/**
+ * COMMENTS ARE NOT CODE, and this clause is about reading a value.
+ *
+ * The first run of clause 6 failed on two files whose only mention of an
+ * identifier was the prose explaining why reading one there would be wrong,
+ * including this guard's own header. A guard that cannot tell an instruction
+ * from a description of an instruction teaches people to stop writing the
+ * description, which is the opposite of what this repository wants.
+ *
+ * Removal only: stripping can never CREATE a `process.env.X`, so a file that
+ * survives this genuinely does not read one.
+ */
+function withoutComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+}
+
+const identifierAllowed = new Set(IDENTIFIER_READ_ALLOWED.map(a => a.path))
+for (const dir of ['src', 'scripts']) {
+  for (const rel of walk(dir)) {
+    if (identifierAllowed.has(rel)) continue
+    const source = withoutComments(readFileSync(join(ROOT, rel), 'utf8'))
+    checks['identifier read judged'] += 1
+    for (const envVar of envVars) {
+      if (!source.includes(`process.env.${envVar}`)) continue
+      faults.push(
+        rel.startsWith('scripts/')
+          ? `${rel} reads process.env.${envVar}. A NEXT_PUBLIC value reaches a browser because the SERVER inlined it, so a script reading its own environment is answering a question about a different machine: it can report a pass having tested nothing, and it can fail a platform that is working. Observe the gate's own script elements in the browser instead (scripts/verify/lib/an1-accepted-loads.mjs)`
+          : `${rel} reads process.env.${envVar} outside the gate. A provider identifier is read in one place, because a second reader is the one that will load a tracker without asking mayLoad`,
+      )
+    }
+  }
+}
+
+/* ------- 7. the drive's judgement and the gate name the same script elements */
+
+/**
+ * The drive learns what the server gave the browser by looking for the gate's
+ * script elements by id. If the gate renames one and the judgement does not
+ * follow, the drive looks for an element that no longer exists, finds nothing,
+ * and reports "the gate rendered no provider script" for ever: a verification
+ * that has silently stopped verifying, which is the exact failure clause 6
+ * exists for, arriving by a different door.
+ */
+const JUDGEMENT_FILE = 'scripts/verify/lib/an1-accepted-loads.mjs'
+const judgement = read(JUDGEMENT_FILE)
+if (judgement && gate) {
+  const judged = [...judgement.matchAll(/id:\s*'(el-[a-z0-9-]+)'/g)].map(m => m[1])
+  const rendered = [...gate.matchAll(/id="(el-[a-z0-9-]+)"/g)].map(m => m[1])
+  if (judged.length === 0) {
+    faults.push(
+      `${JUDGEMENT_FILE} names no gate script element, so the drive would look for nothing and find nothing, and call that an unconfigured platform`,
+    )
+  }
+  for (const id of rendered) {
+    checks['gate script element judged'] += 1
+    if (!judged.includes(id)) {
+      faults.push(
+        `${GATE_FILE} renders a script element with id ${id} and ${JUDGEMENT_FILE} does not name it. The drive refuses an element it cannot judge, so this fails loudly there; it is named here so it fails at build time instead`,
+      )
+    }
+  }
+  for (const id of judged) {
+    if (!rendered.includes(id)) {
+      faults.push(
+        `${JUDGEMENT_FILE} judges a script element ${id} that ${GATE_FILE} no longer renders. The drive will never see it, and a judgement watching for something that cannot appear is a check that has stopped checking`,
+      )
+    }
+  }
+}
+
 /* --------------------------------------------- 4. the default is refusal */
 
 const consent = read(CONSENT_FILE)
@@ -181,6 +304,8 @@ declareWork('no-analytics-before-consent', {
 
 console.log(`${TAG} registry: ${envVars.length} provider(s), ${hosts.length} host(s); ${HOST_ALLOWED.length} file(s) allowed to name one:`)
 for (const entry of HOST_ALLOWED) console.log(`${TAG}   ${entry.path}  ${entry.why}`)
+console.log(`${TAG} ${IDENTIFIER_READ_ALLOWED.length} file(s) allowed to READ an identifier, and nothing under scripts/ is:`)
+for (const entry of IDENTIFIER_READ_ALLOWED) console.log(`${TAG}   ${entry.path}  ${entry.why}`)
 
 if (faults.length > 0) {
   console.error(`${TAG} FAIL: ${faults.length} way(s) a tracker could load for somebody who said no.`)
