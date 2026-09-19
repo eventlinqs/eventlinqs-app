@@ -42,6 +42,9 @@ import { resolveVercelToken } from '../lib/vercel-login.mjs'
 import * as journal from './lib/drill-journal.mjs'
 
 const ROOT = process.cwd()
+// A single backslash, built rather than typed, because a drill anchor that must
+// contain one is the exact shape this file has lost twice to escaping.
+const BSL = String.fromCharCode(92)
 const GUARDS = 'scripts/guards'
 
 /*
@@ -4455,6 +4458,140 @@ const DRILLS = [
     find: "  'src/lib/consent',",
     replace: "  'src/lib/consent-ledger',",
     expect: 'a scope that scans nothing reports PASS',
+  },
+
+  /*
+   * marketing-mail-carries-one-click (lane B, 19 September 2026), six drills,
+   * one per clause plus the blindness case.
+   *
+   * The guard exists because both marketing send paths shipped without the RFC
+   * 8058 one-click unsubscribe pair and nothing anywhere could see it: the
+   * message renders, the body link works, the provider returns an id, and every
+   * test is green. The only signal is a deliverability number weeks later.
+   *
+   * THE SIXTH DRILL IS THE IMPORTANT ONE. It does not break the product at all.
+   * It empties the registry the guard reads, so the guard would sweep nothing
+   * and report OK over a platform sending no-one-click mail. A guard that
+   * passes because it looked at nothing is the failure mode lane A found twice
+   * in this tree in two days, once in a matcher built from a template literal.
+   */
+  {
+    name: 'the campaigner stops composing the one-click pair on its live send',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'src/lib/campaigner/run.ts',
+    find: "import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'",
+    replace: '',
+    expect: 'does not import oneClickUnsubscribeHeaders',
+  },
+  {
+    name: 'the weekly city digest stops composing the one-click pair',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'src/app/api/cron/weekly-digest/route.ts',
+    find: "import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'",
+    replace: '',
+    expect: 'does not import oneClickUnsubscribeHeaders',
+  },
+  {
+    name: 'the transport accepts headers and quietly drops them before the provider',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'src/lib/email/send.ts',
+    find: '    ...(input.headers && Object.keys(input.headers).length > 0 ? { headers: input.headers } : {}),',
+    replace: '',
+    expect: 'the resend.emails.send call does not pass them',
+  },
+  {
+    name: 'the RFC 8058 header value is edited to a form a receiver will not match',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'src/lib/consent/one-click.ts',
+    find: "export const LIST_UNSUBSCRIBE_POST_VALUE = 'List-Unsubscribe=One-Click'",
+    replace: "export const LIST_UNSUBSCRIBE_POST_VALUE = 'List-Unsubscribe=one-click'",
+    expect: 'RFC 8058 requires exactly',
+  },
+  {
+    name: 'the headers point at an address no route answers',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'src/lib/consent/one-click.ts',
+    find: "export const ONE_CLICK_UNSUBSCRIBE_ROUTE = '/api/marketing/one-click-unsubscribe'",
+    replace: "export const ONE_CLICK_UNSUBSCRIBE_ROUTE = '/api/marketing/unsubscribe-one-click'",
+    expect: 'does not exist',
+  },
+  {
+    /*
+     * THE GUARD'S OWN BLINDNESS, not the product's.
+     *
+     * The first version of this drill flipped one entry in the registry from
+     * marketing to transactional, and it would NOT have fired: the harness
+     * replaces the FIRST match only, so the second marketing entry survived, the
+     * guard judged it, found the pair, and reported OK. A drill that cannot fail
+     * proves nothing, and it is the same shape as the guard lane A found on
+     * 18 September reporting PASS over the import it banned.
+     *
+     * So the sabotage is aimed where it can only have one effect: the guard's
+     * own comparison, which makes it match no entry at all and sweep an empty
+     * set.
+     */
+    name: 'the guard matches no registry entry and would sweep nothing while reporting OK',
+    guard: `${GUARDS}/marketing-mail-carries-one-click.mjs`,
+    file: 'scripts/guards/marketing-mail-carries-one-click.mjs',
+    find: "if (kind && kind[1] === 'marketing') entries.push(file)",
+    replace: "if (kind && kind[1] === 'marketing-direct') entries.push(file)",
+    expect: 'classifies no path as marketing',
+  },
+
+  /*
+   * consent-dates-are-zoned (lane B, 19 September 2026), five drills.
+   *
+   * The guard exists because the consent ledger rendered every date from UTC
+   * getters on a platform whose readers are all UTC+10 or UTC+11, so every
+   * record made after 10:00 local was a day early, on the one page whose closing
+   * line is "Records are kept as evidence of what you were shown and when".
+   *
+   * THE FOURTH DRILL AIMS AT THE GUARD ITSELF, because a guard that sweeps
+   * nothing prints the same OK as one that sweeps everything, and this guard
+   * legitimately reports zero rendering calls on a healthy tree: everything in
+   * scope already delegates. The file count is the only thing that proves it
+   * looked, so the drill takes the file count away.
+   */
+  {
+    name: 'the consent ledger goes back to assembling its dates from UTC getters',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/lib/consent/sentences.ts',
+    find: '  return formatPlatformDateLong(iso)',
+    replace: '  return `${at.getUTCDate()} ${at.getUTCMonth()} ${at.getUTCFullYear()}`',
+    expect: 'assembles a date from .getUTCDate()',
+  },
+  {
+    name: 'an audience read formats a date with no zone named',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/lib/audience/read.ts',
+    find: 'export ',
+    replace: 'const shownAt = (iso) => new Date(iso).toLocaleDateString(); export ',
+    expect: 'names no timeZone',
+  },
+  {
+    name: 'a date is formatted through Intl with every option except the zone',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/lib/proof/read.ts',
+    find: 'export ',
+    replace:
+      "const stamp = (d) => new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'long' }).format(d); export ",
+    expect: 'names no timeZone',
+  },
+  {
+    name: 'the date guard sweeps no files at all while still reporting OK',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'scripts/guards/consent-dates-are-zoned.mjs',
+    find: `!/${BSL}.test${BSL}.tsx?$/.test(entry)) out.push(full)`,
+    replace: `!/${BSL}.(ts|tsx)$/.test(entry)) out.push(full)`,
+    expect: 'the scope matched no files at all',
+  },
+  {
+    name: 'the ledger keeps a zoned date but stops delegating to the one formatter',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/lib/consent/sentences.ts',
+    find: "import { formatPlatformDateLong } from '@/lib/dates/event-time'",
+    replace: '',
+    expect: 'no longer imports formatPlatformDateLong',
   },
 
   /*

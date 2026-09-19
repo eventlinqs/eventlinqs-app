@@ -425,10 +425,32 @@ describe('GA1: the withdrawal is recorded with its source, on every path', () =>
     expect(helper).toContain('recordSuppressionEvent(')
   })
 
-  it('the three sources are distinguishable afterwards', () => {
-    expect(record).toContain("captureSurface: 'unsubscribe-token'")
-    expect(record).toContain("captureSurface: 'waitlist-token'")
+  it('the four sources are distinguishable afterwards', () => {
+    /*
+     * WAS THREE, IS FOUR, 19 September 2026 (close-out LB-ONECLICK). The RFC
+     * 8058 one-click endpoint is a fourth way a withdrawal can arrive, and it
+     * is the one a MAILBOX PROVIDER posts on somebody's behalf rather than one
+     * the person pressed themselves. A ledger that cannot tell those apart
+     * cannot answer which facility people actually use, so it records its own
+     * surface.
+     *
+     * The two token defaults are now written as `captureSurface ?? '...'`,
+     * because withdrawDigestByAnyToken takes an optional override. The default
+     * is asserted in that exact form deliberately: `toContain("'waitlist-token'")`
+     * alone would also pass if the override silently replaced the default for
+     * every caller, which is the regression this pins.
+     */
+    expect(record).toContain("captureSurface: captureSurface ?? 'unsubscribe-token'")
+    expect(record).toContain("captureSurface: captureSurface ?? 'waitlist-token'")
     expect(record).toContain("captureSurface: 'preference-centre'")
+
+    const oneClickRoute = readFileSync(
+      join(ROOT, 'src', 'app', 'api', 'marketing', 'one-click-unsubscribe', '[token]', 'route.ts'),
+      'utf8',
+    )
+    expect(oneClickRoute).toContain("const CAPTURE_SURFACE = 'one-click-unsubscribe'")
+    // And it is actually passed, rather than declared and forgotten.
+    expect(oneClickRoute).toContain('CAPTURE_SURFACE)')
   })
 
   it('one click stops every channel, which is what the wording promises', () => {

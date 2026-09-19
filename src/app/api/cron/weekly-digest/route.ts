@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { sendEmail } from '@/lib/email/send'
+import { oneClickUnsubscribeHeaders } from '@/lib/consent/one-click'
 import { getSiteUrl } from '@/lib/site-url'
 import {
   buildDigestEmailHtml,
@@ -181,6 +182,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         text,
         messageType: 'platform_weekly_digest',
         recipientRole: 'platform_owner',
+        /*
+         * The rehearsal is supposed to be the real message. When the address
+         * has a consent row it gets the real token and therefore the real
+         * headers; when it does not, the body link already falls back to the
+         * account page and there is no token to point a one-click at, so no
+         * pair is composed rather than one that names a token nobody holds.
+         */
+        ...(token ? { headers: oneClickUnsubscribeHeaders(origin, token) } : {}),
       })
       results.push({ city: citySlug, testSentTo: testTo, events: events.length })
       continue
@@ -202,6 +211,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           text,
           messageType: 'attendee_event_alert',
           recipientRole: 'prospect',
+          /*
+           * The one-click pair, from the SAME token the body link carries, so
+           * the button a mail client draws and the link a person presses
+           * withdraw one person's consent and not two different things. This is
+           * the send Google's bulk-sender rule is about: one city list, one
+           * message each, promoting other organisers' events.
+           */
+          headers: oneClickUnsubscribeHeaders(origin, recipient.unsubscribeToken),
         })
         sent += 1
       } catch {

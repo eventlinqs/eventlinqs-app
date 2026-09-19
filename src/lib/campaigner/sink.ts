@@ -40,6 +40,15 @@ export interface CampaignPayload {
   subject: string
   body: string
   html: string
+  /**
+   * The RFC 8058 one-click unsubscribe pair for this recipient, composed by
+   * src/lib/consent/one-click.ts. It travels on the PAYLOAD rather than being
+   * added inside the live transport for two reasons: the recorded sink can then
+   * be read back by a drive to prove a conforming message was composed without
+   * sending one, and the dispatcher is the only place that holds the token, so
+   * the transport cannot compose it even if it wanted to.
+   */
+  headers: Record<string, string>
 }
 
 export interface CampaignTransport {
@@ -106,6 +115,7 @@ export function liveTransport(): CampaignTransport {
         recipientRole: 'prospect',
         html: payload.html,
         text: payload.body,
+        headers: payload.headers,
       })
       return { providerMessageId: result.id }
     },
