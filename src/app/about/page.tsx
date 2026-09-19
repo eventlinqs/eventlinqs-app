@@ -4,6 +4,7 @@ import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
 import { MarketingMedia } from '@/components/media/MarketingMedia'
 import { ABOUT_PHOTOS } from '@/lib/images/about-photos'
 import { PLATFORM_ENTITY } from '@/lib/legal/platform-entity'
@@ -98,10 +99,15 @@ export default function AboutPage() {
           alt={ABOUT_PHOTOS.hero.alt}
           objectPosition={ABOUT_PHOTOS.hero.objectPosition}
         />
-        <div className="hero-scrim" aria-hidden />
+        {/* The top-anchored header wash stays: it answers a different question
+            (the transparent header is pinned to the top of the band, which is
+            the one thing a percentage CAN locate). The bottom-up `.hero-scrim`
+            that used to sit here was a percentage of the band, and the text is
+            not: measured 20 September 2026 this eyebrow read 1.01:1 at 390 with
+            97 per cent of its pixels below WCAG 2.2 SC 1.4.3's 4.5:1. */}
         <div className="hero-scrim-top" aria-hidden />
         <div className="relative mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
-          <div className="hero-enter max-w-2xl">
+          <HeroCaption className="max-w-2xl" contentClassName="hero-enter">
             <p className="type-eyebrow font-display text-[var(--brand-accent)]">About</p>
             <h1 id="about-hero-heading" className="mt-3 font-headline text-3xl font-extrabold tracking-[-0.015em] text-white sm:text-4xl lg:text-5xl">
               Built for every community
@@ -110,7 +116,7 @@ export default function AboutPage() {
               The place events get made, for every community. Find your suppliers,
               sell your tickets, run your door and get paid.
             </p>
-          </div>
+          </HeroCaption>
         </div>
       </section>
 

@@ -957,6 +957,22 @@ const DRILLS = [
     expect: 'renders no HeroMedia',
   },
   {
+    /*
+     * Added 20 September 2026 with the clause it drills. This used to require
+     * the identifier HERO_SCRIM_GRADIENT, and that wash was a percentage of the
+     * band while the text is bottom-anchored, so it left the gold eyebrow at
+     * 2.53:1 on two of the five homepage slides at 390. The clause now requires
+     * the PROPERTY - the text sits inside the wash that is anchored to it - and
+     * this drill is what proves the new clause can still fire.
+     */
+    name: 'the no-event hero paints its text outside the caption wash',
+    guard: `${GUARDS}/homepage-hero-never-empty.mjs`,
+    file: 'src/components/features/home/FeaturedHero.tsx',
+    find: '<HeroCaption className="max-w-2xl hero-enter">',
+    replace: '<div className="max-w-2xl hero-enter">',
+    expect: 'does not wrap its text in <HeroCaption>',
+  },
+  {
     name: 'a curated hero entry names a raster that does not exist',
     guard: `${GUARDS}/homepage-hero-never-empty.mjs`,
     file: 'public/images/hero/homepage-hero-attribution.json',
@@ -5232,6 +5248,56 @@ const DRILLS = [
    * the strength, the geometry that makes the strength mean anything, and the
    * component that actually paints it.
    */
+  /*
+   * THE SEVENTH AND EIGHTH AIM AT THE LIST ITSELF, added 20 September 2026.
+   *
+   * The guard opened by saying its heroes were "derived from the one thing they
+   * all must do rather than listed", and then listed five files. The derivation
+   * was performed for the first time on 20 September and returned THIRTEEN. The
+   * eight that had never been on the list carried eight more hand-written navy
+   * gradients, measured at 1.01:1 on /waitlist and /about and 1.04:1 on
+   * /organisers against a 4.5:1 floor, while the guard printed PASS.
+   *
+   * Drill 7 breaks a hero the OLD hand-written list did not contain. Against
+   * that list it could not have fired at all; against the derivation it must.
+   * Drill 8 aims at the ratchet: the register's one non-border entry says the
+   * empty state's photographic branch has no caller, and the guard must notice
+   * the moment that stops being true.
+   */
+  {
+    name: 'a hero the old hand-written list never held loses its caption',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/app/about/page.tsx',
+    find: '<HeroCaption className="max-w-2xl" contentClassName="hero-enter">',
+    replace: '<div className="max-w-2xl">',
+    expect: 'src/app/about/page.tsx paints hero text without <HeroCaption>',
+  },
+  {
+    name: 'the register says the empty state has no photographic caller, and a caller appears',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/components/templates/CityLandingPage.tsx',
+    find: '<CategoryHeroEmpty\n            eyebrow={city.name.toUpperCase()}',
+    replace: '<CategoryHeroEmpty\n            coverImage="/images/hero/curated-1.avif"\n            eyebrow={city.name.toUpperCase()}',
+    expect: 'has stopped being true',
+  },
+  {
+    /*
+     * The ninth, and the one no drive could ever have replaced. `.hero-enter`
+     * staggers its DIRECT children, and <HeroCaption> puts two elements between
+     * its className and the text, so a stagger written there animates the wash
+     * and the whole block rather than the eyebrow, headline, meta and CTA in
+     * turn. The stagger is armed only under html[data-motion="1"], which
+     * headless agents are deliberately never given, so every screenshot shows
+     * the correct settled frame. This mistake was made for real while
+     * converting the heroes on 20 September 2026.
+     */
+    name: 'a hero puts its child stagger two elements above the text it staggers',
+    guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,
+    file: 'src/app/waitlist/page.tsx',
+    find: '<HeroCaption className="max-w-2xl" contentClassName="hero-enter">',
+    replace: '<HeroCaption className="max-w-2xl hero-enter">',
+    expect: 'which is two elements above the text',
+  },
   {
     name: 'a hero goes back to writing its own navy gradient',
     guard: `${GUARDS}/hero-text-over-a-photograph.mjs`,

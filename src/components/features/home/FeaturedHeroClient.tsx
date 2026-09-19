@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
 import { HeroMedia } from '@/components/media/HeroMedia'
-import { HERO_SCRIM_GRADIENT } from './hero-scrim'
+import { HeroCaption } from '@/components/media/hero-caption'
 
 export interface FeaturedHeroSlide {
   id: string
@@ -161,7 +161,10 @@ export function FeaturedHeroClient({ slides }: Props) {
       onMouseLeave={() => setHovered(false)}
       onFocusCapture={() => setFocused(true)}
       onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false) }}
-      className="group relative hero-marketing w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset"
+      /* overflow-hidden is load-bearing, not tidiness: the caption wash bleeds
+       * full width on purpose (see hero-caption.tsx) and this band is what
+       * clips it. hero-text-over-a-photograph fails the build if it is lost. */
+      className="group relative hero-marketing w-full overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset"
     >
       {slides.map((slide, idx) => {
         const isActive = idx === active
@@ -182,12 +185,6 @@ export function FeaturedHeroClient({ slides }: Props) {
               priority={idx === 0}
               objectPosition={slide.objectPosition}
             />
-            {/* Restrained bottom-up scrim - just enough for legibility. */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0"
-              style={{ background: HERO_SCRIM_GRADIENT }}
-            />
             <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
               {/* hero-enter staggers the content stack (kicker, title, detail,
                *  CTA) in on load, 60-80ms apart. hero-slide-content re-runs a
@@ -195,7 +192,10 @@ export function FeaturedHeroClient({ slides }: Props) {
                *  rotation, so each featured event arrives behind the crossfade.
                *  The HeroMedia LCP raster is a sibling above and is never
                *  animated (media architecture law). */}
-              <div className={`max-w-2xl hero-enter hero-slide-content${isActive ? ' is-active' : ''}`}>
+              <HeroCaption
+                className="max-w-2xl"
+                contentClassName={`hero-enter hero-slide-content${isActive ? ' is-active' : ''}`}
+              >
                 <p
                   className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
                   style={{ fontWeight: 600 }}
@@ -216,7 +216,7 @@ export function FeaturedHeroClient({ slides }: Props) {
                     Get tickets
                   </Link>
                 </div>
-              </div>
+              </HeroCaption>
             </div>
           </div>
         )

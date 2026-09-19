@@ -32,6 +32,7 @@
  * redone from the new values. Nothing here is a number copied from a review.
  */
 import { existsSync, readFileSync } from 'node:fs'
+import { NOT_YET_ON_THE_SHARED_WASH, deriveHeroFiles } from './lib/hero-files.mjs'
 
 const FAILURES = []
 const fail = (clause, message) => FAILURES.push(`${clause}: ${message}`)
@@ -41,25 +42,20 @@ const CAPTION_COMPONENT = 'src/components/media/hero-caption.tsx'
 const GLOBALS = 'src/app/globals.css'
 
 /**
- * The heroes that paint text on a photograph. Derived from the one thing they
- * all must do - carry the locked hero scale AND render a caption - rather than
- * listed, so a new one cannot be added without this guard noticing it.
+ * The heroes that paint text on a photograph, DERIVED from the source tree by
+ * `lib/hero-files.mjs` rather than listed here.
+ *
+ * THE SENTENCE THAT USED TO STAND IN THIS PLACE claimed the list was derived
+ * "so a new one cannot be added without this guard noticing it", and then named
+ * five files by hand. On 20 September 2026 the derivation was actually
+ * performed and returned THIRTEEN. The eight the list had never held carried
+ * eight more hand-written navy gradients between them, and driving them
+ * measured 34 runs below their WCAG floor: a gold eyebrow at 1.01:1 on
+ * /waitlist with 100 per cent of its pixels failing, a headline at 1.49:1 on
+ * /organisers, an eyebrow at 1.01:1 on /about. The guard passed every one of
+ * those builds and was correct about all five files it could see.
  */
-const HERO_FILES = [
-  'src/components/templates/PhotographicCategoryHero.tsx',
-  'src/components/templates/PhotographicCityHero.tsx',
-  'src/components/templates/PhotographicCommunityHero.tsx',
-  'src/components/features/city/city-hero.tsx',
-  /*
-   * The event page was the fifth, and it was nearly missed because its curve
-   * was the strongest of the five: it reaches opaque navy at the foot of the
-   * band, so at 1440 every run on it passed. At 390 the meta line read 3.85:1
-   * and the venue 4.20:1 against the 4.5:1 floor of WCAG 2.2 SC 1.4.3
-   * (https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
-   * A stronger percentage is still a percentage.
-   */
-  'src/app/events/[slug]/page.tsx',
-]
+const HERO_FILES = deriveHeroFiles()
 
 /** Missing is a FINDING here, not an exception to swallow, so absence is asked
  * about rather than caught. */
@@ -108,16 +104,50 @@ if (!globals) fail('2', `${GLOBALS} is missing: the gold token cannot be read`)
  * have refused the four divergent gradients the incident was made of.
  */
 const NAVY_GRADIENT = /linear-gradient\([^)]*rgba?\(\s*10\s*,\s*22\s*,\s*40/
+
+const registered = new Map(NOT_YET_ON_THE_SHARED_WASH.map(e => [e.file, e]))
+
+/* ── CLAUSE 0. THE RATCHET ONLY EVER SHRINKS ───────────────────────────────
+ * Judged BEFORE the conversion clauses, because an entry that has stopped
+ * being true must fail loudly rather than go on excusing a file.
+ */
+for (const entry of NOT_YET_ON_THE_SHARED_WASH) {
+  if (!HERO_FILES.includes(entry.file)) {
+    fail(
+      '0',
+      `the register still carries ${entry.file}, which is no longer a hero that paints text on a photograph (it was renamed, deleted, or stopped rendering <HeroMedia>). Delete the entry.`,
+    )
+    continue
+  }
+  const src = read(entry.file)
+  const converted = src !== null && !NAVY_GRADIENT.test(src) && /<HeroCaption[\s>]/.test(withoutImports(src))
+  if (converted) {
+    fail(
+      '0',
+      `${entry.file} is now on the shared wash, so its register entry is stale. Delete it: a debt register that keeps a paid debt is a list nobody rereads.`,
+    )
+  }
+  if (entry.stillTrue) {
+    const verdict = entry.stillTrue()
+    if (!verdict.ok) {
+      fail('0', `the register's reason for ${entry.file} has stopped being true: ${verdict.why}`)
+    }
+  }
+}
+
 for (const f of HERO_FILES) {
   const src = read(f)
   if (src === null) {
-    fail('1', `${f} is named by this guard and does not exist; if a hero was renamed, rename it here too`)
+    fail('1', `${f} was derived as a hero and cannot be read`)
     continue
   }
+  /* A registered hero is still REPORTED, never silently skipped, so the debt
+   * is visible on every run rather than only in this file's source. */
+  if (registered.has(f)) continue
   if (NAVY_GRADIENT.test(src)) {
     fail(
       '1',
-      `${f} writes its own navy gradient. Every hero wash comes from ${SCRIM_MODULE}; four hand-written gradients disagreeing with each other is the defect this guard exists for.`,
+      `${f} writes its own navy gradient. Every hero wash comes from ${SCRIM_MODULE}; hand-written gradients disagreeing with each other is the defect this guard exists for.`,
     )
   }
   if (!/<HeroCaption[\s>]/.test(withoutImports(src))) {
@@ -196,8 +226,55 @@ if (scrim) {
  * A component that imported the scrim and forgot to render it would satisfy
  * every clause above and guarantee nothing.
  */
+/* ── CLAUSE 5. A CHILD STAGGER MUST PARENT THE TEXT, NOT THE WASH ──────────
+ *
+ * `.hero-enter` staggers its DIRECT children (globals.css:
+ * `html[data-motion="1"] .hero-enter > *`). <HeroCaption> puts two elements
+ * between its own className and the text, so `hero-enter` written on
+ * `className` animates the wash as item one and the entire text block as item
+ * two: the eyebrow, headline, meta and CTA arrive together instead of 70ms
+ * apart. That is the Motion law's hero entrance quietly deleted, and it would
+ * look ALMOST right.
+ *
+ * NO DRIVE CAN EVER CATCH THIS. The stagger is armed only under
+ * `html[data-motion="1"]`, which is deliberately withheld from headless agents
+ * so audits see the settled state, so every screenshot and every contrast sweep
+ * shows the correct final frame. It is checkable only here, which is exactly
+ * why it is here: this mistake was made while converting the five heroes on
+ * 20 September 2026 and was caught by reading the stylesheet rather than by any
+ * measurement.
+ */
+const STAGGER_CLASSES = ['hero-enter', 'hero-slide-content']
+for (const f of HERO_FILES) {
+  const src = read(f)
+  if (src === null || registered.has(f)) continue
+  for (const tag of withoutImports(src).matchAll(/<HeroCaption\b[\s\S]*?>/g)) {
+    const outer = tag[0].match(/(?<!content)className=(?:"([^"]*)"|\{`([^`]*)`\})/)
+    if (!outer) continue
+    const value = outer[1] ?? outer[2] ?? ''
+    for (const cls of STAGGER_CLASSES) {
+      if (new RegExp(`\\b${cls}\\b`).test(value)) {
+        fail(
+          '5',
+          `${f} puts "${cls}" on <HeroCaption className=...>, which is two elements above the text. ` +
+            'A child stagger there animates the wash and the whole block instead of the eyebrow, headline, ' +
+            'meta and CTA in turn. Move it to contentClassName, which parents the text directly.',
+        )
+      }
+    }
+  }
+}
+
 if (caption) {
   const body = withoutImports(caption)
+  /* The prop that makes clause 5 possible has to actually reach the element
+   * that parents the text, or the instruction the failure gives is a lie. */
+  if (!/<div className=\{`relative \$\{contentClassName\}`\}>\{children\}<\/div>/.test(body)) {
+    fail(
+      '5',
+      `${CAPTION_COMPONENT} no longer applies contentClassName to the element that directly parents the caption text, so a child stagger moved there would animate nothing`,
+    )
+  }
   if (!/background:\s*HERO_CAPTION_SCRIM\b/.test(body)) {
     fail('4', `${CAPTION_COMPONENT} does not paint HERO_CAPTION_SCRIM as a background, so the caption it renders sits on nothing`)
   }
@@ -206,9 +283,23 @@ if (caption) {
   }
 }
 
+/* THE REGISTER IS PRINTED, ALWAYS, PASS OR FAIL. A debt that is only visible
+ * by opening this file is a debt nobody sees. */
+if (NOT_YET_ON_THE_SHARED_WASH.length) {
+  console.log(`  ${NOT_YET_ON_THE_SHARED_WASH.length} hero(es) not yet on the shared wash, each with its reason:`)
+  for (const e of NOT_YET_ON_THE_SHARED_WASH) {
+    console.log(`    ${e.file}`)
+    console.log(`      lane ${e.lane} | ${e.measured}`)
+    console.log(`      record: ${e.record}`)
+  }
+}
+
 if (FAILURES.length) {
   console.error('FAIL hero-text-over-a-photograph')
   for (const f of FAILURES) console.error(`  ${f}`)
   process.exit(1)
 }
-console.log(`PASS hero-text-over-a-photograph (${HERO_FILES.length} heroes on one declared wash)`)
+console.log(
+  `PASS hero-text-over-a-photograph (${HERO_FILES.length} heroes derived, ` +
+    `${HERO_FILES.length - NOT_YET_ON_THE_SHARED_WASH.length} on one declared wash)`,
+)
