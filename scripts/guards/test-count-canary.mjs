@@ -2653,9 +2653,59 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   479 + 2 = 481 files
  *   6222 + 6 + 9 = 6237 tests
+ * 2026-09-19 (later), lane A, close-out MONEY FIX A3 layer three, and a debt
+ * that was not mine. The raise carries SEVEN files rather than one, because six
+ * of them arrived with the watchdog's lane/b-growth merge at a172aee9 and no
+ * baseline raise had counted them: the floor had been sitting a hundred tests
+ * below the suite since that merge landed.
+ *
+ * It is recorded here because the reason I nearly did not raise it is worth more
+ * than the number. This file is a known three-lane conflict, so raising it
+ * mid-flight buys a merge conflict for three lanes, and that is what I wrote into
+ * REVIEW-QUEUE.md as the reason to leave it. C:\dev\BUILD-BRIEF.md, which I had
+ * not read, settles it in one clause: "real tests added. The suite grows and the
+ * canary baseline is raised IN THE SAME COMMIT." A conflict on one integer is
+ * resolved by taking the higher number. A floor nobody raises stops catching a
+ * deleted test, which is the whole job of this file.
+ *
+ * MEASURED: 479 files, 6223 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, and again inside three full gate runs
+ * today: C:\dev\_a-r21-push1.txt, _a-r21-push2.txt, _a-r21-push3.txt).
+ *
+ * The seven files were ENUMERATED from git rather than counted by hand
+ * (`git ls-tree` at ee2aa8bc against HEAD) and their tests counted by running
+ * exactly those seven:
+ *
+ *   lane B, merged at a172aee9, never counted into a baseline:
+ *     tests/unit/growth/a-failed-read-is-not-a-fact-about-a-person.test.ts   19
+ *     tests/unit/growth/campaigner-skip-sentences.test.ts                    19
+ *     tests/unit/growth/marketing-dates-take-the-right-zone.test.ts          14
+ *     tests/unit/growth/matcher-offers-an-event-you-can-still-go-to.test.ts   8
+ *     tests/unit/supabase/in-chunks.test.ts                                  12
+ *     tests/unit/supabase/or-filter.test.ts                                  15
+ *   lane A, this run:
+ *     tests/unit/payments/platform-settlement-reconcile.test.ts              13
+ *
+ * CHECKABLE:
+ *   472 + 6 + 1 = 479 files
+ *   6123 + 87 + 13 = 6223 tests
+ *
+ * 2026-09-19, lane C, the SECOND merge of verify/l5-launch-readiness into
+ * lane/c-ux. BOTH BLOCKS ABOVE ARE KEPT, for the reason the first merge
+ * already recorded: each is how its own side is checked, and neither
+ * describes a tree holding both. This lane measured 481/6237 on a tree that
+ * did not yet hold lane A's settlement-reconcile file or the six lane B files
+ * that arrived with the a172aee9 watchdog merge; lane A measured 479/6223 on a
+ * tree that did not hold this lane's grid and empty-state work. Writing either
+ * pair onto the merged tree would lower the floor below what the merged tree
+ * actually runs, which is the one thing this guard exists to notice.
+ *
+ * MEASURED on the tree holding both, by the suite rather than counted by hand:
+ * 488 files, 6337 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\EVIDENCE\_c-merge2-suite.txt).
  */
-const MIN_FILES = 481
-const MIN_TESTS = 6237
+const MIN_FILES = 488
+const MIN_TESTS = 6337
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

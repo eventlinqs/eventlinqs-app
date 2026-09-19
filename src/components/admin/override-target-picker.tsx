@@ -79,6 +79,14 @@ export function OverrideTargetPicker() {
   }
 
   const labelForKind = kind === 'organisation' ? 'organisation' : 'event'
+  /*
+   * "An", not "a". Both words this label can hold begin with a vowel sound, and
+   * the hint read "Pick a event from the list" on every render where the scope
+   * was Event. Found on 19 September 2026 by reading a drive's own 390 capture
+   * rather than its report, which is the same way the last three defects on
+   * these screens were found.
+   */
+  const article = 'an'
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-3">
@@ -135,7 +143,7 @@ export function OverrideTargetPicker() {
         {selected ? (
           <p className="text-[11px] text-emerald-300/80">Selected: {selected.label}</p>
         ) : (
-          <p className="text-[11px] text-white/40">Pick a {labelForKind} from the list.</p>
+          <p className="text-[11px] text-white/40">Pick {article} {labelForKind} from the list.</p>
         )}
       </div>
     </div>

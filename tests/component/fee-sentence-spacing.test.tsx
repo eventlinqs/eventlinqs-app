@@ -148,6 +148,34 @@ export function weldedJoins(text: string): string[] {
   return found
 }
 
+/*
+ * THE THREE MODULES ARE LOADED AT FILE SCOPE, NOT INSIDE THE TESTS, AND THAT IS
+ * A FIX RATHER THAN A TIDY-UP.
+ *
+ * Each `it()` used to begin `await import('@/components/templates/...')`, which
+ * put a COLD VITE TRANSFORM of the platform's two largest marketing pages
+ * inside the region vitest times against `testTimeout`. Warm, the /organisers
+ * test runs in about 1.9 seconds. Cold, on 19 September 2026, it took 18.7, and
+ * in the push gate, cold and beside the rest of the suite, it went past 30 and
+ * refused a tree with nothing wrong with it:
+ *
+ *     FAIL |component| tests/component/fee-sentence-spacing.test.tsx >
+ *       /organisers states its fee as a sentence > has no numeral welded to the
+ *       word after it
+ *     Error: Test timed out in 30000ms.
+ *
+ * The timeout was not the defect and raising it would have hidden this: the
+ * defect is that the timed region measured the BUNDLER rather than the markup
+ * the file is about. A top-level `await import` moves the transform into module
+ * loading, which `testTimeout` does not govern, so what is timed is the render
+ * and the assertion. `vi.mock` is hoisted above every import by vitest, so the
+ * mocks above still apply; `tests/component/push-subscription.test.tsx` loads
+ * its module the same way for the same reason.
+ */
+const { PricingPage } = await import('@/components/templates/PricingPage')
+const { OrganisersLandingPage } = await import('@/components/templates/OrganisersLandingPage')
+const { PayoutCalculator } = await import('@/components/features/organisers/payout-calculator')
+
 describe('the detector itself', () => {
   it('catches both reported shapes and stays quiet on correct copy', () => {
     expect(weldedJoins('3.5% + AUD 0.99per paid ticket sold')).toContain('9per')
@@ -161,7 +189,6 @@ describe('the detector itself', () => {
 
 describe('/pricing states its fee as a sentence', () => {
   it('has no numeral welded to the word after it', async () => {
-    const { PricingPage } = await import('@/components/templates/PricingPage')
     const html = renderToStaticMarkup(await PricingPage())
     const text = textOf(html)
 
@@ -180,7 +207,6 @@ describe('/organisers states its fee as a sentence', () => {
     // content read "AUD 0.99per paid ticket sold" too. It was found by adding
     // the surface to this file rather than by reading the source, which is the
     // argument for the test rendering rather than grepping.
-    const { OrganisersLandingPage } = await import('@/components/templates/OrganisersLandingPage')
     const html = renderToStaticMarkup(await OrganisersLandingPage())
     const text = textOf(html)
 
@@ -191,7 +217,6 @@ describe('/organisers states its fee as a sentence', () => {
 
 describe('the payout calculator states its fee as a sentence', () => {
   it('has no amount welded to the word before it', async () => {
-    const { PayoutCalculator } = await import('@/components/features/organisers/payout-calculator')
     const html = renderToStaticMarkup(
       createElement(PayoutCalculator, {
         rates: { platformFeePercent: 3.5, platformFeeFixedCents: 99 },

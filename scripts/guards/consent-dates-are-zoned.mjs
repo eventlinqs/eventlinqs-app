@@ -40,18 +40,56 @@
  * quietly a day out for half of every day.
  *
  * ---------------------------------------------------------------------------
- * THE TWO CLAUSES.
+ * THE SECOND DEFECT, 19 September 2026, AND IT WAS THIS GUARD'S OWN BLIND SPOT.
+ *
+ * The clauses below were written the day the ledger was fixed, and they read
+ * three getters and two formatters. They could not see the COMMONEST way to
+ * render a UTC date at all: slicing the first ten characters off an ISO string.
+ * An ISO timestamp is UTC by definition, so `iso.slice(0, 10)` IS the UTC
+ * calendar date, and four live renderings in this very path did exactly that
+ * while this guard printed OK over all four:
+ *
+ *   src/app/admin/(authed)/matches/page.tsx       the matcher run's own date
+ *   src/app/admin/(authed)/matches/match-run-form the event picker's label
+ *   src/app/admin/(authed)/pricing/targets/route  the event date beside every
+ *                                                 result in the fee-override
+ *                                                 target picker
+ *   src/lib/consent/decide.ts, twice              the consent door's own
+ *                                                 evidence sentences, stored as
+ *                                                 the detail of every
+ *                                                 marketing_send_skip row
+ *
+ * TWO OF THOSE WERE ALSO OUTSIDE THE SCOPE LIST, which is the other half of the
+ * blind spot: the list named the audience and campaign screens and not the
+ * matcher, the attribution, the network, the analytics or the pricing screens,
+ * which are the same path with different headings. The scope now names all of
+ * them, and the forecast, and it is the reason the file count is printed.
+ *
+ * ---------------------------------------------------------------------------
+ * THE THREE CLAUSES.
  *
  *   1. NO UNZONED RENDERING IN SCOPE. Within the consent, audience, campaigner,
- *      matching, attribution, proof and growth path, and the marketing and
- *      admin surfaces built on them, a file may not call getUTCDate(),
- *      getUTCMonth() or getUTCFullYear(), and may not call a toLocale*String
- *      formatter or construct an Intl.DateTimeFormat without naming a timeZone.
+ *      matching, attribution, proof, forecast and growth path, and the
+ *      marketing and admin surfaces built on them, a file may not call
+ *      getUTCDate(), getUTCMonth() or getUTCFullYear(), and may not call a
+ *      toLocale*String formatter or construct an Intl.DateTimeFormat without
+ *      naming a timeZone.
  *
  *   2. THE LEDGER DELEGATES. src/lib/consent/sentences.ts must render through
  *      the shared platform formatter rather than rolling its own, because the
  *      whole point of the shared module is that one place formats a date and is
  *      never allowed to guess the zone.
+ *
+ *   3. NO DATE CUT OUT OF AN ISO STRING. In the same scope, `.toISOString()`
+ *      may not be followed by a slice, and nothing whose name says it is a date
+ *      or a timestamp may have its first ten characters taken. Both produce the
+ *      UTC calendar date with no formatter anywhere for clause 1 to see.
+ *
+ *      THERE IS NO ESCAPE HATCH AND NOTHING IN SCOPE NEEDS ONE, checked rather
+ *      than assumed. A UTC day KEY for a counter is legitimate arithmetic and is
+ *      exactly what the paragraph below permits, but it belongs in a named
+ *      helper outside the marketing path rather than inline on a surface, and
+ *      there is no such key in this scope today.
  *
  * WHAT IS DELIBERATELY NOT IN SCOPE, so a pass is not read as more than it is.
  * UTC ARITHMETIC IS FINE AND IS NOT TOUCHED: setUTCDate for adding a day,
@@ -93,9 +131,16 @@ const SCOPE = [
   'src/lib/attribution',
   'src/lib/proof',
   'src/lib/growth',
+  'src/lib/forecast',
   'src/app/admin/(authed)/audience',
   'src/app/admin/(authed)/campaigns',
+  'src/app/admin/(authed)/matches',
+  'src/app/admin/(authed)/attribution',
+  'src/app/admin/(authed)/network',
+  'src/app/admin/(authed)/analytics',
+  'src/app/admin/(authed)/pricing',
   'src/app/marketing',
+  'src/app/forecast',
 ]
 
 const LEDGER_SENTENCES = 'src/lib/consent/sentences.ts'
@@ -113,6 +158,34 @@ const LOCALE_FORMATTER = /\.toLocale(Date|Time)?String\s*\(/
 const INTL_FORMATTER = /new Intl\.DateTimeFormat\s*\(/
 /** A zone is named somewhere in the same call. */
 const NAMES_A_ZONE = /timeZone\s*:/
+
+/**
+ * CLAUSE 3'S TWO MATCHERS. Regex LITERALS, for the reason given above.
+ *
+ * ISO_SLICE is unambiguous: an ISO string is UTC, so cutting it up produces the
+ * UTC calendar date and no formatter exists for clause 1 to judge.
+ *
+ * NAMED_SLICE is the same cut made on a value that is already a stored
+ * timestamp, which is how three of the four live defects were written:
+ * `run.started_at`, `event.startDate`, `deciding.occurredAt`. It captures the
+ * identifier so the decision is made about the NAME rather than about ten
+ * characters of anything, because `hex.slice(0, 8)` is a UUID and
+ * `rows.slice(0, 10)` is a page of a list, and a guard that fires on those is a
+ * guard somebody switches off.
+ */
+const ISO_SLICE = /\.toISOString\s*\(\s*\)\s*\.\s*(?:slice|substring|substr)\s*\(/
+const NAMED_SLICE = /([A-Za-z_$][\w$]*)\s*\.\s*(?:slice|substring|substr)\s*\(\s*0\s*,\s*10\s*\)/
+
+/**
+ * Whether an identifier says it holds a date or a timestamp. The capital letter
+ * is load bearing in the camelCase arm: `format` ends in "at" and `candidate`
+ * ends in "date", and neither is a date.
+ */
+function namesADate(identifier) {
+  if (/(?:_at|_date|_time|_timestamp|_on)$/.test(identifier)) return true
+  if (/[a-z0-9](?:At|Date|Time|Timestamp|Iso|ISO|On)$/.test(identifier)) return true
+  return ['date', 'time', 'timestamp', 'iso', 'instant', 'occurred', 'stamp'].includes(identifier)
+}
 
 const failures = []
 const notes = []
@@ -193,6 +266,80 @@ for (const abs of files) {
   }
 }
 
+/* --------------------------------------------------------------------------
+ * Clause 3: no date cut out of an ISO string.
+ * ------------------------------------------------------------------------ */
+let slicesJudged = 0
+let sliceCallsSeen = 0
+
+/*
+ * THE MATCHERS PROVE THEMSELVES BEFORE THEY ARE TRUSTED, on every run.
+ *
+ * On 18 September 2026 a guard in this tree shipped BLIND: its pattern was
+ * built inside a template literal, where a backslash class is not an escape, so
+ * it compiled to nonsense and reported PASS over a file whose third line was the
+ * thing it banned. Only the red half of a drill found it. These probes are the
+ * cheap version of that drill and they run every time: two strings that MUST
+ * match and two that MUST NOT, so a matcher that has stopped matching fails here
+ * rather than going quietly green over the defect.
+ */
+const PROBES = [
+  { pattern: ISO_SLICE, sample: 'new Date(x).toISOString().slice(0, 10)', shouldMatch: true },
+  { pattern: ISO_SLICE, sample: 'new Date(x).toISOString()', shouldMatch: false },
+  { pattern: NAMED_SLICE, sample: 'row.started_at.slice(0, 10)', shouldMatch: true },
+  { pattern: NAMED_SLICE, sample: 'rows.slice(0, 5)', shouldMatch: false },
+]
+for (const probe of PROBES) {
+  if (probe.pattern.test(probe.sample) !== probe.shouldMatch) {
+    failures.push(
+      `clause 3's matcher ${probe.pattern.source} ${probe.shouldMatch ? 'no longer matches' : 'now matches'} ` +
+        `"${probe.sample}". The clause cannot be trusted until that is true again.`,
+    )
+  }
+}
+if (namesADate('hex') || namesADate('rows') || namesADate('format') || namesADate('candidate')) {
+  failures.push('namesADate has widened and now calls a non-date identifier a date.')
+}
+if (!namesADate('started_at') || !namesADate('occurredAt') || !namesADate('startDate')) {
+  failures.push('namesADate has narrowed and no longer recognises a stored timestamp.')
+}
+for (const abs of files) {
+  const rel = relative(ROOT, abs).split('\\').join('/')
+  const code = stripComments(readFileSync(abs, 'utf8'))
+
+  let m
+  const iso = new RegExp(ISO_SLICE.source, 'g')
+  while ((m = iso.exec(code)) !== null) {
+    slicesJudged += 1
+    failures.push(
+      `${rel}:${lineOf(code, m.index)} cuts a date out of .toISOString(). An ISO string is UTC by ` +
+        'definition, so those characters ARE the UTC calendar date and there is no formatter here ' +
+        'for anything to judge. Render it through src/lib/dates/event-time.ts: an event date takes ' +
+        "the EVENT's zone, anything else takes PLATFORM_TIME_ZONE.",
+    )
+  }
+
+  sliceCallsSeen += (code.match(/\.(?:slice|substring|substr)\s*\(/g) ?? []).length
+
+  const named = new RegExp(NAMED_SLICE.source, 'g')
+  while ((m = named.exec(code)) !== null) {
+    if (!namesADate(m[1])) continue
+    slicesJudged += 1
+    failures.push(
+      `${rel}:${lineOf(code, m.index)} takes the first ten characters of ${m[1]}, which is a stored ` +
+        'timestamp, so the result is the UTC calendar date. That is a day early for every event ' +
+        'starting before its own offset and for every record made after 10:00 local.',
+    )
+  }
+}
+if (filesSwept > 0 && sliceCallsSeen === 0) {
+  failures.push(
+    'clause 3 found no slice, substring or substr call anywhere in scope. That is not a clean tree, ' +
+      'it is a matcher or a sweep that has stopped working: this path has always contained several.',
+  )
+}
+notes.push(`${sliceCallsSeen} slice-shaped call(s) considered, ${slicesJudged} of them a date cut from a timestamp`)
+
 if (filesSwept === 0) {
   failures.push(
     'the scope matched no files at all. Either the marketing path moved or this guard is pointed ' +
@@ -255,6 +402,8 @@ declareWork('consent-dates-are-zoned', {
     'directory in the consent and marketing path': SCOPE.length,
     'file swept': filesSwept,
     'date rendering call judged': callsJudged,
+    'slice-shaped call considered': sliceCallsSeen,
+    'matcher self-probe run': PROBES.length,
   },
   zeroIsFine: {
     'date rendering call judged':

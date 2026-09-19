@@ -7,6 +7,7 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readCampaign } from '@/lib/campaigner/read'
 import { runCampaign } from '@/lib/campaigner/run'
+import { ReadFailed } from '@/lib/supabase/read-or-throw'
 import type { ConsentChannel } from '@/lib/consent/purposes'
 
 export type CampaignActionResult = { ok: boolean; message: string }
@@ -95,7 +96,29 @@ export async function runCampaignAction(
   const channelCode = String(formData.get('channel_code') ?? '').trim()
   if (!campaignId || !channelCode) return { ok: false, message: 'Pick a campaign and a channel first.' }
 
-  const result = await runCampaign({ campaignId, channelCode: channelCode as ConsentChannel })
+  /*
+   * A READ THE CAMPAIGNER COULD NOT MAKE IS REPORTED AS ITSELF.
+   *
+   * Every read in `runCampaign` goes through `readOrThrow`, so a database fault
+   * arrives here as a `ReadFailed` instead of turning into a false sentence
+   * about a person in `marketing_send_skip`. It is answered with words rather
+   * than left to the error boundary, because the operator needs to know that
+   * NOTHING was recorded, which a generic error page cannot tell them. Nothing
+   * is audit-logged for a run that never ran.
+   */
+  let result
+  try {
+    result = await runCampaign({ campaignId, channelCode: channelCode as ConsentChannel })
+  } catch (error) {
+    if (!(error instanceof ReadFailed)) throw error
+    return {
+      ok: false,
+      message:
+        'The campaigner could not read what it needs from the database, so nothing was sent and ' +
+        'nothing was recorded about anybody. Nobody has been skipped and no reason has been ' +
+        'stored against them. Try again.',
+    }
+  }
 
   await recordAuditEvent({
     action: 'admin.campaigns.run',

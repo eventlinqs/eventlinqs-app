@@ -356,6 +356,36 @@ export const MESSAGE_TYPES: readonly MessageTypeDeclaration[] = [
     what: 'An auth, webhook or Connect-divergence sentinel fired.',
   },
   {
+    /*
+     * MONEY FIX A3 LAYER THREE. Money settled on the platform balance that the
+     * platform does not record as owed onward to any organiser.
+     *
+     * DECLARED `concernsOrganiserEvent: false`, AND THE REASON IS WRITTEN HERE
+     * RATHER THAN ASSUMED, because the money in question is an organiser's and
+     * the governing sentence of this item is that the owner is never the only
+     * human who learns about it.
+     *
+     * What this alarm reports is that the PLATFORM'S OWN BOOKS are wrong: a
+     * charge arrived and nothing recorded whose it is. Until that is
+     * investigated there is no fact to tell an organiser, and the
+     * `unattributable_platform_charge` kind has no organiser to tell at all.
+     * The established reading in this file is the same: `platform_sentinel_alert`
+     * covers Connect divergence, which is likewise about organisers' accounts
+     * being described wrongly, and is declared false for the same reason.
+     *
+     * THE ORGANISER-FACING LEG IS DEFERRED, NAMED, NOT FORGOTTEN. Once A4 lands
+     * and an order carries its destination, fee retained and amount due, "your
+     * balance is short by X on this event" becomes a statable fact with a
+     * suppression record behind it, and it gets its own type and its own row.
+     * Recorded in C:\dev\REVIEW-QUEUE.md and BUILD-LOG.md under MONEY FIX A3
+     * layer three.
+     */
+    type: 'platform_settlement_unrouted',
+    roles: ['platform_owner'],
+    concernsOrganiserEvent: false,
+    what: 'The daily settlement reconciliation found money on the platform balance that nothing records as owed onward.',
+  },
+  {
     type: 'platform_transport_probe',
     roles: ['platform_owner'],
     concernsOrganiserEvent: false,

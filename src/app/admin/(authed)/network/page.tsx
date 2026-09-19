@@ -3,6 +3,7 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ilikeAnyOf } from '@/lib/supabase/or-filter'
 import { getDemandSignal } from '@/lib/admin/demand-signal'
 import { FOUNDING_SPOT_CAP, foundingCityName } from '@/lib/founding/invites'
 import { getWaitlistCities } from '@/lib/waitlist/city-waitlist'
@@ -90,11 +91,16 @@ export default async function AdminNetworkPage({
     .from('organisations')
     .select('id, name, slug, is_founding, founding_fee_free_until, created_at')
   if (foundingQuery) {
-    // PostgREST `or` takes a comma-separated filter list; a comma inside the
-    // pattern would split it, so one is refused rather than silently searching
-    // for half a name.
-    const safe = foundingQuery.replace(/[,()]/g, ' ').trim()
-    termQuery = termQuery.or(`name.ilike.%${safe}%,slug.ilike.%${safe}%`)
+    /*
+     * ESCAPED, NOT STRIPPED, and the comment that stood here was wrong about
+     * what its own code did. It said a comma was "refused rather than silently
+     * searching for half a name", and what it actually did was replace `,()`
+     * with spaces and search for the mangled string: an organisation called
+     * "Rock, Paper" was looked for as "Rock  Paper" and was not found, silently,
+     * on the screen an owner grants a Founding window from. Quoting the value
+     * makes it literal, so the name is searched for as typed.
+     */
+    termQuery = termQuery.or(ilikeAnyOf(['name', 'slug'], foundingQuery))
   }
   const { data: termRows } = await termQuery
     .order('founding_fee_free_until', { ascending: false, nullsFirst: false })

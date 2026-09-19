@@ -1,4 +1,6 @@
 import 'server-only'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
@@ -104,7 +106,9 @@ async function loadClicksForEvents(eventIds: string[]): Promise<Map<string, Reso
   const channelNames = new Map<string, string>()
   {
     // The channel code table, bounded rather than left to a silent ceiling.
-    const { data } = await admin.from('marketing_channel').select('code, display_name').limit(100)
+    const data = await readOrThrow('attribution channel names', () =>
+      admin.from('marketing_channel').select('code, display_name').limit(100),
+    )
     for (const row of data ?? []) channelNames.set(row.code, row.display_name)
   }
 
@@ -213,7 +217,11 @@ export async function resolveAndStoreOrder(orderId: string): Promise<StoredAttri
 
     const emailByUser = new Map<string, string>()
     if (order.user_id) {
-      const { data: profile } = await admin.from('profiles').select('id, email').eq('id', order.user_id).maybeSingle()
+      // The buyer's address is an identity rung. Losing it silently drops the
+      // order to a weaker rung, or to no attribution at all.
+      const profile = await readOrThrow('attribution buyer profile', () =>
+        admin.from('profiles').select('id, email').eq('id', order.user_id).maybeSingle(),
+      )
       if (profile?.email) emailByUser.set(profile.id, profile.email)
     }
 
@@ -224,11 +232,13 @@ export async function resolveAndStoreOrder(orderId: string): Promise<StoredAttri
       spentClickIds(orderId),
     ])
 
-    const { data: signalRow } = await admin
-      .from('marketing_order_signal')
-      .select('click_id, query_identifiers, cookie_present')
-      .eq('order_id', orderId)
-      .maybeSingle()
+    const signalRow = await readOrThrow('attribution order signal', () =>
+      admin
+        .from('marketing_order_signal')
+        .select('click_id, query_identifiers, cookie_present')
+        .eq('order_id', orderId)
+        .maybeSingle(),
+    )
 
     const decision = resolveOne({
       order: order as OrderRow,
@@ -369,13 +379,16 @@ export async function backfillAttributions(options: { onlyMissing?: boolean } = 
 
   const emailByUser = new Map<string, string>()
   const userIds = [...new Set(todo.map(o => o.user_id).filter((v): v is string => Boolean(v)))]
-  for (let i = 0; i < userIds.length; i += 200) {
-    const { data } = await admin
-      .from('profiles')
-      .select('id, email')
-      .in('id', userIds.slice(i, i + 200))
-      // Keyed by id, so at most the 200 asked for.
-      .limit(200)
+  /*
+   * A CHUNK THAT FAILED IS NOT TWO HUNDRED BUYERS WITH NO ADDRESS. Every one of
+   * them would drop to a weaker attribution rung, or to none at all, and the
+   * figures would read as merely disappointing rather than as wrong.
+   */
+  for (const chunk of chunkInFilterValues(userIds, { maxValues: 200 })) {
+    const data = await readOrThrow('attribution buyer profiles', () =>
+      // Keyed by id, so at most the ids asked for.
+      admin.from('profiles').select('id, email').in('id', chunk).limit(chunk.length),
+    )
     for (const p of data ?? []) if (p.email) emailByUser.set(p.id, p.email)
   }
 

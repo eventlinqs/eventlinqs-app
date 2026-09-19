@@ -671,8 +671,37 @@ async function walk({ browser, width, slug, label, complete }) {
 
     await page.waitForURL(/\/orders\//, { timeout: 60_000 }).catch(() => {})
     if (!/\/orders\//.test(page.url())) {
+      /*
+       * THIS FAULT HAS NOW FIRED TWICE AND BOTH TIMES IT WAS UNDIAGNOSABLE.
+       *
+       * 13 September 2026 and 19 September 2026, both on the FREE journey and
+       * both at 1440 only, with 390 and 768 green in the same run. The first was
+       * traced to a harness race: a flat 4000ms wait measured the skeleton, the
+       * form fill matched nothing, and an empty submit was refused by validation
+       * while this line blamed the confirmation redirect. That cause is CLOSED:
+       * `settle()` replaced the flat wait, and a fill that matches nothing now
+       * fails two steps earlier with its own message.
+       *
+       * So the 19 September occurrence is a DIFFERENT cause, and nothing was
+       * kept that could say what it was. The step is re-run by the next gate,
+       * `.tmp/gate-checkout-server.log` is overwritten by it, and no screenshot
+       * is taken on this path, so the page the buyer was left on is gone before
+       * anybody looks.
+       *
+       * A fault on the buyer's own money path that cannot be diagnosed after the
+       * fact is the worst kind to leave alone, so the evidence is captured HERE,
+       * at the moment it fires, rather than hoped for later.
+       */
+      const stranded = await page
+        .evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 400))
+        .catch(() => '(the page could not be read)')
+      mkdirSync(join(OUT, `${width}`), { recursive: true })
+      const shot = join(OUT, `${width}`, `${label}-FAULT-no-confirmation.png`)
+      await page.screenshot({ path: shot, fullPage: true }).catch(() => {})
       fail(
-        `${label} @ ${width}: after submitting, the buyer is on ${page.url().replace(BASE, '')} rather than a confirmation`,
+        `${label} @ ${width}: after submitting, the buyer is on ${page.url().replace(BASE, '')} rather than a confirmation. ` +
+          `On screen: "${stranded}". Capture: ${shot}. The server log for this run is ` +
+          `.tmp/gate-checkout-server.log and the NEXT gate run overwrites it, so copy it now.`,
       )
       return
     }
