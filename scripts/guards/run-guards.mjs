@@ -483,6 +483,13 @@
  *                              element. Holds the growing variant too: giving it a
  *                              height or a max-height restores the 390 clipping it
  *                              exists to end (637px of content in a 439px box)
+ *   sr-only-cannot-escape-a-scroller  a horizontally scrolling box that holds an
+ *                              sr-only label is a containing block. sr-only is
+ *                              position:absolute, and an absolute element is only
+ *                              clipped by an ancestor that is its containing block, so
+ *                              the label was laid out at its position in the FULL scroll
+ *                              width: /admin/users measured 569 against a 390 viewport
+ *                              and the phone rendered the screen at 69 per cent
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -1576,6 +1583,15 @@ const GUARDS = [
   // broader versions of clause 1 were withdrawn for false positives (a modal's
   // max-h-[85vh], then the 44px touch target); the scope is now a height on the
   // SAME ELEMENT as the hero class. Drilled red four ways and green again.
+  // 19 September 2026. sr-only is position:absolute, and an absolutely positioned
+  // element is clipped by an ancestor's overflow ONLY when that ancestor is its
+  // containing block. Seven admin screens and one organiser report laid a
+  // screen-reader label out at its position in the FULL table width, so the
+  // document grew past the phone and the layout viewport zoomed the whole screen
+  // out: /admin/users 569 and /admin/events 594 against 390. /admin/orders, with
+  // identical table markup and no sr-only inside it, measured 390 and is the
+  // control. Drilled red on five of the eight and green again.
+  'scripts/guards/sr-only-cannot-escape-a-scroller.mjs',
   'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the

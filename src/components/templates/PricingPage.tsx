@@ -293,7 +293,7 @@ export async function PricingPage() {
             tabIndex={0}
             role="region"
             aria-label="Published pricing compared across platforms"
-            className="mt-5 overflow-x-auto rounded-card border border-[var(--surface-2)] bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-accent)]"
+            className="relative mt-5 overflow-x-auto rounded-card border border-[var(--surface-2)] bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-accent)]"
           >
             <table className="w-full min-w-[560px] text-sm">
               <thead>
