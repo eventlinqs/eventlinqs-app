@@ -577,6 +577,9 @@
  *                             contexts, because one trapped inside a transformed
  *                             ancestor PAINTS correctly and cannot be clicked, and
  *                             nothing else on this platform can see that.
+ *   the-recovery-stop-list-is-whole  a marketing withdrawal reaches the
+ *                             abandoned-checkout sender, and its suppression list
+ *                             is read whole rather than to the first 1,000 names
  *   recovery-only-writes-to-people-who-asked  every recovery message names the
  *                             recorded engagement that authorised it, the six
  *                             refusals still exist, and no message goes without a
@@ -2081,6 +2084,23 @@ const GUARDS = [
   // Both drilled red and green (C:\dev\EVIDENCE\D2\guard-recovery-drill.txt).
   'scripts/guards/fillrate-reads-only-the-ledger.mjs',
   'scripts/guards/recovery-only-writes-to-people-who-asked.mjs',
+
+  // Lane B, 20 September 2026. A THIRD guard on the same engine, and it exists
+  // because the two above were both satisfied while the sender was mailing
+  // people who had unsubscribed.
+  //
+  // the-recovery-stop-list-is-whole: a marketing withdrawal reaches the
+  // abandoned-checkout sender, and its suppression list is read whole. Measured
+  // on TEST before the fix: 147 people carried a suppression event and
+  // recovery_suppressions held 19 rows, because the engine reads only its own
+  // table (correctly, by D2) and nothing carried the ledger across. The same
+  // read was also unbounded, and Supabase stops at 1,000 rows in silence
+  // (Content-Range: 0-999/14364, measured the same day), which on a suppression
+  // list fails OPEN. no-silent-row-ceiling could not see it: its scope is nine
+  // directories and src/lib/fillrate is not one of them.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-RECOVERYSTOP\drills.txt).
+  'scripts/guards/the-recovery-stop-list-is-whole.mjs',
 
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context

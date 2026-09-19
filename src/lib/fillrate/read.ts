@@ -19,6 +19,7 @@
  * than reasoned about.
  */
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { SOURCE_SYSTEM } from '@/lib/ledger/types'
 import { identityFingerprints, identityHash } from '@/lib/ledger/identity'
 import type { DemandRow, SlotFacts, SlotRow } from './due'
@@ -180,16 +181,40 @@ export async function factsFor(slotId: string, db: Db = createAdminClient()): Pr
  * WHO HAS SAID STOP. Read whole rather than per address, because the set is
  * small by construction and a per address round trip inside a loop is how a
  * sweep becomes a timeout.
+ *
+ * READ WHOLE MEANS PAGED, and for eleven days it did not. This select carried no
+ * bound, and Supabase caps one response at a fixed number of rows, 1,000 by
+ * default (https://supabase.com/docs/reference/javascript/select, fetched
+ * 2026-09-19). The cap is silent: HTTP 200, `error` null, a full-looking array.
+ * Measured against this project on 20 September 2026 rather than assumed:
+ *
+ *     Content-Range: 0-999/14364      an unbounded select on a 14,364 row table
+ *
+ * A SUPPRESSION LIST IS THE ONE SHAPE WHERE A SHORT READ FAILS OPEN. Every other
+ * truncation in this engine withholds a message; this one sends it, to the
+ * 1,001st person who asked it not to. `src/lib/matching/run.ts` already pages
+ * this very table for the same reason and says so in its own comment: "A
+ * truncated recovery_suppressions means mailing somebody who asked not to be."
+ * This read simply never got the same treatment.
+ *
+ * WHAT IS IN THIS LIST, and where the rest of it comes from. The engine owns
+ * this table and reads nothing else, which is the D2 invariant. EventLinqs'
+ * OWN consent ledger is a different store and the engine may not look at it, so
+ * the source system keeps this table truthful from outside:
+ * `src/lib/recovery/consent-stops.ts` copies every facilitated-marketing
+ * withdrawal in before each sweep. Point the engine at a gym tomorrow and that
+ * file is replaced; this function is not.
  */
 export async function suppressedAddresses(db: Db = createAdminClient()): Promise<Set<string>> {
-  const { data, error } = await db
-    .from('recovery_suppressions')
-    .select('contact_email')
-    .eq('source_system', SOURCE)
-  if (error) throw new Error(`the engine could not read the suppression list: ${error.message}`)
-  return new Set(
-    ((data ?? []) as Array<{ contact_email: string }>).map(row => row.contact_email.trim().toLowerCase()),
+  const rows = await readEveryRow<{ contact_email: string }>('the suppression list', (from, to) =>
+    db
+      .from('recovery_suppressions')
+      .select('contact_email')
+      .eq('source_system', SOURCE)
+      .order('id', { ascending: true })
+      .range(from, to),
   )
+  return new Set(rows.map(row => row.contact_email.trim().toLowerCase()))
 }
 
 /**

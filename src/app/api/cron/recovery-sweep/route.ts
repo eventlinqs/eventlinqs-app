@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { sweepAbandonedCheckouts } from '@/lib/fillrate/engine'
 import { eventLinqsLinks } from '@/lib/recovery/links'
+import { syncConsentStopsIntoRecovery } from '@/lib/recovery/consent-stops'
 import { sendingRates } from '@/lib/fillrate/rates'
 
 export const dynamic = 'force-dynamic'
@@ -32,6 +33,27 @@ export async function GET(request: NextRequest) {
   if (denied) return denied
 
   try {
+    /*
+     * WHO HAS SAID STOP, BEFORE ANYTHING ASKS WHO TO WRITE TO.
+     *
+     * The engine reads only its own suppression table (close-out D2), so a
+     * withdrawal recorded in EventLinqs' consent ledger never reached it: not
+     * from the preferences page, not from the digest unsubscribe page, not from
+     * the Gmail one-click button. 147 people were on the ledger and 19 were on
+     * the engine's list. This reconciles the two, immediately before the sweep
+     * that reads the list, so the window in which they can disagree is one run.
+     *
+     * IT IS DELIBERATELY NOT IN THE `try` BELOW AS SOMETHING TO SHRUG OFF. It
+     * throws on a partial read, and a sweep that could not establish who has
+     * unsubscribed must not then decide who to mail: that is the one failure
+     * where carrying on sends mail to people who asked for none. The catch
+     * answers 500 and the next hourly run tries again, having sent nothing.
+     */
+    const stops = await syncConsentStopsIntoRecovery()
+    console.log(
+      `[cron/recovery-sweep] consent stops: ${stops.stopped} on the ledger, ${stops.added} newly copied in, ${stops.alreadyHeld} already held`,
+    )
+
     const rates = await sendingRates()
     const result = await sweepAbandonedCheckouts(eventLinqsLinks, new Date(), rates)
     console.log(

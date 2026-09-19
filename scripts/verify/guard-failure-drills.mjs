@@ -5551,6 +5551,106 @@ const DRILLS = [
    * written, 23505 on the AU region default at version 3, so "nobody would
    * write it that way" is not a defence: somebody already had.
    */
+  /*
+   * the-recovery-stop-list-is-whole (lane B, 20 September 2026), seven drills.
+   *
+   * The guard exists because two guards already stood over this engine and both
+   * were satisfied while the abandoned-checkout sender mailed people who had
+   * unsubscribed. Measured on TEST before the fix: 147 people carried a
+   * suppression event, recovery_suppressions held 19 rows, and the read of it
+   * was unbounded against a server that stops at 1,000 rows in silence
+   * (Content-Range: 0-999/14364, measured the same day).
+   */
+  {
+    name: 'the suppression list goes back to an unbounded read of the first thousand names',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find:
+      "      .from('recovery_suppressions')\n" +
+      "      .select('contact_email')\n" +
+      "      .eq('source_system', SOURCE)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace:
+      "      .from('recovery_suppressions')\n" +
+      "      .select('contact_email')\n" +
+      "      .eq('source_system', SOURCE),",
+    expect: 'reads recovery_suppressions with no bound',
+  },
+  {
+    /*
+     * The reversal condition's own numerator. Truncate it while the denominator
+     * stays an exact count and both rates read smaller than they are, so the
+     * brake that should stop the engine holds off exactly when it ought to fire.
+     */
+    name: 'the reversal condition goes back to counting only the first page of suppressions',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/rates.ts',
+    find:
+      "        .from('recovery_suppressions')\n" +
+      "        .select('reason')\n" +
+      "        .eq('source_system', SOURCE_SYSTEM)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace:
+      "        .from('recovery_suppressions')\n" +
+      "        .select('reason')\n" +
+      "        .eq('source_system', SOURCE_SYSTEM),",
+    expect: 'reads recovery_suppressions with no bound',
+  },
+  {
+    name: 'the bridge stops asking the consent ledger who has withdrawn',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/recovery/consent-stops.ts',
+    find: 'await addressesStoppedForFacilitatedMail(db)',
+    replace: 'await Promise.resolve(new Set())',
+    expect: 'does not call addressesStoppedForFacilitatedMail',
+  },
+  {
+    name: 'the bridge writes the suppression row itself instead of through the engine',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/recovery/consent-stops.ts',
+    find: "    await suppress(address, 'unsubscribed', db)",
+    replace: "    await db.from('recovery_suppressions').upsert({ contact_email: address })",
+    expect: "does not write through the engine's own suppress()",
+  },
+  {
+    name: 'the sweep stops reconciling at all, and every unit test still passes',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/app/api/cron/recovery-sweep/route.ts',
+    find: '    const stops = await syncConsentStopsIntoRecovery()',
+    replace: '    const stops = { stopped: 0, added: 0, alreadyHeld: 0 }',
+    expect: 'never calls syncConsentStopsIntoRecovery()',
+  },
+  {
+    /*
+     * ORDER IS THE WHOLE CLAUSE. A sweep that reconciles afterwards has already
+     * mailed the people it was about to learn had unsubscribed.
+     */
+    name: 'the sweep reconciles AFTER it sweeps, which is the same as not at all',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/app/api/cron/recovery-sweep/route.ts',
+    find: '    const stops = await syncConsentStopsIntoRecovery()',
+    replace:
+      '    await sweepAbandonedCheckouts(eventLinqsLinks, new Date())\n' +
+      '    const stops = await syncConsentStopsIntoRecovery()',
+    expect: 'AFTER sweepAbandonedCheckouts()',
+  },
+  {
+    /*
+     * The boundary the fix could have broken. Close-out D2: the engine reads
+     * the ledger and nothing else, so the bridge lives outside it and the
+     * engine never reaches back across.
+     */
+    name: 'the engine reaches back across its own boundary and imports the bridge',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/rates.ts',
+    find: "import { readEveryRow } from '@/lib/supabase/read-every-row'",
+    replace:
+      "import { readEveryRow } from '@/lib/supabase/read-every-row'\n" +
+      "import { syncConsentStopsIntoRecovery } from '@/lib/recovery/consent-stops'",
+    expect: 'imports the bridge',
+  },
   {
     name: 'the fee writer goes back to inserting directly and leaving the old row open',
     guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
