@@ -2456,9 +2456,25 @@ const ROOT = join(HERE, '..', '..')
  * holding 10 cases.
  *   466 + 1 = 467 files
  *   6068 + 10 = 6078 tests
+ *
+ * 2026-09-19, close-out C8B.1. The document-weight reporter grew rows one at a
+ * time, and every one of them was added because a reader noticed a number that
+ * did not add up - the class-attribute row exists only because somebody asked
+ * what the other third of a 1,007,295-byte homepage was. `composition` asks it
+ * instead: the document is partitioned into markup and flight EXACTLY, each
+ * named category is measured in the markup half, and the remainder is reported
+ * as UNEXPLAINED rather than waiting for the next curious reader.
+ *
+ * MEASURED: 467 files, 6085 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: no new FILE (the cases went into an existing one), and 7 new
+ * cases in tests/unit/perf/document-weight.test.ts, which took it from 43
+ * to 50.
+ *   467 + 0 = 467 files
+ *   6078 + 7 = 6085 tests
  */
 const MIN_FILES = 467
-const MIN_TESTS = 6078
+const MIN_TESTS = 6085
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

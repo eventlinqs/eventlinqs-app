@@ -198,6 +198,16 @@ for (const path of paths) {
    * Next's `fill` images set six positioning declarations inline on every
    * image, which is the framework's and not ours. `repeats` is the actionable
    * half. */
+  /* What the named rows do NOT explain. This exists because the class-attribute
+   * row was found by a reader asking, once, what the other third of a
+   * 1,007,295-byte homepage was, and the next third should not have to wait for
+   * somebody to be curious on a different day. */
+  console.log(
+    `    composition: markup ${a.composition.markupBytes} B + flight ${a.composition.flightBytes} B ` +
+      `= ${a.composition.documentBytes} B (exact: ${a.composition.partitionExact}); of the markup, ` +
+      `srcset ${a.composition.srcsetMarkup}, class ${a.composition.classMarkup}, style ${a.composition.styleMarkup}, ` +
+      `UNEXPLAINED ${a.composition.unexplainedMarkup} B (${a.composition.unexplainedSharePercent.toFixed(1)}%)`,
+  )
   console.log(
     `    inline styles ${a.styleAttributes.bytes} B in ${a.styleAttributes.occurrences} attributes ` +
       `(${a.styleAttributes.sharePercent.toFixed(1)}% of the document), ${a.styleAttributes.distinct} distinct, ` +
