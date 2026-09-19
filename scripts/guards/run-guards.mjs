@@ -145,6 +145,13 @@
  *                              number, currency or percentage is typed into the
  *                              rendering path, and the database refuses a stored
  *                              snapshot holding a figure nothing sources
+ *   discovery-consent-is-asked-once-and-never-preticked
+ *                              AQ1. No consent checkbox anywhere is pre ticked, the
+ *                              discovery question is asked on exactly one surface,
+ *                              every reader of the audience asks the consent door or
+ *                              is registered as counts-only, the placement decision
+ *                              log refuses UPDATE, and the two percent rule is decided
+ *                              in whole numbers rather than in floating point
  *   consent-ledger-is-evidence  the consent and suppression ledgers refuse UPDATE and
  *                              DELETE at the database, an event cannot carry empty
  *                              wording or a null tenant, no audience row can exist for
@@ -1265,6 +1272,15 @@ const GUARDS = [
   // path registry (and a marketing one without calling the resolver), and no
   // unsubscribe or privacy rights surface reads a session.
   'scripts/guards/consent-ledger-is-evidence.mjs',
+  // AQ1. The discovery question is asked in exactly one place, is never pre
+  // ticked on any surface, and a buyer who declines it is excluded from every
+  // query that chooses who hears about somebody else's event. Also holds the
+  // placement decision log append only, because the conversion measurement
+  // reads that log to decide what before and after mean, and holds the two
+  // percent rule in integer arithmetic, because 580/1000 is 57.99999999999999
+  // in binary floating point and an exact two point fall was moving the capture
+  // off the surface that sells tickets on a rounding error.
+  'scripts/guards/discovery-consent-is-asked-once-and-never-preticked.mjs',
   // The 1,000-row ceiling. Supabase truncates a response at a project setting
   // this repository cannot read, with HTTP 200 and no error, so a read that
   // states no bound is a read that may already be wrong. Measured the day this

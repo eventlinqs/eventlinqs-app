@@ -99,10 +99,21 @@ export function EmailSignupPanel() {
               </button>
             </div>
             <label className="mt-4 flex items-start gap-3 text-left text-sm text-white/80">
+              {/*
+                UNTICKED, AND IT WAS NOT. Close-out AQ1, 19 September 2026.
+                This box carried `defaultChecked`, so the sentence beside it,
+                "I agree to receive community event updates from EventLinqs",
+                was agreed to by nobody and stored as `consent: true`. Under the
+                Spam Act 2003 a pre ticked box is not express consent, and AQ1
+                states the rule for the whole platform: never pre ticked, never
+                bundled with the terms, never inferred. The server action
+                already refuses an unticked box with a message, so the flow is
+                unchanged; the difference is that the agreement is now the
+                person's rather than the form's.
+              */}
               <input
                 type="checkbox"
                 name="consent"
-                defaultChecked
                 disabled={pending}
                 className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border border-white/30 bg-transparent accent-[var(--brand-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
               />

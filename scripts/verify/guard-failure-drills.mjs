@@ -5215,6 +5215,59 @@ const DRILLS = [
     replace: `const DRIVES_A_BROWSER = /never-matches-a-browser-at-all/; const UNUSED_DRIVES = /${BSL}bpage${BSL}.(goto|getByRole|locator)${BSL}s*${BSL}(/`,
     expect: 'REFUSING: the calibration probe',
   },
+
+  /*
+   * discovery-consent-is-asked-once-and-never-preticked (lane B, 19 September 2026), five drills, one per clause.
+   *
+   * The guard shipped having ALREADY found one live defect: the homepage email
+   * signup panel rendered "I agree to receive community event updates from
+   * EventLinqs" beside a box carrying `defaultChecked`, and stored consent:
+   * true for an agreement nobody made. The first drill puts that back, because
+   * that is the state the tree was in this morning.
+   */
+  {
+    name: 'a consent checkbox is pre ticked again, which is where the tree actually was',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/components/features/home/email-signup-panel.tsx',
+    find: `                type="checkbox"
+                name="consent"`,
+    replace: `                type="checkbox"
+                name="consent"
+                defaultChecked`,
+    expect: 'renders a consent checkbox and carries defaultChecked',
+  },
+  {
+    name: 'the payment step stops reading the placement, so it asks whatever the placement says',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/app/checkout/[reservation_id]/page.tsx',
+    find: 'resolveCapturePlacement(admin)',
+    replace: "Promise.resolve('checkout' as const)",
+    expect: 'does not resolve the capture placement',
+  },
+  {
+    name: 'a discovery reader stops asking the consent door',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/lib/matching/run.ts',
+    find: 'filterPermittedRecipients(admin, emails,',
+    replace: 'Promise.resolve(new Set<string>()), ((admin, emails,',
+    expect: 'reads public.audience_members',
+  },
+  {
+    name: 'the placement decision log stops refusing UPDATE',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'supabase/migrations/20260919000110_marketing_capture_placement.sql',
+    find: 'before update on public.marketing_capture_placement',
+    replace: 'before insert on public.marketing_capture_placement',
+    expect: 'does not refuse UPDATE',
+  },
+  {
+    name: 'the two percent rule goes back to comparing a rounded delta',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/lib/consent/capture-conversion-math.ts',
+    find: '} else if (fallExceedsLimit(b, a, fallLimit)) {',
+    replace: '} else if (deltaPoints < -fallLimit) {',
+    expect: 'no longer decides the two percent rule in whole numbers',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

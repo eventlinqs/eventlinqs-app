@@ -2616,6 +2616,78 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_capture_answer: {
+        Row: {
+          created_at: string
+          placement: string
+          reservation_id: string
+          ticked: boolean
+          wording: string
+          wording_purpose: string
+          wording_version: string
+        }
+        Insert: {
+          created_at?: string
+          placement: string
+          reservation_id: string
+          ticked: boolean
+          wording: string
+          wording_purpose: string
+          wording_version: string
+        }
+        Update: {
+          created_at?: string
+          placement?: string
+          reservation_id?: string
+          ticked?: boolean
+          wording?: string
+          wording_purpose?: string
+          wording_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_capture_answer_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: true
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_capture_answer_wording_purpose_fkey"
+            columns: ["wording_purpose"]
+            isOneToOne: false
+            referencedRelation: "consent_purposes"
+            referencedColumns: ["purpose"]
+          },
+        ]
+      }
+      marketing_capture_placement: {
+        Row: {
+          created_at: string
+          decided_by: string | null
+          effective_from: string
+          id: string
+          placement: string
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          decided_by?: string | null
+          effective_from?: string
+          id?: string
+          placement: string
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          decided_by?: string | null
+          effective_from?: string
+          id?: string
+          placement?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       marketing_channel: {
         Row: {
           code: string

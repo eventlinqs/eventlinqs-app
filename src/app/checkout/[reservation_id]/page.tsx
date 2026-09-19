@@ -10,6 +10,8 @@ import { getGuestSessionId } from '@/lib/auth/guest-session'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { getCurrentConsentWording } from '@/lib/consent/ledger'
 import { FACILITATED_MARKETING_PURPOSE } from '@/lib/consent/purposes'
+import { resolveCapturePlacement } from '@/lib/consent/capture-placement'
+import { readCarriedAnswer } from '@/lib/consent/capture-carrier'
 import { CheckoutTrustSignals } from '@/components/features/checkout/CheckoutTrustSignals'
 import { Button } from '@/components/ui/Button'
 import type { FeePassType, TicketTier, EventAddon } from '@/types/database'
@@ -108,9 +110,25 @@ export default async function CheckoutPage({ params }: Props) {
    * evidence of anything. The server action re-reads both before recording
    * anything, so this is the presentation half and never the enforcement.
    */
-  const platformWording = (await isFeatureEnabled('audience_capture'))
-    ? await getCurrentConsentWording(admin, FACILITATED_MARKETING_PURPOSE)
-    : null
+  /*
+   * AQ1. AND WHERE THE QUESTION IS ASKED, WHICH IS A THIRD CONDITION.
+   *
+   * The reversal condition moves the capture to the ticket page rather than
+   * removing it, so this page asks only while the placement says checkout. The
+   * carried answer is checked as well, and it is the stronger of the two: a
+   * buyer who already answered on the ticket page must never be asked a second
+   * time, not even if the placement moved back under them mid purchase. Asking
+   * twice is how a person says no once and yes once about the same thing.
+   */
+  const [capturePlacement, carriedAnswer] = await Promise.all([
+    resolveCapturePlacement(admin),
+    readCarriedAnswer(admin, reservation_id),
+  ])
+  const askHere = capturePlacement === 'checkout' && carriedAnswer === null
+  const platformWording =
+    askHere && (await isFeatureEnabled('audience_capture'))
+      ? await getCurrentConsentWording(admin, FACILITATED_MARKETING_PURPOSE)
+      : null
 
   // Determine if this is a seat reservation or GA
   const rawItems = reservation.items as
