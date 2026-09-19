@@ -205,7 +205,27 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
         </header>
 
         {overrides.length > 0 ? (
-          <div className="relative mb-6 overflow-x-auto rounded-lg border border-white/[0.08]">
+          /*
+            KEYBOARD-REACHABLE, because it scrolls. The table is min-w-[680px]
+            inside an overflow-x-auto box, so at 390 it is a horizontally
+            scrolling region, and a scrolling region that cannot take focus
+            cannot be scrolled without a mouse. Found by driving /admin/pricing
+            at 390 with an override present: axe reported
+            `scrollable-region-focusable`, serious, one node. It appears ONLY at
+            mobile width and ONLY once there is a row to overflow, which is why
+            every earlier pass over this screen was clean.
+
+            The shape is the one src/app/admin/(authed)/health/page.tsx already
+            uses for the same problem: tabIndex, role="region" and a name, so
+            the region is announced as something rather than as an unlabelled
+            box a screen reader lands in.
+          */
+          <div
+            className="relative mb-6 overflow-x-auto rounded-lg border border-white/[0.08]"
+            tabIndex={0}
+            role="region"
+            aria-label="Per-organiser and per-event fee overrides"
+          >
             <table className="w-full min-w-[680px] text-sm">
               <thead>
                 <tr className="border-b border-white/[0.08] text-left text-white/50">
