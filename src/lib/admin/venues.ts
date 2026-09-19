@@ -134,29 +134,42 @@ export async function writeVenueShareRate(
   session: AdminSession
 ): Promise<{ ok: boolean; changed: boolean; error?: string }> {
   const admin = db()
+
+  /*
+   * THIS FUNCTION IS NOT CALLED BY ANYTHING AND THE PROGRAMME IS STILL REMOVED.
+   *
+   * The Venue Revenue Sharing Program was removed by founder decision on
+   * 5 July 2026 and nothing reaches this function: the organiser venue-revenue
+   * page and the accrual call sites went with it. It is left in place as
+   * history, exactly as the constitution says.
+   *
+   * What changed on 2026-09-20 is HOW it would write, not whether it runs. It
+   * carried the same defect as writePricingField in src/lib/admin/pricing.ts:
+   * an INSERT with effective_until NULL that left the previous row open, which
+   * uq_pricing_rules_one_open_per_scope has refused since 2026-07-27. Leaving a
+   * second copy of a known-broken writer in the tree, dead or not, is a
+   * landmine for whoever revives it and an exemption the writer guard would
+   * have to carry forever. Routing it through the one lawful writer costs five
+   * lines and resurrects nothing.
+   */
   const current = await readVenueShareRate(input.countryCode, input.currency)
-  if (current.percentage !== null && current.percentage === input.percentage) {
-    return { ok: true, changed: false }
-  }
-  const nextVersion = (current.version ?? 0) + 1
-  const { error } = await admin.from('pricing_rules').insert({
-    rule_type: 'venue_revenue_share_percentage',
-    country_code: input.countryCode,
-    currency: input.currency,
-    event_type: 'ALL',
-    organiser_tier: 'ALL',
-    organisation_id: null,
-    event_id: null,
-    value_type: 'percentage',
-    version: nextVersion,
-    effective_from: nowIso(),
-    effective_until: null,
-    created_by: session.userId,
-    value_percentage: input.percentage,
-    value_cents: null,
-    value_integer: null,
+  const { data, error } = await admin.rpc('write_pricing_rule', {
+    p_rule_type: 'venue_revenue_share_percentage',
+    p_country_code: input.countryCode,
+    p_currency: input.currency,
+    p_organisation_id: null,
+    p_event_id: null,
+    p_value_type: 'percentage',
+    p_value_percentage: input.percentage,
+    p_value_cents: null,
+    p_value_integer: null,
+    p_created_by: session.userId,
   })
   if (error) return { ok: false, changed: false, error: error.message }
+  const result = (data ?? null) as { changed: boolean; version: number | null } | null
+  if (!result) return { ok: false, changed: false, error: 'write_pricing_rule returned no result' }
+  if (!result.changed) return { ok: true, changed: false }
+  const nextVersion = result.version
 
   await invalidatePricingRule({
     ruleType: 'venue_revenue_share_percentage',

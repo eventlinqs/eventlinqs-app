@@ -145,6 +145,18 @@ export interface PricingWriteScope {
 }
 
 /**
+ * What public.write_pricing_rule returns. `version` is null exactly when
+ * `changed` is false, because an unchanged value is not written and therefore
+ * has no new version to report.
+ */
+interface PricingWriteResult {
+  changed: boolean
+  old_value: number | null
+  new_value: number
+  version: number | null
+}
+
+/**
  * Inserts a new version row for one field of one scope, invalidates the cache,
  * and audit-logs old -> new. No-op (returns changed: false) when the value is
  * unchanged so we do not churn versions. Works for the region default and for
@@ -164,46 +176,55 @@ export async function writePricingField(
   const valueType = FIELD_VALUE_TYPE[input.field]
   const orgId = input.scope?.eventId ? null : (input.scope?.organisationId ?? null)
   const eventId = input.scope?.eventId ?? null
-
-  // Find the current effective row for THIS exact scope (event > org > region),
-  // so the new version sits on top of the right history.
-  let curQuery = admin
-    .from('pricing_rules')
-    .select('id, version, value_type, value_percentage, value_cents, value_integer')
-    .eq('rule_type', input.field)
-    .order('version', { ascending: false })
-    .limit(1)
-  if (eventId) {
-    curQuery = curQuery.eq('event_id', eventId)
-  } else {
-    curQuery = curQuery.eq('country_code', input.countryCode).eq('currency', input.currency).is('event_id', null)
-    curQuery = orgId ? curQuery.eq('organisation_id', orgId) : curQuery.is('organisation_id', null)
-  }
-  const { data: cur } = await curQuery.maybeSingle()
-
-  const oldValue = cur ? rowValue(cur) : null
   const newValue = valueType === 'percentage' ? input.value : Math.round(input.value)
-  if (oldValue !== null && oldValue === newValue) return { ok: true, changed: false }
 
-  const nextVersion = (cur?.version ?? 0) + 1
-  const { error } = await admin.from('pricing_rules').insert({
-    rule_type: input.field,
-    country_code: input.countryCode,
-    currency: input.currency,
-    event_type: 'ALL',
-    organiser_tier: 'ALL',
-    organisation_id: orgId,
-    event_id: eventId,
-    value_type: valueType,
-    version: nextVersion,
-    effective_from: new Date().toISOString(),
-    effective_until: null,
-    created_by: session.userId,
-    value_percentage: valueType === 'percentage' ? newValue : null,
-    value_cents: valueType === 'fixed' ? newValue : null,
-    value_integer: valueType === 'integer' ? newValue : null,
+  /*
+   * THE WRITE GOES THROUGH public.write_pricing_rule AND NOWHERE ELSE.
+   *
+   * This function used to read the current row, then INSERT a new one with
+   * effective_until NULL, leaving the previous row open. On 2026-07-27
+   * migration 20260727000002 added uq_pricing_rules_one_open_per_scope, whose
+   * own COMMENT states the obligation that creates: "Writers must stamp the
+   * previous row before inserting the next version." No writer was changed that
+   * day, so from that date every save on /admin/pricing was refused by the
+   * index, region defaults included. Driven on TEST before this was rewritten:
+   *
+   *   insert ... ('platform_fee_percentage','AU','AUD',...,4,now(),null,7.5)
+   *   ERROR: 23505 duplicate key ... "uq_pricing_rules_one_open_per_scope"
+   *
+   * Closing the old row and inserting the new one CANNOT be done from here as
+   * two calls: supabase-js has no transaction, so between them the scope has no
+   * open row and the resolver reads through to the next precedence level, and a
+   * failure on the second call leaves the scope with no open rule at all. The
+   * database function does both in one statement, under a scope-keyed advisory
+   * lock so two admins saving the same region cannot both write the same
+   * version. It returns the old value, so the audit entry below still records
+   * old -> new without a second read that could disagree with the write.
+   */
+  const { data, error } = await admin.rpc('write_pricing_rule', {
+    p_rule_type: input.field,
+    p_country_code: input.countryCode,
+    p_currency: input.currency,
+    p_organisation_id: orgId,
+    p_event_id: eventId,
+    p_value_type: valueType,
+    p_value_percentage: valueType === 'percentage' ? newValue : null,
+    p_value_cents: valueType === 'fixed' ? newValue : null,
+    p_value_integer: valueType === 'integer' ? newValue : null,
+    p_created_by: session.userId,
   })
   if (error) return { ok: false, changed: false, error: error.message }
+
+  const result = (data ?? null) as PricingWriteResult | null
+  if (!result) {
+    return { ok: false, changed: false, error: 'write_pricing_rule returned no result' }
+  }
+  // Unchanged is decided in the database, under the same lock as the write, so
+  // it cannot be decided against a value that moved a moment later.
+  if (!result.changed) return { ok: true, changed: false }
+
+  const oldValue = result.old_value
+  const nextVersion = result.version
 
   await invalidatePricingRule({
     ruleType: input.field as PricingRuleType,

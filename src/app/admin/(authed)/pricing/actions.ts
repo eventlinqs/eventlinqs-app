@@ -14,7 +14,12 @@ import {
 const ScopeSchema = z.object({
   countryCode: z.string().min(2).max(10),
   currency: z.string().length(3),
-  platform_fee_percentage: z.coerce.number().min(0).max(100),
+  // gt(0), not min(0): pricing_rules_value_split_check requires
+  // value_percentage > 0. See the note above OverrideSchema, which carries the
+  // driven evidence. The region form has the same fault as the override form
+  // for any scope with no rule yet, and on TEST that is IE/EUR, which holds
+  // none of the three and so rendered a zero the database would refuse.
+  platform_fee_percentage: z.coerce.number().gt(0).max(100),
   platform_fee_fixed: z.coerce.number().int().min(0).max(100000), // cents
   // ONE FEE (15 August 2026): the two processing-fee amounts were removed from
   // the form and from ADMIN_EDITABLE_FIELDS because nothing charges them. Only
@@ -55,11 +60,33 @@ export async function updateScopePricingAction(formData: FormData): Promise<void
   redirect(`/admin/pricing?status=saved&scope=${encodeURIComponent(countryCode)}&changed=${changed}`)
 }
 
+/*
+ * THE PERCENTAGE BOUND IS `gt(0)`, NOT `min(0)`, AND IT IS NOT A PREFERENCE.
+ *
+ * pricing_rules_value_split_check requires `value_percentage > 0`. Driven on
+ * TEST before this line was changed:
+ *
+ *   insert ... value_percentage 0
+ *   ERROR: 23514 ... violates check constraint "pricing_rules_value_split_check"
+ *
+ * The form used to ship `defaultValue={0}` on this field, so the override form
+ * AS RENDERED submitted the one value the database refuses, and the screen
+ * answered "Could not save ... Check the {scope} ID exists", blaming the target
+ * id for a fault in the fee. A zero platform fee is a real configuration on
+ * this platform and it is expressed by the Founding Organiser waiver
+ * (organisations.founding_fee_free_until), a dated window the charge, the
+ * display and the payout all read identically. It is NOT expressed by a zero
+ * rule, because that would put a second way to say "no fee" into the one table
+ * the fee doctrine says holds exactly one.
+ *
+ * Validating here rather than only in the database is what turns a 23514 into a
+ * sentence the founder can act on.
+ */
 const OverrideSchema = z.object({
   scopeKind: z.enum(['organisation', 'event']),
   targetId: z.string().uuid(),
   currency: z.string().length(3),
-  platform_fee_percentage: z.coerce.number().min(0).max(100),
+  platform_fee_percentage: z.coerce.number().gt(0).max(100),
   platform_fee_fixed: z.coerce.number().int().min(0).max(100000), // cents
 })
 
