@@ -56,6 +56,7 @@ import { randomUUID } from 'node:crypto'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { answerTheCookieBanner } from './lib/cookie-banner.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 const args = process.argv.slice(2)
 let out = null
@@ -679,7 +680,7 @@ try {
   if (adminId) {
     await db.from('admin_users').delete().eq('id', adminId)
     await db.from('profiles').delete().eq('id', adminId)
-    await db.auth.admin.deleteUser(adminId)
+    await tearDownAccountOrFailTheRun(db, adminId)
   }
   console.log(
     `teardown.left-as-found  removed ${reservationsRemoved} unconverted reservation(s) and 1 admin; ` +

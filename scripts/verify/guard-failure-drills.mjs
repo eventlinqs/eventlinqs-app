@@ -5988,6 +5988,51 @@ const DRILLS = [
     replace: '    .map(line => line)',
     expect: 'REFUSING: the calibration probe',
   },
+
+  /*
+   * one-way-to-delete-an-account (lane B, 19 September 2026), four drills.
+   *
+   * THE SAME INCIDENT FROM THE OTHER SIDE. `evidence-outlives-the-account`
+   * guards the CAUSE; this guards the BLINDFOLD that let the cause live for
+   * five days. Every teardown discarded the deletion error and then asserted
+   * "left as found" from a read of `profiles`, which the line above it had
+   * already deleted, so the assertion was true whether or not the account
+   * still existed.
+   *
+   * THE FIRST IS THE LINE AS IT STOOD IN TWENTY DRIVES THIS MORNING.
+   */
+  {
+    name: 'a drive goes back to swallowing the deletion error',
+    guard: `${GUARDS}/one-way-to-delete-an-account.mjs`,
+    file: 'scripts/verify/pl1-loops-drive.mjs',
+    find: 'await tearDownAccountOrFailTheRun(db, id)',
+    replace: 'await db.auth.admin.deleteUser(id).catch(() => {})',
+    expect: 'calls auth.admin.deleteUser directly',
+  },
+  {
+    name: 'a baselined file is converted and its debt line is left behind',
+    guard: `${GUARDS}/one-way-to-delete-an-account.mjs`,
+    file: 'scripts/guards/one-way-to-delete-an-account.mjs',
+    find: "  { path: 'scripts/verify/quiet-hours-proof.mjs', lane: 'C', why: 'the notification router' },",
+    replace: "  { path: 'scripts/verify/a-file-no-lane-has-ever-written.mjs', lane: 'C', why: 'a drill' },",
+    expect: 'Delete the line',
+  },
+  {
+    name: 'the one place stops telling an account that was already gone from a refusal',
+    guard: `${GUARDS}/one-way-to-delete-an-account.mjs`,
+    file: 'scripts/verify/lib/teardown-account.mjs',
+    find: 'export function accountIsGone',
+    replace: 'function accountIsGone',
+    expect: 'no longer has',
+  },
+  {
+    name: 'the one place prints the refusal and stops failing the run',
+    guard: `${GUARDS}/one-way-to-delete-an-account.mjs`,
+    file: 'scripts/verify/lib/teardown-account.mjs',
+    find: 'process.exitCode = 1',
+    replace: 'void 0',
+    expect: 'no longer fails the run',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

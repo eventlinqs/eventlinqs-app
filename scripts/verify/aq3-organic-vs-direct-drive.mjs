@@ -60,6 +60,7 @@ import { createClient } from '@supabase/supabase-js'
 import { sitemapFootprint } from './lib/sitemap-footprint.mjs'
 import { answerTheCookieBanner as answerTheBanner } from './lib/cookie-banner.mjs'
 import { channelForVisit } from '@/lib/growth/traffic-channel'
+import { tearDownAccount } from './lib/teardown-account.mjs'
 
 const answerTheCookieBanner = page => answerTheBanner(page, { answer: 'decline' })
 
@@ -319,8 +320,8 @@ async function purge(why) {
   for (const user of mine) {
     await db.from('admin_users').delete().eq('id', user.id)
     await db.from('profiles').delete().eq('id', user.id)
-    const { error } = await db.auth.admin.deleteUser(user.id)
-    if (error) stuck.push(`${user.email}: ${error.message}`)
+    const removal = await tearDownAccount(db, user.id)
+    if (!removal.gone) stuck.push(`${user.email}: ${removal.detail}`)
   }
   console.log(
     `[${LANE}] purge (${why}): ${orgIds.length} organisation(s), ${events} event(s), ` +

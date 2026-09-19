@@ -48,6 +48,7 @@ import { randomUUID } from 'node:crypto'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { answerTheCookieBanner } from './lib/cookie-banner.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 const args = process.argv.slice(2)
 let out = null
@@ -221,7 +222,7 @@ try {
     const left = await shim(`/get/${encodeURIComponent(CACHE_KEY)}`).catch(() => ({ result: 'unreadable' }))
     if (adminId) {
       await db.from('admin_users').delete().eq('id', adminId)
-      await db.auth.admin.deleteUser(adminId).catch(() => {})
+      await tearDownAccountOrFailTheRun(db, adminId)
     }
     const { count } = await db
       .from('admin_users')

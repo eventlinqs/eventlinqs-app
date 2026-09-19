@@ -62,6 +62,7 @@ import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { sitemapFootprint, laneFixturesStillPublished } from './lib/sitemap-footprint.mjs'
 import { answerTheCookieBanner as answerTheBanner } from './lib/cookie-banner.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 /*
  * THE CONSENT BANNER. One shared implementation (scripts/verify/lib/cookie-banner.mjs),
@@ -536,10 +537,10 @@ async function teardown() {
     await db.from('events').delete().eq('id', eventId)
   }
   if (fixture.organisationId) await db.from('organisations').delete().eq('id', fixture.organisationId)
-  if (fixture.ownerId) await db.auth.admin.deleteUser(fixture.ownerId).catch(() => {})
+  if (fixture.ownerId) await tearDownAccountOrFailTheRun(db, fixture.ownerId)
   if (fixture.adminId) {
     await db.from('admin_users').delete().eq('id', fixture.adminId)
-    await db.auth.admin.deleteUser(fixture.adminId).catch(() => {})
+    await tearDownAccountOrFailTheRun(db, fixture.adminId)
   }
 }
 

@@ -69,6 +69,7 @@ import { createClient } from '@supabase/supabase-js'
 import { chromium, BASE, linkFromInbox } from '../journeys/harness.mjs'
 import { ANALYTICS_HOSTS, ANALYTICS_PROVIDERS } from '../../src/lib/analytics/providers.ts'
 import { judgeAcceptedLoads, GATE_SCRIPT_IDS, THE_COMMAND } from './lib/an1-accepted-loads.mjs'
+import { tearDownAccount } from './lib/teardown-account.mjs'
 
 const args = process.argv.slice(2)
 let out = null
@@ -527,15 +528,9 @@ try {
     // eighteen lane B accounts accumulated on TEST unnoticed until AQ3's
     // teardown refused to build a fixture (19 September 2026). A teardown that
     // cannot fail is not a teardown.
-    const { error: deleteError } = await db.auth.admin.deleteUser(createdUserId)
+    const removal = await tearDownAccount(db, createdUserId)
     const { data: gone } = await db.from('profiles').select('id').eq('id', createdUserId).maybeSingle()
-    check(
-      'an1.teardown.left-as-found',
-      !gone && !deleteError,
-      deleteError
-        ? `the profile is removed but the auth account ${createdUserId} is NOT: ${deleteError.message}`
-        : `the drive account ${createdUserId} is removed`,
-    )
+    check('an1.teardown.left-as-found', !gone && removal.gone, removal.detail)
   }
   if (browser) await browser.close()
 }

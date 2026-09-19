@@ -15,6 +15,7 @@ import { randomUUID } from 'node:crypto'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { answerTheCookieBanner } from './lib/cookie-banner.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 const BASE = process.env.LB_BASE_URL ?? 'http://localhost:3100'
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
@@ -113,7 +114,7 @@ try {
   if (browser) await browser.close().catch(() => {})
   if (adminId) {
     await db.from('admin_users').delete().eq('id', adminId)
-    await db.auth.admin.deleteUser(adminId).catch(() => {})
+    await tearDownAccountOrFailTheRun(db, adminId)
   }
   const { count } = await db.from('admin_users').select('id', { count: 'exact', head: true }).eq('id', adminId ?? '00000000-0000-0000-0000-000000000000')
   console.log(`  teardown: ${count ?? 0} probe admin row(s) remain`)

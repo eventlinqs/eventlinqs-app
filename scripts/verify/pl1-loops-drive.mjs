@@ -55,6 +55,7 @@ import { sitemapFootprint, laneFixturesStillPublished } from './lib/sitemap-foot
 import { PNG } from 'pngjs'
 import { createClient } from '@supabase/supabase-js'
 import { answerTheCookieBanner as answerTheBanner } from './lib/cookie-banner.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 /*
  * THE CONSENT BANNER. One shared implementation (scripts/verify/lib/cookie-banner.mjs),
@@ -284,7 +285,7 @@ async function teardown() {
   for (const id of [fixture.referredId, fixture.organiserId]) {
     if (!id) continue
     await db.from('profiles').update({ referred_by: null }).eq('id', id)
-    await db.auth.admin.deleteUser(id).catch(() => {})
+    await tearDownAccountOrFailTheRun(db, id)
   }
 }
 

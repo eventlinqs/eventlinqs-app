@@ -200,6 +200,11 @@
  *                              is sealed with a digest, no client component ships its 819
  *                              rows, and no surface reports the organic search figure
  *                              without reading the direct one beside it (AQ3)
+ *   one-way-to-delete-an-account  a drive deletes an account in ONE place, which can
+ *                              tell an account that was already gone from a deletion that
+ *                              was REFUSED, and fails the run on the second; the files not
+ *                              yet converted are listed with the lane that owns them and
+ *                              the list can only shrink
  *   evidence-outlives-the-account  no table whose UPDATE or DELETE is refused outright
  *                              carries a foreign key that cascades into it, because the
  *                              referential action runs its statement whether or not a row
@@ -2273,6 +2278,15 @@ const GUARDS = [
   // reported a clean tear-down. The guard replays the migrations in order,
   // honours later drops, and refuses the pair.
   'scripts/guards/evidence-outlives-the-account.mjs',
+
+  // The same incident from the other side. `evidence-outlives-the-account`
+  // guards the CAUSE (a cascading key into a table that refuses UPDATE); this
+  // guards the BLINDFOLD that let the cause survive five days, which is the
+  // more general fault: every teardown discarded the deletion error and then
+  // asserted "left as found" from a read of `profiles`, which the line above it
+  // had already deleted. One place deletes an account now, and it fails the run
+  // on a refusal instead of printing a clean tear-down and exiting 0.
+  'scripts/guards/one-way-to-delete-an-account.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

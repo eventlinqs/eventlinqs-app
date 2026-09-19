@@ -48,6 +48,7 @@ import { createClient } from '@supabase/supabase-js'
 import { chromium, BASE, note, signIn } from '../journeys/harness.mjs'
 import { buildFixture } from './lib/refund-proof-fixture.mjs'
 import { answerTheCookieBanner } from './lib/cookie-banner.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 const args = process.argv.slice(2)
 let out = null
@@ -663,7 +664,7 @@ try {
     await db.from('events').delete().eq('id', fixture.event.id)
     await db.from('organisations').delete().eq('id', fixture.org.id)
     await db.from('profiles').delete().eq('id', fixture.ownerId)
-    await db.auth.admin.deleteUser(fixture.ownerId).catch(() => {})
+    await tearDownAccountOrFailTheRun(db, fixture.ownerId)
   }
 
   const keysAfter = await db.from('organiser_api_keys').select('id', { count: 'exact', head: true })

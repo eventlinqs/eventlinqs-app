@@ -50,6 +50,7 @@ import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { answerTheCookieBanner } from './lib/cookie-banner.mjs'
 import { buildFixture, purgeFixtures } from './lib/refund-proof-fixture.mjs'
+import { tearDownAccountOrFailTheRun } from './lib/teardown-account.mjs'
 
 const args = process.argv.slice(2)
 let out = null
@@ -508,7 +509,7 @@ try {
   }
   if (sharerId) {
     await db.from('profiles').delete().eq('id', sharerId)
-    await db.auth.admin.deleteUser(sharerId).catch(() => {})
+    await tearDownAccountOrFailTheRun(db, sharerId)
   }
   await purgeFixtures(db, line => console.log(`  purge: ${line}`), FIXTURE_SLUG_PREFIX).catch(err =>
     console.error(`  purge failed: ${err.message}`),
