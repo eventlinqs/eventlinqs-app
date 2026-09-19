@@ -162,16 +162,43 @@ export async function factsFor(slotId: string, db: Db = createAdminClient()): Pr
     else boughtHashes.add(fingerprint)
   }
 
-  const { data: sends, error: sendError } = await db
-    .from('recovery_sends')
-    .select('contact_email, message_number')
-    .eq('slot_id', slotId)
-  if (sendError) throw new Error(`the engine could not read what it already sent: ${sendError.message}`)
+  /*
+   * WHAT WE ALREADY SENT, ALL OF IT, AND THIS IS THE SECOND SUPPRESSION SET IN
+   * THIS ENGINE THAT FAILS OPEN WHEN IT IS SHORT.
+   *
+   * `alreadySent` is SUBTRACTED from the people about to be written to. A name
+   * missing from it is a person who gets the same message a second time, which
+   * is the one failure this engine cannot apologise its way out of: the
+   * recipient asked for nothing, is being chased about a checkout they
+   * abandoned, and now hears it twice.
+   *
+   * The read was unbounded, and Supabase caps one response at a fixed number of
+   * rows, 1,000 by default
+   * (https://supabase.com/docs/reference/javascript/select, fetched
+   * 2026-09-19), in silence: HTTP 200, `error` null, a full-looking array.
+   * Measured against this project on 20 September 2026:
+   *
+   *     Prefer: count=exact    HTTP 206   Content-Range: 0-999/14381
+   *     no count requested     HTTP 200   Content-Range: 0-999/*
+   *
+   * THIS ONE IS NOT THEORETICAL AT TODAY'S VOLUME. It filters by slot, so the
+   * cliff is a thousand sends on ONE slot, and the busiest slot on TEST already
+   * carries 452. Three messages to three hundred and fifty abandoners crosses
+   * it, which is one mid-sized show.
+   */
+  const sends = await readEveryRow<{ contact_email: string; message_number: number }>(
+    `what the engine already sent on ${slotId}`,
+    (from, to) =>
+      db
+        .from('recovery_sends')
+        .select('contact_email, message_number')
+        .eq('slot_id', slotId)
+        .order('id', { ascending: true })
+        .range(from, to),
+  )
 
   const alreadySent = new Set(
-    ((sends ?? []) as Array<{ contact_email: string; message_number: number }>).map(
-      row => `${row.contact_email.trim().toLowerCase()}::${row.message_number}`,
-    ),
+    sends.map(row => `${row.contact_email.trim().toLowerCase()}::${row.message_number}`),
   )
 
   return { boughtHashes, refundedHashes, unitsSold, alreadySent }
@@ -361,15 +388,28 @@ export async function joinsOn(slotId: string, db: Db = createAdminClient()): Pro
   }))
 }
 
-/** Every hold on a slot, live or lapsed, so an expiry can pass down the list. */
+/**
+ * Every hold on a slot, live or lapsed, so an expiry can pass down the list.
+ *
+ * EVERY MEANS EVERY. This read was unbounded, and a hold missing from it is a
+ * seat the engine believes is free: the same unit offered to a second person,
+ * or an expiry that never passes down the list because the hold it should have
+ * lapsed was never seen. It filters by slot and the busiest slot on TEST
+ * carries two holds, so the cliff is far away today, and it is the same silent
+ * cliff as everywhere else: HTTP 200, `error` null, a full-looking array
+ * (https://supabase.com/docs/reference/javascript/select, fetched 2026-09-19).
+ */
 export async function holdsOn(slotId: string, db: Db = createAdminClient()): Promise<HoldRow[]> {
-  const { data, error } = await db
-    .from('recovery_holds')
-    .select('id, demand_entry_id, contact_email, inventory_class, units, expires_at, claimed_at, released_at')
-    .eq('slot_id', slotId)
-  if (error) throw new Error(`the engine could not read the holds on ${slotId}: ${error.message}`)
+  const data = await readEveryRow<Record<string, unknown>>(`the holds on ${slotId}`, (from, to) =>
+    db
+      .from('recovery_holds')
+      .select('id, demand_entry_id, contact_email, inventory_class, units, expires_at, claimed_at, released_at')
+      .eq('slot_id', slotId)
+      .order('id', { ascending: true })
+      .range(from, to),
+  )
 
-  return ((data ?? []) as Array<Record<string, unknown>>).map(row => ({
+  return (data as Array<Record<string, unknown>>).map(row => ({
     id: Number(row.id),
     demandEntryId: Number(row.demand_entry_id),
     contactEmail: String(row.contact_email ?? '').trim().toLowerCase(),

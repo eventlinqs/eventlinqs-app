@@ -5828,7 +5828,7 @@ const DRILLS = [
     expect: 'coalesces the count',
   },
   /*
-   * the-recovery-stop-list-is-whole (lane B, 20 September 2026), seven drills.
+   * the-recovery-stop-list-is-whole (lane B, 20 September 2026), eleven drills.
    *
    * The guard exists because two guards already stood over this engine and both
    * were satisfied while the abandoned-checkout sender mailed people who had
@@ -5852,6 +5852,62 @@ const DRILLS = [
       "      .select('contact_email')\n" +
       "      .eq('source_system', SOURCE),",
     expect: 'reads recovery_suppressions with no bound',
+  },
+  /*
+   * Clause 1 widened from one table to the three the engine owns on
+   * 20 September 2026, four more drills. The send log is the one nearest the
+   * cliff: 452 rows on the busiest slot on TEST against a ceiling of 1,000, and
+   * short it writes to somebody a second time.
+   */
+  {
+    name: 'the already-sent set goes back to an unbounded read, and somebody is written to twice',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find:
+      "        .select('contact_email, message_number')\n" +
+      "        .eq('slot_id', slotId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .select('contact_email, message_number')\n        .eq('slot_id', slotId),",
+    expect: 'reads recovery_sends with no bound',
+  },
+  {
+    name: 'the holds on a slot go back to an unbounded read, and a held seat is offered twice',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/read.ts',
+    find:
+      "      .select('id, demand_entry_id, contact_email, inventory_class, units, expires_at, claimed_at, released_at')\n" +
+      "      .eq('slot_id', slotId)\n" +
+      "      .order('id', { ascending: true })\n" +
+      '      .range(from, to),',
+    replace:
+      "      .select('id, demand_entry_id, contact_email, inventory_class, units, expires_at, claimed_at, released_at')\n" +
+      "      .eq('slot_id', slotId),",
+    expect: 'reads recovery_holds with no bound',
+  },
+  {
+    name: 'the recovery proof goes back to an unbounded read of what it sent',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/proof.ts',
+    find:
+      "        .select('contact_email, sent_at')\n" +
+      "        .eq('slot_id', slotId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .select('contact_email, sent_at')\n        .eq('slot_id', slotId),",
+    expect: 'reads recovery_sends with no bound',
+  },
+  {
+    name: 'the recovery proof goes back to an unbounded read of the holds it reports',
+    guard: `${GUARDS}/the-recovery-stop-list-is-whole.mjs`,
+    file: 'src/lib/fillrate/proof.ts',
+    find:
+      "          .select('claimed_at, released_at, expires_at')\n" +
+      "          .eq('slot_id', slotId)\n" +
+      "          .order('id', { ascending: true })\n" +
+      '          .range(from, to),',
+    replace: "          .select('claimed_at, released_at, expires_at')\n          .eq('slot_id', slotId),",
+    expect: 'reads recovery_holds with no bound',
   },
   {
     /*
