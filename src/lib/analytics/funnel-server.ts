@@ -1,5 +1,6 @@
 import 'server-only'
 import { captureException } from '@/lib/observability/sentry'
+import { MEASUREMENT_OFF, MEASUREMENT_OFF_VAR } from './measurement-off'
 import type { FunnelStep } from './funnel'
 
 /**
@@ -36,6 +37,12 @@ export async function captureFunnelServer(
     properties?: Record<string, string | number>
   },
 ): Promise<{ sent: boolean; reason?: string }> {
+  // AN1's reversal condition. Asked before the key, because the flag has to
+  // work on an environment that still holds every identifier: a reversal that
+  // only takes effect once somebody also deletes the keys is the manual
+  // procedure it exists to replace.
+  if (MEASUREMENT_OFF) return { sent: false, reason: `measurement is off (${MEASUREMENT_OFF_VAR})` }
+
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
   if (!key) return { sent: false, reason: 'no PostHog key configured' }
   const host = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'

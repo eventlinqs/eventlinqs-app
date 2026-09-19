@@ -109,6 +109,16 @@ export const SHAPES = {
     minLength: 40,
     describe: 'a legacy eyJ JWT or an sb_secret_ key',
   },
+  measurementOff: {
+    // Any value switches measurement off except the two that unambiguously
+    // mean no. The failure direction of a kill switch is "killed": somebody
+    // writing `true` in a hurry must not end up with every tracker still
+    // running while they believe they are off. See
+    // src/lib/analytics/measurement-off.ts.
+    pattern: '^.+$',
+    minLength: 1,
+    describe: 'write 1; any value but 0 or false switches every measurement script off',
+  },
   googleMapId: {
     // A Google Cloud Map ID. The 16-character floor is deliberate: Google's
     // own placeholder, DEMO_MAP_ID, is 11 characters, so a real ID passes and
@@ -1030,6 +1040,21 @@ export const ENV_MANIFEST = [
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.metaPixelId,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'NEXT_PUBLIC_MEASUREMENT_OFF',
+    describe: 'the one flag that removes every analytics and advertising script from the build',
+    requiredOn: [],
+    forbiddenOn: [],
+    optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'AN1 reversal condition: absent is the normal state, in which measurement runs behind the consent banner. It is set only to switch every tracker off at once, and a build without it must succeed everywhere',
+    mustBeSensitive: false,
+    previewBranchScoping: 'allowed',
+    shape: SHAPES.measurementOff,
     paymentCritical: false,
     githubActions: false,
     publicVar: true,

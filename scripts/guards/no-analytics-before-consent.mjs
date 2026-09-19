@@ -42,6 +42,13 @@
  *      drive learns what the browser was given by looking for the gate's script
  *      elements by id; a rename on one side alone leaves it looking for
  *      something that cannot appear and calling the platform unconfigured.
+ *   8. THE ONE KILL SWITCH REACHES EVERY SENDER. AN1's reversal condition is
+ *      one flag that removes all analytics and ad scripts from the build. The
+ *      senders are DERIVED from the files that name a measurement host, minus
+ *      the ones that only describe it in prose, so a fifth sender added
+ *      tomorrow is covered without anybody remembering this clause exists.
+ *      Added 19 September 2026, when the reversal condition turned out to be
+ *      four deletions in three Vercel scopes that did not touch Plausible.
  *
  * WHY IT IS STATIC AND NOT A BROWSER. The registered guards run on `prebuild`,
  * including on the Vercel build host, where there is no server to load a page
@@ -85,6 +92,7 @@ const checks = {
   'gate property asserted': 0,
   'identifier read judged': 0,
   'gate script element judged': 0,
+  'sender judged': 0,
 }
 
 function read(rel) {
@@ -211,9 +219,15 @@ const IDENTIFIER_READ_ALLOWED = [
  *
  * Removal only: stripping can never CREATE a `process.env.X`, so a file that
  * survives this genuinely does not read one.
+ *
+ * `://` IS NOT A COMMENT, and the first version of this did not know that. It
+ * cut every line from `https:` onwards, which in the gate file is where all
+ * three provider hosts live, inside one-line inline snippets. Clause 8 then
+ * swept 1176 files and found no sender at all, and only the zero-work refusal
+ * in declareWork stopped that being reported as a pass.
  */
 function withoutComments(source) {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
 }
 
 const identifierAllowed = new Set(IDENTIFIER_READ_ALLOWED.map(a => a.path))
@@ -270,6 +284,74 @@ if (judgement && gate) {
   }
 }
 
+/* ------------- 8. the one kill switch reaches every sender, not just the gate */
+
+/**
+ * AN1's reversal condition: "for the platform, one configuration flag removes
+ * all analytics and ad scripts from the build."
+ *
+ * WHY THE LIST IS DERIVED AND NOT WRITTEN DOWN. A maintained list of senders is
+ * a list that is correct on the day it is written. So the senders are found the
+ * same way clause 1 finds them: a file that NAMES a measurement host is a file
+ * that can talk to one. Subtract the files that only describe a host in prose,
+ * and every remaining one must consult the flag. A fifth sender added tomorrow
+ * is covered by that sentence without anybody remembering this clause exists.
+ *
+ * PLAUSIBLE IS INCLUDED HERE AND EXCLUDED FROM THE REGISTRY, ON PURPOSE. It is
+ * cookieless and needs no banner, which is why it is not a consent provider;
+ * but it measures, so a reversal that left it running would make "all analytics"
+ * false. The two facts live in different clauses because they are different
+ * questions.
+ */
+const MEASUREMENT_OFF_FILE = 'src/lib/analytics/measurement-off.ts'
+const MEASUREMENT_OFF_SYMBOL = 'MEASUREMENT_OFF'
+const PLAUSIBLE_HOST = 'plausible.io'
+
+/** Files that NAME a measurement host without being able to send to one. */
+const DESCRIBES_ONLY = [
+  { path: PROVIDERS_FILE, why: 'the registry: it is the list of hosts, and a list sends nothing' },
+  { path: 'src/app/legal/cookies/page.tsx', why: 'the cookie policy names each provider in prose' },
+  { path: 'src/app/legal/privacy/page.tsx', why: 'the privacy policy names each provider in prose' },
+  { path: MEASUREMENT_OFF_FILE, why: 'the flag itself, which names the senders it covers so a reader can check them' },
+]
+
+const flagSource = read(MEASUREMENT_OFF_FILE)
+if (flagSource) {
+  checks['gate property asserted'] += 1
+  if (!/export const MEASUREMENT_OFF\b/.test(flagSource)) {
+    faults.push(
+      `${MEASUREMENT_OFF_FILE} no longer exports MEASUREMENT_OFF, so AN1's reversal condition has no flag and every sender below is consulting nothing`,
+    )
+  }
+  checks['gate property asserted'] += 1
+  if (!flagSource.includes('process.env.NEXT_PUBLIC_MEASUREMENT_OFF')) {
+    faults.push(
+      `${MEASUREMENT_OFF_FILE} does not read process.env.NEXT_PUBLIC_MEASUREMENT_OFF as a literal member expression. Next inlines a public value only in that form, so in the browser the flag would be undefined, read as "not off", and the one control that stops every tracker would stop nothing while reporting that it had`,
+    )
+  }
+}
+
+const describesOnly = new Set(DESCRIBES_ONLY.map(d => d.path))
+const senders = []
+for (const rel of walk('src')) {
+  if (describesOnly.has(rel)) continue
+  const source = withoutComments(readFileSync(join(ROOT, rel), 'utf8'))
+  const namesAHost = hosts.some(host => source.includes(host)) || source.includes(PLAUSIBLE_HOST)
+  if (!namesAHost) continue
+  senders.push(rel)
+  checks['sender judged'] += 1
+  if (!source.includes(MEASUREMENT_OFF_SYMBOL)) {
+    faults.push(
+      `${rel} can reach a measurement host and does not consult ${MEASUREMENT_OFF_SYMBOL}. AN1's reversal condition is one flag that removes ALL analytics and ad scripts; a sender outside it makes that sentence false, and the reversal would be discovered to be partial on the day somebody needs it`,
+    )
+  }
+}
+if (senders.length === 0) {
+  faults.push(
+    'no file under src/ names a measurement host, so this clause swept over nothing. Either the registry is empty or the sweep is broken; both mean this guard is reporting that it found nothing because it looked for nothing',
+  )
+}
+
 /* --------------------------------------------- 4. the default is refusal */
 
 const consent = read(CONSENT_FILE)
@@ -306,6 +388,10 @@ console.log(`${TAG} registry: ${envVars.length} provider(s), ${hosts.length} hos
 for (const entry of HOST_ALLOWED) console.log(`${TAG}   ${entry.path}  ${entry.why}`)
 console.log(`${TAG} ${IDENTIFIER_READ_ALLOWED.length} file(s) allowed to READ an identifier, and nothing under scripts/ is:`)
 for (const entry of IDENTIFIER_READ_ALLOWED) console.log(`${TAG}   ${entry.path}  ${entry.why}`)
+console.log(`${TAG} ${senders.length} sender(s) can reach a measurement host, every one consulting ${MEASUREMENT_OFF_SYMBOL}:`)
+for (const rel of senders) console.log(`${TAG}   ${rel}`)
+console.log(`${TAG} ${DESCRIBES_ONLY.length} file(s) name a host without being able to send to one:`)
+for (const entry of DESCRIBES_ONLY) console.log(`${TAG}   ${entry.path}  ${entry.why}`)
 
 if (faults.length > 0) {
   console.error(`${TAG} FAIL: ${faults.length} way(s) a tracker could load for somebody who said no.`)

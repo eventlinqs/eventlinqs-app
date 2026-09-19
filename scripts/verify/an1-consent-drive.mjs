@@ -73,6 +73,22 @@ import { judgeAcceptedLoads, GATE_SCRIPT_IDS, THE_COMMAND } from './lib/an1-acce
 const args = process.argv.slice(2)
 let out = null
 for (let i = 0; i < args.length; i += 1) if (args[i] === '--out') out = args[++i]
+/**
+ * AN1's REVERSAL CONDITION, DRIVEN.
+ *
+ * With this flag the drive asserts the OPPOSITE of check 3: the server holds
+ * all four identifiers AND NEXT_PUBLIC_MEASUREMENT_OFF, so the gate must render
+ * nothing and the browser must ask for nothing, for a person who ACCEPTED.
+ *
+ * It is a separate mode rather than a separate drive because it has to assert
+ * against the same accept click, in the same browser, at the same three
+ * viewports: a reversal proven on a different path is a reversal proven
+ * somewhere else.
+ *
+ *   node scripts/dev/lane-b-serve-with-stripe.mjs --measurement-ids --measurement-off
+ *   ... an1-consent-drive.mjs --out <dir> --expect-measurement-off
+ */
+const expectMeasurementOff = args.includes('--expect-measurement-off')
 if (!out) {
   console.error('FAIL: --out <directory> is required')
   process.exit(1)
@@ -347,16 +363,29 @@ try {
       ids => ids.filter(id => document.getElementById(id) !== null),
       GATE_SCRIPT_IDS,
     )
-    const verdict = judgeAcceptedLoads({
-      emitted,
-      requested: afterAccept,
-      registry: ANALYTICS_PROVIDERS,
-    })
-    check(
-      `an1.${vp.label}.accepting-loads-only-what-is-configured`,
-      verdict.verdict === 'proven',
-      verdict.detail,
-    )
+    if (expectMeasurementOff) {
+      // The reversal, asserted where it matters: a person who said YES, on a
+      // server that holds every identifier, and still nothing is emitted and
+      // nothing is asked for.
+      check(
+        `an1.${vp.label}.the-one-flag-removes-every-script`,
+        emitted.length === 0 && afterAccept.length === 0,
+        emitted.length === 0 && afterAccept.length === 0
+          ? 'a person who ACCEPTED, on a server holding all four identifiers: the gate emitted no script and the browser asked for no measurement host'
+          : `the kill switch did not hold: the gate emitted ${JSON.stringify(emitted)} and ${afterAccept.length} request(s) reached a provider host`,
+      )
+    } else {
+      const verdict = judgeAcceptedLoads({
+        emitted,
+        requested: afterAccept,
+        registry: ANALYTICS_PROVIDERS,
+      })
+      check(
+        `an1.${vp.label}.accepting-loads-only-what-is-configured`,
+        verdict.verdict === 'proven',
+        verdict.detail,
+      )
+    }
     const bannerGone = await page.evaluate(() => Boolean(document.querySelector('[aria-label="Cookies and measurement"]')))
     check(`an1.${vp.label}.banner-closes-on-accept`, bannerGone === false, 'the banner is gone once answered')
     await page.screenshot({ path: join(out, `${vp.label}-02-after-accept.png`), fullPage: false })
