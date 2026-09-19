@@ -4656,6 +4656,175 @@ const DRILLS = [
   },
 
   /*
+   * consent-dates-are-zoned CLAUSE 3 (lane B, 19 September 2026), four drills.
+   *
+   * The clause exists because this guard had a blind spot for a day: it read
+   * three getters and two formatters, and could not see the COMMONEST way to
+   * render a UTC date, which is slicing the first ten characters off an ISO
+   * string. Four live renderings in its own path did exactly that while it
+   * printed OK.
+   *
+   * THE FOURTH DRILL AIMS AT THE MATCHER RATHER THAN AT THE CODE, and it is the
+   * one worth reading. It rebuilds ISO_SLICE inside a TEMPLATE LITERAL, where a
+   * backslash class is not an escape, which is precisely how a guard in this
+   * tree shipped blind on 18 September and reported PASS over the thing it
+   * banned. The clause's own probes must catch that on every run.
+   */
+  {
+    name: 'the matcher run date goes back to slicing the ISO string',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/app/admin/(authed)/matches/page.tsx',
+    find: '{formatPlatformDate(run.started_at)}.',
+    replace: '{new Date(run.started_at).toISOString().slice(0, 10)}.',
+    expect: 'cuts a date out of .toISOString()',
+  },
+  {
+    name: 'the match event picker goes back to slicing the stored instant',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/app/admin/(authed)/matches/match-run-form.tsx',
+    find: '{event.title} ({event.dateLabel})',
+    replace: '{event.title} ({event.startDate.slice(0, 10)})',
+    expect: 'takes the first ten characters of startDate',
+  },
+  {
+    name: 'the consent door goes back to slicing its own evidence date',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/lib/consent/decide.ts',
+    find: 'reason: `granted on ${formatPlatformDate(deciding.occurredAt)} under wording',
+    replace: 'reason: `granted on ${deciding.occurredAt.slice(0, 10)} under wording',
+    expect: 'takes the first ten characters of occurredAt',
+  },
+  {
+    /*
+     * THIS ONE PROVES THE SCOPE RATHER THAN THE CLAUSE. The pricing screens were
+     * outside the guard's directory list until 19 September, which is how a UTC
+     * event date survived in the picker a fee override is attached from. If the
+     * pricing directory ever leaves SCOPE again, this drill stops firing.
+     */
+    name: 'the fee-override picker goes back to slicing, in a directory the guard used not to sweep',
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'src/app/admin/(authed)/pricing/targets/route.ts',
+    find: "const date = e.start_date ? formatEventDate(e.start_date, e.timezone) : ''",
+    replace: "const date = e.start_date ? new Date(e.start_date).toISOString().slice(0, 10) : ''",
+    expect: 'cuts a date out of .toISOString()',
+  },
+
+  /*
+   * matcher-offers-an-event-not-yet-over (lane B, 19 September 2026), four
+   * drills.
+   *
+   * The guard exists because the matcher's event picker read published public
+   * events ordered ascending with no bound on time, which is the forty OLDEST
+   * events the platform has ever had. On TEST that was 101 finished events and a
+   * list beginning in June. Nothing threw and nothing was empty.
+   *
+   * THE SECOND DRILL IS THE ONE WORTH READING. It leaves the visibility rule in
+   * place and only takes away the instant handed to it. The picker still behaves
+   * correctly in production, and the bound becomes unprovable at any chosen
+   * time, which is how a correct-looking read stops being testable without
+   * anybody noticing.
+   */
+  {
+    name: 'the matcher door stops composing the visibility rule and offers every event ever published',
+    guard: `${GUARDS}/matcher-offers-an-event-not-yet-over.mjs`,
+    file: 'src/lib/matching/events.ts',
+    find: 'await applyPublicEventVisibility(',
+    replace: 'await noVisibilityRuleAtAll(',
+    expect: 'no longer composes applyPublicEventVisibility',
+  },
+  {
+    name: 'the matcher door keeps the rule but hands it no instant, so the bound cannot be proven',
+    guard: `${GUARDS}/matcher-offers-an-event-not-yet-over.mjs`,
+    file: 'src/lib/matching/events.ts',
+    find: '    { now },',
+    replace: '    {},',
+    expect: 'hands it no instant',
+  },
+  {
+    name: 'the matcher screen composes its own list of events beside the door',
+    guard: `${GUARDS}/matcher-offers-an-event-not-yet-over.mjs`,
+    file: 'src/app/admin/(authed)/matches/page.tsx',
+    find: '  const admin = createAdminClient()',
+    replace:
+      "  const admin = createAdminClient(); const extra = await admin.from('events').select('id').limit(40)",
+    expect: 'reads a LIST of events directly',
+  },
+  {
+    name: "the matcher guard's own door disappears",
+    guard: `${GUARDS}/matcher-offers-an-event-not-yet-over.mjs`,
+    file: 'src/lib/matching/events.ts',
+    find: 'export async function readMatchableEvents',
+    replace: 'async function readMatchableEvents',
+    expect: 'no longer exports readMatchableEvents',
+  },
+
+  /*
+   * or-filter-values-are-escaped (lane B, 19 September 2026), five drills.
+   *
+   * The guard exists because a comma inside a PostgREST or(...) is GRAMMAR. An
+   * unescaped term carrying one answers PGRST100, the route answers 500, and
+   * the screen shows nothing with no way to know a comma was the reason. Four
+   * of the first 320 event titles on TEST are of the shape
+   * "Something Night, Geelong".
+   *
+   * THE LAST DRILL AIMS AT THE MATCHER RATHER THAN AT THE CODE. The clause that
+   * accepts a file sanitising at its source is the weaker of the two tiers, and
+   * if its pattern stops matching, two correct reads in fetchers.ts start
+   * failing and somebody "fixes" a file that was never wrong.
+   */
+  {
+    name: 'the fee-override picker goes back to interpolating a raw search term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/app/admin/(authed)/pricing/targets/route.ts',
+    find: ".or(ilikeAnyOf(['title', 'slug'], q))",
+    replace: '.or(`title.ilike.${term},slug.ilike.${term}`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the founding-terms organisation search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/app/admin/(authed)/network/page.tsx',
+    find: "termQuery = termQuery.or(ilikeAnyOf(['name', 'slug'], foundingQuery))",
+    replace: 'termQuery = termQuery.or(`name.ilike.%${foundingQuery}%,slug.ilike.%${foundingQuery}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the or() escape door stops exporting half of itself',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/supabase/or-filter.ts',
+    find: 'export function ilikeAnyOf',
+    replace: 'function ilikeAnyOf',
+    expect: 'no longer exports ilikeAnyOf',
+  },
+  {
+    name: 'the or() guard sweeps no files at all while still reporting OK',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'scripts/guards/or-filter-values-are-escaped.mjs',
+    find: `!/${BSL}.test${BSL}.tsx?$/.test(entry)) out.push(full)`,
+    replace: `!/${BSL}.(ts|tsx)$/.test(entry)) out.push(full)`,
+    expect: 'the sweep matched no files at all',
+  },
+  {
+    name: "the or() guard's source-sanitiser matcher quietly stops matching",
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'scripts/guards/or-filter-values-are-escaped.mjs',
+    find: 'const SANITISES_AT_SOURCE = /',
+    replace: 'const SANITISES_AT_SOURCE = /never-matches-anything-at-all/; const UNUSED_SANITISES = /',
+    expect: 'no longer matches',
+  },
+  {
+    name: "clause 3's matcher is rebuilt inside a template literal and quietly stops matching",
+    guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
+    file: 'scripts/guards/consent-dates-are-zoned.mjs',
+    find: 'const ISO_SLICE = /',
+    replace:
+      'const ISO_SLICE = new RegExp(`' +
+      BSL + '.toISOString' + BSL + 's*' + BSL + '.' + BSL + "s*slice" +
+      '`); const UNUSED_ISO_SLICE = /',
+    expect: 'no longer matches',
+  },
+
+  /*
    * THIS HARNESS'S OWN FAILURE, DRILLED. Two drills, one per clause of
    * scripts/guards/no-drill-residue.mjs.
    *
@@ -4947,6 +5116,86 @@ const DRILLS = [
     find: "const CLASS_FLIGHT = new RegExp(`className${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
     replace: "const CLASS_FLIGHT = new RegExp(`classNameXX${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
     expect: 'REFUSING: the calibration probe was found',
+  },
+
+  /*
+   * a-failed-read-is-not-a-fact-about-a-person (lane B, 19 September 2026),
+   * six drills.
+   *
+   * The guard exists because a failed read on the send path is not an empty
+   * rail and not a 404: it is written into public.marketing_send_skip, which is
+   * append-only, as a sentence about a named person, and counted onto
+   * /admin/campaigns. One failed read of the small authored template table used
+   * to record "the step names a template that does not exist" against EVERY
+   * recipient on the campaign.
+   *
+   * THE SECOND DRILL IS THE ONE THAT EARNS THE GUARD. The sibling guard's
+   * matcher is `const {...} = await`, which cannot see an ARRAY destructure, and
+   * two of the forty-eight sites were spelled that way, including the event and
+   * organisation read this drill restores. A guard whose matcher cannot see the
+   * commonest spelling reports the absence of what it never looked at.
+   *
+   * THE LAST TWO AIM AT THE GUARD ITSELF rather than at the product, because
+   * both of its counters can come back zero while it prints PASS: a scope that
+   * scans nothing, and a matcher that matches nothing. Lane A lost a whole guard
+   * to the second of those on 18 September, to a `${BSL}s` inside a template
+   * literal.
+   */
+  {
+    name: 'the campaigner template read goes back to discarding its error',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/campaigner/run.ts',
+    find: "const data = await readOrThrow('campaigner template library', () =>",
+    replace: "const { data } = await (() =>",
+    expect: 'src/lib/campaigner/run.ts',
+  },
+  {
+    name: 'the event and organisation reads go back to an ARRAY destructure that drops both errors',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/campaigner/run.ts',
+    find: '  const [event, organisation] = await Promise.all([\n    readOrThrow(',
+    replace: '  const [{ data: event }, { data: organisation }] = await Promise.all([\n    readOrThrow(',
+    expect: 'element 1 of an array destructure',
+  },
+  {
+    name: "the unsubscribe token lookup goes back to calling a person's live link invalid",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/consent/ledger.ts',
+    find: "const consentRow = await readOrThrow('unsubscribe token, platform consent', () =>",
+    replace: 'const { data: consentRow } = await (() =>',
+    expect: 'src/lib/consent/ledger.ts',
+  },
+  {
+    name: 'the register names a file this guard no longer scans',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: "file: 'src/lib/consent/digest-city.ts',",
+    replace: "file: 'src/lib/consent/digest-city-renamed.ts',",
+    expect: 'no longer matches a scanned file',
+  },
+  {
+    name: 'the guard scans no send-path files at all while still reporting a pass',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: "['src/lib/campaigner', 'a permanent skip row and a counted reason on /admin/campaigns'],",
+    replace: "['src/lib/campaigner-gone', 'a permanent skip row and a counted reason on /admin/campaigns'],",
+    expect: 'A scope that scans nothing reports a pass',
+  },
+  {
+    name: "the guard's own matcher quietly stops seeing an object destructure",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: `for (const m of code.matchAll(/(?:const|let|var)${BSL}s*${BSL}{([^{}]*)${BSL}}${BSL}s*=${BSL}s*await${BSL}b/g)) {`,
+    replace: `for (const m of code.matchAll(/(?:const|let|var)${BSL}s*${BSL}{([^{}]*)${BSL}}${BSL}s*=${BSL}s*await${BSL}b/g)) {\n    if (m) continue`,
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: "the guard's own matcher quietly stops seeing an ARRAY destructure",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {`,
+    replace: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {\n      if (inner) continue`,
+    expect: 'REFUSING: the calibration probe',
   },
 ]
 

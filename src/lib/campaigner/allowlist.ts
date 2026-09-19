@@ -115,12 +115,25 @@ export async function admitMatchRunToAllowlist(params: {
     let scope: string | null = null
     let consentAt: string | null = null
     let wordingVersion: string | null = null
+    /*
+     * THE ERROR IS BOUND AND THE TWO CAUSES ARE SAID APART.
+     *
+     * The refusal below was already honest about BOTH outcomes, which is why
+     * this read never produced a false sentence the way the six in run.ts did:
+     * "could not be read back" is true whether the row is absent or the request
+     * failed. It is still bound, because one person refused over a network
+     * blink and one person refused over a missing consent record are different
+     * things to go and look at, and a reason that cannot tell them apart sends
+     * the reader to the wrong place.
+     */
+    let evidenceUnreadable: string | null = null
     if (verdict.decidingEventId) {
-      const { data: event } = await admin
+      const { data: event, error: eventError } = await admin
         .from('consent_events')
         .select('channel_scope, occurred_at, wording_version')
         .eq('id', verdict.decidingEventId)
         .maybeSingle()
+      if (eventError) evidenceUnreadable = eventError.message
       if (event) {
         scope = event.channel_scope
         consentAt = event.occurred_at
@@ -133,7 +146,9 @@ export async function admitMatchRunToAllowlist(params: {
       // consent is exactly the row this table exists to make impossible.
       result.refused.push({
         email: member.email,
-        reason: 'the consent event that permitted this could not be read back, so nothing was admitted',
+        reason: evidenceUnreadable
+          ? `the consent event that permitted this could not be read: ${evidenceUnreadable}. Nothing was admitted, and nothing about this person's consent has changed`
+          : 'the consent event that permitted this could not be read back, so nothing was admitted',
       })
       continue
     }

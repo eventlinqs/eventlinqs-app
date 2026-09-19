@@ -1,12 +1,14 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { formatEventDate } from '@/lib/dates/event-time'
 import { getSiteUrl } from '@/lib/site-url'
 import { trackedLinkPath } from '@/lib/attribution/route-config'
 import { readCampaignerConfig, type CampaignerMode } from './config'
 import { segmentFingerprint } from './fingerprint'
-import { SKIP_SENTENCE, daysRemainingToEvent, planNextSend, type PacingStep, type SkipReason } from './pacing'
+import { daysRemainingToEvent, planNextSend, type PacingStep } from './pacing'
+import { campaignSkipSentence } from './skip-sentence'
 import { CampaignRenderError, renderCampaignMessage, unsubscribeUrl } from './render'
 
 /**
@@ -66,22 +68,37 @@ export interface CampaignListRow {
   allowlistSize: number
 }
 
+/*
+ * EVERY READ ON THIS SCREEN GOES THROUGH THE DOOR.
+ *
+ * This file composes /admin/campaigns, and each of its reads had a false
+ * sentence waiting on the other side of a discarded error: no campaigns at all,
+ * "an event that no longer exists" against every row, a campaign that "does not
+ * exist" because a socket did not open. `readOrThrow` retries a blink and
+ * throws a real fault, so the screen answers 500 and says ask again.
+ * Held by scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs.
+ */
 export async function listCampaigns(): Promise<CampaignListRow[]> {
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('marketing_campaign')
-    .select('id, reference, name, event_id')
-    .order('created_at', { ascending: false })
-    .limit(40)
-  const rows = data ?? []
+  const rows =
+    (await readOrThrow('campaign list', () =>
+      admin
+        .from('marketing_campaign')
+        .select('id, reference, name, event_id')
+        .order('created_at', { ascending: false })
+        .limit(40),
+    )) ?? []
   if (rows.length === 0) return []
 
-  const { data: events } = await admin
-    .from('events')
-    .select('id, title')
-    .in('id', rows.map(r => r.event_id))
-    // One title per listed campaign, and the list above is capped at 40.
-    .limit(40)
+  // Without the door this made EVERY row say "an event that no longer exists".
+  const events = await readOrThrow('campaign list event titles', () =>
+    admin
+      .from('events')
+      .select('id, title')
+      .in('id', rows.map(r => r.event_id))
+      // One title per listed campaign, and the list above is capped at 40.
+      .limit(40),
+  )
   const titles = new Map((events ?? []).map(e => [e.id, e.title]))
 
   const out: CampaignListRow[] = []
@@ -111,36 +128,48 @@ export async function readCampaign(campaignId: string, channelCode: string): Pro
   const admin = createAdminClient()
   const config = await readCampaignerConfig()
 
-  const { data: campaign } = await admin
-    .from('marketing_campaign')
-    .select('id, reference, name, event_id, organisation_id, sequence_id, opening_line, signature, volume_cap')
-    .eq('id', campaignId)
-    .maybeSingle()
+  // null from here means the campaign genuinely is not there, which is the only
+  // thing that may become a 404. A failed read throws instead.
+  const campaign = await readOrThrow('campaign', () =>
+    admin
+      .from('marketing_campaign')
+      .select('id, reference, name, event_id, organisation_id, sequence_id, opening_line, signature, volume_cap')
+      .eq('id', campaignId)
+      .maybeSingle(),
+  )
   if (!campaign) return null
 
-  const [{ data: event }, { data: organisation }, { data: channels }] = await Promise.all([
-    admin
-      .from('events')
-      .select('id, title, slug, start_date, timezone, venue_name, venue_city')
-      .eq('id', campaign.event_id)
-      .maybeSingle(),
-    admin.from('organisations').select('id, name').eq('id', campaign.organisation_id).maybeSingle(),
+  const [event, organisation, channels] = await Promise.all([
+    readOrThrow('campaign event', () =>
+      admin
+        .from('events')
+        .select('id, title, slug, start_date, timezone, venue_name, venue_city')
+        .eq('id', campaign.event_id)
+        .maybeSingle(),
+    ),
+    readOrThrow('campaign organisation', () =>
+      admin.from('organisations').select('id, name').eq('id', campaign.organisation_id).maybeSingle(),
+    ),
     // The channel code table: email and sms today, and a bound rather than a
     // silent ceiling if a third is ever added.
-    admin.from('marketing_channel').select('code, display_name').limit(100),
+    readOrThrow('campaign channel names', () =>
+      admin.from('marketing_channel').select('code, display_name').limit(100),
+    ),
   ])
   const channelName = new Map((channels ?? []).map(c => [c.code, c.display_name]))
 
   const now = new Date()
   const daysRemaining = event ? daysRemainingToEvent(event.start_date, now) : Number.NaN
 
-  const { data: stepRows } = await admin
-    .from('marketing_sequence_step')
-    .select('id, step_order, channel_code, days_remaining_min, days_remaining_max, template_key, min_hours_since_previous_send')
-    .eq('sequence_id', campaign.sequence_id ?? '')
-    .order('step_order', { ascending: true })
-    // A sequence is a handful of steps. The bound is stated, not assumed.
-    .limit(200)
+  const stepRows = await readOrThrow('campaign sequence steps', () =>
+    admin
+      .from('marketing_sequence_step')
+      .select('id, step_order, channel_code, days_remaining_min, days_remaining_max, template_key, min_hours_since_previous_send')
+      .eq('sequence_id', campaign.sequence_id ?? '')
+      .order('step_order', { ascending: true })
+      // A sequence is a handful of steps. The bound is stated, not assumed.
+      .limit(200),
+  )
   const steps: PacingStep[] = (stepRows ?? []).map(s => ({
     id: s.id,
     stepOrder: s.step_order,
@@ -212,14 +241,18 @@ export async function readCampaign(campaignId: string, channelCode: string): Pro
   const skipCounts = new Map<string, number>()
   for (const s of skips) skipCounts.set(s.reason, (skipCounts.get(s.reason) ?? 0) + 1)
 
-  const { data: identity } = await admin
-    .from('marketing_sender_identity')
-    .select('id, from_name, reply_to, identity_line, is_verified')
-    .eq('organisation_id', campaign.organisation_id)
-    .eq('is_verified', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  // Without the door a blink made this screen say the organiser has no verified
+  // sender, which is the one thing they cannot fix by verifying it again.
+  const identity = await readOrThrow('campaign sender identity', () =>
+    admin
+      .from('marketing_sender_identity')
+      .select('id, from_name, reply_to, identity_line, is_verified')
+      .eq('organisation_id', campaign.organisation_id)
+      .eq('is_verified', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  )
 
   let preview: CampaignView['preview'] = null
   let previewProblem: string | null = null
@@ -236,15 +269,17 @@ export async function readCampaign(campaignId: string, channelCode: string): Pro
       now,
     })
     if (!plan.queued) {
-      previewProblem = SKIP_SENTENCE[plan.reason as SkipReason] ?? plan.reason
+      previewProblem = campaignSkipSentence(plan.reason)
     } else if (!event || !organisation) {
       previewProblem = 'This campaign has no event or no organisation, so nothing can be rendered.'
     } else {
-      const { data: template } = await admin
-        .from('marketing_template')
-        .select('key, channel_code, subject_template, body_template')
-        .eq('key', plan.step.templateKey)
-        .maybeSingle()
+      const template = await readOrThrow('campaign preview template', () =>
+        admin
+          .from('marketing_template')
+          .select('key, channel_code, subject_template, body_template')
+          .eq('key', plan.step.templateKey)
+          .maybeSingle(),
+      )
       if (!template) {
         previewProblem = 'The next step names a template that does not exist.'
       } else {
@@ -326,7 +361,9 @@ export async function readCampaign(campaignId: string, channelCode: string): Pro
     skipCounts: [...skipCounts.entries()]
       .map(([reason, count]) => ({
         reason,
-        sentence: SKIP_SENTENCE[reason as SkipReason] ?? reason,
+        // Through the one door: SKIP_SENTENCE alone held five of the reasons
+        // this screen can be handed, so a render failure printed its raw code.
+        sentence: campaignSkipSentence(reason),
         count,
       }))
       .sort((a, b) => b.count - a.count),

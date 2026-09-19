@@ -158,9 +158,23 @@
  *                              the exact specified bytes, the address those headers name is
  *                              a route that answers POST, and GET on it withdraws nothing
  *   consent-dates-are-zoned  no date a person reads on a consent, audience or
- *                              marketing surface is assembled from UTC getters or
- *                              formatted without naming a time zone, and the consent
- *                              ledger renders through the one platform formatter
+ *                              marketing surface is assembled from UTC getters,
+ *                              formatted without naming a time zone, or cut out of
+ *                              an ISO string, and the consent ledger renders
+ *                              through the one platform formatter
+ *   matcher-offers-an-event-not-yet-over  the matcher's event picker is one
+ *                              bounded read: the door composes the platform's own
+ *                              visibility rule at a given instant, and no matcher
+ *                              surface reads a list of events around it
+ *   or-filter-values-are-escaped  a free-text search term dropped into a
+ *                              PostgREST or(...) is escaped through the one door
+ *                              or sanitised at its source, because a comma in an
+ *                              unescaped term is parsed as another filter clause
+ *   a-failed-read-is-not-a-fact-about-a-person  on the marketing send path a read
+ *                              goes through a door that throws, or binds its own
+ *                              error, because a failure there is written into an
+ *                              append-only ledger as a sentence about a named
+ *                              person and counted onto /admin/campaigns
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -1285,6 +1299,24 @@ const GUARDS = [
   // different question. Drilled red on both clauses with the database's own
   // protection removed, which is how a row like that would ever exist.
   'scripts/guards/matcher-consented-and-capped.mjs',
+  // Close-out GA2, second defect, found 19 September 2026 by trying to drive the
+  // screen. The picker on /admin/matches read published public events ordered by
+  // start_date ascending with NO bound on time, under a comment claiming it
+  // listed the soonest. That is the forty OLDEST events the platform has ever
+  // had: on TEST, 101 of 276 were already over and the list began in June, so
+  // the screen that decides who hears about an event could not be pointed at one
+  // anybody could still go to. This holds the bound on end_date in one door and
+  // fails the build when any matcher surface reads a LIST of events around it.
+  'scripts/guards/matcher-offers-an-event-not-yet-over.mjs',
+  // Found 19 September 2026 by probing the fee-override picker against TEST.
+  // Inside a PostgREST or(...) a comma is GRAMMAR, so an unescaped search term
+  // carrying one answers PGRST100 and the screen shows nothing: four of the
+  // first 320 event titles on TEST are of the shape "Something Night, Geelong".
+  // The escape existed privately in fetchers.ts and the same decision had since
+  // been made three more times in three different ways and missed in six reads.
+  // This holds the one door and prints a dated register of the six that are not
+  // lane B's files to change.
+  'scripts/guards/or-filter-values-are-escaped.mjs',
   // Close-out GA3. The attribution table is the basis of an invoice, so every
   // order carries exactly one stored decision, never zero and never two, an
   // order no campaign produced says so with a reason rather than being absent,
@@ -2033,6 +2065,22 @@ const GUARDS = [
   // postbuild half is still wired). The proof is the same file run with
   // --built from npm's postbuild, against the build that just finished.
   'scripts/guards/initial-bundle-budget.mjs',
+
+  // Found 19 September 2026 by reading the send path against the doctrine two
+  // other guards already carry. In src/lib/campaigner/run.ts SIX reads discarded
+  // their error, and each failure had a false sentence already written for it:
+  // "the audience row this admission points at no longer exists", "this address
+  // has no consent record carrying an unsubscribe token", and, from ONE failed
+  // read of a small authored table, "the step names a template that does not
+  // exist" against EVERY recipient on the campaign. Those sentences are written
+  // into public.marketing_send_skip, which is append-only, and counted onto
+  // /admin/campaigns, so a blink became a permanent statement about a named
+  // person. The same file checks its error on line 92 and then does not repeat
+  // it six times below. Elsewhere in scope the same shape told a person their
+  // unsubscribe link "is not valid". 48 sites across 11 files, all closed
+  // through the doors, and the matcher sees ARRAY destructuring, which the
+  // sibling guard cannot and which is the spelling two of those sites used.
+  'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

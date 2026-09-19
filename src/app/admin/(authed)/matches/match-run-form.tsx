@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation'
 import { produceMatchRunAction, type ProduceMatchResult } from './actions'
 
 interface MatchRunFormProps {
-  events: { id: string; title: string; startDate: string }[]
+  /**
+   * The date arrives ALREADY RENDERED, in the event's own zone, because a
+   * client component cannot know an event's zone and the stored instant is
+   * UTC. See the note beside the call site in page.tsx.
+   */
+  events: { id: string; title: string; dateLabel: string }[]
   selectedEventId: string
   defaultCap: number
   matcherEnabled: boolean
@@ -34,12 +39,19 @@ export function MatchRunForm({ events, selectedEventId, defaultCap, matcherEnabl
         THE EVENT THE PAGE IS ABOUT IS WHAT THE BUTTON ACTS ON.
 
         Driving this at 390 found the defect that makes the hidden field
-        necessary. The picker lists the soonest published events, an address can
-        name ANY published event, and when the two disagree the select rendered
-        "Choose an event" and submitted nothing: the button answered "Pick an
-        event first" while the page underneath it described that very event by
-        name. So the id travels as a hidden field from the address, and the
-        select below is a navigator rather than the source of truth.
+        necessary. The picker lists the soonest events that are not yet over
+        (src/lib/matching/events.ts), an address can name ANY published event,
+        and when the two disagree the select rendered "Choose an event" and
+        submitted nothing: the button answered "Pick an event first" while the
+        page underneath it described that very event by name. So the id travels
+        as a hidden field from the address, and the select below is a navigator
+        rather than the source of truth.
+
+        THAT SENTENCE USED TO BE FALSE and it is worth keeping the correction
+        rather than quietly editing it. The read behind this picker had no bound
+        on time, so "soonest" was in fact the forty OLDEST events the platform
+        had ever published: on TEST, 101 of 276 were already over and the list
+        began in June.
       */}
       <input type="hidden" name="event_id" value={eventId} />
       <div className="flex flex-wrap items-end gap-3">
@@ -59,7 +71,7 @@ export function MatchRunForm({ events, selectedEventId, defaultCap, matcherEnabl
             <option value="">Choose an event</option>
             {events.map(event => (
               <option key={event.id} value={event.id}>
-                {event.title} ({event.startDate.slice(0, 10)})
+                {event.title} ({event.dateLabel})
               </option>
             ))}
           </select>

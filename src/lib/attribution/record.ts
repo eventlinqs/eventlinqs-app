@@ -208,11 +208,29 @@ export async function recordOrderSignal(params: {
     let verifiedClickId: string | null = null
     let campaignId: string | null = null
     if (clickId) {
-      const { data: click } = await admin
+      /*
+       * THE ERROR IS BOUND BECAUSE A FORGED ID AND AN UNREADABLE ONE LOOK
+       * IDENTICAL HERE, AND ONLY ONE OF THEM IS THE BUYER DOING SOMETHING.
+       *
+       * A click id that verifies is the difference between a sale credited to
+       * the message that produced it and a sale credited to nobody. The comment
+       * above is right that a FORGED id should store nothing; a read that failed
+       * is not a forgery, and silently treating it as one loses real attribution
+       * with no trace anywhere. It is recorded, and the checkout still proceeds:
+       * refusing a purchase over an attribution read would be the worse trade by
+       * a distance.
+       */
+      const { data: click, error: clickError } = await admin
         .from('marketing_click')
         .select('id, campaign_id')
         .eq('id', clickId)
         .maybeSingle()
+      if (clickError) {
+        captureException(clickError, {
+          where: 'lib/attribution/record:checkout signal',
+          note: 'the click this order names could not be read, so the sale is recorded with no verified click',
+        })
+      }
       if (click) {
         verifiedClickId = click.id
         campaignId = click.campaign_id

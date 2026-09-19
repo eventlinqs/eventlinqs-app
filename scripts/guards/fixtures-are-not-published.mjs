@@ -212,6 +212,24 @@ export const BASELINE = [
     write: "events.visibility='public'",
     why: 'it proves a city page flips to indexable and appears in the sitemap when a real event is published in it; PUBLIC_EVENT_MATCH excludes an unlisted fixture, so it would be invisible to the thing under test',
   },
+  /*
+   * ADDED 19 September 2026, lane B, LB-ISODATE. The drive proves two defects on
+   * the matcher's event picker, and that picker reads through
+   * applyPublicEventVisibility, which is `.eq('visibility', 'public')`. An
+   * `unlisted` fixture is excluded by the very predicate under test, so it would
+   * prove nothing: the same reason community-threshold-drive.mjs is excused
+   * above.
+   *
+   * ONLY THE EVENT WRITE IS EXCUSED. The organisation is created `pending`,
+   * because nothing the drive opens needs an organiser profile to resolve, and
+   * the drive's teardown asks the database whether its rows are gone rather than
+   * trusting its own deletes.
+   */
+  {
+    drive: 'lb-isodate-drive.mjs',
+    write: "events.visibility='public'",
+    why: 'the matcher picker it proves reads through applyPublicEventVisibility, so an unlisted fixture is excluded by the predicate under test',
+  },
   {
     drive: 'seo5-states-drive.mjs',
     write: "events.visibility='public'",

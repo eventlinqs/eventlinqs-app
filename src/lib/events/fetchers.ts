@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
+import { escapeOrValue } from '@/lib/supabase/or-filter'
 import type { CommunitySlug } from '@/lib/communities/data'
 import { tokenise, sanitiseToken } from './search-query'
 import {
@@ -61,19 +62,13 @@ function resolveCommunityTagOrFilter(
 /** The impossible id used to force an empty result set deliberately. */
 const NO_MATCH = '00000000-0000-0000-0000-000000000000'
 
-/**
- * Escape a value for use inside a PostgREST `or(...)` filter.
- *
- * Inside `or()` the characters `,` `.` `(` `)` are GRAMMAR, not data. An
- * unescaped search term containing any of them does not merely fail to match:
- * it is parsed as more filter clauses, so a query for "rock, paper" becomes two
- * conditions and a query containing a bare `.` can name a column. Quoting makes
- * the whole value literal, and a quote or backslash inside the value has to be
- * escaped so it cannot close the quoting early.
+/*
+ * THE ESCAPE MOVED OUT OF THIS FILE on 19 September 2026, unchanged, to
+ * src/lib/supabase/or-filter.ts. It was written here, privately, with the whole
+ * of its reasoning above it, and by then the same decision had been made three
+ * more times in three different ways and missed in six reads. The reasoning went
+ * with it.
  */
-function escapeOrValue(value: string): string {
-  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-}
 
 /** Free-text columns a search reads. Ordered most to least specific. */
 const SEARCH_TEXT_COLUMNS = ['title', 'summary', 'description', 'venue_name', 'venue_city'] as const

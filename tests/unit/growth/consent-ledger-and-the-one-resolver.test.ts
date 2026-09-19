@@ -208,7 +208,22 @@ describe('GA1 v3: scope is what a consent covers, and it only runs one way', () 
       [suppression({ scope: 'facilitation_by_others', occurredAt: '2026-09-06T00:00:00.000Z' })],
     )
     expect(verdict.permitted).toBe(false)
-    expect(verdict.reason).toContain('facilitation_by_others suppression recorded on 2026-09-06')
+    /*
+     * THE AUSTRALIAN DATE, COMPUTED HERE rather than pasted. This assertion read
+     * `recorded on 2026-09-06` until 19 September 2026, and it was asserting the
+     * defect: that string is the first ten characters of the ISO instant, which
+     * is the UTC calendar date, and it is a day early for every suppression
+     * recorded after 10:00 local. See
+     * tests/unit/growth/marketing-dates-take-the-right-zone.test.ts.
+     */
+    const australian = new Intl.DateTimeFormat('en-AU', {
+      timeZone: 'Australia/Sydney',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date('2026-09-06T00:00:00.000Z'))
+    expect(verdict.reason).toContain(`facilitation_by_others suppression recorded on ${australian}`)
+    expect(verdict.reason).not.toContain('2026-09-06')
   })
 
   it("one client's own suppression never silences the platform", () => {
