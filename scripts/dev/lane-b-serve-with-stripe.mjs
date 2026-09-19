@@ -31,6 +31,11 @@
  *                                                # provider identifiers so
  *                                                # AN1's consent gate has
  *                                                # something to open onto
+ *   node scripts/dev/lane-b-serve-with-stripe.mjs --measurement-ids --measurement-off
+ *                                                # the same, plus AN1's one
+ *                                                # kill switch, which is the
+ *                                                # only configuration that
+ *                                                # proves the reversal
  *   node scripts/dev/lane-b-serve-with-stripe.mjs --status   # report only
  *   node scripts/dev/lane-b-serve-with-stripe.mjs --stop     # stop what it started
  */
@@ -76,6 +81,13 @@ const FAKE_MEASUREMENT_IDS = {
   NEXT_PUBLIC_META_PIXEL_ID: '000000000000000',
 }
 const withMeasurementIds = process.argv.includes('--measurement-ids')
+/**
+ * AN1's reversal condition, drivable. With this AND --measurement-ids the
+ * server holds every identifier and the flag, which is the only configuration
+ * in which the flag proves anything: switching measurement off on a server that
+ * was never going to measure proves nothing at all.
+ */
+const withMeasurementOff = process.argv.includes('--measurement-off')
 
 const say = m => console.log(`[lane-b-serve] ${m}`)
 const die = m => {
@@ -307,6 +319,10 @@ const env = {
   NEXT_PUBLIC_APP_URL: `http://localhost:${PORT}`,
   ORDER_ACCESS_SECRET: file.ORDER_ACCESS_SECRET || 'lane-b-local-order-access-secret-32c',
   ...(withMeasurementIds ? FAKE_MEASUREMENT_IDS : {}),
+  ...(withMeasurementOff ? { NEXT_PUBLIC_MEASUREMENT_OFF: '1' } : {}),
+}
+if (withMeasurementOff) {
+  say('measurement kill switch: NEXT_PUBLIC_MEASUREMENT_OFF=1, so no analytics or advertising script is emitted at all, whatever anybody consents to.')
 }
 if (withMeasurementIds) {
   say(

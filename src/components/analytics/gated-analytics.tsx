@@ -2,6 +2,7 @@
 
 import Script from 'next/script'
 import { mayLoad } from '@/lib/analytics/consent'
+import { MEASUREMENT_OFF } from '@/lib/analytics/measurement-off'
 import { useConsent } from './consent-provider'
 
 /**
@@ -33,6 +34,10 @@ import { useConsent } from './consent-provider'
  */
 export function GatedAnalytics() {
   const { decision, loading } = useConsent()
+  // AN1's reversal condition, asked before anything else: one flag and no
+  // provider is emitted at all, whatever anybody consented to and whatever is
+  // configured. src/lib/analytics/measurement-off.ts.
+  if (MEASUREMENT_OFF) return null
   if (loading) return null
 
   const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
