@@ -170,6 +170,7 @@ export const INDEXING_POLICY: readonly PolicyEntry[] = [
   { route: '/events/browse/[city]', klass: 'conditional', why: '22 templated browse-by-city pages' },
   { route: '/faith/[faith]', klass: 'conditional', why: 'templated faith landings' },
   { route: '/organisers/[handle]', klass: 'conditional', why: "an organiser profile, indexable while it holds events at the live threshold OR carries a biography; close-out SEO3 step 7 found /organisers/oanh published with neither" },
+  { route: '/this-weekend', klass: 'conditional', why: 'the weekend discovery surface (close-out AQ3). Conditional rather than always, because its entire contents expire every Sunday night: it is the one page on the platform guaranteed to be empty on a regular schedule, and AQ3 rules that a surface that cannot be filled is not published' },
 
   // ----------------------------------------------------------------- ALIAS
   { route: '/for-organisers', klass: 'alias', why: '308 to /organisers; kept because external links reach for it' },

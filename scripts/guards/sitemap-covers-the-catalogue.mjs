@@ -1,10 +1,11 @@
 /**
  * GUARD: THE SITEMAP AND THE CATALOGUE AGREE, IN BOTH DIRECTIONS.
  *
- * THE INVARIANT (close-out SEO2, 14 September 2026). Every published event,
- * every organiser profile that is a page, and every venue profile that resolves
- * is IN the sitemap; and every row-derived URL the sitemap publishes has a row
- * behind it that would answer 200. A build whose sitemap disagrees with its own
+ * THE INVARIANT (close-out SEO2, 14 September 2026; the artist family added
+ * 19 September 2026). Every published event, every organiser profile that is a
+ * page, every venue profile that resolves and every artist a live lineup still
+ * reaches is IN the sitemap; and every row-derived URL the sitemap publishes has
+ * a row behind it that would answer 200. A build whose sitemap disagrees with its own
  * database does not fail, does not warn, and is invisible to lint, typecheck,
  * the build and every unit test. It is visible only by asking both.
  *
@@ -19,6 +20,14 @@
  *     'pending' organisations to Google, each of which answered 404.
  *   - 545 of 550 URLs were templated pages holding nothing, and Search Console
  *     reported them back as duplicates of one another (C19.3).
+ *   - the artist block had no predicate at all and advertised every `artists`
+ *     row whether or not any page on the site reached it. On 19 September 2026
+ *     the reachability crawl caught it: `/artists/aurora-skies-wrejiu` answered
+ *     200 and nothing linked to it, because the only internal link to an artist
+ *     is a confirmed lineup on an event page and all four such events had ended.
+ *     THAT IS THE ONE THIS GUARD DID NOT CATCH, and the reason it now judges a
+ *     fourth family: the family was published by a reader no guard compared
+ *     against the database, so it was governed by nothing.
  *
  * A missing page is the quiet failure: nothing breaks, the platform is simply
  * never found. An orphaned URL is the loud one: it is one of the five exclusion
@@ -26,17 +35,26 @@
  *
  * HOW IT LOOKS. `src/app/sitemap.ts` cannot be executed outside Next, because it
  * reaches `next/cache` through the discovery counts, so no build-time check can
- * call it. Its three row-derived families were therefore moved into
+ * call it. Its four row-derived families were therefore moved into
  * `src/lib/seo/sitemap-catalogue.ts`, which CAN be executed anywhere, and which
  * the sitemap itself calls. `scripts/guards/lib/sitemap-catalogue-probe.mjs`
- * runs that module (the PUBLISHED side) and asks the same three questions again
+ * runs that module (the PUBLISHED side) and asks the same four questions again
  * over raw paged PostgREST with the predicate in the query string (the EXPECTED
  * side), sharing no query code at all, and prints both. Everything below is pure
  * over what it printed.
  *
+ * THE ARTIST FAMILY CARRIES A FLAG, AND THE FLAG IS REPORTED RATHER THAN
+ * SILENTLY OBEYED. `/artists/[slug]` 404s unless `broadcast_artists` is on, and
+ * the sitemap block asks the same question before publishing. The flag is TRUE
+ * on TEST and FALSE on production, so with it off both sides are empty BY
+ * DESIGN and this guard is checking nothing about artists. It says so on the
+ * PASS line instead of printing a zero that reads like a healthy platform with
+ * no artists. The reader itself still runs on every build, so a broken artist
+ * query fails here rather than on the day the owner flips the switch.
+ *
  * THE DECISIONS:
  *
- *   PASS   both sides name the same URLs for all three families
+ *   PASS   both sides name the same URLs for all four families
  *   FAIL   a family MISSING a URL the database says is a page
  *   FAIL   a family publishing an ORPHANED URL with no row behind it
  *   FAIL   a reader returned an error. The sitemap logs that error and serves
@@ -70,8 +88,14 @@ const TAG = '[sitemap-covers-the-catalogue]'
 const ROOT = process.cwd()
 const REAL_PROJECT = /^https:\/\/[a-z0-9]{20,}\.supabase\.co\/?$/
 
-/** The three families this guard judges, in the order a reader wants them. */
-export const FAMILIES = ['events', 'organisers', 'venues']
+/**
+ * The four families this guard judges, in the order a reader wants them.
+ *
+ * `artists` joined on 19 September 2026. It is last because it is the only one
+ * that can legitimately be empty on a healthy platform: it is gated on the
+ * `broadcast_artists` flag, which is off on production.
+ */
+export const FAMILIES = ['events', 'organisers', 'venues', 'artists']
 
 /** How many differing URLs are named before the list is summarised. */
 export const NAMED_LIMIT = 12
@@ -157,9 +181,31 @@ export function decide({ url, serviceKey, probe }) {
   if (reasons.length > 0) return { verdict: 'FAIL', reasons, counts }
   return {
     verdict: 'PASS',
-    reasons: FAMILIES.map(f => `${counts[f]?.published ?? 0} ${f} URL(s), and the database agrees`),
+    reasons: FAMILIES.map(f => passLine(f, counts[f]?.published ?? 0, probe.artistsFlag)),
     counts,
   }
+}
+
+/**
+ * One PASS line for one family.
+ *
+ * THE ARTIST ZERO IS EXPLAINED RATHER THAN PRINTED. "0 artists URL(s), and the
+ * database agrees" is true with the flag off and it is also what a platform
+ * whose artist query had silently broken would print. Those are different facts
+ * and a guard that renders them identically has taught its reader to ignore the
+ * line. With the flag off this says the flag is off and says the comparison did
+ * not happen, which is the same discipline as the SKIP verdicts above: a guard
+ * that cannot see must say so rather than pass by silence.
+ *
+ * @param {string} family
+ * @param {number} published
+ * @param {boolean | undefined} artistsFlag
+ */
+export function passLine(family, published, artistsFlag) {
+  if (family === 'artists' && artistsFlag === false) {
+    return 'the broadcast_artists flag is OFF, so the sitemap publishes no artist URL and /artists/[slug] answers 404; both sides are empty by design and no artist coverage was compared'
+  }
+  return `${published} ${family} URL(s), and the database agrees`
 }
 
 /**
@@ -171,12 +217,25 @@ export function summarise(paths) {
   return `${paths.slice(0, NAMED_LIMIT).join(', ')} and ${paths.length - NAMED_LIMIT} more`
 }
 
-/** Run the probe under the source alias loader and parse its one JSON line. */
+/**
+ * Run the probe under the source alias loader and parse its one JSON line.
+ *
+ * THE SERVER-ONLY SHIM IS LOADED FIRST, AND IT IS NOT DECORATION. The probe
+ * reads the `broadcast_artists` flag through the product's own resolver
+ * (`src/lib/flags/broadcast.ts`), which reports its own failures through
+ * `src/lib/observability/sentry.ts`, which imports `isInitialized` from
+ * `@sentry/nextjs` - a name that package only exports through Next's own build.
+ * Without the shim this probe dies at IMPORT and the guard reports
+ * "the probe exited 1", which reads exactly like a broken database and is not
+ * one. That misreading has cost this repository four drives in one day already.
+ */
 export function runProbe() {
   const result = spawnSync(
     process.execPath,
     [
       '--disable-warning=MODULE_TYPELESS_PACKAGE_JSON',
+      '--import',
+      './scripts/lib/server-only-shim.mjs',
       '--import',
       './scripts/lib/src-alias-loader.mjs',
       join(ROOT, 'scripts', 'guards', 'lib', 'sitemap-catalogue-probe.mjs'),

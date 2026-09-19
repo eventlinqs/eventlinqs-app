@@ -32,40 +32,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
  */
 
 import { escapeOrValue, ilikeAnyOf } from '@/lib/supabase/or-filter'
+// The splitter is shared: see tests/helpers/postgrest-or.ts for why a second
+// private copy of the parser that judges this grammar would be the same mistake
+// the guard beside it exists to stop.
+import { topLevelClauses } from '../../helpers/postgrest-or'
 
 const BS = String.fromCharCode(92)
 const DQ = String.fromCharCode(34)
 
-/**
- * Split a PostgREST filter list on TOP-LEVEL commas: the ones PostgREST itself
- * would treat as separators, ignoring any inside a quoted value.
- */
-function topLevelClauses(filter: string): string[] {
-  const out: string[] = []
-  let current = ''
-  let inQuotes = false
-  for (let i = 0; i < filter.length; i += 1) {
-    const ch = filter[i]
-    if (ch === BS && inQuotes) {
-      current += ch + (filter[i + 1] ?? '')
-      i += 1
-      continue
-    }
-    if (ch === DQ) {
-      inQuotes = !inQuotes
-      current += ch
-      continue
-    }
-    if (ch === ',' && !inQuotes) {
-      out.push(current)
-      current = ''
-      continue
-    }
-    current += ch
-  }
-  out.push(current)
-  return out
-}
 
 /** Terms a person actually types, and the ones that break the grammar. */
 const HOSTILE = [

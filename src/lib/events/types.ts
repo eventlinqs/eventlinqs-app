@@ -33,6 +33,8 @@ export type PublicEventRow = {
   gallery_urls: string[] | null
   start_date: string
   end_date: string
+  /** The EVENT own IANA zone. Every surface that PRINTS a date must format in it. */
+  timezone: string | null
   venue_name: string | null
   venue_city: string | null
   venue_country: string | null

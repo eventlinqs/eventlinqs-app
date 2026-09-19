@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import { EventCardMedia } from '@/components/media/EventCardMedia'
 import type { EventCardMediaVariant } from '@/components/media/EventCardMedia'
 import { BrandedPlaceholder } from '@/components/media/decorative/branded-placeholder'
@@ -28,7 +29,11 @@ export interface BentoEvent extends EventMediaInput {
    * then falls back to the platform zone, which is at least the same on the
    * server and in every browser.
    */
-  timezone?: string | null
+  /**
+   * The EVENT own IANA zone. REQUIRED: an optional field let a card print the
+   * UTC day in silence, which is what it did on every morning event.
+   */
+  timezone: string | null
   venue_name?: string | null
   venue_city?: string | null
   ticket_tiers?: { price: number; currency: string }[] | null
@@ -47,14 +52,7 @@ interface Props {
   initiallySaved?: boolean
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
-}
+
 
 function formatCheapestPrice(tiers: BentoEvent['ticket_tiers']): string | null {
   return priceLabel(tiers ?? [])
@@ -214,7 +212,7 @@ export async function EventBentoTile({
 
       <div className="relative z-10 p-4 md:p-5 text-white transition-transform duration-300 group-hover:-translate-y-1">
         <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-400">
-          {formatDate(event.start_date)}
+          {formatEventDateShort(event.start_date, event.timezone)}
         </p>
         <h3 className={`mt-1 font-display font-extrabold leading-tight ${titleSize(size)} line-clamp-2`}>
           {event.title}

@@ -23,6 +23,19 @@ interface Props {
    * and a second copy of a 100-line gradient band is one more place for the two
    * to drift apart. Passing the sentences in was the smaller change.
    */
+  /**
+   * The `?interest=` token the contact link carries, defaulting to
+   * `communitySlug` so every existing caller is byte-identical.
+   *
+   * WHY (close-out AQ3, 19 September 2026). `/contact` turns an unrecognised
+   * interest token into the subject line "Organiser interested in <Title Case>
+   * events". That is right for a community and right for a category, and on
+   * `/this-weekend` it produced "Organiser interested in This Weekend events",
+   * which is not a kind of event anybody runs. That page passes
+   * `create-event`, a token /contact already knows, so the subject reads "I
+   * want to create an event on EventLinqs".
+   */
+  contactInterest?: string
   heading?: string
   body?: string
 }
@@ -39,6 +52,7 @@ export function CommunityOrganiserCtaPanel({
   communityName,
   organiserPersonas,
   backdropImage = null,
+  contactInterest,
   heading,
   body,
 }: Props) {
@@ -109,7 +123,7 @@ export function CommunityOrganiserCtaPanel({
                 variant="primary"
                 size="lg"
                 onSurface={isDark ? 'dark' : 'light'}
-                href={`/contact?topic=organiser&interest=${communitySlug}`}
+                href={`/contact?topic=organiser&interest=${contactInterest ?? communitySlug}`}
               >
                 Talk to us about your event
               </Button>

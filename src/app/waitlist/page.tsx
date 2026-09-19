@@ -102,7 +102,8 @@ export default async function WaitlistPage() {
       </section>
 
       {/* ── 2. City chooser + join form ──────────────────────────────────── */}
-      <ContentSection surface="base" width="wide" reveal>
+      {/* 2,469px at 390: the city chooser is far taller than a rail. */}
+      <ContentSection surface="base" width="wide" reveal skipOffscreen={false}>
         <div id="choose-your-city" className="max-w-2xl scroll-mt-24">
           <p className="mb-3 font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
             Local alerts

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ilikeAnyOf } from '@/lib/supabase/or-filter'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import type { AdminSession } from '@/lib/admin/types'
 import type { Database } from '@/types/database'
@@ -73,10 +74,7 @@ export async function listProfiles(filters: UserListFilters): Promise<UserListRe
     .range(fromIdx, fromIdx + PAGE_SIZE)
 
   if (filters.role && filters.role !== 'all') q = q.eq('role', filters.role)
-  if (filters.search) {
-    const term = `%${filters.search}%`
-    q = q.or(`email.ilike.${term},full_name.ilike.${term},display_name.ilike.${term}`)
-  }
+  if (filters.search) q = q.or(ilikeAnyOf(['email', 'full_name', 'display_name'], filters.search))
 
   const { data, error } = await q
   if (error) throw error

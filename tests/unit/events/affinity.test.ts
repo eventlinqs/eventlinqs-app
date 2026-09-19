@@ -21,6 +21,7 @@ function evt(over: Partial<PublicEventRow> & { id: string }): PublicEventRow {
     title: over.title ?? `Event ${over.id}`,
     summary: null,
     description: null,
+    timezone: over.timezone ?? null,
     cover_image_url: over.cover_image_url ?? 'https://cdn.example/cover.avif',
     thumbnail_url: null,
     gallery_urls: null,

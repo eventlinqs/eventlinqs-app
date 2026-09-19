@@ -1,3 +1,4 @@
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import { EventCardLandscape, EventCardSquare, EventCardFeature, type HomeCardEvent } from '@/components/features/home/cards'
 import { getEventMedia } from '@/lib/images/event-media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
@@ -20,14 +21,7 @@ import { EVENT_CARD_CELL, FEATURE_CARD_CELL, SQUARE_CARD_CELL } from '@/lib/ui/r
  * The card itself never paints text on the image - details sit below it.
  */
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
-}
+
 
 function formatPrice(tiers: BentoEvent['ticket_tiers']): string {
   return priceLabel(tiers ?? [])
@@ -67,7 +61,7 @@ export async function ThisWeekCard({
     title: event.title ?? 'Event',
     venue: event.venue_name ?? '',
     city: event.venue_city ?? '',
-    dateLabel: formatDate(event.start_date),
+    dateLabel: formatEventDateShort(event.start_date, event.timezone),
     priceLabel: formatPrice(event.ticket_tiers ?? null),
     // Feature cards default to priority=true (built for above-fold hero use).
     // Every homepage feature RAIL is below the fold, so force priority off

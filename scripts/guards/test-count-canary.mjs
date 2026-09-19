@@ -2443,6 +2443,49 @@ const ROOT = join(HERE, '..', '..')
  *   465 + 1 = 466 files
  *   6057 + 11 = 6068 tests
  *
+ * 2026-09-19, close-out C8B.3. A guard drill deleted `cv-section` from the one
+ * constant that applies it to every homepage rail, and the guard PASSED: the
+ * COMMENT on the same line still said the word. Comments are not code, so the
+ * contract reads source with its comments removed - by a tokeniser rather
+ * than a regular expression, because `s.replace(/\/\/.*$/gm, '')` eats the
+ * second half of every 'https://...' in the repository.
+ *
+ * MEASURED: 467 files, 6078 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: one new file, tests/unit/guards/strip-js-comments.test.ts,
+ * holding 10 cases.
+ *   466 + 1 = 467 files
+ *   6068 + 10 = 6078 tests
+ *
+ * 2026-09-19, close-out C8B.1. The document-weight reporter grew rows one at a
+ * time, and every one of them was added because a reader noticed a number that
+ * did not add up - the class-attribute row exists only because somebody asked
+ * what the other third of a 1,007,295-byte homepage was. `composition` asks it
+ * instead: the document is partitioned into markup and flight EXACTLY, each
+ * named category is measured in the markup half, and the remainder is reported
+ * as UNEXPLAINED rather than waiting for the next curious reader.
+ *
+ * MEASURED: 467 files, 6085 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE: no new FILE (the cases went into an existing one), and 7 new
+ * cases in tests/unit/perf/document-weight.test.ts, which took it from 43
+ * to 50.
+ *   467 + 0 = 467 files
+ *   6078 + 7 = 6085 tests
+ *
+ * 2026-09-19, the merge of verify/l5-launch-readiness into lane/c-ux. The two
+ * sides auto-merged this file for once, which means the floor it carried was
+ * ONE SIDE'S rather than the merged tree's. It is measured here instead: lane
+ * B's three new files (consent/ledger-dates-are-australian,
+ * consent/one-click-unsubscribe, email/one-click-headers-reach-the-provider)
+ * report 29 tests when run on their own.
+ *
+ * MEASURED on the merged tree: 470 files, 6114 tests, 0 failed, 0 skipped.
+ *
+ * CHECKABLE:
+ *   467 + 3 = 470 files
+ *   6085 + 29 = 6114 tests
+ *
  * 2026-09-19, lane A, the three-lane merge. The floor had not moved since it was
  * written, while the watchdog merged twenty more lane B and lane C commits into
  * verify/l5-launch-readiness. The gate measured the merged tree at d6e8ce0e and
@@ -2490,6 +2533,126 @@ const ROOT = join(HERE, '..', '..')
  *   471 + 1 = 472 files
  *   6109 + 14 = 6123 tests
  *
+ * 2026-09-19, lane C, resolving the two above. Both sides raised the
+ * floor on the same day from different trees - 470/6114 here, 469/6097
+ * there - and neither describes a tree holding both. The arithmetic is
+ * kept because it is how each side is checked, and the pair below is
+ * MEASURED on the merged tree rather than chosen from a side.
+ *
+ * MEASURED on the tree holding both: 471 files, 6119 tests, 0 failed,
+ * 0 skipped. Lane A's one new file (media/avatar-sizes-is-a-leaf) and its 5
+ * cases are the difference from this lane's 470/6114:
+ *   470 + 1 = 471 files
+ *   6114 + 5 = 6119 tests
+ *
+ * RAISED AGAIN, 19 September 2026, lane C, on the tree that holds the merge
+ * plus `tests/unit/perf/event-grid-intrinsic.test.ts`:
+ *   471 + 1 = 472 files
+ *   6119 + 16 = 6135 tests
+ * Measured by this guard's own run, not counted by hand.
+ *
+ * 2026-09-19, lane C, the merge of verify/l5-launch-readiness into lane/c-ux.
+ * BOTH BLOCKS ABOVE ARE KEPT because each is how its own side is checked, and
+ * neither describes a tree holding both. Each side held 472 test files and each
+ * contributed two the other had never held: this lane
+ * tests/unit/guards/strip-js-comments.test.ts and
+ * tests/unit/perf/event-grid-intrinsic.test.ts, lane A
+ * tests/unit/notifications/organiser-money-notify.test.ts and
+ * tests/unit/seo/artist-catalogue-is-linked.test.ts. Writing either side's pair
+ * onto the merged tree would lower the floor below what the merged tree actually
+ * runs, which is the one thing this guard exists to notice.
+ *
+ * MEASURED on the tree holding both, by this guard's own run rather than counted
+ * by hand: 474 files, 6156 tests, 0 failed, 0 skipped.
+ *
+ * THE FILE COUNT IS CHECKABLE AND THE TEST COUNT IS NOT, and that is said here
+ * rather than papered over with arithmetic that happens to land:
+ *   472 + 2 = 474 files.
+ *   6123 + 26 = 6149 tests, which is SEVEN SHORT of the measured 6156. This
+ *   lane's two files hold 26 cases, measured by running them alone. The seven
+ *   are verify's own later work, committed AFTER lane A wrote 6123 at ee2aa8bc:
+ *   14963fd3 and ec65a689 add cases to tests/unit/ci/gate-url-determinism.test.ts
+ *   and tests/unit/seo/artist-catalogue-is-linked.test.ts. A floor derived from
+ *   the two written pairs would therefore have been seven cases low, which is
+ *   exactly why the number below is measured and not derived.
+ *
+ * 2026-09-19, lane C, the fourth sitemap family. Artists were a row-derived
+ * sitemap family that no guard compared against the database, which is how the
+ * platform advertised four artist pages nothing on the site linked to.
+ * tests/unit/guards/artist-sitemap-gate.test.ts holds the fifteen cases behind
+ * clause F of sitemap-resolves, and eight more cases went into the existing
+ * tests/unit/guards/sitemap-covers-the-catalogue.test.ts, which is why the file
+ * count moves by one and the test count by twenty-three.
+ *
+ * MEASURED: 475 files, 6179 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   474 + 1 = 475 files
+ *   6156 + 15 + 8 = 6179 tests
+ *
+ * 2026-09-19, lane C, the weekend read in the right zone. The homepage built its
+ * own Saturday-to-Sunday window on a UTC day and /api/home/surprise read the
+ * server's clock, so a quarter of next weekend was missing from the weekend rail
+ * and a Monday morning pick was labelled "Weekend energy".
+ * tests/unit/events/weekend-in-the-right-zone.test.ts holds the twelve cases,
+ * seven for the window and five for localHourOfDay.
+ *
+ * MEASURED: 476 files, 6191 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   475 + 1 = 476 files
+ *   6179 + 12 = 6191 tests
+ *
+ * 2026-09-19, lane C, event dates in the event's zone. Eight components
+ * formatted an event date with timeZone 'UTC', so every event starting before
+ * 10:00 AEST showed the PREVIOUS DAY on its card.
+ * tests/unit/events/event-dates-in-the-event-zone.test.ts holds the twelve
+ * cases, five for the formatters and seven for the guard that keeps them.
+ *
+ * MEASURED: 477 files, 6203 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   476 + 1 = 477 files
+ *   6191 + 12 = 6203 tests
+ *
+ * 2026-09-19, lane C, the weekend surface (close-out AQ3). `/this-weekend` is a
+ * real page instead of a fourth door into `/events?preset=weekend`.
+ * tests/unit/events/weekend-surface.test.ts holds twelve cases: the day split by
+ * the event's own zone including a Perth Saturday that is Sunday in Sydney, and
+ * the preset that used to REPLACE the listing window instead of narrowing it.
+ * tests/component/weekend-landing-page.test.tsx holds six, for the two states
+ * the page renders and the count that may never return to a line of its own.
+ * The nineteenth is one new case in tests/unit/seo/discovery-indexability.test.ts,
+ * which now generates the real sitemap against a weekend fixture as well as a
+ * catalogue one and proves the URL leaves when the weekend empties.
+ *
+ * MEASURED: 479 files, 6222 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   477 + 2 = 479 files
+ *   6203 + 12 + 6 + 1 = 6222 tests
+ *
+ * 2026-09-19, lane C, the gold tiers and the clipped card on the shared empty
+ * state. tests/unit/a11y/hero-empty-gold-tiers.test.ts holds six: five that
+ * compute the four gold-on-surface ratios out of globals.css, so retuning
+ * either token fails there with the number rather than silently moving a live
+ * surface under its floor, and one that EXECUTES the guard's refusal to pass
+ * vacuously by pointing it at a tree with no surface flag in it (the drill
+ * harness mutates one file per drill and could not empty the scope).
+ * tests/component/ui/category-hero-empty.test.tsx holds nine, for the tier and
+ * the hero variant each of the two surfaces is entitled to. Three of the nine
+ * were watched to fail against the shipped component before the fix.
+ *
+ * MEASURED: 481 files, 6237 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   479 + 2 = 481 files
+ *   6222 + 6 + 9 = 6237 tests
  * 2026-09-19 (later), lane A, close-out MONEY FIX A3 layer three, and a debt
  * that was not mine. The raise carries SEVEN files rather than one, because six
  * of them arrived with the watchdog's lane/b-growth merge at a172aee9 and no
@@ -2526,9 +2689,43 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   472 + 6 + 1 = 479 files
  *   6123 + 87 + 13 = 6223 tests
+ *
+ * 2026-09-19, lane C, the SECOND merge of verify/l5-launch-readiness into
+ * lane/c-ux. BOTH BLOCKS ABOVE ARE KEPT, for the reason the first merge
+ * already recorded: each is how its own side is checked, and neither
+ * describes a tree holding both. This lane measured 481/6237 on a tree that
+ * did not yet hold lane A's settlement-reconcile file or the six lane B files
+ * that arrived with the a172aee9 watchdog merge; lane A measured 479/6223 on a
+ * tree that did not hold this lane's grid and empty-state work. Writing either
+ * pair onto the merged tree would lower the floor below what the merged tree
+ * actually runs, which is the one thing this guard exists to notice.
+ *
+ * MEASURED on the tree holding both, by the suite rather than counted by hand:
+ * 488 files, 6337 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\EVIDENCE\_c-merge2-suite.txt).
+ *
+ * 2026-09-19, lane C, the admin search boxes that answered 500 on a comma.
+ * tests/unit/admin/search-terms-are-escaped.test.ts holds the thirty-one cases:
+ * five hostile terms against each of the four reads that were fixed, plus the
+ * columns each is entitled to search, plus the empty search that must send no
+ * filter at all, plus the topbar search that reads three tables at once and used
+ * to say "Nothing matched" about a row that exists. Five of them were WATCHED TO
+ * FAIL against the shipped code, one file at a time
+ * (C:\dev\EVIDENCE\OR-FILTER	ests-watched-to-fail.txt).
+ *
+ * tests/unit/supabase/or-filter.test.ts gained no cases: its private copy of the
+ * clause splitter moved to tests/helpers/postgrest-or.ts so both files judge the
+ * grammar with one parser, which is the same lesson the guard beside it teaches.
+ *
+ * MEASURED: 489 files, 6368 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\EVIDENCE\OR-FILTER\gate-suite.txt).
+ *
+ * CHECKABLE:
+ *   488 + 1 = 489 files
+ *   6337 + 31 = 6368 tests
  */
-const MIN_FILES = 479
-const MIN_TESTS = 6223
+const MIN_FILES = 489
+const MIN_TESTS = 6368
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

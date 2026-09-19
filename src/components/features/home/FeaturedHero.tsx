@@ -1,3 +1,4 @@
+import { formatEventDate } from '@/lib/dates/event-time'
 import Link from 'next/link'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { HeroMedia } from '@/components/media/HeroMedia'
@@ -29,18 +30,10 @@ import { BRAND_TAGLINE_PHRASE_BOUND } from '@/lib/brand/positioning'
 
 const MAX_SLIDES = 5
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-}
+
 
 function detailLine(event: BentoEvent): string {
-  const parts = [event.venue_name, event.venue_city, formatDate(event.start_date)]
+  const parts = [event.venue_name, event.venue_city, formatEventDate(event.start_date, event.timezone)]
     .map(p => (p ?? '').toString().trim())
     .filter(Boolean)
   return parts.join('  |  ')

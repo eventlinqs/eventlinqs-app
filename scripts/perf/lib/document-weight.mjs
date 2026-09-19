@@ -386,11 +386,97 @@ const STYLE_FLIGHT_RE = new RegExp(
   'g',
 )
 
+/**
+ * EVERY BYTE OF THE DOCUMENT, ACCOUNTED FOR OR NAMED AS UNEXPLAINED.
+ *
+ * ============================================================================
+ * WHY A REPORTER NEEDS THIS AND NOT JUST MORE ROWS
+ * ============================================================================
+ *
+ * This module grew a row at a time - candidate lists, then the flight payload,
+ * then class attributes, then inline styles - and each row was added because
+ * somebody noticed a number that did not add up. The class-attribute row
+ * exists ONLY because a reader looked at a 1,007,295-byte homepage, saw srcset
+ * explain 29% and the flight explain 36.6%, and asked what the other third
+ * was. That question found 34.9% of the document in one attribute.
+ *
+ * Nothing in the reporter asked it. A reader did, once, and the next third
+ * would have waited for another reader to be curious on a different day.
+ *
+ * So the composition is computed instead: the document is PARTITIONED into the
+ * flight payload and everything else, each named category is measured within
+ * its part, and whatever is left over is reported as UNEXPLAINED with its
+ * share. A category that stops matching shows up as the unexplained share
+ * growing, which is the same signal, reported rather than noticed.
+ *
+ * ============================================================================
+ * THE PARTITION IS EXACT AND THE CATEGORIES ARE NOT
+ * ============================================================================
+ *
+ * markup + flight = the document, exactly, because the split is made by
+ * removing the contents of the flight script tags and keeping the rest. The
+ * CATEGORIES inside each part are subsets that may not be disjoint from each
+ * other in principle, so `unexplained` is computed as a remainder and is
+ * allowed to be large - on a document that is mostly prose it will be. It is
+ * never allowed to be NEGATIVE: that would mean a category counted bytes the
+ * part does not contain, and the analysis refuses rather than printing it.
+ */
+export function composition(html) {
+  /* The flight half: the contents of every script tag carrying the marker. */
+  const flight = flightPayload(html)
+
+  /* The markup half: the same document with those contents removed, which is
+   * what makes the two sum to the whole rather than to an estimate. */
+  let markupOnly = html
+  for (const tag of html.matchAll(new RegExp(SCRIPT.source, 'g'))) {
+    if (!tag[1].includes(FLIGHT_MARKER)) continue
+    markupOnly = markupOnly.replace(tag[1], '')
+  }
+
+  const inMarkup = (re) => {
+    let n = 0
+    for (const m of markupOnly.matchAll(re)) n += m[1].length
+    return n
+  }
+  const srcsetMarkup = inMarkup(new RegExp(SRCSET.source, 'gi'))
+  const classMarkup = inMarkup(new RegExp(CLASS_ATTR_RE.source, 'g'))
+  const styleMarkup = inMarkup(new RegExp(STYLE_ATTR_RE.source, 'g'))
+
+  const markupBytes = markupOnly.length
+  const named = srcsetMarkup + classMarkup + styleMarkup
+  const unexplainedMarkup = markupBytes - named
+
+  return {
+    documentBytes: html.length,
+    markupBytes,
+    flightBytes: flight.bytes,
+    /* The two halves must reconstruct the document. If they ever do not, the
+     * split is wrong and every share below it is wrong with it. */
+    partitionExact: markupBytes + flight.bytes === html.length,
+    srcsetMarkup,
+    classMarkup,
+    styleMarkup,
+    unexplainedMarkup,
+    unexplainedSharePercent: markupBytes === 0 ? 0 : (unexplainedMarkup / markupBytes) * 100,
+    flightSharePercent: html.length === 0 ? 0 : (flight.bytes / html.length) * 100,
+  }
+}
+
 export function analyseDocument(html, { expectFlight = true } = {}) {
   const documentBytes = html.length
   const gzipBytes = gzipSync(Buffer.from(html)).length
   const { srcsetBytes, candidates, firstCandidate, byRole } = candidateLists(html)
   const flight = flightPayload(html)
+
+  const comp = composition(html)
+  if (comp.unexplainedMarkup < 0) {
+    throw new Error(
+      `REFUSING: the named categories account for ${comp.srcsetMarkup + comp.classMarkup + comp.styleMarkup} B ` +
+        `of a ${comp.markupBytes} B markup half, which is more than it contains. A matcher is counting bytes ` +
+        'that are not there - most likely inside the flight payload it was supposed to have been excluded ' +
+        'from - and every share this would print is wrong.',
+    )
+  }
 
   if (expectFlight && flight.scripts === 0) {
     throw new Error(
@@ -406,6 +492,7 @@ export function analyseDocument(html, { expectFlight = true } = {}) {
     gzipBytes,
     classLists: classListWeight(html),
     styleAttributes: styleAttributeWeight(html),
+    composition: comp,
     flightBytes: flight.bytes,
     flightScripts: flight.scripts,
     flightSharePercent: documentBytes === 0 ? 0 : (flight.bytes / documentBytes) * 100,

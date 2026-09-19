@@ -762,6 +762,45 @@ body {
   content-visibility: auto;
   contain-intrinsic-size: auto 480px;
 }
+
+/* A section whose height is COMPUTABLE from its own content declares it,
+ * instead of inheriting the rail's 480px guess (close-out C8B.3, 19 September
+ * 2026). The nine event grids are 1,719px to 9,067px; 480px is wrong by
+ * 1,789% on the largest, and reserving it anyway grew /city/melbourne by 60%
+ * under the reader, which is why four of them had no treatment at all until
+ * now.
+ *
+ * THE FORMULA LIVES HERE AND THE PAGE SENDS ONLY THREE INTEGERS. Emitting the
+ * whole calc() per page measured 470 bytes per document across its two copies
+ * (the markup and the flight payload); three row counts are 78. The formula is
+ * the same on every page, and this stylesheet is fetched once.
+ *
+ * IT IS GENERATED, NOT TYPED. Every number below comes from
+ * src/lib/ui/event-grid-intrinsic.ts by `eventGridIntrinsicCss(band)`, and
+ * scripts/guards/event-grid-reserves-its-own-height.mjs regenerates it and
+ * fails the build on any difference. Edit the module, run the guard, paste
+ * what it prints.
+ *
+ * A NOTE FOR WHOEVER EDITS THIS RULE NEXT: a CSS-only change here came back
+ * from `next build` STALE once, on 19 September 2026. The component's new
+ * property name was in the server chunks and this rule still named the old
+ * one, so the reservation resolved to nothing and the drive reported
+ * "reserved auto none". If a change here does not appear in
+ * .next/static/chunks/*.css, that is what is happening; it is not the syntax.
+ *
+ * THIS IS NOT AN @utility AND CANNOT BE. Tailwind v4's `@utility` holds one
+ * declaration block; this rule needs three, because the column count changes
+ * at `md` and `lg`. */
+.cv-measured {
+  content-visibility: auto;
+  contain-intrinsic-size: auto calc(var(--cv-r-base, 1) * ((min(100vw, 1400px) - 34px) * 0.5625 + 168.5px) + 88px);
+}
+@media (width >= 48rem) {
+  .cv-measured { contain-intrinsic-size: auto calc(var(--cv-r-md, 1) * (((min(100vw, 1400px) - 72px) / 2 - 2px) * 0.75 + 168.5px) + 60px); }
+}
+@media (width >= 64rem) {
+  .cv-measured { contain-intrinsic-size: auto calc(var(--cv-r-lg, 1) * (((min(100vw, 1400px) - 112px) / 3 - 2px) * 0.75 + 168.5px) + 60px); }
+}
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -779,12 +818,50 @@ body {
  * page inherits the new scale from this one token (52vh base / 55vh sm /
  * 60vh lg, max 600px, min 400px). Still ONE scale, still one edit - never a
  * per-page literal. Any further deviation ABOVE this stays evidence-gated. */
-.hero-marketing {
-  height: 52vh;
+/*
+ * THE SCALE IS DECLARED ONCE, on a custom property, and the two variants read
+ * it. Both are unlayered, deliberately: unlayered CSS beats everything in
+ * `@layer utilities` whatever its specificity (see the cascade note further up
+ * this file), so a Tailwind `h-auto` on the element CANNOT override these and
+ * the choice has to be made here.
+ *
+ *   .hero-marketing        the locked scale as a FIXED height. The image owns
+ *                          the box and the content is restrained over it. This
+ *                          is what every page hero uses and its computed values
+ *                          are unchanged by this refactor (439/563/540 at
+ *                          390/768/1440, measured before and after).
+ *   .hero-marketing-grow   the same scale as a FLOOR, for the one hero whose
+ *                          CONTENT is the subject: the imageless empty-state
+ *                          card, which has no photograph to size to.
+ *
+ * WHY THE SECOND ONE EXISTS. On 19 September 2026 the shared designed empty
+ * state was measured at 390: 637px of content inside a 439px box with
+ * `overflow-hidden`. The trust pillars and the card's bottom padding were cut
+ * off on every eventless city and suburb page, which is the surface an
+ * organiser's first visitor is most likely to land on. At 768 and 1440 it fit
+ * by TWO PIXELS (561 into 563, 538 into 540), so it was one word of copy away
+ * from clipping at every width. A fixed height plus overflow-hidden is correct
+ * for a photograph and wrong for a card that has to say something.
+ */
+.hero-marketing,
+.hero-marketing-grow {
+  --hero-scale: 52vh;
   min-height: 400px;
 }
-@media (width >= 40rem) { .hero-marketing { height: 55vh; } }
-@media (width >= 64rem) { .hero-marketing { height: 60vh; max-height: 600px; } }
+@media (width >= 40rem) {
+  .hero-marketing,
+  .hero-marketing-grow { --hero-scale: 55vh; }
+}
+@media (width >= 64rem) {
+  .hero-marketing,
+  .hero-marketing-grow { --hero-scale: 60vh; }
+  .hero-marketing { max-height: 600px; }
+}
+.hero-marketing { height: var(--hero-scale); }
+/* No `height` and no `max-height`: the floor is the scale, the ceiling is the
+   content. Giving this rule a height again reintroduces the clipping, which is
+   why scripts/guards/hero-scale-one-source.mjs refuses it. */
+.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); }
 
 /* ─── Smart media motion ─────────────────────────────────────────────────── */
 /*

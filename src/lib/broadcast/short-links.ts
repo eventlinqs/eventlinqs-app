@@ -94,7 +94,7 @@ export const RESERVED_CODES: readonly string[] = [
   // first two versions of this line failed.
   'm',
   'legal', 'login', 'marketing', 'offline', 'orders', 'organisers', 'press', 'pricing', 'queue', 's',
-  'scan', 'signup', 'squad', 't', 'tickets', 'unsubscribe', 'venues',
+  'scan', 'signup', 'squad', 't', 'this-weekend', 'tickets', 'unsubscribe', 'venues',
   'verify-email-sent', 'waitlist',
   // Held back on purpose: the permanent redirects from the community rename,
   // and the obvious next routes. Cheap to reserve, expensive to reclaim.

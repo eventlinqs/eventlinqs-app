@@ -123,6 +123,10 @@ export default async function CityPage({ params }: Props) {
     id: r.id, slug: r.slug, title: r.title,
     cover_image_url: r.cover_image_url, thumbnail_url: r.thumbnail_url,
     start_date: r.start_date,
+    // Carried through rather than dropped. The raw type above has read this
+    // column all along, with a comment saying why, and then the projection
+    // threw it away because EventCardData had nowhere to put it.
+    timezone: r.timezone ?? null,
     venue_name: r.venue_name, venue_city: r.venue_city, venue_country: r.venue_country,
     created_at: r.created_at, is_free: r.is_free,
     category: r.category, ticket_tiers: r.ticket_tiers ?? [],

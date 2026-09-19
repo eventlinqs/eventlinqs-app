@@ -90,34 +90,34 @@ const ESCAPED = /escapeOrValue\s*\(|ilikeAnyOf\s*\(/
 const SANITISES_AT_SOURCE = /from\s*'\.\/search-query'|from\s*'@\/lib\/events\/search-query'/
 
 /**
- * The six that match and belong to somebody else. `why` says what is actually
- * true of each, because "broken" and "correct but duplicated" are different
- * debts and lumping them together would make the register useless.
+ * THE DEBT REGISTER. What is left of it, and what was paid.
+ *
+ * It opened on 19 September 2026 with SIX entries, all in files lane B could
+ * not change. FIVE WERE PAID THE SAME DAY by lane C, which is what a register
+ * printed on every run is for:
+ *
+ *   src/lib/admin/events.ts       admin event search        -> ilikeAnyOf
+ *   src/lib/admin/organisers.ts   admin organiser search    -> ilikeAnyOf
+ *   src/lib/admin/users.ts        admin user search         -> ilikeAnyOf
+ *   src/lib/admin/search.ts       the global admin search   -> ilikeAnyOf
+ *   src/lib/events/search-scopes.ts  the second hand-rolled copy of the escape
+ *
+ * Each of those five is now judged by clause 2 like any other file, so putting
+ * the interpolation back FAILS THE BUILD rather than being excused by a line
+ * here. That is the point of paying a debt rather than re-describing it, and
+ * there are five drills in scripts/verify/guard-failure-drills.mjs that hold it.
+ *
+ * ONE IS LEFT AND IT IS NOT LANE C'S FILE EITHER. src/lib/admin/orders.ts says
+ * of itself, in its own header, that it is "admin order/attendee data access for
+ * the refund operator path", which is lane A's territory under the three-lane
+ * protocol. It is BROKEN in exactly the measured way and the fix is one import
+ * and one line. It is raised for lane A in C:/dev/REVIEW-QUEUE-C.md as a BORDER
+ * rather than taken.
  */
 export const REGISTER = [
   {
-    where: 'src/lib/admin/events.ts',
-    why: 'BROKEN: admin event search, title and slug, unescaped. Same shape as the measured PGRST100',
-  },
-  {
     where: 'src/lib/admin/orders.ts',
-    why: 'BROKEN: admin order search, order number and guest email, unescaped',
-  },
-  {
-    where: 'src/lib/admin/organisers.ts',
-    why: 'BROKEN: admin organiser search, name, slug and email, unescaped',
-  },
-  {
-    where: 'src/lib/admin/users.ts',
-    why: 'BROKEN: admin user search, email and both name columns, unescaped. A name written "Smith, John" finds nobody',
-  },
-  {
-    where: 'src/lib/admin/search.ts',
-    why: 'BROKEN: the global admin search, both of its reads, unescaped',
-  },
-  {
-    where: 'src/lib/events/search-scopes.ts',
-    why: 'CORRECT BUT DUPLICATED: it escapes by hand, with a comment pointing at fetchers.ts. Nothing is wrong with the behaviour; it is a second copy of one decision',
+    why: 'BROKEN: admin order search, order number and guest email, unescaped. Lane A owns the refund operator path this file serves; raised as a BORDER rather than taken',
   },
 ]
 

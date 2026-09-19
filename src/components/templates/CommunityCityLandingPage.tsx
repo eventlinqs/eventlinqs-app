@@ -17,6 +17,7 @@ import type { ComponentType } from 'react'
 import type { CommunityContent } from '@/lib/communities/data'
 import type { CityContent } from '@/lib/cities/data'
 import { STANDARD_TILE_CELL, WIDE_TILE_CELL , FLAT_RAIL_CELL } from '@/lib/ui/rhythm'
+import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 
 interface RelatedIntersection {
   communitySlug: string
@@ -32,6 +33,13 @@ interface RelatedCommunity {
   tagline: string
   image: string | null
 }
+
+/**
+ * How many of the intersection's events the grid shows. It was the literal
+ * 24 inside `.slice(0, 24)`; it is named because the reserved height is now
+ * derived from the same number (close-out C8B.3, 19 September 2026).
+ */
+const ALL_EVENTS_SHOWN = 24
 
 interface Props {
   community: CommunityContent
@@ -100,6 +108,8 @@ export function CommunityCityLandingPage({
   relatedCommunities,
   mapPins,
 }: Props) {
+  /* ONE array feeds both the reserved height and the cards. */
+  const shownEvents = allEvents.slice(0, ALL_EVENTS_SHOWN)
   const subCommunities = community.subCommunities
   const showSubCommunitiesRail = community.tier === 1 && subCommunities.length > 0
 
@@ -274,7 +284,21 @@ export function CommunityCityLandingPage({
 
       {/* S10 All events in city (paginated grid). S8/S9 organisers/venues
           render conditionally - hidden until populated. */}
-      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal>
+      {/* The events grid, the same markup as the city page's and therefore the
+          same height arithmetic: it declares what it will be rather than
+          inheriting a rail's 480px. src/lib/ui/event-grid-intrinsic.ts.
+          NOTE, honestly: no intersection on TEST held a published event on
+          19 September 2026, so this one is covered by the drive on the city
+          page it is a copy of, and by the guard that holds the two markups
+          identical - never by a measurement of itself. */}
+      <ContentSection
+        id="all-events"
+        surface="base"
+        width="wide"
+        topBorder
+        reveal
+        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}
+      >
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -291,9 +315,9 @@ export function CommunityCityLandingPage({
             Open in browse view &rsaquo;
           </Link>
         </div>
-        {allEvents.length > 0 ? (
+        {shownEvents.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {allEvents.slice(0, 24).map(e => (
+            {shownEvents.map(e => (
               <EventCard key={e.id} event={e} />
             ))}
           </div>

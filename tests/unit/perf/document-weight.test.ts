@@ -20,6 +20,7 @@ import {
   candidateSample,
   catalogueWeight,
   classListWeight,
+  composition,
   flightPayload,
   styleAttributeWeight,
 } from '../../../scripts/perf/lib/document-weight.mjs'
@@ -371,5 +372,67 @@ describe('styleAttributeWeight', () => {
   it('is carried on analyseDocument, so the reporter cannot drift from the analysis', () => {
     const html = `<div style="gap:4px"></div>${FLIGHT}`
     expect(analyseDocument(html).styleAttributes.bytes).toBe(styleAttributeWeight(html).bytes)
+  })
+})
+
+
+/**
+ * composition. The row that asks the question a reader asked once, by hand,
+ * and which found 34.9% of a homepage in one attribute: what is the rest of
+ * this document?
+ *
+ * The partition is the part that has to be exact. Categories inside it are
+ * allowed to overlap and to leave a remainder - that remainder IS the
+ * finding - but markup plus flight must reconstruct the document, or every
+ * share computed from them is wrong.
+ */
+describe('composition', () => {
+  const doc =
+    '<html><body><div class="alpha beta" style="gap:4px">' +
+    '<img srcset="/a 1x, /b 2x" alt="x">text that is not in any category</div>' +
+    FLIGHT +
+    '</body></html>'
+
+  it('partitions the document into markup and flight, exactly', () => {
+    const c = composition(doc)
+    expect(c.partitionExact).toBe(true)
+    expect(c.markupBytes + c.flightBytes).toBe(c.documentBytes)
+  })
+
+  it('measures each named category in the MARKUP half only', () => {
+    const c = composition(doc)
+    expect(c.classMarkup).toBe('alpha beta'.length)
+    expect(c.styleMarkup).toBe('gap:4px'.length)
+    expect(c.srcsetMarkup).toBe('/a 1x, /b 2x'.length)
+  })
+
+  it('does not count a class that lives inside the flight payload as markup', () => {
+    const flightClass =
+      '<script>self.__next_f.push([1,"className\\":\\"only-in-flight\\""])</script>'
+    const c = composition('<div class="in-markup"></div>' + flightClass)
+    expect(c.classMarkup).toBe('in-markup'.length)
+  })
+
+  it('reports what no category explains, as bytes and as a share', () => {
+    const c = composition(doc)
+    expect(c.unexplainedMarkup).toBeGreaterThan(0)
+    expect(c.unexplainedMarkup).toBe(c.markupBytes - c.srcsetMarkup - c.classMarkup - c.styleMarkup)
+    expect(c.unexplainedSharePercent).toBeCloseTo((c.unexplainedMarkup / c.markupBytes) * 100, 6)
+  })
+
+  it('is carried on analyseDocument, so the reporter cannot drift from the analysis', () => {
+    expect(analyseDocument(doc).composition.markupBytes).toBe(composition(doc).markupBytes)
+  })
+
+  it('handles a document with no flight payload at all when asked explicitly', () => {
+    const c = composition('<div class="a b c"></div>')
+    expect(c.flightBytes).toBe(0)
+    expect(c.partitionExact).toBe(true)
+  })
+
+  it('reports zero rather than throwing on an empty document', () => {
+    const c = composition('')
+    expect(c.documentBytes).toBe(0)
+    expect(c.unexplainedSharePercent).toBe(0)
   })
 })

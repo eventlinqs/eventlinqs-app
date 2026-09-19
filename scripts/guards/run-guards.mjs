@@ -67,6 +67,9 @@
  *   labels-name-the-right-control  and that label points at the control it describes,
  *                              not at the one that happens to sit beside it
  *   event-structured-data      an event page cannot ship without its Event JSON-LD
+ *   one-weekend-definition     nothing but listing-window.ts decides when the weekend is
+ *   event-dates-in-the-event-zone  no rendering surface pins a date to UTC
+ *   weekend-surface-one-decision  /this-weekend leaves the sitemap when it empties
  *   sitemap-resolves           no URL enters the sitemap that has no route, redirects, or
  *                              names a column that does not exist
  *   maintained-aggregates      no cache tag without an invalidation, no stored counter
@@ -321,6 +324,10 @@
  *                              contract. A width nobody selects is still written into the
  *                              srcset of every fixed-width image, 1,404 times on the
  *                              homepage at about 230 bytes each (close-out C8B.3)
+ *   event-grid-reserves-its-own-height
+ *                             every event grid declares the height it will be, from the
+ *                              count it renders, and every number that height is built
+ *                              from still describes the markup it names (close-out C8B.3)
  *   marketing-bands-are-supplyable
  *                             every route that renders a marketing band is measured by the
  *                              fidelity drive, every band variant is on its own hint whose
@@ -482,6 +489,18 @@
  *                              globals.css rather than held as a list of banned colours
  *                              in named files, which is how 28 pairs under AA survived
  *                              a test written for exactly that shape (close-out UX1)
+ *   surface-flag-colours-branch  a component that renders on BOTH a dark and a light
+ *                              surface branches every gold foreground with it, and the
+ *                              right way round. The shared empty state branched five
+ *                              colours and left two: gold-400 at 1.59:1 on the light
+ *                              card, gold-800 at 2.70:1 on the photo hero. The colour
+ *                              is on the icon and the surface is on the root, which is
+ *                              the gap tinted-text-meets-contrast names and cannot see
+ *   hero-scale-one-source    the founder's ONE hero scale is declared once, as
+ *                              --hero-scale, and no page overrides it on the hero
+ *                              element. Holds the growing variant too: giving it a
+ *                              height or a max-height restores the 390 clipping it
+ *                              exists to end (637px of content in a 439px box)
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -1003,6 +1022,26 @@ const GUARDS = [
   // /categories/* URLs this repository 308s away; and no tie at all between the
   // shapes published and the routes that exist. A sweep of the 586 URLs the
   // production sitemap published returned 48 hard 404s.
+  // SIX COPIES OF ONE DEFINITION, four removed by a consolidation that could not
+  // see the other two. The homepage built its own weekend from getUTCDay and ran
+  // it Saturday 10:00 to Monday 10:00 Melbourne time, dropping a quarter of the
+  // weekend off the rail whose only job is to show it; /api/home/surprise read
+  // the server's clock and labelled a Monday morning pick 'Weekend energy'.
+  'scripts/guards/one-weekend-definition.mjs',
+  // EIGHT COMPONENTS AT ONCE. Every reader is between UTC+8 and UTC+11, so
+  // an event starting before 10:00 AEST showed the PREVIOUS DAY on its card:
+  // every morning market, workshop and Saturday sport on the platform. The bug
+  // was already known and already fixed on ONE rail, and the other eight were
+  // left standing because nothing looked for them.
+  'scripts/guards/event-dates-in-the-event-zone.mjs',
+  // THE ONE PAGE THAT EMPTIES ITSELF ON A SCHEDULE. /this-weekend has nothing on
+  // it from Sunday night onwards, and AQ3 rules that a surface that cannot be
+  // filled is not published. The page's robots directive and the sitemap's
+  // decision to publish the URL are two readings of one number, and an
+  // unconditional entries.push in sitemap.ts is a one-line edit away at all
+  // times. This also holds the fix that made a date preset NARROW the listing
+  // window instead of replacing it.
+  'scripts/guards/weekend-surface-one-decision.mjs',
   'scripts/guards/sitemap-resolves.mjs',
   // A SECOND COPY MUST HAVE SOMETHING KEEPING IT IN STEP. Four failures of this
   // one class landed in a week, in four different mechanisms: a cached rail with
@@ -1545,6 +1584,33 @@ const GUARDS = [
   // combinations. This computes the ratio from globals.css instead of holding a
   // list. Drilled red on a real pair and green again.
   'scripts/guards/tinted-text-meets-contrast.mjs',
+  // 19 September 2026. The guard above names the gap this one closes, in its own
+  // header: "a text colour with no background in the same class string - it
+  // inherits from an ancestor this cannot see". CategoryHeroEmpty, the shared
+  // designed empty state on every eventless city, suburb, community, category,
+  // weekend, feed, artist, organiser and venue page, branched seven colours on
+  // its photo/canvas flag and left two unbranched. Both were wrong and in
+  // opposite directions: the trust-pillar icon painted gold-400 at 1.59:1 on the
+  // light card, the eyebrow painted gold-800 at 2.70:1 on the photo hero. The
+  // colour is on the icon and the surface is on the component root, so no
+  // per-string contrast arithmetic can reach it. Clause 1 requires the branch,
+  // clause 2 requires it to point the right way, because a swapped branch
+  // satisfies clause 1 and is just as broken. Drilled red on both clauses and
+  // green again.
+  'scripts/guards/surface-flag-colours-branch.mjs',
+  // 19 September 2026, found while proving the guard above. The founder ruled
+  // ONE hero scale on 7 July 2026, "never a per-page literal", and nothing
+  // executable held it: the scale was three height declarations and a law in a
+  // markdown file. It also holds the fix for what that fixed height did to the
+  // shared empty state, which put 637px of content in a 439px box with
+  // overflow-hidden at 390 and cut the trust pillars off 38 live routes, while
+  // fitting by TWO PIXELS at 768 and 1440. .hero-marketing-grow takes the scale
+  // as a floor instead; clause 3 refuses to let it have a ceiling again, which
+  // is the one edit that would silently restore the clipping. Two earlier and
+  // broader versions of clause 1 were withdrawn for false positives (a modal's
+  // max-h-[85vh], then the 44px touch target); the scope is now a height on the
+  // SAME ELEMENT as the hero class. Drilled red four ways and green again.
+  'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
   // organiser form, stored on the anon-readable events row, and shown to nobody.
@@ -1776,6 +1842,16 @@ const GUARDS = [
   // a slot that no longer existed. Next 16 removed 16 from its own default for the
   // same reason. Three clauses, each drilled red and green.
   'scripts/guards/candidate-ladder-has-no-dead-rung.mjs',
+  // Close-out C8B.3 (19 September 2026): the four "all events" grids had NO
+  // below-fold treatment, because 480px on a 9,067px section is wrong by 1,789%
+  // and applying it anyway grew /city/melbourne 60% under the reader. Their height
+  // is arithmetic - n cards in 1, 2 or 3 columns - so they declare it, to within a
+  // pixel of the measured page. Its FIRST run found five more event grids nobody
+  // had counted (the feed, the organiser and venue archives, the community grid
+  // and the category-events landing page), every one of them reserving a rail's
+  // 480px for a section thousands of pixels tall. Five clauses, each drilled red
+  // and green.
+  'scripts/guards/event-grid-reserves-its-own-height.mjs',
   // Lane B (19 September 2026): the marketing bands on /organisers and /about were
   // under-fetched at every desktop width and every gate was green, because the one
   // gate that could see a band did not have those routes in its list. Three clauses:

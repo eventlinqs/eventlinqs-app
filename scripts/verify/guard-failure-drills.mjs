@@ -586,6 +586,35 @@ const DRILLS = [
     expect: 'organisers URL(s) in the sitemap have no row behind them and would answer 404',
   },
   /*
+   * THE ARTIST FAMILY, TWO DRILLS (19 September 2026).
+   *
+   * The first is the defect that exposed the gap, reproduced rather than
+   * described: on 19 September the sitemap advertised four artist pages whose
+   * only events had ended, and the reachability crawl found one answering 200
+   * with nothing on the site linking to it. Deleting the listing window from
+   * the reader re-creates exactly that, and TEST still holds those four cold
+   * artists, so the drill has real rows to go wrong with rather than a fixture.
+   *
+   * The second is the 42703 again, asked of the family that had no guard at
+   * all until now. It is the one that hid the venue block for its whole life.
+   */
+  {
+    name: 'the artist reader forgets the listing window, so artists whose events have ended are advertised again',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "        .filter(e => typeof e.start_date === 'string' && isStillListed(e, now))",
+    replace: "        .filter(e => typeof e.start_date === 'string')",
+    expect: 'artists URL(s) in the sitemap have no row behind them and would answer 404',
+  },
+  {
+    name: 'the artist query names a column that does not exist, so the family would publish nothing',
+    guard: `${GUARDS}/sitemap-covers-the-catalogue.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      .select('slug, updated_at')\n      .in('id', artistIds)",
+    replace: "      .select('handle, updated_at')\n      .in('id', artistIds)",
+    expect: 'the sitemap would publish NO artists URL at all and say nothing about it',
+  },
+  /*
    * all-in-pricing (close-out SEO4), THREE DRILLS, one per clause. The item asks
    * for the guard to be "proven red by displaying a ticket price without its
    * fee, then green", which is the second of these; the other two are the
@@ -1487,6 +1516,168 @@ const DRILLS = [
     find: "    console.error('[sitemap] artist block failed:', err)",
     replace: '    void err',
     expect: 'catch block that reports nothing',
+  },
+  /*
+   * CLAUSES E AND F OF sitemap-resolves, THE ARTIST HALF (19 September 2026).
+   *
+   * Clause F is the one worth explaining. The comparison guard MODELS the
+   * `broadcast_artists` gate because it cannot execute sitemap.ts, and a model
+   * that drifts from the file drifts SILENTLY and in the worst direction:
+   * delete the `if` and the model keeps agreeing with itself while production,
+   * where that flag is OFF, hands Googlebot a 404 for every artist row on the
+   * platform. Nothing else in the tree would notice. This drill deletes it.
+   */
+  {
+    name: 'the artist block in the sitemap loses its feature-flag gate, which no comparison could see',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: "    if (await isFeatureEnabled('broadcast_artists')) {",
+    replace: "    if (true) {",
+    expect: 'outside any `if (await isFeatureEnabled(',
+  },
+  {
+    name: 'the catalogue stops building an artists path, so the family disappears in silence',
+    guard: `${GUARDS}/sitemap-resolves.mjs`,
+    file: 'src/lib/seo/sitemap-catalogue.ts',
+    find: "      rows.push({ path: `/artists/${slug}`,",
+    replace: "      rows.push({ path: `/performers/${slug}`,",
+    expect: 'no longer builds /artists/PARAM',
+  },
+  /*
+   * one-weekend-definition, THREE DRILLS (19 September 2026).
+   *
+   * This definition has been got wrong SIX times. Four copies were found and
+   * consolidated by the header on listing-window.ts; two more were still live
+   * on 19 September and that consolidation had no way to see them. The first
+   * two drills put each of those two back, in the exact shape it had. The
+   * third is the quiet one: rename the definition and clause 1 becomes
+   * unsatisfiable while a guard without clause 2 would report a pass on a tree
+   * that no longer defines a weekend anywhere.
+   */
+  {
+    name: 'the homepage builds its own weekend again, on a UTC day',
+    guard: `${GUARDS}/one-weekend-definition.mjs`,
+    file: 'src/app/page.tsx',
+    find: "import { weekendWindowUtc } from '@/lib/events/listing-window'",
+    replace: "const weekendWindowUtc = (n) => ({ from: new Date(n.setUTCHours(0,0,0,0)), to: new Date() })",
+    expect: 'src/app/page.tsx decides something about the WEEKEND',
+  },
+  {
+    name: 'the surprise label reads the server clock again, so a Monday morning is Weekend energy',
+    guard: `${GUARDS}/one-weekend-definition.mjs`,
+    file: 'src/app/api/home/surprise/route.ts',
+    find: "import { listingWindowOrPredicate, localDayOfWeek, localHourOfDay } from '@/lib/events/listing-window'",
+    replace: "const localDayOfWeek = (d) => d.getDay(); const localHourOfDay = (d) => d.getHours();",
+    expect: 'src/app/api/home/surprise/route.ts decides something about the WEEKEND',
+  },
+  {
+    name: 'the weekend definition is renamed, so every file is sent to a function that is not there',
+    guard: `${GUARDS}/one-weekend-definition.mjs`,
+    file: 'src/lib/events/listing-window.ts',
+    find: "export function weekendWindowUtc(",
+    replace: "export function weekendWindowUtcRenamed(",
+    expect: 'no longer exports weekendWindowUtc',
+  },
+  /*
+   * event-dates-in-the-event-zone, TWO DRILLS (19 September 2026).
+   *
+   * The first puts the defect back on the highest-traffic card on the
+   * platform. Eight components shipped this shape at once and every morning
+   * event in Australia showed the wrong DAY, because an event starting before
+   * 10:00 AEST is on the previous day in UTC. The second is the quiet one: a
+   * rename of the formatter everything is sent to, which without clause 2
+   * would leave the guard giving an impossible instruction and reporting a
+   * pass.
+   */
+  {
+    name: 'a card pins its date to UTC again, so every morning event shows the previous day',
+    guard: `${GUARDS}/event-dates-in-the-event-zone.mjs`,
+    file: 'src/components/features/events/event-bento-tile.tsx',
+    find: "          {formatEventDateShort(event.start_date, event.timezone)}",
+    replace: "          {new Date(event.start_date).toLocaleDateString('en-AU', { timeZone: 'UTC' })}",
+    expect: 'pins a date to UTC on a surface that renders for a reader',
+  },
+  {
+    name: 'the shared date formatter is renamed, so every surface is sent to a function that is not there',
+    guard: `${GUARDS}/event-dates-in-the-event-zone.mjs`,
+    file: 'src/lib/dates/event-time.ts',
+    find: "export function formatEventDateShort(",
+    replace: "export function formatEventDateShortRenamed(",
+    expect: 'no longer exports formatEventDateShort',
+  },
+  /*
+   * weekend-surface-one-decision, SIX DRILLS, one per clause (19 September 2026).
+   *
+   * /this-weekend is the only page on the platform whose contents expire on a
+   * schedule, so every one of these is a state the tree will genuinely be one
+   * edit away from. The last one is the defect the item found rather than
+   * introduced: a date preset that REPLACED the listing window instead of
+   * narrowing it, which had /events?preset=weekend listing gigs that finished
+   * yesterday while the homepage rail above the same link did not.
+   */
+  {
+    name: 'the sitemap publishes the weekend even when nothing is on it',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '  if (isDiscoveryIndexable(weekendSurface.total, threshold)) {',
+    replace: '  if (weekendSurface.total >= 0) {',
+    expect: 'without an isDiscoveryIndexable',
+  },
+  {
+    name: 'the page stops deciding its own robots directive from the weekend count',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/app/this-weekend/page.tsx',
+    find: '    ...(await discoveryIndexingFor(total, WEEKEND_SURFACE_PATH)),',
+    replace: '    robots: { index: true, follow: true },',
+    expect: 'does not decide its robots directive',
+  },
+  {
+    name: 'the weekend surface is renamed, so the page and the sitemap are sent to a function that is not there',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/weekend-surface.ts',
+    find: 'export async function loadWeekendSurface(',
+    replace: 'export async function loadWeekendSurfaceRenamed(',
+    expect: 'no longer exports loadWeekendSurface',
+  },
+  {
+    name: 'the day split is renamed in the leaf, where the fixture seeder reads it from outside Next',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/weekend-days.ts',
+    find: 'export function groupWeekendByDay<',
+    replace: 'export function groupWeekendByDayRenamed<',
+    expect: 'no longer exports groupWeekendByDay',
+  },
+  {
+    name: 'the read module stops re-exporting the leaf, so one surface becomes two unrelated imports',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/weekend-surface.ts',
+    find: "export * from './weekend-days'",
+    replace: "export type { WeekendDay } from './weekend-days'",
+    expect: 'no longer re-exports',
+  },
+  {
+    name: 'the sitemap writes the weekend path as a literal, so two strings must match and nothing checks',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/app/sitemap.ts',
+    find: '      url: `${baseUrl}${WEEKEND_SURFACE_PATH}`,',
+    replace: "      url: `${baseUrl}` + '/this-weekend',",
+    expect: 'writes the path',
+  },
+  {
+    name: 'the weekend page is reclassified always, so an empty weekend is published every week',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/seo/indexing-policy.ts',
+    find: "{ route: '/this-weekend', klass: 'conditional'",
+    replace: "{ route: '/this-weekend', klass: 'always'",
+    expect: "must be 'conditional'",
+  },
+  {
+    name: 'a date preset replaces the listing window again, so a finished gig is still on this weekend',
+    guard: `${GUARDS}/weekend-surface-one-decision.mjs`,
+    file: 'src/lib/events/fetchers.ts',
+    find: '  q = q.or(listingWindowOrPredicate(now))',
+    replace: '  if (!window) q = q.or(listingWindowOrPredicate(now))',
+    expect: 'applies the listing window behind a condition',
   },
   /*
    * one-db-connection-source, four drills, one per banned shape.
@@ -4842,6 +5033,61 @@ const DRILLS = [
     replace: 'const SANITISES_AT_SOURCE = /never-matches-anything-at-all/; const UNUSED_SANITISES = /',
     expect: 'no longer matches',
   },
+
+  /*
+   * THE FIVE DEBTS LANE C PAID, one drill each (19 September 2026).
+   *
+   * They were in the register when the guard shipped, which meant the guard
+   * PRINTED them and could not FAIL on them. They are ordinary files now, so
+   * each drill puts the interpolation back and shows the build refusing. A debt
+   * that is paid and not drilled is a debt that comes back on the next
+   * copy-paste, which is how four of these five arrived in the first place.
+   *
+   * Measured against TEST before any of them was touched:
+   *   .or(`title.ilike.%Night, Geelong%,slug.ilike.%Night, Geelong%`)
+   *     -> PGRST100 failed to parse logic tree
+   *   the same search, escaped -> 3 rows, all of the shape "... Night, Geelong"
+   */
+  {
+    name: 'the admin user search goes back to interpolating a raw term, so "Smith, John" 500s',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/users.ts',
+    find: "q = q.or(ilikeAnyOf(['email', 'full_name', 'display_name'], filters.search))",
+    replace: 'q = q.or(`email.ilike.%${filters.search}%,full_name.ilike.%${filters.search}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the admin event search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/events.ts',
+    find: "q = q.or(ilikeAnyOf(['title', 'slug'], filters.search))",
+    replace: 'q = q.or(`title.ilike.%${filters.search}%,slug.ilike.%${filters.search}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the admin organiser search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/organisers.ts',
+    find: "q = q.or(ilikeAnyOf(['name', 'slug', 'email'], filters.search))",
+    replace: 'q = q.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the global admin search goes back to interpolating a raw term',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/admin/search.ts',
+    find: "or(ilikeAnyOf(['title', 'slug'], q))",
+    replace: 'or(`title.ilike.%${q}%,slug.ilike.%${q}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
+  {
+    name: 'the public organiser search scope goes back to its own private copy of the escape',
+    guard: `${GUARDS}/or-filter-values-are-escaped.mjs`,
+    file: 'src/lib/events/search-scopes.ts',
+    find: "or(ilikeAnyOf(['name', 'slug'], term))",
+    replace: 'or(`name.ilike.%${term}%,slug.ilike.%${term}%`)',
+    expect: 'builds an or() ilike pattern by interpolation, unescaped',
+  },
   {
     name: "clause 3's matcher is rebuilt inside a template literal and quietly stops matching",
     guard: `${GUARDS}/consent-dates-are-zoned.mjs`,
@@ -5140,12 +5386,166 @@ const DRILLS = [
     expect: 'does not reference chrome-nav-link',
   },
   {
+    name: 'every interior template stops skipping below-fold layout because ContentSection dropped the class',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/components/layout/ContentSection.tsx',
+    find: "className={`${skipOffscreen ? 'cv-section ' : ''}relative",
+    replace: "className={`${skipOffscreen ? '' : ''}relative",
+    expect: 'does not reference cv-section',
+  },
+  {
+    /* cv-section is not a class list; it is held by the same guard because it
+     * fails the same way - a one-line deletion that costs measured
+     * milliseconds on every homepage visit and breaks no test. */
+    name: 'the homepage rails stop skipping below-fold layout because SECTION_RAIL lost the class',
+    guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
+    file: 'src/lib/ui/spacing.ts',
+    find: "export const SECTION_RAIL    = 'cv-section py-6 sm:py-8' as const",
+    replace: "export const SECTION_RAIL    = 'py-6 sm:py-8' as const",
+    expect: 'does not reference cv-section',
+  },
+  {
     name: 'the flight matcher goes blind and the calibration refuses rather than reporting a clean build',
     guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
     file: 'scripts/guards/class-lists-are-not-repeated-per-card.mjs',
     find: "const CLASS_FLIGHT = new RegExp(`className${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
     replace: "const CLASS_FLIGHT = new RegExp(`classNameXX${BS}${BS}\":${BS}${BS}\"([^${BS}${BS}]{20,})${BS}${BS}\"`, 'g')",
     expect: 'REFUSING: the calibration probe was found',
+  },
+
+  /*
+   * THE RESERVED HEIGHT OF AN EVENT GRID, FIVE DRILLS, ONE PER CLAUSE
+   * (close-out C8B.3, 19 September 2026).
+   *
+   * The guard holds a number that is EXACT today - the reservation reproduces
+   * the measured section to within a pixel - and an exact number is a claim
+   * about eight pieces of markup that do not announce themselves when they
+   * change. Each drill below moves one of them and shows the build refusing.
+   */
+  {
+    name: 'reserved height: an event grid goes back to laying out in full before first paint',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/components/templates/SuburbLandingPage.tsx',
+    find: '        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}',
+    replace: '        skipOffscreen={false}',
+    expect: 'reserves a rail',
+  },
+  {
+    name: 'reserved height: a section reserves room for the array it was handed and renders a slice of it',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/components/templates/CityLandingPage.tsx',
+    find: '        intrinsicSize={eventGridIntrinsicSize(shownEvents.length)}',
+    replace: '        intrinsicSize={eventGridIntrinsicSize(allEvents.length)}',
+    expect: 'and renders shownEvents.map',
+  },
+  {
+    name: 'reserved height: the grid gutter is widened and the reservation is left describing the old one',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/lib/ui/event-grid-intrinsic.ts',
+    find: "  gridClass: 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3',",
+    replace: "  gridClass: 'grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3',",
+    expect: 'the gutter is 24px, which is gap-6',
+  },
+  {
+    name: 'reserved height: the spacing scale is redefined under a module that reads it as pixels',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/app/globals.css',
+    find: '  --container-7xl: 87.5rem; /* 1400px */',
+    replace: '  --container-7xl: 87.5rem; /* 1400px */\n  --spacing: 0.3rem;',
+    expect: 'declares --spacing:',
+  },
+  {
+    name: 'reserved height: the reservation switches to the two-column height at the wrong breakpoint',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/app/globals.css',
+    find: '@media (width >= 48rem) {',
+    replace: '@media (width >= 40rem) {',
+    expect: 'does not declare the md reservation on .cv-measured at 48rem',
+  },
+  {
+    name: 'reserved height: the drive goes back to comparing a content box with a border box',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'scripts/verify/event-grid-intrinsic-drive.mjs',
+    find: '          const reservedBorderBox = estimate + (g.sectionPadTop ?? 0) + (g.sectionPadBottom ?? 0)',
+    replace: '          const reservedBorderBoxRenamed = estimate',
+    expect: "no longer adds the section's padding",
+  },
+  {
+    name: 'reserved height: the stylesheet formula is edited by hand and stops matching the module',
+    guard: `${GUARDS}/event-grid-reserves-its-own-height.mjs`,
+    file: 'src/app/globals.css',
+    find: '+ 168.5px) + 88px);',
+    replace: '+ 168.5px) + 96px);',
+    expect: 'does not declare the base reservation the module generates',
+  },
+  /*
+   * SURFACE FLAG COLOURS. The three shapes the defect actually took, and the
+   * one it could take next. The shared empty state branched seven colours on
+   * its photo/canvas flag and left two behind, in OPPOSITE directions, which is
+   * why clause 1 alone is not enough: a branch that points the wrong way round
+   * satisfies it and paints 1.59:1 anyway.
+   */
+  {
+    name: 'surface colours: the trust-pillar icon stops branching and paints gold-400 on the light card at 1.59:1',
+    guard: `${GUARDS}/surface-flag-colours-branch.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "shrink-0 ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}",
+    replace: 'shrink-0 text-[var(--brand-accent)]',
+    expect: 'is painted unconditionally',
+  },
+  {
+    name: 'surface colours: the eyebrow stops branching and paints gold-800 on the photo hero at 2.70:1',
+    guard: `${GUARDS}/surface-flag-colours-branch.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "tracking-[0.18em] ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}",
+    replace: 'tracking-[0.18em] text-[var(--brand-accent-strong)]',
+    expect: 'is painted unconditionally',
+  },
+  {
+    name: 'surface colours: the icon branches the WRONG WAY ROUND, which clause 1 alone would pass',
+    guard: `${GUARDS}/surface-flag-colours-branch.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "shrink-0 ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}",
+    replace: "shrink-0 ${onPhoto ? 'text-[var(--brand-accent-strong)]' : 'text-[var(--brand-accent)]'}",
+    expect: 'which is the wrong way round',
+  },
+  /*
+   * HERO SCALE. The growing variant exists because a fixed box clipped 637px of
+   * content into 439px at 390 on 19 September 2026. The plausible next edit is
+   * somebody deciding the card is too tall and handing that rule a height back,
+   * which restores the clipping silently, so that is drill one.
+   */
+  {
+    name: 'hero scale: the growing variant is given a height back, which is exactly how the clipping returns',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/app/globals.css',
+    find: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); }',
+    replace: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); height: var(--hero-scale); }',
+    expect: 'gives .hero-marketing-grow a height',
+  },
+  {
+    name: 'hero scale: the growing variant is given a max-height, which clips the same content from the other end',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/app/globals.css',
+    find: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); }',
+    replace: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); max-height: 600px; }',
+    expect: 'gives .hero-marketing-grow a max-height',
+  },
+  {
+    name: 'hero scale: the scale is written back as a literal instead of read from the one custom property',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/app/globals.css',
+    find: '.hero-marketing { height: var(--hero-scale); }',
+    replace: '.hero-marketing { height: 52vh; }',
+    expect: 'sets a hero height literal',
+  },
+  {
+    name: 'hero scale: a page overrides the shared scale on the hero element itself',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "'hero-marketing-grow border border-ink-100",
+    replace: "'hero-marketing-grow h-[44vh] border border-ink-100",
+    expect: 'on the same element as the hero class',
   },
 
   /*

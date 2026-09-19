@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { decide, summarise, FAMILIES, NAMED_LIMIT } from '../../../scripts/guards/sitemap-covers-the-catalogue.mjs'
+import { decide, summarise, passLine, FAMILIES, NAMED_LIMIT } from '../../../scripts/guards/sitemap-covers-the-catalogue.mjs'
 import { comparePaths } from '@/lib/seo/sitemap-catalogue'
 
 /**
@@ -30,7 +30,7 @@ const agreeing = (paths: Record<string, string[]>): Probe => ({
 })
 
 describe('decide', () => {
-  it('passes when both sides name the same URLs for all three families', () => {
+  it('passes when both sides name the same URLs for every family', () => {
     const verdict = decide({
       url: REAL,
       serviceKey: KEY,
@@ -94,6 +94,79 @@ describe('decide', () => {
     const verdict = decide({ url: REAL, serviceKey: KEY, probe })
     expect(verdict.verdict).toBe('FAIL')
     expect(verdict.reasons[0]).toContain('row cap')
+  })
+})
+
+/**
+ * THE FOURTH FAMILY (19 September 2026).
+ *
+ * Artists were a row-derived sitemap family that no guard compared against the
+ * database. The defect that exposed it is the ORPHANED case below and it was
+ * real: the sitemap advertised four artist pages whose only events had ended,
+ * and the reachability crawl found one answering 200 with nothing on the site
+ * linking to it. These cases are the proof that this guard would now refuse it.
+ */
+describe('decide, the artists family', () => {
+  // `publishedError` is annotated for the reason the file's other helper gives:
+  // a test below plants an error string into a field that starts life null, and
+  // an inferred `null` type cannot hold one.
+  const withArtists = (
+    published: string[],
+    expected: string[],
+    artistsFlag = true,
+  ): Probe & { artistsFlag: boolean } => {
+    const base = agreeing({ events: ['/events/a'], organisers: ['/organisers/b'], venues: ['/venues/c'] })
+    const artists: FamilySide = { publishedError: null, published, expected }
+    return { ...base, artistsFlag, families: { ...base.families, artists } }
+  }
+
+  it('passes when the lineup and the sitemap name the same artists', () => {
+    const verdict = decide({ url: REAL, serviceKey: KEY, probe: withArtists(['/artists/a'], ['/artists/a']) })
+    expect(verdict.verdict).toBe('PASS')
+    expect(verdict.counts?.artists.published).toBe(1)
+  })
+
+  it('FAILS on the orphan that started this: an artist whose only event has ended', () => {
+    const verdict = decide({ url: REAL, serviceKey: KEY, probe: withArtists(['/artists/aurora-skies-wrejiu'], []) })
+    expect(verdict.verdict).toBe('FAIL')
+    expect(verdict.reasons.join(' ')).toContain('1 artists URL(s) in the sitemap have no row behind them')
+    expect(verdict.reasons.join(' ')).toContain('/artists/aurora-skies-wrejiu')
+  })
+
+  it('FAILS on an artist a live lineup reaches that the sitemap never advertises', () => {
+    const verdict = decide({ url: REAL, serviceKey: KEY, probe: withArtists([], ['/artists/lane-c-sitemap-proof']) })
+    expect(verdict.verdict).toBe('FAIL')
+    expect(verdict.reasons.join(' ')).toContain('1 artists page(s) the database holds are ABSENT')
+  })
+
+  it('FAILS on a reader error even though the flag would have hidden the rows', () => {
+    const probe = withArtists([], [], false)
+    probe.families.artists.publishedError = 'column artists.slug does not exist'
+    const verdict = decide({ url: REAL, serviceKey: KEY, probe })
+    expect(verdict.verdict).toBe('FAIL')
+    expect(verdict.reasons.join(' ')).toContain('column artists.slug does not exist')
+  })
+})
+
+describe('passLine', () => {
+  it('explains an empty artists family when the flag is off, rather than printing a healthy-looking zero', () => {
+    const line = passLine('artists', 0, false)
+    expect(line).toContain('broadcast_artists flag is OFF')
+    expect(line).toContain('no artist coverage was compared')
+  })
+
+  it('reports the count normally when the flag is on', () => {
+    expect(passLine('artists', 3, true)).toBe('3 artists URL(s), and the database agrees')
+  })
+
+  it('never mentions the flag for a family that does not carry one', () => {
+    expect(passLine('events', 276, false)).toBe('276 events URL(s), and the database agrees')
+  })
+})
+
+describe('FAMILIES', () => {
+  it('judges all four row-derived families', () => {
+    expect(FAMILIES).toEqual(['events', 'organisers', 'venues', 'artists'])
   })
 })
 
