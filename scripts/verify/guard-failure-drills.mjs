@@ -5169,6 +5169,52 @@ const DRILLS = [
     replace: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {\n      if (inner) continue`,
     expect: 'REFUSING: the calibration probe',
   },
+
+  /*
+   * a-drive-waits-for-a-cached-flag (lane B, 19 September 2026), four drills.
+   *
+   * The guard exists because a drive process cannot invalidate the server's
+   * feature-flag cache, and three separate drives wrote three spellings of a
+   * helper that returns silently when it cannot. The GA2 matcher drive failed
+   * three consecutive runs on a 30-second click at a button that was never
+   * going to enable, and the error named none of the three conditions that
+   * disable it.
+   *
+   * THE FIRST DRILL IS THE REAL REGRESSION: take the wait out of ga2 and the
+   * guard must refuse, because that is the state the tree was in this morning.
+   */
+  {
+    name: 'the matcher drive goes back to clicking at whatever the first render showed',
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/verify/ga2-matcher-drive.mjs',
+    find: 'async function waitForProduceButton(page, { enabled, url }) {',
+    replace: 'async function notAWaiter(page, { enabled, url }) {',
+    expect: 'writes public.feature_flags and drives a browser',
+  },
+  {
+    name: 'a register entry names a drive that no longer flips a flag',
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+    find: "file: 'scripts/verify/waitlist-bridge-e2e.mjs',",
+    replace: "file: 'scripts/verify/waitlist-bridge-renamed.mjs',",
+    expect: 'a register entry no longer matches',
+  },
+  {
+    name: "the flag-write matcher quietly stops seeing a supabase-js write",
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+    find: `const SUPABASE_WRITE = /${BSL}.from${BSL}(${BSL}s*['"]feature_flags['"]${BSL}s*${BSL})`,
+    replace: `const SUPABASE_WRITE = /never-matches-anything-at-all/g; const UNUSED_SUPABASE_WRITE = /${BSL}.from${BSL}(${BSL}s*['"]feature_flags['"]${BSL}s*${BSL})`,
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: 'the guard stops being able to see that a drive opens a page',
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+    find: `const DRIVES_A_BROWSER = /${BSL}bpage${BSL}.(goto|getByRole|locator)${BSL}s*${BSL}(/`,
+    replace: `const DRIVES_A_BROWSER = /never-matches-a-browser-at-all/; const UNUSED_DRIVES = /${BSL}bpage${BSL}.(goto|getByRole|locator)${BSL}s*${BSL}(/`,
+    expect: 'REFUSING: the calibration probe',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

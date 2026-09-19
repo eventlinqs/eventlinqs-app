@@ -175,6 +175,11 @@
  *                              error, because a failure there is written into an
  *                              append-only ledger as a sentence about a named
  *                              person and counted onto /admin/campaigns
+ *   a-drive-waits-for-a-cached-flag  a drive that writes public.feature_flags and
+ *                              drives a browser waits for the server's observable
+ *                              view, because a drive process cannot invalidate the
+ *                              server's flag cache and one render can be made from
+ *                              a value up to the cache TTL out of date
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -2081,6 +2086,19 @@ const GUARDS = [
   // through the doors, and the matcher sees ARRAY destructuring, which the
   // sibling guard cannot and which is the spelling two of those sites used.
   'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+
+  // Found 19 September 2026 after the GA2 matcher drive failed three runs in a
+  // row on "locator.click: Timeout" at a disabled button, while the flag row
+  // read true and the cache key read null. A drive process has an EMPTY
+  // UPSTASH_REDIS_REST_URL and the server has the local shim, so
+  // invalidateFeatureFlag opens "if (!redis) return" and does nothing, silently,
+  // while the server holds the old value for the cache TTL. The drive had been
+  // given that invalidation on 14 September to fix this exact failure and its
+  // header said so; it could never have worked, and it looked fixed because
+  // whether a run straddles a TTL depends on when it runs. Three more drives are
+  // exposed the same way, including one that had already thought about it and
+  // wrote a third spelling of the same silent no-op. The guard prints them.
+  'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,
