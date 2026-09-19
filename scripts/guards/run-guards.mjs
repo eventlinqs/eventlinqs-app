@@ -145,6 +145,19 @@
  *                              number, currency or percentage is typed into the
  *                              rendering path, and the database refuses a stored
  *                              snapshot holding a figure nothing sources
+ *   the-group-rate-and-the-sharer-are-honest
+ *                              AQ2. The group-rate floor is derived from pricing_rules
+ *                              and never typed, the currency to country map agrees in
+ *                              all three places, both ticket surfaces carry a tracked
+ *                              share bar, the referral coefficient counts only what it
+ *                              can prove, and no surface shows a rate nothing charges
+ *   discovery-consent-is-asked-once-and-never-preticked
+ *                              AQ1. No consent checkbox anywhere is pre ticked, the
+ *                              discovery question is asked on exactly one surface,
+ *                              every reader of the audience asks the consent door or
+ *                              is registered as counts-only, the placement decision
+ *                              log refuses UPDATE, and the two percent rule is decided
+ *                              in whole numbers rather than in floating point
  *   consent-ledger-is-evidence  the consent and suppression ledgers refuse UPDATE and
  *                              DELETE at the database, an event cannot carry empty
  *                              wording or a null tenant, no audience row can exist for
@@ -175,6 +188,11 @@
  *                              error, because a failure there is written into an
  *                              append-only ledger as a sentence about a named
  *                              person and counted onto /admin/campaigns
+ *   a-drive-waits-for-a-cached-flag  a drive that writes public.feature_flags and
+ *                              drives a browser waits for the server's observable
+ *                              view, because a drive process cannot invalidate the
+ *                              server's flag cache and one render can be made from
+ *                              a value up to the cache TTL out of date
  *   founding-offer-matches-configuration  the published Founding Organiser numbers,
  *                              the fifty in the SQL, and the fee sentence on /organisers
  *                              and /pricing all agree with the configuration
@@ -1260,6 +1278,22 @@ const GUARDS = [
   // path registry (and a marketing one without calling the resolver), and no
   // unsubscribe or privacy rights surface reads a session.
   'scripts/guards/consent-ledger-is-evidence.mjs',
+  // AQ1. The discovery question is asked in exactly one place, is never pre
+  // ticked on any surface, and a buyer who declines it is excluded from every
+  // query that chooses who hears about somebody else's event. Also holds the
+  // placement decision log append only, because the conversion measurement
+  // reads that log to decide what before and after mean, and holds the two
+  // percent rule in integer arithmetic, because 580/1000 is 57.99999999999999
+  // in binary floating point and an exact two point fall was moving the capture
+  // off the surface that sells tickets on a rounding error.
+  'scripts/guards/discovery-consent-is-asked-once-and-never-preticked.mjs',
+  // AQ2. The group rate's floor is derived from pricing_rules rather than typed,
+  // the currency to country map agrees in all three places that hold it, both
+  // ticket surfaces carry a tracked share bar, the referral coefficient counts
+  // only referrals it can prove, and no surface presents a group rate while no
+  // payment path charges one. That last clause releases itself the day the
+  // squad payment step reads the rate, which is a border this lane cannot cross.
+  'scripts/guards/the-group-rate-and-the-sharer-are-honest.mjs',
   // The 1,000-row ceiling. Supabase truncates a response at a project setting
   // this repository cannot read, with HTTP 200 and no error, so a read that
   // states no bound is a read that may already be wrong. Measured the day this
@@ -2081,6 +2115,19 @@ const GUARDS = [
   // through the doors, and the matcher sees ARRAY destructuring, which the
   // sibling guard cannot and which is the spelling two of those sites used.
   'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+
+  // Found 19 September 2026 after the GA2 matcher drive failed three runs in a
+  // row on "locator.click: Timeout" at a disabled button, while the flag row
+  // read true and the cache key read null. A drive process has an EMPTY
+  // UPSTASH_REDIS_REST_URL and the server has the local shim, so
+  // invalidateFeatureFlag opens "if (!redis) return" and does nothing, silently,
+  // while the server holds the old value for the cache TTL. The drive had been
+  // given that invalidation on 14 September to fix this exact failure and its
+  // header said so; it could never have worked, and it looked fixed because
+  // whether a run straddles a TTL depends on when it runs. Three more drives are
+  // exposed the same way, including one that had already thought about it and
+  // wrote a third spelling of the same silent no-op. The guard prints them.
+  'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
 
   // Close-out F2.1. The generalisation of five lost deployments: the build host
   // is not a developer machine, and every build-time script says which of docs,

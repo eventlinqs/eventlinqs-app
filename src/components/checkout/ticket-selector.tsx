@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { createReservation } from '@/app/actions/reservations'
+import { carryDiscoveryConsent } from '@/app/actions/discovery-consent'
+import { DISCOVERY_CONSENT_ATTRIBUTE } from './discovery-consent-attribute'
 import { registerFreeTickets } from '@/app/actions/register-free'
 import type { TicketTier, EventAddon } from '@/types/database'
 import { JoinWaitlistButton } from '@/components/waitlist/join-waitlist-button'
@@ -32,6 +34,16 @@ type TierWithDisplayPrice = TicketTier & {
 
 interface TicketSelectorProps {
   eventId: string
+  /**
+   * AQ1. The discovery consent question, server rendered, when the placement
+   * says it is asked here rather than at the payment step.
+   *
+   * A SLOT rather than a flag and some copy, so the event page pays nothing in
+   * client bytes for a question that is not being asked on it: the panel is a
+   * server component and this file only ever reads one checkbox out of it.
+   * Absent, which is the ordinary case, means the payment step asks.
+   */
+  discoveryConsentSlot?: ReactNode
   tiers: TierWithDisplayPrice[]
   addons: EventAddon[]
   isTicketingSuspended: boolean
@@ -86,8 +98,16 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, showAvailability = true, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, saleRefusalReason = null, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, showAvailability = true, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, saleRefusalReason = null, feeRates, feePassType = 'pass_to_buyer', discoveryConsentSlot = null }: TicketSelectorProps) {
   const router = useRouter()
+  /*
+   * AQ1. The buyer's answer is read out of the DOM once, when they
+   * proceed, and the search is scoped to this selector's own subtree
+   * rather than to a document-wide id. Two ticket panels can render on one
+   * event page (general admission beside a seat chart), and an id lookup
+   * would read whichever box the document happened to hold first.
+   */
+  const discoveryConsentRef = useRef<HTMLDivElement | null>(null)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -247,6 +267,38 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
       })
     }
 
+    /*
+     * AQ1. THE ANSWER GOES WITH THE RESERVATION, AND NEVER BLOCKS THE PURCHASE.
+     *
+     * The buyer has no address yet, so the consent cannot be written here. It
+     * is carried against the reservation and written into the ledger at the
+     * payment step by the one recorder every purchase path already calls.
+     *
+     * A failure is reported and swallowed on purpose. The worst case is that
+     * the question is put again at the payment step, which is a duplicate
+     * question rather than a lost sale, and a marketing record is never worth
+     * somebody's ticket.
+     */
+    const carryTheAnswer = async (reservationId: string) => {
+      if (!discoveryConsentSlot) return
+      try {
+        const box = discoveryConsentRef.current?.querySelector(`input[${DISCOVERY_CONSENT_ATTRIBUTE}]`)
+        const outcome = await carryDiscoveryConsent({
+          reservation_id: reservationId,
+          ticked: box instanceof HTMLInputElement ? box.checked : false,
+        })
+        if (!outcome.carried) {
+          // Reported rather than discarded. Nothing is put on screen because
+          // the buyer's own action is the checkout, which proceeds either way,
+          // and the only consequence of this refusal is that the payment step
+          // asks the question they have already answered.
+          console.error('[checkout] the discovery answer was not carried:', outcome.reason)
+        }
+      } catch (err) {
+        console.error('[checkout] carrying the discovery answer failed:', err)
+      }
+    }
+
     startTransition(async () => {
      try {
       // Free-only cart: skip checkout page entirely for logged-in users
@@ -266,6 +318,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
 
         if (result.reservation_id) {
           // Guest user: go to checkout for email capture (no payment step)
+          await carryTheAnswer(result.reservation_id)
           router.push(`/checkout/${result.reservation_id}`)
           return
         }
@@ -287,6 +340,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
         return
       }
 
+      if (result.reservation_id) await carryTheAnswer(result.reservation_id)
       router.push(`/checkout/${result.reservation_id}`)
      } catch (err) {
         // A thrown server action used to reject the transition silently:
@@ -606,6 +660,18 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
           pricePerSpotCents={squadEligibleTier.tier.display_price_cents ?? squadEligibleTier.tier.price}
           currency={currency}
         />
+      )}
+
+      {/*
+        AQ1. The discovery question, when the placement says it is asked here.
+        Directly above the control that leaves this page, because a question
+        asked below the button that answers it is a question nobody reads. It is
+        outside the button's own condition on purpose: a buyer who has nothing
+        to check out is not asked, and the wrapper below is what scopes the
+        read to this selector rather than to the whole document.
+      */}
+      {discoveryConsentSlot && !isTicketingSuspended && totalTickets > 0 && (
+        <div ref={discoveryConsentRef}>{discoveryConsentSlot}</div>
       )}
 
       {!isTicketingSuspended && activeTiers.some(t => getAvailable(t) > 0 && !(t.sale_start && new Date(t.sale_start) > now)) && (

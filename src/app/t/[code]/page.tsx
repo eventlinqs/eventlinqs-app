@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatSeatLabel } from '@/lib/seating/format'
+import { EventShareBar } from '@/components/features/events/event-share-bar'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,6 +28,7 @@ interface BearerTicket {
   holder_name: string | null
   holder_email: string
   event: {
+    slug: string
     title: string
     start_date: string
     timezone: string | null
@@ -98,15 +100,16 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
       admin
         .from('tickets')
         .select(
-          'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, timezone, venue_name, venue_city, event_type), order_item:order_items(item_name), tier:ticket_tiers!tickets_ticket_tier_id_fkey(access_mode), seat:seats!tickets_seat_id_fkey(row_label, seat_number, section:seat_map_sections(name))',
+          'ticket_code, secret, status, holder_name, holder_email, event:events(slug, title, start_date, timezone, venue_name, venue_city, event_type), order_item:order_items(item_name), tier:ticket_tiers!tickets_ticket_tier_id_fkey(access_mode), seat:seats!tickets_seat_id_fkey(row_label, seat_number, section:seat_map_sections(name))',
         )
         .eq('ticket_code', code)
         .maybeSingle() as unknown as Read<BearerTicket>,
   )
   if (!ticket || ticket.secret !== secret) notFound()
 
+  const siteUrl = getSiteUrl()
   const qrSvg = await QRCode.toString(
-    `${getSiteUrl()}/t/${encodeURIComponent(code)}?k=${encodeURIComponent(secret)}`,
+    `${siteUrl}/t/${encodeURIComponent(code)}?k=${encodeURIComponent(secret)}`,
     { type: 'svg', margin: 2, errorCorrectionLevel: 'M' },
   )
 
@@ -232,6 +235,50 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
           </div>
         </dl>
       </div>
+
+      {/*
+        AQ2. "Every ticket carries a tracked share link on the confirmation and
+        on the ticket page." The confirmation has had one since PL1; this page
+        did not, which meant the surface a buyer actually keeps open, and opens
+        again at the door, was the one that asked nothing of them.
+
+        The links are TRACKED, so a sale that comes back through one is an
+        attributed order rather than a guess. Where the person reading this is
+        signed in, the mint records them and their share counts toward the
+        event's referral coefficient; a bearer link opened without a session
+        still mints a tracked link, and the coefficient says plainly that it
+        cannot prove who shared it.
+      */}
+      {ticket.event && (
+        <section className="rounded-2xl border border-ink-200 bg-white p-6">
+          <p className="font-display text-base font-semibold text-ink-900">Bring someone with you</p>
+          <p className="mt-2 text-sm text-ink-600">
+            Send them straight to the tickets. You will both be there.
+          </p>
+          <div className="mt-4">
+            <EventShareBar
+              eventTitle={ticket.event.title}
+              /*
+                IN THE EVENT'S ZONE, NOT THE SERVER'S. The first version of
+                this line had no timeZone at all, which formats in whatever
+                zone the machine happens to be in, and the registered
+                no-clock-during-render test caught it. A date on a ticket that
+                is a day out in Perth is the same class of defect as the sale
+                time that read 9pm in Sydney for a 7pm Perth opening.
+              */
+              eventDate={new Date(ticket.event.start_date).toLocaleDateString('en-AU', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                timeZone: ticket.event.timezone ?? undefined,
+              })}
+              eventUrl={`${siteUrl}/events/${ticket.event.slug}`}
+              messageOverride={`I have my ticket to ${ticket.event.title}. Come with me:`}
+              variant="light"
+            />
+          </div>
+        </section>
+      )}
 
       <p className="text-center text-xs text-ink-500">
         Lost this link? Sign in to EventLinqs and open My tickets, or reply to your

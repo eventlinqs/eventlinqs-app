@@ -5227,6 +5227,153 @@ const DRILLS = [
     replace: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {\n      if (inner) continue`,
     expect: 'REFUSING: the calibration probe',
   },
+
+  /*
+   * a-drive-waits-for-a-cached-flag (lane B, 19 September 2026), four drills.
+   *
+   * The guard exists because a drive process cannot invalidate the server's
+   * feature-flag cache, and three separate drives wrote three spellings of a
+   * helper that returns silently when it cannot. The GA2 matcher drive failed
+   * three consecutive runs on a 30-second click at a button that was never
+   * going to enable, and the error named none of the three conditions that
+   * disable it.
+   *
+   * THE FIRST DRILL IS THE REAL REGRESSION: take the wait out of ga2 and the
+   * guard must refuse, because that is the state the tree was in this morning.
+   */
+  {
+    name: 'the matcher drive goes back to clicking at whatever the first render showed',
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/verify/ga2-matcher-drive.mjs',
+    find: 'async function waitForProduceButton(page, { enabled, url }) {',
+    replace: 'async function notAWaiter(page, { enabled, url }) {',
+    expect: 'writes public.feature_flags and drives a browser',
+  },
+  {
+    name: 'a register entry names a drive that no longer flips a flag',
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+    find: "file: 'scripts/verify/waitlist-bridge-e2e.mjs',",
+    replace: "file: 'scripts/verify/waitlist-bridge-renamed.mjs',",
+    expect: 'a register entry no longer matches',
+  },
+  {
+    name: "the flag-write matcher quietly stops seeing a supabase-js write",
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+    find: `const SUPABASE_WRITE = /${BSL}.from${BSL}(${BSL}s*['"]feature_flags['"]${BSL}s*${BSL})`,
+    replace: `const SUPABASE_WRITE = /never-matches-anything-at-all/g; const UNUSED_SUPABASE_WRITE = /${BSL}.from${BSL}(${BSL}s*['"]feature_flags['"]${BSL}s*${BSL})`,
+    expect: 'REFUSING: the calibration probe',
+  },
+  {
+    name: 'the guard stops being able to see that a drive opens a page',
+    guard: `${GUARDS}/a-drive-waits-for-a-cached-flag.mjs`,
+    file: 'scripts/guards/a-drive-waits-for-a-cached-flag.mjs',
+    find: `const DRIVES_A_BROWSER = /${BSL}bpage${BSL}.(goto|getByRole|locator)${BSL}s*${BSL}(/`,
+    replace: `const DRIVES_A_BROWSER = /never-matches-a-browser-at-all/; const UNUSED_DRIVES = /${BSL}bpage${BSL}.(goto|getByRole|locator)${BSL}s*${BSL}(/`,
+    expect: 'REFUSING: the calibration probe',
+  },
+
+  /*
+   * discovery-consent-is-asked-once-and-never-preticked (lane B, 19 September 2026), five drills, one per clause.
+   *
+   * The guard shipped having ALREADY found one live defect: the homepage email
+   * signup panel rendered "I agree to receive community event updates from
+   * EventLinqs" beside a box carrying `defaultChecked`, and stored consent:
+   * true for an agreement nobody made. The first drill puts that back, because
+   * that is the state the tree was in this morning.
+   */
+  {
+    name: 'a consent checkbox is pre ticked again, which is where the tree actually was',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/components/features/home/email-signup-panel.tsx',
+    find: `                type="checkbox"
+                name="consent"`,
+    replace: `                type="checkbox"
+                name="consent"
+                defaultChecked`,
+    expect: 'renders a consent checkbox and carries defaultChecked',
+  },
+  {
+    name: 'the payment step stops reading the placement, so it asks whatever the placement says',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/app/checkout/[reservation_id]/page.tsx',
+    find: 'resolveCapturePlacement(admin)',
+    replace: "Promise.resolve('checkout' as const)",
+    expect: 'does not resolve the capture placement',
+  },
+  {
+    name: 'a discovery reader stops asking the consent door',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/lib/matching/run.ts',
+    find: 'filterPermittedRecipients(admin, emails,',
+    replace: 'Promise.resolve(new Set<string>()), ((admin, emails,',
+    expect: 'reads public.audience_members',
+  },
+  {
+    name: 'the placement decision log stops refusing UPDATE',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'supabase/migrations/20260919000110_marketing_capture_placement.sql',
+    find: 'before update on public.marketing_capture_placement',
+    replace: 'before insert on public.marketing_capture_placement',
+    expect: 'does not refuse UPDATE',
+  },
+  {
+    name: 'the two percent rule goes back to comparing a rounded delta',
+    guard: `${GUARDS}/discovery-consent-is-asked-once-and-never-preticked.mjs`,
+    file: 'src/lib/consent/capture-conversion-math.ts',
+    find: '} else if (fallExceedsLimit(b, a, fallLimit)) {',
+    replace: '} else if (deltaPoints < -fallLimit) {',
+    expect: 'no longer decides the two percent rule in whole numbers',
+  },
+
+  /*
+   * the-group-rate-and-the-sharer-are-honest (lane B, 19 September 2026), five drills, one
+   * per clause. The fifth is the interesting one: it asserts the guard refuses
+   * a surface that SHOWS a price nothing charges, which is the placeholder the
+   * Definition of Done calls a defect, and it releases itself the day the squad
+   * payment step reads the rate.
+   */
+  {
+    name: 'the group rate floor stops reading the fee and becomes a second copy of it',
+    guard: `${GUARDS}/the-group-rate-and-the-sharer-are-honest.mjs`,
+    file: 'supabase/migrations/20260919000120_group_rate_and_its_floor.sql',
+    find: "    'platform_fee_percentage', p_event_id, p_organisation_id, p_country_code, p_currency);",
+    replace: "    'platform_fee_percentage_renamed', p_event_id, p_organisation_id, p_country_code, p_currency);",
+    expect: 'does not resolve platform_fee_percentage from pricing_rules',
+  },
+  {
+    name: 'a currency is added to the calculator and the SQL never hears about it',
+    guard: `${GUARDS}/the-group-rate-and-the-sharer-are-honest.mjs`,
+    file: 'src/lib/payments/payment-calculator.ts',
+    find: "  ZAR: 'ZA',",
+    replace: "  ZAR: 'ZA',\n  SGD: 'SG',",
+    expect: 'maps SGD to nothing',
+  },
+  {
+    name: 'the ticket page loses its share bar again',
+    guard: `${GUARDS}/the-group-rate-and-the-sharer-are-honest.mjs`,
+    file: 'src/app/t/[code]/page.tsx',
+    find: '            <EventShareBar',
+    replace: '            <NoShareBarHere',
+    expect: 'carries no tracked share bar',
+  },
+  {
+    name: 'the coefficient starts counting sharers it cannot identify',
+    guard: `${GUARDS}/the-group-rate-and-the-sharer-are-honest.mjs`,
+    file: 'src/lib/growth/referral-coefficient-math.ts',
+    find: 'const coefficient = referralCoefficient(fromAKnownBuyer, soldOrders)',
+    replace: 'const coefficient = referralCoefficient(attributed, soldOrders)',
+    expect: 'no longer computed from the known-buyer count',
+  },
+  {
+    name: 'a page shows a group rate that nothing on the platform charges',
+    guard: `${GUARDS}/the-group-rate-and-the-sharer-are-honest.mjs`,
+    file: 'src/app/tickets/page.tsx',
+    find: "  const shares = await fetchMyShares(user.id)",
+    replace: "  const shares = await fetchMyShares(user.id)\n  await supabase.from('event_group_rates').select('id')",
+    expect: 'shows the group rate, and nothing charges it',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

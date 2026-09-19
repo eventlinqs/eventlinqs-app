@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { TicketSelector } from '@/components/checkout/ticket-selector'
 import { AccessCodeInput } from '@/components/features/events/access-code-input'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
@@ -59,6 +59,13 @@ interface Props {
    * defensible of the three possible states.
    */
   showAvailability?: boolean
+  /**
+   * AQ1. The discovery consent question, server rendered, threaded straight
+   * through to the selector. Null, the ordinary case, means the payment step
+   * asks it. Passed as a slot rather than as data so this page pays no client
+   * bytes for a question that is not being asked on it.
+   */
+  discoveryConsentSlot?: ReactNode
 }
 
 function isTierVisible(tier: EnrichedTier, now: Date, unlockedIds: string[]): boolean {
@@ -139,6 +146,7 @@ export function TicketPanelClient(props: Props) {
         squadBookingEnabled={props.squadBookingEnabled}
         feeRates={props.feeRates}
         feePassType={props.feePassType}
+        discoveryConsentSlot={props.discoveryConsentSlot}
       />
 
       {showAccessCodeInput && (

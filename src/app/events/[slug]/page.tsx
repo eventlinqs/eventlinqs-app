@@ -21,6 +21,10 @@ import { isFlagEnabled } from '@/lib/flags'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { GoingProof } from '@/components/inventory/going-proof'
 import { TicketPanelClient } from '@/components/features/events/ticket-panel-client'
+import { TicketPageDiscoveryConsent } from '@/components/checkout/ticket-page-discovery-consent'
+import { resolveCapturePlacement } from '@/lib/consent/capture-placement'
+import { getCurrentConsentWording } from '@/lib/consent/ledger'
+import { FACILITATED_MARKETING_PURPOSE } from '@/lib/consent/purposes'
 import { GetTicketsCta } from '@/components/features/events/get-tickets-cta'
 import { getEventInventoryStatic, getTierInventoryStatic } from '@/lib/redis/inventory-cache'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
@@ -876,6 +880,41 @@ export default async function EventDetailPage({ params }: Props) {
    */
   const availabilityAndAccessOn = await availabilityAndAccessPromise
 
+  /*
+   * AQ1. THE DISCOVERY QUESTION, WHEN THE PLACEMENT SAYS IT IS ASKED HERE.
+   *
+   * AQ1's reversal condition moves the capture off the payment step rather
+   * than removing it, and this is the surface it moves to. Resolved once and
+   * threaded as a SLOT, so a page that is not asking pays nothing for it:
+   * the panel is a server component and the client bundle carries one
+   * attribute string.
+   *
+   * THIS PAGE IS ISR (revalidate = 300), SO THE PLACEMENT HERE CAN BE UP TO
+   * FIVE MINUTES STALE, and that is stated rather than discovered later. Both
+   * stale directions are safe because the PAYMENT STEP is dynamic and decides
+   * for itself: a stale question that is answered is refused by the action
+   * (the placement no longer says ticket page) and the payment step asks
+   * again; a stale page with no question leaves the payment step to ask,
+   * which is exactly what it does when the placement is checkout. Neither
+   * direction can record twice, because one carried answer per reservation is
+   * the primary key.
+   */
+  const captureAdmin = createAdminClient()
+  const capturePlacement = await resolveCapturePlacement(captureAdmin)
+  const discoveryWording =
+    capturePlacement === 'ticket_page' && (await isFeatureEnabled('audience_capture'))
+      ? await getCurrentConsentWording(captureAdmin, FACILITATED_MARKETING_PURPOSE)
+      : null
+  const discoveryConsentSlot = discoveryWording ? (
+    <TicketPageDiscoveryConsent
+      wording={{
+        label: discoveryWording.label,
+        body: discoveryWording.body,
+        version: discoveryWording.version,
+      }}
+    />
+  ) : null
+
   const eventAccessibility = availabilityAndAccessOn
     ? accessibilityItems(event as unknown as Record<string, unknown>, 'event')
     : NO_ACCESSIBILITY_INFO
@@ -1517,6 +1556,7 @@ export default async function EventDetailPage({ params }: Props) {
                           saleRefusalReason={saleRefusalReason}
                           feeRates={feeRates}
                           feePassType={eventFeePassType}
+                          discoveryConsentSlot={discoveryConsentSlot}
                         />
                       </div>
                     )}
@@ -1561,6 +1601,7 @@ export default async function EventDetailPage({ params }: Props) {
                         saleRefusalReason={saleRefusalReason}
                         feeRates={feeRates}
                         feePassType={eventFeePassType}
+                        discoveryConsentSlot={discoveryConsentSlot}
                       />
                     </div>
 

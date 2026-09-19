@@ -29,6 +29,7 @@ export type PolicyName =
   | 'waitlist-join'
   | 'forecast-run'
   | 'newsletter-subscribe'
+  | 'discovery-consent-carry'
   | 'marketing-rights'
   | 'marketing-one-click'
   | 'ai-chat'
@@ -182,6 +183,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'The slot ledger demand beacon per IP. The two anonymous actions only (a page view and a sold-out view); every action that carries an address is written server side by the code that observed it, so this endpoint cannot be used to invent a contactable person. Rows are deduped per visitor per slot per day by their occurrence key, so this cap only bounds junk traffic. FAIL-OPEN, the same posture as share-track: losing a view beacon to a Redis blip is a gap in a history table, and refusing one would be a failed request on an event page.',
+  },
+  'discovery-consent-carry': {
+    keyPrefix: 'disc-consent',
+    limit: 20,
+    windowSec: 60,
+    rationale:
+      "AQ1. Carrying the discovery consent answer from the ticket page to the reservation it belongs to, per IP per minute. The bucket is deliberately the same size as checkout-reserve and for the same reason: this action can only ever write ONE row per reservation, the primary key is the reservation id so a flood of calls produces one row rather than many, and the only way to create another reservation is to spend a checkout-reserve token. The write amplification a public form usually offers is therefore already bounded by the limiter in front of it. FAIL-OPEN, and the direction of the failure is what decides it: a refusal here does not lose the consent, it loses the CARRY, so the question is put again at the payment step and the buyer answers once. A Redis blip that blocked it would trade a working purchase for a duplicate question, which is the wrong way round.",
   },
   'marketing-rights': {
     keyPrefix: 'mkt-rights',

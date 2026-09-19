@@ -5,6 +5,7 @@ import { getOrganiserEvent } from '@/lib/reporting/attendees'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchReachSummary } from '@/lib/broadcast/reach'
 import { fetchSalesAttribution } from '@/lib/broadcast/sales-attribution'
+import { fetchReferralCoefficient } from '@/lib/growth/referral-coefficient'
 import {
   buildShortUrl,
   getOrCreateShareLink,
@@ -88,6 +89,16 @@ export default async function ReachPage({ params }: Props) {
    * quoted.
    */
   const attribution = await fetchSalesAttribution(id)
+
+  /*
+   * AQ2. "the referral coefficient computed and reported per event".
+   *
+   * Beside the attribution rather than instead of it, because they answer
+   * different questions. The split above says where the sales came FROM; this
+   * says whether the people who bought are BRINGING anybody, which is the only
+   * acquisition number on this platform whose cash cost is zero.
+   */
+  const referral = await fetchReferralCoefficient(id)
 
   // Request origin: handed-out links must point at the deployment that
   // minted them (identical on production, self-referential on staging).
@@ -205,6 +216,45 @@ export default async function ReachPage({ params }: Props) {
                 not claim those as ours, because we cannot prove where they came from.
               </p>
             </>
+          )}
+        </div>
+      )}
+
+      {/*
+        AQ2's coefficient. It is shown even at zero, and especially at zero: an
+        organiser whose buyers bring nobody needs to know that more than one
+        whose buyers do. What it never does is print a 0.00 with no explanation
+        beside it, because a bare zero reads as a broken number rather than as
+        an answer.
+      */}
+      {!attribution.externallyTicketed && (
+        <div
+          className="rounded-xl border border-ink-200 bg-white px-5 py-6"
+          data-referral-coefficient={referral.coefficient === null ? 'unknown' : referral.coefficient.toFixed(2)}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-500">
+            What your buyers bring
+          </p>
+          <p className="mt-3 text-3xl font-bold text-ink-900">
+            {referral.coefficient === null ? 'No sales yet' : referral.coefficient.toFixed(2)}
+            {referral.coefficient !== null && (
+              <span className="ml-2 text-base font-normal text-ink-600">
+                new buyers per buyer
+              </span>
+            )}
+          </p>
+          <p className="mt-1 text-sm text-ink-600">{referral.sentence}</p>
+          {referral.fromAnUnknownSharer > 0 && (
+            <p className="mt-3 text-xs text-ink-500">
+              A further {referral.fromAnUnknownSharer} sale
+              {referral.fromAnUnknownSharer === 1 ? '' : 's'} came through a share link whose sharer
+              was not signed in, so we cannot show they hold a ticket and they are not counted
+              above. Counting them all would put it at{' '}
+              {referral.coefficientUpperBound === null
+                ? 'no higher figure we can state'
+                : referral.coefficientUpperBound.toFixed(2)}
+              , which is a ceiling rather than a better guess.
+            </p>
           )}
         </div>
       )}

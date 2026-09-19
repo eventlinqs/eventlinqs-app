@@ -25,6 +25,7 @@ import {
 } from '@/lib/growth/visit-attribution'
 import { cookies, headers } from 'next/headers'
 import { recordOrganiserMarketingConsent } from '@/lib/consent/record'
+import { readCarriedAnswer } from '@/lib/consent/capture-carrier'
 import { recordCheckoutMarketingAnswer } from '@/lib/consent/checkout-answer'
 import { recordClickSignalForOrder } from '@/lib/attribution/checkout-signal'
 import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
@@ -99,6 +100,7 @@ async function recordCheckoutConsents(params: {
   eventId: string
   organiserConsent: boolean
   platformConsent: boolean
+  reservationId: string
 }): Promise<void> {
   const at = new Date().toISOString()
   if (params.organiserConsent) {
@@ -113,12 +115,25 @@ async function recordCheckoutConsents(params: {
       at,
     })
   }
+  /*
+   * AQ1. THE ANSWER MAY HAVE BEEN GIVEN A SCREEN EARLIER.
+   *
+   * Under the reversal condition the question is asked on the ticket page,
+   * where the buyer has no address yet, so their answer waits against the
+   * reservation. When one is waiting it is THE answer: the form value is
+   * whatever an unrendered checkbox defaults to and means nothing, and the
+   * surface recorded is the surface the question was actually put on. The
+   * wording travels with it so a version published between the two screens
+   * cannot rewrite what was agreed to.
+   */
+  const carried = await readCarriedAnswer(params.adminClient, params.reservationId)
   await recordCheckoutMarketingAnswer(params.adminClient, {
     email: params.email,
-    ticked: params.platformConsent,
-    captureSurface: 'checkout',
+    ticked: carried ? carried.ticked : params.platformConsent,
+    captureSurface: carried ? 'ticket-page' : 'checkout',
     eventId: params.eventId,
     at,
+    wording: carried?.wording ?? null,
   })
 }
 
@@ -551,6 +566,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     eventId: event.id,
     organiserConsent: organiser_marketing_consent,
     platformConsent: platform_updates_consent,
+    reservationId: reservation_id,
   })
 
   /*
@@ -954,6 +970,7 @@ async function processSeatCheckout({
     eventId: event.id,
     organiserConsent,
     platformConsent,
+    reservationId: reservation_id,
   })
 
   // The same tracked-link capture as the seated path above, for the same
