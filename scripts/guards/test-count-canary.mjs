@@ -2442,9 +2442,27 @@ const ROOT = join(HERE, '..', '..')
  * cases.
  *   465 + 1 = 466 files
  *   6057 + 11 = 6068 tests
+ *
+ * 2026-09-19, lane A, the three-lane merge. The floor had not moved since it was
+ * written, while the watchdog merged twenty more lane B and lane C commits into
+ * verify/l5-launch-readiness. The gate measured the merged tree at d6e8ce0e and
+ * reported the growth itself: "[test-count-canary] the suite has GROWN
+ * (469/6097 against 466/6068). raise the baseline in this file so the new floor
+ * is held."
+ *
+ * A FLOOR THAT LAGS THE SUITE IS NOT A FLOOR. Three files and twenty-nine tests
+ * could have stopped running and this guard would have said nothing, which is
+ * the exact silence it exists to break.
+ *
+ * MEASURED: 469 files, 6097 tests, 0 failed, 0 skipped, in the pre-push gate
+ * run of 2026-09-19 on d6e8ce0e (C:\dev\_a-r20-push.txt).
+ *
+ * CHECKABLE: the gate printed both pairs side by side on the line above.
+ *   466 + 3 = 469 files
+ *   6068 + 29 = 6097 tests
  */
-const MIN_FILES = 466
-const MIN_TESTS = 6068
+const MIN_FILES = 469
+const MIN_TESTS = 6097
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

@@ -4259,6 +4259,39 @@ const DRILLS = [
   },
 
   /*
+   * THE AVATAR SLOTS ARE DECLARED TWICE ON PURPOSE, SO BOTH WAYS THAT CAN GO
+   * WRONG ARE DRILLED (19 September 2026, lane A).
+   *
+   * `OrganiserAvatar` is in the dashboard shell, and `MEDIA_SIZES` is one
+   * object literal, so importing one member of it put a 21,005 byte chunk
+   * carrying every hint on the platform into the first load of thirty dashboard
+   * routes. The component reads a leaf instead. The slots stay declared in
+   * `sizes.ts` because the configured width ladder is derived from it, and
+   * neither file may reference the other: `image-hints-match-the-cell` refuses
+   * an import in sizes.ts, and `candidate-ladder-has-no-dead-rung` refuses a
+   * reference because the ladder is derived by reading string literals.
+   *
+   * So clause 5 verifies the duplication instead of excusing it, and a clause
+   * nobody has seen fail is not a clause.
+   */
+  {
+    name: 'the avatar leaf drifts from the hint table it must agree with',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/avatar-sizes.ts',
+    find: "  topbar: '32px',",
+    replace: "  topbar: '30px',",
+    expect: 'does not declare "32px"',
+  },
+  {
+    name: 'the avatar component stops reading the leaf, so a declared slot renders nothing',
+    guard: `${GUARDS}/image-hints-match-the-cell.mjs`,
+    file: 'src/components/media/OrganiserAvatar.tsx',
+    find: '  topbar: AVATAR_SIZES.topbar,',
+    replace: "  topbar: '32px',",
+    expect: 'is declared and nothing reads it',
+  },
+
+  /*
    * THE WIDTH LADDER, THREE DRILLS (close-out C8B.3, 19 September 2026).
    *
    * The first one restores the exact defect the guard was written for: the rung
