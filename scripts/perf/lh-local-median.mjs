@@ -58,6 +58,7 @@ import { optimisedImageUrls } from '../ci/warm-preview.mjs'
 import { lcpElement as readLcpElement, scriptBytes as readScriptBytes } from '../ci/lighthouse-truth-table.mjs'
 import { startGateServer, envFor } from '../ops/pre-push-gate.mjs'
 import { explainPhases } from './lib/lcp-breakdown.mjs'
+import { composeCookie, cookieArgumentFrom } from './lib/measurement-cookie.mjs'
 
 const args = process.argv.slice(2)
 const runsArg = args.find((a) => a.startsWith('--runs='))
@@ -67,6 +68,38 @@ const portArg = args.find((a) => a.startsWith('--port='))
 const PORT = portArg ? Number(portArg.split('=')[1]) : undefined
 const outArg = args.find((a) => a.startsWith('--out='))
 const OUT = outArg ? outArg.split('=')[1] : null
+/*
+ * AN EXTRA COOKIE ON THE REQUEST, AND THE ONE THING IT CANNOT DO.
+ *
+ * WHAT IT IS. `--cookie=name=value` appends to the gate's own `el-audit=1` on
+ * every request this harness makes: the warm fetches and Lighthouse's own
+ * navigation. Useful for measuring a surface in a state the SERVER decides from
+ * the request, which is what `el-audit=1` itself is.
+ *
+ * WHAT IT CANNOT DO, MEASURED RATHER THAN ASSUMED, 20 September 2026. It cannot
+ * put a surface into a state the CLIENT decides by reading `document.cookie`.
+ * Lighthouse's `extraHeaders` sets the HTTP Cookie HEADER; it does not populate
+ * `document.cookie` in the page, and Lighthouse clears storage between runs
+ * anyway. The consent banner reads its decision on the client
+ * (src/components/analytics/consent-provider.tsx:70, `document.cookie.split`),
+ * so it renders whatever this flag is set to.
+ *
+ * THE EVIDENCE, because the attempt is more useful recorded than repeated.
+ * Five runs of /events were taken with a correctly-encoded recorded REFUSAL in
+ * this flag. The banner rendered in all five, and Lighthouse named it the
+ * largest contentful element in all five, exactly as in the five baseline runs
+ * with no cookie at all. The two sets differ by 0.03 on the median, which is
+ * run-to-run noise on a shared machine, NOT a treatment effect: there was no
+ * treatment. Anyone reaching for this flag to price a client-rendered element
+ * will get a confident number that means nothing, which is why this paragraph
+ * is longer than the code under it.
+ *
+ * SLICED, NOT SPLIT, because a cookie value contains `=` and splitting on it
+ * would silently measure a truncated cookie, which is the shape of mistake this
+ * harness already carries one scar for (the MSYS path note above).
+ */
+const EXTRA_COOKIE = cookieArgumentFrom(args)
+const COOKIE = composeCookie(EXTRA_COOKIE)
 /*
  * PATHS ARE TAKEN FROM `--path=` AS WELL AS FROM BARE ARGUMENTS, AND THE REASON
  * IS A MEASUREMENT THIS HARNESS SILENTLY DID NOT TAKE.
@@ -138,6 +171,13 @@ if (!process.env.CHROME_PATH) {
   process.env.CHROME_PATH = found
 }
 process.stdout.write('chrome: ' + process.env.CHROME_PATH + String.fromCharCode(10))
+/* SAY WHAT WAS MEASURED, IN THE FILE ITSELF. An A/B evidence file that does not
+ * record which cookie produced it is indistinguishable from the baseline a week
+ * later, and this repository has already been misled once by a report that read
+ * confidently and described the wrong run. */
+if (EXTRA_COOKIE) {
+  process.stdout.write('extra cookie: ' + EXTRA_COOKIE + String.fromCharCode(10))
+}
 
 /* --desktop measures the desktop profile. Default stays mobile, because mobile
  * is the one the 95 law is failing and the one the CI gate audits. */
@@ -165,7 +205,7 @@ const SETTINGS = {
   pauseAfterLoadMs: 5000,
   networkQuietThresholdMs: 5000,
   cpuQuietThresholdMs: 3000,
-  extraHeaders: { Cookie: 'el-audit=1' },
+  extraHeaders: { Cookie: COOKIE },
 }
 
 const median = (xs) => {
@@ -176,13 +216,13 @@ const median = (xs) => {
 
 /** Warm the page HTML and every optimised image variant it references. */
 async function warm(url) {
-  const res = await fetch(url, { headers: { Cookie: 'el-audit=1' } })
+  const res = await fetch(url, { headers: { Cookie: COOKIE } })
   const html = await res.text()
   const variants = optimisedImageUrls(html, base)
   let warmed = 0
   for (const v of variants) {
     try {
-      const r = await fetch(v, { headers: { Cookie: 'el-audit=1' } })
+      const r = await fetch(v, { headers: { Cookie: COOKIE } })
       await r.arrayBuffer()
       warmed += 1
     } catch (error) {
@@ -193,7 +233,7 @@ async function warm(url) {
       console.warn(`  warm failed: ${v.slice(0, 90)} :: ${error.message}`)
     }
   }
-  await fetch(url, { headers: { Cookie: 'el-audit=1' } })
+  await fetch(url, { headers: { Cookie: COOKIE } })
   return { status: res.status, variants: variants.length, warmed }
 }
 
