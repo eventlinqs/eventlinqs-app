@@ -5224,6 +5224,75 @@ const DRILLS = [
     replace: '+ 168.5px) + 96px);',
     expect: 'does not declare the base reservation the module generates',
   },
+  /*
+   * SURFACE FLAG COLOURS. The three shapes the defect actually took, and the
+   * one it could take next. The shared empty state branched seven colours on
+   * its photo/canvas flag and left two behind, in OPPOSITE directions, which is
+   * why clause 1 alone is not enough: a branch that points the wrong way round
+   * satisfies it and paints 1.59:1 anyway.
+   */
+  {
+    name: 'surface colours: the trust-pillar icon stops branching and paints gold-400 on the light card at 1.59:1',
+    guard: `${GUARDS}/surface-flag-colours-branch.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "shrink-0 ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}",
+    replace: 'shrink-0 text-[var(--brand-accent)]',
+    expect: 'is painted unconditionally',
+  },
+  {
+    name: 'surface colours: the eyebrow stops branching and paints gold-800 on the photo hero at 2.70:1',
+    guard: `${GUARDS}/surface-flag-colours-branch.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "tracking-[0.18em] ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}",
+    replace: 'tracking-[0.18em] text-[var(--brand-accent-strong)]',
+    expect: 'is painted unconditionally',
+  },
+  {
+    name: 'surface colours: the icon branches the WRONG WAY ROUND, which clause 1 alone would pass',
+    guard: `${GUARDS}/surface-flag-colours-branch.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "shrink-0 ${onPhoto ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]'}",
+    replace: "shrink-0 ${onPhoto ? 'text-[var(--brand-accent-strong)]' : 'text-[var(--brand-accent)]'}",
+    expect: 'which is the wrong way round',
+  },
+  /*
+   * HERO SCALE. The growing variant exists because a fixed box clipped 637px of
+   * content into 439px at 390 on 19 September 2026. The plausible next edit is
+   * somebody deciding the card is too tall and handing that rule a height back,
+   * which restores the clipping silently, so that is drill one.
+   */
+  {
+    name: 'hero scale: the growing variant is given a height back, which is exactly how the clipping returns',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/app/globals.css',
+    find: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); }',
+    replace: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); height: var(--hero-scale); }',
+    expect: 'gives .hero-marketing-grow a height',
+  },
+  {
+    name: 'hero scale: the growing variant is given a max-height, which clips the same content from the other end',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/app/globals.css',
+    find: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); }',
+    replace: '.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); max-height: 600px; }',
+    expect: 'gives .hero-marketing-grow a max-height',
+  },
+  {
+    name: 'hero scale: the scale is written back as a literal instead of read from the one custom property',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/app/globals.css',
+    find: '.hero-marketing { height: var(--hero-scale); }',
+    replace: '.hero-marketing { height: 52vh; }',
+    expect: 'sets a hero height literal',
+  },
+  {
+    name: 'hero scale: a page overrides the shared scale on the hero element itself',
+    guard: `${GUARDS}/hero-scale-one-source.mjs`,
+    file: 'src/components/ui/CategoryHeroEmpty.tsx',
+    find: "'hero-marketing-grow border border-ink-100",
+    replace: "'hero-marketing-grow h-[44vh] border border-ink-100",
+    expect: 'on the same element as the hero class',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

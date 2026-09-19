@@ -2635,9 +2635,27 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   477 + 2 = 479 files
  *   6203 + 12 + 6 + 1 = 6222 tests
+ *
+ * 2026-09-19, lane C, the gold tiers and the clipped card on the shared empty
+ * state. tests/unit/a11y/hero-empty-gold-tiers.test.ts holds six: five that
+ * compute the four gold-on-surface ratios out of globals.css, so retuning
+ * either token fails there with the number rather than silently moving a live
+ * surface under its floor, and one that EXECUTES the guard's refusal to pass
+ * vacuously by pointing it at a tree with no surface flag in it (the drill
+ * harness mutates one file per drill and could not empty the scope).
+ * tests/component/ui/category-hero-empty.test.tsx holds nine, for the tier and
+ * the hero variant each of the two surfaces is entitled to. Three of the nine
+ * were watched to fail against the shipped component before the fix.
+ *
+ * MEASURED: 481 files, 6237 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   479 + 2 = 481 files
+ *   6222 + 6 + 9 = 6237 tests
  */
-const MIN_FILES = 479
-const MIN_TESTS = 6222
+const MIN_FILES = 481
+const MIN_TESTS = 6237
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

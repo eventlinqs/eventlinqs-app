@@ -818,12 +818,50 @@ body {
  * page inherits the new scale from this one token (52vh base / 55vh sm /
  * 60vh lg, max 600px, min 400px). Still ONE scale, still one edit - never a
  * per-page literal. Any further deviation ABOVE this stays evidence-gated. */
-.hero-marketing {
-  height: 52vh;
+/*
+ * THE SCALE IS DECLARED ONCE, on a custom property, and the two variants read
+ * it. Both are unlayered, deliberately: unlayered CSS beats everything in
+ * `@layer utilities` whatever its specificity (see the cascade note further up
+ * this file), so a Tailwind `h-auto` on the element CANNOT override these and
+ * the choice has to be made here.
+ *
+ *   .hero-marketing        the locked scale as a FIXED height. The image owns
+ *                          the box and the content is restrained over it. This
+ *                          is what every page hero uses and its computed values
+ *                          are unchanged by this refactor (439/563/540 at
+ *                          390/768/1440, measured before and after).
+ *   .hero-marketing-grow   the same scale as a FLOOR, for the one hero whose
+ *                          CONTENT is the subject: the imageless empty-state
+ *                          card, which has no photograph to size to.
+ *
+ * WHY THE SECOND ONE EXISTS. On 19 September 2026 the shared designed empty
+ * state was measured at 390: 637px of content inside a 439px box with
+ * `overflow-hidden`. The trust pillars and the card's bottom padding were cut
+ * off on every eventless city and suburb page, which is the surface an
+ * organiser's first visitor is most likely to land on. At 768 and 1440 it fit
+ * by TWO PIXELS (561 into 563, 538 into 540), so it was one word of copy away
+ * from clipping at every width. A fixed height plus overflow-hidden is correct
+ * for a photograph and wrong for a card that has to say something.
+ */
+.hero-marketing,
+.hero-marketing-grow {
+  --hero-scale: 52vh;
   min-height: 400px;
 }
-@media (width >= 40rem) { .hero-marketing { height: 55vh; } }
-@media (width >= 64rem) { .hero-marketing { height: 60vh; max-height: 600px; } }
+@media (width >= 40rem) {
+  .hero-marketing,
+  .hero-marketing-grow { --hero-scale: 55vh; }
+}
+@media (width >= 64rem) {
+  .hero-marketing,
+  .hero-marketing-grow { --hero-scale: 60vh; }
+  .hero-marketing { max-height: 600px; }
+}
+.hero-marketing { height: var(--hero-scale); }
+/* No `height` and no `max-height`: the floor is the scale, the ceiling is the
+   content. Giving this rule a height again reintroduces the clipping, which is
+   why scripts/guards/hero-scale-one-source.mjs refuses it. */
+.hero-marketing-grow { min-height: max(var(--hero-scale), 400px); }
 
 /* ─── Smart media motion ─────────────────────────────────────────────────── */
 /*

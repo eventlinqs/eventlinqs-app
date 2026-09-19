@@ -457,6 +457,18 @@
  *                              globals.css rather than held as a list of banned colours
  *                              in named files, which is how 28 pairs under AA survived
  *                              a test written for exactly that shape (close-out UX1)
+ *   surface-flag-colours-branch  a component that renders on BOTH a dark and a light
+ *                              surface branches every gold foreground with it, and the
+ *                              right way round. The shared empty state branched five
+ *                              colours and left two: gold-400 at 1.59:1 on the light
+ *                              card, gold-800 at 2.70:1 on the photo hero. The colour
+ *                              is on the icon and the surface is on the root, which is
+ *                              the gap tinted-text-meets-contrast names and cannot see
+ *   hero-scale-one-source    the founder's ONE hero scale is declared once, as
+ *                              --hero-scale, and no page overrides it on the hero
+ *                              element. Holds the growing variant too: giving it a
+ *                              height or a max-height restores the 390 clipping it
+ *                              exists to end (637px of content in a 439px box)
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -1506,6 +1518,33 @@ const GUARDS = [
   // combinations. This computes the ratio from globals.css instead of holding a
   // list. Drilled red on a real pair and green again.
   'scripts/guards/tinted-text-meets-contrast.mjs',
+  // 19 September 2026. The guard above names the gap this one closes, in its own
+  // header: "a text colour with no background in the same class string - it
+  // inherits from an ancestor this cannot see". CategoryHeroEmpty, the shared
+  // designed empty state on every eventless city, suburb, community, category,
+  // weekend, feed, artist, organiser and venue page, branched seven colours on
+  // its photo/canvas flag and left two unbranched. Both were wrong and in
+  // opposite directions: the trust-pillar icon painted gold-400 at 1.59:1 on the
+  // light card, the eyebrow painted gold-800 at 2.70:1 on the photo hero. The
+  // colour is on the icon and the surface is on the component root, so no
+  // per-string contrast arithmetic can reach it. Clause 1 requires the branch,
+  // clause 2 requires it to point the right way, because a swapped branch
+  // satisfies clause 1 and is just as broken. Drilled red on both clauses and
+  // green again.
+  'scripts/guards/surface-flag-colours-branch.mjs',
+  // 19 September 2026, found while proving the guard above. The founder ruled
+  // ONE hero scale on 7 July 2026, "never a per-page literal", and nothing
+  // executable held it: the scale was three height declarations and a law in a
+  // markdown file. It also holds the fix for what that fixed height did to the
+  // shared empty state, which put 637px of content in a 439px box with
+  // overflow-hidden at 390 and cut the trust pillars off 38 live routes, while
+  // fitting by TWO PIXELS at 768 and 1440. .hero-marketing-grow takes the scale
+  // as a floor instead; clause 3 refuses to let it have a ceiling again, which
+  // is the one edit that would silently restore the clipping. Two earlier and
+  // broader versions of clause 1 were withdrawn for false positives (a modal's
+  // max-h-[85vh], then the 44px touch target); the scope is now a height on the
+  // SAME ELEMENT as the hero class. Drilled red four ways and green again.
+  'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
   // organiser form, stored on the anon-readable events row, and shown to nobody.
