@@ -10,40 +10,65 @@ import type { EventHeroFields } from '@/lib/images/event-media'
 /**
  * Existence guard for /events/[slug].
  *
- * Why a layout and not just the page: the page renders inside the
- * `events/[slug]/loading.tsx` Suspense boundary. A `loading.tsx` streams its
- * fallback - committing the HTTP 200 - the moment the page suspends on its
- * data fetch, so a page-level `notFound()` thrown AFTER that fetch can only
- * render the not-found UI inline (a soft-404 / HTTP 200), not set a real 404.
- * (Routes with no loading boundary, e.g. /organisers/[handle], 404 correctly.)
- *
- * The layout renders OUTSIDE the page's loading Suspense, so resolving the
- * slug's existence here and calling `notFound()` before `children` mount sets
- * a real 404 for unknown slugs - while the page keeps its designed loading
- * skeleton for the (confirmed-to-exist) event's own render. Uses the same
- * cookie-free anon client + slug the page's fetchEvent uses, so visibility is
- * identical (a row the page would notFound on is a row this guard rejects).
- *
  * ==========================================================================
- * AND IT STARTS THE LCP IMAGE, FOR THE SAME REASON IT DECIDES THE 404
+ * THE BOUNDARY THIS FILE WAS WRITTEN AGAINST IS GONE. 20 September 2026.
  * ==========================================================================
  *
- * Rendering outside the loading boundary is also the only place on this route
- * that can put the hero's `<link rel=preload as=image>` in the `<head>`. A
- * `loading.tsx` closes the head with the SKELETON, so the preload the hero
- * itself emits landed at byte 85,041 of a 205,060 byte document: the browser
- * could not ask for the LCP image until it had parsed 41 per cent of the page.
- * Lighthouse measured it as `Resource load delay` and it was the largest term
- * in this route's LCP. Every other public route on the platform carries that
- * link at byte 241, because none of them has a loading boundary.
+ * This comment used to open by explaining that the page renders inside the
+ * `events/[slug]/loading.tsx` Suspense boundary, and every paragraph after it
+ * followed from that. `loading.tsx` was DELETED under close-out C8 because the
+ * boundary made React stream the flight payload before the resumed markup and
+ * left the hero <img> at byte 102,160 of a 205,226 byte document. The
+ * measurement, the trade and the decision are in
+ * docs/perf/EVENT-ROUTE-LOADING-BOUNDARY-2026-09-20.md, and
+ * `scripts/guards/no-loading-boundary-in-front-of-a-hero.mjs` keeps it deleted.
  *
- * So each branch below that returns `children` also registers the hero, from
- * the row it already read: the existence select is WIDENED to the hero's
- * columns rather than a second query being added.
+ * The comment is rewritten rather than trimmed because a stale comment that
+ * states a fact about the tree is a defect in its own right: the next reader
+ * would have gone looking for a file that is not there.
  *
- * `scripts/guards/hero-preload-above-the-loading-boundary.mjs` derives this
- * requirement from the tree - a `loading.tsx` beside a page that renders a hero
- * - so the next route that grows one cannot repeat this quietly.
+ * WHAT THAT CHANGES HERE, honestly: less than it looks. The page's own
+ * `notFound()` now sets a real 404 by itself, because with no boundary there is
+ * no fallback committing an HTTP 200 ahead of it. So this guard is no longer
+ * the ONLY thing standing between an unknown slug and a soft 404. It is kept
+ * because it still answers earlier than the page's own fetch, from the same
+ * cookie-free anon client and the same slug, so visibility is identical (a row
+ * the page would notFound on is a row this guard rejects), and because the
+ * lifecycle branches below (archived holder, after-the-fact statuses) are
+ * decided here before the page runs. Deleting it is a question for
+ * docs/EVENT-LIFECYCLE.md, not for a performance change.
+ *
+ * ==========================================================================
+ * IT STILL STARTS THE LCP IMAGE, AND THAT IS NOW BELT AND BRACES
+ * ==========================================================================
+ *
+ * While the boundary existed this was the ONLY place on the route that could
+ * put the hero's `<link rel=preload as=image>` in the `<head>`: the head closed
+ * with the skeleton, so the link next/image emits where the hero RENDERS landed
+ * at byte 85,041. Moving the ask here took it to byte 241 and took resource
+ * load delay from a 331ms median to 12ms. That fix was real and it is why the
+ * remaining cost was measurable at all.
+ *
+ * With the boundary gone it is no longer the only place. Every other public
+ * route on this platform carries its hint in the head at byte 221 to 241 with
+ * NO bespoke preload, from next/image's own registration, precisely because
+ * nothing closes the head early. Measured on this tree after the deletion: ONE
+ * image hint per document, in the head, at byte 221 - React dedupes this link
+ * and the element's own registration to a single hint, as it must, since they
+ * are built from the same call on the same inputs.
+ *
+ * SO THIS IS NOW REDUNDANT-BUT-HARMLESS, AND IT IS SAID OUT LOUD RATHER THAN
+ * LEFT FOR SOMEBODY TO DISCOVER. It is kept in this pass because removing it
+ * also removes `HeroPreloadLink`, the `next/image` edge it puts in this
+ * layout's graph, and the guard clause and tests that hold it, and that is a
+ * separate change with its own measurement to take - worth taking, because
+ * lane A measured that graph edge at 5,641 bytes gzip on
+ * /events/[slug]/with/[artist]. It is named in C:\dev\REVIEW-QUEUE-C.md with
+ * that number beside it.
+ *
+ * Each branch below that returns `children` registers the hero from the row it
+ * already read: the existence select is WIDENED to the hero's columns rather
+ * than a second query being added.
  *
  * THE ARCHIVED-HOLDER BRANCH DELIBERATELY DOES NOT PRELOAD, and the reason is
  * cost rather than oversight. `viewerMayReachArchivedEvent` answers from a
@@ -80,9 +105,17 @@ function withHeroPreload(link: React.ReactElement | null, children: React.ReactN
  * only by somebody who already holds a ticket. It is the one branch where the
  * image is not worth a read.
  *
- * `scripts/guards/hero-preload-above-the-loading-boundary.mjs` requires every
- * branch of this layout to return through one of these two functions, so the
- * next branch added has to say which it is instead of quietly being neither.
+ * THE GUARD CLAUSE THAT USED TO ENFORCE THIS IS GONE, AND ITS ABSENCE IS NOT
+ * AN OVERSIGHT. `hero-preload-above-the-loading-boundary` carried a clause
+ * requiring every branch of this layout to return through one of these two
+ * functions, because a branch that silently returned `children` left the LCP
+ * image unasked-for until byte 85,041 and nothing noticed. That clause was
+ * written for a route with a loading boundary, and there is no longer one: a
+ * branch that forgets the preload now costs the earliness of a HINT that
+ * next/image emits anyway, in a head that stays open, rather than the LCP. The
+ * replacement guard holds the rule that actually matters now and does not
+ * pretend to hold this one. The two functions stay because naming the decision
+ * is still better than leaving it implied.
  */
 function withoutHeroPreload(children: React.ReactNode) {
   return children
@@ -113,9 +146,11 @@ export default async function EventSlugLayout({
    * null exactly as an empty table would, nothing was logged, and a real event
    * was declared not to exist. readOrThrow retries a transient fault, throws a
    * real one (a 500 says "ask again", which is true), and answers null only when
-   * the database itself said there is no row. This guard sits ABOVE the page's
-   * loading boundary, so a throw here is a real HTTP 500 and never a streamed
-   * 200 (src/lib/supabase/read-or-throw.ts).
+   * the database itself said there is no row. A throw here is a real HTTP 500
+   * and never a streamed 200, because nothing has been flushed yet: that used
+   * to be true because this ran above the route's loading boundary, and since
+   * that boundary was deleted (close-out C8) it is true of the whole render
+   * (src/lib/supabase/read-or-throw.ts).
    */
   const supabase = createPublicClient()
   const row = await readOrThrow('event-route', () =>

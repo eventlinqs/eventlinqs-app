@@ -33,10 +33,14 @@
  * to be a hero at all, and the moment it does, this function returns it and the
  * guard judges it.
  *
- * WHAT IT DELIBERATELY DOES NOT MATCH. `src/app/events/[slug]/loading.tsx`
- * carries the scale and no `HeroMedia`: it is the skeleton, it paints no
- * photograph and there is nothing for a wash to protect. It is excluded by the
- * second mark rather than by name.
+ * WHAT IT DELIBERATELY DOES NOT MATCH: a file that carries the scale and no
+ * `HeroMedia`. A loading skeleton is the case this was written for - it sizes
+ * itself to the hero it stands in for, paints no photograph, and has nothing
+ * for a wash to protect - and it is excluded by the second mark rather than by
+ * name. The example used to be `src/app/events/[slug]/loading.tsx`, which was
+ * deleted under close-out C8 (a loading boundary in front of a hero costs the
+ * LCP; see no-loading-boundary-in-front-of-a-hero.mjs). The rule is unchanged
+ * and still applies to the six skeletons that remain.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'

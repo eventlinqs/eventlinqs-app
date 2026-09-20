@@ -6199,68 +6199,87 @@ const DRILLS = [
   },
 
   /*
-   * hero-preload-above-the-loading-boundary, four drills (20 September 2026).
+   * no-loading-boundary-in-front-of-a-hero, three drills (20 September 2026).
    *
-   * One clause per drill, because each stands for a different way this went
-   * wrong while it was being built rather than for a hypothetical.
+   * This guard replaced hero-preload-above-the-loading-boundary, whose four
+   * drills were deleted WITH it rather than left pointing at a file that is no
+   * longer in the tree. Two of those four described placements that had been
+   * tried and had silently done nothing (`generateMetadata`, and `react-dom`'s
+   * `preload` inside a server component); the second of them is kept below,
+   * because the resolver it describes is still here and the trap is still live.
    *
-   *   1. The layout stops asking: the original defect, the hero's preload back
-   *      at byte 85,041 of a 205,060 byte document.
-   *   2. The PAGE asks instead. This was attempted twice, from
-   *      `generateMetadata` and from the server layout via `react-dom`, and both
-   *      looked completely reasonable and did nothing at all.
-   *   3. The server resolver imports `react-dom`, which is the second of those
-   *      two: in a server component that specifier resolves to the react-server
-   *      build where `preload()` has no dispatcher.
-   *   4. The derivation goes blind. It aims at the PAGE rather than at
-   *      HeroMedia's internals, because the first attempt at this drill renamed
-   *      `<HeroRaster` inside HeroMedia.tsx, the guard stayed green, and it was
-   *      RIGHT to: deriveHeroFiles keys on a consumer rendering `<HeroMedia`.
-   *      A drill that misses its anchor verifies nothing while looking like one.
+   * The three that remain are one per clause:
+   *
+   *   1. A page behind an existing boundary grows a hero. The harness cannot
+   *      create a file, so it cannot plant a boundary; this is the other and
+   *      likelier direction anyway, and the drill's own comment says why.
+   *   2. The server resolver imports `react-dom`, where `preload()` has no
+   *      dispatcher and does nothing at all.
+   *   3. The hero derivation goes blind. It matters more on this guard than it
+   *      did on the last one, because clause 1 passes by finding NOTHING and a
+   *      broken derivation finds nothing too.
    */
   {
     /*
-     * THE ANCHOR IS THE IMPORT, NOT ONE BRANCH, AND THAT IS THE POINT.
+     * CLAUSE 1, AND THE DRILL COMES AT IT FROM THE DIRECTION IT WILL ACTUALLY
+     * ARRIVE FROM.
      *
-     * The first version of this drill removed the ask from the `row` branch
-     * alone and the guard PASSED, because clause 1 only asked whether the
-     * layout MENTIONS the preload and three other branches still did. The
-     * harness caught that on its first run and clause 5 was written because of
-     * it. Removing the import removes every ask at once, which is what clause 1
-     * is actually claiming to catch.
+     * The obvious drill is "put a loading.tsx back beside the event page", and
+     * it is the one that was run by hand while the guard was written (red with
+     * the fault named, green when the file was removed again). This harness
+     * only mutates files it can find an anchor in, so it cannot CREATE one, and
+     * the substitute chosen here is not a weaker version of the same thing: it
+     * is the other, likelier direction. A boundary is added deliberately and by
+     * somebody thinking about loading; a HERO is added to a page that already
+     * sits behind one without anybody thinking about loading at all. The
+     * checkout route has carried its boundary since long before this rule, so
+     * giving its page a hero is exactly that mistake.
+     *
+     * Both marks are planted, because deriveHeroFiles requires both: the locked
+     * `.hero-marketing` scale and a rendered `<HeroMedia>`. Planting one alone
+     * would leave the guard green and the drill would be verifying nothing.
      */
-    name: 'the layout above the loading boundary stops asking for the hero',
-    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
-    file: 'src/app/events/[slug]/layout.tsx',
-    find: "import { EVENT_HERO_SELECT, eventHeroPreloadLink } from '@/lib/images/hero-preload'",
-    replace: "import { EVENT_HERO_SELECT } from '@/lib/images/hero-preload'",
-    expect: 'no layout above that boundary asks for it',
-  },
-  {
-    name: 'a branch of the asking layout returns children without deciding about the hero',
-    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
-    file: 'src/app/events/[slug]/layout.tsx',
-    find: 'if (await viewerMayReachArchivedEvent(slug)) return withoutHeroPreload(children)',
-    replace: 'if (await viewerMayReachArchivedEvent(slug)) return children',
-    expect: 'returns children without deciding about the hero',
-  },
-  {
-    name: 'the page asks for its own preload, from inside the boundary where it cannot reach the head',
-    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
-    file: 'src/app/events/[slug]/page.tsx',
-    find: "import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'",
+    name: 'a page that already sits behind a loading boundary grows a hero',
+    guard: `${GUARDS}/no-loading-boundary-in-front-of-a-hero.mjs`,
+    file: 'src/app/checkout/[reservation_id]/page.tsx',
+    find: '    <CheckoutForm',
     replace:
-      "import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'\n" +
-      "import { heroPreloadLink } from '@/lib/images/hero-preload'",
-    expect: 'asks for the hero preload from INSIDE',
+      '    <div className="hero-marketing"><HeroMedia image={null} alt="" /></div>,\n' +
+      '    <CheckoutForm',
+    expect: 'renders a hero and sits behind',
   },
   {
     name: 'the server-only resolver reaches for react-dom preload, which does nothing there',
-    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    guard: `${GUARDS}/no-loading-boundary-in-front-of-a-hero.mjs`,
     file: 'src/lib/images/hero-preload.tsx',
     find: "import 'server-only'",
     replace: "import 'server-only'\n" + "import { preload } from 'react-dom'",
     expect: 'imports from react-dom',
+  },
+  {
+    /*
+     * CLAUSE 3, AND IT IS THE CLAUSE THIS GUARD MOST NEEDS DRILLED.
+     *
+     * Clause 1 PASSES by finding nothing, which is the same shape a derivation
+     * that has stopped working produces. So the guard is only worth anything
+     * while it can still see the two halves of the join, and this proves it
+     * notices when one of them goes rather than reporting a confident zero.
+     *
+     * IT AIMS AT THE BOUNDARY HALF, and the first version of this drill aimed
+     * at the other half and DID NOT FIRE - the harness reported 0 of 1, which
+     * is what it is for. Renaming `<HeroMedia` inside hero-files.mjs does not
+     * hand this guard an empty list: `deriveHeroFiles` THROWS on a short list
+     * by its own IMPLAUSIBLY_FEW floor, so the check it was written against was
+     * unreachable and has been deleted rather than left looking careful. The
+     * boundary half has no such floor above it, so it is the one that can
+     * silently go to zero, and it is the one drilled.
+     */
+    name: 'the boundary derivation goes blind, so clause 1 could not have failed',
+    guard: `${GUARDS}/no-loading-boundary-in-front-of-a-hero.mjs`,
+    file: 'scripts/guards/no-loading-boundary-in-front-of-a-hero.mjs',
+    find: "const loadings = files.filter((f) => f.endsWith('/loading.tsx'))",
+    replace: "const loadings = files.filter((f) => f.endsWith('/loading.tsx.disabled'))",
+    expect: 'the derivation of boundaries has gone blind',
   },
   /*
    * audit-flag-is-read-where-it-is-written, four drills (20 September 2026).
@@ -6304,14 +6323,6 @@ const DRILLS = [
     expect: 'declares no AUDIT_FLAG',
   },
 
-  {
-    name: 'the event page stops rendering a hero, so the guard has nothing left to judge',
-    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
-    file: 'src/app/events/[slug]/page.tsx',
-    find: '            <HeroMedia',
-    replace: '            <HeroMediaRenamed',
-    expect: 'no hero-bearing page was found behind any loading boundary',
-  },
 
   /*
    * a-drive-waits-for-a-cached-flag (lane B, 19 September 2026), four drills.

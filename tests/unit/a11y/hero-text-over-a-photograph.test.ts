@@ -169,10 +169,19 @@ describe('every surface that paints text on a photograph', () => {
     ]) {
       expect(HEROES).toContain(known)
     }
-    // The skeleton carries the hero scale and paints no photograph: there is
-    // nothing for a wash to protect, and it is excluded by the second mark
-    // rather than by name.
-    expect(HEROES).not.toContain('src/app/events/[slug]/loading.tsx')
+    /*
+     * A SKELETON CARRIES THE HERO SCALE AND PAINTS NO PHOTOGRAPH, so there is
+     * nothing for a wash to protect and it is excluded by the second mark
+     * rather than by name.
+     *
+     * This used to assert it on `src/app/events/[slug]/loading.tsx`, which was
+     * deleted under close-out C8 (a loading boundary in front of a hero costs
+     * the LCP; see no-loading-boundary-in-front-of-a-hero.mjs). An assertion
+     * that a DELETED file is absent passes for the wrong reason and proves
+     * nothing about the derivation, so it is re-aimed at a skeleton that is
+     * still in the tree.
+     */
+    expect(HEROES).not.toContain('src/components/ui/LoadingState.tsx')
   })
 
   it.each(held)('%s writes no wash of its own', file => {

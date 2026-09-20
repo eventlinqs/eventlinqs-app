@@ -2905,9 +2905,37 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE, and it does NOT close by addition, on purpose:
  *   this floor is the measurement, not 513 + 3 = 516, which is what it would
  *   have been had it been derived. The gap is 8 files and 119 tests.
+ *
+ * ==========================================================================
+ * RAISED 20 September 2026, lane C, close-out C8. 525 files, 6979 tests.
+ * ==========================================================================
+ *
+ * MEASURED IN LANE C's WORKTREE, not on the merged tree, and that difference
+ * matters when this conflicts: `npm run gate:push -- --only suite`, 152s,
+ * GREEN, 525 files / 6979 tests / 0 failed / 0 skipped. The push lane measures
+ * the merged tree and its number will be HIGHER than this one, because this
+ * worktree does not contain lane B's work. This figure is the floor lane C can
+ * honestly vouch for; take the merged measurement over it.
+ *
+ * WHAT MOVED, so the delta is checkable rather than asserted. One test was
+ * LOST and five were added, net +4 with one new file:
+ *
+ *   -1  `tests/unit/a11y/busy-region-names-itself.test.ts` ran a case per
+ *       skeleton over a list of four, and one of those four,
+ *       `src/app/events/[slug]/loading.tsx`, was DELETED under close-out C8 (a
+ *       loading boundary in front of a hero costs 450ms of LCP element render
+ *       delay; see no-loading-boundary-in-front-of-a-hero.mjs). The case went
+ *       with the file, which is correct: that test READS each path, so leaving
+ *       it listed would have thrown rather than passed.
+ *   +5  `tests/unit/guards/no-loading-boundary-in-front-of-a-hero.test.ts`,
+ *       the unit test for the guard that replaced it.
+ *
+ * THE FIRST ATTEMPT AT THIS WENT 6974 AND THIS GUARD CAUGHT IT, which is the
+ * argument for the guard: a green suite running one fewer test than it used to,
+ * for a reason that was genuinely correct, is still a floor quietly dropping.
  */
-const MIN_FILES = 524
-const MIN_TESTS = 6975
+const MIN_FILES = 525
+const MIN_TESTS = 6979
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

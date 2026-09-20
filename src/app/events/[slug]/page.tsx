@@ -485,11 +485,48 @@ export default async function EventDetailPage({ params }: Props) {
   // card below); the flag governs the account-level Following surface. Reading
   // it here gated a duplicate of a control that was already showing.
 
-  // Broadcast Layer Stage 3 (SPEC 4.2): confirmed lineup tags appear on the
-  // event page, gated on broadcast_artists. Public-read RLS on both tables.
-  const artistsOn = await artistsOnPromise
-  let lineup: { id: string; slug: string; name: string }[] = []
-  if (artistsOn) {
+  /*
+   * THE TWO QUESTIONS THE CONSENT SLOT ASKS, STARTED HERE AND ASKED LATER.
+   *
+   * Neither depends on the event, and the wording that depends on BOTH is the
+   * last read in the render. Asked where they were used, they were the final
+   * three stages of a six-stage chain; started here they cost nothing, because
+   * the parallel stage below takes longer than either of them. The admin client
+   * is built once and shared with the wording read, exactly as before.
+   *
+   * `.catch` ON BOTH, AND IT IS LOAD-BEARING RATHER THAN A HABIT. Two early
+   * returns sit between here and the await: a private event and a draft or
+   * scheduled one both render their own screen and never reach the parallel
+   * stage. On those paths nobody awaits these promises, so a rejection with no
+   * handler is an unhandled rejection, which is exactly how a page that was
+   * made faster starts crashing instead.
+   */
+  const captureAdmin = createAdminClient()
+  const capturePlacementPromise = resolveCapturePlacement(captureAdmin)
+  capturePlacementPromise.catch(() => {})
+  const audienceCapturePromise = isFeatureEnabled('audience_capture')
+  audienceCapturePromise.catch(() => {})
+
+  /*
+   * THE LINEUP IS STARTED HERE AND AWAITED WITH THE REST, for the reason the
+   * two flag promises above record: a round trip taken on its own is a round
+   * trip the whole document waits behind.
+   *
+   * It used to `await artistsOnPromise` and then, if the flag was on, `await`
+   * the lineup select before anything else on the page began. That made it a
+   * stage of its own in a chain that was SIX stages deep, and the chain is what
+   * the buyer waits for: measured on this tree's production build, 20 September
+   * 2026, the event route's warm TTFB was 926ms with the whole render in front
+   * of the first byte.
+   *
+   * Nothing about the query changes. It is the same select, the same filters
+   * and the same mapping; only the moment it STARTS moves, from after the event
+   * to beside it. `.catch` is attached for the reason given above the capture
+   * promises: a private or draft event returns its own screen before the
+   * parallel stage is reached, and on those paths nobody awaits this.
+   */
+  const lineupPromise = (async (): Promise<{ id: string; slug: string; name: string }[]> => {
+    if (!(await artistsOnPromise)) return []
     const publicDb = createPublicClient()
     const { data: lineupRows } = await publicDb
       .from('event_artists')
@@ -497,12 +534,13 @@ export default async function EventDetailPage({ params }: Props) {
       .eq('event_id', event.id)
       .eq('status', 'confirmed')
       .order('billing_order', { ascending: true })
-    lineup = ((lineupRows ?? []) as unknown as {
+    return ((lineupRows ?? []) as unknown as {
       artist: { id: string; slug: string; name: string } | { id: string; slug: string; name: string }[] | null
     }[])
       .map((r) => (Array.isArray(r.artist) ? r.artist[0] ?? null : r.artist))
       .filter((a): a is { id: string; slug: string; name: string } => !!a)
-  }
+  })()
+  lineupPromise.catch(() => {})
 
   // Queue gate moved to `src/middleware.ts`. The middleware redirects
   // unauthenticated visitors to `/queue/[slug]` before this page renders,
@@ -557,6 +595,17 @@ export default async function EventDetailPage({ params }: Props) {
   const allTiers = [...event.ticket_tiers].sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.created_at.localeCompare(b.created_at)
   )
+
+  /*
+   * A PURE READ OF `allTiers`, HOISTED TO WHERE THE READS THAT NEED IT START.
+   *
+   * `eventIsPaid` runs no query: it answers from the tiers the event row
+   * already carried. It was declared four hundred lines down, immediately above
+   * the sale-gate await, which is what kept that await out of the page's one
+   * parallel stage. The decision it feeds is unchanged and is still made in one
+   * place; only the declaration moves.
+   */
+  const isPaidEvent = eventIsPaid(allTiers)
 
   const seatsPromise = event.has_reserved_seating
     ? (async () => {
@@ -636,6 +685,29 @@ export default async function EventDetailPage({ params }: Props) {
       })()
     : Promise.resolve(null)
 
+  /*
+   * ONE WAIT, NOT SIX. 20 September 2026, close-out C8.
+   *
+   * This list is the page's single parallel stage, and four reads were sitting
+   * OUTSIDE it, each awaited on its own further down the file: the lineup, the
+   * per-tier inventory, the organiser's sale gate and the Founding Organiser
+   * badge. None of them depends on anything this list produces. They ran one
+   * after another anyway, because each was written beside the markup that uses
+   * it, which reads well and costs a round trip every time.
+   *
+   * MEASURED, on this tree's production build with the route's loading boundary
+   * removed so the render is in front of the first byte where it can be seen:
+   * warm TTFB 926ms on /events/cat-indie-sounds-live-at-the-enmore-sydney. The
+   * chain was fetchEvent -> lineup -> this list -> tier inventory -> sale gate
+   * -> consent wording, six stages against a Sydney pool.
+   *
+   * WHAT IS AND IS NOT SAFE TO MOVE HERE. Every entry added below reads only
+   * `event` and `allTiers`, both of which are resolved before this statement:
+   * `allTiers` is `event.ticket_tiers` sorted, with no query behind it. The one
+   * that CANNOT move is the consent wording, which genuinely needs the
+   * placement before it knows whether to ask; that pair is started early
+   * instead and is documented where it is awaited.
+   */
   const [
     dynamicPriceMap,
     eventInventory,
@@ -645,6 +717,10 @@ export default async function EventDetailPage({ params }: Props) {
     seatedFlagEnabled,
     surpassEdgesEnabled,
     priceHistoryRows,
+    lineup,
+    tierInventoryEntries,
+    organiserSale,
+    foundingBadge,
   ] = await Promise.all([
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventoryStatic(event.id),
@@ -666,6 +742,29 @@ export default async function EventDetailPage({ params }: Props) {
     // and read with the anon client like the event itself. A read failure is
     // logged inside and yields no history, never a broken ticket panel.
     readPriceHistory(createPublicClient(), event.id),
+    // Started above, beside the event, rather than awaited on its own here.
+    lineupPromise,
+    /*
+     * THE PER-TIER INVENTORY, keyed by tier id exactly as before.
+     *
+     * It used to map `enrichedAllTiers`, which is `allTiers` with three
+     * derived display fields added and therefore the SAME ids in the SAME
+     * order. `getTierInventoryStatic` reads nothing but the id, so mapping
+     * `allTiers` here is the same set of reads one stage earlier.
+     */
+    Promise.all(allTiers.map(async t => [t.id, await getTierInventoryStatic(t.id)] as const)),
+    /*
+     * THE SALE GATE AND THE FOUNDING BADGE. Both read the organisation with the
+     * service role, and `isPaidEvent` is a pure function of `allTiers`, so
+     * neither needed to wait for this list to finish. The comment that used to
+     * sit beside them said a second serial round trip would be "paid by every
+     * visitor" and put the two of them together; this finishes that thought by
+     * putting them with the rest.
+     */
+    isPaidEvent
+      ? organiserCanSell(event.organisation_id)
+      : Promise.resolve({ sellable: true, lookupFailed: false }),
+    getFoundingBadge(event.organisation_id),
   ])
   const eventFeePassType = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
 
@@ -791,9 +890,7 @@ export default async function EventDetailPage({ params }: Props) {
     country: event.venue_country,
   }) ?? ''
 
-  const tierInventoryEntries = await Promise.all(
-    enrichedAllTiers.map(async t => [t.id, await getTierInventoryStatic(t.id)] as const),
-  )
+  // Resolved in the page's one parallel stage above, keyed by tier id.
   const tierInventory = Object.fromEntries(tierInventoryEntries)
 
   const isSoldOut =
@@ -843,17 +940,12 @@ export default async function EventDetailPage({ params }: Props) {
    * buyer reads on a server render and the sentence they read after a click
    * refusal come from the same place and cannot tell different stories.
    */
-  const isPaidEvent = eventIsPaid(allTiers)
-  // Close-out FO1: the words "Founding Organiser" on the event page, resolved
-  // on the server with the service role so no column is granted to anon. It
-  // rides alongside the sale gate rather than after it, because a second
-  // serial round trip on the LCP page would be paid by every visitor.
-  const [organiserSale, foundingBadge] = await Promise.all([
-    isPaidEvent
-      ? organiserCanSell(event.organisation_id)
-      : Promise.resolve({ sellable: true, lookupFailed: false }),
-    getFoundingBadge(event.organisation_id),
-  ])
+  /*
+   * `isPaidEvent`, the sale gate and the Founding Organiser badge (close-out
+   * FO1) are all resolved in the page's one parallel stage above. The badge is
+   * still read on the server with the service role, so no column on
+   * `organisations` is granted to anon; only the moment of the read moved.
+   */
 
   const saleDecision = ticketsOnSaleDetailed({
     isPaidEvent,
@@ -908,10 +1000,35 @@ export default async function EventDetailPage({ params }: Props) {
    * direction can record twice, because one carried answer per reservation is
    * the primary key.
    */
-  const captureAdmin = createAdminClient()
-  const capturePlacement = await resolveCapturePlacement(captureAdmin)
+  /*
+   * THE ONE CHAIN THAT CANNOT BE FLATTENED, SHORTENED FROM THREE STAGES TO ONE.
+   *
+   * The wording genuinely depends on the answer to two questions, so it cannot
+   * join the parallel stage above. The two QUESTIONS do not depend on each
+   * other or on the event, and they were asked one after the other: placement,
+   * then flag, then wording, three round trips at the very end of the render
+   * and therefore three the first byte waited behind. Both are now started
+   * beside the event (`capturePlacementPromise`, `audienceCapturePromise`) and
+   * are almost always resolved by the time this line is reached, which leaves
+   * the wording itself as the only read still on the chain.
+   *
+   * ONE BEHAVIOUR CHANGE, STATED RATHER THAN BURIED. The flag used to be read
+   * only when the placement came back `ticket_page`, because `&&` short
+   * circuits. Starting it early means it is read on EVERY render of this route.
+   * That is a deliberate trade and it is cheap in the currency that matters
+   * here: the read is Redis-cached, it overlaps a parallel stage that is longer
+   * than it, and it costs the page no wall-clock time. What it buys is the
+   * removal of a round trip from the end of the chain, where every millisecond
+   * was in front of the first byte. Nothing the visitor sees changes: the
+   * wording is still resolved only when the placement is the ticket page AND
+   * the flag is on.
+   */
+  const [capturePlacement, audienceCaptureOn] = await Promise.all([
+    capturePlacementPromise,
+    audienceCapturePromise,
+  ])
   const discoveryWording =
-    capturePlacement === 'ticket_page' && (await isFeatureEnabled('audience_capture'))
+    capturePlacement === 'ticket_page' && audienceCaptureOn
       ? await getCurrentConsentWording(captureAdmin, FACILITATED_MARKETING_PURPOSE)
       : null
   const discoveryConsentSlot = discoveryWording ? (

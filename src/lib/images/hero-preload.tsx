@@ -13,13 +13,24 @@ import { eventHeroMediaInput, getFeaturedHeroBackground, type EventHeroFields } 
  * THE MEASUREMENT THAT PRODUCED THIS FILE
  * ============================================================================
  *
+ * READ THIS FIRST: THE CONDITION THAT MADE THIS NECESSARY NO LONGER HOLDS.
+ * `src/app/events/[slug]/loading.tsx` was deleted on 20 September 2026 under
+ * close-out C8, because a loading boundary in front of a hero costs far more
+ * than the preload it breaks (the ELEMENT sat at byte 102,160; see
+ * scripts/guards/no-loading-boundary-in-front-of-a-hero.mjs). With the head no
+ * longer closing early, next/image's own registration reaches it unaided, as it
+ * does on every other public route, and this module is now belt and braces
+ * rather than the only way. It is kept for this pass and its removal is named,
+ * with the byte prize, in C:\dev\REVIEW-QUEUE-C.md. Everything below is the
+ * reasoning that produced it and is kept because it explains the measurement.
+ *
  * `HeroMedia` already renders `<Image priority fetchPriority="high">`, and
  * next/image already registers that raster for preload. React emits the link
  * where the registration happens, and it hoists into `<head>` only while the
  * head is still open. On a streamed App Router response the head closes with
- * the FIRST flush, and `/events/[slug]` is the ONLY public route on this
- * platform with a route-level `loading.tsx`, which means the first flush is the
- * SKELETON and the hero renders long afterwards.
+ * the FIRST flush, and while `/events/[slug]` carried the platform's only
+ * public route-level `loading.tsx`, that first flush was the SKELETON and the
+ * hero rendered long afterwards.
  *
  * Driven on this tree's production build, 20 September 2026, served by the
  * gate's own server. Byte offset of `as="image"` per gated route:
