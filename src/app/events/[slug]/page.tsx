@@ -934,8 +934,27 @@ export default async function EventDetailPage({ params }: Props) {
    *
    * The waitlist IS at that anchor, so the label now names it. One value, three
    * consumers, and the sold-out panel is the thing it scrolls to.
+   *
+   * THE SAME DEFECT HAD A SECOND CASE AND IT WAS LEFT BEHIND (MONEY FIX, found
+   * 20 September 2026 by driving acceptance line 7). When `saleBlocked` is true
+   * because the organiser has no connected account, the panel at that anchor
+   * reads "Tickets not yet on sale. This organiser is still finishing their
+   * payment setup", and all three controls still read "Get tickets" over a
+   * price and an "Only 10 left" pill. That is the identical false affordance the
+   * paragraph above describes, on the surface where the money actually is, and
+   * the fix above never reached it because the condition only asked about
+   * `isSoldOut`.
+   *
+   * `saleBlocked` is tested FIRST, because an event can be both blocked and
+   * sold out and "Join the waitlist" would then still promise something the
+   * platform cannot deliver: the waitlist exists to convert into a sale, and
+   * there is no sale to convert into while the organiser cannot be paid.
    */
-  const ticketCtaLabel = isSoldOut && !saleBlocked ? 'Join the waitlist' : 'Get tickets'
+  const ticketCtaLabel = saleBlocked
+    ? 'Not on sale yet'
+    : isSoldOut
+      ? 'Join the waitlist'
+      : 'Get tickets'
 
   const eventStateForSchema =
     eventBannerState === 'cancelled' ? 'cancelled' as const :
