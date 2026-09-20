@@ -128,7 +128,30 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#131A2A]">
+      {/*
+        THE BOX CLIPPED ITS OWN TABLE, AND FIFTY CONTROLS WITH IT.
+
+        MEASURED, 21 September 2026, signed in as an admin against a served
+        build (scripts/verify/admin-tables-fit-drive.mjs): this seven-column
+        table renders 1,027px wide inside a box showing 340 of them at 390 and
+        718 at 768, and the box was `overflow-hidden`. That is not a scroller,
+        it is a CLIP: every View button sat at x 1,274 to 1,326, outside a
+        visible 24 to 366, with no scrollbar and no gesture that reaches them.
+        Fifty dead controls on the one screen that exists to let somebody read
+        what was done and by whom.
+
+        It is the same defect the organiser's discount codes table had on the
+        same day, in the same shape, and it is worth noting that this one is
+        WORSE at 768 than at 390 in absolute terms: 612 hidden pixels against
+        687, on a tablet nobody thinks of as a small screen.
+
+        `overflow-x-auto`, so a finger can reach the rest of the row. What that
+        does NOT fix is the row losing its own name at the right edge, which
+        this drive also measures and which is a rebuild rather than a class:
+        recorded in C:\dev\REVIEW-QUEUE-C.md with the measurement, for the
+        thirteen admin tables that share it.
+      */}
+      <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
         <table className="w-full text-left text-sm">
           <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50">
             <tr>

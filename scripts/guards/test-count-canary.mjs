@@ -3253,8 +3253,25 @@ const ROOT = join(HERE, '..', '..')
  * by putting the import-time scan back on one of the guards.
  * ---------------------------------------------------------------------------
  */
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, the admin audit log clipped its own table): 539/7182 -> 539/7188.
+ * ---------------------------------------------------------------------------
+ *
+ * NO NEW FILE AND SIX CASES, all in an existing file:
+ *   tests/unit/guards/a-table-a-phone-can-read.test.ts  +6 for judgeClipWrappers,
+ *   the narrower clause the admin scope is held to
+ *   539 + 0 = 539 files
+ *   7182 + 6 = 7188 tests
+ *
+ * MEASURED: 539 files, 7188 tests, 0 failed, 0 skipped
+ * (npm run gate:push -- --only suite, GREEN, 112s, on the tree of this commit).
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED.
+ * ---------------------------------------------------------------------------
+ */
 const MIN_FILES = 539
-const MIN_TESTS = 7182
+const MIN_TESTS = 7188
 
 
 /**

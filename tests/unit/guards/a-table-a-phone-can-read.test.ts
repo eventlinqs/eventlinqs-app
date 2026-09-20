@@ -2,7 +2,12 @@ import { execFileSync } from 'node:child_process'
 
 import { describe, expect, it } from 'vitest'
 
-import { judgeFile, openingTag, classesOf } from '../../../scripts/guards/a-table-a-phone-can-read.mjs'
+import {
+  judgeFile,
+  judgeClipWrappers,
+  openingTag,
+  classesOf,
+} from '../../../scripts/guards/a-table-a-phone-can-read.mjs'
 import { findViolations } from '../../../scripts/guards/no-hardcoded-spacing.mjs'
 
 /**
@@ -136,6 +141,48 @@ describe('a-table-a-phone-can-read', () => {
       { encoding: 'utf8' },
     )
     expect(out).toBe('imported')
+  })
+
+  /**
+   * THE ADMIN CLAUSE, WHICH IS NARROWER ON PURPOSE.
+   *
+   * An admin table legitimately scrolls: it is a twelve-column operations
+   * screen read mostly on a desktop, and `overflow-x-auto` means a finger can
+   * still reach the far side of a row. A CLIP cannot be swiped at all, which
+   * is why it is the only one enforced there. These cases pin that line, so
+   * widening or narrowing it later is a deliberate act with a failing test to
+   * change.
+   */
+  describe('judgeClipWrappers', () => {
+    const wrapped = (classes: string) =>
+      (judgeClipWrappers(`<div className="${classes}">\n  <table className="w-full">\n    <tbody><tr><td>a</td></tr></tbody>\n  </table>\n</div>`) as unknown[]).length
+
+    it('catches the wrapper that clipped fifty controls on /admin/audit', () => {
+      expect(wrapped('overflow-hidden rounded-xl border border-white/[0.08] bg-[#131A2A]')).toBe(1)
+    })
+
+    it('leaves a scroller alone, because a finger can move it', () => {
+      expect(wrapped('overflow-x-auto rounded-xl border')).toBe(0)
+      expect(wrapped('overflow-auto rounded-xl border')).toBe(0)
+    })
+
+    it('leaves a clip that only applies from lg up', () => {
+      expect(wrapped('lg:overflow-hidden rounded-xl')).toBe(0)
+    })
+
+    it('leaves a clip neutralised below lg, which is how a card keeps its corners', () => {
+      expect(wrapped('overflow-hidden max-lg:overflow-visible rounded-xl')).toBe(0)
+    })
+
+    it('does not reach back past a wrapper into unrelated markup', () => {
+      const far = `<div className="overflow-hidden">${'x'.repeat(500)}</div>\n<div className="rounded-xl">\n  <table><tbody><tr><td>a</td></tr></tbody></table>\n</div>`
+      expect((judgeClipWrappers(far) as unknown[]).length).toBe(0)
+    })
+
+    it('reads code and not the comment explaining the defect', () => {
+      const commented = `{/* this box used to be overflow-hidden and clipped fifty controls */}\n<div className="overflow-x-auto">\n  <table><tbody><tr><td>a</td></tr></tbody></table>\n</div>`
+      expect((judgeClipWrappers(commented) as unknown[]).length).toBe(0)
+    })
   })
 
   describe('openingTag', () => {
