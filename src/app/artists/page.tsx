@@ -8,6 +8,7 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { isPerformanceType, PERFORMANCE_TYPE_LABELS } from '@/lib/marketplace/gigs'
 import {
   fetchDirectoryArtists,
+  fetchDirectoryArtistsRankedByDraw,
   fetchDrawTotalsForArtists,
   type DirectoryFilters as Filters,
 } from '@/lib/marketplace/showcase'
@@ -54,18 +55,33 @@ export default async function PerformerDirectoryPage({
     mentorOnly: raw.mentor === '1',
   }
 
+  /*
+   * THE RANK IS A QUERY, NOT A SORT, AND THAT IS THE WHOLE POINT.
+   *
+   * This used to read 48 performers ORDERED BY NAME and then sort those 48 by
+   * draw in JavaScript, which does not rank the platform's strongest draw: it
+   * ranks the alphabetically first 48 and presents the result under a control
+   * that reads "Strongest draw first". The bound has to come AFTER the ranking,
+   * so when draw is asked for, the database ranks and bounds in one read.
+   * `fetchDirectoryArtistsRankedByDraw` carries the reasoning; the disclosure
+   * half (a performer who has not consented is not placed by a number they did
+   * not publish) lives in the migration's header.
+   *
+   * NOTHING RE-SORTS THE RESULT HERE. The order is the database's in both
+   * branches, and a JavaScript sort on this page is exactly the defect.
+   */
   const admin = createAdminClient()
+  const rankByDraw = raw.sort === 'draw'
   const [artists, cities] = await Promise.all([
-    fetchDirectoryArtists(admin, filters),
+    rankByDraw
+      ? fetchDirectoryArtistsRankedByDraw(admin, filters)
+      : fetchDirectoryArtists(admin, filters),
     fetchPickerCities(admin),
   ])
   const cityName = (slug: string | null) => cities.find((c) => c.slug === slug)?.name ?? null
 
   const draw = await fetchDrawTotalsForArtists(admin, artists.map((a) => a.id))
   const rows = artists.map((a) => ({ artist: a, draw: draw.get(a.id) ?? null }))
-  if (raw.sort === 'draw') {
-    rows.sort((x, y) => (y.draw?.tickets ?? 0) - (x.draw?.tickets ?? 0))
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">

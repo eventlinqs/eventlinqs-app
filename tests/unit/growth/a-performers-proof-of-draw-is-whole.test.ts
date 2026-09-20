@@ -335,13 +335,48 @@ describe('the module itself, so the eighth occurrence has nowhere to happen', ()
     expect(destructures.length).toBeGreaterThan(0)
   })
 
-  test('every read in showcase.ts reaches one of the two doors', () => {
+  /*
+   * THE EXCEPTIONS ARE NAMED RATHER THAN COUNTED, and the reason is that this
+   * test used to allow "one" undoored read and a second correct one was added
+   * on 21 September (the ranked directory read). A count says nothing about
+   * WHICH read escaped the doors, so the next reader's cheapest repair is to
+   * raise the number, which is the assertion quietly deleting itself.
+   *
+   * Both exceptions are the same shape and both are deliberate: a BROWSE
+   * surface with a page size is not a set that must be read whole, so it states
+   * its own bound instead of paging. What is not negotiable is that each binds
+   * `error` and each states a `.limit()`, which is what the two doors would have
+   * given them.
+   */
+  const PAGE_READS = ['fetchDirectoryArtists', 'fetchDirectoryArtistsRankedByDraw']
+
+  function bodyOf(source: string, name: string): string {
+    const at = source.indexOf(`export async function ${name}(`)
+    if (at === -1) return ''
+    const rest = source.slice(at + 1).search(/\nexport (async )?function /)
+    return rest === -1 ? source.slice(at) : source.slice(at, at + 1 + rest)
+  }
+
+  test('every read in showcase.ts reaches a door, or is one of the two named page reads', () => {
     const source = stripComments(readRepoFile('src/lib/marketplace/showcase.ts'))
     const selects = (source.match(/\.from\(/g) ?? []).length
     const doored =
       (source.match(/readEveryRow[(<]/g) ?? []).length +
       (source.match(/readOrThrow\(/g) ?? []).length
     expect(selects).toBeGreaterThan(0)
-    expect(doored).toBeGreaterThanOrEqual(selects - 1)
+
+    const bodies = PAGE_READS.map((n) => bodyOf(source, n))
+    for (const [i, body] of bodies.entries()) {
+      expect(body, `${PAGE_READS[i]} is not in the module any more`).not.toBe('')
+    }
+    const inPageReads = bodies.reduce((n, b) => n + (b.match(/\.from\(/g) ?? []).length, 0)
+    expect(selects - doored).toBe(inPageReads)
+  })
+
+  test.each(PAGE_READS)('%s binds its error and states its own bound', (name) => {
+    const body = bodyOf(stripComments(readRepoFile('src/lib/marketplace/showcase.ts')), name)
+    expect(body).not.toBe('')
+    expect(body).toMatch(/const\s*\{\s*data,\s*error\s*\}\s*=\s*await/)
+    expect(body).toMatch(/\.limit\(/)
   })
 })

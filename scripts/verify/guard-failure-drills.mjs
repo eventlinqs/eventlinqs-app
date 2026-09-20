@@ -6614,6 +6614,83 @@ const DRILLS = [
   },
 
   /*
+   * the-directory-ranks-the-platform (lane B, LB-DRAWSORT, 21 September 2026),
+   * six drills, one per clause.
+   *
+   * THE FIRST IS THE EDIT SOMEBODY WILL ACTUALLY MAKE, because it is the code
+   * that was there until this guard existed and it reads as obviously correct.
+   * It also passes every automated proof this platform owns, because they run
+   * against a database with five performers, where the alphabetical order and
+   * the draw order happen to be the same order.
+   */
+  {
+    name: 'the directory goes back to sorting its page of performers in JavaScript',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'src/app/artists/page.tsx',
+    find: '  const rows = artists.map((a) => ({ artist: a, draw: draw.get(a.id) ?? null }))',
+    replace:
+      '  const rows = artists.map((a) => ({ artist: a, draw: draw.get(a.id) ?? null }))\n' +
+      '  rows.sort((x, y) => (y.draw?.tickets ?? 0) - (x.draw?.tickets ?? 0))',
+    expect: 'sorts in JavaScript',
+  },
+  {
+    name: 'the sort control stops reaching the ranked read',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'src/app/artists/page.tsx',
+    find: "  const rankByDraw = raw.sort === 'draw'",
+    replace: "  const rankByDraw = raw.order === 'draw'",
+    expect: "does not branch on sort === 'draw'",
+  },
+  {
+    name: 'the code calls a ranking function no migration installs',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'src/lib/marketplace/showcase.ts',
+    find: "export const RANKED_DIRECTORY_FUNCTION = 'directory_artists_ranked_by_draw'",
+    replace: "export const RANKED_DIRECTORY_FUNCTION = 'directory_artists_ranked_by_takings'",
+    expect: 'no migration declares public.directory_artists_ranked_by_takings',
+  },
+  {
+    name: 'the page bound moves back in front of the ranking',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'supabase/migrations/20260921000010_the_directory_ranks_the_platform_not_the_alphabet.sql',
+    find: '  LIMIT GREATEST(COALESCE(p_limit, 48), 0);',
+    replace: '  ;',
+    expect: 'does not bound AFTER it orders',
+  },
+  /*
+   * TWO CONSENT DRILLS, BECAUSE THE KEY IS WRITTEN TWICE AND THE FIRST VERSION
+   * OF THIS DRILL CAUGHT NEITHER. It mutated only the REPORTED number and the
+   * guard went green, because the same expression was still standing in the
+   * ORDER BY and one `.test()` cannot tell two occurrences from one. The guard
+   * now requires both and there is a drill for each, which is the only way to
+   * know that.
+   */
+  {
+    name: 'consent stops gating the number the ranking reports',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'supabase/migrations/20260921000010_the_directory_ranks_the_platform_not_the_alphabet.sql',
+    find: '    CASE WHEN cand.draw_consent THEN COALESCE(d.tickets, 0) ELSE 0 END AS published_tickets',
+    replace: '    COALESCE(d.tickets, 0) AS published_tickets',
+    expect: 'no longer ranks on the PUBLISHED draw',
+  },
+  {
+    name: 'consent stops gating the position, so a withheld number is published by rank',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'supabase/migrations/20260921000010_the_directory_ranks_the_platform_not_the_alphabet.sql',
+    find: '    CASE WHEN cand.draw_consent THEN COALESCE(d.tickets, 0) ELSE 0 END DESC,',
+    replace: '    COALESCE(d.tickets, 0) DESC,',
+    expect: 'no longer ranks on the PUBLISHED draw',
+  },
+  {
+    name: 'the badge and the rank stop resolving a doubly-claimed order the same way',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'src/lib/marketplace/showcase.ts',
+    find: '        occurredAt < held.occurredAt ||',
+    replace: '        true ||',
+    expect: 'no longer resolve a doubly-claimed order the same way',
+  },
+
+  /*
    * organic-is-not-direct (lane B, close-out AQ3, 19 September 2026), five
    * drills, one per way of losing the acceptance line.
    *

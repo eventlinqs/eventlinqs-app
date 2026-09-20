@@ -3106,9 +3106,31 @@ const ROOT = join(HERE, '..', '..')
  * lane B raises each had to declare and this one does not. The subject module
  * had no unit test of its own before this file.
  * ---------------------------------------------------------------------------
+ *
+ * 2026-09-21 (lane B, LB-DRAWSORT): raised 534/7125 -> 535/7145.
+ *
+ * ONE NEW FILE AND TWENTY CASES:
+ *   tests/unit/growth/the-directory-ranks-the-platform.test.ts     18  (new file)
+ *   tests/unit/growth/a-performers-proof-of-draw-is-whole.test.ts  +2  (existing)
+ *   534 + 1 = 535 files
+ *   7125 + 20 = 7145 tests
+ *
+ * ONE EXISTING TEST WAS REWRITTEN AND IT WAS MADE STRICTER, DECLARED HERE
+ * BECAUSE A RAISE IS THE PLACE A LOOSENING WOULD HIDE. "every read in
+ * showcase.ts reaches one of the two doors" asserted `doored >= selects - 1`,
+ * which allowed ONE undoored read without saying which. The ranked directory
+ * read is a second one of the same deliberate shape, and raising a numeric
+ * allowance would have been the assertion quietly deleting itself. It now names
+ * the two page reads, requires the undoored count to equal what lies inside
+ * exactly those two functions, and a new `test.each` requires each of them to
+ * bind `error` and state a `.limit()`. That is the +2.
+ *
+ * MEASURED: 535 files, 7145 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 173s, on the tree of this commit).
+ * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 534
-const MIN_TESTS = 7125
+const MIN_FILES = 535
+const MIN_TESTS = 7145
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
