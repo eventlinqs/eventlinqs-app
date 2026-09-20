@@ -2906,6 +2906,34 @@ const ROOT = join(HERE, '..', '..')
  *   this floor is the measurement, not 513 + 3 = 516, which is what it would
  *   have been had it been derived. The gap is 8 files and 119 tests.
  *
+ * ==========================================================================
+ * RAISED 20 September 2026, lane C, close-out C8. 525 files, 6979 tests.
+ * ==========================================================================
+ *
+ * MEASURED IN LANE C's WORKTREE, not on the merged tree, and that difference
+ * matters when this conflicts: `npm run gate:push -- --only suite`, 152s,
+ * GREEN, 525 files / 6979 tests / 0 failed / 0 skipped. The push lane measures
+ * the merged tree and its number will be HIGHER than this one, because this
+ * worktree does not contain lane B's work. This figure is the floor lane C can
+ * honestly vouch for; take the merged measurement over it.
+ *
+ * WHAT MOVED, so the delta is checkable rather than asserted. One test was
+ * LOST and five were added, net +4 with one new file:
+ *
+ *   -1  `tests/unit/a11y/busy-region-names-itself.test.ts` ran a case per
+ *       skeleton over a list of four, and one of those four,
+ *       `src/app/events/[slug]/loading.tsx`, was DELETED under close-out C8 (a
+ *       loading boundary in front of a hero costs 450ms of LCP element render
+ *       delay; see no-loading-boundary-in-front-of-a-hero.mjs). The case went
+ *       with the file, which is correct: that test READS each path, so leaving
+ *       it listed would have thrown rather than passed.
+ *   +5  `tests/unit/guards/no-loading-boundary-in-front-of-a-hero.test.ts`,
+ *       the unit test for the guard that replaced it.
+ *
+ * THE FIRST ATTEMPT AT THIS WENT 6974 AND THIS GUARD CAUGHT IT, which is the
+ * argument for the guard: a green suite running one fewer test than it used to,
+ * for a reason that was genuinely correct, is still a floor quietly dropping.
+ *
  * ---------------------------------------------------------------------------
  * LANE B'S ACCOUNT OF THE SAME HOUR, KEPT RATHER THAN OVERWRITTEN. Both lanes
  * raised this integer from their own worktree within minutes of each other and
@@ -3107,8 +3135,66 @@ const ROOT = join(HERE, '..', '..')
  * had no unit test of its own before this file.
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 534
-const MIN_TESTS = 7125
+
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-20 (lane C, merging verify/l5-launch-readiness into lane/c-ux for
+ * close-out C8): 525/6979 and 525/7003 -> 531/7054.
+ * ---------------------------------------------------------------------------
+ *
+ * THE TWELFTH CONFLICT ON THIS ONE INTEGER, RESOLVED THE WAY THE BLOCK ABOVE
+ * SAYS TO RESOLVE IT: not by taking the higher of the two numbers, which would
+ * have written 7,003 and left the floor 51 tests below what this tree runs, but
+ * by RUNNING IT on the merged tree.
+ *
+ *   531 files, 7054 tests, 0 failed, 0 skipped
+ *   (`npm run gate:push -- --only suite`, 166s, GREEN)
+ *
+ * AND THE ARITHMETIC IS WHY IT WAS RUN. Lane C's tree had 6,979 and the verify
+ * branch declared 7,003; +5 for this item's new test file and -1 for the case
+ * that went with a deleted file predicts 7,007. The tree actually runs 7,054.
+ * Six test FILES and forty-seven cases exist on the merged tree that neither
+ * lane's arithmetic could see, because neither worktree contains the other's
+ * last few commits. Every derived figure on this integer has been wrong; every
+ * measured one has been right.
+ *
+ * NOTHING ABOVE WAS DELETED. Lane C's own account of raising 524/6975 to
+ * 525/6979, lane B's account of the same hour, and lane A's merged measurement
+ * all stand where they were written.
+ */
+
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, merging verify/l5-launch-readiness into lane/c-ux to
+ * clear the returned overlap): 532/7062 and 534/7125 -> MEASURED BELOW.
+ * ---------------------------------------------------------------------------
+ *
+ * THE THIRTEENTH CONFLICT ON THIS ONE INTEGER. Resolved the same way as the
+ * twelve before it, by RUNNING the suite on the merged tree.
+ *
+ * WHAT EACH SIDE COULD SEE, so the next reader knows why neither number is the
+ * answer. Lane C's tree runs 532/7062 (the last item added
+ * tests/unit/guards/top-level-body.test.ts, six cases, and the floor was left
+ * at 531/7054, which is legal because the floor only ever has to be BELOW the
+ * truth, but it is stale and is corrected here). The verify branch declares
+ * 534/7125, measured on a tree without lane C's last two commits. Taking the
+ * higher would write 7125, which is below what this tree runs.
+ *
+ * MEASURED: 536 files, 7137 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 130s, on this merge).
+ *
+ * AND THE ARITHMETIC IS WHY IT WAS RUN, AGAIN. The merged tree carries FOUR
+ * files and seventy-five cases that lane C's worktree could not see, and TWO
+ * files and twelve cases that the verify branch could not see. Neither side's
+ * sum reaches 7137. Every derived figure on this integer has been wrong and
+ * every measured one has been right; that record is now thirteen for thirteen.
+ *
+ * NOTHING ABOVE WAS DELETED. Lane A's, lane B's and lane C's accounts all
+ * stand exactly where they were written.
+ */
+const MIN_FILES = 536
+const MIN_TESTS = 7137
+
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

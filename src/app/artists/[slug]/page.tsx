@@ -1,6 +1,7 @@
 import { readEveryRow, type PagedResult } from '@/lib/supabase/read-every-row'
 import { countOrRaise } from '@/lib/supabase/count-or-raise'
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import { formatEventMonthYear } from '@/lib/dates/event-time'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -42,13 +43,42 @@ type Props = { params: Promise<{ slug: string }> }
  * artist surface carries the same premium treatment as every other profile.
  */
 
+/*
+ * MEASURED ON 21 SEPTEMBER 2026, close-out C8 clause C8B.3. Counted at the
+ * global fetch on a production build against TEST
+ * (scripts/verify/lib/count-supabase-reads.mjs), one view of
+ * /artists/lane-c-sitemap-proof made 5 PostgREST calls of which only 4 were
+ * distinct, and the repeat was this row.
+ */
+/**
+ * READ ONCE PER REQUEST.
+ *
+ * `generateMetadata` renders the head and the default export renders the body,
+ * from the same request, and both need this. Next's own reference expects the
+ * second one to be free ("fetch requests are automatically memoized for the
+ * same data across generateMetadata ... React `cache` can be used if `fetch` is
+ * unavailable", node_modules/next/dist/docs/01-app/03-api-reference/
+ * 04-functions/generate-metadata.md, Next 16.3.0). On this platform it is not:
+ * every Supabase request carries its own AbortSignal so that a retry inside a
+ * render is a real second request, and a signal is that deduplicator's
+ * documented opt-OUT (src/lib/supabase/undeduped-fetch.ts). So the memo has to
+ * be asked for, and React's `cache` is the mechanism the reference names. It
+ * memoises for ONE request: no TTL, nothing shared between requests or viewers.
+ *
+ * THE WRAPPER LIVES HERE AND NOT IN THE LIBRARY DELIBERATELY. The duplication
+ * is a property of THIS ROUTE, not of the reader, and the reader is imported by
+ * unit tests that run outside any React request scope.
+ */
+const artistForRoute = cache(async function artistForRoute(slug: string) {
+  return fetchArtistBySlug(createAdminClient(), slug)
+})
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   if (!(await isFeatureEnabled('broadcast_artists'))) {
     return { title: 'Not found | EventLinqs' }
   }
-  const admin = createAdminClient()
-  const artist = await fetchArtistBySlug(admin, slug)
+  const artist = await artistForRoute(slug)
   if (!artist) return { title: 'Not found | EventLinqs' }
   return {
     title: `${artist.name} | Artists | EventLinqs`,
@@ -95,7 +125,7 @@ export default async function ArtistProfilePage({ params }: Props) {
   if (!(await isFeatureEnabled('broadcast_artists'))) notFound()
 
   const admin = createAdminClient()
-  const artist = await fetchArtistBySlug(admin, slug)
+  const artist = await artistForRoute(slug)
   if (!artist) notFound()
 
   const showcaseOn = await isFeatureEnabled('artist_showcase')

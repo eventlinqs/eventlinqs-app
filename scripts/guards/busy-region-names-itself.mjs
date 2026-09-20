@@ -23,8 +23,18 @@
  *
  *   3. THE EVENT PAGE SKELETON, `src/app/events/[slug]/loading.tsx`, and
  *   4. `src/components/ui/LoadingState.tsx`, both found in the same sweep,
- *      both the same shape. The event one sits on the most-visited public
+ *      both the same shape. The event one sat on the most-visited public
  *      surface the platform has.
+ *
+ *      THAT THIRD FILE IS NO LONGER IN THE TREE, and it is left in this list
+ *      because the list is a record of where the defect was found, not of what
+ *      the guard currently scans (the guard derives its own subject and would
+ *      catch the same shape anywhere). It was deleted on 20 September 2026
+ *      under close-out C8, for a reason unrelated to accessibility: a loading
+ *      boundary in front of a hero makes React stream the flight payload ahead
+ *      of the resumed markup, which left that route's hero <img> at byte
+ *      102,160 of a 205,226 byte document. See
+ *      `scripts/guards/no-loading-boundary-in-front-of-a-hero.mjs`.
  *
  * The mechanism, stated once so it is not re-derived: a plain <div> maps to
  * role=generic, and a generic role is PROHIBITED from carrying an accessible
