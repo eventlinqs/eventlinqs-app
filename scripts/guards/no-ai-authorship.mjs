@@ -84,8 +84,21 @@ const EFFECTIVE_FROM = '579e3a6011f5cb27ccaa9da37f7134959b2dca83'
  *
  * It disappears entirely with EFFECTIVE_FROM on the day the authorship history
  * rewrite lands (docs/roast/AUTHORSHIP-HISTORY-REWRITE.md).
+ *
+ * RAISED AGAIN, from 400 to 800, on 21 September 2026, and the paragraph above
+ * predicted this in as many words: "this WILL need raising again, and when it
+ * does the failure will say so in one line." It did, at 401 commits against a
+ * 400 window, on a build lane's ordinary commit.
+ *
+ * The response is the one the paragraph prescribes, raising the bound rather
+ * than narrowing what is checked, and it is not a free change: raising the
+ * window makes the guard inspect commits it was not inspecting, so a trailer
+ * hiding in them turns the build red for every lane. That was measured before
+ * the number was typed rather than hoped for afterwards. The scope holds 401
+ * commits, so this raise brings exactly ONE previously unexamined commit into
+ * the check, and the guard is green on it.
  */
-const WINDOW = 400
+const WINDOW = 800
 
 /**
  * Commits that carry a trailer, were INHERITED from another branch rather than

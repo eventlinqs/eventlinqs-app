@@ -3235,8 +3235,26 @@ const ROOT = join(HERE, '..', '..')
  * covers back and watching exactly one case fail.
  * ---------------------------------------------------------------------------
  */
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, the two new guards stop scanning on import): 539/7180 -> 539/7182.
+ * ---------------------------------------------------------------------------
+ *
+ * NO NEW FILE AND TWO CASES, both in an existing file:
+ *   tests/unit/guards/a-table-a-phone-can-read.test.ts  +2 (an it.each over
+ *   the two guards, asserting that IMPORTING one scans nothing and exits zero)
+ *   539 + 0 = 539 files
+ *   7180 + 2 = 7182 tests
+ *
+ * MEASURED: 539 files, 7182 tests, 0 failed, 0 skipped
+ * (npm run gate:push -- --only suite, GREEN, 109s, on the tree of this commit).
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED. The two new cases were driven RED
+ * by putting the import-time scan back on one of the guards.
+ * ---------------------------------------------------------------------------
+ */
 const MIN_FILES = 539
-const MIN_TESTS = 7180
+const MIN_TESTS = 7182
 
 
 /**

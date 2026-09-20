@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process'
+
 import { describe, expect, it } from 'vitest'
 
 import { judgeFile, openingTag, classesOf } from '../../../scripts/guards/a-table-a-phone-can-read.mjs'
@@ -110,6 +112,30 @@ describe('a-table-a-phone-can-read', () => {
     const findings = judgeFile(source) as unknown as { clause: string }[] & { tables: number }
     expect(findings.tables).toBe(2)
     expect(findings.map((f) => f.clause)).toEqual(['header'])
+  })
+
+  /**
+   * A GUARD THAT SCANS ON IMPORT CAN KILL THE SUITE THAT IS TESTING IT.
+   *
+   * Both guards this file imports end in `process.exit(1)` on a violating
+   * tree. Without a direct-invocation check that exit runs during the IMPORT,
+   * in the vitest worker, and takes the run down with an exit code and no
+   * failing test to point at. The two tests above would have "passed" by never
+   * running.
+   *
+   * Spawned rather than reasoned about: the assertion is that importing the
+   * module is silent and returns zero, which is the behaviour, not the code.
+   */
+  it.each([
+    'scripts/guards/a-table-a-phone-can-read.mjs',
+    'scripts/guards/no-punctuation-standing-in-for-a-value.mjs',
+  ])('importing %s scans nothing and exits zero', (guard) => {
+    const out = execFileSync(
+      process.execPath,
+      ['--input-type=module', '-e', `await import('./${guard}'); process.stdout.write('imported')`],
+      { encoding: 'utf8' },
+    )
+    expect(out).toBe('imported')
   })
 
   describe('openingTag', () => {
