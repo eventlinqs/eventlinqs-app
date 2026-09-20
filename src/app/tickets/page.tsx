@@ -60,14 +60,17 @@ interface MyTicketRow {
 // THE SECOND HALF OF THIS NOTE USED TO READ "and there is no darker success
 // token to reach for", AND THAT STOPPED BEING TRUE ON 20 SEPTEMBER 2026, hours
 // after it was written: LB-PRICEWHOLE added --color-success-strong (#0B7038)
-// to globals.css for this exact class of failure. It measures 5.20:1 on the
-// bg-success/15 wash over white and 5.00:1 over canvas, so `text-success-strong`
-// is now an honest alternative to ink here. The ink above is NOT wrong and is
-// deliberately left alone: this screen was never re-driven under the token, and
-// LB-SHOWCASEWHOLE changed only the two badges it actually measured
-// (/artists and /artists/[slug]). The remaining occurrences are listed in
-// C:\dev\REVIEW-QUEUE-B.md. The sentence is corrected because a false "there is
-// no token" is exactly what makes the next reader repeat the workaround.
+// to globals.css for this exact class of failure.
+//
+// THE INK ABOVE IS NOT WRONG AND IS NOW THE PREFERRED ANSWER FOR A BADGE.
+// LB-TINTAA measured every pair in a real browser on 21 September and settled
+// the platform on two rules: a -strong ink sits on a /10 tint, and dark ink
+// sits on a /15 tint. `text-success-strong` on the /15 wash is 5.20:1 over
+// white but only 4.48:1 over ink-100 once Chromium's oklab round trip is
+// measured rather than calculated, so /15 belongs to ink. These badges already
+// had it right. `scripts/guards/tinted-text-meets-contrast.mjs` clause 2 now
+// refuses the pairing that was corrected here by hand, so no later screen can
+// repeat it.
 const STATUS_TONE: Record<string, string> = {
   valid: 'bg-success/15 text-ink-900',
   scanned: 'bg-ink-200 text-ink-700',

@@ -3590,6 +3590,37 @@ const DRILLS = [
     expect: "THIS GUARD'S PREMISE HAS MOVED",
   },
   /*
+   * fixtures-are-not-published, THE BULK SEED (lane B, 21 September 2026).
+   *
+   * `writesIn` was widened that day to read a row literal out of a `.map(`,
+   * because lb-proofcount-drive is the first drive in the tree that seeds a
+   * thousand rows and the guard's only remedy for an unreadable write is
+   * "inline the literal at the call", which for a thousand rows means a
+   * thousand round trips or an exemption.
+   *
+   * A widening is a place a rule can quietly stop applying, so this drills the
+   * widened path itself: a mapped bulk insert that publishes its fixtures must
+   * still be named. If this ever passes, the guard is reading the shape and
+   * judging nothing.
+   *
+   * THE FIRST VERSION OF THIS DRILL WAS BLIND, and it is worth writing down
+   * because it passed. It expected `events.visibility='public'`, which the
+   * guard prints on EVERY run as part of its excused baseline, for other
+   * drives. So the drill went green off a line that had nothing to do with the
+   * mutation, and would have gone green with the widening judging nothing at
+   * all. It is anchored now on `lb-proofcount-drive.mjs:`, the file-and-line
+   * form the guard only ever emits for a real finding: a baseline line reads
+   * "<drive>.mjs excused", with no colon and no line number.
+   */
+  {
+    name: 'a thousand-row seed publishes its fixtures through a mapped insert',
+    guard: `${GUARDS}/fixtures-are-not-published.mjs`,
+    file: 'scripts/verify/lb-proofcount-drive.mjs',
+    find: "          visibility: 'unlisted',",
+    replace: "          visibility: 'public',",
+    expect: 'lb-proofcount-drive.mjs:',
+  },
+  /*
    * proof-reads-never-discard-their-error, two drills, one per way a read on
    * that surface can stop telling a failure from an absence.
    *
@@ -5000,6 +5031,62 @@ const DRILLS = [
     find: "    table: 'push_subscriptions',",
     replace: "    table: 'push_subscriptions_bounded_now',",
     expect: 'no such read was found',
+  },
+
+  /*
+   * no-silent-row-ceiling, THE STATS SCOPE AND THE COUNT CLAUSE (lane B,
+   * 21 September 2026), four drills.
+   *
+   * `getPlatformStats` asked for `{ count: 'exact' }` and then deduped the BODY
+   * of the same response for two of its three numbers, so past a thousand
+   * published events /organisers would have printed a true total beside a
+   * sample of it. The first two drills put each half of that back.
+   *
+   * THE THIRD IS THE ONE WORTH HAVING, and it is why the count clause is a
+   * separate clause rather than a stricter bound. A `.limit()` satisfies the
+   * boundedness clause completely while leaving the lie exactly as it was: the
+   * header still carries the true total, the body is still a sample, and the
+   * number derived from it is still printed beside a total it does not
+   * describe. If the clause could be bought off with a bound, it would be
+   * bought off by the first person who read the failure message and reached for
+   * the cheapest thing that made it go away.
+   *
+   * The fourth aims at the scope entry itself: a directory name that no longer
+   * exists sweeps nothing and reports PASS, which is how a scanner lies.
+   */
+  {
+    name: 'the platform social proof goes back to reading every published event unbounded',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/stats/platform-stats.ts',
+    find: "        .order('id', { ascending: true })\n        .range(from, to),",
+    replace: "        .order('id', { ascending: true })\n        .range2(from, to),",
+    expect: 'reads events with no bound',
+  },
+  {
+    name: 'the social proof asks for an exact count and takes the rows back as well',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/stats/platform-stats.ts',
+    find: "        .select('organisation_id, venue_city')",
+    replace: "        .select('organisation_id, venue_city', { count: 'exact' })",
+    expect: 'with a count: and no head: true',
+  },
+  {
+    name: 'the count beside a sampled body is bought off with a stated limit, and must not be',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/stats/platform-stats.ts',
+    find:
+      "        .select('organisation_id, venue_city')\n        .eq('status', 'published')\n        .order('id', { ascending: true })\n        .range(from, to),",
+    replace:
+      "        .select('organisation_id, venue_city', { count: 'exact' })\n        .eq('status', 'published')\n        .order('id', { ascending: true })\n        .limit(5000),",
+    expect: 'with a count: and no head: true',
+  },
+  {
+    name: 'the stats scope is pointed at a directory that does not exist and would sweep nothing',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'scripts/guards/no-silent-row-ceiling.mjs',
+    find: "  'src/lib/stats',",
+    replace: "  'src/lib/platform-stats',",
+    expect: 'a scope that scans nothing reports PASS',
   },
 
   /*
@@ -6859,6 +6946,83 @@ const DRILLS = [
   },
 
   /*
+   * the-directory-ranks-the-platform (lane B, LB-DRAWSORT, 21 September 2026),
+   * six drills, one per clause.
+   *
+   * THE FIRST IS THE EDIT SOMEBODY WILL ACTUALLY MAKE, because it is the code
+   * that was there until this guard existed and it reads as obviously correct.
+   * It also passes every automated proof this platform owns, because they run
+   * against a database with five performers, where the alphabetical order and
+   * the draw order happen to be the same order.
+   */
+  {
+    name: 'the directory goes back to sorting its page of performers in JavaScript',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'src/app/artists/page.tsx',
+    find: '  const rows = artists.map((a) => ({ artist: a, draw: draw.get(a.id) ?? null }))',
+    replace:
+      '  const rows = artists.map((a) => ({ artist: a, draw: draw.get(a.id) ?? null }))\n' +
+      '  rows.sort((x, y) => (y.draw?.tickets ?? 0) - (x.draw?.tickets ?? 0))',
+    expect: 'sorts in JavaScript',
+  },
+  {
+    name: 'the sort control stops reaching the ranked read',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'src/app/artists/page.tsx',
+    find: "  const rankByDraw = raw.sort === 'draw'",
+    replace: "  const rankByDraw = raw.order === 'draw'",
+    expect: "does not branch on sort === 'draw'",
+  },
+  {
+    name: 'the code calls a ranking function no migration installs',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'src/lib/marketplace/showcase.ts',
+    find: "export const RANKED_DIRECTORY_FUNCTION = 'directory_artists_ranked_by_draw'",
+    replace: "export const RANKED_DIRECTORY_FUNCTION = 'directory_artists_ranked_by_takings'",
+    expect: 'no migration declares public.directory_artists_ranked_by_takings',
+  },
+  {
+    name: 'the page bound moves back in front of the ranking',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'supabase/migrations/20260921000010_the_directory_ranks_the_platform_not_the_alphabet.sql',
+    find: '  LIMIT GREATEST(COALESCE(p_limit, 48), 0);',
+    replace: '  ;',
+    expect: 'does not bound AFTER it orders',
+  },
+  /*
+   * TWO CONSENT DRILLS, BECAUSE THE KEY IS WRITTEN TWICE AND THE FIRST VERSION
+   * OF THIS DRILL CAUGHT NEITHER. It mutated only the REPORTED number and the
+   * guard went green, because the same expression was still standing in the
+   * ORDER BY and one `.test()` cannot tell two occurrences from one. The guard
+   * now requires both and there is a drill for each, which is the only way to
+   * know that.
+   */
+  {
+    name: 'consent stops gating the number the ranking reports',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'supabase/migrations/20260921000010_the_directory_ranks_the_platform_not_the_alphabet.sql',
+    find: '    CASE WHEN cand.draw_consent THEN COALESCE(d.tickets, 0) ELSE 0 END AS published_tickets',
+    replace: '    COALESCE(d.tickets, 0) AS published_tickets',
+    expect: 'no longer ranks on the PUBLISHED draw',
+  },
+  {
+    name: 'consent stops gating the position, so a withheld number is published by rank',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'supabase/migrations/20260921000010_the_directory_ranks_the_platform_not_the_alphabet.sql',
+    find: '    CASE WHEN cand.draw_consent THEN COALESCE(d.tickets, 0) ELSE 0 END DESC,',
+    replace: '    COALESCE(d.tickets, 0) DESC,',
+    expect: 'no longer ranks on the PUBLISHED draw',
+  },
+  {
+    name: 'the badge and the rank stop resolving a doubly-claimed order the same way',
+    guard: `${GUARDS}/the-directory-ranks-the-platform.mjs`,
+    file: 'src/lib/marketplace/showcase.ts',
+    find: '        occurredAt < held.occurredAt ||',
+    replace: '        true ||',
+    expect: 'no longer resolve a doubly-claimed order the same way',
+  },
+
+  /*
    * organic-is-not-direct (lane B, close-out AQ3, 19 September 2026), five
    * drills, one per way of losing the acceptance line.
    *
@@ -8615,6 +8779,140 @@ const DRILLS = [
       '  IF true THEN',
     ].join('\n'),
     expect: 'without first establishing that a replacement ladder was actually supplied',
+  },
+  /*
+   * tinted-text-meets-contrast, CLAUSE 2 AND THE BASELINE (lane B, 21 September
+   * 2026). The guard was registered and blocking from 11 September and had no
+   * drill at all, which is how it spent ten days reporting PASS over
+   * twenty-nine WCAG AA failures: it skipped every class string carrying an
+   * opacity modifier, and a tint is written with one.
+   *
+   * SIX DRILLS, because six different things can break and one of them broke
+   * on the first run. The matcher took the FIRST `text-` utility in a string,
+   * so on `... text-xs text-error` it resolved "xs", found no such token and
+   * returned silently. Only the baseline rot check caught it, by reporting that
+   * two of its own entries matched nothing.
+   */
+  {
+    name: 'a tint pair under AA on every light surface (clause 2)',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'src/app/gigs/[id]/page.tsx',
+    find: 'bg-success/10 px-3 py-2 text-sm text-success-strong"',
+    replace: 'bg-success/10 px-3 py-2 text-sm text-success"',
+    expect: 'text-success (#0F9D58) on bg-success/10',
+  },
+  {
+    /*
+     * THE WORST PAIR ON THE PLATFORM, restored: amber on amber at 1.91:1,
+     * carrying the "18+ only" age restriction on the public event page. The
+     * assertion is on the composited arithmetic rather than the class names,
+     * so a guard that matched the string without doing the sum cannot pass it.
+     */
+    name: 'the age badge, amber on amber, reported with all three composites',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: 'bg-warning/15 px-3 py-1.5 text-xs font-semibold text-ink-900"',
+    replace: 'bg-warning/15 px-3 py-1.5 text-xs font-semibold text-warning"',
+    expect: 'worst of the three is 1.67:1 (over ink-100)',
+  },
+  {
+    name: 'a solid pair under AA (clause 1, the original behaviour, still held)',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'src/components/marketplace/requests-panel.tsx',
+    find: "'bg-success/15 text-ink-900' : 'bg-ink-100 text-ink-600'",
+    replace: "'bg-success/15 text-ink-900' : 'bg-ink-100 text-ink-400'",
+    expect: 'text-ink-400 (#6B7280) on bg-ink-100 (#EFEDE8) = 4.13:1',
+  },
+  {
+    /*
+     * THE BASELINE CANNOT ROT. An entry that matches nothing is a permission
+     * for something that no longer exists, which is how an allowlist becomes
+     * an unexamined list. This plants one aimed at a pair the tree does not
+     * contain.
+     */
+    name: 'a border baseline entry that matches nothing in the tree',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'scripts/guards/tinted-text-meets-contrast.mjs',
+    find: ['const BORDER_BASELINE = [', ''].join('\n'),
+    replace: [
+      'const BORDER_BASELINE = [',
+      "  { file: 'src/app/a-file-the-drill-invented.tsx', fg: 'error', bg: 'error/10', lane: 'nobody', since: '2026-09-21', note: 'planted by the drill' },",
+      '',
+    ].join('\n'),
+    expect: 'src/app/a-file-the-drill-invented.tsx',
+  },
+  {
+    /*
+     * THE BASELINE IS SUPPRESSING REAL FAILURES, not decorating the output.
+     * Removing one entry must produce the finding it was suppressing, with the
+     * arithmetic. Without this drill the five entries could name pairs that
+     * were never failures and nothing would say so.
+     */
+    name: 'removing a border entry exposes the failure it was holding',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'scripts/guards/tinted-text-meets-contrast.mjs',
+    /*
+     * THE WHOLE ENTRY GOES, not one of its fields. Corrupting a field makes the
+     * entry STALE, and the rot check runs before the violations and exits
+     * first, so the drill went green on the wrong finding until it was read.
+     */
+    find: [
+      '  {',
+      "    file: 'src/components/payouts/refunds-list.tsx',",
+      "    fg: 'error',",
+      "    bg: 'error/10',",
+      "    lane: 'A (refunds)',",
+      "    since: '2026-09-21',",
+      "    note: '4.13:1. Use text-error-strong (5.54:1), which payouts-history-table.tsx in the same directory already uses on the same tint.',",
+      '  },',
+      '',
+    ].join('\n'),
+    replace: '',
+    expect: 'text-error (#DC2626) on bg-error/10',
+  },
+  {
+    /*
+     * THE LIGHT-SYSTEM-INK EXCLUSION IS LOAD BEARING. Without it the guard
+     * condemns `text-white` on the navy hero's own wash and on three
+     * aria-hidden tick icons, which is the false positive that gets a gate
+     * switched off. Deleting the check must make the guard cry wolf.
+     */
+    name: 'the on-dark ink exclusion, deleted',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'scripts/guards/tinted-text-meets-contrast.mjs',
+    find: ['    if (LIGHT_SURFACES.includes(fg)) {', '      skippedComposite += 1', '      continue', '    }', ''].join('\n'),
+    replace: '',
+    expect: 'text-white (#FFFFFF) on bg-success',
+  },
+  {
+    /*
+     * AND THE GREEN HALF OF THE SAME BOUNDARY: white ink on a tint that would
+     * measure 1.13:1 against a light surface is legitimate on-dark markup and
+     * the guard must stay quiet about it.
+     */
+    name: 'white ink on a tint is on-dark markup and stays quiet',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'src/components/marketplace/requests-panel.tsx',
+    find: "'bg-success/15 text-ink-900' : 'bg-ink-100 text-ink-600'",
+    replace: "'bg-error/15 text-white' : 'bg-ink-100 text-ink-600'",
+    expectPass: 'every one at or above 4.55:1 outside the',
+  },
+  {
+    /*
+     * THE COMPOSITOR MARGIN IS LOAD BEARING, and it is the one number in that
+     * guard not derived from a token, so it is the one most likely to be
+     * deleted as an oddity. This plants the exact pair that made it necessary:
+     * text-success-strong on bg-success/15 is 4.51:1 by the guard's own sRGB
+     * arithmetic and 4.48:1 when Chromium paints it, measured by
+     * scripts/verify/lb-tintaa-drive.mjs. Without the margin the guard passes
+     * a pair the browser fails.
+     */
+    name: 'the pair the compositor fails and sRGB arithmetic does not',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'src/components/marketplace/requests-panel.tsx',
+    find: "'bg-success/15 text-ink-900' : 'bg-ink-100 text-ink-600'",
+    replace: "'bg-success/15 text-success-strong' : 'bg-ink-100 text-ink-600'",
+    expect: 'worst of the three is 4.51:1 (over ink-100)',
   },
 ]
 

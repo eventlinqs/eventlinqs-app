@@ -3134,8 +3134,77 @@ const ROOT = join(HERE, '..', '..')
  * lane B raises each had to declare and this one does not. The subject module
  * had no unit test of its own before this file.
  * ---------------------------------------------------------------------------
+ *
+ * 2026-09-21 (lane B, LB-DRAWSORT): raised 534/7125 -> 535/7145.
+ *
+ * ONE NEW FILE AND TWENTY CASES:
+ *   tests/unit/growth/the-directory-ranks-the-platform.test.ts     18  (new file)
+ *   tests/unit/growth/a-performers-proof-of-draw-is-whole.test.ts  +2  (existing)
+ *   534 + 1 = 535 files
+ *   7125 + 20 = 7145 tests
+ *
+ * ONE EXISTING TEST WAS REWRITTEN AND IT WAS MADE STRICTER, DECLARED HERE
+ * BECAUSE A RAISE IS THE PLACE A LOOSENING WOULD HIDE. "every read in
+ * showcase.ts reaches one of the two doors" asserted `doored >= selects - 1`,
+ * which allowed ONE undoored read without saying which. The ranked directory
+ * read is a second one of the same deliberate shape, and raising a numeric
+ * allowance would have been the assertion quietly deleting itself. It now names
+ * the two page reads, requires the undoored count to equal what lies inside
+ * exactly those two functions, and a new `test.each` requires each of them to
+ * bind `error` and state a `.limit()`. That is the +2.
+ *
+ * MEASURED: 535 files, 7145 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 173s, on the tree of this commit).
+ * ---------------------------------------------------------------------------
+ *
+ * 2026-09-21 (lane B, LB-TINTAA): raised 535/7145 -> 536/7187.
+ *
+ * ONE NEW FILE AND FORTY-TWO CASES:
+ *   tests/unit/a11y/semantic-text-on-its-own-tint.test.ts  42  (new file)
+ *   535 + 1 = 536 files
+ *   7145 + 42 = 7187 tests
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED. The subject is a shape no test
+ * covered: a semantic colour painted as text on a tint of the same token. The
+ * nearest neighbour, tests/unit/a11y/light-surface-text-tokens, holds two
+ * hand-listed files and is untouched.
+ *
+ * FORTY-TWO IS LARGE FOR ONE FILE AND THE REASON IS test.each: the arithmetic
+ * is checked against four figures globals.css worked out by hand, eight
+ * ink-and-tint pairs are checked on three light surfaces each, twenty
+ * corrected sites are checked for their class, and the five border baseline
+ * entries are each checked to be a real failure. Each is one assertion about
+ * one pair, not one assertion split forty-two ways.
+ *
+ * MEASURED: 536 files, 7187 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 149s, on the tree of this commit).
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21, LB-PROOFCOUNT (lane B): raised 536/7187 -> 536/7194. No new
+ * files, seven new tests in two existing ones, and the arithmetic is written
+ * out because a baseline moved without it is a number nobody can check:
+ *
+ *   +3  tests/unit/stats/platform-stats (3 -> 6). The platform's own social
+ *       proof counted organisers and cities by deduping a response body that
+ *       stops at the row ceiling, and printed the result beside an exact total
+ *       taken from the header. The fake client that file used could not express
+ *       a ceiling at all, so no value of any argument could have shown it. The
+ *       three new cases are the ceiling itself (2,500 events behind a 1,000-row
+ *       cap), a project ceiling LOWER than the page size, and a later page
+ *       failing, which must hide the band rather than publish the first
+ *       thousand as the whole platform.
+ *   +4  tests/unit/guards/fixtures-are-not-published (21 -> 25). `writesIn` was
+ *       widened to read a row literal out of a `.map(`, because the first
+ *       thousand-row seed in the tree came back unjudgeable and the guard's
+ *       only remedy was a thousand round trips or an exemption. The four hold
+ *       the widening to its promise: the mapped row is FOUND, a mapped insert
+ *       that publishes an organiser or an event is still CAUGHT, and an arrow
+ *       that does not return a literal is still unjudgeable rather than clean.
+ *
+ * MEASURED: 536 files, 7194 tests, 0 failed, 0 skipped
+ * (`scripts/guards/test-count-canary.mjs`, PASS, on the tree of this commit).
+ * ---------------------------------------------------------------------------
  */
-
 /*
  * ---------------------------------------------------------------------------
  * 2026-09-20 (lane C, merging verify/l5-launch-readiness into lane/c-ux for
@@ -3253,8 +3322,57 @@ const ROOT = join(HERE, '..', '..')
  * by putting the import-time scan back on one of the guards.
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 539
-const MIN_TESTS = 7182
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, merging verify/l5-launch-readiness into lane/b-growth to
+ * clear the returned overlap): 536/7194 and 539/7182 -> MEASURED BELOW.
+ * ---------------------------------------------------------------------------
+ *
+ * THE FOURTEENTH CONFLICT ON THIS ONE INTEGER, and the fifteenth through
+ * twenty-ninth abort of the same merge: LANE-RETURNS.md named lane/b-growth on
+ * this file every ten minutes from 00:41 to 06:04 on 21 September. Resolved the
+ * way the thirteen before it were, by RUNNING the suite on the merged tree.
+ *
+ * WHAT EACH SIDE COULD SEE, so the next reader knows why neither number is the
+ * answer. Lane B's tree runs 536/7194. The verify branch declares 539/7182,
+ * measured on a tree without lane B's last four commits. Taking the higher of
+ * the two pairs would write 539 files and 7194 tests, and BOTH halves would be
+ * wrong: the file count would be two short of the truth and the test count
+ * fifty-seven short.
+ *
+ * MEASURED: 541 files, 7251 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 160s, on this merge).
+ *
+ * AND THIS TIME THE ARITHMETIC AGREES WITH THE MEASUREMENT, which has not
+ * happened on a merge of this integer before and is worth the four lines it
+ * takes to show, because a sum that reconciles is a sum a reader can check:
+ *
+ *   +56  five test FILES lane B's worktree could not see, counted by running
+ *        exactly those five rather than by reading their headers:
+ *          tests/unit/guards/a-table-a-phone-can-read.test.ts
+ *          tests/unit/guards/no-loading-boundary-in-front-of-a-hero.test.ts
+ *          tests/unit/guards/no-punctuation-standing-in-for-a-value.test.ts
+ *          tests/unit/guards/top-level-body.test.ts
+ *          tests/unit/notifications/a-blink-is-not-a-fact-about-a-performer.test.ts
+ *        536 + 5 = 541 files.
+ *    +1  tests/unit/events/after-the-fact-view.test.ts, re-aimed at the one
+ *        memoised resolver close-out C8 introduced.
+ *    +1  tests/unit/seo/read-failure-is-not-not-found.test.ts, the same
+ *        re-aiming on the SEO side.
+ *    -1  tests/unit/a11y/busy-region-names-itself.test.ts. Its FIXED list lost
+ *        `src/app/events/[slug]/loading.tsx`, which close-out C8 DELETED, and
+ *        the list is consumed by `test.each(FIXED)`, so one entry is one case.
+ *        This is the shape the canary exists to notice, and it is legitimate:
+ *        the case went with the file it read, not with a rule that stopped
+ *        being enforced. The rule that keeps that file deleted is a guard.
+ *        7194 + 56 + 1 + 1 - 1 = 7251 tests.
+ *
+ * NOTHING ABOVE WAS DELETED. Lane A's, lane B's and lane C's accounts all stand
+ * exactly where they were written.
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 541
+const MIN_TESTS = 7251
 
 
 /**

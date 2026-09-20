@@ -157,7 +157,6 @@ const BASELINE = [
   'scripts/guards/statement-descriptor-premise-holds.mjs',
   'scripts/guards/stream-link-never-public.mjs',
   'scripts/guards/tier-identity-preserved.mjs',
-  'scripts/guards/tinted-text-meets-contrast.mjs',
   'scripts/guards/trigger-columns-exist.mjs',
   'scripts/guards/zoned-event-times.mjs',
   'scripts/pricing-derive.mjs',

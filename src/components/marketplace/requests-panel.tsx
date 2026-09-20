@@ -115,7 +115,7 @@ export function RequestsPanel({ requests }: { requests: RequestView[] }) {
               ) : (
                 <span
                   className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                    req.status === 'accepted' ? 'bg-success/15 text-success' : 'bg-ink-100 text-ink-600'
+                    req.status === 'accepted' ? 'bg-success/15 text-ink-900' : 'bg-ink-100 text-ink-600'
                   }`}
                 >
                   {req.status.charAt(0).toUpperCase() + req.status.slice(1)}

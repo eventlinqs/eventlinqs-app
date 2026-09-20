@@ -366,6 +366,19 @@
  *                              declines out of 102. Every read pages through readEveryRow
  *                              or states its own bound, and a paged read carries a stable
  *                              order (lane B, 19 Sep 2026)
+ *   the-directory-ranks-the-platform
+ *                             "Strongest draw first" on /artists ranks the platform rather
+ *                              than the alphabetically first page of it. The page read 48
+ *                              performers ORDER BY name and then sorted those 48 by draw in
+ *                              JavaScript, so the bound came before the rank and a performer
+ *                              with four thousand attributed tickets whose name begins with
+ *                              Z was not on the page at all. The same line placed performers
+ *                              who had NOT consented to publishing their draw by that hidden
+ *                              number, which is disclosure by position. The rank is now a
+ *                              database function that filters, orders on the PUBLISHED draw
+ *                              and bounds in that order, and both sides resolve a
+ *                              doubly-claimed order by the first claim so the rank and the
+ *                              badge cannot drift (lane B, 21 Sep 2026)
  *   organiser-money-has-one-source
  *                             every screen that shows an organiser their takings reaches the
  *                              one module that computes them, no read on those screens can
@@ -1533,6 +1546,21 @@ const GUARDS = [
   // when 102 people had declined. Every read in the marketing path now pages or
   // states its bound, and this fails the build when a new one does neither.
   'scripts/guards/no-silent-row-ceiling.mjs',
+  // The performer directory's "Strongest draw first" control. It read 48
+  // performers ORDERED BY NAME and then sorted those 48 by draw in JavaScript,
+  // so the bound was applied before the ranking and the control ranked an
+  // alphabetical prefix of the platform rather than the platform. A performer
+  // with four thousand attributed tickets whose name begins with Z was not
+  // ranked low, she was not on the page. The same line also placed performers
+  // who had NOT consented to publishing their draw by that hidden number, which
+  // is disclosure by position. The rank is now a database function that filters,
+  // orders on the PUBLISHED draw and bounds in that order. This fails the build
+  // when the page sorts in JavaScript again, when the control stops reaching the
+  // ranked read, when the code calls a function no migration installs, when the
+  // bound moves back in front of the order, when consent stops gating the
+  // position, or when the SQL and the TypeScript stop resolving a doubly-claimed
+  // order the same way, which is what keeps the rank and the badge agreeing.
+  'scripts/guards/the-directory-ranks-the-platform.mjs',
   // The organiser's own takings, on the screens that show them. RevenueSummary
   // is rendered for one event on both /dashboard/events/[id]/orders and
   // /dashboard/events/[id]/edit, and the edit screen computed its own numbers

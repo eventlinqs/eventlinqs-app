@@ -177,6 +177,22 @@ export const BASELINE = [
     why: 'posting a gig is refused for an organisation that is not active, and the fixture carries no description and no event, so the substance rule in the sitemap catalogue excludes it',
   },
   /*
+   * LB-TINTAA IS THE SAME FIXTURE FOR THE SAME REASON. It posts a gig through
+   * the real form to reach the corrected success banner and the booked badge,
+   * and `requireActiveOrganisation` refuses a pending organisation before the
+   * form is reachable at all. It writes no description and publishes no event,
+   * so isOrganiserProfileIndexable is false on both halves and the row cannot
+   * enter the sitemap. This is a copy of the entry above rather than a new
+   * argument, and it is written out rather than shared because the day one of
+   * the two drives starts writing a description, only one of them should be
+   * excused.
+   */
+  {
+    drive: 'lb-tintaa-drive.mjs',
+    write: "organisations.status='active'",
+    why: 'posting a gig is refused for an organisation that is not active, and the fixture carries no description and no event, so the substance rule in the sitemap catalogue excludes it',
+  },
+  /*
    * LB-SHOWCASEWHOLE'S PAST SHOW, AND WHY 'unlisted' WOULD DEFEAT THE CHECK.
    *
    * The drive needs a CREDIT on a public performer profile, and a credit is a
@@ -313,13 +329,44 @@ export function writesIn(src) {
      */
     const firstChar = code.slice(openParen + 1).match(/\S/)
     const isLiteral = firstChar && (firstChar[0] === '{' || firstChar[0] === '[')
-    const literal = isLiteral ? balanced(code, openParen) : null
+    const literal = isLiteral ? balanced(code, openParen) : mappedLiteral(code, openParen)
     out.push({ table: m[1], method: call[1], literal, offset: openParen })
   }
   return out
 }
 
-/** The text between a `(` at `open` and its matching `)`, or null. */
+/**
+ * A BULK SEED'S ROW SHAPE, WHICH IS STILL WRITTEN DOWN, JUST NOT AT THE PAREN.
+ *
+ * `.insert(rows)` is genuinely unreadable and stays `null`. But the shape every
+ * seed of more than a handful of rows takes,
+ *
+ *     .insert(batch.map(n => ({ slug: ..., status: 'pending' })))
+ *
+ * has its object literal in plain sight one call in, and reporting it as
+ * unjudgeable had a cost that was about to be paid: the ONLY remedy this guard
+ * offers is "inline the object literal at the call", which for a thousand-row
+ * seed means a thousand round trips, and the pressure is then on the drive to
+ * be excused rather than judged. An exemption is how a rule stops applying.
+ *
+ * Found on 21 September 2026 by lb-proofcount-drive.mjs, the first bulk seed in
+ * the tree. This does NOT widen what is allowed: the row is judged by exactly
+ * the same `setsField` rules as an inline one, and a write whose literal cannot
+ * be found anywhere is still reported rather than trusted.
+ *
+ * @returns the object literal returned by an arrow inside the call, or null
+ */
+function mappedLiteral(code, openParen) {
+  const arg = balanced(code, openParen)
+  if (arg === null) return null
+  // `=> ({ ... })`, the only way an arrow can return an object literal.
+  const arrow = arg.match(/=>\s*\(\s*\{/)
+  if (!arrow) return null
+  const brace = arg.indexOf('{', arrow.index)
+  return balanced(arg, brace)
+}
+
+/** The text between a bracket at `open` and its match, or null. */
 function balanced(code, open) {
   let depth = 0
   for (let i = open; i < code.length; i += 1) {

@@ -8059,6 +8059,19 @@ export type Database = {
         Args: { p_order_id: string; p_org_id: string }
         Returns: string
       }
+      directory_artists_ranked_by_draw: {
+        Args: {
+          p_available_only?: boolean
+          p_city_slug?: string
+          p_limit?: number
+          p_mentor_only?: boolean
+          p_performance_type?: string
+        }
+        Returns: {
+          artist_id: string
+          published_tickets: number
+        }[]
+      }
       disburse_payout: {
         Args: {
           p_actor?: string
