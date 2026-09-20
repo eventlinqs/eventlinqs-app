@@ -1,7 +1,6 @@
 'use client'
 
 import { preload } from 'react-dom'
-import { getImageProps } from 'next/image'
 
 /**
  * ASK FOR THE HERO RASTER FROM THE SHELL, USING REACT'S OWN RESOURCE KEY.
@@ -51,44 +50,64 @@ import { getImageProps } from 'next/image'
  * repeated.
  *
  * ============================================================================
- * WHY THE ARGUMENTS ARE PROPS AND NOT IMPORTS
+ * THIS FILE IMPORTS NOTHING BUT react-dom, AND THAT IS THE POINT
  * ============================================================================
  *
- * `sizes` and `quality` arrive as props from the server exactly as `HeroMedia`
- * hands them to `HeroRaster`, rather than being imported here. Importing
- * `MEDIA_SIZES` into a client component ships the whole hint table: that table's
- * own header records 21,005 bytes added to every dashboard route's first load
- * for one 32px circle. Two short strings in the flight payload cost less than
- * one byte of that.
+ * It used to call `getImageProps` from `next/image` here. Moving that call to
+ * the server module saved 178 bytes gzip, and the FIRST VERSION OF THIS COMMENT
+ * CLAIMED IT SAVED 5,819, which was a guess written before the rebuild that
+ * measured it. The guess is left on the record because the real answer is more
+ * useful than the tidy one.
+ *
+ * WHAT ACTUALLY COSTS THE 5.6 KB, measured on the build of 20 September 2026.
+ * `initial-bundle-budget --built` refused `/events/[slug]/with/[artist]` at
+ * +5,819 bytes against its mark. The cause is CHUNK MEMBERSHIP, not this import:
+ * `next/image` is itself a client-component module, so importing it ANYWHERE in
+ * `/events/[slug]/layout.tsx`'s graph creates a client reference, and turbopack
+ * puts next/image's whole client Image component and this 120-byte function in
+ * ONE chunk (`2n9toxq3bsuh2.js`, 15,284 bytes raw / 5,830 gzip on that build).
+ * Every route under that layout is served the chunk to obtain this component.
+ * Verified by reading the chunk: it carries `ImageConfigContext`,
+ * `__next_img_default`, `findClosestQuality` and the cloudinary/akamai loaders
+ * beside the one `preload()` call, and only `/events/[slug]`, `/holder` and the
+ * artist variant include it. `/events` does not.
+ *
+ * SO THE IMPORT MOVED ANYWAY, for two reasons that survive the measurement.
+ * next/image is already in the graph of `/events/[slug]` and `/holder` because
+ * they render `HeroMedia`, so the chunk is not waste there; the artist variant is
+ * a redirect page that renders no image, is not in the Lighthouse gate set, and
+ * sits at 158.3 KB against a 200 KB budget. And a client component that imports
+ * only `react-dom` cannot be the thing that drags a framework module into a
+ * route, whoever renders it next.
+ *
+ * A DEFERRED `await import('next/image')` IN THE SERVER MODULE WAS BUILT AND
+ * ABANDONED, and not on byte grounds: it was never measured, because it puts an
+ * `await` on the server render of the slowest route on the platform, which is the
+ * route this whole mechanism exists to speed up. Trading latency on the page that
+ * matters for 5.6 KB on a redirect page is the wrong side of the trade. If
+ * somebody wants those bytes back, the honest way is for the artist route to stop
+ * sharing a layout with the hero, not to make the hero's preload asynchronous.
+ *
+ * THE RULE THE SECTION BELOW STATES STILL STANDS and is why this file imports
+ * one module: a client component takes VALUES as props and does not import the
+ * module that can compute them. `MEDIA_SIZES` was kept out for exactly that
+ * reason, with the 21,005 bytes it once cost every dashboard route recorded
+ * beside it, and then `next/image` was imported one line above it anyway.
  */
 export interface HeroPreloadLinkProps {
-  /** The already-resolved raster src (what `resolveImageSrc` returned). */
+  /** `props.src` from the server's `heroRasterProps`. */
   src: string
-  /** The `sizes` hint `HeroMedia` will give the element. */
-  sizes: string
-  /** The quality tier `HeroMedia` will give the element. */
-  quality: number
+  /** `props.srcSet`: React keys the image resource on this plus `sizes`. */
+  srcSet?: string
+  /** `props.sizes`: the other half of that key. */
+  sizes?: string
 }
 
-/**
- * The next/image props the hero raster will be rendered with, resolved without
- * rendering it. Exported so the test compares the preload against the element's
- * own output rather than against a second copy of these arguments.
- */
-export function heroRasterProps({ src, sizes, quality }: HeroPreloadLinkProps) {
-  return getImageProps({
-    // The preload carries no alt text; the element that paints does.
-    src, alt: '', fill: true, priority: true, sizes, quality,
-  })
-}
-
-export function HeroPreloadLink(hero: HeroPreloadLinkProps) {
-  const { props } = heroRasterProps(hero)
-
-  preload(props.src, {
+export function HeroPreloadLink({ src, srcSet, sizes }: HeroPreloadLinkProps) {
+  preload(src, {
     as: 'image',
-    imageSrcSet: props.srcSet,
-    imageSizes: props.sizes,
+    imageSrcSet: srcSet,
+    imageSizes: sizes,
     fetchPriority: 'high',
   })
 
