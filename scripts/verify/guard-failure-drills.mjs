@@ -6763,6 +6763,20 @@ const DRILLS = [
     replace: 'className="text-xs text-[var(--color-error-strong)] hover:underline"',
     expect: 'no 44px floor',
   },
+  {
+    /*
+     * THE ADMIN HALF, WHICH IS A DIFFERENT CLAUSE ON A DIFFERENT SCOPE. This is
+     * the exact class attribute /admin/audit carried until 21 September 2026,
+     * restored character for character: fifty View buttons outside a box
+     * showing a third of its own table.
+     */
+    name: 'the admin audit log goes back to clipping its own table',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/admin/(authed)/audit/page.tsx',
+    find: '<div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">',
+    replace: '<div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#131A2A]">',
+    expect: 'is a CLIP and not a scroller',
+  },
 
   /*
    * no-punctuation-standing-in-for-a-value (21 September 2026), three drills.

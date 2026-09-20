@@ -84,6 +84,37 @@
  * `ROW_CONTROL`, or an explicit `min-h-11` / `h-11`. The measured state was
  * 16px tall, at every width including 1440.
  *
+ * ============================================================================
+ * AND A SECOND, WIDER SCOPE WITH ONE CLAUSE: NO TABLE ANYWHERE IS CLIPPED
+ * ============================================================================
+ *
+ * The five clauses above are the ORGANISER DASHBOARD's, because those tables
+ * are cards below `lg`. Every OTHER table under src, thirty files and
+ * thirty-two tables including the eighteen admin ones, is held to exactly one:
+ * the box wrapping it may not CLIP it.
+ *
+ * The split is honest rather than convenient. An admin operations screen with
+ * twelve columns, read mostly at a desk, may legitimately scroll, and a
+ * scroller means a finger can still reach the far side of a row. A CLIP cannot
+ * be swiped at all: `/admin/audit` rendered a 1,027px table inside a box
+ * showing 340 of it at 390 and 718 at 768, with fifty View buttons outside the
+ * visible area and no gesture that reaches them (driven 21 September 2026,
+ * scripts/verify/admin-tables-fit-drive.mjs).
+ *
+ * THE WIDER SCOPE COST NOTHING AND THAT IS WHY IT IS WIDE. The four tables
+ * outside the dashboard and admin (the checkout tax invoice, the orders table,
+ * the payouts history and the pricing page) were scanned before the scope was
+ * widened and none of them clips. Enforcing a rule the whole tree already
+ * keeps is free; waiting until a buyer-facing table acquires the defect is not.
+ *
+ * WHAT IS MEASURED IN ADMIN AND NOT ENFORCED, said plainly so the scope is not
+ * read as a claim: thirteen admin tables lose the row's own name when swiped to
+ * the right edge, and their controls sit between 19 and 39 pixels tall against
+ * a 44px law. Both are recorded with their numbers in
+ * C:\dev\REVIEW-QUEUE-C.md and printed by the drive on every run. They are a
+ * rebuild, not a class name, and they are the next item rather than a clause
+ * added here to look complete.
+ *
  * Run standalone:  node scripts/guards/a-table-a-phone-can-read.mjs
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -96,6 +127,7 @@ import { stripComments, lineAt } from '../lib/js-source.mjs'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
 const DASHBOARD = join(ROOT, 'src', 'app', '(dashboard)', 'dashboard')
+const SRC = join(ROOT, 'src')
 // The Windows separator, built rather than written, because a lone backslash in
 // a source line is the one character every tool in this chain rewrites.
 const SEP = String.fromCharCode(92)
@@ -146,6 +178,53 @@ export function classesOf(tag) {
  * defect and failing it would be a guard with an opinion nobody asked for.
  */
 const HORIZONTAL_OVERFLOW = /(?:^|\s)((?:[a-z-]+:)*)(overflow-x-(?:auto|scroll|hidden|clip)|overflow-(?:auto|scroll|hidden|clip))(?=\s|$)/g
+
+/*
+ * THE CLIP UTILITIES ALONE. `auto` and `scroll` are not here, and the split is
+ * the whole reason the admin scope exists.
+ *
+ * A clip cannot be swiped and a scroller can. The organiser tables are cards
+ * below `lg` and need neither, so their clause forbids both. The admin tables
+ * are NOT cards and legitimately scroll, so theirs forbids only the one that
+ * makes a control unreachable.
+ */
+const CLIP_ONLY = /(?:^|\s)((?:[a-z-]+:)*)(overflow-x-(?:hidden|clip)|overflow-(?:hidden|clip))(?=\s|$)/g
+
+/**
+ * THE BOX THAT WRAPS A TABLE, judged on its own rather than on the whole file.
+ *
+ * A file-wide rule cannot be used on the admin surfaces: `/admin/health` holds
+ * a perfectly harmless `overflow-hidden` on something that is not a table
+ * wrapper, and failing the build over it would be a guard nobody keeps. The
+ * window is the 400 characters before the `<table`, which is where a wrapper
+ * lives in every one of these files; it is a heuristic and it is stated as
+ * one, and it was checked BOTH ways before being trusted: zero hits across the
+ * eighteen admin files as they now stand, and exactly one hit on the pre-fix
+ * `/admin/audit`, which is the defect it exists for.
+ */
+export function judgeClipWrappers(raw) {
+  const src = stripComments(raw)
+  const findings = []
+  for (const table of src.matchAll(/<table\b/g)) {
+    const window_ = src.slice(Math.max(0, table.index - 400), table.index)
+    for (const div of window_.matchAll(/<div[^>]*className="([^"]*)"/g)) {
+      if (/\bmax-lg:overflow-visible\b/.test(div[1])) continue
+      for (const hit of div[1].matchAll(CLIP_ONLY)) {
+        if (/\blg:/.test(hit[1] ?? '')) continue
+        findings.push({
+          line: lineAt(src, table.index),
+          clause: 'clip',
+          message:
+            `the box wrapping this <table> carries \`${hit[2]}\`, which is a CLIP and not a scroller: ` +
+            'whatever is past its right edge cannot be reached by any gesture. Measured on /admin/audit at 390, ' +
+            'fifty View buttons sat outside a box showing 340 of 1,027 pixels. Use `overflow-x-auto` so a finger ' +
+            'can reach the row, or give the table a phone presentation.',
+        })
+      }
+    }
+  }
+  return findings
+}
 
 /**
  * JUDGE ONE FILE. Pure: source in, findings out, no filesystem and no exit.
@@ -265,7 +344,39 @@ if (invokedDirectly) {
     for (const finding of findings) failures.push(`${rel}:${finding.line}  ${finding.message}`)
   }
 
+  /*
+   * THE ADMIN SURFACES, HELD TO THE NARROWER RULE, AND SAYING SO.
+   *
+   * The eighteen admin files with a table are NOT cards below `lg` and are not
+   * claimed to be. What is enforced here is the one clause whose failure makes
+   * a control unreachable: the box wrapping a table may not CLIP it. A
+   * swipeable admin table still loses its own row label at the right edge, and
+   * that is measured, recorded with its numbers in C:\dev\REVIEW-QUEUE-C.md,
+   * and NOT enforced yet. Saying which half is held is the difference between
+   * a scope and a claim.
+   */
+  const clipFiles = walk(SRC)
+    .map((f) => ({ path: f, raw: readFileSync(f, 'utf8') }))
+    .filter((f) => stripComments(f.raw).includes('<table'))
+
+  if (clipFiles.length === 0) {
+    console.error('[a-table-a-phone-can-read] REFUSING: no file under src contains a <table, which was true of twenty-two of them.')
+    console.error(`  Looked under ${relative(ROOT, SRC)}`)
+    process.exit(1)
+  }
+
+  let clipTables = 0
+  const adminCount = clipFiles.filter((f) => relative(ROOT, f.path).split(SEP).join('/').includes('src/app/admin')).length
+  for (const file of clipFiles) {
+    const rel = relative(ROOT, file.path).split(SEP).join('/')
+    clipTables += [...stripComments(file.raw).matchAll(/<table\b/g)].length
+    for (const finding of judgeClipWrappers(file.raw)) {
+      failures.push(`${rel}:${finding.line}  ${finding.message}`)
+    }
+  }
+
   console.log(`[a-table-a-phone-can-read] ${files.length} dashboard file(s) with a table, ${tablesJudged} table(s), ${controlsJudged} in-body control(s) judged.`)
+  console.log(`[a-table-a-phone-can-read] ${clipFiles.length} file(s) under src with a table (${adminCount} of them admin), ${clipTables} table(s), judged for a CLIPPING wrapper.`)
 
   if (failures.length > 0) {
     console.error(`[a-table-a-phone-can-read] FAIL - ${failures.length} problem(s):`)

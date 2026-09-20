@@ -3324,6 +3324,24 @@ const ROOT = join(HERE, '..', '..')
  */
 /*
  * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, the admin audit log clipped its own table): 539/7182 -> 539/7188.
+ * ---------------------------------------------------------------------------
+ *
+ * NO NEW FILE AND SIX CASES, all in an existing file:
+ *   tests/unit/guards/a-table-a-phone-can-read.test.ts  +6 for judgeClipWrappers,
+ *   the narrower clause the admin scope is held to
+ *   539 + 0 = 539 files
+ *   7182 + 6 = 7188 tests
+ *
+ * MEASURED: 539 files, 7188 tests, 0 failed, 0 skipped
+ * (npm run gate:push -- --only suite, GREEN, 112s, on the tree of this commit).
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED.
+ * ---------------------------------------------------------------------------
+ */
+
+/*
+ * ---------------------------------------------------------------------------
  * 2026-09-21 (lane B, merging verify/l5-launch-readiness into lane/b-growth to
  * clear the returned overlap): 536/7194 and 539/7182 -> MEASURED BELOW.
  * ---------------------------------------------------------------------------
@@ -3371,8 +3389,33 @@ const ROOT = join(HERE, '..', '..')
  * exactly where they were written.
  * ---------------------------------------------------------------------------
  */
+
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, merging verify/l5-launch-readiness into lane/c-ux to
+ * clear the returned overlap): 539/7188 and 541/7251 -> MEASURED BELOW.
+ * ---------------------------------------------------------------------------
+ *
+ * THE FOURTEENTH CONFLICT ON THIS ONE INTEGER, and the second this lane has
+ * settled today. Resolved the way all thirteen before it were: by RUNNING the
+ * suite on the merged tree.
+ *
+ * BOTH BLOCKS ABOVE ARE KEPT VERBATIM because each names tests that exist in
+ * this tree, and neither number describes it. Lane C measured 539/7188 without
+ * lane B's last commits; the verify branch declared 541/7251 without lane C's
+ * five. Taking the higher writes a floor below what this tree runs, which is
+ * the mistake this block has refused fourteen times.
+ *
+ * MEASURED: 541 files, 7257 tests, 0 failed, 0 skipped
+ * (npm run gate:push -- --only suite, GREEN, 103s, on this merge).
+ *
+ * AND THE ARITHMETIC IS WHY IT WAS RUN, for the fourteenth time. Neither side
+ * reaches 7,257: the merged tree carries six cases this worktree could not see
+ * and sixty-nine the verify branch could not. Every derived figure on this
+ * integer has been wrong and every measured one has been right.
+ */
 const MIN_FILES = 541
-const MIN_TESTS = 7251
+const MIN_TESTS = 7257
 
 
 /**
