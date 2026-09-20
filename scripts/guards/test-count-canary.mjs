@@ -2851,9 +2851,39 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   493 + 20 (the files lane B and lane C added) = 513 files
  *   6470 + 363 (the cases they added) = 6833 tests
+ *
+ * 2026-09-20 (lane B, LB-EDITREVENUE): raised 513/6833 -> 522/6975.
+ *
+ * I ALMOST DID NOT RAISE THIS, FOR THE REASON THE BLOCK ABOVE ALREADY REJECTED,
+ * and that is worth more than the number. I had written into REVIEW-QUEUE-B.md
+ * that this file is a known three-lane conflict, that lane C has conflicted on
+ * it hourly today, and that no lane's worktree can measure the merged tree, so
+ * the push lane should own the figure. Every one of those statements is true and
+ * the conclusion was still wrong. Lane A reasoned its way to the identical
+ * conclusion on 19 September, wrote it into REVIEW-QUEUE.md, and then found the
+ * clause that settles it in C:\dev\BUILD-BRIEF.md: "real tests added. The suite
+ * grows and the canary baseline is raised IN THE SAME COMMIT." A conflict on one
+ * integer is resolved by taking the higher number. A floor nobody raises stops
+ * catching a deleted test, which is the whole job of this file. I reached that
+ * wrong conclusion by the same route lane A did: I had not read BUILD-BRIEF.md.
+ *
+ * THIS IS A LANE WORKTREE MEASUREMENT AND THE PUSH LANE WILL RAISE IT AGAIN.
+ * lane/b-growth does not contain lane C's newest work, so 6,975 is below what
+ * the merged tree runs. A floor that is too LOW is safe and still holds; a floor
+ * that has drifted below the suite is the failure this guard exists to catch.
+ *
+ * MEASURED: 522 files, 6975 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, 182s, on commit 30bba00a).
+ *
+ * CHECKABLE. This item adds ONE file and TWENTY-THREE cases:
+ *   tests/unit/growth/the-two-revenue-cards-agree.test.ts          20  (new file)
+ *   tests/unit/guards/supabase-select-chains.test.ts                2  (the parser bridge)
+ *   tests/unit/dashboard/order-money-figures.test.ts                1  (the summariser's rows)
+ *   521 + 1 = 522 files
+ *   6952 + 20 + 2 + 1 = 6975 tests
  */
-const MIN_FILES = 513
-const MIN_TESTS = 6833
+const MIN_FILES = 522
+const MIN_TESTS = 6975
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
