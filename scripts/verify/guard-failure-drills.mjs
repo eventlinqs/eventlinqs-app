@@ -4950,6 +4950,38 @@ const DRILLS = [
   },
 
   /*
+   * no-silent-row-ceiling, THE MARKETPLACE SCOPE (lane B, 21 September 2026),
+   * two more drills.
+   *
+   * The first proves the new scope entry actually judges: the performer draw
+   * totals, which /artists SORTS on, back to an unbounded read.
+   *
+   * The second aims at the suppression list, and it is the one worth having.
+   * RAISED_WITH_ANOTHER_LANE exists so that one unbounded read in another
+   * lane's file does not cost the other three files in that directory their
+   * cover, which means it is the one structure in this guard that can hide a
+   * defect. It is only safe while it is forced to shrink, so the case drilled
+   * is the case that rots quietly: the read gets BOUNDED and the entry is left
+   * behind, live, over a file and table nobody is judging any more.
+   */
+  {
+    name: 'the performer draw totals go back to counting through an unbounded read',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'src/lib/marketplace/showcase.ts',
+    find: "            .in('link_id', chunk)\n            .order('id', { ascending: true })\n            .range(from, to)",
+    replace: "            .in('link_id', chunk)\n            .range2(from, to)",
+    expect: 'share_link_events with no bound',
+  },
+  {
+    name: 'a read raised with another lane is bounded and the exemption is kept anyway',
+    guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
+    file: 'scripts/guards/no-silent-row-ceiling.mjs',
+    find: "    table: 'push_subscriptions',",
+    replace: "    table: 'push_subscriptions_bounded_now',",
+    expect: 'no such read was found',
+  },
+
+  /*
    * marketing-mail-carries-one-click (lane B, 19 September 2026), six drills,
    * one per clause plus the blindness case.
    *
@@ -6182,6 +6214,48 @@ const DRILLS = [
     find: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {`,
     replace: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {\n      if (inner) continue`,
     expect: 'REFUSING: the calibration probe',
+  },
+
+  /*
+   * a-failed-read-is-not-a-fact-about-a-person, THE MARKETPLACE SCOPE
+   * (lane B, 21 September 2026), three more drills.
+   *
+   * src/lib/marketplace joined the scope because the same shape there is not a
+   * skip row, it is an empty marketplace: /artists answered 200 with "No
+   * performers match those filters yet" whenever one read blinked, on the
+   * surface a promoter judges the whole supply side by.
+   *
+   * THE SECOND AND THIRD AIM AT THE NEW LIST rather than at the product, and
+   * they are the ones worth having. RAISED_WITH_ANOTHER_LANE suppresses a real
+   * fault in another lane's file, so it is the one structure here that can hide
+   * a defect, and a suppression list is only safe while it is forced to shrink:
+   * one drill proves a path that has rotted is refused, the other proves an
+   * entry whose debt has been PAID is refused, which is the case that would
+   * otherwise sit there for ever claiming a fault nobody has any more.
+   */
+  {
+    name: 'the performer directory goes back to reading an empty marketplace as an empty marketplace',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/marketplace/showcase.ts',
+    find: '  const { data, error } = await query',
+    replace: '  const { data } = await query',
+    expect: 'src/lib/marketplace/showcase.ts',
+  },
+  {
+    name: 'a fault raised with another lane names a file this guard no longer scans',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: "file: 'src/lib/marketplace/notify.ts',",
+    replace: "file: 'src/lib/marketplace/notify-renamed.ts',",
+    expect: 'matches no scanned file',
+  },
+  {
+    name: 'a fault raised with another lane is kept after that lane has fixed it',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: "file: 'src/lib/marketplace/notify.ts',",
+    replace: "file: 'src/lib/marketplace/cities.ts',",
+    expect: 'The debt is paid',
   },
 
   /*

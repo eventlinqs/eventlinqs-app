@@ -104,6 +104,42 @@ export const SCOPE = [
   ['src/lib/matching', 'an empty candidate list, which reads as "nobody matched"'],
   ['src/lib/attribution', 'an order credited to nobody, silently, in the figures a fee rests on'],
   ['src/lib/audience', 'a smaller audience, printed as the audience'],
+  [
+    'src/lib/marketplace',
+    'a two-sided marketplace rendered as an empty one: /artists answers 200 with ' +
+      '"No performers match those filters yet" to the promoter the supply side exists for, ' +
+      'a performer\'s public profile loses its showcase, and the measured draw the ' +
+      'directory RANKS by comes back as zero',
+  ],
+]
+
+/**
+ * A FAULT THAT IS REAL, ACKNOWLEDGED, AND NOT THIS LANE'S TO FIX.
+ *
+ * THIS IS NOT THE REGISTER AND MUST NEVER BE READ AS ONE. `REGISTER` means "this
+ * read is CORRECT as written and here is the argument". This list means the
+ * opposite: the read is WRONG, somebody has looked at it, and the file belongs
+ * to another lane under the three-lane protocol, so the finding is a BORDER
+ * rather than an edit. Putting a known defect in a list headed "deliberate
+ * exceptions" would be the quiet lie this whole family of guards exists to stop.
+ *
+ * It is printed on every run, by name and by count, so the debt is visible on
+ * every build instead of resting in a review-queue file nobody opens, and a
+ * STALE entry is refused exactly as a stale register entry is: the day the
+ * owning lane fixes it, this entry has to go or the build says so.
+ */
+export const RAISED_WITH_ANOTHER_LANE = [
+  {
+    file: 'src/lib/marketplace/notify.ts',
+    since: '2026-09-21',
+    lane: 'lane C, which owns the notification router',
+    raised: 'C:\\dev\\REVIEW-QUEUE-B.md, the BORDER line for LB-GIGWHOLE',
+    why:
+      'five reads discard their error. Two of them decide something rather than display it: a ' +
+      'duplicate-suppression read whose failure sends the same notification twice, and an ' +
+      'unbounded push-subscription read whose failure is silence. Lane B found them while ' +
+      'fixing the sibling modules and stopped at the border.',
+  },
 ]
 
 /**
@@ -239,11 +275,27 @@ export function calibrationFault() {
   return null
 }
 
-/** How many reads in this file are routed through a door. Reported, never required. */
+/**
+ * How many reads in this file are routed through a door. Reported, never
+ * required, which is why the under-count below survived unnoticed.
+ *
+ * IT USED TO REQUIRE A BARE `(` AFTER THE NAME, so it could not see a single
+ * call site that passes a type argument, and this tree writes most of them that
+ * way: `readEveryRow<PickerCity>(`, `readEveryRow<Record<string, unknown>>(`.
+ * Measured on 21 September 2026, src/lib/marketplace/cities.ts reported ZERO
+ * reads through a door while being a file whose only read goes through one, and
+ * showcase.ts reported 2 of 6.
+ *
+ * A number this guard prints is a number somebody reasons from, and "0 reads
+ * through a door" is the reading that makes a correct file look like an
+ * unguarded one. Accepting `<` as well as `(` is enough and cannot over-match:
+ * a mention that is neither a call nor a generic call is an import, and imports
+ * are followed by a comma or a brace.
+ */
 export function readsThroughADoor(src) {
   const code = stripComments(src)
   return DOORS.reduce(
-    (total, door) => total + [...code.matchAll(new RegExp(`\\b${door}\\s*\\(`, 'g'))].length,
+    (total, door) => total + [...code.matchAll(new RegExp(`\\b${door}\\s*[(<]`, 'g'))].length,
     0,
   )
 }
@@ -273,7 +325,10 @@ function main() {
 
   const problems = []
   const registered = new Set(REGISTER.map((r) => r.file.split('/').join(sep)))
+  const borders = new Set(RAISED_WITH_ANOTHER_LANE.map((r) => r.file.split('/').join(sep)))
   const matchedRegister = new Set()
+  const matchedBorder = new Set()
+  const borderFaults = new Map()
   let filesScanned = 0
   let destructures = 0
   let routed = 0
@@ -308,6 +363,11 @@ function main() {
         exempted += found.filter((d) => !d.handled).length
         continue
       }
+      if (borders.has(relative(ROOT, file))) {
+        matchedBorder.add(name)
+        borderFaults.set(name, found.filter((d) => !d.handled).length)
+        continue
+      }
       problems.push(...judgeFile(name, src, becomes))
     }
   }
@@ -319,19 +379,62 @@ function main() {
     console.log(`${TAG}     ${entry.why}`)
   }
 
+  const outstanding = [...borderFaults.values()].reduce((a, b) => a + b, 0)
+  console.log(
+    `${TAG} raised with another lane and NOT fixed here, ` +
+      `${RAISED_WITH_ANOTHER_LANE.length} file(s), ${outstanding} read(s) still discarding an error:`,
+  )
+  for (const entry of RAISED_WITH_ANOTHER_LANE) {
+    const seen = matchedBorder.has(entry.file)
+    const state = seen
+      ? `${borderFaults.get(entry.file)} outstanding, owned by ${entry.lane}`
+      : 'STALE, it matches no scanned file'
+    console.log(`${TAG}   ${entry.file} (raised ${entry.since}, ${state})`)
+    console.log(`${TAG}     ${entry.why}`)
+    console.log(`${TAG}     raised in ${entry.raised}`)
+  }
+
   declareWork('a-failed-read-is-not-a-fact-about-a-person', {
     did: {
       'send-path file read': filesScanned,
       'awaited destructure judged': destructures,
       'read routed through a door': routed,
       'registered exception': REGISTER.length,
+      'fault raised with another lane': RAISED_WITH_ANOTHER_LANE.length,
     },
-    found: { 'read that discards its error': problems.length, 'destructure exempted by the register': exempted },
+    found: {
+      'read that discards its error': problems.length,
+      'destructure exempted by the register': exempted,
+      'read discarding an error in another lane file': outstanding,
+    },
   })
 
   if (REGISTER.some((entry) => !matchedRegister.has(entry.file))) {
     console.error(`${TAG} a register entry no longer matches a scanned file. Delete it or correct its path.`)
     process.exit(1)
+  }
+
+  /*
+   * A BORDER ENTRY THAT NO LONGER MATCHES IS REFUSED, exactly as a stale
+   * register entry is, and one case matters more than the other: when the
+   * owning lane FIXES the file, every fault goes and the entry becomes a note
+   * claiming a debt that is paid. Refusing it is what makes the list shrink.
+   */
+  for (const entry of RAISED_WITH_ANOTHER_LANE) {
+    if (!matchedBorder.has(entry.file)) {
+      console.error(
+        `${TAG} ${entry.file} is listed as raised with ${entry.lane} and matches no scanned file. ` +
+          `Delete the entry or correct its path.`,
+      )
+      process.exit(1)
+    }
+    if (borderFaults.get(entry.file) === 0) {
+      console.error(
+        `${TAG} ${entry.file} is listed as raised with ${entry.lane} and every read in it now binds its error. ` +
+          `The debt is paid: delete the entry so the file is judged here like any other.`,
+      )
+      process.exit(1)
+    }
   }
 
   if (problems.length > 0) {
@@ -340,9 +443,20 @@ function main() {
     process.exit(1)
   }
 
+  /*
+   * THE PASS LINE SAYS WHAT IS STILL OUTSTANDING, and it did not used to,
+   * because until 21 September nothing in scope was outstanding. "every one
+   * binds its error" stops being true the moment a border entry exists, and a
+   * summary that overstates its own result is how a guard gets believed past
+   * what it checked.
+   */
+  const remainder =
+    exempted + outstanding === 0
+      ? 'every one binds its error'
+      : `every one binds its error but ${exempted} registered and ${outstanding} raised with another lane`
   console.log(
     `${TAG} PASS: ${filesScanned} file(s) across ${SCOPE.length} director${SCOPE.length === 1 ? 'y' : 'ies'}, ` +
-      `${routed} read(s) through a door, ${destructures} destructure(s), every one binds its error`,
+      `${routed} read(s) through a door, ${destructures} destructure(s), ${remainder}`,
   )
 }
 

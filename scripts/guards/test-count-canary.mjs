@@ -3091,9 +3091,24 @@ const ROOT = join(HERE, '..', '..')
  * collecting, and next time there will be nothing to compare against unless
  * somebody wrote this line.
  * ---------------------------------------------------------------------------
+ *
+ * 2026-09-21 (lane B, LB-SHOWCASEWHOLE): raised 533/7104 -> 534/7125.
+ *
+ * ONE NEW FILE AND TWENTY-ONE CASES, and nothing else moved:
+ *   tests/unit/growth/a-performers-proof-of-draw-is-whole.test.ts  21  (new file)
+ *   533 + 1 = 534 files
+ *   7104 + 21 = 7125 tests
+ *
+ * MEASURED: 534 files, 7125 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 148s, on the tree of this commit).
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED by this item, which the last three
+ * lane B raises each had to declare and this one does not. The subject module
+ * had no unit test of its own before this file.
+ * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 533
-const MIN_TESTS = 7104
+const MIN_FILES = 534
+const MIN_TESTS = 7125
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

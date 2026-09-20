@@ -52,10 +52,22 @@ interface MyTicketRow {
 // This is the page people open to check when to turn up.
 
 // Dark ink on the status tint, NOT the semantic text colour. text-success on
-// bg-success/15 measures 2.94:1, well under AA, and there is no darker success
-// token to reach for. src/app/t/[code]/page.tsx already made exactly this call
-// for the bearer view; this is its twin and was missed at the time, so /tickets
-// shipped 57 failing badges on one screen. The tint still carries the status.
+// bg-success/15 measures 2.94:1, well under AA. src/app/t/[code]/page.tsx
+// already made exactly this call for the bearer view; this is its twin and was
+// missed at the time, so /tickets shipped 57 failing badges on one screen. The
+// tint still carries the status.
+//
+// THE SECOND HALF OF THIS NOTE USED TO READ "and there is no darker success
+// token to reach for", AND THAT STOPPED BEING TRUE ON 20 SEPTEMBER 2026, hours
+// after it was written: LB-PRICEWHOLE added --color-success-strong (#0B7038)
+// to globals.css for this exact class of failure. It measures 5.20:1 on the
+// bg-success/15 wash over white and 5.00:1 over canvas, so `text-success-strong`
+// is now an honest alternative to ink here. The ink above is NOT wrong and is
+// deliberately left alone: this screen was never re-driven under the token, and
+// LB-SHOWCASEWHOLE changed only the two badges it actually measured
+// (/artists and /artists/[slug]). The remaining occurrences are listed in
+// C:\dev\REVIEW-QUEUE-B.md. The sentence is corrected because a false "there is
+// no token" is exactly what makes the next reader repeat the workaround.
 const STATUS_TONE: Record<string, string> = {
   valid: 'bg-success/15 text-ink-900',
   scanned: 'bg-ink-200 text-ink-700',
