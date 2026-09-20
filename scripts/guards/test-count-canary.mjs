@@ -2971,10 +2971,27 @@ const ROOT = join(HERE, '..', '..')
  * spawns takes 2.1. The timeout was NOT touched: a floor is not lowered to
  * accommodate a busy machine, and the count written here is the one the GREEN
  * run measured.
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane A, MONEY FIX A3 layer two and A4): 525/7003 -> 530/7050.
+ *
+ * FIVE NEW FILES AND FORTY-SEVEN CASES, and the number below is the
+ * MEASUREMENT rather than the sum, for the reason the blocks above record twice
+ * over:
+ *   tests/unit/payments/stripe-processing-estimate.test.ts
+ *   tests/unit/payments/order-records-its-destination.test.ts
+ *   tests/unit/events/connect-verification-freshness.test.ts
+ *   tests/unit/events/publish-needs-a-fresh-enabled-account.test.ts
+ *   tests/unit/ops/parity-sink-stand-in.test.ts
+ * plus four cases added to create-platform-charge and one case restated in
+ * connect-reconcile, whose premise MONEY FIX A3 layer two changed.
+ *
+ * MEASURED: 530 files, 7050 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, C:\dev\_a-r23-suite-money.txt).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 525
-const MIN_TESTS = 7003
+const MIN_FILES = 530
+const MIN_TESTS = 7050
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
