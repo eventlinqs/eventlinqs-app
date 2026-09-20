@@ -52,7 +52,7 @@ vi.mock('react-dom', async (importOriginal) => {
 const { render } = await import('@testing-library/react')
 const { HeroMedia } = await import('@/components/media/HeroMedia')
 const { HeroPreloadLink } = await import('@/components/media/hero-preload-link')
-const { heroPreloadLink } = await import('@/lib/images/hero-preload')
+const { heroPreloadLink, heroRasterProps, HERO_PRELOAD_ARGS } = await import('@/lib/images/hero-preload')
 const { MEDIA_SIZES } = await import('@/components/media/sizes')
 const { MEDIA_QUALITY } = await import('@/components/media/quality')
 
@@ -119,19 +119,32 @@ describe('the hero preload and the hero raster are one request', () => {
     // cannot pass.
     expect(theElementAsksFor(IMAGES[0]).sizes).toBe(MEDIA_SIZES.fullBleed)
 
+    /*
+     * THE TIER IS ASSERTED THROUGH THE SHARED ARGUMENTS, not off the rendered
+     * element, and that changed on 20 September 2026 when getImageProps moved to
+     * the server so the client component would stop shipping next/image. The
+     * element's props are now the RESOLVED strings, so `quality` is no longer one
+     * of them: it is encoded in the srcset's `q=`, which this environment forces
+     * to 75 whatever tier is asked for (see the header). HERO_PRELOAD_ARGS is the
+     * single object `heroPreloadLink` spreads, so asserting it is asserting what
+     * the preload asked with.
+     */
+    expect(HERO_PRELOAD_ARGS.sizes).toBe(MEDIA_SIZES.fullBleed)
+    expect(HERO_PRELOAD_ARGS.quality).toBe(MEDIA_QUALITY.hero)
+
+    /* And the element really is built from them, rather than from a second copy. */
     const link = heroPreloadLink(IMAGES[0])
-    const props = (link as unknown as { props: { sizes: string; quality: number } }).props
-    expect(props.sizes).toBe(MEDIA_SIZES.fullBleed)
-    expect(props.quality).toBe(MEDIA_QUALITY.hero)
+    const props = (link as unknown as { props: { src: string; srcSet?: string; sizes?: string } }).props
+    const fromTheArgs = heroRasterProps({ src: IMAGES[0], ...HERO_PRELOAD_ARGS }).props
+    expect(props.srcSet).toBe(fromTheArgs.srcSet)
+    expect(props.sizes).toBe(fromTheArgs.sizes)
   })
 
   it('a different hint really does produce a different key, so the equality above is not vacuous', () => {
-    const asHero = thePreloadAsksFor(
-      <HeroPreloadLink src={IMAGES[0]} sizes={MEDIA_SIZES.fullBleed} quality={MEDIA_QUALITY.hero} />,
-    )
-    const asCard = thePreloadAsksFor(
-      <HeroPreloadLink src={IMAGES[0]} sizes={MEDIA_SIZES.railEventCard} quality={MEDIA_QUALITY.hero} />,
-    )
+    const hero = heroRasterProps({ src: IMAGES[0], sizes: MEDIA_SIZES.fullBleed, quality: MEDIA_QUALITY.hero }).props
+    const card = heroRasterProps({ src: IMAGES[0], sizes: MEDIA_SIZES.railEventCard, quality: MEDIA_QUALITY.hero }).props
+    const asHero = thePreloadAsksFor(<HeroPreloadLink src={hero.src} srcSet={hero.srcSet} sizes={hero.sizes} />)
+    const asCard = thePreloadAsksFor(<HeroPreloadLink src={card.src} srcSet={card.srcSet} sizes={card.sizes} />)
     expect(asCard.sizes).not.toBe(asHero.sizes)
   })
 
