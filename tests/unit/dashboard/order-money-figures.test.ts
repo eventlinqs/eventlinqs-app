@@ -22,6 +22,7 @@ import { readFileSync } from 'node:fs'
 
 const ORDERS_PAGE = 'src/app/(dashboard)/dashboard/events/[id]/orders/page.tsx'
 const DETAIL_PAGE = 'src/app/(dashboard)/dashboard/events/[id]/orders/[orderId]/page.tsx'
+const REVENUE_MODULE = 'src/lib/organisers/event-revenue.ts'
 
 /*
  * Comments are stripped before matching. The first version of the "no wide cast"
@@ -45,11 +46,48 @@ describe('the orders page fetches every money column it sums', () => {
     }
   })
 
-  it('every money field it reduces over is in the select tuple', () => {
-    const tuple = src.slice(src.indexOf('ORDER_SUMMARY_COLUMNS'), src.indexOf('] as const'))
-    const summed = [...src.matchAll(/reduce\(\(s, o\) => s \+ o\.(\w+)/g)].map((m) => m[1])
+  /*
+   * THE ARITHMETIC MOVED, SO THIS FOLLOWED IT. LB-EDITREVENUE, 20 September
+   * 2026: the revenue sums left this page for src/lib/organisers/event-revenue.ts
+   * so that the edit screen could stop keeping its own, different copy. This
+   * assertion used to read the reduces out of THIS file and count them, and it
+   * went red on a correct refactor with "expected 0 to be greater than 0".
+   *
+   * The invariant it protects is unchanged and is still worth holding: a field
+   * that is SUMMED but never SELECTED arrives undefined, and `0 + undefined` is
+   * the "AUD NaN" this file is named for. It is now checked at both ends, since
+   * there are now two queries that can feed the same arithmetic.
+   */
+  it('every money field the shared summariser reduces over is selected by the query that feeds it', () => {
+    const mod = codeOf(REVENUE_MODULE)
+    /*
+     * Both shapes: `s + o.x` and `s + Number(o.x ?? 0)`. The bound is a
+     * character count and NOT `[^)]*?`, because the reducer's own parameter
+     * list `(s, o)` contains a closing paren: an exclusion class stops dead at
+     * it and matches nothing, which is how the first version of this line
+     * reported zero sums in a file that plainly has one.
+     */
+    const summed = [...mod.matchAll(/reduce\([\s\S]{0,80}?\+\s*(?:Number\()?o\.(\w+)/g)].map(m => m[1])
     expect(summed.length).toBeGreaterThan(0)
+
+    // The module's own read, used by the edit screen.
+    const moduleSelect = mod.slice(mod.indexOf(".select('id, total_cents"))
+    for (const field of summed) expect(moduleSelect.slice(0, 200)).toContain(field)
+
+    // The orders screen hands its OWN rows to the same function, so its tuple
+    // has to carry every field that function sums or the same NaN returns by a
+    // different door. TypeScript also refuses this, structurally; belt and
+    // braces, because the compiler was satisfied last time too.
+    const tuple = src.slice(src.indexOf('ORDER_SUMMARY_COLUMNS'), src.indexOf('] as const'))
     for (const field of summed) expect(tuple).toContain(`'${field}'`)
+  })
+
+  it('hands the summariser rows it actually fetched, not a wider cast', () => {
+    expect(src).toContain('summariseEventRevenue')
+    const tuple = src.slice(src.indexOf('ORDER_SUMMARY_COLUMNS'), src.indexOf('] as const'))
+    for (const col of ['total_cents', 'platform_fee_cents', 'processing_fee_cents', 'status']) {
+      expect(tuple).toContain(`'${col}'`)
+    }
   })
 
   it('does not cast the narrow row back to the full Order type', () => {

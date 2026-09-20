@@ -110,6 +110,45 @@ describe('selectChainsIn', () => {
     expect(boundednessOf(chains[1], { headSelects: heads })).toBeNull()
   })
 
+  /*
+   * A BUILDER HANDED TO A COMPOSER THAT RETURNS IT IS STILL ONE READ.
+   * `applyPublicEventVisibility(supabase.from(..).select(..)).limit(1)` reported
+   * UNBOUNDED while `.limit(1)` sat four lines below, plainly visible. A guard
+   * that fires on correct code is a guard somebody switches off.
+   */
+  it('follows a chain that continues after a wrapping call closes', () => {
+    const path = fixture(
+      'wrapped.ts',
+      [
+        'const a = await applyPublicEventVisibility(',
+        "  supabase.from('events').select('id, title'),",
+        ')',
+        "  .order('published_at', { ascending: false })",
+        '  .limit(1)',
+        '  .maybeSingle()',
+      ].join('\n'),
+    )
+    const [chain] = selectChainsIn(path)
+    expect(chain.table).toBe('events')
+    expect(chain.methods).toEqual(['select', 'order', 'limit', 'maybeSingle'])
+    expect(boundednessOf(chain)).toBe('single-row')
+  })
+
+  /*
+   * The bridge steps over closing parens ONLY when a method call follows. A
+   * read whose result is passed on to something else is still unbounded, and
+   * widening the parser must not quietly widen what counts as a bound.
+   */
+  it('does not invent a bound when the wrapped read is merely passed on', () => {
+    const path = fixture(
+      'passed-on.ts',
+      ["const rows = collect(supabase.from('orders').select('id'))", 'const n = rows.length'].join('\n'),
+    )
+    const [chain] = selectChainsIn(path)
+    expect(chain.methods).toEqual(['select'])
+    expect(boundednessOf(chain)).toBeNull()
+  })
+
   it('reports the line the read starts on', () => {
     const path = fixture(
       'lines.ts',

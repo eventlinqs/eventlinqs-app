@@ -7591,6 +7591,75 @@ const DRILLS = [
     replace: '  const { data: existing } = await lookup.maybeSingle()',
     expect: 'indistinguishable from an answer',
   },
+
+  /*
+   * organiser-money-has-one-source (lane B, 20 September 2026), five drills,
+   * one for each way the defect was true.
+   *
+   * The edit screen rendered the same RevenueSummary as the orders screen from
+   * its own unbounded, unordered, error-discarding read of one status. Each
+   * drill below puts back exactly one of those properties, because the guard
+   * carries three rules and a rule nobody has watched fail is a rule nobody has
+   * tested.
+   */
+  {
+    name: 'the revenue read on the edit screen loses its bound',
+    guard: `${GUARDS}/organiser-money-has-one-source.mjs`,
+    file: 'src/lib/organisers/event-revenue.ts',
+    find: "        .order('id', { ascending: true })\n        .range(from, to) as unknown as PromiseLike<{\n        data: (EventRevenueOrderRow & { id: string })[] | null",
+    replace: " as unknown as PromiseLike<{\n        data: (EventRevenueOrderRow & { id: string })[] | null",
+    expect: 'reads orders with no bound',
+  },
+  {
+    name: 'the refund read pages without the order that makes paging deterministic',
+    guard: `${GUARDS}/organiser-money-has-one-source.mjs`,
+    file: 'src/lib/organisers/event-revenue.ts',
+    find: "          .in('order_id', chunk)\n          .order('id', { ascending: true })\n          .range(from, to)",
+    replace: "          .in('order_id', chunk)\n          .range(from, to)",
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE SECOND COPY OF THE ARITHMETIC, which is what made the two screens
+     * disagree. Bounding the read would not have fixed it and did not.
+     */
+    name: 'the edit screen goes back to summing the takings itself',
+    guard: `${GUARDS}/organiser-money-has-one-source.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/edit/page.tsx',
+    find: '  const existingStreamUrl = await readStreamLink(supabase, id)',
+    replace:
+      '  const rows: { total_cents: number }[] = []\n' +
+      '  const grossCents = rows.reduce((s, o) => s + o.total_cents, 0)\n' +
+      '  void grossCents\n' +
+      '  const existingStreamUrl = await readStreamLink(supabase, id)',
+    expect: 'sums total_cents itself',
+  },
+  {
+    /*
+     * A SCREEN THAT DRAWS THE CARD WITHOUT REACHING THE ONE SOURCE. This is the
+     * defect in its original form: the component was already shared, and only
+     * the number behind it was not.
+     */
+    name: 'a screen renders the revenue card without reaching the module that owns the sum',
+    guard: `${GUARDS}/organiser-money-has-one-source.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/orders/page.tsx',
+    find: "import { PAID_ORDER_STATUSES, summariseEventRevenue } from '@/lib/organisers/event-revenue'",
+    replace: "const PAID_ORDER_STATUSES = ['confirmed', 'partially_refunded', 'refunded'] as const\nconst summariseEventRevenue = (..._a: unknown[]) => ({}) as never",
+    expect: 'without reaching src/lib/organisers/event-revenue.ts',
+  },
+  {
+    /*
+     * THE SCOPE ITSELF. A guard whose directory list has been renamed away
+     * scans nothing and reports PASS, which is the failure mode the list is
+     * checked for existence to prevent.
+     */
+    name: 'the guard scope names a directory that is not there',
+    guard: `${GUARDS}/organiser-money-has-one-source.mjs`,
+    file: 'scripts/guards/organiser-money-has-one-source.mjs',
+    find: "  'src/lib/organisers',",
+    replace: "  'src/lib/organisers-renamed-away',",
+    expect: 'a scope that scans nothing reports PASS',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

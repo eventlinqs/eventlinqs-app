@@ -366,6 +366,15 @@
  *                              declines out of 102. Every read pages through readEveryRow
  *                              or states its own bound, and a paged read carries a stable
  *                              order (lane B, 19 Sep 2026)
+ *   organiser-money-has-one-source
+ *                             every screen that shows an organiser their takings reaches the
+ *                              one module that computes them, no read on those screens can
+ *                              be truncated in silence, and the arithmetic is not written
+ *                              out a second time. The edit screen summed
+ *                              `.eq('status','confirmed')` over an unbounded read whose
+ *                              error it discarded, so one event read AUD 26.87 on the
+ *                              orders screen and AUD 0.00 on the edit screen
+ *                              (lane B, 20 Sep 2026)
  *   weak-network-contract     the checkout survives a submit that never reached the server,
  *                              the root service worker keeps only content-hashed assets so
  *                              no cache can serve a stale price, it registers after the
@@ -1446,6 +1455,18 @@ const GUARDS = [
   // when 102 people had declined. Every read in the marketing path now pages or
   // states its bound, and this fails the build when a new one does neither.
   'scripts/guards/no-silent-row-ceiling.mjs',
+  // The organiser's own takings, on the screens that show them. RevenueSummary
+  // is rendered for one event on both /dashboard/events/[id]/orders and
+  // /dashboard/events/[id]/edit, and the edit screen computed its own numbers
+  // from `.eq('status','confirmed')` over an unbounded, unordered read whose
+  // error it discarded. Measured on TEST: an event holding one
+  // partially_refunded order of 2,687 cents read AUD 26.87 on one screen and
+  // AUD 0.00 on the other. This fails the build when a read on those screens
+  // states no bound or pages without an order, when an event's revenue
+  // arithmetic is written out a second time anywhere in that scope, or when a
+  // screen renders the revenue card without reaching the one module that owns
+  // the sum.
+  'scripts/guards/organiser-money-has-one-source.mjs',
   // The one-click unsubscribe pair. Google requires senders of more than 5,000
   // messages a day to Gmail to support RFC 8058 one-click, from 1 February 2024
   // (https://support.google.com/a/answer/81126, fetched 2026-09-19). The
