@@ -7,6 +7,7 @@ import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 // included, into the first load of every auth route. An auth page renders one
 // photograph and no cards.
 import { HeroMedia } from '@/components/media/HeroMedia'
+import { HeroCaption } from '@/components/media/hero-caption'
 import { BRAND_STRAPLINE } from '@/lib/brand/positioning'
 
 type Props = {
@@ -29,16 +30,32 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
           competitor's mobile auth. */}
       <aside className="relative hidden overflow-hidden bg-navy-950 lg:flex lg:w-[44%] xl:w-1/2">
         <HeroMedia image={AUTH_BRAND_IMAGE} alt="" priority />
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(135deg, rgba(10,14,26,0.88) 0%, rgba(10,14,26,0.55) 50%, rgba(10,14,26,0.82) 100%)',
-          }}
-        />
-        <div className="relative z-10 flex w-full flex-col justify-between p-10 text-white xl:p-14">
-          <EventlinqsLogo asLink size="md" />
+        {/*
+         * THE TEXT RIDES THE SHARED WASH, like every other surface that paints
+         * text on a photograph. This panel used to carry its own
+         * `linear-gradient(135deg, rgba(10,14,26,0.88) 0%, 0.55 50%, 0.82 100%)`,
+         * which was wrong twice over: 10,14,26 is not the brand navy (10,22,40)
+         * and the design system bans off-brand navies, and a percentage band
+         * decides its darkness by where it is in the PANEL rather than by where
+         * the text is. Measured on 20 September 2026 the middle stop put the
+         * strapline at 4.32:1 and the footer line at 4.27:1 against WCAG 2.2
+         * SC 1.4.3's 4.5:1 floor
+         * (https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
+         * on every sign-in, sign-up, password-reset and verification page.
+         * <HeroCaption> holds at least HERO_CAPTION_MIN_ALPHA navy from its
+         * first line downward whatever the photograph, so the guarantee stops
+         * depending on where the copy happens to land.
+         */}
+        <HeroCaption className="z-10 flex w-full" contentClassName="flex w-full flex-col justify-between p-10 text-white xl:p-14">
+          {/*
+           * INVERTED, because this wordmark sits on a photograph. The default
+           * variant paints `text-ink-900`, and on 20 September 2026 that was
+           * measured at 1.00:1 on this panel with 100 per cent of its 586 core
+           * pixels below the floor: navy on navy, invisible, on every auth page
+           * on the platform. The inverted variant already existed for exactly
+           * this and no call site here had ever used it.
+           */}
+          <EventlinqsLogo asLink size="md" variant="inverted" />
           <div className="hero-enter max-w-md">
             <h2 className="font-display text-3xl font-bold leading-tight xl:text-4xl">
               Every community. Every event. One platform.
@@ -50,7 +67,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
           <p className="text-xs text-white/55">
             Discover events, sell tickets, and bring your community together.
           </p>
-        </div>
+        </HeroCaption>
       </aside>
 
       {/* Auth column */}

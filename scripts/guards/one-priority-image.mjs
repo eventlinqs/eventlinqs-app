@@ -58,6 +58,7 @@ export const ALLOWED_GRANTS = [
   { file: 'src/components/templates/PhotographicCityHero.tsx', match: 'priority />', why: 'the photographic city hero template: the hero is the LCP' },
   { file: 'src/components/templates/PhotographicCategoryHero.tsx', match: 'priority />', why: 'the category landing hero: the hero is the LCP' },
   { file: 'src/components/templates/PhotographicCommunityHero.tsx', match: 'priority />', why: 'the community landing hero: the hero is the LCP' },
+  { file: 'src/components/marketplace/marketplace-hero.tsx', match: '<HeroMedia image={photo} alt="" priority />', why: '/artists and /gigs: this band is the whole above-fold image and is the LCP of both. It arrived here on 20 September 2026 when the cover stopped being a CSS background-image, which docs/MEDIA-ARCHITECTURE.md forbids for content: painted that way it was outside next/image entirely, so it negotiated no AVIF, carried no sizes hint and could never have been preloaded at all. Both routes are behind the artist_showcase and gig_board flags today, so this grant costs nothing until they open.' },
   { file: 'src/components/templates/OrganisersLandingPage.tsx', match: 'priority />', why: '/organisers: the marketing hero is the LCP' },
   { file: 'src/app/forecast/page.tsx', match: 'priority', why: '/forecast (close-out FT1): the full-room hero is the one above-fold raster and owns the LCP' },
   { file: 'src/components/features/venues/venue-profile-hero.tsx', match: 'priority />', why: 'venue profile: the hero is the LCP' },
