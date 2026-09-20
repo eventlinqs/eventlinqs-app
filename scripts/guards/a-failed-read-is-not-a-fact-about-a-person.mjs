@@ -1,5 +1,13 @@
 /**
- * ON THE SEND PATH, A READ THAT FAILED IS NOT A FACT ABOUT A PERSON.
+ * A READ THAT FAILED IS NOT A FACT ABOUT A PERSON, OR ABOUT THEIR BUSINESS.
+ *
+ * IT STARTED ON THE SEND PATH AND THE SCOPE HAS OUTGROWN THAT NAME, which is
+ * said here rather than left for a reader to notice. The file name is kept
+ * because it is registered, drilled and cited in commits by that name, and
+ * renaming it would cost more than the sentence above. What the SCOPE list
+ * below actually means is: every directory where a discarded read error
+ * becomes a PUBLISHED STATEMENT about somebody, whether that is a skip row
+ * about a person or an empty catalogue on an organiser's own profile.
  *
  * ---------------------------------------------------------------------------
  * WHY A THIRD GUARD FOR ONE SHAPE, ANSWERED BEFORE IT IS ASKED.
@@ -99,8 +107,9 @@ const ROOT = join(HERE, '..', '..')
 export const TAG = '[a-failed-read-is-not-a-fact-about-a-person]'
 
 /**
- * THE SEND PATH, DIRECTORY BY DIRECTORY, WITH WHAT A FAILED READ BECOMES IN
- * EACH. Every one is checked to exist: a directory renamed away would otherwise
+ * THE SCOPE, DIRECTORY BY DIRECTORY, WITH WHAT A FAILED READ BECOMES IN EACH.
+ * The second column is the whole point of the list: a directory earns its place
+ * here by what its failures SAY, not by what it imports. Every one is checked to exist: a directory renamed away would otherwise
  * be scanned for nothing and reported as a pass, which is how a scanner lies.
  */
 export const SCOPE = [
@@ -115,6 +124,37 @@ export const SCOPE = [
       '"No performers match those filters yet" to the promoter the supply side exists for, ' +
       'a performer\'s public profile loses its showcase, and the measured draw the ' +
       'directory RANKS by comes back as zero',
+  ],
+  /*
+   * THE TWO PUBLIC PROFILES, ADDED 21 September 2026, and they are here because
+   * of what the page SAYS rather than because of where the code lives.
+   *
+   * `src/app/organisers/[handle]/page.tsx` is the page an organiser sends their
+   * own audience to. Both of its event reads coalesced a failure to `[]`, and
+   * the page then renders, under the organiser's own name:
+   *
+   *     "No upcoming events from <name> just yet."
+   *
+   * A statement about somebody's business, published to the people they invited,
+   * produced by a dropped socket, at HTTP 200 so nothing notices. The venue
+   * profile carries the identical pair plus the rail of venues near it.
+   *
+   * THIS FILE IS WHERE THE DOOR ITSELF WAS BORN. `src/lib/supabase/read-or-throw.ts`
+   * names "the organiser profile (twice)" as the first two occurrences of this
+   * family, fixed on 12 September 2026, and its whole purpose was that "the
+   * fifth occurrence has nowhere to happen". Both of those were the DESTRUCTURE
+   * spelling. These two were the whole-response spelling, in the same file,
+   * nine lines apart, and survived because no matcher could see them.
+   */
+  [
+    'src/app/organisers',
+    'a real organiser publishing "No upcoming events from them just yet" on their own ' +
+      'profile, to the audience they sent here, because one socket dropped',
+  ],
+  [
+    'src/app/venues',
+    'a working venue showing nothing on, and the rail of venues near it emptied, ' +
+      'so a promoter reads the city as having one venue in it',
   ],
 ]
 
@@ -417,7 +457,7 @@ function main() {
 
   declareWork('a-failed-read-is-not-a-fact-about-a-person', {
     did: {
-      'send-path file read': filesScanned,
+      'scoped file read': filesScanned,
       'bound response judged': destructures,
       'read routed through a door': routed,
       'registered exception': REGISTER.length,

@@ -3405,8 +3405,34 @@ const ROOT = join(HERE, '..', '..')
  * (`npm run gate:push -- --only suite`, GREEN, 137s, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 543
-const MIN_TESTS = 7280
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, LB-EMPTYPROFILE): raised 543/7280 -> 544/7294.
+ * ---------------------------------------------------------------------------
+ *
+ * ONE NEW FILE AND FOURTEEN CASES, and nothing else moved:
+ *   tests/unit/growth/a-profile-is-not-emptied-by-a-blink.test.ts  14  (new)
+ *   543 + 1 = 544 files
+ *   7280 + 14 = 7294 tests
+ *
+ * THE SUM AGREES WITH THE MEASUREMENT, which it should on a commit that is not
+ * a merge.
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED. Three of the fourteen were driven
+ * RED by restoring the pre-fix shape on both public profiles, and the FIRST
+ * attempt at that red proof is worth the two lines it takes: it wrote
+ * `(upcoming as never as { data: unknown }).data` to keep TypeScript quiet, the
+ * matcher anchors its property test on the NAME, and `.data` after a closing
+ * parenthesis is not `upcoming.data`. Only one test went red and it was the
+ * wrong one. A red proof that does not restore the defect is a false confidence
+ * about the test rather than a fact about the code.
+ *
+ * MEASURED: 544 files, 7294 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 111s, on the tree of this commit).
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 544
+const MIN_TESTS = 7294
 
 
 /**

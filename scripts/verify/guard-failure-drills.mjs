@@ -6395,6 +6395,52 @@ const DRILLS = [
   },
 
   /*
+   * a-failed-read-is-not-a-fact-about-a-person, THE TWO PUBLIC PROFILES
+   * (lane B, 21 September 2026), three drills.
+   *
+   * These two directories joined the scope because of what their pages SAY when
+   * a read fails. The organiser profile renders "No upcoming events from <name>
+   * just yet" under the organiser's own name, to the audience they sent there,
+   * at HTTP 200, because a socket dropped. src/lib/supabase/read-or-throw.ts
+   * names this same file as the first two occurrences of the family and exists
+   * so that "the fifth occurrence has nowhere to happen"; those two were the
+   * destructure spelling and these were the whole-response spelling, nine lines
+   * apart in the same function.
+   *
+   * THE FIRST TWO SPAN THE DOOR AND ITS CONSUMER IN ONE HUNK, because restoring
+   * only the door leaves a name the matcher does not judge: the rule is about a
+   * whole response whose PAYLOAD is read, so both halves have to come back for
+   * the defect to be the defect.
+   *
+   * THE THIRD AIMS AT THE SCOPE rather than at the product, because a directory
+   * renamed away is scanned for nothing and reported as a pass.
+   */
+  {
+    name: 'the organiser profile goes back to publishing an empty catalogue when a socket drops',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/app/organisers/[handle]/page.tsx',
+    find: '    readOrThrow(\'the organiser upcoming events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'organisation_id\', orgId)\n        .match(PUBLIC_EVENT_MATCH)\n        .or(listingWindowOrPredicate(new Date(nowIso)))\n        .order(\'start_date\', { ascending: true })\n        .limit(24),\n    ),\n    readOrThrow(\'the organiser past events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'organisation_id\', orgId)\n        .eq(\'visibility\', \'public\')\n        .lt(\'start_date\', nowIso)\n        .in(\'status\', [\'published\', \'completed\'])\n        .order(\'start_date\', { ascending: false })\n        .limit(12),\n    ),\n  ])\n\n  return {\n    upcoming: ((upcoming ?? []) as unknown as OrganiserEventRow[]),',
+    replace: '    (() =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'organisation_id\', orgId)\n        .match(PUBLIC_EVENT_MATCH)\n        .or(listingWindowOrPredicate(new Date(nowIso)))\n        .order(\'start_date\', { ascending: true })\n        .limit(24))(),\n    readOrThrow(\'the organiser past events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'organisation_id\', orgId)\n        .eq(\'visibility\', \'public\')\n        .lt(\'start_date\', nowIso)\n        .in(\'status\', [\'published\', \'completed\'])\n        .order(\'start_date\', { ascending: false })\n        .limit(12),\n    ),\n  ])\n\n  return {\n    upcoming: ((upcoming.data ?? []) as unknown as OrganiserEventRow[]),',
+    expect: 'src/app/organisers/[handle]/page.tsx',
+  },
+  {
+    name: 'the venue profile goes back to showing a working venue as having nothing on',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/app/venues/[handle]/page.tsx',
+    find: '    readOrThrow(\'the venue upcoming events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .match(PUBLIC_EVENT_MATCH)\n        .ilike(\'venue_name\', venueName)\n        .or(listingWindowOrPredicate(new Date(nowIso)))\n        .order(\'start_date\', { ascending: true })\n        .limit(24),\n    ),\n    readOrThrow(\'the venue past events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'visibility\', \'public\')\n        .ilike(\'venue_name\', venueName)\n        .lt(\'start_date\', nowIso)\n        .in(\'status\', [\'published\', \'completed\'])\n        .order(\'start_date\', { ascending: false })\n        .limit(12),\n    ),\n  ])\n  return {\n    upcoming: ((upcoming ?? []) as unknown as VenueEventRow[]),',
+    replace: '    (() =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .match(PUBLIC_EVENT_MATCH)\n        .ilike(\'venue_name\', venueName)\n        .or(listingWindowOrPredicate(new Date(nowIso)))\n        .order(\'start_date\', { ascending: true })\n        .limit(24))(),\n    readOrThrow(\'the venue past events\', () =>\n      supabase\n        .from(\'events\')\n        .select(baseSelect)\n        .eq(\'visibility\', \'public\')\n        .ilike(\'venue_name\', venueName)\n        .lt(\'start_date\', nowIso)\n        .in(\'status\', [\'published\', \'completed\'])\n        .order(\'start_date\', { ascending: false })\n        .limit(12),\n    ),\n  ])\n  return {\n    upcoming: ((upcoming.data ?? []) as unknown as VenueEventRow[]),',
+    expect: 'src/app/venues/[handle]/page.tsx',
+  },
+  {
+    name: 'the guard scans neither public profile while still reporting a pass',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
+    find: "    'src/app/organisers',",
+    replace: "    'src/app/organisers-gone',",
+    expect: 'A scope that scans nothing reports a pass',
+  },
+
+  /*
    * a-failed-read-is-not-a-fact-about-a-person, THE MARKETPLACE SCOPE
    * (lane B, 21 September 2026), three more drills.
    *

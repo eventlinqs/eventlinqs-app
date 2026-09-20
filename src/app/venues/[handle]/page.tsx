@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { AccessibilitySection } from '@/components/features/accessibility/accessibility-section'
@@ -91,41 +92,59 @@ async function fetchVenueEventsByName(venueName: string) {
   const baseSelect =
     'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, category:event_categories(name, slug), organisation:organisations(name, slug, logo_url), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
   const nowIso = new Date().toISOString()
+  /*
+   * A FAILED READ IS NOT A VENUE WITH NOTHING ON, for the reason written out on
+   * the organiser profile, which carries the identical pair. Both coalesced to
+   * `[]`, and this page then tells everybody who follows the venue that it has
+   * nothing coming up, at HTTP 200, because a socket dropped.
+   */
   const [upcoming, past] = await Promise.all([
-    supabase
-      .from('events')
-      .select(baseSelect)
-      .match(PUBLIC_EVENT_MATCH)
-      .ilike('venue_name', venueName)
-      .or(listingWindowOrPredicate(new Date(nowIso)))
-      .order('start_date', { ascending: true })
-      .limit(24),
-    supabase
-      .from('events')
-      .select(baseSelect)
-      .eq('visibility', 'public')
-      .ilike('venue_name', venueName)
-      .lt('start_date', nowIso)
-      .in('status', ['published', 'completed'])
-      .order('start_date', { ascending: false })
-      .limit(12),
+    readOrThrow('the venue upcoming events', () =>
+      supabase
+        .from('events')
+        .select(baseSelect)
+        .match(PUBLIC_EVENT_MATCH)
+        .ilike('venue_name', venueName)
+        .or(listingWindowOrPredicate(new Date(nowIso)))
+        .order('start_date', { ascending: true })
+        .limit(24),
+    ),
+    readOrThrow('the venue past events', () =>
+      supabase
+        .from('events')
+        .select(baseSelect)
+        .eq('visibility', 'public')
+        .ilike('venue_name', venueName)
+        .lt('start_date', nowIso)
+        .in('status', ['published', 'completed'])
+        .order('start_date', { ascending: false })
+        .limit(12),
+    ),
   ])
   return {
-    upcoming: ((upcoming.data ?? []) as unknown as VenueEventRow[]),
-    past: ((past.data ?? []) as unknown as VenueEventRow[]),
+    upcoming: ((upcoming ?? []) as unknown as VenueEventRow[]),
+    past: ((past ?? []) as unknown as VenueEventRow[]),
   }
 }
 
 async function fetchSimilarVenues(currentHandle: string, city: string | null, capacity: number | null) {
   if (!city) return [] as { handle: string; name: string; capacity: number | null; image: string | null }[]
   const supabase = createPublicClient()
-  const { data } = await supabase
-    .from('venues')
-    .select('id, name, city, capacity, image_url')
-    .eq('is_active', true)
-    .ilike('city', `%${city}%`)
-    .limit(20)
-  return ((data ?? []) as { name: string; city: string | null; capacity: number | null; image_url: string | null }[])
+  /*
+   * THE SAME RULE ON THE RAIL BENEATH IT. A failed read here empties the
+   * "other venues near here" rail, which reads to a promoter as a city with one
+   * venue in it. `listed` is the door's answer, so an empty rail is an empty
+   * city and never a blink.
+   */
+  const listed = await readOrThrow('venues near this one', () =>
+    supabase
+      .from('venues')
+      .select('id, name, city, capacity, image_url')
+      .eq('is_active', true)
+      .ilike('city', `%${city}%`)
+      .limit(20),
+  )
+  return ((listed ?? []) as { name: string; city: string | null; capacity: number | null; image_url: string | null }[])
     .map(v => ({
       handle: venueSlugify(v.name),
       name: v.name,
