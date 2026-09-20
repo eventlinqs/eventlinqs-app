@@ -88,6 +88,39 @@ const SCOPE = [
   'src/lib/growth',
   'src/app/admin/(authed)/audience',
   'src/app/admin/(authed)/campaigns',
+  /*
+   * ADDED 21 September 2026. The performer marketplace is the same class with a
+   * different victim. `fetchDrawTotalsForArtists` counted a performer's clicks,
+   * orders and tickets by fetching every row and counting them in JavaScript,
+   * unbounded, for every performer on the page at once, and
+   * `src/app/artists/page.tsx` SORTS on the result. A truncation there does not
+   * merely under-report a performer's draw, it re-orders the directory: the
+   * performer who sells most is ranked below one who sells less, on a page whose
+   * own subtitle promises "the exact tickets their sharing sold".
+   */
+  'src/lib/marketplace',
+]
+
+/**
+ * A READ THAT IS UNBOUNDED, KNOWN, AND NOT THIS LANE'S TO BOUND.
+ *
+ * NOT AN ARGUMENT THAT THE READ IS FINE. It is not fine. It is a file another
+ * lane owns under the three-lane protocol, so the finding is a BORDER rather
+ * than an edit, and the alternative was to leave the whole directory out of
+ * scope and guard NOTHING in it. One named, dated, printed exception buys the
+ * other three files in that directory.
+ *
+ * It is refused when it goes STALE and refused again when the read it names has
+ * been BOUNDED, so the list is forced to shrink rather than left to rot.
+ */
+const RAISED_WITH_ANOTHER_LANE = [
+  {
+    file: 'src/lib/marketplace/notify.ts',
+    table: 'push_subscriptions',
+    since: '2026-09-21',
+    lane: 'lane C, which owns the notification router',
+    why: 'an unbounded read of every push subscription for a user; past the ceiling a device stops being told',
+  },
 ]
 
 /** The one pager. A read in scope reaches it or states its own bound. */
@@ -118,6 +151,7 @@ const files = SCOPE.flatMap(dir =>
 let readsJudged = 0
 let bounded = { 'single-row': 0, 'head-only': 0, limit: 0, range: 0 }
 let rangedReads = 0
+const borderHits = new Set()
 
 for (const file of files) {
   const abs = resolve(ROOT, file)
@@ -129,6 +163,13 @@ for (const file of files) {
 
     const how = boundednessOf(chain, { headSelects: heads })
     if (!how) {
+      const border = RAISED_WITH_ANOTHER_LANE.find(
+        (b) => b.file === file && b.table === chain.table,
+      )
+      if (border) {
+        borderHits.add(`${border.file}:${border.table}`)
+        continue
+      }
       failures.push(
         `${file}:${chain.line} reads ${chain.table} with no bound. ` +
           `Supabase stops at 1,000 rows and says nothing; page it through readEveryRow ` +
@@ -174,6 +215,28 @@ if (!existsSync(pagerPath)) {
   }
   if (!/batch\.length === 0/.test(pager)) {
     failures.push(`${PAGER} no longer stops on an empty page, which is the only stop condition that is correct at any ceiling`)
+  }
+}
+
+/*
+ * THE BORDER LIST IS MADE TO SHRINK. An entry that matched nothing is either a
+ * path that has rotted or a read somebody has BOUNDED, and the second is the
+ * one that matters: without this the entry would sit in the file for ever
+ * claiming a debt that was paid, and the next unbounded read added to that same
+ * file and table would land under a live exemption and never be seen.
+ */
+console.log(
+  `no-silent-row-ceiling: raised with another lane and NOT bounded here, ${RAISED_WITH_ANOTHER_LANE.length} read(s):`,
+)
+for (const b of RAISED_WITH_ANOTHER_LANE) {
+  const seen = borderHits.has(`${b.file}:${b.table}`)
+  console.log(`  ${b.file} (${b.table}, raised ${b.since}, ${seen ? `outstanding, owned by ${b.lane}` : 'STALE'})`)
+  console.log(`    ${b.why}`)
+  if (!seen) {
+    failures.push(
+      `${b.file} is listed as raised with ${b.lane} for an unbounded read of ${b.table}, and no such read was found. ` +
+        `Either it is bounded now or the path is wrong: delete the entry so the file is judged here like any other.`,
+    )
   }
 }
 

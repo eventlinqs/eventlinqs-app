@@ -204,7 +204,12 @@ export default async function ArtistProfilePage({ params }: Props) {
             {showcase && (showcase.available_for_booking || showcase.mentor_open) && (
               <div className="flex flex-wrap items-center justify-center gap-2">
                 {showcase.available_for_booking && (
-                  <span className="inline-flex items-center rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success">
+                  /* text-success-strong, not text-success: #0F9D58 on the
+                     bg-success/15 wash over canvas (#d7ecdf) measures 2.83:1,
+                     under the 4.5:1 AA floor, found by axe at 1440 and 768.
+                     #0B7038 on the same wash measures 5.00:1. The token already
+                     exists for this exact case; no colour is introduced here. */
+                  <span className="inline-flex items-center rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success-strong">
                     Open to bookings
                   </span>
                 )}
