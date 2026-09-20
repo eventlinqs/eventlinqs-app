@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { GalleryImage } from '@/components/media/GalleryImage'
 import type { VideoProvider } from '@/lib/media/limits'
+import { isAuditRun } from '@/lib/ui/audit-mode'
 
 // Event video, rendered BELOW the hero. A click-to-play FACADE: a raster poster
 // (the event cover) plus a play button. The provider iframe is only inserted
@@ -33,7 +34,7 @@ export function EventVideo({ embedUrl, provider, poster, posterBlur, title }: Pr
   const [playing, setPlaying] = useState(false)
 
   // Autoplay only on a real user gesture, never in a headless audit run.
-  const headless = typeof document !== 'undefined' && document.body.dataset.headless === '1'
+  const headless = isAuditRun()
   const src = headless ? embedUrl : `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`
 
   return (

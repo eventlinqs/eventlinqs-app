@@ -10,6 +10,7 @@ import {
 } from '@/lib/maps/google-maps-loader'
 import { createVenuePin } from '@/lib/maps/brand-pin'
 import { formatVenueAddress } from '@/lib/venues/format-venue-address'
+import { isAuditRun } from '@/lib/ui/audit-mode'
 
 interface Props {
   venueName: string | null
@@ -74,7 +75,7 @@ export function VenueMap({
   useEffect(() => {
     if (!hasLocation) return
     // Skip entirely in headless audit mode - matches smart-media's pattern.
-    if (typeof document !== 'undefined' && document.body.dataset.headless === '1') {
+    if (isAuditRun()) {
       return
     }
     const el = containerRef.current

@@ -37,7 +37,7 @@ import { HeroMedia } from '@/components/media/HeroMedia'
 import { HeroCaption } from '@/components/media/hero-caption'
 import { HERO_HEADER_SCRIM } from '@/components/media/hero-photo-scrim'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
-import { getFeaturedHeroBackground } from '@/lib/images/event-media'
+import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { Reveal } from '@/components/ui/reveal'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
@@ -277,6 +277,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!event) {
     return { title: 'Event not found | EventLinqs' }
   }
+
+  /*
+   * THE HERO'S PRELOAD IS NOT REGISTERED HERE, AND THAT WAS MEASURED RATHER
+   * THAN ASSUMED. It is registered in this route's layout.tsx, which renders
+   * ABOVE the loading boundary and therefore while the head is still open.
+   *
+   * Registering it in this function was the first attempt and it does nothing:
+   * Next resolves metadata through its own boundary, so the link still came out
+   * at byte 85,038 of a 205,151 byte document and the `Link:` response header
+   * still carried only the two fonts and two stylesheets. The full account and
+   * the per-route byte offsets are in src/lib/images/hero-preload.ts.
+   */
 
   // SEO format per Batch 8.1 brief: "[Event Name] - [Date] - [Venue] - EventLinqs".
   // Description: city + community/category + date packed into 155 chars for click-through.
@@ -636,14 +648,9 @@ export default async function EventDetailPage({ params }: Props) {
   ] = await Promise.all([
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventoryStatic(event.id),
-    getFeaturedHeroBackground({
-      title: event.title,
-      cover_image_url: event.cover_image_url,
-      thumbnail_url: event.thumbnail_url,
-      // gallery_urls is jsonb in the live schema; narrow Json -> string[].
-      gallery_urls: jsonAsStringArray(event.gallery_urls),
-      category: event.category ? { slug: event.category.slug ?? null, name: event.category.name } : null,
-    }),
+    // The SAME resolver generateMetadata used to register the preload, so the
+    // raster this renders is the raster the head asked for.
+    getFeaturedHeroBackground(eventHeroMediaInput(event)),
     seatsPromise,
     // ACCC all-in: resolve this event's live fee VALUES (event > org > region
     // precedence, same rows the charge resolves) so the ticket selector can show

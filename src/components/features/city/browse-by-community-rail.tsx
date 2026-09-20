@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { getAllCommunities } from '@/lib/communities/data'
 import { WIDE_TILE_CELL } from '@/lib/ui/rhythm'
@@ -59,22 +60,14 @@ export function BrowseByCommunityRail({ citySlug, cityName, images }: Props) {
                     aria-hidden
                   />
                 )}
-                <div
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                  style={{
-                    background:
-                      'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.30) 50%, rgba(0,0,0,0) 100%)',
-                  }}
-                  aria-hidden
-                />
-                <div className="absolute inset-x-0 bottom-0 p-4">
+                <TileCaption className="p-4">
                   <p className="font-display text-base font-semibold text-white drop-shadow-sm sm:text-lg">
                     {community.displayName}
                   </p>
                   <p className="mt-0.5 text-xs font-medium uppercase tracking-[0.14em] text-white/85">
                     in {cityName}
                   </p>
-                </div>
+                </TileCaption>
               </div>
             </Link>
           )

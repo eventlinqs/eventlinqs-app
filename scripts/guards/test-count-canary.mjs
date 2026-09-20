@@ -2838,22 +2838,76 @@ const ROOT = join(HERE, '..', '..')
  *   492 + 1 = 493 files
  *   6461 (measured, present before this item) + 9 = 6470 tests
  *
- * 2026-09-20 (lane A, the three lane merge reaching the suite step): raised
- * 493/6470 -> 513/6833. The push lane's worktree carries lane B's and lane C's
- * merged commits, and 493/6470 was measured in a lane worktree that held only
- * its own. Twenty files and 363 cases is what the other two lanes added, not
- * what this commit added: this commit adds no test file, it repairs three that
- * could not survive a checkout (see tests/helpers/read-repo-file.ts).
+ * 2026-09-20 (the tile caption item): raised 493/6470 -> 494/6484.
+ * ONE new file, tests/unit/a11y/tile-label-over-a-photograph.test.ts, holding
+ * the three things that make the shared tile wash a guarantee rather than a
+ * hope: that its strength still clears 4.5:1 for the FAINTEST foreground any
+ * caption actually paints (resolved from the call sites, not assumed), that its
+ * geometry is declared in absolute lengths so it cannot depend on how tall a
+ * label happens to be, and that the painter derivation still finds tiles at all.
+ * The last of those is the one that matters most: it is what stops a green
+ * result that is merely a smaller result.
  *
- * MEASURED on the merged tree: 513 files, 6833 tests, 0 failed, 0 skipped
- * (`npm run gate:push -- --only suite`, C:\dev\_a-r22-suite2.txt).
+ * 2026-09-20 (the hero preload item): raised 494/6484 -> 496/6493.
+ * TWO new files, both proving a thing a static guard cannot see.
+ *   tests/component/hero-preload-matches-the-raster.test.tsx (5) renders
+ *   HeroMedia and requires the preload to register the srcset and sizes the
+ *   <img> it produced actually asks for. A preload whose arguments differ by one
+ *   character does not save a request, it ADDS one, on the LCP path, on the
+ *   slowest route on the platform, and that failure is invisible in a screenshot.
+ *   tests/component/audit-mode-reads-the-written-element.test.tsx (4) asserts the
+ *   measurement predicate's ANSWER with the flag on each element in turn. The
+ *   negative case is the point: six components had been reading it off body,
+ *   which never carries it, so a test that only set documentElement would have
+ *   passed against the broken form too.
  *
- * CHECKABLE:
- *   493 + 20 (the files lane B and lane C added) = 513 files
- *   6470 + 363 (the cases they added) = 6833 tests
+ * Both of those numbers were measured in lane C's worktree, which holds only
+ * lane C's work, and BOTH ARE THEREFORE WRONG FOR THE TREE THE GATE JUDGES.
+ * That is not a mistake either lane made; it is structural, and it is the same
+ * thing lane A wrote down about perf-budget.json on this date: no lane worktree
+ * contains the other two lanes' commits, so a count taken in one describes a
+ * tree that will never be pushed. The note below replaces both.
+ *
+ * 2026-09-20 (lane C, the ninth merge of this file, measured on the tree that
+ * holds all three lanes): raised 496/6493 and lane A's 513/6833 -> 524/6975.
+ *
+ * LANE A'S 513/6833 WAS RIGHT ABOUT ITS TREE AND WRONG FOR THIS ONE, and the
+ * reason is worth recording because it is why this conflict keeps coming back.
+ * Lane A measured 513/6833 on a merged tree, correctly. Every merge of lane C
+ * after 16:17 then aborted on this very file, so the two commits lane C landed
+ * at 19:06 and 19:12 were never in the tree lane A measured. A floor is a claim
+ * about a tree, and the tree kept moving underneath it while the conflict that
+ * would have carried the movement was the thing blocking it.
+ *
+ * AND THE ARITHMETIC WAS WRONG TOO, WHICH IS THE PART WORTH KEEPING. Closing
+ * 513/6833 against the three files lane C had added gave 516/6856, and that was
+ * written into this file as the new floor before the suite ran. The suite then
+ * measured 524 files and 6975 tests: eight files and a hundred and nineteen
+ * cases MORE than the sum of the two sides. Neither side was lying and the
+ * subtraction was not slipshod; a merge of two branches is simply not the sum of
+ * what each branch counted, and this file has now been raised three times from a
+ * number somebody derived instead of ran. THE RULE IS THE ONE THE FILE ALREADY
+ * STATES, and it is not satisfied by careful arithmetic: run the suite on the
+ * tree the floor is about, and take the number it prints.
+ *
+ * COUNTED BY EXECUTION, then confirmed a second way by enumeration without
+ * execution: `npx vitest list --run` prints 6986 lines, of which 6975 are test
+ * entries and the other ELEVEN are Vite warnings on stderr (one config warning
+ * repeated three times, one ssr warning over two lines). The entry count and the
+ * executed count agree exactly at 6975, and the three files this lane added are
+ * present in it: `grep -c tile-label-over-a-photograph` is 14,
+ * `grep -c hero-preload-matches-the-raster` is 5 and
+ * `grep -c audit-mode-reads-the-written-element` is 4.
+ *
+ * MEASURED on the merged tree: 524 files, 6975 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, 349s, GREEN).
+ *
+ * CHECKABLE, and it does NOT close by addition, on purpose:
+ *   this floor is the measurement, not 513 + 3 = 516, which is what it would
+ *   have been had it been derived. The gap is 8 files and 119 tests.
  */
-const MIN_FILES = 513
-const MIN_TESTS = 6833
+const MIN_FILES = 524
+const MIN_TESTS = 6975
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

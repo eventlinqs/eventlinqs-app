@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { Check, MapPin } from 'lucide-react'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import {
   MARKETING_OPT_IN_LABEL,
   joinConsentText,
@@ -85,40 +86,44 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
                 }`}
               >
                 <div
-                  className={`relative aspect-[16/11] w-full overflow-hidden rounded-2xl bg-ink-200 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lg ${
+                  className={`relative overflow-hidden rounded-2xl bg-[var(--surface-0)] transition-all group-hover:-translate-y-0.5 group-hover:shadow-lg motion-reduce:transition-none ${
                     isSelected
                       ? 'ring-2 ring-[var(--brand-accent)] ring-offset-2 ring-offset-[var(--surface-1)]'
                       : 'ring-1 ring-black/5'
                   }`}
                 >
-                  {city.image ? (
-                    <CityTileImage src={city.image} alt={`${city.name}, ${city.state}`} layout="grid-two-three-four" />
-                  ) : (
-                    <div
-                      aria-hidden
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          'linear-gradient(135deg, rgb(10,22,40) 0%, rgb(20,32,56) 50%, rgb(10,22,40) 100%)',
-                      }}
-                    />
-                  )}
-                  {/* Place-name gradient band: the single allowed on-photo overlay. */}
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0"
-                    style={{
-                      background:
-                        'linear-gradient(180deg, rgba(10,22,40,0.0) 40%, rgba(10,22,40,0.55) 72%, rgba(10,22,40,0.92) 100%)',
-                    }}
-                  />
-                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-3 sm:p-4">
-                    <div>
+                  <div className="relative aspect-[16/11] w-full overflow-hidden bg-ink-200">
+                    {city.image ? (
+                      <CityTileImage src={city.image} alt={`${city.name}, ${city.state}`} layout="grid-two-three-four" />
+                    ) : (
+                      <div
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'linear-gradient(135deg, rgb(10,22,40) 0%, rgb(20,32,56) 50%, rgb(10,22,40) 100%)',
+                        }}
+                      />
+                    )}
+                    {/* The place name is the single allowed on-photo overlay and
+                     *  it is now the ONLY thing on the photograph. The state line
+                     *  under it read 3.25:1 to 4.39:1 at 390 on nine of these
+                     *  cities on 20 September 2026, against a 4.5:1 floor - 18px
+                     *  extrabold is under the 18.66px large-text threshold, so
+                     *  both lines were normal text - while the same gradient
+                     *  passed at 768. That is what a percentage of the TILE does.
+                     *  See src/components/media/tile-photo-scrim.ts. */}
+                    <TileCaption className="px-3 pb-2 pt-1.5 sm:px-4 sm:pb-3 sm:pt-2">
                       <p className="font-display text-lg font-extrabold leading-tight text-white">
                         {city.name}
                       </p>
-                      <p className="text-[11px] font-medium text-white/80">{city.state}</p>
-                    </div>
+                    </TileCaption>
+                  </div>
+                  {/* A fixed row height, because the tick only exists when the tile is
+                   *  chosen and a row that grows by 10px on click is a layout shift
+                   *  under the reader's finger. */}
+                  <div className="flex min-h-10 items-center justify-between gap-2 px-3 py-2 sm:px-4">
+                    <p className="text-[11px] font-medium text-ink-600">{city.state}</p>
                     {isSelected && (
                       <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gold-500 text-ink-900">
                         <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />

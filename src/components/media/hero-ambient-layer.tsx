@@ -4,7 +4,8 @@ import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
-import { MEDIA_TRANSITIONS, MEDIA_AUDIT_FLAG } from './transitions'
+import { MEDIA_TRANSITIONS } from './transitions'
+import { isAuditRun } from '@/lib/ui/audit-mode'
 
 /**
  * HeroAmbientLayer - the optional ken-burns / video overlay for HeroMedia.
@@ -14,9 +15,17 @@ import { MEDIA_TRANSITIONS, MEDIA_AUDIT_FLAG } from './transitions'
  * video paint enters the frame. This is what protects HeroMedia from the
  * NO_LCP / disqualification class of bugs.
  *
- * In audit mode (document.body.dataset.headless === '1'), the ambient layer
- * is suppressed - autoplay video and 4.5s transforms inflate Speed Index
- * without changing what the user perceives during a measurement run.
+ * In audit mode the ambient layer is suppressed: autoplay video and 4.5s
+ * transforms inflate Speed Index without changing what the user perceives
+ * during a measurement run, and the ken-burns copy of the hero is a SECOND
+ * decode of the LCP photograph.
+ *
+ * THAT SUPPRESSION WAS DEAD UNTIL 20 September 2026. It read
+ * `document.body.dataset.headless` and the flag is set on `documentElement`
+ * (src/app/layout.tsx says so in its own comment), so this layer mounted inside
+ * every Lighthouse run. It was found by counting optimiser requests in a real
+ * browser with the audit cookie set: two per event page, not one. The predicate
+ * now lives in one place, src/lib/ui/audit-mode.ts.
  */
 
 interface Props {
@@ -36,12 +45,7 @@ export function HeroAmbientLayer({
   const startedRef = useRef(false)
 
   useEffect(() => {
-    if (
-      typeof document !== 'undefined' &&
-      document.body.dataset[MEDIA_AUDIT_FLAG] === '1'
-    ) {
-      return
-    }
+    if (isAuditRun()) return
     let raf1 = 0
     let raf2 = 0
     raf1 = requestAnimationFrame(() => {

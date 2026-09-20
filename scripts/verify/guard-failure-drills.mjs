@@ -695,11 +695,22 @@ const DRILLS = [
     expect: 'cancelled is not in PUBLIC_AFTER_THE_FACT_STATUSES',
   },
   {
+    /*
+     * RE-ANCHORED 20 September 2026. The layout used to call
+     * `afterTheFactEventExists(slug)` and now calls `fetchAfterTheFactEvent`,
+     * the row-returning reader on the same module, because it needs the hero's
+     * columns to preload the LCP image from above the loading boundary and that
+     * is the SAME round trip rather than a second one. The guard's clause was
+     * re-derived at the same time: it now accepts any function the door
+     * EXPORTS, so it judges whether the door is consulted rather than which of
+     * its two names was typed. This drill therefore removes the CALL, which is
+     * still the only thing that makes the clause true.
+     */
     name: 'the route existence guard stops consulting the after-the-fact door',
     guard: `${GUARDS}/event-lifecycle-total.mjs`,
     file: 'src/app/events/[slug]/layout.tsx',
-    find: '  if (await afterTheFactEventExists(slug)) return children',
-    replace: '  // lane-C drill: the door removed',
+    find: '  const afterTheFact = await fetchAfterTheFactEvent<EventHeroFields>(slug, EVENT_HERO_SELECT)',
+    replace: '  const afterTheFact = null // lane-C drill: the door removed',
     expect: 'no longer consults the after-the-fact door',
   },
   {
@@ -3006,8 +3017,15 @@ const DRILLS = [
     name: 'the recovery engine queries a table belonging to the source system',
     guard: `${GUARDS}/fillrate-reads-only-the-ledger.mjs`,
     file: 'src/lib/fillrate/read.ts',
-    find: "    .from('recovery_suppressions')\n    .select('contact_email')",
-    replace: "    .from('profiles')\n    .select('contact_email')",
+    /*
+     * RE-ANCHORED 20 September 2026: the read was wrapped in readEveryRow so it
+     * PAGES instead of stopping at the thousandth suppression, which indented the
+     * chain by two. The anchor carries that indentation deliberately, because the
+     * bare .from('recovery_suppressions') also appears on an upsert in this file
+     * and an anchor that matched both would rewrite whichever came first.
+     */
+    find: "      .from('recovery_suppressions')\n      .select('contact_email')",
+    replace: "      .from('profiles')\n      .select('contact_email')",
     expect: 'which is not the ledger',
   },
   {
@@ -3148,8 +3166,14 @@ const DRILLS = [
     name: 'a function argument is renamed in the types and no longer matches its migration',
     guard: `${GUARDS}/generated-types-are-generated.mjs`,
     file: 'src/types/database.ts',
-    find: '          p_value_integer: number\n',
-    replace: '          p_value_integers: number\n',
+    /*
+     * RE-ANCHORED 20 September 2026 on the merged tree. 20260920000011 gave the
+     * writer's five optional arguments real DEFAULTs, so the generator now emits
+     * this one as `p_value_integer?`. That is the fix working, and the drill
+     * follows the generator rather than pinning the shape it was written against.
+     */
+    find: '          p_value_integer?: number\n',
+    replace: '          p_value_integers?: number\n',
     expect: 'write_pricing_rule takes [',
   },
   {
@@ -3171,12 +3195,24 @@ const DRILLS = [
     name: 'the events layout discards the error of the read that decides existence (the incident)',
     guard: `${GUARDS}/read-failure-is-not-not-found.mjs`,
     file: 'src/app/events/[slug]/layout.tsx',
+    /*
+     * RE-ANCHORED 20 September 2026, by the lane whose change moved it. The
+     * existence read used to select 'id' and return `children`; it now selects
+     * EVENT_HERO_SELECT and returns `withHeroPreload(...)`, because the hero's
+     * columns have to be in hand ABOVE the loading boundary to preload the LCP
+     * image on the SAME round trip rather than a second one.
+     *
+     * THE REPLACE IS LEFT AS THE HISTORICAL INCIDENT VERBATIM, and that is the
+     * point of this drill rather than an oversight: its job is to put back the
+     * shape that really shipped on 12 September, which discarded the error and
+     * decided existence on `if (data)`. Only the aim moved.
+     */
     find:
       "  const row = await readOrThrow('event-route', () =>\n" +
-      "    supabase.from('events').select('id').eq('slug', slug).maybeSingle(),\n" +
+      "    supabase.from('events').select(EVENT_HERO_SELECT).eq('slug', slug).maybeSingle() as unknown as Read<EventHeroFields>,\n" +
       '  )\n' +
       '\n' +
-      '  if (row) return children',
+      '  if (row) return withHeroPreload(await eventHeroPreloadLink(row), children)',
     replace:
       '  const { data } = await supabase\n' +
       "    .from('events')\n" +
@@ -5824,8 +5860,14 @@ const DRILLS = [
     name: 'every interior template stops skipping below-fold layout because ContentSection dropped the class',
     guard: `${GUARDS}/class-lists-are-not-repeated-per-card.mjs`,
     file: 'src/components/layout/ContentSection.tsx',
-    find: "className={`${skipOffscreen ? 'cv-section ' : ''}relative",
-    replace: "className={`${skipOffscreen ? '' : ''}relative",
+    /*
+     * RE-ANCHORED 20 September 2026, by the lane whose change moved it. A
+     * `cv-measured` branch was added AHEAD of the `cv-section` one, for the six
+     * sections too tall for the intrinsic-size estimate to be honest about, so
+     * the ternary the old anchor described is now the inner arm of a nested one.
+     */
+    find: "className={`${intrinsicSize ? 'cv-measured ' : skipOffscreen ? 'cv-section ' : ''}relative",
+    replace: "className={`${intrinsicSize ? 'cv-measured ' : skipOffscreen ? '' : ''}relative",
     expect: 'does not reference cv-section',
   },
   {
@@ -6061,6 +6103,214 @@ const DRILLS = [
     find: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {`,
     replace: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {\n      if (inner) continue`,
     expect: 'REFUSING: the calibration probe',
+  },
+
+  /*
+   * tile-label-over-a-photograph, nine drills (20 September 2026).
+   *
+   * The hero guard above was written on 19 September, the four heroes were
+   * converted onto one anchored wash, it went green and it stayed green. One
+   * component family along, thirteen TILE captions each carried a hand-written
+   * wash whose every stop was a percentage of the TILE, and the same instrument
+   * measured 149 runs below their WCAG 2.2 SC 1.4.3 floor: /cities 86,
+   * /communities 49, /waitlist 12, /city/sydney 2, with Brisbane at 1.00:1 on a
+   * white sky and 100 per cent of its 464 core pixels failing.
+   *
+   * Drills 1 to 4 aim at the markup. Drills 5 to 7 aim at the guard's own
+   * premises: the strength, the geometry that makes the strength mean anything,
+   * and the single source of the number. Drill 8 is the defect the guard found
+   * on its FIRST run, kept as a drill because it is the subtlest of them: a
+   * class naming a colour token globals.css does not declare emits no CSS at all
+   * and the label silently inherits. Drill 9 aims at the painter derivation,
+   * because a derivation that quietly returns nothing is how the tile family
+   * stayed invisible to the hero guard for a day.
+   */
+  {
+    name: 'a tile label leaves the shared caption and goes back onto the bare photograph',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/app/cities/page.tsx',
+    find: '<TileCaption className="px-3 pb-3 pt-2 sm:px-5 sm:pb-4 sm:pt-3">',
+    replace: '<div className="absolute inset-x-0 bottom-0 px-3 pb-3">',
+    expect: 'paints a label on a CityTileImage photograph outside <TileCaption>',
+  },
+  {
+    name: 'a converted tile goes back to writing its own translucent wash as well',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/app/waitlist/waitlist-client.tsx',
+    find: "'linear-gradient(135deg, rgb(10,22,40) 0%, rgb(20,32,56) 50%, rgb(10,22,40) 100%)',",
+    replace: "'linear-gradient(180deg, rgba(10,22,40,0.0) 40%, rgba(10,22,40,0.55) 72%, rgba(10,22,40,0.92) 100%)',",
+    expect: 'ALSO writes its own translucent dark gradient',
+  },
+  {
+    name: 'a tile loses the clip that trims the caption wash bleeding a viewport past its edges',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/app/communities/page.tsx',
+    find: '<div className="relative aspect-[4/5] w-full overflow-hidden bg-ink-200">',
+    replace: '<div className="relative aspect-[4/5] w-full bg-ink-200">',
+    expect: 'does not clip',
+  },
+  {
+    name: 'a caller repositions the caption, moving the label off the wash computed for it',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/components/features/community/cities-rail.tsx',
+    find: '<TileCaption className="p-4">',
+    replace: '<TileCaption className="absolute top-0 p-4">',
+    expect: 'gives <TileCaption> positioning classes',
+  },
+  {
+    name: 'the shared floor is weakened below what the gold date line on a bento needs',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/components/media/hero-photo-scrim.ts',
+    find: 'export const HERO_CAPTION_MIN_ALPHA = 0.82',
+    replace: 'export const HERO_CAPTION_MIN_ALPHA = 0.7',
+    expect: 'the tile caption wash is 0.7 navy',
+  },
+  {
+    name: 'the tile scrim restates the floor as a literal instead of importing the one source',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/components/media/tile-photo-scrim.ts',
+    find: 'export const TILE_CAPTION_MIN_ALPHA = HERO_CAPTION_MIN_ALPHA',
+    replace: 'export const TILE_CAPTION_MIN_ALPHA = 0.82',
+    expect: 'states its own floor instead of importing',
+  },
+  {
+    name: 'the caption stops starting its wash above the label, which is the original defect',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/components/media/tile-caption.tsx',
+    find: 'top: `calc(-1 * ${TILE_CAPTION_FADE})`,',
+    replace: "top: '0px',",
+    expect: 'no longer starts its wash TILE_CAPTION_FADE above the label',
+  },
+  {
+    name: 'a caption paints a colour token globals.css does not declare, so Tailwind emits nothing',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/components/features/events/city-tile.tsx',
+    find: 'translate-x-[-6px] text-[var(--brand-accent)]',
+    replace: 'translate-x-[-6px] text-gold-300',
+    expect: 'declares no such colour token',
+  },
+  {
+    name: 'the painter derivation quietly stops finding the media directory',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'scripts/guards/lib/tile-files.mjs',
+    find: "const MEDIA_DIR = 'src/components/media'",
+    replace: "const MEDIA_DIR = 'src/components/seo'",
+    expect: 'tile-painter derivation found only',
+  },
+
+  /*
+   * hero-preload-above-the-loading-boundary, four drills (20 September 2026).
+   *
+   * One clause per drill, because each stands for a different way this went
+   * wrong while it was being built rather than for a hypothetical.
+   *
+   *   1. The layout stops asking: the original defect, the hero's preload back
+   *      at byte 85,041 of a 205,060 byte document.
+   *   2. The PAGE asks instead. This was attempted twice, from
+   *      `generateMetadata` and from the server layout via `react-dom`, and both
+   *      looked completely reasonable and did nothing at all.
+   *   3. The server resolver imports `react-dom`, which is the second of those
+   *      two: in a server component that specifier resolves to the react-server
+   *      build where `preload()` has no dispatcher.
+   *   4. The derivation goes blind. It aims at the PAGE rather than at
+   *      HeroMedia's internals, because the first attempt at this drill renamed
+   *      `<HeroRaster` inside HeroMedia.tsx, the guard stayed green, and it was
+   *      RIGHT to: deriveHeroFiles keys on a consumer rendering `<HeroMedia`.
+   *      A drill that misses its anchor verifies nothing while looking like one.
+   */
+  {
+    /*
+     * THE ANCHOR IS THE IMPORT, NOT ONE BRANCH, AND THAT IS THE POINT.
+     *
+     * The first version of this drill removed the ask from the `row` branch
+     * alone and the guard PASSED, because clause 1 only asked whether the
+     * layout MENTIONS the preload and three other branches still did. The
+     * harness caught that on its first run and clause 5 was written because of
+     * it. Removing the import removes every ask at once, which is what clause 1
+     * is actually claiming to catch.
+     */
+    name: 'the layout above the loading boundary stops asking for the hero',
+    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    file: 'src/app/events/[slug]/layout.tsx',
+    find: "import { EVENT_HERO_SELECT, eventHeroPreloadLink } from '@/lib/images/hero-preload'",
+    replace: "import { EVENT_HERO_SELECT } from '@/lib/images/hero-preload'",
+    expect: 'no layout above that boundary asks for it',
+  },
+  {
+    name: 'a branch of the asking layout returns children without deciding about the hero',
+    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    file: 'src/app/events/[slug]/layout.tsx',
+    find: 'if (await viewerMayReachArchivedEvent(slug)) return withoutHeroPreload(children)',
+    replace: 'if (await viewerMayReachArchivedEvent(slug)) return children',
+    expect: 'returns children without deciding about the hero',
+  },
+  {
+    name: 'the page asks for its own preload, from inside the boundary where it cannot reach the head',
+    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: "import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'",
+    replace:
+      "import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'\n" +
+      "import { heroPreloadLink } from '@/lib/images/hero-preload'",
+    expect: 'asks for the hero preload from INSIDE',
+  },
+  {
+    name: 'the server-only resolver reaches for react-dom preload, which does nothing there',
+    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    file: 'src/lib/images/hero-preload.tsx',
+    find: "import 'server-only'",
+    replace: "import 'server-only'\n" + "import { preload } from 'react-dom'",
+    expect: 'imports from react-dom',
+  },
+  /*
+   * audit-flag-is-read-where-it-is-written, four drills (20 September 2026).
+   *
+   * One per clause. Drill 1 is the defect itself, as it stood in six files.
+   * Drill 2 is the form that is correct today and was correct for `body` once
+   * too. Drill 3 moves the WRITER and proves the writer and the reader are
+   * compared rather than each judged alone. Drill 4 takes the predicate's own
+   * key away, which is the shape a rename would have.
+   */
+  {
+    name: 'a suppression goes back to reading the audit flag off document.body',
+    guard: `${GUARDS}/audit-flag-is-read-where-it-is-written.mjs`,
+    file: 'src/components/media/hero-ambient-layer.tsx',
+    find: '    if (isAuditRun()) return',
+    replace: "    if (document.body.dataset.headless === '1') return",
+    expect: 'reads the audit flag off document.body',
+  },
+  {
+    name: 'a suppression reads documentElement directly instead of asking the predicate',
+    guard: `${GUARDS}/audit-flag-is-read-where-it-is-written.mjs`,
+    file: 'src/components/features/events/event-video.tsx',
+    find: '  const headless = isAuditRun()',
+    replace: "  const headless = document.documentElement.dataset.headless === '1'",
+    expect: 'reads the audit flag off documentElement directly',
+  },
+  {
+    name: 'the writer stops setting the flag the predicate reads',
+    guard: `${GUARDS}/audit-flag-is-read-where-it-is-written.mjs`,
+    file: 'src/app/layout.tsx',
+    find: "if(audit){d.dataset.headless='1';return}",
+    replace: "if(audit){d.dataset.auditing='1';return}",
+    expect: 'does not set documentElement.dataset.headless',
+  },
+  {
+    name: 'the predicate stops declaring the key this guard compares against',
+    guard: `${GUARDS}/audit-flag-is-read-where-it-is-written.mjs`,
+    file: 'src/lib/ui/audit-mode.ts',
+    find: "export const AUDIT_FLAG = 'headless'",
+    replace: 'export const AUDIT_FLAG = FLAG_KEY',
+    expect: 'declares no AUDIT_FLAG',
+  },
+
+  {
+    name: 'the event page stops rendering a hero, so the guard has nothing left to judge',
+    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: '            <HeroMedia',
+    replace: '            <HeroMediaRenamed',
+    expect: 'no hero-bearing page was found behind any loading boundary',
   },
 
   /*
@@ -6979,11 +7229,45 @@ const DRILLS = [
     expect: 'to authenticated',
   },
   {
+    /*
+     * RE-AIMED AT THE GUARD 20 September 2026, ON THE MERGED TREE, and the
+     * reason is the whole value of this drill so it is written down.
+     *
+     * This drill used to rename the writer inside 20260920000010 and the guard
+     * refused. It PASSED ON A VIOLATING TREE here, which is worse than failing:
+     * a drill that cannot make its clause fire is a clause nobody is checking.
+     * The cause is that TWO migrations now declare the writer. 20260920000011
+     * drops 20260920000010's ten-argument signature and declares a new one with
+     * five defaults, so both files carry the text clause 4 looks for, and
+     * renaming it in either one leaves the other declaring it.
+     *
+     * NEITHER LANE COULD HAVE SEEN THIS. 20260920000011 and this drill arrived
+     * from different lanes; the second declaration exists only on the tree that
+     * holds both. A drill edits ONE file, so no single-file aim at a migration
+     * can empty the list any more.
+     *
+     * So it is aimed at the guard, the calibration-probe shape this file already
+     * uses wherever a clause cannot be reached from product code. Emptying the
+     * candidate list is the narrowest possible probe: the WRITER constant was
+     * tried first and is NO GOOD, because renaming it also takes the call-site
+     * and grant counts to zero and the guard then refuses on its own
+     * did-nothing check instead, which is failing for the wrong reason. Under
+     * this probe the other clauses still count 2 writers and 2 grants and only
+     * clause 4 speaks.
+     *
+     * WHAT THIS PROBE NO LONGER PROVES, stated plainly rather than left to be
+     * discovered: that clause 4 fires when a REAL migration loses the writer.
+     * It cannot, while a dropped declaration still counts as a declaration.
+     * Raised for the lane that owns the fee writer as a BORDER in
+     * REVIEW-QUEUE-C.md: clause 4 should judge the LIVE writer, not any
+     * migration that ever declared one, and then this drill can aim at a
+     * migration again.
+     */
     name: 'the writer the code is required to call stops existing',
     guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
-    file: 'supabase/migrations/20260920000010_the_writer_stamps_the_previous_row.sql',
-    find: 'create or replace function public.write_pricing_rule(',
-    replace: 'create or replace function public.write_pricing_rule_renamed(',
+    file: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
+    find: 'const declaring = files.filter((f) =>',
+    replace: 'const declaring = [].filter((f) =>',
     expect: 'no migration declares public.write_pricing_rule',
   },
   {

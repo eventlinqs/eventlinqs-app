@@ -512,8 +512,28 @@ const bandForPhoto = (page, idx, key) =>
        * one slide addresses a hidden element for every press after the first.
        * Tagging the carousel fixes both at once.
        */
+      /*
+       * AND A TABLIST IS NOT A CAROUSEL, which cost 30 FAILs before it was
+       * right. The test above used to be "an ancestor containing more than one
+       * [role=tab]", and on /city/[slug] the date filter is a sticky
+       * `role="tablist"` of five chips that navigates the router. The nearest
+       * ancestor of a tile band that also contains those chips is most of the
+       * page, so the band became the page, the walk pressed "This weekend"
+       * expecting a slide, and every route rendering CityLandingPage,
+       * SuburbLandingPage or CommunityCityLandingPage reported four slides it
+       * "could not reach" at all three viewports. The product was fine.
+       *
+       * A carousel says what it is, in the product's own markup and in the
+       * WAI-ARIA authoring practice the carousel was built to:
+       * `aria-roledescription="carousel"`. That is now the test, and the tab
+       * count stays beside it so a region that claims to be a carousel and
+       * offers no way to move through it is still not taken.
+       */
       for (let up = band.parentElement; up; up = up.parentElement) {
-        if (up.querySelectorAll('[role="tab"]').length > 1) {
+        if (
+          up.getAttribute('aria-roledescription') === 'carousel' &&
+          up.querySelectorAll('[role="tab"]').length > 1
+        ) {
           band = up
           break
         }
@@ -639,9 +659,61 @@ try {
         continue
       }
 
-      /* Every photograph on the page must have decoded before anything is
-       * derived from it: an `<img>` that has not decoded is not a painted
-       * photograph, and a band would simply not be found. */
+      /*
+       * EVERY PHOTOGRAPH MUST BE MADE TO EXIST BEFORE ANY OF THEM IS JUDGED,
+       * AND UNTIL 20 SEPTEMBER 2026 MOST OF THEM NEVER WERE.
+       *
+       * The wait below is necessary and was not sufficient, and the two are
+       * easy to confuse because the insufficient version passes instantly. A
+       * lazy `<img>` that the browser has not fetched is not an incomplete
+       * image, it is an image with no work outstanding, so "every img is
+       * complete" is TRUE on a page whose rails have not loaded a single
+       * picture. The condition was satisfied by the absence of the thing it
+       * was written to wait for.
+       *
+       * MEASURED, on /city/sydney, both at 768 and at 1440: three photographs
+       * found at load, twenty-six decoded once the page had been scrolled. The
+       * twenty-one community tiles of the "Sydney by community" rail - a rail
+       * that paints a name and a city line on a photograph, which is precisely
+       * this drive's subject - were never measured by any sweep this file has
+       * ever produced. Nothing reported a gap, because a photograph that is
+       * never tagged yields no band, a band that does not exist yields no run,
+       * and a run that does not exist cannot fail. The sweep simply came back
+       * smaller, which in a summary line is indistinguishable from good news.
+       *
+       * So the page is walked first, vertically and then through every
+       * horizontal scroller, which is what a reader's scroll does and what the
+       * IntersectionObserver behind `loading="lazy"` is waiting for. Only then
+       * is the wait below meaningful, because by then the images it asks about
+       * are images that have actually been asked for.
+       */
+      await page.evaluate(async () => {
+        const settle = () => new Promise(r => setTimeout(r, 60))
+        for (let y = 0; y < document.body.scrollHeight; y += Math.round(innerHeight * 0.8)) {
+          window.scrollTo(0, y)
+          await settle()
+        }
+        window.scrollTo(0, document.body.scrollHeight)
+        await settle()
+        /* A rail's tiles past the right edge are lazy for the same reason its
+         * rows below the fold are, and `scrollIntoView` on a photograph cannot
+         * help: the photograph does not exist yet. */
+        for (const el of document.querySelectorAll('*')) {
+          if (el.scrollWidth <= el.clientWidth + 4) continue
+          const back = el.scrollLeft
+          for (let x = 0; x < el.scrollWidth; x += Math.round(el.clientWidth * 0.8) || 200) {
+            el.scrollLeft = x
+            await settle()
+          }
+          el.scrollLeft = back
+        }
+        window.scrollTo(0, 0)
+        await settle()
+      })
+
+      /* NOW the wait means what it says: every photograph the page will ever
+       * paint has been requested, so "complete with intrinsic width" is a
+       * statement about pictures rather than about their absence. */
       await page.waitForFunction(
         () => [...document.querySelectorAll('img')].every(i => i.complete && i.naturalWidth > 0),
         null,

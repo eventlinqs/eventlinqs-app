@@ -11,6 +11,7 @@ import { MobileStickyBar } from '@/components/features/city/mobile-sticky-bar'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -373,22 +374,14 @@ export function CommunityCityLandingPage({
                       }}
                     />
                   )}
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                    style={{
-                      background:
-                        'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.30) 50%, rgba(0,0,0,0) 100%)',
-                    }}
-                  />
-                  <div className="absolute inset-x-0 bottom-0 p-3">
+                  <TileCaption className="p-3">
                     <p className="font-display text-sm font-semibold text-white">
                       {item.communityLabel}
                     </p>
                     <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/85">
                       in {item.cityLabel}
                     </p>
-                  </div>
+                  </TileCaption>
                 </div>
               </Link>
             ))}
@@ -410,7 +403,7 @@ export function CommunityCityLandingPage({
               <Link
                 key={item.slug}
                 href={`/community/${item.slug}/${citySlug}`}
-                className={`group block ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg`}
+                className={`group flex h-full flex-col ${WIDE_TILE_CELL} overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg motion-reduce:transition-none`}
               >
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--color-navy-950)]">
                   {item.image ? (
@@ -425,22 +418,19 @@ export function CommunityCityLandingPage({
                       }}
                     />
                   )}
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                    style={{
-                      background:
-                        'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.30) 55%, rgba(0,0,0,0) 100%)',
-                    }}
-                  />
-                  <div className="absolute inset-x-0 bottom-0 p-4">
+                  {/* The tagline moved below the image: on this 16:10 tile the
+                    *  two together measured 93px against 161px, 72.6 per cent of
+                    *  a picture the rail exists to show. */}
+                  <TileCaption className="p-4">
                     <p className="font-display text-base font-semibold text-white drop-shadow-sm">
                       {item.label}
                     </p>
-                    <p className="mt-1 line-clamp-2 text-xs leading-snug text-white/85">
-                      {item.tagline}
-                    </p>
-                  </div>
+                  </TileCaption>
+                </div>
+                <div className="px-4 pb-4 pt-3">
+                  <p className="line-clamp-2 text-xs leading-snug text-[var(--text-secondary)]">
+                    {item.tagline}
+                  </p>
                 </div>
               </Link>
             ))}
