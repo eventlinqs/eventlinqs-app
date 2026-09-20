@@ -5,6 +5,19 @@ import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { listRefundsForAdmin, REFUND_STATUS_FILTERS, type RefundStatusFilter } from '@/lib/admin/refunds'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_EMPTY_CELL,
+  ADMIN_EMPTY_ROW,
+  ADMIN_ROW,
+  ADMIN_ROW_CONTROL,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -122,9 +135,11 @@ export default async function AdminRefundsPage({ searchParams }: { searchParams:
         </Link>
       </form>
 
-      <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
-        <table className="w-full min-w-[820px] text-left text-sm">
-          <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50">
+      {/* Below lg this stops being a table and each refund becomes a card
+          carrying its own headings: src/components/admin/table-card.ts. */}
+      <div className={ADMIN_TABLE_WRAP}>
+        <table className={`${ADMIN_TABLE} lg:min-w-[820px]`}>
+          <thead className={ADMIN_THEAD}>
             <tr>
               <th className="px-4 py-3 font-medium">Order</th>
               <th className="px-4 py-3 font-medium">Event</th>
@@ -135,26 +150,42 @@ export default async function AdminRefundsPage({ searchParams }: { searchParams:
               <th className="px-4 py-3 font-medium">Requested</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {rows.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-white/50">
+              <tr className={ADMIN_EMPTY_ROW}>
+                <td colSpan={7} className={ADMIN_EMPTY_CELL}>
                   No refunds in this view. When a buyer or organiser requests a refund it appears here until it clears.
                 </td>
               </tr>
             ) : (
               rows.map(r => (
-                <tr key={r.id} className="border-t border-white/[0.06] hover:bg-white/[0.03]">
-                  <td className="px-4 py-3">
-                    <Link href={`/admin/orders/${r.orderId}`} className="text-[var(--brand-accent)] hover:underline">
+                <tr key={r.id} className={ADMIN_ROW}>
+                  <td className={ADMIN_CELL_NAME}>
+                    <Link
+                      href={`/admin/orders/${r.orderId}`}
+                      className={`${ADMIN_ROW_CONTROL} font-medium text-[var(--brand-accent)] hover:underline`}
+                    >
                       {r.orderNumber ?? 'View order'}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-white/70">{r.eventTitle ?? '-'}</td>
-                  <td className="px-4 py-3 text-white/70">{r.organisationName ?? '-'}</td>
-                  <td className="px-4 py-3 text-white/70">{money(r.amountCents, r.currency)}</td>
-                  <td className="px-4 py-3 text-white/60">{r.reason.replace(/_/g, ' ')}</td>
-                  <td className="px-4 py-3">
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Event</span>
+                    {r.eventTitle ?? '-'}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Organiser</span>
+                    {r.organisationName ?? '-'}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Amount</span>
+                    {money(r.amountCents, r.currency)}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/60`}>
+                    <span className={ADMIN_CELL_LABEL}>Reason</span>
+                    {r.reason.replace(/_/g, ' ')}
+                  </td>
+                  <td className={ADMIN_CELL}>
+                    <span className={ADMIN_CELL_LABEL}>Status</span>
                     <span className={`inline-block rounded px-2 py-1 text-[11px] font-semibold uppercase tracking-wide ${STATUS_BADGE[r.status] ?? 'bg-white/10 text-white/60'}`}>
                       {r.status}
                     </span>
@@ -162,7 +193,10 @@ export default async function AdminRefundsPage({ searchParams }: { searchParams:
                       <span className="mt-1 block text-[11px] text-rose-300/80">{r.failureReason}</span>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-white/50">{formatDate(r.requestedAt)}</td>
+                  <td className={`${ADMIN_CELL} text-white/50`}>
+                    <span className={ADMIN_CELL_LABEL}>Requested</span>
+                    {formatDate(r.requestedAt)}
+                  </td>
                 </tr>
               ))
             )}

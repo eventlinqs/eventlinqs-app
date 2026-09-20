@@ -3,6 +3,19 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { assertCan } from '@/lib/admin/rbac'
 import { recordAuditEvent, queryAuditLog } from '@/lib/admin/audit'
 import { AuditDetailButton } from './audit-detail'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_ACTIONS,
+  ADMIN_CELL_LABEL,
+  ADMIN_CELL_NAME,
+  ADMIN_EMPTY_CELL,
+  ADMIN_EMPTY_ROW,
+  ADMIN_ROW,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP,
+  ADMIN_TBODY,
+  ADMIN_THEAD,
+} from '@/components/admin/table-card'
 
 export const metadata = {
   title: 'Audit log | EventLinqs Admin',
@@ -145,15 +158,16 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
         WORSE at 768 than at 390 in absolute terms: 612 hidden pixels against
         687, on a tablet nobody thinks of as a small screen.
 
-        `overflow-x-auto`, so a finger can reach the rest of the row. What that
-        does NOT fix is the row losing its own name at the right edge, which
-        this drive also measures and which is a rebuild rather than a class:
-        recorded in C:\dev\REVIEW-QUEUE-C.md with the measurement, for the
-        thirteen admin tables that share it.
+        The scroller closed the clip on that same day. It did NOT close the
+        second half, measured by the same drive: swiped to the right edge, the
+        timestamp that says WHICH entry this is left the screen, and the seven
+        values belonged to nobody. That is what the card presentation below
+        closes, on this and on every other admin table
+        (src/components/admin/table-card.ts).
       */}
-      <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#131A2A]">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-white/[0.03] text-[11px] uppercase tracking-[0.18em] text-white/50">
+      <div className={ADMIN_TABLE_WRAP}>
+        <table className={ADMIN_TABLE}>
+          <thead className={ADMIN_THEAD}>
             <tr>
               <th className="px-4 py-3 font-medium">When</th>
               <th className="px-4 py-3 font-medium">Actor</th>
@@ -164,27 +178,40 @@ export default async function AdminAuditPage({ searchParams }: PageProps) {
               <th className="px-4 py-3 font-medium">Detail</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {result.rows.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-white/50">
+              <tr className={ADMIN_EMPTY_ROW}>
+                <td colSpan={7} className={ADMIN_EMPTY_CELL}>
                   No matching events.
                 </td>
               </tr>
             ) : (
               result.rows.map(row => (
-                <tr key={row.id} className="border-t border-white/[0.06]">
-                  <td className="whitespace-nowrap px-4 py-3 text-white/80">
+                <tr key={row.id} className={ADMIN_ROW}>
+                  <td className={`${ADMIN_CELL_NAME} whitespace-nowrap text-white/80`}>
                     {new Date(row.created_at).toISOString().replace('T', ' ').slice(0, 19)}
                   </td>
-                  <td className="px-4 py-3 text-white/80">{row.actor_email_snapshot ?? 'anonymous'}</td>
-                  <td className="px-4 py-3 text-white/60">{row.actor_role_snapshot ?? '-'}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-white">{row.action}</td>
-                  <td className="px-4 py-3 text-white/70">
+                  <td className={`${ADMIN_CELL} text-white/80`}>
+                    <span className={ADMIN_CELL_LABEL}>Actor</span>
+                    {row.actor_email_snapshot ?? 'anonymous'}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/60`}>
+                    <span className={ADMIN_CELL_LABEL}>Role</span>
+                    {row.actor_role_snapshot ?? '-'}
+                  </td>
+                  <td className={`${ADMIN_CELL} font-mono text-xs text-white`}>
+                    <span className={ADMIN_CELL_LABEL}>Action</span>
+                    {row.action}
+                  </td>
+                  <td className={`${ADMIN_CELL} text-white/70`}>
+                    <span className={ADMIN_CELL_LABEL}>Target</span>
                     {row.target_type ? `${row.target_type}:${row.target_id ?? '-'}` : '-'}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-white/60">{row.ip ?? '-'}</td>
-                  <td className="px-4 py-3">
+                  <td className={`${ADMIN_CELL} font-mono text-xs text-white/60`}>
+                    <span className={ADMIN_CELL_LABEL}>IP</span>
+                    {row.ip ?? '-'}
+                  </td>
+                  <td className={ADMIN_CELL_ACTIONS}>
                     <AuditDetailButton row={row} />
                   </td>
                 </tr>

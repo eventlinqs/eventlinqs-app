@@ -1,5 +1,15 @@
 import { runAllChecks, overallStatus, type HealthResult } from '@/lib/health/checks'
 import { getSiteUrl } from '@/lib/site-url'
+import {
+  ADMIN_CELL,
+  ADMIN_CELL_LABEL_LIGHT,
+  ADMIN_CELL_NAME,
+  ADMIN_ROW_LIGHT,
+  ADMIN_TABLE,
+  ADMIN_TABLE_WRAP_LIGHT,
+  ADMIN_TBODY,
+  ADMIN_THEAD_LIGHT,
+} from '@/components/admin/table-card'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -133,56 +143,50 @@ export default async function HealthStatusPage() {
         scroll, and the role and label give a screen reader something to announce
         when it lands there.
 
-        ON A PHONE THE TABLE IS NOT SHOWN AT ALL, and the reason is a human read
-        rather than a measurement. With the clip fixed the content was reachable
-        and the screen still read wrong: every row was a hand tall and almost
-        entirely blank, because the Detail cell wraps in a 246px column and the
-        row height is shared with the two columns a phone can see. Reachable is
-        the law; legible is the job. Below `sm` each check is its own card, so the
-        detail sits under the name it belongs to and nothing scrolls sideways.
-      */}
-      <ul className="space-y-3 sm:hidden">
-        {results.map(r => (
-          <li key={r.id} className="rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm">
-            <div className="flex items-start justify-between gap-3">
-              <span className="font-medium text-ink-900">{r.label}</span>
-              <StatusWord result={r} />
-            </div>
-            <p className="mt-2 text-ink-600">{r.detail}</p>
-            {!r.ok && r.action ? (
-              <p className="mt-1 text-xs text-ink-600">
-                <strong>Fix:</strong> {r.action}
-              </p>
-            ) : null}
-            {r.durationMs != null ? <p className="mt-1 text-[11px] text-ink-400">{r.durationMs}ms</p> : null}
-          </li>
-        ))}
-      </ul>
+        ON A PHONE THE TABLE STOPS BEING A TABLE, and the reason is a human
+        read rather than a measurement. With the clip fixed the content was
+        reachable and the screen still read wrong: every row was a hand tall and
+        almost entirely blank, because the Detail cell wraps in a 246px column
+        and the row height is shared with the two columns a phone can see.
+        Reachable is the law; legible is the job. Below `lg` each check is its
+        own card, so the detail sits under the name it belongs to and nothing
+        scrolls sideways.
 
+        IT USED TO BE TWO DOMs, a `<ul>` of cards below `sm` beside this table,
+        and they had already drifted: the card list never showed Severity at
+        all, so the phone read a different screen from the desk. It is one DOM
+        now, on the shared pattern in src/components/admin/table-card.ts, in
+        that module's LIGHT skin because this is the one admin table that is
+        white-on-ink rather than on #0A0F1A.
+      */}
       <div
-        className="hidden overflow-x-auto rounded-xl border border-ink-200 bg-white sm:block"
+        className={ADMIN_TABLE_WRAP_LIGHT}
         tabIndex={0}
         role="region"
         aria-label="Platform health checks"
       >
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-ink-100 text-left text-xs uppercase tracking-wide text-ink-400">
+        <table className={ADMIN_TABLE}>
+          <thead className={ADMIN_THEAD_LIGHT}>
+            <tr>
               <th className="px-4 py-3">System</th>
               <th className="px-4 py-3">Severity</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Detail</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={ADMIN_TBODY}>
             {results.map(r => (
-              <tr key={r.id} className="border-b border-ink-100 last:border-0 align-top">
-                <td className="px-4 py-3 font-medium text-ink-900">{r.label}</td>
-                <td className="px-4 py-3 text-ink-400">{r.severity}</td>
-                <td className="px-4 py-3">
+              <tr key={r.id} className={`${ADMIN_ROW_LIGHT} align-top`}>
+                <td className={`${ADMIN_CELL_NAME} font-medium text-ink-900`}>{r.label}</td>
+                <td className={`${ADMIN_CELL} text-ink-400`}>
+                  <span className={ADMIN_CELL_LABEL_LIGHT}>Severity</span>
+                  {r.severity}
+                </td>
+                <td className={ADMIN_CELL}>
+                  <span className={ADMIN_CELL_LABEL_LIGHT}>Status</span>
                   <StatusWord result={r} />
                 </td>
-                <td className="px-4 py-3 text-ink-600">
+                <td className={`${ADMIN_CELL} max-lg:block max-lg:pr-0 text-ink-600`}>
                   {r.detail}
                   {!r.ok && r.action ? <div className="mt-1 text-xs text-ink-600"><strong>Fix:</strong> {r.action}</div> : null}
                   {r.durationMs != null ? <div className="mt-1 text-[11px] text-ink-400">{r.durationMs}ms</div> : null}
