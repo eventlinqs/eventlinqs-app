@@ -3429,10 +3429,38 @@ const ROOT = join(HERE, '..', '..')
  *
  * MEASURED: 544 files, 7294 tests, 0 failed, 0 skipped
  * (`npm run gate:push -- --only suite`, GREEN, 111s, on the tree of this commit).
+ *
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, LB-BLINKLINK): 545 files, 7333 tests.
+ *
+ *   544 + 1 = 545 files
+ *   7294 + 39 = 7333 tests
+ *
+ * ONE NEW FILE, tests/unit/growth/a-blink-is-not-a-stale-link.test.ts, thirty
+ * nine tests, for nine reads across six files on the tracked-link, consent and
+ * campaigner spine that each answered a dropped socket with the fallback written
+ * for a row that is genuinely absent. The one that names the group is the
+ * printed poster: /s/[code] sent a buyer who had just scanned an organiser's QR
+ * code to a generic browse page, so the organiser lost the sale and nothing
+ * reported it.
+ *
+ * SIX OF THE THIRTY NINE WERE DRIVEN RED. Four restorations of the pre-fix read
+ * shape fired eight failures between them (C:/dev/EVIDENCE/LB-BLINKLINK/red-proof.txt),
+ * and two plantings of a try/catch in a CALLER fired the two propagation pins
+ * (red-proof-propagation.txt). That second pair is the one worth having: a
+ * caller that swallows the throw puts the defect back in a file this item never
+ * touched, and every other assertion here would still pass.
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED; the only change to an existing
+ * assertion was to this item own new one, tightened after the no-silent-catch
+ * guard refused the catch block it was asserting.
+ *
+ * MEASURED: 545 files, 7333 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, on the tree of this commit).
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 544
-const MIN_TESTS = 7294
+const MIN_FILES = 545
+const MIN_TESTS = 7333
 
 
 /**

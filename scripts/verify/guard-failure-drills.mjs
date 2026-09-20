@@ -6497,6 +6497,111 @@ const DRILLS = [
   },
 
   /*
+   * a-failed-read-is-not-a-fact-about-a-person, THE TRACKED-LINK, CONSENT AND
+   * CAMPAIGNER SPINE (lane B, 21 September 2026), ten drills.
+   *
+   * Four directories and two named files joined the scope, for nine reads that
+   * each had a correct, deliberate fallback for a row that is genuinely absent,
+   * and each of which quietly used that same fallback to answer a dropped
+   * socket.
+   *
+   * THE ONE THAT NAMES THE GROUP is drill 1. /s/[code] is what the QR code on an
+   * organiser's printed poster resolves to, and its own comment says a link
+   * whose event has been DELETED degrades to the browse page rather than a dead
+   * end. A blink took that same door, so the buyer standing in front of the
+   * poster was sent to a generic browse page and the organiser lost a sale
+   * nothing reported.
+   *
+   * DRILLS 8, 9 AND 10 AIM AT THE GUARD rather than at the product, and they are
+   * the ones worth having. Eight is the old rule, that a scope renamed away
+   * scans nothing and reports a pass. Nine and ten are new and they are a pair:
+   * a scope entry may now name ONE FILE, which is a real narrowing, so it must
+   * say what the directory around it holds that keeps it out, and a DIRECTORY
+   * entry carrying such a reason is that same rule read backwards, which is how
+   * a directory that has quietly become a file would otherwise pass unremarked.
+   */
+  {
+    name: "a scanned poster goes back to being answered as though the event were deleted",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/s/[code]/route.ts",
+    find: "  const event = await readOrThrow('short-link destination event', () =>\n    admin.from('events').select('slug').eq('id', link.event_id).maybeSingle(),\n  )",
+    replace: "  const { data: event } = await admin\n    .from('events')\n    .select('slug')\n    .eq('id', link.event_id)\n    .maybeSingle()",
+    expect: "a scanned poster sending the buyer to the browse page",
+  },
+  {
+    name: "the short-link resolver goes back to losing the artist who drove the sale",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/lib/broadcast/resolve-short-link.ts",
+    find: "    const artist = await readOrThrow('resolved short link tagged artist', () =>\n      admin.from('artists').select('slug').eq('id', link.artist_id).maybeSingle(),\n    )",
+    replace: "    const { data: artist } = await admin\n      .from('artists')\n      .select('slug')\n      .eq('id', link.artist_id)\n      .maybeSingle()",
+    expect: "an artist losing the credit for a sale they drove",
+  },
+  {
+    name: "the Launch Kit goes back to telling an organiser their own event does not exist",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/lib/broadcast/kit-artefacts.ts",
+    find: "  const data = await readOrThrow('the launch kit event', () =>\n    admin\n      .from('events')",
+    replace: "  const { data } = await admin\n    .from('events')",
+    expect: "a Launch Kit reporting that the organiser",
+  },
+  {
+    name: "the share-link API goes back to answering event_not_found about a live event",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/api/broadcast/share-link/route.ts",
+    find: "  const event = await readOrThrow('the share-link event', () =>\n    admin.from('events').select('id, status, slug').eq('slug', parsed.data.slug).maybeSingle(),\n  )",
+    replace: "  const { data: event } = await admin\n    .from('events')\n    .select('id, status, slug')\n    .eq('slug', parsed.data.slug)\n    .maybeSingle()",
+    expect: "a 404 saying event_not_found about a live event",
+  },
+  {
+    name: "the campaign console goes back to counting a send reach against an empty channel",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/admin/(authed)/campaigns/page.tsx",
+    find: "  const channelRows = await readOrThrow('the campaign channel table', () =>\n    admin.from('marketing_channel').select('code, display_name').order('code').limit(100),\n  )",
+    replace: "  const { data: channelRows } = await admin\n    .from('marketing_channel')\n    .select('code, display_name')\n    .order('code')\n    .limit(100)",
+    expect: "reach against an empty channel code",
+  },
+  {
+    name: "a digest consent goes back to being filed against no city when the person chose one",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/actions/consent.ts",
+    find: "      const city = await readOrThrow('the digest consent city', () =>\n        admin.from('cities').select('slug').eq('slug', input.citySlug as string).maybeSingle(),\n      )",
+    replace: "      const { data: city } = await admin\n        .from('cities')\n        .select('slug')\n        .eq('slug', input.citySlug as string)\n        .maybeSingle()",
+    expect: "a consent record filed against no city when the person chose one",
+  },
+  {
+    name: "a carried consent goes back to saying \"no such reservation\" about one that exists",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "src/app/actions/discovery-consent.ts",
+    find: "    const reservation = await readOrThrow('the reservation behind a carried consent', () =>\n      admin\n        .from('reservations')",
+    replace: "    const { data: reservation } = await admin\n      .from('reservations')",
+    expect: "said about a reservation that exists",
+  },
+  {
+    name: "the guard scans neither the poster route nor the link spine while still reporting a pass",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs",
+    find: "    'src/app/s',",
+    replace: "    'src/app/s-gone',",
+    expect: "A scope that scans nothing reports a pass",
+  },
+  {
+    name: "a file scope entry stops saying what keeps it out of its own directory",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs",
+    find: "    'src/app/actions holds 46 more reads of this shape in lane A and lane C files, and scoping ' +\n      'the directory would fail their builds on a fault this lane cannot fix',\n  ],",
+    replace: "  ],",
+    expect: "is a single FILE in a scope of directories and says nothing about why",
+  },
+  {
+    name: "a directory scope entry claims to be a single file",
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: "scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs",
+    find: "  [\n    'src/app/s',",
+    replace: "  [\n    'src/app/s',\n    'what a failed read becomes, planted by a drill',\n    'a reason planted by a drill',\n  ],\n  [\n    'src/app/s',",
+    expect: "is a DIRECTORY but carries a reason for being a single file",
+  },
+
+  /*
    * tile-label-over-a-photograph, nine drills (20 September 2026).
    *
    * The hero guard above was written on 19 September, the four heroes were

@@ -107,7 +107,13 @@ const ROOT = join(HERE, '..', '..')
 export const TAG = '[a-failed-read-is-not-a-fact-about-a-person]'
 
 /**
- * THE SCOPE, DIRECTORY BY DIRECTORY, WITH WHAT A FAILED READ BECOMES IN EACH.
+ * THE SCOPE, ENTRY BY ENTRY, WITH WHAT A FAILED READ BECOMES IN EACH.
+ *
+ * An entry is a DIRECTORY by default. It may be a single FILE, and then it
+ * carries a THIRD element saying what the directory around it holds that keeps
+ * it out; the guard refuses a file entry without one, and refuses a directory
+ * entry that carries one. A file entry covers that file and nothing beside it,
+ * which is a real narrowing, so it is made to argue for itself on every run.
  * The second column is the whole point of the list: a directory earns its place
  * here by what its failures SAY, not by what it imports. Every one is checked to exist: a directory renamed away would otherwise
  * be scanned for nothing and reported as a pass, which is how a scanner lies.
@@ -155,6 +161,68 @@ export const SCOPE = [
     'src/app/venues',
     'a working venue showing nothing on, and the rail of venues near it emptied, ' +
       'so a promoter reads the city as having one venue in it',
+  ],
+
+  /*
+   * THE TRACKED-LINK, CONSENT AND CAMPAIGNER SPINE, added 21 September 2026.
+   * Nine reads across six files, all of them lane B's, all the same shape, and
+   * each one answering a question about a person that it was in no position to
+   * answer.
+   *
+   * THE ONE THAT PUT THE GROUP HERE is the printed poster. /s/[code] is what a
+   * QR code on an organiser's poster resolves to, and it holds a deliberate,
+   * correct fallback: a link whose event has been DELETED degrades to the browse
+   * page rather than a dead end. Both of its reads discarded their error, so a
+   * dropped socket took that same door. The buyer scans the poster, lands on a
+   * generic browse page, and concludes the poster is wrong; the organiser loses
+   * the sale and is never told, because nothing failed.
+   *
+   * A stale code and a blinked read had one answer between them. They are
+   * different facts and now they give different answers.
+   */
+  [
+    'src/app/s',
+    'a scanned poster sending the buyer to the browse page as though the event had been ' +
+      'deleted, and the click going uncounted, because a socket dropped',
+  ],
+  [
+    'src/lib/broadcast',
+    'a tracked link resolving to nothing, an artist losing the credit for a sale they ' +
+      "drove, and a Launch Kit reporting that the organiser's own event does not exist",
+  ],
+  [
+    'src/app/api/broadcast',
+    'a 404 saying event_not_found about a live event, to the attendee who was trying to ' +
+      'share it, which is the acquisition loop refusing at its own front door',
+  ],
+  [
+    'src/app/admin',
+    "a figure an operator acts on: the campaign console counted a send's reach against " +
+      'an empty channel code, on the one screen where a person approves who gets written to',
+  ],
+
+  /*
+   * TWO FILES RATHER THAN THEIR DIRECTORY, and the third element says why on
+   * each. src/app/actions holds 26 files and, on the day these two were fixed,
+   * 46 further reads of this shape in files belonging to the other two lanes:
+   * checkout, squad-checkout, best-available, reservations and the rest are lane
+   * A's money path, lineup, showcase and waitlist are lane C's. Scoping the
+   * directory would fail their builds on a fault this lane found and cannot fix,
+   * which the three-lane protocol calls a border crossing. The measurement is
+   * recorded rather than described: 26 files, 48 faults, 2 of them lane B's.
+   */
+  [
+    'src/app/actions/consent.ts',
+    'a consent record filed against no city when the person chose one, in an append-only ' +
+      'ledger that is evidence under the Spam Act and is never removed, so it cannot be corrected',
+    'src/app/actions holds 46 more reads of this shape in lane A and lane C files, and scoping ' +
+      'the directory would fail their builds on a fault this lane cannot fix',
+  ],
+  [
+    'src/app/actions/discovery-consent.ts',
+    '"no such reservation" said about a reservation that exists, and the answer the person ' +
+      'had just given dropped with it',
+    "the same directory, and the same 46 reads in the other two lanes' files",
   ],
 ]
 
@@ -228,7 +296,8 @@ export const REGISTER = [
 
 const EXT = /\.(ts|tsx)$/
 
-function filesUnder(dir) {
+function filesUnder(target) {
+  if (!statSync(target).isDirectory()) return EXT.test(target) ? [target] : []
   const out = []
   const walk = (d) => {
     for (const entry of readdirSync(d).sort()) {
@@ -237,7 +306,7 @@ function filesUnder(dir) {
       else if (EXT.test(entry)) out.push(full)
     }
   }
-  walk(dir)
+  walk(target)
   return out
 }
 
@@ -391,6 +460,9 @@ function main() {
   const matchedBorder = new Set()
   const borderFaults = new Map()
   let filesScanned = 0
+  // Counted rather than assumed, so the PASS line cannot call a file a directory.
+  let scopedDirs = 0
+  let scopedFiles = 0
   let destructures = 0
   let routed = 0
   let exempted = 0
@@ -406,11 +478,37 @@ function main() {
     }
   }
 
-  for (const [dir, becomes] of SCOPE) {
+  for (const [dir, becomes, insteadOfTheDirectory] of SCOPE) {
     const full = join(ROOT, dir)
     if (!existsSync(full)) {
       console.error(`${TAG} ${dir} is in this guard's scope and does not exist. A scope that scans nothing reports a pass.`)
       process.exit(1)
+    }
+    /*
+     * THE KIND OF AN ENTRY IS CHECKED, NOT ASSUMED. A third element declares
+     * "this is one FILE, and here is why it is not the directory it sits in".
+     * Both halves are enforced, because either one alone changes coverage
+     * silently: a directory entry that has become a file scans one file while
+     * reading like a directory, and a file entry whose third element is missing
+     * is a narrowing nobody has to argue for.
+     */
+    const isDir = statSync(full).isDirectory()
+    if (isDir && insteadOfTheDirectory) {
+      console.error(`${TAG} ${dir} is a DIRECTORY but carries a reason for being a single file. Drop the reason or name the file.`)
+      process.exit(1)
+    }
+    if (!isDir && !insteadOfTheDirectory) {
+      console.error(
+        `${TAG} ${dir} is a single FILE in a scope of directories and says nothing about why. ` +
+          `A file entry covers the file and nothing beside it, so it has to state what the directory holds ` +
+          `that keeps it out. Add the third element, or scope the directory.`,
+      )
+      process.exit(1)
+    }
+    if (isDir) scopedDirs += 1
+    else {
+      scopedFiles += 1
+      console.log(`${TAG}   narrowed to one file, ${dir}: ${insteadOfTheDirectory}`)
     }
     for (const file of filesUnder(full)) {
       filesScanned += 1
@@ -532,7 +630,8 @@ function main() {
       ? 'every one binds its error'
       : `every one binds its error but ${exempted} registered and ${outstanding} raised with another lane`
   console.log(
-    `${TAG} PASS: ${filesScanned} file(s) across ${SCOPE.length} director${SCOPE.length === 1 ? 'y' : 'ies'}, ` +
+    `${TAG} PASS: ${filesScanned} file(s) across ${scopedDirs} director${scopedDirs === 1 ? 'y' : 'ies'} ` +
+      `and ${scopedFiles} named file(s), ` +
       `${routed} read(s) through a door, ${destructures} response binding(s) judged in both spellings, ${remainder}`,
   )
 }

@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { captureException } from '@/lib/observability/sentry'
 import {
   recordPlatformDigestConsent,
   withdrawDigestByAnyToken,
@@ -63,15 +65,32 @@ export async function setDigestConsentAction(input: {
     return ok ? { ok: true } : { ok: false, error: 'Could not save' }
   }
 
-  // Validate the city against the taxonomy so the FK can never fail.
+  /*
+   * Validate the city against the taxonomy so the FK can never fail.
+   *
+   * THROUGH THE DOOR, AND THE FAILURE REFUSES THE SAVE RATHER THAN NARROWING IT.
+   * This read discarded its error until 21 September 2026, so a dropped socket
+   * left `city` null, `citySlug` null, and the consent was written with NO CITY:
+   * somebody who chose Geelong filed as having chosen nowhere. A consent row is
+   * evidence under the Spam Act and this platform's own rule is that it is never
+   * removed, so a wrong one cannot be taken back and a narrower one cannot be
+   * widened. The honest answers are a correct record or a refusal to save, never
+   * a record the reader would not recognise as their own answer.
+   *
+   * A genuinely unknown slug still resolves to null, which is the original and
+   * correct behaviour: the taxonomy really does not hold it.
+   */
   let citySlug: string | null = null
   if (input.citySlug) {
-    const { data: city } = await admin
-      .from('cities')
-      .select('slug')
-      .eq('slug', input.citySlug)
-      .maybeSingle()
-    citySlug = city?.slug ?? null
+    try {
+      const city = await readOrThrow('the digest consent city', () =>
+        admin.from('cities').select('slug').eq('slug', input.citySlug as string).maybeSingle(),
+      )
+      citySlug = city?.slug ?? null
+    } catch (error) {
+      captureException(error, { where: 'app/actions/consent:setDigestConsentAction' })
+      return { ok: false, error: 'Could not save' }
+    }
   }
 
   const ok = await recordPlatformDigestConsent(admin, {

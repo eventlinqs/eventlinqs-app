@@ -5,6 +5,7 @@ import { buildShortUrl, getOrCreateShareLink, type ShareChannel } from '@/lib/br
 import type { CaptionInput, CaptionPlatform } from '@/lib/broadcast/captions'
 import type { SocialCardInput } from '@/lib/broadcast/social-cards'
 import { stripMarkdown } from '@/lib/prose/markdown-subset'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 
 /**
  * ONE source for everything the artefacts are made of.
@@ -107,13 +108,15 @@ export async function loadArtefactContext(
   mintLinks = true,
 ): Promise<ArtefactContext | null> {
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('events')
-    .select(
-      'slug, title, start_date, timezone, cover_image_url, venue_name, venue_city, summary, organisation_id, category:event_categories(name, slug), ticket_tiers(price, currency), organisation:organisations(name, logo_url)',
-    )
-    .eq('id', eventId)
-    .maybeSingle()
+  const data = await readOrThrow('the launch kit event', () =>
+    admin
+      .from('events')
+      .select(
+        'slug, title, start_date, timezone, cover_image_url, venue_name, venue_city, summary, organisation_id, category:event_categories(name, slug), ticket_tiers(price, currency), organisation:organisations(name, logo_url)',
+      )
+      .eq('id', eventId)
+      .maybeSingle(),
+  )
   const event = data as EventRow | null
   if (!event) return null
 
