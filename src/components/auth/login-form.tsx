@@ -156,7 +156,7 @@ export function LoginForm({ googleEnabled }: Props) {
   return (
     <div className="space-y-5">
       {resetFlag && (
-        <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
+        <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success-strong">
           Password updated. Sign in with your new password.
         </div>
       )}

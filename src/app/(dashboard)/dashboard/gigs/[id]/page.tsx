@@ -28,9 +28,9 @@ type Props = { params: Promise<{ id: string }> }
 const STATUS_TONE: Record<string, string> = {
   submitted: 'bg-ink-100 text-ink-700',
   shortlisted: 'bg-gold-100 text-gold-800',
-  declined: 'bg-error/10 text-error',
+  declined: 'bg-error/10 text-ink-900',
   withdrawn: 'bg-ink-100 text-ink-500',
-  booked: 'bg-success/15 text-success',
+  booked: 'bg-success/15 text-ink-900',
 }
 
 /**

@@ -149,10 +149,20 @@ export default async function PerformerDirectoryPage({
                         /* text-success-strong, not text-success: #0F9D58 on the
                            bg-success/15 wash (#dbf0e6) measures 2.94:1, under the
                            4.5:1 AA floor, found by axe at 1440, 768 and 390.
-                           #0B7038 on the same wash measures 5.20:1. The token is
-                           the one globals.css already carries for this exact
-                           case; no colour is introduced here. */
-                        <span className="inline-flex items-center rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success-strong">
+                           The token is the one globals.css already carries for
+                           this exact case; no colour is introduced here.
+
+                           AND THE WASH IS /10 RATHER THAN /15, which it was
+                           until 21 September. #0B7038 on the /15 wash is 5.20:1
+                           over white and 4.51:1 over ink-100 by arithmetic, and
+                           Chromium measured that last one at 4.48:1, under the
+                           floor: Tailwind writes a tint as a color-mix in oklab
+                           and the round trip moves one channel by one unit,
+                           which matters only when a pair sits within 0.03 of
+                           4.5. On /10 the same ink measures 4.73:1 on ink-100
+                           and this card cannot be put anywhere that fails.
+                           Measured by scripts/verify/lb-tintaa-drive.mjs. */
+                        <span className="inline-flex items-center rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success-strong">
                           Open to bookings
                         </span>
                       )}

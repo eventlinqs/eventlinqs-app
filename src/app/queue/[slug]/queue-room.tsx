@@ -387,7 +387,7 @@ export function QueueRoom({
         {phase === 'admitted' && (
           <div className="text-center space-y-4">
             <div className="text-6xl" role="img" aria-label="Checkmark">✓</div>
-            <p className="text-xl font-semibold text-success">You&apos;re in</p>
+            <p className="text-xl font-semibold text-success-strong">You&apos;re in</p>
             <p className={`${t.body} text-sm`}>
               Taking you to checkout&hellip; You have {admissionWindowMinutes} minutes.
             </p>

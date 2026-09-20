@@ -8448,6 +8448,140 @@ const DRILLS = [
     ].join('\n'),
     expect: 'without first establishing that a replacement ladder was actually supplied',
   },
+  /*
+   * tinted-text-meets-contrast, CLAUSE 2 AND THE BASELINE (lane B, 21 September
+   * 2026). The guard was registered and blocking from 11 September and had no
+   * drill at all, which is how it spent ten days reporting PASS over
+   * twenty-nine WCAG AA failures: it skipped every class string carrying an
+   * opacity modifier, and a tint is written with one.
+   *
+   * SIX DRILLS, because six different things can break and one of them broke
+   * on the first run. The matcher took the FIRST `text-` utility in a string,
+   * so on `... text-xs text-error` it resolved "xs", found no such token and
+   * returned silently. Only the baseline rot check caught it, by reporting that
+   * two of its own entries matched nothing.
+   */
+  {
+    name: 'a tint pair under AA on every light surface (clause 2)',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'src/app/gigs/[id]/page.tsx',
+    find: 'bg-success/10 px-3 py-2 text-sm text-success-strong"',
+    replace: 'bg-success/10 px-3 py-2 text-sm text-success"',
+    expect: 'text-success (#0F9D58) on bg-success/10',
+  },
+  {
+    /*
+     * THE WORST PAIR ON THE PLATFORM, restored: amber on amber at 1.91:1,
+     * carrying the "18+ only" age restriction on the public event page. The
+     * assertion is on the composited arithmetic rather than the class names,
+     * so a guard that matched the string without doing the sum cannot pass it.
+     */
+    name: 'the age badge, amber on amber, reported with all three composites',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: 'bg-warning/15 px-3 py-1.5 text-xs font-semibold text-ink-900"',
+    replace: 'bg-warning/15 px-3 py-1.5 text-xs font-semibold text-warning"',
+    expect: 'worst of the three is 1.67:1 (over ink-100)',
+  },
+  {
+    name: 'a solid pair under AA (clause 1, the original behaviour, still held)',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'src/components/marketplace/requests-panel.tsx',
+    find: "'bg-success/15 text-ink-900' : 'bg-ink-100 text-ink-600'",
+    replace: "'bg-success/15 text-ink-900' : 'bg-ink-100 text-ink-400'",
+    expect: 'text-ink-400 (#6B7280) on bg-ink-100 (#EFEDE8) = 4.13:1',
+  },
+  {
+    /*
+     * THE BASELINE CANNOT ROT. An entry that matches nothing is a permission
+     * for something that no longer exists, which is how an allowlist becomes
+     * an unexamined list. This plants one aimed at a pair the tree does not
+     * contain.
+     */
+    name: 'a border baseline entry that matches nothing in the tree',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'scripts/guards/tinted-text-meets-contrast.mjs',
+    find: ['const BORDER_BASELINE = [', ''].join('\n'),
+    replace: [
+      'const BORDER_BASELINE = [',
+      "  { file: 'src/app/a-file-the-drill-invented.tsx', fg: 'error', bg: 'error/10', lane: 'nobody', since: '2026-09-21', note: 'planted by the drill' },",
+      '',
+    ].join('\n'),
+    expect: 'src/app/a-file-the-drill-invented.tsx',
+  },
+  {
+    /*
+     * THE BASELINE IS SUPPRESSING REAL FAILURES, not decorating the output.
+     * Removing one entry must produce the finding it was suppressing, with the
+     * arithmetic. Without this drill the five entries could name pairs that
+     * were never failures and nothing would say so.
+     */
+    name: 'removing a border entry exposes the failure it was holding',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'scripts/guards/tinted-text-meets-contrast.mjs',
+    /*
+     * THE WHOLE ENTRY GOES, not one of its fields. Corrupting a field makes the
+     * entry STALE, and the rot check runs before the violations and exits
+     * first, so the drill went green on the wrong finding until it was read.
+     */
+    find: [
+      '  {',
+      "    file: 'src/components/payouts/refunds-list.tsx',",
+      "    fg: 'error',",
+      "    bg: 'error/10',",
+      "    lane: 'A (refunds)',",
+      "    since: '2026-09-21',",
+      "    note: '4.13:1. Use text-error-strong (5.54:1), which payouts-history-table.tsx in the same directory already uses on the same tint.',",
+      '  },',
+      '',
+    ].join('\n'),
+    replace: '',
+    expect: 'text-error (#DC2626) on bg-error/10',
+  },
+  {
+    /*
+     * THE LIGHT-SYSTEM-INK EXCLUSION IS LOAD BEARING. Without it the guard
+     * condemns `text-white` on the navy hero's own wash and on three
+     * aria-hidden tick icons, which is the false positive that gets a gate
+     * switched off. Deleting the check must make the guard cry wolf.
+     */
+    name: 'the on-dark ink exclusion, deleted',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'scripts/guards/tinted-text-meets-contrast.mjs',
+    find: ['    if (LIGHT_SURFACES.includes(fg)) {', '      skippedComposite += 1', '      continue', '    }', ''].join('\n'),
+    replace: '',
+    expect: 'text-white (#FFFFFF) on bg-success',
+  },
+  {
+    /*
+     * AND THE GREEN HALF OF THE SAME BOUNDARY: white ink on a tint that would
+     * measure 1.13:1 against a light surface is legitimate on-dark markup and
+     * the guard must stay quiet about it.
+     */
+    name: 'white ink on a tint is on-dark markup and stays quiet',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'src/components/marketplace/requests-panel.tsx',
+    find: "'bg-success/15 text-ink-900' : 'bg-ink-100 text-ink-600'",
+    replace: "'bg-error/15 text-white' : 'bg-ink-100 text-ink-600'",
+    expectPass: 'every one at or above 4.55:1 outside the',
+  },
+  {
+    /*
+     * THE COMPOSITOR MARGIN IS LOAD BEARING, and it is the one number in that
+     * guard not derived from a token, so it is the one most likely to be
+     * deleted as an oddity. This plants the exact pair that made it necessary:
+     * text-success-strong on bg-success/15 is 4.51:1 by the guard's own sRGB
+     * arithmetic and 4.48:1 when Chromium paints it, measured by
+     * scripts/verify/lb-tintaa-drive.mjs. Without the margin the guard passes
+     * a pair the browser fails.
+     */
+    name: 'the pair the compositor fails and sRGB arithmetic does not',
+    guard: `${GUARDS}/tinted-text-meets-contrast.mjs`,
+    file: 'src/components/marketplace/requests-panel.tsx',
+    find: "'bg-success/15 text-ink-900' : 'bg-ink-100 text-ink-600'",
+    replace: "'bg-success/15 text-success-strong' : 'bg-ink-100 text-ink-600'",
+    expect: 'worst of the three is 4.51:1 (over ink-100)',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

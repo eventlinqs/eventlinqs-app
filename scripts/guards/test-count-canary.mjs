@@ -3128,9 +3128,32 @@ const ROOT = join(HERE, '..', '..')
  * MEASURED: 535 files, 7145 tests, 0 failed, 0 skipped
  * (`npm run gate:push -- --only suite`, GREEN, 173s, on the tree of this commit).
  * ---------------------------------------------------------------------------
+ *
+ * 2026-09-21 (lane B, LB-TINTAA): raised 535/7145 -> 536/7187.
+ *
+ * ONE NEW FILE AND FORTY-TWO CASES:
+ *   tests/unit/a11y/semantic-text-on-its-own-tint.test.ts  42  (new file)
+ *   535 + 1 = 536 files
+ *   7145 + 42 = 7187 tests
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED. The subject is a shape no test
+ * covered: a semantic colour painted as text on a tint of the same token. The
+ * nearest neighbour, tests/unit/a11y/light-surface-text-tokens, holds two
+ * hand-listed files and is untouched.
+ *
+ * FORTY-TWO IS LARGE FOR ONE FILE AND THE REASON IS test.each: the arithmetic
+ * is checked against four figures globals.css worked out by hand, eight
+ * ink-and-tint pairs are checked on three light surfaces each, twenty
+ * corrected sites are checked for their class, and the five border baseline
+ * entries are each checked to be a real failure. Each is one assertion about
+ * one pair, not one assertion split forty-two ways.
+ *
+ * MEASURED: 536 files, 7187 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 149s, on the tree of this commit).
+ * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 535
-const MIN_TESTS = 7145
+const MIN_FILES = 536
+const MIN_TESTS = 7187
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

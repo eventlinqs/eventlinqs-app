@@ -177,6 +177,22 @@ export const BASELINE = [
     why: 'posting a gig is refused for an organisation that is not active, and the fixture carries no description and no event, so the substance rule in the sitemap catalogue excludes it',
   },
   /*
+   * LB-TINTAA IS THE SAME FIXTURE FOR THE SAME REASON. It posts a gig through
+   * the real form to reach the corrected success banner and the booked badge,
+   * and `requireActiveOrganisation` refuses a pending organisation before the
+   * form is reachable at all. It writes no description and publishes no event,
+   * so isOrganiserProfileIndexable is false on both halves and the row cannot
+   * enter the sitemap. This is a copy of the entry above rather than a new
+   * argument, and it is written out rather than shared because the day one of
+   * the two drives starts writing a description, only one of them should be
+   * excused.
+   */
+  {
+    drive: 'lb-tintaa-drive.mjs',
+    write: "organisations.status='active'",
+    why: 'posting a gig is refused for an organisation that is not active, and the fixture carries no description and no event, so the substance rule in the sitemap catalogue excludes it',
+  },
+  /*
    * LB-SHOWCASEWHOLE'S PAST SHOW, AND WHY 'unlisted' WOULD DEFEAT THE CHECK.
    *
    * The drive needs a CREDIT on a public performer profile, and a credit is a

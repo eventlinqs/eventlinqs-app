@@ -178,7 +178,24 @@ export default async function ArtistDashboardPage({
             ))}
           </div>
 
-          <div className="mt-8 overflow-x-auto rounded-xl border border-ink-200 bg-white">
+          {/*
+            A SCROLLER A KEYBOARD CANNOT REACH. axe reported
+            `scrollable-region-focusable` (serious) here at 390 on 21 September
+            2026, and only at 390: the table is `min-w-[520px]`, so it overflows
+            on a phone and nowhere else, and a person on a phone keyboard or a
+            switch could not scroll it to see the Clicks, Orders and Tickets
+            columns at all. That is the whole point of this table.
+
+            The pattern is the one `src/components/dashboard/attendee-table.tsx`
+            already ships for exactly this shape: a named region, focusable, with
+            a visible focus ring. Nothing is invented here.
+          */}
+          <div
+            role="region"
+            aria-label="Your draw, show by show"
+            tabIndex={0}
+            className="mt-8 overflow-x-auto rounded-xl border border-ink-200 bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+          >
             <div className="border-b border-ink-200 px-5 py-4">
               <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-ink-900">
                 Your draw, show by show
@@ -318,11 +335,11 @@ export default async function ArtistDashboardPage({
                       <span
                         className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
                           app.status === 'booked'
-                            ? 'bg-success/15 text-success'
+                            ? 'bg-success/15 text-ink-900'
                             : app.status === 'shortlisted'
                               ? 'bg-gold-100 text-gold-800'
                               : app.status === 'declined'
-                                ? 'bg-error/10 text-error'
+                                ? 'bg-error/10 text-ink-900'
                                 : 'bg-ink-100 text-ink-700'
                         }`}
                       >
