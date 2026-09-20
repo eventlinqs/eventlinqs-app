@@ -905,7 +905,9 @@ export type Database = {
       }
       digest_sends: {
         Row: {
+          audience_count: number
           city_slug: string
+          completed_at: string | null
           event_count: number
           id: string
           period_end: string
@@ -914,7 +916,9 @@ export type Database = {
           sent_at: string
         }
         Insert: {
+          audience_count?: number
           city_slug: string
+          completed_at?: string | null
           event_count?: number
           id?: string
           period_end: string
@@ -923,7 +927,9 @@ export type Database = {
           sent_at?: string
         }
         Update: {
+          audience_count?: number
           city_slug?: string
+          completed_at?: string | null
           event_count?: number
           id?: string
           period_end?: string

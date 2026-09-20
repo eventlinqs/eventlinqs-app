@@ -253,6 +253,17 @@ console.log(
     `${PR_LIST_STALE ? `NONE (${PR_LIST_STALE})` : `readable; rot drill moves #${LAST_PARKED.number} onto closed #${CLOSED_PR_NUMBER ?? '?'}`}`,
 )
 
+/**
+ * The digest's per-city consent audience, paged and totally ordered. Shared by
+ * three drills because clause 1, clause 2 and the plausible wrong fix are three
+ * different ways to break the same four lines.
+ */
+const AUDIENCE_PAGE =
+  "        .eq('city_slug', citySlug)\n" +
+  "        .order('granted_at', { ascending: true })\n" +
+  "        .order('id', { ascending: true })\n" +
+  '        .range(from, to),\n'
+
 const DRILLS = [
   /*
    * preview-deployment-state (close-out C16, 7 September 2026), one drill: the
@@ -7466,6 +7477,104 @@ const DRILLS = [
     find: '  if (returnedSections.length !== sectionInserts.length) {',
     replace: '  if (returnedSections.length < 0) {',
     expect: 'reads the representation back with no',
+  },
+
+  /*
+   * the-weekly-digest-owes-nobody-an-email (lane B, 20 September 2026), seven
+   * drills, one per clause plus the plausible wrong fix plus both halves of the
+   * send-loop clause.
+   *
+   * This is the only send path on the platform that writes to STRANGERS, and
+   * the drill that matters most is the fourth: the suppression read failed
+   * OPEN. One un-chunked `.in()` over a city's whole waitlist exceeded the
+   * documented 16 KB URL bound, the request failed, the discarded error left
+   * the list EMPTY, and every address that had unsubscribed was put back into
+   * the send by its waitlist row. Each drill below restores exactly the shape
+   * the digest shipped with before 20 September.
+   */
+  {
+    name: 'the city audience goes back to an unbounded read of its consents',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/lib/broadcast/digest.ts',
+    find: AUDIENCE_PAGE,
+    replace: "        .eq('city_slug', citySlug),\n",
+    expect: 'reads marketing_consents with no bound',
+  },
+  {
+    name: 'the city audience pages its consents with no order at all',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/lib/broadcast/digest.ts',
+    find: AUDIENCE_PAGE,
+    replace: "        .eq('city_slug', citySlug)\n        .range(from, to),\n",
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE PLAUSIBLE WRONG FIX, and only clause 3 sees it. The audience wants
+     * oldest first, so ordering on `granted_at` alone reads better than
+     * breaking the tie on a uuid. It is not unique, so two people who consented
+     * in the same instant can land in two windows or in none. On this path the
+     * audience is ALSO the resume order, so the duplicate is a second copy of a
+     * marketing email and the loss is somebody who never hears from us.
+     */
+    name: 'the city audience pages on granted_at alone, which is not unique',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/lib/broadcast/digest.ts',
+    find: AUDIENCE_PAGE,
+    replace:
+      "        .eq('city_slug', citySlug)\n" +
+      "        .order('granted_at', { ascending: true })\n" +
+      '        .range(from, to),\n',
+    expect: 'none of those is unique on that table',
+  },
+  {
+    /*
+     * THE ONE THAT FAILED OPEN. Not a truncation: a REFUSAL. The joined address
+     * list passes the documented 16 KB URL and header bound at a few hundred
+     * ordinary addresses, measured on this project's TEST instance between
+     * 15,038 and 16,083 bytes, and the request never reaches the database at
+     * all. The suppression list is then empty rather than short.
+     */
+    name: 'the suppression read goes back to one in() over the whole waitlist',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/lib/broadcast/digest.ts',
+    find: "          .in('email', chunk)",
+    replace: "          .in('email', waitlistEmails)",
+    expect: 'rather than from a chunk',
+  },
+  {
+    name: 'the idempotence read goes back to discarding its error',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/app/api/cron/weekly-digest/route.ts',
+    find: '    const { data: openRows, error: openError } = await admin',
+    replace: '    const { data: openRows } = await admin',
+    expect: 'indistinguishable from an answer',
+  },
+  {
+    /*
+     * CLAUSE 6, THE HALF NO READ-SHAPED GUARD COULD CARRY. A slice IS a bound
+     * and every scanner in this repository agreed it was one, for as long as it
+     * was dropping four hundred people a week in silence.
+     */
+    name: 'the send loop goes back to slicing its recipients',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/app/api/cron/weekly-digest/route.ts',
+    find: '    for (const recipient of plan.toSend) {',
+    replace: '    for (const recipient of recipients.slice(0, DIGEST_MAX_RECIPIENTS_PER_RUN)) {',
+    expect: 'slices `recipients` directly',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT WEARING THE NEW COLUMN: the row is read, the column
+     * is selected, and the decision still asks only whether a row exists. A row
+     * exists as soon as the first batch goes out.
+     */
+    name: 'the skip goes back to asking whether a row exists rather than whether it closed',
+    guard: `${GUARDS}/the-weekly-digest-owes-nobody-an-email.mjs`,
+    file: 'src/app/api/cron/weekly-digest/route.ts',
+    find: '    if (already?.completed_at && live) {',
+    replace: '    if (already && live) {',
+    expect: 'never reads completed_at off the row it found',
   },
 ]
 

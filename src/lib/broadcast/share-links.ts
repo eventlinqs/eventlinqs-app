@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { getSupabaseServiceRoleKey } from '@/lib/supabase/env'
 
 /**
@@ -148,14 +149,26 @@ export async function getOrCreateShareLink(
   const artistId = input.artistId ?? null
   const createdBy = input.createdBy ?? null
 
+  /*
+   * THE BOUND SITS IN THE FIRST CHAIN, NOT ON THE LAST LINE, and the move is
+   * worth a comment because nothing about the behaviour changed.
+   *
+   * This read has always ended `.limit(1).maybeSingle()`. It was applied to
+   * `lookup` after two conditional filters had been assigned back to it, and a
+   * scanner that walks a PostgREST builder as a CHAIN cannot follow a variable
+   * across an assignment: `scripts/verify/unbounded-read-census.mjs` reported
+   * this line as an unbounded read for as long as it has existed. A bound only
+   * a human can see is a bound the next guard will miss.
+   */
   let lookup = client
     .from('share_links')
     .select(SHARE_LINK_COLUMNS)
     .eq('event_id', input.eventId)
     .eq('channel', input.channel)
+    .limit(1)
   lookup = artistId === null ? lookup.is('artist_id', null) : lookup.eq('artist_id', artistId)
   lookup = createdBy === null ? lookup.is('created_by', null) : lookup.eq('created_by', createdBy)
-  const { data: existing } = await lookup.limit(1).maybeSingle()
+  const { data: existing } = await lookup.maybeSingle()
   if (existing) return existing as ShareLinkRow
 
   const code = await mintCode(
@@ -327,12 +340,27 @@ export async function readExternalCodesForDraft(
   opts?: { client?: BroadcastClient },
 ): Promise<Record<string, string>> {
   const client = opts?.client ?? createAdminClient()
-  const { data } = await client
-    .from('share_links')
-    .select('channel, code')
-    .eq('draft_code', draftCode)
+  /*
+   * PAGED AND ORDERED, though a draft holds a handful of channels today. The
+   * row ceiling is silent (HTTP 200, `error` null, a full-looking array:
+   * https://supabase.com/docs/reference/javascript/select, fetched
+   * 2026-09-19), and the cost of being wrong here is a launch kit artefact
+   * quietly falling back to the untracked kit URL, which reads as "this channel
+   * produced no clicks" rather than as a missing row.
+   */
+  const rows = await readEveryRow<{ channel: string; code: string }>(
+    `external share codes for draft ${draftCode}`,
+    (from, to) =>
+      client
+        .from('share_links')
+        .select('channel, code')
+        .eq('draft_code', draftCode)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+  )
   const out: Record<string, string> = {}
-  for (const row of (data ?? []) as { channel: string; code: string }[]) {
+  for (const row of rows) {
     out[row.channel] = row.code
   }
   return out
