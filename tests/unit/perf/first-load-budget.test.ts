@@ -11,6 +11,7 @@ import {
   identityMismatch,
 } from '../../../scripts/perf/lib/first-load.mjs'
 import { audienceOf, audienceDisagreements, INTERNAL_PREFIXES } from '../../../scripts/perf/lib/route-audience.mjs'
+import { baselineFrom } from '../../../scripts/perf/first-load-budget.mjs'
 
 /**
  * Close-out C8 EXECUTION METHOD, C8B.1/C8B.3/C8B.4.
@@ -269,5 +270,58 @@ describe('a mark records the conditions it was taken under', () => {
     const { platform, ...withoutPlatform } = measurementIdentity(ROOT)
     expect(platform).toBeTruthy()
     expect(identityMismatch(withoutPlatform as never, ROOT)).toContain('platform')
+  })
+})
+
+describe('why a mark went up, and whether the answer survives the next rewrite', () => {
+  const budget = existsSync(BUDGET_FILE) ? JSON.parse(readFileSync(BUDGET_FILE, 'utf8')) : {}
+  const moves = (budget.attributedMoves ?? {}) as Record<
+    string,
+    { date?: string; from?: number; to?: number; delta?: number; cause?: string; method?: string }
+  >
+
+  /**
+   * THE TEST THAT MATTERS, AND THE DEFECT IT WAS WRITTEN AGAINST.
+   *
+   * `baselineFrom` builds the file from an object literal. Every key not named
+   * in that literal is DROPPED when --write-baseline runs, which is how a
+   * hand-added note beside a mark disappears: silently, in a commit whose
+   * subject is about something else, leaving the raised mark behind as its own
+   * explanation. `overBudget` was already carried across for exactly this
+   * reason. This proves `attributedMoves` is too, against the real writer
+   * rather than against a copy of its shape.
+   */
+  it('is carried across by --write-baseline instead of being dropped', () => {
+    const previous = {
+      overBudget: {},
+      attributedMoves: { '/somewhere': { date: '2026-01-01', from: 1, to: 2, delta: 1, cause: 'c', method: 'm' } },
+    }
+    const rewritten = baselineFrom({ routes: [] }, previous)
+    expect(rewritten.attributedMoves).toEqual(previous.attributedMoves)
+  })
+
+  it('starts empty rather than undefined when there is nothing to carry', () => {
+    // An absent key would make the guard read `attributedMoves` as null and
+    // fail a first-ever write, which is a gate red on its own initialisation.
+    expect(baselineFrom({ routes: [] }, null).attributedMoves).toEqual({})
+  })
+
+  it('explains each move with a cause, a method and arithmetic that closes', () => {
+    for (const [route, entry] of Object.entries(moves)) {
+      expect(entry.cause, `${route} attributes a move with no cause`).toBeTruthy()
+      expect(entry.method, `${route} attributes a move with no method`).toBeTruthy()
+      expect(entry.date, `${route} attributes a move with no date`).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect((entry.to as number) - (entry.from as number), `${route} arithmetic does not close`).toBe(entry.delta)
+    }
+  })
+
+  it('names only routes the file still marks, and stays within reach of the mark it explains', () => {
+    // A superseded explanation reads exactly like a current one, so an entry
+    // whose `to` has been left behind by its mark is worse than no entry.
+    for (const [route, entry] of Object.entries(moves)) {
+      const mark = (budget.marks as Record<string, number>)[route]
+      expect(Number.isInteger(mark), `${route} is attributed but carries no mark`).toBe(true)
+      expect(Math.abs(mark - (entry.to as number)), `${route} explains a move the mark has moved past`).toBeLessThanOrEqual(64)
+    }
   })
 })

@@ -36,7 +36,14 @@
 import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { readFirstLoad, bodies, kb, SCOPE_10_3_BUDGET_BYTES, measurementIdentity } from './lib/first-load.mjs'
+import {
+  readFirstLoad,
+  bodies,
+  kb,
+  SCOPE_10_3_BUDGET_BYTES,
+  SHA_JITTER_ALLOWANCE_BYTES,
+  measurementIdentity,
+} from './lib/first-load.mjs'
 import { markerCoverage } from './lib/chunk-attribution.mjs'
 import { audienceOf, classifyRoutes, audienceDisagreements } from './lib/route-audience.mjs'
 
@@ -82,54 +89,15 @@ export function collect(root = ROOT) {
  * new breach as though somebody had accepted it. The guard refuses an entry
  * whose route is no longer over budget, so the register cannot outlive the
  * defect it describes either.
+ *
+ * `attributedMoves` is preserved on exactly the same terms, and the two
+ * parameters are typed here rather than inferred: the default of `null` made
+ * TypeScript read `previous` as `null | undefined`, so the one call that
+ * proves the preservation could not be written.
+ *
+ * @param {{ routes: Array<{ route: string, gzip: number }> }} result
+ * @param {{ overBudget?: Record<string, unknown>, attributedMoves?: Record<string, unknown> } | null} [previous]
  */
-/**
- * THE COMMIT SHA IS IN THE CLIENT BUNDLE, SO EVERY COMMIT MOVES EVERY ROUTE BY
- * A FEW BYTES, AND A MARK WRITTEN TO THE EXACT BYTE CANNOT SURVIVE BEING
- * COMMITTED.
- *
- * Established on 18 September 2026 after four pushes were refused by uniform
- * overages of +1, +2 and +3 bytes on all 141 routes at once, each time on a tree
- * whose bundled source had not changed. The chain, read out of the build rather
- * than reasoned about:
- *
- *   1. `@sentry/nextjs` inlines the git HEAD as the release. It is in the
- *      emitted JavaScript in full:
- *          release:"35c843f2f6f396f5d8b776e12395db365ddc51a4"
- *   2. Chunk filenames are content-addressed, so that chunk is renamed by every
- *      commit.
- *   3. A chunk in EVERY route's first load LISTS other chunks' filenames,
- *      including that one. Verified by grep: `static/chunks/3xb4h7ynb_v2_`
- *      appears inside the shared chunk that all 141 routes load.
- *   4. The replacement name is the same LENGTH and different CHARACTERS, so the
- *      chunk's raw size is unchanged and its gzip size moves by a byte or three.
- *      Measured: raw identical at 20986 both times, gzip 4886 then 4888.
- *
- * So writing a mark, committing it, and building again produces a different
- * number than the mark just written. It is a closed loop, and it is why the
- * ratchet had started refusing every push regardless of the tree.
- *
- * THE BUILD ITSELF IS DETERMINISTIC. Two consecutive builds of one tree both
- * measured 160550 on the shared shell, to the byte. The variation is per COMMIT,
- * not per build, which is exactly what makes it invisible: nobody re-measures
- * after committing.
- *
- * THE ALLOWANCE, AND WHY IT IS NOT A WEAKENED GATE. A mark is a HIGH-WATER MARK,
- * not a measurement, and this is what its head-room is for. 64 bytes is an order
- * of magnitude above the largest variation measured (5 bytes, across four builds
- * at four different commits: 160545, 160548, 160550, 160550) and two orders
- * below the smallest real regression this ratchet has ever caught (303 bytes on
- * one route; the one that started this was 3938 bytes on every route). It cannot
- * hide anything the ratchet exists to see.
- *
- * IT DOES NOT TOUCH THE ABSOLUTE BUDGET. `overBudget` below and the Scope v5
- * 10.3 limit are judged against `r.gzip`, the MEASURED value, never against the
- * mark, so a public route cannot slip over 200 KB by way of this allowance.
- *
- * `scripts/guards/initial-bundle-budget.mjs` is untouched and still refuses any
- * route above its mark.
- */
-const SHA_JITTER_ALLOWANCE_BYTES = 64
 
 export function baselineFrom(result, previous = null) {
   const marks = {}
@@ -171,6 +139,18 @@ export function baselineFrom(result, previous = null) {
       'is no longer over budget, so this register can neither grow by accident nor outlive the defect. ' +
       'Written by a person; --write-baseline preserves it and never adds to it.',
     overBudget: previous?.overBudget ?? {},
+    _attributedMovesDoc:
+      'WHY A MARK WENT UP. A mark rewritten is a cost ACCEPTED, so a move that is not noise is explained ' +
+      'here, beside the number, rather than in a commit message nobody reading this file will find. ' +
+      'Written by a person; --write-baseline preserves it and never adds to it, exactly as it treats ' +
+      'overBudget. Each entry carries the mark it moved FROM, the mark it moved TO, the delta, the CAUSE, ' +
+      'and the METHOD that established the cause, because an attribution with no method is an opinion. ' +
+      'The guard refuses an entry whose route has no mark, and refuses one whose `to` has drifted further ' +
+      'than the 64-byte SHA jitter allowance from the mark the file now carries, so an explanation cannot ' +
+      'outlive the move it explains. An entry may record a PARTIAL result: saying what a measurement ruled ' +
+      'OUT is worth more than a guess, and is the honest output when the remainder needs a differential ' +
+      'build nobody has run.',
+    attributedMoves: previous?.attributedMoves ?? {},
     marks,
   }
 }

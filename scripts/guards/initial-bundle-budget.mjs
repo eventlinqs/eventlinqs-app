@@ -42,7 +42,7 @@
  * a pin is a promise and the build output is the proof.
  *
  * ============================================================================
- * THE FIVE CLAUSES
+ * THE SIX CLAUSES
  * ============================================================================
  *
  * 1. NO PUBLIC ROUTE MAY EXCEED THE SCOPE BUDGET. 200 KB gzip of first-load
@@ -86,6 +86,16 @@
  *    must be classified `never` by src/lib/seo/indexing-policy.ts. A prefix rule
  *    that nothing checks is a second list waiting to disagree with the first.
  *
+ * 6. A MARK THAT WENT UP STAYS EXPLAINED. `attributedMoves` is a person-written
+ *    register, preserved by --write-baseline exactly as `overBudget` is, saying
+ *    why a route got heavier and by what method that was established. A mark
+ *    rewritten is a cost ACCEPTED, and an accepted cost with no reason beside it
+ *    is how the next rise gets waved through. The clause refuses an entry with
+ *    no cause or no method, one whose arithmetic does not close, one naming a
+ *    route with no mark, and one whose `to` has drifted past the SHA jitter
+ *    allowance from the mark the file now carries, because a stale explanation
+ *    reads exactly like a current one.
+ *
  * ============================================================================
  * WHAT IS NOT CLAIMED, SAID HERE RATHER THAN LEFT TO BE DISCOVERED
  * ============================================================================
@@ -104,7 +114,12 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
-import { SCOPE_10_3_BUDGET_BYTES, kb, identityMismatch } from '../perf/lib/first-load.mjs'
+import {
+  SCOPE_10_3_BUDGET_BYTES,
+  SHA_JITTER_ALLOWANCE_BYTES,
+  kb,
+  identityMismatch,
+} from '../perf/lib/first-load.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..', '..')
@@ -193,6 +208,88 @@ function judgeContract() {
     judged += 1
     if (!Number.isInteger(mark) || mark <= 0) {
       failures.push(`${BASELINE_FILE}: ${route} has a mark of ${JSON.stringify(mark)}, which is not a byte count.`)
+    }
+  }
+
+  /*
+   * CLAUSE 6: AN EXPLAINED MOVE STAYS EXPLAINED, AND THE EXPLANATION STAYS TRUE.
+   *
+   * A mark rewritten is a cost ACCEPTED. Lane A raised exactly that on
+   * 20 September 2026 about two moves it had measured but not attributed, and
+   * the only durable place for the answer is beside the number: a commit
+   * message is not findable from this file, and --write-baseline would erase a
+   * loose note the next time anybody rewrote the marks.
+   *
+   * So `attributedMoves` is a person-written register, preserved by the writer
+   * exactly as `overBudget` is, and this clause stops it rotting. The last
+   * check is the one that matters: an entry whose `to` no longer resembles the
+   * mark describes a move that has since been overtaken, and a stale
+   * explanation reads as a current one. The tolerance is the SHA jitter
+   * allowance rather than a fresh number, because that is precisely the
+   * per-commit drift the mark itself is allowed.
+   */
+  const moves = baseline.attributedMoves
+  judged += 1
+  if (!moves || typeof moves !== 'object' || Array.isArray(moves)) {
+    failures.push(
+      `${BASELINE_FILE}: \`attributedMoves\` is ${JSON.stringify(moves ?? null)} rather than an object. It is ` +
+        `the register that says why a mark went UP; dropping it would let the next rise stand unexplained.`,
+    )
+  } else {
+    for (const [route, entry] of Object.entries(moves)) {
+      judged += 1
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+        failures.push(`${BASELINE_FILE}: the attributedMoves entry for ${route} is not an object.`)
+        continue
+      }
+      for (const field of ['cause', 'method']) {
+        judged += 1
+        if (typeof entry[field] !== 'string' || entry[field].trim().length === 0) {
+          failures.push(
+            `${BASELINE_FILE}: the attributedMoves entry for ${route} has no \`${field}\`. An attribution ` +
+              `with no method is an opinion, and one with no cause explains nothing.`,
+          )
+        }
+      }
+      judged += 1
+      if (typeof entry.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
+        failures.push(
+          `${BASELINE_FILE}: the attributedMoves entry for ${route} has a date of ` +
+            `${JSON.stringify(entry.date ?? null)} rather than YYYY-MM-DD.`,
+        )
+      }
+      judged += 1
+      const numeric = ['from', 'to', 'delta'].every((f) => Number.isInteger(entry[f]))
+      if (!numeric) {
+        failures.push(
+          `${BASELINE_FILE}: the attributedMoves entry for ${route} needs integer \`from\`, \`to\` and ` +
+            `\`delta\` byte counts, and carries ${JSON.stringify({ from: entry.from, to: entry.to, delta: entry.delta })}.`,
+        )
+      } else {
+        judged += 1
+        if (entry.to - entry.from !== entry.delta) {
+          failures.push(
+            `${BASELINE_FILE}: the attributedMoves entry for ${route} says ${entry.from} to ${entry.to}, which ` +
+              `is ${entry.to - entry.from} bytes, but records a delta of ${entry.delta}. The arithmetic must close.`,
+          )
+        }
+        judged += 1
+        const mark = baseline.marks[route]
+        if (!Number.isInteger(mark)) {
+          failures.push(
+            `${BASELINE_FILE}: the attributedMoves register names ${route}, which has no mark. The register ` +
+              `cannot outlive the route it describes.`,
+          )
+        } else if (Math.abs(mark - entry.to) > SHA_JITTER_ALLOWANCE_BYTES) {
+          failures.push(
+            `${BASELINE_FILE}: the attributedMoves entry for ${route} explains a move TO ${entry.to}, but the ` +
+              `mark now reads ${mark}, ${Math.abs(mark - entry.to)} bytes away and past the ` +
+              `${SHA_JITTER_ALLOWANCE_BYTES}-byte jitter allowance. The mark has moved again since this was ` +
+              `written, so the explanation now describes a number the file no longer carries. Re-attribute it ` +
+              `or delete it.`,
+          )
+        }
+      }
     }
   }
 
