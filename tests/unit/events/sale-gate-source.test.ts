@@ -30,6 +30,17 @@ import { isOrganiserSellable } from '@/lib/payments/sale-status'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const PAGE = readFileSync(path.join(ROOT, 'src/app/events/[slug]/page.tsx'), 'utf8')
+/*
+ * THE PUBLIC EMBED MOVED, AND THE TEST FOLLOWS IT RATHER THAN RELAXING.
+ *
+ * `EVENT_PAGE_SELECT` lived in page.tsx until 21 September 2026, when close-out
+ * C8 collapsed this route's three resolutions of one row into one memoised
+ * resolver. The narrow embed is the same string in the same shape; it is simply
+ * declared where all three callers can read it. The clause below is what
+ * matters and it is unchanged: the embed this platform sends as `anon` must
+ * never request a column the security migration revoked.
+ */
+const RESOLVER = readFileSync(path.join(ROOT, 'src/lib/events/event-detail-read.ts'), 'utf8')
 
 /** The exact shape the public (anon) embed can return. */
 const PUBLIC_ORG_SHAPE = {
@@ -91,8 +102,8 @@ describe('the organiser sale gate', () => {
     // The other direction. Fixing the sale gate by widening the anon embed would
     // put a Stripe account id (and, with a wildcard, email and phone) back into a
     // public page. The embed must stay narrow.
-    const embed = PAGE.match(/organisation:organisations\(([^)]*)\)/)?.[1] ?? ''
-    expect(embed, 'no organisation embed found on the event page').not.toBe('')
+    const embed = RESOLVER.match(/organisation:organisations\(([^)]*)\)/)?.[1] ?? ''
+    expect(embed, 'no organisation embed found in src/lib/events/event-detail-read.ts').not.toBe('')
     for (const revoked of ['stripe_account_id', 'stripe_charges_enabled', 'email', 'phone', 'owner_id']) {
       expect(embed.includes(revoked), `the public embed must not request ${revoked}`).toBe(false)
     }

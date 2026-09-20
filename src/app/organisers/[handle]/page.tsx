@@ -13,7 +13,7 @@ import { EventCard, type EventCardData } from '@/components/features/events/even
 import { eventGridIntrinsicSize } from '@/lib/ui/event-grid-intrinsic'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
-import type { ComponentType } from 'react'
+import { cache, type ComponentType } from 'react'
 
 import { OrganiserSchemaJsonLd } from '@/components/features/organisers/organiser-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
@@ -135,7 +135,33 @@ class OrganiserReadFailed extends Error {
   }
 }
 
-async function fetchOrganiser(slug: string): Promise<PublicOrganisation | null> {
+/**
+ * THE ORGANISER BEHIND THIS PROFILE, READ ONCE PER REQUEST.
+ *
+ * `generateMetadata` renders the head and the default export renders the body,
+ * from the same request, and both need this row. Before 21 September 2026 both
+ * bought it: counted at the global fetch on a production build against TEST
+ * (scripts/verify/lib/count-supabase-reads.mjs), one view of
+ * /organisers/afrobeats-melbourne made 7 PostgREST calls of which only 5 were
+ * distinct, and BOTH of this function's two reads - the status gate and the
+ * public column read - appeared twice.
+ *
+ * Next's own reference expects that to be free ("fetch requests are
+ * automatically memoized for the same data across generateMetadata ... React
+ * `cache` can be used if `fetch` is unavailable",
+ * node_modules/next/dist/docs/01-app/03-api-reference/04-functions/
+ * generate-metadata.md, Next 16.3.0) and on this platform it is not: every
+ * Supabase request carries its own AbortSignal so that a retry inside a render
+ * is a real second request, and a signal is that deduplicator's documented
+ * opt-OUT (src/lib/supabase/undeduped-fetch.ts). So the memo has to be asked
+ * for, and React's `cache` is the mechanism the reference names.
+ *
+ * It memoises for ONE request. No TTL, nothing shared between requests or
+ * between viewers, and a throw is memoised too, which is the answer this route
+ * should give: a head that says "not found" over a body that rendered is worse
+ * than a 500 that says ask again.
+ */
+const fetchOrganiser = cache(async function fetchOrganiser(slug: string): Promise<PublicOrganisation | null> {
   const admin = createAdminClient()
   const { data: gate, error: gateError } = await withBuildRetry(
     () =>
@@ -172,7 +198,7 @@ async function fetchOrganiser(slug: string): Promise<PublicOrganisation | null> 
     throw new OrganiserReadFailed(slug, error)
   }
   return (data as PublicOrganisation | null) ?? null
-}
+})
 
 /**
  * How many past events the archive grid shows. It was the literal 12 inside

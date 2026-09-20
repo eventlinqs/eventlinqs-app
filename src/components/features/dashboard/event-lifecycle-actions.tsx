@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Archive, ArchiveRestore, Trash2 } from 'lucide-react'
 import type { EventStatus } from '@/types/database'
 import { canArchive, restoreTarget } from '@/lib/event-lifecycle'
 import { ConfirmDialog } from './confirm-dialog'
-import { archiveEvent, restoreEvent, deleteEvent } from '@/app/(dashboard)/dashboard/events/actions'
+import { ROW_CONTROL } from './row-control'
+import { archiveEvent, restoreEvent, deleteEvent, type ActionResult } from '@/app/(dashboard)/dashboard/events/actions'
 
 /**
  * ARCHIVE, RESTORE AND DELETE, THE SAME THREE CONTROLS EVERYWHERE AN ORGANISER
@@ -40,19 +42,36 @@ interface Props {
   variant: 'row' | 'panel'
   /** Where to go after a delete. The list refreshes in place; the overview has nowhere to stay. */
   afterDelete?: 'refresh' | 'list'
+  /**
+   * WHERE A REFUSAL GOES WHEN THE CALLER HAS A BETTER PLACE FOR IT.
+   *
+   * RESTORING AN ARCHIVED EVENT BACK TO `published` RUNS THE PUBLISH GATE:
+   * `restoreEvent` calls `refuseUnlessPublishable` and returns its refusal
+   * whole, `nextAction` included. So the "Connect Stripe" sentence reaches a
+   * person from HERE as well as from Publish, which is not obvious from either
+   * file and was found by a guard rather than by reading.
+   *
+   * In the `row` variant this component renders inside the ACTIONS cell of a
+   * table, which is the narrowest box on the page and the last place a
+   * 172-character sentence should be laid out. When the caller supplies this,
+   * the refusal is handed up and rendered across the row instead. With no
+   * handler it renders its own alert, which is right for the `panel` variant on
+   * the event overview, where it has the width.
+   */
+  onRefusal?: (refusal: ActionResult) => void
 }
 
-// px-2 with no flex gap: every action carries the same 8px either side, so the
-// rhythm between eight words is even whether the word is Edit or Launch Kit
-// (min-w-11 alone centred the short ones in 44px boxes and left the long ones bare).
-const ROW_LINK = 'inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs disabled:opacity-40'
+// The shape lives in one module now: the discount codes table needed the
+// identical 44px row control, and a second copy of a class string is a second
+// thing to forget. See src/components/features/dashboard/row-control.ts.
+const ROW_LINK = ROW_CONTROL
 const PANEL_BUTTON =
   'inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-[transform,box-shadow,background-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 disabled:opacity-40'
 
-export function EventLifecycleActions({ event, eligibility, variant, afterDelete = 'refresh' }: Props) {
+export function EventLifecycleActions({ event, eligibility, variant, afterDelete = 'refresh', onRefusal }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
+  const [refusal, setRefusal] = useState<ActionResult | null>(null)
   const [dialog, setDialog] = useState<'archive' | 'delete' | null>(null)
 
   const archivable = canArchive(event.status)
@@ -61,11 +80,13 @@ export function EventLifecycleActions({ event, eligibility, variant, afterDelete
   const row = variant === 'row'
 
   function runRestore() {
-    setError(null)
+    setRefusal(null)
     startTransition(async () => {
       const result = await restoreEvent(event.id)
-      if (result.error) setError(result.error)
-      else router.refresh()
+      if (result.error) {
+        if (onRefusal) onRefusal(result)
+        else setRefusal(result)
+      } else router.refresh()
     })
   }
 
@@ -88,9 +109,18 @@ export function EventLifecycleActions({ event, eligibility, variant, afterDelete
 
   return (
     <>
-      {error ? (
+      {refusal?.error ? (
         <span role="alert" className={row ? 'text-xs text-error' : 'block text-sm text-error'}>
-          {error}
+          {refusal.error}
+          {/* The gate already worked out where to send them. Throwing it away
+              is what turned "Connect Stripe" into advice with no door in the
+              event form (fixed 28 August 2026) and in the events list (fixed
+              21 September 2026); this was the third copy. */}
+          {refusal.nextAction && (
+            <Link href={refusal.nextAction.href} className="ml-2 font-semibold underline underline-offset-2">
+              {refusal.nextAction.label}
+            </Link>
+          )}
         </span>
       ) : null}
 

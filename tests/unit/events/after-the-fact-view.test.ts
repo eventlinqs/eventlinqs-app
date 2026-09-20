@@ -118,51 +118,67 @@ describe('the door is narrow, and its source says so', () => {
 })
 
 describe('both doors are actually wired, which is where the last one failed', () => {
-  it('the route existence guard consults it before answering 404', () => {
-    // The archived path records the exact failure this prevents: the first drive
-    // of it found the page's own holder branch never ran, because the layout had
-    // already said 404 above it.
-    const layout = readFileSync(
-      join(process.cwd(), 'src', 'app', 'events', '[slug]', 'layout.tsx'),
-      'utf8',
-    )
-    /*
-     * WHICH CALL COUNTS IS DERIVED FROM THE DOOR, NOT TYPED HERE.
-     *
-     * This asserted `afterTheFactEventExists(slug)` by name until 20 September
-     * 2026, and the layout then moved to `fetchAfterTheFactEvent`, the
-     * row-returning reader on the same module: it needs the hero's columns to
-     * preload the LCP image from above the route's loading boundary, and that is
-     * the SAME round trip rather than a second one. The behaviour did not change
-     * and this went red, which means it was asserting a spelling rather than the
-     * property. The property is that the door is consulted BEFORE the 404, so
-     * that is what it asks now, against whichever reader the door exports.
-     */
-    const doorSource = readFileSync(
-      join(process.cwd(), 'src', 'lib', 'events', 'after-the-fact-view.ts'),
-      'utf8',
-    )
-    const doorReaders = [...doorSource.matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)/g)].map(
-      (m) => m[1],
-    )
+  /*
+   * WHICH FILE COUNTS MOVED ON 21 SEPTEMBER 2026, AND THE PROPERTY DID NOT.
+   *
+   * This asserted the call by NAME in the layout until 20 September, and the
+   * layout then moved to the row-returning reader on the same module, so it went
+   * red while the behaviour was unchanged: it was asserting a spelling. It was
+   * re-derived to accept any reader the door exports.
+   *
+   * Close-out C8 then collapsed this route's THREE resolutions of one row into
+   * one memoised resolver (src/lib/events/event-detail-read.ts), and neither
+   * route file names the door any more - the resolver does, once, for both. So
+   * the property is asked of the file that decides, and the two route files are
+   * asked the thing that is actually theirs: that they resolve through it and
+   * 404 on nothing else.
+   */
+  const at = (...parts: string[]) => join(process.cwd(), ...parts)
+  const doorSource = readFileSync(at('src', 'lib', 'events', 'after-the-fact-view.ts'), 'utf8')
+  const resolver = readFileSync(at('src', 'lib', 'events', 'event-detail-read.ts'), 'utf8')
+  const layout = readFileSync(at('src', 'app', 'events', '[slug]', 'layout.tsx'), 'utf8')
+  const page = readFileSync(at('src', 'app', 'events', '[slug]', 'page.tsx'), 'utf8')
+  const doorReaders = [...doorSource.matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)/g)].map(
+    (m) => m[1],
+  )
+
+  it('the one resolver consults the door, and after the anonymous read rather than before it', () => {
     expect(doorReaders.length, 'the door exports no readers, so this test is asserting nothing').toBeGreaterThan(0)
-
     const consultedAt = doorReaders
-      .map((fn) => layout.indexOf(fn + '('))
-      .concat(doorReaders.map((fn) => layout.indexOf(fn + '<')))
+      .map((fn) => resolver.indexOf(fn + '('))
+      .concat(doorReaders.map((fn) => resolver.indexOf(fn + '<')))
       .filter((i) => i >= 0)
-    expect(consultedAt.length, `the layout consults none of ${doorReaders.join(', ')}`).toBeGreaterThan(0)
+    expect(consultedAt.length, `the resolver consults none of ${doorReaders.join(', ')}`).toBeGreaterThan(0)
 
-    // `lastIndexOf`, because the FIRST `notFound` in the file is the import and
-    // the first version of this assertion compared against that and failed.
-    expect(Math.min(...consultedAt)).toBeLessThan(layout.lastIndexOf('notFound()'))
+    // The order is the lifecycle: the anonymous read first, because a published
+    // event must never pay for a service-role lookup, and the door after it.
+    expect(Math.min(...consultedAt)).toBeGreaterThan(resolver.indexOf("readOrThrow('event-detail'"))
   })
 
-  it('the page reads the row through it when the anonymous read finds nothing', () => {
-    const page = readFileSync(
-      join(process.cwd(), 'src', 'app', 'events', '[slug]', 'page.tsx'),
-      'utf8',
-    )
-    expect(page).toContain('fetchAfterTheFactEvent<FullEvent>(slug, EVENT_PAGE_SELECT)')
+  it('the route existence guard resolves through it before answering 404', () => {
+    // The archived path records the exact failure this prevents: the first drive
+    // of it found the page's own holder branch never ran, because the layout had
+    // already said 404 above it. The layout still decides first; it now decides
+    // from the same memoised answer the page reads.
+    const resolvedAt = layout.indexOf('readEventForRoute(slug)')
+    expect(resolvedAt, 'the layout does not resolve the event at all').toBeGreaterThan(-1)
+    // `lastIndexOf`, because the FIRST `notFound` in the file is the import and
+    // the first version of this assertion compared against that and failed.
+    expect(resolvedAt).toBeLessThan(layout.lastIndexOf('notFound()'))
+  })
+
+  it('the page reads the same memoised answer rather than resolving a second time', () => {
+    expect(page).toContain('await readEventForRoute(slug)')
+    /*
+     * The whole point of the collapse: the page has no read of THIS ROW to fold
+     * an after-the-fact branch into.
+     *
+     * Asked as "no events read filtered by slug" rather than "no events read at
+     * all", deliberately. A related-events rail or a same-venue strip would be a
+     * legitimate `from('events')` on this page and would have turned the broader
+     * assertion red for doing nothing wrong, which is how a test stops being
+     * about the property and starts being about the file.
+     */
+    expect(page).not.toMatch(/from\('events'\)[\s\S]{0,300}eq\('slug'/)
   })
 })

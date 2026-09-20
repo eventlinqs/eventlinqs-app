@@ -5,6 +5,9 @@
  * Close-out, 12 September 2026, the fourth occurrence of the read-failure class:
  * the gate's checkout drive opened a published event at 768 and the route
  * answered 404 once, because the layout's existence read discarded its error.
+ * That read now lives in src/lib/events/event-detail-read.ts, memoised per
+ * request, and is the ONLY read of the row the route makes (close-out C8,
+ * 21 September 2026).
  * The fix is src/lib/supabase/read-or-throw.ts and the static half is
  * scripts/guards/read-failure-is-not-not-found.mjs. This is the dynamic half:
  * the served build, a real event enumerated from the database, and a dropped
@@ -195,15 +198,29 @@ try {
   stop()
 }
 
+/*
+ * THE LOG TAG IS `event-detail`, AND IT USED TO BE `event-route`.
+ *
+ * `readOrThrow` prints under the LABEL its caller passes, and the label was
+ * `event-route` while the layout ran its own existence read. Close-out C8
+ * collapsed this route's three resolutions of one row into one memoised
+ * resolver on 21 September 2026 (src/lib/events/event-detail-read.ts) and that
+ * resolver's label is `event-detail`, which is also what the page's own read
+ * has always used. One resolution, one label.
+ *
+ * The three assertions are otherwise unchanged, and the third is the one that
+ * matters most: the log must NEVER call the real slug absent, because "absent"
+ * is the false answer this whole proof exists to forbid.
+ */
 const log = existsSync(serverLog) ? readFileSync(serverLog, 'utf8') : ''
 if (slug) {
-  if (!log.includes('[event-route] read failed; answering 500 rather than 404')) {
+  if (!log.includes('[event-detail] read failed; answering 500 rather than 404')) {
     fail('the server log never recorded the refused read as a 500 decision')
   }
-  if (!log.includes('[event-route] no public row for no-such-event-')) {
+  if (!log.includes('[event-detail] no public row for no-such-event-')) {
     fail('the server log never recorded the genuinely absent slug')
   }
-  if (log.includes('[event-route] no public row for ' + slug)) {
+  if (log.includes('[event-detail] no public row for ' + slug)) {
     fail(`the server log called ${slug} absent, which is the false answer`)
   }
 }

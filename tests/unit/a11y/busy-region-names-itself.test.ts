@@ -106,10 +106,22 @@ describe('the judgement, drilled', () => {
   })
 })
 
-describe('the four skeletons that shipped this defect stay fixed', () => {
+describe('the skeletons that shipped this defect stay fixed', () => {
+  /*
+   * THERE WERE FOUR AND THERE ARE NOW THREE, and the missing one did not
+   * regress. `src/app/events/[slug]/loading.tsx` was DELETED on 20 September
+   * 2026 under close-out C8: a loading boundary in front of a hero makes React
+   * stream the flight payload ahead of the resumed markup, which left that
+   * route's hero <img> at byte 102,160 of a 205,226 byte document and cost
+   * 450ms of LCP element render delay. The rule that keeps it deleted is
+   * `scripts/guards/no-loading-boundary-in-front-of-a-hero.mjs`.
+   *
+   * It is removed from this list rather than left in it because this test READS
+   * each file, so a deleted entry does not quietly pass - it throws, and the
+   * failure would name an a11y defect that does not exist.
+   */
   const FIXED = [
     'src/app/checkout/[reservation_id]/loading.tsx',
-    'src/app/events/[slug]/loading.tsx',
     'src/components/ui/LoadingState.tsx',
     'src/components/checkout/seat-selector-lazy.tsx',
   ]

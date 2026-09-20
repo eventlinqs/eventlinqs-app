@@ -696,22 +696,46 @@ const DRILLS = [
   },
   {
     /*
-     * RE-ANCHORED 20 September 2026. The layout used to call
-     * `afterTheFactEventExists(slug)` and now calls `fetchAfterTheFactEvent`,
-     * the row-returning reader on the same module, because it needs the hero's
-     * columns to preload the LCP image from above the loading boundary and that
-     * is the SAME round trip rather than a second one. The guard's clause was
-     * re-derived at the same time: it now accepts any function the door
-     * EXPORTS, so it judges whether the door is consulted rather than which of
-     * its two names was typed. This drill therefore removes the CALL, which is
-     * still the only thing that makes the clause true.
+     * RE-ANCHORED TWICE, and the second time is the interesting one.
+     *
+     * 20 September 2026: the layout moved from `afterTheFactEventExists(slug)`
+     * to `fetchAfterTheFactEvent`, the row-returning reader on the same module,
+     * and the guard's clause was re-derived to accept any function the door
+     * EXPORTS rather than one typed name.
+     *
+     * 21 September 2026, close-out C8: the layout, `generateMetadata` and the
+     * page were collapsed onto ONE memoised resolver, so neither surface names
+     * the door any more - the resolver does, once, for both. The guard now
+     * follows value imports to find who consults it. This drill therefore
+     * removes the CALL from the resolver, which takes the door away from BOTH
+     * surfaces at once, and the guard has to name both.
      */
-    name: 'the route existence guard stops consulting the after-the-fact door',
+    name: 'the shared event resolver stops consulting the after-the-fact door',
+    guard: `${GUARDS}/event-lifecycle-total.mjs`,
+    file: 'src/lib/events/event-detail-read.ts',
+    find: '  return fetchAfterTheFactEvent<FullEvent>(slug, EVENT_PAGE_SELECT)',
+    replace: '  return null // lane-C drill: the door removed',
+    expect: 'no longer consults the after-the-fact door',
+  },
+  {
+    /*
+     * THE OTHER HALF OF THE SAME CLAUSE, AND IT IS NEW ON 21 SEPTEMBER 2026.
+     *
+     * The drill above breaks the door. This one leaves the door alone and
+     * breaks the PATH TO IT from one surface, which is the failure the
+     * import-following derivation exists to catch and which the old
+     * one-file-one-name version could not have expressed: the layout stops
+     * importing the shared resolver, so it reaches the after-the-fact door
+     * through nothing, while the page still does. A guard that only asked
+     * "does this file say the name" would have been satisfied by neither file
+     * saying it, which is the state the tree is legitimately in.
+     */
+    name: 'the events layout stops reaching the after-the-fact door at all',
     guard: `${GUARDS}/event-lifecycle-total.mjs`,
     file: 'src/app/events/[slug]/layout.tsx',
-    find: '  const afterTheFact = await fetchAfterTheFactEvent<EventHeroFields>(slug, EVENT_HERO_SELECT)',
-    replace: '  const afterTheFact = null // lane-C drill: the door removed',
-    expect: 'no longer consults the after-the-fact door',
+    find: "import { readEventForRoute } from '@/lib/events/event-detail-read'",
+    replace: 'const readEventForRoute = async (_slug: string) => null // lane-C drill: the path removed',
+    expect: 'src/app/events/[slug]/layout.tsx no longer consults the after-the-fact door',
   },
   {
     name: 'the after-the-fact door stops constraining visibility',
@@ -3196,32 +3220,29 @@ const DRILLS = [
     guard: `${GUARDS}/read-failure-is-not-not-found.mjs`,
     file: 'src/app/events/[slug]/layout.tsx',
     /*
-     * RE-ANCHORED 20 September 2026, by the lane whose change moved it. The
-     * existence read used to select 'id' and return `children`; it now selects
-     * EVENT_HERO_SELECT and returns `withHeroPreload(...)`, because the hero's
-     * columns have to be in hand ABOVE the loading boundary to preload the LCP
-     * image on the SAME round trip rather than a second one.
+     * RE-ANCHORED 21 September 2026, by the lane whose change moved it. The
+     * layout no longer performs a read at all: close-out C8 collapsed this
+     * route's three reads of one row onto one memoised resolver in
+     * src/lib/events/event-detail-read.ts, and the layout now awaits that.
      *
-     * THE REPLACE IS LEFT AS THE HISTORICAL INCIDENT VERBATIM, and that is the
-     * point of this drill rather than an oversight: its job is to put back the
-     * shape that really shipped on 12 September, which discarded the error and
-     * decided existence on `if (data)`. Only the aim moved.
+     * THE DRILL STILL BELONGS ON THE LAYOUT AND NOT ON THE RESOLVER, and the
+     * reason is a real limit of the guard rather than a preference: it judges
+     * src/app alone, and says so in its own header. A drill planted in
+     * src/lib would not go red, and a drill that cannot go red is worse than no
+     * drill. The layout is where a future edit would most plausibly put this
+     * shape back, because it is the file whose job is to decide existence.
+     *
+     * THE REPLACE IS THE HISTORICAL INCIDENT VERBATIM IN ITS ESSENTIALS: a
+     * destructure that never binds `error`, deciding a 404. It keeps the
+     * notFound() call, because without one the guard does not judge the file at
+     * all and the drill would go green for the wrong reason.
      */
-    find:
-      "  const row = await readOrThrow('event-route', () =>\n" +
-      "    supabase.from('events').select(EVENT_HERO_SELECT).eq('slug', slug).maybeSingle() as unknown as Read<EventHeroFields>,\n" +
-      '  )\n' +
-      '\n' +
-      '  if (row) return withHeroPreload(await eventHeroPreloadLink(row), children)',
+    find: '  const event = await readEventForRoute(slug)\n  if (!event) notFound()',
     replace:
-      '  const { data } = await supabase\n' +
-      "    .from('events')\n" +
-      "    .select('id')\n" +
-      "    .eq('slug', slug)\n" +
-      '    .maybeSingle()\n' +
-      '\n' +
-      '  if (data) return children',
-    expect: 'discards the error of the read that decides if (data) return children',
+      '  const supabase = createPublicClient()\n' +
+      "  const { data: event } = await supabase.from('events').select('id').eq('slug', slug).maybeSingle()\n" +
+      '  if (!event) notFound()',
+    expect: 'discards the error of the read that decides',
   },
   {
     name: 'a dashboard page folds the read error into the notFound() condition',
@@ -5466,10 +5487,21 @@ const DRILLS = [
   },
   {
     name: "the organiser's GST report table stops being a containing block",
+    /*
+     * RE-AIMED 21 September 2026. The anchor was the whole class attribute
+     * including `overflow-x-auto`, and the phone rebuild of this table
+     * (a-table-a-phone-can-read) moved the scroller to `lg:overflow-x-auto`,
+     * so the anchor stopped existing and the drill reported STALE, which is
+     * the harness doing its job rather than a failure.
+     *
+     * The subject is unchanged and so is what it proves: this box still
+     * scrolls from `lg` up and still holds an sr-only caption, so it must
+     * still be a containing block. Only the attribute it lives in moved.
+     */
     guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
     file: 'src/app/(dashboard)/dashboard/reports/gst/page.tsx',
-    find: 'className="relative overflow-x-auto rounded-xl border border-ink-200 bg-white"',
-    replace: 'className="overflow-x-auto rounded-xl border border-ink-200 bg-white"',
+    find: 'className="relative rounded-xl border border-ink-200 bg-white max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent lg:overflow-x-auto"',
+    replace: 'className="rounded-xl border border-ink-200 bg-white max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent lg:overflow-x-auto"',
     expect: 'but is not a containing block',
   },
   {
@@ -6439,68 +6471,87 @@ const DRILLS = [
   },
 
   /*
-   * hero-preload-above-the-loading-boundary, four drills (20 September 2026).
+   * no-loading-boundary-in-front-of-a-hero, three drills (20 September 2026).
    *
-   * One clause per drill, because each stands for a different way this went
-   * wrong while it was being built rather than for a hypothetical.
+   * This guard replaced hero-preload-above-the-loading-boundary, whose four
+   * drills were deleted WITH it rather than left pointing at a file that is no
+   * longer in the tree. Two of those four described placements that had been
+   * tried and had silently done nothing (`generateMetadata`, and `react-dom`'s
+   * `preload` inside a server component); the second of them is kept below,
+   * because the resolver it describes is still here and the trap is still live.
    *
-   *   1. The layout stops asking: the original defect, the hero's preload back
-   *      at byte 85,041 of a 205,060 byte document.
-   *   2. The PAGE asks instead. This was attempted twice, from
-   *      `generateMetadata` and from the server layout via `react-dom`, and both
-   *      looked completely reasonable and did nothing at all.
-   *   3. The server resolver imports `react-dom`, which is the second of those
-   *      two: in a server component that specifier resolves to the react-server
-   *      build where `preload()` has no dispatcher.
-   *   4. The derivation goes blind. It aims at the PAGE rather than at
-   *      HeroMedia's internals, because the first attempt at this drill renamed
-   *      `<HeroRaster` inside HeroMedia.tsx, the guard stayed green, and it was
-   *      RIGHT to: deriveHeroFiles keys on a consumer rendering `<HeroMedia`.
-   *      A drill that misses its anchor verifies nothing while looking like one.
+   * The three that remain are one per clause:
+   *
+   *   1. A page behind an existing boundary grows a hero. The harness cannot
+   *      create a file, so it cannot plant a boundary; this is the other and
+   *      likelier direction anyway, and the drill's own comment says why.
+   *   2. The server resolver imports `react-dom`, where `preload()` has no
+   *      dispatcher and does nothing at all.
+   *   3. The hero derivation goes blind. It matters more on this guard than it
+   *      did on the last one, because clause 1 passes by finding NOTHING and a
+   *      broken derivation finds nothing too.
    */
   {
     /*
-     * THE ANCHOR IS THE IMPORT, NOT ONE BRANCH, AND THAT IS THE POINT.
+     * CLAUSE 1, AND THE DRILL COMES AT IT FROM THE DIRECTION IT WILL ACTUALLY
+     * ARRIVE FROM.
      *
-     * The first version of this drill removed the ask from the `row` branch
-     * alone and the guard PASSED, because clause 1 only asked whether the
-     * layout MENTIONS the preload and three other branches still did. The
-     * harness caught that on its first run and clause 5 was written because of
-     * it. Removing the import removes every ask at once, which is what clause 1
-     * is actually claiming to catch.
+     * The obvious drill is "put a loading.tsx back beside the event page", and
+     * it is the one that was run by hand while the guard was written (red with
+     * the fault named, green when the file was removed again). This harness
+     * only mutates files it can find an anchor in, so it cannot CREATE one, and
+     * the substitute chosen here is not a weaker version of the same thing: it
+     * is the other, likelier direction. A boundary is added deliberately and by
+     * somebody thinking about loading; a HERO is added to a page that already
+     * sits behind one without anybody thinking about loading at all. The
+     * checkout route has carried its boundary since long before this rule, so
+     * giving its page a hero is exactly that mistake.
+     *
+     * Both marks are planted, because deriveHeroFiles requires both: the locked
+     * `.hero-marketing` scale and a rendered `<HeroMedia>`. Planting one alone
+     * would leave the guard green and the drill would be verifying nothing.
      */
-    name: 'the layout above the loading boundary stops asking for the hero',
-    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
-    file: 'src/app/events/[slug]/layout.tsx',
-    find: "import { EVENT_HERO_SELECT, eventHeroPreloadLink } from '@/lib/images/hero-preload'",
-    replace: "import { EVENT_HERO_SELECT } from '@/lib/images/hero-preload'",
-    expect: 'no layout above that boundary asks for it',
-  },
-  {
-    name: 'a branch of the asking layout returns children without deciding about the hero',
-    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
-    file: 'src/app/events/[slug]/layout.tsx',
-    find: 'if (await viewerMayReachArchivedEvent(slug)) return withoutHeroPreload(children)',
-    replace: 'if (await viewerMayReachArchivedEvent(slug)) return children',
-    expect: 'returns children without deciding about the hero',
-  },
-  {
-    name: 'the page asks for its own preload, from inside the boundary where it cannot reach the head',
-    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
-    file: 'src/app/events/[slug]/page.tsx',
-    find: "import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'",
+    name: 'a page that already sits behind a loading boundary grows a hero',
+    guard: `${GUARDS}/no-loading-boundary-in-front-of-a-hero.mjs`,
+    file: 'src/app/checkout/[reservation_id]/page.tsx',
+    find: '    <CheckoutForm',
     replace:
-      "import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'\n" +
-      "import { heroPreloadLink } from '@/lib/images/hero-preload'",
-    expect: 'asks for the hero preload from INSIDE',
+      '    <div className="hero-marketing"><HeroMedia image={null} alt="" /></div>,\n' +
+      '    <CheckoutForm',
+    expect: 'renders a hero and sits behind',
   },
   {
     name: 'the server-only resolver reaches for react-dom preload, which does nothing there',
-    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    guard: `${GUARDS}/no-loading-boundary-in-front-of-a-hero.mjs`,
     file: 'src/lib/images/hero-preload.tsx',
     find: "import 'server-only'",
     replace: "import 'server-only'\n" + "import { preload } from 'react-dom'",
     expect: 'imports from react-dom',
+  },
+  {
+    /*
+     * CLAUSE 3, AND IT IS THE CLAUSE THIS GUARD MOST NEEDS DRILLED.
+     *
+     * Clause 1 PASSES by finding nothing, which is the same shape a derivation
+     * that has stopped working produces. So the guard is only worth anything
+     * while it can still see the two halves of the join, and this proves it
+     * notices when one of them goes rather than reporting a confident zero.
+     *
+     * IT AIMS AT THE BOUNDARY HALF, and the first version of this drill aimed
+     * at the other half and DID NOT FIRE - the harness reported 0 of 1, which
+     * is what it is for. Renaming `<HeroMedia` inside hero-files.mjs does not
+     * hand this guard an empty list: `deriveHeroFiles` THROWS on a short list
+     * by its own IMPLAUSIBLY_FEW floor, so the check it was written against was
+     * unreachable and has been deleted rather than left looking careful. The
+     * boundary half has no such floor above it, so it is the one that can
+     * silently go to zero, and it is the one drilled.
+     */
+    name: 'the boundary derivation goes blind, so clause 1 could not have failed',
+    guard: `${GUARDS}/no-loading-boundary-in-front-of-a-hero.mjs`,
+    file: 'scripts/guards/no-loading-boundary-in-front-of-a-hero.mjs',
+    find: "const loadings = files.filter((f) => f.endsWith('/loading.tsx'))",
+    replace: "const loadings = files.filter((f) => f.endsWith('/loading.tsx.disabled'))",
+    expect: 'the derivation of boundaries has gone blind',
   },
   /*
    * audit-flag-is-read-where-it-is-written, four drills (20 September 2026).
@@ -6544,14 +6595,208 @@ const DRILLS = [
     expect: 'declares no AUDIT_FLAG',
   },
 
+  /*
+   * the-head-and-the-body-ask-once (close-out C8, 21 September 2026), four
+   * drills: one per mechanism the guard has to hold.
+   *
+   * Every one of these is the tree as it actually stood on the morning of
+   * 21 September. The counter measured ten duplicate database calls across four
+   * public SEO route families in one warmed page view each; these four drills
+   * put four of them back.
+   */
   {
-    name: 'the event page stops rendering a hero, so the guard has nothing left to judge',
-    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
-    file: 'src/app/events/[slug]/page.tsx',
-    find: '            <HeroMedia',
-    replace: '            <HeroMediaRenamed',
-    expect: 'no hero-bearing page was found behind any loading boundary',
+    name: 'the event route goes back to buying its row for the head and again for the body',
+    guard: `${GUARDS}/the-head-and-the-body-ask-once.mjs`,
+    file: 'src/lib/events/event-detail-read.ts',
+    find: 'export const readEventForRoute = cache(async function readEventForRoute(',
+    replace: 'export const readEventForRoute = (async function readEventForRoute(',
+    expect: 'buys the same rows twice in one request',
   },
+  {
+    name: 'the organiser profile goes back to reading its status gate twice',
+    guard: `${GUARDS}/the-head-and-the-body-ask-once.mjs`,
+    file: 'src/app/organisers/[handle]/page.tsx',
+    find: 'const fetchOrganiser = cache(async function fetchOrganiser(',
+    replace: 'const fetchOrganiser = (async function fetchOrganiser(',
+    expect: 'buys the same rows twice in one request',
+  },
+  {
+    /*
+     * THE VENUE PAGE'S WRAPPER IS A BARE `cache(reader)` RATHER THAN A WRAPPED
+     * FUNCTION BODY, so this drill takes a different shape from the two above
+     * and is worth having for exactly that reason: it proves the guard judges
+     * what the identifier is ASSIGNED, not whether the word `cache` appears
+     * somewhere in the file.
+     */
+    name: 'the venue profile goes back to resolving its venue twice',
+    guard: `${GUARDS}/the-head-and-the-body-ask-once.mjs`,
+    file: 'src/app/venues/[handle]/page.tsx',
+    find: 'const venueForRoute = cache(resolveVenueProfile)',
+    replace: 'const venueForRoute = resolveVenueProfile',
+    expect: 'buys the same rows twice in one request',
+  },
+  {
+    /*
+     * THE ANTI-FALSE-PASS FOR THE DERIVATION ITSELF. A route that stops
+     * exporting `generateMetadata` is not judged at all, which is correct - it
+     * has no head of its own to buy anything for - and this drill proves the
+     * guard NOTICES rather than quietly dropping the subject: the identifier
+     * moves out of reach, so the clause that looks it up must say so.
+     */
+    name: 'a route awaits a reader this guard cannot find the definition of',
+    guard: `${GUARDS}/the-head-and-the-body-ask-once.mjs`,
+    file: 'src/app/artists/[slug]/page.tsx',
+    find: 'const artistForRoute = cache(async function artistForRoute(slug: string) {',
+    replace: 'const artistForRouteRenamedAway = cache(async function artistForRouteRenamedAway(slug: string) {',
+    expect: 'could not find where it is defined',
+  },
+
+  /*
+   * a-refusal-keeps-its-door (21 September 2026), four drills.
+   *
+   * Every one of these is a state the tree was really in. The event form had
+   * the first on 28 August; the events list and the lifecycle actions both had
+   * it until this commit, and the third was found by the guard rather than by
+   * reading.
+   */
+  {
+    name: 'the events list throws away the door the publish gate worked out',
+    guard: `${GUARDS}/a-refusal-keeps-its-door.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/events-table.tsx',
+    find:
+      '      {refusal.nextAction && (' + '\n' +
+      '        <Link' + '\n' +
+      '          href={refusal.nextAction.href}' + '\n' +
+      '          className="ml-2 font-semibold underline underline-offset-2"' + '\n' +
+      '        >' + '\n' +
+      '          {refusal.nextAction.label}' + '\n' +
+      '        </Link>' + '\n' +
+      '      )}',
+    replace: '      {null}',
+    expect: 'never reads `nextAction`',
+  },
+  {
+    name: 'the events list stops announcing its refusal',
+    guard: `${GUARDS}/a-refusal-keeps-its-door.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/events-table.tsx',
+    find: '      role="alert"',
+    replace: '      data-refusal="true"',
+    expect: 'without role="alert"',
+  },
+  {
+    name: 'the restore path throws away the door, which is the copy nobody knew about',
+    guard: `${GUARDS}/a-refusal-keeps-its-door.mjs`,
+    file: 'src/components/features/dashboard/event-lifecycle-actions.tsx',
+    find:
+      '          {refusal.nextAction && (' + '\n' +
+      '            <Link href={refusal.nextAction.href} className="ml-2 font-semibold underline underline-offset-2">' + '\n' +
+      '              {refusal.nextAction.label}' + '\n' +
+      '            </Link>' + '\n' +
+      '          )}',
+    replace: '          {null}',
+    expect: 'never reads `nextAction`',
+  },
+  {
+    /*
+     * THE ANTI-BLINDNESS DRILL. Take the door off the CONTRACT and the guard
+     * has nothing to look for; a version that shrugged would report PASS on a
+     * tree where every refusal had silently lost its link.
+     */
+    name: 'the ActionResult contract loses the door itself',
+    guard: `${GUARDS}/a-refusal-keeps-its-door.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/actions.ts',
+    find: "export type ActionResult = { error?: string; nextAction?: { label: string; href: string } }",
+    replace: 'export type ActionResult = { error?: string }',
+    expect: 'no { label, href } member',
+  },
+
+  /*
+   * a-table-a-phone-can-read (21 September 2026), five drills, one per clause.
+   *
+   * Every one of these is the state the tree was really in when the drive
+   * measured it. Clause four's is the exact class attribute that clipped six
+   * controls, and clause five's is the exact button that rendered 16px tall on
+   * a 1440 desktop as well as on a phone.
+   */
+  {
+    name: 'the discount codes table goes back to being a table on a phone',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: '<table className="w-full text-sm max-lg:block">',
+    replace: '<table className="w-full text-sm">',
+    expect: 'no phone presentation',
+  },
+  {
+    name: 'the header stays while the cells stack, five headings above one card',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: '<thead className="max-lg:hidden">',
+    replace: '<thead>',
+    expect: 'stays visible below lg',
+  },
+  {
+    name: 'the minimum width that forces the phone-width scroller comes back',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/reach/page.tsx',
+    find: '<table className="w-full text-sm max-lg:block lg:min-w-[560px]">',
+    replace: '<table className="w-full text-sm max-lg:block min-w-[560px]">',
+    expect: 'unqualified `min-w-[...]`',
+  },
+  {
+    /*
+     * THE ONE THAT WAS REALLY THERE. `overflow-hidden` on the wrapper is what
+     * made six controls unreachable, and it reads in a class list exactly like
+     * the harmless corner-rounding it also does.
+     */
+    name: 'the wrapper clips again at phone width',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: 'bg-white overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:overflow-visible',
+    replace: 'bg-white overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent',
+    expect: 'applies at phone width',
+  },
+  {
+    name: 'a row control goes back to eleven pixels of underlined text',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: 'className={`${ROW_CONTROL} text-[var(--color-error-strong)] hover:underline`}',
+    replace: 'className="text-xs text-[var(--color-error-strong)] hover:underline"',
+    expect: 'no 44px floor',
+  },
+
+  /*
+   * no-punctuation-standing-in-for-a-value (21 September 2026), three drills.
+   *
+   * The first two are the exact lines the em-dash scrub left behind, restored
+   * character for character. The third is a mark the scrub did not produce and
+   * that would read identically wrong, so the guard is shown to hold the class
+   * rather than one character.
+   */
+  {
+    name: 'a buyer with no name is called ":" again, on the order detail page',
+    guard: `${GUARDS}/no-punctuation-standing-in-for-a-value.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/orders/[orderId]/page.tsx',
+    find: "{buyerName || 'Not given'}",
+    replace: "{buyerName || ':'}",
+    expect: 'standing in for a value',
+  },
+  {
+    name: 'a ticket tier with no capacity reads "0/:" again',
+    guard: `${GUARDS}/no-punctuation-standing-in-for-a-value.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/page.tsx',
+    find: "{tier.sold_count}/{tier.total_capacity || '-'}",
+    replace: "{tier.sold_count}/{tier.total_capacity || ':'}",
+    expect: 'standing in for a value',
+  },
+  {
+    name: 'a different separator mark, to show the guard holds the class and not one character',
+    guard: `${GUARDS}/no-punctuation-standing-in-for-a-value.mjs`,
+    file: 'src/components/orders/order-table.tsx',
+    find: "{order.buyer_name || 'Not given'}",
+    replace: "{order.buyer_name || '|'}",
+    expect: 'standing in for a value',
+  },
+
 
   /*
    * a-drive-waits-for-a-cached-flag (lane B, 19 September 2026), four drills.

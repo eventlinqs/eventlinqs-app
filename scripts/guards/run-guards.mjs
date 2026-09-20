@@ -582,14 +582,16 @@
  *                              the label was laid out at its position in the FULL scroll
  *                              width: /admin/users measured 569 against a 390 viewport
  *                              and the phone rendered the screen at 69 per cent
- *   hero-preload-above-the-loading-boundary  a hero behind a route-level
- *                              loading.tsx is asked for from a layout ABOVE that
- *                              boundary. The head closes with the skeleton, so the
- *                              preload next/image emits when the hero renders landed at
- *                              byte 85,041 of a 205,060 byte document while every other
- *                              gated route carried it at byte 241. Lighthouse charged it
- *                              as Resource load delay, median 331ms and 533ms against a
- *                              load DURATION of 6ms
+ *   no-loading-boundary-in-front-of-a-hero  a hero-bearing page does not sit
+ *                              behind a route-level loading.tsx at all. React streams a
+ *                              suspended tree shell-first, then the RSC FLIGHT PAYLOAD,
+ *                              then the resumed markup, so the hero <img> landed at byte
+ *                              102,160 of a 205,226 byte document against 18,599 on a
+ *                              route with no boundary. Lighthouse charged it as Element
+ *                              render delay, 603ms against 153ms without it. It replaces
+ *                              hero-preload-above-the-loading-boundary, which rescued
+ *                              the preload from behind the boundary but could not move
+ *                              the ELEMENT, and is the stronger rule that subsumes it
  *   audit-flag-is-read-where-it-is-written  the measurement flag is read from the
  *                              element the layout writes it to. It is set on
  *                              documentElement and SIX components read document.body:
@@ -598,6 +600,32 @@
  *                              ken-burns layer all mounted inside every Lighthouse run,
  *                              each one a suppression written to keep decoration out of
  *                              a measurement
+ *   the-head-and-the-body-ask-once  no route buys the same rows twice, once for
+ *                              generateMetadata and once for the page. Next's own
+ *                              reference expects that to be memoised and on this
+ *                              platform it is not, because every Supabase request
+ *                              carries its own AbortSignal, which is the framework
+ *                              deduplicator's documented opt-OUT. Counted at the global
+ *                              fetch: ten duplicate database calls across four public
+ *                              SEO route families in one warmed page view each
+ *                              (21 September 2026, close-out C8 clause C8B.3)
+ *   a-refusal-keeps-its-door  a caller of an action that can refuse with a
+ *                              nextAction must read it and must render role="alert". The gate
+ *                              works out where to send an organiser and three callers threw it
+ *                              away, so "Connect Stripe" was advice with no door. The type, the
+ *                              door's field name, the actions that can carry one and their
+ *                              callers are all derived (21 September 2026)
+ *   a-table-a-phone-can-read  every organiser data table has a presentation below lg
+ *                              that is not a five-column table. Measured: the discount
+ *                              codes table clipped Deactivate and Delete outside an
+ *                              `overflow-hidden` box at 390 and 768, and reach and the
+ *                              GST report lost the row's own name when swiped to the
+ *                              right edge. Subjects walked, comments stripped
+ *                              (21 September 2026, close-out C8 clause C8B.3)
+ *   no-punctuation-standing-in-for-a-value  a lone separator mark may not be the
+ *                              fallback a person reads where a value should be. The
+ *                              dash scrub left nine of them, including "Name: :" on
+ *                              every guest order (21 September 2026)
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -1857,20 +1885,30 @@ const GUARDS = [
   // seven ways.
   'scripts/guards/tile-label-over-a-photograph.mjs',
   'scripts/guards/sr-only-cannot-escape-a-scroller.mjs',
-  // 20 September 2026, close-out C8B.3. next/image emits a hero's preload where
-  // the ELEMENT renders, and React hoists it into the head only while the head
-  // is open. A route-level loading.tsx closes the head with the SKELETON, so on
-  // the one public route that has one the link came out at byte 85,041 of a
-  // 205,060 byte document: the browser could not ask for the LCP image until it
-  // had parsed 41 per cent of the page. Every other gated route carried it at
-  // byte 241. Lighthouse charged it as Resource load delay, median 331ms on
-  // cat-indie and 533ms on the arena page over five runs each, against a load
-  // DURATION of 6ms; after the fix, 11ms and 12ms. The subject is derived from
-  // the tree (loading boundaries, the value-import graph and deriveHeroFiles),
-  // never listed, and clause 4 fails loudly if that derivation ever returns
-  // zero. Drilled red on all four clauses and green after each
-  // (C:\dev\EVIDENCE\C8-HEROPRELOAD\guard-drills.txt).
-  'scripts/guards/hero-preload-above-the-loading-boundary.mjs',
+  // 20 September 2026, close-out C8. REPLACES hero-preload-above-the-loading-
+  // boundary, and the replacement is a STRONGER rule rather than a rename.
+  //
+  // That guard asked whether a hero standing behind a loading boundary at least
+  // had its preload requested from above it. The answer moved the HINT into the
+  // head (byte 85,041 to byte 241, resource load delay from a 331ms median to
+  // 12ms) and it was real. It could not move the ELEMENT. React streams a
+  // suspended tree shell-first, then the whole RSC FLIGHT PAYLOAD, then the
+  // resumed markup, so the hero <img> still sat at byte 102,160 of a 205,226
+  // byte document while a route with no boundary carried its first <img> at
+  // 18,599, and nothing can paint an element the parser has not reached.
+  // Lighthouse charged the remainder as Element render delay: 603ms with the
+  // boundary against 153ms without, and the route's median went 0.80 to 0.84 on
+  // that change alone.
+  //
+  // So the rule is now that a hero does not stand behind a boundary at all,
+  // which subsumes the old one: nothing needs rescuing from behind a boundary
+  // that is not there. The subject is derived from the tree (loading
+  // boundaries, the value-import graph and deriveHeroFiles), never listed, and
+  // clause 3 fails loudly if any part of that derivation returns zero, because
+  // here a zero is the PASSING state and therefore indistinguishable from
+  // blindness. Drilled red on each clause and green after each
+  // (C:\dev\EVIDENCE\C8\guard-drills.txt).
+  'scripts/guards/no-loading-boundary-in-front-of-a-hero.mjs',
   // 20 September 2026, found by the drive for the guard above. src/app/layout.tsx
   // sets the measurement flag on documentElement and says so in its own comment;
   // SIX client components read it off document.body, which never carries it. The
@@ -1884,6 +1922,56 @@ const GUARDS = [
   // compares the writer against the reader so the next move of the flag fails
   // here rather than in a score three weeks later. Drilled red four ways.
   'scripts/guards/audit-flag-is-read-where-it-is-written.mjs',
+  // 21 September 2026, close-out C8 clause C8B.3. A Next route renders its head
+  // and its body from ONE request and each half loads what it needs. Next's own
+  // reference says the second load is free ("React `cache` can be used if
+  // `fetch` is unavailable", generate-metadata.md, Next 16.3.0) and on this
+  // platform it is not, because every Supabase request carries its own
+  // AbortSignal - the framework deduplicator's documented opt-OUT - so that a
+  // retry inside a render is a real second request. Nothing had counted the
+  // cost: ten duplicate database calls across four public SEO route families in
+  // one warmed page view each, on routes whose observed LCP is dominated by
+  // time to first byte. The subject list is DERIVED (every page.tsx exporting
+  // both generateMetadata and a default component) and the guard knows Next's
+  // data cache counts too, which it learned from a counted measurement rather
+  // than from reading: /categories/music awaits the same reader twice and makes
+  // one call, because that reader is behind unstable_cache. Drilled red and
+  // green.
+  'scripts/guards/the-head-and-the-body-ask-once.mjs',
+  // 21 September 2026. A refusal that names an action must offer it, and must
+  // be announced. checkPublishGate returns the door beside its sentence
+  // (nextAction: Connect Stripe -> /dashboard/payouts); the event form was
+  // found dropping it on 28 August and fixed, and TWO more callers had never
+  // inherited either half. Driven against the served build, the events list
+  // rendered that 172-character sentence as a <span> with no role inside the
+  // ACTIONS column of a table: 69px of a 356px list at 390, 19 per cent of the
+  // width and 256px tall, beside an event whose own title sat at x -58. The
+  // third caller was found by this guard rather than by reading: restoreEvent
+  // runs the publish gate when the restore target is `published`, so the same
+  // sentence reaches a person from Restore as well as from Publish. Everything
+  // is derived: the type, the door's field name, the actions that can carry
+  // one, and their callers. Drilled red and green.
+  'scripts/guards/a-refusal-keeps-its-door.mjs',
+  // The organiser dashboard has five data tables and one of them had been
+  // rebuilt for the phone. Driven on 21 September 2026 at 390, 768 and 1440
+  // against a served build with real rows: the discount codes table rendered
+  // 668px wide inside an `overflow-hidden` box showing 356, so Deactivate and
+  // Delete sat at x 561 to 669 with no scrollbar and no gesture that reaches
+  // them - six dead controls, and a live discount code an organiser on a phone
+  // could not switch off. Reach and the GST report were swipeable and lost the
+  // row's own name at the right edge ("Email" at x -187, a BAS quarter reduced
+  // to 23px of "Jul-Sep 2026"). The document-width drive passes on all three,
+  // correctly, because an `overflow-x-auto` box is its documented exemption.
+  // Subjects derived by walking the dashboard for `<table`; comments stripped
+  // before reading. Five clauses, five drills, each proven red and green.
+  'scripts/guards/a-table-a-phone-can-read.mjs',
+  // The em-dash scrub of commit 2b59d58c replaced every dash in the tree with
+  // a colon, which is right in a sentence and wrong in a fallback: nine value
+  // slots were left rendering a bare ':' to a real person. "Name: :" on every
+  // guest order, "0/:" on a tier with no capacity, and the queue position at
+  // text-7xl. Found in a driven screenshot on 21 September 2026, weeks after
+  // the sweep. The cause was mechanical, so the check has to be too.
+  'scripts/guards/no-punctuation-standing-in-for-a-value.mjs',
   'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the

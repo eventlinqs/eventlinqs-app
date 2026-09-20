@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { publishEvent, pauseEvent, cancelEvent, duplicateEvent } from './actions'
+import { publishEvent, pauseEvent, cancelEvent, duplicateEvent, type ActionResult } from './actions'
 import type { Event, EventStatus } from '@/types/database'
 import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import {
@@ -44,29 +44,20 @@ function formatDate(iso: string) {
 function RowActions({
   event,
   eligibility,
-  onDone,
+  isPending,
+  run,
+  onRefusal,
 }: {
   event: EventRow
   eligibility: LifecycleEligibility | null
-  onDone: () => void
+  isPending: boolean
+  run: (action: () => Promise<ActionResult>) => void
+  onRefusal: (refusal: ActionResult) => void
 }) {
-  const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-
-  const run = (action: () => Promise<{ error?: string }>) => {
-    startTransition(async () => {
-      const result = await action()
-      if (result.error) setError(result.error)
-      else onDone()
-    })
-  }
-
   const archived = event.status === 'archived'
 
   return (
     <div className="flex flex-wrap items-center">
-      {error && <span className="text-xs text-red-600">{error}</span>}
-
       <Link
         href={`/dashboard/events/${event.id}/edit`}
         className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
@@ -139,6 +130,7 @@ function RowActions({
 
       <EventLifecycleActions
         variant="row"
+        onRefusal={onRefusal}
         event={{
           id: event.id,
           title: event.title,
@@ -148,6 +140,176 @@ function RowActions({
         eligibility={eligibility}
       />
     </div>
+  )
+}
+
+/**
+ * THE REFUSAL PANEL. Inherited from the event form rather than invented here.
+ *
+ * src/components/features/events/event-form.tsx has carried this exact shape
+ * since 28 August 2026, and its own comment says why each half exists:
+ * `role="alert"` so a refusal is ANNOUNCED and not only rendered, and the
+ * gate's own `nextAction` rendered as a link, because "the caller used to throw
+ * it away, so 'Connect Stripe' was advice with no door".
+ *
+ * The events LIST never inherited either half. It rendered
+ * `<span className="text-xs text-red-600">{error}</span>` inside the ACTIONS
+ * column and dropped `nextAction` on the floor. Measured on 21 September 2026
+ * against the served build, at 390: the sentence got 69px of a 356px list, 19
+ * per cent, and stood 256px tall; the event's own title sat at x -58, off the
+ * left edge of the phone. The organiser was handed a wall of red that did not
+ * say which event it was about and offered nothing to press.
+ */
+function PublishRefusal({ refusal }: { refusal: ActionResult }) {
+  return (
+    <div
+      role="alert"
+      className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+    >
+      {refusal.error}
+      {refusal.nextAction && (
+        <Link
+          href={refusal.nextAction.href}
+          className="ml-2 font-semibold underline underline-offset-2"
+        >
+          {refusal.nextAction.label}
+        </Link>
+      )}
+    </div>
+  )
+}
+
+/**
+ * ONE EVENT, AS A TABLE ROW ON A DESKTOP AND AS A CARD ON A PHONE, FROM ONE DOM.
+ *
+ * ==========================================================================
+ * WHY THE STATE MOVED UP HERE
+ * ==========================================================================
+ *
+ * The refusal used to live inside `RowActions`, which renders inside a `<td>`,
+ * so a 172-character sentence was laid out in the ACTIONS column. There is no
+ * arrangement of that cell that makes a sentence readable; the panel has to
+ * span the row. A `<td colSpan>` can only do that from a row of its own, and a
+ * row of its own can only be rendered by whoever owns the state. So the
+ * transition and the refusal live here, and `RowActions` became presentational.
+ *
+ * ==========================================================================
+ * AND WHY IT IS ONE DOM RATHER THAN A TABLE PLUS A CARD LIST
+ * ==========================================================================
+ *
+ * The obvious shape is `hidden lg:block` over a table and `lg:hidden` over a
+ * list of cards. It mounts every row TWICE, which means two `useTransition`s
+ * and two refusals per event, and a refusal shown on the copy nobody is looking
+ * at is the same defect this is fixing. The stacked-card presentation is a
+ * LAYOUT change and CSS is where a layout change belongs: below `md` the table
+ * parts become blocks, the header is hidden, and the row becomes a bordered
+ * card. One row, one state, one truth.
+ *
+ * The three meta cells stay on one line as `inline-block` rather than becoming
+ * three stacked rows, and Sold carries a label there because "0 / 10" without
+ * its column heading is a number with no noun.
+ *
+ * ==========================================================================
+ * THE BREAKPOINT IS `lg` AND NOT `md`, AND THAT WAS A MEASUREMENT
+ * ==========================================================================
+ *
+ * `md` was the first answer and the driven screenshot refused it. This list
+ * lives behind a 240px fixed sidebar, so a 768px tablet leaves 478px of
+ * content: the same width as a large phone. The table rendered there with the
+ * title wrapped over FOUR lines, "0 / 10" broken across two, and the six
+ * actions stacked VERTICALLY down the ACTIONS column at 44px each, so one row
+ * stood about 300px tall. It fitted, and it was unreadable.
+ *
+ * The drive now measures that directly rather than trusting a breakpoint: the
+ * actions may occupy at most two lines, counted as distinct `top` values among
+ * their boxes. Six controls on six lines is a column, not a row.
+ */
+function EventRowView({
+  event,
+  soldCount,
+  totalCapacity,
+  eligibility,
+  onNavigate,
+  onDone,
+}: {
+  event: EventRow
+  soldCount: number | undefined
+  totalCapacity: number
+  eligibility: LifecycleEligibility | null
+  onNavigate: () => void
+  onDone: () => void
+}) {
+  const [isPending, startTransition] = useTransition()
+  const [refusal, setRefusal] = useState<ActionResult | null>(null)
+
+  const run = (action: () => Promise<ActionResult>) => {
+    startTransition(async () => {
+      const result = await action()
+      if (result.error) setRefusal(result)
+      else {
+        setRefusal(null)
+        onDone()
+      }
+    })
+  }
+
+  // The card's border is drawn by the event row, and a refusal joins the bottom
+  // of it rather than floating away as a second card.
+  // `mt-3` on the ROW rather than `space-y-3` on the body: a refusal is a
+  // second <tr> and `space-y` would put 12px between it and the card it
+  // belongs to, breaking the border it shares.
+  const cardBase =
+    'max-lg:block max-lg:border max-lg:border-ink-200 max-lg:bg-white max-lg:px-4 max-lg:py-3'
+  const cardShape = refusal?.error
+    ? 'max-lg:rounded-t-2xl max-lg:border-b-0'
+    : 'max-lg:rounded-2xl'
+
+  return (
+    <>
+      <tr
+        className={`hover:bg-ink-100 cursor-pointer max-lg:mt-3 ${cardBase} ${cardShape}`}
+        onClick={onNavigate}
+      >
+        <td className="px-4 py-3 max-lg:block max-lg:px-0 max-lg:py-0">
+          <p className="font-medium text-ink-900">{event.title}</p>
+          {event.venue_city && <p className="text-xs text-ink-400">{event.venue_city}</p>}
+        </td>
+        <td className="px-4 py-3 text-ink-600 whitespace-nowrap max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pr-4 max-lg:pt-2">
+          {formatDate(event.start_date)}
+        </td>
+        <td className="px-4 py-3 max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pr-4 max-lg:pt-2">
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[event.status]}`}>
+            {event.status}
+          </span>
+        </td>
+        <td className="px-4 py-3 text-ink-600 max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pt-2">
+          {totalCapacity > 0
+            ? soldCount === undefined
+              ? <span className="text-ink-400">Unknown</span>
+              : (
+                <>
+                  {soldCount} / {totalCapacity}
+                  <span className="ml-1 text-xs text-ink-400 lg:hidden">sold</span>
+                </>
+              )
+            : '-'}
+        </td>
+        <td
+          className="px-4 py-3 max-lg:mt-3 max-lg:block max-lg:border-t max-lg:border-ink-100 max-lg:px-0 max-lg:pb-0"
+          onClick={e => e.stopPropagation()}
+        >
+          <RowActions event={event} eligibility={eligibility} isPending={isPending} run={run} onRefusal={setRefusal} />
+        </td>
+      </tr>
+
+      {refusal?.error && (
+        <tr className={`${cardBase} max-lg:rounded-b-2xl max-lg:border-t-0 max-lg:pt-0`}>
+          <td colSpan={5} className="px-4 pb-3 max-lg:block max-lg:px-0">
+            <PublishRefusal refusal={refusal} />
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 
@@ -199,9 +361,22 @@ export function EventsTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-ink-200 bg-white">
-      <table className="w-full text-sm">
-        <thead>
+    /*
+     * THE CONTAINER IS A CARD ON A DESKTOP AND NOTHING AT ALL ON A PHONE.
+     *
+     * `overflow-x-auto` is kept for md and up, where a wide table with many
+     * columns can legitimately scroll. Below md there is nothing to scroll,
+     * because the table is not a table there, and leaving the scroller in place
+     * would keep the defect this rebuild exists to remove: a list 447px wide
+     * inside a 356px box, with the event's own title off the left edge of the
+     * phone (measured, 21 September 2026).
+     *
+     * The border and the white surface move to the individual cards below md,
+     * so the cards read as cards rather than as rows inside a frame.
+     */
+    <div className="rounded-2xl border border-ink-200 bg-white max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent lg:overflow-x-auto">
+      <table className="w-full text-sm max-lg:block">
+        <thead className="max-lg:hidden">
           <tr className="border-b border-ink-100 bg-ink-100 text-left">
             <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-600">Event</th>
             <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-600">Date</th>
@@ -210,7 +385,7 @@ export function EventsTable({
             <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-600">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-ink-100">
+        <tbody className="divide-y divide-ink-100 max-lg:block max-lg:divide-y-0">
           {events.map(event => {
             /*
              * A RESERVED-SEATING EVENT WITH NO ENTRY IN THE MAP HAS NOT SOLD
@@ -228,40 +403,15 @@ export function EventsTable({
             const totalCapacity = event.ticket_tiers.reduce((sum, t) => sum + t.total_capacity, 0)
 
             return (
-              <tr
+              <EventRowView
                 key={event.id}
-                className="hover:bg-ink-100 cursor-pointer"
-                onClick={() => router.push(`/dashboard/events/${event.id}`)}
-              >
-                <td className="px-4 py-3">
-                  <p className="font-medium text-ink-900">{event.title}</p>
-                  {event.venue_city && (
-                    <p className="text-xs text-ink-400">{event.venue_city}</p>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-ink-600 whitespace-nowrap">
-                  {formatDate(event.start_date)}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[event.status]}`}>
-                    {event.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-ink-600">
-                  {totalCapacity > 0
-                    ? soldCount === undefined
-                      ? <span className="text-ink-400">Unknown</span>
-                      : `${soldCount} / ${totalCapacity}`
-                    : ':'}
-                </td>
-                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                  <RowActions
-                    event={event}
-                    eligibility={eligibilityById[event.id] ?? null}
-                    onDone={() => router.refresh()}
-                  />
-                </td>
-              </tr>
+                event={event}
+                soldCount={soldCount}
+                totalCapacity={totalCapacity}
+                eligibility={eligibilityById[event.id] ?? null}
+                onNavigate={() => router.push(`/dashboard/events/${event.id}`)}
+                onDone={() => router.refresh()}
+              />
             )
           })}
         </tbody>

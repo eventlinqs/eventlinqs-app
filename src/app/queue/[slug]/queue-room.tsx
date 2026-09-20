@@ -339,9 +339,17 @@ export function QueueRoom({
               <p
                 className={`text-7xl sm:text-8xl font-bold tabular-nums ${t.heading}`}
                 aria-live="polite"
-                aria-label={`Position ${position ?? ':'} in queue`}
+                /*
+                 * A SCREEN READER GETS A SENTENCE, NOT A PUNCTUATION MARK.
+                 * This read "Position : in queue" while the position was
+                 * still unknown, and before the dash scrub it read "Position
+                 * em-dash in queue", which most screen readers say as
+                 * "Position in queue": a number that was never spoken and
+                 * whose absence was never announced either.
+                 */
+                aria-label={position !== null ? `Position ${position} in queue` : 'Your position in the queue is not known yet'}
               >
-                {position !== null ? `#${position.toLocaleString('en-AU')}` : ':'}
+                {position !== null ? `#${position.toLocaleString('en-AU')}` : '-'}
               </p>
               {position !== null && (
                 <p className={`text-sm ${t.faint}`}>

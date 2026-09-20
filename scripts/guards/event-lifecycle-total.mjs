@@ -48,6 +48,7 @@ import { spawnSync } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { declareWork } from '../lib/work-report.mjs'
+import { buildImportGraph, pathToTarget, norm } from './lib/import-graph.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..', '..')
@@ -68,20 +69,31 @@ export const CONTROL_COMPONENT = 'src/components/features/dashboard/event-lifecy
  * first drive found the page's holder branch never ran.
  */
 /*
- * WHICH CALL COUNTS AS CONSULTING IT IS DERIVED FROM THE DOOR, NOT TYPED HERE.
+ * WHICH CALL COUNTS AS CONSULTING IT IS DERIVED FROM THE DOOR, NOT TYPED HERE,
+ * AND IT IS FOLLOWED THROUGH IMPORTS RATHER THAN READ OFF ONE FILE.
  *
  * Until 20 September 2026 the layout's entry named `afterTheFactEventExists`
  * and the page's named `fetchAfterTheFactEvent`, one literal each. Both are
  * exported by the same module and both apply the same two constraints (the
  * clauses below prove that separately, per read). When the layout moved to the
- * row-returning reader - it needed the hero's columns to preload the LCP image
- * from above the loading boundary, and that is the SAME round trip rather than
- * a second one - this guard failed while the behaviour was unchanged, because
- * it was matching a name rather than the thing the name stands for.
+ * row-returning reader this guard failed while the behaviour was unchanged,
+ * because it was matching a name rather than the thing the name stands for. So
+ * the accepted calls became every function the door EXPORTS.
  *
- * So the accepted calls are now every function the door EXPORTS. A caller that
- * stops consulting the door still fails, which is what the clause is for; a
- * caller that consults it through a different one of its doors does not.
+ * ON 21 SEPTEMBER 2026 IT WENT WRONG THE SECOND WAY, AND FOR THE SAME REASON.
+ * Close-out C8 collapsed this route's three reads of one row into one, through
+ * `src/lib/events/event-detail-read.ts` memoised with React's `cache`. Both
+ * surfaces still answer exactly as they did, through exactly this door, and
+ * neither of them now NAMES it: the shared resolver does. A guard that reads
+ * one file can only ever ask whether the call is typed in that file, which is a
+ * question about layout and not about behaviour.
+ *
+ * So a surface consults the door if it calls one of the door's exports ITSELF,
+ * or if it reaches a module that does by following value imports (the same
+ * graph two client-boundary guards already use). The module that does the
+ * consulting is reported beside the surface, so the answer names its own path
+ * instead of asserting one. A surface that stops reaching the door at all still
+ * fails, which is what the clause is for.
  */
 export const AFTER_THE_FACT_CALLERS = [
   'src/app/events/[slug]/layout.tsx',
@@ -259,13 +271,41 @@ export function collectFacts() {
   const doorSource = readSource(AFTER_THE_FACT_DOOR)
   /** Every reader the door exports; a caller consulting ANY of them consults it. */
   const doorExports = [...doorSource.matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)/g)].map(m => m[1])
-  const afterTheFactCallers = AFTER_THE_FACT_CALLERS.map((file) => {
+  // A call site, not a mention: the name followed by its call or its type
+  // argument. Matched with includes rather than a built regex, because a
+  // function name needs no escaping and a hand-built pattern is one more thing
+  // that can be silently wrong.
+  const callsTheDoor = (file) => {
     const src = readSource(file)
-    // A call site, not a mention: the name followed by its call or its type
-    // argument. Matched with includes rather than a built regex, because a
-    // function name needs no escaping and a hand-built pattern is one more
-    // thing that can be silently wrong.
-    return { file, consults: doorExports.some(fn => src.includes(fn + '(') || src.includes(fn + '<')) }
+    return doorExports.some(fn => src.includes(fn + '(') || src.includes(fn + '<'))
+  }
+  const graph = buildImportGraph(ROOT)
+  const stripExt = (file) => file.replace(/\.(tsx?)$/, '')
+  /*
+   * The graph is keyed WITHOUT an extension, and a module id has to be turned
+   * back into the file it came from to be read. The mapping is taken from the
+   * graph's own file list rather than guessed by appending `.ts`, which is how
+   * the first version of this clause tried to read `layout.ts` and threw.
+   */
+  const fileOfModule = new Map(graph.files.map((f) => {
+    const rel = norm(f)
+    return [stripExt(rel), rel]
+  }))
+  const afterTheFactCallers = AFTER_THE_FACT_CALLERS.map((file) => {
+    if (callsTheDoor(file)) return { file, consults: true, via: file }
+    /*
+     * The door is reached through somebody. `pathToTarget` returns the first
+     * value-import path to it, and the module that CALLS an export is the one
+     * on that path that says a door name - never the door itself, whose source
+     * necessarily contains every one of them as a definition.
+     */
+    const path = pathToTarget(graph, stripExt(file), stripExt(AFTER_THE_FACT_DOOR)) ?? []
+    const via = path
+      .slice(0, -1)
+      .map((mod) => fileOfModule.get(mod))
+      .filter(Boolean)
+      .find((mod) => callsTheDoor(mod))
+    return { file, consults: Boolean(via), via: via ?? null }
   })
   /*
    * EVERY READ IN THE DOOR, NOT THE FILE AS A WHOLE.
@@ -313,6 +353,11 @@ if (isMain) {
   console.log(`${TAG} statuses: ${facts.statuses.join(', ')}`)
   console.log(`${TAG} doors: ${facts.doors.map((d) => `${d.fn} (${d.file ?? 'MISSING'})`).join(', ')}`)
   console.log(`${TAG} public after the fact: ${(facts.afterTheFact ?? []).join(', ')}`)
+  // The path is printed, not asserted: a reader can see WHICH module consults
+  // the door for each surface rather than taking "consults" on trust.
+  for (const caller of facts.afterTheFactCallers ?? []) {
+    console.log(`${TAG} ${caller.file} consults the after-the-fact door ${caller.via ? `via ${caller.via}` : 'NOWHERE'}`)
+  }
   if (failures.length > 0) {
     console.error(`\n${TAG} FAILED\n`)
     for (const f of failures) console.error(`    ${f}`)
