@@ -2881,9 +2881,33 @@ const ROOT = join(HERE, '..', '..')
  *   tests/unit/dashboard/order-money-figures.test.ts                1  (the summariser's rows)
  *   521 + 1 = 522 files
  *   6952 + 20 + 2 + 1 = 6975 tests
+ *
+ * 2026-09-20 (lane B, LB-PRICEWHOLE): raised 522/6975 -> 523/6992.
+ *
+ * ONE OF THE SEVENTEEN NEW CASES IS A REPLACEMENT RATHER THAN AN ADDITION, and
+ * the count below says so. `tests/unit/pricing/save-dynamic-pricing-action.test.ts`
+ * carried a test called "switching dynamic pricing off sends no steps" which
+ * asserted `p_steps: []`. It was a faithful description of the code and a pin on
+ * a data-loss defect: the database function deleted every rule before deciding
+ * whether to insert any, so an empty list destroyed the organiser's ladder the
+ * moment they paused it. That test now asserts the opposite and the file's case
+ * count is unchanged, so this raise is +1 file and +17 cases, not +18.
+ *
+ * MEASURED: 523 files, 6992 tests, 0 failed, 0 skipped
+ * (`npx vitest run --reporter=dot`, 235s, on the tree of this commit).
+ *
+ * THIS IS A LANE WORKTREE MEASUREMENT AND THE PUSH LANE WILL RAISE IT AGAIN,
+ * for the reason the block above gives: lane/b-growth does not contain lane C's
+ * newest work, so this floor is below what the merged tree runs. A floor that is
+ * too LOW is safe and still holds.
+ *
+ * CHECKABLE. This item adds ONE file and SEVENTEEN cases:
+ *   tests/unit/dashboard/the-price-ladder-survives-a-blink.test.ts  17  (new file)
+ *   522 + 1 = 523 files
+ *   6975 + 17 = 6992 tests
  */
-const MIN_FILES = 522
-const MIN_TESTS = 6975
+const MIN_FILES = 523
+const MIN_TESTS = 6992
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

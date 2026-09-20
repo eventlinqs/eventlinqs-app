@@ -156,12 +156,21 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
         </div>
         <label className="flex items-center gap-2 cursor-pointer">
           <span className="text-sm text-ink-600">Dynamic pricing</span>
+          {/*
+            THE HOUSE SWITCH, WHICH THIS ONE WAS NOT. The three switches in
+            event-form.tsx all carry `flex-shrink-0`, an `aria-label` and a
+            focus ring; this one carried none of them. Without the shrink guard
+            flexbox squeezed the 44px pill to about 28px at 390, which the
+            driven proof caught in the screenshot rather than in its report, and
+            it is the one control on this screen a finger has to land on.
+          */}
           <button
             type="button"
             role="switch"
             aria-checked={enabled}
+            aria-label={`Dynamic pricing for ${tier.name}`}
             onClick={() => setEnabled(v => !v)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 ${
               enabled ? 'bg-gold-500' : 'bg-ink-200'
             }`}
           >
@@ -174,87 +183,106 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
         </label>
       </div>
 
-      {enabled && (
-        <>
-          {/* Preview */}
-          <div className="mb-4 rounded-lg bg-gold-100 px-4 py-3">
-            <p className="text-sm text-gold-600">
-              <span className="font-medium">At current sales ({percentSold}% sold), buyers pay:</span>{' '}
-              {formatPrice(currentStepPrice, tier.currency)}
-            </p>
-          </div>
+      {/*
+        THE STEPS STAY ON SCREEN WHEN THE SWITCH IS OFF. LB-PRICEWHOLE.
 
-          {/* Steps */}
-          <div className="space-y-3 mb-4">
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 text-xs font-medium text-ink-400 px-1">
-              <span>Up to % sold</span>
-              <span>Price ({tier.currency})</span>
-              <span />
-            </div>
-            {steps.map((step, i) => (
-              <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center">
-                {/* Percent field - text input, digits only, clamped 1-100 on blur */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    aria-label={`Up to percent sold, step ${i + 1}`}
-                    value={step._percentDisplay ?? String(step.capacity_threshold_percent)}
-                    onChange={e => handlePercentChange(i, e.target.value)}
-                    onBlur={() => handlePercentBlur(i)}
-                    placeholder="1-100"
-                    className="w-full rounded-lg border border-ink-200 px-3 py-2 pr-8 text-sm focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">%</span>
-                </div>
-                {/* Price field - text input, decimal allowed, formatted on blur */}
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">$</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    aria-label={`Price at step ${i + 1}`}
-                    value={step._priceDisplay ?? (step.price_cents / 100).toFixed(2)}
-                    onChange={e => handlePriceChange(i, e.target.value)}
-                    onBlur={() => handlePriceBlur(i)}
-                    placeholder="0.00"
-                    className="w-full rounded-lg border border-ink-200 px-3 py-2 pl-7 text-sm focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeStep(i)}
-                  disabled={steps.length <= 1}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="Remove step"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {steps.length < 10 && (
-            <button
-              type="button"
-              onClick={addStep}
-              className="mb-4 flex items-center gap-1.5 text-sm text-gold-500 hover:text-gold-600 transition-colors"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add step
-            </button>
-          )}
-        </>
+        They used to be hidden the moment the switch moved, and Save then
+        deleted them, so an organiser pausing dynamic pricing for a weekend
+        could not see what they were about to lose and had no reason to think
+        they were losing anything. Pausing now keeps the ladder, and keeping it
+        visible is what makes that believable.
+      */}
+      {/* Preview */}
+      {enabled ? (
+        <div className="mb-4 rounded-lg bg-gold-100 px-4 py-3">
+          <p className="text-sm text-[var(--brand-accent-strong)]">
+            <span className="font-medium">At current sales ({percentSold}% sold), buyers pay:</span>{' '}
+            {formatPrice(currentStepPrice, tier.currency)}
+          </p>
+        </div>
+      ) : (
+        <div className="mb-4 rounded-lg bg-ink-100 px-4 py-3">
+          <p className="text-sm text-ink-700">
+            <span className="font-medium">Paused. Buyers pay the base price of {formatPrice(tier.price, tier.currency)}.</span>{' '}
+            These steps are kept and start again when you switch dynamic pricing back on.
+          </p>
+        </div>
       )}
 
-      {/* Save row */}
+      {/* Steps */}
+      <div className="space-y-3 mb-4">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 text-xs font-medium text-ink-400 px-1">
+          <span>Up to % sold</span>
+          <span>Price ({tier.currency})</span>
+          <span />
+        </div>
+        {steps.map((step, i) => (
+          <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center">
+            {/* Percent field - text input, digits only, clamped 1-100 on blur */}
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="numeric"
+                aria-label={`Up to percent sold, step ${i + 1}`}
+                value={step._percentDisplay ?? String(step.capacity_threshold_percent)}
+                onChange={e => handlePercentChange(i, e.target.value)}
+                onBlur={() => handlePercentBlur(i)}
+                placeholder="1-100"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 pr-8 text-sm focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">%</span>
+            </div>
+            {/* Price field - text input, decimal allowed, formatted on blur */}
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">$</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                aria-label={`Price at step ${i + 1}`}
+                value={step._priceDisplay ?? (step.price_cents / 100).toFixed(2)}
+                onChange={e => handlePriceChange(i, e.target.value)}
+                onBlur={() => handlePriceBlur(i)}
+                placeholder="0.00"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 pl-7 text-sm focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeStep(i)}
+              disabled={steps.length <= 1}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Remove step"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {steps.length < 10 && (
+        <button
+          type="button"
+          onClick={addStep}
+          className="mb-4 flex items-center gap-1.5 text-sm text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)] transition-colors"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Add step
+        </button>
+      )}
+
+      {/*
+        Save row. THE TWO MESSAGE COLOURS ARE THE STRONG TOKENS. This carried
+        raw `text-green-600` and `text-red-600`, which axe measured at 3.22:1 on
+        white against the 4.5:1 floor, on the one sentence that tells an
+        organiser whether their price ladder was stored.
+      */}
       <div className="flex items-center justify-between pt-2 border-t border-ink-100">
         {message && (
-          <p className={`text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+          <p className={`text-sm ${message.type === 'success' ? 'text-[var(--color-success-strong)]' : 'text-[var(--color-error-strong)]'}`}>
             {message.text}
           </p>
         )}
@@ -277,7 +305,7 @@ export function PricingClient({ eventId, eventTitle, tiers }: Props) {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-ink-900">Dynamic Pricing</h1>
-        <p className="mt-1 text-sm text-ink-400">{eventTitle}</p>
+        <p className="mt-1 text-sm text-ink-600">{eventTitle}</p>
         <p className="mt-2 text-sm text-ink-600">
           Set stepwise price increases as tickets sell. Prices lock at reservation time, so buyers are never surprised.
         </p>

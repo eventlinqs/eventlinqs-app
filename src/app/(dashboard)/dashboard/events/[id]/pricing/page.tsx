@@ -4,6 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { PricingClient } from './pricing-client'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
+import {
+  attachLadders,
+  readDynamicPricingLadders,
+  readEventTicketTiers,
+  type PricingTierRow,
+} from '@/lib/organisers/event-tier-config'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -41,41 +47,33 @@ export default async function DynamicPricingPage({ params }: Props) {
   const access = await resolveEventAccess(eventId)
   if (!access.allowed) notFound()
 
-  // Load tiers with dynamic pricing rules
-  const { data: tiers, error: tiersError } = await supabase
-    .from('ticket_tiers')
-    .select('id, name, price, currency, dynamic_pricing_enabled, sold_count, total_capacity')
-    .eq('event_id', eventId)
-    .eq('is_active', true)
-    .order('sort_order')
-
-  if (tiersError) {
-    console.error('[pricing-page] Failed to load tiers:', tiersError)
-    notFound()
-  }
-
-  // Load dynamic pricing rules for all tiers
-  const tierIds = (tiers ?? []).map(t => t.id)
-  const { data: rules } = tierIds.length > 0
-    ? await supabase
-        .from('dynamic_pricing_rules')
-        .select('id, ticket_tier_id, step_order, capacity_threshold_percent, price_cents')
-        .in('ticket_tier_id', tierIds)
-        .order('step_order')
-    : { data: [] }
-
-  // Attach rules to tiers
-  const tiersWithRules = (tiers ?? []).map(tier => ({
-    ...tier,
-    dynamic_pricing_rules: (rules ?? [])
-      .filter(r => r.ticket_tier_id === tier.id)
-      .map(r => ({
-        id: r.id,
-        step_order: r.step_order,
-        capacity_threshold_percent: Number(r.capacity_threshold_percent),
-        price_cents: r.price_cents,
-      })),
-  }))
+  /*
+   * THE LADDER IS READ IN FULL OR THE SCREEN IS NOT DRAWN AT ALL, and on this
+   * page that is a data-loss rule rather than a tidiness one.
+   *
+   * This used to read the tiers and then `if (tiersError) notFound()`, four
+   * lines under the comment above explaining that readOrThrow exists precisely
+   * so a blink is never reported as a missing event, and it used to read the
+   * rules with `const { data: rules }`, discarding the error entirely.
+   *
+   * A refused rules read does not merely show a wrong number here. The client
+   * below seeds its editor from what it is handed and substitutes ONE step at
+   * the base price when the list is empty, and Save replaces the stored ladder
+   * with whatever is on screen. So a dropped socket plus one press of Save
+   * deleted an organiser's pricing decision, silently. Both reads now throw,
+   * which renders the route's error boundary and asks the organiser to try
+   * again, and the ladder they cannot see is a ladder they cannot overwrite.
+   */
+  const tiers = await readEventTicketTiers<PricingTierRow>(
+    supabase,
+    eventId,
+    'id, name, price, currency, dynamic_pricing_enabled, sold_count, total_capacity',
+    { activeOnly: true },
+  )
+  const tiersWithRules = attachLadders(
+    tiers,
+    await readDynamicPricingLadders(supabase, tiers.map(t => t.id)),
+  )
 
   return (
     <div className="min-h-screen bg-ink-100">

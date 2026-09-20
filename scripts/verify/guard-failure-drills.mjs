@@ -7660,6 +7660,111 @@ const DRILLS = [
     replace: "  'src/lib/organisers-renamed-away',",
     expect: 'a scope that scans nothing reports PASS',
   },
+
+  /*
+   * the-price-ladder-survives-a-blink (lane B, 20 September 2026), six drills,
+   * one per clause. Two of them plant the defect in its ORIGINAL form, which is
+   * the only way to know the guard would have caught the thing it was written
+   * for: the fifth restores the action ternary that made a pause destructive,
+   * and the sixth removes the guard on the DELETE inside the migration.
+   */
+  {
+    name: 'the pricing screen reads the ladder inline again, unbounded',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/pricing/page.tsx',
+    find: '  const tiersWithRules = attachLadders(',
+    replace: [
+      '  const { data: rules } = await supabase',
+      "    .from('dynamic_pricing_rules')",
+      "    .select('id, ticket_tier_id, step_order, capacity_threshold_percent, price_cents')",
+      "    .in('ticket_tier_id', tiers.map(t => t.id))",
+      "    .order('step_order')",
+      '  const tiersWithRules = attachLadders(',
+    ].join('\n'),
+    expect: 'reads dynamic_pricing_rules with no bound',
+  },
+  {
+    name: 'the discounts screen pages its codes with no order at all',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/page.tsx',
+    find: '  const discountCodes = await readEventDiscountCodes<DiscountCode>(supabase, eventId)',
+    replace: [
+      '  const { data: discountCodes, error: codesError } = await supabase',
+      "    .from('discount_codes')",
+      "    .select('*')",
+      "    .eq('event_id', eventId)",
+      '    .range(0, 999)',
+      '  if (codesError) throw codesError',
+    ].join('\n'),
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE ROOM AGAIN. The stream page carried two of these when the guard was
+     * first run over it, and both were real: a discarded event read drew a
+     * virtual event as an in-person one, and a discarded messages read drew an
+     * empty Q&A on a live room.
+     */
+    name: 'the stream room goes back to discarding the error on its messages',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/stream/page.tsx',
+    find: [
+      "    readOrThrow('dashboard stream room messages', () =>",
+      '      admin',
+      "        .from('stream_messages')",
+    ].join('\n'),
+    replace: [
+      '    (async () => {',
+      '      const { data } = await admin',
+      "        .from('stream_messages')",
+    ].join('\n'),
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * CLAUSE 4, THE WHOLE-TREE ONE. A screen that hands an organiser an
+     * editable copy of their own configuration has to get that copy from a read
+     * that throws, wherever that screen lives.
+     */
+    name: 'the pricing screen renders the editor without reaching the reader',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/pricing/page.tsx',
+    find: "} from '@/lib/organisers/event-tier-config'",
+    replace: "} from '@/lib/organisers/event-tier-config-renamed'",
+    expect: 'does not read through src/lib/organisers/event-tier-config.ts',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT, RESTORED. This exact ternary is what made turning
+     * dynamic pricing off destroy the ladder: the database function was handed
+     * an empty list and replaced the stored steps with nothing.
+     */
+    name: 'the action sends the steps only when the switch is on',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'src/app/actions/dynamic-pricing.ts',
+    find: '  const normalised = normaliseDynamicPricingSteps(steps)',
+    replace: '  const normalised = enabled ? normaliseDynamicPricingSteps(steps) : []',
+    expect: 'sends the price steps only when the switch is on',
+  },
+  {
+    /*
+     * THE OTHER HALF OF THE SAME DEFECT, IN SQL. Without the replace guard the
+     * function deletes every rule before it knows whether it has anything to
+     * put back, so a correct caller cannot save it.
+     */
+    name: 'the migration deletes the ladder before knowing it has a replacement',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'supabase/migrations/20260920000040_a_paused_ladder_is_not_a_deleted_one.sql',
+    find: [
+      '  IF v_replace THEN',
+      '    DELETE FROM public.dynamic_pricing_rules WHERE ticket_tier_id = p_tier_id;',
+    ].join('\n'),
+    replace: [
+      '  DELETE FROM public.dynamic_pricing_rules WHERE ticket_tier_id = p_tier_id;',
+      '  IF true THEN',
+    ].join('\n'),
+    expect: 'without first establishing that a replacement ladder was actually supplied',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

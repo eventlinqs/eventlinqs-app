@@ -656,6 +656,16 @@
  *                             UNIQUE column so a row cannot land in two windows
  *                             and double-count revenue, and fail loudly rather
  *                             than rendering a business that has sold nothing
+ *   the-price-ladder-survives-a-blink  the organiser's pricing and discount
+ *                             configuration, where a failed read was DATA LOSS
+ *                             rather than a wrong number: the editor
+ *                             substitutes one synthetic step at the base price
+ *                             for an empty ladder and Save writes it back, so
+ *                             every read feeding it throws, every screen
+ *                             rendering it reaches the one reader, the action
+ *                             sends the steps whatever the switch says, and the
+ *                             migration's DELETE stays guarded so a PAUSE never
+ *                             deletes
  *   the-seating-surfaces-count-every-seat  the five organiser screens that
  *                             decide who has a seat read every seat, page on a
  *                             TOTAL order, fail loudly, and carry no ceiling
@@ -2431,6 +2441,32 @@ const GUARDS = [
   //
   // Drilled red five ways and green (C:\dev\EVIDENCE\LB-ORGDASH\drills.txt).
   'scripts/guards/the-organiser-dashboard-reads-every-row.mjs',
+
+  // the-price-ladder-survives-a-blink: the organiser's pricing and discount
+  // configuration, 20 September 2026. This one is DATA LOSS rather than a wrong
+  // number, which is why it is a guard of its own.
+  //
+  // /dashboard/events/[id]/pricing read the dynamic pricing ladder with the
+  // error discarded and handed `rules ?? []` to an editor that substitutes ONE
+  // synthetic step at the base price when the list is empty. Save replaces the
+  // stored ladder with what the editor is holding. So a dropped socket plus one
+  // press of Save deleted an organiser's whole pricing decision, with HTTP 200
+  // everywhere and nothing on the screen or in the log.
+  //
+  // The same screen destroyed the ladder a second way, through the action
+  // rather than the read: the steps were sent as `enabled ? normalise(steps) :
+  // []` and the database function deleted every rule before deciding whether to
+  // insert any, so PAUSING dynamic pricing deleted it. Migration
+  // 20260920000040 makes an empty step list an absence of instruction rather
+  // than an instruction to delete, and clause 6 refuses a migration that goes
+  // back.
+  //
+  // Clause 4 sweeps ALL of src/ rather than the directory list, because a THIRD
+  // screen is exactly how the platform would acquire a fourth copy of these
+  // reads somewhere the list does not name.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-PRICEWHOLE\drills.txt).
+  'scripts/guards/the-price-ladder-survives-a-blink.mjs',
 
   // the-seating-surfaces-count-every-seat: the five organiser screens that
   // decide who has a seat, 20 September 2026. THREE DIFFERENT CEILINGS, and
