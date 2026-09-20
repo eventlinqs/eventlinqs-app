@@ -647,6 +647,13 @@
  *                             UNIQUE column so a row cannot land in two windows
  *                             and double-count revenue, and fail loudly rather
  *                             than rendering a business that has sold nothing
+ *   the-seating-surfaces-count-every-seat  the five organiser screens that
+ *                             decide who has a seat read every seat, page on a
+ *                             TOTAL order, fail loudly, and carry no ceiling
+ *                             that is a number somebody typed: not the
+ *                             `.range(0, 1999)` the launch kit printed its seat
+ *                             count out of, and not the 10,000 loop bound in
+ *                             the pager written to defeat the 1,000-row cap
  *   the-attendee-list-is-every-attendee  the data-ownership promise itself: the
  *                             attendee list, the door list, the orders report
  *                             and all four exports hand back every attendee,
@@ -2394,6 +2401,37 @@ const GUARDS = [
   //
   // Drilled red five ways and green (C:\dev\EVIDENCE\LB-ORGDASH\drills.txt).
   'scripts/guards/the-organiser-dashboard-reads-every-row.mjs',
+
+  // the-seating-surfaces-count-every-seat: the five organiser screens that
+  // decide who has a seat, 20 September 2026. THREE DIFFERENT CEILINGS, and
+  // only one of them was the PostgREST default.
+  //
+  // 1,000 on the My Events sold tally, which read one row per sold seat and
+  // counted the rows here. The cap is on the RESPONSE, so that thousand was
+  // shared across every reserved-seating event in the list at once: two
+  // sold-out 800-seat shows reported 1,000 sold between them, with no order by
+  // to say which thousand and the error discarded so a failed read rendered as
+  // nought sold. 1,000 again on the list of paid holders waiting to be given a
+  // seat, which is the list the seating tool IS: past a thousand of them the
+  // organiser could not seat the rest, because the only screen that can do it
+  // did not show them.
+  //
+  // 2,000 in the launch kit, as `.range(0, 1999)`, printed to the organiser as
+  // "{n} seats . {m} open right now" on the artefact they promote with.
+  //
+  // 10,000 as a loop bound in the seat manager's own hand-rolled pager, in a
+  // helper written specifically to defeat the 1,000-row cap, which also stopped
+  // on a SHORT page rather than an empty one and so would report half a chart
+  // as a whole chart the day the project ceiling is lowered.
+  //
+  // CLAUSE 5 IS THE ONE NO OTHER GUARD IN THIS FAMILY HAS, and it is the whole
+  // reason this is a fourth file rather than a widened third. The other three
+  // ask "is this read bounded". Two of the three ceilings here WERE bounds, so
+  // that question answers PASS about both. A numeric literal may not be a seat
+  // ceiling: a venue is as big as it is.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-SEATWHOLE\drills.txt).
+  'scripts/guards/the-seating-surfaces-count-every-seat.mjs',
 
   // the-attendee-list-is-every-attendee: the organiser's ATTENDEE list, their
   // door list, their orders report and all four exports, 20 September 2026.

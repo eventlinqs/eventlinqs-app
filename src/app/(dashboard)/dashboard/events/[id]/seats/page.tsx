@@ -3,12 +3,34 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { canManageOrganisationSeating } from '@/lib/organisations/access'
 import { SeatsManagementClient } from './seats-client'
 import { SyncChartButton } from './sync-chart-button'
 
 type Props = {
   params: Promise<{ id: string }>
+}
+
+/** The columns this screen reads, named so the pager's generic is not implicit. */
+type SeatRow = {
+  id: string
+  row_label: string
+  seat_number: string
+  seat_type: string
+  status: string
+  held_reason: string | null
+  seat_map_section_id: string | null
+  x: number | null
+  y: number | null
+}
+type SectionRow = { id: string; name: string; color: string }
+type UnassignedTicketRow = {
+  id: string
+  ticket_code: string
+  holder_name: string | null
+  holder_email: string | null
+  order_item: { item_name?: string } | { item_name?: string }[] | null
 }
 
 export default async function SeatsManagementPage({ params }: Props) {
@@ -49,54 +71,77 @@ export default async function SeatsManagementPage({ params }: Props) {
     )
   }
 
-  // Chunked past PostgREST's 1,000-row response cap so large charts show
-  // every seat (same fix as the attendee map).
-  const fetchAllSeats = async () => {
-    const PAGE = 1000
-    function pageQuery(from: number) {
-      return supabase
+  /*
+   * THE THREE READS BEHIND THIS SCREEN, AND THE THREE DIFFERENT CEILINGS THEY
+   * USED TO CARRY.
+   *
+   * SEATS had a pager of its own, and it was two faults rather than none. It
+   * looped `for (let from = 0; from < 10000; from += PAGE)`, so a chart with
+   * more than ten thousand seats lost the remainder with no error and nothing
+   * on screen to show for it, and it stopped as soon as a page came back
+   * SHORTER than the page size, which is only correct while the project's row
+   * ceiling and the page size are equal. The ceiling is a dashboard setting
+   * this repository cannot see; lower it to 500, ask for 1,000, and the first
+   * page is "short" and the loop reports half a chart as the whole chart.
+   * `readEveryRow` advances by what ARRIVED and stops only on an empty page,
+   * which is correct at any ceiling, and it raises rather than truncating.
+   *
+   * THE UNASSIGNED HOLDERS were read with no bound at all. In
+   * organiser-assigns mode this list IS the seating tool: every person on it
+   * has paid and is waiting to be given a seat. Past a thousand of them the
+   * organiser could not seat the rest, because the only screen that can do it
+   * did not show them. It was also ordered on `created_at`, which is not
+   * unique, so it was not a total order and paging it would have been
+   * undefined. `id` is the tiebreak; the display order is unchanged.
+   *
+   * SECTIONS were unbounded too. Small in practice, bounded here anyway,
+   * because "small in practice" is how the other two started.
+   *
+   * A FAILURE THROWS. This file already uses readOrThrow above for exactly
+   * this reason: an empty seat map that means "the database blinked" looks
+   * identical to one that means "this event has no seats", and the organiser
+   * would act on the second while looking at the first.
+   */
+  const [seats, sections, unassigned] = await Promise.all([
+    readEveryRow<SeatRow>('event seats', (from, to) =>
+      supabase
         .from('seats')
         .select('id, row_label, seat_number, seat_type, status, held_reason, seat_map_section_id, x, y')
         .eq('event_id', eventId)
+        // A total order: row then seat for the chart, `id` last so no seat can
+        // fall between two windows or arrive in both.
         .order('row_label')
         .order('seat_number')
         .order('id')
-        .range(from, from + PAGE - 1)
-    }
-    const all: NonNullable<Awaited<ReturnType<typeof pageQuery>>['data']> = []
-    for (let from = 0; from < 10000; from += PAGE) {
-      const { data, error } = await pageQuery(from)
-      if (error) return { data: all, error }
-      all.push(...(data ?? []))
-      if (!data || data.length < PAGE) break
-    }
-    return { data: all, error: null }
-  }
-  const [seatsResult, sectionsResult, unassignedResult] = await Promise.all([
-    fetchAllSeats(),
+        .range(from, to),
+    ),
     event.seat_map_id
-      ? supabase
-          .from('seat_map_sections')
-          .select('id, name, color')
-          .eq('seat_map_id', event.seat_map_id)
-          .order('sort_order')
-      : Promise.resolve({ data: [] as { id: string; name: string; color: string }[], error: null }),
+      ? readEveryRow<SectionRow>('event seat map sections', (from, to) =>
+          supabase
+            .from('seat_map_sections')
+            .select('id, name, color')
+            .eq('seat_map_id', event.seat_map_id!)
+            .order('sort_order')
+            .order('id')
+            .range(from, to),
+        )
+      : Promise.resolve([] as SectionRow[]),
     // Organiser-assigns mode: paid tickets awaiting a seat. Admin client so
     // the organiser sees every holder regardless of buyer-scoped RLS.
     event.organiser_assigns_seats
-      ? admin
-          .from('tickets')
-          .select('id, ticket_code, holder_name, holder_email, order_item:order_items(item_name)')
-          .eq('event_id', eventId)
-          .eq('status', 'valid')
-          .is('seat_id', null)
-          .order('created_at')
-      : Promise.resolve({ data: [], error: null }),
+      ? readEveryRow<UnassignedTicketRow>('event unassigned ticket holders', (from, to) =>
+          admin
+            .from('tickets')
+            .select('id, ticket_code, holder_name, holder_email, order_item:order_items(item_name)')
+            .eq('event_id', eventId)
+            .eq('status', 'valid')
+            .is('seat_id', null)
+            .order('created_at')
+            .order('id')
+            .range(from, to),
+        )
+      : Promise.resolve([] as UnassignedTicketRow[]),
   ])
-
-  if (seatsResult.error) {
-    console.error('[seats/page] failed to load seats:', seatsResult.error)
-  }
 
   return (
     <div>
@@ -122,9 +167,9 @@ export default async function SeatsManagementPage({ params }: Props) {
 
       <SeatsManagementClient
         eventId={eventId}
-        seats={seatsResult.data ?? []}
-        sections={sectionsResult.data ?? []}
-        unassignedTickets={(unassignedResult.data ?? []).map(t => ({
+        seats={seats}
+        sections={sections}
+        unassignedTickets={unassigned.map(t => ({
           id: t.id,
           ticket_code: t.ticket_code,
           holder_name: t.holder_name,
