@@ -1,5 +1,5 @@
 import 'server-only'
-import { getImageProps } from 'next/image'
+import { heroRasterProps as resolveHeroRaster } from '@/components/media/hero-raster-props'
 import { MEDIA_QUALITY } from '@/components/media/quality'
 import { MEDIA_SIZES } from '@/components/media/sizes'
 import { resolveImageSrc } from '@/components/media/safe-image-src'
@@ -142,7 +142,17 @@ export function heroRasterProps({
   sizes: string
   quality: number
 }) {
-  return getImageProps({
+  /*
+   * THE GRANT IS WRITTEN HERE, IN FEATURE CODE, ON PURPOSE. `next/image` itself
+   * may only be imported under src/components/media/ (the media architecture,
+   * eslint-enforced), and `one-priority-image` EXCLUDES that directory, so a
+   * `priority: true` written on the other side of this call would be invisible to
+   * the guard. That is precisely how this grant went unreviewed for a day. The
+   * import sits in the exempt directory; the decision sits here, where it is
+   * scanned and declared. `src/components/media/hero-raster-props.ts` carries the
+   * full reasoning.
+   */
+  return resolveHeroRaster({
     // The preload carries no alt text; the element that paints does.
     src, alt: '', fill: true, priority: true, sizes, quality,
   })
