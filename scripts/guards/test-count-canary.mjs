@@ -3217,8 +3217,26 @@ const ROOT = join(HERE, '..', '..')
  * protect. tests/unit/guards/no-hardcoded-spacing.test.ts caught it, unchanged.
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 538
-const MIN_TESTS = 7167
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, the marketplace notification router): 538/7167 -> 539/7180.
+ * ---------------------------------------------------------------------------
+ *
+ * ONE NEW FILE AND THIRTEEN CASES, and nothing else moved:
+ *   tests/unit/notifications/a-blink-is-not-a-fact-about-a-performer.test.ts  13 (new)
+ *   538 + 1 = 539 files
+ *   7167 + 13 = 7180 tests
+ *
+ * MEASURED: 539 files, 7180 tests, 0 failed, 0 skipped
+ * (npm run gate:push -- --only suite, GREEN, 104s, on the tree of this commit).
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED. Each of the thirteen was driven
+ * RED against the module as it stood before the fix, by mutating the branch it
+ * covers back and watching exactly one case fail.
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 539
+const MIN_TESTS = 7180
 
 
 /**

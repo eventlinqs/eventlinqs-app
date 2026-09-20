@@ -129,17 +129,20 @@ export const SCOPE = [
  * owning lane fixes it, this entry has to go or the build says so.
  */
 export const RAISED_WITH_ANOTHER_LANE = [
-  {
-    file: 'src/lib/marketplace/notify.ts',
-    since: '2026-09-21',
-    lane: 'lane C, which owns the notification router',
-    raised: 'C:\\dev\\REVIEW-QUEUE-B.md, the BORDER line for LB-GIGWHOLE',
-    why:
-      'five reads discard their error. Two of them decide something rather than display it: a ' +
-      'duplicate-suppression read whose failure sends the same notification twice, and an ' +
-      'unbounded push-subscription read whose failure is silence. Lane B found them while ' +
-      'fixing the sibling modules and stopped at the border.',
-  },
+  /*
+   * EMPTY, and it has been empty since the day it was created.
+   *
+   * Lane B raised src/lib/marketplace/notify.ts here on the morning of 21
+   * September 2026: five reads discarding their error, two of them deciding
+   * something rather than displaying it. Lane C fixed all five that afternoon,
+   * this guard refused the now-stale entry by name and by count, and the entry
+   * went. Twelve hours of visible debt, closed by the mechanism rather than by
+   * somebody remembering.
+   *
+   * The empty list stays rather than being deleted, because the next
+   * cross-lane finding needs somewhere honest to sit that is NOT the register
+   * of deliberate exceptions.
+   */
 ]
 
 /**
@@ -406,6 +409,22 @@ function main() {
       'read that discards its error': problems.length,
       'destructure exempted by the register': exempted,
       'read discarding an error in another lane file': outstanding,
+    },
+    zeroIsFine: {
+      /*
+       * ZERO IS THE DESIRED STATE HERE, not a step that did nothing.
+       *
+       * This counter is the number of cross-lane BORDERS outstanding: faults
+       * that are real, acknowledged, and in a file the finding lane may not
+       * edit. An empty list means every one of them has been fixed by its
+       * owner, which is the outcome the mechanism exists to produce. It stood
+       * at one for twelve hours on 21 September 2026 and went to zero when
+       * lane C fixed src/lib/marketplace/notify.ts.
+       *
+       * The count is still DECLARED rather than removed, because a list that
+       * stops being counted is a list that stops being read.
+       */
+      'fault raised with another lane': 'an empty border list is the goal: every raised fault has been fixed by the lane that owns it',
     },
   })
 

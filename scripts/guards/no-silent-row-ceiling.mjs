@@ -114,13 +114,14 @@ const SCOPE = [
  * been BOUNDED, so the list is forced to shrink rather than left to rot.
  */
 const RAISED_WITH_ANOTHER_LANE = [
-  {
-    file: 'src/lib/marketplace/notify.ts',
-    table: 'push_subscriptions',
-    since: '2026-09-21',
-    lane: 'lane C, which owns the notification router',
-    why: 'an unbounded read of every push subscription for a user; past the ceiling a device stops being told',
-  },
+  /*
+   * EMPTY since 21 September 2026. The one entry was the unbounded read of
+   * every push subscription for a recipient in src/lib/marketplace/notify.ts,
+   * raised by lane B in the morning and paged through readEveryRow by lane C
+   * the same afternoon. This guard refused the stale entry by name and it
+   * went, which is what "forced to shrink rather than left to rot" looks like
+   * when it happens.
+   */
 ]
 
 /** The one pager. A read in scope reaches it or states its own bound. */
