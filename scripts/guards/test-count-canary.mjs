@@ -2905,9 +2905,33 @@ const ROOT = join(HERE, '..', '..')
  *   tests/unit/dashboard/the-price-ladder-survives-a-blink.test.ts  17  (new file)
  *   522 + 1 = 523 files
  *   6975 + 17 = 6992 tests
+ *
+ * 2026-09-20 (lane B, LB-INVITEWHOLE): raised 523/6992 -> 524/7014.
+ *
+ * ONE EXISTING TEST WAS REWRITTEN AND ADDS NO CASE, and the count below says so.
+ * `tests/unit/growth/founding-organiser-terms.test.ts` carried "the conversion
+ * path reads the switch before it grants anything", which compared the offset of
+ * `isFeatureEnabled('founding_open'` with the offset of `rpc('claim_founding_spot'`
+ * in the RAW file. The conversion is now one call to accept_founding_invite, so
+ * the only remaining occurrence of that string is the doc comment quoting the
+ * defective line, and the test was comparing code against prose. It now strips
+ * comments and reads the new shape. Same file, same case count, 38 either way.
+ *
+ * MEASURED: 524 files, 7014 tests, 0 skipped
+ * (`npx vitest run --reporter=dot`, 216s, on the tree of this commit).
+ *
+ * THIS IS A LANE WORKTREE MEASUREMENT AND THE PUSH LANE WILL RAISE IT AGAIN,
+ * for the reason the block above gives: lane/b-growth does not contain lane C's
+ * newest work, so this floor is below what the merged tree runs. A floor that is
+ * too LOW is safe and still holds.
+ *
+ * CHECKABLE. This item adds ONE file and TWENTY-TWO cases:
+ *   tests/unit/growth/a-founding-invite-is-spent-once.test.ts  22  (new file)
+ *   523 + 1 = 524 files
+ *   6992 + 22 = 7014 tests
  */
-const MIN_FILES = 523
-const MIN_TESTS = 6992
+const MIN_FILES = 524
+const MIN_TESTS = 7014
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

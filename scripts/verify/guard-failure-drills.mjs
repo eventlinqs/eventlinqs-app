@@ -7662,6 +7662,83 @@ const DRILLS = [
   },
 
   /*
+   * the-founding-invite-is-spent-once (lane B, 20 September 2026), six drills,
+   * one per clause. Two of them plant the defect in its ORIGINAL form, which is
+   * the only way to know the guard would have caught the thing it was written
+   * for: the fourth restores the direct claim_founding_spot call that put the
+   * consume and the claim in two transactions, and the fifth restores the
+   * unconditional cookie delete that threw away an unspent code.
+   */
+  {
+    name: 'the founding invite guard names a surface that is not there',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'scripts/guards/the-founding-invite-is-spent-once.mjs',
+    find: "  'src/lib/founding/invites.ts',",
+    replace: "  'src/lib/founding/invites-renamed-away.ts',",
+    expect: 'would report PASS',
+  },
+  {
+    name: 'the invites screen reads its list inline again, unbounded',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'src/app/(dashboard)/dashboard/invites/page.tsx',
+    find: '  const invites = org.is_founding',
+    replace: [
+      '  const { data: unbounded } = await admin',
+      "    .from('founding_invites')",
+      "    .select('code, city_slug, status, invitee_email, accepted_at, created_at')",
+      "    .eq('inviter_org_id', org.id)",
+      '  void unbounded',
+      '  const invites = org.is_founding',
+    ].join('\n'),
+    expect: 'reads founding_invites with no bound',
+  },
+  {
+    name: 'the invite action goes back to discarding the error on its organisation read',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'src/app/(dashboard)/dashboard/invites/actions.ts',
+    find: "  const org = await readOrThrow('founding-invite-issuer', () =>",
+    replace: [
+      '  const { data: org } = await (async () =>',
+      '    await (async () =>',
+    ].join('\n'),
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT, RESTORED. This exact call is what put the spot claim
+     * in a different transaction from the consume, so a fault on it left a
+     * single-use code spent and no spot granted.
+     */
+    name: 'the converter claims the founding spot in its own round trip again',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'src/lib/founding/invites.ts',
+    find: "  const { data, error } = await admin.rpc('accept_founding_invite', {",
+    replace: "  const { data, error } = await admin.rpc('claim_founding_spot', {",
+    expect: 'calls claim_founding_spot directly',
+  },
+  {
+    /*
+     * THE OTHER ORIGINAL DEFECT. The cookie used to be dropped on the line after
+     * a call whose result nobody read, so a conversion that wrote nothing still
+     * cost the organiser the only copy of their code.
+     */
+    name: 'the signup drops the invite cookie whether or not the code was spent',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'src/app/(dashboard)/dashboard/organisation/actions.ts',
+    find: '      if (outcome.consumed) {',
+    replace: '      if (true) {',
+    expect: 'without first establishing that the code was actually consumed',
+  },
+  {
+    name: 'the database allowance and the TypeScript allowance drift apart',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'supabase/migrations/20260920000050_a_founding_invite_is_spent_once.sql',
+    find: '  v_allowance CONSTANT INTEGER := 5;',
+    replace: '  v_allowance CONSTANT INTEGER := 6;',
+    expect: 'the founding invite allowance disagrees with itself',
+  },
+
+  /*
    * the-price-ladder-survives-a-blink (lane B, 20 September 2026), six drills,
    * one per clause. Two of them plant the defect in its ORIGINAL form, which is
    * the only way to know the guard would have caught the thing it was written

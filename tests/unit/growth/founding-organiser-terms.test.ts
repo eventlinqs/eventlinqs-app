@@ -23,6 +23,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { stripComments } from '../../../scripts/guards/lib/source.mjs'
 
 import { computeFeeLineCents, type FeeRates } from '@/lib/payments/fee-math'
 import { parseLockedValues } from '@/lib/health/pricing-lock.mjs'
@@ -231,14 +232,35 @@ describe('FO1 reversal condition: the offer can be closed without a deploy', () 
     expect(BROADCAST_FLAG_DECISIONS.founding_open.toLowerCase()).toContain('lawal')
   })
 
+  /**
+   * REWRITTEN 20 September 2026 (LB-INVITEWHOLE), because its subject moved and
+   * its method could be satisfied by a comment.
+   *
+   * It used to compare the offset of `isFeatureEnabled('founding_open'` with the
+   * offset of `rpc('claim_founding_spot'` in the raw file. The conversion is now
+   * one call to `accept_founding_invite`, which consumes the invite and claims
+   * the spot in ONE transaction (migration 20260920000050), so the application
+   * no longer calls claim_founding_spot at all. The only remaining occurrence of
+   * that string in the file is the doc comment QUOTING the defective line as the
+   * thing that was fixed, and this test found it and compared code against prose.
+   *
+   * So it reads the same two things it always meant to: comments stripped, the
+   * switch is read BEFORE the call that grants anything, and its value is what
+   * the call is told. A switch read after the grant closes nothing.
+   */
   it('the conversion path reads the switch before it grants anything', () => {
-    const source = readFileSync(join(REPO_ROOT, 'src/lib/founding/invites.ts'), 'utf8')
+    const source = stripComments(readFileSync(join(REPO_ROOT, 'src/lib/founding/invites.ts'), 'utf8'))
     const flagCheck = source.indexOf("isFeatureEnabled('founding_open'")
-    const spotClaim = source.indexOf("rpc('claim_founding_spot'")
+    const conversion = source.indexOf("rpc('accept_founding_invite'")
     expect(flagCheck).toBeGreaterThan(-1)
-    expect(spotClaim).toBeGreaterThan(-1)
-    // A switch read AFTER the spot is allocated closes nothing.
-    expect(flagCheck).toBeLessThan(spotClaim)
+    expect(conversion).toBeGreaterThan(-1)
+    expect(flagCheck).toBeLessThan(conversion)
+    // The switch is an INPUT to the transaction, not a second opinion read
+    // inside it, so the flag resolver stays the one answer to that question.
+    expect(source).toMatch(/p_offer_open:\s*offerOpen/)
+    // And the claim is no longer a round trip of its own, which is what let a
+    // blink spend a single-use code on nothing.
+    expect(source).not.toContain('claim_founding_spot')
   })
 })
 

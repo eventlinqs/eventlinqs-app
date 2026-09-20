@@ -656,6 +656,13 @@
  *                             UNIQUE column so a row cannot land in two windows
  *                             and double-count revenue, and fail loudly rather
  *                             than rendering a business that has sold nothing
+ *   the-founding-invite-is-spent-once  the acquisition loop the growth plan
+ *                             calls lever two: the consume and the spot claim
+ *                             are ONE transaction so a fault can never leave a
+ *                             single-use code spent with no spot granted, the
+ *                             five-invite allowance is the same number in the
+ *                             TypeScript and in the database, and no read in
+ *                             the loop answers a failure as an answer
  *   the-price-ladder-survives-a-blink  the organiser's pricing and discount
  *                             configuration, where a failed read was DATA LOSS
  *                             rather than a wrong number: the editor
@@ -2441,6 +2448,34 @@ const GUARDS = [
   //
   // Drilled red five ways and green (C:\dev\EVIDENCE\LB-ORGDASH\drills.txt).
   'scripts/guards/the-organiser-dashboard-reads-every-row.mjs',
+
+  // the-founding-invite-is-spent-once: the founding invite and referral loop,
+  // 20 September 2026. The growth plan's lever two, invite an organiser, and
+  // two of its five discarded reads cost the invited organiser the thing they
+  // were invited to.
+  //
+  // acceptFoundingInvite marked the invite accepted in one round trip and
+  // claimed the founding spot in another, discarding the claim's error. A
+  // dropped socket there is indistinguishable from the programme being full, so
+  // the invited organiser was told "All 50 founding spots are taken right now"
+  // while their single-use code had been spent milliseconds earlier: no spot,
+  // no six-month window, no way to try again, nothing recorded. Migration
+  // 20260920000050 puts both writes inside accept_founding_invite.
+  //
+  // The five-invite allowance was `(count ?? 0) >= INVITES_PER_FOUNDING_ORGANISER`
+  // over a count whose error was never bound, so a failed count read as nought
+  // issued and minted a sixth. Every founding invite is a founding spot and six
+  // fee-free months. Clause 6 holds the TypeScript literal and the SQL constant
+  // to the same number, for the reason founding-offer-matches-configuration
+  // already holds the fifty.
+  //
+  // Neither no-silent-row-ceiling (scoped to the consent and marketing path)
+  // nor read-failure-is-not-not-found (judges notFound() inside src/app, and
+  // says in its own header that a helper in src/lib folding a read into null
+  // for a RENDERED refusal is invisible to it) could see any of this.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-INVITEWHOLE\drills.txt).
+  'scripts/guards/the-founding-invite-is-spent-once.mjs',
 
   // the-price-ladder-survives-a-blink: the organiser's pricing and discount
   // configuration, 20 September 2026. This one is DATA LOSS rather than a wrong

@@ -7923,6 +7923,21 @@ export type Database = {
       }
     }
     Functions: {
+      accept_founding_invite: {
+        Args: {
+          p_code: string
+          p_offer_open: boolean
+          p_org_id: string
+          p_user_id: string
+        }
+        Returns: {
+          already_founding: boolean
+          consumed: boolean
+          offer_closed: boolean
+          referral_recorded: boolean
+          spot_number: number
+        }[]
+      }
       admin_set_founding_waiver: {
         Args: {
           p_membership?: string
