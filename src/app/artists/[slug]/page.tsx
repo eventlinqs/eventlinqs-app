@@ -1,3 +1,5 @@
+import { readEveryRow, type PagedResult } from '@/lib/supabase/read-every-row'
+import { countOrRaise } from '@/lib/supabase/count-or-raise'
 import type { Metadata } from 'next'
 import { formatEventMonthYear } from '@/lib/dates/event-time'
 import Link from 'next/link'
@@ -62,14 +64,22 @@ async function fetchShowCards(
   eventIds: string[],
 ): Promise<EventCardData[]> {
   if (eventIds.length === 0) return []
-  const { data } = await admin
-    .from('events')
-    .select(
-      'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
-    )
-    .in('id', eventIds)
-    .order('start_date', { ascending: true })
-  return (data ?? []) as unknown as EventCardData[]
+  // A FAILED READ IS NOT A PERFORMER WITH NO SHOWS. This was unbounded with its
+  // error dropped, so a blink drew an empty shows rail on a performer's own
+  // public profile, which is the page an organiser judges their draw from.
+  // Ordered on start_date and then id, because start_date is not unique and a
+  // partial order can repeat one show across two windows and lose another.
+  return readEveryRow<EventCardData>('the shows on this performer\'s profile', (from, to) =>
+    admin
+      .from('events')
+      .select(
+        'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+      )
+      .in('id', eventIds)
+      .order('start_date', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to) as unknown as PromiseLike<PagedResult<EventCardData>>,
+  )
 }
 
 /** Best-effort click-to-play poster: a real YouTube thumb when derivable,
@@ -107,12 +117,20 @@ export default async function ArtistProfilePage({ params }: Props) {
     // counting says exactly that. The previous `.limit(1).maybeSingle()` gave the
     // same answer, but it is the same shape as the call sites that broke for an
     // owner of several, and a reader copying it from here would inherit the trap.
-    const { count } = await admin
-      .from('organisations')
-      .select('id', { count: 'exact', head: true })
-      .eq('owner_id', user.id)
-      .eq('status', 'active')
-    viewerHasActiveOrg = (count ?? 0) > 0
+    // A FAILED COUNT HID THE CONTROL. It was `(count ?? 0) > 0` with the error
+    // unbound, so a blink took the structured booking button off the page for
+    // an organiser who does run an active business, on the profile of the
+    // performer they came to book. countOrRaise turns that into a failure the
+    // viewer can retry rather than a control that silently is not there.
+    viewerHasActiveOrg =
+      countOrRaise(
+        'the active organisations this viewer owns',
+        await admin
+          .from('organisations')
+          .select('id', { count: 'exact', head: true })
+          .eq('owner_id', user.id)
+          .eq('status', 'active'),
+      ) > 0
   }
   const isOwnProfile = Boolean(user && artist.owner_user_id === user.id)
 

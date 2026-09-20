@@ -5,6 +5,7 @@ import { after } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { actionRateLimit } from '@/lib/rate-limit/action'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchArtistForOwner } from '@/lib/broadcast/artists'
@@ -51,14 +52,20 @@ async function requireUser() {
  */
 async function requireActiveOrganisation(userId: string) {
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('organisations')
-    .select('id, name, status')
-    .eq('owner_id', userId)
-    .eq('status', 'active')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
+  // A FAILED READ IS NOT AN ABSENT ORGANISATION. Every caller answers a
+  // refusal on null, so a dropped socket told an approved organiser that
+  // booking requests "need an approved organiser account" and sent them to a
+  // signup they had already completed.
+  const data = await readOrThrow('marketplace-active-organisation', () =>
+    admin
+      .from('organisations')
+      .select('id, name, status')
+      .eq('owner_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  )
   return (data as { id: string; name: string; status: string } | null) ?? null
 }
 
@@ -107,17 +114,21 @@ export async function postGigAction(input: z.infer<typeof PostGigSchema>): Promi
   const admin = createAdminClient()
 
   // City must exist in the taxonomy (structure supports any Australian city).
-  const { data: city } = await admin.from('cities').select('slug').eq('slug', gig.citySlug).maybeSingle()
+  const city = await readOrThrow('marketplace-gig-city', () =>
+    admin.from('cities').select('slug').eq('slug', gig.citySlug).maybeSingle(),
+  )
   if (!city) return { ok: false, error: 'Pick a city from the list.' }
 
   // Optional event link must be the organiser's own event.
   if (gig.eventId) {
-    const { data: event } = await admin
-      .from('events')
-      .select('id')
-      .eq('id', gig.eventId)
-      .eq('organisation_id', org.id)
-      .maybeSingle()
+    const event = await readOrThrow('marketplace-gig-event-ownership', () =>
+      admin
+        .from('events')
+        .select('id')
+        .eq('id', gig.eventId as string)
+        .eq('organisation_id', org.id)
+        .maybeSingle(),
+    )
     if (!event) return { ok: false, error: 'That event is not yours to link.' }
   }
 
@@ -170,11 +181,13 @@ export async function setGigStatusAction(input: z.infer<typeof GigStatusSchema>)
   if (!parsed.success) return { ok: false, error: 'Invalid request.' }
 
   const admin = createAdminClient()
-  const { data: gig } = await admin
-    .from('gigs')
-    .select('id, organisation_id, status')
-    .eq('id', parsed.data.gigId)
-    .maybeSingle()
+  const gig = await readOrThrow('marketplace-gig-status-change', () =>
+    admin
+      .from('gigs')
+      .select('id, organisation_id, status')
+      .eq('id', parsed.data.gigId)
+      .maybeSingle(),
+  )
   if (!gig) return { ok: false, error: 'Gig not found.' }
   if (gig.status === 'removed') return { ok: false, error: 'This gig was removed.' }
 
@@ -189,6 +202,44 @@ export async function setGigStatusAction(input: z.infer<typeof GigStatusSchema>)
   revalidatePath('/gigs')
   revalidatePath('/dashboard/gigs')
   return { ok: true }
+}
+
+/**
+ * THE BLOCK CHECK FAILS CLOSED, and it used to fail open.
+ *
+ * `isPairBlocked` returned `Boolean(data)` over a read whose error was never
+ * bound, so a dropped socket answered FALSE, and false is the answer that means
+ * NOT BLOCKED. Both call sites read that as permission. For the length of any
+ * fault in one read, a block stopped holding: the organiser who blocked a
+ * performer received their application, and the performer who was blocked was
+ * put back in front of the organiser who blocked them. A block is a safety
+ * decision a person made about somebody they do not want contact from, and it
+ * is not a thing to guess at.
+ *
+ * `isPairBlocked` now throws when it cannot establish the answer. This turns
+ * that throw into the SAME refusal the person would have seen if the pair were
+ * blocked, rather than letting it escape as a generic server error, because a
+ * refusal somebody can read beats a stack trace and both are better than
+ * contact. The database refuses the insert either way since migration
+ * 20260920000060; this is what the person is told.
+ */
+async function refuseIfBlockedOrUnknowable(
+  admin: ReturnType<typeof createAdminClient>,
+  organisationId: string,
+  artistId: string,
+  refusal: string,
+): Promise<GigActionResult | null> {
+  try {
+    return (await isPairBlocked(admin, organisationId, artistId)) ? { ok: false, error: refusal } : null
+  } catch (err) {
+    console.error(
+      '[marketplace] could not establish whether organisation %s and performer %s are blocked; refusing:',
+      organisationId,
+      artistId,
+      err,
+    )
+    return { ok: false, error: refusal }
+  }
 }
 
 const ApplySchema = z.object({
@@ -223,9 +274,13 @@ export async function applyToGigAction(input: z.infer<typeof ApplySchema>): Prom
     return { ok: false, error: 'Applications for this gig have closed.' }
   }
 
-  if (await isPairBlocked(admin, gig.organisation_id, artist.id)) {
-    return { ok: false, error: 'You cannot apply to this organiser.' }
-  }
+  const applyRefusal = await refuseIfBlockedOrUnknowable(
+    admin,
+    gig.organisation_id,
+    artist.id,
+    'You cannot apply to this organiser.',
+  )
+  if (applyRefusal) return applyRefusal
 
   const rl = await actionRateLimit('gig-apply', user.id)
   if (!rl.ok) {
@@ -249,12 +304,20 @@ export async function applyToGigAction(input: z.infer<typeof ApplySchema>): Prom
     return { ok: false, error: 'Could not send your application. Try again.' }
   }
 
-  // Notify the gig's organiser. Best-effort.
-  const { data: org } = await admin
+  // Notify the gig's organiser. Best-effort, and it may NOT throw: the
+  // application is already inserted, so a fault here must not turn a successful
+  // application into an error the performer sees. The error is bound and
+  // reported, because the old shape discarded it and the failure mode is an
+  // organiser who is never told an application arrived, which is
+  // indistinguishable from nobody having applied.
+  const { data: org, error: orgError } = await admin
     .from('organisations')
     .select('owner_id')
     .eq('id', gig.organisation_id)
     .maybeSingle()
+  if (orgError) {
+    console.error('[gigs] could not resolve the organiser to notify of an application:', orgError)
+  }
   if (org?.owner_id) {
     // Awaited so the send is never lost to a frozen serverless instance;
     // .catch keeps a notify fault from failing the application.
@@ -291,11 +354,13 @@ export async function setApplicationStatusAction(
   if (!parsed.success) return { ok: false, error: 'Invalid request.' }
 
   const admin = createAdminClient()
-  const { data: app } = await admin
-    .from('gig_applications')
-    .select('id, gig_id, status')
-    .eq('id', parsed.data.applicationId)
-    .maybeSingle()
+  const app = await readOrThrow('marketplace-application-review', () =>
+    admin
+      .from('gig_applications')
+      .select('id, gig_id, status')
+      .eq('id', parsed.data.applicationId)
+      .maybeSingle(),
+  )
   if (!app) return { ok: false, error: 'Application not found.' }
 
   const gig = await fetchGigById(admin, app.gig_id as string)
@@ -320,11 +385,13 @@ export async function withdrawApplicationAction(applicationId: string): Promise<
   if (!z.string().uuid().safeParse(applicationId).success) return { ok: false, error: 'Invalid request.' }
 
   const admin = createAdminClient()
-  const { data: app } = await admin
-    .from('gig_applications')
-    .select('id, applicant_user_id, status')
-    .eq('id', applicationId)
-    .maybeSingle()
+  const app = await readOrThrow('marketplace-application-withdraw', () =>
+    admin
+      .from('gig_applications')
+      .select('id, applicant_user_id, status')
+      .eq('id', applicationId)
+      .maybeSingle(),
+  )
   if (!app || app.applicant_user_id !== user.id) return { ok: false, error: 'Not your application.' }
   if (app.status === 'booked') return { ok: false, error: 'A booked application cannot be withdrawn here.' }
 
@@ -367,21 +434,27 @@ export async function sendBookingRequestAction(
   if (!org) return { ok: false, error: 'Booking requests need an approved organiser account.' }
 
   const admin = createAdminClient()
-  if (await isPairBlocked(admin, org.id, req.artistId)) {
-    return { ok: false, error: 'You cannot send requests to this performer.' }
-  }
+  const requestRefusal = await refuseIfBlockedOrUnknowable(
+    admin,
+    org.id as string,
+    req.artistId,
+    'You cannot send requests to this performer.',
+  )
+  if (requestRefusal) return requestRefusal
 
   const rl = await actionRateLimit('booking-request', user.id)
   if (!rl.ok) return { ok: false, error: 'Too many requests in the last hour. Try again later.' }
 
   // The one-tap lineup wiring: an attached event must be the organiser's own.
   if (req.eventId) {
-    const { data: event } = await admin
-      .from('events')
-      .select('id')
-      .eq('id', req.eventId)
-      .eq('organisation_id', org.id)
-      .maybeSingle()
+    const event = await readOrThrow('marketplace-request-event-ownership', () =>
+      admin
+        .from('events')
+        .select('id')
+        .eq('id', req.eventId as string)
+        .eq('organisation_id', org.id)
+        .maybeSingle(),
+    )
     if (!event) return { ok: false, error: 'That event is not yours to attach.' }
   }
 
@@ -413,11 +486,17 @@ export async function sendBookingRequestAction(
     return { ok: false, error: 'Could not send the request. Try again.' }
   }
 
-  const { data: artist } = await admin
+  // The same rule as the application notify above: the request is already
+  // written, so this may not throw, and the error is bound rather than dropped
+  // because the failure is a performer who is never told they were offered work.
+  const { data: artist, error: artistError } = await admin
     .from('artists')
     .select('owner_user_id, name')
     .eq('id', req.artistId)
     .maybeSingle()
+  if (artistError) {
+    console.error('[gigs] could not resolve the performer to notify of a booking request:', artistError)
+  }
   if (artist?.owner_user_id) {
     await dispatchMarketplaceAlert({
       admin,
@@ -475,19 +554,42 @@ export async function respondToRequestAction(
         .eq('id', request.application_id)
     }
     if (request.event_id && request.kind === 'booking') {
-      const { count } = await admin
+      /*
+       * A POSITION ON THE BILL IS NOT A THING TO GUESS. This counted the
+       * existing lineup to place the new performer at the end, and wrote
+       * `billing_order: count ?? 0` with the count's error never bound. A
+       * failed count is null, `null ?? 0` is zero, and zero is the TOP of the
+       * bill: a performer accepted for a support slot would have been printed
+       * above the headliner on the public event page, and nothing would have
+       * said why.
+       *
+       * When the count cannot be taken the tag is not written at all, which is
+       * the same end state this block already accepts for a failed insert three
+       * lines below, and it is reported the same way. One outcome for "the
+       * lineup add did not happen" rather than two, and never a position
+       * invented by a coalesce.
+       */
+      const { count, error: countError } = await admin
         .from('event_artists')
         .select('id', { count: 'exact', head: true })
         .eq('event_id', request.event_id)
-      const { error: tagError } = await admin.from('event_artists').insert({
-        event_id: request.event_id,
-        artist_id: request.artist_id,
-        billing_order: count ?? 0,
-        status: 'confirmed',
-      })
-      // An existing tag (23505) is already the desired end state.
-      if (tagError && tagError.code !== '23505') {
-        console.error('[gigs] lineup add on acceptance failed:', tagError)
+
+      if (countError || count === null) {
+        console.error(
+          '[gigs] lineup add skipped: the existing lineup could not be counted, so no billing order could be computed:',
+          countError ?? 'the count came back null with no error',
+        )
+      } else {
+        const { error: tagError } = await admin.from('event_artists').insert({
+          event_id: request.event_id,
+          artist_id: request.artist_id,
+          billing_order: count,
+          status: 'confirmed',
+        })
+        // An existing tag (23505) is already the desired end state.
+        if (tagError && tagError.code !== '23505') {
+          console.error('[gigs] lineup add on acceptance failed:', tagError)
+        }
       }
       revalidatePath(`/dashboard/events/${request.event_id}/lineup`)
     }
@@ -532,11 +634,13 @@ export async function sendMentoringRequestAction(
   if (!parsed.success) return { ok: false, error: 'Check the request.' }
 
   const admin = createAdminClient()
-  const { data: mentor } = await admin
-    .from('artists')
-    .select('id, name, owner_user_id, mentor_open')
-    .eq('id', parsed.data.artistId)
-    .maybeSingle()
+  const mentor = await readOrThrow('marketplace-mentor-profile', () =>
+    admin
+      .from('artists')
+      .select('id, name, owner_user_id, mentor_open')
+      .eq('id', parsed.data.artistId)
+      .maybeSingle(),
+  )
   if (!mentor || !mentor.mentor_open || !mentor.owner_user_id) {
     return { ok: false, error: 'This performer is not open to mentoring right now.' }
   }

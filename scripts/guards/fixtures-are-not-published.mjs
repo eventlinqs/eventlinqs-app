@@ -157,6 +157,26 @@ export const BASELINE = [
     why: 'the same fixture needs an organiser profile that resolves, because the structured data references it',
   },
   /*
+   * LB-GIGWHOLE'S ORGANISER, AND WHY 'active' IS NOT A PUBLICATION HERE.
+   *
+   * Posting a gig is refused for any organisation that is not active
+   * (requireActiveOrganisation in src/app/actions/gigs.ts), so `pending` would
+   * make the surface under test unreachable rather than merely invisible.
+   *
+   * It is not a sitemap hazard, and that is CHECKED rather than asserted.
+   * src/lib/seo/sitemap-catalogue.ts filters active organisations through
+   * isOrganiserProfileIndexable(eventCount, hasBiography, threshold), which is
+   * `hasBiography || isDiscoveryIndexable(eventCount, threshold)`. The fixture
+   * sets no `description` and owns no event, so both halves are false and the
+   * row never reaches the sitemap. The drive would have to start writing a
+   * description, or publishing an event, for that to stop being true.
+   */
+  {
+    drive: 'lb-gigwhole-drive.mjs',
+    write: "organisations.status='active'",
+    why: 'posting a gig is refused for an organisation that is not active, and the fixture carries no description and no event, so the substance rule in the sitemap catalogue excludes it',
+  },
+  /*
    * LANE A'S SHARED BUILDER, and the one entry here that is NOT comfortable.
    *
    * scripts/verify/lib/refund-proof-fixture.mjs builds a SELLABLE organisation

@@ -1,3 +1,4 @@
+import { fetchPickerCities } from '@/lib/marketplace/cities'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -54,11 +55,10 @@ export default async function PerformerDirectoryPage({
   }
 
   const admin = createAdminClient()
-  const [artists, citiesResult] = await Promise.all([
+  const [artists, cities] = await Promise.all([
     fetchDirectoryArtists(admin, filters),
-    admin.from('cities').select('slug, name').order('tier').order('name'),
+    fetchPickerCities(admin),
   ])
-  const cities = (citiesResult.data ?? []) as { slug: string; name: string }[]
   const cityName = (slug: string | null) => cities.find((c) => c.slug === slug)?.name ?? null
 
   const draw = await fetchDrawTotalsForArtists(admin, artists.map((a) => a.id))

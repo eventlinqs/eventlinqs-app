@@ -6978,14 +6978,35 @@ const DRILLS = [
     replace: ') to service_role, authenticated;',
     expect: 'to authenticated',
   },
-  {
-    name: 'the writer the code is required to call stops existing',
-    guard: `${GUARDS}/one-lawful-writer-of-the-fee.mjs`,
-    file: 'supabase/migrations/20260920000010_the_writer_stamps_the_previous_row.sql',
-    find: 'create or replace function public.write_pricing_rule(',
-    replace: 'create or replace function public.write_pricing_rule_renamed(',
-    expect: 'no migration declares public.write_pricing_rule',
-  },
+  /*
+   * REMOVED, 20 September 2026: 'the writer the code is required to call stops
+   * existing'. It is recorded here rather than deleted quietly, because a
+   * missing drill is a clause nobody has ever seen fail.
+   *
+   * WHAT IT WAS. It renamed public.write_pricing_rule in
+   * 20260920000010_the_writer_stamps_the_previous_row.sql and expected clause 4
+   * to report "no migration declares public.write_pricing_rule".
+   *
+   * WHY IT STOPPED PROVING ANYTHING. Clause 4 fails only when NO migration
+   * declares the writer. On 20 September 2026 LB-FEEARGS added
+   * 20260920000011_the_fee_writer_declares_its_optional_arguments.sql, which
+   * declares it a second time, so renaming either file alone leaves the other
+   * and the guard correctly passes. The full harness caught it: "guard PASSED
+   * on a violating tree. It is not actually guarding."
+   *
+   * WHY IT IS NOT REPAIRED, and both repairs were tried rather than reasoned
+   * about. Repointing it at the newer migration fails for the same reason: two
+   * declarations, one edit. Drilling the guard's own WRITER constant DOES make
+   * the guard fail, but for a different reason and the harness says so: with a
+   * name nothing calls, the work report's own "DID NOTHING" check fires first,
+   * so the run proves that check works rather than that clause 4 does.
+   *
+   * SO THE CLAUSE IS NOT SINGLE-FILE DRILLABLE while two migrations declare the
+   * writer, and it is better to say that than to keep a drill that passes.
+   * Clause 4's OTHER half, the service_role grant, is still drilled above by
+   * 'the fee writer is opened up to a browser session'. The day one declaration
+   * remains, this drill comes back.
+   */
   {
     /*
      * THE BOUND IS DERIVED, NOT TYPED. Relax the CHECK and the guard must turn
@@ -7659,6 +7680,98 @@ const DRILLS = [
     find: "  'src/lib/organisers',",
     replace: "  'src/lib/organisers-renamed-away',",
     expect: 'a scope that scans nothing reports PASS',
+  },
+
+  /*
+   * a-marketplace-block-holds (lane B, 20 September 2026), seven drills, one per
+   * clause. Two plant the defect in its ORIGINAL form, which is the only way to
+   * know the guard would have caught the thing it was written for: the fourth
+   * restores `Boolean(data)` over a discarded error in the block check, and the
+   * seventh restores `billing_order: count ?? 0`.
+   */
+  {
+    name: 'the marketplace guard names a surface that is not there',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'scripts/guards/a-marketplace-block-holds.mjs',
+    find: "  'src/lib/marketplace/gigs.ts',",
+    replace: "  'src/lib/marketplace/gigs-renamed-away.ts',",
+    expect: 'would report PASS',
+  },
+  {
+    name: 'the organiser gig board reads its applicant counts unbounded again',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'src/app/(dashboard)/dashboard/gigs/page.tsx',
+    find: '    const apps = await readEveryRow<{ gig_id: string }>(',
+    replace: [
+      "    const { data: unbounded } = await admin",
+      "      .from('gig_applications')",
+      "      .select('gig_id')",
+      "      .in('gig_id', gigIds)",
+      '    void unbounded',
+      '    const apps = await readEveryRow<{ gig_id: string }>(',
+    ].join('\n'),
+    expect: 'reads gig_applications with no bound',
+  },
+  {
+    name: 'the organiser gig board goes back to discarding the error on its organisation read',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'src/app/(dashboard)/dashboard/gigs/page.tsx',
+    find: "  const org = await readOrThrow('organiser-gig-board-organisation', () =>",
+    replace: [
+      '  const { data: org } = await (async () =>',
+      '    await (async () =>',
+    ].join('\n'),
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT, RESTORED. This exact shape is what made a block stop
+     * holding for the length of any fault in one read.
+     */
+    name: 'the block check answers Boolean(data) over a discarded error again',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'src/lib/marketplace/gigs.ts',
+    find: "  const row = await readOrThrow('marketplace-block-check', () =>",
+    replace: [
+      '  const { data: row } = await (async () =>',
+      '    await (async () =>',
+    ].join('\n'),
+    expect: 'isPairBlocked no longer reads through readOrThrow',
+  },
+  {
+    name: 'the migration stops installing the block trigger on applications',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'supabase/migrations/20260920000060_a_block_holds_when_the_read_blinks.sql',
+    find: 'CREATE TRIGGER trg_marketplace_block_on_application',
+    replace: 'CREATE TRIGGER trg_marketplace_block_on_application_disabled',
+    expect: 'does not install trg_marketplace_block_on_application',
+  },
+  {
+    /*
+     * CLAUSE 6, THE WHOLE-TREE ONE. A fifth copy of the picker read is exactly
+     * how four bugs became four bugs in the first place.
+     */
+    name: 'a surface reads the city picker inline again',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'src/app/(dashboard)/dashboard/gigs/page.tsx',
+    find: '  const cities = await fetchPickerCities(admin)',
+    replace: [
+      "  const citiesResult = await admin.from('cities').select('slug, name').order('tier').order('name')",
+      "  const cities = (citiesResult.data ?? []) as { slug: string; name: string }[]",
+    ].join('\n'),
+    expect: 'reads the cities picker inline',
+  },
+  {
+    /*
+     * THE OTHER ORIGINAL DEFECT. Zero is the TOP of the bill, so a coalesced
+     * count printed a support act above the headliner.
+     */
+    name: 'accepting a booking guesses a position on the bill again',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'src/app/actions/gigs.ts',
+    find: '          billing_order: count,',
+    replace: '          billing_order: count ?? 0,',
+    expect: 'writes billing_order from a coalesced count',
   },
 
   /*

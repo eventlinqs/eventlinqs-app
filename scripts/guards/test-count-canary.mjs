@@ -2929,9 +2929,34 @@ const ROOT = join(HERE, '..', '..')
  *   tests/unit/growth/a-founding-invite-is-spent-once.test.ts  22  (new file)
  *   523 + 1 = 524 files
  *   6992 + 22 = 7014 tests
+ *
+ * 2026-09-21 (lane B, LB-GIGWHOLE): raised 524/7014 -> 525/7029.
+ *
+ * ONE EXISTING TEST WAS LOOSENED AND ADDS NO CASE, and the count below says so.
+ * `tests/unit/seo/read-failure-is-not-not-found.test.ts` asserted an EXACT
+ * number of `readOrThrow(` calls per module, counted over the whole file. That
+ * is an equality over a count that rises when a DIFFERENT read in the same
+ * module is made safe, which is exactly what happened: LB-GIGWHOLE routed
+ * `isPairBlocked` and `fetchRequestById` in src/lib/marketplace/gigs.ts through
+ * the door, the file went from one call to three, and the test failed because
+ * more reads were correct. It is a floor now. Same file, same case count, 22
+ * either way.
+ *
+ * MEASURED: 525 files, 7029 tests, 0 skipped
+ * (`npx vitest run --reporter=dot`, 208s, on the tree of this commit).
+ *
+ * THIS IS A LANE WORKTREE MEASUREMENT AND THE PUSH LANE WILL RAISE IT AGAIN,
+ * for the reason the block above gives: lane/b-growth does not contain lane C's
+ * newest work, so this floor is below what the merged tree runs. A floor that is
+ * too LOW is safe and still holds.
+ *
+ * CHECKABLE. This item adds ONE file and FIFTEEN cases:
+ *   tests/unit/growth/a-marketplace-block-holds.test.ts  15  (new file)
+ *   524 + 1 = 525 files
+ *   7014 + 15 = 7029 tests
  */
-const MIN_FILES = 524
-const MIN_TESTS = 7014
+const MIN_FILES = 525
+const MIN_TESTS = 7029
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

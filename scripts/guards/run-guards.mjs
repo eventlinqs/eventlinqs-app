@@ -656,6 +656,12 @@
  *                             UNIQUE column so a row cannot land in two windows
  *                             and double-count revenue, and fail loudly rather
  *                             than rendering a business that has sold nothing
+ *   a-marketplace-block-holds  the gig board and the performer directory: a
+ *                             block is a safety decision and the read that
+ *                             checks it throws rather than answering "not
+ *                             blocked", the database refuses the contact
+ *                             underneath it, no applicant list is unbounded or
+ *                             silent, and the city picker has one reader
  *   the-founding-invite-is-spent-once  the acquisition loop the growth plan
  *                             calls lever two: the consume and the spot claim
  *                             are ONE transaction so a fault can never leave a
@@ -2448,6 +2454,32 @@ const GUARDS = [
   //
   // Drilled red five ways and green (C:\dev\EVIDENCE\LB-ORGDASH\drills.txt).
   'scripts/guards/the-organiser-dashboard-reads-every-row.mjs',
+
+  // a-marketplace-block-holds: the performer marketplace, 20 September 2026.
+  //
+  // THE RULE WAS WRITTEN DOWN ON 11 JULY AND WAS A COMMENT. The migration that
+  // created marketplace_blocks says "a block between an organisation and a
+  // performer stops applications and requests BOTH ways for the pair", and
+  // nothing in the database did. The whole enforcement was isPairBlocked,
+  // which returned Boolean(data) over a read whose error was never bound, so a
+  // dropped socket answered FALSE, which is the answer that means NOT BLOCKED.
+  // Both call sites read it as permission. Migration 20260920000060 refuses the
+  // insert underneath, and clause 4 holds the reader and its callers.
+  //
+  // fetchGigApplications was unbounded with its error discarded, so a failed
+  // read drew "no applications yet" on a gig that had them: the organiser books
+  // nobody and every performer who applied waits for an answer that was never
+  // coming. The counts on the organiser's board were worse: the Supabase
+  // ceiling is on the RESPONSE and that read asked for every gig at once, so
+  // one cap was shared across the whole board.
+  //
+  // Clause 6 sweeps ALL of src/ rather than the scope list, because a FIFTH
+  // surface is exactly how the platform would acquire a fifth copy of the city
+  // picker read somewhere the list does not name. There were four, and all four
+  // wrote `(result.data ?? [])`.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-GIGWHOLE\drills.txt).
+  'scripts/guards/a-marketplace-block-holds.mjs',
 
   // the-founding-invite-is-spent-once: the founding invite and referral loop,
   // 20 September 2026. The growth plan's lever two, invite an organiser, and
