@@ -89,10 +89,26 @@ export default async function GstReportPage({
             ) : null}
           </div>
 
-          <div className="relative overflow-x-auto rounded-xl border border-ink-200 bg-white">
-            <table className="w-full text-sm">
+          {/*
+            * THE FIGURES A PERSON COPIES ONTO A TAX FORM, ON A PHONE.
+            *
+            * MEASURED, 21 September 2026: five columns inside a 356px
+            * `overflow-x-auto` box at 390. Swiped to the right edge to read
+            * GST included, the quarter label sat at x -66 to 23, so
+            * "Jul-Sep 2026" rendered as "Jul" beside four amounts with every
+            * column heading scrolled away. The first version of the drive that
+            * found this PASSED that sliver, because it asked whether the label
+            * overlapped the screen at all; it now asks for the whole label,
+            * and that correction is recorded in the drive's own header.
+            *
+            * A BAS figure attributed to the wrong quarter is not a cosmetic
+            * fault. Below `lg` each quarter is its own card with every amount
+            * carrying the word it belongs to, All time included.
+            */}
+          <div className="relative rounded-xl border border-ink-200 bg-white max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent lg:overflow-x-auto">
+            <table className="w-full text-sm max-lg:block">
               <caption className="sr-only">GST collected by quarter</caption>
-              <thead>
+              <thead className="max-lg:hidden">
                 <tr className="border-b border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
                   <th scope="col" className="px-4 py-3 font-semibold">Quarter</th>
                   <th scope="col" className="px-4 py-3 text-right font-semibold">Orders</th>
@@ -101,46 +117,58 @@ export default async function GstReportPage({
                   <th scope="col" className="px-4 py-3 text-right font-semibold">GST included</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ink-100">
+              <tbody className="divide-y divide-ink-100 max-lg:block max-lg:divide-y-0">
                 {report.periods.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-ink-500">
+                  <tr className="max-lg:block">
+                    <td colSpan={5} className="px-4 py-6 text-center text-ink-500 max-lg:block">
                       No confirmed sales yet. Your first sale will appear here in its quarter.
                     </td>
                   </tr>
                 ) : (
                   report.periods.map(p => (
-                    <tr key={p.label}>
-                      <td className="px-4 py-3 text-ink-900">{p.label}</td>
-                      <td className="px-4 py-3 text-right text-ink-600">{p.orderCount}</td>
-                      <td className="px-4 py-3 text-right text-ink-900">
+                    <tr
+                      key={p.label}
+                      className="max-lg:mt-3 max-lg:block max-lg:rounded-2xl max-lg:border max-lg:border-ink-200 max-lg:bg-white max-lg:px-4 max-lg:py-3"
+                    >
+                      <td className="px-4 py-3 text-ink-900 max-lg:block max-lg:px-0 max-lg:py-0 max-lg:font-semibold">{p.label}</td>
+                      <td className="px-4 py-3 text-right text-ink-600 max-lg:block max-lg:px-0 max-lg:pb-0 max-lg:pt-2 max-lg:text-left">
+                        {p.orderCount}
+                        <span className="ml-1 text-xs text-ink-600 lg:hidden">orders</span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-ink-900 max-lg:block max-lg:px-0 max-lg:pb-0 max-lg:pt-1 max-lg:text-left">
                         {money(p.salesCents, report.currency)}
+                        <span className="ml-1 text-xs text-ink-600 lg:hidden">ticket sales</span>
                       </td>
-                      <td className="px-4 py-3 text-right text-ink-600">
+                      <td className="px-4 py-3 text-right text-ink-600 max-lg:block max-lg:px-0 max-lg:pb-0 max-lg:pt-1 max-lg:text-left">
                         {p.refundsCents > 0 ? `-${money(p.refundsCents, report.currency)}` : '-'}
+                        <span className="ml-1 text-xs text-ink-600 lg:hidden">refunds</span>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-ink-900">
+                      <td className="px-4 py-3 text-right font-medium text-ink-900 max-lg:block max-lg:px-0 max-lg:pb-0 max-lg:pt-1 max-lg:text-left">
                         {money(p.gstCents, report.currency)}
+                        <span className="ml-1 text-xs font-normal text-ink-600 lg:hidden">GST included</span>
                       </td>
                     </tr>
                   ))
                 )}
               </tbody>
               {report.periods.length > 0 ? (
-                <tfoot>
-                  <tr className="border-t border-ink-200 font-semibold">
-                    <td className="px-4 py-3 text-ink-900">All time</td>
-                    <td className="px-4 py-3" />
-                    <td className="px-4 py-3 text-right text-ink-900">
+                <tfoot className="max-lg:block">
+                  <tr className="border-t border-ink-200 font-semibold max-lg:mt-3 max-lg:block max-lg:rounded-2xl max-lg:border max-lg:border-ink-900 max-lg:bg-white max-lg:px-4 max-lg:py-3">
+                    <td className="px-4 py-3 text-ink-900 max-lg:block max-lg:px-0 max-lg:py-0">All time</td>
+                    <td className="px-4 py-3 max-lg:hidden" />
+                    <td className="px-4 py-3 text-right text-ink-900 max-lg:block max-lg:px-0 max-lg:pb-0 max-lg:pt-2 max-lg:text-left">
                       {money(report.totalSalesCents, report.currency)}
+                      <span className="ml-1 text-xs font-normal text-ink-600 lg:hidden">ticket sales</span>
                     </td>
-                    <td className="px-4 py-3 text-right text-ink-600">
+                    <td className="px-4 py-3 text-right text-ink-600 max-lg:block max-lg:px-0 max-lg:pb-0 max-lg:pt-1 max-lg:text-left">
                       {report.totalRefundsCents > 0
                         ? `-${money(report.totalRefundsCents, report.currency)}`
                         : '-'}
+                      <span className="ml-1 text-xs font-normal text-ink-600 lg:hidden">refunds</span>
                     </td>
-                    <td className="px-4 py-3 text-right text-ink-900">
+                    <td className="px-4 py-3 text-right text-ink-900 max-lg:block max-lg:px-0 max-lg:pb-0 max-lg:pt-1 max-lg:text-left">
                       {money(report.totalGstCents, report.currency)}
+                      <span className="ml-1 text-xs font-normal text-ink-600 lg:hidden">GST included</span>
                     </td>
                   </tr>
                 </tfoot>

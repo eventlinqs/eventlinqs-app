@@ -292,7 +292,7 @@ function EventRowView({
                   <span className="ml-1 text-xs text-ink-400 lg:hidden">sold</span>
                 </>
               )
-            : ':'}
+            : '-'}
         </td>
         <td
           className="px-4 py-3 max-lg:mt-3 max-lg:block max-lg:border-t max-lg:border-ink-100 max-lg:px-0 max-lg:pb-0"

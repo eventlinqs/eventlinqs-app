@@ -100,7 +100,9 @@ export function OrderTable({ orders, eventId }: OrderTableProps) {
                   <tr key={order.id} className="hover:bg-ink-100 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs font-medium text-ink-900">{order.order_number}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-ink-900">{order.buyer_name || ':'}</p>
+                      {/* The same guest order, the same repair as the order
+                          detail page: a colon is not a name. */}
+                      <p className="font-medium text-ink-900">{order.buyer_name || 'Not given'}</p>
                       <p className="text-xs text-ink-400">{order.buyer_email}</p>
                     </td>
                     <td className="px-4 py-3 text-ink-600">{order.ticket_count}</td>

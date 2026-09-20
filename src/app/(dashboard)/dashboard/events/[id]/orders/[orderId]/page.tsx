@@ -233,7 +233,7 @@ export default async function OrderDetailPage({ params }: Props) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link href={`/dashboard/events/${eventId}/orders`} className="text-sm text-ink-400 hover:text-ink-600">
           ← Orders
         </Link>
@@ -249,7 +249,14 @@ export default async function OrderDetailPage({ params }: Props) {
           <div className="rounded-xl border border-ink-200 bg-white p-6">
             <h2 className="text-base font-semibold text-ink-900 mb-4">Buyer</h2>
             <div className="text-sm text-ink-600 space-y-1">
-              <p><span className="text-ink-400">Name:</span> {buyerName || ':'}</p>
+              {/*
+                A NAME IS NOT A BLANK, IT IS A THING NOBODY ASKED FOR. Guest
+                checkout collects an email and not a name, so the truthful
+                answer here is that it was not given. The fallback used to be
+                an em dash, which the site-wide dash scrub (commit 2b59d58c)
+                replaced with a COLON, so every guest order read "Name: :".
+              */}
+              <p><span className="text-ink-400">Name:</span> {buyerName || 'Not given'}</p>
               <p><span className="text-ink-400">Email:</span> {buyerEmail}</p>
               {!fullOrder.user_id && (
                 <p className="text-xs text-ink-400 mt-2">Guest checkout</p>

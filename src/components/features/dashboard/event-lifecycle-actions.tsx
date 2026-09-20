@@ -7,6 +7,7 @@ import { Archive, ArchiveRestore, Trash2 } from 'lucide-react'
 import type { EventStatus } from '@/types/database'
 import { canArchive, restoreTarget } from '@/lib/event-lifecycle'
 import { ConfirmDialog } from './confirm-dialog'
+import { ROW_CONTROL } from './row-control'
 import { archiveEvent, restoreEvent, deleteEvent, type ActionResult } from '@/app/(dashboard)/dashboard/events/actions'
 
 /**
@@ -60,10 +61,10 @@ interface Props {
   onRefusal?: (refusal: ActionResult) => void
 }
 
-// px-2 with no flex gap: every action carries the same 8px either side, so the
-// rhythm between eight words is even whether the word is Edit or Launch Kit
-// (min-w-11 alone centred the short ones in 44px boxes and left the long ones bare).
-const ROW_LINK = 'inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs disabled:opacity-40'
+// The shape lives in one module now: the discount codes table needed the
+// identical 44px row control, and a second copy of a class string is a second
+// thing to forget. See src/components/features/dashboard/row-control.ts.
+const ROW_LINK = ROW_CONTROL
 const PANEL_BUTTON =
   'inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-[transform,box-shadow,background-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 disabled:opacity-40'
 

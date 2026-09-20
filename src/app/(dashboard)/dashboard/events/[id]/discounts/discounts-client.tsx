@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { createDiscountCode, updateDiscountCode, deleteDiscountCode } from '@/app/actions/discount-codes'
 import type { DiscountCode, TicketTier } from '@/types/database'
 import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
+import { ROW_CONTROL } from '@/components/features/dashboard/row-control'
 
 interface Props {
   eventId: string
@@ -306,9 +307,40 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
           <p className="text-ink-400 text-sm">No discount codes yet. Create one to boost ticket sales.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-ink-200 bg-white overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
+        /*
+         * THE SAME REBUILD THE EVENTS LIST HAD, AND FOR A WORSE DEFECT.
+         *
+         * MEASURED, 21 September 2026, before anything here was touched. This
+         * six-column table renders 668px wide inside a box that shows 356 of
+         * them at 390 and 478 at 768. The box was `overflow-hidden`, which is
+         * not a scroller: it is a CLIP. Deactivate and Delete sat at x 561 to
+         * 669, entirely outside the visible 16 to 374, with no scrollbar and
+         * no swipe that would ever reach them.
+         *
+         * So an organiser on a phone could not deactivate a live discount
+         * code, and could not delete one. The control existed, rendered,
+         * passed every accessibility tree check, and no finger could land on
+         * it. Law 5's affordance clause calls that the same defect as a 404
+         * behind a tile, and it is worse here: the code keeps discounting.
+         *
+         * `overflow-x-auto` would have made it swipeable and would have left a
+         * second defect standing, which the same drive measures: swiped to the
+         * right edge, the CODE scrolls off the left, so the person is deciding
+         * about a row that no longer says which code it is.
+         *
+         * Below `lg` the table is therefore not a table. One DOM, CSS only:
+         * the header hides, the parts become blocks, and each code becomes a
+         * card. `lg` and not `md` because this sits behind a 240px fixed
+         * sidebar, so a 768px tablet leaves 478px of content - the width of a
+         * large phone, and the width at which this table was still clipping
+         * six controls.
+         *
+         * Every meta cell carries its own heading below `lg`, because "3 / 50"
+         * with the Uses column hidden is a number with no noun.
+         */
+        <div className="rounded-xl border border-ink-200 bg-white overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:overflow-visible">
+          <table className="w-full text-sm max-lg:block">
+            <thead className="max-lg:hidden">
               <tr className="border-b border-ink-100 text-left text-xs font-semibold text-ink-400 uppercase tracking-wider">
                 <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Discount</th>
@@ -318,39 +350,44 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-ink-100">
+            <tbody className="divide-y divide-ink-100 max-lg:block max-lg:divide-y-0">
               {codes.map(code => (
-                <tr key={code.id} className="hover:bg-ink-100">
-                  <td className="px-4 py-3 font-mono font-semibold text-ink-900">{code.code}</td>
-                  <td className="px-4 py-3 text-ink-600">
+                <tr
+                  key={code.id}
+                  className="hover:bg-ink-100 max-lg:mt-3 max-lg:block max-lg:rounded-2xl max-lg:border max-lg:border-ink-200 max-lg:bg-white max-lg:px-4 max-lg:py-3"
+                >
+                  <td className="px-4 py-3 font-mono font-semibold text-ink-900 max-lg:block max-lg:px-0 max-lg:py-0 max-lg:break-all">{code.code}</td>
+                  <td className="px-4 py-3 text-ink-600 max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pr-4 max-lg:pt-2">
                     {/* discount_codes.discount_value was split into typed columns
                         (discount_percentage NUMERIC, discount_amount_cents BIGINT)
                         by migration 20260520000001_schema_hygiene (audit P1-4b). */}
                     {code.discount_type === 'percentage'
                       ? `${code.discount_percentage ?? 0}%`
                       : `${(code.currency ?? currency).toUpperCase()} ${((code.discount_amount_cents ?? 0) / 100).toFixed(2)}`}
+                    <span className="ml-1 text-xs text-ink-400 lg:hidden">off</span>
                   </td>
-                  <td className="px-4 py-3 text-ink-400">
+                  <td className="px-4 py-3 text-ink-400 max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pr-4 max-lg:pt-2">
                     {code.current_uses}{code.max_uses !== null ? ` / ${code.max_uses}` : ''}
+                    <span className="ml-1 text-xs text-ink-400 lg:hidden">used</span>
                   </td>
-                  <td className="px-4 py-3 text-ink-400 text-xs">
+                  <td className="px-4 py-3 text-ink-400 text-xs max-lg:inline-block max-lg:px-0 max-lg:pb-0 max-lg:pt-2">
                     {code.valid_until
                       ? new Date(code.valid_until).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PLATFORM_TIME_ZONE })
                       : 'No expiry'}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 max-lg:block max-lg:px-0 max-lg:pb-0 max-lg:pt-3">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                       code.is_active ? 'bg-green-100 text-green-800' : 'bg-ink-100 text-ink-600'
                     }`}>
                       {code.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-3">
+                  <td className="px-4 py-3 max-lg:mt-3 max-lg:block max-lg:border-t max-lg:border-ink-100 max-lg:px-0 max-lg:pb-0">
+                    <div className="flex flex-wrap items-center gap-1">
                       <button
                         onClick={() => handleToggle(code.id, code.is_active)}
                         disabled={isPending}
-                        className="text-xs text-[var(--brand-accent-strong)] hover:underline"
+                        className={`${ROW_CONTROL} text-[var(--brand-accent-strong)] hover:underline`}
                       >
                         {code.is_active ? 'Deactivate' : 'Activate'}
                       </button>
@@ -358,7 +395,7 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
                         <button
                           onClick={() => handleDelete(code.id)}
                           disabled={isPending}
-                          className="text-xs text-[var(--color-error-strong)] hover:underline"
+                          className={`${ROW_CONTROL} text-[var(--color-error-strong)] hover:underline`}
                         >
                           Delete
                         </button>
