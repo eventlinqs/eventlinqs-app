@@ -5983,6 +5983,99 @@ const DRILLS = [
     replace: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {\n      if (inner) continue`,
     expect: 'REFUSING: the calibration probe',
   },
+
+  /*
+   * tile-label-over-a-photograph, nine drills (20 September 2026).
+   *
+   * The hero guard above was written on 19 September, the four heroes were
+   * converted onto one anchored wash, it went green and it stayed green. One
+   * component family along, thirteen TILE captions each carried a hand-written
+   * wash whose every stop was a percentage of the TILE, and the same instrument
+   * measured 149 runs below their WCAG 2.2 SC 1.4.3 floor: /cities 86,
+   * /communities 49, /waitlist 12, /city/sydney 2, with Brisbane at 1.00:1 on a
+   * white sky and 100 per cent of its 464 core pixels failing.
+   *
+   * Drills 1 to 4 aim at the markup. Drills 5 to 7 aim at the guard's own
+   * premises: the strength, the geometry that makes the strength mean anything,
+   * and the single source of the number. Drill 8 is the defect the guard found
+   * on its FIRST run, kept as a drill because it is the subtlest of them: a
+   * class naming a colour token globals.css does not declare emits no CSS at all
+   * and the label silently inherits. Drill 9 aims at the painter derivation,
+   * because a derivation that quietly returns nothing is how the tile family
+   * stayed invisible to the hero guard for a day.
+   */
+  {
+    name: 'a tile label leaves the shared caption and goes back onto the bare photograph',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/app/cities/page.tsx',
+    find: '<TileCaption className="px-3 pb-3 pt-2 sm:px-5 sm:pb-4 sm:pt-3">',
+    replace: '<div className="absolute inset-x-0 bottom-0 px-3 pb-3">',
+    expect: 'paints a label on a CityTileImage photograph outside <TileCaption>',
+  },
+  {
+    name: 'a converted tile goes back to writing its own translucent wash as well',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/app/waitlist/waitlist-client.tsx',
+    find: "'linear-gradient(135deg, rgb(10,22,40) 0%, rgb(20,32,56) 50%, rgb(10,22,40) 100%)',",
+    replace: "'linear-gradient(180deg, rgba(10,22,40,0.0) 40%, rgba(10,22,40,0.55) 72%, rgba(10,22,40,0.92) 100%)',",
+    expect: 'ALSO writes its own translucent dark gradient',
+  },
+  {
+    name: 'a tile loses the clip that trims the caption wash bleeding a viewport past its edges',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/app/communities/page.tsx',
+    find: '<div className="relative aspect-[4/5] w-full overflow-hidden bg-ink-200">',
+    replace: '<div className="relative aspect-[4/5] w-full bg-ink-200">',
+    expect: 'does not clip',
+  },
+  {
+    name: 'a caller repositions the caption, moving the label off the wash computed for it',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/components/features/community/cities-rail.tsx',
+    find: '<TileCaption className="p-4">',
+    replace: '<TileCaption className="absolute top-0 p-4">',
+    expect: 'gives <TileCaption> positioning classes',
+  },
+  {
+    name: 'the shared floor is weakened below what the gold date line on a bento needs',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/components/media/hero-photo-scrim.ts',
+    find: 'export const HERO_CAPTION_MIN_ALPHA = 0.82',
+    replace: 'export const HERO_CAPTION_MIN_ALPHA = 0.7',
+    expect: 'the tile caption wash is 0.7 navy',
+  },
+  {
+    name: 'the tile scrim restates the floor as a literal instead of importing the one source',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/components/media/tile-photo-scrim.ts',
+    find: 'export const TILE_CAPTION_MIN_ALPHA = HERO_CAPTION_MIN_ALPHA',
+    replace: 'export const TILE_CAPTION_MIN_ALPHA = 0.82',
+    expect: 'states its own floor instead of importing',
+  },
+  {
+    name: 'the caption stops starting its wash above the label, which is the original defect',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/components/media/tile-caption.tsx',
+    find: 'top: `calc(-1 * ${TILE_CAPTION_FADE})`,',
+    replace: "top: '0px',",
+    expect: 'no longer starts its wash TILE_CAPTION_FADE above the label',
+  },
+  {
+    name: 'a caption paints a colour token globals.css does not declare, so Tailwind emits nothing',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'src/components/features/events/city-tile.tsx',
+    find: 'translate-x-[-6px] text-[var(--brand-accent)]',
+    replace: 'translate-x-[-6px] text-gold-300',
+    expect: 'declares no such colour token',
+  },
+  {
+    name: 'the painter derivation quietly stops finding the media directory',
+    guard: `${GUARDS}/tile-label-over-a-photograph.mjs`,
+    file: 'scripts/guards/lib/tile-files.mjs',
+    find: "const MEDIA_DIR = 'src/components/media'",
+    replace: "const MEDIA_DIR = 'src/components/seo'",
+    expect: 'tile-painter derivation found only',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

@@ -2837,9 +2837,34 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   492 + 1 = 493 files
  *   6461 (measured, present before this item) + 9 = 6470 tests
+ *
+ * 2026-09-20 (the tile caption item): raised 493/6470 -> 494/6484.
+ * ONE new file, tests/unit/a11y/tile-label-over-a-photograph.test.ts, holding
+ * the three things that make the shared tile wash a guarantee rather than a
+ * hope: that its strength still clears 4.5:1 for the FAINTEST foreground any
+ * caption actually paints (resolved from the call sites, not assumed), that its
+ * geometry is declared in absolute lengths so it cannot depend on how tall a
+ * label happens to be, and that the painter derivation still finds tiles at all.
+ * The last of those is the one that matters most: it is what stops a green
+ * result that is merely a smaller result.
+ *
+ * COUNTED THE WAY THIS FILE'S OWN HISTORY SAYS TO COUNT, because the previous
+ * three raises were each taken from a run part way through an item and each was
+ * short. This one was taken from the FINISHED tree and then confirmed a second
+ * way, by enumeration without execution: `npx vitest list --run` prints 6484
+ * lines, of which `grep -c tile-label-over-a-photograph` is exactly 14. The two
+ * methods agree, and the arithmetic below closes against the previous baseline
+ * rather than against a fresh total.
+ *
+ * MEASURED: 494 files, 6484 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`).
+ *
+ * CHECKABLE:
+ *   493 + 1 = 494 files
+ *   6470 + 14 = 6484 tests
  */
-const MIN_FILES = 493
-const MIN_TESTS = 6470
+const MIN_FILES = 494
+const MIN_TESTS = 6484
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

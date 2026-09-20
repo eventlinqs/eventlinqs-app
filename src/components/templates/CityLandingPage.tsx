@@ -13,6 +13,7 @@ import { BrowseByCommunityRail } from '@/components/features/city/browse-by-comm
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { TileCaption } from '@/components/media/tile-caption'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -367,20 +368,12 @@ export function CityLandingPage({
                         }}
                       />
                     )}
-                    <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-                      style={{
-                        background:
-                          'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.30) 50%, rgba(0,0,0,0) 100%)',
-                      }}
-                      aria-hidden
-                    />
-                    <div className="absolute inset-x-0 bottom-0 p-3">
+                    <TileCaption className="p-3">
                       <p className="font-display text-sm font-semibold text-white">{c.name}</p>
                       <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/85">
                         {c.state}
                       </p>
-                    </div>
+                    </TileCaption>
                   </div>
                 </Link>
               )

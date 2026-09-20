@@ -499,6 +499,17 @@
  *                              768 and 10.67:1 at 1440 against a floor of 4.5, and 250
  *                              of 1251 measured runs failed across 111 routes. Clause 2
  *                              recomputes what gold-400 needs rather than pinning it
+ *   tile-label-over-a-photograph  the same law, one component family along, and the
+ *                              reason it is a second guard rather than a clause of the
+ *                              first: a derivation keyed on the painters of a FULL-BLEED
+ *                              photograph cannot see a TILE. Thirteen tile captions each
+ *                              wrote their own wash, every stop a percentage of the
+ *                              TILE, and 149 measured runs sat below floor while the
+ *                              hero guard was green: Brisbane 1.00:1 on a white sky on
+ *                              /cities with 100 per cent of its 464 core pixels failing.
+ *                              Clause 4 recomputes the requirement from the colours the
+ *                              CAPTIONS actually paint, and found a `text-gold-300` on
+ *                              its first run naming a token globals.css does not declare
  *   sr-only-cannot-escape-a-scroller  a horizontally scrolling box that holds an
  *                              sr-only label is a containing block. sr-only is
  *                              position:absolute, and an absolute element is only
@@ -1626,6 +1637,21 @@ const GUARDS = [
   // text with absolute lengths. Clause 2 RECOMPUTES what gold-400 needs from
   // the token rather than pinning a number. Drilled red six ways.
   'scripts/guards/hero-text-over-a-photograph.mjs',
+  // 20 September 2026, and it is the SAME defect a second time. The guard above
+  // was written, the four heroes were converted, it went green and it stayed
+  // green - while thirteen TILE captions on the same platform each carried a
+  // hand-written wash whose every stop was a percentage of the TILE. Driven with
+  // the same instrument: 149 runs below their WCAG 2.2 SC 1.4.3 floor across
+  // /cities (86), /communities (49), /waitlist (12) and /city/sydney (2), with
+  // Brisbane at 1.00:1 on a white sky and 100 per cent of its 464 core pixels
+  // failing. A derivation keyed on the painters of a FULL-BLEED photograph
+  // cannot see a tile, and a blind spot does not look different from coverage,
+  // so this derives its painter set from src/components/media instead. Clause 4
+  // recomputes the requirement from the colours the captions actually paint and
+  // caught a `text-gold-300` on its first run: globals.css declares no gold-300,
+  // so Tailwind emitted nothing and the label silently inherited. Drilled red
+  // seven ways.
+  'scripts/guards/tile-label-over-a-photograph.mjs',
   'scripts/guards/sr-only-cannot-escape-a-scroller.mjs',
   'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
