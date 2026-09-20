@@ -268,6 +268,12 @@ export function markerCoverage(bodies) {
  * named 126 of the 154 chunks. `2qonc2w2umx49.js` becomes
  * `src/components/features/home/FeaturedHeroClient.tsx +10 more`.
  *
+ * AND IT ANSWERS A DIFFERENT QUESTION FROM A MARKER, which is why `nameChunk`
+ * asks the marker first. A marker says what a chunk IS; a manifest says which
+ * of our modules NEED it. For a chunk that is ours those coincide; for a shared
+ * vendor chunk they do not, and the manifest label has to pick one consumer out
+ * of a hundred and forty-six.
+ *
  * WHAT IT CANNOT DO, so the caller can say so rather than degrade quietly:
  *   - it needs the BUILT TREE on disk, so a table driven against a deployed
  *     preview gets the markers alone
@@ -365,7 +371,25 @@ export function summariseModules(modules) {
 }
 
 /**
- * NAME ONE CHUNK. The build's own answer first, then the reviewed markers.
+ * NAME ONE CHUNK.
+ *
+ * THE ORDER IS MARKER BEFORE MANIFEST, AND IT WAS THE OTHER WAY ROUND FOR ONE
+ * COMMIT, WHICH MISLABELLED THE EIGHT CHUNKS THAT MATTER MOST.
+ *
+ * The two sources answer different questions. A marker says what a chunk IS; a
+ * manifest says which of our modules NEED it. For a chunk that is ours those
+ * coincide, and for a shared vendor chunk they do not, because the manifest
+ * lists every consumer and the label has to pick one of them.
+ *
+ * Measured on the build of 21 September 2026: eight chunks have both, and for
+ * every one of the eight the marker is the true answer. `2-ib05yrjrspw.js` is
+ * the Lucide icon runtime, 21.0 KB, needed by 146 client components, and
+ * manifest-first labelled it `src/app/(dashboard)/dashboard/error.tsx +145
+ * more` purely because that path sorts first. A reader working down the table
+ * would have opened the dashboard error boundary to find out why the homepage
+ * ships 8 KB. The 196.3 KB Supabase-and-Buffer chunk was labelled the same way.
+ *
+ * So: what it IS, then how far it reaches, then whose code it is.
  *
  * `how` is returned beside the label because an exact answer and a reviewed
  * guess must never read the same in a table somebody is about to act on.
@@ -375,9 +399,12 @@ export function summariseModules(modules) {
  */
 export function nameChunk({ file, body, modules, known }) {
   if (known) return { label: known, how: 'build' }
-  if (modules && modules.size > 0) return { label: summariseModules(modules), how: 'manifest' }
   const found = attribute(body ?? '')
-  if (found[0] !== UNATTRIBUTED) return { label: found.join(' + '), how: 'marker' }
+  if (found[0] !== UNATTRIBUTED) {
+    const reach = modules && modules.size > 0 ? ` (needed by ${modules.size} client module(s))` : ''
+    return { label: `${found.join(' + ')}${reach}`, how: 'marker' }
+  }
+  if (modules && modules.size > 0) return { label: summariseModules(modules), how: 'manifest' }
   // The bundler's own runtime names itself in the file name, and nothing else
   // in the build is called this. Last, because a naming convention belongs to
   // the bundler and can change without notice.

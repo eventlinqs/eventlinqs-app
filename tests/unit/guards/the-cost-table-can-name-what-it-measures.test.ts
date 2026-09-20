@@ -75,10 +75,28 @@ describe('chunk attribution: the build\'s own answer', () => {
   })
 
   describe('nameChunk', () => {
-    it('prefers the build manifest, which is the loader\'s own answer', () => {
+    it('names the chunk by the manifest when nothing in it is a known library', () => {
       expect(
-        nameChunk({ file: 'aa.js', body: '__reactContainer', modules: new Set(['[project]/src/components/home/hero.tsx']) }),
+        nameChunk({ file: 'aa.js', body: 'nothing recognisable', modules: new Set(['[project]/src/components/home/hero.tsx']) }),
       ).toEqual({ label: 'src/components/home/hero.tsx', how: 'manifest' })
+    })
+
+    /**
+     * THE MISLABEL THAT LASTED ONE COMMIT. Manifest-first called the 21 KB
+     * Lucide runtime `src/app/(dashboard)/dashboard/error.tsx +145 more`,
+     * because that path sorts first among its 146 consumers, and would have
+     * sent a reader working down the table to the dashboard error boundary to
+     * find out why the homepage ships 8 KB. A marker says what a chunk IS; a
+     * manifest says which of our modules need it, and for a shared vendor chunk
+     * those are not the same sentence.
+     */
+    it('names a shared vendor chunk by what it is, and says how far it reaches', () => {
+      const named = nameChunk({
+        file: '2-ib05yrjrspw.js',
+        body: 'lucide',
+        modules: new Set(['[project]/src/app/(dashboard)/dashboard/error.tsx', '[project]/src/components/home/hero.tsx']),
+      })
+      expect(named).toEqual({ label: 'Lucide icons (needed by 2 client module(s))', how: 'marker' })
     })
 
     it('prefers a fact the build states outright over anything inferred', () => {
