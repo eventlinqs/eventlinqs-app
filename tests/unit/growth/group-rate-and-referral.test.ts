@@ -15,7 +15,7 @@
  *        here, exhaustively, including the cascade in AQ2's own worked example.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readRepoFile } from '../../helpers/read-repo-file'
 import {
   groupRateFloorCents,
   judgeGroupRate,
@@ -31,7 +31,7 @@ import {
 } from '@/lib/growth/referral-coefficient-math'
 import { mySharesSentence, type MySharesSummary } from '@/lib/growth/my-shares-sentence'
 
-const read = (p: string) => readFileSync(p, 'utf8')
+const read = (p: string) => readRepoFile(p)
 
 const MIGRATION = read('supabase/migrations/20260919000120_group_rate_and_its_floor.sql')
 const CALCULATOR = read('src/lib/payments/payment-calculator.ts')

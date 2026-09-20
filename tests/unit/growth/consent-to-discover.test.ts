@@ -19,7 +19,7 @@
  *        here, exhaustively, against fixed rows rather than a shared database.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readRepoFile } from '../../helpers/read-repo-file'
 import {
   placementPeriodsFrom,
   placementInForceAt,
@@ -40,7 +40,7 @@ import { buildCaptureConversionReport } from '@/lib/consent/capture-conversion'
 import { decideSend, type LedgerConsentEvent } from '@/lib/consent/decide'
 import { FACILITATED_MARKETING_PURPOSE, LOCAL_DIGEST_PURPOSE, PLATFORM_TENANT_SLUG } from '@/lib/consent/purposes'
 
-const read = (p: string) => readFileSync(p, 'utf8')
+const read = (p: string) => readRepoFile(p)
 
 const MIGRATION = read('supabase/migrations/20260919000110_marketing_capture_placement.sql')
 const CHECKOUT_PAGE = read('src/app/checkout/[reservation_id]/page.tsx')

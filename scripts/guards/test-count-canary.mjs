@@ -2837,9 +2837,23 @@ const ROOT = join(HERE, '..', '..')
  * CHECKABLE:
  *   492 + 1 = 493 files
  *   6461 (measured, present before this item) + 9 = 6470 tests
+ *
+ * 2026-09-20 (lane A, the three lane merge reaching the suite step): raised
+ * 493/6470 -> 513/6833. The push lane's worktree carries lane B's and lane C's
+ * merged commits, and 493/6470 was measured in a lane worktree that held only
+ * its own. Twenty files and 363 cases is what the other two lanes added, not
+ * what this commit added: this commit adds no test file, it repairs three that
+ * could not survive a checkout (see tests/helpers/read-repo-file.ts).
+ *
+ * MEASURED on the merged tree: 513 files, 6833 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, C:\dev\_a-r22-suite2.txt).
+ *
+ * CHECKABLE:
+ *   493 + 20 (the files lane B and lane C added) = 513 files
+ *   6470 + 363 (the cases they added) = 6833 tests
  */
-const MIN_FILES = 493
-const MIN_TESTS = 6470
+const MIN_FILES = 513
+const MIN_TESTS = 6833
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

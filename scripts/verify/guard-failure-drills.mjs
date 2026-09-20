@@ -3091,6 +3091,48 @@ const DRILLS = [
       'column public.connect_requirement_watch.a_column_the_drill_adds is created by 20260911000001_connect_requirement_watch.sql and public.Tables.connect_requirement_watch.Row.a_column_the_drill_adds is not in src/types/database.ts',
   },
   /*
+   * generated-types-are-generated (20 September 2026), four drills. Three of
+   * them put back a hand-edit that was really in src/types/database.ts on the
+   * morning of that day, found when a push of 234 commits was refused at
+   * types-drift: six arguments of write_pricing_rule typed as `| null`, a form
+   * the generator has no way of emitting, and two entries sitting where a person
+   * would put them rather than in the generator's ascending order. The fourth
+   * drills the half neither of those exercised, a parameter's optionality, which
+   * the generator decides from whether the SQL gives it a default.
+   */
+  {
+    name: 'a table is typed into the generated types in the place a person would put it',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '\n      payments: {',
+    replace: '\n      aaa_payments: {',
+    expect: 'Tables lists "organiser_sales_digest_sends" before "aaa_payments"',
+  },
+  {
+    name: 'a function argument is hand-typed as nullable, which the generator never writes',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '          p_created_by: string\n',
+    replace: '          p_created_by: string | null\n',
+    expect: 'write_pricing_rule.Args.p_created_by is typed "string | null"',
+  },
+  {
+    name: 'a function argument is renamed in the types and no longer matches its migration',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '          p_value_integer: number\n',
+    replace: '          p_value_integers: number\n',
+    expect: 'write_pricing_rule takes [',
+  },
+  {
+    name: 'a required argument is typed optional although its migration gives it no default',
+    guard: `${GUARDS}/generated-types-are-generated.mjs`,
+    file: 'src/types/database.ts',
+    find: '          p_created_by: string\n          p_currency: string',
+    replace: '          p_created_by: string\n          p_currency?: string',
+    expect: 'write_pricing_rule.Args.p_currency is optional in the types',
+  },
+  /*
    * read-failure-is-not-not-found, three drills, one per fault. 12 September
    * 2026, the fourth occurrence of the class: the events layout's existence read
    * discarded its error and a real event answered 404 to the gate's own drive.
