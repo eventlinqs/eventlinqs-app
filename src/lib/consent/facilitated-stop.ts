@@ -5,6 +5,7 @@ import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { formatPlatformDate } from '@/lib/dates/event-time'
+import { suppressionScopeWords } from './sentences'
 import {
   PLATFORM_TENANT_SLUG,
   normaliseSubjectEmail,
@@ -192,14 +193,14 @@ export function decideFacilitatedStop(
     return {
       stopped: false,
       reason:
-        `a ${blocking.scope} suppression recorded on ${formatPlatformDate(blocking.occurredAt)} ` +
+        `${suppressionScopeWords(blocking.scope)}, recorded on ${formatPlatformDate(blocking.occurredAt)}, ` +
         `was superseded by a consent granted on ${formatPlatformDate(laterGrant.occurredAt)}`,
     }
   }
 
   return {
     stopped: true,
-    reason: `a ${blocking.scope} suppression recorded on ${formatPlatformDate(blocking.occurredAt)} stops this message`,
+    reason: `${suppressionScopeWords(blocking.scope)}, recorded on ${formatPlatformDate(blocking.occurredAt)}, stops this message`,
   }
 }
 

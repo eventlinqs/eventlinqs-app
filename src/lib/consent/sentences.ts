@@ -105,6 +105,43 @@ export function consentEventSentence(row: HistoryConsentRow): string {
   return `On ${when}, ${where}, this address was asked and said no. Nothing was ever sent on the strength of it.`
 }
 
+/**
+ * A SUPPRESSION SCOPE AS A NOUN PHRASE, because the decision modules were
+ * printing the DATABASE ENUM at a member of the public.
+ *
+ * Driven on 21 September 2026 at 390, 768 and 1440, the person's own
+ * preferences page said, in full:
+ *
+ *   "Right now, EventLinqs sends you no marketing: a all_marketing suppression
+ *    recorded on 1 July 2026 stops this message."
+ *
+ * Two faults in one sentence. `all_marketing` is a column value and means
+ * nothing to the person reading it, and "a all_marketing" is wrong English
+ * because the article was a literal in a format string while the word after it
+ * was a variable. That page is the unsubscribe facility the Spam Act 2003 is
+ * about, and the sentence beneath it claims the records are evidence.
+ *
+ * It is a noun phrase rather than a whole sentence so that both callers can
+ * place it: `${words}, recorded on ${date}, stops this message`.
+ * `suppressionSentence` below keeps its own verb phrasing, which is already
+ * correct prose and a different grammatical shape.
+ *
+ * THE SQL TWIN STILL SAYS THE OLD WORDS, and that is recorded rather than
+ * hidden: `public.consent_permits` carries the same rules in SQL for the
+ * trigger that maintains the audience asset, and its `format('a %s suppression
+ * ...')` needs a migration to change. No product path reads that function's
+ * reason - nothing under src/ calls it - so nobody is shown the old sentence,
+ * and the drive that compares the two resolvers compares `permitted`. The
+ * alignment is queued in REVIEW-QUEUE-B.md for the next migration.
+ */
+export function suppressionScopeWords(scope: SuppressionScope): string {
+  if (scope === 'facilitation_by_others') {
+    return 'a request not to be marketed to on behalf of other organisations'
+  }
+  if (scope === 'tenant_own') return "a stop on this client's own list"
+  return 'an unsubscribe from all EventLinqs marketing'
+}
+
 export function suppressionSentence(row: HistorySuppressionRow): string {
   const when = readableDate(row.occurredAt)
   const channels = channelWords(row.channel)

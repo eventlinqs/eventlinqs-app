@@ -65,9 +65,9 @@ const DRILLS = [
     name: 'the consent door goes back to slicing the ISO string for the suppression sentence',
     file: DECIDE,
     find:
-      'reason: `a ${blocking.scope} suppression recorded on ${formatPlatformDate(blocking.occurredAt)} stops this message`,',
+      'reason: `${suppressionScopeWords(blocking.scope)}, recorded on ${formatPlatformDate(blocking.occurredAt)}, stops this message`,',
     replace:
-      'reason: `a ${blocking.scope} suppression recorded on ${blocking.occurredAt.slice(0, 10)} stops this message`,',
+      'reason: `${suppressionScopeWords(blocking.scope)}, recorded on ${blocking.occurredAt.slice(0, 10)}, stops this message`,',
     expect: 'a suppression sentence names the Australian date it was recorded on',
     test: DATES_TEST,
   },
@@ -123,14 +123,25 @@ const DRILLS = [
     name: 'the matcher door goes back to spelling out its own publication predicate with no time bound',
     file: DOOR,
     test: PICKER_TEST,
-    find: `  const { data } = await applyPublicEventVisibility(
-    admin.from('events').select(COLUMNS).order('start_date', { ascending: true }).limit(limit),
-    { now },
+    /*
+     * RE-AIMED 21 September 2026, and this is why rather than a tidy-up.
+     * The anchor named `const { data } = await applyPublicEventVisibility(`,
+     * which is the spelling this read had until the day its discarded error
+     * was routed through `readOrThrow`. The rule under test did not change
+     * at all; the line it is spelled on did, and the harness reported STALE
+     * rather than green, which is the mechanism working.
+     */
+    find: `  const data = await readOrThrow('matchable events', () =>
+    applyPublicEventVisibility(
+      admin.from('events').select(COLUMNS).order('start_date', { ascending: true }).limit(limit),
+      { now },
+    ),
   )`,
     replace:
-      "  const { data } = await admin.from('events').select(COLUMNS)" +
+      "  const data = await readOrThrow('matchable events', () =>" +
+      " admin.from('events').select(COLUMNS)" +
       ".eq('status', 'published').eq('visibility', 'public')" +
-      ".order('start_date', { ascending: true }).limit(limit)",
+      ".order('start_date', { ascending: true }).limit(limit))",
     expect: 'carries a time predicate built at the instant it was asked',
   },
   {
@@ -153,10 +164,14 @@ const DRILLS = [
     name: 'reading one event by id picks up the time bound and a past run stops being describable',
     file: DOOR,
     test: PICKER_TEST,
-    find: "  const { data } = await admin.from('events').select(COLUMNS).eq('id', id).maybeSingle()",
+    // Re-aimed with the drill above, for the same reason and on the same day.
+    find: `  const data = await readOrThrow('matching event by id', () =>
+    admin.from('events').select(COLUMNS).eq('id', id).maybeSingle(),
+  )`,
     replace:
-      "  const { data } = await applyPublicEventVisibility(" +
-      "admin.from('events').select(COLUMNS).eq('id', id), { now: new Date() }).maybeSingle()",
+      "  const data = await readOrThrow('matching event by id', () =>" +
+      " applyPublicEventVisibility(admin.from('events').select(COLUMNS).eq('id', id)," +
+      " { now: new Date() }).maybeSingle())",
     expect: 'fetches the named event with no date filter',
   },
   {

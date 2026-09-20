@@ -39,7 +39,10 @@ describe('decideFacilitatedStop: has this person said stop, and not since said s
   test('THE DEFECT: an all_marketing withdrawal stops a facilitated message', () => {
     const verdict = decideFacilitatedStop([stop()], [])
     expect(verdict.stopped).toBe(true)
-    expect(verdict.reason).toContain('all_marketing')
+    // The scope is said in words a person reads, never as the column value:
+    // this reason is shown on the member's own preferences page.
+    expect(verdict.reason).toContain('an unsubscribe from all EventLinqs marketing')
+    expect(verdict.reason).not.toContain('all_marketing')
   })
 
   test('facilitation_by_others stops it too, because the message promotes an organiser', () => {

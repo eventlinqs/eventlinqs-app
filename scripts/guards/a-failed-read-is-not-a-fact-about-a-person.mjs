@@ -87,6 +87,11 @@ import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { stripComments, lineAt } from '../lib/js-source.mjs'
+import {
+  wholeResultBindings,
+  wholeResultCalibrationFault,
+  RESULT_DOORS,
+} from './lib/whole-result-bindings.mjs'
 import { declareWork } from '../lib/work-report.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -315,13 +320,26 @@ export function judgeFile(name, src, becomes) {
         `Route it through one of ${DOORS.join(', ')}, or bind \`error\` and answer it here.`,
     )
   }
+  for (const b of wholeResultBindings(src, DOORS)) {
+    if (b.handled) continue
+    problems.push(
+      `${name}:${b.line} binds the whole response as \`${b.name}\` (${b.shape}), reads its payload, and never reads ` +
+        `\`${b.name}.error\`. Binding the object is not reading the error: \`${b.name}.data ?? []\` cannot tell a ` +
+        `failure from an empty table. On this path a failed read becomes ${becomes}. ` +
+        `Route it through one of ${DOORS.join(', ')}, hand the response to ${RESULT_DOORS.join(', ')}, or read ` +
+        `\`${b.name}.error\` and answer it here.`,
+    )
+  }
   return problems
 }
 
 function main() {
-  const fault = calibrationFault()
-  if (fault) {
-    console.error(`${TAG} REFUSING: the calibration probe was not read correctly - ${fault}.`)
+  for (const [which, fault] of [
+    ['destructure', calibrationFault()],
+    ['whole-response', wholeResultCalibrationFault(DOORS)],
+  ]) {
+    if (!fault) continue
+    console.error(`${TAG} REFUSING: the ${which} calibration probe was not read correctly - ${fault}.`)
     console.error(`${TAG} A matcher that cannot see its own probe reports the absence of what it never looked at.`)
     process.exit(1)
   }
@@ -358,7 +376,7 @@ function main() {
       filesScanned += 1
       const name = relative(ROOT, file).split(sep).join('/')
       const src = readFileSync(file, 'utf8')
-      const found = awaitedDestructures(src)
+      const found = [...awaitedDestructures(src), ...wholeResultBindings(src, DOORS)]
       destructures += found.length
       routed += readsThroughADoor(src)
       if (registered.has(relative(ROOT, file))) {
@@ -400,14 +418,14 @@ function main() {
   declareWork('a-failed-read-is-not-a-fact-about-a-person', {
     did: {
       'send-path file read': filesScanned,
-      'awaited destructure judged': destructures,
+      'bound response judged': destructures,
       'read routed through a door': routed,
       'registered exception': REGISTER.length,
       'fault raised with another lane': RAISED_WITH_ANOTHER_LANE.length,
     },
     found: {
-      'read that discards its error': problems.length,
-      'destructure exempted by the register': exempted,
+      'read discarding its error': problems.length,
+      'bound response exempted by the register': exempted,
       'read discarding an error in another lane file': outstanding,
     },
     zeroIsFine: {
@@ -475,7 +493,7 @@ function main() {
       : `every one binds its error but ${exempted} registered and ${outstanding} raised with another lane`
   console.log(
     `${TAG} PASS: ${filesScanned} file(s) across ${SCOPE.length} director${SCOPE.length === 1 ? 'y' : 'ies'}, ` +
-      `${routed} read(s) through a door, ${destructures} destructure(s), ${remainder}`,
+      `${routed} read(s) through a door, ${destructures} response binding(s) judged in both spellings, ${remainder}`,
   )
 }
 

@@ -6,6 +6,7 @@ import { readEveryRow } from '@/lib/supabase/read-every-row'
 import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import {
+  CONSENT_MAX_AGE_MONTHS_FALLBACK,
   PLATFORM_TENANT_SLUG,
   isTransactionalPurpose,
   normaliseSubjectEmail,
@@ -44,8 +45,6 @@ type Admin = SupabaseClient<Database>
  * in one place rather than assumed in twenty.
  */
 
-/** Fallback only. The live value is public.consent_policy.max_age_months. */
-const CONSENT_MAX_AGE_MONTHS_FALLBACK = 24
 
 export interface ResolveSendParams {
   email: string
@@ -101,25 +100,60 @@ export async function resolveSend(
      * that is the defect this file was corrected for on 19 September 2026, and
      * unbounded is not the same as complete.
      */
-    const [eventResult, suppressionResult, policyResult] = await Promise.all([
-      admin
-        .from('consent_events')
-        .select('id, purpose, channel_scope, decision, occurred_at, wording_version')
-        .eq('tenant_id', tenant.id)
-        .eq('subject_email', email)
-        .order('occurred_at', { ascending: false })
-        .limit(200),
-      admin
-        .from('suppression_events')
-        .select('id, channel, scope, occurred_at')
-        .eq('tenant_id', tenant.id)
-        .eq('subject_email', email)
-        .order('occurred_at', { ascending: false })
-        .limit(200),
-      admin.from('consent_policy').select('max_age_months').eq('id', true).maybeSingle(),
+    /*
+     * ALL THREE THROUGH THE DOOR, AND THE CLAIM SIX LINES BELOW IS THE REASON.
+     *
+     * The catch at the bottom of this function says a ledger the resolver
+     * cannot read REFUSES the send, and until 21 September 2026 that was true
+     * only of a read that THROWS. None of these three threw. supabase-js
+     * resolves a PostgREST failure as `{ data: null, error }`, and each of them
+     * was then written `result.data ?? []`, which cannot tell a failure from an
+     * empty table.
+     *
+     * DRIVEN, on the same person and the same ledger, before this was changed:
+     *
+     *   every read working        REFUSED, "a all_marketing suppression
+     *                             recorded on 1 Feb 2026 stops this message"
+     *   suppression read failing  PERMITTED, "granted on 10 Jan 2026 under
+     *                             wording v1"
+     *
+     * A blink on ONE read sent marketing to somebody who had unsubscribed, and
+     * filed their grant as the reason. The consent read failing was less
+     * dangerous and still wrong: it refused with "no consent event is recorded
+     * for this tenant, purpose and subject", which is stored as the detail of a
+     * marketing_send_skip row and read back by an organiser as evidence that a
+     * person never consented. The policy read failing silently restored the
+     * ageing window to the twenty four month fallback, so a tenant who had
+     * tightened `consent_policy.max_age_months` had it widened by an outage.
+     *
+     * `readOrThrow` retries a transient fault and raises a real one, so all
+     * three now reach the catch and the send fails closed with the true reason.
+     */
+    const [eventRows, suppressionRows, policyRow] = await Promise.all([
+      readOrThrow('consent resolver events', () =>
+        admin
+          .from('consent_events')
+          .select('id, purpose, channel_scope, decision, occurred_at, wording_version')
+          .eq('tenant_id', tenant.id)
+          .eq('subject_email', email)
+          .order('occurred_at', { ascending: false })
+          .limit(200),
+      ),
+      readOrThrow('consent resolver suppressions', () =>
+        admin
+          .from('suppression_events')
+          .select('id, channel, scope, occurred_at')
+          .eq('tenant_id', tenant.id)
+          .eq('subject_email', email)
+          .order('occurred_at', { ascending: false })
+          .limit(200),
+      ),
+      readOrThrow('consent resolver policy', () =>
+        admin.from('consent_policy').select('max_age_months').eq('id', true).maybeSingle(),
+      ),
     ])
 
-    const events: LedgerConsentEvent[] = (eventResult.data ?? []).map((row) => ({
+    const events: LedgerConsentEvent[] = (eventRows ?? []).map((row) => ({
       id: row.id,
       tenantSlug,
       purpose: row.purpose,
@@ -129,7 +163,7 @@ export async function resolveSend(
       wordingVersion: row.wording_version,
     }))
 
-    const suppressions: LedgerSuppressionEvent[] = (suppressionResult.data ?? []).map((row) => ({
+    const suppressions: LedgerSuppressionEvent[] = (suppressionRows ?? []).map((row) => ({
       id: row.id,
       tenantSlug,
       channel: row.channel as ConsentChannelScope,
@@ -143,7 +177,7 @@ export async function resolveSend(
         purpose: params.purpose,
         channel: params.channel,
         now,
-        maxAgeMonths: policyResult.data?.max_age_months ?? CONSENT_MAX_AGE_MONTHS_FALLBACK,
+        maxAgeMonths: policyRow?.max_age_months ?? CONSENT_MAX_AGE_MONTHS_FALLBACK,
       },
       events,
       suppressions,
@@ -241,7 +275,7 @@ export async function filterPermittedRecipients(
      * who unsubscribed. Every other truncation on this path fails closed; this
      * one failed open.
      */
-    const [eventRows, suppressionRows, policyResult] = await Promise.all([
+    const [eventPages, suppressionPages, policyRow] = await Promise.all([
       Promise.all(
         chunks.map(chunk =>
           readEveryRow('the consent ledger', (from, to) =>
@@ -268,7 +302,11 @@ export async function filterPermittedRecipients(
           ),
         ),
       ),
-      admin.from('consent_policy').select('max_age_months').eq('id', true).maybeSingle(),
+      // Through the door for the reason written out in resolveSend above: a
+      // failed policy read used to widen a tightened window back to 24 months.
+      readOrThrow('consent resolver policy', () =>
+        admin.from('consent_policy').select('max_age_months').eq('id', true).maybeSingle(),
+      ),
     ])
 
     /*
@@ -279,10 +317,10 @@ export async function filterPermittedRecipients(
      * `readEveryRow` throws on a failed page, so a chunk that could not be read
      * in full reaches the catch below rather than arriving as a short list.
      */
-    const eventResult = { data: eventRows.flat() }
-    const suppressionResult = { data: suppressionRows.flat() }
+    const eventResult = { data: eventPages.flat() }
+    const suppressionResult = { data: suppressionPages.flat() }
 
-    const maxAgeMonths = policyResult.data?.max_age_months ?? CONSENT_MAX_AGE_MONTHS_FALLBACK
+    const maxAgeMonths = policyRow?.max_age_months ?? CONSENT_MAX_AGE_MONTHS_FALLBACK
     const permitted: string[] = []
     const refused: { email: string; reason: string }[] = []
 

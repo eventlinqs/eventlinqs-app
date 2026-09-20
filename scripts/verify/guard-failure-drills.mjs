@@ -5024,12 +5024,21 @@ const DRILLS = [
     replace: "            .in('link_id', chunk)\n            .range2(from, to)",
     expect: 'share_link_events with no bound',
   },
+  /*
+   * THIS PLANTS THE ENTRY IT DRILLS, for the reason recorded on the two
+   * border drills of a-failed-read-is-not-a-fact-about-a-person: the entry
+   * it used to edit was the unbounded push_subscriptions read lane B raised
+   * on 21 September, lane C paged it the same afternoon, the guard refused
+   * the stale entry and it went. An empty border list is the GOOD state and
+   * the normal one, so a drill that can only run while a debt is outstanding
+   * is a drill that stops running on the good days.
+   */
   {
     name: 'a read raised with another lane is bounded and the exemption is kept anyway',
     guard: `${GUARDS}/no-silent-row-ceiling.mjs`,
     file: 'scripts/guards/no-silent-row-ceiling.mjs',
-    find: "    table: 'push_subscriptions',",
-    replace: "    table: 'push_subscriptions_bounded_now',",
+    find: 'const RAISED_WITH_ANOTHER_LANE = [',
+    replace: "const RAISED_WITH_ANOTHER_LANE = [\n  {\n    file: 'src/lib/marketplace/notify.ts',\n    table: 'push_subscriptions',\n    lane: 'lane C',\n    since: '2026-09-21',\n    why: 'planted by a drill',\n  },",
     expect: 'no such read was found',
   },
 
@@ -6324,7 +6333,7 @@ const DRILLS = [
     file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
     find: `for (const m of code.matchAll(/(?:const|let|var)${BSL}s*${BSL}{([^{}]*)${BSL}}${BSL}s*=${BSL}s*await${BSL}b/g)) {`,
     replace: `for (const m of code.matchAll(/(?:const|let|var)${BSL}s*${BSL}{([^{}]*)${BSL}}${BSL}s*=${BSL}s*await${BSL}b/g)) {\n    if (m) continue`,
-    expect: 'REFUSING: the calibration probe',
+    expect: 'REFUSING: the destructure calibration probe',
   },
   {
     name: "the guard's own matcher quietly stops seeing an ARRAY destructure",
@@ -6332,7 +6341,57 @@ const DRILLS = [
     file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
     find: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {`,
     replace: `for (const inner of m[1].matchAll(/${BSL}{([^{}]*)${BSL}}/g)) {\n      if (inner) continue`,
-    expect: 'REFUSING: the calibration probe',
+    expect: 'REFUSING: the destructure calibration probe',
+  },
+
+  /*
+   * a-failed-read-is-not-a-fact-about-a-person, THE WHOLE-RESPONSE SPELLING
+   * (lane B, 21 September 2026), four more drills.
+   *
+   * The guard's first matcher reads a DESTRUCTURE. `src/lib/consent/resolver.ts`
+   * binds the whole response instead, and that file calls itself THE ONE DOOR
+   * every message this platform sends to a person goes through. Driven before
+   * the widening, on one person and one ledger: with the suppression read
+   * failing, somebody who had unsubscribed was PERMITTED, and their grant was
+   * filed as the reason.
+   *
+   * THE LAST TWO AIM AT THE MATCHER, and the fourth is not hypothetical. The
+   * first draft asked "does this FILE read `eventResult.error`", and that one
+   * file binds `eventResult` in two functions: the correct one excused the
+   * defective one, and the two reads at the centre of this item did not appear
+   * in the guard's own output. One `.test()` cannot tell two occurrences apart.
+   */
+  {
+    name: 'the one door goes back to binding the whole suppression response and dropping its error',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/consent/resolver.ts',
+    find: '      readOrThrow(\'consent resolver suppressions\', () =>\n        admin\n          .from(\'suppression_events\')\n          .select(\'id, channel, scope, occurred_at\')\n          .eq(\'tenant_id\', tenant.id)\n          .eq(\'subject_email\', email)\n          .order(\'occurred_at\', { ascending: false })\n          .limit(200),\n      ),\n      readOrThrow(\'consent resolver policy\', () =>\n        admin.from(\'consent_policy\').select(\'max_age_months\').eq(\'id\', true).maybeSingle(),\n      ),\n    ])\n\n    const events: LedgerConsentEvent[] = (eventRows ?? []).map((row) => ({\n      id: row.id,\n      tenantSlug,\n      purpose: row.purpose,\n      channelScope: row.channel_scope as ConsentChannelScope,\n      decision: row.decision as ConsentDecisionValue,\n      occurredAt: row.occurred_at,\n      wordingVersion: row.wording_version,\n    }))\n\n    const suppressions: LedgerSuppressionEvent[] = (suppressionRows ?? []).map((row) => ({\n',
+    replace: '      (() =>\n        admin\n          .from(\'suppression_events\')\n          .select(\'id, channel, scope, occurred_at\')\n          .eq(\'tenant_id\', tenant.id)\n          .eq(\'subject_email\', email)\n          .order(\'occurred_at\', { ascending: false })\n          .limit(200))(),\n      readOrThrow(\'consent resolver policy\', () =>\n        admin.from(\'consent_policy\').select(\'max_age_months\').eq(\'id\', true).maybeSingle(),\n      ),\n    ])\n\n    const events: LedgerConsentEvent[] = (eventRows ?? []).map((row) => ({\n      id: row.id,\n      tenantSlug,\n      purpose: row.purpose,\n      channelScope: row.channel_scope as ConsentChannelScope,\n      decision: row.decision as ConsentDecisionValue,\n      occurredAt: row.occurred_at,\n      wordingVersion: row.wording_version,\n    }))\n\n    const suppressions: LedgerSuppressionEvent[] = (suppressionRows.data ?? []).map((row) => ({\n',
+    expect: 'src/lib/consent/resolver.ts',
+  },
+  {
+    name: 'the five attribution counts go back to reading zero out of a failure',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'src/lib/attribution/read.ts',
+    find: '    orders: countOrRaise(\'orders\', counts[0]),\n    attributions: countOrRaise(\'stored attributions\', counts[1]),\n    attributed: countOrRaise(\'attributed orders\', counts[2]),\n    billable: countOrRaise(\'billable attributions\', counts[3]),\n    reversed: countOrRaise(\'attribution reversals\', counts[4]),',
+    replace: '    orders: counts[0].count ?? 0,\n    attributions: counts[1].count ?? 0,\n    attributed: counts[2].count ?? 0,\n    billable: counts[3].count ?? 0,\n    reversed: counts[4].count ?? 0,',
+    expect: 'src/lib/attribution/read.ts',
+  },
+  {
+    name: 'the whole-response matcher quietly stops seeing a Promise.all element',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/lib/whole-result-bindings.mjs',
+    find: '      if (!bareChainIn(code, element.start, element.end, doors)) return',
+    replace: '      if (element) return\n      if (!bareChainIn(code, element.start, element.end, doors)) return',
+    expect: 'REFUSING: the whole-response calibration probe',
+  },
+  {
+    name: 'the scope walk goes back to asking a whole file about a name two functions bind',
+    guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
+    file: 'scripts/guards/lib/whole-result-bindings.mjs',
+    find: 'function scopeEnd(code, from) {',
+    replace: 'function scopeEnd(code, from) {\n  if (from >= 0) return code.length',
+    expect: 'REFUSING: the whole-response calibration probe',
   },
 
   /*
@@ -6360,20 +6419,34 @@ const DRILLS = [
     replace: '  const { data } = await query',
     expect: 'src/lib/marketplace/showcase.ts',
   },
+  /*
+   * THESE TWO PLANT THE ENTRY THEY DRILL, AND THEY DID NOT USED TO.
+   *
+   * Both named `file: 'src/lib/marketplace/notify.ts'` and edited it. That
+   * entry existed for twelve hours on 21 September 2026 and then lane C fixed
+   * the file, the guard refused the now-stale entry, and the entry went - which
+   * is the mechanism working exactly as designed. The drills went stale with
+   * it, and the harness reported them STALE rather than red or green.
+   *
+   * A drill that can only run while a cross-lane debt is outstanding is a drill
+   * that stops running on the good days. The empty list is the NORMAL state, so
+   * each of these now plants its own entry against the list's declaration and
+   * proves the refusal from there.
+   */
   {
     name: 'a fault raised with another lane names a file this guard no longer scans',
     guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
     file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
-    find: "file: 'src/lib/marketplace/notify.ts',",
-    replace: "file: 'src/lib/marketplace/notify-renamed.ts',",
+    find: 'export const RAISED_WITH_ANOTHER_LANE = [',
+    replace: "export const RAISED_WITH_ANOTHER_LANE = [\n  {\n    file: 'src/lib/marketplace/notify-renamed.ts',\n    lane: 'lane C',\n    since: '2026-09-21',\n    why: 'planted by a drill',\n    raised: 'REVIEW-QUEUE-B.md',\n  },",
     expect: 'matches no scanned file',
   },
   {
     name: 'a fault raised with another lane is kept after that lane has fixed it',
     guard: `${GUARDS}/a-failed-read-is-not-a-fact-about-a-person.mjs`,
     file: 'scripts/guards/a-failed-read-is-not-a-fact-about-a-person.mjs',
-    find: "file: 'src/lib/marketplace/notify.ts',",
-    replace: "file: 'src/lib/marketplace/cities.ts',",
+    find: 'export const RAISED_WITH_ANOTHER_LANE = [',
+    replace: "export const RAISED_WITH_ANOTHER_LANE = [\n  {\n    file: 'src/lib/marketplace/cities.ts',\n    lane: 'lane C',\n    since: '2026-09-21',\n    why: 'planted by a drill',\n    raised: 'REVIEW-QUEUE-B.md',\n  },",
     expect: 'The debt is paid',
   },
 

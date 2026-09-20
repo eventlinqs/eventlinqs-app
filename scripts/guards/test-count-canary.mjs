@@ -3371,8 +3371,42 @@ const ROOT = join(HERE, '..', '..')
  * exactly where they were written.
  * ---------------------------------------------------------------------------
  */
-const MIN_FILES = 541
-const MIN_TESTS = 7251
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane B, LB-BLINKDOOR): raised 541/7251 -> 543/7280.
+ * ---------------------------------------------------------------------------
+ *
+ * TWO NEW FILES AND TWENTY-NINE CASES, counted by RUNNING exactly those two
+ * rather than by reading their headers:
+ *   tests/unit/consent/a-blink-does-not-send.test.ts       10  (new file)
+ *   tests/unit/guards/whole-result-bindings.test.ts        19  (new file)
+ *   541 + 2 = 543 files
+ *   7251 + 29 = 7280 tests
+ *
+ * THE SUM AGREES WITH THE MEASUREMENT, which it should on a commit that is not
+ * a merge, and it is written out because a baseline moved without arithmetic is
+ * a number nobody can check.
+ *
+ * FOUR EXISTING TESTS WERE REWRITTEN AND NONE WAS LOOSENED, which is the line
+ * worth reading twice on this entry. Each asserted that a refusal sentence
+ * CONTAINED the database enum `all_marketing` or `facilitation_by_others`, and
+ * this item stopped printing a column value at a member of the public: the
+ * person's own preferences page said "a all_marketing suppression recorded on
+ * 1 July 2026 stops this message", which was driven and photographed at 390,
+ * 768 and 1440 before it was changed. Each of the four now asserts the words
+ * that replaced it AND that the enum is absent, so all four are strictly
+ * tighter than they were:
+ *   tests/unit/consent/facilitated-stop.test.ts
+ *   tests/unit/consent/truncated-ledger-sends.test.ts
+ *   tests/unit/growth/consent-ledger-and-the-one-resolver.test.ts
+ *   tests/unit/consent/a-blink-does-not-send.test.ts (this item's own)
+ *
+ * MEASURED: 543 files, 7280 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 137s, on the tree of this commit).
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 543
+const MIN_TESTS = 7280
 
 
 /**

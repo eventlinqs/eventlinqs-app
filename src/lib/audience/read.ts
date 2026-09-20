@@ -1,6 +1,8 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
+import { CONSENT_MAX_AGE_MONTHS_FALLBACK } from '@/lib/consent/purposes'
 import {
   AUDIENCE_PRICE_BANDS,
   AUDIENCE_RECENCY_BANDS,
@@ -90,7 +92,7 @@ function tally(rows: (string[] | null)[]): AudienceCount[] {
 export async function getAudienceDashboard(): Promise<AudienceDashboard> {
   const admin = createAdminClient()
 
-  const [members, events, policyRes] = await Promise.all([
+  const [members, events, policyRow] = await Promise.all([
     readEveryRow('audience_members', (from, to) =>
       admin
         .from('audience_members')
@@ -130,10 +132,23 @@ export async function getAudienceDashboard(): Promise<AudienceDashboard> {
         .order('id', { ascending: true })
         .range(from, to),
     ),
-    admin.from('consent_policy').select('max_age_months').eq('id', true).maybeSingle(),
+    /*
+     * THROUGH THE DOOR, FOR THE REASON THE RESOLVER RECORDS.
+     *
+     * This read discarded its error, so a failure was indistinguishable from a
+     * missing configuration row and both fell back to twenty four months. The
+     * two reads beside it in this same `Promise.all` already go through
+     * `readEveryRow` and already throw; this one was the odd one out, and it
+     * decides the ageing boundary every figure below is counted against. A
+     * screen reporting a consent rate under a window nobody configured is a
+     * screen reporting somebody else's number.
+     */
+    readOrThrow('the consent ageing policy', () =>
+      admin.from('consent_policy').select('max_age_months').eq('id', true).maybeSingle(),
+    ),
   ])
 
-  const maxAgeMonths = policyRes.data?.max_age_months ?? 24
+  const maxAgeMonths = policyRow?.max_age_months ?? CONSENT_MAX_AGE_MONTHS_FALLBACK
 
   // Ordered oldest first above, so the last write per address wins.
   const latest = new Map<string, { decision: string; occurredAt: string }>()
