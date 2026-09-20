@@ -52,12 +52,15 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { createRequire } from 'node:module'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import ExcelJS from 'exceljs'
 import { PDFDocument } from 'pdf-lib'
 import { answerTheCookieBanner } from './lib/cookie-banner.mjs'
 import { buildFixture, purgeFixtures } from './lib/refund-proof-fixture.mjs'
+
+const AXE_PATH = createRequire(import.meta.url).resolve('axe-core/axe.min.js')
 
 const BASE = process.env.LB_BASE_URL ?? 'http://localhost:3100'
 const OUT = (() => {
@@ -134,6 +137,37 @@ function csvRows(text) {
   const body = text.replace(/^\uFEFF/, '')
   const all = body.split('\r\n').filter(l => l.length > 0)
   return { header: all[0] ?? '', rows: all.slice(1) }
+}
+
+/**
+ * axe-core over a surface that is already open and already signed in.
+ *
+ * SCOPED TO THE TWO SCREENS THIS ITEM CHANGED, which is what the Completion
+ * Law's regression clause asks for: zero violations at EVERY impact level on
+ * the affected surfaces, not a platform sweep. Both are behind an organiser
+ * login, so they cannot be reached by `scripts/verify/axe-urls.mjs`, and
+ * running it here means axe judges the page with 1,150 real rows on it rather
+ * than an empty one.
+ */
+async function axeViolations(page) {
+  await page.addScriptTag({ path: AXE_PATH })
+  return page.evaluate(async () => {
+    // WCAG 2 A and AA, which is the bar the constitution sets.
+    const r = await window.axe.run(document, {
+      runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
+    })
+    return r.violations.map(v => ({
+      id: v.id,
+      impact: v.impact,
+      nodes: v.nodes.length,
+      sample: v.nodes[0]?.target?.join(' ') ?? '',
+    }))
+  })
+}
+
+function describeViolations(found) {
+  if (found.length === 0) return 'zero violations at every impact level'
+  return found.map(v => `${v.impact}:${v.id}(${v.nodes}) ${v.sample.slice(0, 60)}`).join(' | ')
 }
 
 async function main() {
@@ -365,6 +399,13 @@ async function main() {
           fullPage: false,
         })
 
+        const attendeeAxe = await axeViolations(page)
+        check(
+          `lb-attendeewhole.${vp.label}.attendee-screen-is-accessible`,
+          attendeeAxe.length === 0,
+          describeViolations(attendeeAxe),
+        )
+
         // ------------------------------------------------------- the CSV export
         const csvBase = `${BASE}/dashboard/events/${eventId}/attendees/export`
         const csvResponse = await page.request.get(`${csvBase}?format=csv`, { timeout: 240000 })
@@ -477,6 +518,13 @@ async function main() {
           path: join(OUT, 'drive', `orders-${vp.label}.png`),
           fullPage: false,
         })
+
+        const ordersAxe = await axeViolations(page)
+        check(
+          `lb-attendeewhole.${vp.label}.orders-screen-is-accessible`,
+          ordersAxe.length === 0,
+          describeViolations(ordersAxe),
+        )
 
         // ------------------------------------------------- the orders CSV export
         const ordersCsv = await page.request.get(
