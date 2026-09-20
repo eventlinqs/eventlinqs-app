@@ -6824,6 +6824,99 @@ const DRILLS = [
     replace: '       AND value_percentage >= 0',
     expect: 'so the schema must use .min(0)',
   },
+
+  /*
+   * the-reach-panel-counts-every-row (lane B, 20 September 2026), six drills.
+   *
+   * The organiser's reach panel read eight tables with no bound and no error
+   * check, and the reconciliation that decides whether it shows a percentage at
+   * all compared one number against itself. The last two drills are the ones
+   * that matter most: they put the self-referential check back, which is the
+   * shape a later tidy-up would most plausibly reach for.
+   */
+  {
+    name: 'the reach panel reads an event’s tracked links with no bound again',
+    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    file: 'src/lib/broadcast/reach.ts',
+    find:
+      "        .eq('event_id', eventId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('event_id', eventId),",
+    expect: 'reads share_links with no bound',
+  },
+  {
+    /*
+     * share_link_events takes one row per view and one per click, so this is
+     * the fastest growing read on the panel and the first to pass the ceiling.
+     */
+    name: 'the view and click events go back to a single unbounded select',
+    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    file: 'src/lib/broadcast/reach.ts',
+    find:
+      "            .in('link_id', chunk)\n" +
+      "            .order('id', { ascending: true })\n" +
+      '            .range(from, to),',
+    replace: "            .in('link_id', chunk),",
+    expect: 'reads share_link_events with no bound',
+  },
+  {
+    /*
+     * Paging without a total order is not paging: Postgres may hand back one
+     * row in two windows and another in none.
+     */
+    name: 'the reach panel pages its links without a stable order',
+    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    file: 'src/lib/broadcast/reach.ts',
+    find:
+      "        .eq('event_id', eventId)\n" +
+      "        .order('id', { ascending: true })\n" +
+      '        .range(from, to),',
+    replace: "        .eq('event_id', eventId)\n" + '        .range(from, to),',
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * An `in` list is bounded by BYTES. Spelling every link id into one URL is
+     * the 16 KB break at about 400 shares, and the failure arrives as a
+     * discarded error and a panel of zeros.
+     */
+    name: 'the conversion read spells every link id into one in clause',
+    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    file: 'src/lib/broadcast/sales-attribution.ts',
+    find: "              .in('link_id', chunk)",
+    replace: "              .in('link_id', links.map(l => l.id))",
+    expect: 'rather than from a chunk',
+  },
+  {
+    /*
+     * THE ONE THAT MATTERS. Put the self-referential comparison back and the
+     * panel returns to showing a share-of-sales percentage with no check over
+     * it at all, which is what it did until this item.
+     */
+    name: 'the reconciliation goes back to comparing totals against itself',
+    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    file: 'src/lib/broadcast/sales-attribution.ts',
+    find: '    orders: ledgerSoldOrders - bucketOrders,',
+    replace: '    orders: totals.orders - bucketOrders,',
+    expect: 'computes `discrepancy` from `totals.`',
+  },
+  {
+    /*
+     * The other half of clause 5, and neither alone is enough: this one does
+     * NOT mention `totals.`, so only the "came from countOrRaise" half can
+     * catch it. Without that half, an expected side counted anywhere in this
+     * module would pass while proving nothing.
+     */
+    name: 'the reconciliation drops the server count and uses a local number',
+    guard: `${GUARDS}/the-reach-panel-counts-every-row.mjs`,
+    file: 'src/lib/broadcast/sales-attribution.ts',
+    find:
+      '    orders: ledgerSoldOrders - bucketOrders,\n' +
+      '    tickets: ledgerSoldTickets - bucketTickets,',
+    replace: '    orders: sold.length - bucketOrders,\n' + '    tickets: bucketTickets - bucketTickets,',
+    expect: 'without any value that came from',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

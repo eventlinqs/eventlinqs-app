@@ -628,6 +628,12 @@
  *   the-recovery-stop-list-is-whole  a marketing withdrawal reaches the
  *                             abandoned-checkout sender, and its suppression list
  *                             is read whole rather than to the first 1,000 names
+ *   the-reach-panel-counts-every-row  the ORGANISER'S reach and attribution
+ *                             panel reads every tracked row, spells every `in`
+ *                             list in byte-bounded chunks, and reconciles
+ *                             against a count the SERVER performed rather than
+ *                             one it accumulated itself in the loop it is
+ *                             checking, which made `reconciles` a constant true
  *   the-audit-log-says-when-it-could-not-write  both audit writers bind the
  *                             error a PostgREST client REPORTS rather than
  *                             throws, report every failure in every environment
@@ -2301,6 +2307,36 @@ const GUARDS = [
   // Drilled red nine ways and green (C:\dev\EVIDENCE\LB-GMVWHOLE\drills.txt),
   // and six more for the demand signal (C:\dev\EVIDENCE\LB-DEMANDSIGNAL\drills.txt).
   'scripts/guards/the-founder-screens-read-every-row.mjs',
+
+  // the-reach-panel-counts-every-row: the ORGANISER'S side of the same family,
+  // 20 September 2026. /dashboard/events/[id]/reach, fed by reach.ts and
+  // sales-attribution.ts, is where the platform proves its own wedge to an
+  // organiser, and all eight of its reads were unbounded with `error`
+  // discarded. share_link_events takes one row per VIEW and one per CLICK and
+  // share_links one per ATTENDEE SHARE, so the ceiling is reachable in a night,
+  // and the rows it drops include `conversion` rows, which are attributed
+  // SALES. Every number on the panel therefore read SMALLER than the truth,
+  // which is the one direction that argues for leaving the platform.
+  //
+  // The third clause is the reason this is a guard rather than only tests. The
+  // reconciliation that decides whether a percentage is shown AT ALL compared
+  // `totals.orders` against the bucket sum, and both were incremented once per
+  // iteration of the same loop, so it was one number compared against itself
+  // and `reconciles` was a constant `true`. Its own test file's header claimed
+  // the opposite above seven assertions that it is true and none that it is
+  // ever false. It now compares against a server-side count, which no row
+  // ceiling applies to, and clause 5 fails the build if that is ever rewired to
+  // a number the module counted itself.
+  //
+  // NOT folded into the guard above, whose own header records being renamed
+  // because a name narrower than its scope is one somebody adds the wrong file
+  // to: these are the organiser's screens, not the founder's. NOT added to
+  // no-silent-row-ceiling's SCOPE either, which would go red today on
+  // artists.ts and on the digest, another lane's territory. Both are enumerated
+  // in REVIEW-QUEUE-B.md rather than hidden.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-REACHWHOLE\drills.txt).
+  'scripts/guards/the-reach-panel-counts-every-row.mjs',
 
   // Close-out D2, found by driving the waiting list on 11 September 2026. A
   // full-page dialog rendered where it sits is trapped in the stacking context

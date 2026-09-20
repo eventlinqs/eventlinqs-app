@@ -121,10 +121,10 @@ export default async function ReachPage({ params }: Props) {
   // is soft. This panel used to run views-first, which put the softest number
   // in the lead position on the one screen that has to be trusted.
   const stats = [
-    { label: 'Tickets sold from links', value: summary.totals.tickets, hard: true },
-    { label: 'Orders from links', value: summary.totals.conversions, hard: true },
-    { label: 'Link clicks', value: summary.totals.clicks, hard: false },
-    { label: 'Link views', value: summary.totals.views, hard: false },
+    { key: 'tickets', label: 'Tickets sold from links', value: summary.totals.tickets, hard: true },
+    { key: 'conversions', label: 'Orders from links', value: summary.totals.conversions, hard: true },
+    { key: 'clicks', label: 'Link clicks', value: summary.totals.clicks, hard: false },
+    { key: 'views', label: 'Link views', value: summary.totals.views, hard: false },
   ]
   const nothingHasTravelled = stats.every(stat => stat.value === 0)
 
@@ -278,7 +278,20 @@ export default async function ReachPage({ params }: Props) {
           ) : (
             <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {stats.map((s) => (
-                <div key={s.label} className="rounded-xl border border-ink-200 bg-white px-4 py-4">
+                <div
+                  key={s.label}
+                  className="rounded-xl border border-ink-200 bg-white px-4 py-4"
+                  /*
+                   * READABLE BY A DRIVE, because the claim these four numbers
+                   * make is "every tracked row, not the first thousand", and the
+                   * only way to prove that is to put more than a thousand rows
+                   * on a real event and read what this panel says. Matching on
+                   * the label text instead would pin the copy, and the copy is
+                   * the one thing here that is allowed to change.
+                   */
+                  data-reach-stat={s.key}
+                  data-reach-value={s.value}
+                >
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-600">
                     {s.label}
                   </p>
