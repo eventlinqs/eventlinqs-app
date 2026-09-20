@@ -45,7 +45,7 @@ export function CreateProfileForm() {
         {pending ? 'Creating' : 'Create my performer profile'}
       </button>
       {error && (
-        <p role="alert" className="rounded-lg bg-error/15 px-3 py-2 text-sm text-error">
+        <p role="alert" className="rounded-lg bg-error/10 px-3 py-2 text-sm text-error-strong">
           {error}
         </p>
       )}

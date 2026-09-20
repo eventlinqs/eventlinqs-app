@@ -236,10 +236,12 @@ export default async function ArtistProfilePage({ params }: Props) {
                 {showcase.available_for_booking && (
                   /* text-success-strong, not text-success: #0F9D58 on the
                      bg-success/15 wash over canvas (#d7ecdf) measures 2.83:1,
-                     under the 4.5:1 AA floor, found by axe at 1440 and 768.
-                     #0B7038 on the same wash measures 5.00:1. The token already
-                     exists for this exact case; no colour is introduced here. */
-                  <span className="inline-flex items-center rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success-strong">
+                     under the 4.5:1 AA floor, found by axe at 1440 and 768. The
+                     token already exists for this exact case; no colour is
+                     introduced here. The wash moved from /15 to /10 on
+                     21 September: see the note on /artists for the measurement
+                     that made /15 unsafe on ink-100. */
+                  <span className="inline-flex items-center rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success-strong">
                     Open to bookings
                   </span>
                 )}

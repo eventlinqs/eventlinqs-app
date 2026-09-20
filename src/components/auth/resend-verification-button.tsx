@@ -82,7 +82,7 @@ export function ResendVerificationButton({ email }: Props) {
         {status !== 'sending' && remaining === 0 && 'Resend verification email'}
       </button>
       {status === 'sent' && remaining > 0 && (
-        <p className="text-center text-xs text-success">
+        <p className="text-center text-xs text-success-strong">
           {RESEND_VERIFICATION_GENERIC_RESPONSE}
         </p>
       )}

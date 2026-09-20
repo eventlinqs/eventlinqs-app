@@ -55,7 +55,7 @@ export function GigApplyForm({ gigId }: { gigId: string }) {
       {message && (
         <p
           role="status"
-          className={`rounded-lg px-3 py-2 text-sm ${message.kind === 'ok' ? 'bg-success/15 text-success' : 'bg-error/15 text-error'}`}
+          className={`rounded-lg px-3 py-2 text-sm ${message.kind === 'ok' ? 'bg-success/10 text-success-strong' : 'bg-error/10 text-error-strong'}`}
         >
           {message.text}
         </p>

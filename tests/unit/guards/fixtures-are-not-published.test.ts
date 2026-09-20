@@ -45,6 +45,45 @@ describe('writesIn', () => {
     expect(found[0].literal).toBeNull()
   })
 
+  /*
+   * THE BULK SEED, added 21 September 2026 with lb-proofcount-drive, the first
+   * drive in the tree to insert a thousand rows. Its literal sits inside the
+   * `.map(` rather than at the paren, and reporting that as unjudgeable left
+   * the only remedy being a thousand round trips or an exemption. These four
+   * hold the widening to its promise: the row is FOUND, and it is judged by
+   * exactly the same rules, so nothing became allowed that was not before.
+   */
+  test('reads the row literal out of a mapped bulk insert', () => {
+    const found = writesIn(
+      "await db.from('organisations').insert(batch.map(n => ({ slug: 'x-' + n, status: 'pending' })))",
+    )
+    expect(found).toHaveLength(1)
+    expect(setsField(found[0].literal, 'status', 'pending')).toBe(true)
+  })
+
+  test('a mapped bulk insert that publishes an organiser is still caught', () => {
+    const problems = judgeDrive(
+      'example-drive.mjs',
+      "await db.from('organisations').insert(batch.map(n => ({ slug: 'x-' + n, status: 'active' })))",
+    )
+    expect(problems).toHaveLength(1)
+    expect(problems[0].write).toBe("organisations.status='active'")
+  })
+
+  test('a mapped bulk insert that publishes an event is still caught', () => {
+    const problems = judgeDrive(
+      'example-drive.mjs',
+      "await db.from('events').insert(rows.map(n => ({ slug: 'e-' + n, visibility: 'public' })))",
+    )
+    expect(problems.map((p: { write: string }) => p.write)).toContain("events.visibility='public'")
+  })
+
+  test('an arrow that does not return an object literal stays unjudgeable', () => {
+    const found = writesIn("await db.from('organisations').insert(batch.map(n => buildRow(n)))")
+    expect(found).toHaveLength(1)
+    expect(found[0].literal).toBeNull()
+  })
+
   test('a comment describing the defect is not the defect', () => {
     const src = [
       "/* this fixture used to say status: 'active' and it published an organiser page */",

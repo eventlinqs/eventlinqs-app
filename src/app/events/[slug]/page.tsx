@@ -1237,7 +1237,7 @@ export default async function EventDetailPage({ params }: Props) {
             <div className={seatedActive ? 'space-y-10' : 'flex flex-col gap-10 lg:flex-row'}>
               <div className={seatedActive ? '' : 'flex-1 min-w-0'}>
                 {event.is_age_restricted && (
-                  <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-warning/15 px-3 py-1.5 text-xs font-semibold text-warning">
+                  <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-warning/15 px-3 py-1.5 text-xs font-semibold text-ink-900">
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
@@ -1589,7 +1589,7 @@ export default async function EventDetailPage({ params }: Props) {
                     <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-[var(--shadow-card)]">
                       <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />
                       {isTicketingSuspended ? (
-                        <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
+                        <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-ink-900">
                           Ticketing is temporarily paused for this event.
                         </p>
                       ) : saleBlocked ? (

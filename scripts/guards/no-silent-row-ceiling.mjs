@@ -67,7 +67,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { sourceFiles } from './lib/source.mjs'
-import { selectChainsIn, boundednessOf, headOnlySelectLines } from './lib/supabase-select-chains.mjs'
+import { selectChainsIn, boundednessOf, headOnlySelectLines, countSelectLines } from './lib/supabase-select-chains.mjs'
 import { declareWork } from '../lib/work-report.mjs'
 
 const ROOT = resolve(import.meta.dirname, '..', '..')
@@ -99,6 +99,18 @@ const SCOPE = [
    * own subtitle promises "the exact tickets their sharing sold".
    */
   'src/lib/marketplace',
+  /*
+   * ADDED 21 September 2026. The platform's OWN social proof, which is the one
+   * place the marketing path counts the marketing path. `getPlatformStats` read
+   * every published event with `{ count: 'exact' }` and then took two of its
+   * three numbers from the BODY of that response, so past a thousand published
+   * events /organisers would have printed a true total beside a sample of it:
+   * "2,400 events - 1,000 organisers - 41 cities", one line describing two
+   * different catalogues. CLAUDE.md Law 4 governs the surface by name, "Social
+   * proof uses real platform truths only. Never fabricate numbers", and the
+   * file's own comment had recorded the cap and deferred it.
+   */
+  'src/lib/stats',
 ]
 
 /**
@@ -152,15 +164,42 @@ const files = SCOPE.flatMap(dir =>
 let readsJudged = 0
 let bounded = { 'single-row': 0, 'head-only': 0, limit: 0, range: 0 }
 let rangedReads = 0
+let countBodies = 0
 const borderHits = new Set()
 
 for (const file of files) {
   const abs = resolve(ROOT, file)
   if (!existsSync(abs)) continue
   const heads = headOnlySelectLines(abs)
+  const counts = countSelectLines(abs)
   for (const chain of selectChainsIn(abs)) {
     if (!chain.methods.includes('select')) continue
     readsJudged += 1
+
+    /*
+     * A COUNT AND A BODY IN ONE BREATH. `count: 'exact'` asks the server for the
+     * TRUE TOTAL in a header while the body still stops at the ceiling, so a
+     * read that takes BOTH hands back one number that is whole and a pile of
+     * rows that is a sample, and anything derived from those rows is printed
+     * beside a total it does not describe. That is precisely what
+     * `getPlatformStats` did on /organisers, and a `.limit()` would have
+     * satisfied the boundedness clause above while leaving the lie intact,
+     * which is why this is a separate clause rather than a stricter bound.
+     *
+     * In this path, a count is asked for with `head: true` and nothing else.
+     * Every `count:` already in scope on 21 September 2026 was head-only, so
+     * this costs the tree nothing it was not already doing.
+     */
+    if (counts.has(chain.line) && !heads.has(chain.line)) {
+      countBodies += 1
+      failures.push(
+        `${file}:${chain.line} reads ${chain.table} with a count: and no head: true. ` +
+          `The header carries the true total and the body still stops at the ceiling, so any number ` +
+          `derived from these rows is a sample printed beside a total. Ask for the count with ` +
+          `head: true and nothing else, or page the rows through readEveryRow (${PAGER}) and count them.`,
+      )
+      continue
+    }
 
     const how = boundednessOf(chain, { headSelects: heads })
     if (!how) {
@@ -256,8 +295,12 @@ declareWork('no-silent-row-ceiling', {
     'read bounded by a stated limit': bounded.limit,
     'read paged with range': bounded.range,
     'paged read checked for a stable order': rangedReads,
+    'count asked for with head: true and no body': bounded['head-only'],
   },
-  found: { 'read that could be truncated in silence': failures.length },
+  found: {
+    'read that could be truncated in silence': failures.length,
+    'count taken beside a sampled body': countBodies,
+  },
 })
 
 if (failures.length) process.exit(1)

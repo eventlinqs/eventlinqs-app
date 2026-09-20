@@ -236,7 +236,7 @@ export function AssistantPanel({
         )}
 
         {error && (
-          <p className="rounded-lg border border-error/30 bg-error/5 px-4 py-3 text-xs text-error" role="alert">
+          <p className="rounded-lg border border-error/30 bg-error/5 px-4 py-3 text-xs text-error-strong" role="alert">
             {error}
           </p>
         )}

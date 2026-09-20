@@ -218,7 +218,7 @@ export default async function GigDetailPage({ params }: Props) {
                   </Link>
                 </>
               ) : existingApplication && existingApplication.status !== 'withdrawn' ? (
-                <p role="status" className="mt-3 rounded-lg bg-success/15 px-3 py-2 text-sm text-success">
+                <p role="status" className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-sm text-success-strong">
                   You applied to this gig. The organiser has your profile and numbers.
                 </p>
               ) : (
