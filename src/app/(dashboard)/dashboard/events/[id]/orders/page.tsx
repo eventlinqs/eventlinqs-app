@@ -278,7 +278,7 @@ export default async function EventOrdersPage({ params }: Props) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link href={`/dashboard/events/${eventId}/edit`} className="text-sm text-ink-400 hover:text-ink-600">
           ← Back to Event
         </Link>

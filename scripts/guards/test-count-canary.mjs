@@ -3192,8 +3192,33 @@ const ROOT = join(HERE, '..', '..')
  * NOTHING ABOVE WAS DELETED. Lane A's, lane B's and lane C's accounts all
  * stand exactly where they were written.
  */
-const MIN_FILES = 536
-const MIN_TESTS = 7137
+/*
+ * ---------------------------------------------------------------------------
+ * 2026-09-21 (lane C, a-table-a-phone-can-read): raised 536/7137 -> 538/7167.
+ * ---------------------------------------------------------------------------
+ *
+ * TWO NEW FILES AND THIRTY CASES, and nothing else moved:
+ *   tests/unit/guards/a-table-a-phone-can-read.test.ts                18 (new)
+ *   tests/unit/guards/no-punctuation-standing-in-for-a-value.test.ts  12 (new)
+ *   536 + 2 = 538 files
+ *   7137 + 18 + 12 = 7167 tests
+ *
+ * MEASURED: 538 files, 7167 tests, 0 failed, 0 skipped
+ * (`npm run gate:push -- --only suite`, GREEN, 118s, on the tree of this commit).
+ *
+ * THE SUM AGREES WITH THE MEASUREMENT, which is worth one line because on this
+ * branch it usually does not: every disagreement so far has been a merge, where
+ * neither side could see the other's files. This commit is not a merge.
+ *
+ * NO EXISTING TEST WAS REWRITTEN OR LOOSENED. One existing test went RED on the
+ * way here and was fixed in the guard rather than in the test: teaching
+ * no-hardcoded-spacing to strip JS comments also stripped its own
+ * `spacing-guard: ignore` marker, so it failed the line the marker existed to
+ * protect. tests/unit/guards/no-hardcoded-spacing.test.ts caught it, unchanged.
+ * ---------------------------------------------------------------------------
+ */
+const MIN_FILES = 538
+const MIN_TESTS = 7167
 
 
 /**

@@ -5400,10 +5400,21 @@ const DRILLS = [
   },
   {
     name: "the organiser's GST report table stops being a containing block",
+    /*
+     * RE-AIMED 21 September 2026. The anchor was the whole class attribute
+     * including `overflow-x-auto`, and the phone rebuild of this table
+     * (a-table-a-phone-can-read) moved the scroller to `lg:overflow-x-auto`,
+     * so the anchor stopped existing and the drill reported STALE, which is
+     * the harness doing its job rather than a failure.
+     *
+     * The subject is unchanged and so is what it proves: this box still
+     * scrolls from `lg` up and still holds an sr-only caption, so it must
+     * still be a containing block. Only the attribute it lives in moved.
+     */
     guard: `${GUARDS}/sr-only-cannot-escape-a-scroller.mjs`,
     file: 'src/app/(dashboard)/dashboard/reports/gst/page.tsx',
-    find: 'className="relative overflow-x-auto rounded-xl border border-ink-200 bg-white"',
-    replace: 'className="overflow-x-auto rounded-xl border border-ink-200 bg-white"',
+    find: 'className="relative rounded-xl border border-ink-200 bg-white max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent lg:overflow-x-auto"',
+    replace: 'className="rounded-xl border border-ink-200 bg-white max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent lg:overflow-x-auto"',
     expect: 'but is not a containing block',
   },
   {
@@ -6610,6 +6621,93 @@ const DRILLS = [
     find: "export type ActionResult = { error?: string; nextAction?: { label: string; href: string } }",
     replace: 'export type ActionResult = { error?: string }',
     expect: 'no { label, href } member',
+  },
+
+  /*
+   * a-table-a-phone-can-read (21 September 2026), five drills, one per clause.
+   *
+   * Every one of these is the state the tree was really in when the drive
+   * measured it. Clause four's is the exact class attribute that clipped six
+   * controls, and clause five's is the exact button that rendered 16px tall on
+   * a 1440 desktop as well as on a phone.
+   */
+  {
+    name: 'the discount codes table goes back to being a table on a phone',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: '<table className="w-full text-sm max-lg:block">',
+    replace: '<table className="w-full text-sm">',
+    expect: 'no phone presentation',
+  },
+  {
+    name: 'the header stays while the cells stack, five headings above one card',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: '<thead className="max-lg:hidden">',
+    replace: '<thead>',
+    expect: 'stays visible below lg',
+  },
+  {
+    name: 'the minimum width that forces the phone-width scroller comes back',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/reach/page.tsx',
+    find: '<table className="w-full text-sm max-lg:block lg:min-w-[560px]">',
+    replace: '<table className="w-full text-sm max-lg:block min-w-[560px]">',
+    expect: 'unqualified `min-w-[...]`',
+  },
+  {
+    /*
+     * THE ONE THAT WAS REALLY THERE. `overflow-hidden` on the wrapper is what
+     * made six controls unreachable, and it reads in a class list exactly like
+     * the harmless corner-rounding it also does.
+     */
+    name: 'the wrapper clips again at phone width',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: 'bg-white overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:overflow-visible',
+    replace: 'bg-white overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent',
+    expect: 'applies at phone width',
+  },
+  {
+    name: 'a row control goes back to eleven pixels of underlined text',
+    guard: `${GUARDS}/a-table-a-phone-can-read.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/discounts-client.tsx',
+    find: 'className={`${ROW_CONTROL} text-[var(--color-error-strong)] hover:underline`}',
+    replace: 'className="text-xs text-[var(--color-error-strong)] hover:underline"',
+    expect: 'no 44px floor',
+  },
+
+  /*
+   * no-punctuation-standing-in-for-a-value (21 September 2026), three drills.
+   *
+   * The first two are the exact lines the em-dash scrub left behind, restored
+   * character for character. The third is a mark the scrub did not produce and
+   * that would read identically wrong, so the guard is shown to hold the class
+   * rather than one character.
+   */
+  {
+    name: 'a buyer with no name is called ":" again, on the order detail page',
+    guard: `${GUARDS}/no-punctuation-standing-in-for-a-value.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/orders/[orderId]/page.tsx',
+    find: "{buyerName || 'Not given'}",
+    replace: "{buyerName || ':'}",
+    expect: 'standing in for a value',
+  },
+  {
+    name: 'a ticket tier with no capacity reads "0/:" again',
+    guard: `${GUARDS}/no-punctuation-standing-in-for-a-value.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/page.tsx',
+    find: "{tier.sold_count}/{tier.total_capacity || '-'}",
+    replace: "{tier.sold_count}/{tier.total_capacity || ':'}",
+    expect: 'standing in for a value',
+  },
+  {
+    name: 'a different separator mark, to show the guard holds the class and not one character',
+    guard: `${GUARDS}/no-punctuation-standing-in-for-a-value.mjs`,
+    file: 'src/components/orders/order-table.tsx',
+    find: "{order.buyer_name || 'Not given'}",
+    replace: "{order.buyer_name || '|'}",
+    expect: 'standing in for a value',
   },
 
 

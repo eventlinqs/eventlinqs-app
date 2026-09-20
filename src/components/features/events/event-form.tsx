@@ -2118,8 +2118,8 @@ export function EventForm({
           <div className="px-5 py-4">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Date & Time</h3>
             <p className="text-sm text-ink-600">
-              {formData.start_date ? formatPlatformDateTime(formData.start_date) : ':'} →{' '}
-              {formData.end_date ? formatPlatformDateTime(formData.end_date) : ':'}
+              {formData.start_date ? formatPlatformDateTime(formData.start_date) : '-'} →{' '}
+              {formData.end_date ? formatPlatformDateTime(formData.end_date) : '-'}
             </p>
             <p className="text-xs text-ink-400">{formData.timezone}</p>
           </div>

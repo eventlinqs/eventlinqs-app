@@ -79,12 +79,20 @@ export default async function DiscountsPage({ params }: Props) {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link href={`/dashboard/events/${eventId}/orders`} className="text-sm text-ink-400 hover:text-ink-600">
           ← Orders
         </Link>
         <h1 className="text-2xl font-bold text-ink-900">Discount Codes</h1>
-        <span className="text-ink-400 text-sm">·</span>
+        {/*
+          HIDDEN UNTIL THE TITLE FITS BESIDE IT, inherited verbatim from the
+          orders list header, which met this first: the row wraps, so at 390
+          the event title goes to a second line and a separator left behind on
+          the first is a heading that ends in a floating middot with nothing
+          after it. A separator only separates while both things are on one
+          line. This page had neither half of that fix.
+        */}
+        <span className="hidden text-ink-400 text-sm sm:inline">·</span>
         <span className="text-sm text-ink-600">{event.title}</span>
       </div>
 

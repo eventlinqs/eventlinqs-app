@@ -602,6 +602,17 @@
  *                              away, so "Connect Stripe" was advice with no door. The type, the
  *                              door's field name, the actions that can carry one and their
  *                              callers are all derived (21 September 2026)
+ *   a-table-a-phone-can-read  every organiser data table has a presentation below lg
+ *                              that is not a five-column table. Measured: the discount
+ *                              codes table clipped Deactivate and Delete outside an
+ *                              `overflow-hidden` box at 390 and 768, and reach and the
+ *                              GST report lost the row's own name when swiped to the
+ *                              right edge. Subjects walked, comments stripped
+ *                              (21 September 2026, close-out C8 clause C8B.3)
+ *   no-punctuation-standing-in-for-a-value  a lone separator mark may not be the
+ *                              fallback a person reads where a value should be. The
+ *                              dash scrub left nine of them, including "Name: :" on
+ *                              every guest order (21 September 2026)
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -1913,6 +1924,26 @@ const GUARDS = [
   // is derived: the type, the door's field name, the actions that can carry
   // one, and their callers. Drilled red and green.
   'scripts/guards/a-refusal-keeps-its-door.mjs',
+  // The organiser dashboard has five data tables and one of them had been
+  // rebuilt for the phone. Driven on 21 September 2026 at 390, 768 and 1440
+  // against a served build with real rows: the discount codes table rendered
+  // 668px wide inside an `overflow-hidden` box showing 356, so Deactivate and
+  // Delete sat at x 561 to 669 with no scrollbar and no gesture that reaches
+  // them - six dead controls, and a live discount code an organiser on a phone
+  // could not switch off. Reach and the GST report were swipeable and lost the
+  // row's own name at the right edge ("Email" at x -187, a BAS quarter reduced
+  // to 23px of "Jul-Sep 2026"). The document-width drive passes on all three,
+  // correctly, because an `overflow-x-auto` box is its documented exemption.
+  // Subjects derived by walking the dashboard for `<table`; comments stripped
+  // before reading. Five clauses, five drills, each proven red and green.
+  'scripts/guards/a-table-a-phone-can-read.mjs',
+  // The em-dash scrub of commit 2b59d58c replaced every dash in the tree with
+  // a colon, which is right in a sentence and wrong in a fallback: nine value
+  // slots were left rendering a bare ':' to a real person. "Name: :" on every
+  // guest order, "0/:" on a tier with no capacity, and the queue position at
+  // text-7xl. Found in a driven screenshot on 21 September 2026, weeks after
+  // the sweep. The cause was mechanical, so the check has to be too.
+  'scripts/guards/no-punctuation-standing-in-for-a-value.mjs',
   'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the

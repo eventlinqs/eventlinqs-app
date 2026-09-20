@@ -467,7 +467,7 @@ export default async function EventViewPage({ params }: Props) {
                           />
                         </div>
                         <span className="shrink-0 text-xs font-medium tabular-nums text-ink-600">
-                          {tier.sold_count}/{tier.total_capacity || ':'}
+                          {tier.sold_count}/{tier.total_capacity || '-'}
                         </span>
                       </div>
                     </li>
