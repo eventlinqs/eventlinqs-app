@@ -229,40 +229,54 @@ export function judgeFile(raw) {
   return Object.assign(findings, { tables, controls })
 }
 
-const files = walk(DASHBOARD)
-  .map((f) => ({ path: f, raw: readFileSync(f, 'utf8') }))
-  .filter((f) => stripComments(f.raw).includes('<table'))
+/*
+ * THE SCAN RUNS ONLY WHEN THIS FILE IS THE ONE INVOKED.
+ *
+ * Without this, importing the judgement for a unit test runs the whole
+ * sweep as a side effect, and on a violating tree the import calls
+ * process.exit(1) and takes the test worker with it: a guard that kills
+ * the suite that is checking it. The idiom is the one
+ * scripts/guards/no-hardcoded-spacing.mjs already uses.
+ */
+const invokedDirectly =
+  Boolean(process.argv[1]) && /a-table-a-phone-can-read\.mjs$/.test(process.argv[1].replace(/\\/g, '/'))
 
-if (files.length === 0) {
-  console.error('[a-table-a-phone-can-read] REFUSING: no dashboard file contains a <table.')
-  console.error('  Either the organiser dashboard lost every table, or this guard is looking in the wrong place.')
-  console.error(`  Looked under ${relative(ROOT, DASHBOARD)}`)
-  process.exit(1)
+if (invokedDirectly) {
+  const files = walk(DASHBOARD)
+    .map((f) => ({ path: f, raw: readFileSync(f, 'utf8') }))
+    .filter((f) => stripComments(f.raw).includes('<table'))
+
+  if (files.length === 0) {
+    console.error('[a-table-a-phone-can-read] REFUSING: no dashboard file contains a <table.')
+    console.error('  Either the organiser dashboard lost every table, or this guard is looking in the wrong place.')
+    console.error(`  Looked under ${relative(ROOT, DASHBOARD)}`)
+    process.exit(1)
+  }
+
+  let tablesJudged = 0
+  let controlsJudged = 0
+  const failures = []
+
+  for (const file of files) {
+    const rel = relative(ROOT, file.path).split(SEP).join('/')
+    const findings = judgeFile(file.raw)
+    tablesJudged += findings.tables
+    controlsJudged += findings.controls
+    for (const finding of findings) failures.push(`${rel}:${finding.line}  ${finding.message}`)
+  }
+
+  console.log(`[a-table-a-phone-can-read] ${files.length} dashboard file(s) with a table, ${tablesJudged} table(s), ${controlsJudged} in-body control(s) judged.`)
+
+  if (failures.length > 0) {
+    console.error(`[a-table-a-phone-can-read] FAIL - ${failures.length} problem(s):`)
+    for (const failure of failures) console.error(`  ${failure}`)
+    console.error('')
+    console.error('  The pattern is one DOM and CSS only: below lg the table parts become blocks,')
+    console.error('  the header hides, and each row is a bordered card whose numbers carry their')
+    console.error('  own headings. src/app/(dashboard)/dashboard/events/events-table.tsx is the')
+    console.error('  reference, and it says in its own comment why it is not two DOMs.')
+    process.exit(1)
+  }
+
+  console.log('[a-table-a-phone-can-read] PASS - every organiser table has a presentation a phone can read.')
 }
-
-let tablesJudged = 0
-let controlsJudged = 0
-const failures = []
-
-for (const file of files) {
-  const rel = relative(ROOT, file.path).split(SEP).join('/')
-  const findings = judgeFile(file.raw)
-  tablesJudged += findings.tables
-  controlsJudged += findings.controls
-  for (const finding of findings) failures.push(`${rel}:${finding.line}  ${finding.message}`)
-}
-
-console.log(`[a-table-a-phone-can-read] ${files.length} dashboard file(s) with a table, ${tablesJudged} table(s), ${controlsJudged} in-body control(s) judged.`)
-
-if (failures.length > 0) {
-  console.error(`[a-table-a-phone-can-read] FAIL - ${failures.length} problem(s):`)
-  for (const failure of failures) console.error(`  ${failure}`)
-  console.error('')
-  console.error('  The pattern is one DOM and CSS only: below lg the table parts become blocks,')
-  console.error('  the header hides, and each row is a bordered card whose numbers carry their')
-  console.error('  own headings. src/app/(dashboard)/dashboard/events/events-table.tsx is the')
-  console.error('  reference, and it says in its own comment why it is not two DOMs.')
-  process.exit(1)
-}
-
-console.log('[a-table-a-phone-can-read] PASS - every organiser table has a presentation a phone can read.')

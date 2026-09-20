@@ -147,29 +147,43 @@ export function judgeSource(raw) {
   return findings
 }
 
-const failures = []
-let scanned = 0
-for (const file of walk(SRC)) {
-  scanned += 1
-  const rel = relative(ROOT, file).split(SEP).join('/')
-  for (const finding of judgeSource(readFileSync(file, 'utf8'))) {
-    failures.push(
-      `${rel}:${finding.line}  "${finding.literal}" is standing in for a value as ${finding.shape}. ` +
-        `A reader sees the mark and not the number. Use '-' if the value is simply absent, or words if it was never collected.`,
-    )
+/*
+ * THE SCAN RUNS ONLY WHEN THIS FILE IS THE ONE INVOKED.
+ *
+ * Without this, importing the judgement for a unit test runs the whole
+ * sweep as a side effect, and on a violating tree the import calls
+ * process.exit(1) and takes the test worker with it: a guard that kills
+ * the suite that is checking it. The idiom is the one
+ * scripts/guards/no-hardcoded-spacing.mjs already uses.
+ */
+const invokedDirectly =
+  Boolean(process.argv[1]) && /no-punctuation-standing-in-for-a-value\.mjs$/.test(process.argv[1].replace(/\\/g, '/'))
+
+if (invokedDirectly) {
+  const failures = []
+  let scanned = 0
+  for (const file of walk(SRC)) {
+    scanned += 1
+    const rel = relative(ROOT, file).split(SEP).join('/')
+    for (const finding of judgeSource(readFileSync(file, 'utf8'))) {
+      failures.push(
+        `${rel}:${finding.line}  "${finding.literal}" is standing in for a value as ${finding.shape}. ` +
+          `A reader sees the mark and not the number. Use '-' if the value is simply absent, or words if it was never collected.`,
+      )
+    }
   }
+
+  console.log(`[no-punctuation-standing-in-for-a-value] ${scanned} file(s) scanned.`)
+
+  if (failures.length > 0) {
+    console.error(`[no-punctuation-standing-in-for-a-value] FAIL - ${failures.length} placeholder(s):`)
+    for (const failure of failures) console.error(`  ${failure}`)
+    console.error('')
+    console.error('  This is what a mechanical character sweep does to a fallback. The dash scrub')
+    console.error('  of commit 2b59d58c turned nine of them into a colon, and "Name: :" was on a')
+    console.error("  real organiser's screen for weeks.")
+    process.exit(1)
+  }
+
+  console.log('[no-punctuation-standing-in-for-a-value] PASS - no punctuation mark is standing in for a value.')
 }
-
-console.log(`[no-punctuation-standing-in-for-a-value] ${scanned} file(s) scanned.`)
-
-if (failures.length > 0) {
-  console.error(`[no-punctuation-standing-in-for-a-value] FAIL - ${failures.length} placeholder(s):`)
-  for (const failure of failures) console.error(`  ${failure}`)
-  console.error('')
-  console.error('  This is what a mechanical character sweep does to a fallback. The dash scrub')
-  console.error('  of commit 2b59d58c turned nine of them into a colon, and "Name: :" was on a')
-  console.error("  real organiser's screen for weeks.")
-  process.exit(1)
-}
-
-console.log('[no-punctuation-standing-in-for-a-value] PASS - no punctuation mark is standing in for a value.')
