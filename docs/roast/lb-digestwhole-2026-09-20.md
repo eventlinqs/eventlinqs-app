@@ -22,7 +22,7 @@ before adjudication so the ledger cannot be shaped to fit what happened.
 | 6 | ...a REGISTERED BLOCKING GUARD proven to fail as well as pass | **MET** | `scripts/guards/the-weekly-digest-owes-nobody-an-email.mjs`, registered in `run-guards.mjs` line 2515 and in its header index. RED: `guard-failure-drills.mjs --only the-weekly-digest-owes-nobody-an-email` reports **7 of 7 drills fired correctly**. GREEN: `[guards] all 194 guards PASS` |
 | 7 | ...DRIVEN PROOF at 390, 768 and 1440 | **MET, 49 of 49** | `scripts/verify/lb-digestwhole-drive.mjs`, `C:\dev\EVIDENCE\LB-DIGESTWHOLE\lb-digestwhole-drive-report.json`. Six screenshots. A real button press, an axe scan and a database assertion at each of the three viewports |
 | 8 | ...FULL REGRESSION GREEN before the next begins | **MET for the six steps this lane runs** | typecheck 56s, lint 65s, copy 1s, guards 172s, types-drift 35s, suite 164s (521 files, 6,949 tests, 0 failed). No second item begun |
-| 9 | Fix every defect you find before starting the next task | **MET for five; ONE DEFERRED WITH A STATED REASON** | Fixed: the un-chunked suppression `.in()`, three unbounded reads, the permanent send truncation, the same-week re-run double-send, the events read that read a failure as a quiet week, two share-link reads. DEFERRED: eight error-discarding destructures in `share-links.ts`. See adversarial finding 2 |
+| 9 | Fix every defect you find before starting the next task | **PARTIAL, THEN FINISHED IN COMMIT `56d63fa8`** | First adjudication was PARTIAL and is kept here rather than overwritten: eight error-discarding reads in `share-links.ts` were queued instead of fixed, and the skill's own rule is that the default is to go back and finish them. All eight are fixed. `share-links.ts` joins the guard's scope (19 reads across 5 files, all bounded), an eighth drill proves the guard judges that file, three new tests, two proven red. Now **MET** |
 | 10 | Never claim something works without driving it | **MET, and it caught me twice** | Every product claim in the report is a named check in the drive report. The two claims that were NOT driven when I first wrote them, the CHECK constraint and the sixth test, were driven during this audit rather than left as inference |
 | 11 | Never guess a slug, route or id; enumerate from source or the database | **MET** | The 20 city slugs, the feature-flag column name and state, the tenant id, the event set and the table columns were all enumerated from TEST or from the migrations before use. `geelong` was chosen because it was observed to have five published public events in the period, asserted at runtime by `setup.city-has-real-published-events` |
 | 12 | Work only in `C:\dev\lanes\B` | **MET** | Every command ran with cwd `C:\dev\lanes\B`. No `git -C` at another lane. The three record files in `C:\dev` are the ones the brief assigns to this lane |
@@ -110,25 +110,42 @@ worse outcome. If the founder disagrees, the alternative was to refuse to drive
 this item at all and report it blocked, and I would rather he tell me that than
 discover I had quietly made the call.
 
-### Finding 2. A DEFECT I FOUND AND DID NOT FIX
+### Finding 2. A DEFECT I FOUND AND DID NOT FIX, AND THEN DID. RESOLVED IN `56d63fa8`
 
-`src/lib/broadcast/share-links.ts` carries eight `const { data } = await`
-destructures that discard the error, several in the share-code minting path,
-including the collision check that decides whether a readable code is free.
+**What I first wrote here, kept because the reasoning was wrong and the record
+should show it:** `src/lib/broadcast/share-links.ts` carries eight
+`const { data } = await` destructures that discard the error. I called them a
+latent concern rather than a demonstrated defect, on the grounds that
+`share_links.code` carries a unique constraint, and I queued them.
 
-Rule 9 says fix every defect you find. I did not fix these, and the reasoning is:
-they are a latent concern rather than a demonstrated defect, because
-`share_links.code` carries a unique constraint and a collision that slips a
-silent check is refused by the database rather than minted twice. I have not
-driven a case where they produce a wrong outcome, and under rule 10 I will not
-claim they do.
+**That reasoning only covered two of the eight.** The unique constraint does
+catch a collision that slips the minting check. It has nothing to say about the
+other six, and reading them one at a time found a worse one than the one I had
+reasoned about:
 
-**The consequence to state plainly:** it is also why the new guard names four
-files instead of `src/lib/broadcast`. Adding the directory would have pulled in
-the poster and social-card renderers, which are red on the same clause, and a
-guard that cannot go green is a guard somebody switches off. So the narrower
-scope is a real limitation of this item's guard, not a neutral design choice, and
-it is written into the guard's own header and into `REVIEW-QUEUE-B.md`.
+- **The lookup for an existing link.** A failed read answered "no such link" and
+  the lines below MINTED A SECOND CODE. This module's own comment on
+  `readExternalCodesForDraft` already states why that is the worst outcome
+  available here: a poster on a wall and the card beside it would carry different
+  codes and one event's clicks would land in two buckets, splitting the only
+  measurement these events produce. That is a demonstrated defect, not a latent
+  one, and the drive for THIS item goes through that very function, because every
+  event line in the digest is a tracked short link.
+- **The destination update** fell through to the stale row, so a poster kept
+  pointing at a page the organiser had moved away from.
+- **Both de-duplication checks** recorded the event anyway on a failed read,
+  which re-introduces the exact defect their own header records: a click count
+  that is not a count of people.
+
+All eight are fixed, each one argued in place because each is a DIRECTION rather
+than a tidy-up. No call site changed: every one of the nine callers already
+handles `null`.
+
+**And the limitation shrank with it.** `share-links.ts` is now IN the guard's
+scope rather than a declared exclusion, with an eighth drill that puts one
+discard back and proves the guard judges that file. The remaining exclusion is
+the poster and social-card renderers only, which is a smaller and more honest
+claim than the one I first made.
 
 ### Finding 3. TWO CLAIMS IN MY OWN REPORT WERE UNTESTED WHEN I FIRST WROTE THEM
 
@@ -253,10 +270,17 @@ a per-invocation cap and making the run resumable, instead of removing the cap.
 
 ## Phase 4: the gate
 
-Requirements: 49. Met: 46. Not applicable: 2 (39, 33 not triggered). Deviated: 1
-(27). Partial: 0. Not met: 0.
+Requirements: 49. Met: 46. Not applicable or not triggered: 2 (33, 39).
+Deviated: 1 (27). Partial: 0. Not met: 0.
+
+Row 9 was PARTIAL at the first adjudication and was FINISHED rather than
+reported around, in commit `56d63fa8`, which is what the skill says the default
+is. The first adjudication is kept above rather than overwritten.
 
 Unresolved adversarial findings: **1**, finding 1, which is a founder judgement
-call rather than work remaining. Findings 2 to 5 are resolved: 2 by an explicit
-deferral with its reason and a queue entry, 3 by driving both claims during this
-audit, 4 and 5 by fixes inside the item.
+call about a rule he wrote rather than work remaining. Findings 2 to 5 are
+resolved: 2 by fixing all eight reads and widening the guard, 3 by driving both
+untested claims during this audit, 4 and 5 by fixes inside the item.
+
+Commits: `76382fd1` (the item), `6be31331` (this ledger), `56d63fa8` (finding 2
+finished).

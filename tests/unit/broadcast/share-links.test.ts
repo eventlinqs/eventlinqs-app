@@ -23,6 +23,7 @@ vi.mock('@/lib/supabase/admin', () => ({
 import {
   buildShortUrl,
   generateShareCode,
+  getOrCreateShareLink,
   isShareChannel,
   isValidShareCode,
   recordShareLinkEvent,
@@ -176,5 +177,97 @@ describe('conversion and view recording integrity', () => {
     )
     expect(ok).toBe(true)
     expect(inserted).toBe(false)
+  })
+})
+
+/**
+ * A READ THAT FAILED IS NOT AN ANSWER.
+ *
+ * Eight reads in this module took `data` and not `error`, so a dropped socket
+ * was indistinguishable from a fact. Each test below pins the DIRECTION the
+ * corrected read fails in, because on this module every one of them is a
+ * choice and none of them is obvious.
+ */
+describe('a failed read never reads as a fact', () => {
+  const failing = (message: string) => ({ data: null, error: { message } })
+
+  test('a failed lookup answers null rather than minting a SECOND link for the same event', async () => {
+    let inserted = false
+    const client = {
+      from: () => {
+        const chain = {
+          select: () => chain,
+          eq: () => chain,
+          is: () => chain,
+          limit: () => chain,
+          maybeSingle: async () => failing('TypeError: fetch failed'),
+          insert: () => {
+            inserted = true
+            return chain
+          },
+          single: async () => ({ data: null, error: null }),
+        }
+        return chain
+      },
+    } as unknown as BroadcastClient
+
+    const link = await getOrCreateShareLink(
+      { eventId: 'event-1', channel: 'digest' },
+      { client },
+    )
+    // Null costs one render an untracked URL, and every caller handles it. The
+    // old behaviour minted a second code, so a poster and the card beside it
+    // carried different codes and the event's clicks split into two buckets.
+    expect(link).toBeNull()
+    expect(inserted).toBe(false)
+  })
+
+  test('a failed de-duplication check does NOT record, so a click count stays a count of people', async () => {
+    let inserted = false
+    const client = {
+      from: () => {
+        const chain = {
+          select: () => chain,
+          eq: () => chain,
+          gte: () => chain,
+          limit: () => chain,
+          maybeSingle: async () => failing('upstream connect error'),
+          insert: async () => {
+            inserted = true
+            return { error: null }
+          },
+        }
+        return chain
+      },
+    } as unknown as BroadcastClient
+
+    const ok = await recordShareLinkEvent(
+      { linkId: 'link-1', kind: 'click', visitorHash: 'abc123' },
+      { client },
+    )
+    // The two directions are one click lost, or a number that over-states an
+    // organiser's reach. This module already chose the smaller number once, on
+    // measured evidence, so a failure takes the same side.
+    expect(ok).toBe(true)
+    expect(inserted).toBe(false)
+  })
+
+  test('a conversion is unaffected, because it is capped by an index rather than by a read', async () => {
+    let inserted = false
+    const client = {
+      from: () => ({
+        insert: async () => {
+          inserted = true
+          return { error: null }
+        },
+      }),
+    } as unknown as BroadcastClient
+
+    const ok = await recordShareLinkEvent(
+      { linkId: 'link-1', kind: 'conversion', orderId: 'order-1' },
+      { client },
+    )
+    expect(ok).toBe(true)
+    expect(inserted).toBe(true)
   })
 })
