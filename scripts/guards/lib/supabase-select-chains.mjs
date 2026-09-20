@@ -74,7 +74,33 @@ export function selectChainsIn(path) {
       // The chain continues only across whitespace and a dot. Anything else,
       // including a comma, a closing bracket or an operator, ends this read.
       const rest = code.slice(cursor)
-      const link = rest.match(/^\s*\.\s*([A-Za-z0-9_]+)\s*\(/)
+      let link = rest.match(/^\s*\.\s*([A-Za-z0-9_]+)\s*\(/)
+
+      /*
+       * A CHAIN THAT CONTINUES AFTER A WRAPPER CLOSES IS STILL ONE CHAIN.
+       *
+       * `applyPublicEventVisibility(supabase.from('events').select(...))`
+       *     .order('published_at', ...)
+       *     .limit(1)
+       *     .maybeSingle()
+       *
+       * The builder is handed to a composer that returns it, and the bound is
+       * applied to what comes back. Stopping at the `)` reported this read as
+       * UNBOUNDED when `.limit(1).maybeSingle()` is four lines further down and
+       * plainly visible to any reader. A guard that cannot see a bound that IS
+       * in the source produces false positives on a correct file, and a guard
+       * that fires on correct code is a guard somebody switches off.
+       *
+       * So a run of closing parens and commas is stepped over, but ONLY when a
+       * method call follows it: any other continuation ends the read exactly as
+       * it did before. Found on 20 September 2026 by
+       * organiser-money-has-one-source, on src/lib/organisers/newest-published-event.ts.
+       */
+      if (!link) {
+        const bridged = rest.match(/^[\s,)]*?\)\s*\.\s*([A-Za-z0-9_]+)\s*\(/)
+        if (bridged) link = bridged
+      }
+
       if (!link) break
       methods.push(link[1])
       const open = cursor + link[0].length - 1

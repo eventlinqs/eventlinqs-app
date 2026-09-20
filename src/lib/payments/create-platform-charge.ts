@@ -6,6 +6,7 @@ import {
   computeOrganiserTransferCents,
   getCurrencyForCountry,
 } from './application-fee'
+import { recordOrderDestination } from './order-destination'
 import { statementDescriptorSuffix } from '@/lib/stripe/business-profile'
 import { verifyRowFields } from './required-fields'
 import type { FeeBreakdown } from './payment-calculator'
@@ -95,6 +96,36 @@ export async function createPlatformCharge(
   const eventTitle = await loadEventTitle(input.eventId ?? null)
   const descriptorSuffix =
     statementDescriptorSuffix(eventTitle) ?? statementDescriptorSuffix(org.name)
+
+  /*
+   * MONEY FIX A4. WHERE THIS MONEY IS OWED IS WRITTEN DOWN BEFORE THE CHARGE
+   * EXISTS, AND THE ORDERING IS THE FAIL-CLOSED PART.
+   *
+   * Under the funds-holding model the buyer is charged on the PLATFORM account
+   * by design, so no Stripe field on the charge can carry the organiser. On
+   * 10 September 2026 two charges for the Afro-Fusion Music Showcase settled
+   * that way and paid out to the platform owner's personal bank, and nothing
+   * anywhere recorded that those orders were owed onward to anybody. The
+   * organiser's connected account was live, enabled, and created by this
+   * platform. Reconstructing who was owed what meant reading Stripe by hand.
+   *
+   * Written FIRST, so a record that cannot be written means there is no charge
+   * rather than a charge nobody can attribute. A PaymentIntent that is never
+   * created costs nobody anything; the other way round cost a real organiser
+   * A$52.48 and three days of not knowing.
+   *
+   * The order is found through `transferGroup`, which is the order id at all
+   * three checkout call sites and is the same value the settlement
+   * reconciliation matches on. recordOrderDestination insists the update
+   * touched exactly one row, because an UPDATE that matches nothing succeeds.
+   */
+  await recordOrderDestination({
+    orderId: input.transferGroup,
+    connectedAccountId,
+    totalCents: input.fees.total_cents,
+    organiserAmountDueCents: organiserTransferCents,
+    currency: input.fees.currency,
+  })
 
   const intent = await input.gateway.createPaymentIntent({
     amount_cents: input.fees.total_cents,

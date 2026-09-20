@@ -9,7 +9,7 @@ import { chunkInFilterValues } from '@/lib/supabase/in-chunks'
 import { byOrderReadingOrder } from '@/lib/reporting/ordering'
 import { OrderTable } from '@/components/orders/order-table'
 import { RevenueSummary } from '@/components/orders/revenue-summary'
-import { aggregateGmv } from '@/lib/admin/analytics'
+import { PAID_ORDER_STATUSES, summariseEventRevenue } from '@/lib/organisers/event-revenue'
 import type { Order } from '@/types/database'
 import { resolveEventAccess } from '@/lib/organisations/event-access'
 
@@ -192,10 +192,12 @@ export default async function EventOrdersPage({ params }: Props) {
     }
   })
 
-  // Stats. Paid orders are the ones where a sale occurred (confirmed,
-  // partially_refunded, refunded); pending/cancelled/expired never count.
+  // Stats. Paid orders are the ones where a sale occurred; pending, cancelled
+  // and expired never count. The set is NAMED rather than written out again:
+  // the edit screen wrote its own version of this list and got it wrong, which
+  // is the whole reason the constant exists.
   const confirmedOrders = ordersData.filter(o =>
-    ['confirmed', 'partially_refunded', 'refunded'].includes(o.status)
+    (PAID_ORDER_STATUSES as readonly string[]).includes(o.status)
   )
 
   // PAY-02: value revenue NET of completed refunds, via the same audited
@@ -223,19 +225,24 @@ export default async function EventOrdersPage({ params }: Props) {
     )
     eventRefunds.push(...refundRows)
   }
-  const gmv = aggregateGmv(
-    confirmedOrders.map(o => ({
-      total_cents: o.total_cents,
-      platform_fee_cents: o.platform_fee_cents,
-      status: o.status,
-    })),
-    eventRefunds,
-  )
-  const grossRevenue = gmv.grossGmvCents
-  const refundedRevenue = gmv.refundedCents
-  const totalRevenue = gmv.netGmvCents // net of refunds - shown on the Revenue card
-  const totalPlatformFees = confirmedOrders.reduce((s, o) => s + o.platform_fee_cents, 0)
-  const totalProcessingFees = confirmedOrders.reduce((s, o) => s + o.processing_fee_cents, 0)
+  /*
+   * SUMMARISED BY THE FUNCTION THE EDIT SCREEN ALSO CALLS.
+   *
+   * This screen and /dashboard/events/[id]/edit render the same
+   * `RevenueSummary` for the same event, and the edit screen used to compute
+   * its numbers itself over a different status set with no refunds netted, so
+   * the two disagreed. The arithmetic now has ONE home
+   * (src/lib/organisers/event-revenue.ts) and both screens pass it their own
+   * rows, which is what makes agreement structural rather than a coincidence
+   * somebody has to keep re-checking. `aggregateGmv` is still what does the
+   * counting; it is simply reached through the shared summariser.
+   */
+  const revenue = summariseEventRevenue(confirmedOrders, eventRefunds, ordersData[0]?.currency ?? 'AUD')
+  const grossRevenue = revenue.grossCents
+  const refundedRevenue = revenue.refundedCents
+  const totalRevenue = revenue.netCents // net of refunds - shown on the Revenue card
+  const totalPlatformFees = revenue.platformFeeCents
+  const totalProcessingFees = revenue.processingFeeCents
   const ticketsSold = confirmedOrders.reduce((s, o) => {
     return s + o.order_items.filter(i => i.item_type === 'ticket').reduce((ss, i) => ss + i.quantity, 0)
   }, 0)

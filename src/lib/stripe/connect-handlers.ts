@@ -73,6 +73,18 @@ export async function handleConnectAccountUpdated(
     >,
     stripe_onboarding_complete: fullyOnboarded,
     payout_status: adminHold ? 'on_hold' : account.payouts_enabled ? 'active' : 'restricted',
+    /*
+     * MONEY FIX A3 LAYER TWO. This handler is a VERIFICATION: Stripe has just
+     * told us what the account is, and these columns are being written from it.
+     * Stamping it here is what keeps the publish gate's freshness rule cheap in
+     * normal operation, because an account whose webhooks are arriving never
+     * goes stale and never costs a publish an extra Stripe round trip.
+     *
+     * It follows that an account whose stamp HAS gone stale is precisely one
+     * whose webhooks have stopped, which is the case the freshness rule exists
+     * for.
+     */
+    stripe_status_verified_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
   if (payoutDestination) {

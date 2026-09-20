@@ -2,6 +2,13 @@ import 'server-only'
 import type Stripe from 'stripe'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { retrieveAccount, isFullyOnboarded } from './connect'
+// The SALE GATE's own predicate, imported rather than re-derived, so the
+// reconciler and the checkout can never disagree about the same row.
+import {
+  describeSaleBlockers,
+  isOrganiserSellable,
+  verifyOrgSaleFields,
+} from '@/lib/payments/sale-status'
 
 /**
  * The ONE place that decides what the platform believes about a connected
@@ -60,7 +67,9 @@ import { retrieveAccount, isFullyOnboarded } from './connect'
  * ─────────────────────────────────────────────────────────────────────────────
  *
  * It does not touch a single charge, payout, fee or refund. It writes only the six
- * derived Stripe-state columns plus `payout_status`. It never reads or writes
+ * derived Stripe-state columns, plus `payout_status` and, since MONEY FIX A3 layer
+ * two, `stripe_status_verified_at`, which records WHEN those columns were last
+ * written from a live read. It never reads or writes
  * `orders`, `payments`, `payouts`, `pricing_rules`, `organiser_balance_ledger` or
  * any amount. The funds-holding engine is untouched by design: this is a
  * state-mirroring module, not a money module.
@@ -107,8 +116,32 @@ export type ReconcileOutcome =
       ok: true
       /** True when a column actually changed, so callers can avoid needless writes. */
       changed: boolean
-      /** Whether the organisation may sell right now, per Stripe. */
+      /** Whether the organisation may sell right now, per Stripe. LOOSER than the sale gate. */
       canSell: boolean
+      /**
+       * The SALE GATE's own verdict on the row this call wrote: the five-column
+       * `isOrganiserSellable`, not the two-condition `canSell` above.
+       *
+       * They are both here because they answer different questions and a caller
+       * that picked the wrong one produced a real defect: the publish gate
+       * granted on `canSell`, which asks nothing about payouts_enabled or the
+       * settlement currency, so an organiser could publish a paid event the
+       * checkout would then refuse to sell.
+       */
+      sellable: boolean
+      /**
+       * WHY the sale gate said no, in words an organiser can act on, empty when
+       * it said yes.
+       *
+       * It exists because `canSell` and `sellable` can DISAGREE, and the cases
+       * where they do are exactly the ones nothing else describes: payouts not
+       * enabled, a payout status that is not active, or a country EventLinqs
+       * cannot settle in. Stripe reports nothing outstanding for any of them, so
+       * without this the refusal would read "Stripe has not enabled payouts on
+       * this account yet and has not said what is outstanding", which names the
+       * wrong party and gives the organiser nowhere to go.
+       */
+      sellableBlockers: string[]
       payoutStatus: PayoutStatus
       /** Empty when Stripe is asking for nothing. */
       outstanding: OutstandingRequirement[]
@@ -246,6 +279,12 @@ export async function reconcileConnectedAccount(
       ok: true,
       changed: repair.changed,
       canSell: false,
+      // No account at all, so the sale gate's first condition already fails.
+      // Stated rather than inherited from canSell: the two answer different
+      // questions everywhere else in this file and must not start agreeing by
+      // accident here.
+      sellable: false,
+      sellableBlockers: ['no Stripe account is connected'],
       payoutStatus: 'unset',
       outstanding: [],
       disabledReason: null,
@@ -288,12 +327,35 @@ export async function reconcileConnectedAccount(
     stripe_capabilities: next.stripe_capabilities,
     stripe_requirements: next.stripe_requirements,
     payout_status: payoutStatus,
+    /*
+     * MONEY FIX A3 LAYER TWO. WHEN this row was last written from a live read
+     * of the account, written on EVERY successful read and not only on a
+     * changed one.
+     *
+     * The five sale columns are a CACHE of what Stripe last said, and nothing
+     * recorded when it said it, so a row that said "enabled" six weeks ago and
+     * has heard nothing since was indistinguishable from one confirmed a minute
+     * ago. A webhook that stops arriving changes nothing on screen and raises
+     * nothing anywhere.
+     *
+     * UNCHANGED IS THE COMMONEST CASE THERE IS, so stamping only inside the
+     * changed branch below would let the date age out while the verification
+     * was happening daily, which is the exact opposite of what this column is
+     * for. It is therefore excluded from the change test on purpose.
+     */
+    stripe_status_verified_at: new Date().toISOString(),
   }
   // Only overwrite the bank destination when Stripe reports one. A transient
   // response without external_accounts expanded must not erase a known account.
   if (next.payout_destination) payload.payout_destination = next.payout_destination
 
+  /*
+   * WHAT COUNTS AS A CHANGE IS THE STATE, NEVER THE STAMP. The stamp differs on
+   * every read by construction, so including it would make `changed` always
+   * true and the word would stop meaning anything to the callers that read it.
+   */
   const changed = Object.keys(payload).some((k) => {
+    if (k === 'stripe_status_verified_at') return false
     const before = (org as Record<string, unknown>)[k]
     const after = payload[k]
     if (typeof before === 'object' || typeof after === 'object') {
@@ -302,27 +364,59 @@ export async function reconcileConnectedAccount(
     return before !== after
   })
 
-  if (changed) {
-    payload.updated_at = new Date().toISOString()
-    const { error: updateError } = await client
-      .from('organisations')
-      .update(payload)
-      .eq('id', organisationId)
-    if (updateError) {
-      console.error('[reconcile-connect] update failed', { organisationId, updateError })
-      return {
-        ok: false,
-        reason: 'stripe_error',
-        message: 'Could not save the refreshed Stripe status. Try again in a moment.',
-      }
+  // THE WRITE IS UNCONDITIONAL NOW, and it is one small UPDATE on a path that
+  // has just made a Stripe round trip, so the cost is noise against the call it
+  // follows. `updated_at` still moves only when something actually changed, so
+  // a reader of that column sees what it has always seen.
+  if (changed) payload.updated_at = new Date().toISOString()
+  const { error: updateError } = await client
+    .from('organisations')
+    .update(payload)
+    .eq('id', organisationId)
+  if (updateError) {
+    console.error('[reconcile-connect] update failed', { organisationId, updateError })
+    return {
+      ok: false,
+      reason: 'stripe_error',
+      message: 'Could not save the refreshed Stripe status. Try again in a moment.',
     }
   }
+
+  /*
+   * MONEY FIX A3 LAYER TWO. THE SAME PREDICATE THE SALE GATE USES, COMPUTED ON
+   * THE STATE THIS FUNCTION JUST WROTE.
+   *
+   * `canSell` below is LOOSER than the sale gate: it asks about
+   * charges_enabled and the payout status and asks nothing about
+   * payouts_enabled or the settlement currency. That is fine for what it was
+   * written for and wrong as a publish verdict, because an organiser it
+   * approves can still be refused at checkout, which means promoting a night
+   * that cannot take a cent. Both are returned, named for what they are, so no
+   * caller has to guess which question it is asking.
+   *
+   * Verified rather than cast: verifyOrgSaleFields is the only way to obtain
+   * the shape isOrganiserSellable accepts, and the object below is built with
+   * all five keys, so an incomplete verdict here would be a programming error
+   * and is reported as not sellable rather than assumed away.
+   */
+  const verdict = verifyOrgSaleFields({
+    stripe_account_id: next.stripe_account_id,
+    stripe_charges_enabled: next.stripe_charges_enabled,
+    stripe_payouts_enabled: next.stripe_payouts_enabled,
+    stripe_account_country: next.stripe_account_country,
+    payout_status: payoutStatus,
+  })
+
+  const sellable = verdict.complete ? isOrganiserSellable(verdict.org) : false
 
   return {
     ok: true,
     changed,
     // Selling needs charges enabled AND a payout status that is not withheld.
     canSell: next.stripe_charges_enabled && payoutStatus !== 'restricted' && payoutStatus !== 'on_hold',
+    /** The SALE GATE's verdict on the row this call just wrote. */
+    sellable,
+    sellableBlockers: sellable ? [] : describeSaleBlockers(next, payoutStatus),
     payoutStatus,
     outstanding,
     disabledReason,

@@ -10,8 +10,8 @@ import { isFlagEnabled } from '@/lib/flags'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
-import type { EventCategory } from '@/types/database'
 import { ORG_SALE_FIELDS_SELECT, isOrganiserSellable, verifyOrgSaleFields } from '@/lib/payments/sale-status'
+import { readEventCategories, readOrganisationVenues } from '@/lib/organisers/event-form-options'
 
 export default async function CreateEventPage({
   searchParams,
@@ -136,24 +136,19 @@ export default async function CreateEventPage({
       ? isOrganiserSellable(saleVerdict.org)
       : false
 
-  const { data: categories } = await supabase
-    .from('event_categories')
-    .select('*')
-    .eq('is_active', true)
-    .order('sort_order') as { data: EventCategory[] | null }
-
-  const { data: venuesWithMaps } = await supabase
-    .from('venues')
-    .select('id, name, seat_maps(id, name, total_seats)')
-    .eq('organisation_id', org.id)
-    .eq('is_active', true)
-    .order('name')
-
-  const venues = (venuesWithMaps ?? []).map(v => ({
-    id: v.id,
-    name: v.name,
-    seat_maps: (v.seat_maps ?? []).filter((m: { id: string; name: string; total_seats: number }) => m),
-  }))
+  /*
+   * THE FORM'S OPTION LISTS, READ IN FULL AND LOUDLY.
+   *
+   * These were the same two reads the EDIT form carried, byte for byte, and
+   * both discarded their error and stated no bound. A refused read drew a
+   * category select with no options on the one form the platform most needs an
+   * organiser to reach the end of. The shared readers page and throw; see
+   * src/lib/organisers/event-form-options.ts.
+   */
+  const [categories, venues] = await Promise.all([
+    readEventCategories(supabase),
+    readOrganisationVenues(supabase, org.id),
+  ])
 
   return (
     <div>
@@ -178,7 +173,7 @@ export default async function CreateEventPage({
       <EventForm
         userId={user.id}
         organisationId={org.id}
-        categories={categories ?? []}
+        categories={categories}
         venues={venues}
         launchKitEnabled={await isFlagEnabled('launch_kit')}
         lineupEnabled={await isFeatureEnabled('broadcast_artists')}

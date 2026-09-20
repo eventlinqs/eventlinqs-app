@@ -3760,6 +3760,85 @@ const DRILLS = [
     expect: 'judges nothing',
   },
   /*
+   * MONEY FIX A3 LAYER TWO, the four drills for clause five.
+   *
+   * The first is the defect itself. The five sale columns are a CACHE of what
+   * Stripe last said and nothing recorded WHEN, so a row that said "enabled"
+   * six weeks ago and has heard nothing since was accepted exactly like one
+   * confirmed a minute ago. The event publishes, tickets sell, and the first
+   * person to find out is the organiser whose transfer fails after the night.
+   */
+  {
+    name: 'a paid event publishes on a cached Stripe posture of any age again (the A3 layer two defect)',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/events/publish-gate.ts',
+    find: 'if (reconcile === null || connectVerificationIsFresh(verifiedAt)) {',
+    replace: 'if (reconcile === null || verifiedAt !== undefined) {',
+    expect: 'never calls connectVerificationIsFresh',
+  },
+  {
+    name: 'the publish gate stops reading the date its cached posture was verified',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/events/publish-gate.ts',
+    find: ".select(`${ORG_SALE_FIELDS_SELECT}, stripe_status_verified_at`)",
+    replace: '.select(ORG_SALE_FIELDS_SELECT)',
+    expect: 'does not SELECT stripe_status_verified_at',
+  },
+  {
+    name: 'the publish grant goes back to canSell, which the checkout would then refuse',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/events/publish-gate.ts',
+    find: 'if (fresh.sellable) return { ok: true }',
+    replace: 'if (fresh.canSell) return { ok: true }',
+    expect: "grants a publish on reconcile's canSell",
+  },
+  {
+    name: 'reading the account from Stripe stops recording that it was read',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/stripe/reconcile-connect.ts',
+    find: '    stripe_status_verified_at: new Date().toISOString(),\n  }',
+    replace: '  }',
+    expect: 'never writes stripe_status_verified_at into the payload BEFORE the change test',
+  },
+  /*
+   * MONEY FIX A4, the four drills for clause six.
+   *
+   * The first is the Afro-Fusion failure itself: two charges settled to the
+   * platform account with nothing anywhere recording who they belonged to.
+   */
+  {
+    name: 'a ticket charge stops recording where its money is owed (the Afro-Fusion failure)',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/create-platform-charge.ts',
+    find: '  await recordOrderDestination({',
+    replace: '  await Promise.resolve({',
+    expect: "does not record where this order's money is owed",
+  },
+  {
+    name: 'the order record loses one of the four facts A4 asks for',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/order-destination.ts',
+    find: '    destination_recorded_at: now.toISOString(),',
+    replace: '    recorded_at: now.toISOString(),',
+    expect: 'the order record is missing destination_recorded_at',
+  },
+  {
+    name: 'the record stops insisting it touched exactly one order, so an UPDATE matching nothing passes',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/lib/payments/order-destination.ts',
+    find: 'if (!Array.isArray(data) || data.length !== 1) {',
+    replace: 'if (!Array.isArray(data)) {',
+    expect: 'does not assert that exactly one order row was updated',
+  },
+  {
+    name: 'a checkout call site stops handing the charge its own order id',
+    guard: `${GUARDS}/funds-reach-the-organiser.mjs`,
+    file: 'src/app/actions/squad-checkout.ts',
+    find: '      transferGroup: order_id,',
+    replace: '      transferGroup: squad.id,',
+    expect: 'pass transferGroup: order_id 2 time(s), not 3',
+  },
+  /*
    * MONEY FIX B3, the five drills for every-message-has-a-declared-recipient.
    *
    * The first two are the defect itself from both directions: an organiser
@@ -7885,6 +7964,75 @@ const DRILLS = [
     find: '  const { data: existing, error: lookupError } = await lookup.maybeSingle()',
     replace: '  const { data: existing } = await lookup.maybeSingle()',
     expect: 'indistinguishable from an answer',
+  },
+
+  /*
+   * organiser-money-has-one-source (lane B, 20 September 2026), five drills,
+   * one for each way the defect was true.
+   *
+   * The edit screen rendered the same RevenueSummary as the orders screen from
+   * its own unbounded, unordered, error-discarding read of one status. Each
+   * drill below puts back exactly one of those properties, because the guard
+   * carries three rules and a rule nobody has watched fail is a rule nobody has
+   * tested.
+   */
+  {
+    name: 'the revenue read on the edit screen loses its bound',
+    guard: `${GUARDS}/organiser-money-has-one-source.mjs`,
+    file: 'src/lib/organisers/event-revenue.ts',
+    find: "        .order('id', { ascending: true })\n        .range(from, to) as unknown as PromiseLike<{\n        data: (EventRevenueOrderRow & { id: string })[] | null",
+    replace: " as unknown as PromiseLike<{\n        data: (EventRevenueOrderRow & { id: string })[] | null",
+    expect: 'reads orders with no bound',
+  },
+  {
+    name: 'the refund read pages without the order that makes paging deterministic',
+    guard: `${GUARDS}/organiser-money-has-one-source.mjs`,
+    file: 'src/lib/organisers/event-revenue.ts',
+    find: "          .in('order_id', chunk)\n          .order('id', { ascending: true })\n          .range(from, to)",
+    replace: "          .in('order_id', chunk)\n          .range(from, to)",
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE SECOND COPY OF THE ARITHMETIC, which is what made the two screens
+     * disagree. Bounding the read would not have fixed it and did not.
+     */
+    name: 'the edit screen goes back to summing the takings itself',
+    guard: `${GUARDS}/organiser-money-has-one-source.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/edit/page.tsx',
+    find: '  const existingStreamUrl = await readStreamLink(supabase, id)',
+    replace:
+      '  const rows: { total_cents: number }[] = []\n' +
+      '  const grossCents = rows.reduce((s, o) => s + o.total_cents, 0)\n' +
+      '  void grossCents\n' +
+      '  const existingStreamUrl = await readStreamLink(supabase, id)',
+    expect: 'sums total_cents itself',
+  },
+  {
+    /*
+     * A SCREEN THAT DRAWS THE CARD WITHOUT REACHING THE ONE SOURCE. This is the
+     * defect in its original form: the component was already shared, and only
+     * the number behind it was not.
+     */
+    name: 'a screen renders the revenue card without reaching the module that owns the sum',
+    guard: `${GUARDS}/organiser-money-has-one-source.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/orders/page.tsx',
+    find: "import { PAID_ORDER_STATUSES, summariseEventRevenue } from '@/lib/organisers/event-revenue'",
+    replace: "const PAID_ORDER_STATUSES = ['confirmed', 'partially_refunded', 'refunded'] as const\nconst summariseEventRevenue = (..._a: unknown[]) => ({}) as never",
+    expect: 'without reaching src/lib/organisers/event-revenue.ts',
+  },
+  {
+    /*
+     * THE SCOPE ITSELF. A guard whose directory list has been renamed away
+     * scans nothing and reports PASS, which is the failure mode the list is
+     * checked for existence to prevent.
+     */
+    name: 'the guard scope names a directory that is not there',
+    guard: `${GUARDS}/organiser-money-has-one-source.mjs`,
+    file: 'scripts/guards/organiser-money-has-one-source.mjs',
+    find: "  'src/lib/organisers',",
+    replace: "  'src/lib/organisers-renamed-away',",
+    expect: 'a scope that scans nothing reports PASS',
   },
 ]
 
