@@ -111,9 +111,25 @@ describe('the squad payment page makes the same distinction', () => {
  * merely logged again.
  */
 const DOOR = "from '@/lib/supabase/read-or-throw'"
+/**
+ * `times` IS A FLOOR, NOT AN EQUALITY, and it was an equality until
+ * 21 September 2026.
+ *
+ * The count is over the WHOLE FILE, so an exact match fails the moment a
+ * DIFFERENT read in the same module is routed through the door correctly. That
+ * is what happened: LB-GIGWHOLE sent `isPairBlocked` and `fetchRequestById` in
+ * `src/lib/marketplace/gigs.ts` through `readOrThrow`, the file went from one
+ * call to three, and this test failed because MORE reads had been made safe.
+ *
+ * A test that goes red when the code improves teaches people to edit the test,
+ * which is how an assertion stops meaning anything. Each number below is the
+ * count of decisive reads the module is KNOWN to need, and more is never a
+ * regression.
+ */
 const usesTheDoor = (source: string, times: number) => {
   expect(source).toContain(DOOR)
-  expect(source.match(/readOrThrow\(/g) ?? [], `expected ${times} readOrThrow call(s)`).toHaveLength(times)
+  const calls = (source.match(/readOrThrow\(/g) ?? []).length
+  expect(calls, `expected at least ${times} readOrThrow call(s), found ${calls}`).toBeGreaterThanOrEqual(times)
 }
 
 describe('the one door: readOrThrow', () => {

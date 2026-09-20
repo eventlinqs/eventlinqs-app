@@ -1,3 +1,6 @@
+import { fetchPickerCities } from '@/lib/marketplace/cities'
+import { readEveryRow } from '@/lib/supabase/read-every-row'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
@@ -34,14 +37,20 @@ export default async function OrganiserGigsPage() {
   // ORDER BY, so which business's gigs an owner of several was shown could change
   // between page loads. Oldest-first matches the resolver every other dashboard
   // surface now uses, so the same business is shown here as there.
+  //
+  // AND A FAILED READ IS NOT AN ABSENT BUSINESS. The error was discarded, so a
+  // blink drew the "Become an organiser" screen at an approved organiser and
+  // hid every gig they had posted behind a signup they had already done.
   const admin = createAdminClient()
-  const { data: org } = await admin
-    .from('organisations')
-    .select('id, name, status')
-    .eq('owner_id', user.id)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
+  const org = await readOrThrow('organiser-gig-board-organisation', () =>
+    admin
+      .from('organisations')
+      .select('id, name, status')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  )
 
   if (!org || org.status !== 'active') {
     return (
@@ -75,21 +84,44 @@ export default async function OrganiserGigsPage() {
       .order('start_date', { ascending: true })
       .limit(50),
   ])
+  // A FAILED READ IS NOT AN ORGANISER WITH NO EVENTS. The error was dropped, so
+  // a blink emptied the "link an event" picker on this form, and an empty
+  // picker is indistinguishable from an organiser who has published nothing.
+  if (eventsResult.error) throw new Error(`the organiser's linkable events could not be read: ${eventsResult.error.message}`)
   const events = (eventsResult.data ?? []) as { id: string; title: string }[]
 
-  const { data: citiesData } = await admin.from('cities').select('slug, name').order('tier').order('name')
-  const cities = (citiesData ?? []) as { slug: string; name: string }[]
+  const cities = await fetchPickerCities(admin)
 
-  // Application counts per gig, one query.
+  /*
+   * APPLICATION COUNTS PER GIG, AND THE CEILING IS SHARED ACROSS ALL OF THEM.
+   *
+   * This was one unbounded read with its error discarded, and both halves cost
+   * the same thing. Supabase caps a RESPONSE at 1,000 rows, not a gig, so the
+   * cap was shared across every gig in the `in` list at once: an organiser with
+   * a busy board would have seen several gigs each reporting a fraction of
+   * their applicants, with no order to say which fraction. And a failed read
+   * rendered every gig as "0 applicants", which is the number an organiser acts
+   * on by not opening the gig. The performers who applied wait for an answer
+   * that was never coming.
+   *
+   * Paged on the primary key so the order is total, and the `in` list is
+   * chunked by the pager rather than sent whole.
+   */
   const gigIds = gigs.map((g) => g.id)
   const counts = new Map<string, number>()
   if (gigIds.length > 0) {
-    const { data: apps } = await admin
-      .from('gig_applications')
-      .select('gig_id')
-      .in('gig_id', gigIds)
-      .neq('status', 'withdrawn')
-    for (const a of (apps ?? []) as { gig_id: string }[]) {
+    const apps = await readEveryRow<{ gig_id: string }>(
+      'the applications behind the gig counts on this screen',
+      (from, to) =>
+        admin
+          .from('gig_applications')
+          .select('gig_id')
+          .in('gig_id', gigIds)
+          .neq('status', 'withdrawn')
+          .order('id', { ascending: true })
+          .range(from, to),
+    )
+    for (const a of apps) {
       counts.set(a.gig_id, (counts.get(a.gig_id) ?? 0) + 1)
     }
   }

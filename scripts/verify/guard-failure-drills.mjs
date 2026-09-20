@@ -8023,6 +8023,280 @@ const DRILLS = [
     replace: "  'src/lib/organisers-renamed-away',",
     expect: 'a scope that scans nothing reports PASS',
   },
+
+  /*
+   * a-marketplace-block-holds (lane B, 20 September 2026), seven drills, one per
+   * clause. Two plant the defect in its ORIGINAL form, which is the only way to
+   * know the guard would have caught the thing it was written for: the fourth
+   * restores `Boolean(data)` over a discarded error in the block check, and the
+   * seventh restores `billing_order: count ?? 0`.
+   */
+  {
+    name: 'the marketplace guard names a surface that is not there',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'scripts/guards/a-marketplace-block-holds.mjs',
+    find: "  'src/lib/marketplace/gigs.ts',",
+    replace: "  'src/lib/marketplace/gigs-renamed-away.ts',",
+    expect: 'would report PASS',
+  },
+  {
+    name: 'the organiser gig board reads its applicant counts unbounded again',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'src/app/(dashboard)/dashboard/gigs/page.tsx',
+    find: '    const apps = await readEveryRow<{ gig_id: string }>(',
+    replace: [
+      "    const { data: unbounded } = await admin",
+      "      .from('gig_applications')",
+      "      .select('gig_id')",
+      "      .in('gig_id', gigIds)",
+      '    void unbounded',
+      '    const apps = await readEveryRow<{ gig_id: string }>(',
+    ].join('\n'),
+    expect: 'reads gig_applications with no bound',
+  },
+  {
+    name: 'the organiser gig board goes back to discarding the error on its organisation read',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'src/app/(dashboard)/dashboard/gigs/page.tsx',
+    find: "  const org = await readOrThrow('organiser-gig-board-organisation', () =>",
+    replace: [
+      '  const { data: org } = await (async () =>',
+      '    await (async () =>',
+    ].join('\n'),
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT, RESTORED. This exact shape is what made a block stop
+     * holding for the length of any fault in one read.
+     */
+    name: 'the block check answers Boolean(data) over a discarded error again',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'src/lib/marketplace/gigs.ts',
+    find: "  const row = await readOrThrow('marketplace-block-check', () =>",
+    replace: [
+      '  const { data: row } = await (async () =>',
+      '    await (async () =>',
+    ].join('\n'),
+    expect: 'isPairBlocked no longer reads through readOrThrow',
+  },
+  {
+    name: 'the migration stops installing the block trigger on applications',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'supabase/migrations/20260920000060_a_block_holds_when_the_read_blinks.sql',
+    find: 'CREATE TRIGGER trg_marketplace_block_on_application',
+    replace: 'CREATE TRIGGER trg_marketplace_block_on_application_disabled',
+    expect: 'does not install trg_marketplace_block_on_application',
+  },
+  {
+    /*
+     * CLAUSE 6, THE WHOLE-TREE ONE. A fifth copy of the picker read is exactly
+     * how four bugs became four bugs in the first place.
+     */
+    name: 'a surface reads the city picker inline again',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'src/app/(dashboard)/dashboard/gigs/page.tsx',
+    find: '  const cities = await fetchPickerCities(admin)',
+    replace: [
+      "  const citiesResult = await admin.from('cities').select('slug, name').order('tier').order('name')",
+      "  const cities = (citiesResult.data ?? []) as { slug: string; name: string }[]",
+    ].join('\n'),
+    expect: 'reads the cities picker inline',
+  },
+  {
+    /*
+     * THE OTHER ORIGINAL DEFECT. Zero is the TOP of the bill, so a coalesced
+     * count printed a support act above the headliner.
+     */
+    name: 'accepting a booking guesses a position on the bill again',
+    guard: `${GUARDS}/a-marketplace-block-holds.mjs`,
+    file: 'src/app/actions/gigs.ts',
+    find: '          billing_order: count,',
+    replace: '          billing_order: count ?? 0,',
+    expect: 'writes billing_order from a coalesced count',
+  },
+
+  /*
+   * the-founding-invite-is-spent-once (lane B, 20 September 2026), six drills,
+   * one per clause. Two of them plant the defect in its ORIGINAL form, which is
+   * the only way to know the guard would have caught the thing it was written
+   * for: the fourth restores the direct claim_founding_spot call that put the
+   * consume and the claim in two transactions, and the fifth restores the
+   * unconditional cookie delete that threw away an unspent code.
+   */
+  {
+    name: 'the founding invite guard names a surface that is not there',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'scripts/guards/the-founding-invite-is-spent-once.mjs',
+    find: "  'src/lib/founding/invites.ts',",
+    replace: "  'src/lib/founding/invites-renamed-away.ts',",
+    expect: 'would report PASS',
+  },
+  {
+    name: 'the invites screen reads its list inline again, unbounded',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'src/app/(dashboard)/dashboard/invites/page.tsx',
+    find: '  const invites = org.is_founding',
+    replace: [
+      '  const { data: unbounded } = await admin',
+      "    .from('founding_invites')",
+      "    .select('code, city_slug, status, invitee_email, accepted_at, created_at')",
+      "    .eq('inviter_org_id', org.id)",
+      '  void unbounded',
+      '  const invites = org.is_founding',
+    ].join('\n'),
+    expect: 'reads founding_invites with no bound',
+  },
+  {
+    name: 'the invite action goes back to discarding the error on its organisation read',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'src/app/(dashboard)/dashboard/invites/actions.ts',
+    find: "  const org = await readOrThrow('founding-invite-issuer', () =>",
+    replace: [
+      '  const { data: org } = await (async () =>',
+      '    await (async () =>',
+    ].join('\n'),
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT, RESTORED. This exact call is what put the spot claim
+     * in a different transaction from the consume, so a fault on it left a
+     * single-use code spent and no spot granted.
+     */
+    name: 'the converter claims the founding spot in its own round trip again',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'src/lib/founding/invites.ts',
+    find: "  const { data, error } = await admin.rpc('accept_founding_invite', {",
+    replace: "  const { data, error } = await admin.rpc('claim_founding_spot', {",
+    expect: 'calls claim_founding_spot directly',
+  },
+  {
+    /*
+     * THE OTHER ORIGINAL DEFECT. The cookie used to be dropped on the line after
+     * a call whose result nobody read, so a conversion that wrote nothing still
+     * cost the organiser the only copy of their code.
+     */
+    name: 'the signup drops the invite cookie whether or not the code was spent',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'src/app/(dashboard)/dashboard/organisation/actions.ts',
+    find: '      if (outcome.consumed) {',
+    replace: '      if (true) {',
+    expect: 'without first establishing that the code was actually consumed',
+  },
+  {
+    name: 'the database allowance and the TypeScript allowance drift apart',
+    guard: `${GUARDS}/the-founding-invite-is-spent-once.mjs`,
+    file: 'supabase/migrations/20260920000050_a_founding_invite_is_spent_once.sql',
+    find: '  v_allowance CONSTANT INTEGER := 5;',
+    replace: '  v_allowance CONSTANT INTEGER := 6;',
+    expect: 'the founding invite allowance disagrees with itself',
+  },
+
+  /*
+   * the-price-ladder-survives-a-blink (lane B, 20 September 2026), six drills,
+   * one per clause. Two of them plant the defect in its ORIGINAL form, which is
+   * the only way to know the guard would have caught the thing it was written
+   * for: the fifth restores the action ternary that made a pause destructive,
+   * and the sixth removes the guard on the DELETE inside the migration.
+   */
+  {
+    name: 'the pricing screen reads the ladder inline again, unbounded',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/pricing/page.tsx',
+    find: '  const tiersWithRules = attachLadders(',
+    replace: [
+      '  const { data: rules } = await supabase',
+      "    .from('dynamic_pricing_rules')",
+      "    .select('id, ticket_tier_id, step_order, capacity_threshold_percent, price_cents')",
+      "    .in('ticket_tier_id', tiers.map(t => t.id))",
+      "    .order('step_order')",
+      '  const tiersWithRules = attachLadders(',
+    ].join('\n'),
+    expect: 'reads dynamic_pricing_rules with no bound',
+  },
+  {
+    name: 'the discounts screen pages its codes with no order at all',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/discounts/page.tsx',
+    find: '  const discountCodes = await readEventDiscountCodes<DiscountCode>(supabase, eventId)',
+    replace: [
+      '  const { data: discountCodes, error: codesError } = await supabase',
+      "    .from('discount_codes')",
+      "    .select('*')",
+      "    .eq('event_id', eventId)",
+      '    .range(0, 999)',
+      '  if (codesError) throw codesError',
+    ].join('\n'),
+    expect: 'with .range() and no .order()',
+  },
+  {
+    /*
+     * THE ROOM AGAIN. The stream page carried two of these when the guard was
+     * first run over it, and both were real: a discarded event read drew a
+     * virtual event as an in-person one, and a discarded messages read drew an
+     * empty Q&A on a live room.
+     */
+    name: 'the stream room goes back to discarding the error on its messages',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/stream/page.tsx',
+    find: [
+      "    readOrThrow('dashboard stream room messages', () =>",
+      '      admin',
+      "        .from('stream_messages')",
+    ].join('\n'),
+    replace: [
+      '    (async () => {',
+      '      const { data } = await admin',
+      "        .from('stream_messages')",
+    ].join('\n'),
+    expect: 'destructures `data` and not `error`',
+  },
+  {
+    /*
+     * CLAUSE 4, THE WHOLE-TREE ONE. A screen that hands an organiser an
+     * editable copy of their own configuration has to get that copy from a read
+     * that throws, wherever that screen lives.
+     */
+    name: 'the pricing screen renders the editor without reaching the reader',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'src/app/(dashboard)/dashboard/events/[id]/pricing/page.tsx',
+    find: "} from '@/lib/organisers/event-tier-config'",
+    replace: "} from '@/lib/organisers/event-tier-config-renamed'",
+    expect: 'does not read through src/lib/organisers/event-tier-config.ts',
+  },
+  {
+    /*
+     * THE ORIGINAL DEFECT, RESTORED. This exact ternary is what made turning
+     * dynamic pricing off destroy the ladder: the database function was handed
+     * an empty list and replaced the stored steps with nothing.
+     */
+    name: 'the action sends the steps only when the switch is on',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'src/app/actions/dynamic-pricing.ts',
+    find: '  const normalised = normaliseDynamicPricingSteps(steps)',
+    replace: '  const normalised = enabled ? normaliseDynamicPricingSteps(steps) : []',
+    expect: 'sends the price steps only when the switch is on',
+  },
+  {
+    /*
+     * THE OTHER HALF OF THE SAME DEFECT, IN SQL. Without the replace guard the
+     * function deletes every rule before it knows whether it has anything to
+     * put back, so a correct caller cannot save it.
+     */
+    name: 'the migration deletes the ladder before knowing it has a replacement',
+    guard: `${GUARDS}/the-price-ladder-survives-a-blink.mjs`,
+    file: 'supabase/migrations/20260920000040_a_paused_ladder_is_not_a_deleted_one.sql',
+    find: [
+      '  IF v_replace THEN',
+      '    DELETE FROM public.dynamic_pricing_rules WHERE ticket_tier_id = p_tier_id;',
+    ].join('\n'),
+    replace: [
+      '  DELETE FROM public.dynamic_pricing_rules WHERE ticket_tier_id = p_tier_id;',
+      '  IF true THEN',
+    ].join('\n'),
+    expect: 'without first establishing that a replacement ladder was actually supplied',
+  },
 ]
 
 /** Run a guard as the runner would; a drill may add environment (never replace it). */

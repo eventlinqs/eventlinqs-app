@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { CalendarDays, Clock, MapPin, ShieldCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { readOrThrow } from '@/lib/supabase/read-or-throw'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchArtistAttribution } from '@/lib/broadcast/artists'
 import {
@@ -79,7 +80,12 @@ export default async function GigDetailPage({ params }: Props) {
       ])
     : [null, [], null]
 
-  const { data: city } = await admin.from('cities').select('name').eq('slug', gig.city_slug).maybeSingle()
+  // A failed read here printed the raw slug where the city name belongs, on a
+  // public listing. readOrThrow answers null only when there genuinely is no
+  // such city, which is the one case the fallback below is for.
+  const city = await readOrThrow('marketplace-gig-city-name', () =>
+    admin.from('cities').select('name').eq('slug', gig.city_slug).maybeSingle(),
+  )
   const cityName = (city?.name as string | undefined) ?? gig.city_slug
   const deadlinePassed = new Date(gig.application_deadline) < new Date()
   const open = gig.status === 'open' && !deadlinePassed

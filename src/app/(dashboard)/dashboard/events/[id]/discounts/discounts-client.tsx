@@ -350,7 +350,7 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
                       <button
                         onClick={() => handleToggle(code.id, code.is_active)}
                         disabled={isPending}
-                        className="text-xs text-gold-500 hover:underline"
+                        className="text-xs text-[var(--brand-accent-strong)] hover:underline"
                       >
                         {code.is_active ? 'Deactivate' : 'Activate'}
                       </button>
@@ -358,7 +358,7 @@ export function DiscountCodesClient({ eventId, eventTimezone, currency, initialC
                         <button
                           onClick={() => handleDelete(code.id)}
                           disabled={isPending}
-                          className="text-xs text-red-500 hover:underline"
+                          className="text-xs text-[var(--color-error-strong)] hover:underline"
                         >
                           Delete
                         </button>

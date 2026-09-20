@@ -683,6 +683,29 @@
  *                             UNIQUE column so a row cannot land in two windows
  *                             and double-count revenue, and fail loudly rather
  *                             than rendering a business that has sold nothing
+ *   a-marketplace-block-holds  the gig board and the performer directory: a
+ *                             block is a safety decision and the read that
+ *                             checks it throws rather than answering "not
+ *                             blocked", the database refuses the contact
+ *                             underneath it, no applicant list is unbounded or
+ *                             silent, and the city picker has one reader
+ *   the-founding-invite-is-spent-once  the acquisition loop the growth plan
+ *                             calls lever two: the consume and the spot claim
+ *                             are ONE transaction so a fault can never leave a
+ *                             single-use code spent with no spot granted, the
+ *                             five-invite allowance is the same number in the
+ *                             TypeScript and in the database, and no read in
+ *                             the loop answers a failure as an answer
+ *   the-price-ladder-survives-a-blink  the organiser's pricing and discount
+ *                             configuration, where a failed read was DATA LOSS
+ *                             rather than a wrong number: the editor
+ *                             substitutes one synthetic step at the base price
+ *                             for an empty ladder and Save writes it back, so
+ *                             every read feeding it throws, every screen
+ *                             rendering it reaches the one reader, the action
+ *                             sends the steps whatever the switch says, and the
+ *                             migration's DELETE stays guarded so a PAUSE never
+ *                             deletes
  *   the-seating-surfaces-count-every-seat  the five organiser screens that
  *                             decide who has a seat read every seat, page on a
  *                             TOTAL order, fail loudly, and carry no ceiling
@@ -2500,6 +2523,86 @@ const GUARDS = [
   //
   // Drilled red five ways and green (C:\dev\EVIDENCE\LB-ORGDASH\drills.txt).
   'scripts/guards/the-organiser-dashboard-reads-every-row.mjs',
+
+  // a-marketplace-block-holds: the performer marketplace, 20 September 2026.
+  //
+  // THE RULE WAS WRITTEN DOWN ON 11 JULY AND WAS A COMMENT. The migration that
+  // created marketplace_blocks says "a block between an organisation and a
+  // performer stops applications and requests BOTH ways for the pair", and
+  // nothing in the database did. The whole enforcement was isPairBlocked,
+  // which returned Boolean(data) over a read whose error was never bound, so a
+  // dropped socket answered FALSE, which is the answer that means NOT BLOCKED.
+  // Both call sites read it as permission. Migration 20260920000060 refuses the
+  // insert underneath, and clause 4 holds the reader and its callers.
+  //
+  // fetchGigApplications was unbounded with its error discarded, so a failed
+  // read drew "no applications yet" on a gig that had them: the organiser books
+  // nobody and every performer who applied waits for an answer that was never
+  // coming. The counts on the organiser's board were worse: the Supabase
+  // ceiling is on the RESPONSE and that read asked for every gig at once, so
+  // one cap was shared across the whole board.
+  //
+  // Clause 6 sweeps ALL of src/ rather than the scope list, because a FIFTH
+  // surface is exactly how the platform would acquire a fifth copy of the city
+  // picker read somewhere the list does not name. There were four, and all four
+  // wrote `(result.data ?? [])`.
+  //
+  // Drilled red seven ways and green (C:\dev\EVIDENCE\LB-GIGWHOLE\drills.txt).
+  'scripts/guards/a-marketplace-block-holds.mjs',
+
+  // the-founding-invite-is-spent-once: the founding invite and referral loop,
+  // 20 September 2026. The growth plan's lever two, invite an organiser, and
+  // two of its five discarded reads cost the invited organiser the thing they
+  // were invited to.
+  //
+  // acceptFoundingInvite marked the invite accepted in one round trip and
+  // claimed the founding spot in another, discarding the claim's error. A
+  // dropped socket there is indistinguishable from the programme being full, so
+  // the invited organiser was told "All 50 founding spots are taken right now"
+  // while their single-use code had been spent milliseconds earlier: no spot,
+  // no six-month window, no way to try again, nothing recorded. Migration
+  // 20260920000050 puts both writes inside accept_founding_invite.
+  //
+  // The five-invite allowance was `(count ?? 0) >= INVITES_PER_FOUNDING_ORGANISER`
+  // over a count whose error was never bound, so a failed count read as nought
+  // issued and minted a sixth. Every founding invite is a founding spot and six
+  // fee-free months. Clause 6 holds the TypeScript literal and the SQL constant
+  // to the same number, for the reason founding-offer-matches-configuration
+  // already holds the fifty.
+  //
+  // Neither no-silent-row-ceiling (scoped to the consent and marketing path)
+  // nor read-failure-is-not-not-found (judges notFound() inside src/app, and
+  // says in its own header that a helper in src/lib folding a read into null
+  // for a RENDERED refusal is invisible to it) could see any of this.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-INVITEWHOLE\drills.txt).
+  'scripts/guards/the-founding-invite-is-spent-once.mjs',
+
+  // the-price-ladder-survives-a-blink: the organiser's pricing and discount
+  // configuration, 20 September 2026. This one is DATA LOSS rather than a wrong
+  // number, which is why it is a guard of its own.
+  //
+  // /dashboard/events/[id]/pricing read the dynamic pricing ladder with the
+  // error discarded and handed `rules ?? []` to an editor that substitutes ONE
+  // synthetic step at the base price when the list is empty. Save replaces the
+  // stored ladder with what the editor is holding. So a dropped socket plus one
+  // press of Save deleted an organiser's whole pricing decision, with HTTP 200
+  // everywhere and nothing on the screen or in the log.
+  //
+  // The same screen destroyed the ladder a second way, through the action
+  // rather than the read: the steps were sent as `enabled ? normalise(steps) :
+  // []` and the database function deleted every rule before deciding whether to
+  // insert any, so PAUSING dynamic pricing deleted it. Migration
+  // 20260920000040 makes an empty step list an absence of instruction rather
+  // than an instruction to delete, and clause 6 refuses a migration that goes
+  // back.
+  //
+  // Clause 4 sweeps ALL of src/ rather than the directory list, because a THIRD
+  // screen is exactly how the platform would acquire a fourth copy of these
+  // reads somewhere the list does not name.
+  //
+  // Drilled red six ways and green (C:\dev\EVIDENCE\LB-PRICEWHOLE\drills.txt).
+  'scripts/guards/the-price-ladder-survives-a-blink.mjs',
 
   // the-seating-surfaces-count-every-seat: the five organiser screens that
   // decide who has a seat, 20 September 2026. THREE DIFFERENT CEILINGS, and
