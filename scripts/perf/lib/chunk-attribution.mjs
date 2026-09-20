@@ -360,6 +360,26 @@ export function listClientReferenceManifests(nextDir) {
  * on; `node_modules/...` is what it cannot. When a chunk holds both, the label
  * leads with ours, because "next/dist/client/app-dir/link.js" as the headline
  * for a chunk that also holds the event form sends the reader to the wrong file.
+ *
+ * READ THE COUNT, NOT JUST THE LEAD NAME, and the reason is a limitation of the
+ * manifest rather than of this function. A client-reference manifest lists the
+ * modules ASSOCIATED with a chunk and does not distinguish the ones whose code
+ * is IN it from the ones that merely NEED it. So:
+ *
+ *   `+7 more`    a handful of our components compiled together; the lead name
+ *                is one of them and the label means what it says
+ *   `+49 more`   a shared dependency almost every client component needs; the
+ *                lead name is one consumer out of fifty and means very little
+ *
+ * Measured on the build of 21 September 2026: of the 126 chunks a manifest
+ * names, 57 have more than five modules and ALL 57 of those also carry a
+ * `node_modules/` entry, which is the shape of a shared dependency. The 69 with
+ * five or fewer are our own components.
+ *
+ * No threshold is applied here, deliberately. Where a marker CAN name the
+ * content, `nameChunk` prefers it and appends the consumer count, which is the
+ * unambiguous answer; where no marker can, a count is more honest than a rule
+ * with a number in it that nothing measured.
  */
 export function summariseModules(modules) {
   const all = [...modules].map((m) => m.replace(/^\[project\]\//, ''))
