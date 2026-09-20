@@ -667,11 +667,22 @@ const DRILLS = [
     expect: 'cancelled is not in PUBLIC_AFTER_THE_FACT_STATUSES',
   },
   {
+    /*
+     * RE-ANCHORED 20 September 2026. The layout used to call
+     * `afterTheFactEventExists(slug)` and now calls `fetchAfterTheFactEvent`,
+     * the row-returning reader on the same module, because it needs the hero's
+     * columns to preload the LCP image from above the loading boundary and that
+     * is the SAME round trip rather than a second one. The guard's clause was
+     * re-derived at the same time: it now accepts any function the door
+     * EXPORTS, so it judges whether the door is consulted rather than which of
+     * its two names was typed. This drill therefore removes the CALL, which is
+     * still the only thing that makes the clause true.
+     */
     name: 'the route existence guard stops consulting the after-the-fact door',
     guard: `${GUARDS}/event-lifecycle-total.mjs`,
     file: 'src/app/events/[slug]/layout.tsx',
-    find: '  if (await afterTheFactEventExists(slug)) return children',
-    replace: '  // lane-C drill: the door removed',
+    find: '  const afterTheFact = await fetchAfterTheFactEvent<EventHeroFields>(slug, EVENT_HERO_SELECT)',
+    replace: '  const afterTheFact = null // lane-C drill: the door removed',
     expect: 'no longer consults the after-the-fact door',
   },
   {
@@ -6075,6 +6086,121 @@ const DRILLS = [
     find: "const MEDIA_DIR = 'src/components/media'",
     replace: "const MEDIA_DIR = 'src/components/seo'",
     expect: 'tile-painter derivation found only',
+  },
+
+  /*
+   * hero-preload-above-the-loading-boundary, four drills (20 September 2026).
+   *
+   * One clause per drill, because each stands for a different way this went
+   * wrong while it was being built rather than for a hypothetical.
+   *
+   *   1. The layout stops asking: the original defect, the hero's preload back
+   *      at byte 85,041 of a 205,060 byte document.
+   *   2. The PAGE asks instead. This was attempted twice, from
+   *      `generateMetadata` and from the server layout via `react-dom`, and both
+   *      looked completely reasonable and did nothing at all.
+   *   3. The server resolver imports `react-dom`, which is the second of those
+   *      two: in a server component that specifier resolves to the react-server
+   *      build where `preload()` has no dispatcher.
+   *   4. The derivation goes blind. It aims at the PAGE rather than at
+   *      HeroMedia's internals, because the first attempt at this drill renamed
+   *      `<HeroRaster` inside HeroMedia.tsx, the guard stayed green, and it was
+   *      RIGHT to: deriveHeroFiles keys on a consumer rendering `<HeroMedia`.
+   *      A drill that misses its anchor verifies nothing while looking like one.
+   */
+  {
+    /*
+     * THE ANCHOR IS THE IMPORT, NOT ONE BRANCH, AND THAT IS THE POINT.
+     *
+     * The first version of this drill removed the ask from the `row` branch
+     * alone and the guard PASSED, because clause 1 only asked whether the
+     * layout MENTIONS the preload and three other branches still did. The
+     * harness caught that on its first run and clause 5 was written because of
+     * it. Removing the import removes every ask at once, which is what clause 1
+     * is actually claiming to catch.
+     */
+    name: 'the layout above the loading boundary stops asking for the hero',
+    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    file: 'src/app/events/[slug]/layout.tsx',
+    find: "import { EVENT_HERO_SELECT, eventHeroPreloadLink } from '@/lib/images/hero-preload'",
+    replace: "import { EVENT_HERO_SELECT } from '@/lib/images/hero-preload'",
+    expect: 'no layout above that boundary asks for it',
+  },
+  {
+    name: 'a branch of the asking layout returns children without deciding about the hero',
+    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    file: 'src/app/events/[slug]/layout.tsx',
+    find: 'if (await viewerMayReachArchivedEvent(slug)) return withoutHeroPreload(children)',
+    replace: 'if (await viewerMayReachArchivedEvent(slug)) return children',
+    expect: 'returns children without deciding about the hero',
+  },
+  {
+    name: 'the page asks for its own preload, from inside the boundary where it cannot reach the head',
+    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: "import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'",
+    replace:
+      "import { getFeaturedHeroBackground, eventHeroMediaInput } from '@/lib/images/event-media'\n" +
+      "import { heroPreloadLink } from '@/lib/images/hero-preload'",
+    expect: 'asks for the hero preload from INSIDE',
+  },
+  {
+    name: 'the server-only resolver reaches for react-dom preload, which does nothing there',
+    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    file: 'src/lib/images/hero-preload.tsx',
+    find: "import 'server-only'",
+    replace: "import 'server-only'\n" + "import { preload } from 'react-dom'",
+    expect: 'imports from react-dom',
+  },
+  /*
+   * audit-flag-is-read-where-it-is-written, four drills (20 September 2026).
+   *
+   * One per clause. Drill 1 is the defect itself, as it stood in six files.
+   * Drill 2 is the form that is correct today and was correct for `body` once
+   * too. Drill 3 moves the WRITER and proves the writer and the reader are
+   * compared rather than each judged alone. Drill 4 takes the predicate's own
+   * key away, which is the shape a rename would have.
+   */
+  {
+    name: 'a suppression goes back to reading the audit flag off document.body',
+    guard: `${GUARDS}/audit-flag-is-read-where-it-is-written.mjs`,
+    file: 'src/components/media/hero-ambient-layer.tsx',
+    find: '    if (isAuditRun()) return',
+    replace: "    if (document.body.dataset.headless === '1') return",
+    expect: 'reads the audit flag off document.body',
+  },
+  {
+    name: 'a suppression reads documentElement directly instead of asking the predicate',
+    guard: `${GUARDS}/audit-flag-is-read-where-it-is-written.mjs`,
+    file: 'src/components/features/events/event-video.tsx',
+    find: '  const headless = isAuditRun()',
+    replace: "  const headless = document.documentElement.dataset.headless === '1'",
+    expect: 'reads the audit flag off documentElement directly',
+  },
+  {
+    name: 'the writer stops setting the flag the predicate reads',
+    guard: `${GUARDS}/audit-flag-is-read-where-it-is-written.mjs`,
+    file: 'src/app/layout.tsx',
+    find: "if(audit){d.dataset.headless='1';return}",
+    replace: "if(audit){d.dataset.auditing='1';return}",
+    expect: 'does not set documentElement.dataset.headless',
+  },
+  {
+    name: 'the predicate stops declaring the key this guard compares against',
+    guard: `${GUARDS}/audit-flag-is-read-where-it-is-written.mjs`,
+    file: 'src/lib/ui/audit-mode.ts',
+    find: "export const AUDIT_FLAG = 'headless'",
+    replace: 'export const AUDIT_FLAG = FLAG_KEY',
+    expect: 'declares no AUDIT_FLAG',
+  },
+
+  {
+    name: 'the event page stops rendering a hero, so the guard has nothing left to judge',
+    guard: `${GUARDS}/hero-preload-above-the-loading-boundary.mjs`,
+    file: 'src/app/events/[slug]/page.tsx',
+    find: '            <HeroMedia',
+    replace: '            <HeroMediaRenamed',
+    expect: 'no hero-bearing page was found behind any loading boundary',
   },
 ]
 

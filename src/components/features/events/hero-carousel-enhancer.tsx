@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { HeroCarouselClient, type HeroCarouselSlide } from './hero-carousel-client'
+import { isAuditRun } from '@/lib/ui/audit-mode'
 
 /**
  * HeroCarouselEnhancer - sibling client component that mounts the interactive
@@ -28,7 +29,7 @@ export function HeroCarouselEnhancer(props: Props) {
   const [active, setActive] = useState(false)
 
   useEffect(() => {
-    if (typeof document !== 'undefined' && document.body.dataset.headless === '1') return
+    if (isAuditRun()) return
 
     let cancelled = false
     let cancelHandle: number | NodeJS.Timeout | null = null

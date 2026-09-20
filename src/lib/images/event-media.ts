@@ -1,5 +1,6 @@
 import { getCategoryPhoto, BRANDED_FALLBACK_PHOTO, isBrandedFallbackPhoto } from './category-photo'
 import { GENERATED_COVER_PREFIX } from '@/lib/events/generated-cover-prefix'
+import { jsonAsStringArray } from '@/lib/json-narrow'
 
 // M6+: add in-app curated image library for organisers. Until then, branded
 // placeholder is the only fallback in tile contexts - no Pexels stock.
@@ -312,3 +313,40 @@ export async function getFeaturedHeroBackground(
   return { image: heroImage, alt, kenBurns: true }
 }
 
+
+/**
+ * THE FIELDS OF AN EVENT THAT DECIDE ITS HERO, IN ONE PLACE.
+ *
+ * `/events/[slug]` resolves its hero TWICE per request now: once in
+ * `generateMetadata`, which registers the preload while the head is still open
+ * (src/lib/images/hero-preload.ts), and once in the page body, which renders
+ * the raster. Those two answers must be the same photograph or the preload is a
+ * second download on the LCP path rather than a saving.
+ *
+ * They were two hand-built object literals for about ten minutes and that is
+ * exactly the shape that drifts: add `video_url` to one and the hero becomes a
+ * video poster on one side and a still on the other, silently. So the literal
+ * is written once, here, and both callers pass the event row through it.
+ *
+ * It is a PURE, cheap function over fields already loaded - `fetchEvent` is the
+ * one read and Next dedupes it across metadata and render - so calling
+ * `getFeaturedHeroBackground` twice costs a string hash, not a query.
+ */
+export interface EventHeroFields {
+  title?: string | null
+  cover_image_url?: string | null
+  thumbnail_url?: string | null
+  gallery_urls?: unknown
+  category?: { slug?: string | null; name?: string | null } | null
+}
+
+export function eventHeroMediaInput(event: EventHeroFields): EventMediaInput {
+  return {
+    title: event.title,
+    cover_image_url: event.cover_image_url,
+    thumbnail_url: event.thumbnail_url,
+    // gallery_urls is jsonb in the live schema; narrow Json -> string[].
+    gallery_urls: jsonAsStringArray(event.gallery_urls),
+    category: event.category ? { slug: event.category.slug ?? null, name: event.category.name } : null,
+  }
+}

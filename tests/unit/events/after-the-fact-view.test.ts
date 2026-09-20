@@ -126,12 +126,36 @@ describe('both doors are actually wired, which is where the last one failed', ()
       join(process.cwd(), 'src', 'app', 'events', '[slug]', 'layout.tsx'),
       'utf8',
     )
-    expect(layout).toContain('afterTheFactEventExists(slug)')
+    /*
+     * WHICH CALL COUNTS IS DERIVED FROM THE DOOR, NOT TYPED HERE.
+     *
+     * This asserted `afterTheFactEventExists(slug)` by name until 20 September
+     * 2026, and the layout then moved to `fetchAfterTheFactEvent`, the
+     * row-returning reader on the same module: it needs the hero's columns to
+     * preload the LCP image from above the route's loading boundary, and that is
+     * the SAME round trip rather than a second one. The behaviour did not change
+     * and this went red, which means it was asserting a spelling rather than the
+     * property. The property is that the door is consulted BEFORE the 404, so
+     * that is what it asks now, against whichever reader the door exports.
+     */
+    const doorSource = readFileSync(
+      join(process.cwd(), 'src', 'lib', 'events', 'after-the-fact-view.ts'),
+      'utf8',
+    )
+    const doorReaders = [...doorSource.matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)/g)].map(
+      (m) => m[1],
+    )
+    expect(doorReaders.length, 'the door exports no readers, so this test is asserting nothing').toBeGreaterThan(0)
+
+    const consultedAt = doorReaders
+      .map((fn) => layout.indexOf(fn + '('))
+      .concat(doorReaders.map((fn) => layout.indexOf(fn + '<')))
+      .filter((i) => i >= 0)
+    expect(consultedAt.length, `the layout consults none of ${doorReaders.join(', ')}`).toBeGreaterThan(0)
+
     // `lastIndexOf`, because the FIRST `notFound` in the file is the import and
     // the first version of this assertion compared against that and failed.
-    expect(layout.indexOf('afterTheFactEventExists(slug)')).toBeLessThan(
-      layout.lastIndexOf('notFound()'),
-    )
+    expect(Math.min(...consultedAt)).toBeLessThan(layout.lastIndexOf('notFound()'))
   })
 
   it('the page reads the row through it when the anonymous read finds nothing', () => {

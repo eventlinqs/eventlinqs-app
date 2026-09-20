@@ -67,9 +67,25 @@ export const CONTROL_COMPONENT = 'src/components/features/dashboard/event-lifecy
  * that exact split is recorded in src/lib/events/archived-view.ts, where the
  * first drive found the page's holder branch never ran.
  */
+/*
+ * WHICH CALL COUNTS AS CONSULTING IT IS DERIVED FROM THE DOOR, NOT TYPED HERE.
+ *
+ * Until 20 September 2026 the layout's entry named `afterTheFactEventExists`
+ * and the page's named `fetchAfterTheFactEvent`, one literal each. Both are
+ * exported by the same module and both apply the same two constraints (the
+ * clauses below prove that separately, per read). When the layout moved to the
+ * row-returning reader - it needed the hero's columns to preload the LCP image
+ * from above the loading boundary, and that is the SAME round trip rather than
+ * a second one - this guard failed while the behaviour was unchanged, because
+ * it was matching a name rather than the thing the name stands for.
+ *
+ * So the accepted calls are now every function the door EXPORTS. A caller that
+ * stops consulting the door still fails, which is what the clause is for; a
+ * caller that consults it through a different one of its doors does not.
+ */
 export const AFTER_THE_FACT_CALLERS = [
-  { file: 'src/app/events/[slug]/layout.tsx', calls: /afterTheFactEventExists\(/ },
-  { file: 'src/app/events/[slug]/page.tsx', calls: /fetchAfterTheFactEvent</ },
+  'src/app/events/[slug]/layout.tsx',
+  'src/app/events/[slug]/page.tsx',
 ]
 export const AFTER_THE_FACT_DOOR = 'src/lib/events/after-the-fact-view.ts'
 
@@ -240,11 +256,17 @@ export function collectFacts() {
     const { file, body } = effectiveDefinition(fn)
     return { fn, file, predicateAt: predicateLines(body) }
   })
-  const afterTheFactCallers = AFTER_THE_FACT_CALLERS.map(({ file, calls }) => ({
-    file,
-    consults: calls.test(readSource(file)),
-  }))
   const doorSource = readSource(AFTER_THE_FACT_DOOR)
+  /** Every reader the door exports; a caller consulting ANY of them consults it. */
+  const doorExports = [...doorSource.matchAll(/export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)/g)].map(m => m[1])
+  const afterTheFactCallers = AFTER_THE_FACT_CALLERS.map((file) => {
+    const src = readSource(file)
+    // A call site, not a mention: the name followed by its call or its type
+    // argument. Matched with includes rather than a built regex, because a
+    // function name needs no escaping and a hand-built pattern is one more
+    // thing that can be silently wrong.
+    return { file, consults: doorExports.some(fn => src.includes(fn + '(') || src.includes(fn + '<')) }
+  })
   /*
    * EVERY READ IN THE DOOR, NOT THE FILE AS A WHOLE.
    *

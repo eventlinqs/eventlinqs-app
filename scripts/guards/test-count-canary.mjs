@@ -2856,15 +2856,33 @@ const ROOT = join(HERE, '..', '..')
  * methods agree, and the arithmetic below closes against the previous baseline
  * rather than against a fresh total.
  *
- * MEASURED: 494 files, 6484 tests, 0 failed, 0 skipped
+ * 2026-09-20 (the hero preload item): raised 494/6484 -> 496/6493.
+ * TWO new files, both proving a thing a static guard cannot see.
+ *   tests/component/hero-preload-matches-the-raster.test.tsx (5) renders
+ *   HeroMedia and requires the preload to register the srcset and sizes the
+ *   <img> it produced actually asks for. A preload whose arguments differ by one
+ *   character does not save a request, it ADDS one, on the LCP path, on the
+ *   slowest route on the platform, and that failure is invisible in a screenshot.
+ *   tests/component/audit-mode-reads-the-written-element.test.tsx (4) asserts the
+ *   measurement predicate's ANSWER with the flag on each element in turn. The
+ *   negative case is the point: six components had been reading it off body,
+ *   which never carries it, so a test that only set documentElement would have
+ *   passed against the broken form too.
+ *
+ * COUNTED FROM THE FINISHED TREE and confirmed a second way, by enumeration
+ * without execution: `npx vitest list --run` prints 6493 lines, of which
+ * `grep -c hero-preload-matches-the-raster` is 5 and
+ * `grep -c audit-mode-reads-the-written-element` is 4.
+ *
+ * MEASURED: 496 files, 6493 tests, 0 failed, 0 skipped
  * (`npm run gate:push -- --only suite`).
  *
  * CHECKABLE:
- *   493 + 1 = 494 files
- *   6470 + 14 = 6484 tests
+ *   494 + 2 = 496 files
+ *   6484 + 5 + 4 = 6493 tests
  */
-const MIN_FILES = 494
-const MIN_TESTS = 6484
+const MIN_FILES = 496
+const MIN_TESTS = 6493
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

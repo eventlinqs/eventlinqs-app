@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation'
 import { createPublicClient } from '@/lib/supabase/public-client'
-import { readOrThrow } from '@/lib/supabase/read-or-throw'
-import { fixtureEventExists } from '@/lib/dev/fixture-events'
+import { readOrThrow, type Read } from '@/lib/supabase/read-or-throw'
+import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 import { viewerMayReachArchivedEvent } from '@/lib/events/archived-view'
-import { afterTheFactEventExists } from '@/lib/events/after-the-fact-view'
+import { fetchAfterTheFactEvent } from '@/lib/events/after-the-fact-view'
+import { EVENT_HERO_SELECT, eventHeroPreloadLink } from '@/lib/images/hero-preload'
+import type { EventHeroFields } from '@/lib/images/event-media'
 
 /**
  * Existence guard for /events/[slug].
@@ -21,7 +23,71 @@ import { afterTheFactEventExists } from '@/lib/events/after-the-fact-view'
  * skeleton for the (confirmed-to-exist) event's own render. Uses the same
  * cookie-free anon client + slug the page's fetchEvent uses, so visibility is
  * identical (a row the page would notFound on is a row this guard rejects).
+ *
+ * ==========================================================================
+ * AND IT STARTS THE LCP IMAGE, FOR THE SAME REASON IT DECIDES THE 404
+ * ==========================================================================
+ *
+ * Rendering outside the loading boundary is also the only place on this route
+ * that can put the hero's `<link rel=preload as=image>` in the `<head>`. A
+ * `loading.tsx` closes the head with the SKELETON, so the preload the hero
+ * itself emits landed at byte 85,041 of a 205,060 byte document: the browser
+ * could not ask for the LCP image until it had parsed 41 per cent of the page.
+ * Lighthouse measured it as `Resource load delay` and it was the largest term
+ * in this route's LCP. Every other public route on the platform carries that
+ * link at byte 241, because none of them has a loading boundary.
+ *
+ * So each branch below that returns `children` also registers the hero, from
+ * the row it already read: the existence select is WIDENED to the hero's
+ * columns rather than a second query being added.
+ *
+ * `scripts/guards/hero-preload-above-the-loading-boundary.mjs` derives this
+ * requirement from the tree - a `loading.tsx` beside a page that renders a hero
+ * - so the next route that grows one cannot repeat this quietly.
+ *
+ * THE ARCHIVED-HOLDER BRANCH DELIBERATELY DOES NOT PRELOAD, and the reason is
+ * cost rather than oversight. `viewerMayReachArchivedEvent` answers from a
+ * lookup that does not carry the hero columns, so preloading there would add a
+ * read to a path that is per-viewer, uncacheable at the edge by design, noindex
+ * by ruling, and reached only by someone who already holds a ticket. It is the
+ * one branch where the image is not worth a round trip.
  */
+/**
+ * The hero's preload link and the page, in that order.
+ *
+ * A fragment rather than a wrapper element: this layout sits between the root
+ * layout and the page and must add NO box to the document, or the hero's
+ * `absolute inset-0` would resolve against a different containing block.
+ * React hoists the `<link>` out of here into the head regardless of where in
+ * the tree it sits, which is the whole mechanism.
+ */
+function withHeroPreload(link: React.ReactElement | null, children: React.ReactNode) {
+  return (
+    <>
+      {link}
+      {children}
+    </>
+  )
+}
+
+/**
+ * The one branch that deliberately does NOT start the LCP image, named so the
+ * decision is in the code rather than in a guard's allowlist.
+ *
+ * `viewerMayReachArchivedEvent` answers from a lookup that does not carry the
+ * hero's columns, so preloading here would add a round trip to a path that is
+ * per-viewer, uncacheable at the edge by design, noindex by ruling, and reached
+ * only by somebody who already holds a ticket. It is the one branch where the
+ * image is not worth a read.
+ *
+ * `scripts/guards/hero-preload-above-the-loading-boundary.mjs` requires every
+ * branch of this layout to return through one of these two functions, so the
+ * next branch added has to say which it is instead of quietly being neither.
+ */
+function withoutHeroPreload(children: React.ReactNode) {
+  return children
+}
+
 export default async function EventSlugLayout({
   children,
   params,
@@ -35,7 +101,8 @@ export default async function EventSlugLayout({
   // fixtureEventExists): a homepage fixture card must resolve to a real
   // detail page, so honour the same one-source-of-truth fixture the homepage
   // rails render. Never consulted on production deployments.
-  if (await fixtureEventExists(slug)) return children
+  const fixture = await fetchFixtureEvent(slug)
+  if (fixture) return withHeroPreload(await eventHeroPreloadLink(fixture), children)
 
   /*
    * THE READ THAT DECIDES EXISTENCE MAY NOT DISCARD ITS ERROR. 12 September
@@ -52,10 +119,10 @@ export default async function EventSlugLayout({
    */
   const supabase = createPublicClient()
   const row = await readOrThrow('event-route', () =>
-    supabase.from('events').select('id').eq('slug', slug).maybeSingle(),
+    supabase.from('events').select(EVENT_HERO_SELECT).eq('slug', slug).maybeSingle() as unknown as Read<EventHeroFields>,
   )
 
-  if (row) return children
+  if (row) return withHeroPreload(await eventHeroPreloadLink(row), children)
 
   /*
    * NOTHING PUBLIC AT THIS SLUG, and the database said so. Say so in the log
@@ -71,7 +138,7 @@ export default async function EventSlugLayout({
    * the edge cache.
    */
   console.warn(`[event-route] no public row for ${slug}; asking whether a ticket holder may see an archived one`)
-  if (await viewerMayReachArchivedEvent(slug)) return children
+  if (await viewerMayReachArchivedEvent(slug)) return withoutHeroPreload(children)
 
   /*
    * PAUSED, POSTPONED, CANCELLED AND COMPLETED ARE PUBLIC PAGES, and the anon
@@ -84,7 +151,8 @@ export default async function EventSlugLayout({
    * Unlike the archived branch above, this answer is the SAME FOR EVERY VIEWER,
    * so it reads no session and the response stays cacheable at the edge.
    */
-  if (await afterTheFactEventExists(slug)) return children
+  const afterTheFact = await fetchAfterTheFactEvent<EventHeroFields>(slug, EVENT_HERO_SELECT)
+  if (afterTheFact) return withHeroPreload(await eventHeroPreloadLink(afterTheFact), children)
 
   notFound()
 }

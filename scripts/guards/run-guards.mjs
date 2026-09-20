@@ -517,6 +517,22 @@
  *                              the label was laid out at its position in the FULL scroll
  *                              width: /admin/users measured 569 against a 390 viewport
  *                              and the phone rendered the screen at 69 per cent
+ *   hero-preload-above-the-loading-boundary  a hero behind a route-level
+ *                              loading.tsx is asked for from a layout ABOVE that
+ *                              boundary. The head closes with the skeleton, so the
+ *                              preload next/image emits when the hero renders landed at
+ *                              byte 85,041 of a 205,060 byte document while every other
+ *                              gated route carried it at byte 241. Lighthouse charged it
+ *                              as Resource load delay, median 331ms and 533ms against a
+ *                              load DURATION of 6ms
+ *   audit-flag-is-read-where-it-is-written  the measurement flag is read from the
+ *                              element the layout writes it to. It is set on
+ *                              documentElement and SIX components read document.body:
+ *                              the city map, the venue map, the event video, the hero
+ *                              carousel's rotation, its enhancer and the hero's
+ *                              ken-burns layer all mounted inside every Lighthouse run,
+ *                              each one a suppression written to keep decoration out of
+ *                              a measurement
  *   trigger-columns-exist    no installed trigger reads a record field that is not a
  *                              column of the table it sits on. plpgsql resolves those at
  *                              runtime, so a typo applies cleanly and then breaks the
@@ -1653,6 +1669,33 @@ const GUARDS = [
   // seven ways.
   'scripts/guards/tile-label-over-a-photograph.mjs',
   'scripts/guards/sr-only-cannot-escape-a-scroller.mjs',
+  // 20 September 2026, close-out C8B.3. next/image emits a hero's preload where
+  // the ELEMENT renders, and React hoists it into the head only while the head
+  // is open. A route-level loading.tsx closes the head with the SKELETON, so on
+  // the one public route that has one the link came out at byte 85,041 of a
+  // 205,060 byte document: the browser could not ask for the LCP image until it
+  // had parsed 41 per cent of the page. Every other gated route carried it at
+  // byte 241. Lighthouse charged it as Resource load delay, median 331ms on
+  // cat-indie and 533ms on the arena page over five runs each, against a load
+  // DURATION of 6ms; after the fix, 11ms and 12ms. The subject is derived from
+  // the tree (loading boundaries, the value-import graph and deriveHeroFiles),
+  // never listed, and clause 4 fails loudly if that derivation ever returns
+  // zero. Drilled red on all four clauses and green after each
+  // (C:\dev\EVIDENCE\C8-HEROPRELOAD\guard-drills.txt).
+  'scripts/guards/hero-preload-above-the-loading-boundary.mjs',
+  // 20 September 2026, found by the drive for the guard above. src/app/layout.tsx
+  // sets the measurement flag on documentElement and says so in its own comment;
+  // SIX client components read it off document.body, which never carries it. The
+  // Google map on a city page, the venue map, the event video, the hero
+  // carousel's rotation, its enhancer and the hero's ken-burns layer therefore
+  // all ran inside every Lighthouse run this platform has taken, each one a
+  // suppression written to keep decoration OUT of a measurement. Nothing looked
+  // broken because the two readers that used documentElement worked. Caught by
+  // counting optimiser requests in a real browser with the audit cookie set: two
+  // per event page, the second being the ken-burns copy of the hero. Clause 3
+  // compares the writer against the reader so the next move of the flag fails
+  // here rather than in a score three weeks later. Drilled red four ways.
+  'scripts/guards/audit-flag-is-read-where-it-is-written.mjs',
   'scripts/guards/hero-scale-one-source.mjs',
   'scripts/guards/no-glassmorphism.mjs',
   // Scope v5 3.11, 3 September 2026. The livestream link was captured by the
